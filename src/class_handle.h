@@ -76,6 +76,16 @@ class ClassHandle {
 		}
 
 		/**
+		 * Inherit from another class's FunctionTemplate
+		 */
+		template <typename T>
+		static Local<FunctionTemplate> Inherit(Local<FunctionTemplate> definition) {
+			Local<FunctionTemplate> parent = GetFunctionTemplate<T>();
+			definition->Inherit(parent);
+			return definition;
+		}
+
+		/**
 		 * Automatically unwraps the C++ pointer and calls your class method with proper `this`
 		 */
 		template <typename T, void (T::* F)(const FunctionCallbackInfo<Value>&)>
@@ -109,7 +119,7 @@ class ClassHandle {
 		 */
 		template <typename T>
 		static Local<FunctionTemplate> GetFunctionTemplate() {
-    	ShareableIsolate::IsolateSpecific<FunctionTemplate>& specific = T::TemplateSpecific();
+			ShareableIsolate::IsolateSpecific<FunctionTemplate>& specific = T::TemplateSpecific();
 			MaybeLocal<FunctionTemplate> maybe_tmpl = specific.Deref();
 			Local<FunctionTemplate> tmpl;
 			if (maybe_tmpl.ToLocal(&tmpl)) {
@@ -128,14 +138,14 @@ class ClassHandle {
 		static Local<Object> NewInstance(Args... args) {
 			Local<Object> instance = GetFunctionTemplate<T>()->InstanceTemplate()->NewInstance(Isolate::GetCurrent()->GetCurrentContext()).ToLocalChecked();
 			auto ptr = std::make_unique<T>(args...);
-			Transfer(std::move(ptr), instance);
+			Wrap(std::move(ptr), instance);
 			return instance;
 		}
 
 		/**
 		 * Transfer ownership of this C++ pointer to the v8 handle lifetime.
 		 */
-		static void Transfer(std::unique_ptr<ClassHandle> ptr, Local<Object> handle) {
+		static void Wrap(std::unique_ptr<ClassHandle> ptr, Local<Object> handle) {
 			handle->SetAlignedPointerInInternalField(0, ptr.get());
 			ptr->handle.Reset(Isolate::GetCurrent(), handle);
 			ptr->SetWeak<ClassHandle, WeakCallback>(ptr.release());

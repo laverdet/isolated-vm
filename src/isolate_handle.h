@@ -2,6 +2,8 @@
 #include "shareable_isolate.h"
 #include "shareable_persistent.h"
 #include "class_handle.h"
+#include "transferable.h"
+#include "transferable_handle.h"
 #include "script_handle.h"
 
 #include <memory>
@@ -12,25 +14,40 @@ using namespace v8;
 using std::shared_ptr;
 using std::unique_ptr;
 
-class IsolateHandle : public ClassHandle {
+/**
+ * Reference to a v8 isolate
+ */
+class IsolateHandle : public TransferableHandle {
 	private:
 		shared_ptr<ShareableIsolate> isolate;
 
+		/**
+		 * Wrapper class created when you pass an IsolateHandle through to another isolate
+		 */
+		class IsolateHandleTransferable : public Transferable {
+			private:
+				shared_ptr<ShareableIsolate> isolate;
+			public:
+				IsolateHandleTransferable(shared_ptr<ShareableIsolate>& isolate) : isolate(isolate) {}
+				virtual Local<Value> TransferIn() {
+					return ClassHandle::NewInstance<IsolateHandle>(isolate);
+				}
+		};
+
 	public:
+		IsolateHandle(shared_ptr<ShareableIsolate>& isolate) : isolate(isolate) {}
+
 		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
 			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
 			return tmpl;
 		}
 
 		static Local<FunctionTemplate> Definition() {
-			return MakeClass(
+			return Inherit<TransferableHandle>(MakeClass(
 			 "Isolate", New, 1,
 				"compileScriptSync", Method<IsolateHandle, &IsolateHandle::CompileScriptSync>, 1,
 				"createContextSync", Method<IsolateHandle, &IsolateHandle::CreateContextSync>, 0
-			);
-		}
-
-		IsolateHandle(shared_ptr<ShareableIsolate>& isolate) : isolate(isolate) {
+			));
 		}
 
 		static void New(const FunctionCallbackInfo<Value>& args) {
@@ -40,10 +57,17 @@ class IsolateHandle : public ClassHandle {
 			Isolate::CreateParams create_params;
 			create_params.array_buffer_allocator = v8::ArrayBuffer::Allocator::NewDefaultAllocator();
 			auto isolate = std::make_shared<ShareableIsolate>(create_params);
-			Transfer(std::make_unique<IsolateHandle>(isolate), args.This());
+			Wrap(std::make_unique<IsolateHandle>(isolate), args.This());
 			args.GetReturnValue().Set(args.This());
 		}
 
+		virtual unique_ptr<Transferable> TransferOut() {
+			return std::make_unique<IsolateHandleTransferable>(isolate);
+		}
+
+		/**
+		 * Create a new v8::Context in this isolate and returns a ContextHandle
+		 */
 		void CreateContextSync(const FunctionCallbackInfo<Value>& args) {
 			shared_ptr<ShareablePersistent<Context>> context_ptr;
 			shared_ptr<ShareablePersistent<Value>> global_ptr;
@@ -56,6 +80,9 @@ class IsolateHandle : public ClassHandle {
 			args.GetReturnValue().Set(ClassHandle::NewInstance<ContextHandle>(context_ptr, global_ptr));
 		}
 
+		/**
+		 * Compiles a script in this isolate and returns a ScriptHandle
+		 */
 		void CompileScriptSync(const FunctionCallbackInfo<Value>& args) {
 			if (args.Length() < 1) {
 				THROW(Exception::TypeError, "compileScriptSync expects 1 parameter");

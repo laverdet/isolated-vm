@@ -15,6 +15,7 @@
 
 namespace ivm {
 using namespace v8;
+using std::unique_ptr;
 
 /**
  * Wrapper around Isolate with helpers to make working with multiple isolates easier.
@@ -27,9 +28,9 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		Isolate* isolate;
 		Persistent<Context> default_context;
 		std::mutex mutex;
-		std::queue<std::unique_ptr<std::function<void()>>> work;
-		std::vector<std::unique_ptr<Persistent<Value>>> specifics;
-		std::vector<std::unique_ptr<Persistent<FunctionTemplate>>> specifics_ft;
+		std::queue<unique_ptr<std::function<void()>>> work;
+		std::vector<unique_ptr<Persistent<Value>>> specifics;
+		std::vector<unique_ptr<Persistent<FunctionTemplate>>> specifics_ft;
 		bool disposed;
 		bool root;
 

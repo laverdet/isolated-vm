@@ -6,7 +6,7 @@
 				'xcode_settings': {
 					'GCC_OPTIMIZATION_LEVEL': '3',
 					'GCC_GENERATE_DEBUGGING_SYMBOLS': 'NO',
-          'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
+					'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
 					'OTHER_CPLUSPLUSFLAGS': [ '-std=c++14' ],
 				},
 				'msvs_settings': {

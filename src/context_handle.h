@@ -10,30 +10,46 @@
 
 namespace ivm {
 using namespace v8;
+using std::shared_ptr;
 
-class ContextHandle : public ClassHandle {
+class ContextHandle : public TransferableHandle {
 	friend class ScriptHandle;
 	private:
-		std::shared_ptr<ShareablePersistent<Context>> context;
-		std::shared_ptr<ShareablePersistent<Value>> global;
+		shared_ptr<ShareablePersistent<Context>> context;
+		shared_ptr<ShareablePersistent<Value>> global;
+
+		class ContextHandleTransferable : public Transferable {
+			private:
+				shared_ptr<ShareablePersistent<Context>> context;
+				shared_ptr<ShareablePersistent<Value>> global;
+			public:
+				ContextHandleTransferable(shared_ptr<ShareablePersistent<Context>>& context, shared_ptr<ShareablePersistent<Value>>& global) : context(context), global(global) {}
+				virtual Local<Value> TransferIn() {
+					return ClassHandle::NewInstance<ContextHandle>(context, global);
+				}
+		};
 
 	public:
+		ContextHandle(shared_ptr<ShareablePersistent<Context>>& context, shared_ptr<ShareablePersistent<Value>>& global) : context(context), global(global) {}
+
 		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
 			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
 			return tmpl;
 		}
 
 		static Local<FunctionTemplate> Definition() {
-			return MakeClass(
+			return Inherit<TransferableHandle>(MakeClass(
 				"Context", New, 0,
 				"globalReference", Method<ContextHandle, &ContextHandle::GlobalReference>, 0
-			);
+			));
 		}
-
-		ContextHandle(std::shared_ptr<ShareablePersistent<Context>>& context, std::shared_ptr<ShareablePersistent<Value>>& global) : context(context), global(global) {}
 
 		static void New(const FunctionCallbackInfo<Value>& args) {
 			THROW(Exception::TypeError, "Constructor Context is private");
+		}
+
+		virtual unique_ptr<Transferable> TransferOut() {
+			return std::make_unique<ContextHandleTransferable>(context, global);
 		}
 
 		void GlobalReference(const FunctionCallbackInfo<Value>& args) {

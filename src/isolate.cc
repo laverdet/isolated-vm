@@ -4,6 +4,7 @@
 #include "isolate_handle.h"
 #include "context_handle.h"
 #include "script_handle.h"
+#include "external_copy_handle.h"
 #include "reference_handle.h"
 
 #include <memory>
@@ -20,6 +21,7 @@ void init(Local<Object> target) {
 	root_isolate = make_shared<ShareableIsolate>(isolate, isolate->GetCurrentContext());
 	target->Set(v8_symbol("Isolate"), ClassHandle::Init<IsolateHandle>());
 	target->Set(v8_symbol("Context"), ClassHandle::Init<ContextHandle>());
+	target->Set(v8_symbol("ExternalCopy"), ClassHandle::Init<ExternalCopyHandle>());
 	target->Set(v8_symbol("Reference"), ClassHandle::Init<ReferenceHandle>());
 	target->Set(v8_symbol("Script"), ClassHandle::Init<ScriptHandle>());
 }

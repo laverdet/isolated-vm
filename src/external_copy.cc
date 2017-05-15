@@ -74,8 +74,10 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitive(const Local<Value>& value
 		return make_unique<ExternalCopyString>(value);
 	} else if (value->IsNull()) {
 		return make_unique<ExternalCopyNull>();
-	} else {
+	} else if (value->IsUndefined()) {
 		return make_unique<ExternalCopyUndefined>();
+	} else {
+		return nullptr;
 	}
 }
 

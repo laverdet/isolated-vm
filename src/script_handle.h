@@ -2,37 +2,52 @@
 #include <node.h>
 #include "shareable_isolate.h"
 #include "shareable_persistent.h"
-#include "class_handle.h"
+#include "transferable_handle.h"
 #include "context_handle.h"
 
 #include <memory>
 
 namespace ivm {
+using namespace v8;
 
-class ScriptHandle : public ClassHandle {
+class ScriptHandle : public TransferableHandle {
 	private:
-		std::shared_ptr<ShareablePersistent<v8::UnboundScript>> script;
+		std::shared_ptr<ShareablePersistent<UnboundScript>> script;
+
+		class ScriptHandleTransferable : public Transferable {
+			private:
+				shared_ptr<ShareablePersistent<UnboundScript>> script;
+			public:
+				ScriptHandleTransferable(shared_ptr<ShareablePersistent<UnboundScript>>& script) : script(script) {}
+				virtual Local<Value> TransferIn() {
+					return ClassHandle::NewInstance<ScriptHandle>(script);
+				}
+		};
 
 	public:
+		ScriptHandle(std::shared_ptr<ShareablePersistent<UnboundScript>>& script) : script(script) {}
+
 		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
 			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
 			return tmpl;
 		}
 
 		static Local<FunctionTemplate> Definition() {
-			return MakeClass(
+			return Inherit<TransferableHandle>(MakeClass(
 				"Script", New, 0,
 				"runSync", Method<ScriptHandle, &ScriptHandle::RunSync>, 1
-			);
+			));
 		}
 
-		ScriptHandle(std::shared_ptr<ShareablePersistent<v8::UnboundScript>>& script) : script(script) {}
-
-		static void New(const v8::FunctionCallbackInfo<Value>& args) {
+		static void New(const FunctionCallbackInfo<Value>& args) {
 			THROW(Exception::TypeError, "Constructor Context is private");
 		}
 
-		void RunSync(const v8::FunctionCallbackInfo<v8::Value>& args);
+		virtual unique_ptr<Transferable> TransferOut() {
+			return std::make_unique<ScriptHandleTransferable>(script);
+		}
+
+		void RunSync(const FunctionCallbackInfo<Value>& args);
 };
 
 }
