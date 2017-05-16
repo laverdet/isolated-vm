@@ -156,6 +156,27 @@ struct ConvertParam<MaybeLocal<Number>> {
 };
 
 template <>
+struct ConvertParam<Local<Object>> {
+	static inline Local<Object> Convert(const int ii, const int num, const FunctionCallbackInfo<Value>& info) {
+		RequiresParam(num, info);
+		if (!info[ii]->IsObject()) {
+			throw js_type_error(CalleeName(info)+ " requires parameter "+ std::to_string(ii)+ " to be an object");
+		}
+		return info[ii].As<Object>();
+	};
+};
+
+template <>
+struct ConvertParam<MaybeLocal<Object>> {
+	static inline MaybeLocal<Object> Convert(const int ii, const int num, const FunctionCallbackInfo<Value>& info) {
+		if (info.Length() >= ii && info[ii]->IsObject()) {
+			return info[ii].As<Object>();
+		}
+		return MaybeLocal<Object>();
+	}
+};
+
+template <>
 struct ConvertParam<Local<Array>> {
 	static inline Local<Array> Convert(const int ii, const int num, const FunctionCallbackInfo<Value>& info) {
 		RequiresParam(num, info);

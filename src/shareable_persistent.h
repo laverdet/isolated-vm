@@ -17,6 +17,8 @@ template <class T>
 class ShareablePersistent {
 	private:
 		std::shared_ptr<ShareableIsolate> isolate;
+		// This is a unique_ptr<> because the Persistent will slightly outlive the ShareablePersistent,
+		// depending on when we can next lock the isolate
 		std::unique_ptr<Persistent<T>> handle;
 
 	public:

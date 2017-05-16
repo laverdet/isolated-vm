@@ -7,8 +7,11 @@
 #include "script_handle.h"
 #include "external_copy.h"
 
+#include <stdlib.h>
 #include <memory>
 #include <map>
+#include <cmath>
+#include <algorithm>
 
 namespace ivm {
 
@@ -36,6 +39,57 @@ class IsolateHandle : public TransferableHandle {
 				}
 		};
 
+		/**
+		 * ArrayBuffer::Allocator that enforces memory limits. The v8 documentation specifically says
+		 * that it's unsafe to call back into v8 from this class but I took a look at
+		 * GetHeapStatistics() and I think it'll be ok.
+		 */
+		class LimitedAllocator : public ArrayBuffer::Allocator {
+			private:
+				size_t limit;
+				size_t v8_heap;
+				size_t my_heap;
+				size_t next_check;
+
+				void Update(const size_t length) {
+					if (v8_heap + my_heap + length > next_check) {
+						HeapStatistics heap_statistics;
+						Isolate::GetCurrent()->GetHeapStatistics(&heap_statistics);
+						v8_heap = heap_statistics.total_heap_size();
+						next_check = v8_heap + my_heap + length + 1024 * 1024;
+					}
+				}
+
+			public:
+				LimitedAllocator(size_t limit) : limit(limit), v8_heap(0), my_heap(0), next_check(1024 * 1024) { printf("%ld\n", limit); }
+
+				virtual void* Allocate(size_t length) {
+					Update(length);
+					if (v8_heap + my_heap + length > limit) {
+						return nullptr;
+					} else {
+						my_heap += length;
+						return calloc(length, 1);
+					}
+				}
+
+				virtual void* AllocateUninitialized(size_t length) {
+					Update(length);
+					if (v8_heap + my_heap + length > limit) {
+						return nullptr;
+					} else {
+						my_heap += length;
+						return malloc(length);
+					}
+				}
+
+				virtual void Free(void* data, size_t length) {
+					my_heap -= length;
+					next_check -= length;
+					free(data);
+				}
+		};
+
 	public:
 		IsolateHandle(shared_ptr<ShareableIsolate> isolate) : isolate(isolate) {}
 
@@ -52,9 +106,31 @@ class IsolateHandle : public TransferableHandle {
 			));
 		}
 
-		static unique_ptr<ClassHandle> New() {
+		/**
+		 * Create a new Isolate. It all starts here!
+		 */
+		static unique_ptr<ClassHandle> New(MaybeLocal<Object> maybe_options) {
+			Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
 			Isolate::CreateParams create_params;
-			create_params.array_buffer_allocator = v8::ArrayBuffer::Allocator::NewDefaultAllocator();
+			create_params.array_buffer_allocator = ArrayBuffer::Allocator::NewDefaultAllocator();
+
+			// Parse options
+			if (!maybe_options.IsEmpty()) {
+				Local<Object> options = maybe_options.ToLocalChecked();
+
+				// Set memory limits
+				Local<Value> maybe_memory_limit = Unmaybe(options->Get(context, v8_symbol("memoryLimit")));
+				if (maybe_memory_limit->IsNumber()) {
+					size_t memory_limit = maybe_memory_limit.As<Number>()->Value();
+					ResourceConstraints& rc = create_params.constraints;
+					rc.set_max_semi_space_size(std::pow(2, std::min(sizeof(void*) >= 8 ? 4 : 3, (int)(memory_limit / 128))));
+					rc.set_max_old_space_size(memory_limit);
+					rc.set_max_executable_size(memory_limit * 0.75 + 0.5);
+					delete create_params.array_buffer_allocator;
+					create_params.array_buffer_allocator = new LimitedAllocator(memory_limit);
+				}
+			}
+
 			return std::make_unique<IsolateHandle>(std::make_shared<ShareableIsolate>(create_params));
 		}
 
