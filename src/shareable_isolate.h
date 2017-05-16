@@ -213,32 +213,29 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 
 		template <typename F>
 		static auto Locker(ShareableIsolate& isolate, F fn) -> decltype(fn()) {
-			bool did_throw = false;
 			std::shared_ptr<ExternalCopy> error;
-			decltype(fn()) result;
 			{
 				LockerHelper locker(isolate);
 				Isolate::Scope isolate_scope(isolate);
 				HandleScope handle_scope(isolate);
 				isolate.ExecuteWork();
 				TryCatch try_catch(isolate);
-				result = fn();
-				if (try_catch.HasCaught()) {
+				try {
+					return fn();
+				} catch (const js_error_base& cc_error) {
+					assert(try_catch.HasCaught());
 					// `stack` getter on Error needs a Context..
 					Context::Scope context_scope(isolate.DefaultContext());
 					error = ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception());
-					did_throw = true;
 				}
 			}
-			if (did_throw) {
-				if (error.get()) {
-					Local<Value> v8_error(error->CopyInto());
-					(*current)->ThrowException(v8_error);
-				} else {
-					(*current)->ThrowException(Exception::Error(v8_string("An exception was thrown. Sorry I don't know more.")));
-				}
+			// If we get here we can assume an exception was thrown
+			if (error.get()) {
+				(*current)->ThrowException(error->CopyInto());
+				throw js_error_base();
+			} else {
+				throw js_generic_error("An exception was thrown. Sorry I don't know more.");
 			}
-			return result;
 		}
 
 		Local<Context> DefaultContext() {

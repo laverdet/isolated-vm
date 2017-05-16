@@ -7,6 +7,7 @@
 					'GCC_OPTIMIZATION_LEVEL': '3',
 					'GCC_GENERATE_DEBUGGING_SYMBOLS': 'NO',
 					'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
+					'GCC_ENABLE_CPP_RTTI': 'YES',
 					'OTHER_CPLUSPLUSFLAGS': [ '-std=c++14' ],
 				},
 				'msvs_settings': {
@@ -19,6 +20,7 @@
 			'Debug': {
 				'xcode_settings': {
 					'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
+					'GCC_ENABLE_CPP_RTTI': 'YES',
 					'OTHER_CPLUSPLUSFLAGS': [ '-std=c++14' ],
 				},
 			},
@@ -28,9 +30,10 @@
 		{
 			'target_name': 'isolated_vm',
 			'cflags_cc': [ '-std=c++14' ],
-			'cflags!': [ '-fno-exceptions' ],
-			'cflags_cc!': [ '-fno-exceptions' ],
+			'cflags!': [ '-fno-exceptions', '-fno-rtti' ],
+			'cflags_cc!': [ '-fno-exceptions', '-fno-rtti' ],
 			'sources': [
+				'src/class_handle.cc',
 				'src/external_copy.cc',
 				'src/isolate.cc',
 				'src/script_handle.cc',

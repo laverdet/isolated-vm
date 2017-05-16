@@ -1,9 +1,12 @@
 #pragma once
 #include <node.h>
+#include "util.h"
+#include "convert_param.h"
 #include "shareable_isolate.h"
 #include "shareable_persistent.h"
 
 #include <assert.h>
+#include <stdexcept>
 
 namespace ivm {
 using namespace v8;
@@ -19,10 +22,8 @@ class ClassHandle {
 		 * Utility methods to set up object prototype
 		 */
 		static void AddMethod(Isolate* isolate, Local<ObjectTemplate>& proto, Local<Signature>& sig, const char* name, FunctionCallback impl, int length) {
-			proto->Set(
-				String::NewFromOneByte(isolate, (const uint8_t*)name, NewStringType::kInternalized).ToLocalChecked(),
-				FunctionTemplate::New(isolate, impl, Local<Value>(), sig, length)
-			);
+			Local<String> name_handle = v8_symbol(name);
+			proto->Set(name_handle, FunctionTemplate::New(isolate, impl, name_handle, sig, length));
 		}
 
 		template <typename... Args>
@@ -33,6 +34,79 @@ class ClassHandle {
 
 		static void AddMethods(Isolate* isolate, Local<ObjectTemplate>& proto, Local<Signature>& sig) {
 		}
+
+		/**
+		 * Below is the Parameterize<> template magic
+		 */
+		// These two templates will peel arguments off and run them through ConvertParam<T>
+		template <int O, typename R, typename ...Args>
+		static inline R ParameterizeHelper(const FunctionCallbackInfo<Value>& info, R(*fn)(Args...), Args... args) {
+			return fn(args...);
+		}
+
+		template <int O, typename R, typename T, typename ...Rest, typename ...Args>
+		static inline R ParameterizeHelper(const FunctionCallbackInfo<Value>& info, R(*fn)(Args..., T, Rest...), Args... args) {
+			return ParameterizeHelper<O, R, Rest...>(
+				info, fn, args...,
+				ConvertParam<T>::Convert((int)(sizeof...(Args)) + O, (int)(sizeof...(Args) + sizeof...(Rest)) + O + 1, info)
+			);
+		}
+
+		// Regular function that just returns a Local<Value>
+		template <int O, typename ...Args>
+		static inline Local<Value> ParameterizeHelperStart(const FunctionCallbackInfo<Value>& info, Local<Value>(*fn)(Args...)) {
+			return ParameterizeHelper<O, Local<Value>, Args...>(info, fn);
+		}
+
+		// If a Parameterize'd function returns a unique_ptr we assume it's a ClassHandle constructor
+		template <int O, typename R, typename ...Args>
+		static inline Local<Value> ParameterizeHelperStart(const FunctionCallbackInfo<Value>& info, std::unique_ptr<R>(*fn)(Args...)) {
+			RequireConstructorCall(info);
+			std::unique_ptr<R> result = ParameterizeHelper<O, std::unique_ptr<R>, Args...>(info, fn);
+			if (result.get()) {
+				Local<Object> handle = info.This().As<Object>();
+				Wrap(std::move(result), handle);
+				return handle;
+			} else {
+				return Undefined(Isolate::GetCurrent());
+			}
+		}
+
+		// Main entry point for parameterized functions
+		template <int ii, typename T, T F>
+		static inline void ParameterizeEntry(const FunctionCallbackInfo<Value>& info) {
+			try {
+				Local<Value> result = ParameterizeHelperStart<ii>(info, F);
+				if (result.IsEmpty()) {
+					throw std::runtime_error("Member function returned empty Local<> but did not set exception");
+				}
+				info.GetReturnValue().Set(result);
+			} catch (const js_error_base& err) {}
+		}
+
+		// Helper which converts member functions to `Type(Class* that, Args...)`
+		template <typename F>
+		struct MethodCast;
+
+		template <typename R, typename ...Args>
+		struct MethodCast<R(Args...)> {
+			typedef R(*Type)(Args...);
+			static constexpr int O = 0;
+			template <R(*F)(Args...)>
+			static R Invoke(Args... args) {
+				return (*F)(args...);
+			}
+		};
+
+		template<class C, class R, class... Args>
+		struct MethodCast<R(C::*)(Args...)> : public MethodCast<R(Args...)> {
+			typedef R(*Type)(C*, Args...);
+			static constexpr int O = -1;
+			template <R(C::*F)(Args...)>
+			static R Invoke(C* that, Args... args) {
+				return (that->*F)(args...);
+			}
+		};
 
 		/**
 		 * Convenience wrapper for the obtuse SetWeak function signature. When the callback is called
@@ -54,6 +128,22 @@ class ClassHandle {
 			delete that;
 		}
 
+		/**
+		 * Transfer ownership of this C++ pointer to the v8 handle lifetime.
+		 */
+		static void Wrap(std::unique_ptr<ClassHandle> ptr, Local<Object> handle) {
+			handle->SetAlignedPointerInInternalField(0, ptr.get());
+			ptr->handle.Reset(Isolate::GetCurrent(), handle);
+			ptr->SetWeak<ClassHandle, WeakCallback>(ptr.release());
+		}
+
+		/**
+		 * It just throws when you call it; used when `nullptr` is passed as constructor
+		 */
+		static void PrivateConstructor(const FunctionCallbackInfo<Value>& info) {
+			PrivateConstructorError(info);
+		}
+
 	protected:
 		/**
 		 * Sets up this object's FunctionTemplate inside the current isolate
@@ -61,11 +151,12 @@ class ClassHandle {
 		template <typename... Args>
 		static Local<FunctionTemplate> MakeClass(const char* class_name, FunctionCallback New, int length, Args... args) {
 			Isolate* isolate = Isolate::GetCurrent();
+			Local<String> name_handle = v8_symbol(class_name);
 			Local<FunctionTemplate> tmpl = FunctionTemplate::New(
-				isolate, New,
-				Local<Value>(), Local<Signature>(), length
+				isolate, New == nullptr ? PrivateConstructor : New,
+				name_handle, Local<Signature>(), length
 			);
-			tmpl->SetClassName(String::NewFromOneByte(isolate, (const uint8_t*)class_name, NewStringType::kInternalized).ToLocalChecked());
+			tmpl->SetClassName(name_handle);
 			tmpl->InstanceTemplate()->SetInternalFieldCount(1);
 
 			Local<ObjectTemplate> proto = tmpl->PrototypeTemplate();
@@ -86,15 +177,11 @@ class ClassHandle {
 		}
 
 		/**
-		 * Automatically unwraps the C++ pointer and calls your class method with proper `this`
+		 * Automatically unpacks v8 FunctionCallbackInfo for you
 		 */
-		template <typename T, void (T::* F)(const FunctionCallbackInfo<Value>&)>
-		static void Method(const FunctionCallbackInfo<Value>& args) {
-			T* that = Unwrap<T>(args.This());
-			if (that == nullptr) {
-				THROW(Exception::TypeError, "Object is not valid");
-			}
-			(static_cast<T*>(that)->*F)(args);
+		template <typename T, T F>
+		static inline void Parameterize(const FunctionCallbackInfo<Value>& info) {
+			ParameterizeEntry<MethodCast<T>::O, typename MethodCast<T>::Type, MethodCast<T>::template Invoke<F>>(info);
 		}
 
 	public:
@@ -137,30 +224,19 @@ class ClassHandle {
 		template <typename T, typename ...Args>
 		static Local<Object> NewInstance(Args... args) {
 			Local<Object> instance = GetFunctionTemplate<T>()->InstanceTemplate()->NewInstance(Isolate::GetCurrent()->GetCurrentContext()).ToLocalChecked();
-			auto ptr = std::make_unique<T>(args...);
-			Wrap(std::move(ptr), instance);
+			Wrap(std::make_unique<T>(args...), instance);
 			return instance;
-		}
-
-		/**
-		 * Transfer ownership of this C++ pointer to the v8 handle lifetime.
-		 */
-		static void Wrap(std::unique_ptr<ClassHandle> ptr, Local<Object> handle) {
-			handle->SetAlignedPointerInInternalField(0, ptr.get());
-			ptr->handle.Reset(Isolate::GetCurrent(), handle);
-			ptr->SetWeak<ClassHandle, WeakCallback>(ptr.release());
 		}
 
 		/**
 		 * Pull out native pointer from v8 handle
 		 */
-		template <typename T>
-		static T* Unwrap(Local<Object> handle) {
+		static ClassHandle* Unwrap(Local<Object> handle) {
 			assert(!handle.IsEmpty());
 			assert(handle->InternalFieldCount() > 0);
-			ClassHandle* that = static_cast<ClassHandle*>(handle->GetAlignedPointerFromInternalField(0));
-			return static_cast<T*>(that);
+			return static_cast<ClassHandle*>(handle->GetAlignedPointerFromInternalField(0));
 		}
+
 };
 
 }

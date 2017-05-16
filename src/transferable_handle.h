@@ -12,12 +12,8 @@ class TransferableHandle : public ClassHandle {
 			return tmpl;
 		}
 
-		static void New(const FunctionCallbackInfo<Value>& args) {
-			THROW(Exception::TypeError, "Constructor Transferable is private");
-		}
-
 		static Local<FunctionTemplate> Definition() {
-			return MakeClass("Transferable", New, 0);
+			return MakeClass("Transferable", nullptr, 0);
 		}
 
 		~TransferableHandle() {}

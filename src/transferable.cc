@@ -1,4 +1,5 @@
 #include "transferable.h"
+#include "util.h"
 #include "class_handle.h"
 #include "transferable_handle.h"
 #include "external_copy.h"
@@ -12,13 +13,13 @@ unique_ptr<Transferable> Transferable::TransferOut(const Local<Value>& value) {
 	if (value->IsObject()) {
 		Local<Object> object = value.As<Object>();
 		if (object->InternalFieldCount() > 0 && ClassHandle::GetFunctionTemplate<TransferableHandle>()->HasInstance(object)) {
-			TransferableHandle* handle = ClassHandle::Unwrap<TransferableHandle>(object);
-			return handle->TransferOut();
+			ClassHandle* handle = ClassHandle::Unwrap(object);
+			return dynamic_cast<TransferableHandle*>(handle)->TransferOut();
 		}
 	}
 	unique_ptr<Transferable> copy = ExternalCopy::CopyIfPrimitive(value);
 	if (copy.get() == nullptr) {
-		Isolate::GetCurrent()->ThrowException(Exception::TypeError(v8_string("A non-transferable value was passed")));
+		throw js_type_error("A non-transferable value was passed");
 	}
 	return copy;
 }

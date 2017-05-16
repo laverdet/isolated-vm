@@ -36,7 +36,7 @@ class ExternalCopyHandle : public TransferableHandle {
 		};
 
 	public:
-		ExternalCopyHandle(shared_ptr<ExternalCopy>& value) : value(value) {}
+		ExternalCopyHandle(shared_ptr<ExternalCopy> value) : value(value) {}
 
 		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
 			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
@@ -45,9 +45,9 @@ class ExternalCopyHandle : public TransferableHandle {
 
 		static Local<FunctionTemplate> Definition() {
 			return Inherit<TransferableHandle>(MakeClass(
-				"ExternalCopy", New, 1,
-				"copy", Method<ExternalCopyHandle, &ExternalCopyHandle::Copy>, 0,
-				"copyInto", Method<ExternalCopyHandle, &ExternalCopyHandle::CopyInto>, 0
+				"ExternalCopy", Parameterize<decltype(New), New>, 1,
+				"copy", Parameterize<decltype(&ExternalCopyHandle::Copy), &ExternalCopyHandle::Copy>, 0,
+				"copyInto", Parameterize<decltype(&ExternalCopyHandle::CopyInto), &ExternalCopyHandle::CopyInto>, 0
 			));
 		}
 
@@ -55,27 +55,16 @@ class ExternalCopyHandle : public TransferableHandle {
 			return std::make_unique<ExternalCopyTransferable>(value);
 		}
 
-		static void New(const FunctionCallbackInfo<Value>& args) {
-			if (!args.IsConstructCall()) {
-				THROW(Exception::TypeError, "Class constructor ExternalCopy cannot be invoked without 'new'");
-			} else if (args.Length() < 1) {
-				THROW(Exception::TypeError, "Class constructor ExternalCopy expects 1 parameter");
-			}
-			shared_ptr<ExternalCopy> value = shared_ptr<ExternalCopy>(ExternalCopy::Copy(args[0]));
-			if (value.get() == nullptr) {
-				// v8 exception should be set
-				return;
-			}
-			Wrap(std::make_unique<ExternalCopyHandle>(value), args.This());
-			args.GetReturnValue().Set(args.This());
+		static unique_ptr<ExternalCopyHandle> New(Local<Value> value) {
+			return std::make_unique<ExternalCopyHandle>(shared_ptr<ExternalCopy>(ExternalCopy::Copy(value)));
 		}
 
-		void Copy(const FunctionCallbackInfo<Value>& args) {
-			args.GetReturnValue().Set(value->CopyInto());
+		Local<Value> Copy() {
+			return value->CopyInto();
 		}
 
-		void CopyInto(const FunctionCallbackInfo<Value>& args) {
-			args.GetReturnValue().Set(ClassHandle::NewInstance<ExternalCopyIntoHandle>(value));
+		Local<Value> CopyInto() {
+			return ClassHandle::NewInstance<ExternalCopyIntoHandle>(value);
 		}
 
 };
@@ -109,11 +98,7 @@ class ExternalCopyIntoHandle : public TransferableHandle {
 		}
 
 		static Local<FunctionTemplate> Definition() {
-			return Inherit<TransferableHandle>(MakeClass("ExternalCopyInto", New, 0));
-		}
-
-		static void New(const FunctionCallbackInfo<Value>& args) {
-			THROW(Exception::TypeError, "Constructor ExternalCopyInto is private");
+			return Inherit<TransferableHandle>(MakeClass("ExternalCopyInto", nullptr, 0));
 		}
 
 		unique_ptr<Transferable> TransferOut() {

@@ -39,21 +39,17 @@ class ContextHandle : public TransferableHandle {
 
 		static Local<FunctionTemplate> Definition() {
 			return Inherit<TransferableHandle>(MakeClass(
-				"Context", New, 0,
-				"globalReference", Method<ContextHandle, &ContextHandle::GlobalReference>, 0
+				"Context", nullptr, 0,
+				"globalReference", Parameterize<decltype(&ContextHandle::GlobalReference), &ContextHandle::GlobalReference>, 0
 			));
-		}
-
-		static void New(const FunctionCallbackInfo<Value>& args) {
-			THROW(Exception::TypeError, "Constructor Context is private");
 		}
 
 		virtual unique_ptr<Transferable> TransferOut() {
 			return std::make_unique<ContextHandleTransferable>(context, global);
 		}
 
-		void GlobalReference(const FunctionCallbackInfo<Value>& args) {
-			args.GetReturnValue().Set(ClassHandle::NewInstance<ReferenceHandle>(global, context));
+		Local<Value> GlobalReference() {
+			return ClassHandle::NewInstance<ReferenceHandle>(global, context);
 		}
 };
 

@@ -34,7 +34,7 @@ class ReferenceHandle : public TransferableHandle {
 				shared_ptr<ShareablePersistent<Context>> context;
 
 			public:
-				ReferenceHandleTransferable(shared_ptr<ShareablePersistent<Value>>& reference, shared_ptr<ShareablePersistent<Context>>& context) : reference(reference), context(context) {}
+				ReferenceHandleTransferable(shared_ptr<ShareablePersistent<Value>> reference, shared_ptr<ShareablePersistent<Context>>& context) : reference(reference), context(context) {}
 
 				virtual Local<Value> TransferIn() {
 					return ClassHandle::NewInstance<ReferenceHandle>(reference, context);
@@ -42,7 +42,7 @@ class ReferenceHandle : public TransferableHandle {
 		};
 
 	public:
-		ReferenceHandle(shared_ptr<ShareablePersistent<Value>>& reference, shared_ptr<ShareablePersistent<Context>>& context) : reference(reference), context(context) {}
+		ReferenceHandle(shared_ptr<ShareablePersistent<Value>> reference, shared_ptr<ShareablePersistent<Context>> context) : reference(reference), context(context) {}
 
 		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
 			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
@@ -51,12 +51,12 @@ class ReferenceHandle : public TransferableHandle {
 
 		static Local<FunctionTemplate> Definition() {
 			return Inherit<TransferableHandle>(MakeClass(
-				"Reference", New, 1,
-				"deref", Method<ReferenceHandle, &ReferenceHandle::Deref>, 0,
-				"derefInto", Method<ReferenceHandle, &ReferenceHandle::DerefInto>, 0,
-				"getSync", Method<ReferenceHandle, &ReferenceHandle::GetSync>, 1,
-				"setSync", Method<ReferenceHandle, &ReferenceHandle::SetSync>, 2,
-				"applySync", Method<ReferenceHandle, &ReferenceHandle::ApplySync>, 2
+				"Reference", Parameterize<decltype(New), New>, 1,
+				"deref", Parameterize<decltype(&ReferenceHandle::Deref), &ReferenceHandle::Deref>, 0,
+				"derefInto", Parameterize<decltype(&ReferenceHandle::DerefInto), &ReferenceHandle::DerefInto>, 0,
+				"getSync", Parameterize<decltype(&ReferenceHandle::GetSync), &ReferenceHandle::GetSync>, 1,
+				"setSync", Parameterize<decltype(&ReferenceHandle::SetSync), &ReferenceHandle::SetSync>, 2,
+				"applySync", Parameterize<decltype(&ReferenceHandle::ApplySync), &ReferenceHandle::ApplySync>, 2
 			));
 		}
 
@@ -67,174 +67,109 @@ class ReferenceHandle : public TransferableHandle {
 		/**
 		 * Make a new reference to a local handle.
 		 */
-		static void New(const FunctionCallbackInfo<Value>& args) {
-			if (!args.IsConstructCall()) {
-				THROW(Exception::TypeError, "Class constructor Reference cannot be invoked without 'new'");
-			} else if (args.Length() < 1) {
-				THROW(Exception::TypeError, "Class constructor Reference expects 1 parameter");
-			}
-			auto reference = std::make_shared<ShareablePersistent<Value>>(args[0]);
-			auto context = std::make_shared<ShareablePersistent<Context>>(Isolate::GetCurrent()->GetCurrentContext());
-			Wrap(std::make_unique<ReferenceHandle>(reference, context), args.This());
-			args.GetReturnValue().Set(args.This());
+		static unique_ptr<ReferenceHandle> New(Local<Value> var) {
+			return std::make_unique<ReferenceHandle>(
+				std::make_shared<ShareablePersistent<Value>>(var),
+				std::make_shared<ShareablePersistent<Context>>(Isolate::GetCurrent()->GetCurrentContext())
+			);
 		}
 
 		/**
 		 * Attempt to return this handle to the current context.
 		 */
-		void Deref(const FunctionCallbackInfo<Value>& args) {
+		Local<Value> Deref() {
 			if (reference->GetIsolate() != Isolate::GetCurrent()) {
-				THROW(Exception::TypeError, "Cannot dereference this from current isolate");
+				throw js_type_error("Cannot dereference this from current isolate");
 			}
-			args.GetReturnValue().Set(reference->Deref());
+			return reference->Deref();
 		}
 
 		/**
 		 * Return a handle which will dereference itself when passing into another isolate.
 		 */
-		void DerefInto(const FunctionCallbackInfo<Value>& args) {
-			args.GetReturnValue().Set(ClassHandle::NewInstance<DereferenceHandle>(reference));
+		Local<Value> DerefInto() {
+			return ClassHandle::NewInstance<DereferenceHandle>(reference);
 		}
 
 		/**
 		 * Get a property from this reference, returned as another reference
 		 */
-		void GetSync(const FunctionCallbackInfo<Value>& args) {
-			if (args.Length() < 1) {
-				THROW(Exception::TypeError, "Method getSync expects 2 parameters");
+		Local<Value> GetSync(Local<Value> key) {
+			unique_ptr<ExternalCopy> key_copy = ExternalCopy::CopyIfPrimitive(key);
+			if (key_copy.get() == nullptr) {
+				throw js_type_error("Invalid `key`");
 			}
-			unique_ptr<ExternalCopy> key = ExternalCopy::CopyIfPrimitive(args[0]);
-			if (key.get() == nullptr) {
-				THROW(Exception::TypeError, "key is invalid");
-			}
-			unique_ptr<Transferable> result = ShareableIsolate::Locker(reference->GetIsolate(), [ this, &key ]() -> unique_ptr<Transferable> {
-				TryCatch try_catch(Isolate::GetCurrent());
+			return ShareableIsolate::Locker(reference->GetIsolate(), [ this, &key_copy ]() {
 				Local<Context> context = this->context->Deref();
 				Context::Scope context_scope(context);
-				Local<Value> key_inner = key->CopyInto();
+				Local<Value> key_inner = key_copy->CopyInto();
 				Local<Object> object = Local<Object>::Cast(reference->Deref());
-				MaybeLocal<Value> result = object->Get(context, key_inner);
-				if (try_catch.HasCaught()) {
-					try_catch.ReThrow();
-					return nullptr;
-				}
-				auto reference = std::make_shared<ShareablePersistent<Value>>(result.ToLocalChecked());
-				return std::make_unique<ReferenceHandleTransferable>(reference, this->context);
-			});
-			if (result.get() != nullptr) {
-				args.GetReturnValue().Set(result->TransferIn());
-			}
+				return std::make_unique<ReferenceHandleTransferable>(
+					std::make_shared<ShareablePersistent<Value>>(Unmaybe(object->Get(context, key_inner))),
+					this->context
+				);
+			})->TransferIn();
 		}
 
 		/**
 		 * Attempt to set a property on this reference
 		 */
-		void SetSync(const FunctionCallbackInfo<Value>& args) {
-			if (args.Length() < 2) {
-				THROW(Exception::TypeError, "Method setSync expects 2 parameters");
+		Local<Value> SetSync(Local<Value> key, Local<Value> val) {
+			unique_ptr<ExternalCopy> key_copy = ExternalCopy::CopyIfPrimitive(key);
+			if (key_copy.get() == nullptr) {
+				throw js_type_error("Invalid `key`");
 			}
-			unique_ptr<ExternalCopy> key = ExternalCopy::CopyIfPrimitive(args[0]);
-			if (key.get() == nullptr) {
-				THROW(Exception::TypeError, "key is invalid");
-			}
-			unique_ptr<Transferable> val;
-			{
-				TryCatch try_catch(Isolate::GetCurrent());
-				val = Transferable::TransferOut(args[1]);
-				if (try_catch.HasCaught()) {
-					try_catch.ReThrow();
-					return;
-				}
-			}
-			if (val.get() == nullptr) {
-				THROW(Exception::TypeError, "value is invalid");
-			}
-			bool result = ShareableIsolate::Locker(reference->GetIsolate(), [ this, &key, &val ]() {
-				TryCatch try_catch(Isolate::GetCurrent());
+			unique_ptr<Transferable> val_ref = Transferable::TransferOut(val);
+			return Boolean::New(Isolate::GetCurrent(), ShareableIsolate::Locker(reference->GetIsolate(), [ this, &key_copy, &val_ref ]() {
 				Local<Context> context = this->context->Deref();
 				Context::Scope context_scope(context);
-				Local<Value> key_inner = key->CopyInto();
-				Local<Value> val_inner = val->TransferIn();
+				Local<Value> key_inner = key_copy->CopyInto();
+				Local<Value> val_inner = val_ref->TransferIn();
 				Local<Object> object = Local<Object>::Cast(reference->Deref());
-				Maybe<bool> result = object->Set(context, key_inner, val_inner);
-				if (try_catch.HasCaught()) {
-					try_catch.ReThrow();
-					return false;
-				}
-				return result.FromJust();
-			});
-			args.GetReturnValue().Set(Boolean::New(Isolate::GetCurrent(), result));
+				return Unmaybe(object->Set(context, key_inner, val_inner));
+			}));
 		}
 
 		/**
 		 * Call a function, like Function.prototype.apply
 		 */
-		void ApplySync(const FunctionCallbackInfo<Value>& args) {
+		Local<Value> ApplySync(Local<Value> recv, MaybeLocal<Array> maybe_arguments) {
 			Isolate* isolate = Isolate::GetCurrent();
 			Local<Context> context = isolate->GetCurrentContext();
 
 			// Get receiver, holder, this, whatever
-			unique_ptr<Transferable> recv;
-			if (args.Length() >= 1) {
-				recv = Transferable::TransferOut(args[0]);
-				if (recv.get() == nullptr) {
-					return;
-				}
-			}
+			unique_ptr<Transferable> recv_ref = Transferable::TransferOut(recv);
 
 			// Externalize all arguments
-			std::vector<unique_ptr<Transferable>> arguments;
-			if (args.Length() >= 2 && args[1]->IsObject()) {
-				Local<Object> list = args[1].As<Object>();
-				MaybeLocal<Array> maybe_keys = list->GetOwnPropertyNames(isolate->GetCurrentContext());
-				Local<Array> keys;
-				if (!maybe_keys.ToLocal(&keys)) {
-					return;
-				}
-				arguments.reserve(keys->Length());
+			std::vector<unique_ptr<Transferable>> argv;
+			if (!maybe_arguments.IsEmpty()) {
+				Local<Array> arguments = maybe_arguments.ToLocalChecked();
+				Local<Array> keys = Unmaybe(arguments->GetOwnPropertyNames(isolate->GetCurrentContext()));
+				argv.reserve(keys->Length());
 				for (uint32_t ii = 0; ii < keys->Length(); ++ii) {
-					Local<Value> key = keys->Get(ii);
-					if (!key->IsNumber() || key.As<Uint32>()->Value() != ii) {
-						THROW(Exception::TypeError, "Invalid argument array");
+					Local<Uint32> key = Unmaybe(Unmaybe(keys->Get(context, ii))->ToArrayIndex(context));
+					if (key->Value() != ii) {
+						throw js_type_error("Invalid `arguments` array");
 					}
-					MaybeLocal<Value> val = list->Get(context, key);
-					if (val.IsEmpty()) {
-						return;
-					}
-					unique_ptr<Transferable> val_out = Transferable::TransferOut(val.ToLocalChecked());
-					if (val_out.get() == nullptr) {
-						return;
-					}
-					arguments.push_back(std::move(val_out));
+					argv.push_back(Transferable::TransferOut(Unmaybe(arguments->Get(context, key))));
 				}
 			}
 
 			// Invoke in the isolate
-			unique_ptr<Transferable> result = ShareableIsolate::Locker(reference->GetIsolate(), [ this, &recv, &arguments ]() -> unique_ptr<Transferable> {
+			return ShareableIsolate::Locker(reference->GetIsolate(), [ this, &recv_ref, &argv ]() {
 				Local<Context> context = this->context->Deref();
 				Context::Scope context_scope(context);
 				Local<Value> fn = reference->Deref();
 				if (!fn->IsFunction()) {
-					Isolate::GetCurrent()->ThrowException(Exception::TypeError(v8_string("Reference is not a function")));
-					return nullptr;
+					throw js_type_error("Reference is not a function");
 				}
-				TryCatch try_catch(Isolate::GetCurrent());
-				Local<Value> recv_inner = recv->TransferIn();
-				Local<Value> arguments_inner[arguments.size()];
-				for (size_t ii = 0; ii < arguments.size(); ++ii) {
-					arguments_inner[ii] = arguments[ii]->TransferIn();
+				Local<Value> recv_inner = recv_ref->TransferIn();
+				Local<Value> argv_inner[argv.size()];
+				for (size_t ii = 0; ii < argv.size(); ++ii) {
+					argv_inner[ii] = argv[ii]->TransferIn();
 				}
-				MaybeLocal<Value> result = fn.As<Function>()->Call(context, recv_inner, arguments.size(), arguments_inner);
-				if (try_catch.HasCaught()) {
-					try_catch.ReThrow();
-					return nullptr;
-				}
-				return Transferable::TransferOut(result.ToLocalChecked());
-			});
-			if (result.get() == nullptr) {
-				return;
-			}
-			args.GetReturnValue().Set(result->TransferIn());
+				return Transferable::TransferOut(Unmaybe(fn.As<Function>()->Call(context, recv_inner, argv.size(), argv_inner)));
+			})->TransferIn();
 		}
 };
 
@@ -259,8 +194,7 @@ class DereferenceHandle : public TransferableHandle {
 					if (isolate == reference->GetIsolate()) {
 						return reference->Deref();
 					} else {
-						isolate->ThrowException(Exception::Error(v8_string("Cannot dereference this into target isolate")));
-						return Local<Value>();
+						throw js_type_error("Cannot dereference this into target isolate");
 					}
 				}
 		};
@@ -272,14 +206,10 @@ class DereferenceHandle : public TransferableHandle {
 		}
 
 		static Local<FunctionTemplate> Definition() {
-			return Inherit<TransferableHandle>(MakeClass("Dereference", New, 0));
+			return Inherit<TransferableHandle>(MakeClass("Dereference", nullptr, 0));
 		}
 
 		DereferenceHandle(shared_ptr<ShareablePersistent<Value>>& reference) : reference(reference) {}
-
-		static void New(const FunctionCallbackInfo<Value>& args) {
-			THROW(Exception::TypeError, "Constructor Context is private");
-		}
 
 		virtual unique_ptr<Transferable> TransferOut() {
 			return std::make_unique<DereferenceHandleTransferable>(reference);

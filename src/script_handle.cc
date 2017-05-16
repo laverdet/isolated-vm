@@ -1,29 +1,24 @@
 #include "script_handle.h"
+#include "external_copy.h"
 #include "transferable.h"
 
 namespace ivm {
 using namespace std;
 using namespace v8;
 
-void ScriptHandle::RunSync(const FunctionCallbackInfo<Value>& args) {
-	if (args.Length() < 1) {
-		THROW(Exception::TypeError, "runSync expects 1 parameter");
-	}
-	ContextHandle* context = ClassHandle::Unwrap<ContextHandle>(Local<Object>::Cast(args[0]));
-	auto result = ShareableIsolate::Locker(script->GetIsolate(), [ this, context ]() -> unique_ptr<Transferable> {
-		TryCatch try_catch(Isolate::GetCurrent());
-		Context::Scope context_scope(context->context->Deref());
+Local<Value> ScriptHandle::RunSync(ContextHandle* context_handle) {
+	return ShareableIsolate::Locker(script->GetIsolate(), [ this, context_handle ]() {
+		Local<Context> context = context_handle->context->Deref();
+		Context::Scope context_scope(context);
 		Local<Script> script = this->script->Deref()->BindToCurrentContext();
-		Local<Value> result = script->Run();
-		if (try_catch.HasCaught()) {
-			try_catch.ReThrow();
-			return nullptr;
+		Local<Value> result = Unmaybe(script->Run(context));
+		std::unique_ptr<Transferable> result_copy = ExternalCopy::CopyIfPrimitive(result);
+		if (result_copy.get() != nullptr) {
+			return result_copy;
+		} else {
+			return Transferable::TransferOut(Undefined(Isolate::GetCurrent()));
 		}
-		return Transferable::TransferOut(result);
-	});
-	if (result.get() != nullptr) {
-		args.GetReturnValue().Set(result->TransferIn());
-	}
+	})->TransferIn();
 }
 
 }

@@ -34,20 +34,16 @@ class ScriptHandle : public TransferableHandle {
 
 		static Local<FunctionTemplate> Definition() {
 			return Inherit<TransferableHandle>(MakeClass(
-				"Script", New, 0,
-				"runSync", Method<ScriptHandle, &ScriptHandle::RunSync>, 1
+				"Script", nullptr, 0,
+				"runSync", Parameterize<decltype(&ScriptHandle::RunSync), &ScriptHandle::RunSync>, 1
 			));
-		}
-
-		static void New(const FunctionCallbackInfo<Value>& args) {
-			THROW(Exception::TypeError, "Constructor Context is private");
 		}
 
 		virtual unique_ptr<Transferable> TransferOut() {
 			return std::make_unique<ScriptHandleTransferable>(script);
 		}
 
-		void RunSync(const FunctionCallbackInfo<Value>& args);
+		Local<Value> RunSync(ContextHandle* context);
 };
 
 }
