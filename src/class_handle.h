@@ -114,6 +114,8 @@ class ClassHandle {
 		 */
 		template <typename P, void (*F)(P*)>
 		void SetWeak(P* param) {
+			ShareableIsolate& isolate = ShareableIsolate::GetCurrent();
+			isolate.AddWeakCallback(&this->handle, (void(*)(void*))F, param);
 			handle.SetWeak(param, WeakCallback<P, F>, WeakCallbackType::kParameter);
 		}
 		template <typename P, void (*F)(P*)>
@@ -125,6 +127,8 @@ class ClassHandle {
 		 * Invoked once JS loses all references to this object
 		 */
 		static void WeakCallback(ClassHandle* that) {
+			ShareableIsolate& isolate = ShareableIsolate::GetCurrent();
+			isolate.RemoveWeakCallback(&that->handle);
 			delete that;
 		}
 

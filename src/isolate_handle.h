@@ -61,7 +61,7 @@ class IsolateHandle : public TransferableHandle {
 				}
 
 			public:
-				LimitedAllocator(size_t limit) : limit(limit), v8_heap(0), my_heap(0), next_check(1024 * 1024) { printf("%ld\n", limit); }
+				LimitedAllocator(size_t limit) : limit(limit), v8_heap(1024 * 1024 * 4), my_heap(0), next_check(1024 * 1024) {}
 
 				virtual void* Allocate(size_t length) {
 					Update(length);
@@ -102,7 +102,8 @@ class IsolateHandle : public TransferableHandle {
 			return Inherit<TransferableHandle>(MakeClass(
 			 "Isolate", Parameterize<decltype(New), New>, 1,
 				"compileScriptSync", Parameterize<decltype(&IsolateHandle::CompileScriptSync), &IsolateHandle::CompileScriptSync>, 1,
-				"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContextSync), &IsolateHandle::CreateContextSync>, 0
+				"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContextSync), &IsolateHandle::CreateContextSync>, 0,
+				"disposeSync", Parameterize<decltype(&IsolateHandle::DisposeSync), &IsolateHandle::DisposeSync>, 0
 			));
 		}
 
@@ -112,7 +113,8 @@ class IsolateHandle : public TransferableHandle {
 		static unique_ptr<ClassHandle> New(MaybeLocal<Object> maybe_options) {
 			Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
 			Isolate::CreateParams create_params;
-			create_params.array_buffer_allocator = ArrayBuffer::Allocator::NewDefaultAllocator();
+			unique_ptr<ArrayBuffer::Allocator> allocator_ptr(ArrayBuffer::Allocator::NewDefaultAllocator());
+			create_params.array_buffer_allocator = allocator_ptr.get();
 
 			// Parse options
 			if (!maybe_options.IsEmpty()) {
@@ -126,12 +128,12 @@ class IsolateHandle : public TransferableHandle {
 					rc.set_max_semi_space_size(std::pow(2, std::min(sizeof(void*) >= 8 ? 4 : 3, (int)(memory_limit / 128))));
 					rc.set_max_old_space_size(memory_limit);
 					rc.set_max_executable_size(memory_limit * 0.75 + 0.5);
-					delete create_params.array_buffer_allocator;
-					create_params.array_buffer_allocator = new LimitedAllocator(memory_limit);
+					allocator_ptr.reset(new LimitedAllocator(memory_limit));
+					create_params.array_buffer_allocator = allocator_ptr.get();
 				}
 			}
 
-			return std::make_unique<IsolateHandle>(std::make_shared<ShareableIsolate>(create_params));
+			return std::make_unique<IsolateHandle>(std::make_shared<ShareableIsolate>(std::move(allocator_ptr), create_params));
 		}
 
 		virtual unique_ptr<Transferable> TransferOut() {
@@ -164,6 +166,17 @@ class IsolateHandle : public TransferableHandle {
 				Local<UnboundScript> script = Unmaybe(ScriptCompiler::CompileUnboundScript(*isolate, &source, ScriptCompiler::kNoCompileOptions));
 				return std::make_shared<ShareablePersistent<UnboundScript>>(script);
 			}));
+		}
+
+		/**
+		 * Dispose an isolate
+		 */
+		Local<Value> DisposeSync() {
+			if (Locker::IsLocked(*isolate)) {
+				throw js_generic_error("Cannot dispose entered isolate");
+			}
+			isolate->Dispose();
+			return Undefined(Isolate::GetCurrent());
 		}
 };
 

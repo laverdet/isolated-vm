@@ -9,9 +9,11 @@
 #include <future>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 
 #include <queue>
 #include <vector>
+#include <map>
 
 namespace ivm {
 using namespace v8;
@@ -27,12 +29,35 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 
 		Isolate* isolate;
 		Persistent<Context> default_context;
-		std::mutex mutex;
+		unique_ptr<ArrayBuffer::Allocator> allocator_ptr;
+		std::mutex exec_mutex; // mutex for execution
+		std::mutex queue_mutex; // mutex for queueing work
 		std::queue<unique_ptr<std::function<void()>>> work;
 		std::vector<unique_ptr<Persistent<Value>>> specifics;
 		std::vector<unique_ptr<Persistent<FunctionTemplate>>> specifics_ft;
-		bool disposed;
+		std::map<Persistent<Object>*, std::pair<void(*)(void*), void*>> weak_persistents;
+
+		enum class LifeCycle { Normal, Disposing, Disposed };
+		LifeCycle life_cycle;
 		bool root;
+
+		/**
+		 * Wrapper around Locker that sets our own `current`
+		 */
+		class LockerHelper {
+			private:
+				ShareableIsolate* last;
+				Locker locker;
+
+			public:
+				LockerHelper(ShareableIsolate& isolate) : last(current), locker(isolate) {
+					current = &isolate;
+				}
+
+				~LockerHelper() {
+					current = last;
+				}
+		};
 
 	public:
 		/**
@@ -96,7 +121,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		ShareableIsolate(Isolate* isolate, Local<Context> context) :
 			isolate(isolate),
 			default_context(isolate, context),
-			disposed(false),
+			life_cycle(LifeCycle::Normal),
 			root(true) {
 			assert(current == nullptr);
 			current = this;
@@ -106,9 +131,10 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		 * Create a new wrapped Isolate
 		 */
 		template <typename... Args>
-		ShareableIsolate(Args... args) :
+		ShareableIsolate(unique_ptr<ArrayBuffer::Allocator> allocator_ptr, Args... args) :
 			isolate(Isolate::New(args...)),
-			disposed(false),
+			allocator_ptr(std::move(allocator_ptr)),
+			life_cycle(LifeCycle::Normal),
 			root(false) {
 			// Create a default context for the library to use if needed
 			{
@@ -122,7 +148,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		}
 
 		~ShareableIsolate() {
-			if (!root && !disposed) {
+			if (!root && life_cycle == LifeCycle::Normal) {
 				isolate->Dispose();
 			}
 		}
@@ -131,7 +157,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		 * Convenience operators to work with underlying isolate
 		 */
 		operator Isolate*() const {
-			assert(!disposed);
+			assert(life_cycle != LifeCycle::Disposed);
 			return isolate;
 		}
 
@@ -146,15 +172,36 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			return shared_from_this();
 		}
 
-		bool IsDisposed() const {
-			return disposed;
-		}
-
+		/**
+		 * Dispose of an isolate and clean up dangling handles
+		 */
 		void Dispose() {
-			assert(!root);
-			assert(!disposed);
-			disposed = true;
+			if (root) {
+				throw js_generic_error("Cannot dispose root isolate");
+			}
+			std::unique_lock<std::mutex> lock(exec_mutex);
+			{
+				std::unique_lock<std::mutex> lock2(queue_mutex);
+				if (life_cycle != LifeCycle::Normal) {
+					throw js_generic_error("Isolate is already disposed or disposing");
+				}
+				life_cycle = LifeCycle::Disposing;
+			}
+			{
+				LockerHelper locker(*this);
+				while (!weak_persistents.empty()) {
+					auto it = weak_persistents.begin();
+					Persistent<Object>* handle = it->first;
+					void(*fn)(void*) = it->second.first;
+					void* param = it->second.second;
+					fn(param);
+					if (weak_persistents.find(handle) != weak_persistents.end()) {
+						throw std::runtime_error("Weak persistent callback failed to remove from global set");
+					}
+				}
+			}
 			isolate->Dispose();
+			life_cycle = LifeCycle::Disposed;
 		}
 
 		/**
@@ -167,17 +214,18 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			if (Isolate::GetCurrent() == isolate) {
 				(*fn_ptr)();
 			} else {
-				std::unique_lock<std::mutex> lock(mutex);
+				std::unique_lock<std::mutex> lock(queue_mutex);
 				this->work.push(std::move(fn_ptr));
 			}
 		}
 
 		void ExecuteWork() {
 			while (true) {
-				std::unique_lock<std::mutex> lock(mutex);
 				std::queue<unique_ptr<std::function<void()>>> tasks;
-				std::swap(tasks, work);
-				lock.unlock();
+				{
+					std::unique_lock<std::mutex> lock(queue_mutex);
+					std::swap(tasks, work);
+				}
 				if (tasks.empty()) {
 					return;
 				}
@@ -196,25 +244,15 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		 * - Also sets up handle scope
 		 * - Throws exceptions from inner isolate into the outer isolate
 		 */
-		class LockerHelper {
-			private:
-				ShareableIsolate* last;
-				Locker locker;
-
-			public:
-				LockerHelper(ShareableIsolate& isolate) : last(current), locker(isolate) {
-					current = &isolate;
-				}
-
-				~LockerHelper() {
-					current = last;
-				}
-		};
-
 		template <typename F>
 		static auto Locker(ShareableIsolate& isolate, F fn) -> decltype(fn()) {
 			std::shared_ptr<ExternalCopy> error;
 			{
+				std::unique_lock<std::mutex> lock(isolate.exec_mutex);
+				if (isolate.life_cycle != LifeCycle::Normal) {
+					// nb: v8 lock is never set up
+					throw js_generic_error("Isolate is disposed or disposing");
+				}
 				LockerHelper locker(isolate);
 				Isolate::Scope isolate_scope(isolate);
 				HandleScope handle_scope(isolate);
@@ -240,6 +278,28 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 
 		Local<Context> DefaultContext() {
 			return Local<Context>::New(isolate, default_context);
+		}
+
+		/**
+		 * Since a created Isolate can be disposed of at any time we need to keep track of weak
+		 * persistents to call those destructors on isolate disposal.
+		 */
+		void AddWeakCallback(Persistent<Object>* handle, void(*fn)(void*), void* param) {
+			if (root) return;
+			auto it = weak_persistents.find(handle);
+			if (it != weak_persistents.end()) {
+				throw std::runtime_error("Weak callback already added");
+			}
+			weak_persistents.insert(std::make_pair(handle, std::make_pair(fn, param)));
+		}
+
+		void RemoveWeakCallback(Persistent<Object>* handle) {
+			if (root) return;
+			auto it = weak_persistents.find(handle);
+			if (it == weak_persistents.end()) {
+				throw std::runtime_error("Weak callback doesn't exist");
+			}
+			weak_persistents.erase(it);
 		}
 };
 
