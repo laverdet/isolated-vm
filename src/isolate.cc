@@ -13,17 +13,61 @@ using namespace std;
 
 namespace ivm {
 
+static ShareableIsolate::IsolateSpecific<Object> library_specific;
+
+/**
+ * The whole library is transferable so you can Inception the library into your isolates.
+ */
+class LibraryHandle : public TransferableHandle {
+	private:
+		class LibraryHandleTransferable : public Transferable {
+			public:
+				LibraryHandleTransferable() {}
+				virtual Local<Value> TransferIn() {
+					return LibraryHandle::Get();
+				}
+		};
+
+	public:
+		LibraryHandle() {}
+
+		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
+			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
+			return tmpl;
+		}
+
+		static Local<FunctionTemplate> Definition() {
+			return Inherit<TransferableHandle>(MakeClass("isolated_vm", nullptr, 0));
+		}
+
+		virtual unique_ptr<Transferable> TransferOut() {
+			return std::make_unique<LibraryHandleTransferable>();
+		}
+
+		static Local<Object> Get() {
+			MaybeLocal<Object> maybe_library = library_specific.Deref();
+			Local<Object> library;
+			if (maybe_library.ToLocal(&library)) {
+				return library;
+			}
+			library = ClassHandle::NewInstance<LibraryHandle>().As<Object>();
+			library->Set(v8_symbol("Isolate"), ClassHandle::Init<IsolateHandle>());
+			library->Set(v8_symbol("Context"), ClassHandle::Init<ContextHandle>());
+			library->Set(v8_symbol("ExternalCopy"), ClassHandle::Init<ExternalCopyHandle>());
+			library->Set(v8_symbol("Reference"), ClassHandle::Init<ReferenceHandle>());
+			library->Set(v8_symbol("Script"), ClassHandle::Init<ScriptHandle>());
+			library_specific.Reset(library);
+			return library;
+		}
+};
+
 // Module entry point
 shared_ptr<ShareableIsolate> root_isolate;
 extern "C"
 void init(Local<Object> target) {
 	Isolate* isolate = Isolate::GetCurrent();
 	root_isolate = make_shared<ShareableIsolate>(isolate, isolate->GetCurrentContext());
-	target->Set(v8_symbol("Isolate"), ClassHandle::Init<IsolateHandle>());
-	target->Set(v8_symbol("Context"), ClassHandle::Init<ContextHandle>());
-	target->Set(v8_symbol("ExternalCopy"), ClassHandle::Init<ExternalCopyHandle>());
-	target->Set(v8_symbol("Reference"), ClassHandle::Init<ReferenceHandle>());
-	target->Set(v8_symbol("Script"), ClassHandle::Init<ScriptHandle>());
+	target->Set(v8_symbol("ivm"), LibraryHandle::Get());
 }
 
 }

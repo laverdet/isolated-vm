@@ -45,13 +45,14 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value) {
 		}
 		return make_unique<ExternalCopyArrayBufferView>(view, type);
 	} else if (value->IsObject()) {
-		Local<String> string;
-		if (JSON::Stringify(Isolate::GetCurrent()->GetCurrentContext(), Local<Object>::Cast(value)).ToLocal(&string)) {
-			return make_unique<ExternalCopyJSON>(string);
-		} else {
-			// Threw v8 error
-			return nullptr;
+		Local<String> string = Unmaybe(JSON::Stringify(Isolate::GetCurrent()->GetCurrentContext(), Local<Object>::Cast(value)));
+		if (string->StrictEquals(v8_symbol("undefined"))) {
+			// v8 will return the string literal 'undefined' if there was a non-throw exception, like
+			// JSON.stringify(undefined). So we have to specifically check for that because 'undefined'
+			// isn't valid JSON
+			throw js_type_error("Could not JSON.stringify() object for an external copy");
 		}
+		return make_unique<ExternalCopyJSON>(string);
 	} else {
 		// ???
 		assert(false);
@@ -74,7 +75,7 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitive(const Local<Value>& value
 		return make_unique<ExternalCopyString>(value);
 	} else if (value->IsNull()) {
 		return make_unique<ExternalCopyNull>();
-	} else if (value->IsUndefined()) {
+	} else if (value->IsUndefined() || value->IsSymbol()) {
 		return make_unique<ExternalCopyUndefined>();
 	} else {
 		return nullptr;
