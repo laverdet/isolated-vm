@@ -19,5 +19,9 @@ void ShareableIsolate::IsolateSpecific<FunctionTemplate>::Reset(Local<FunctionTe
 // Static variable declarations
 thread_local ShareableIsolate* ShareableIsolate::current;
 size_t ShareableIsolate::specifics_count = 0;
+thread_pool_t ShareableIsolate::thread_pool(8);
+uv_async_t ShareableIsolate::root_async;
+std::thread::id ShareableIsolate::default_thread;
+int ShareableIsolate::uv_refs = 0;
 
 }

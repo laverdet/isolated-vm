@@ -101,8 +101,10 @@ class IsolateHandle : public TransferableHandle {
 		static Local<FunctionTemplate> Definition() {
 			return Inherit<TransferableHandle>(MakeClass(
 			 "Isolate", Parameterize<decltype(New), New>, 1,
-				"compileScriptSync", Parameterize<decltype(&IsolateHandle::CompileScriptSync), &IsolateHandle::CompileScriptSync>, 1,
-				"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContextSync), &IsolateHandle::CreateContextSync>, 0,
+				"compileScript", Parameterize<decltype(&IsolateHandle::CompileScript<true>), &IsolateHandle::CompileScript<true>>, 1,
+				"compileScriptSync", Parameterize<decltype(&IsolateHandle::CompileScript<false>), &IsolateHandle::CompileScript<false>>, 1,
+				"createContext", Parameterize<decltype(&IsolateHandle::CreateContext<true>), &IsolateHandle::CreateContext<true>>, 0,
+				"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContext<false>), &IsolateHandle::CreateContext<false>>, 0,
 				"disposeSync", Parameterize<decltype(&IsolateHandle::DisposeSync), &IsolateHandle::DisposeSync>, 0
 			));
 		}
@@ -143,29 +145,42 @@ class IsolateHandle : public TransferableHandle {
 		/**
 		 * Create a new v8::Context in this isolate and returns a ContextHandle
 		 */
-		Local<Value> CreateContextSync() {
-			shared_ptr<ShareablePersistent<Context>> context_ptr;
-			shared_ptr<ShareablePersistent<Value>> global_ptr;
-			ShareableIsolate::Locker(*isolate, [ this, &context_ptr, &global_ptr ]() {
+		template <bool async>
+		Local<Value> CreateContext() {
+			return ThreePhaseRunner<async>(*isolate, []() {
+				return std::make_tuple();
+			}, [this]() {
+				// Make a new context and return the context and its global object
 				Local<Context> context = Context::New(*isolate);
-				context_ptr = std::make_shared<ShareablePersistent<Context>>(context);
-				global_ptr = std::make_shared<ShareablePersistent<Value>>(context->Global());
+				return std::make_tuple(
+					std::make_shared<ShareablePersistent<Context>>(context),
+					std::make_shared<ShareablePersistent<Value>>(context->Global())
+				);
+			}, [](shared_ptr<ShareablePersistent<Context>> context, shared_ptr<ShareablePersistent<Value>> global) {
+				// Make a new Context{} JS class
+				return ClassHandle::NewInstance<ContextHandle>(context, global);
 			});
-			return ClassHandle::NewInstance<ContextHandle>(context_ptr, global_ptr);
 		}
 
 		/**
 		 * Compiles a script in this isolate and returns a ScriptHandle
 		 */
-		Local<Value> CompileScriptSync(Local<String> code_handle) {
-			ExternalCopyString code_copy(code_handle);
-			return ClassHandle::NewInstance<ScriptHandle>(ShareableIsolate::Locker(*isolate, [ this, &code_copy ]() {
+		template <bool async>
+		Local<Value> CompileScript(Local<String> code_handle) {
+			return ThreePhaseRunner<async>(*isolate, [&code_handle]() {
+				// Copy code string out of first isolate
+				return std::make_shared<ExternalCopyString>(code_handle);
+			}, [this](shared_ptr<ExternalCopyString> code_copy) {
+				// Compile in second isolate and return UnboundScript persistent
 				Context::Scope context_scope(isolate->DefaultContext());
-				Local<String> code_inner = code_copy.CopyInto().As<String>();
+				Local<String> code_inner = code_copy->CopyInto().As<String>();
 				ScriptCompiler::Source source(code_inner);
 				Local<UnboundScript> script = Unmaybe(ScriptCompiler::CompileUnboundScript(*isolate, &source, ScriptCompiler::kNoCompileOptions));
 				return std::make_shared<ShareablePersistent<UnboundScript>>(script);
-			}));
+			}, [this](shared_ptr<ShareablePersistent<UnboundScript>> script) {
+				// Wrap UnboundScript in JS Script{} class
+				return ClassHandle::NewInstance<ScriptHandle>(script);
+			});
 		}
 
 		/**

@@ -34,7 +34,6 @@
 				'src/class_handle.cc',
 				'src/external_copy.cc',
 				'src/isolate.cc',
-				'src/script_handle.cc',
 				'src/shareable_isolate.cc',
 				'src/transferable.cc',
 			],

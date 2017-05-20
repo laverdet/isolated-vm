@@ -4,6 +4,7 @@
 #include "shareable_persistent.h"
 #include "transferable_handle.h"
 #include "context_handle.h"
+#include "external_copy.h"
 
 #include <memory>
 
@@ -35,7 +36,8 @@ class ScriptHandle : public TransferableHandle {
 		static Local<FunctionTemplate> Definition() {
 			return Inherit<TransferableHandle>(MakeClass(
 				"Script", nullptr, 0,
-				"runSync", Parameterize<decltype(&ScriptHandle::RunSync), &ScriptHandle::RunSync>, 1
+				"run", Parameterize<decltype(&ScriptHandle::Run<true>), &ScriptHandle::Run<true>>, 1,
+				"runSync", Parameterize<decltype(&ScriptHandle::Run<false>), &ScriptHandle::Run<false>>, 1
 			));
 		}
 
@@ -43,7 +45,25 @@ class ScriptHandle : public TransferableHandle {
 			return std::make_unique<ScriptHandleTransferable>(script);
 		}
 
-		Local<Value> RunSync(ContextHandle* context);
+		template <bool async>
+		Local<Value> Run(ContextHandle* context_handle) {
+			return ThreePhaseRunner<async>(script->GetIsolate(), [this]() {
+				return std::make_tuple();
+			}, [this, context_handle]() {
+				// Enter script's context and run it
+				Local<Context> context = context_handle->context->Deref();
+				Context::Scope context_scope(context);
+				Local<Script> script = this->script->Deref()->BindToCurrentContext();
+				Local<Value> result = Unmaybe(script->Run(context));
+				return shared_ptr<Transferable>(ExternalCopy::CopyIfPrimitive(result));
+			}, [](shared_ptr<Transferable> result) {
+				if (result.get() == nullptr) {
+					return Undefined(Isolate::GetCurrent()).As<Value>();
+				} else {
+					return result->TransferIn();
+				}
+			});
+		}
 };
 
 }

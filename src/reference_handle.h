@@ -54,9 +54,12 @@ class ReferenceHandle : public TransferableHandle {
 				"Reference", Parameterize<decltype(New), New>, 1,
 				"deref", Parameterize<decltype(&ReferenceHandle::Deref), &ReferenceHandle::Deref>, 0,
 				"derefInto", Parameterize<decltype(&ReferenceHandle::DerefInto), &ReferenceHandle::DerefInto>, 0,
-				"getSync", Parameterize<decltype(&ReferenceHandle::GetSync), &ReferenceHandle::GetSync>, 1,
-				"setSync", Parameterize<decltype(&ReferenceHandle::SetSync), &ReferenceHandle::SetSync>, 2,
-				"applySync", Parameterize<decltype(&ReferenceHandle::ApplySync), &ReferenceHandle::ApplySync>, 2
+				"get", Parameterize<decltype(&ReferenceHandle::Get<true>), &ReferenceHandle::Get<true>>, 1,
+				"getSync", Parameterize<decltype(&ReferenceHandle::Get<false>), &ReferenceHandle::Get<false>>, 1,
+				"set", Parameterize<decltype(&ReferenceHandle::Set<true>), &ReferenceHandle::Set<true>>, 2,
+				"setSync", Parameterize<decltype(&ReferenceHandle::Set<false>), &ReferenceHandle::Set<false>>, 2,
+				"apply", Parameterize<decltype(&ReferenceHandle::Apply<true>), &ReferenceHandle::Apply<true>>, 2,
+				"applySync", Parameterize<decltype(&ReferenceHandle::Apply<false>), &ReferenceHandle::Apply<false>>, 2
 			));
 		}
 
@@ -94,83 +97,101 @@ class ReferenceHandle : public TransferableHandle {
 		/**
 		 * Get a property from this reference, returned as another reference
 		 */
-		Local<Value> GetSync(Local<Value> key) {
-			unique_ptr<ExternalCopy> key_copy = ExternalCopy::CopyIfPrimitive(key);
-			if (key_copy.get() == nullptr) {
-				throw js_type_error("Invalid `key`");
-			}
-			return ShareableIsolate::Locker(reference->GetIsolate(), [ this, &key_copy ]() {
+		template <bool async>
+		Local<Value> Get(Local<Value> key_handle) {
+			return ThreePhaseRunner<async>(reference->GetIsolate(), [this, &key_handle]() {
+				shared_ptr<ExternalCopy> key = ExternalCopy::CopyIfPrimitive(key_handle);
+				if (key.get() == nullptr) {
+					throw js_type_error("Invalid `key`");
+				}
+				return std::move(key);
+			}, [this] (shared_ptr<ExternalCopy> key) {
 				Local<Context> context = this->context->Deref();
 				Context::Scope context_scope(context);
-				Local<Value> key_inner = key_copy->CopyInto();
+				Local<Value> key_inner = key->CopyInto();
 				Local<Object> object = Local<Object>::Cast(reference->Deref());
-				return std::make_unique<ReferenceHandleTransferable>(
+				return std::make_shared<ReferenceHandleTransferable>(
 					std::make_shared<ShareablePersistent<Value>>(Unmaybe(object->Get(context, key_inner))),
 					this->context
 				);
-			})->TransferIn();
+			}, [] (shared_ptr<ReferenceHandleTransferable> ref) {
+				return ref->TransferIn();
+			});
 		}
 
 		/**
 		 * Attempt to set a property on this reference
 		 */
-		Local<Value> SetSync(Local<Value> key, Local<Value> val) {
-			unique_ptr<ExternalCopy> key_copy = ExternalCopy::CopyIfPrimitive(key);
-			if (key_copy.get() == nullptr) {
-				throw js_type_error("Invalid `key`");
-			}
-			unique_ptr<Transferable> val_ref = Transferable::TransferOut(val);
-			return Boolean::New(Isolate::GetCurrent(), ShareableIsolate::Locker(reference->GetIsolate(), [ this, &key_copy, &val_ref ]() {
+		template <bool async>
+		Local<Value> Set(Local<Value> key_handle, Local<Value> val_handle) {
+			return ThreePhaseRunner<async>(reference->GetIsolate(), [this, &key_handle, &val_handle]() {
+				shared_ptr<ExternalCopy> key = ExternalCopy::CopyIfPrimitive(key_handle);
+				if (key.get() == nullptr) {
+					throw js_type_error("Invalid `key`");
+				}
+				shared_ptr<Transferable> val = Transferable::TransferOut(val_handle);
+				return std::make_tuple(std::move(key), std::move(val));
+			}, [this](shared_ptr<ExternalCopy> key, shared_ptr<Transferable> val) {
 				Local<Context> context = this->context->Deref();
 				Context::Scope context_scope(context);
-				Local<Value> key_inner = key_copy->CopyInto();
-				Local<Value> val_inner = val_ref->TransferIn();
+				Local<Value> key_inner = key->CopyInto();
+				Local<Value> val_inner = val->TransferIn();
 				Local<Object> object = Local<Object>::Cast(reference->Deref());
 				return Unmaybe(object->Set(context, key_inner, val_inner));
-			}));
+			}, [](bool did_set) {
+				return Boolean::New(Isolate::GetCurrent(), did_set);
+			});
 		}
 
 		/**
 		 * Call a function, like Function.prototype.apply
 		 */
-		Local<Value> ApplySync(Local<Value> recv, MaybeLocal<Array> maybe_arguments) {
-			Isolate* isolate = Isolate::GetCurrent();
-			Local<Context> context = isolate->GetCurrentContext();
+		template <bool async>
+		Local<Value> Apply(Local<Value> recv_handle, MaybeLocal<Array> maybe_arguments) {
+			return ThreePhaseRunner<async>(reference->GetIsolate(), [this, &recv_handle, &maybe_arguments]() {
 
-			// Get receiver, holder, this, whatever
-			unique_ptr<Transferable> recv_ref = Transferable::TransferOut(recv);
+				// Get receiver, holder, this, whatever
+				auto recv = shared_ptr<Transferable>(Transferable::TransferOut(recv_handle));
 
-			// Externalize all arguments
-			std::vector<unique_ptr<Transferable>> argv;
-			if (!maybe_arguments.IsEmpty()) {
-				Local<Array> arguments = maybe_arguments.ToLocalChecked();
-				Local<Array> keys = Unmaybe(arguments->GetOwnPropertyNames(isolate->GetCurrentContext()));
-				argv.reserve(keys->Length());
-				for (uint32_t ii = 0; ii < keys->Length(); ++ii) {
-					Local<Uint32> key = Unmaybe(Unmaybe(keys->Get(context, ii))->ToArrayIndex(context));
-					if (key->Value() != ii) {
-						throw js_type_error("Invalid `arguments` array");
+				// Externalize all arguments
+				std::vector<shared_ptr<Transferable>> argv;
+				if (!maybe_arguments.IsEmpty()) {
+					Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
+					Local<Array> arguments = maybe_arguments.ToLocalChecked();
+					Local<Array> keys = Unmaybe(arguments->GetOwnPropertyNames(context));
+					argv.reserve(keys->Length());
+					for (uint32_t ii = 0; ii < keys->Length(); ++ii) {
+						Local<Uint32> key = Unmaybe(Unmaybe(keys->Get(context, ii))->ToArrayIndex(context));
+						if (key->Value() != ii) {
+							throw js_type_error("Invalid `arguments` array");
+						}
+						argv.push_back(Transferable::TransferOut(Unmaybe(arguments->Get(context, key))));
 					}
-					argv.push_back(Transferable::TransferOut(Unmaybe(arguments->Get(context, key))));
 				}
-			}
+				return std::make_tuple(std::move(recv), std::move(argv));
+			}, [this](shared_ptr<Transferable> recv, std::vector<shared_ptr<Transferable>> argv) {
 
-			// Invoke in the isolate
-			return ShareableIsolate::Locker(reference->GetIsolate(), [ this, &recv_ref, &argv ]() {
+				// Invoke in the isolate
 				Local<Context> context = this->context->Deref();
 				Context::Scope context_scope(context);
 				Local<Value> fn = reference->Deref();
 				if (!fn->IsFunction()) {
 					throw js_type_error("Reference is not a function");
 				}
-				Local<Value> recv_inner = recv_ref->TransferIn();
+				Local<Value> recv_inner = recv->TransferIn();
 				Local<Value> argv_inner[argv.size()];
 				for (size_t ii = 0; ii < argv.size(); ++ii) {
 					argv_inner[ii] = argv[ii]->TransferIn();
 				}
-				return Transferable::TransferOut(Unmaybe(fn.As<Function>()->Call(context, recv_inner, argv.size(), argv_inner)));
-			})->TransferIn();
+				Local<Value> result = Unmaybe(fn.As<Function>()->Call(context, recv_inner, argv.size(), argv_inner));
+				return shared_ptr<Transferable>(Transferable::TransferOut(result));
+			}, [](shared_ptr<Transferable> value) {
+
+				// Copy result into original isolate
+				return value->TransferIn();
+			});
 		}
+
 };
 
 /**
