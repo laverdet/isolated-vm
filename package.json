@@ -1,0 +1,21 @@
+{
+  "name": "isolated-vm",
+  "version": "0.1.1",
+  "description": "Access to multiple isolates",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install": "node-gyp rebuild"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/laverdet/isolated-vm.git"
+  },
+  "author": "https://github.com/laverdet/",
+  "license": "ISC",
+  "gypfile": true,
+  "bugs": {
+    "url": "https://github.com/laverdet/isolated-vm/issues"
+  },
+  "homepage": "https://github.com/laverdet/isolated-vm#readme"
+}
