@@ -20,10 +20,13 @@ class DereferenceHandle;
  */
 class ReferenceHandle : public TransferableHandle {
 	friend class Transferable;
+	public:
+		enum class TypeOf { Null, Undefined, Number, String, Boolean, Object, Function };
 
 	private:
 		shared_ptr<ShareablePersistent<Value>> reference;
 		shared_ptr<ShareablePersistent<Context>> context;
+		TypeOf type_of;
 
 		/**
 		 * Wrapper class created when you pass a ReferenceHandle through to another isolate
@@ -32,17 +35,46 @@ class ReferenceHandle : public TransferableHandle {
 			private:
 				shared_ptr<ShareablePersistent<Value>> reference;
 				shared_ptr<ShareablePersistent<Context>> context;
+				TypeOf type_of;
 
 			public:
-				ReferenceHandleTransferable(shared_ptr<ShareablePersistent<Value>> reference, shared_ptr<ShareablePersistent<Context>>& context) : reference(reference), context(context) {}
+				ReferenceHandleTransferable(
+					shared_ptr<ShareablePersistent<Value>> reference,
+					shared_ptr<ShareablePersistent<Context>>& context,
+					TypeOf type_of
+				) :
+					reference(reference), context(context), type_of(type_of) {}
 
 				virtual Local<Value> TransferIn() {
-					return ClassHandle::NewInstance<ReferenceHandle>(reference, context);
+					return ClassHandle::NewInstance<ReferenceHandle>(reference, context, type_of);
 				}
 		};
 
+		static TypeOf InferTypeOf(Local<Value> value) {
+			if (value->IsNull()) {
+				return TypeOf::Null;
+			} else if (value->IsUndefined()) {
+				return TypeOf::Undefined;
+			} else if (value->IsNumber()) {
+				return TypeOf::Number;
+			} else if (value->IsString()) {
+				return TypeOf::String;
+			} else if (value->IsBoolean()) {
+				return TypeOf::Boolean;
+			} else if (value->IsFunction()) {
+				return TypeOf::Function;
+			} else {
+				return TypeOf::Object;
+			}
+		}
+
 	public:
-		ReferenceHandle(shared_ptr<ShareablePersistent<Value>> reference, shared_ptr<ShareablePersistent<Context>> context) : reference(reference), context(context) {}
+		ReferenceHandle(
+			shared_ptr<ShareablePersistent<Value>> reference,
+			shared_ptr<ShareablePersistent<Context>> context,
+			TypeOf type_of
+		) :
+			reference(reference), context(context), type_of(type_of) {}
 
 		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
 			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
@@ -50,10 +82,12 @@ class ReferenceHandle : public TransferableHandle {
 		}
 
 		static Local<FunctionTemplate> Definition() {
-			return Inherit<TransferableHandle>(MakeClass(
+			Local<FunctionTemplate> tmpl = Inherit<TransferableHandle>(MakeClass(
 				"Reference", Parameterize<decltype(New), New>, 1,
 				"deref", Parameterize<decltype(&ReferenceHandle::Deref), &ReferenceHandle::Deref>, 0,
 				"derefInto", Parameterize<decltype(&ReferenceHandle::DerefInto), &ReferenceHandle::DerefInto>, 0,
+				"copy", Parameterize<decltype(&ReferenceHandle::Copy<true>), &ReferenceHandle::Copy<true>>, 1,
+				"copySync", Parameterize<decltype(&ReferenceHandle::Copy<false>), &ReferenceHandle::Copy<false>>, 1,
 				"get", Parameterize<decltype(&ReferenceHandle::Get<true>), &ReferenceHandle::Get<true>>, 1,
 				"getSync", Parameterize<decltype(&ReferenceHandle::Get<false>), &ReferenceHandle::Get<false>>, 1,
 				"set", Parameterize<decltype(&ReferenceHandle::Set<true>), &ReferenceHandle::Set<true>>, 2,
@@ -61,10 +95,12 @@ class ReferenceHandle : public TransferableHandle {
 				"apply", Parameterize<decltype(&ReferenceHandle::Apply<true>), &ReferenceHandle::Apply<true>>, 2,
 				"applySync", Parameterize<decltype(&ReferenceHandle::Apply<false>), &ReferenceHandle::Apply<false>>, 2
 			));
+			tmpl->InstanceTemplate()->SetAccessor(v8_symbol("typeof"), TypeOfGetter, nullptr, Local<Value>(), ALL_CAN_READ);
+			return tmpl;
 		}
 
 		virtual unique_ptr<Transferable> TransferOut() {
-			return std::make_unique<ReferenceHandleTransferable>(reference, context);
+			return std::make_unique<ReferenceHandleTransferable>(reference, context, type_of);
 		}
 
 		/**
@@ -73,8 +109,40 @@ class ReferenceHandle : public TransferableHandle {
 		static unique_ptr<ReferenceHandle> New(Local<Value> var) {
 			return std::make_unique<ReferenceHandle>(
 				std::make_shared<ShareablePersistent<Value>>(var),
-				std::make_shared<ShareablePersistent<Context>>(Isolate::GetCurrent()->GetCurrentContext())
+				std::make_shared<ShareablePersistent<Context>>(Isolate::GetCurrent()->GetCurrentContext()),
+				InferTypeOf(var)
 			);
+		}
+
+		/**
+		 * Getter for typeof property.
+		 */
+		static void TypeOfGetter(Local<String> property, const PropertyCallbackInfo<Value>& info) {
+			// TODO: This will crash if someone steals the getter and applies another object to it
+			ReferenceHandle& that = *dynamic_cast<ReferenceHandle*>(Unwrap(info.This()));
+			switch (that.type_of) {
+				case TypeOf::Null:
+					info.GetReturnValue().Set(v8_string("null"));
+					break;
+				case TypeOf::Undefined:
+					info.GetReturnValue().Set(v8_string("undefined"));
+					break;
+				case TypeOf::Number:
+					info.GetReturnValue().Set(v8_string("number"));
+					break;
+				case TypeOf::String:
+					info.GetReturnValue().Set(v8_string("string"));
+					break;
+				case TypeOf::Boolean:
+					info.GetReturnValue().Set(v8_string("boolean"));
+					break;
+				case TypeOf::Object:
+					info.GetReturnValue().Set(v8_string("object"));
+					break;
+				case TypeOf::Function:
+					info.GetReturnValue().Set(v8_string("function"));
+					break;
+			}
 		}
 
 		/**
@@ -95,11 +163,28 @@ class ReferenceHandle : public TransferableHandle {
 		}
 
 		/**
+		 * Copy this property's value into this isolate
+		 */
+		template <bool async>
+		Local<Value> Copy() {
+			return ThreePhaseRunner<async>(reference->GetIsolate(), []() {
+				return std::make_tuple();
+			}, [this] () {
+				Local<Context> context = this->context->Deref();
+				Context::Scope context_scope(context);
+				Local<Value> value = reference->Deref();
+				return shared_ptr<ExternalCopy>(ExternalCopy::Copy(value));
+			}, [] (shared_ptr<ExternalCopy> copy) {
+				return copy->TransferIn();
+			});
+		}
+
+		/**
 		 * Get a property from this reference, returned as another reference
 		 */
 		template <bool async>
 		Local<Value> Get(Local<Value> key_handle) {
-			return ThreePhaseRunner<async>(reference->GetIsolate(), [this, &key_handle]() {
+			return ThreePhaseRunner<async>(reference->GetIsolate(), [&key_handle]() {
 				shared_ptr<ExternalCopy> key = ExternalCopy::CopyIfPrimitive(key_handle);
 				if (key.get() == nullptr) {
 					throw js_type_error("Invalid `key`");
@@ -110,9 +195,11 @@ class ReferenceHandle : public TransferableHandle {
 				Context::Scope context_scope(context);
 				Local<Value> key_inner = key->CopyInto();
 				Local<Object> object = Local<Object>::Cast(reference->Deref());
+				Local<Value> value = Unmaybe(object->Get(context, key_inner));
 				return std::make_shared<ReferenceHandleTransferable>(
-					std::make_shared<ShareablePersistent<Value>>(Unmaybe(object->Get(context, key_inner))),
-					this->context
+					std::make_shared<ShareablePersistent<Value>>(value),
+					this->context,
+					InferTypeOf(value)
 				);
 			}, [] (shared_ptr<ReferenceHandleTransferable> ref) {
 				return ref->TransferIn();

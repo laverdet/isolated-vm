@@ -49,7 +49,7 @@ class ContextHandle : public TransferableHandle {
 		}
 
 		Local<Value> GlobalReference() {
-			return ClassHandle::NewInstance<ReferenceHandle>(global, context);
+			return ClassHandle::NewInstance<ReferenceHandle>(global, context, ReferenceHandle::TypeOf::Object);
 		}
 };
 
