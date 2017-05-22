@@ -20,7 +20,6 @@
 		{
 			'target_name': 'isolated_vm',
 			'cflags_cc': [ '-std=c++14' ],
-			'cflags!': [ '-fno-exceptions', '-fno-rtti' ],
 			'cflags_cc!': [ '-fno-exceptions', '-fno-rtti' ],
 			'conditions': [
 				[ 'OS == "win"', { 'defines': ['NOMINMAX'] } ],
@@ -28,7 +27,7 @@
 			'xcode_settings': {
 				'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
 				'GCC_ENABLE_CPP_RTTI': 'YES',
-				'OTHER_CPLUSPLUSFLAGS': [ '-std=c++14' ],
+				'CLANG_CXX_LANGUAGE_STANDARD': 'c++14',
 			},
 			'sources': [
 				'src/class_handle.cc',

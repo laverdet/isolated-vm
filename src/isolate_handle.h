@@ -6,6 +6,7 @@
 #include "transferable_handle.h"
 #include "script_handle.h"
 #include "external_copy.h"
+#include "external_copy_handle.h"
 
 #include <stdlib.h>
 #include <memory>
@@ -18,6 +19,52 @@ namespace ivm {
 using namespace v8;
 using std::shared_ptr;
 using std::unique_ptr;
+Local<Value> CreateSnapshot(Local<Array> script_handles, MaybeLocal<String> warmup_handle);
+
+/**
+ * Parses script origin information from an option object and returns a non-v8 holder for the
+ * information which can then be converted to a ScriptOrigin, perhaps in a different isolate from
+ * the one it was read in.
+ */
+class ScriptOriginHolder {
+	private:
+		std::string filename;
+		int columnOffset;
+		int lineOffset;
+
+	public:
+		ScriptOriginHolder(MaybeLocal<Object> maybe_options) : filename("<isolated-vm>"), columnOffset(0), lineOffset(0) {
+			Local<Object> options;
+			if (maybe_options.ToLocal(&options)) {
+				Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
+				Local<Value> filename = Unmaybe(options->Get(context, v8_string("filename")));
+				if (!filename->IsUndefined()) {
+					if (!filename->IsString()) {
+						throw js_type_error("`filename` must be a string");
+					}
+					this->filename = *String::Utf8Value(filename.As<String>());
+				}
+				Local<Value> columnOffset = Unmaybe(options->Get(context, v8_string("columnOffset")));
+				if (!columnOffset->IsUndefined()) {
+					if (!columnOffset->IsInt32()) {
+						throw js_type_error("`columnOffset` must be an integer");
+					}
+					this->columnOffset = columnOffset.As<Int32>()->Value();
+				}
+				Local<Value> lineOffset = Unmaybe(options->Get(context, v8_string("lineOffset")));
+				if (!lineOffset->IsUndefined()) {
+					if (!lineOffset->IsInt32()) {
+						throw js_type_error("`lineOffset` must be an integer");
+					}
+					this->lineOffset = lineOffset.As<Int32>()->Value();
+				}
+			}
+		}
+
+		ScriptOrigin ToScriptOrigin() {
+			return ScriptOrigin(v8_string(filename.c_str()), Integer::New(Isolate::GetCurrent(), columnOffset), Integer::New(Isolate::GetCurrent(), lineOffset));
+		}
+};
 
 /**
  * Reference to a v8 isolate
@@ -99,7 +146,7 @@ class IsolateHandle : public TransferableHandle {
 		}
 
 		static Local<FunctionTemplate> Definition() {
-			return Inherit<TransferableHandle>(MakeClass(
+			auto tmpl = Inherit<TransferableHandle>(MakeClass(
 			 "Isolate", Parameterize<decltype(New), New>, 1,
 				"compileScript", Parameterize<decltype(&IsolateHandle::CompileScript<true>), &IsolateHandle::CompileScript<true>>, 1,
 				"compileScriptSync", Parameterize<decltype(&IsolateHandle::CompileScript<false>), &IsolateHandle::CompileScript<false>>, 1,
@@ -107,6 +154,11 @@ class IsolateHandle : public TransferableHandle {
 				"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContext<false>), &IsolateHandle::CreateContext<false>>, 0,
 				"disposeSync", Parameterize<decltype(&IsolateHandle::DisposeSync), &IsolateHandle::DisposeSync>, 0
 			));
+			tmpl->Set(
+				v8_string("createSnapshot"),
+				FunctionTemplate::New(Isolate::GetCurrent(), Parameterize<decltype(CreateSnapshot), CreateSnapshot>, v8_string("createSnapshot"), Local<v8::Signature>(), 2)
+			);
+			return tmpl;
 		}
 
 		/**
@@ -114,9 +166,9 @@ class IsolateHandle : public TransferableHandle {
 		 */
 		static unique_ptr<ClassHandle> New(MaybeLocal<Object> maybe_options) {
 			Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
-			Isolate::CreateParams create_params;
-			unique_ptr<ArrayBuffer::Allocator> allocator_ptr(ArrayBuffer::Allocator::NewDefaultAllocator());
-			create_params.array_buffer_allocator = allocator_ptr.get();
+			unique_ptr<ArrayBuffer::Allocator> allocator_ptr;
+			shared_ptr<ExternalCopyArrayBuffer> snapshot_blob;
+			ResourceConstraints rc;
 
 			// Parse options
 			if (!maybe_options.IsEmpty()) {
@@ -124,18 +176,41 @@ class IsolateHandle : public TransferableHandle {
 
 				// Set memory limits
 				Local<Value> maybe_memory_limit = Unmaybe(options->Get(context, v8_symbol("memoryLimit")));
-				if (maybe_memory_limit->IsNumber()) {
+				if (!maybe_memory_limit->IsUndefined()) {
+					if (!maybe_memory_limit->IsNumber()) {
+						throw js_type_error("`memoryLimit` must be a number");
+					}
 					size_t memory_limit = maybe_memory_limit.As<Number>()->Value();
-					ResourceConstraints& rc = create_params.constraints;
 					rc.set_max_semi_space_size(std::pow(2, std::min(sizeof(void*) >= 8 ? 4 : 3, (int)(memory_limit / 128))));
 					rc.set_max_old_space_size(memory_limit);
 					rc.set_max_executable_size(memory_limit * 0.75 + 0.5);
 					allocator_ptr.reset(new LimitedAllocator(memory_limit * 1024 * 1024));
-					create_params.array_buffer_allocator = allocator_ptr.get();
+				}
+
+				// Set snapshot
+				Local<Value> snapshot_handle = Unmaybe(options->Get(context, v8_symbol("snapshot")));
+				if (!snapshot_handle->IsUndefined()) {
+					if (
+						!snapshot_handle->IsObject() ||
+						!ClassHandle::GetFunctionTemplate<ExternalCopyHandle>()->HasInstance(snapshot_handle.As<Object>())
+					) {
+						throw js_type_error("`snapshot` must be an ExternalCopy to ArrayBuffer");
+					}
+					ExternalCopyHandle& copy_handle = *dynamic_cast<ExternalCopyHandle*>(ClassHandle::Unwrap(snapshot_handle.As<Object>()));
+					snapshot_blob = std::dynamic_pointer_cast<ExternalCopyArrayBuffer>(copy_handle.Value());
+					if (snapshot_blob.get() == nullptr) {
+						throw js_type_error("`snapshot` must be an ExternalCopy to ArrayBuffer");
+					}
 				}
 			}
 
-			return std::make_unique<IsolateHandle>(std::make_shared<ShareableIsolate>(std::move(allocator_ptr), create_params));
+			// We need an array allocator
+			if (allocator_ptr.get() == nullptr) {
+				allocator_ptr.reset(ArrayBuffer::Allocator::NewDefaultAllocator());
+			}
+
+			// Return isolate handle
+			return std::make_unique<IsolateHandle>(std::make_shared<ShareableIsolate>(rc, std::move(allocator_ptr), std::move(snapshot_blob)));
 		}
 
 		virtual unique_ptr<Transferable> TransferOut() {
@@ -166,15 +241,19 @@ class IsolateHandle : public TransferableHandle {
 		 * Compiles a script in this isolate and returns a ScriptHandle
 		 */
 		template <bool async>
-		Local<Value> CompileScript(Local<String> code_handle) {
-			return ThreePhaseRunner<async>(*isolate, [&code_handle]() {
+		Local<Value> CompileScript(Local<String> code_handle, MaybeLocal<Object> options) {
+			return ThreePhaseRunner<async>(*isolate, [&code_handle, &options]() {
 				// Copy code string out of first isolate
-				return std::make_shared<ExternalCopyString>(code_handle);
-			}, [this](shared_ptr<ExternalCopyString> code_copy) {
+				return std::make_tuple(
+					std::make_shared<ExternalCopyString>(code_handle),
+					std::make_shared<ScriptOriginHolder>(options)
+				);
+			}, [this](shared_ptr<ExternalCopyString> code_copy, shared_ptr<ScriptOriginHolder> script_origin_holder) {
 				// Compile in second isolate and return UnboundScript persistent
 				Context::Scope context_scope(isolate->DefaultContext());
 				Local<String> code_inner = code_copy->CopyInto().As<String>();
-				ScriptCompiler::Source source(code_inner);
+				ScriptOrigin script_origin = script_origin_holder->ToScriptOrigin();
+				ScriptCompiler::Source source(code_inner, script_origin);
 				Local<UnboundScript> script = Unmaybe(ScriptCompiler::CompileUnboundScript(*isolate, &source, ScriptCompiler::kNoCompileOptions));
 				return std::make_shared<ShareablePersistent<UnboundScript>>(script);
 			}, [this](shared_ptr<ShareablePersistent<UnboundScript>> script) {
@@ -194,5 +273,84 @@ class IsolateHandle : public TransferableHandle {
 			return Undefined(Isolate::GetCurrent());
 		}
 };
+
+/**
+ * Create a snapshot from some code and return it as an external ArrayBuffer
+ */
+Local<Value> CreateSnapshot(Local<Array> script_handles, MaybeLocal<String> warmup_handle) {
+
+	// Copy embed scripts and warmup script from outer isolate
+	std::vector<std::pair<std::string, ScriptOriginHolder>> scripts;
+	Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
+	Local<Array> keys = Unmaybe(script_handles->GetOwnPropertyNames(context));
+	scripts.reserve(keys->Length());
+	for (uint32_t ii = 0; ii < keys->Length(); ++ii) {
+		Local<Uint32> key = Unmaybe(Unmaybe(keys->Get(context, ii))->ToArrayIndex(context));
+		if (key->Value() != ii) {
+			throw js_type_error("Invalid `scripts` array");
+		}
+		Local<Value> script_handle = Unmaybe(script_handles->Get(context, key));
+		if (!script_handle->IsObject()) {
+			throw js_type_error("`scripts` should be array of objects");
+		}
+		Local<Value> script = Unmaybe(script_handle.As<Object>()->Get(context, v8_string("code")));
+		if (!script->IsString()) {
+			throw js_type_error("`code` property is required");
+		}
+		ScriptOriginHolder script_origin(script_handle.As<Object>());
+		scripts.push_back(std::make_pair(std::string(*String::Utf8Value(script.As<String>())), script_origin));
+	}
+	std::string warmup_script;
+	if (!warmup_handle.IsEmpty()) {
+		warmup_script = *String::Utf8Value(warmup_handle.ToLocalChecked().As<String>());
+	}
+
+	// Create the snapshot
+	StartupData snapshot;
+	unique_ptr<const char> snapshot_data_ptr;
+	{
+		SnapshotCreator snapshot_creator;
+		Isolate* isolate = snapshot_creator.GetIsolate();
+		{
+			HandleScope handle_scope(isolate);
+			Local<Context> context = Context::New(isolate);
+			{
+				HandleScope handle_scope(isolate);
+				Local<Context> context_dirty = Context::New(isolate);
+				for (auto& script : scripts) {
+					Local<String> code = v8_string(script.first.c_str());
+					ScriptOrigin script_origin = script.second.ToScriptOrigin();
+					ScriptCompiler::Source source(code, script_origin);
+					Local<UnboundScript> unbound_script;
+					{
+						Context::Scope context_scope(context);
+						Local<Script> compiled_script = Unmaybe(ScriptCompiler::Compile(context, &source, ScriptCompiler::kNoCompileOptions));
+						Unmaybe(compiled_script->Run(context));
+						unbound_script = compiled_script->GetUnboundScript();
+					}
+					{
+						Context::Scope context_scope(context_dirty);
+						Unmaybe(unbound_script->BindToCurrentContext()->Run(context_dirty));
+					}
+				}
+				if (warmup_script.length() != 0) {
+					Context::Scope context_scope(context_dirty);
+					Unmaybe(Unmaybe(Script::Compile(context_dirty, v8_string(warmup_script.c_str())))->Run(context_dirty));
+				}
+			}
+			isolate->ContextDisposedNotification(false);
+			snapshot_creator.AddContext(context);
+		}
+		snapshot = snapshot_creator.CreateBlob(SnapshotCreator::FunctionCodeHandling::kKeep);
+		snapshot_data_ptr.reset(snapshot.data);
+	}
+
+	// Export to outer scope
+	if (snapshot.raw_size == 0) {
+		throw js_generic_error("Failure creating snapshot");
+	}
+	auto buffer = std::make_shared<ExternalCopyArrayBuffer>((void*)snapshot.data, snapshot.raw_size);
+	return ClassHandle::NewInstance<ExternalCopyHandle>(buffer);
+}
 
 }

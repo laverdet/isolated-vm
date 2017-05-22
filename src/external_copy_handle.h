@@ -67,6 +67,9 @@ class ExternalCopyHandle : public TransferableHandle {
 			return ClassHandle::NewInstance<ExternalCopyIntoHandle>(value);
 		}
 
+		shared_ptr<ExternalCopy> Value() {
+			return value;
+		}
 };
 
 class ExternalCopyIntoHandle : public TransferableHandle {

@@ -16,8 +16,8 @@ inline std::string CalleeName(const FunctionCallbackInfo<Value>& info) {
 	return std::string("`")+ *String::Utf8Value(info.Data()->ToString())+ "`";
 }
 
-inline void RequiresParam(const int num, const FunctionCallbackInfo<Value>& info) {
-	if (num > info.Length()) {
+inline void RequiresParam(const int ii, const int num, const FunctionCallbackInfo<Value>& info) {
+	if (ii > info.Length()) {
 		throw js_type_error(CalleeName(info)+ " requires at least "+ std::to_string(num)+ " parameter"+ (num == 1 ? "" : "s"));
 	}
 }
@@ -74,21 +74,21 @@ struct ConvertParam<T*> {
 		if (ii == -1) {
 			handle = info.This().As<Object>();
 		} else {
-			RequiresParam(num, info);
+			RequiresParam(ii, num, info);
 			Local<Value> handle_val = info[ii];
 			if (!handle_val->IsObject()) {
-				throw js_type_error(CalleeName(info)+ " requires parameter "+ std::to_string(ii)+ " to be an object");
+				throw js_type_error(CalleeName(info)+ " requires parameter "+ std::to_string(ii + 1)+ " to be an object");
 			}
 			handle = handle_val.As<Object>();
 			if (handle->InternalFieldCount() != 1) {
 				// TODO: Actually check for ClassHandle because otherwise user can pass any native object
 				// and crash
-				throw js_type_error(CalleeName(info)+ " invalid parameter "+ std::to_string(ii));
+				throw js_type_error(CalleeName(info)+ " invalid parameter "+ std::to_string(ii + 1));
 			}
 		}
 		T* ptr = dynamic_cast<T*>(_ClassHandleUnwrap(handle.As<Object>()));
 		if (ptr == nullptr) {
-			throw js_type_error(CalleeName(info)+ " invalid parameter "+ std::to_string(ii));
+			throw js_type_error(CalleeName(info)+ " invalid parameter "+ std::to_string(ii + 1));
 		} else {
 			return ptr;
 		}
@@ -98,7 +98,7 @@ struct ConvertParam<T*> {
 template <>
 struct ConvertParam<Local<Value>> {
 	static inline Local<Value> Convert(const int ii, const int num, const FunctionCallbackInfo<Value>& info) {
-		RequiresParam(num, info);
+		RequiresParam(ii, num, info);
 		return info[ii];
 	};
 };
@@ -116,9 +116,9 @@ struct ConvertParam<MaybeLocal<Value>> {
 template <>
 struct ConvertParam<Local<String>> {
 	static inline Local<String> Convert(const int ii, const int num, const FunctionCallbackInfo<Value>& info) {
-		RequiresParam(num, info);
+		RequiresParam(ii, num, info);
 		if (!info[ii]->IsString()) {
-			throw js_type_error(CalleeName(info)+ " requires parameter "+ std::to_string(ii)+ " to be a string");
+			throw js_type_error(CalleeName(info)+ " requires parameter "+ std::to_string(ii + 1)+ " to be a string");
 		}
 		return info[ii].As<String>();
 	};
@@ -137,9 +137,9 @@ struct ConvertParam<MaybeLocal<String>> {
 template <>
 struct ConvertParam<Local<Number>> {
 	static inline Local<Number> Convert(const int ii, const int num, const FunctionCallbackInfo<Value>& info) {
-		RequiresParam(num, info);
+		RequiresParam(ii, num, info);
 		if (!info[ii]->IsNumber()) {
-			throw js_type_error(CalleeName(info)+ " requires parameter "+ std::to_string(ii)+ " to be a number");
+			throw js_type_error(CalleeName(info)+ " requires parameter "+ std::to_string(ii + 1)+ " to be a number");
 		}
 		return info[ii].As<Number>();
 	};
@@ -158,9 +158,9 @@ struct ConvertParam<MaybeLocal<Number>> {
 template <>
 struct ConvertParam<Local<Object>> {
 	static inline Local<Object> Convert(const int ii, const int num, const FunctionCallbackInfo<Value>& info) {
-		RequiresParam(num, info);
+		RequiresParam(ii, num, info);
 		if (!info[ii]->IsObject()) {
-			throw js_type_error(CalleeName(info)+ " requires parameter "+ std::to_string(ii)+ " to be an object");
+			throw js_type_error(CalleeName(info)+ " requires parameter "+ std::to_string(ii + 1)+ " to be an object");
 		}
 		return info[ii].As<Object>();
 	};
@@ -179,9 +179,9 @@ struct ConvertParam<MaybeLocal<Object>> {
 template <>
 struct ConvertParam<Local<Array>> {
 	static inline Local<Array> Convert(const int ii, const int num, const FunctionCallbackInfo<Value>& info) {
-		RequiresParam(num, info);
+		RequiresParam(ii, num, info);
 		if (!info[ii]->IsArray()) {
-			throw js_type_error(CalleeName(info)+ " requires parameter "+ std::to_string(ii)+ " to be an array");
+			throw js_type_error(CalleeName(info)+ " requires parameter "+ std::to_string(ii + 1)+ " to be an array");
 		}
 		return info[ii].As<Array>();
 	};

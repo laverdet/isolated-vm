@@ -37,6 +37,9 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		Isolate* isolate;
 		Persistent<Context> default_context;
 		unique_ptr<ArrayBuffer::Allocator> allocator_ptr;
+		shared_ptr<ExternalCopyArrayBuffer> snapshot_blob_ptr;
+		StartupData startup_data;
+
 		std::mutex exec_mutex; // mutex for execution
 		std::mutex queue_mutex; // mutex for queueing work
 		std::queue<unique_ptr<std::function<void()>>> tasks;
@@ -151,19 +154,35 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		/**
 		 * Create a new wrapped Isolate
 		 */
-		template <typename... Args>
-		ShareableIsolate(unique_ptr<ArrayBuffer::Allocator> allocator_ptr, Args... args) :
-			isolate(Isolate::New(args...)),
-			allocator_ptr(std::move(allocator_ptr)),
+		ShareableIsolate(
+			ResourceConstraints& resource_constraints,
+			unique_ptr<ArrayBuffer::Allocator> allocator,
+			shared_ptr<ExternalCopyArrayBuffer> snapshot_blob
+		) :
+			allocator_ptr(std::move(allocator)),
+			snapshot_blob_ptr(std::move(snapshot_blob)),
 			life_cycle(LifeCycle::Normal),
 			status(Status::Waiting),
 			root(false) {
+
+			// Build isolate from create params
+			Isolate::CreateParams create_params;
+			create_params.constraints = resource_constraints;
+			create_params.array_buffer_allocator = allocator_ptr.get();
+			if (snapshot_blob_ptr.get() != nullptr) {
+				create_params.snapshot_blob = &startup_data;
+				startup_data.data = (const char*)snapshot_blob_ptr->Data();
+				startup_data.raw_size = snapshot_blob_ptr->Length();
+			}
+			isolate = Isolate::New(create_params);
+
 			// Create a default context for the library to use if needed
 			{
 				v8::Locker locker(isolate);
 				HandleScope handle_scope(isolate);
 				default_context.Reset(isolate, Context::New(isolate));
 			}
+
 			// There is no asynchronous Isolate ctor so we should throw away thread specifics in case
 			// the client always uses async methods
 			isolate->DiscardThreadSpecificMetadata();

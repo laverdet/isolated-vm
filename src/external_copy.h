@@ -206,7 +206,7 @@ class ExternalCopyArrayBuffer : public ExternalCopy {
 		const size_t length;
 
 	public:
-		ExternalCopyArrayBuffer(void* data, size_t length) : value(malloc(length), std::free), length(length) {
+		ExternalCopyArrayBuffer(const void* data, size_t length) : value(malloc(length), std::free), length(length) {
 			std::memcpy(value.get(), data, length);
 		}
 
@@ -218,6 +218,14 @@ class ExternalCopyArrayBuffer : public ExternalCopy {
 			Local<ArrayBuffer> array_buffer(ArrayBuffer::New(Isolate::GetCurrent(), length));
 			std::memcpy(array_buffer->GetContents().Data(), value.get(), length);
 			return array_buffer;
+		}
+
+		const void* Data() const {
+			return value.get();
+		}
+
+		size_t Length() const {
+			return length;
 		}
 };
 

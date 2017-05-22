@@ -38,10 +38,30 @@ contains can represent quite a large chunk of memory though you may want to expl
 	of a guideline instead of a strict limit. A determined attacker could use 2-3 times this limit
 	before their script is terminated. Against non-hostile code this limit should be pretty close.
 	128MB is a good value to start with.
+	* `snapshot` *[ExternalCopy[ArrayBuffer]]* - This is an optional snapshot created from
+	`createSnapshot` which will be used to initialize the heap of this isolate.
+
+##### `ivm.Isolate.createSnapshot(scripts, warmup_script)`
+* `scripts` *[array]*
+	* `code` *[string]* - Script to setup this snapshot
+	* `filename` *[string]* - Optional filename of this script, used in stack traces
+	* `columnOffset` *[number]* - Optional column offset of this script
+	* `lineOffset` *[number]* - Optional line offset of this script
+* `warmup_script` *[string]* - Optional script to "warmup" the snapshot by triggering code
+compilation
+
+Isolate snapshots are a very useful feature if you intend to create several isolates running common
+libraries between them. A snapshot serializes the entire v8 heap including parsed code, global
+variables, and compiled code. Check out the examples section for tips on using this.
 
 ##### `isolate.compileScript(code)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `isolate.compileScriptSync(code)`
 * `code` *[string]* - The JavaScript code to compile.
+* `options` *[object]*
+	* `filename` *[string]* - Optional filename of this script, used in stack traces
+	* `columnOffset` *[number]* - Optional column offset of this script
+	* `lineOffset` *[number]* - Optional line offset of this script
+
 * **return** A [`Script`](#class-script-transferable) object.
 
 Note that a [`Script`](#class-script-transferable) can only run in the isolate which created it.
@@ -123,7 +143,7 @@ when `false` would be returned, I'm just giving you the result back straight fro
 ##### `reference.apply(receiver, arguments)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `reference.applySync(receiver, arguments)`
 * `receiver` *[transferable]* - The value which will be `this`.
-* `arguments` *[Array]* - Array of transferables which will be passed to the function.
+* `arguments` *[array]* - Array of transferables which will be passed to the function.
 * **return** *[transferable]*
 
 Will attempt to invoke an object as if it were a function. If the return value is transferable it
@@ -285,4 +305,31 @@ Promise.all(promises).then(function(sums) {
 // with the overhead of building 4 isolates
 // > Calculated 9007199187632128 in 1485ms
 // > Calculated 9007199187632128 in 439ms
+```
+
+A quick example which shows how the snapshot feature works.
+```js
+let ivm = require('./index');
+
+// Create a new snapshot which adds the `sum` function to all contexts created
+let snapshot = ivm.Isolate.createSnapshot([ { code: 'function sum(a,b) { return a + b }' } ]);
+
+// v8 provides the ability to "warmup" snapshots by calling the functions inside your snapshot which
+// will trigger a code compilation, you can use the second parameter for that. A much easier way to
+// included compiled code in the snapshot would be to run node with `--nolazy` when you generate the
+// snapshot, then you can load the snapshot into your node instances using no special flags.
+//
+// `snapshot` is an ExternalCopy[ArrayBuffer]. If you wanted to save this snapshot to a file you
+// would do this:
+// fs.writeFileSync('snapshot.bin', Buffer.from(snapshot.copy()))
+//
+// And then to read it in again:
+// snapshot = new ivm.ExternalCopy(fs.readFileSync('snapshot.bin').buffer);
+
+// Here we'll create a new isolate using this snapshot and confirm that our `sum` function is there
+let isolate = new ivm.Isolate({ snapshot });
+let context = isolate.createContextSync();
+let script = isolate.compileScriptSync('sum(1, 2)');
+console.log(script.runSync(isolate.createContextSync()));
+// logs: 3
 ```
