@@ -20,7 +20,7 @@ asynchronous functions will return a
 [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
 while the work runs in a separate thread pool. I recommend deciding which version of the API is the
 best for your project and sticking to it throughout your code, i.e. don't mix and match async/sync
-code.  The only strict technical limitation, though, is that you may not call a synchronous method
+code. The only strict technical limitation, though, is that you may not call a synchronous method
 from within a asynchronous method.
 
 
@@ -89,6 +89,9 @@ isolate.
 ##### `script.run(context)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `script.runSync(context)`
 * `context` *[`Context`](#class-context-transferable)* - The context in which this script will run.
+* `options` *[object]*
+	* `timeout` *[number]* - Maximum amount of time this script is allowed to run before execution is
+	canceled. Default is no timeout.
 * **return** *[transferable]*
 
 Runs a given script within a context. This will return the last value evaluated in a given script,
@@ -309,7 +312,7 @@ Promise.all(promises).then(function(sums) {
 
 A quick example which shows how the snapshot feature works.
 ```js
-let ivm = require('./index');
+let ivm = require('ivm');
 
 // Create a new snapshot which adds the `sum` function to all contexts created
 let snapshot = ivm.Isolate.createSnapshot([ { code: 'function sum(a,b) { return a + b }' } ]);
@@ -330,6 +333,6 @@ let snapshot = ivm.Isolate.createSnapshot([ { code: 'function sum(a,b) { return 
 let isolate = new ivm.Isolate({ snapshot });
 let context = isolate.createContextSync();
 let script = isolate.compileScriptSync('sum(1, 2)');
-console.log(script.runSync(isolate.createContextSync()));
+console.log(script.runSync(context));
 // logs: 3
 ```
