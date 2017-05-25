@@ -10,7 +10,7 @@ class Transferable {
 		Transferable() {}
 
 	public:
-		~Transferable() {}
+		virtual ~Transferable() {}
 		static std::unique_ptr<Transferable> TransferOut(const Local<Value>& value);
 		virtual Local<Value> TransferIn() = 0;
 };

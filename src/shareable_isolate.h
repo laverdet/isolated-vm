@@ -39,22 +39,23 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		unique_ptr<ArrayBuffer::Allocator> allocator_ptr;
 		shared_ptr<ExternalCopyArrayBuffer> snapshot_blob_ptr;
 		StartupData startup_data;
+		enum class LifeCycle { Normal, Disposing, Disposed };
+		LifeCycle life_cycle;
+		enum class Status { Waiting, Running };
+		Status status;
+		size_t memory_limit;
+		bool hit_memory_limit;
+		bool root;
+		HeapStatistics last_heap;
 
 		std::mutex exec_mutex; // mutex for execution
 		std::mutex queue_mutex; // mutex for queueing work
 		std::queue<unique_ptr<std::function<void()>>> tasks;
+		std::queue<unique_ptr<std::function<void()>>> handle_tasks;
 		std::vector<unique_ptr<Persistent<Value>>> specifics;
 		std::vector<unique_ptr<Persistent<FunctionTemplate>>> specifics_ft;
 		std::map<Persistent<Object>*, std::pair<void(*)(void*), void*>> weak_persistents;
 		thread_pool_t::affinity_t thread_affinity;
-
-		enum class LifeCycle { Normal, Disposing, Disposed };
-		LifeCycle life_cycle;
-
-		enum class Status { Waiting, Running };
-		Status status;
-
-		bool root;
 
 		/**
 		 * Wrapper around Locker that sets our own version of `current`. Also makes a HandleScope and
@@ -78,6 +79,49 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 					current = last;
 				}
 		};
+
+		/**
+		 * Catches garbage collections on the isolate and terminates if we use too much.
+		 */
+		static void GCEpilogueCallback(Isolate* isolate, GCType type, GCCallbackFlags flags) {
+
+			// Get current heap statistics
+			ShareableIsolate& that = ShareableIsolate::GetCurrent();
+			assert(that.isolate == isolate);
+			HeapStatistics heap;
+			isolate->GetHeapStatistics(&heap);
+
+			// If we are above the heap limit then kill this isolate
+			if (heap.used_heap_size() > that.memory_limit * 1024 * 1024) {
+				that.hit_memory_limit = true;
+				isolate->TerminateExecution();
+				return;
+			}
+
+			// Ask for a deep clean at 80% heap
+			if (
+				heap.used_heap_size() * 1.25 > that.memory_limit * 1024 * 1024 &&
+				that.last_heap.used_heap_size() * 1.25 < that.memory_limit * 1024 * 1024
+			) {
+				that.ScheduleHandleTask(false, [isolate]() {
+					isolate->LowMemoryNotification();
+				});
+			}
+
+			that.last_heap = heap;
+		}
+
+		/**
+		 * Helper used in Locker to throw if memory_limit was hit, but also return value of function if
+		 * not (even if T == void)
+		 */
+		template <typename T>
+		T CheckMemoryLimit(T value) {
+			if (hit_memory_limit) {
+				throw js_error_base();
+			}
+			return std::move(value);
+		}
 
 	public:
 		/**
@@ -127,7 +171,6 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				}
 		};
 
-	public:
 		/**
 		 * Return shared pointer the currently running Isolate's shared pointer
 		 */
@@ -143,6 +186,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			default_context(isolate, context),
 			life_cycle(LifeCycle::Normal),
 			status(Status::Waiting),
+			hit_memory_limit(false),
 			root(true) {
 			assert(current == nullptr);
 			current = this;
@@ -157,12 +201,15 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		ShareableIsolate(
 			ResourceConstraints& resource_constraints,
 			unique_ptr<ArrayBuffer::Allocator> allocator,
-			shared_ptr<ExternalCopyArrayBuffer> snapshot_blob
+			shared_ptr<ExternalCopyArrayBuffer> snapshot_blob,
+			size_t memory_limit
 		) :
 			allocator_ptr(std::move(allocator)),
 			snapshot_blob_ptr(std::move(snapshot_blob)),
 			life_cycle(LifeCycle::Normal),
 			status(Status::Waiting),
+			memory_limit(memory_limit),
+			hit_memory_limit(false),
 			root(false) {
 
 			// Build isolate from create params
@@ -175,6 +222,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				startup_data.raw_size = snapshot_blob_ptr->Length();
 			}
 			isolate = Isolate::New(create_params);
+			isolate->AddGCEpilogueCallback(GCEpilogueCallback);
 
 			// Create a default context for the library to use if needed
 			{
@@ -222,6 +270,9 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			if (root) {
 				throw js_generic_error("Cannot dispose root isolate");
 			}
+			if (v8::Locker::IsLocked(isolate)) {
+				throw js_generic_error("Cannot dispose entered isolate");
+			}
 			{
 				std::unique_lock<std::mutex> lock(queue_mutex);
 				if (life_cycle != LifeCycle::Normal) {
@@ -233,6 +284,8 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			{
 				assert(tasks.empty());
 				LockerHelper locker(*this);
+				ExecuteHandleTasks();
+				assert(handle_tasks.empty());
 				while (!weak_persistents.empty()) {
 					auto it = weak_persistents.begin();
 					Persistent<Object>* handle = it->first;
@@ -246,6 +299,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			}
 			isolate->Dispose();
 			life_cycle = LifeCycle::Disposed;
+			assert(handle_tasks.empty());
 			assert(tasks.empty());
 		}
 
@@ -257,7 +311,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		void ScheduleTask(F&& fn, Args&&... args) {
 			auto fn_ptr = std::make_unique<std::function<void()>>(std::bind(std::forward<F>(fn), std::forward<Args>(args)...));
 			std::unique_lock<std::mutex> lock(queue_mutex);
-			if (life_cycle != LifeCycle::Normal) {
+			if (life_cycle != LifeCycle::Normal || hit_memory_limit) {
 				throw js_generic_error("Isolate is disposed or disposing");
 			}
 			this->tasks.push(std::move(fn_ptr));
@@ -275,6 +329,36 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			}
 		}
 
+		/**
+		 * Schedules a simple task which is guaranteed to run before this isolate is disposed. Returns
+		 * false if isolate is already disposed.
+		 */
+		bool ScheduleHandleTask(bool run_inline, std::function<void()> fn) {
+			if (run_inline && &GetCurrent() == this) {
+				fn();
+				return true;
+			}
+			std::unique_lock<std::mutex> lock(queue_mutex);
+			if (life_cycle != LifeCycle::Normal || hit_memory_limit) {
+				return false;
+			}
+			this->handle_tasks.push(std::make_unique<std::function<void()>>(std::move(fn)));
+			return true;
+		}
+
+		void ExecuteHandleTasks() {
+			std::queue<unique_ptr<std::function<void()>>> handle_tasks;
+			{
+				std::unique_lock<std::mutex> lock(queue_mutex);
+				std::swap(handle_tasks, this->handle_tasks);
+			}
+			while (!handle_tasks.empty()) {
+				auto task = std::move(handle_tasks.front());
+				(*task)();
+				handle_tasks.pop();
+			}
+		}
+
 		static void WorkerEntryRoot(uv_async_s* async) {
 			if (async->data != nullptr) { // see WorkerEntry nullptr async message
 				WorkerEntry(true, async->data);
@@ -285,36 +369,60 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			ShareableIsolate& that = *static_cast<ShareableIsolate*>(param);
 			assert(that.status == Status::Running);
 			std::unique_lock<std::mutex> exec_lock(that.exec_mutex);
-			LockerHelper locker(that);
-			while (true) {
-				std::queue<unique_ptr<std::function<void()>>> tasks;
-				{
-					std::unique_lock<std::mutex> lock(that.queue_mutex);
-					std::swap(tasks, that.tasks);
-					if (tasks.empty()) {
-						that.status = Status::Waiting;
-						if (!pool_thread) {
-							// In this case the thread pool was full so this loop was run in a temporary thread
-							// that will be thrown away after this function finishes. Throwaway that pesky
-							// metadata.
-							that.isolate->DiscardThreadSpecificMetadata();
+			{
+				LockerHelper locker(that);
+				while (true) {
+					std::queue<unique_ptr<std::function<void()>>> tasks;
+					std::queue<unique_ptr<std::function<void()>>> handle_tasks;
+					{
+						std::unique_lock<std::mutex> lock(that.queue_mutex);
+						std::swap(tasks, that.tasks);
+						if (handle_tasks.empty() && tasks.empty()) {
+							that.status = Status::Waiting;
+							if (!pool_thread) {
+								// In this case the thread pool was full so this loop was run in a temporary thread
+								// that will be thrown away after this function finishes. Throwaway that pesky
+								// metadata.
+								that.isolate->DiscardThreadSpecificMetadata();
+							}
+							if (--uv_refs == 0) {
+								uv_unref((uv_handle_t*)&root_async);
+								// If we are the last ones to unref then node doesn't exit unless someone else
+								// unrefs?? This seems like an obvious libuv bug but I don't want to investigate.
+								root_async.data = nullptr;
+								uv_async_send(&root_async);
+							}
+							if (that.hit_memory_limit) {
+								// This will unlock v8 and dispose, below
+								break;
+							}
+							return;
 						}
-						if (--uv_refs == 0) {
-							uv_unref((uv_handle_t*)&root_async);
-							// If we are the last ones to unref then node doesn't exit unless someone else
-							// unrefs?? This seems like an obvious libuv bug but I don't want to investigate.
-							root_async.data = nullptr;
-							uv_async_send(&root_async);
-						}
-						return;
 					}
+					// Execute handle tasks
+					do {
+						auto task = std::move(handle_tasks.front());
+						(*task)();
+						handle_tasks.pop();
+					} while (!handle_tasks.empty());
+
+					// Execute regular tasks
+					do {
+						if (that.hit_memory_limit) {
+							// Regular tasks can be thrown away w/o memory leaks
+							tasks = std::queue<unique_ptr<std::function<void()>>>();
+							break;
+						}
+						auto task = std::move(tasks.front());
+						(*task)();
+						tasks.pop();
+					} while (!tasks.empty());
 				}
-				do {
-					auto task = std::move(tasks.front());
-					(*task)();
-					tasks.pop();
-				} while (!tasks.empty());
 			}
+			// If we got here it means we're supposed to throw away this isolate due to an OOM memory
+			// error
+			exec_lock.unlock();
+			that.Dispose();
 		}
 
 		/**
@@ -335,7 +443,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			{
 				{
 					std::unique_lock<std::mutex> lock(queue_mutex);
-					if (life_cycle != LifeCycle::Normal) {
+					if (life_cycle != LifeCycle::Normal || hit_memory_limit) {
 						// nb: v8 lock is never set up
 						throw js_generic_error("Isolate is disposed or disposing");
 					}
@@ -343,19 +451,41 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				std::unique_lock<std::mutex> lock(exec_mutex);
 				LockerHelper locker(*this);
 				TryCatch try_catch(isolate);
+				ExecuteHandleTasks();
 				try {
-					return fn(std::forward<Args>(args)...);
+					return CheckMemoryLimit(fn(std::forward<Args>(args)...));
 				} catch (const js_error_base& cc_error) {
-					assert(try_catch.HasCaught());
-					// `stack` getter on Error needs a Context..
-					Context::Scope context_scope(DefaultContext());
-					error = ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception());
+					// memory errors will be handled below
+					if (!hit_memory_limit) {
+						// `stack` getter on Error needs a Context..
+						assert(try_catch.HasCaught());
+						Context::Scope context_scope(DefaultContext());
+						error = ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception());
+					}
 				}
 			}
 			// If we get here we can assume an exception was thrown
 			if (error.get()) {
 				(*current)->ThrowException(error->CopyInto());
 				throw js_error_base();
+			} else if (hit_memory_limit) {
+				if (Isolate::GetCurrent() == isolate) {
+					// Recursive call to ivm library? Just throw a C++ exception and leave the termination
+					// exception as is
+					throw js_error_base();
+				} else if (Locker::IsLocked(isolate)) {
+					// Recursive call but there is another isolate in between, this gets thrown to the middle
+					// isolate
+					throw js_generic_error("Isolate has exhausted v8 heap space.");
+				} else {
+					// We need to get rid of this isolate before it takes down the whole process
+					std::unique_lock<std::mutex> lock(queue_mutex);
+					if (life_cycle == LifeCycle::Normal) {
+						lock.unlock();
+						Dispose();
+					}
+					throw js_generic_error("Isolate has exhausted v8 heap space.");
+				}
 			} else {
 				throw js_generic_error("An exception was thrown. Sorry I don't know more.");
 			}
@@ -424,14 +554,14 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 						auto promise_local = Local<Promise::Resolver>::New(isolate, *promise_persistent);
 						TryCatch try_catch(isolate);
 						try {
-							Unmaybe(promise_local->Resolve(context_local, apply_from_tuple(fn3, std::move(fn2_result)))); // <-- fn3() is called here
+							Unmaybe(promise_local->Resolve(context_local, apply_from_tuple(std::move(fn3), std::move(fn2_result)))); // <-- fn3() is called here
 						} catch (js_error_base& cc_error) {
 							// An error was caught while running fn3()
 							assert(try_catch.HasCaught());
 							// If Reject fails then I think that's bad..
 							Unmaybe(promise_local->Reject(context_local, try_catch.Exception()));
 						}
-					}, apply_from_tuple(fn2, std::move(fn1_result)), std::move(fn3)); // <-- fn2() is called here
+					}, apply_from_tuple(std::move(fn2), std::move(fn1_result)), std::move(fn3)); // <-- fn2() is called here
 				} catch (js_error_base& cc_error) {
 					// An error was caught while running fn2()
 					assert(try_catch.HasCaught());
@@ -463,8 +593,8 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 		return promise_local->GetPromise();
 	} else {
 		// The sync case is a lot simpler, most of the work is done in second_isolate.Locker()
-		return apply_from_tuple(fn3, second_isolate.Locker([] (decltype(fn1()) fn1_result, F2 fn2) {
-			return apply_from_tuple(fn2, fn1_result);
+		return apply_from_tuple(std::move(fn3), second_isolate.Locker([] (decltype(fn1()) fn1_result, F2 fn2) {
+			return apply_from_tuple(std::move(fn2), std::move(fn1_result));
 		}, fn1(), std::move(fn2)));
 	}
 }

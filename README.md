@@ -30,14 +30,14 @@ you can give isolates references to each other. An isolate will remain valid as 
 holds a handle to the isolate or anything created inside that isolate. Once an isolate is lost the
 garbage collector should eventually find it and clean up its memory. Since an isolate and all it
 contains can represent quite a large chunk of memory though you may want to explicitly call the
-`disposeSync()` method on isolates that you are finished with to get that memory back immediately.
+`dispose()` method on isolates that you are finished with to get that memory back immediately.
 
 ##### `new ivm.Isolate(options)`
 * `options` *[object]*
 	* `memoryLimit` *[number]* - Memory limit that this isolate may use, in MB. Note that this is more
 	of a guideline instead of a strict limit. A determined attacker could use 2-3 times this limit
-	before their script is terminated. Against non-hostile code this limit should be pretty close.
-	128MB is a good value to start with.
+	before their script is terminated. Against non-hostile code this limit should be pretty close. The
+	default is 128MB and the mimium is 8MB.
 	* `snapshot` *[ExternalCopy[ArrayBuffer]]* - This is an optional snapshot created from
 	`createSnapshot` which will be used to initialize the heap of this isolate.
 
@@ -70,7 +70,7 @@ Note that a [`Script`](#class-script-transferable) can only run in the isolate w
 ##### `isolate.createContextSync()`
 * **return** A [`Context`](#class-context-transferable) object.
 
-##### `isolate.disposeSync()`
+##### `isolate.dispose()`
 Destroys this isolate and invalidates all references obtained from it.
 
 ### Class: `Context` *[transferable]*
@@ -127,6 +127,13 @@ thrown.
 Returns an object, which when passed to another isolate will cause that isolate to dereference the
 handle.
 
+#### `reference.dispose()`
+
+Releases this reference. If you're passing around a lot of references between isolates it's wise to
+release the references when you are done. Otherwise you may run into issues with isolates running
+out of memory because other isolates haven't garbage collected recently. After calling this method
+all attempts to access the reference will throw an error.
+
 ##### `reference.get(property)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `reference.getSync(property)`
 * `property` *[transferable]* - The property to access on this object.
@@ -173,6 +180,14 @@ Internalizes the ExternalCopy data into this isolate.
 
 Returns an object, which when passed to another isolate will cause that isolate to internalize a
 copy of this value.
+
+#### `externalCopy.dispose()`
+
+Releases the reference to this copy. If there are other references to this copy elsewhere the copy
+will still remain in memory, but this handle will no longer be active. Disposing ExternalCopy
+instances isn't super important, v8 is a lot better at cleaning these up automatically because
+there's no inter-isolate dependencies.
+
 
 EXAMPLES
 --------

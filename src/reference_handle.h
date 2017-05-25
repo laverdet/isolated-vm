@@ -68,6 +68,15 @@ class ReferenceHandle : public TransferableHandle {
 			}
 		}
 
+		/**
+		 * Just throws if this handle is disposed
+		 */
+		void CheckDisposed() {
+			if (reference.get() == nullptr) {
+				throw js_generic_error("Reference is disposed");
+			}
+		}
+
 	public:
 		ReferenceHandle(
 			shared_ptr<ShareablePersistent<Value>> reference,
@@ -86,6 +95,7 @@ class ReferenceHandle : public TransferableHandle {
 				"Reference", Parameterize<decltype(New), New>, 1,
 				"deref", Parameterize<decltype(&ReferenceHandle::Deref), &ReferenceHandle::Deref>, 0,
 				"derefInto", Parameterize<decltype(&ReferenceHandle::DerefInto), &ReferenceHandle::DerefInto>, 0,
+				"dispose", Parameterize<decltype(&ReferenceHandle::Dispose), &ReferenceHandle::Dispose>, 0,
 				"copy", Parameterize<decltype(&ReferenceHandle::Copy<true>), &ReferenceHandle::Copy<true>>, 1,
 				"copySync", Parameterize<decltype(&ReferenceHandle::Copy<false>), &ReferenceHandle::Copy<false>>, 1,
 				"get", Parameterize<decltype(&ReferenceHandle::Get<true>), &ReferenceHandle::Get<true>>, 1,
@@ -120,6 +130,7 @@ class ReferenceHandle : public TransferableHandle {
 		static void TypeOfGetter(Local<String> property, const PropertyCallbackInfo<Value>& info) {
 			// TODO: This will crash if someone steals the getter and applies another object to it
 			ReferenceHandle& that = *dynamic_cast<ReferenceHandle*>(Unwrap(info.This()));
+			that.CheckDisposed();
 			switch (that.type_of) {
 				case TypeOf::Null:
 					info.GetReturnValue().Set(v8_string("null"));
@@ -149,6 +160,7 @@ class ReferenceHandle : public TransferableHandle {
 		 * Attempt to return this handle to the current context.
 		 */
 		Local<Value> Deref() {
+			CheckDisposed();
 			if (reference->GetIsolate() != Isolate::GetCurrent()) {
 				throw js_type_error("Cannot dereference this from current isolate");
 			}
@@ -159,7 +171,18 @@ class ReferenceHandle : public TransferableHandle {
 		 * Return a handle which will dereference itself when passing into another isolate.
 		 */
 		Local<Value> DerefInto() {
+			CheckDisposed();
 			return ClassHandle::NewInstance<DereferenceHandle>(reference);
+		}
+
+		/**
+		 * Release this reference.
+		 */
+		Local<Value> Dispose() {
+			CheckDisposed();
+			reference.reset();
+			context.reset();
+			return Undefined(Isolate::GetCurrent());
 		}
 
 		/**
@@ -167,7 +190,8 @@ class ReferenceHandle : public TransferableHandle {
 		 */
 		template <bool async>
 		Local<Value> Copy() {
-			return ThreePhaseRunner<async>(reference->GetIsolate(), []() {
+			return ThreePhaseRunner<async>(reference->GetIsolate(), [this]() {
+				CheckDisposed();
 				return std::make_tuple();
 			}, [this] () {
 				Local<Context> context = this->context->Deref();
@@ -184,7 +208,8 @@ class ReferenceHandle : public TransferableHandle {
 		 */
 		template <bool async>
 		Local<Value> Get(Local<Value> key_handle) {
-			return ThreePhaseRunner<async>(reference->GetIsolate(), [&key_handle]() {
+			return ThreePhaseRunner<async>(reference->GetIsolate(), [this, &key_handle]() {
+				CheckDisposed();
 				shared_ptr<ExternalCopy> key = ExternalCopy::CopyIfPrimitive(key_handle);
 				if (key.get() == nullptr) {
 					throw js_type_error("Invalid `key`");
@@ -212,6 +237,7 @@ class ReferenceHandle : public TransferableHandle {
 		template <bool async>
 		Local<Value> Set(Local<Value> key_handle, Local<Value> val_handle) {
 			return ThreePhaseRunner<async>(reference->GetIsolate(), [this, &key_handle, &val_handle]() {
+				CheckDisposed();
 				shared_ptr<ExternalCopy> key = ExternalCopy::CopyIfPrimitive(key_handle);
 				if (key.get() == nullptr) {
 					throw js_type_error("Invalid `key`");
@@ -234,11 +260,15 @@ class ReferenceHandle : public TransferableHandle {
 		 * Call a function, like Function.prototype.apply
 		 */
 		template <bool async>
-		Local<Value> Apply(Local<Value> recv_handle, MaybeLocal<Array> maybe_arguments) {
+		Local<Value> Apply(MaybeLocal<Value> recv_handle, MaybeLocal<Array> maybe_arguments) {
 			return ThreePhaseRunner<async>(reference->GetIsolate(), [this, &recv_handle, &maybe_arguments]() {
+				CheckDisposed();
 
 				// Get receiver, holder, this, whatever
-				auto recv = shared_ptr<Transferable>(Transferable::TransferOut(recv_handle));
+				shared_ptr<Transferable> recv;
+				if (!recv_handle.IsEmpty()) {
+					recv = shared_ptr<Transferable>(Transferable::TransferOut(recv_handle.ToLocalChecked()));
+				}
 
 				// Externalize all arguments
 				std::vector<shared_ptr<Transferable>> argv;

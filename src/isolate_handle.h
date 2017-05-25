@@ -98,35 +98,39 @@ class IsolateHandle : public TransferableHandle {
 				size_t my_heap;
 				size_t next_check;
 
-				void Update(const size_t length) {
+				bool Check(const size_t length) {
 					if (v8_heap + my_heap + length > next_check) {
 						HeapStatistics heap_statistics;
 						Isolate::GetCurrent()->GetHeapStatistics(&heap_statistics);
 						v8_heap = heap_statistics.total_heap_size();
+						if (v8_heap + my_heap + length > limit) {
+							return false;
+						}
 						next_check = v8_heap + my_heap + length + 1024 * 1024;
 					}
+					if (v8_heap + my_heap + length > limit) {
+						return false;
+					}
+					my_heap += length;
+					return true;
 				}
 
 			public:
 				LimitedAllocator(size_t limit) : limit(limit), v8_heap(1024 * 1024 * 4), my_heap(0), next_check(1024 * 1024) {}
 
 				virtual void* Allocate(size_t length) {
-					Update(length);
-					if (v8_heap + my_heap + length > limit) {
-						return nullptr;
-					} else {
-						my_heap += length;
+					if (Check(length)) {
 						return calloc(length, 1);
+					} else {
+						return nullptr;
 					}
 				}
 
 				virtual void* AllocateUninitialized(size_t length) {
-					Update(length);
-					if (v8_heap + my_heap + length > limit) {
-						return nullptr;
-					} else {
-						my_heap += length;
+					if (Check(length)) {
 						return malloc(length);
+					} else {
+						return nullptr;
 					}
 				}
 
@@ -152,7 +156,7 @@ class IsolateHandle : public TransferableHandle {
 				"compileScriptSync", Parameterize<decltype(&IsolateHandle::CompileScript<false>), &IsolateHandle::CompileScript<false>>, 1,
 				"createContext", Parameterize<decltype(&IsolateHandle::CreateContext<true>), &IsolateHandle::CreateContext<true>>, 0,
 				"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContext<false>), &IsolateHandle::CreateContext<false>>, 0,
-				"disposeSync", Parameterize<decltype(&IsolateHandle::DisposeSync), &IsolateHandle::DisposeSync>, 0
+				"dispose", Parameterize<decltype(&IsolateHandle::Dispose), &IsolateHandle::Dispose>, 0
 			));
 			tmpl->Set(
 				v8_string("createSnapshot"),
@@ -166,25 +170,24 @@ class IsolateHandle : public TransferableHandle {
 		 */
 		static unique_ptr<ClassHandle> New(MaybeLocal<Object> maybe_options) {
 			Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
-			unique_ptr<ArrayBuffer::Allocator> allocator_ptr;
 			shared_ptr<ExternalCopyArrayBuffer> snapshot_blob;
 			ResourceConstraints rc;
+			size_t memory_limit = 128;
 
 			// Parse options
 			if (!maybe_options.IsEmpty()) {
 				Local<Object> options = maybe_options.ToLocalChecked();
 
-				// Set memory limits
+				// Check memory limits
 				Local<Value> maybe_memory_limit = Unmaybe(options->Get(context, v8_symbol("memoryLimit")));
 				if (!maybe_memory_limit->IsUndefined()) {
 					if (!maybe_memory_limit->IsNumber()) {
-						throw js_type_error("`memoryLimit` must be a number");
+						throw js_generic_error("`memoryLimit` must be a number");
 					}
-					size_t memory_limit = maybe_memory_limit.As<Number>()->Value();
-					rc.set_max_semi_space_size(std::pow(2, std::min(sizeof(void*) >= 8 ? 4 : 3, (int)(memory_limit / 128))));
-					rc.set_max_old_space_size(memory_limit);
-					rc.set_max_executable_size(memory_limit * 0.75 + 0.5);
-					allocator_ptr.reset(new LimitedAllocator(memory_limit * 1024 * 1024));
+					memory_limit = maybe_memory_limit.As<Number>()->Value();
+					if (memory_limit < 8) {
+						throw js_generic_error("`memoryLimit` must be at least 8");
+					}
 				}
 
 				// Set snapshot
@@ -204,13 +207,14 @@ class IsolateHandle : public TransferableHandle {
 				}
 			}
 
-			// We need an array allocator
-			if (allocator_ptr.get() == nullptr) {
-				allocator_ptr.reset(ArrayBuffer::Allocator::NewDefaultAllocator());
-			}
+			// Set memory limit
+			rc.set_max_semi_space_size(std::pow(2, std::min(sizeof(void*) >= 8 ? 4 : 3, (int)(memory_limit / 128))));
+			rc.set_max_old_space_size(memory_limit * 1.25);
+			rc.set_max_executable_size(memory_limit * 0.75 + 0.5);
+			auto allocator_ptr = unique_ptr<ArrayBuffer::Allocator>(new LimitedAllocator(memory_limit * 1024 * 1024));
 
 			// Return isolate handle
-			return std::make_unique<IsolateHandle>(std::make_shared<ShareableIsolate>(rc, std::move(allocator_ptr), std::move(snapshot_blob)));
+			return std::make_unique<IsolateHandle>(std::make_shared<ShareableIsolate>(rc, std::move(allocator_ptr), std::move(snapshot_blob), memory_limit));
 		}
 
 		virtual unique_ptr<Transferable> TransferOut() {
@@ -265,10 +269,7 @@ class IsolateHandle : public TransferableHandle {
 		/**
 		 * Dispose an isolate
 		 */
-		Local<Value> DisposeSync() {
-			if (Locker::IsLocked(*isolate)) {
-				throw js_generic_error("Cannot dispose entered isolate");
-			}
+		Local<Value> Dispose() {
 			isolate->Dispose();
 			return Undefined(Isolate::GetCurrent());
 		}

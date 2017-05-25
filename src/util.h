@@ -20,7 +20,7 @@ inline v8::Local<v8::String> v8_symbol(const char* string) {
 /**
  * JS + C++ exception, use with care
  */
-class js_error_base {};
+class js_error_base : public std::exception {};
 
 template <v8::Local<v8::Value> (*F)(v8::Local<v8::String>)>
 struct js_error : public js_error_base {

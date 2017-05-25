@@ -35,8 +35,25 @@ class ExternalCopyHandle : public TransferableHandle {
 				}
 		};
 
+		/**
+		 * Just throws if this handle is disposed
+		 */
+		void CheckDisposed() {
+			if (value.get() == nullptr) {
+				throw js_generic_error("Copy is disposed");
+			}
+		}
+
 	public:
-		ExternalCopyHandle(shared_ptr<ExternalCopy> value) : value(value) {}
+		ExternalCopyHandle(shared_ptr<ExternalCopy> value) : value(value) {
+			Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(value->Size());
+		}
+
+		virtual ~ExternalCopyHandle() {
+			if (value.get() != nullptr) {
+				Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-value->Size());
+			}
+		}
 
 		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
 			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
@@ -47,7 +64,8 @@ class ExternalCopyHandle : public TransferableHandle {
 			return Inherit<TransferableHandle>(MakeClass(
 				"ExternalCopy", Parameterize<decltype(New), New>, 1,
 				"copy", Parameterize<decltype(&ExternalCopyHandle::Copy), &ExternalCopyHandle::Copy>, 0,
-				"copyInto", Parameterize<decltype(&ExternalCopyHandle::CopyInto), &ExternalCopyHandle::CopyInto>, 0
+				"copyInto", Parameterize<decltype(&ExternalCopyHandle::CopyInto), &ExternalCopyHandle::CopyInto>, 0,
+				"dispose", Parameterize<decltype(&ExternalCopyHandle::Dispose), &ExternalCopyHandle::Dispose>, 0
 			));
 		}
 
@@ -60,11 +78,20 @@ class ExternalCopyHandle : public TransferableHandle {
 		}
 
 		Local<Value> Copy() {
+			CheckDisposed();
 			return value->CopyInto();
 		}
 
 		Local<Value> CopyInto() {
+			CheckDisposed();
 			return ClassHandle::NewInstance<ExternalCopyIntoHandle>(value);
+		}
+
+		Local<Value> Dispose() {
+			CheckDisposed();
+			Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-value->Size());
+			value.reset();
+			return Undefined(Isolate::GetCurrent());
 		}
 
 		shared_ptr<ExternalCopy> Value() {

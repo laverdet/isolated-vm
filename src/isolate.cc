@@ -65,6 +65,17 @@ class LibraryHandle : public TransferableHandle {
 shared_ptr<ShareableIsolate> root_isolate;
 extern "C"
 void init(Local<Object> target) {
+
+	// These flags will override limits set through code. Since the main node isolate is already
+	// created we can reset these so they won't affect the isolates we make.
+	int argc = 6;
+	const char* flags[] = {
+		"--max-semi-space-size", "0",
+		"--max-old-space-size", "0",
+		"--max-executable-size", "0"
+	};
+	V8::SetFlagsFromCommandLine(&argc, (char**)flags, false);
+
 	Isolate* isolate = Isolate::GetCurrent();
 	root_isolate = make_shared<ShareableIsolate>(isolate, isolate->GetCurrentContext());
 	target->Set(v8_symbol("ivm"), LibraryHandle::Get());

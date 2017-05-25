@@ -20,6 +20,7 @@ class ExternalCopy : public Transferable {
 	public:
 		virtual ~ExternalCopy() {}
 		virtual Local<Value> CopyInto() const = 0;
+		virtual size_t Size() const = 0;
 
 		/**
 		 * `Copy` may throw a v8 exception if JSON.stringify(value) throws
@@ -53,6 +54,10 @@ class ExternalCopyTemplate : public ExternalCopy {
 
 		virtual Local<Value> CopyInto() const {
 			return T::New(Isolate::GetCurrent(), value);
+		}
+
+		virtual size_t Size() const {
+			return sizeof(V);
 		}
 };
 
@@ -99,6 +104,10 @@ class ExternalCopyTemplate<String, shared_ptr<vector<uint16_t>>> : public Extern
 				return String::Empty(Isolate::GetCurrent());
 			}
 		}
+
+		virtual size_t Size() const {
+			return value->size() * sizeof(uint16_t);
+		}
 };
 
 typedef ExternalCopyTemplate<String, shared_ptr<vector<uint16_t>>> ExternalCopyString;
@@ -116,6 +125,10 @@ class ExternalCopyJSON : public ExternalCopy {
 
 		virtual Local<Value> CopyInto() const {
 			return JSON::Parse(Isolate::GetCurrent()->GetCurrentContext(), Local<String>::Cast(blob.CopyInto())).ToLocalChecked();
+		}
+
+		virtual size_t Size() const {
+			return blob.Size();
 		}
 };
 
@@ -163,6 +176,12 @@ class ExternalCopyError : public ExternalCopy {
 			}
 			return handle;
 		}
+
+		virtual size_t Size() const {
+			return
+				(message.get() == nullptr ? 0 : message->Size()) +
+				(stack.get() == nullptr ? 0 : stack->Size());
+		}
 };
 
 /**
@@ -173,12 +192,20 @@ class ExternalCopyNull : public ExternalCopy {
 		virtual Local<Value> CopyInto() const {
 			return Null(Isolate::GetCurrent());
 		}
+
+		virtual size_t Size() const {
+			return 0;
+		}
 };
 
 class ExternalCopyUndefined : public ExternalCopy {
 	public:
 		virtual Local<Value> CopyInto() const {
 			return Undefined(Isolate::GetCurrent());
+		}
+
+		virtual size_t Size() const {
+			return 0;
 		}
 };
 
@@ -194,6 +221,10 @@ class ExternalCopyDate : public ExternalCopy {
 
 		virtual Local<Value> CopyInto() const {
 			return Date::New(Isolate::GetCurrent(), value);
+		}
+
+		virtual size_t Size() const {
+			return sizeof(double);
 		}
 };
 
@@ -218,6 +249,10 @@ class ExternalCopyArrayBuffer : public ExternalCopy {
 			Local<ArrayBuffer> array_buffer(ArrayBuffer::New(Isolate::GetCurrent(), length));
 			std::memcpy(array_buffer->GetContents().Data(), value.get(), length);
 			return array_buffer;
+		}
+
+		virtual size_t Size() const {
+			return length;
 		}
 
 		const void* Data() const {
@@ -268,6 +303,10 @@ class ExternalCopyArrayBufferView : public ExternalCopy {
 				case ViewType::DataView:
 					return DataView::New(buffer, 0, length);
 			}
+		}
+
+		virtual size_t Size() const {
+			return buffer.Size();
 		}
 };
 

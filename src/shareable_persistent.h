@@ -15,12 +15,19 @@ template <class T>
 class ShareablePersistent {
 	private:
 		std::shared_ptr<ShareableIsolate> isolate;
-		Persistent<T> handle;
+		std::unique_ptr<Persistent<T>> handle;
 
 	public:
 		ShareablePersistent(Local<T> handle) :
 			isolate(ShareableIsolate::GetCurrent().GetShared()),
-			handle(*isolate, handle) {
+			handle(std::make_unique<Persistent<T>>(*isolate, handle)) {
+		}
+
+		~ShareablePersistent() {
+			Persistent<T>* handle = this->handle.release();
+			if (!isolate->ScheduleHandleTask(true, [handle]() { handle->Reset(); delete handle; })) {
+				delete handle;
+			}
 		}
 
 		/**
@@ -28,18 +35,7 @@ class ShareablePersistent {
 		 * locked.
 		 */
 		Local<T> Deref() const {
-			return Local<T>::New(*isolate, handle);
-		}
-
-		/**
-		 * Operators which will return the underlying Persistent<> handle
-		 */
-		Persistent<T>& operator*() const {
-			return handle;
-		}
-
-		Persistent<T>* operator->() const {
-			return handle;
+			return Local<T>::New(*isolate, *handle);
 		}
 
 		/**

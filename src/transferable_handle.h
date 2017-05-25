@@ -16,7 +16,6 @@ class TransferableHandle : public ClassHandle {
 			return MakeClass("Transferable", nullptr, 0);
 		}
 
-		~TransferableHandle() {}
 		virtual std::unique_ptr<Transferable> TransferOut() = 0;
 };
 
