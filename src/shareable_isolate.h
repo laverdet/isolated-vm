@@ -400,14 +400,14 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 						}
 					}
 					// Execute handle tasks
-					do {
+					while (!handle_tasks.empty()) {
 						auto task = std::move(handle_tasks.front());
 						(*task)();
 						handle_tasks.pop();
-					} while (!handle_tasks.empty());
+					}
 
 					// Execute regular tasks
-					do {
+					while (!tasks.empty()) {
 						if (that.hit_memory_limit) {
 							// Regular tasks can be thrown away w/o memory leaks
 							tasks = std::queue<unique_ptr<std::function<void()>>>();
@@ -416,7 +416,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 						auto task = std::move(tasks.front());
 						(*task)();
 						tasks.pop();
-					} while (!tasks.empty());
+					}
 				}
 			}
 			// If we got here it means we're supposed to throw away this isolate due to an OOM memory
