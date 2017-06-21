@@ -39,31 +39,35 @@ class ClassHandle {
 		 * Below is the Parameterize<> template magic
 		 */
 		// These two templates will peel arguments off and run them through ConvertParam<T>
-		template <int O, typename R, typename ...Args>
-		static inline R ParameterizeHelper(const FunctionCallbackInfo<Value>& info, R(*fn)(Args...), Args... args) {
-			return fn(args...);
+		template <int O, typename FnT, typename R, typename ConvertedArgsT>
+		static inline R ParameterizeHelper(FnT fn, ConvertedArgsT convertedArgs, const FunctionCallbackInfo<Value>& info) {
+			return apply_from_tuple(fn, convertedArgs);
 		}
 
-		template <int O, typename R, typename T, typename ...Rest, typename ...Args>
-		static inline R ParameterizeHelper(const FunctionCallbackInfo<Value>& info, R(*fn)(Args..., T, Rest...), Args... args) {
-			return ParameterizeHelper<O, R, Rest...>(
-				info, fn, args...,
-				ConvertParam<T>::Convert((int)(sizeof...(Args)) + O, (int)(sizeof...(Args) + sizeof...(Rest)) + O + 1, info)
-			);
+		template <int O, typename FnT, typename R, typename ConvertedArgsT, typename T, typename... ConversionArgsRest>
+		static inline R ParameterizeHelper(FnT fn, ConvertedArgsT convertedArgs, const FunctionCallbackInfo<Value>& info) {
+			auto t = std::tuple_cat(convertedArgs, std::make_tuple(
+				ConvertParam<T>::Convert(
+					(int)(std::tuple_size<ConvertedArgsT>::value) + O,
+					(int)(sizeof...(ConversionArgsRest) + std::tuple_size<ConvertedArgsT>::value) + O + 1,
+					info
+				)
+			));
+			return ParameterizeHelper<O, FnT, R, decltype(t), ConversionArgsRest...>(fn, t, info);
 		}
 
 		// Regular function that just returns a Local<Value>
 		template <int O, typename ...Args>
 		static inline Local<Value> ParameterizeHelperStart(const FunctionCallbackInfo<Value>& info, Local<Value>(*fn)(Args...)) {
-			return ParameterizeHelper<O, Local<Value>, Args...>(info, fn);
+			return ParameterizeHelper<O, Local<Value>(*)(Args...), Local<Value>, std::tuple<>, Args...>(fn, std::tuple<>(), info);
 		}
 
-		// If a Parameterize'd function returns a unique_ptr we assume it's a ClassHandle constructor
+		// Constructor functions need to pair the C++ instance to the v8 handle
 		template <int O, typename R, typename ...Args>
-		static inline Local<Value> ParameterizeHelperStart(const FunctionCallbackInfo<Value>& info, std::unique_ptr<R>(*fn)(Args...)) {
+		static inline Local<Value> ParameterizeHelperCtorStart(const FunctionCallbackInfo<Value>& info, std::unique_ptr<R>(*fn)(Args...)) {
 			RequireConstructorCall(info);
-			std::unique_ptr<R> result = ParameterizeHelper<O, std::unique_ptr<R>, Args...>(info, fn);
-			if (result.get()) {
+			std::unique_ptr<R> result = ParameterizeHelper<O, std::unique_ptr<R>(*)(Args...), std::unique_ptr<R>, std::tuple<>, Args...>(fn, std::tuple<>(), info);
+			if (result.get() != nullptr) {
 				Local<Object> handle = info.This().As<Object>();
 				Wrap(std::move(result), handle);
 				return handle;
@@ -73,10 +77,22 @@ class ClassHandle {
 		}
 
 		// Main entry point for parameterized functions
-		template <int ii, typename T, T F>
+		template <int O, typename T, T F>
 		static inline void ParameterizeEntry(const FunctionCallbackInfo<Value>& info) {
 			try {
-				Local<Value> result = ParameterizeHelperStart<ii>(info, F);
+				Local<Value> result = ParameterizeHelperStart<O>(info, F);
+				if (result.IsEmpty()) {
+					throw std::runtime_error("Member function returned empty Local<> but did not set exception");
+				}
+				info.GetReturnValue().Set(result);
+			} catch (const js_error_base& err) {}
+		}
+
+		// Main entry point for parameterized constructors
+		template <int O, typename T, T F>
+		static inline void ParameterizeCtorEntry(const FunctionCallbackInfo<Value>& info) {
+			try {
+				Local<Value> result = ParameterizeHelperCtorStart<O>(info, F);
 				if (result.IsEmpty()) {
 					throw std::runtime_error("Member function returned empty Local<> but did not set exception");
 				}
@@ -91,7 +107,6 @@ class ClassHandle {
 		template <typename R, typename ...Args>
 		struct MethodCast<R(Args...)> {
 			typedef R(*Type)(Args...);
-			static constexpr int O = 0;
 			template <R(*F)(Args...)>
 			static R Invoke(Args... args) {
 				return (*F)(args...);
@@ -101,7 +116,6 @@ class ClassHandle {
 		template<class C, class R, class... Args>
 		struct MethodCast<R(C::*)(Args...)> : public MethodCast<R(Args...)> {
 			typedef R(*Type)(C*, Args...);
-			static constexpr int O = -1;
 			template <R(C::*F)(Args...)>
 			static R Invoke(C* that, Args... args) {
 				return (that->*F)(args...);
@@ -138,7 +152,8 @@ class ClassHandle {
 		static void Wrap(std::unique_ptr<ClassHandle> ptr, Local<Object> handle) {
 			handle->SetAlignedPointerInInternalField(0, ptr.get());
 			ptr->handle.Reset(Isolate::GetCurrent(), handle);
-			ptr->SetWeak<ClassHandle, WeakCallback>(ptr.release());
+			ClassHandle* ptr_raw = ptr.release();
+			ptr_raw->SetWeak<ClassHandle, WeakCallback>(ptr_raw);
 		}
 
 		/**
@@ -185,7 +200,17 @@ class ClassHandle {
 		 */
 		template <typename T, T F>
 		static inline void Parameterize(const FunctionCallbackInfo<Value>& info) {
-			ParameterizeEntry<MethodCast<T>::O, typename MethodCast<T>::Type, MethodCast<T>::template Invoke<F>>(info);
+			ParameterizeEntry<-1, typename MethodCast<T>::Type, MethodCast<T>::template Invoke<F>>(info);
+		}
+
+		template <typename T, T F>
+		static inline void ParameterizeCtor(const FunctionCallbackInfo<Value>& info) {
+			ParameterizeCtorEntry<0, T, F>(info);
+		}
+
+		template <typename T, T F>
+		static inline void ParameterizeStatic(const FunctionCallbackInfo<Value>& info) {
+			ParameterizeEntry<0, T, F>(info);
 		}
 
 	public:

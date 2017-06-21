@@ -92,7 +92,7 @@ class ReferenceHandle : public TransferableHandle {
 
 		static Local<FunctionTemplate> Definition() {
 			Local<FunctionTemplate> tmpl = Inherit<TransferableHandle>(MakeClass(
-				"Reference", Parameterize<decltype(New), New>, 1,
+				"Reference", ParameterizeCtor<decltype(&New), &New>, 1,
 				"deref", Parameterize<decltype(&ReferenceHandle::Deref), &ReferenceHandle::Deref>, 0,
 				"derefInto", Parameterize<decltype(&ReferenceHandle::DerefInto), &ReferenceHandle::DerefInto>, 0,
 				"dispose", Parameterize<decltype(&ReferenceHandle::Dispose), &ReferenceHandle::Dispose>, 0,

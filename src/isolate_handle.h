@@ -151,7 +151,7 @@ class IsolateHandle : public TransferableHandle {
 
 		static Local<FunctionTemplate> Definition() {
 			auto tmpl = Inherit<TransferableHandle>(MakeClass(
-			 "Isolate", Parameterize<decltype(New), New>, 1,
+			 "Isolate", ParameterizeCtor<decltype(&New), &New>, 1,
 				"compileScript", Parameterize<decltype(&IsolateHandle::CompileScript<true>), &IsolateHandle::CompileScript<true>>, 1,
 				"compileScriptSync", Parameterize<decltype(&IsolateHandle::CompileScript<false>), &IsolateHandle::CompileScript<false>>, 1,
 				"createContext", Parameterize<decltype(&IsolateHandle::CreateContext<true>), &IsolateHandle::CreateContext<true>>, 0,
@@ -160,7 +160,7 @@ class IsolateHandle : public TransferableHandle {
 			));
 			tmpl->Set(
 				v8_string("createSnapshot"),
-				FunctionTemplate::New(Isolate::GetCurrent(), Parameterize<decltype(CreateSnapshot), CreateSnapshot>, v8_string("createSnapshot"), Local<v8::Signature>(), 2)
+				FunctionTemplate::New(Isolate::GetCurrent(), ParameterizeStatic<decltype(&CreateSnapshot), &CreateSnapshot>, v8_string("createSnapshot"), Local<v8::Signature>(), 2)
 			);
 			return tmpl;
 		}
@@ -200,7 +200,7 @@ class IsolateHandle : public TransferableHandle {
 						throw js_type_error("`snapshot` must be an ExternalCopy to ArrayBuffer");
 					}
 					ExternalCopyHandle& copy_handle = *dynamic_cast<ExternalCopyHandle*>(ClassHandle::Unwrap(snapshot_handle.As<Object>()));
-					snapshot_blob = std::dynamic_pointer_cast<ExternalCopyArrayBuffer>(copy_handle.Value());
+					snapshot_blob = std::dynamic_pointer_cast<ExternalCopyArrayBuffer>(copy_handle.GetValue());
 					if (snapshot_blob.get() == nullptr) {
 						throw js_type_error("`snapshot` must be an ExternalCopy to ArrayBuffer");
 					}

@@ -62,7 +62,7 @@ class ExternalCopyHandle : public TransferableHandle {
 
 		static Local<FunctionTemplate> Definition() {
 			return Inherit<TransferableHandle>(MakeClass(
-				"ExternalCopy", Parameterize<decltype(New), New>, 1,
+				"ExternalCopy", ParameterizeCtor<decltype(&New), &New>, 1,
 				"copy", Parameterize<decltype(&ExternalCopyHandle::Copy), &ExternalCopyHandle::Copy>, 0,
 				"copyInto", Parameterize<decltype(&ExternalCopyHandle::CopyInto), &ExternalCopyHandle::CopyInto>, 0,
 				"dispose", Parameterize<decltype(&ExternalCopyHandle::Dispose), &ExternalCopyHandle::Dispose>, 0
@@ -94,7 +94,7 @@ class ExternalCopyHandle : public TransferableHandle {
 			return Undefined(Isolate::GetCurrent());
 		}
 
-		shared_ptr<ExternalCopy> Value() {
+		shared_ptr<ExternalCopy> GetValue() {
 			return value;
 		}
 };

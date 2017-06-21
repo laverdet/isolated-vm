@@ -7,7 +7,7 @@
 
 #include <memory>
 #include <cstdlib>
-#include <string>
+#include <cstring>
 #include <vector>
 
 namespace ivm {
