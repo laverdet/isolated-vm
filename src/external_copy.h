@@ -302,6 +302,8 @@ class ExternalCopyArrayBufferView : public ExternalCopy {
 					return Float64Array::New(buffer, 0, length);
 				case ViewType::DataView:
 					return DataView::New(buffer, 0, length);
+				default:
+					throw std::exception();
 			}
 		}
 

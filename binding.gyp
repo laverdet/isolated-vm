@@ -11,6 +11,11 @@
 					'VCCLCompilerTool': {
 						'Optimization': 3,
 						'FavorSizeOrSpeed': 1,
+						'ExceptionHandling': '1',
+						'RuntimeTypeInfo': 'true',
+						'AdditionalOptions': [
+							'/GR'
+						],
 					},
 				},
 			},

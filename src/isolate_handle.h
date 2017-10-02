@@ -184,7 +184,7 @@ class IsolateHandle : public TransferableHandle {
 					if (!maybe_memory_limit->IsNumber()) {
 						throw js_generic_error("`memoryLimit` must be a number");
 					}
-					memory_limit = maybe_memory_limit.As<Number>()->Value();
+					memory_limit = (size_t)maybe_memory_limit.As<Number>()->Value();
 					if (memory_limit < 8) {
 						throw js_generic_error("`memoryLimit` must be at least 8");
 					}
@@ -208,9 +208,9 @@ class IsolateHandle : public TransferableHandle {
 			}
 
 			// Set memory limit
-			rc.set_max_semi_space_size(std::pow(2, std::min(sizeof(void*) >= 8 ? 4 : 3, (int)(memory_limit / 128))));
-			rc.set_max_old_space_size(memory_limit * 1.25);
-			rc.set_max_executable_size(memory_limit * 0.75 + 0.5);
+			rc.set_max_semi_space_size((int)std::pow(2, std::min(sizeof(void*) >= 8 ? 4 : 3, (int)(memory_limit / 128))));
+			rc.set_max_old_space_size((int)(memory_limit * 1.25));
+			rc.set_max_executable_size((int)(memory_limit * 0.75 + 0.5));
 			auto allocator_ptr = unique_ptr<ArrayBuffer::Allocator>(new LimitedAllocator(memory_limit * 1024 * 1024));
 
 			// Return isolate handle

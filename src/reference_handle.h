@@ -296,11 +296,12 @@ class ReferenceHandle : public TransferableHandle {
 					throw js_type_error("Reference is not a function");
 				}
 				Local<Value> recv_inner = recv->TransferIn();
-				Local<Value> argv_inner[argv.size()];
+				std::vector<Local<Value>> argv_inner;
+				argv_inner.reserve(argv.size());
 				for (size_t ii = 0; ii < argv.size(); ++ii) {
-					argv_inner[ii] = argv[ii]->TransferIn();
+					argv_inner.emplace_back(argv[ii]->TransferIn());
 				}
-				Local<Value> result = Unmaybe(fn.As<Function>()->Call(context, recv_inner, argv.size(), argv_inner));
+				Local<Value> result = Unmaybe(fn.As<Function>()->Call(context, recv_inner, argv.size(), &argv_inner[0]));
 				return shared_ptr<Transferable>(Transferable::TransferOut(result));
 			}, [](shared_ptr<Transferable> value) {
 

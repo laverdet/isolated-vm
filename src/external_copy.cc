@@ -56,6 +56,7 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value) {
 	} else {
 		// ???
 		assert(false);
+		throw std::exception();
 	}
 }
 

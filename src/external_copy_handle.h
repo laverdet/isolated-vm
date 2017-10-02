@@ -51,7 +51,7 @@ class ExternalCopyHandle : public TransferableHandle {
 
 		virtual ~ExternalCopyHandle() {
 			if (value.get() != nullptr) {
-				Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-value->Size());
+				Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-(ssize_t)value->Size());
 			}
 		}
 
@@ -89,7 +89,7 @@ class ExternalCopyHandle : public TransferableHandle {
 
 		Local<Value> Dispose() {
 			CheckDisposed();
-			Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-value->Size());
+			Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-(ssize_t)value->Size());
 			value.reset();
 			return Undefined(Isolate::GetCurrent());
 		}

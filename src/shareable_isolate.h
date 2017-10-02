@@ -455,6 +455,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				try {
 					return CheckMemoryLimit(fn(std::forward<Args>(args)...));
 				} catch (const js_error_base& cc_error) {
+					(void)cc_error;
 					// memory errors will be handled below
 					if (!hit_memory_limit) {
 						// `stack` getter on Error needs a Context..
@@ -556,6 +557,7 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 						try {
 							Unmaybe(promise_local->Resolve(context_local, apply_from_tuple(std::move(fn3), std::move(fn2_result)))); // <-- fn3() is called here
 						} catch (js_error_base& cc_error) {
+							(void)cc_error;
 							// An error was caught while running fn3()
 							assert(try_catch.HasCaught());
 							// If Reject fails then I think that's bad..
@@ -563,6 +565,7 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 						}
 					}, apply_from_tuple(std::move(fn2), std::move(fn1_result)), std::move(fn3)); // <-- fn2() is called here
 				} catch (js_error_base& cc_error) {
+					(void)cc_error;
 					// An error was caught while running fn2()
 					assert(try_catch.HasCaught());
 					Context::Scope context_scope(second_isolate.DefaultContext());
@@ -585,6 +588,7 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 				}
 			}, fn1(), std::move(fn2), std::move(fn3)); // <-- fn1() is called here
 		} catch (js_error_base& cc_error) {
+			(void)cc_error;
 			// An error was caught while running fn1()
 			assert(try_catch.HasCaught());
 			promise_local->Reject(context_local, try_catch.Exception());
@@ -601,8 +605,11 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 
 template <>
 MaybeLocal<FunctionTemplate> ShareableIsolate::IsolateSpecific<FunctionTemplate>::Deref() const;
+template MaybeLocal<FunctionTemplate> ShareableIsolate::IsolateSpecific<FunctionTemplate>::Deref() const;
 
 template <>
 void ShareableIsolate::IsolateSpecific<FunctionTemplate>::Reset(Local<FunctionTemplate> handle);
+template void ShareableIsolate::IsolateSpecific<FunctionTemplate>::Reset(Local<FunctionTemplate> handle);
+
 
 }

@@ -85,7 +85,9 @@ class ClassHandle {
 					throw std::runtime_error("Member function returned empty Local<> but did not set exception");
 				}
 				info.GetReturnValue().Set(result);
-			} catch (const js_error_base& err) {}
+			} catch (const js_error_base& err) {
+				(void)err;
+			}
 		}
 
 		// Main entry point for parameterized constructors
@@ -97,7 +99,9 @@ class ClassHandle {
 					throw std::runtime_error("Member function returned empty Local<> but did not set exception");
 				}
 				info.GetReturnValue().Set(result);
-			} catch (const js_error_base& err) {}
+			} catch (const js_error_base& err) {
+				(void)err;
+			}
 		}
 
 		// Helper which converts member functions to `Type(Class* that, Args...)`
