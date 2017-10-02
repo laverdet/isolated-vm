@@ -27,7 +27,10 @@
 			'cflags_cc': [ '-std=c++14' ],
 			'cflags_cc!': [ '-fno-exceptions', '-fno-rtti' ],
 			'conditions': [
-				[ 'OS == "win"', { 'defines': ['NOMINMAX'] } ],
+				[ 'OS == "win"',
+					{ 'defines': [ 'NOMINMAX' ] },
+					{ 'sources': [ 'src/array_buffer_shim.cc' ] },
+				],
 			],
 			'xcode_settings': {
 				'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',

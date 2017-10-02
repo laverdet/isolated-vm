@@ -591,7 +591,7 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 			(void)cc_error;
 			// An error was caught while running fn1()
 			assert(try_catch.HasCaught());
-			promise_local->Reject(context_local, try_catch.Exception());
+			Unmaybe(promise_local->Reject(context_local, try_catch.Exception()));
 			try_catch.Reset();
 		}
 		return promise_local->GetPromise();
