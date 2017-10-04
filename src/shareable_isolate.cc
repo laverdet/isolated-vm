@@ -1,4 +1,5 @@
 #include "shareable_isolate.h"
+#include <v8-platform.h>
 
 using namespace std;
 using namespace v8;
@@ -23,5 +24,7 @@ thread_pool_t ShareableIsolate::thread_pool(8);
 uv_async_t ShareableIsolate::root_async;
 std::thread::id ShareableIsolate::default_thread;
 int ShareableIsolate::uv_refs = 0;
+std::map<Isolate*, ShareableIsolate*> ShareableIsolate::isolate_map;
+std::mutex ShareableIsolate::lookup_mutex;
 
 }

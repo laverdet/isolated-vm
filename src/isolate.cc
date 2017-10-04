@@ -6,6 +6,7 @@
 #include "script_handle.h"
 #include "external_copy_handle.h"
 #include "reference_handle.h"
+#include "platform_delegate.h"
 
 #include <memory>
 
@@ -78,6 +79,7 @@ void init(Local<Object> target) {
 	Isolate* isolate = Isolate::GetCurrent();
 	root_isolate = make_shared<ShareableIsolate>(isolate, isolate->GetCurrentContext());
 	target->Set(v8_symbol("ivm"), LibraryHandle::Get());
+	PlatformDelegate::InitializeDelegate();
 }
 
 }

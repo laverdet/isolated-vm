@@ -33,6 +33,8 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		static uv_async_t root_async;
 		static std::thread::id default_thread;
 		static int uv_refs;
+		static std::map<Isolate*, ShareableIsolate*> isolate_map;
+		static std::mutex lookup_mutex;
 
 		Isolate* isolate;
 		Persistent<Context> default_context;
@@ -116,7 +118,8 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		 * not (even if T == void)
 		 */
 		template <typename T>
-		T CheckMemoryLimit(T value) {
+		T TaskWrapper(T value) {
+			ExecuteHandleTasks();
 			if (hit_memory_limit) {
 				throw js_error_base();
 			}
@@ -193,6 +196,10 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			uv_async_init(uv_default_loop(), &root_async, WorkerEntryRoot);
 			uv_unref((uv_handle_t*)&root_async);
 			default_thread = std::this_thread::get_id();
+			{
+				std::unique_lock<std::mutex> lock(lookup_mutex);
+				isolate_map.insert(std::make_pair(isolate, this));
+			}
 		}
 
 		/**
@@ -222,6 +229,10 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				startup_data.raw_size = snapshot_blob_ptr->Length();
 			}
 			isolate = Isolate::New(create_params);
+			{
+				std::unique_lock<std::mutex> lock(lookup_mutex);
+				isolate_map.insert(std::make_pair(isolate, this));
+			}
 			isolate->AddGCEpilogueCallback(GCEpilogueCallback);
 
 			// Create a default context for the library to use if needed
@@ -242,6 +253,8 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				lock.unlock();
 				Dispose();
 			}
+			std::unique_lock<std::mutex> other_lock(lookup_mutex);
+			isolate_map.erase(isolate_map.find(isolate));
 		}
 
 		/**
@@ -304,6 +317,21 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		}
 
 		/**
+		 * Given a v8 isolate this will find the ShareableIsolate instance, if any, that belongs to it.
+		 */
+		static ShareableIsolate* LookupIsolate(Isolate* isolate) {
+			{
+				std::unique_lock<std::mutex> lock(lookup_mutex);
+				auto it = isolate_map.find(isolate);
+				if (it == isolate_map.end()) {
+					return nullptr;
+				} else {
+					return it->second;
+				}
+			}
+		}
+
+		/**
 		 * Schedule complex work to run when this isolate is locked. If the isolate is already locked
 		 * the task will be run before unlocking, but after the current tasks have finished.
 		 */
@@ -348,14 +376,19 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 
 		void ExecuteHandleTasks() {
 			std::queue<unique_ptr<std::function<void()>>> handle_tasks;
-			{
-				std::unique_lock<std::mutex> lock(queue_mutex);
-				std::swap(handle_tasks, this->handle_tasks);
-			}
-			while (!handle_tasks.empty()) {
-				auto task = std::move(handle_tasks.front());
-				(*task)();
-				handle_tasks.pop();
+			while (true) {
+				{
+					std::unique_lock<std::mutex> lock(queue_mutex);
+					std::swap(handle_tasks, this->handle_tasks);
+				}
+				if (handle_tasks.empty()) {
+					return;
+				}
+				do {
+					auto task = std::move(handle_tasks.front());
+					(*task)();
+					handle_tasks.pop();
+				} while (!handle_tasks.empty());
 			}
 		}
 
@@ -377,6 +410,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 					{
 						std::unique_lock<std::mutex> lock(that.queue_mutex);
 						std::swap(tasks, that.tasks);
+						std::swap(handle_tasks, that.handle_tasks);
 						if (handle_tasks.empty() && tasks.empty()) {
 							that.status = Status::Waiting;
 							if (!pool_thread) {
@@ -399,6 +433,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 							return;
 						}
 					}
+
 					// Execute handle tasks
 					while (!handle_tasks.empty()) {
 						auto task = std::move(handle_tasks.front());
@@ -453,7 +488,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				TryCatch try_catch(isolate);
 				ExecuteHandleTasks();
 				try {
-					return CheckMemoryLimit(fn(std::forward<Args>(args)...));
+					return TaskWrapper(fn(std::forward<Args>(args)...));
 				} catch (const js_error_base& cc_error) {
 					(void)cc_error;
 					// memory errors will be handled below
@@ -466,6 +501,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				}
 			}
 			// If we get here we can assume an exception was thrown
+			ExecuteHandleTasks();
 			if (error.get()) {
 				(*current)->ThrowException(error->CopyInto());
 				throw js_error_base();
@@ -603,6 +639,9 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 	}
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winstantiation-after-specialization"
+// These instantiations make msvc correctly link the template specializations in shareable_isolate.cc, but clang whines about it
 template <>
 MaybeLocal<FunctionTemplate> ShareableIsolate::IsolateSpecific<FunctionTemplate>::Deref() const;
 template MaybeLocal<FunctionTemplate> ShareableIsolate::IsolateSpecific<FunctionTemplate>::Deref() const;
@@ -610,6 +649,6 @@ template MaybeLocal<FunctionTemplate> ShareableIsolate::IsolateSpecific<Function
 template <>
 void ShareableIsolate::IsolateSpecific<FunctionTemplate>::Reset(Local<FunctionTemplate> handle);
 template void ShareableIsolate::IsolateSpecific<FunctionTemplate>::Reset(Local<FunctionTemplate> handle);
-
+#pragma clang diagnostic pop
 
 }
