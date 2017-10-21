@@ -27,14 +27,23 @@ using std::unique_ptr;
  */
 class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 	private:
+		struct BookkeepingStatics {
+			/**
+			 * These statics are needed in the destructor to update bookkeeping information. The root
+			 * ShareableIsolate will be be destroyed when the module is being destroyed, and static members
+			 * may be destroyed before that happens. So we stash them here and wrap the whole in a
+			 * shared_ptr so we can ensure access to them even when the module is being torn down.
+			 */
+			std::map<Isolate*, ShareableIsolate*> isolate_map;
+			std::mutex lookup_mutex;
+		};
+		static shared_ptr<BookkeepingStatics> bookkeeping_statics_shared;
 		static thread_local ShareableIsolate* current;
 		static size_t specifics_count;
 		static thread_pool_t thread_pool;
 		static uv_async_t root_async;
 		static std::thread::id default_thread;
 		static int uv_refs;
-		static std::map<Isolate*, ShareableIsolate*> isolate_map;
-		static std::mutex lookup_mutex;
 
 		Isolate* isolate;
 		Persistent<Context> default_context;
@@ -49,6 +58,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		bool hit_memory_limit;
 		bool root;
 		HeapStatistics last_heap;
+		shared_ptr<BookkeepingStatics> bookkeeping_statics;
 
 		std::mutex exec_mutex; // mutex for execution
 		std::mutex queue_mutex; // mutex for queueing work
@@ -190,15 +200,16 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			life_cycle(LifeCycle::Normal),
 			status(Status::Waiting),
 			hit_memory_limit(false),
-			root(true) {
+			root(true),
+			bookkeeping_statics(bookkeeping_statics_shared) {
 			assert(current == nullptr);
 			current = this;
 			uv_async_init(uv_default_loop(), &root_async, WorkerEntryRoot);
 			uv_unref((uv_handle_t*)&root_async);
 			default_thread = std::this_thread::get_id();
 			{
-				std::unique_lock<std::mutex> lock(lookup_mutex);
-				isolate_map.insert(std::make_pair(isolate, this));
+				std::unique_lock<std::mutex> lock(bookkeeping_statics->lookup_mutex);
+				bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
 			}
 		}
 
@@ -217,7 +228,8 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			status(Status::Waiting),
 			memory_limit(memory_limit),
 			hit_memory_limit(false),
-			root(false) {
+			root(false),
+			bookkeeping_statics(bookkeeping_statics_shared) {
 
 			// Build isolate from create params
 			Isolate::CreateParams create_params;
@@ -230,8 +242,8 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			}
 			isolate = Isolate::New(create_params);
 			{
-				std::unique_lock<std::mutex> lock(lookup_mutex);
-				isolate_map.insert(std::make_pair(isolate, this));
+				std::unique_lock<std::mutex> lock(bookkeeping_statics->lookup_mutex);
+				bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
 			}
 			isolate->AddGCEpilogueCallback(GCEpilogueCallback);
 
@@ -253,8 +265,8 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				lock.unlock();
 				Dispose();
 			}
-			std::unique_lock<std::mutex> other_lock(lookup_mutex);
-			isolate_map.erase(isolate_map.find(isolate));
+			std::unique_lock<std::mutex> other_lock(bookkeeping_statics->lookup_mutex);
+			bookkeeping_statics->isolate_map.erase(bookkeeping_statics->isolate_map.find(isolate));
 		}
 
 		/**
@@ -321,9 +333,9 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		 */
 		static ShareableIsolate* LookupIsolate(Isolate* isolate) {
 			{
-				std::unique_lock<std::mutex> lock(lookup_mutex);
-				auto it = isolate_map.find(isolate);
-				if (it == isolate_map.end()) {
+				std::unique_lock<std::mutex> lock(bookkeeping_statics_shared->lookup_mutex);
+				auto it = bookkeeping_statics_shared->isolate_map.find(isolate);
+				if (it == bookkeeping_statics_shared->isolate_map.end()) {
 					return nullptr;
 				} else {
 					return it->second;

@@ -2,10 +2,11 @@
   "name": "isolated-vm",
   "version": "0.1.1",
   "description": "Access to multiple isolates",
-  "main": "index.js",
+  "main": "isolated-vm.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "install": "node-gyp rebuild"
+    "install": "node-gyp rebuild",
+    "test": "node test.js || nodejs test.js"
   },
   "repository": {
     "type": "git",
