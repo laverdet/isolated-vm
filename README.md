@@ -196,7 +196,7 @@ Below is a sample program which shows basic usage of the library.
 
 ```js
 // Create a new isolate limited to 128MB
-let ivm = require('ivm');
+let ivm = require('isolated-vm');
 let isolate = new ivm.Isolate({ memoryLimit: 128 });
 
 // Create a new context within this isolate. Each context has its own copy of all the builtin
@@ -298,7 +298,7 @@ console.log('Calculated '+ result+ ' in '+ (Date.now() - start1)+ 'ms');
 
 // Now we do the same thing over 4 threads
 let start2 = new Date;
-let ivm = require('ivm');
+let ivm = require('isolated-vm');
 let numThreads = 4;
 let promises = Array(numThreads).fill().map(async function(_, ii) {
 
@@ -327,7 +327,7 @@ Promise.all(promises).then(function(sums) {
 
 A quick example which shows how the snapshot feature works.
 ```js
-let ivm = require('ivm');
+let ivm = require('isolated-vm');
 
 // Create a new snapshot which adds the `sum` function to all contexts created
 let snapshot = ivm.Isolate.createSnapshot([ { code: 'function sum(a,b) { return a + b }' } ]);
