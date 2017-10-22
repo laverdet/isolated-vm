@@ -118,14 +118,14 @@ declare module 'isolated-vm' {
         /**
          * Returns a Reference to this context's global object.
          */
-        globalReference(): Reference;
+        globalReference(): Reference<Object>;
     }
 
     /**
      * A instance of Reference is a pointer to a value stored in any isolate.
      */
-    export class Reference {
-        constructor(value: any);
+    export class Reference<T> {
+        constructor(value: T);
 
         /**
          * This is the typeof the referenced value, and is available at any time
@@ -138,7 +138,7 @@ declare module 'isolated-vm' {
          * Creates a copy of the referenced value and internalizes it into this
          * isolate. This uses the same copy rules as ExternalCopy.
          */
-        copy(): Promise<any>;
+        copy(): Promise<T>;
         
         /**
          * Creates a copy of the referenced value and internalizes it into this
@@ -146,20 +146,20 @@ declare module 'isolated-vm' {
          *
          * @return JavaScript value of the reference.
          */
-        copySync(): any;
+        copySync(): T;
 
         /**
          * Will attempt to return the actual value or object pointed to by this
          * reference. Note that in order to call this function the reference must be
          * owned by the current isolate, otherwise an error will be thrown.
          */
-        deref(): any;
+        deref(): T;
 
         /**
          * Returns an object, which when passed to another isolate will cause that
          * isolate to dereference the handle.
          */
-        derefInto(): any;
+        derefInto(): T;
 
         /**
          * Releases this reference. If you're passing around a lot of references
@@ -174,13 +174,13 @@ declare module 'isolated-vm' {
          * Will access a reference as if using reference[property] and return a
          * reference to that value.
          */
-        get(property: any): Promise<Reference>;
+        get(property: any): Promise<Reference<any>>;
 
         /**
          * Will access synchronously a reference as if using reference[property] and
          * return a reference to that value.
          */
-        getSync(property: any): Reference;
+        getSync(property: any): Reference<any>;
 
         /**
          * @return {boolean} Indicating whether or not this operation succeeded. I'm

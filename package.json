@@ -3,6 +3,7 @@
   "version": "0.1.1",
   "description": "Access to multiple isolates",
   "main": "isolated-vm.js",
+  "types": "isolated-vm.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "install": "node-gyp rebuild",
