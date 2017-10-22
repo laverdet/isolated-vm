@@ -4,8 +4,7 @@
   "description": "Access to multiple isolates",
   "main": "isolated-vm.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "install": "node-gyp rebuild",
+    "install": "node-gyp rebuild --release",
     "test": "node test.js || nodejs test.js"
   },
   "repository": {
