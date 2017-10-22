@@ -59,6 +59,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		bool root;
 		HeapStatistics last_heap;
 		shared_ptr<BookkeepingStatics> bookkeeping_statics;
+		Persistent<Value> rejected_promise_error;
 
 		std::mutex exec_mutex; // mutex for execution
 		std::mutex queue_mutex; // mutex for queueing work
@@ -124,13 +125,30 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		}
 
 		/**
+		 * Called when an isolate has an uncaught error in a promise. This makes no distinction between
+		 * contexts so we have to handle that ourselves.
+		 */
+		static void PromiseRejectCallback(PromiseRejectMessage rejection) {
+			ShareableIsolate& that = ShareableIsolate::GetCurrent();
+			assert(that.isolate == Isolate::GetCurrent());
+			that.rejected_promise_error.Reset(that.isolate, rejection.GetValue());
+		}
+
+		/**
 		 * Helper used in Locker to throw if memory_limit was hit, but also return value of function if
 		 * not (even if T == void)
 		 */
 		template <typename T>
-		T TaskWrapper(T value) {
+		T TaskWrapper(ShareableIsolate& isolate, T value) {
 			ExecuteHandleTasks();
+			isolate->RunMicrotasks();
 			if (hit_memory_limit) {
+				throw js_error_base();
+			}
+			if (!isolate.rejected_promise_error.IsEmpty()) {
+				Context::Scope context_scope(isolate.DefaultContext());
+				isolate.isolate->ThrowException(Local<Value>::New(isolate.isolate, isolate.rejected_promise_error));
+				isolate.rejected_promise_error.Reset();
 				throw js_error_base();
 			}
 			return std::move(value);
@@ -246,6 +264,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
 			}
 			isolate->AddGCEpilogueCallback(GCEpilogueCallback);
+			isolate->SetPromiseRejectCallback(PromiseRejectCallback);
 
 			// Create a default context for the library to use if needed
 			{
@@ -500,7 +519,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				TryCatch try_catch(isolate);
 				ExecuteHandleTasks();
 				try {
-					return TaskWrapper(fn(std::forward<Args>(args)...));
+					return TaskWrapper(*this, fn(std::forward<Args>(args)...));
 				} catch (const js_error_base& cc_error) {
 					(void)cc_error;
 					// memory errors will be handled below
