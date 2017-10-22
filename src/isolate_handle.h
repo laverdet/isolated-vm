@@ -314,6 +314,7 @@ Local<Value> CreateSnapshot(Local<Array> script_handles, MaybeLocal<String> warm
 		{
 			HandleScope handle_scope(isolate);
 			Local<Context> context = Context::New(isolate);
+			snapshot_creator.SetDefaultContext(context);
 			{
 				HandleScope handle_scope(isolate);
 				Local<Context> context_dirty = Context::New(isolate);
