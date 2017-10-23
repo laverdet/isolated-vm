@@ -623,6 +623,7 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 						TryCatch try_catch(isolate);
 						try {
 							Unmaybe(promise_local->Resolve(context_local, apply_from_tuple(std::move(fn3), std::move(fn2_result)))); // <-- fn3() is called here
+							isolate->RunMicrotasks();
 						} catch (js_error_base& cc_error) {
 							(void)cc_error;
 							// An error was caught while running fn3()
