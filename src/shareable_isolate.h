@@ -308,6 +308,29 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		}
 
 		/**
+		 * Fetch heap statistics from v8. This isn't explicitly marked as safe to do without a locker,
+		 * but based on the code it'll be fine unless you do something crazy like call Dispose() in the
+		 * one nanosecond this is running. And even that should be impossible because of the queue lock
+		 * we get.
+		 */
+		HeapStatistics GetHeapStatistics() {
+			std::unique_lock<std::mutex> lock(queue_mutex);
+			if (life_cycle != LifeCycle::Normal) {
+				throw js_generic_error("Isolate is disposed or disposing");
+			}
+			HeapStatistics heap;
+			isolate->GetHeapStatistics(&heap);
+			return heap;
+		}
+
+		/**
+		 * Get allocator used by this isolate. Will return nullptr for the default isolate.
+		 */
+		ArrayBuffer::Allocator* GetAllocator() {
+			return allocator_ptr.get();
+		}
+
+		/**
 		 * Dispose of an isolate and clean up dangling handles
 		 */
 		void Dispose() {

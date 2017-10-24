@@ -139,6 +139,10 @@ class IsolateHandle : public TransferableHandle {
 					next_check -= length;
 					free(data);
 				}
+
+				size_t GetAllocatedSize() const {
+					return my_heap;
+				}
 		};
 
 	public:
@@ -156,7 +160,8 @@ class IsolateHandle : public TransferableHandle {
 				"compileScriptSync", Parameterize<decltype(&IsolateHandle::CompileScript<false>), &IsolateHandle::CompileScript<false>>, 1,
 				"createContext", Parameterize<decltype(&IsolateHandle::CreateContext<true>), &IsolateHandle::CreateContext<true>>, 0,
 				"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContext<false>), &IsolateHandle::CreateContext<false>>, 0,
-				"dispose", Parameterize<decltype(&IsolateHandle::Dispose), &IsolateHandle::Dispose>, 0
+				"dispose", Parameterize<decltype(&IsolateHandle::Dispose), &IsolateHandle::Dispose>, 0,
+				"getHeapStatistics", Parameterize<decltype(&IsolateHandle::GetHeapStatistics), &IsolateHandle::GetHeapStatistics>, 0
 			));
 			tmpl->Set(
 				v8_string("createSnapshot"),
@@ -271,6 +276,26 @@ class IsolateHandle : public TransferableHandle {
 		Local<Value> Dispose() {
 			isolate->Dispose();
 			return Undefined(Isolate::GetCurrent());
+		}
+
+		/**
+		 * Get heap statistics from v8
+		 */
+		Local<Value> GetHeapStatistics() {
+			HeapStatistics heap = isolate->GetHeapStatistics();
+			LimitedAllocator* allocator = static_cast<LimitedAllocator*>(isolate->GetAllocator());
+			Local<Object> ret = Object::New(Isolate::GetCurrent());
+			ret->Set(v8_string("total_heap_size"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.total_heap_size()));
+			ret->Set(v8_string("total_heap_size_executable"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.total_heap_size_executable()));
+			ret->Set(v8_string("total_physical_size"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.total_physical_size()));
+			ret->Set(v8_string("total_available_size"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.total_available_size()));
+			ret->Set(v8_string("used_heap_size"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.used_heap_size()));
+			ret->Set(v8_string("heap_size_limit"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.heap_size_limit()));
+			ret->Set(v8_string("malloced_memory"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.malloced_memory()));
+			ret->Set(v8_string("peak_malloced_memory"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.peak_malloced_memory()));
+			ret->Set(v8_string("does_zap_garbage"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.does_zap_garbage()));
+			ret->Set(v8_string("externally_allocated_size"), Integer::NewFromUnsigned(Isolate::GetCurrent(), allocator->GetAllocatedSize()));
+			return ret;
 		}
 };
 

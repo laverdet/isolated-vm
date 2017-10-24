@@ -73,6 +73,16 @@ Note that a [`Script`](#class-script-transferable) can only run in the isolate w
 ##### `isolate.dispose()`
 Destroys this isolate and invalidates all references obtained from it.
 
+##### `isolate.getHeapStatistics()`
+* **return** [object]
+
+Returns heap statistics from v8. The return value is almost identical to the nodejs function
+[v8.getHeapStatistics()](https://nodejs.org/dist/latest-v8.x/docs/api/v8.html#v8_v8_getheapstatistics).
+This function returns one additional property: `externally_allocated_size` which is the total amount
+of currently allocated memory which is not included in the v8 heap but counts against this isolate's
+`memoryLimit`. ArrayBuffer instances over a certain size are externally allocated and will be
+counted here.
+
 ### Class: `Context` *[transferable]*
 A context is a sandboxed execution environment within an isolate. Each context contains its own
 built-in objects and global space.
