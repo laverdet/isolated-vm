@@ -27,6 +27,24 @@ declare module 'isolated-vm' {
 				createContext(): Promise<Context>;
 
 				createContextSync(): Context;
+			
+				/**
+				 * Returns heap statistics from v8.
+				 *
+				 * The return value is almost identical to the nodejs function
+				 * v8.getHeapStatistics().
+				 *
+				 * See: https://nodejs.org/dist/latest-v8.x/docs/api/v8.html#v8_v8_getheapstatistics.
+				 *
+				 * This function returns one additional property:
+				 * "externally_allocated_size" which is the total amount of
+				 * currently allocated memory which is not included in the v8
+				 * heap but counts against this isolate's "memoryLimit".
+				 *
+				 * ArrayBuffer instances over a certain size are externally
+				 * allocated and will be counted here.
+				 */
+				getHeapStatistics(): HeapStatistics;
 
 				/**
 				 * Destroys this isolate and invalidates all references obtained from it.
@@ -46,6 +64,25 @@ declare module 'isolated-vm' {
 				 * used to initialize the heap of this isolate.
 				 */
 				snapshot?: ExternalCopy<ArrayBuffer>;
+		}
+
+		export interface HeapStatistics {
+			total_heap_size: number;
+			total_heap_size_executable: number;
+			total_physical_size: number;
+			total_available_size: number;
+			used_heap_size: number;
+			heap_size_limit: number;
+			malloced_memory: number;
+			peak_malloced_memory: number;
+			does_zap_garbage: number;
+
+			/**
+			 * The total amount of currently allocated memory which is not
+			 * included in the v8 heap but counts against this isolate's
+			 * "memoryLimit".
+			 */
+			externally_allocated_size: number;
 		}
 
 		export interface ScriptCode extends ScriptInfo {
