@@ -4,6 +4,7 @@
 #include <assert.h>
 #include "thread_pool.h"
 #include "external_copy.h"
+#include "timer.h"
 #include "util.h"
 
 #include "apply_from_tuple.h"
@@ -710,6 +711,8 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 		}, fn1(), std::move(fn2)));
 	}
 }
+
+Local<Value> RunWithTimeout(uint32_t timeout_ms, ShareableIsolate& isolate, std::function<MaybeLocal<Value>()> fn);
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Winstantiation-after-specialization"

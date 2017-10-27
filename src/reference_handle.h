@@ -265,10 +265,10 @@ class ReferenceHandle : public TransferableHandle {
 		 * Call a function, like Function.prototype.apply
 		 */
 		template <bool async>
-		Local<Value> Apply(MaybeLocal<Value> recv_handle, MaybeLocal<Array> maybe_arguments) {
+		Local<Value> Apply(MaybeLocal<Value> recv_handle, MaybeLocal<Array> maybe_arguments, MaybeLocal<Object> maybe_options) {
 			auto context = this->context;
 			auto reference = this->reference;
-			return ThreePhaseRunner<async>(reference->GetIsolate(), [&recv_handle, &maybe_arguments, reference]() {
+			return ThreePhaseRunner<async>(reference->GetIsolate(), [&recv_handle, &maybe_arguments, &maybe_options, reference]() {
 				// CheckDisposed() with no `this`
 				if (reference.get() == nullptr) {
 					throw js_generic_error("Reference is disposed");
@@ -295,8 +295,21 @@ class ReferenceHandle : public TransferableHandle {
 						argv.push_back(Transferable::TransferOut(Unmaybe(arguments->Get(context, key))));
 					}
 				}
-				return std::make_tuple(std::move(recv), std::move(argv));
-			}, [context, reference](shared_ptr<Transferable> recv, std::vector<shared_ptr<Transferable>> argv) {
+
+				// Get run options
+				Local<Object> options;
+				uint32_t timeout = 0;
+				if (maybe_options.ToLocal(&options)) {
+					Local<Value> timeout_handle = Unmaybe(options->Get(Isolate::GetCurrent()->GetCurrentContext(), v8_string("timeout")));
+					if (!timeout_handle->IsUndefined()) {
+						if (!timeout_handle->IsUint32()) {
+							throw js_type_error("`timeout` must be integer");
+						}
+						timeout = timeout_handle.As<Uint32>()->Value();
+					}
+				}
+				return std::make_tuple(std::move(recv), std::move(argv), timeout);
+			}, [context, reference](shared_ptr<Transferable> recv, std::vector<shared_ptr<Transferable>> argv, uint32_t timeout_ms) {
 
 				// Invoke in the isolate
 				Local<Context> context_handle = context->Deref();
@@ -307,12 +320,19 @@ class ReferenceHandle : public TransferableHandle {
 				}
 				Local<Value> recv_inner = recv->TransferIn();
 				std::vector<Local<Value>> argv_inner;
-				argv_inner.reserve(argv.size());
-				for (size_t ii = 0; ii < argv.size(); ++ii) {
+				size_t argc = argv.size();
+				argv_inner.reserve(argc);
+				for (size_t ii = 0; ii < argc; ++ii) {
 					argv_inner.emplace_back(argv[ii]->TransferIn());
 				}
-				Local<Value> result = Unmaybe(fn.As<Function>()->Call(context_handle, recv_inner, argv.size(), &argv_inner[0]));
-				return shared_ptr<Transferable>(Transferable::TransferOut(result));
+				return shared_ptr<Transferable>(Transferable::TransferOut(
+					RunWithTimeout(
+						timeout_ms, reference->GetIsolate(),
+						[&fn, &context_handle, &recv_inner, argc, &argv_inner]() {
+							return fn.As<Function>()->Call(context_handle, recv_inner, argc, &argv_inner[0]);
+						}
+					)
+				));
 			}, [](shared_ptr<Transferable> value) {
 
 				// Copy result into original isolate

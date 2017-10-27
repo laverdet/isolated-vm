@@ -164,6 +164,9 @@ when `false` would be returned, I'm just giving you the result back straight fro
 ##### `reference.applySync(receiver, arguments)`
 * `receiver` *[transferable]* - The value which will be `this`.
 * `arguments` *[array]* - Array of transferables which will be passed to the function.
+* `options` *[object]*
+	* `timeout` *[number]* - Maximum amount of time this function is allowed to run before execution is
+	canceled. Default is no timeout.
 * **return** *[transferable]*
 
 Will attempt to invoke an object as if it were a function. If the return value is transferable it

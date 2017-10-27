@@ -5,7 +5,6 @@
 #include "transferable_handle.h"
 #include "context_handle.h"
 #include "external_copy.h"
-#include "timer.h"
 
 #include <memory>
 
@@ -66,47 +65,12 @@ class ScriptHandle : public TransferableHandle {
 
 			}, [script, context_handle](uint32_t timeout_ms) {
 				// Enter script's context and run it
-				Isolate* isolate = Isolate::GetCurrent();
 				Local<Context> context = context_handle->context->Deref();
 				Context::Scope context_scope(context);
 				Local<Script> script_handle = script->Deref()->BindToCurrentContext();
-				bool did_timeout = false, did_finish = false;
-				MaybeLocal<Value> result;
-				{
-					unique_ptr<timer_t> timer_ptr;
-					if (timeout_ms != 0) {
-						timer_ptr = std::make_unique<timer_t>(timeout_ms, [&did_timeout, &did_finish, isolate]() {
-							did_timeout = true;
-							isolate->TerminateExecution();
-							// FIXME(?): It seems that one call to TerminateExecution() doesn't kill the script if
-							// there is a promise handler scheduled. This is unexpected behavior but I can't
-							// reproduce it in vanilla v8 so the issue seems more complex. I'm punting on this for
-							// now with a hack but will look again when nodejs pulls in a newer version of v8 with
-							// more mature microtask support.
-							//
-							// This loop always terminates for me in 1 iteration but it goes up to 100 because the
-							// only other option is terminating the application if an isolate has gone out of
-							// control.
-							for (int ii = 0; ii < 100; ++ii) {
-								std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(2));
-								if (did_finish) {
-									return;
-								}
-								isolate->TerminateExecution();
-							}
-							assert(false);
-						});
-					}
-					result = script_handle->Run(context);
-					did_finish = true;
-				}
-				if (did_timeout) {
-					isolate->CancelTerminateExecution();
-					throw js_generic_error("Script execution timed out.");
-				} else if (script->GetIsolate().DidHitMemoryLimit()) {
-					throw js_generic_error("Isolate has exhausted v8 heap space.");
-				}
-				return shared_ptr<Transferable>(ExternalCopy::CopyIfPrimitive(Unmaybe(result)));
+				return shared_ptr<Transferable>(ExternalCopy::CopyIfPrimitive(
+					RunWithTimeout(timeout_ms, script->GetIsolate(), [&script_handle, &context]() { return script_handle->Run(context); })
+				));
 			}, [](shared_ptr<Transferable> result) {
 				if (result.get() == nullptr) {
 					return Undefined(Isolate::GetCurrent()).As<Value>();
