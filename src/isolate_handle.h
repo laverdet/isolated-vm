@@ -230,9 +230,10 @@ class IsolateHandle : public TransferableHandle {
 		 */
 		template <bool async>
 		Local<Value> CreateContext() {
+			auto isolate = this->isolate;
 			return ThreePhaseRunner<async>(*isolate, []() {
 				return std::make_tuple();
-			}, [this]() {
+			}, [isolate]() {
 				// Make a new context and return the context and its global object
 				Local<Context> context = Context::New(*isolate);
 				return std::make_tuple(
@@ -250,13 +251,14 @@ class IsolateHandle : public TransferableHandle {
 		 */
 		template <bool async>
 		Local<Value> CompileScript(Local<String> code_handle, MaybeLocal<Object> options) {
+			auto isolate = this->isolate;
 			return ThreePhaseRunner<async>(*isolate, [&code_handle, &options]() {
 				// Copy code string out of first isolate
 				return std::make_tuple(
 					std::make_shared<ExternalCopyString>(code_handle),
 					std::make_shared<ScriptOriginHolder>(options)
 				);
-			}, [this](shared_ptr<ExternalCopyString> code_copy, shared_ptr<ScriptOriginHolder> script_origin_holder) {
+			}, [isolate](shared_ptr<ExternalCopyString> code_copy, shared_ptr<ScriptOriginHolder> script_origin_holder) {
 				// Compile in second isolate and return UnboundScript persistent
 				Context::Scope context_scope(isolate->DefaultContext());
 				Local<String> code_inner = code_copy->CopyInto().As<String>();
@@ -264,7 +266,7 @@ class IsolateHandle : public TransferableHandle {
 				ScriptCompiler::Source source(code_inner, script_origin);
 				Local<UnboundScript> script = Unmaybe(ScriptCompiler::CompileUnboundScript(*isolate, &source, ScriptCompiler::kNoCompileOptions));
 				return std::make_shared<ShareablePersistent<UnboundScript>>(script);
-			}, [this](shared_ptr<ShareablePersistent<UnboundScript>> script) {
+			}, [](shared_ptr<ShareablePersistent<UnboundScript>> script) {
 				// Wrap UnboundScript in JS Script{} class
 				return ClassHandle::NewInstance<ScriptHandle>(script);
 			});

@@ -40,7 +40,7 @@ class ReferenceHandle : public TransferableHandle {
 			public:
 				ReferenceHandleTransferable(
 					shared_ptr<ShareablePersistent<Value>> reference,
-					shared_ptr<ShareablePersistent<Context>>& context,
+					shared_ptr<ShareablePersistent<Context>> context,
 					TypeOf type_of
 				) :
 					reference(reference), context(context), type_of(type_of) {}
@@ -190,12 +190,13 @@ class ReferenceHandle : public TransferableHandle {
 		 */
 		template <bool async>
 		Local<Value> Copy() {
+			auto context = this->context;
+			auto reference = this->reference;
 			return ThreePhaseRunner<async>(reference->GetIsolate(), [this]() {
 				CheckDisposed();
 				return std::make_tuple();
-			}, [this] () {
-				Local<Context> context = this->context->Deref();
-				Context::Scope context_scope(context);
+			}, [context, reference] () {
+				Context::Scope context_scope(context->Deref());
 				Local<Value> value = reference->Deref();
 				return shared_ptr<ExternalCopy>(ExternalCopy::Copy(value));
 			}, [] (shared_ptr<ExternalCopy> copy) {
@@ -208,6 +209,8 @@ class ReferenceHandle : public TransferableHandle {
 		 */
 		template <bool async>
 		Local<Value> Get(Local<Value> key_handle) {
+			auto context = this->context;
+			auto reference = this->reference;
 			return ThreePhaseRunner<async>(reference->GetIsolate(), [this, &key_handle]() {
 				CheckDisposed();
 				shared_ptr<ExternalCopy> key = ExternalCopy::CopyIfPrimitive(key_handle);
@@ -215,18 +218,18 @@ class ReferenceHandle : public TransferableHandle {
 					throw js_type_error("Invalid `key`");
 				}
 				return std::move(key);
-			}, [this] (shared_ptr<ExternalCopy> key) {
-				Local<Context> context = this->context->Deref();
-				Context::Scope context_scope(context);
+			}, [context, reference](shared_ptr<ExternalCopy> key) {
+				Local<Context> context_handle = context->Deref();
+				Context::Scope context_scope(context_handle);
 				Local<Value> key_inner = key->CopyInto();
 				Local<Object> object = Local<Object>::Cast(reference->Deref());
-				Local<Value> value = Unmaybe(object->Get(context, key_inner));
+				Local<Value> value = Unmaybe(object->Get(context_handle, key_inner));
 				return std::make_shared<ReferenceHandleTransferable>(
 					std::make_shared<ShareablePersistent<Value>>(value),
-					this->context,
+					context,
 					InferTypeOf(value)
 				);
-			}, [] (shared_ptr<ReferenceHandleTransferable> ref) {
+			}, [](shared_ptr<ReferenceHandleTransferable> ref) {
 				return ref->TransferIn();
 			});
 		}
@@ -236,6 +239,8 @@ class ReferenceHandle : public TransferableHandle {
 		 */
 		template <bool async>
 		Local<Value> Set(Local<Value> key_handle, Local<Value> val_handle) {
+			auto context = this->context;
+			auto reference = this->reference;
 			return ThreePhaseRunner<async>(reference->GetIsolate(), [this, &key_handle, &val_handle]() {
 				CheckDisposed();
 				shared_ptr<ExternalCopy> key = ExternalCopy::CopyIfPrimitive(key_handle);
@@ -244,13 +249,13 @@ class ReferenceHandle : public TransferableHandle {
 				}
 				shared_ptr<Transferable> val = Transferable::TransferOut(val_handle);
 				return std::make_tuple(std::move(key), std::move(val));
-			}, [this](shared_ptr<ExternalCopy> key, shared_ptr<Transferable> val) {
-				Local<Context> context = this->context->Deref();
-				Context::Scope context_scope(context);
+			}, [context, reference](shared_ptr<ExternalCopy> key, shared_ptr<Transferable> val) {
+				Local<Context> context_handle = context->Deref();
+				Context::Scope context_scope(context_handle);
 				Local<Value> key_inner = key->CopyInto();
 				Local<Value> val_inner = val->TransferIn();
 				Local<Object> object = Local<Object>::Cast(reference->Deref());
-				return Unmaybe(object->Set(context, key_inner, val_inner));
+				return Unmaybe(object->Set(context_handle, key_inner, val_inner));
 			}, [](bool did_set) {
 				return Boolean::New(Isolate::GetCurrent(), did_set);
 			});
@@ -261,8 +266,13 @@ class ReferenceHandle : public TransferableHandle {
 		 */
 		template <bool async>
 		Local<Value> Apply(MaybeLocal<Value> recv_handle, MaybeLocal<Array> maybe_arguments) {
-			return ThreePhaseRunner<async>(reference->GetIsolate(), [this, &recv_handle, &maybe_arguments]() {
-				CheckDisposed();
+			auto context = this->context;
+			auto reference = this->reference;
+			return ThreePhaseRunner<async>(reference->GetIsolate(), [&recv_handle, &maybe_arguments, reference]() {
+				// CheckDisposed() with no `this`
+				if (reference.get() == nullptr) {
+					throw js_generic_error("Reference is disposed");
+				}
 
 				// Get receiver, holder, this, whatever
 				shared_ptr<Transferable> recv;
@@ -286,11 +296,11 @@ class ReferenceHandle : public TransferableHandle {
 					}
 				}
 				return std::make_tuple(std::move(recv), std::move(argv));
-			}, [this](shared_ptr<Transferable> recv, std::vector<shared_ptr<Transferable>> argv) {
+			}, [context, reference](shared_ptr<Transferable> recv, std::vector<shared_ptr<Transferable>> argv) {
 
 				// Invoke in the isolate
-				Local<Context> context = this->context->Deref();
-				Context::Scope context_scope(context);
+				Local<Context> context_handle = context->Deref();
+				Context::Scope context_scope(context_handle);
 				Local<Value> fn = reference->Deref();
 				if (!fn->IsFunction()) {
 					throw js_type_error("Reference is not a function");
@@ -301,7 +311,7 @@ class ReferenceHandle : public TransferableHandle {
 				for (size_t ii = 0; ii < argv.size(); ++ii) {
 					argv_inner.emplace_back(argv[ii]->TransferIn());
 				}
-				Local<Value> result = Unmaybe(fn.As<Function>()->Call(context, recv_inner, argv.size(), &argv_inner[0]));
+				Local<Value> result = Unmaybe(fn.As<Function>()->Call(context_handle, recv_inner, argv.size(), &argv_inner[0]));
 				return shared_ptr<Transferable>(Transferable::TransferOut(result));
 			}, [](shared_ptr<Transferable> value) {
 

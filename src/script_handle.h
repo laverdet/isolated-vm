@@ -48,6 +48,7 @@ class ScriptHandle : public TransferableHandle {
 
 		template <bool async>
 		Local<Value> Run(ContextHandle* context_handle, MaybeLocal<Object> maybe_options) {
+			auto script = this->script;
 			return ThreePhaseRunner<async>(script->GetIsolate(), [this, &maybe_options]() {
 				// Get run options
 				Local<Object> options;
@@ -63,19 +64,18 @@ class ScriptHandle : public TransferableHandle {
 				}
 				return timeout;
 
-			}, [this, context_handle](uint32_t timeout_ms) {
+			}, [script, context_handle](uint32_t timeout_ms) {
 				// Enter script's context and run it
 				Isolate* isolate = Isolate::GetCurrent();
 				Local<Context> context = context_handle->context->Deref();
 				Context::Scope context_scope(context);
-				Local<Script> script = this->script->Deref()->BindToCurrentContext();
-				bool did_timeout = false;
-				shared_ptr<bool> did_finish = std::make_shared<bool>(false);
+				Local<Script> script_handle = script->Deref()->BindToCurrentContext();
+				bool did_timeout = false, did_finish = false;
 				MaybeLocal<Value> result;
 				{
 					unique_ptr<timer_t> timer_ptr;
 					if (timeout_ms != 0) {
-						timer_ptr = std::make_unique<timer_t>(timeout_ms, std::bind([&did_timeout, isolate](shared_ptr<bool> did_finish) {
+						timer_ptr = std::make_unique<timer_t>(timeout_ms, [&did_timeout, &did_finish, isolate]() {
 							did_timeout = true;
 							isolate->TerminateExecution();
 							// FIXME(?): It seems that one call to TerminateExecution() doesn't kill the script if
@@ -89,16 +89,16 @@ class ScriptHandle : public TransferableHandle {
 							// control.
 							for (int ii = 0; ii < 100; ++ii) {
 								std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(2));
-								if (*did_finish) {
+								if (did_finish) {
 									return;
 								}
 								isolate->TerminateExecution();
 							}
 							assert(false);
-						}, did_finish));
+						});
 					}
-					result = script->Run(context);
-					*did_finish = true;
+					result = script_handle->Run(context);
+					did_finish = true;
 				}
 				if (did_timeout) {
 					isolate->CancelTerminateExecution();
