@@ -103,6 +103,8 @@ class ScriptHandle : public TransferableHandle {
 				if (did_timeout) {
 					isolate->CancelTerminateExecution();
 					throw js_generic_error("Script execution timed out.");
+				} else if (script->GetIsolate().DidHitMemoryLimit()) {
+					throw js_generic_error("Isolate has exhausted v8 heap space.");
 				}
 				return shared_ptr<Transferable>(ExternalCopy::CopyIfPrimitive(Unmaybe(result)));
 			}, [](shared_ptr<Transferable> result) {

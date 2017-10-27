@@ -134,27 +134,27 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			that.rejected_promise_error.Reset(that.isolate, rejection.GetValue());
 		}
 
+	public:
 		/**
 		 * Helper used in Locker to throw if memory_limit was hit, but also return value of function if
 		 * not (even if T == void)
 		 */
 		template <typename T>
-		T TaskWrapper(ShareableIsolate& isolate, T value) {
+		T TaskWrapper(T value) {
 			ExecuteHandleTasks();
 			isolate->RunMicrotasks();
 			if (hit_memory_limit) {
 				throw js_error_base();
 			}
-			if (!isolate.rejected_promise_error.IsEmpty()) {
-				Context::Scope context_scope(isolate.DefaultContext());
-				isolate.isolate->ThrowException(Local<Value>::New(isolate.isolate, isolate.rejected_promise_error));
-				isolate.rejected_promise_error.Reset();
+			if (!rejected_promise_error.IsEmpty()) {
+				Context::Scope context_scope(DefaultContext());
+				isolate->ThrowException(Local<Value>::New(isolate, rejected_promise_error));
+				rejected_promise_error.Reset();
 				throw js_error_base();
 			}
 			return std::move(value);
 		}
 
-	public:
 		/**
 		 * Like thread_local data, but specific to an Isolate instead.
 		 */
@@ -328,6 +328,10 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		 */
 		ArrayBuffer::Allocator* GetAllocator() {
 			return allocator_ptr.get();
+		}
+
+		bool DidHitMemoryLimit() const {
+			return hit_memory_limit;
 		}
 
 		/**
@@ -544,7 +548,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				TryCatch try_catch(isolate);
 				ExecuteHandleTasks();
 				try {
-					return TaskWrapper(*this, fn(std::forward<Args>(args)...));
+					return TaskWrapper(fn(std::forward<Args>(args)...));
 				} catch (const js_error_base& cc_error) {
 					(void)cc_error;
 					// memory errors will be handled below
@@ -659,7 +663,7 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 							// If Reject fails then I think that's bad..
 							Unmaybe(promise_local->Reject(context_local, try_catch.Exception()));
 						}
-					}, apply_from_tuple(std::move(fn2), std::move(fn1_result)), std::move(fn3)); // <-- fn2() is called here
+					}, second_isolate_ref->TaskWrapper(apply_from_tuple(std::move(fn2), std::move(fn1_result))), std::move(fn3)); // <-- fn2() is called here
 				} catch (js_error_base& cc_error) {
 					(void)cc_error;
 					try {

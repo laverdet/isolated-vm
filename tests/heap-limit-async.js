@@ -27,7 +27,9 @@ isolate.compileScriptSync(src).run(context).catch(function() {
 	context.globalReference().setSync('wait', new ivm.Reference(function(a) {
 		while (Date.now() < runUntil);
 	}));
-	isolate.compileScriptSync(src).run(context).catch(function() {
-		setTimeout(() => console.log('pass'), 100);
+	isolate.compileScriptSync(src).run(context).catch(function(err) {
+		if (/exhausted/.test(err)) {
+			setTimeout(() => console.log('pass'), 100);
+		}
 	});
 });
