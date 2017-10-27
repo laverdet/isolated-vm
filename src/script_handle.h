@@ -48,7 +48,13 @@ class ScriptHandle : public TransferableHandle {
 		template <bool async>
 		Local<Value> Run(ContextHandle* context_handle, MaybeLocal<Object> maybe_options) {
 			auto script = this->script;
-			return ThreePhaseRunner<async>(script->GetIsolate(), [this, &maybe_options]() {
+			return ThreePhaseRunner<async>(script->GetIsolate(), [this, context_handle, &maybe_options]() {
+
+				// Sanity check
+				if (this->script->GetIsolate() != context_handle->context->GetIsolate()) {
+					throw js_generic_error("Invalid context");
+				}
+
 				// Get run options
 				Local<Object> options;
 				uint32_t timeout = 0;
