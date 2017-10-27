@@ -335,46 +335,62 @@ Local<Value> CreateSnapshot(Local<Array> script_handles, MaybeLocal<String> warm
 	// Create the snapshot
 	StartupData snapshot;
 	unique_ptr<const char> snapshot_data_ptr;
+	std::shared_ptr<ExternalCopy> error;
 	{
 		SnapshotCreator snapshot_creator;
 		Isolate* isolate = snapshot_creator.GetIsolate();
 		{
+			Locker locker(isolate);
+			TryCatch try_catch(isolate);
 			HandleScope handle_scope(isolate);
 			Local<Context> context = Context::New(isolate);
 			snapshot_creator.SetDefaultContext(context);
-			{
-				HandleScope handle_scope(isolate);
-				Local<Context> context_dirty = Context::New(isolate);
-				for (auto& script : scripts) {
-					Local<String> code = v8_string(script.first.c_str());
-					ScriptOrigin script_origin = script.second.ToScriptOrigin();
-					ScriptCompiler::Source source(code, script_origin);
-					Local<UnboundScript> unbound_script;
-					{
-						Context::Scope context_scope(context);
-						Local<Script> compiled_script = Unmaybe(ScriptCompiler::Compile(context, &source, ScriptCompiler::kNoCompileOptions));
-						Unmaybe(compiled_script->Run(context));
-						unbound_script = compiled_script->GetUnboundScript();
+			try {
+				{
+					HandleScope handle_scope(isolate);
+					Local<Context> context_dirty = Context::New(isolate);
+					for (auto& script : scripts) {
+						Local<String> code = v8_string(script.first.c_str());
+						ScriptOrigin script_origin = script.second.ToScriptOrigin();
+						ScriptCompiler::Source source(code, script_origin);
+						Local<UnboundScript> unbound_script;
+						{
+							Context::Scope context_scope(context);
+							Local<Script> compiled_script = Unmaybe(ScriptCompiler::Compile(context, &source, ScriptCompiler::kNoCompileOptions));
+							Unmaybe(compiled_script->Run(context));
+							unbound_script = compiled_script->GetUnboundScript();
+						}
+						{
+							Context::Scope context_scope(context_dirty);
+							Unmaybe(unbound_script->BindToCurrentContext()->Run(context_dirty));
+						}
 					}
-					{
+					if (warmup_script.length() != 0) {
 						Context::Scope context_scope(context_dirty);
-						Unmaybe(unbound_script->BindToCurrentContext()->Run(context_dirty));
+						Unmaybe(Unmaybe(Script::Compile(context_dirty, v8_string(warmup_script.c_str())))->Run(context_dirty));
 					}
 				}
-				if (warmup_script.length() != 0) {
-					Context::Scope context_scope(context_dirty);
-					Unmaybe(Unmaybe(Script::Compile(context_dirty, v8_string(warmup_script.c_str())))->Run(context_dirty));
-				}
+				isolate->ContextDisposedNotification(false);
+				snapshot_creator.AddContext(context);
+			} catch (const js_error_base& cc_error) {
+				(void)cc_error;
+				assert(try_catch.HasCaught());
+				HandleScope handle_scope(isolate);
+				Context::Scope context_scope(context);
+				error = ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception());
 			}
-			isolate->ContextDisposedNotification(false);
-			snapshot_creator.AddContext(context);
 		}
-		snapshot = snapshot_creator.CreateBlob(SnapshotCreator::FunctionCodeHandling::kKeep);
-		snapshot_data_ptr.reset(snapshot.data);
+		if (error.get() == nullptr) {
+			snapshot = snapshot_creator.CreateBlob(SnapshotCreator::FunctionCodeHandling::kKeep);
+			snapshot_data_ptr.reset(snapshot.data);
+		}
 	}
 
 	// Export to outer scope
-	if (snapshot.raw_size == 0) {
+	if (error.get() != nullptr) {
+		Isolate::GetCurrent()->ThrowException(error->CopyInto());
+		return Undefined(Isolate::GetCurrent());
+	} else if (snapshot.raw_size == 0) {
 		throw js_generic_error("Failure creating snapshot");
 	}
 	auto buffer = std::make_shared<ExternalCopyArrayBuffer>((void*)snapshot.data, snapshot.raw_size);
