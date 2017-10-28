@@ -238,14 +238,14 @@ declare module 'isolated-vm' {
 				 * value is transferable it will be returned to the called of apply,
 				 * otherwise an error will be thrown.
 				 */
-				apply(receiver: any, arguments: any[]): Promise<any>;
+				apply(receiver: any, arguments: any[], options?: ScriptRunOptions): Promise<any>;
 
 				/**
 				 * Will attempt to invoke an object as if it were a function. If the return
 				 * value is transferable it will be returned to the called of apply,
 				 * otherwise an error will be thrown.
 				 */
-				applySync(receiver: any, arguments: any[]): any;
+				applySync(receiver: any, arguments: any[], options?: ScriptRunOptions): any;
 		}
 
 		/**
