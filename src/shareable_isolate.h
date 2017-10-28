@@ -687,6 +687,7 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 							}
 							// If Reject fails then I think that's bad..
 							Unmaybe(promise_local->Reject(context_local, rejection));
+							isolate->RunMicrotasks();
 						}, shared_ptr<ExternalCopy>(ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception())));
 					} catch (js_error_base& cc_error2) {
 						(void)cc_error2;
