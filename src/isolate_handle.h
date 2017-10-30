@@ -264,8 +264,9 @@ class IsolateHandle : public TransferableHandle {
 				Local<String> code_inner = code_copy->CopyInto().As<String>();
 				ScriptOrigin script_origin = script_origin_holder->ToScriptOrigin();
 				ScriptCompiler::Source source(code_inner, script_origin);
-				Local<UnboundScript> script = Unmaybe(ScriptCompiler::CompileUnboundScript(*isolate, &source, ScriptCompiler::kNoCompileOptions));
-				return std::make_shared<ShareablePersistent<UnboundScript>>(script);
+				return std::make_shared<ShareablePersistent<UnboundScript>>(RunWithAnnotatedErrors<Local<UnboundScript>>(
+					[&isolate, &source]() { return Unmaybe(ScriptCompiler::CompileUnboundScript(*isolate, &source, ScriptCompiler::kNoCompileOptions)); }
+				));
 			}, [](shared_ptr<ShareablePersistent<UnboundScript>> script) {
 				// Wrap UnboundScript in JS Script{} class
 				return ClassHandle::NewInstance<ScriptHandle>(script);
@@ -356,7 +357,9 @@ Local<Value> CreateSnapshot(Local<Array> script_handles, MaybeLocal<String> warm
 						Local<UnboundScript> unbound_script;
 						{
 							Context::Scope context_scope(context);
-							Local<Script> compiled_script = Unmaybe(ScriptCompiler::Compile(context, &source, ScriptCompiler::kNoCompileOptions));
+							Local<Script> compiled_script = RunWithAnnotatedErrors<Local<Script>>(
+								[&context, &source]() { return Unmaybe(ScriptCompiler::Compile(context, &source, ScriptCompiler::kNoCompileOptions)); }
+							);
 							Unmaybe(compiled_script->Run(context));
 							unbound_script = compiled_script->GetUnboundScript();
 						}
@@ -367,7 +370,12 @@ Local<Value> CreateSnapshot(Local<Array> script_handles, MaybeLocal<String> warm
 					}
 					if (warmup_script.length() != 0) {
 						Context::Scope context_scope(context_dirty);
-						Unmaybe(Unmaybe(Script::Compile(context_dirty, v8_string(warmup_script.c_str())))->Run(context_dirty));
+						MaybeLocal<Object> tmp;
+						ScriptOriginHolder script_origin(tmp);
+						ScriptCompiler::Source source(v8_string(warmup_script.c_str()), script_origin.ToScriptOrigin());
+						RunWithAnnotatedErrors<void>([&context_dirty, &source]() {
+							Unmaybe(Unmaybe(ScriptCompiler::Compile(context_dirty, &source, ScriptCompiler::kNoCompileOptions))->Run(context_dirty));
+						});
 					}
 				}
 				isolate->ContextDisposedNotification(false);
