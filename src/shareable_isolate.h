@@ -350,6 +350,9 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				if (life_cycle != LifeCycle::Normal) {
 					throw js_generic_error("Isolate is already disposed or disposing");
 				}
+				if (!tasks.empty()) {
+					throw js_generic_error("Isolate is still busy, let all promises resolve before calling dispose()");
+				}
 				life_cycle = LifeCycle::Disposing;
 			}
 			std::unique_lock<std::mutex> lock(exec_mutex);
