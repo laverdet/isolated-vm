@@ -710,9 +710,15 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 		return promise_local->GetPromise();
 	} else {
 		// The sync case is a lot simpler, most of the work is done in second_isolate.Locker()
-		return apply_from_tuple(std::move(fn3), second_isolate.Locker([] (decltype(fn1()) fn1_result, F2 fn2) {
-			return apply_from_tuple(std::move(fn2), std::move(fn1_result));
-		}, fn1(), std::move(fn2)));
+		if (&ShareableIsolate::GetCurrent() == &second_isolate) {
+			// Shortcut when calling a sync method belonging to the currently entered isolate. This isn't an
+			// optimization, it's used to bypass the deadlock prevention check in Locker()
+			return apply_from_tuple(fn3, apply_from_tuple(fn2, fn1()));
+		} else {
+			return apply_from_tuple(std::move(fn3), second_isolate.Locker([] (decltype(fn1()) fn1_result, F2 fn2) {
+				return apply_from_tuple(std::move(fn2), std::move(fn1_result));
+			}, fn1(), std::move(fn2)));
+		}
 	}
 }
 
