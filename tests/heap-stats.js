@@ -4,7 +4,7 @@ let isolate = new ivm.Isolate;
 let size1 = isolate.getHeapStatistics();
 let context = isolate.createContextSync();
 let global = context.globalReference();
-global.set('global', global.derefInto());
+global.setSync('global', global.derefInto());
 let script = isolate.compileScriptSync(`
 global.data = new Uint8Array(1024);
 global.garbage = [];
