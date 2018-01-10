@@ -61,6 +61,14 @@ variables, and compiled code. Check out the examples section for tips on using t
 	* `filename` *[string]* - Optional filename of this script, used in stack traces
 	* `columnOffset` *[number]* - Optional column offset of this script
 	* `lineOffset` *[number]* - Optional line offset of this script
+	* `produceCachedData` *[boolean]* - Produce V8 cache data. Similar to the
+	[VM.Script](https://nodejs.org/api/vm.html) option of the same name. If this is true then the
+	returned script object will have `cachedData` set to an ExternalCopy handle. Note that this
+	differs from the VM.Script option slightly in that `cachedDataProduced` is never set.
+	* `cachedData` *[ExternalCopy[ArrayBuffer]]* - This will consume cached compilation data from a
+	previous call to this function. Please don't use `produceCachedData` and `cachedData` options at
+	the same time. `cachedDataRejected` will be set to `true` if the supplied data was rejected by
+	V8.
 
 * **return** A [`Script`](#class-script-transferable) object.
 

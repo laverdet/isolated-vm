@@ -250,26 +250,102 @@ class IsolateHandle : public TransferableHandle {
 		 * Compiles a script in this isolate and returns a ScriptHandle
 		 */
 		template <bool async>
-		Local<Value> CompileScript(Local<String> code_handle, MaybeLocal<Object> options) {
+		Local<Value> CompileScript(Local<String> code_handle, MaybeLocal<Object> maybe_options) {
 			auto isolate = this->isolate;
-			return ThreePhaseRunner<async>(*isolate, [&code_handle, &options]() {
-				// Copy code string out of first isolate
+			return ThreePhaseRunner<async>(*isolate, [&code_handle, &maybe_options]() {
+				// Read options
+				Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
+				Local<Object> options;
+				bool produce_cached_data = false;
+				shared_ptr<ExternalCopyArrayBuffer> cached_data_blob;
+				if (maybe_options.ToLocal(&options)) {
+
+					// Get cached data blob
+					Local<Value> cached_data_handle = Unmaybe(options->Get(context, v8_symbol("cachedData")));
+					if (!cached_data_handle->IsUndefined()) {
+						if (
+							!cached_data_handle->IsObject() ||
+							!ClassHandle::GetFunctionTemplate<ExternalCopyHandle>()->HasInstance(cached_data_handle.As<Object>())
+						) {
+							throw js_type_error("`cachedData` must be an ExternalCopy to ArrayBuffer");
+						}
+						ExternalCopyHandle& copy_handle = *dynamic_cast<ExternalCopyHandle*>(ClassHandle::Unwrap(cached_data_handle.As<Object>()));
+						cached_data_blob = std::dynamic_pointer_cast<ExternalCopyArrayBuffer>(copy_handle.GetValue());
+						if (cached_data_blob.get() == nullptr) {
+							throw js_type_error("`cachedData` must be an ExternalCopy to ArrayBuffer");
+						}
+					}
+
+					// Get cached data flag
+					Local<Value> produce_cached_data_val;
+					if (
+						options->Get(
+							context, v8_symbol("produceCachedData")
+						).ToLocal(&produce_cached_data_val)
+					) {
+						produce_cached_data = produce_cached_data_val->IsTrue();
+					}
+				}
 				return std::make_tuple(
+					// Copy code string out of first isolate
 					std::make_shared<ExternalCopyString>(code_handle),
-					std::make_shared<ScriptOriginHolder>(options)
+					// Copy origin data out of options object
+					std::make_shared<ScriptOriginHolder>(options),
+					produce_cached_data,
+					cached_data_blob
 				);
-			}, [isolate](shared_ptr<ExternalCopyString> code_copy, shared_ptr<ScriptOriginHolder> script_origin_holder) {
+			}, [isolate](
+				shared_ptr<ExternalCopyString> code_copy,
+				shared_ptr<ScriptOriginHolder> script_origin_holder,
+				bool produce_cached_data,
+				shared_ptr<ExternalCopyArrayBuffer> cached_data_blob
+			) {
 				// Compile in second isolate and return UnboundScript persistent
 				Context::Scope context_scope(isolate->DefaultContext());
 				Local<String> code_inner = code_copy->CopyInto().As<String>();
 				ScriptOrigin script_origin = script_origin_holder->ToScriptOrigin();
-				ScriptCompiler::Source source(code_inner, script_origin);
-				return std::make_shared<ShareablePersistent<UnboundScript>>(RunWithAnnotatedErrors<Local<UnboundScript>>(
-					[&isolate, &source]() { return Unmaybe(ScriptCompiler::CompileUnboundScript(*isolate, &source, ScriptCompiler::kNoCompileOptions)); }
+				ScriptCompiler::CompileOptions compile_options = ScriptCompiler::kNoCompileOptions;
+				unique_ptr<ScriptCompiler::CachedData> cached_data = nullptr;
+				if (cached_data_blob.get() != nullptr) {
+					compile_options = ScriptCompiler::kConsumeCodeCache;
+					cached_data = std::make_unique<ScriptCompiler::CachedData>((const uint8_t*)cached_data_blob->Data(), cached_data_blob->Length());
+				} else if (produce_cached_data) {
+					compile_options = ScriptCompiler::kProduceCodeCache;
+				}
+				ScriptCompiler::Source source(code_inner, script_origin, cached_data.release());
+				auto script = std::make_shared<ShareablePersistent<UnboundScript>>(RunWithAnnotatedErrors<Local<UnboundScript>>(
+					[&isolate, &source, compile_options]() { return Unmaybe(ScriptCompiler::CompileUnboundScript(*isolate, &source, compile_options)); }
 				));
-			}, [](shared_ptr<ShareablePersistent<UnboundScript>> script) {
+
+				// Check cached data flags
+				bool supplied_cached_data = false;
+				bool cached_data_rejected = false;
+				shared_ptr<ExternalCopyArrayBuffer> produced_cached_blob;
+				if (cached_data_blob.get() != nullptr) {
+					supplied_cached_data = true;
+					cached_data_rejected = source.GetCachedData()->rejected;
+				} else if (produce_cached_data) {
+					const ScriptCompiler::CachedData* cached_data = source.GetCachedData();
+					assert(cached_data != nullptr);
+					produced_cached_blob = std::make_shared<ExternalCopyArrayBuffer>((void*)cached_data->data, cached_data->length);
+				}
+
+				return std::make_tuple(script, produced_cached_blob, supplied_cached_data, cached_data_rejected);
+			}, [](
+				shared_ptr<ShareablePersistent<UnboundScript>> script,
+				shared_ptr<ExternalCopyArrayBuffer> cached_data_blob,
+				bool supplied_cached_data,
+				bool cached_data_rejected
+			) {
 				// Wrap UnboundScript in JS Script{} class
-				return ClassHandle::NewInstance<ScriptHandle>(script);
+				Local<Object> value = ClassHandle::NewInstance<ScriptHandle>(script);
+				Isolate* isolate = Isolate::GetCurrent();
+				if (supplied_cached_data) {
+					value->Set(v8_symbol("cachedDataRejected"), Boolean::New(isolate, cached_data_rejected));
+				} else if (cached_data_blob.get() != nullptr) {
+					value->Set(v8_symbol("cachedData"), ClassHandle::NewInstance<ExternalCopyHandle>(cached_data_blob));
+				}
+				return value;
 			});
 		}
 
