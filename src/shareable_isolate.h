@@ -6,6 +6,7 @@
 #include "external_copy.h"
 #include "timer.h"
 #include "util.h"
+#include "inspector.h"
 
 #include "apply_from_tuple.h"
 #include <algorithm>
@@ -47,6 +48,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		static int uv_refs;
 
 		Isolate* isolate;
+		unique_ptr<InspectorClientImpl> inspector_client;
 		Persistent<Context> default_context;
 		unique_ptr<ArrayBuffer::Allocator> allocator_ptr;
 		shared_ptr<ExternalCopyArrayBuffer> snapshot_blob_ptr;
@@ -66,6 +68,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		std::mutex queue_mutex; // mutex for queueing work
 		std::queue<unique_ptr<std::function<void()>>> tasks;
 		std::queue<unique_ptr<std::function<void()>>> handle_tasks;
+		std::queue<unique_ptr<std::function<void()>>> interrupt_tasks;
 		std::vector<unique_ptr<Persistent<Value>>> specifics;
 		std::vector<unique_ptr<Persistent<FunctionTemplate>>> specifics_ft;
 		std::map<Persistent<Object>*, std::pair<void(*)(void*), void*>> weak_persistents;
@@ -133,6 +136,27 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			ShareableIsolate& that = ShareableIsolate::GetCurrent();
 			assert(that.isolate == Isolate::GetCurrent());
 			that.rejected_promise_error.Reset(that.isolate, rejection.GetValue());
+		}
+
+		/**
+		 * Schedules this isolate to wake up and run tasks. If this returns false then the isolate is
+		 * already awake. queue_mutex must be held when calling this function.
+		 */
+		bool WakeIsolate() {
+			if (status == Status::Waiting) {
+				status = Status::Running;
+				if (++uv_refs == 1) {
+					uv_ref((uv_handle_t*)&root_async);
+				}
+				if (root) {
+					root_async.data = this;
+					uv_async_send(&root_async);
+				} else {
+					thread_pool.exec(thread_affinity, WorkerEntry, this);
+				}
+				return true;
+			}
+			return false;
 		}
 
 	public:
@@ -267,11 +291,17 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			isolate->AddGCEpilogueCallback(GCEpilogueCallback);
 			isolate->SetPromiseRejectCallback(PromiseRejectCallback);
 
+			// Bootstrap inspector
+			inspector_client = std::make_unique<InspectorClientImpl>(isolate, this);
+
 			// Create a default context for the library to use if needed
 			{
 				v8::Locker locker(isolate);
 				HandleScope handle_scope(isolate);
-				default_context.Reset(isolate, Context::New(isolate));
+				Local<Context> context = Context::New(isolate);
+				default_context.Reset(isolate, context);
+				std::string name = "default";
+				inspector_client->inspector->contextCreated(v8_inspector::V8ContextInfo(context, 1, v8_inspector::StringView((const uint8_t*)name.c_str(), name.length())));
 			}
 
 			// There is no asynchronous Isolate ctor so we should throw away thread specifics in case
@@ -293,7 +323,9 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		 * Convenience operators to work with underlying isolate
 		 */
 		operator Isolate*() const {
-			assert(life_cycle != LifeCycle::Disposed);
+			// TODO: This function is used to check if two isolates are the same, which is valid to run
+			// after the isolate is disposed, but not good to have sitting around.
+			// assert(life_cycle != LifeCycle::Disposed);
 			return isolate;
 		}
 
@@ -359,6 +391,9 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			{
 				assert(tasks.empty());
 				LockerHelper locker(*this);
+				// Dispose of inspector first
+				inspector_client.reset();
+				// Flush tasks
 				ExecuteHandleTasks();
 				assert(handle_tasks.empty());
 				while (!weak_persistents.empty()) {
@@ -376,6 +411,17 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			life_cycle = LifeCycle::Disposed;
 			assert(handle_tasks.empty());
 			assert(tasks.empty());
+		}
+
+		/**
+		 * Create a new debug channel
+		 */
+		unique_ptr<InspectorSession> CreateInspectorSession(shared_ptr<V8Inspector::Channel> channel) {
+			std::unique_lock<std::mutex> lock(queue_mutex);
+			if (life_cycle != LifeCycle::Normal) {
+				throw js_generic_error("Isolate is disposed or disposing");
+			}
+			return inspector_client->createSession(channel);
 		}
 
 		/**
@@ -405,18 +451,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				throw js_generic_error("Isolate is disposed or disposing");
 			}
 			this->tasks.push(std::move(fn_ptr));
-			if (status == Status::Waiting) {
-				status = Status::Running;
-				if (++uv_refs == 1) {
-					uv_ref((uv_handle_t*)&root_async);
-				}
-				if (root) {
-					root_async.data = this;
-					uv_async_send(&root_async);
-				} else {
-					thread_pool.exec(thread_affinity, WorkerEntry, this);
-				}
-			}
+			WakeIsolate();
 		}
 
 		/**
@@ -434,6 +469,21 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			}
 			this->handle_tasks.push(std::make_unique<std::function<void()>>(std::move(fn)));
 			return true;
+		}
+
+		/**
+		 * Schedules a task which will interupt JS execution. This will wake up the isolate if it's not
+		 * currently running.
+		 */
+		void ScheduleInterrupt(std::function<void()> fn) {
+			std::unique_lock<std::mutex> lock(queue_mutex);
+			if (life_cycle != LifeCycle::Normal || hit_memory_limit) {
+				throw js_generic_error("Isolate is disposed or disposing");
+			}
+			interrupt_tasks.push(std::make_unique<std::function<void()>>(std::move(fn)));
+			if (!WakeIsolate()) {
+				isolate->RequestInterrupt(InterruptEntry, this);
+			}
 		}
 
 		void ExecuteHandleTasks() {
@@ -454,7 +504,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			}
 		}
 
-		static void WorkerEntryRoot(uv_async_s* async) {
+		static void WorkerEntryRoot(uv_async_t* async) {
 			if (async->data != nullptr) { // see WorkerEntry nullptr async message
 				WorkerEntry(true, async->data);
 			}
@@ -468,13 +518,15 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			{
 				LockerHelper locker(that);
 				while (true) {
-					std::queue<unique_ptr<std::function<void()>>> tasks;
-					std::queue<unique_ptr<std::function<void()>>> handle_tasks;
+					decltype(that.tasks) tasks;
+					decltype(that.handle_tasks) handle_tasks;
+					decltype(that.interrupt_tasks) interrupt_tasks;
 					{
 						std::unique_lock<std::mutex> lock(that.queue_mutex);
 						std::swap(tasks, that.tasks);
 						std::swap(handle_tasks, that.handle_tasks);
-						if (handle_tasks.empty() && tasks.empty()) {
+						std::swap(interrupt_tasks, that.interrupt_tasks);
+						if (handle_tasks.empty() && interrupt_tasks.empty() && tasks.empty()) {
 							that.status = Status::Waiting;
 							if (!pool_thread) {
 								// In this case the thread pool was full so this loop was run in a temporary thread
@@ -504,6 +556,13 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 						handle_tasks.pop();
 					}
 
+					// Execute interrupt tasks
+					while (!interrupt_tasks.empty()) {
+						auto task = std::move(interrupt_tasks.front());
+						(*task)();
+						interrupt_tasks.pop();
+					}
+
 					// Execute regular tasks
 					while (!tasks.empty()) {
 						if (that.hit_memory_limit) {
@@ -522,6 +581,25 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			assert(that.hit_memory_limit);
 			exec_lock.unlock();
 			that.Dispose();
+		}
+
+		/**
+		 * This is called in response to RequestInterrupt. In this case the isolate will already be
+		 * locked and enterred.
+		 */
+		static void InterruptEntry(Isolate* isolate, void* param) {
+			ShareableIsolate& that = *static_cast<ShareableIsolate*>(param);
+			assert(that.status == Status::Running);
+			decltype(interrupt_tasks) interrupt_tasks_copy;
+			{
+				std::unique_lock<std::mutex> lock(that.queue_mutex);
+				std::swap(that.interrupt_tasks, interrupt_tasks_copy);
+			}
+			while (!interrupt_tasks_copy.empty()) {
+				auto task = std::move(interrupt_tasks_copy.front());
+				(*task)();
+				interrupt_tasks_copy.pop();
+			}
 		}
 
 		/**
@@ -594,6 +672,17 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 
 		Local<Context> DefaultContext() const {
 			return Local<Context>::New(isolate, default_context);
+		}
+
+		void ContextCreated(Local<Context> context) {
+			std::string name = "<isolated-vm>";
+			inspector_client->inspector->contextCreated(v8_inspector::V8ContextInfo(context, 1, v8_inspector::StringView((const uint8_t*)name.c_str(), name.length())));
+		}
+
+		void ContextDestroyed(Local<Context> context) {
+			if (!root) { // TODO: This gets called for the root context because of ShareableContext's dtor :(
+				inspector_client->inspector->contextDestroyed(context);
+			}
 		}
 
 		/**

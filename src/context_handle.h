@@ -2,6 +2,7 @@
 #include <node.h>
 #include "shareable_isolate.h"
 #include "shareable_persistent.h"
+#include "shareable_context.h"
 #include "class_handle.h"
 #include "reference_handle.h"
 #include "script_handle.h"
@@ -15,22 +16,22 @@ using std::shared_ptr;
 class ContextHandle : public TransferableHandle {
 	friend class ScriptHandle;
 	private:
-		shared_ptr<ShareablePersistent<Context>> context;
+		shared_ptr<ShareableContext> context;
 		shared_ptr<ShareablePersistent<Value>> global;
 
 		class ContextHandleTransferable : public Transferable {
 			private:
-				shared_ptr<ShareablePersistent<Context>> context;
+				shared_ptr<ShareableContext> context;
 				shared_ptr<ShareablePersistent<Value>> global;
 			public:
-				ContextHandleTransferable(shared_ptr<ShareablePersistent<Context>>& context, shared_ptr<ShareablePersistent<Value>>& global) : context(context), global(global) {}
+				ContextHandleTransferable(shared_ptr<ShareableContext>& context, shared_ptr<ShareablePersistent<Value>>& global) : context(context), global(global) {}
 				virtual Local<Value> TransferIn() {
 					return ClassHandle::NewInstance<ContextHandle>(context, global);
 				}
 		};
 
 	public:
-		ContextHandle(shared_ptr<ShareablePersistent<Context>>& context, shared_ptr<ShareablePersistent<Value>>& global) : context(context), global(global) {}
+		ContextHandle(shared_ptr<ShareableContext> context, shared_ptr<ShareablePersistent<Value>> global) : context(context), global(global) {}
 
 		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
 			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;

@@ -43,6 +43,7 @@
 			'sources': [
 				'src/class_handle.cc',
 				'src/external_copy.cc',
+				'src/inspector.cc',
 				'src/isolate.cc',
 				'src/shareable_isolate.cc',
 				'src/transferable.cc',

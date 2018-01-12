@@ -120,7 +120,7 @@ class ExternalCopyIntoHandle : public TransferableHandle {
 		};
 
 	public:
-		ExternalCopyIntoHandle(shared_ptr<ExternalCopy>& value) : value(value) {}
+		ExternalCopyIntoHandle(shared_ptr<ExternalCopy> value) : value(value) {}
 
 		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
 			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;

@@ -7,6 +7,7 @@
 #include "script_handle.h"
 #include "external_copy.h"
 #include "external_copy_handle.h"
+#include "session_handle.h"
 
 #include <stdlib.h>
 #include <memory>
@@ -160,6 +161,7 @@ class IsolateHandle : public TransferableHandle {
 				"compileScriptSync", Parameterize<decltype(&IsolateHandle::CompileScript<false>), &IsolateHandle::CompileScript<false>>, 1,
 				"createContext", Parameterize<decltype(&IsolateHandle::CreateContext<true>), &IsolateHandle::CreateContext<true>>, 0,
 				"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContext<false>), &IsolateHandle::CreateContext<false>>, 0,
+				"createInspectorSession", Parameterize<decltype(&IsolateHandle::CreateInspectorSession), &IsolateHandle::CreateInspectorSession>, 0,
 				"dispose", Parameterize<decltype(&IsolateHandle::Dispose), &IsolateHandle::Dispose>, 0,
 				"getHeapStatistics", Parameterize<decltype(&IsolateHandle::GetHeapStatistics), &IsolateHandle::GetHeapStatistics>, 0
 			));
@@ -236,11 +238,12 @@ class IsolateHandle : public TransferableHandle {
 			}, [isolate]() {
 				// Make a new context and return the context and its global object
 				Local<Context> context = Context::New(*isolate);
+				isolate->ContextCreated(context);
 				return std::make_tuple(
-					std::make_shared<ShareablePersistent<Context>>(context),
+					std::make_shared<ShareableContext>(context),
 					std::make_shared<ShareablePersistent<Value>>(context->Global())
 				);
-			}, [](shared_ptr<ShareablePersistent<Context>> context, shared_ptr<ShareablePersistent<Value>> global) {
+			}, [](shared_ptr<ShareableContext> context, shared_ptr<ShareablePersistent<Value>> global) {
 				// Make a new Context{} JS class
 				return ClassHandle::NewInstance<ContextHandle>(context, global);
 			});
@@ -347,6 +350,16 @@ class IsolateHandle : public TransferableHandle {
 				}
 				return value;
 			});
+		}
+
+		/**
+		 * Create a new channel for debugging on the inspector
+		 */
+		Local<Value> CreateInspectorSession() {
+			if (&ShareableIsolate::GetCurrent() == isolate.get()) {
+				throw js_generic_error("An isolate is not debuggable from within itself");
+			}
+			return ClassHandle::NewInstance<SessionHandle>(isolate.get());
 		}
 
 		/**

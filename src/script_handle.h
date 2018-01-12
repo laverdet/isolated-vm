@@ -26,7 +26,7 @@ class ScriptHandle : public TransferableHandle {
 		};
 
 	public:
-		ScriptHandle(std::shared_ptr<ShareablePersistent<UnboundScript>>& script) : script(script) {}
+		ScriptHandle(std::shared_ptr<ShareablePersistent<UnboundScript>> script) : script(script) {}
 
 		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
 			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;

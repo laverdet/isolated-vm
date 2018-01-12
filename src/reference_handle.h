@@ -1,6 +1,7 @@
 #pragma once
 #include <node.h>
 #include "shareable_persistent.h"
+#include "shareable_context.h"
 #include "class_handle.h"
 #include "transferable.h"
 #include "transferable_handle.h"
@@ -25,7 +26,7 @@ class ReferenceHandle : public TransferableHandle {
 
 	private:
 		shared_ptr<ShareablePersistent<Value>> reference;
-		shared_ptr<ShareablePersistent<Context>> context;
+		shared_ptr<ShareableContext> context;
 		TypeOf type_of;
 
 		/**
@@ -34,13 +35,13 @@ class ReferenceHandle : public TransferableHandle {
 		class ReferenceHandleTransferable : public Transferable {
 			private:
 				shared_ptr<ShareablePersistent<Value>> reference;
-				shared_ptr<ShareablePersistent<Context>> context;
+				shared_ptr<ShareableContext> context;
 				TypeOf type_of;
 
 			public:
 				ReferenceHandleTransferable(
 					shared_ptr<ShareablePersistent<Value>> reference,
-					shared_ptr<ShareablePersistent<Context>> context,
+					shared_ptr<ShareableContext> context,
 					TypeOf type_of
 				) :
 					reference(reference), context(context), type_of(type_of) {}
@@ -80,7 +81,7 @@ class ReferenceHandle : public TransferableHandle {
 	public:
 		ReferenceHandle(
 			shared_ptr<ShareablePersistent<Value>> reference,
-			shared_ptr<ShareablePersistent<Context>> context,
+			shared_ptr<ShareableContext> context,
 			TypeOf type_of
 		) :
 			reference(reference), context(context), type_of(type_of) {}
@@ -119,7 +120,7 @@ class ReferenceHandle : public TransferableHandle {
 		static unique_ptr<ReferenceHandle> New(Local<Value> var) {
 			return std::make_unique<ReferenceHandle>(
 				std::make_shared<ShareablePersistent<Value>>(var),
-				std::make_shared<ShareablePersistent<Context>>(Isolate::GetCurrent()->GetCurrentContext()),
+				std::make_shared<ShareableContext>(Isolate::GetCurrent()->GetCurrentContext()),
 				InferTypeOf(var)
 			);
 		}
@@ -378,7 +379,7 @@ class DereferenceHandle : public TransferableHandle {
 			return Inherit<TransferableHandle>(MakeClass("Dereference", nullptr, 0));
 		}
 
-		DereferenceHandle(shared_ptr<ShareablePersistent<Value>>& reference) : reference(reference) {}
+		DereferenceHandle(shared_ptr<ShareablePersistent<Value>> reference) : reference(reference) {}
 
 		virtual unique_ptr<Transferable> TransferOut() {
 			return std::make_unique<DereferenceHandleTransferable>(reference);

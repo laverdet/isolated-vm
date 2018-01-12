@@ -11,7 +11,7 @@ using namespace v8;
  * Wrapper for a persistent reference and the isolate that owns it. We can then wrap this again
  * in `std` memory managers to share amongst other isolates.
  */
-template <class T>
+template <class T, void (*D)(Persistent<T>&, ShareableIsolate*) = nullptr>
 class ShareablePersistent {
 	private:
 		std::shared_ptr<ShareableIsolate> isolate;
@@ -25,7 +25,19 @@ class ShareablePersistent {
 
 		~ShareablePersistent() {
 			Persistent<T>* handle = this->handle.release();
-			if (!isolate->ScheduleHandleTask(true, [handle]() { handle->Reset(); delete handle; })) {
+			shared_ptr<ShareableIsolate> isolate = this->isolate;
+			if (!isolate->ScheduleHandleTask(true, [handle, isolate]() {
+				// Isolate is still alive
+				if (D != nullptr) {
+					D(*handle, isolate.get());
+				}
+				handle->Reset();
+				delete handle;
+			})) {
+				// Isolate is not alive
+				if (D != nullptr) {
+					D(*handle, nullptr);
+				}
 				delete handle;
 			}
 		}

@@ -257,7 +257,7 @@ class ClassHandle {
 		template <typename T, typename ...Args>
 		static Local<Object> NewInstance(Args... args) {
 			Local<Object> instance = GetFunctionTemplate<T>()->InstanceTemplate()->NewInstance(Isolate::GetCurrent()->GetCurrentContext()).ToLocalChecked();
-			Wrap(std::make_unique<T>(args...), instance);
+			Wrap(std::make_unique<T>(std::forward<Args>(args)...), instance);
 			return instance;
 		}
 
