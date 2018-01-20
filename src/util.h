@@ -58,8 +58,8 @@ T Unmaybe(v8::Maybe<T> handle) {
 /**
  * Run a function and annotate the exception with source / line number if it throws
  */
-template <typename T>
-T RunWithAnnotatedErrors(std::function<T()> fn) {
+template <typename T, typename F>
+T RunWithAnnotatedErrors(F&& fn) {
 	v8::Isolate* isolate = v8::Isolate::GetCurrent();
 	v8::TryCatch try_catch(isolate);
 	try {
