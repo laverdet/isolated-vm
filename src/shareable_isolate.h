@@ -349,6 +349,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		HeapStatistics GetHeapStatistics() {
 			std::unique_lock<std::mutex> lock(queue_mutex);
 			if (life_cycle != LifeCycle::Normal) {
+				lock.unlock();
 				throw js_generic_error("Isolate is disposed or disposing");
 			}
 			HeapStatistics heap;
@@ -380,9 +381,11 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			{
 				std::unique_lock<std::mutex> lock(queue_mutex);
 				if (life_cycle != LifeCycle::Normal) {
+					lock.unlock();
 					throw js_generic_error("Isolate is already disposed or disposing");
 				}
 				if (!tasks.empty()) {
+					lock.unlock();
 					throw js_generic_error("Isolate is still busy, let all promises resolve before calling dispose()");
 				}
 				life_cycle = LifeCycle::Disposing;
@@ -419,6 +422,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		unique_ptr<InspectorSession> CreateInspectorSession(shared_ptr<V8Inspector::Channel> channel) {
 			std::unique_lock<std::mutex> lock(queue_mutex);
 			if (life_cycle != LifeCycle::Normal) {
+				lock.unlock();
 				throw js_generic_error("Isolate is disposed or disposing");
 			}
 			return inspector_client->createSession(channel);
@@ -448,6 +452,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			auto fn_ptr = std::make_unique<std::function<void()>>(std::bind(std::forward<F>(fn), std::forward<Args>(args)...));
 			std::unique_lock<std::mutex> lock(queue_mutex);
 			if (life_cycle != LifeCycle::Normal || hit_memory_limit) {
+				lock.unlock();
 				throw js_generic_error("Isolate is disposed or disposing");
 			}
 			this->tasks.push(std::move(fn_ptr));
@@ -478,6 +483,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		void ScheduleInterrupt(std::function<void()> fn) {
 			std::unique_lock<std::mutex> lock(queue_mutex);
 			if (life_cycle != LifeCycle::Normal || hit_memory_limit) {
+				lock.unlock();
 				throw js_generic_error("Isolate is disposed or disposing");
 			}
 			interrupt_tasks.push(std::make_unique<std::function<void()>>(std::move(fn)));
@@ -487,7 +493,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		}
 
 		void ExecuteHandleTasks() {
-			std::queue<unique_ptr<std::function<void()>>> handle_tasks;
+			decltype(this->handle_tasks) handle_tasks;
 			while (true) {
 				{
 					std::unique_lock<std::mutex> lock(queue_mutex);
@@ -622,6 +628,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 					std::unique_lock<std::mutex> lock(queue_mutex);
 					if (life_cycle != LifeCycle::Normal || hit_memory_limit) {
 						// nb: v8 lock is never set up
+						lock.unlock();
 						throw js_generic_error("Isolate is disposed or disposing");
 					}
 				}
@@ -658,10 +665,12 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 					throw js_generic_error("Isolate has exhausted v8 heap space.");
 				} else {
 					// We need to get rid of this isolate before it takes down the whole process
-					std::unique_lock<std::mutex> lock(queue_mutex);
-					if (life_cycle == LifeCycle::Normal) {
-						lock.unlock();
-						Dispose();
+					{
+						std::unique_lock<std::mutex> lock(queue_mutex);
+						if (life_cycle == LifeCycle::Normal) {
+							lock.unlock();
+							Dispose();
+						}
 					}
 					throw js_generic_error("Isolate has exhausted v8 heap space.");
 				}
