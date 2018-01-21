@@ -27,20 +27,21 @@ function runTest(test, cb) {
 	});
 	proc.stdin.end();
 
+	process.stderr.write(`${test}: `);
 	proc.on('exit', function(code) {
 		if (stdout !== 'pass\n' || stderr !== '') {
 			ret = 1;
 			console.error(
-				`${test}: *fail*\n`+
+				`*fail*\n`+
 				`code: ${code}\n`+
 				`stderr: ${stderr}\n`+
 				`stdout: ${stdout}`
 			);
 		} else if (code !== 0) {
 			ret = 1;
-			console.error(`${test}: fail (${code})`);
+			console.error(`fail (${code})`);
 		} else {
-			console.log(`${test}: pass`);
+			console.log(`pass`);
 		}
 		cb();
 	});
