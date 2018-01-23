@@ -5,7 +5,6 @@
 #include "shareable_context.h"
 #include "class_handle.h"
 #include "reference_handle.h"
-#include "script_handle.h"
 
 #include <memory>
 
@@ -15,6 +14,7 @@ using std::shared_ptr;
 
 class ContextHandle : public TransferableHandle {
 	friend class ScriptHandle;
+	friend class NativeModuleHandle;
 	private:
 		shared_ptr<ShareableContext> context;
 		shared_ptr<ShareablePersistent<Value>> global;

@@ -218,7 +218,8 @@ class ClassHandle {
 		}
 
 	public:
-		ClassHandle() {}
+		ClassHandle() = default;
+		ClassHandle(const ClassHandle&) = delete;
 		virtual ~ClassHandle() {
 			if (!handle.IsEmpty()) {
 				handle.ClearWeak();
