@@ -330,7 +330,7 @@ class ReferenceHandle : public TransferableHandle {
 					RunWithTimeout(
 						timeout_ms, reference->GetIsolate(),
 						[&fn, &context_handle, &recv_inner, argc, &argv_inner]() {
-							return fn.As<Function>()->Call(context_handle, recv_inner, argc, &argv_inner[0]);
+							return fn.As<Function>()->Call(context_handle, recv_inner, argc, argc ? &argv_inner[0] : nullptr);
 						}
 					)
 				));

@@ -48,10 +48,11 @@ class ScriptHandle : public TransferableHandle {
 		template <bool async>
 		Local<Value> Run(ContextHandle* context_handle, MaybeLocal<Object> maybe_options) {
 			auto script = this->script;
-			return ThreePhaseRunner<async>(script->GetIsolate(), [this, context_handle, &maybe_options]() {
+			auto context = context_handle->context;
+			return ThreePhaseRunner<async>(script->GetIsolate(), [this, context, &maybe_options]() {
 
 				// Sanity check
-				if (this->script->GetIsolate() != context_handle->context->GetIsolate()) {
+				if (this->script->GetIsolate() != context->GetIsolate()) {
 					throw js_generic_error("Invalid context");
 				}
 
@@ -68,14 +69,13 @@ class ScriptHandle : public TransferableHandle {
 					}
 				}
 				return timeout;
-
-			}, [script, context_handle](uint32_t timeout_ms) {
+			}, [script, context](uint32_t timeout_ms) {
 				// Enter script's context and run it
-				Local<Context> context = context_handle->context->Deref();
-				Context::Scope context_scope(context);
+				Local<Context> context_local = context->Deref();
+				Context::Scope context_scope(context_local);
 				Local<Script> script_handle = script->Deref()->BindToCurrentContext();
 				return shared_ptr<Transferable>(ExternalCopy::CopyIfPrimitive(
-					RunWithTimeout(timeout_ms, script->GetIsolate(), [&script_handle, &context]() { return script_handle->Run(context); })
+					RunWithTimeout(timeout_ms, script->GetIsolate(), [&script_handle, &context_local]() { return script_handle->Run(context_local); })
 				));
 			}, [](shared_ptr<Transferable> result) {
 				if (result.get() == nullptr) {

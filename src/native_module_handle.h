@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "transferable.h"
+#include "context_handle.h"
 #include "transferable_handle.h"
 
 namespace ivm {
@@ -35,7 +36,7 @@ class NativeModuleHandle : public TransferableHandle {
 		std::shared_ptr<NativeModule> module;
 
 		template <bool async>
-		v8::Local<v8::Value> Create(class ContextHandle* context);
+		v8::Local<v8::Value> Create(ContextHandle* context);
 
 	public:
 		NativeModuleHandle(std::shared_ptr<NativeModule> module);
