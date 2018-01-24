@@ -6,6 +6,7 @@
 #include "native_module_handle.h"
 #include "script_handle.h"
 #include "external_copy_handle.h"
+#include "lib_handle.h"
 #include "reference_handle.h"
 #include "platform_delegate.h"
 
@@ -56,6 +57,7 @@ class LibraryHandle : public TransferableHandle {
 			library->Set(v8_symbol("Isolate"), ClassHandle::Init<IsolateHandle>());
 			library->Set(v8_symbol("Context"), ClassHandle::Init<ContextHandle>());
 			library->Set(v8_symbol("ExternalCopy"), ClassHandle::Init<ExternalCopyHandle>());
+			library->Set(v8_symbol("lib"), ClassHandle::NewInstance<LibHandle>());
 			library->Set(v8_symbol("NativeModule"), ClassHandle::Init<NativeModuleHandle>());
 			library->Set(v8_symbol("Reference"), ClassHandle::Init<ReferenceHandle>());
 			library->Set(v8_symbol("Script"), ClassHandle::Init<ScriptHandle>());

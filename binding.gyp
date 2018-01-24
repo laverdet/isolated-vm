@@ -48,6 +48,7 @@
 				'src/external_copy.cc',
 				'src/inspector.cc',
 				'src/isolate.cc',
+				'src/lib_handle.cc',
 				'src/native_module_handle.cc',
 				'src/shareable_context.cc',
 				'src/shareable_isolate.cc',
