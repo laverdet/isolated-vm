@@ -470,7 +470,6 @@ Local<Value> CreateSnapshot(Local<Array> script_handles, MaybeLocal<String> warm
 				isolate->ContextDisposedNotification(false);
 				snapshot_creator.AddContext(context);
 			} catch (const js_error_base& cc_error) {
-				(void)cc_error;
 				assert(try_catch.HasCaught());
 				HandleScope handle_scope(isolate);
 				Context::Scope context_scope(context);

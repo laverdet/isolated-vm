@@ -33,7 +33,10 @@
 					'AdditionalOptions': [ '/GR' ],
 				},
 			},
-			'msvs_disabled_warnings': [ 4068 ], # Unknown pragma
+			'msvs_disabled_warnings': [
+				4101, # Unreferenced local (msvc fires these for ignored exception)
+				4068, # Unknown pragma
+			],
 			'conditions': [
 				[ 'OS == "win"',
 					{ 'defines': [ 'NOMINMAX' ] },

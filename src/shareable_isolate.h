@@ -639,7 +639,6 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				try {
 					return TaskWrapper(fn(std::forward<Args>(args)...));
 				} catch (const js_error_base& cc_error) {
-					(void)cc_error;
 					// memory errors will be handled below
 					if (!hit_memory_limit) {
 						// `stack` getter on Error needs a Context..
@@ -759,7 +758,6 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 							Unmaybe(promise_local->Resolve(context_local, apply_from_tuple(std::move(fn3), std::move(fn2_result)))); // <-- fn3() is called here
 							isolate->RunMicrotasks();
 						} catch (js_error_base& cc_error) {
-							(void)cc_error;
 							// An error was caught while running fn3()
 							assert(try_catch.HasCaught());
 							// If Reject fails then I think that's bad..
@@ -767,7 +765,6 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 						}
 					}, second_isolate_ref->TaskWrapper(apply_from_tuple(std::move(fn2), std::move(fn1_result))), std::move(fn3)); // <-- fn2() is called here
 				} catch (js_error_base& cc_error) {
-					(void)cc_error;
 					try {
 						// An error was caught while running fn2(). Or perhaps first_isolate.ScheduleTask()
 						// threw.
@@ -791,7 +788,6 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 							isolate->RunMicrotasks();
 						}, shared_ptr<ExternalCopy>(ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception())));
 					} catch (js_error_base& cc_error2) {
-						(void)cc_error2;
 						// If we get here it means first_isolate was disposed before we could return the result
 						// from second_isolate back to it. There's not much we can do besides just forget about
 						// it.
@@ -799,7 +795,6 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 				}
 			}, fn1(), std::move(fn2), std::move(fn3)); // <-- fn1() is called here
 		} catch (js_error_base& cc_error) {
-			(void)cc_error;
 			// An error was caught while running fn1()
 			assert(try_catch.HasCaught());
 			Unmaybe(promise_local->Reject(context_local, try_catch.Exception()));
