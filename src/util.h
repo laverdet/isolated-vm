@@ -7,15 +7,18 @@
 
 namespace ivm {
 
+template <typename T> v8::Local<T> Unmaybe(v8::MaybeLocal<T> handle);
+template <typename T> T Unmaybe(v8::Maybe<T> handle);
+
 /**
  * Easy strings
  */
 inline v8::Local<v8::String> v8_string(const char* string) {
-	return v8::String::NewFromOneByte(v8::Isolate::GetCurrent(), (const uint8_t*)string, v8::NewStringType::kNormal).ToLocalChecked();
+	return Unmaybe(v8::String::NewFromOneByte(v8::Isolate::GetCurrent(), (const uint8_t*)string, v8::NewStringType::kNormal));
 }
 
 inline v8::Local<v8::String> v8_symbol(const char* string) {
-	return v8::String::NewFromOneByte(v8::Isolate::GetCurrent(), (const uint8_t*)string, v8::NewStringType::kInternalized).ToLocalChecked();
+	return Unmaybe(v8::String::NewFromOneByte(v8::Isolate::GetCurrent(), (const uint8_t*)string, v8::NewStringType::kInternalized));
 }
 
 /**
@@ -26,7 +29,14 @@ class js_error_base : public std::exception {};
 template <v8::Local<v8::Value> (*F)(v8::Local<v8::String>)>
 struct js_error : public js_error_base {
 	js_error(std::string message) {
-		v8::Isolate::GetCurrent()->ThrowException(F(v8_string(message.c_str())));
+		v8::Isolate* isolate = v8::Isolate::GetCurrent();
+		v8::MaybeLocal<v8::String> maybe_message = v8::String::NewFromOneByte(isolate, (const uint8_t*)message.c_str(), v8::NewStringType::kNormal);
+		v8::Local<v8::String> message_handle;
+		if (maybe_message.ToLocal(&message_handle)) {
+			isolate->ThrowException(F(message_handle));
+		}
+		// If the MaybeLocal is empty then I think v8 will have an exception on deck. I don't know if
+		// there's any way to assert() this though.
 	}
 };
 
@@ -39,19 +49,21 @@ typedef js_error<v8::Exception::TypeError> js_type_error;
  */
 template <typename T>
 v8::Local<T> Unmaybe(v8::MaybeLocal<T> handle) {
-	if (handle.IsEmpty()) {
-		throw js_error_base();
+	v8::Local<T> local;
+	if (handle.ToLocal(&local)) {
+		return local;
 	} else {
-		return handle.ToLocalChecked();
+		throw js_error_base();
 	}
 }
 
 template <typename T>
 T Unmaybe(v8::Maybe<T> handle) {
-	if (handle.IsNothing()) {
-		throw js_error_base();
+	T just;
+	if (handle.To(&just)) {
+		return just;
 	} else {
-		return handle.FromJust();
+		throw js_error_base();
 	}
 }
 

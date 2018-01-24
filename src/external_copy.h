@@ -98,7 +98,7 @@ class ExternalCopyTemplate<String, shared_ptr<vector<uint16_t>>> : public Extern
 
 		virtual Local<Value> CopyInto() const {
 			if (value->size()) {
-				return String::NewExternalTwoByte(Isolate::GetCurrent(), new ExternalString(value)).ToLocalChecked();
+				return Unmaybe(String::NewExternalTwoByte(Isolate::GetCurrent(), new ExternalString(value)));
 			} else {
 				// v8 crashes if you send it an empty external string :(
 				return String::Empty(Isolate::GetCurrent());
@@ -124,7 +124,7 @@ class ExternalCopyJSON : public ExternalCopy {
 		ExternalCopyJSON(Local<Value> value) : blob(value) {}
 
 		virtual Local<Value> CopyInto() const {
-			return JSON::Parse(Isolate::GetCurrent()->GetCurrentContext(), Local<String>::Cast(blob.CopyInto())).ToLocalChecked();
+			return Unmaybe(JSON::Parse(Isolate::GetCurrent()->GetCurrentContext(), Local<String>::Cast(blob.CopyInto())));
 		}
 
 		virtual size_t Size() const {
