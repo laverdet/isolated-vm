@@ -35,7 +35,7 @@ unique_ptr<Transferable> LibHandle::TransferOut() {
 
 Local<Value> LibHandle::Hrtime(MaybeLocal<Array> maybe_diff) {
 	uint64_t time = uv_hrtime();
-	constexpr uint64_t kNanos = 1e9;
+	constexpr uint64_t kNanos = (uint64_t)1e9;
 	Local<Array> diff;
 	if (maybe_diff.ToLocal(&diff)) {
 		if (diff->Length() != 2) {
@@ -47,8 +47,8 @@ Local<Value> LibHandle::Hrtime(MaybeLocal<Array> maybe_diff) {
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
 	Local<Array> ret = Array::New(isolate, 2);
-	Unmaybe(ret->Set(context, 0, Uint32::New(isolate, time / kNanos)));
-	Unmaybe(ret->Set(context, 1, Uint32::New(isolate, time - (time / kNanos) * kNanos)));
+	Unmaybe(ret->Set(context, 0, Uint32::New(isolate, (uint32_t)(time / kNanos))));
+	Unmaybe(ret->Set(context, 1, Uint32::New(isolate, (uint32_t)(time - (time / kNanos) * kNanos))));
 	return ret;
 }
 
