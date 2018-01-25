@@ -368,6 +368,10 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			return hit_memory_limit;
 		}
 
+		bool IsNormalLifeCycle() const {
+			return life_cycle == LifeCycle::Normal;
+		}
+
 		/**
 		 * Dispose of an isolate and clean up dangling handles
 		 */
@@ -389,6 +393,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 					throw js_generic_error("Isolate is still busy, let all promises resolve before calling dispose()");
 				}
 				life_cycle = LifeCycle::Disposing;
+				isolate->TerminateExecution();
 			}
 			std::unique_lock<std::mutex> lock(exec_mutex);
 			{
@@ -851,7 +856,9 @@ Local<Value> RunWithTimeout(uint32_t timeout_ms, ShareableIsolate& isolate, F&& 
 		did_finish = true;
 	}
 	if (did_timeout) {
-		isolate->CancelTerminateExecution();
+		if (isolate.IsNormalLifeCycle()) {
+			isolate->CancelTerminateExecution();
+		}
 		throw js_generic_error("Script execution timed out.");
 	} else if (isolate.DidHitMemoryLimit()) {
 		// TODO: Consider finding a way to do this without allocating in the dangerous isolate
