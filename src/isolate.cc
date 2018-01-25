@@ -16,8 +16,6 @@ using namespace std;
 
 namespace ivm {
 
-static ShareableIsolate::IsolateSpecific<Object> library_specific;
-
 /**
  * The whole library is transferable so you can Inception the library into your isolates.
  */
@@ -40,7 +38,14 @@ class LibraryHandle : public TransferableHandle {
 		}
 
 		static Local<FunctionTemplate> Definition() {
-			return Inherit<TransferableHandle>(MakeClass("isolated_vm", nullptr, 0));
+			auto tmpl = Inherit<TransferableHandle>(MakeClass("isolated_vm", nullptr, 0));
+			AddProtoTemplate(tmpl, "Context", ClassHandle::GetFunctionTemplate<ContextHandle>());
+			AddProtoTemplate(tmpl, "ExternalCopy", ClassHandle::GetFunctionTemplate<ExternalCopyHandle>());
+			AddProtoTemplate(tmpl, "Isolate", ClassHandle::GetFunctionTemplate<IsolateHandle>());
+			AddProtoTemplate(tmpl, "NativeModule", ClassHandle::GetFunctionTemplate<NativeModuleHandle>());
+			AddProtoTemplate(tmpl, "Reference", ClassHandle::GetFunctionTemplate<ReferenceHandle>());
+			AddProtoTemplate(tmpl, "Script", ClassHandle::GetFunctionTemplate<ScriptHandle>());
+			return tmpl;
 		}
 
 		virtual unique_ptr<Transferable> TransferOut() {
@@ -48,20 +53,8 @@ class LibraryHandle : public TransferableHandle {
 		}
 
 		static Local<Object> Get() {
-			MaybeLocal<Object> maybe_library = library_specific.Deref();
-			Local<Object> library;
-			if (maybe_library.ToLocal(&library)) {
-				return library;
-			}
-			library = ClassHandle::NewInstance<LibraryHandle>().As<Object>();
-			library->Set(v8_symbol("Isolate"), ClassHandle::Init<IsolateHandle>());
-			library->Set(v8_symbol("Context"), ClassHandle::Init<ContextHandle>());
-			library->Set(v8_symbol("ExternalCopy"), ClassHandle::Init<ExternalCopyHandle>());
+			Local<Object> library = ClassHandle::NewInstance<LibraryHandle>().As<Object>();
 			library->Set(v8_symbol("lib"), ClassHandle::NewInstance<LibHandle>());
-			library->Set(v8_symbol("NativeModule"), ClassHandle::Init<NativeModuleHandle>());
-			library->Set(v8_symbol("Reference"), ClassHandle::Init<ReferenceHandle>());
-			library->Set(v8_symbol("Script"), ClassHandle::Init<ScriptHandle>());
-			library_specific.Reset(library);
 			return library;
 		}
 };

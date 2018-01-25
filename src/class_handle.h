@@ -213,6 +213,13 @@ class ClassHandle {
 			ParameterizeEntry<0, T, F>(info);
 		}
 
+		/*
+		 * Utilities for non-method properties / statics
+		 */
+		static void AddProtoTemplate(Local<FunctionTemplate>& proto, const char* name, Local<FunctionTemplate> property) {
+			proto->PrototypeTemplate()->Set(v8_symbol(name), property);
+		}
+
 	public:
 		ClassHandle() = default;
 		ClassHandle(const ClassHandle&) = delete;
