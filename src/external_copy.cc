@@ -1,13 +1,19 @@
 #include "external_copy.h"
 
-using namespace std;
+#include "util.h"
+
 using namespace v8;
+using std::make_unique;
+using std::unique_ptr;
 
 namespace ivm {
 
+/**
+ * ExternalCopy implemtation
+ */
 unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value) {
-	unique_ptr<ExternalCopy> copy(CopyIfPrimitive(value));
-	if (copy.get() != nullptr) {
+	unique_ptr<ExternalCopy> copy = CopyIfPrimitive(value);
+	if (copy) {
 		return copy;
 	} else if (value->IsDate()) {
 		return make_unique<ExternalCopyDate>(value);
@@ -88,7 +94,7 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 
 		// Detect which subclass of Error was thrown (no better way to do this??)
 		Local<Object> object(Local<Object>::Cast(value));
-		string name(*String::Utf8Value(object->GetConstructorName()));
+		std::string name(*String::Utf8Value(object->GetConstructorName()));
 		ExternalCopyError::ErrorType error_type = (ExternalCopyError::ErrorType)0;
 		if (name == "RangeError") {
 			error_type = ExternalCopyError::ErrorType::RangeError;
@@ -127,10 +133,174 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 				stack_copy = make_unique<ExternalCopyString>(stack);
 			}
 
-			return make_unique<ExternalCopyError>(error_type, move(message_copy), move(stack_copy));
+			return make_unique<ExternalCopyError>(error_type, std::move(message_copy), std::move(stack_copy));
 		}
 	}
 	return CopyIfPrimitive(value);
 }
 
+Local<Value> ExternalCopy::TransferIn() {
+	return CopyInto();
 }
+
+/**
+ * ExternalCopyJSON implemtation
+ */
+ExternalCopyJSON::ExternalCopyJSON(const Local<Value>& value) : blob(value) {}
+
+Local<Value> ExternalCopyJSON::CopyInto() const {
+	return Unmaybe(JSON::Parse(Isolate::GetCurrent()->GetCurrentContext(), Local<String>::Cast(blob.CopyInto())));
+}
+
+size_t ExternalCopyJSON::Size() const {
+	return blob.Size();
+}
+
+/**
+ * ExternalCopyError implemtation
+ */
+ExternalCopyError::ExternalCopyError(
+	ErrorType error_type,
+	unique_ptr<ExternalCopyString> message,
+	unique_ptr<ExternalCopyString> stack)
+	: error_type(error_type),
+	message(std::move(message)),
+	stack(std::move(stack)) {}
+
+Local<Value> ExternalCopyError::CopyInto() const {
+
+	// First make the exception w/ correct + message
+	Local<String> message(Local<String>::Cast(this->message->CopyInto()));
+	Local<Value> handle;
+	switch (error_type) {
+		case ErrorType::RangeError:
+			handle = Exception::RangeError(message);
+			break;
+		case ErrorType::ReferenceError:
+			handle = Exception::ReferenceError(message);
+			break;
+		case ErrorType::SyntaxError:
+			handle = Exception::SyntaxError(message);
+			break;
+		case ErrorType::TypeError:
+			handle = Exception::TypeError(message);
+			break;
+		case ErrorType::Error:
+			handle = Exception::Error(message);
+			break;
+	}
+
+	// Now add stack information
+	if (this->stack) {
+		Local<String> stack(Local<String>::Cast(this->stack->CopyInto()));
+		Local<Object>::Cast(handle)->Set(v8_symbol("stack"), stack);
+	}
+	return handle;
+}
+
+size_t ExternalCopyError::Size() const {
+	return
+		(message ? message->Size() : 0) +
+		(stack ? stack->Size() : 0);
+}
+
+/**
+ * ExternalCopyNull and ExternalCopyUndefined implemtations
+ */
+Local<Value> ExternalCopyNull::CopyInto() const {
+	return Null(Isolate::GetCurrent());
+}
+
+size_t ExternalCopyNull::Size() const {
+	return 0;
+}
+
+Local<Value> ExternalCopyUndefined::CopyInto() const {
+	return Undefined(Isolate::GetCurrent());
+}
+
+size_t ExternalCopyUndefined::Size() const {
+	return 0;
+}
+
+/**
+ * ExternalCopyDate implemtation
+ */
+ExternalCopyDate::ExternalCopyDate(const Local<Value>& value) : value(Local<Date>::Cast(value)->ValueOf()) {}
+
+Local<Value> ExternalCopyDate::CopyInto() const {
+	return Date::New(Isolate::GetCurrent(), value);
+}
+
+size_t ExternalCopyDate::Size() const {
+	return sizeof(double);
+}
+
+/**
+ * ExternalCopyArrayBuffer implemtation
+ */
+ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const void* data, size_t length) : value(malloc(length), std::free), length(length) {
+	std::memcpy(value.get(), data, length);
+}
+
+ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const Local<ArrayBufferView>& handle) : value(malloc(handle->ByteLength()), std::free), length(handle->ByteLength()) {
+	handle->CopyContents(value.get(), length);
+}
+
+Local<Value> ExternalCopyArrayBuffer::CopyInto() const {
+	Local<ArrayBuffer> array_buffer(ArrayBuffer::New(Isolate::GetCurrent(), length));
+	std::memcpy(array_buffer->GetContents().Data(), value.get(), length);
+	return array_buffer;
+}
+
+size_t ExternalCopyArrayBuffer::Size() const {
+	return length;
+}
+
+const void* ExternalCopyArrayBuffer::Data() const {
+	return value.get();
+}
+
+size_t ExternalCopyArrayBuffer::Length() const {
+	return length;
+}
+
+/**
+ * ExternalCopyArrayBufferView implemtation
+ */
+ExternalCopyArrayBufferView::ExternalCopyArrayBufferView(const Local<ArrayBufferView>& handle, ViewType type) : buffer(handle), type(type) {}
+
+Local<Value> ExternalCopyArrayBufferView::CopyInto() const {
+	Local<ArrayBuffer> buffer = Local<ArrayBuffer>::Cast(this->buffer.CopyInto());
+	size_t length = buffer->ByteLength();
+	switch (type) {
+		case ViewType::Uint8:
+			return Uint8Array::New(buffer, 0, length);
+		case ViewType::Uint8Clamped:
+			return Uint8ClampedArray::New(buffer, 0, length);
+		case ViewType::Int8:
+			return Int8Array::New(buffer, 0, length);
+		case ViewType::Uint16:
+			return Uint16Array::New(buffer, 0, length);
+		case ViewType::Int16:
+			return Int16Array::New(buffer, 0, length);
+		case ViewType::Uint32:
+			return Uint32Array::New(buffer, 0, length);
+		case ViewType::Int32:
+			return Int32Array::New(buffer, 0, length);
+		case ViewType::Float32:
+			return Float32Array::New(buffer, 0, length);
+		case ViewType::Float64:
+			return Float64Array::New(buffer, 0, length);
+		case ViewType::DataView:
+			return DataView::New(buffer, 0, length);
+		default:
+			throw std::exception();
+	}
+}
+
+size_t ExternalCopyArrayBufferView::Size() const {
+	return buffer.Size();
+}
+
+} // namespace ivm

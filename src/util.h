@@ -3,8 +3,6 @@
 #include <string>
 #include <functional>
 
-#define THROW(x, m) return args.GetReturnValue().Set(args.GetIsolate()->ThrowException(x(v8::String::NewFromOneByte(args.GetIsolate(), (const uint8_t*)m, v8::NewStringType::kNormal).ToLocalChecked())))
-
 namespace ivm {
 
 template <typename T> v8::Local<T> Unmaybe(v8::MaybeLocal<T> handle);
@@ -14,11 +12,11 @@ template <typename T> T Unmaybe(v8::Maybe<T> handle);
  * Easy strings
  */
 inline v8::Local<v8::String> v8_string(const char* string) {
-	return Unmaybe(v8::String::NewFromOneByte(v8::Isolate::GetCurrent(), (const uint8_t*)string, v8::NewStringType::kNormal));
+	return Unmaybe(v8::String::NewFromOneByte(v8::Isolate::GetCurrent(), (const uint8_t*)string, v8::NewStringType::kNormal)); // NOLINT
 }
 
 inline v8::Local<v8::String> v8_symbol(const char* string) {
-	return Unmaybe(v8::String::NewFromOneByte(v8::Isolate::GetCurrent(), (const uint8_t*)string, v8::NewStringType::kInternalized));
+	return Unmaybe(v8::String::NewFromOneByte(v8::Isolate::GetCurrent(), (const uint8_t*)string, v8::NewStringType::kInternalized)); // NOLINT
 }
 
 /**
@@ -28,9 +26,10 @@ class js_error_base : public std::exception {};
 
 template <v8::Local<v8::Value> (*F)(v8::Local<v8::String>)>
 struct js_error : public js_error_base {
-	js_error(std::string message) {
+	explicit js_error(const std::string& message) {
 		v8::Isolate* isolate = v8::Isolate::GetCurrent();
-		v8::MaybeLocal<v8::String> maybe_message = v8::String::NewFromOneByte(isolate, (const uint8_t*)message.c_str(), v8::NewStringType::kNormal);
+		const uint8_t* c_str = (const uint8_t*)message.c_str(); // NOLINT
+		v8::MaybeLocal<v8::String> maybe_message = v8::String::NewFromOneByte(isolate, c_str, v8::NewStringType::kNormal);
 		v8::Local<v8::String> message_handle;
 		if (maybe_message.ToLocal(&message_handle)) {
 			isolate->ThrowException(F(message_handle));
@@ -40,8 +39,8 @@ struct js_error : public js_error_base {
 	}
 };
 
-typedef js_error<v8::Exception::Error> js_generic_error;
-typedef js_error<v8::Exception::TypeError> js_type_error;
+using js_generic_error = js_error<v8::Exception::Error>;
+using js_type_error = js_error<v8::Exception::TypeError>;
 
 /**
  * Convert a MaybeLocal<T> to Local<T> and throw an error if it's empty. Someone else should throw
@@ -100,4 +99,4 @@ T RunWithAnnotatedErrors(F&& fn) {
 	}
 }
 
-}
+} // namespace ivm

@@ -109,7 +109,7 @@ class SessionHandle : public ClassHandle {
 				throw js_generic_error("Session is dead");
 			} else if (message->IsString()) {
 				String::Value v8_str(Local<String>::Cast(message));
-				session->dispatchBackendProtocolMessage(vector<uint16_t>(*v8_str, *v8_str + v8_str.length()));
+				session->dispatchBackendProtocolMessage(std::vector<uint16_t>(*v8_str, *v8_str + v8_str.length()));
 				return Undefined(Isolate::GetCurrent());
 			} else {
 				throw js_type_error("`message` must be string or Uint8Array");
