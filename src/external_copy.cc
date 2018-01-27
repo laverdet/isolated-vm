@@ -2,6 +2,8 @@
 
 #include "util.h"
 
+#include <cstring>
+
 using namespace v8;
 using std::make_unique;
 using std::unique_ptr;
