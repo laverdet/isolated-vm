@@ -57,7 +57,8 @@ template <>
 class ExternalCopyTemplate<v8::String, std::shared_ptr<std::vector<uint16_t>>> : public ExternalCopy {
 	private:
 		// shared_ptr<> to share external strings between isolates
-		std::shared_ptr<std::vector<uint16_t>> value;
+		using V = std::vector<uint16_t>;
+		std::shared_ptr<V> value;
 
 		/**
 		 * Helper class passed to v8 so we can reuse the same externally allocated memory for strings
@@ -65,10 +66,10 @@ class ExternalCopyTemplate<v8::String, std::shared_ptr<std::vector<uint16_t>>> :
 		 */
 		class ExternalString : public v8::String::ExternalStringResource {
 			private:
-				std::shared_ptr<std::vector<uint16_t>> value;
+				std::shared_ptr<V> value;
 
 			public:
-				explicit ExternalString(std::shared_ptr<std::vector<uint16_t>> value) : value(std::move(value)) {}
+				explicit ExternalString(std::shared_ptr<V> value) : value(std::move(value)) {}
 
 				const uint16_t* data() const final {
 					return &(*value)[0];
@@ -82,8 +83,10 @@ class ExternalCopyTemplate<v8::String, std::shared_ptr<std::vector<uint16_t>>> :
 	public:
 		explicit ExternalCopyTemplate(const v8::Local<v8::Value>& value) {
 			v8::String::Value v8_string(v8::Local<v8::String>::Cast(value));
-			this->value = std::make_shared<std::vector<uint16_t>>(*v8_string, *v8_string + v8_string.length());
+			this->value = std::make_shared<V>(*v8_string, *v8_string + v8_string.length());
 		}
+
+		explicit ExternalCopyTemplate(const std::string& message) : value(std::make_shared<V>(message.begin(), message.end())) {}
 
 		Local<Value> CopyInto() const final {
 			if (value->empty()) {
@@ -121,14 +124,17 @@ class ExternalCopyJSON : public ExternalCopy {
  */
 class ExternalCopyError : public ExternalCopy {
 	friend class ExternalCopy;
-	private:
+	public:
 		enum class ErrorType { RangeError = 1, ReferenceError, SyntaxError, TypeError, Error };
+
+	private:
 		ErrorType error_type;
 		std::unique_ptr<ExternalCopyString> message;
 		std::unique_ptr<ExternalCopyString> stack;
 
 	public:
 		ExternalCopyError(ErrorType error_type, std::unique_ptr<ExternalCopyString> message, std::unique_ptr<ExternalCopyString> stack);
+		ExternalCopyError(ErrorType error_type, const std::string& message);
 		v8::Local<v8::Value> CopyInto() const final;
 		size_t Size() const final;
 };

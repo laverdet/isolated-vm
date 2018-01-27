@@ -167,6 +167,8 @@ ExternalCopyError::ExternalCopyError(
 	message(std::move(message)),
 	stack(std::move(stack)) {}
 
+ExternalCopyError::ExternalCopyError(ErrorType error_type, const std::string& message) : error_type(error_type), message(make_unique<ExternalCopyString>(message)) {}
+
 Local<Value> ExternalCopyError::CopyInto() const {
 
 	// First make the exception w/ correct + message

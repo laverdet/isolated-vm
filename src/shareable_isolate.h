@@ -369,7 +369,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		}
 
 		bool IsNormalLifeCycle() const {
-			return life_cycle == LifeCycle::Normal;
+			return life_cycle == LifeCycle::Normal && !hit_memory_limit;
 		}
 
 		/**
@@ -764,17 +764,28 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 							isolate->RunMicrotasks();
 						} catch (js_error_base& cc_error) {
 							// An error was caught while running fn3()
-							assert(try_catch.HasCaught());
-							// If Reject fails then I think that's bad..
-							Unmaybe(promise_local->Reject(context_local, try_catch.Exception()));
+							if (ShareableIsolate::GetCurrent().IsNormalLifeCycle()) {
+								assert(try_catch.HasCaught());
+								// If Reject fails then I think that's bad..
+								Unmaybe(promise_local->Reject(context_local, try_catch.Exception()));
+							}
 						}
 					}, second_isolate_ref->TaskWrapper(apply_from_tuple(std::move(fn2), std::move(fn1_result))), std::move(fn3)); // <-- fn2() is called here
 				} catch (js_error_base& cc_error) {
 					try {
 						// An error was caught while running fn2(). Or perhaps first_isolate.ScheduleTask()
 						// threw.
-						assert(try_catch.HasCaught());
-						Context::Scope context_scope(second_isolate_ref->DefaultContext());
+						shared_ptr<ExternalCopy> err;
+						if (try_catch.HasCaught()) {
+							// Graceful JS exception
+							Context::Scope context_scope(second_isolate_ref->DefaultContext());
+							err = shared_ptr<ExternalCopy>(ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception()));
+						} else {
+							// Isolate is probably in trouble
+							assert(!second_isolate_ref->IsNormalLifeCycle());
+							err = std::make_shared<ExternalCopyError>(ExternalCopyError::ErrorType::Error, "Isolate is disposed or disposing");
+						}
+
 						// Schedule a task to enter the first isolate so we can throw the error at the promise
 						first_isolate.ScheduleTask([promise_persistent, context_persistent](shared_ptr<ExternalCopy> error) {
 							// Revive our persistent handles
@@ -791,7 +802,7 @@ v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, 
 							// If Reject fails then I think that's bad..
 							Unmaybe(promise_local->Reject(context_local, rejection));
 							isolate->RunMicrotasks();
-						}, shared_ptr<ExternalCopy>(ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception())));
+						}, std::move(err));
 					} catch (js_error_base& cc_error2) {
 						// If we get here it means first_isolate was disposed before we could return the result
 						// from second_isolate back to it. There's not much we can do besides just forget about
