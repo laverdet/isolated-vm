@@ -1,6 +1,7 @@
 #include "native_module_handle.h"
 #include "context_handle.h"
 #include "reference_handle.h"
+#include "shareable_isolate.h"
 
 using namespace v8;
 using std::shared_ptr;
@@ -68,20 +69,31 @@ unique_ptr<Transferable> NativeModuleHandle::TransferOut() {
 
 template <bool async>
 Local<Value> NativeModuleHandle::Create(class ContextHandle* context_handle) {
+	class Create : public ThreePhaseTask {
+		private:
+			shared_ptr<ShareableContext> context;
+			shared_ptr<NativeModuleHandle::NativeModule> module;
+			unique_ptr<Transferable> result;
+
+		public:
+			Create(shared_ptr<ShareableContext> context, shared_ptr<NativeModuleHandle::NativeModule> module) : context(context), module(module) {}
+
+		protected:
+			void Phase2() final {
+				Isolate* isolate = Isolate::GetCurrent();
+				Local<Context> context_handle = context->Deref();
+				Context::Scope context_scope(context_handle);
+				Local<Object> exports = Object::New(isolate);
+				module->InitForContext(isolate, context_handle, exports);
+				result = ReferenceHandle::New(exports)->TransferOut();
+			}
+
+			Local<Value> Phase3() final {
+				return result->TransferIn();
+			}
+	};
 	auto context_ptr = context_handle->context;
-	auto module = this->module;
-	return ThreePhaseRunner<async>(context_ptr->GetIsolate(), [] () {
-		return std::make_tuple();
-	}, [context_ptr, module] () {
-		Isolate* isolate = Isolate::GetCurrent();
-		Local<Context> context = context_ptr->Deref();
-		Context::Scope context_scope(context);
-		Local<Object> exports = Object::New(isolate);
-		module->InitForContext(isolate, context, exports);
-		return shared_ptr<Transferable>(ReferenceHandle::New(exports)->TransferOut());
-	}, [] (shared_ptr<Transferable> exports) {
-		return exports->TransferIn();
-	});
+	return ThreePhaseTask::Run<async, Create>(context_ptr->GetIsolate(), context_ptr, module);
 }
 
 }

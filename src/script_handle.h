@@ -10,6 +10,7 @@
 
 namespace ivm {
 using namespace v8;
+using std::shared_ptr;
 
 class ScriptHandle : public TransferableHandle {
 	private:
@@ -45,46 +46,67 @@ class ScriptHandle : public TransferableHandle {
 			return std::make_unique<ScriptHandleTransferable>(script);
 		}
 
+		/*
+		 * Run this script in a given context
+		 */
 		template <bool async>
 		Local<Value> Run(ContextHandle* context_handle, MaybeLocal<Object> maybe_options) {
-			auto script = this->script;
-			auto context = context_handle->context;
-			return ThreePhaseRunner<async>(script->GetIsolate(), [this, context, &maybe_options]() {
+			class Run : public ThreePhaseTask {
+				private:
+					// phase 2
+					uint32_t timeout_ms { 0 };
+					shared_ptr<ShareablePersistent<UnboundScript>> script;
+					shared_ptr<ShareableContext> context;
+					// phase 3
+					std::unique_ptr<Transferable> result;
 
-				// Sanity check
-				if (this->script->GetIsolate() != context->GetIsolate()) {
-					throw js_generic_error("Invalid context");
-				}
-
-				// Get run options
-				Local<Object> options;
-				uint32_t timeout = 0;
-				if (maybe_options.ToLocal(&options)) {
-					Local<Value> timeout_handle = Unmaybe(options->Get(Isolate::GetCurrent()->GetCurrentContext(), v8_string("timeout")));
-					if (!timeout_handle->IsUndefined()) {
-						if (!timeout_handle->IsUint32()) {
-							throw js_type_error("`timeout` must be integer");
+				public:
+					Run(
+						MaybeLocal<Object>& maybe_options,
+						shared_ptr<ShareablePersistent<UnboundScript>> script,
+						shared_ptr<ShareableContext> context
+					) :
+						script(script), context(context)
+					{
+						// Sanity check
+						if (script->GetIsolate() != context->GetIsolate()) {
+							throw js_generic_error("Invalid context");
 						}
-						timeout = timeout_handle.As<Uint32>()->Value();
+
+						// Get run options
+						Local<Object> options;
+						if (maybe_options.ToLocal(&options)) {
+							Local<Value> timeout_handle = Unmaybe(options->Get(Isolate::GetCurrent()->GetCurrentContext(), v8_string("timeout")));
+							if (!timeout_handle->IsUndefined()) {
+								if (!timeout_handle->IsUint32()) {
+									throw js_type_error("`timeout` must be integer");
+								}
+								timeout_ms = timeout_handle.As<Uint32>()->Value();
+							}
+						}
 					}
-				}
-				return timeout;
-			}, [script, context](uint32_t timeout_ms) {
-				// Enter script's context and run it
-				Local<Context> context_local = context->Deref();
-				Context::Scope context_scope(context_local);
-				Local<Script> script_handle = script->Deref()->BindToCurrentContext();
-				return shared_ptr<Transferable>(ExternalCopy::CopyIfPrimitive(
-					RunWithTimeout(timeout_ms, script->GetIsolate(), [&script_handle, &context_local]() { return script_handle->Run(context_local); })
-				));
-			}, [](shared_ptr<Transferable> result) {
-				if (result.get() == nullptr) {
-					return Undefined(Isolate::GetCurrent()).As<Value>();
-				} else {
-					return result->TransferIn();
-				}
-			});
+
+					void Phase2() final {
+						// Enter script's context and run it
+						Local<Context> context_local = context->Deref();
+						Context::Scope context_scope(context_local);
+						Local<Script> script_handle = script->Deref()->BindToCurrentContext();
+						result = ExternalCopy::CopyIfPrimitive(
+							RunWithTimeout(timeout_ms, script->GetIsolate(), [&script_handle, &context_local]() { return script_handle->Run(context_local); })
+						);
+					}
+
+					Local<Value> Phase3() final {
+						if (result) {
+							return result->TransferIn();
+						} else {
+							return Undefined(Isolate::GetCurrent()).As<Value>();
+						}
+					}
+			};
+			return ThreePhaseTask::Run<async, Run>(script->GetIsolate(), maybe_options, script, context_handle->context);
 		}
+
 };
 
 }

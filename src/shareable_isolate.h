@@ -10,6 +10,7 @@
 
 #include "apply_from_tuple.h"
 #include <algorithm>
+#include <atomic>
 #include <functional>
 #include <future>
 #include <memory>
@@ -45,7 +46,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		static thread_pool_t thread_pool;
 		static uv_async_t root_async;
 		static std::thread::id default_thread;
-		static int uv_refs;
+		static std::atomic<int> uv_refs;
 
 		Isolate* isolate;
 		unique_ptr<InspectorClientImpl> inspector_client;
@@ -515,6 +516,16 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			}
 		}
 
+		static void UnrefUv() {
+			if (--uv_refs == 0) {
+				uv_unref((uv_handle_t*)&root_async);
+				// If we are the last ones to unref then node doesn't exit unless someone else
+				// unrefs?? This seems like an obvious libuv bug but I don't want to investigate.
+				root_async.data = nullptr;
+				uv_async_send(&root_async);
+			}
+		}
+
 		static void WorkerEntryRoot(uv_async_t* async) {
 			if (async->data != nullptr) { // see WorkerEntry nullptr async message
 				WorkerEntry(true, async->data);
@@ -545,17 +556,11 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 								// metadata.
 								that.isolate->DiscardThreadSpecificMetadata();
 							}
-							if (--uv_refs == 0) {
-								uv_unref((uv_handle_t*)&root_async);
-								// If we are the last ones to unref then node doesn't exit unless someone else
-								// unrefs?? This seems like an obvious libuv bug but I don't want to investigate.
-								root_async.data = nullptr;
-								uv_async_send(&root_async);
-							}
 							if (that.hit_memory_limit) {
 								// This will unlock v8 and dispose, below
 								break;
 							}
+							UnrefUv();
 							return;
 						}
 					}
@@ -576,11 +581,6 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 
 					// Execute regular tasks
 					while (!tasks.empty()) {
-						if (that.hit_memory_limit) {
-							// Regular tasks can be thrown away w/o memory leaks
-							tasks = std::queue<unique_ptr<std::function<void()>>>();
-							break;
-						}
 						auto task = std::move(tasks.front());
 						(*task)();
 						tasks.pop();
@@ -592,6 +592,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			assert(that.hit_memory_limit);
 			exec_lock.unlock();
 			that.Dispose();
+			UnrefUv();
 		}
 
 		/**
@@ -728,108 +729,131 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
  * - Phase 2 [Isolate 2]: copy data into new isolate, run work, copy data out of isolate
  * - Phase 3 [Isolate 1]: copy results from phase 2 into the original isolate
  *
- * This template handles the locking and thread synchronization for either synchronous or
+ * This class handles the locking and thread synchronization for either synchronous or
  * asynchronous functions. That way the same code can be used for both versions of each function.
  *
  * When `async=true` a promise is return which will be resolved after all the work is done
  * When `async=false` this will run in the calling thread until completion
  */
-template <bool async, typename F1, typename F2, typename F3>
-v8::Local<v8::Value> ThreePhaseRunner(ShareableIsolate& second_isolate, F1 fn1, F2 fn2, F3 fn3) {
-	if (async) {
-		// Build a promise for outer isolate
-		ShareableIsolate& first_isolate = ShareableIsolate::GetCurrent();
-		auto context_local = first_isolate->GetCurrentContext();
-		auto context_persistent = std::make_shared<Persistent<Context>>(first_isolate, context_local);
-		auto promise_local = Promise::Resolver::New(first_isolate);
-		auto promise_persistent = std::make_shared<Persistent<Promise::Resolver>>(first_isolate, promise_local);
-		auto first_isolate_ref = first_isolate.GetShared();
-		auto second_isolate_ref = second_isolate.GetShared();
-		TryCatch try_catch(first_isolate);
-		try {
-			// Enter the second isolate with the results from fn1
-			second_isolate.ScheduleTask([first_isolate_ref, second_isolate_ref, promise_persistent, context_persistent](decltype(fn1()) fn1_result, F2 fn2, F3 fn3) {
-				TryCatch try_catch(Isolate::GetCurrent());
-				ShareableIsolate& first_isolate = *first_isolate_ref;
-				try {
-					// Schedule a task to enter the first isolate again with the results from fn2
-					first_isolate.ScheduleTask([promise_persistent, context_persistent](decltype(apply_from_tuple(fn2, fn1_result)) fn2_result, F3 fn3) {
-						Isolate* isolate = Isolate::GetCurrent();
-						auto context_local = Local<Context>::New(isolate, *context_persistent);
-						Context::Scope context_scope(context_local);
-						auto promise_local = Local<Promise::Resolver>::New(isolate, *promise_persistent);
-						TryCatch try_catch(isolate);
-						try {
-							Unmaybe(promise_local->Resolve(context_local, apply_from_tuple(std::move(fn3), std::move(fn2_result)))); // <-- fn3() is called here
-							isolate->RunMicrotasks();
-						} catch (js_error_base& cc_error) {
-							// An error was caught while running fn3()
-							if (ShareableIsolate::GetCurrent().IsNormalLifeCycle()) {
-								assert(try_catch.HasCaught());
-								// If Reject fails then I think that's bad..
-								Unmaybe(promise_local->Reject(context_local, try_catch.Exception()));
-							}
-						}
-					}, second_isolate_ref->TaskWrapper(apply_from_tuple(std::move(fn2), std::move(fn1_result))), std::move(fn3)); // <-- fn2() is called here
-				} catch (js_error_base& cc_error) {
-					try {
-						// An error was caught while running fn2(). Or perhaps first_isolate.ScheduleTask()
-						// threw.
-						shared_ptr<ExternalCopy> err;
-						if (try_catch.HasCaught()) {
-							// Graceful JS exception
-							Context::Scope context_scope(second_isolate_ref->DefaultContext());
-							err = shared_ptr<ExternalCopy>(ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception()));
-						} else {
-							// Isolate is probably in trouble
-							assert(!second_isolate_ref->IsNormalLifeCycle());
-							err = std::make_shared<ExternalCopyError>(ExternalCopyError::ErrorType::Error, "Isolate is disposed or disposing");
-						}
+class ThreePhaseTask {
+	public:
+		ThreePhaseTask() = default;
+		ThreePhaseTask(const ThreePhaseTask&) = delete;
+		ThreePhaseTask& operator= (const ThreePhaseTask&) = delete;
+		virtual ~ThreePhaseTask() = default;
 
-						// Schedule a task to enter the first isolate so we can throw the error at the promise
-						first_isolate.ScheduleTask([promise_persistent, context_persistent](shared_ptr<ExternalCopy> error) {
-							// Revive our persistent handles
-							Isolate* isolate = Isolate::GetCurrent();
-							auto context_local = Local<Context>::New(isolate, *context_persistent);
-							Context::Scope context_scope(context_local);
-							auto promise_local = Local<Promise::Resolver>::New(isolate, *promise_persistent);
-							Local<Value> rejection;
-							if (error.get()) {
-								rejection = error->CopyInto();
-							} else {
-								rejection = Exception::Error(v8_string("An exception was thrown. Sorry I don't know more."));
+		virtual void Phase2() = 0;
+		virtual v8::Local<v8::Value> Phase3() = 0;
+
+		template <bool async, typename T, typename ...Args>
+		static v8::Local<v8::Value> Run(ShareableIsolate& second_isolate, Args&&... args) {
+
+			if (async) {
+				// Build a promise for outer isolate
+				ShareableIsolate& first_isolate = ShareableIsolate::GetCurrent();
+				auto context_local = first_isolate->GetCurrentContext();
+				auto context_persistent = std::make_shared<Persistent<Context>>(first_isolate, context_local);
+				auto promise_local = Promise::Resolver::New(first_isolate);
+				auto promise_persistent = std::make_shared<Persistent<Promise::Resolver>>(first_isolate, promise_local);
+				auto first_isolate_ref = first_isolate.GetShared();
+				auto second_isolate_ref = second_isolate.GetShared();
+				TryCatch try_catch(first_isolate);
+				try {
+					// Start the task
+					shared_ptr<ThreePhaseTask> self = std::make_shared<T>(std::forward<Args>(args)...);
+					// And continue in the second isolate
+					second_isolate.ScheduleTask([self, first_isolate_ref, second_isolate_ref, promise_persistent, context_persistent]() {
+						TryCatch try_catch(Isolate::GetCurrent());
+						ShareableIsolate& first_isolate = *first_isolate_ref;
+						try {
+							// Continue the task
+							self->Phase2();
+							second_isolate_ref->TaskWrapper(0); // TODO: this is filthy
+							// Finish back in first isolate
+							first_isolate.ScheduleTask([self, promise_persistent, context_persistent]() {
+								Isolate* isolate = Isolate::GetCurrent();
+								auto context_local = Local<Context>::New(isolate, *context_persistent);
+								Context::Scope context_scope(context_local);
+								auto promise_local = Local<Promise::Resolver>::New(isolate, *promise_persistent);
+								TryCatch try_catch(isolate);
+								try {
+									// Final callback
+									Unmaybe(promise_local->Resolve(context_local, self->Phase3()));
+									isolate->RunMicrotasks();
+								} catch (js_error_base& cc_error) {
+									// An error was caught while running Phase3()
+									if (ShareableIsolate::GetCurrent().IsNormalLifeCycle()) {
+										assert(try_catch.HasCaught());
+										// If Reject fails then I think that's bad..
+										Unmaybe(promise_local->Reject(context_local, try_catch.Exception()));
+										isolate->RunMicrotasks();
+									}
+								}
+							});
+						} catch (js_error_base& cc_error) {
+							// An error was caught while running Phase2(). Or perhaps first_isolate.ScheduleTask() threw.
+							try {
+								shared_ptr<ExternalCopy> err;
+								if (try_catch.HasCaught()) {
+									// Graceful JS exception
+									Context::Scope context_scope(second_isolate_ref->DefaultContext());
+									err = shared_ptr<ExternalCopy>(ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception()));
+								} else {
+									// Isolate is probably in trouble
+									assert(!second_isolate_ref->IsNormalLifeCycle());
+									err = std::make_shared<ExternalCopyError>(ExternalCopyError::ErrorType::Error, "Isolate is disposed or disposing");
+								}
+
+								// Schedule a task to enter the first isolate so we can throw the error at the promise
+								first_isolate.ScheduleTask([promise_persistent, context_persistent](shared_ptr<ExternalCopy> error) {
+									// Revive our persistent handles
+									Isolate* isolate = Isolate::GetCurrent();
+									auto context_local = Local<Context>::New(isolate, *context_persistent);
+									Context::Scope context_scope(context_local);
+									auto promise_local = Local<Promise::Resolver>::New(isolate, *promise_persistent);
+									Local<Value> rejection;
+									if (error.get()) {
+										rejection = error->CopyInto();
+									} else {
+										rejection = Exception::Error(v8_string("An exception was thrown. Sorry I don't know more."));
+									}
+									// If Reject fails then I think that's bad..
+									Unmaybe(promise_local->Reject(context_local, rejection));
+									isolate->RunMicrotasks();
+								}, std::move(err));
+							} catch (js_error_base& cc_error2) {
+								// If we get here it means first_isolate was disposed before we could return the result
+								// from second_isolate back to it. There's not much we can do besides just forget about
+								// it.
 							}
-							// If Reject fails then I think that's bad..
-							Unmaybe(promise_local->Reject(context_local, rejection));
-							isolate->RunMicrotasks();
-						}, std::move(err));
-					} catch (js_error_base& cc_error2) {
-						// If we get here it means first_isolate was disposed before we could return the result
-						// from second_isolate back to it. There's not much we can do besides just forget about
-						// it.
-					}
+						}
+					});
+				} catch (js_error_base& cc_error) {
+					// An error was caught while running ctor (phase 1)
+					assert(try_catch.HasCaught());
+					Maybe<bool> ret = promise_local->Reject(context_local, try_catch.Exception());
+					try_catch.Reset();
+					Unmaybe(ret);
 				}
-			}, fn1(), std::move(fn2), std::move(fn3)); // <-- fn1() is called here
-		} catch (js_error_base& cc_error) {
-			// An error was caught while running fn1()
-			assert(try_catch.HasCaught());
-			Unmaybe(promise_local->Reject(context_local, try_catch.Exception()));
-			try_catch.Reset();
+				return promise_local->GetPromise();
+			} else {
+				// The sync case is a lot simpler, most of the work is done in second_isolate.Locker()
+				unique_ptr<ThreePhaseTask> self = std::make_unique<T>(std::forward<Args>(args)...);
+				if (&ShareableIsolate::GetCurrent() == &second_isolate) {
+					// Shortcut when calling a sync method belonging to the currently entered isolate. This isn't an
+					// optimization, it's used to bypass the deadlock prevention check in Locker()
+					self->Phase2();
+				} else {
+					second_isolate.Locker([&self]() {
+						self->Phase2();
+						return 0;
+					});
+				}
+				return self->Phase3();
+			}
 		}
-		return promise_local->GetPromise();
-	} else {
-		// The sync case is a lot simpler, most of the work is done in second_isolate.Locker()
-		if (&ShareableIsolate::GetCurrent() == &second_isolate) {
-			// Shortcut when calling a sync method belonging to the currently entered isolate. This isn't an
-			// optimization, it's used to bypass the deadlock prevention check in Locker()
-			return apply_from_tuple(fn3, apply_from_tuple(fn2, fn1()));
-		} else {
-			return apply_from_tuple(std::move(fn3), second_isolate.Locker([] (decltype(fn1()) fn1_result, F2 fn2) {
-				return apply_from_tuple(std::move(fn2), std::move(fn1_result));
-			}, fn1(), std::move(fn2)));
-		}
-	}
-}
+};
+
 
 /**
  * Run some v8 thing with a timeout

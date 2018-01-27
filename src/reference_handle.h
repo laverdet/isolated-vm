@@ -187,22 +187,32 @@ class ReferenceHandle : public TransferableHandle {
 		}
 
 		/**
-		 * Copy this property's value into this isolate
+		 * Copy this reference's value into this isolate
 		 */
 		template <bool async>
 		Local<Value> Copy() {
-			auto context = this->context;
-			auto reference = this->reference;
-			return ThreePhaseRunner<async>(reference->GetIsolate(), [this]() {
-				CheckDisposed();
-				return std::make_tuple();
-			}, [context, reference] () {
-				Context::Scope context_scope(context->Deref());
-				Local<Value> value = reference->Deref();
-				return shared_ptr<ExternalCopy>(ExternalCopy::Copy(value));
-			}, [] (shared_ptr<ExternalCopy> copy) {
-				return copy->TransferIn();
-			});
+			class Copy : public ThreePhaseTask {
+				private:
+					shared_ptr<ShareableContext> context;
+					shared_ptr<ShareablePersistent<Value>> reference;
+					unique_ptr<Transferable> copy;
+
+				public:
+					Copy(ReferenceHandle& that, shared_ptr<ShareableContext> context, shared_ptr<ShareablePersistent<Value>> reference) : context(std::move(context)), reference(std::move(reference)) {
+						that.CheckDisposed();
+					}
+
+					void Phase2() final {
+						Context::Scope context_scope(context->Deref());
+						Local<Value> value = reference->Deref();
+						copy = ExternalCopy::Copy(value);
+					}
+
+					Local<Value> Phase3() final {
+						return copy->TransferIn();
+					}
+			};
+			return ThreePhaseTask::Run<async, Copy>(reference->GetIsolate(), *this, context, reference);
 		}
 
 		/**
@@ -210,29 +220,47 @@ class ReferenceHandle : public TransferableHandle {
 		 */
 		template <bool async>
 		Local<Value> Get(Local<Value> key_handle) {
-			auto context = this->context;
-			auto reference = this->reference;
-			return ThreePhaseRunner<async>(reference->GetIsolate(), [this, &key_handle]() {
-				CheckDisposed();
-				shared_ptr<ExternalCopy> key = ExternalCopy::CopyIfPrimitive(key_handle);
-				if (key.get() == nullptr) {
-					throw js_type_error("Invalid `key`");
-				}
-				return std::move(key);
-			}, [context, reference](shared_ptr<ExternalCopy> key) {
-				Local<Context> context_handle = context->Deref();
-				Context::Scope context_scope(context_handle);
-				Local<Value> key_inner = key->CopyInto();
-				Local<Object> object = Local<Object>::Cast(reference->Deref());
-				Local<Value> value = Unmaybe(object->Get(context_handle, key_inner));
-				return std::make_shared<ReferenceHandleTransferable>(
-					std::make_shared<ShareablePersistent<Value>>(value),
-					context,
-					InferTypeOf(value)
-				);
-			}, [](shared_ptr<ReferenceHandleTransferable> ref) {
-				return ref->TransferIn();
-			});
+			class Get : public ThreePhaseTask {
+				private:
+					unique_ptr<ExternalCopy> key;
+					shared_ptr<ShareableContext> context;
+					shared_ptr<ShareablePersistent<Value>> reference;
+					unique_ptr<ReferenceHandleTransferable> ret;
+
+				public:
+					Get(
+						ReferenceHandle& that,
+						Local<Value>& key_handle,
+						shared_ptr<ShareableContext> context,
+						shared_ptr<ShareablePersistent<Value>> reference
+					) :
+						context(std::move(context)), reference(std::move(reference))
+					{
+						that.CheckDisposed();
+						key = ExternalCopy::CopyIfPrimitive(key_handle);
+						if (!key) {
+							throw js_type_error("Invalid `key`");
+						}
+					}
+
+					void Phase2() final {
+						Local<Context> context_handle = context->Deref();
+						Context::Scope context_scope(context_handle);
+						Local<Value> key_inner = key->CopyInto();
+						Local<Object> object = Local<Object>::Cast(reference->Deref());
+						Local<Value> value = Unmaybe(object->Get(context_handle, key_inner));
+						ret = std::make_unique<ReferenceHandleTransferable>(
+							std::make_shared<ShareablePersistent<Value>>(value),
+							context,
+							InferTypeOf(value)
+						);
+					}
+
+					Local<Value> Phase3() final {
+						return ret->TransferIn();
+					}
+			};
+			return ThreePhaseTask::Run<async, Get>(reference->GetIsolate(), *this, key_handle, context, reference);
 		}
 
 		/**
@@ -240,26 +268,46 @@ class ReferenceHandle : public TransferableHandle {
 		 */
 		template <bool async>
 		Local<Value> Set(Local<Value> key_handle, Local<Value> val_handle) {
-			auto context = this->context;
-			auto reference = this->reference;
-			return ThreePhaseRunner<async>(reference->GetIsolate(), [this, &key_handle, &val_handle]() {
-				CheckDisposed();
-				shared_ptr<ExternalCopy> key = ExternalCopy::CopyIfPrimitive(key_handle);
-				if (key.get() == nullptr) {
-					throw js_type_error("Invalid `key`");
-				}
-				shared_ptr<Transferable> val = Transferable::TransferOut(val_handle);
-				return std::make_tuple(std::move(key), std::move(val));
-			}, [context, reference](shared_ptr<ExternalCopy> key, shared_ptr<Transferable> val) {
-				Local<Context> context_handle = context->Deref();
-				Context::Scope context_scope(context_handle);
-				Local<Value> key_inner = key->CopyInto();
-				Local<Value> val_inner = val->TransferIn();
-				Local<Object> object = Local<Object>::Cast(reference->Deref());
-				return Unmaybe(object->Set(context_handle, key_inner, val_inner));
-			}, [](bool did_set) {
-				return Boolean::New(Isolate::GetCurrent(), did_set);
-			});
+			class Set : public ThreePhaseTask {
+				private:
+					unique_ptr<ExternalCopy> key;
+					unique_ptr<Transferable> val;
+					shared_ptr<ShareableContext> context;
+					shared_ptr<ShareablePersistent<Value>> reference;
+					bool did_set;
+
+				public:
+					Set(
+						ReferenceHandle& that,
+						Local<Value>& key_handle,
+						Local<Value>& val_handle,
+						shared_ptr<ShareableContext> context,
+						shared_ptr<ShareablePersistent<Value>> reference
+					) :
+						context(std::move(context)), reference(std::move(reference))
+					{
+						that.CheckDisposed();
+						key = ExternalCopy::CopyIfPrimitive(key_handle);
+						if (!key) {
+							throw js_type_error("Invalid `key`");
+						}
+						val = Transferable::TransferOut(val_handle);
+					}
+
+					void Phase2() final {
+						Local<Context> context_handle = context->Deref();
+						Context::Scope context_scope(context_handle);
+						Local<Value> key_inner = key->CopyInto();
+						Local<Value> val_inner = val->TransferIn();
+						Local<Object> object = Local<Object>::Cast(reference->Deref());
+						did_set = Unmaybe(object->Set(context_handle, key_inner, val_inner));
+					}
+
+					Local<Value> Phase3() final {
+						return Boolean::New(Isolate::GetCurrent(), did_set);
+					}
+			};
+			return ThreePhaseTask::Run<async, Set>(reference->GetIsolate(), *this, key_handle, val_handle, context, reference);
 		}
 
 		/**
@@ -267,78 +315,91 @@ class ReferenceHandle : public TransferableHandle {
 		 */
 		template <bool async>
 		Local<Value> Apply(MaybeLocal<Value> recv_handle, MaybeLocal<Array> maybe_arguments, MaybeLocal<Object> maybe_options) {
-			auto context = this->context;
-			auto reference = this->reference;
-			return ThreePhaseRunner<async>(reference->GetIsolate(), [&recv_handle, &maybe_arguments, &maybe_options, reference]() {
-				// CheckDisposed() with no `this`
-				if (reference.get() == nullptr) {
-					throw js_generic_error("Reference is disposed");
-				}
+			class Apply : public ThreePhaseTask {
+				private:
+					shared_ptr<ShareableContext> context;
+					shared_ptr<ShareablePersistent<Value>> reference;
+					unique_ptr<Transferable> recv;
+					std::vector<unique_ptr<Transferable>> argv;
+					uint32_t timeout { 0 };
+					unique_ptr<Transferable> ret;
 
-				// Get receiver, holder, this, whatever
-				shared_ptr<Transferable> recv;
-				if (!recv_handle.IsEmpty()) {
-					recv = shared_ptr<Transferable>(Transferable::TransferOut(recv_handle.ToLocalChecked()));
-				}
-
-				// Externalize all arguments
-				std::vector<shared_ptr<Transferable>> argv;
-				if (!maybe_arguments.IsEmpty()) {
-					Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
-					Local<Array> arguments = maybe_arguments.ToLocalChecked();
-					Local<Array> keys = Unmaybe(arguments->GetOwnPropertyNames(context));
-					argv.reserve(keys->Length());
-					for (uint32_t ii = 0; ii < keys->Length(); ++ii) {
-						Local<Uint32> key = Unmaybe(Unmaybe(keys->Get(context, ii))->ToArrayIndex(context));
-						if (key->Value() != ii) {
-							throw js_type_error("Invalid `arguments` array");
+				public:
+					Apply(
+						ReferenceHandle& that,
+						MaybeLocal<Value>& recv_handle,
+						MaybeLocal<Array>& maybe_arguments,
+						MaybeLocal<Object>& maybe_options,
+						shared_ptr<ShareableContext> context,
+						shared_ptr<ShareablePersistent<Value>> reference
+					) :
+						context(std::move(context)), reference(std::move(reference))
+					{
+						if (!that.reference) {
+							throw js_generic_error("Reference is disposed");
 						}
-						argv.push_back(Transferable::TransferOut(Unmaybe(arguments->Get(context, key))));
+
+						// Get receiver, holder, this, whatever
+						if (!recv_handle.IsEmpty()) {
+							recv = Transferable::TransferOut(recv_handle.ToLocalChecked());
+						}
+
+						// Externalize all arguments
+						if (!maybe_arguments.IsEmpty()) {
+							Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
+							Local<Array> arguments = maybe_arguments.ToLocalChecked();
+							Local<Array> keys = Unmaybe(arguments->GetOwnPropertyNames(context));
+							argv.reserve(keys->Length());
+							for (uint32_t ii = 0; ii < keys->Length(); ++ii) {
+								Local<Uint32> key = Unmaybe(Unmaybe(keys->Get(context, ii))->ToArrayIndex(context));
+								if (key->Value() != ii) {
+									throw js_type_error("Invalid `arguments` array");
+								}
+								argv.push_back(Transferable::TransferOut(Unmaybe(arguments->Get(context, key))));
+							}
+						}
+
+						// Get run options
+						Local<Object> options;
+						if (maybe_options.ToLocal(&options)) {
+							Local<Value> timeout_handle = Unmaybe(options->Get(Isolate::GetCurrent()->GetCurrentContext(), v8_string("timeout")));
+							if (!timeout_handle->IsUndefined()) {
+								if (!timeout_handle->IsUint32()) {
+									throw js_type_error("`timeout` must be integer");
+								}
+								timeout = timeout_handle.As<Uint32>()->Value();
+							}
+						}
 					}
-				}
 
-				// Get run options
-				Local<Object> options;
-				uint32_t timeout = 0;
-				if (maybe_options.ToLocal(&options)) {
-					Local<Value> timeout_handle = Unmaybe(options->Get(Isolate::GetCurrent()->GetCurrentContext(), v8_string("timeout")));
-					if (!timeout_handle->IsUndefined()) {
-						if (!timeout_handle->IsUint32()) {
-							throw js_type_error("`timeout` must be integer");
+					void Phase2() final {
+						// Invoke in the isolate
+						Local<Context> context_handle = context->Deref();
+						Context::Scope context_scope(context_handle);
+						Local<Value> fn = reference->Deref();
+						if (!fn->IsFunction()) {
+							throw js_type_error("Reference is not a function");
 						}
-						timeout = timeout_handle.As<Uint32>()->Value();
+						Local<Value> recv_inner = recv->TransferIn();
+						std::vector<Local<Value>> argv_inner;
+						size_t argc = argv.size();
+						argv_inner.reserve(argc);
+						for (size_t ii = 0; ii < argc; ++ii) {
+							argv_inner.emplace_back(argv[ii]->TransferIn());
+						}
+						ret = Transferable::TransferOut(RunWithTimeout(
+							timeout, reference->GetIsolate(),
+							[&fn, &context_handle, &recv_inner, argc, &argv_inner]() {
+								return fn.As<Function>()->Call(context_handle, recv_inner, argc, argc ? &argv_inner[0] : nullptr);
+							}
+						));
 					}
-				}
-				return std::make_tuple(std::move(recv), std::move(argv), timeout);
-			}, [context, reference](shared_ptr<Transferable> recv, std::vector<shared_ptr<Transferable>> argv, uint32_t timeout_ms) {
 
-				// Invoke in the isolate
-				Local<Context> context_handle = context->Deref();
-				Context::Scope context_scope(context_handle);
-				Local<Value> fn = reference->Deref();
-				if (!fn->IsFunction()) {
-					throw js_type_error("Reference is not a function");
-				}
-				Local<Value> recv_inner = recv->TransferIn();
-				std::vector<Local<Value>> argv_inner;
-				size_t argc = argv.size();
-				argv_inner.reserve(argc);
-				for (size_t ii = 0; ii < argc; ++ii) {
-					argv_inner.emplace_back(argv[ii]->TransferIn());
-				}
-				return shared_ptr<Transferable>(Transferable::TransferOut(
-					RunWithTimeout(
-						timeout_ms, reference->GetIsolate(),
-						[&fn, &context_handle, &recv_inner, argc, &argv_inner]() {
-							return fn.As<Function>()->Call(context_handle, recv_inner, argc, argc ? &argv_inner[0] : nullptr);
-						}
-					)
-				));
-			}, [](shared_ptr<Transferable> value) {
-
-				// Copy result into original isolate
-				return value->TransferIn();
-			});
+					Local<Value> Phase3() final {
+						return ret->TransferIn();
+					}
+			};
+			return ThreePhaseTask::Run<async, Apply>(reference->GetIsolate(), *this, recv_handle, maybe_arguments, maybe_options, context, reference);
 		}
 
 };
