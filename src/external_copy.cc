@@ -1,3 +1,4 @@
+#include <cstring>
 #include "external_copy.h"
 
 #include "util.h"
