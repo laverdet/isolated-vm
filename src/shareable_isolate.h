@@ -7,6 +7,7 @@
 #include "timer.h"
 #include "util.h"
 #include "inspector.h"
+#include "runnable.h"
 
 #include "apply_from_tuple.h"
 #include <algorithm>
@@ -67,8 +68,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 
 		std::mutex exec_mutex; // mutex for execution
 		std::mutex queue_mutex; // mutex for queueing work
-		std::queue<unique_ptr<std::function<void()>>> tasks;
-		std::queue<unique_ptr<std::function<void()>>> handle_tasks;
+		std::queue<unique_ptr<Runnable>> tasks;
 		std::queue<unique_ptr<std::function<void()>>> interrupt_tasks;
 		std::vector<unique_ptr<Persistent<Value>>> specifics;
 		std::vector<unique_ptr<Persistent<FunctionTemplate>>> specifics_ft;
@@ -121,9 +121,14 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				heap.used_heap_size() * 1.25 > that.memory_limit * 1024 * 1024 &&
 				that.last_heap.used_heap_size() * 1.25 < that.memory_limit * 1024 * 1024
 			) {
-				that.ScheduleHandleTask(false, [isolate]() {
-					isolate->LowMemoryNotification();
-				});
+				struct LowMemoryTask : public Runnable {
+					Isolate* isolate;
+					LowMemoryTask(Isolate* isolate) : isolate(isolate) {}
+					void Run() final {
+						isolate->LowMemoryNotification();
+					}
+				};
+				that.ScheduleTask(std::make_unique<LowMemoryTask>(isolate), false, false);
 			}
 
 			that.last_heap = heap;
@@ -167,7 +172,6 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		 */
 		template <typename T>
 		T TaskWrapper(T value) {
-			ExecuteHandleTasks();
 			isolate->RunMicrotasks();
 			if (hit_memory_limit) {
 				throw js_error_base();
@@ -311,11 +315,10 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		}
 
 		~ShareableIsolate() {
-			std::unique_lock<std::mutex> lock(queue_mutex);
-			if (!root && life_cycle == LifeCycle::Normal) {
-				lock.unlock();
-				Dispose();
+			if (!root) {
+				Dispose(false);
 			}
+			std::unique_lock<std::mutex> lock(queue_mutex);
 			std::unique_lock<std::mutex> other_lock(bookkeeping_statics->lookup_mutex);
 			bookkeeping_statics->isolate_map.erase(bookkeeping_statics->isolate_map.find(isolate));
 		}
@@ -376,35 +379,32 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		/**
 		 * Dispose of an isolate and clean up dangling handles
 		 */
-		void Dispose() {
+		void Dispose(bool fail_if_disposed = true) {
 			if (root) {
 				throw js_generic_error("Cannot dispose root isolate");
-			}
-			if (v8::Locker::IsLocked(isolate)) {
-				throw js_generic_error("Cannot dispose entered isolate");
 			}
 			{
 				std::unique_lock<std::mutex> lock(queue_mutex);
 				if (life_cycle != LifeCycle::Normal) {
+					if (!fail_if_disposed) {
+						return;
+					}
 					lock.unlock();
 					throw js_generic_error("Isolate is already disposed or disposing");
 				}
-				if (!tasks.empty()) {
-					lock.unlock();
-					throw js_generic_error("Isolate is still busy, let all promises resolve before calling dispose()");
+				if (v8::Locker::IsLocked(isolate)) {
+					throw js_generic_error("Cannot dispose entered isolate");
 				}
 				life_cycle = LifeCycle::Disposing;
 				isolate->TerminateExecution();
 			}
 			std::unique_lock<std::mutex> lock(exec_mutex);
 			{
-				assert(tasks.empty());
+				tasks = decltype(tasks)();
 				LockerHelper locker(*this);
 				// Dispose of inspector first
 				inspector_client.reset();
 				// Flush tasks
-				ExecuteHandleTasks();
-				assert(handle_tasks.empty());
 				while (!weak_persistents.empty()) {
 					auto it = weak_persistents.begin();
 					Persistent<Object>* handle = it->first;
@@ -418,7 +418,6 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			}
 			isolate->Dispose();
 			life_cycle = LifeCycle::Disposed;
-			assert(handle_tasks.empty());
 			assert(tasks.empty());
 		}
 
@@ -450,36 +449,21 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		}
 
 		/**
-		 * Schedule complex work to run when this isolate is locked. If the isolate is already locked
-		 * the task will be run before unlocking, but after the current tasks have finished.
+		 * Schedules a task to run in this isolate.
 		 */
-		template <typename F, typename ...Args>
-		void ScheduleTask(F&& fn, Args&&... args) {
-			auto fn_ptr = std::make_unique<std::function<void()>>(std::bind(std::forward<F>(fn), std::forward<Args>(args)...));
-			std::unique_lock<std::mutex> lock(queue_mutex);
-			if (life_cycle != LifeCycle::Normal || hit_memory_limit) {
-				lock.unlock();
-				throw js_generic_error("Isolate is disposed or disposing");
-			}
-			this->tasks.push(std::move(fn_ptr));
-			WakeIsolate();
-		}
-
-		/**
-		 * Schedules a simple task which is guaranteed to run before this isolate is disposed. Returns
-		 * false if isolate is already disposed.
-		 */
-		bool ScheduleHandleTask(bool run_inline, std::function<void()> fn) {
+		void ScheduleTask(unique_ptr<Runnable> task, bool run_inline, bool wake_isolate) {
 			if (run_inline && &GetCurrent() == this) {
-				fn();
-				return true;
+				task->Run();
+				return;
 			}
 			std::unique_lock<std::mutex> lock(queue_mutex);
 			if (life_cycle != LifeCycle::Normal || hit_memory_limit) {
-				return false;
+				return;
 			}
-			this->handle_tasks.push(std::make_unique<std::function<void()>>(std::move(fn)));
-			return true;
+			this->tasks.push(std::move(task));
+			if (wake_isolate) {
+				WakeIsolate();
+			}
 		}
 
 		/**
@@ -495,24 +479,6 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			interrupt_tasks.push(std::make_unique<std::function<void()>>(std::move(fn)));
 			if (!WakeIsolate()) {
 				isolate->RequestInterrupt(InterruptEntry, this);
-			}
-		}
-
-		void ExecuteHandleTasks() {
-			decltype(this->handle_tasks) handle_tasks;
-			while (true) {
-				{
-					std::unique_lock<std::mutex> lock(queue_mutex);
-					std::swap(handle_tasks, this->handle_tasks);
-				}
-				if (handle_tasks.empty()) {
-					return;
-				}
-				do {
-					auto task = std::move(handle_tasks.front());
-					(*task)();
-					handle_tasks.pop();
-				} while (!handle_tasks.empty());
 			}
 		}
 
@@ -535,20 +501,25 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		static void WorkerEntry(bool pool_thread, void* param) {
 			ShareableIsolate& that = *static_cast<ShareableIsolate*>(param);
 			auto that_ref = that.GetShared(); // Make sure we don't get deleted by another thread while running
-			assert(that.status == Status::Running);
+			{
+				std::unique_lock<std::mutex> queue_lock(that.queue_mutex);
+				if (that.life_cycle != LifeCycle::Normal) {
+					UnrefUv();
+					return;
+				}
+			}
 			std::unique_lock<std::mutex> exec_lock(that.exec_mutex);
+			assert(that.status == Status::Running);
 			{
 				LockerHelper locker(that);
 				while (true) {
 					decltype(that.tasks) tasks;
-					decltype(that.handle_tasks) handle_tasks;
 					decltype(that.interrupt_tasks) interrupt_tasks;
 					{
 						std::unique_lock<std::mutex> lock(that.queue_mutex);
 						std::swap(tasks, that.tasks);
-						std::swap(handle_tasks, that.handle_tasks);
 						std::swap(interrupt_tasks, that.interrupt_tasks);
-						if (handle_tasks.empty() && interrupt_tasks.empty() && tasks.empty()) {
+						if (tasks.empty() && interrupt_tasks.empty()) {
 							that.status = Status::Waiting;
 							if (!pool_thread) {
 								// In this case the thread pool was full so this loop was run in a temporary thread
@@ -566,10 +537,13 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 					}
 
 					// Execute handle tasks
-					while (!handle_tasks.empty()) {
-						auto task = std::move(handle_tasks.front());
-						(*task)();
-						handle_tasks.pop();
+					while (!tasks.empty()) {
+						tasks.front()->Run();
+						tasks.pop();
+						if (that.hit_memory_limit) {
+							// This will unlock v8 and dispose, below
+							break;
+						}
 					}
 
 					// Execute interrupt tasks
@@ -578,20 +552,13 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 						(*task)();
 						interrupt_tasks.pop();
 					}
-
-					// Execute regular tasks
-					while (!tasks.empty()) {
-						auto task = std::move(tasks.front());
-						(*task)();
-						tasks.pop();
-					}
 				}
 			}
 			// If we got here it means we're supposed to throw away this isolate due to an OOM memory
 			// error
 			assert(that.hit_memory_limit);
 			exec_lock.unlock();
-			that.Dispose();
+			that.Dispose(false);
 			UnrefUv();
 		}
 
@@ -641,7 +608,6 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				std::unique_lock<std::mutex> lock(exec_mutex);
 				LockerHelper locker(*this);
 				TryCatch try_catch(isolate);
-				ExecuteHandleTasks();
 				try {
 					return TaskWrapper(fn(std::forward<Args>(args)...));
 				} catch (const js_error_base& cc_error) {
@@ -655,7 +621,6 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				}
 			}
 			// If we get here we can assume an exception was thrown
-			ExecuteHandleTasks();
 			if (error.get()) {
 				(*current)->ThrowException(error->CopyInto());
 				throw js_error_base();
@@ -670,13 +635,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 					throw js_generic_error("Isolate has exhausted v8 heap space.");
 				} else {
 					// We need to get rid of this isolate before it takes down the whole process
-					{
-						std::unique_lock<std::mutex> lock(queue_mutex);
-						if (life_cycle == LifeCycle::Normal) {
-							lock.unlock();
-							Dispose();
-						}
-					}
+					Dispose(false);
 					throw js_generic_error("Isolate has exhausted v8 heap space.");
 				}
 			} else {
@@ -752,82 +711,161 @@ class ThreePhaseTask {
 				// Build a promise for outer isolate
 				ShareableIsolate& first_isolate = ShareableIsolate::GetCurrent();
 				auto context_local = first_isolate->GetCurrentContext();
-				auto context_persistent = std::make_shared<Persistent<Context>>(first_isolate, context_local);
 				auto promise_local = Promise::Resolver::New(first_isolate);
-				auto promise_persistent = std::make_shared<Persistent<Promise::Resolver>>(first_isolate, promise_local);
-				auto first_isolate_ref = first_isolate.GetShared();
-				auto second_isolate_ref = second_isolate.GetShared();
 				TryCatch try_catch(first_isolate);
 				try {
-					// Start the task
-					shared_ptr<ThreePhaseTask> self = std::make_shared<T>(std::forward<Args>(args)...);
-					// And continue in the second isolate
-					second_isolate.ScheduleTask([self, first_isolate_ref, second_isolate_ref, promise_persistent, context_persistent]() {
-						TryCatch try_catch(Isolate::GetCurrent());
-						ShareableIsolate& first_isolate = *first_isolate_ref;
-						try {
-							// Continue the task
-							self->Phase2();
-							second_isolate_ref->TaskWrapper(0); // TODO: this is filthy
-							// Finish back in first isolate
-							first_isolate.ScheduleTask([self, promise_persistent, context_persistent]() {
-								Isolate* isolate = Isolate::GetCurrent();
-								auto context_local = Local<Context>::New(isolate, *context_persistent);
-								Context::Scope context_scope(context_local);
-								auto promise_local = Local<Promise::Resolver>::New(isolate, *promise_persistent);
-								TryCatch try_catch(isolate);
-								try {
-									// Final callback
-									Unmaybe(promise_local->Resolve(context_local, self->Phase3()));
-									isolate->RunMicrotasks();
-								} catch (js_error_base& cc_error) {
-									// An error was caught while running Phase3()
-									if (ShareableIsolate::GetCurrent().IsNormalLifeCycle()) {
-										assert(try_catch.HasCaught());
-										// If Reject fails then I think that's bad..
-										Unmaybe(promise_local->Reject(context_local, try_catch.Exception()));
+					// Async in second isolate
+					struct Phase2Runner : public Runnable {
+						unique_ptr<ThreePhaseTask> self;
+						shared_ptr<ShareableIsolate> first_isolate_ref;
+						shared_ptr<ShareableIsolate> second_isolate_ref;
+						unique_ptr<Persistent<Promise::Resolver>> promise_persistent;
+						unique_ptr<Persistent<Context>> context_persistent;
+						bool did_run { false };
+
+						Phase2Runner(
+							unique_ptr<ThreePhaseTask> self,
+							shared_ptr<ShareableIsolate> first_isolate_ref,
+							shared_ptr<ShareableIsolate> second_isolate_ref,
+							unique_ptr<Persistent<Promise::Resolver>> promise_persistent,
+							unique_ptr<Persistent<Context>> context_persistent
+						) :
+							self(std::move(self)),
+							first_isolate_ref(std::move(first_isolate_ref)), second_isolate_ref(std::move(second_isolate_ref)),
+							promise_persistent(std::move(promise_persistent)), context_persistent(std::move(context_persistent)) {}
+
+						~Phase2Runner() {
+							if (!did_run) {
+								// The task never got to run
+								struct Phase3Orphan : public Runnable {
+									unique_ptr<ThreePhaseTask> self;
+									unique_ptr<Persistent<Promise::Resolver>> promise_persistent;
+									unique_ptr<Persistent<Context>> context_persistent;
+
+									Phase3Orphan(
+										unique_ptr<ThreePhaseTask> self,
+										unique_ptr<Persistent<Promise::Resolver>> promise_persistent,
+										unique_ptr<Persistent<Context>> context_persistent
+									) : self(std::move(self)), promise_persistent(std::move(promise_persistent)), context_persistent(std::move(context_persistent)) {}
+
+									void Run() final {
+										// Revive our persistent handles
+										Isolate* isolate = Isolate::GetCurrent();
+										auto context_local = Local<Context>::New(isolate, *context_persistent);
+										Context::Scope context_scope(context_local);
+										auto promise_local = Local<Promise::Resolver>::New(isolate, *promise_persistent);
+										// Throw from promise
+										Unmaybe(promise_local->Reject(context_local, Exception::Error(v8_string("Isolate is disposed or disposing."))));
 										isolate->RunMicrotasks();
 									}
-								}
-							});
-						} catch (js_error_base& cc_error) {
-							// An error was caught while running Phase2(). Or perhaps first_isolate.ScheduleTask() threw.
+								};
+								// Schedule a throw task back in first isolate
+								first_isolate_ref->ScheduleTask(std::make_unique<Phase3Orphan>(std::move(self), std::move(promise_persistent), std::move(context_persistent)), false, true);
+							}
+						}
+
+						void Run() final {
+							did_run = true;
+							TryCatch try_catch(Isolate::GetCurrent());
+							ShareableIsolate& first_isolate = *first_isolate_ref;
 							try {
-								shared_ptr<ExternalCopy> err;
+								// Continue the task
+								self->Phase2();
+								second_isolate_ref->TaskWrapper(0); // TODO: this is filthy
+								// Finish back in first isolate
+								struct Phase3Success : public Runnable {
+									unique_ptr<ThreePhaseTask> self;
+									unique_ptr<Persistent<Promise::Resolver>> promise_persistent;
+									unique_ptr<Persistent<Context>> context_persistent;
+
+									Phase3Success(
+										unique_ptr<ThreePhaseTask> self,
+										unique_ptr<Persistent<Promise::Resolver>> promise_persistent,
+										unique_ptr<Persistent<Context>> context_persistent
+									) : self(std::move(self)), promise_persistent(std::move(promise_persistent)), context_persistent(std::move(context_persistent)) {}
+
+									void Run() final {
+										Isolate* isolate = Isolate::GetCurrent();
+										auto context_local = Local<Context>::New(isolate, *context_persistent);
+										Context::Scope context_scope(context_local);
+										auto promise_local = Local<Promise::Resolver>::New(isolate, *promise_persistent);
+										TryCatch try_catch(isolate);
+										try {
+											// Final callback
+											Unmaybe(promise_local->Resolve(context_local, self->Phase3()));
+											isolate->RunMicrotasks();
+										} catch (js_error_base& cc_error) {
+											// An error was caught while running Phase3()
+											if (ShareableIsolate::GetCurrent().IsNormalLifeCycle()) {
+												assert(try_catch.HasCaught());
+												// If Reject fails then I think that's bad..
+												Unmaybe(promise_local->Reject(context_local, try_catch.Exception()));
+												isolate->RunMicrotasks();
+											}
+										}
+									}
+								};
+								first_isolate_ref->ScheduleTask(std::make_unique<Phase3Success>(std::move(self), std::move(promise_persistent), std::move(context_persistent)), false, true);
+							} catch (js_error_base& cc_error) {
+								// An error was caught while running Phase2(). Or perhaps first_isolate.ScheduleTask() threw.
+								struct Phase3Failure : public Runnable {
+									unique_ptr<ThreePhaseTask> self;
+									unique_ptr<Persistent<Promise::Resolver>> promise_persistent;
+									unique_ptr<Persistent<Context>> context_persistent;
+									unique_ptr<ExternalCopy> err;
+
+									Phase3Failure(
+										unique_ptr<ThreePhaseTask> self,
+										unique_ptr<Persistent<Promise::Resolver>> promise_persistent,
+										unique_ptr<Persistent<Context>> context_persistent,
+										unique_ptr<ExternalCopy> err
+									) : self(std::move(self)), promise_persistent(std::move(promise_persistent)), context_persistent(std::move(context_persistent)), err(std::move(err)) {}
+
+									void Run() final {
+										// Revive our persistent handles
+										Isolate* isolate = Isolate::GetCurrent();
+										auto context_local = Local<Context>::New(isolate, *context_persistent);
+										Context::Scope context_scope(context_local);
+										auto promise_local = Local<Promise::Resolver>::New(isolate, *promise_persistent);
+										Local<Value> rejection;
+										if (err) {
+											rejection = err->CopyInto();
+										} else {
+											rejection = Exception::Error(v8_string("An exception was thrown. Sorry I don't know more."));
+										}
+										// If Reject fails then I think that's bad..
+										Unmaybe(promise_local->Reject(context_local, rejection));
+										isolate->RunMicrotasks();
+									}
+								};
+
+								// Copy exception externally
+								unique_ptr<ExternalCopy> err;
 								if (try_catch.HasCaught()) {
 									// Graceful JS exception
 									Context::Scope context_scope(second_isolate_ref->DefaultContext());
-									err = shared_ptr<ExternalCopy>(ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception()));
+									err = ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception());
 								} else {
 									// Isolate is probably in trouble
 									assert(!second_isolate_ref->IsNormalLifeCycle());
-									err = std::make_shared<ExternalCopyError>(ExternalCopyError::ErrorType::Error, "Isolate is disposed or disposing");
+									err = std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::Error, "Isolate is disposed or disposing");
 								}
 
 								// Schedule a task to enter the first isolate so we can throw the error at the promise
-								first_isolate.ScheduleTask([promise_persistent, context_persistent](shared_ptr<ExternalCopy> error) {
-									// Revive our persistent handles
-									Isolate* isolate = Isolate::GetCurrent();
-									auto context_local = Local<Context>::New(isolate, *context_persistent);
-									Context::Scope context_scope(context_local);
-									auto promise_local = Local<Promise::Resolver>::New(isolate, *promise_persistent);
-									Local<Value> rejection;
-									if (error.get()) {
-										rejection = error->CopyInto();
-									} else {
-										rejection = Exception::Error(v8_string("An exception was thrown. Sorry I don't know more."));
-									}
-									// If Reject fails then I think that's bad..
-									Unmaybe(promise_local->Reject(context_local, rejection));
-									isolate->RunMicrotasks();
-								}, std::move(err));
-							} catch (js_error_base& cc_error2) {
-								// If we get here it means first_isolate was disposed before we could return the result
-								// from second_isolate back to it. There's not much we can do besides just forget about
-								// it.
+								first_isolate.ScheduleTask(std::make_unique<Phase3Failure>(std::move(self), std::move(promise_persistent), std::move(context_persistent), std::move(err)), false, true);
 							}
 						}
-					});
+					};
+					// Schedule Phase2 async
+					second_isolate.ScheduleTask(
+						std::make_unique<Phase2Runner>(
+							std::make_unique<T>(std::forward<Args>(args)...), // <-- Phase1 / ctor called here
+							first_isolate.GetShared(),
+							second_isolate.GetShared(),
+							std::make_unique<Persistent<Promise::Resolver>>(first_isolate, promise_local),
+							std::make_unique<Persistent<Context>>(first_isolate, context_local)
+						), false, true
+					);
 				} catch (js_error_base& cc_error) {
 					// An error was caught while running ctor (phase 1)
 					assert(try_catch.HasCaught());

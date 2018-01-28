@@ -19,6 +19,16 @@ class PlatformDelegate : public v8::Platform {
 		Isolate* node_isolate;
 		v8::Platform* node_platform;
 
+		class TaskHolder : public Runnable {
+			private:
+				std::unique_ptr<Task> task;
+			public:
+				TaskHolder(Task* task) : task(task) {}
+				void Run() {
+					task->Run();
+				}
+		};
+
 	public:
 		PlatformDelegate(Isolate* node_isolate, v8::Platform* node_platform) : node_isolate(node_isolate), node_platform(node_platform) {}
 
@@ -43,14 +53,7 @@ class PlatformDelegate : public v8::Platform {
 			} else {
 				ShareableIsolate* s_isolate = ShareableIsolate::LookupIsolate(isolate);
 				assert(s_isolate != nullptr);
-				// Schedule as a handle task because ScheduleTask doesn't guarantee the task will run. Since
-				// we have ownership of *task we have to make sure to eventually delete it.
-				// ScheduleHandleTask will always run the task even in the case the isolate is going to be
-				// disposed.
-				s_isolate->ScheduleHandleTask(false, [task]() {
-					task->Run();
-					delete task;
-				});
+				s_isolate->ScheduleTask(std::make_unique<TaskHolder>(task), false, true);
 			}
 		}
 
@@ -58,17 +61,13 @@ class PlatformDelegate : public v8::Platform {
 			if (isolate == node_isolate) {
 				node_platform->CallDelayedOnForegroundThread(isolate, task, delay_in_seconds);
 			} else {
+				// TODO: this could use timer_t if I add a wait() method
 				std::thread tmp_thread([isolate, task, delay_in_seconds]() {
 					std::this_thread::sleep_for(std::chrono::microseconds((long long)(delay_in_seconds * 1000000)));
+					auto holder = std::make_unique<TaskHolder>(task);
 					ShareableIsolate* s_isolate = ShareableIsolate::LookupIsolate(isolate);
-					if (s_isolate == nullptr) {
-						// User could have disposed it by now
-						delete task;
-					} else {
-						s_isolate->ScheduleHandleTask(false, [task]() {
-							task->Run();
-							delete task;
-						});
+					if (s_isolate) {
+						s_isolate->ScheduleTask(std::move(holder), false, true);
 					}
 				});
 				tmp_thread.detach();

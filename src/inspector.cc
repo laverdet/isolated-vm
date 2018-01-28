@@ -5,13 +5,6 @@ using namespace ivm;
 using namespace v8;
 using namespace v8_inspector;
 
-InspectorSession::~InspectorSession() {
-	V8InspectorSession* session = this->session.release();
-	if (!isolate->ScheduleHandleTask(false, [session]() { delete session; })) {
-		delete session;
-	}
-}
-
 void InspectorSession::dispatchBackendProtocolMessage(std::vector<uint16_t> message) {
 	auto message_ptr = std::make_shared<decltype(message)>(std::move(message));
 	isolate->ScheduleInterrupt([message_ptr, this]() {

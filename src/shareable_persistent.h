@@ -24,22 +24,20 @@ class ShareablePersistent {
 		}
 
 		~ShareablePersistent() {
-			Persistent<T>* handle = this->handle.release();
-			shared_ptr<ShareableIsolate> isolate = this->isolate;
-			if (!isolate->ScheduleHandleTask(true, [handle, isolate]() {
-				// Isolate is still alive
-				if (D != nullptr) {
-					D(*handle, isolate.get());
+			struct DisposalTask : public Runnable {
+				shared_ptr<ShareableIsolate> isolate;
+				unique_ptr<Persistent<T>> handle;
+
+				DisposalTask(shared_ptr<ShareableIsolate> isolate, unique_ptr<Persistent<T>> handle) : isolate(isolate), handle(std::move(handle)) {}
+
+				void Run() {
+					if (D != nullptr) {
+						D(*handle, isolate.get());
+					}
+					handle->Reset();
 				}
-				handle->Reset();
-				delete handle;
-			})) {
-				// Isolate is not alive
-				if (D != nullptr) {
-					D(*handle, nullptr);
-				}
-				delete handle;
-			}
+			};
+			isolate->ScheduleTask(std::make_unique<DisposalTask>(isolate, std::move(handle)), true, false);
 		}
 
 		/**

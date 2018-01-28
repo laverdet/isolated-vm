@@ -36,8 +36,6 @@ class InspectorSession {
 			session = inspector->connect(1, this->channel.get(), StringView());
 		}
 
-		~InspectorSession();
-
 		void dispatchBackendProtocolMessage(std::vector<uint16_t> message);
 };
 
