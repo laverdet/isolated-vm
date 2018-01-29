@@ -163,7 +163,8 @@ class ReferenceHandle : public TransferableHandle {
 		 */
 		Local<Value> Deref() {
 			CheckDisposed();
-			if (reference->GetIsolate() != Isolate::GetCurrent()) {
+			auto isolate = reference->GetIsolateHolder();
+			if (isolate.get() != ShareableIsolate::GetCurrentHolder().get()) {
 				throw js_type_error("Cannot dereference this from current isolate");
 			}
 			return reference->Deref();
@@ -213,7 +214,7 @@ class ReferenceHandle : public TransferableHandle {
 						return copy->TransferIn();
 					}
 			};
-			return ThreePhaseTask::Run<async, Copy>(reference->GetIsolate(), *this, context, reference);
+			return ThreePhaseTask::Run<async, Copy>(*reference->GetIsolateHolder(), *this, context, reference);
 		}
 
 		/**
@@ -261,7 +262,7 @@ class ReferenceHandle : public TransferableHandle {
 						return ret->TransferIn();
 					}
 			};
-			return ThreePhaseTask::Run<async, Get>(reference->GetIsolate(), *this, key_handle, context, reference);
+			return ThreePhaseTask::Run<async, Get>(*reference->GetIsolateHolder(), *this, key_handle, context, reference);
 		}
 
 		/**
@@ -308,7 +309,7 @@ class ReferenceHandle : public TransferableHandle {
 						return Boolean::New(Isolate::GetCurrent(), did_set);
 					}
 			};
-			return ThreePhaseTask::Run<async, Set>(reference->GetIsolate(), *this, key_handle, val_handle, context, reference);
+			return ThreePhaseTask::Run<async, Set>(*reference->GetIsolateHolder(), *this, key_handle, val_handle, context, reference);
 		}
 
 		/**
@@ -389,7 +390,7 @@ class ReferenceHandle : public TransferableHandle {
 							argv_inner.emplace_back(argv[ii]->TransferIn());
 						}
 						ret = Transferable::TransferOut(RunWithTimeout(
-							timeout, reference->GetIsolate(),
+							timeout, *ShareableIsolate::GetCurrent(),
 							[&fn, &context_handle, &recv_inner, argc, &argv_inner]() {
 								return fn.As<Function>()->Call(context_handle, recv_inner, argc, argc ? &argv_inner[0] : nullptr);
 							}
@@ -400,7 +401,7 @@ class ReferenceHandle : public TransferableHandle {
 						return ret->TransferIn();
 					}
 			};
-			return ThreePhaseTask::Run<async, Apply>(reference->GetIsolate(), *this, recv_handle, maybe_arguments, maybe_options, context, reference);
+			return ThreePhaseTask::Run<async, Apply>(*reference->GetIsolateHolder(), *this, recv_handle, maybe_arguments, maybe_options, context, reference);
 		}
 
 };
@@ -423,7 +424,7 @@ class DereferenceHandle : public TransferableHandle {
 
 				virtual Local<Value> TransferIn() {
 					Isolate* isolate = Isolate::GetCurrent();
-					if (isolate == reference->GetIsolate()) {
+					if (isolate == reference->GetIsolateHolder()->GetIsolate()->GetIsolate()) {
 						return reference->Deref();
 					} else {
 						throw js_type_error("Cannot dereference this into target isolate");

@@ -70,7 +70,7 @@ class ScriptHandle : public TransferableHandle {
 						script(script), context(context)
 					{
 						// Sanity check
-						if (script->GetIsolate() != context->GetIsolate()) {
+						if (script->GetIsolateHolder() != context->GetIsolateHolder()) {
 							throw js_generic_error("Invalid context");
 						}
 
@@ -93,7 +93,7 @@ class ScriptHandle : public TransferableHandle {
 						Context::Scope context_scope(context_local);
 						Local<Script> script_handle = script->Deref()->BindToCurrentContext();
 						result = ExternalCopy::CopyIfPrimitive(
-							RunWithTimeout(timeout_ms, script->GetIsolate(), [&script_handle, &context_local]() { return script_handle->Run(context_local); })
+							RunWithTimeout(timeout_ms, *ShareableIsolate::GetCurrent(), [&script_handle, &context_local]() { return script_handle->Run(context_local); })
 						);
 					}
 
@@ -105,7 +105,7 @@ class ScriptHandle : public TransferableHandle {
 						}
 					}
 			};
-			return ThreePhaseTask::Run<async, Run>(script->GetIsolate(), maybe_options, script, context_handle->context);
+			return ThreePhaseTask::Run<async, Run>(*script->GetIsolateHolder(), maybe_options, script, context_handle->context);
 		}
 
 };

@@ -94,7 +94,7 @@ Local<Value> NativeModuleHandle::Create(class ContextHandle* context_handle) {
 			}
 	};
 	auto context_ptr = context_handle->context;
-	return ThreePhaseTask::Run<async, Create>(context_ptr->GetIsolate(), context_ptr, module);
+	return ThreePhaseTask::Run<async, Create>(*context_ptr->GetIsolateHolder(), context_ptr, module);
 }
 
 }

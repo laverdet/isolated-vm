@@ -12,7 +12,7 @@
 
 #include <memory>
 
-using namespace std;
+using namespace v8;
 
 namespace ivm {
 
@@ -48,7 +48,7 @@ class LibraryHandle : public TransferableHandle {
 			return tmpl;
 		}
 
-		virtual unique_ptr<Transferable> TransferOut() {
+		virtual std::unique_ptr<Transferable> TransferOut() {
 			return std::make_unique<LibraryHandleTransferable>();
 		}
 
@@ -60,7 +60,7 @@ class LibraryHandle : public TransferableHandle {
 };
 
 // Module entry point
-shared_ptr<ShareableIsolate> root_isolate;
+std::shared_ptr<IsolateHolder> root_isolate;
 extern "C"
 void init(Local<Object> target) {
 
@@ -74,7 +74,7 @@ void init(Local<Object> target) {
 	V8::SetFlagsFromCommandLine(&argc, (char**)flags, false);
 
 	Isolate* isolate = Isolate::GetCurrent();
-	root_isolate = make_shared<ShareableIsolate>(isolate, isolate->GetCurrentContext());
+	root_isolate = ShareableIsolate::New(isolate, isolate->GetCurrentContext());
 	target->Set(v8_symbol("ivm"), LibraryHandle::Get());
 	PlatformDelegate::InitializeDelegate();
 }

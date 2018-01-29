@@ -8,7 +8,7 @@
 #include "script_handle.h"
 #include "external_copy.h"
 #include "external_copy_handle.h"
-#include "session_handle.h"
+//#include "session_handle.h"
 
 #include <stdlib.h>
 #include <memory>
@@ -73,16 +73,16 @@ class ScriptOriginHolder {
  */
 class IsolateHandle : public TransferableHandle {
 	private:
-		shared_ptr<ShareableIsolate> isolate;
+		shared_ptr<IsolateHolder> isolate;
 
 		/**
 		 * Wrapper class created when you pass an IsolateHandle through to another isolate
 		 */
 		class IsolateHandleTransferable : public Transferable {
 			private:
-				shared_ptr<ShareableIsolate> isolate;
+				shared_ptr<IsolateHolder> isolate;
 			public:
-				IsolateHandleTransferable(shared_ptr<ShareableIsolate>& isolate) : isolate(isolate) {}
+				IsolateHandleTransferable(shared_ptr<IsolateHolder> isolate) : isolate(std::move(isolate)) {}
 				virtual Local<Value> TransferIn() {
 					return ClassHandle::NewInstance<IsolateHandle>(isolate);
 				}
@@ -148,7 +148,7 @@ class IsolateHandle : public TransferableHandle {
 		};
 
 	public:
-		IsolateHandle(shared_ptr<ShareableIsolate> isolate) : isolate(isolate) {}
+		IsolateHandle(shared_ptr<IsolateHolder> isolate) : isolate(std::move(isolate)) {}
 
 		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
 			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
@@ -162,7 +162,7 @@ class IsolateHandle : public TransferableHandle {
 				"compileScriptSync", Parameterize<decltype(&IsolateHandle::CompileScript<false>), &IsolateHandle::CompileScript<false>>, 1,
 				"createContext", Parameterize<decltype(&IsolateHandle::CreateContext<true>), &IsolateHandle::CreateContext<true>>, 0,
 				"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContext<false>), &IsolateHandle::CreateContext<false>>, 0,
-				"createInspectorSession", Parameterize<decltype(&IsolateHandle::CreateInspectorSession), &IsolateHandle::CreateInspectorSession>, 0,
+//				"createInspectorSession", Parameterize<decltype(&IsolateHandle::CreateInspectorSession), &IsolateHandle::CreateInspectorSession>, 0,
 				"dispose", Parameterize<decltype(&IsolateHandle::Dispose), &IsolateHandle::Dispose>, 0,
 				"getHeapStatistics", Parameterize<decltype(&IsolateHandle::GetHeapStatistics), &IsolateHandle::GetHeapStatistics>, 0
 			));
@@ -221,7 +221,7 @@ class IsolateHandle : public TransferableHandle {
 			auto allocator_ptr = unique_ptr<ArrayBuffer::Allocator>(new LimitedAllocator(memory_limit * 1024 * 1024));
 
 			// Return isolate handle
-			return std::make_unique<IsolateHandle>(std::make_shared<ShareableIsolate>(rc, std::move(allocator_ptr), std::move(snapshot_blob), memory_limit));
+			return std::make_unique<IsolateHandle>(ShareableIsolate::New(rc, std::move(allocator_ptr), std::move(snapshot_blob), memory_limit));
 		}
 
 		virtual unique_ptr<Transferable> TransferOut() {
@@ -263,7 +263,6 @@ class IsolateHandle : public TransferableHandle {
 			class CompileScript : public ThreePhaseTask {
 				private:
 					// phase 2
-					ShareableIsolate* isolate;
 					unique_ptr<ExternalCopyString> code_string;
 					unique_ptr<ScriptOriginHolder> script_origin_holder;
 					shared_ptr<ExternalCopyArrayBuffer> cached_data_blob; // also phase 3
@@ -274,7 +273,7 @@ class IsolateHandle : public TransferableHandle {
 					bool cached_data_rejected { false };
 
 				public:
-					CompileScript(const Local<String>& code_handle, const MaybeLocal<Object>& maybe_options, ShareableIsolate* isolate) : isolate(isolate) {
+					CompileScript(const Local<String>& code_handle, const MaybeLocal<Object>& maybe_options) {
 						// Read options
 						Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
 						Local<Object> options;
@@ -315,7 +314,7 @@ class IsolateHandle : public TransferableHandle {
 
 					void Phase2() final {
 						// Compile in second isolate and return UnboundScript persistent
-						ShareableIsolate* isolate = this->isolate;
+						auto isolate = ShareableIsolate::GetCurrent();
 						Context::Scope context_scope(isolate->DefaultContext());
 						Local<String> code_inner = code_string->CopyInto().As<String>();
 						code_string.reset();
@@ -358,18 +357,20 @@ class IsolateHandle : public TransferableHandle {
 						return value;
 					}
 			};
-			return ThreePhaseTask::Run<async, CompileScript>(*this->isolate, code_handle, maybe_options, this->isolate.get());
+			return ThreePhaseTask::Run<async, CompileScript>(*this->isolate, code_handle, maybe_options);
 		}
 
 		/**
 		 * Create a new channel for debugging on the inspector
 		 */
+		/*
 		Local<Value> CreateInspectorSession() {
-			if (&ShareableIsolate::GetCurrent() == isolate.get()) {
+			if (ShareableIsolate::GetCurrentHolder() == isolate) {
 				throw js_generic_error("An isolate is not debuggable from within itself");
 			}
 			return ClassHandle::NewInstance<SessionHandle>(isolate.get());
 		}
+		*/
 
 		/**
 		 * Dispose an isolate
@@ -383,8 +384,12 @@ class IsolateHandle : public TransferableHandle {
 		 * Get heap statistics from v8
 		 */
 		Local<Value> GetHeapStatistics() {
-			HeapStatistics heap = isolate->GetHeapStatistics();
-			LimitedAllocator* allocator = static_cast<LimitedAllocator*>(isolate->GetAllocator());
+			auto ptr = isolate->GetIsolate();
+			if (!ptr) {
+				throw js_generic_error("Isolate is disposed");
+			}
+			HeapStatistics heap = ptr->GetHeapStatistics();
+			LimitedAllocator* allocator = static_cast<LimitedAllocator*>(ptr->GetAllocator());
 			Local<Object> ret = Object::New(Isolate::GetCurrent());
 			ret->Set(v8_string("total_heap_size"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.total_heap_size()));
 			ret->Set(v8_string("total_heap_size_executable"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.total_heap_size_executable()));

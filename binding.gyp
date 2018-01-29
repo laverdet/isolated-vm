@@ -40,8 +40,9 @@
 			'sources': [
 				'src/class_handle.cc',
 				'src/external_copy.cc',
-				'src/inspector.cc',
+# 'src/inspector.cc',
 				'src/isolate.cc',
+				'src/isolate_holder.cc',
 				'src/lib_handle.cc',
 				'src/native_module_handle.cc',
 				'src/shareable_context.cc',

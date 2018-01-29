@@ -8,13 +8,12 @@ namespace ivm {
 
 ThreePhaseTask::Phase2Runner::Phase2Runner(
 	unique_ptr<ThreePhaseTask> self,
-	shared_ptr<ShareableIsolate> first_isolate_ref,
-	shared_ptr<ShareableIsolate> second_isolate_ref,
+	shared_ptr<IsolateHolder> first_isolate_ref,
 	unique_ptr<Persistent<Promise::Resolver>> promise_persistent,
 	unique_ptr<Persistent<Context>> context_persistent
 ) :
 	self(std::move(self)),
-	first_isolate_ref(std::move(first_isolate_ref)), second_isolate_ref(std::move(second_isolate_ref)),
+	first_isolate_ref(std::move(first_isolate_ref)),
 	promise_persistent(std::move(promise_persistent)), context_persistent(std::move(context_persistent)) {}
 
 ThreePhaseTask::Phase2Runner::~Phase2Runner() {
@@ -50,11 +49,11 @@ ThreePhaseTask::Phase2Runner::~Phase2Runner() {
 void ThreePhaseTask::Phase2Runner::Run() {
 	did_run = true;
 	TryCatch try_catch(Isolate::GetCurrent());
-	ShareableIsolate& first_isolate = *first_isolate_ref;
+	auto second_isolate = ShareableIsolate::GetCurrent();
 	try {
 		// Continue the task
 		self->Phase2();
-		second_isolate_ref->TaskWrapper(0); // TODO: this is filthy
+		second_isolate->TaskWrapper(0); // TODO: this is filthy
 		// Finish back in first isolate
 		struct Phase3Success : public Runnable {
 			unique_ptr<ThreePhaseTask> self;
@@ -79,7 +78,7 @@ void ThreePhaseTask::Phase2Runner::Run() {
 					isolate->RunMicrotasks();
 				} catch (js_error_base& cc_error) {
 					// An error was caught while running Phase3()
-					if (ShareableIsolate::GetCurrent().IsNormalLifeCycle()) {
+					if (ShareableIsolate::GetCurrent()->IsNormalLifeCycle()) {
 						assert(try_catch.HasCaught());
 						// If Reject fails then I think that's bad..
 						Unmaybe(promise_local->Reject(context_local, try_catch.Exception()));
@@ -126,16 +125,16 @@ void ThreePhaseTask::Phase2Runner::Run() {
 		unique_ptr<ExternalCopy> err;
 		if (try_catch.HasCaught()) {
 			// Graceful JS exception
-			Context::Scope context_scope(second_isolate_ref->DefaultContext());
+			Context::Scope context_scope(second_isolate->DefaultContext());
 			err = ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception());
 		} else {
 			// Isolate is probably in trouble
-			assert(!second_isolate_ref->IsNormalLifeCycle());
+			assert(!second_isolate->IsNormalLifeCycle());
 			err = std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::Error, "Isolate is disposed or disposing");
 		}
 
 		// Schedule a task to enter the first isolate so we can throw the error at the promise
-		first_isolate.ScheduleTask(std::make_unique<Phase3Failure>(std::move(self), std::move(promise_persistent), std::move(context_persistent), std::move(err)), false, true);
+		first_isolate_ref->ScheduleTask(std::make_unique<Phase3Failure>(std::move(self), std::move(promise_persistent), std::move(context_persistent), std::move(err)), false, true);
 	}
 }
 

@@ -6,8 +6,9 @@
 #include "external_copy.h"
 #include "timer.h"
 #include "util.h"
-#include "inspector.h"
+//#include "inspector.h"
 #include "runnable.h"
+#include "isolate_holder.h"
 
 #include "apply_from_tuple.h"
 #include <algorithm>
@@ -24,6 +25,7 @@
 
 namespace ivm {
 using namespace v8;
+using std::shared_ptr;
 using std::unique_ptr;
 
 /**
@@ -49,8 +51,9 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		static std::thread::id default_thread;
 		static std::atomic<int> uv_refs;
 
+		std::shared_ptr<IsolateHolder> holder;
 		Isolate* isolate;
-		unique_ptr<InspectorClientImpl> inspector_client;
+//		unique_ptr<InspectorClientImpl> inspector_client;
 		Persistent<Context> default_context;
 		unique_ptr<ArrayBuffer::Allocator> allocator_ptr;
 		shared_ptr<ExternalCopyArrayBuffer> snapshot_blob_ptr;
@@ -104,22 +107,22 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		static void GCEpilogueCallback(Isolate* isolate, GCType type, GCCallbackFlags flags) {
 
 			// Get current heap statistics
-			ShareableIsolate& that = ShareableIsolate::GetCurrent();
-			assert(that.isolate == isolate);
+			auto that = ShareableIsolate::GetCurrent();
+			assert(that->isolate == isolate);
 			HeapStatistics heap;
 			isolate->GetHeapStatistics(&heap);
 
 			// If we are above the heap limit then kill this isolate
-			if (heap.used_heap_size() > that.memory_limit * 1024 * 1024) {
-				that.hit_memory_limit = true;
+			if (heap.used_heap_size() > that->memory_limit * 1024 * 1024) {
+				that->hit_memory_limit = true;
 				isolate->TerminateExecution();
 				return;
 			}
 
 			// Ask for a deep clean at 80% heap
 			if (
-				heap.used_heap_size() * 1.25 > that.memory_limit * 1024 * 1024 &&
-				that.last_heap.used_heap_size() * 1.25 < that.memory_limit * 1024 * 1024
+				heap.used_heap_size() * 1.25 > that->memory_limit * 1024 * 1024 &&
+				that->last_heap.used_heap_size() * 1.25 < that->memory_limit * 1024 * 1024
 			) {
 				struct LowMemoryTask : public Runnable {
 					Isolate* isolate;
@@ -128,10 +131,10 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 						isolate->LowMemoryNotification();
 					}
 				};
-				that.ScheduleTask(std::make_unique<LowMemoryTask>(isolate), false, false);
+				that->ScheduleTask(std::make_unique<LowMemoryTask>(isolate), false, false);
 			}
 
-			that.last_heap = heap;
+			that->last_heap = heap;
 		}
 
 		/**
@@ -139,9 +142,9 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		 * contexts so we have to handle that ourselves.
 		 */
 		static void PromiseRejectCallback(PromiseRejectMessage rejection) {
-			ShareableIsolate& that = ShareableIsolate::GetCurrent();
-			assert(that.isolate == Isolate::GetCurrent());
-			that.rejected_promise_error.Reset(that.isolate, rejection.GetValue());
+			auto that = ShareableIsolate::GetCurrent();
+			assert(that->isolate == Isolate::GetCurrent());
+			that->rejected_promise_error.Reset(that->isolate, rejection.GetValue());
 		}
 
 		/**
@@ -235,8 +238,16 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		/**
 		 * Return shared pointer the currently running Isolate's shared pointer
 		 */
-		static ShareableIsolate& GetCurrent() {
-			return *current;
+		static shared_ptr<ShareableIsolate> GetCurrent() {
+			return current->GetShared();
+		}
+
+		static shared_ptr<IsolateHolder> GetCurrentHolder() {
+			return current->holder;
+		}
+
+		Isolate* GetIsolate() {
+			return isolate;
 		}
 
 		/**
@@ -297,7 +308,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			isolate->SetPromiseRejectCallback(PromiseRejectCallback);
 
 			// Bootstrap inspector
-			inspector_client = std::make_unique<InspectorClientImpl>(isolate, this);
+//			inspector_client = std::make_unique<InspectorClientImpl>(isolate, this);
 
 			// Create a default context for the library to use if needed
 			{
@@ -306,12 +317,20 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				Local<Context> context = Context::New(isolate);
 				default_context.Reset(isolate, context);
 				std::string name = "default";
-				inspector_client->inspector->contextCreated(v8_inspector::V8ContextInfo(context, 1, v8_inspector::StringView((const uint8_t*)name.c_str(), name.length())));
+	//			inspector_client->inspector->contextCreated(v8_inspector::V8ContextInfo(context, 1, v8_inspector::StringView((const uint8_t*)name.c_str(), name.length())));
 			}
 
 			// There is no asynchronous Isolate ctor so we should throw away thread specifics in case
 			// the client always uses async methods
 			isolate->DiscardThreadSpecificMetadata();
+		}
+
+		template <typename ...Args>
+		static shared_ptr<IsolateHolder> New(Args&&... args) {
+			auto isolate = std::make_shared<ShareableIsolate>(std::forward<Args>(args)...);
+			auto holder = std::make_shared<IsolateHolder>(isolate);
+			isolate->holder = holder;
+			return holder;
 		}
 
 		~ShareableIsolate() {
@@ -403,7 +422,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				tasks = decltype(tasks)();
 				LockerHelper locker(*this);
 				// Dispose of inspector first
-				inspector_client.reset();
+//				inspector_client.reset();
 				// Flush tasks
 				while (!weak_persistents.empty()) {
 					auto it = weak_persistents.begin();
@@ -424,6 +443,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		/**
 		 * Create a new debug channel
 		 */
+		/*
 		unique_ptr<InspectorSession> CreateInspectorSession(shared_ptr<V8Inspector::Channel> channel) {
 			std::unique_lock<std::mutex> lock(queue_mutex);
 			if (life_cycle != LifeCycle::Normal) {
@@ -432,6 +452,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 			}
 			return inspector_client->createSession(channel);
 		}
+		*/
 
 		/**
 		 * Given a v8 isolate this will find the ShareableIsolate instance, if any, that belongs to it.
@@ -452,7 +473,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		 * Schedules a task to run in this isolate.
 		 */
 		void ScheduleTask(unique_ptr<Runnable> task, bool run_inline, bool wake_isolate) {
-			if (run_inline && &GetCurrent() == this) {
+			if (run_inline && GetCurrent().get() == this) {
 				task->Run();
 				return;
 			}
@@ -649,12 +670,12 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 
 		void ContextCreated(Local<Context> context) {
 			std::string name = "<isolated-vm>";
-			inspector_client->inspector->contextCreated(v8_inspector::V8ContextInfo(context, 1, v8_inspector::StringView((const uint8_t*)name.c_str(), name.length())));
+			//inspector_client->inspector->contextCreated(v8_inspector::V8ContextInfo(context, 1, v8_inspector::StringView((const uint8_t*)name.c_str(), name.length())));
 		}
 
 		void ContextDestroyed(Local<Context> context) {
 			if (!root) { // TODO: This gets called for the root context because of ShareableContext's dtor :(
-				inspector_client->inspector->contextDestroyed(context);
+				//inspector_client->inspector->contextDestroyed(context);
 			}
 		}
 

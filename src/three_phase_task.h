@@ -23,16 +23,14 @@ class ThreePhaseTask {
 	private:
 		struct Phase2Runner : public Runnable {
 			std::unique_ptr<ThreePhaseTask> self;
-			std::shared_ptr<ShareableIsolate> first_isolate_ref;
-			std::shared_ptr<ShareableIsolate> second_isolate_ref;
+			std::shared_ptr<IsolateHolder> first_isolate_ref;
 			std::unique_ptr<v8::Persistent<v8::Promise::Resolver>> promise_persistent;
 			std::unique_ptr<v8::Persistent<v8::Context>> context_persistent;
 			bool did_run = false;
 
 			Phase2Runner(
 				std::unique_ptr<ThreePhaseTask> self,
-				std::shared_ptr<ShareableIsolate> first_isolate_ref,
-				std::shared_ptr<ShareableIsolate> second_isolate_ref,
+				std::shared_ptr<IsolateHolder> first_isolate_ref,
 				std::unique_ptr<v8::Persistent<v8::Promise::Resolver>> promise_persistent,
 				std::unique_ptr<v8::Persistent<v8::Context>> context_persistent
 			);
@@ -50,23 +48,22 @@ class ThreePhaseTask {
 		virtual v8::Local<v8::Value> Phase3() = 0;
 
 		template <bool async, typename T, typename ...Args>
-		static v8::Local<v8::Value> Run(ShareableIsolate& second_isolate, Args&&... args) {
+		static v8::Local<v8::Value> Run(IsolateHolder& second_isolate, Args&&... args) {
 
 			if (async) {
 				// Build a promise for outer isolate
-				ShareableIsolate& first_isolate = ShareableIsolate::GetCurrent();
-				auto context_local = first_isolate->GetCurrentContext();
-				auto promise_local = v8::Promise::Resolver::New(first_isolate);
-				v8::TryCatch try_catch(first_isolate);
+				auto first_isolate = ShareableIsolate::GetCurrent();
+				auto context_local = first_isolate->GetIsolate()->GetCurrentContext();
+				auto promise_local = v8::Promise::Resolver::New(*first_isolate);
+				v8::TryCatch try_catch(*first_isolate);
 				try {
 					// Schedule Phase2 async
 					second_isolate.ScheduleTask(
 						std::make_unique<Phase2Runner>(
 							std::make_unique<T>(std::forward<Args>(args)...), // <-- Phase1 / ctor called here
-							first_isolate.GetShared(),
-							second_isolate.GetShared(),
-							std::make_unique<v8::Persistent<v8::Promise::Resolver>>(first_isolate, promise_local),
-							std::make_unique<v8::Persistent<v8::Context>>(first_isolate, context_local)
+							ShareableIsolate::GetCurrentHolder(),
+							std::make_unique<v8::Persistent<v8::Promise::Resolver>>(*first_isolate, promise_local),
+							std::make_unique<v8::Persistent<v8::Context>>(*first_isolate, context_local)
 						), false, true
 					);
 				} catch (js_error_base& cc_error) {
@@ -80,12 +77,16 @@ class ThreePhaseTask {
 			} else {
 				// The sync case is a lot simpler, most of the work is done in second_isolate.Locker()
 				std::unique_ptr<ThreePhaseTask> self = std::make_unique<T>(std::forward<Args>(args)...);
-				if (&ShareableIsolate::GetCurrent() == &second_isolate) {
+				if (ShareableIsolate::GetCurrentHolder().get() == &second_isolate) {
 					// Shortcut when calling a sync method belonging to the currently entered isolate. This isn't an
 					// optimization, it's used to bypass the deadlock prevention check in Locker()
 					self->Phase2();
 				} else {
-					second_isolate.Locker([&self]() {
+					auto second_isolate_ref = second_isolate.GetIsolate();
+					if (!second_isolate_ref) {
+						throw js_generic_error("Isolated is disposed");
+					}
+					second_isolate.GetIsolate()->Locker([&self]() {
 						self->Phase2();
 						return 0;
 					});
