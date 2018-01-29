@@ -46,6 +46,7 @@
 				'src/native_module_handle.cc',
 				'src/shareable_context.cc',
 				'src/shareable_isolate.cc',
+				'src/three_phase_task.cc',
 				'src/transferable.cc',
 			],
 		},

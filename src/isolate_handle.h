@@ -1,6 +1,7 @@
 #include <node.h>
 #include "shareable_isolate.h"
 #include "shareable_persistent.h"
+#include "three_phase_task.h"
 #include "class_handle.h"
 #include "transferable.h"
 #include "transferable_handle.h"

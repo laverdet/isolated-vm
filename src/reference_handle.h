@@ -5,6 +5,7 @@
 #include "class_handle.h"
 #include "transferable.h"
 #include "transferable_handle.h"
+#include "three_phase_task.h"
 
 #include <memory>
 #include <vector>

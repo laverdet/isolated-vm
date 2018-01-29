@@ -2,6 +2,7 @@
 #include <node.h>
 #include "shareable_isolate.h"
 #include "shareable_persistent.h"
+#include "three_phase_task.h"
 #include "transferable_handle.h"
 #include "context_handle.h"
 #include "external_copy.h"
