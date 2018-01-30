@@ -70,6 +70,7 @@ T Unmaybe(v8::Maybe<T> handle) {
 /**
  * Run a function and annotate the exception with source / line number if it throws
  */
+// TODO: This is only used by isolate_handle.h -- move this to .cc file
 template <typename T, typename F>
 T RunWithAnnotatedErrors(F&& fn) {
 	v8::Isolate* isolate = v8::Isolate::GetCurrent();

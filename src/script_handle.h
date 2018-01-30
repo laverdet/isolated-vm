@@ -1,6 +1,7 @@
 #pragma once
 #include <node.h>
 #include "isolate/environment.h"
+#include "isolate/run_with_timeout.h"
 #include "isolate/shareable_persistent.h"
 #include "isolate/three_phase_task.h"
 #include "transferable_handle.h"
@@ -93,7 +94,7 @@ class ScriptHandle : public TransferableHandle {
 						Context::Scope context_scope(context_local);
 						Local<Script> script_handle = script->Deref()->BindToCurrentContext();
 						result = ExternalCopy::CopyIfPrimitive(
-							RunWithTimeout(timeout_ms, *IsolateEnvironment::GetCurrent(), [&script_handle, &context_local]() { return script_handle->Run(context_local); })
+							RunWithTimeout(timeout_ms, [&script_handle, &context_local]() { return script_handle->Run(context_local); })
 						);
 					}
 

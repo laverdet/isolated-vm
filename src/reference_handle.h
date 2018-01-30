@@ -1,11 +1,12 @@
 #pragma once
 #include <node.h>
-#include "isolate/shareable_persistent.h"
-#include "isolate/shareable_context.h"
 #include "isolate/class_handle.h"
+#include "isolate/run_with_timeout.h"
+#include "isolate/shareable_context.h"
+#include "isolate/shareable_persistent.h"
+#include "isolate/three_phase_task.h"
 #include "transferable.h"
 #include "transferable_handle.h"
-#include "isolate/three_phase_task.h"
 
 #include <memory>
 #include <vector>
@@ -390,7 +391,7 @@ class ReferenceHandle : public TransferableHandle {
 							argv_inner.emplace_back(argv[ii]->TransferIn());
 						}
 						ret = Transferable::TransferOut(RunWithTimeout(
-							timeout, *IsolateEnvironment::GetCurrent(),
+							timeout,
 							[&fn, &context_handle, &recv_inner, argc, &argv_inner]() {
 								return fn.As<Function>()->Call(context_handle, recv_inner, argc, argc ? &argv_inner[0] : nullptr);
 							}
