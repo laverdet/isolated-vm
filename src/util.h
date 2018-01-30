@@ -22,10 +22,11 @@ inline v8::Local<v8::String> v8_symbol(const char* string) {
 /**
  * JS + C++ exception, use with care
  */
-class js_error_base : public std::exception {};
+class js_runtime_error : public std::exception {};
+class js_fatal_error : public std::exception {};
 
 template <v8::Local<v8::Value> (*F)(v8::Local<v8::String>)>
-struct js_error : public js_error_base {
+struct js_error : public js_runtime_error {
 	explicit js_error(const std::string& message) {
 		v8::Isolate* isolate = v8::Isolate::GetCurrent();
 		const uint8_t* c_str = (const uint8_t*)message.c_str(); // NOLINT
@@ -52,7 +53,7 @@ v8::Local<T> Unmaybe(v8::MaybeLocal<T> handle) {
 	if (handle.ToLocal(&local)) {
 		return local;
 	} else {
-		throw js_error_base();
+		throw js_runtime_error();
 	}
 }
 
@@ -62,7 +63,7 @@ T Unmaybe(v8::Maybe<T> handle) {
 	if (handle.To(&just)) {
 		return just;
 	} else {
-		throw js_error_base();
+		throw js_runtime_error();
 	}
 }
 
@@ -75,7 +76,7 @@ T RunWithAnnotatedErrors(F&& fn) {
 	v8::TryCatch try_catch(isolate);
 	try {
 		return fn();
-	} catch (js_error_base& cc_error) {
+	} catch (const js_runtime_error& cc_error) {
 		try {
 			assert(try_catch.HasCaught());
 			v8::Local<v8::Context> context = isolate->GetCurrentContext();
@@ -91,10 +92,10 @@ T RunWithAnnotatedErrors(F&& fn) {
 			std::string message_str = *v8::String::Utf8Value(error.As<v8::Object>()->Get(v8_symbol("message")));
 			error.As<v8::Object>()->Set(v8_symbol("message"), v8_string((message_str + " [" + decorator + "]").c_str()));
 			isolate->ThrowException(error);
-			throw js_error_base();
-		} catch (js_error_base& cc_error) {
+			throw js_runtime_error();
+		} catch (const js_runtime_error& cc_error) {
 			try_catch.ReThrow();
-			throw js_error_base();
+			throw js_runtime_error();
 		}
 	}
 }

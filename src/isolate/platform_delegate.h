@@ -51,8 +51,8 @@ class PlatformDelegate : public v8::Platform {
 			if (isolate == node_isolate) {
 				node_platform->CallOnForegroundThread(isolate, task);
 			} else {
-				IsolateEnvironment* s_isolate = IsolateEnvironment::LookupIsolate(isolate);
-				assert(s_isolate != nullptr);
+				auto s_isolate = IsolateEnvironment::LookupIsolate(isolate);
+				assert(s_isolate);
 				s_isolate->ScheduleTask(std::make_unique<TaskHolder>(task), false, true);
 			}
 		}
@@ -65,7 +65,7 @@ class PlatformDelegate : public v8::Platform {
 				std::thread tmp_thread([isolate, task, delay_in_seconds]() {
 					std::this_thread::sleep_for(std::chrono::microseconds((long long)(delay_in_seconds * 1000000)));
 					auto holder = std::make_unique<TaskHolder>(task);
-					IsolateEnvironment* s_isolate = IsolateEnvironment::LookupIsolate(isolate);
+					auto s_isolate = IsolateEnvironment::LookupIsolate(isolate);
 					if (s_isolate) {
 						s_isolate->ScheduleTask(std::move(holder), false, true);
 					}

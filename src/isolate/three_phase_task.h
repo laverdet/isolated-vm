@@ -39,6 +39,8 @@ class ThreePhaseTask {
 			void Run() final;
 		};
 
+		v8::Local<v8::Value> RunSync(IsolateHolder& second_isolate);
+
 	public:
 		ThreePhaseTask() = default;
 		ThreePhaseTask(const ThreePhaseTask&) = delete;
@@ -53,21 +55,21 @@ class ThreePhaseTask {
 
 			if (async) {
 				// Build a promise for outer isolate
-				auto first_isolate = IsolateEnvironment::GetCurrent();
-				auto context_local = first_isolate->GetIsolate()->GetCurrentContext();
-				auto promise_local = v8::Promise::Resolver::New(*first_isolate);
-				v8::TryCatch try_catch(*first_isolate);
+				v8::Isolate* isolate = v8::Isolate::GetCurrent();
+				auto context_local = isolate->GetCurrentContext();
+				auto promise_local = v8::Promise::Resolver::New(isolate);
+				v8::TryCatch try_catch(isolate);
 				try {
 					// Schedule Phase2 async
 					second_isolate.ScheduleTask(
 						std::make_unique<Phase2Runner>(
 							std::make_unique<T>(std::forward<Args>(args)...), // <-- Phase1 / ctor called here
 							IsolateEnvironment::GetCurrentHolder(),
-							std::make_unique<v8::Persistent<v8::Promise::Resolver>>(*first_isolate, promise_local),
-							std::make_unique<v8::Persistent<v8::Context>>(*first_isolate, context_local)
+							std::make_unique<v8::Persistent<v8::Promise::Resolver>>(isolate, promise_local),
+							std::make_unique<v8::Persistent<v8::Context>>(isolate, context_local)
 						), false, true
 					);
-				} catch (js_error_base& cc_error) {
+				} catch (const js_runtime_error& cc_error) {
 					// An error was caught while running ctor (phase 1)
 					assert(try_catch.HasCaught());
 					Maybe<bool> ret = promise_local->Reject(context_local, try_catch.Exception());
@@ -76,23 +78,9 @@ class ThreePhaseTask {
 				}
 				return promise_local->GetPromise();
 			} else {
-				// The sync case is a lot simpler, most of the work is done in second_isolate.Locker()
-				std::unique_ptr<ThreePhaseTask> self = std::make_unique<T>(std::forward<Args>(args)...);
-				if (IsolateEnvironment::GetCurrentHolder().get() == &second_isolate) {
-					// Shortcut when calling a sync method belonging to the currently entered isolate. This isn't an
-					// optimization, it's used to bypass the deadlock prevention check in Locker()
-					self->Phase2();
-				} else {
-					auto second_isolate_ref = second_isolate.GetIsolate();
-					if (!second_isolate_ref) {
-						throw js_generic_error("Isolated is disposed");
-					}
-					second_isolate.GetIsolate()->Locker([&self]() {
-						self->Phase2();
-						return 0;
-					});
-				}
-				return self->Phase3();
+				// Execute syncronously
+				T self(std::forward<Args>(args)...);
+				return self.RunSync(second_isolate);
 			}
 		}
 };

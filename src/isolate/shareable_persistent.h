@@ -2,6 +2,7 @@
 #include <node.h>
 #include "holder.h"
 #include "environment.h"
+#include "util.h"
 #include <memory>
 
 namespace ivm {
@@ -19,7 +20,7 @@ class ShareablePersistent {
 	public:
 		ShareablePersistent(v8::Local<T> handle) :
 			isolate(IsolateEnvironment::GetCurrentHolder()),
-			handle(std::make_unique<Persistent<T>>(isolate->GetIsolate()->GetIsolate(), handle)) {
+			handle(std::make_unique<Persistent<T>>(v8::Isolate::GetCurrent(), handle)) {
 		}
 
 		~ShareablePersistent() {
@@ -41,7 +42,7 @@ class ShareablePersistent {
 		 * locked.
 		 */
 		v8::Local<T> Deref() const {
-			return v8::Local<T>::New(*isolate->GetIsolate(), *handle);
+			return v8::Local<T>::New(v8::Isolate::GetCurrent(), *handle);
 		}
 
 		/**

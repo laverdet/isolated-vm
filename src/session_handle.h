@@ -52,7 +52,7 @@ class ChannelImpl : public V8Inspector::Channel {
 						argv[1] = string;
 						try {
 							Unmaybe(fn->Call(isolate->GetCurrentContext(), Undefined(isolate), 2, argv));
-						} catch (const js_error_base& err) {}
+						} catch (const js_runtime_error& err) {}
 					}
 				}
 			};
@@ -79,7 +79,7 @@ class ChannelImpl : public V8Inspector::Channel {
 						argv[0] = string;
 						try {
 							Unmaybe(fn->Call(isolate->GetCurrentContext(), Undefined(isolate), 1, argv));
-						} catch (const js_error_base& err) {}
+						} catch (const js_runtime_error& err) {}
 					}
 				}
 			};

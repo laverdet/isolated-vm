@@ -28,7 +28,7 @@ isolate.compileScriptSync(src).run(context).catch(function() {
 		while (Date.now() < runUntil);
 	}));
 	isolate.compileScriptSync(src).run(context).catch(function(err) {
-		if (/exhausted/.test(err)) {
+		if (/disposed/.test(err)) {
 			setTimeout(() => console.log('pass'), 100);
 		}
 	});

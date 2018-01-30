@@ -31,7 +31,86 @@ using std::unique_ptr;
 /**
  * Wrapper around Isolate with helpers to make working with multiple isolates easier.
  */
-class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironment> {
+class IsolateEnvironment {
+	friend class IsolateHolder;
+	friend class ThreePhaseTask;
+
+	public:
+		/**
+		 * ExecutorLock class handles v8 locking while C++ code is running. Thread syncronization is
+		 * handled by v8::Locker. This also enters the isolate and sets up a handle scope.
+		 */
+		class ExecutorLock {
+			private:
+				static thread_local IsolateEnvironment* current;
+				static std::thread::id default_thread;
+				IsolateEnvironment* last;
+				v8::Locker locker;
+				v8::Isolate::Scope isolate_scope;
+				v8::HandleScope handle_scope;
+
+			public:
+				explicit ExecutorLock(IsolateEnvironment& env);
+				ExecutorLock(const ExecutorLock&) = delete;
+				ExecutorLock operator= (const ExecutorLock&) = delete;
+				~ExecutorLock();
+				static IsolateEnvironment* GetCurrent() { return current; }
+				static void Init(IsolateEnvironment& default_isolate);
+				static bool IsDefaultThread();
+		};
+
+		/**
+		 * Keeps track of tasks an isolate needs to run and manages its run state (running or waiting).
+		 * This does all the interaction with libuv async and the thread pool.
+		 */
+		class Scheduler {
+			public:
+				enum class Status { Waiting, Running };
+
+			private:
+				static uv_async_t root_async;
+				static thread_pool_t thread_pool;
+				static std::atomic<int> uv_ref_count;
+				Status status = Status::Waiting;
+				std::mutex mutex;
+				std::queue<unique_ptr<Runnable>> tasks;
+				std::queue<unique_ptr<std::function<void()>>> interrupts;
+				thread_pool_t::affinity_t thread_affinity;
+
+			public:
+				// A Scheduler::Lock is needed to interact with the task queue
+				class Lock {
+					private:
+						Scheduler& scheduler;
+						std::unique_lock<std::mutex> lock;
+					public:
+						explicit Lock(Scheduler& scheduler);
+						Lock(const Lock&) = delete;
+						Lock operator= (const Lock&) = delete;
+						~Lock();
+						void DoneRunning();
+						// Add work to the task queue
+						void PushTask(std::unique_ptr<Runnable> task);
+						void PushInterrupt(std::unique_ptr<std::function<void()>> interrupt);
+						// Takes control of current tasks. Resets current queue
+						std::queue<unique_ptr<Runnable>> TakeTasks();
+						std::queue<unique_ptr<std::function<void()>>> TakeInterrupts();
+						// Returns true if a wake was scheduled, true if the isolate is already running.
+						bool WakeIsolate(std::shared_ptr<IsolateEnvironment> isolate);
+				};
+				friend class Lock;
+
+				Scheduler();
+				Scheduler(const Scheduler&) = delete;
+				Scheduler operator= (const Scheduler&) = delete;
+				~Scheduler();
+				static void Init();
+
+			private:
+				static void AsyncCallbackRoot(uv_async_t* async);
+				static void AsyncCallbackPool(bool pool_thread, void* param);
+		};
+
 	private:
 		struct BookkeepingStatics {
 			/**
@@ -43,63 +122,35 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 			std::map<Isolate*, IsolateEnvironment*> isolate_map;
 			std::mutex lookup_mutex;
 		};
-		static shared_ptr<BookkeepingStatics> bookkeeping_statics_shared;
-		static thread_local IsolateEnvironment* current;
-		static size_t specifics_count;
-		static thread_pool_t thread_pool;
-		static uv_async_t root_async;
-		static std::thread::id default_thread;
-		static std::atomic<int> uv_refs;
 
-		std::shared_ptr<IsolateHolder> holder;
+		static shared_ptr<BookkeepingStatics> bookkeeping_statics_shared;
+		static size_t specifics_count;
+
 		Isolate* isolate;
+		Scheduler scheduler;
+		std::shared_ptr<IsolateHolder> holder;
 //		unique_ptr<InspectorClientImpl> inspector_client;
 		Persistent<Context> default_context;
 		unique_ptr<ArrayBuffer::Allocator> allocator_ptr;
 		shared_ptr<ExternalCopyArrayBuffer> snapshot_blob_ptr;
 		StartupData startup_data;
-		enum class LifeCycle { Normal, Disposing, Disposed };
-		LifeCycle life_cycle;
-		enum class Status { Waiting, Running };
-		Status status;
 		size_t memory_limit;
-		bool hit_memory_limit;
+		bool hit_memory_limit = false;
 		bool root;
 		HeapStatistics last_heap;
 		shared_ptr<BookkeepingStatics> bookkeeping_statics;
 		Persistent<Value> rejected_promise_error;
 
-		std::mutex exec_mutex; // mutex for execution
-		std::mutex queue_mutex; // mutex for queueing work
-		std::queue<unique_ptr<Runnable>> tasks;
-		std::queue<unique_ptr<std::function<void()>>> interrupt_tasks;
 		std::vector<unique_ptr<Persistent<Value>>> specifics;
 		std::vector<unique_ptr<Persistent<FunctionTemplate>>> specifics_ft;
 		std::map<Persistent<Object>*, std::pair<void(*)(void*), void*>> weak_persistents;
-		thread_pool_t::affinity_t thread_affinity;
 
-		/**
-		 * Wrapper around Locker that sets our own version of `current`. Also makes a HandleScope and
-		 * Isolate::Scope.
-		 */
-		class LockerHelper {
-			private:
-				IsolateEnvironment* last;
-				Locker locker;
-				Isolate::Scope isolate_scope;
-				HandleScope handle_scope;
+	public:
+		// TODO: These are used in RunWithTimeout
+		std::atomic<int> terminate_depth { 0 };
+		std::atomic<bool> terminated { false };
 
-			public:
-				LockerHelper(IsolateEnvironment& isolate) :
-					last(current), locker(isolate),
-					isolate_scope(isolate), handle_scope(isolate) {
-					current = &isolate;
-				}
-
-				~LockerHelper() {
-					current = last;
-				}
-		};
+	private:
 
 		/**
 		 * Catches garbage collections on the isolate and terminates if we use too much.
@@ -131,7 +182,8 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 						isolate->LowMemoryNotification();
 					}
 				};
-				that->ScheduleTask(std::make_unique<LowMemoryTask>(isolate), false, false);
+				Scheduler::Lock lock(that->scheduler);
+				lock.PushTask(std::make_unique<LowMemoryTask>(isolate));
 			}
 
 			that->last_heap = heap;
@@ -147,45 +199,22 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 			that->rejected_promise_error.Reset(that->isolate, rejection.GetValue());
 		}
 
-		/**
-		 * Schedules this isolate to wake up and run tasks. If this returns false then the isolate is
-		 * already awake. queue_mutex must be held when calling this function.
-		 */
-		bool WakeIsolate() {
-			if (status == Status::Waiting) {
-				status = Status::Running;
-				if (++uv_refs == 1) {
-					uv_ref((uv_handle_t*)&root_async);
-				}
-				if (root) {
-					root_async.data = this;
-					uv_async_send(&root_async);
-				} else {
-					thread_pool.exec(thread_affinity, WorkerEntry, this);
-				}
-				return true;
-			}
-			return false;
-		}
-
 	public:
 		/**
-		 * Helper used in Locker to throw if memory_limit was hit, but also return value of function if
-		 * not (even if T == void)
+		 * This is called after user code runs. This throws a fatal error if the memory limit was hit.
+		 * If an asyncronous exception (promise) was lost, this will throw it for real.
 		 */
-		template <typename T>
-		T TaskWrapper(T value) {
+		void TaskEpilogue() {
 			isolate->RunMicrotasks();
 			if (hit_memory_limit) {
-				throw js_error_base();
+				throw js_fatal_error();
 			}
 			if (!rejected_promise_error.IsEmpty()) {
 				Context::Scope context_scope(DefaultContext());
 				isolate->ThrowException(Local<Value>::New(isolate, rejected_promise_error));
 				rejected_promise_error.Reset();
-				throw js_error_base();
+				throw js_runtime_error();
 			}
-			return std::move(value);
 		}
 
 		/**
@@ -196,7 +225,7 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 			private:
 				template <typename L, typename V, V IsolateEnvironment::*S>
 				MaybeLocal<L> Deref() const {
-					IsolateEnvironment& isolate = *current;
+					IsolateEnvironment& isolate = *ExecutorLock::GetCurrent();
 					if ((isolate.*S).size() > key) {
 						if (!(isolate.*S)[key]->IsEmpty()) {
 							return MaybeLocal<L>(Local<L>::New(isolate, *(isolate.*S)[key]));
@@ -207,7 +236,7 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 
 				template <typename L, typename V, V IsolateEnvironment::*S>
 				void Reset(Local<L> handle) {
-					IsolateEnvironment& isolate = *current;
+					IsolateEnvironment& isolate = *ExecutorLock::GetCurrent();
 					if ((isolate.*S).size() <= key) {
 						(isolate.*S).reserve(key + 1);
 						while ((isolate.*S).size() <= key) {
@@ -238,12 +267,12 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		/**
 		 * Return shared pointer the currently running Isolate's shared pointer
 		 */
-		static shared_ptr<IsolateEnvironment> GetCurrent() {
-			return current->GetShared();
+		static IsolateEnvironment* GetCurrent() {
+			return ExecutorLock::GetCurrent();
 		}
 
 		static shared_ptr<IsolateHolder> GetCurrentHolder() {
-			return current->holder;
+			return ExecutorLock::GetCurrent()->holder;
 		}
 
 		Isolate* GetIsolate() {
@@ -256,20 +285,12 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		IsolateEnvironment(Isolate* isolate, Local<Context> context) :
 			isolate(isolate),
 			default_context(isolate, context),
-			life_cycle(LifeCycle::Normal),
-			status(Status::Waiting),
-			hit_memory_limit(false),
 			root(true),
 			bookkeeping_statics(bookkeeping_statics_shared) {
-			assert(current == nullptr);
-			current = this;
-			uv_async_init(uv_default_loop(), &root_async, WorkerEntryRoot);
-			uv_unref((uv_handle_t*)&root_async);
-			default_thread = std::this_thread::get_id();
-			{
-				std::unique_lock<std::mutex> lock(bookkeeping_statics->lookup_mutex);
-				bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
-			}
+			ExecutorLock::Init(*this);
+			Scheduler::Init();
+			std::unique_lock<std::mutex> lock(bookkeeping_statics->lookup_mutex);
+			bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
 		}
 
 		/**
@@ -283,10 +304,7 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		) :
 			allocator_ptr(std::move(allocator)),
 			snapshot_blob_ptr(std::move(snapshot_blob)),
-			life_cycle(LifeCycle::Normal),
-			status(Status::Waiting),
 			memory_limit(memory_limit),
-			hit_memory_limit(false),
 			root(false),
 			bookkeeping_statics(bookkeeping_statics_shared) {
 
@@ -325,6 +343,9 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 			isolate->DiscardThreadSpecificMetadata();
 		}
 
+		/**
+		 * Factory method which generates an IsolateHolder.
+		 */
 		template <typename ...Args>
 		static shared_ptr<IsolateHolder> New(Args&&... args) {
 			auto isolate = std::make_shared<IsolateEnvironment>(std::forward<Args>(args)...);
@@ -334,11 +355,29 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		}
 
 		~IsolateEnvironment() {
-			if (!root) {
-				Dispose(false);
+			if (root) return;
+			{
+				ExecutorLock lock(*this);
+				// Dispose of inspector first
+//				inspector_client.reset();
+				// Kill all weak persistents
+				while (!weak_persistents.empty()) {
+					auto it = weak_persistents.begin();
+					Persistent<Object>* handle = it->first;
+					void(*fn)(void*) = it->second.first;
+					void* param = it->second.second;
+					fn(param);
+					if (weak_persistents.find(handle) != weak_persistents.end()) {
+						throw std::runtime_error("Weak persistent callback failed to remove from global set");
+					}
+				}
+				// Destroy outstanding tasks. Do this here while the executor lock is up.
+				Scheduler::Lock lock2(scheduler);
+				lock2.TakeInterrupts();
+				lock2.TakeTasks();
 			}
-			std::unique_lock<std::mutex> lock(queue_mutex);
-			std::unique_lock<std::mutex> other_lock(bookkeeping_statics->lookup_mutex);
+			isolate->Dispose();
+			std::unique_lock<std::mutex> lock(bookkeeping_statics->lookup_mutex);
 			bookkeeping_statics->isolate_map.erase(bookkeeping_statics->isolate_map.find(isolate));
 		}
 
@@ -346,21 +385,11 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		 * Convenience operators to work with underlying isolate
 		 */
 		operator Isolate*() const {
-			// TODO: This function is used to check if two isolates are the same, which is valid to run
-			// after the isolate is disposed, but not good to have sitting around.
-			// assert(life_cycle != LifeCycle::Disposed);
 			return isolate;
 		}
 
 		Isolate* operator->() const {
 			return isolate;
-		}
-
-		/**
-		 * Get a copy of our shared_ptr<> to this isolate
-		 */
-		std::shared_ptr<IsolateEnvironment> GetShared() {
-			return shared_from_this();
 		}
 
 		/**
@@ -370,11 +399,6 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		 * we get.
 		 */
 		HeapStatistics GetHeapStatistics() {
-			std::unique_lock<std::mutex> lock(queue_mutex);
-			if (life_cycle != LifeCycle::Normal) {
-				lock.unlock();
-				throw js_generic_error("Isolate is disposed or disposing");
-			}
 			HeapStatistics heap;
 			isolate->GetHeapStatistics(&heap);
 			return heap;
@@ -391,53 +415,13 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 			return hit_memory_limit;
 		}
 
-		bool IsNormalLifeCycle() const {
-			return life_cycle == LifeCycle::Normal && !hit_memory_limit;
-		}
-
 		/**
-		 * Dispose of an isolate and clean up dangling handles
+		 * Ask this isolate to finish everything it's doing.
 		 */
-		void Dispose(bool fail_if_disposed = true) {
-			if (root) {
-				throw js_generic_error("Cannot dispose root isolate");
-			}
-			{
-				std::unique_lock<std::mutex> lock(queue_mutex);
-				if (life_cycle != LifeCycle::Normal) {
-					if (!fail_if_disposed) {
-						return;
-					}
-					lock.unlock();
-					throw js_generic_error("Isolate is already disposed or disposing");
-				}
-				if (v8::Locker::IsLocked(isolate)) {
-					throw js_generic_error("Cannot dispose entered isolate");
-				}
-				life_cycle = LifeCycle::Disposing;
-				isolate->TerminateExecution();
-			}
-			std::unique_lock<std::mutex> lock(exec_mutex);
-			{
-				tasks = decltype(tasks)();
-				LockerHelper locker(*this);
-				// Dispose of inspector first
-//				inspector_client.reset();
-				// Flush tasks
-				while (!weak_persistents.empty()) {
-					auto it = weak_persistents.begin();
-					Persistent<Object>* handle = it->first;
-					void(*fn)(void*) = it->second.first;
-					void* param = it->second.second;
-					fn(param);
-					if (weak_persistents.find(handle) != weak_persistents.end()) {
-						throw std::runtime_error("Weak persistent callback failed to remove from global set");
-					}
-				}
-			}
-			isolate->Dispose();
-			life_cycle = LifeCycle::Disposed;
-			assert(tasks.empty());
+		void Terminate() {
+			assert(!root);
+			terminated = true;
+			isolate->TerminateExecution();
 		}
 
 		/**
@@ -457,33 +441,13 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		/**
 		 * Given a v8 isolate this will find the IsolateEnvironment instance, if any, that belongs to it.
 		 */
-		static IsolateEnvironment* LookupIsolate(Isolate* isolate) {
-			{
-				std::unique_lock<std::mutex> lock(bookkeeping_statics_shared->lookup_mutex);
-				auto it = bookkeeping_statics_shared->isolate_map.find(isolate);
-				if (it == bookkeeping_statics_shared->isolate_map.end()) {
-					return nullptr;
-				} else {
-					return it->second;
-				}
-			}
-		}
-
-		/**
-		 * Schedules a task to run in this isolate.
-		 */
-		void ScheduleTask(unique_ptr<Runnable> task, bool run_inline, bool wake_isolate) {
-			if (run_inline && GetCurrent().get() == this) {
-				task->Run();
-				return;
-			}
-			std::unique_lock<std::mutex> lock(queue_mutex);
-			if (life_cycle != LifeCycle::Normal || hit_memory_limit) {
-				return;
-			}
-			this->tasks.push(std::move(task));
-			if (wake_isolate) {
-				WakeIsolate();
+		static std::shared_ptr<IsolateHolder> LookupIsolate(Isolate* isolate) {
+			std::unique_lock<std::mutex> lock(bookkeeping_statics_shared->lookup_mutex);
+			auto it = bookkeeping_statics_shared->isolate_map.find(isolate);
+			if (it == bookkeeping_statics_shared->isolate_map.end()) {
+				return nullptr;
+			} else {
+				return it->second->holder;
 			}
 		}
 
@@ -491,178 +455,73 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		 * Schedules a task which will interupt JS execution. This will wake up the isolate if it's not
 		 * currently running.
 		 */
+		/*
 		void ScheduleInterrupt(std::function<void()> fn) {
 			std::unique_lock<std::mutex> lock(queue_mutex);
 			if (life_cycle != LifeCycle::Normal || hit_memory_limit) {
 				lock.unlock();
 				throw js_generic_error("Isolate is disposed or disposing");
 			}
-			interrupt_tasks.push(std::make_unique<std::function<void()>>(std::move(fn)));
+			interrupt.push(std::make_unique<std::function<void()>>(std::move(fn)));
 			if (!WakeIsolate()) {
 				isolate->RequestInterrupt(InterruptEntry, this);
 			}
 		}
+		*/
 
-		static void UnrefUv() {
-			if (--uv_refs == 0) {
-				uv_unref((uv_handle_t*)&root_async);
-				// If we are the last ones to unref then node doesn't exit unless someone else
-				// unrefs?? This seems like an obvious libuv bug but I don't want to investigate.
-				root_async.data = nullptr;
-				uv_async_send(&root_async);
-			}
-		}
-
-		static void WorkerEntryRoot(uv_async_t* async) {
-			if (async->data != nullptr) { // see WorkerEntry nullptr async message
-				WorkerEntry(true, async->data);
-			}
-		}
-
-		static void WorkerEntry(bool pool_thread, void* param) {
-			IsolateEnvironment& that = *static_cast<IsolateEnvironment*>(param);
-			auto that_ref = that.GetShared(); // Make sure we don't get deleted by another thread while running
-			{
-				std::unique_lock<std::mutex> queue_lock(that.queue_mutex);
-				if (that.life_cycle != LifeCycle::Normal) {
-					UnrefUv();
-					return;
+		void AsyncEntry() {
+			ExecutorLock lock(*this);
+			while (true) {
+				std::queue<unique_ptr<Runnable>> tasks;
+				std::queue<unique_ptr<std::function<void()>>> interrupts;
+				{
+					// Grab current tasks
+					Scheduler::Lock lock(scheduler);
+					tasks = lock.TakeTasks();
+					interrupts = lock.TakeInterrupts();
+					if (tasks.empty() && interrupts.empty()) {
+						lock.DoneRunning();
+						return;
+					}
 				}
-			}
-			std::unique_lock<std::mutex> exec_lock(that.exec_mutex);
-			assert(that.status == Status::Running);
-			{
-				LockerHelper locker(that);
-				while (true) {
-					decltype(that.tasks) tasks;
-					decltype(that.interrupt_tasks) interrupt_tasks;
-					{
-						std::unique_lock<std::mutex> lock(that.queue_mutex);
-						std::swap(tasks, that.tasks);
-						std::swap(interrupt_tasks, that.interrupt_tasks);
-						if (tasks.empty() && interrupt_tasks.empty()) {
-							that.status = Status::Waiting;
-							if (!pool_thread) {
-								// In this case the thread pool was full so this loop was run in a temporary thread
-								// that will be thrown away after this function finishes. Throwaway that pesky
-								// metadata.
-								that.isolate->DiscardThreadSpecificMetadata();
-							}
-							if (that.hit_memory_limit) {
-								// This will unlock v8 and dispose, below
-								break;
-							}
-							UnrefUv();
-							return;
-						}
-					}
 
-					// Execute handle tasks
-					while (!tasks.empty()) {
-						tasks.front()->Run();
-						tasks.pop();
-						if (that.hit_memory_limit) {
-							// This will unlock v8 and dispose, below
-							break;
-						}
-					}
+				// Execute interrupt tasks
+				while (!interrupts.empty()) {
+					(*interrupts.front())();
+					interrupts.pop();
+				}
 
-					// Execute interrupt tasks
-					while (!interrupt_tasks.empty()) {
-						auto task = std::move(interrupt_tasks.front());
-						(*task)();
-						interrupt_tasks.pop();
+				// Execute handle tasks
+				while (!tasks.empty()) {
+					tasks.front()->Run();
+					tasks.pop();
+					if (hit_memory_limit) {
+						return;
 					}
 				}
 			}
-			// If we got here it means we're supposed to throw away this isolate due to an OOM memory
-			// error
-			assert(that.hit_memory_limit);
-			exec_lock.unlock();
-			that.Dispose(false);
-			UnrefUv();
 		}
 
 		/**
 		 * This is called in response to RequestInterrupt. In this case the isolate will already be
 		 * locked and enterred.
 		 */
+		/*
 		static void InterruptEntry(Isolate* isolate, void* param) {
 			IsolateEnvironment& that = *static_cast<IsolateEnvironment*>(param);
 			assert(that.status == Status::Running);
-			decltype(interrupt_tasks) interrupt_tasks_copy;
+			decltype(interrupt) interrupt_copy;
 			{
 				std::unique_lock<std::mutex> lock(that.queue_mutex);
-				std::swap(that.interrupt_tasks, interrupt_tasks_copy);
+				std::swap(that.interrupt, interrupt_copy);
 			}
-			while (!interrupt_tasks_copy.empty()) {
-				auto task = std::move(interrupt_tasks_copy.front());
+			while (!interrupt_copy.empty()) {
+				auto task = std::move(interrupt_copy.front());
 				(*task)();
-				interrupt_tasks_copy.pop();
+				interrupt_copy.pop();
 			}
 		}
-
-		/**
-		 * Helper around v8::Locker which does extra bookkeeping for us.
-		 * - Updates `current`
-		 * - Runs scheduled work
-		 * - Also sets up handle scope
-		 * - Throws exceptions from inner isolate into the outer isolate
-		 */
-		template <typename F, typename ...Args>
-		auto Locker(F fn, Args&&... args) -> decltype(fn(args...)) {
-			if (std::this_thread::get_id() != default_thread) {
-				throw js_generic_error(
-					"Calling a synchronous isolated-vm function from within an asynchronous isolated-vm function is not allowed."
-				);
-			}
-			std::shared_ptr<ExternalCopy> error;
-			{
-				{
-					std::unique_lock<std::mutex> lock(queue_mutex);
-					if (life_cycle != LifeCycle::Normal || hit_memory_limit) {
-						// nb: v8 lock is never set up
-						lock.unlock();
-						throw js_generic_error("Isolate is disposed or disposing");
-					}
-				}
-				std::unique_lock<std::mutex> lock(exec_mutex);
-				LockerHelper locker(*this);
-				TryCatch try_catch(isolate);
-				try {
-					return TaskWrapper(fn(std::forward<Args>(args)...));
-				} catch (const js_error_base& cc_error) {
-					// memory errors will be handled below
-					if (!hit_memory_limit) {
-						// `stack` getter on Error needs a Context..
-						assert(try_catch.HasCaught());
-						Context::Scope context_scope(DefaultContext());
-						error = ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception());
-					}
-				}
-			}
-			// If we get here we can assume an exception was thrown
-			if (error.get()) {
-				(*current)->ThrowException(error->CopyInto());
-				throw js_error_base();
-			} else if (hit_memory_limit) {
-				if (Isolate::GetCurrent() == isolate) {
-					// Recursive call to ivm library? Just throw a C++ exception and leave the termination
-					// exception as is
-					throw js_error_base();
-				} else if (Locker::IsLocked(isolate)) {
-					// Recursive call but there is another isolate in between, this gets thrown to the middle
-					// isolate
-					throw js_generic_error("Isolate has exhausted v8 heap space.");
-				} else {
-					// We need to get rid of this isolate before it takes down the whole process
-					Dispose(false);
-					throw js_generic_error("Isolate has exhausted v8 heap space.");
-				}
-			} else {
-				throw js_generic_error("An exception was thrown. Sorry I don't know more.");
-			}
-		}
+		*/
 
 		Local<Context> DefaultContext() const {
 			return Local<Context>::New(isolate, default_context);
@@ -714,6 +573,7 @@ Local<Value> RunWithTimeout(uint32_t timeout_ms, IsolateEnvironment& isolate, F&
 		if (timeout_ms != 0) {
 			timer_ptr = std::make_unique<timer_t>(timeout_ms, [&did_timeout, &did_finish, &isolate]() {
 				did_timeout = true;
+				++isolate.terminate_depth;
 				isolate->TerminateExecution();
 				// FIXME(?): It seems that one call to TerminateExecution() doesn't kill the script if
 				// there is a promise handler scheduled. This is unexpected behavior but I can't
@@ -737,14 +597,13 @@ Local<Value> RunWithTimeout(uint32_t timeout_ms, IsolateEnvironment& isolate, F&
 		result = fn();
 		did_finish = true;
 	}
-	if (did_timeout) {
-		if (isolate.IsNormalLifeCycle()) {
+	if (isolate.DidHitMemoryLimit()) {
+		throw js_fatal_error();
+	} else if (did_timeout) {
+		if (!isolate.terminated && --isolate.terminate_depth == 0) {
 			isolate->CancelTerminateExecution();
 		}
 		throw js_generic_error("Script execution timed out.");
-	} else if (isolate.DidHitMemoryLimit()) {
-		// TODO: Consider finding a way to do this without allocating in the dangerous isolate
-		throw js_generic_error("Isolate has exhausted v8 heap space.");
 	}
 	return Unmaybe(result);
 }

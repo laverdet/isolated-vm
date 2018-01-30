@@ -64,7 +64,8 @@ class ScriptOriginHolder {
 		}
 
 		ScriptOrigin ToScriptOrigin() {
-			return ScriptOrigin(v8_string(filename.c_str()), Integer::New(Isolate::GetCurrent(), columnOffset), Integer::New(Isolate::GetCurrent(), lineOffset));
+			Isolate* isolate = Isolate::GetCurrent();
+			return ScriptOrigin(v8_string(filename.c_str()), Integer::New(isolate, columnOffset), Integer::New(isolate, lineOffset));
 		}
 };
 
@@ -483,7 +484,7 @@ Local<Value> CreateSnapshot(Local<Array> script_handles, MaybeLocal<String> warm
 				}
 				isolate->ContextDisposedNotification(false);
 				snapshot_creator.AddContext(context);
-			} catch (const js_error_base& cc_error) {
+			} catch (const js_runtime_error& cc_error) {
 				assert(try_catch.HasCaught());
 				HandleScope handle_scope(isolate);
 				Context::Scope context_scope(context);
