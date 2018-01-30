@@ -1,5 +1,5 @@
-#include "isolate_holder.h"
-#include "shareable_isolate.h"
+#include "holder.h"
+#include "environment.h"
 #include "util.h"
 
 using std::shared_ptr;

@@ -2,7 +2,7 @@
 #include <node.h>
 #include "util.h"
 #include "convert_param.h"
-#include "shareable_isolate.h"
+#include "environment.h"
 #include "shareable_persistent.h"
 
 #include <assert.h>

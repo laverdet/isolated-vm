@@ -1,6 +1,6 @@
 #include "transferable.h"
 #include "util.h"
-#include "class_handle.h"
+#include "isolate/class_handle.h"
 #include "transferable_handle.h"
 #include "external_copy.h"
 

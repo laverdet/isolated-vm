@@ -1,7 +1,7 @@
 #pragma once
 #include <node.h>
 #include <v8-platform.h>
-#include "shareable_isolate.h"
+#include "environment.h"
 
 namespace v8 {
 namespace internal {

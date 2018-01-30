@@ -1,11 +1,11 @@
 #pragma once
 #include <node.h>
-#include "shareable_persistent.h"
-#include "shareable_context.h"
-#include "class_handle.h"
+#include "isolate/shareable_persistent.h"
+#include "isolate/shareable_context.h"
+#include "isolate/class_handle.h"
 #include "transferable.h"
 #include "transferable_handle.h"
-#include "three_phase_task.h"
+#include "isolate/three_phase_task.h"
 
 #include <memory>
 #include <vector>

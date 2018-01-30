@@ -1,6 +1,6 @@
 #pragma once
 #include <node.h>
-#include "util.h"
+#include "../util.h"
 #include "class_handle.h"
 #include <string>
 

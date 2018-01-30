@@ -1,8 +1,8 @@
 #include "native_module_handle.h"
 #include "context_handle.h"
 #include "reference_handle.h"
-#include "shareable_isolate.h"
-#include "three_phase_task.h"
+#include "isolate/environment.h"
+#include "isolate/three_phase_task.h"
 
 using namespace v8;
 using std::shared_ptr;

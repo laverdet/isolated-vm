@@ -2,15 +2,15 @@
 #include <node.h>
 #include <uv.h>
 #include <assert.h>
-#include "thread_pool.h"
-#include "external_copy.h"
-#include "timer.h"
-#include "util.h"
+#include "../thread_pool.h"
+#include "../external_copy.h"
+#include "../timer.h"
+#include "../util.h"
 //#include "inspector.h"
 #include "runnable.h"
-#include "isolate_holder.h"
+#include "holder.h"
 
-#include "apply_from_tuple.h"
+#include "../apply_from_tuple.h"
 #include <algorithm>
 #include <atomic>
 #include <functional>

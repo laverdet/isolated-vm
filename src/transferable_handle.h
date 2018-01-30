@@ -1,6 +1,6 @@
 #pragma once
 #include <node.h>
-#include "class_handle.h"
+#include "isolate/class_handle.h"
 #include <memory>
 
 namespace ivm {

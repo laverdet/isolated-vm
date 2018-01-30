@@ -1,7 +1,7 @@
 #pragma once
 #include <node.h>
-#include "isolate_holder.h"
-#include "shareable_isolate.h"
+#include "holder.h"
+#include "environment.h"
 #include <memory>
 
 namespace ivm {

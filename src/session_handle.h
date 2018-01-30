@@ -2,8 +2,8 @@
 #include <node.h>
 #include <v8-inspector.h>
 
-#include "class_handle.h"
-#include "inspector.h"
+#include "isolate/class_handle.h"
+#include "isolate/inspector.h"
 
 #include <memory>
 

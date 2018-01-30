@@ -1,6 +1,7 @@
 #pragma once
 #include <node.h>
-#include "shareable_isolate.h"
+#include "environment.h"
+#include "holder.h"
 #include "util.h"
 #include <memory>
 

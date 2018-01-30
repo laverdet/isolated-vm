@@ -1,9 +1,9 @@
 #pragma once
 #include <node.h>
-#include "shareable_isolate.h"
-#include "shareable_persistent.h"
-#include "shareable_context.h"
-#include "class_handle.h"
+#include "isolate/environment.h"
+#include "isolate/shareable_persistent.h"
+#include "isolate/shareable_context.h"
+#include "isolate/class_handle.h"
 #include "reference_handle.h"
 
 #include <memory>

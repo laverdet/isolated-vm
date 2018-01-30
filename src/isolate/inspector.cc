@@ -1,4 +1,4 @@
-#include "shareable_isolate.h"
+#include "environment.h"
 #include "inspector.h"
 
 using namespace ivm;

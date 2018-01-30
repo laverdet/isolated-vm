@@ -1,6 +1,6 @@
 #include <node.h>
 #include "util.h"
-#include "shareable_isolate.h"
+#include "isolate/environment.h"
 #include "isolate_handle.h"
 #include "context_handle.h"
 #include "native_module_handle.h"
@@ -8,7 +8,7 @@
 #include "external_copy_handle.h"
 #include "lib_handle.h"
 #include "reference_handle.h"
-#include "platform_delegate.h"
+#include "isolate/platform_delegate.h"
 
 #include <memory>
 

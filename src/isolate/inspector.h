@@ -1,7 +1,7 @@
 #pragma once
 #include <node.h>
 #include <v8-inspector.h>
-#include "shareable_isolate.h"
+#include "environment.h"
 
 #include <memory>
 #include <mutex>
