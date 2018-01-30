@@ -45,7 +45,6 @@
 				'src/isolate/holder.cc',
 				'src/lib_handle.cc',
 				'src/native_module_handle.cc',
-				'src/isolate/shareable_context.cc',
 				'src/isolate/environment.cc',
 				'src/isolate/three_phase_task.cc',
 				'src/transferable.cc',

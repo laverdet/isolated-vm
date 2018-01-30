@@ -315,7 +315,7 @@ class IsolateEnvironment {
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Winstantiation-after-specialization"
-// These instantiations make msvc correctly link the template specializations in shareable_isolate.cc, but clang whines about it
+// These instantiations make msvc correctly link the template specializations in environment.cc, but clang whines about it
 template <>
 v8::MaybeLocal<v8::FunctionTemplate> IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>::Deref() const;
 template v8::MaybeLocal<v8::FunctionTemplate> IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>::Deref() const;

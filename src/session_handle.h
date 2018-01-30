@@ -17,9 +17,9 @@ using std::unique_ptr;
  */
 class ChannelImpl : public V8Inspector::Channel {
 	public:
-		shared_ptr<ShareablePersistent<Function>> onError;
-		shared_ptr<ShareablePersistent<Function>> onNotification;
-		shared_ptr<ShareablePersistent<Function>> onResponse;
+		shared_ptr<Persistent<Function>> onError;
+		shared_ptr<Persistent<Function>> onNotification;
+		shared_ptr<Persistent<Function>> onResponse;
 
 	private:
 		static MaybeLocal<String> bufferToString(StringBuffer& buffer) {
@@ -36,9 +36,9 @@ class ChannelImpl : public V8Inspector::Channel {
 			struct SendResponseTask : public Runnable {
 				int call_id;
 				unique_ptr<StringBuffer> message_ptr;
-				shared_ptr<ShareablePersistent<Function>> onResponse;
+				shared_ptr<Persistent<Function>> onResponse;
 				SendResponseTask(
-					int call_id, unique_ptr<StringBuffer> message_ptr, shared_ptr<ShareablePersistent<Function>> onResponse
+					int call_id, unique_ptr<StringBuffer> message_ptr, shared_ptr<Persistent<Function>> onResponse
 				)	:
 					call_id(call_id), message_ptr(std::move(message_ptr)), onResponse(std::move(onResponse)) {}
 
@@ -63,10 +63,10 @@ class ChannelImpl : public V8Inspector::Channel {
 			if (!onNotification) return;
 			struct SendNotificationTask : public Runnable {
 				unique_ptr<StringBuffer> message_ptr;
-				shared_ptr<ShareablePersistent<Function>> onNotification;
+				shared_ptr<Persistent<Function>> onNotification;
 				SendNotificationTask(
 					unique_ptr<StringBuffer> message_ptr,
-					shared_ptr<ShareablePersistent<Function>> onNotification
+					shared_ptr<Persistent<Function>> onNotification
 				) :
 					message_ptr(std::move(message_ptr)), onNotification(std::move(onNotification)) {}
 
@@ -150,7 +150,7 @@ class SessionHandle : public ClassHandle {
 			if (!value->IsFunction()) {
 				Isolate::GetCurrent()->ThrowException(Exception::TypeError(v8_string("`onNotification` must be a function")));
 			}
-			that.channel->onNotification = std::make_shared<ShareablePersistent<Function>>(value.As<Function>());
+			that.channel->onNotification = std::make_shared<Persistent<Function>>(value.As<Function>());
 		}
 
 		// .onResponse
@@ -164,7 +164,7 @@ class SessionHandle : public ClassHandle {
 			if (!value->IsFunction()) {
 				Isolate::GetCurrent()->ThrowException(Exception::TypeError(v8_string("`onResponse` must be a function")));
 			}
-			that.channel->onResponse = std::make_shared<ShareablePersistent<Function>>(value.As<Function>());
+			that.channel->onResponse = std::make_shared<Persistent<Function>>(value.As<Function>());
 		}
 };
 

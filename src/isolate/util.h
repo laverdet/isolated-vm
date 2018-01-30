@@ -68,6 +68,14 @@ T Unmaybe(v8::Maybe<T> handle) {
 }
 
 /**
+ * Shorthand dereference of Persistent to Local
+ */
+template <typename T>
+v8::Local<T> Deref(const v8::Persistent<T>& handle) {
+	return v8::Local<T>::New(v8::Isolate::GetCurrent(), handle);
+}
+
+/**
  * Run a function and annotate the exception with source / line number if it throws
  */
 // TODO: This is only used by isolate_handle.h -- move this to .cc file

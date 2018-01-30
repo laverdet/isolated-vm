@@ -1,6 +1,5 @@
 #include <node.h>
 #include "isolate/environment.h"
-#include "isolate/shareable_persistent.h"
 #include "isolate/three_phase_task.h"
 #include "isolate/class_handle.h"
 #include "transferable.h"
@@ -237,23 +236,27 @@ class IsolateHandle : public TransferableHandle {
 			class CreateContext : public ThreePhaseTask {
 				private:
 					// phase 2 -> 3
-					shared_ptr<ShareableContext> context;
-					shared_ptr<ShareablePersistent<Value>> global;
+					shared_ptr<IsolateHolder> isolate;
+					shared_ptr<Persistent<Context>> context;
+					shared_ptr<Persistent<Value>> global;
 
-				protected:
+				public:
+					CreateContext(shared_ptr<IsolateHolder> isolate) : isolate(std::move(isolate)) {}
+
 					void Phase2() final {
 						// Make a new context and return the context and its global object
-						Local<Context> context_handle = Context::New(Isolate::GetCurrent());
-						context = std::make_shared<ShareableContext>(context_handle);
-						global = std::make_shared<ShareablePersistent<Value>>(context_handle->Global());
+						Isolate* isolate = Isolate::GetCurrent();
+						Local<Context> context_handle = Context::New(isolate);
+						context = std::make_shared<Persistent<Context>>(isolate, context_handle);
+						global = std::make_shared<Persistent<Value>>(isolate, context_handle->Global());
 					}
 
 					Local<Value> Phase3() final {
 						// Make a new Context{} JS class
-						return ClassHandle::NewInstance<ContextHandle>(std::move(context), std::move(global));
+						return ClassHandle::NewInstance<ContextHandle>(std::move(isolate), std::move(context), std::move(global));
 					}
 			};
-			return ThreePhaseTask::Run<async, CreateContext>(*this->isolate);
+			return ThreePhaseTask::Run<async, CreateContext>(*isolate, isolate);
 		}
 
 		/**
@@ -264,17 +267,18 @@ class IsolateHandle : public TransferableHandle {
 			class CompileScript : public ThreePhaseTask {
 				private:
 					// phase 2
+					shared_ptr<IsolateHolder> isolate;
 					unique_ptr<ExternalCopyString> code_string;
 					unique_ptr<ScriptOriginHolder> script_origin_holder;
 					shared_ptr<ExternalCopyArrayBuffer> cached_data_blob; // also phase 3
 					bool produce_cached_data { false };
 					// phase 3
-					shared_ptr<ShareablePersistent<UnboundScript>> script;
+					shared_ptr<Persistent<UnboundScript>> script;
 					bool supplied_cached_data { false };
 					bool cached_data_rejected { false };
 
 				public:
-					CompileScript(const Local<String>& code_handle, const MaybeLocal<Object>& maybe_options) {
+					CompileScript(std::shared_ptr<IsolateHolder> isolate, const Local<String>& code_handle, const MaybeLocal<Object>& maybe_options) : isolate(std::move(isolate)) {
 						// Read options
 						Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
 						Local<Object> options;
@@ -330,7 +334,7 @@ class IsolateHandle : public TransferableHandle {
 							compile_options = ScriptCompiler::kProduceCodeCache;
 						}
 						ScriptCompiler::Source source(code_inner, script_origin, cached_data.release());
-						script = std::make_shared<ShareablePersistent<UnboundScript>>(RunWithAnnotatedErrors<Local<UnboundScript>>(
+						script = std::make_shared<Persistent<UnboundScript>>(Isolate::GetCurrent(), RunWithAnnotatedErrors<Local<UnboundScript>>(
 							[&isolate, &source, compile_options]() { return Unmaybe(ScriptCompiler::CompileUnboundScript(*isolate, &source, compile_options)); }
 						));
 
@@ -348,7 +352,7 @@ class IsolateHandle : public TransferableHandle {
 
 					Local<Value> Phase3() final {
 						// Wrap UnboundScript in JS Script{} class
-						Local<Object> value = ClassHandle::NewInstance<ScriptHandle>(std::move(script));
+						Local<Object> value = ClassHandle::NewInstance<ScriptHandle>(std::move(script), std::move(isolate));
 						Isolate* isolate = Isolate::GetCurrent();
 						if (supplied_cached_data) {
 							value->Set(v8_symbol("cachedDataRejected"), Boolean::New(isolate, cached_data_rejected));
@@ -358,7 +362,7 @@ class IsolateHandle : public TransferableHandle {
 						return value;
 					}
 			};
-			return ThreePhaseTask::Run<async, CompileScript>(*this->isolate, code_handle, maybe_options);
+			return ThreePhaseTask::Run<async, CompileScript>(*this->isolate, this->isolate, code_handle, maybe_options);
 		}
 
 		/**

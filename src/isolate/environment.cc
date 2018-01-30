@@ -287,6 +287,7 @@ IsolateEnvironment::~IsolateEnvironment() {
 			void* param = it->second.second;
 			fn(param);
 			if (weak_persistents.find(handle) != weak_persistents.end()) {
+				// TODO: I can't throw from here
 				throw std::runtime_error("Weak persistent callback failed to remove from global set");
 			}
 		}

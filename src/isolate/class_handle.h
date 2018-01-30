@@ -3,7 +3,6 @@
 #include "../apply_from_tuple.h"
 #include "convert_param.h"
 #include "environment.h"
-#include "shareable_persistent.h"
 #include "util.h"
 
 #include <assert.h>

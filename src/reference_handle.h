@@ -2,8 +2,6 @@
 #include <node.h>
 #include "isolate/class_handle.h"
 #include "isolate/run_with_timeout.h"
-#include "isolate/shareable_context.h"
-#include "isolate/shareable_persistent.h"
 #include "isolate/three_phase_task.h"
 #include "external_copy.h"
 #include "transferable.h"
@@ -28,8 +26,9 @@ class ReferenceHandle : public TransferableHandle {
 		enum class TypeOf { Null, Undefined, Number, String, Boolean, Object, Function };
 
 	private:
-		shared_ptr<ShareablePersistent<Value>> reference;
-		shared_ptr<ShareableContext> context;
+		shared_ptr<IsolateHolder> isolate;
+		shared_ptr<Persistent<Value>> reference;
+		shared_ptr<Persistent<Context>> context;
 		TypeOf type_of;
 
 		/**
@@ -37,20 +36,22 @@ class ReferenceHandle : public TransferableHandle {
 		 */
 		class ReferenceHandleTransferable : public Transferable {
 			private:
-				shared_ptr<ShareablePersistent<Value>> reference;
-				shared_ptr<ShareableContext> context;
+				shared_ptr<IsolateHolder> isolate;
+				shared_ptr<Persistent<Value>> reference;
+				shared_ptr<Persistent<Context>> context;
 				TypeOf type_of;
 
 			public:
 				ReferenceHandleTransferable(
-					shared_ptr<ShareablePersistent<Value>> reference,
-					shared_ptr<ShareableContext> context,
+					shared_ptr<IsolateHolder> isolate,
+					shared_ptr<Persistent<Value>> reference,
+					shared_ptr<Persistent<Context>> context,
 					TypeOf type_of
 				) :
-					reference(reference), context(context), type_of(type_of) {}
+					isolate(isolate), reference(reference), context(context), type_of(type_of) {}
 
 				virtual Local<Value> TransferIn() {
-					return ClassHandle::NewInstance<ReferenceHandle>(reference, context, type_of);
+					return ClassHandle::NewInstance<ReferenceHandle>(isolate, reference, context, type_of);
 				}
 		};
 
@@ -83,11 +84,12 @@ class ReferenceHandle : public TransferableHandle {
 
 	public:
 		ReferenceHandle(
-			shared_ptr<ShareablePersistent<Value>> reference,
-			shared_ptr<ShareableContext> context,
+			shared_ptr<IsolateHolder> isolate,
+			shared_ptr<Persistent<Value>> reference,
+			shared_ptr<Persistent<Context>> context,
 			TypeOf type_of
 		) :
-			reference(reference), context(context), type_of(type_of) {}
+			isolate(isolate), reference(reference), context(context), type_of(type_of) {}
 
 		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
 			static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
@@ -114,16 +116,18 @@ class ReferenceHandle : public TransferableHandle {
 		}
 
 		virtual unique_ptr<Transferable> TransferOut() {
-			return std::make_unique<ReferenceHandleTransferable>(reference, context, type_of);
+			return std::make_unique<ReferenceHandleTransferable>(isolate, reference, context, type_of);
 		}
 
 		/**
 		 * Make a new reference to a local handle.
 		 */
 		static unique_ptr<ReferenceHandle> New(Local<Value> var) {
+			Isolate* isolate = Isolate::GetCurrent();
 			return std::make_unique<ReferenceHandle>(
-				std::make_shared<ShareablePersistent<Value>>(var),
-				std::make_shared<ShareableContext>(Isolate::GetCurrent()->GetCurrentContext()),
+				IsolateEnvironment::GetCurrentHolder(),
+				std::make_shared<Persistent<Value>>(isolate, var),
+				std::make_shared<Persistent<Context>>(isolate, Isolate::GetCurrent()->GetCurrentContext()),
 				InferTypeOf(var)
 			);
 		}
@@ -165,11 +169,10 @@ class ReferenceHandle : public TransferableHandle {
 		 */
 		Local<Value> Deref() {
 			CheckDisposed();
-			auto isolate = reference->GetIsolateHolder();
 			if (isolate.get() != IsolateEnvironment::GetCurrentHolder().get()) {
 				throw js_type_error("Cannot dereference this from current isolate");
 			}
-			return reference->Deref();
+			return ivm::Deref(*reference);
 		}
 
 		/**
@@ -177,7 +180,7 @@ class ReferenceHandle : public TransferableHandle {
 		 */
 		Local<Value> DerefInto() {
 			CheckDisposed();
-			return ClassHandle::NewInstance<DereferenceHandle>(reference);
+			return ClassHandle::NewInstance<DereferenceHandle>(isolate, reference);
 		}
 
 		/**
@@ -185,6 +188,7 @@ class ReferenceHandle : public TransferableHandle {
 		 */
 		Local<Value> Dispose() {
 			CheckDisposed();
+			isolate.reset();
 			reference.reset();
 			context.reset();
 			return Undefined(Isolate::GetCurrent());
@@ -197,18 +201,18 @@ class ReferenceHandle : public TransferableHandle {
 		Local<Value> Copy() {
 			class Copy : public ThreePhaseTask {
 				private:
-					shared_ptr<ShareableContext> context;
-					shared_ptr<ShareablePersistent<Value>> reference;
+					shared_ptr<Persistent<Context>> context;
+					shared_ptr<Persistent<Value>> reference;
 					unique_ptr<Transferable> copy;
 
 				public:
-					Copy(ReferenceHandle& that, shared_ptr<ShareableContext> context, shared_ptr<ShareablePersistent<Value>> reference) : context(std::move(context)), reference(std::move(reference)) {
+					Copy(ReferenceHandle& that, shared_ptr<Persistent<Context>> context, shared_ptr<Persistent<Value>> reference) : context(std::move(context)), reference(std::move(reference)) {
 						that.CheckDisposed();
 					}
 
 					void Phase2() final {
-						Context::Scope context_scope(context->Deref());
-						Local<Value> value = reference->Deref();
+						Context::Scope context_scope(ivm::Deref(*context));
+						Local<Value> value = ivm::Deref(*reference);
 						copy = ExternalCopy::Copy(value);
 					}
 
@@ -216,7 +220,7 @@ class ReferenceHandle : public TransferableHandle {
 						return copy->TransferIn();
 					}
 			};
-			return ThreePhaseTask::Run<async, Copy>(*reference->GetIsolateHolder(), *this, context, reference);
+			return ThreePhaseTask::Run<async, Copy>(*isolate, *this, context, reference);
 		}
 
 		/**
@@ -227,16 +231,16 @@ class ReferenceHandle : public TransferableHandle {
 			class Get : public ThreePhaseTask {
 				private:
 					unique_ptr<ExternalCopy> key;
-					shared_ptr<ShareableContext> context;
-					shared_ptr<ShareablePersistent<Value>> reference;
+					shared_ptr<Persistent<Context>> context;
+					shared_ptr<Persistent<Value>> reference;
 					unique_ptr<ReferenceHandleTransferable> ret;
 
 				public:
 					Get(
 						ReferenceHandle& that,
 						Local<Value>& key_handle,
-						shared_ptr<ShareableContext> context,
-						shared_ptr<ShareablePersistent<Value>> reference
+						shared_ptr<Persistent<Context>> context,
+						shared_ptr<Persistent<Value>> reference
 					) :
 						context(std::move(context)), reference(std::move(reference))
 					{
@@ -248,13 +252,14 @@ class ReferenceHandle : public TransferableHandle {
 					}
 
 					void Phase2() final {
-						Local<Context> context_handle = context->Deref();
+						Local<Context> context_handle = ivm::Deref(*context);
 						Context::Scope context_scope(context_handle);
 						Local<Value> key_inner = key->CopyInto();
-						Local<Object> object = Local<Object>::Cast(reference->Deref());
+						Local<Object> object = Local<Object>::Cast(ivm::Deref(*reference));
 						Local<Value> value = Unmaybe(object->Get(context_handle, key_inner));
 						ret = std::make_unique<ReferenceHandleTransferable>(
-							std::make_shared<ShareablePersistent<Value>>(value),
+							IsolateEnvironment::GetCurrentHolder(),
+							std::make_shared<Persistent<Value>>(Isolate::GetCurrent(), value),
 							context,
 							InferTypeOf(value)
 						);
@@ -264,7 +269,7 @@ class ReferenceHandle : public TransferableHandle {
 						return ret->TransferIn();
 					}
 			};
-			return ThreePhaseTask::Run<async, Get>(*reference->GetIsolateHolder(), *this, key_handle, context, reference);
+			return ThreePhaseTask::Run<async, Get>(*isolate, *this, key_handle, context, reference);
 		}
 
 		/**
@@ -276,8 +281,8 @@ class ReferenceHandle : public TransferableHandle {
 				private:
 					unique_ptr<ExternalCopy> key;
 					unique_ptr<Transferable> val;
-					shared_ptr<ShareableContext> context;
-					shared_ptr<ShareablePersistent<Value>> reference;
+					shared_ptr<Persistent<Context>> context;
+					shared_ptr<Persistent<Value>> reference;
 					bool did_set;
 
 				public:
@@ -285,8 +290,8 @@ class ReferenceHandle : public TransferableHandle {
 						ReferenceHandle& that,
 						Local<Value>& key_handle,
 						Local<Value>& val_handle,
-						shared_ptr<ShareableContext> context,
-						shared_ptr<ShareablePersistent<Value>> reference
+						shared_ptr<Persistent<Context>> context,
+						shared_ptr<Persistent<Value>> reference
 					) :
 						context(std::move(context)), reference(std::move(reference))
 					{
@@ -299,11 +304,11 @@ class ReferenceHandle : public TransferableHandle {
 					}
 
 					void Phase2() final {
-						Local<Context> context_handle = context->Deref();
+						Local<Context> context_handle = ivm::Deref(*context);
 						Context::Scope context_scope(context_handle);
 						Local<Value> key_inner = key->CopyInto();
 						Local<Value> val_inner = val->TransferIn();
-						Local<Object> object = Local<Object>::Cast(reference->Deref());
+						Local<Object> object = Local<Object>::Cast(ivm::Deref(*reference));
 						did_set = Unmaybe(object->Set(context_handle, key_inner, val_inner));
 					}
 
@@ -311,7 +316,7 @@ class ReferenceHandle : public TransferableHandle {
 						return Boolean::New(Isolate::GetCurrent(), did_set);
 					}
 			};
-			return ThreePhaseTask::Run<async, Set>(*reference->GetIsolateHolder(), *this, key_handle, val_handle, context, reference);
+			return ThreePhaseTask::Run<async, Set>(*isolate, *this, key_handle, val_handle, context, reference);
 		}
 
 		/**
@@ -321,8 +326,8 @@ class ReferenceHandle : public TransferableHandle {
 		Local<Value> Apply(MaybeLocal<Value> recv_handle, MaybeLocal<Array> maybe_arguments, MaybeLocal<Object> maybe_options) {
 			class Apply : public ThreePhaseTask {
 				private:
-					shared_ptr<ShareableContext> context;
-					shared_ptr<ShareablePersistent<Value>> reference;
+					shared_ptr<Persistent<Context>> context;
+					shared_ptr<Persistent<Value>> reference;
 					unique_ptr<Transferable> recv;
 					std::vector<unique_ptr<Transferable>> argv;
 					uint32_t timeout { 0 };
@@ -334,8 +339,8 @@ class ReferenceHandle : public TransferableHandle {
 						MaybeLocal<Value>& recv_handle,
 						MaybeLocal<Array>& maybe_arguments,
 						MaybeLocal<Object>& maybe_options,
-						shared_ptr<ShareableContext> context,
-						shared_ptr<ShareablePersistent<Value>> reference
+						shared_ptr<Persistent<Context>> context,
+						shared_ptr<Persistent<Value>> reference
 					) :
 						context(std::move(context)), reference(std::move(reference))
 					{
@@ -378,9 +383,9 @@ class ReferenceHandle : public TransferableHandle {
 
 					void Phase2() final {
 						// Invoke in the isolate
-						Local<Context> context_handle = context->Deref();
+						Local<Context> context_handle = ivm::Deref(*context);
 						Context::Scope context_scope(context_handle);
-						Local<Value> fn = reference->Deref();
+						Local<Value> fn = ivm::Deref(*reference);
 						if (!fn->IsFunction()) {
 							throw js_type_error("Reference is not a function");
 						}
@@ -403,7 +408,7 @@ class ReferenceHandle : public TransferableHandle {
 						return ret->TransferIn();
 					}
 			};
-			return ThreePhaseTask::Run<async, Apply>(*reference->GetIsolateHolder(), *this, recv_handle, maybe_arguments, maybe_options, context, reference);
+			return ThreePhaseTask::Run<async, Apply>(*isolate, *this, recv_handle, maybe_arguments, maybe_options, context, reference);
 		}
 
 };
@@ -415,19 +420,22 @@ class DereferenceHandle : public TransferableHandle {
 	friend class Transferable;
 
 	private:
-		shared_ptr<ShareablePersistent<Value>> reference;
+		shared_ptr<IsolateHolder> isolate;
+		shared_ptr<Persistent<Value>> reference;
 
 		class DereferenceHandleTransferable : public Transferable {
 			private:
-				shared_ptr<ShareablePersistent<Value>> reference;
+				shared_ptr<IsolateHolder> isolate;
+				shared_ptr<Persistent<Value>> reference;
 
 			public:
-				DereferenceHandleTransferable(shared_ptr<ShareablePersistent<Value>>& reference) : reference(reference) {}
+				DereferenceHandleTransferable(
+					shared_ptr<IsolateHolder> isolate,
+					shared_ptr<Persistent<Value>>& reference) : isolate(std::move(isolate)), reference(reference) {}
 
 				virtual Local<Value> TransferIn() {
-					Isolate* isolate = Isolate::GetCurrent();
-					if (isolate == reference->GetIsolateHolder()->GetIsolate()->GetIsolate()) {
-						return reference->Deref();
+					if (isolate == IsolateEnvironment::GetCurrentHolder()) {
+						return Deref(*reference);
 					} else {
 						throw js_type_error("Cannot dereference this into target isolate");
 					}
@@ -444,10 +452,10 @@ class DereferenceHandle : public TransferableHandle {
 			return Inherit<TransferableHandle>(MakeClass("Dereference", nullptr, 0));
 		}
 
-		DereferenceHandle(shared_ptr<ShareablePersistent<Value>> reference) : reference(reference) {}
+		DereferenceHandle(shared_ptr<IsolateHolder> isolate, shared_ptr<Persistent<Value>> reference) : isolate(isolate), reference(reference) {}
 
 		virtual unique_ptr<Transferable> TransferOut() {
-			return std::make_unique<DereferenceHandleTransferable>(reference);
+			return std::make_unique<DereferenceHandleTransferable>(isolate, reference);
 		}
 
 };

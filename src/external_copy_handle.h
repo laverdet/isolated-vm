@@ -1,6 +1,5 @@
 #pragma once
 #include <node.h>
-#include "isolate/shareable_persistent.h"
 #include "isolate/class_handle.h"
 #include "transferable.h"
 #include "transferable_handle.h"

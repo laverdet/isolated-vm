@@ -72,17 +72,17 @@ template <bool async>
 Local<Value> NativeModuleHandle::Create(class ContextHandle* context_handle) {
 	class Create : public ThreePhaseTask {
 		private:
-			shared_ptr<ShareableContext> context;
+			shared_ptr<Persistent<Context>> context;
 			shared_ptr<NativeModuleHandle::NativeModule> module;
 			unique_ptr<Transferable> result;
 
 		public:
-			Create(shared_ptr<ShareableContext> context, shared_ptr<NativeModuleHandle::NativeModule> module) : context(context), module(module) {}
+			Create(shared_ptr<Persistent<Context>> context, shared_ptr<NativeModuleHandle::NativeModule> module) : context(context), module(module) {}
 
 		protected:
 			void Phase2() final {
 				Isolate* isolate = Isolate::GetCurrent();
-				Local<Context> context_handle = context->Deref();
+				Local<Context> context_handle = Deref(*context);
 				Context::Scope context_scope(context_handle);
 				Local<Object> exports = Object::New(isolate);
 				module->InitForContext(isolate, context_handle, exports);
@@ -93,8 +93,7 @@ Local<Value> NativeModuleHandle::Create(class ContextHandle* context_handle) {
 				return result->TransferIn();
 			}
 	};
-	auto context_ptr = context_handle->context;
-	return ThreePhaseTask::Run<async, Create>(*context_ptr->GetIsolateHolder(), context_ptr, module);
+	return ThreePhaseTask::Run<async, Create>(*context_handle->isolate, context_handle->context, module);
 }
 
 }
