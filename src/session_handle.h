@@ -98,8 +98,8 @@ class SessionHandle : public ClassHandle {
 		unique_ptr<InspectorSession> session;
 
 	public:
-		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
-			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
+		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
+			static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
 			return tmpl;
 		}
 
@@ -114,7 +114,7 @@ class SessionHandle : public ClassHandle {
 			return tmpl;
 		}
 
-		SessionHandle(ShareableIsolate* isolate) :
+		SessionHandle(IsolateEnvironment* isolate) :
 			channel(std::make_shared<ChannelImpl>()),
 			session(isolate->CreateInspectorSession(channel)) {}
 

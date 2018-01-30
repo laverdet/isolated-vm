@@ -7,8 +7,8 @@ namespace ivm {
 
 class TransferableHandle : public ClassHandle {
 	public:
-		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
-			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
+		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
+			static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
 			return tmpl;
 		}
 

@@ -45,8 +45,8 @@ Local<Value> NativeModuleHandle::NativeModuleTransferable::TransferIn() {
  */
 NativeModuleHandle::NativeModuleHandle(shared_ptr<NativeModule> module) : module(std::move(module)) {}
 
-ShareableIsolate::IsolateSpecific<v8::FunctionTemplate>& NativeModuleHandle::TemplateSpecific() {
-	static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
+IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& NativeModuleHandle::TemplateSpecific() {
+	static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
 	return tmpl;
 }
 

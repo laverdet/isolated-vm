@@ -32,8 +32,8 @@ class LibraryHandle : public TransferableHandle {
 	public:
 		LibraryHandle() {}
 
-		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
-			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
+		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
+			static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
 			return tmpl;
 		}
 
@@ -74,7 +74,7 @@ void init(Local<Object> target) {
 	V8::SetFlagsFromCommandLine(&argc, (char**)flags, false);
 
 	Isolate* isolate = Isolate::GetCurrent();
-	root_isolate = ShareableIsolate::New(isolate, isolate->GetCurrentContext());
+	root_isolate = IsolateEnvironment::New(isolate, isolate->GetCurrentContext());
 	target->Set(v8_symbol("ivm"), LibraryHandle::Get());
 	PlatformDelegate::InitializeDelegate();
 }

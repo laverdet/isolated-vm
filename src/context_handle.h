@@ -33,8 +33,8 @@ class ContextHandle : public TransferableHandle {
 	public:
 		ContextHandle(shared_ptr<ShareableContext> context, shared_ptr<ShareablePersistent<Value>> global) : context(context), global(global) {}
 
-		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
-			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
+		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
+			static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
 			return tmpl;
 		}
 

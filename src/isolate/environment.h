@@ -31,20 +31,20 @@ using std::unique_ptr;
 /**
  * Wrapper around Isolate with helpers to make working with multiple isolates easier.
  */
-class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
+class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironment> {
 	private:
 		struct BookkeepingStatics {
 			/**
 			 * These statics are needed in the destructor to update bookkeeping information. The root
-			 * ShareableIsolate will be be destroyed when the module is being destroyed, and static members
+			 * IsolateEnvironment will be be destroyed when the module is being destroyed, and static members
 			 * may be destroyed before that happens. So we stash them here and wrap the whole in a
 			 * shared_ptr so we can ensure access to them even when the module is being torn down.
 			 */
-			std::map<Isolate*, ShareableIsolate*> isolate_map;
+			std::map<Isolate*, IsolateEnvironment*> isolate_map;
 			std::mutex lookup_mutex;
 		};
 		static shared_ptr<BookkeepingStatics> bookkeeping_statics_shared;
-		static thread_local ShareableIsolate* current;
+		static thread_local IsolateEnvironment* current;
 		static size_t specifics_count;
 		static thread_pool_t thread_pool;
 		static uv_async_t root_async;
@@ -84,13 +84,13 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		 */
 		class LockerHelper {
 			private:
-				ShareableIsolate* last;
+				IsolateEnvironment* last;
 				Locker locker;
 				Isolate::Scope isolate_scope;
 				HandleScope handle_scope;
 
 			public:
-				LockerHelper(ShareableIsolate& isolate) :
+				LockerHelper(IsolateEnvironment& isolate) :
 					last(current), locker(isolate),
 					isolate_scope(isolate), handle_scope(isolate) {
 					current = &isolate;
@@ -107,7 +107,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		static void GCEpilogueCallback(Isolate* isolate, GCType type, GCCallbackFlags flags) {
 
 			// Get current heap statistics
-			auto that = ShareableIsolate::GetCurrent();
+			auto that = IsolateEnvironment::GetCurrent();
 			assert(that->isolate == isolate);
 			HeapStatistics heap;
 			isolate->GetHeapStatistics(&heap);
@@ -142,7 +142,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		 * contexts so we have to handle that ourselves.
 		 */
 		static void PromiseRejectCallback(PromiseRejectMessage rejection) {
-			auto that = ShareableIsolate::GetCurrent();
+			auto that = IsolateEnvironment::GetCurrent();
 			assert(that->isolate == Isolate::GetCurrent());
 			that->rejected_promise_error.Reset(that->isolate, rejection.GetValue());
 		}
@@ -194,9 +194,9 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		template <typename T>
 		class IsolateSpecific {
 			private:
-				template <typename L, typename V, V ShareableIsolate::*S>
+				template <typename L, typename V, V IsolateEnvironment::*S>
 				MaybeLocal<L> Deref() const {
-					ShareableIsolate& isolate = *current;
+					IsolateEnvironment& isolate = *current;
 					if ((isolate.*S).size() > key) {
 						if (!(isolate.*S)[key]->IsEmpty()) {
 							return MaybeLocal<L>(Local<L>::New(isolate, *(isolate.*S)[key]));
@@ -205,9 +205,9 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 					return MaybeLocal<L>();
 				}
 
-				template <typename L, typename V, V ShareableIsolate::*S>
+				template <typename L, typename V, V IsolateEnvironment::*S>
 				void Reset(Local<L> handle) {
-					ShareableIsolate& isolate = *current;
+					IsolateEnvironment& isolate = *current;
 					if ((isolate.*S).size() <= key) {
 						(isolate.*S).reserve(key + 1);
 						while ((isolate.*S).size() <= key) {
@@ -219,11 +219,11 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 
 			public:
 				size_t key;
-				IsolateSpecific() : key(++ShareableIsolate::specifics_count) {}
+				IsolateSpecific() : key(++IsolateEnvironment::specifics_count) {}
 
 				MaybeLocal<T> Deref() const {
 					Local<Value> local;
-					if (Deref<Value, decltype(ShareableIsolate::specifics), &ShareableIsolate::specifics>().ToLocal(&local)) {
+					if (Deref<Value, decltype(IsolateEnvironment::specifics), &IsolateEnvironment::specifics>().ToLocal(&local)) {
 						return MaybeLocal<T>(Local<Object>::Cast(local));
 					} else {
 						return MaybeLocal<T>();
@@ -231,14 +231,14 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 				}
 
 				void Reset(Local<T> handle) {
-					Reset<Value, decltype(ShareableIsolate::specifics), &ShareableIsolate::specifics>(handle);
+					Reset<Value, decltype(IsolateEnvironment::specifics), &IsolateEnvironment::specifics>(handle);
 				}
 		};
 
 		/**
 		 * Return shared pointer the currently running Isolate's shared pointer
 		 */
-		static shared_ptr<ShareableIsolate> GetCurrent() {
+		static shared_ptr<IsolateEnvironment> GetCurrent() {
 			return current->GetShared();
 		}
 
@@ -253,7 +253,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		/**
 		 * Wrap an existing Isolate. This should only be called for the main node Isolate.
 		 */
-		ShareableIsolate(Isolate* isolate, Local<Context> context) :
+		IsolateEnvironment(Isolate* isolate, Local<Context> context) :
 			isolate(isolate),
 			default_context(isolate, context),
 			life_cycle(LifeCycle::Normal),
@@ -275,7 +275,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		/**
 		 * Create a new wrapped Isolate
 		 */
-		ShareableIsolate(
+		IsolateEnvironment(
 			ResourceConstraints& resource_constraints,
 			unique_ptr<ArrayBuffer::Allocator> allocator,
 			shared_ptr<ExternalCopyArrayBuffer> snapshot_blob,
@@ -327,13 +327,13 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 
 		template <typename ...Args>
 		static shared_ptr<IsolateHolder> New(Args&&... args) {
-			auto isolate = std::make_shared<ShareableIsolate>(std::forward<Args>(args)...);
+			auto isolate = std::make_shared<IsolateEnvironment>(std::forward<Args>(args)...);
 			auto holder = std::make_shared<IsolateHolder>(isolate);
 			isolate->holder = holder;
 			return holder;
 		}
 
-		~ShareableIsolate() {
+		~IsolateEnvironment() {
 			if (!root) {
 				Dispose(false);
 			}
@@ -359,7 +359,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		/**
 		 * Get a copy of our shared_ptr<> to this isolate
 		 */
-		std::shared_ptr<ShareableIsolate> GetShared() {
+		std::shared_ptr<IsolateEnvironment> GetShared() {
 			return shared_from_this();
 		}
 
@@ -455,9 +455,9 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		*/
 
 		/**
-		 * Given a v8 isolate this will find the ShareableIsolate instance, if any, that belongs to it.
+		 * Given a v8 isolate this will find the IsolateEnvironment instance, if any, that belongs to it.
 		 */
-		static ShareableIsolate* LookupIsolate(Isolate* isolate) {
+		static IsolateEnvironment* LookupIsolate(Isolate* isolate) {
 			{
 				std::unique_lock<std::mutex> lock(bookkeeping_statics_shared->lookup_mutex);
 				auto it = bookkeeping_statics_shared->isolate_map.find(isolate);
@@ -520,7 +520,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		}
 
 		static void WorkerEntry(bool pool_thread, void* param) {
-			ShareableIsolate& that = *static_cast<ShareableIsolate*>(param);
+			IsolateEnvironment& that = *static_cast<IsolateEnvironment*>(param);
 			auto that_ref = that.GetShared(); // Make sure we don't get deleted by another thread while running
 			{
 				std::unique_lock<std::mutex> queue_lock(that.queue_mutex);
@@ -588,7 +588,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
 		 * locked and enterred.
 		 */
 		static void InterruptEntry(Isolate* isolate, void* param) {
-			ShareableIsolate& that = *static_cast<ShareableIsolate*>(param);
+			IsolateEnvironment& that = *static_cast<IsolateEnvironment*>(param);
 			assert(that.status == Status::Running);
 			decltype(interrupt_tasks) interrupt_tasks_copy;
 			{
@@ -706,7 +706,7 @@ class ShareableIsolate : public std::enable_shared_from_this<ShareableIsolate> {
  * Run some v8 thing with a timeout
  */
 template <typename F>
-Local<Value> RunWithTimeout(uint32_t timeout_ms, ShareableIsolate& isolate, F&& fn) {
+Local<Value> RunWithTimeout(uint32_t timeout_ms, IsolateEnvironment& isolate, F&& fn) {
 	bool did_timeout = false, did_finish = false;
 	MaybeLocal<Value> result;
 	{
@@ -753,12 +753,12 @@ Local<Value> RunWithTimeout(uint32_t timeout_ms, ShareableIsolate& isolate, F&& 
 #pragma clang diagnostic ignored "-Winstantiation-after-specialization"
 // These instantiations make msvc correctly link the template specializations in shareable_isolate.cc, but clang whines about it
 template <>
-MaybeLocal<FunctionTemplate> ShareableIsolate::IsolateSpecific<FunctionTemplate>::Deref() const;
-template MaybeLocal<FunctionTemplate> ShareableIsolate::IsolateSpecific<FunctionTemplate>::Deref() const;
+MaybeLocal<FunctionTemplate> IsolateEnvironment::IsolateSpecific<FunctionTemplate>::Deref() const;
+template MaybeLocal<FunctionTemplate> IsolateEnvironment::IsolateSpecific<FunctionTemplate>::Deref() const;
 
 template <>
-void ShareableIsolate::IsolateSpecific<FunctionTemplate>::Reset(Local<FunctionTemplate> handle);
-template void ShareableIsolate::IsolateSpecific<FunctionTemplate>::Reset(Local<FunctionTemplate> handle);
+void IsolateEnvironment::IsolateSpecific<FunctionTemplate>::Reset(Local<FunctionTemplate> handle);
+template void IsolateEnvironment::IsolateSpecific<FunctionTemplate>::Reset(Local<FunctionTemplate> handle);
 #pragma clang diagnostic pop
 
 }

@@ -55,8 +55,8 @@ class ExternalCopyHandle : public TransferableHandle {
 			}
 		}
 
-		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
-			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
+		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
+			static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
 			return tmpl;
 		}
 
@@ -122,8 +122,8 @@ class ExternalCopyIntoHandle : public TransferableHandle {
 	public:
 		ExternalCopyIntoHandle(shared_ptr<ExternalCopy> value) : value(value) {}
 
-		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
-			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
+		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
+			static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
 			return tmpl;
 		}
 

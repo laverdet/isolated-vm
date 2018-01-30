@@ -128,7 +128,7 @@ class ClassHandle {
 		 */
 		template <typename P, void (*F)(P*)>
 		void SetWeak(P* param) {
-			auto isolate = ShareableIsolate::GetCurrent();
+			auto isolate = IsolateEnvironment::GetCurrent();
 			isolate->AddWeakCallback(&this->handle, (void(*)(void*))F, param);
 			handle.SetWeak(param, WeakCallback<P, F>, WeakCallbackType::kParameter);
 		}
@@ -141,7 +141,7 @@ class ClassHandle {
 		 * Invoked once JS loses all references to this object
 		 */
 		static void WeakCallback(ClassHandle* that) {
-			auto isolate = ShareableIsolate::GetCurrent();
+			auto isolate = IsolateEnvironment::GetCurrent();
 			isolate->RemoveWeakCallback(&that->handle);
 			delete that;
 		}
@@ -243,7 +243,7 @@ class ClassHandle {
 		 */
 		template <typename T>
 		static Local<FunctionTemplate> GetFunctionTemplate() {
-			ShareableIsolate::IsolateSpecific<FunctionTemplate>& specific = T::TemplateSpecific();
+			IsolateEnvironment::IsolateSpecific<FunctionTemplate>& specific = T::TemplateSpecific();
 			MaybeLocal<FunctionTemplate> maybe_tmpl = specific.Deref();
 			Local<FunctionTemplate> tmpl;
 			if (maybe_tmpl.ToLocal(&tmpl)) {

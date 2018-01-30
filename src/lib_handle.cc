@@ -16,8 +16,8 @@ Local<Value> LibHandle::LibTransferable::TransferIn() {
 /**
  * ivm.lib API container
  */
-ShareableIsolate::IsolateSpecific<v8::FunctionTemplate>& LibHandle::TemplateSpecific() {
-	static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
+IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& LibHandle::TemplateSpecific() {
+	static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
 	return tmpl;
 }
 

@@ -18,7 +18,7 @@ class LibHandle : public TransferableHandle {
 		v8::Local<v8::Value> Hrtime(v8::MaybeLocal<v8::Array> maybe_diff);
 
 	public:
-		static ShareableIsolate::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
+		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();
 		virtual std::unique_ptr<Transferable> TransferOut() override;
 };

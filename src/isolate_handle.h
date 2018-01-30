@@ -150,8 +150,8 @@ class IsolateHandle : public TransferableHandle {
 	public:
 		IsolateHandle(shared_ptr<IsolateHolder> isolate) : isolate(std::move(isolate)) {}
 
-		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
-			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
+		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
+			static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
 			return tmpl;
 		}
 
@@ -221,7 +221,7 @@ class IsolateHandle : public TransferableHandle {
 			auto allocator_ptr = unique_ptr<ArrayBuffer::Allocator>(new LimitedAllocator(memory_limit * 1024 * 1024));
 
 			// Return isolate handle
-			return std::make_unique<IsolateHandle>(ShareableIsolate::New(rc, std::move(allocator_ptr), std::move(snapshot_blob), memory_limit));
+			return std::make_unique<IsolateHandle>(IsolateEnvironment::New(rc, std::move(allocator_ptr), std::move(snapshot_blob), memory_limit));
 		}
 
 		virtual unique_ptr<Transferable> TransferOut() {
@@ -314,7 +314,7 @@ class IsolateHandle : public TransferableHandle {
 
 					void Phase2() final {
 						// Compile in second isolate and return UnboundScript persistent
-						auto isolate = ShareableIsolate::GetCurrent();
+						auto isolate = IsolateEnvironment::GetCurrent();
 						Context::Scope context_scope(isolate->DefaultContext());
 						Local<String> code_inner = code_string->CopyInto().As<String>();
 						code_string.reset();
@@ -365,7 +365,7 @@ class IsolateHandle : public TransferableHandle {
 		 */
 		/*
 		Local<Value> CreateInspectorSession() {
-			if (ShareableIsolate::GetCurrentHolder() == isolate) {
+			if (IsolateEnvironment::GetCurrentHolder() == isolate) {
 				throw js_generic_error("An isolate is not debuggable from within itself");
 			}
 			return ClassHandle::NewInstance<SessionHandle>(isolate.get());

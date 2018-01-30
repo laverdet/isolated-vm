@@ -87,8 +87,8 @@ class ReferenceHandle : public TransferableHandle {
 		) :
 			reference(reference), context(context), type_of(type_of) {}
 
-		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
-			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
+		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
+			static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
 			return tmpl;
 		}
 
@@ -164,7 +164,7 @@ class ReferenceHandle : public TransferableHandle {
 		Local<Value> Deref() {
 			CheckDisposed();
 			auto isolate = reference->GetIsolateHolder();
-			if (isolate.get() != ShareableIsolate::GetCurrentHolder().get()) {
+			if (isolate.get() != IsolateEnvironment::GetCurrentHolder().get()) {
 				throw js_type_error("Cannot dereference this from current isolate");
 			}
 			return reference->Deref();
@@ -390,7 +390,7 @@ class ReferenceHandle : public TransferableHandle {
 							argv_inner.emplace_back(argv[ii]->TransferIn());
 						}
 						ret = Transferable::TransferOut(RunWithTimeout(
-							timeout, *ShareableIsolate::GetCurrent(),
+							timeout, *IsolateEnvironment::GetCurrent(),
 							[&fn, &context_handle, &recv_inner, argc, &argv_inner]() {
 								return fn.As<Function>()->Call(context_handle, recv_inner, argc, argc ? &argv_inner[0] : nullptr);
 							}
@@ -433,8 +433,8 @@ class DereferenceHandle : public TransferableHandle {
 		};
 
 	public:
-		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
-			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
+		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
+			static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
 			return tmpl;
 		}
 

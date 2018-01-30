@@ -18,7 +18,7 @@ class ShareablePersistent {
 
 	public:
 		ShareablePersistent(v8::Local<T> handle) :
-			isolate(ShareableIsolate::GetCurrentHolder()),
+			isolate(IsolateEnvironment::GetCurrentHolder()),
 			handle(std::make_unique<Persistent<T>>(isolate->GetIsolate()->GetIsolate(), handle)) {
 		}
 
@@ -45,7 +45,7 @@ class ShareablePersistent {
 		}
 
 		/**
-		 * Return underlying ShareableIsolate
+		 * Return underlying IsolateEnvironment
 		 */
 		std::shared_ptr<IsolateHolder> GetIsolateHolder() const {
 			return isolate;

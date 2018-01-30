@@ -13,7 +13,7 @@ using namespace v8;
 using namespace v8_inspector;
 using std::shared_ptr;
 using std::unique_ptr;
-class ShareableIsolate;
+class IsolateEnvironment;
 
 class InspectorNotifyListener {
 	public:
@@ -24,11 +24,11 @@ class InspectorSession {
 	private:
 		unique_ptr<V8InspectorSession> session;
 		shared_ptr<V8Inspector::Channel> channel;
-		ShareableIsolate* isolate;
+		IsolateEnvironment* isolate;
 		InspectorNotifyListener* listener;
 	public:
 		InspectorSession(
-			ShareableIsolate* isolate,
+			IsolateEnvironment* isolate,
 			V8Inspector* inspector,
 			shared_ptr<V8Inspector::Channel> channel,
 			InspectorNotifyListener* listener
@@ -42,7 +42,7 @@ class InspectorSession {
 class InspectorClientImpl : public V8InspectorClient, public InspectorNotifyListener {
 	public:
 		unique_ptr<V8Inspector> inspector;
-		ShareableIsolate* isolate;
+		IsolateEnvironment* isolate;
 
 		virtual void Notify() {
 			cv.notify_all();
@@ -62,7 +62,7 @@ class InspectorClientImpl : public V8InspectorClient, public InspectorNotifyList
 		}
 
 	public:
-		InspectorClientImpl(Isolate* v8_isolate, ShareableIsolate* isolate) : isolate(isolate) {
+		InspectorClientImpl(Isolate* v8_isolate, IsolateEnvironment* isolate) : isolate(isolate) {
 			inspector = V8Inspector::create(v8_isolate, this);
 		}
 

@@ -20,7 +20,7 @@ void InspectorClientImpl::runMessageLoopOnPause(int context_group_id) {
 	std::unique_lock<std::mutex> lock(mutex);
 	running = true;
 	while (running) {
-		ShareableIsolate::InterruptEntry(Isolate::GetCurrent(), isolate);
+		IsolateEnvironment::InterruptEntry(Isolate::GetCurrent(), isolate);
 		cv.wait(lock);
 	}
 }

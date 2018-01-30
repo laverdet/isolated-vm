@@ -30,8 +30,8 @@ class ScriptHandle : public TransferableHandle {
 	public:
 		ScriptHandle(std::shared_ptr<ShareablePersistent<UnboundScript>> script) : script(script) {}
 
-		static ShareableIsolate::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
-			static ShareableIsolate::IsolateSpecific<FunctionTemplate> tmpl;
+		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
+			static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
 			return tmpl;
 		}
 
@@ -93,7 +93,7 @@ class ScriptHandle : public TransferableHandle {
 						Context::Scope context_scope(context_local);
 						Local<Script> script_handle = script->Deref()->BindToCurrentContext();
 						result = ExternalCopy::CopyIfPrimitive(
-							RunWithTimeout(timeout_ms, *ShareableIsolate::GetCurrent(), [&script_handle, &context_local]() { return script_handle->Run(context_local); })
+							RunWithTimeout(timeout_ms, *IsolateEnvironment::GetCurrent(), [&script_handle, &context_local]() { return script_handle->Run(context_local); })
 						);
 					}
 

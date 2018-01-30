@@ -49,7 +49,7 @@ ThreePhaseTask::Phase2Runner::~Phase2Runner() {
 void ThreePhaseTask::Phase2Runner::Run() {
 	did_run = true;
 	TryCatch try_catch(Isolate::GetCurrent());
-	auto second_isolate = ShareableIsolate::GetCurrent();
+	auto second_isolate = IsolateEnvironment::GetCurrent();
 	try {
 		// Continue the task
 		self->Phase2();
@@ -78,7 +78,7 @@ void ThreePhaseTask::Phase2Runner::Run() {
 					isolate->RunMicrotasks();
 				} catch (js_error_base& cc_error) {
 					// An error was caught while running Phase3()
-					if (ShareableIsolate::GetCurrent()->IsNormalLifeCycle()) {
+					if (IsolateEnvironment::GetCurrent()->IsNormalLifeCycle()) {
 						assert(try_catch.HasCaught());
 						// If Reject fails then I think that's bad..
 						Unmaybe(promise_local->Reject(context_local, try_catch.Exception()));

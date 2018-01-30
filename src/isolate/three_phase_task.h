@@ -53,7 +53,7 @@ class ThreePhaseTask {
 
 			if (async) {
 				// Build a promise for outer isolate
-				auto first_isolate = ShareableIsolate::GetCurrent();
+				auto first_isolate = IsolateEnvironment::GetCurrent();
 				auto context_local = first_isolate->GetIsolate()->GetCurrentContext();
 				auto promise_local = v8::Promise::Resolver::New(*first_isolate);
 				v8::TryCatch try_catch(*first_isolate);
@@ -62,7 +62,7 @@ class ThreePhaseTask {
 					second_isolate.ScheduleTask(
 						std::make_unique<Phase2Runner>(
 							std::make_unique<T>(std::forward<Args>(args)...), // <-- Phase1 / ctor called here
-							ShareableIsolate::GetCurrentHolder(),
+							IsolateEnvironment::GetCurrentHolder(),
 							std::make_unique<v8::Persistent<v8::Promise::Resolver>>(*first_isolate, promise_local),
 							std::make_unique<v8::Persistent<v8::Context>>(*first_isolate, context_local)
 						), false, true
@@ -78,7 +78,7 @@ class ThreePhaseTask {
 			} else {
 				// The sync case is a lot simpler, most of the work is done in second_isolate.Locker()
 				std::unique_ptr<ThreePhaseTask> self = std::make_unique<T>(std::forward<Args>(args)...);
-				if (ShareableIsolate::GetCurrentHolder().get() == &second_isolate) {
+				if (IsolateEnvironment::GetCurrentHolder().get() == &second_isolate) {
 					// Shortcut when calling a sync method belonging to the currently entered isolate. This isn't an
 					// optimization, it's used to bypass the deadlock prevention check in Locker()
 					self->Phase2();

@@ -3,7 +3,7 @@
 
 namespace ivm {
 
-void SharedContextDtor(Persistent<Context>& handle, ShareableIsolate* isolate);
+void SharedContextDtor(Persistent<Context>& handle, IsolateEnvironment* isolate);
 //typedef ShareablePersistent<Context, SharedContextDtor> ShareableContext;
 typedef ShareablePersistent<Context> ShareableContext;
 
