@@ -1,4 +1,6 @@
 #include "environment.h"
+#include "runnable.h"
+#include "../external_copy.h"
 #include <v8-platform.h>
 
 using namespace v8;
@@ -121,7 +123,9 @@ bool IsolateEnvironment::Scheduler::Lock::WakeIsolate(shared_ptr<IsolateEnvironm
 	}
 }
 
-// Template specializations for IsolateSpecific<FunctionTemplate>
+/**
+ * Template specializations for IsolateSpecific<FunctionTemplate>
+ */
 template<>
 MaybeLocal<FunctionTemplate> IsolateEnvironment::IsolateSpecific<FunctionTemplate>::Deref() const {
   return Deref<FunctionTemplate, decltype(IsolateEnvironment::specifics_ft), &IsolateEnvironment::specifics_ft>();
@@ -132,8 +136,215 @@ void IsolateEnvironment::IsolateSpecific<FunctionTemplate>::Reset(Local<Function
 	Reset<FunctionTemplate, decltype(IsolateEnvironment::specifics_ft), &IsolateEnvironment::specifics_ft>(handle);
 }
 
-// Static variable declarations
+/**
+ * IsolateEnvironment implementation
+ */
 size_t IsolateEnvironment::specifics_count = 0;
 shared_ptr<IsolateEnvironment::BookkeepingStatics> IsolateEnvironment::bookkeeping_statics_shared = std::make_shared<IsolateEnvironment::BookkeepingStatics>();
 
+void IsolateEnvironment::GCEpilogueCallback(Isolate* isolate, GCType type, GCCallbackFlags flags) {
+
+	// Get current heap statistics
+	auto that = GetCurrent();
+	assert(that->isolate == isolate);
+	HeapStatistics heap;
+	isolate->GetHeapStatistics(&heap);
+
+	// If we are above the heap limit then kill this isolate
+	if (heap.used_heap_size() > that->memory_limit * 1024 * 1024) {
+		that->hit_memory_limit = true;
+		that->Terminate();
+		return;
+	}
+
+	// Ask for a deep clean at 80% heap
+	if (
+		heap.used_heap_size() * 1.25 > that->memory_limit * 1024 * 1024 &&
+		that->last_heap.used_heap_size() * 1.25 < that->memory_limit * 1024 * 1024
+	) {
+		struct LowMemoryTask : public Runnable {
+			Isolate* isolate;
+			LowMemoryTask(Isolate* isolate) : isolate(isolate) {}
+			void Run() final {
+				isolate->LowMemoryNotification();
+			}
+		};
+		Scheduler::Lock lock(that->scheduler);
+		lock.PushTask(std::make_unique<LowMemoryTask>(isolate));
+	}
+
+	that->last_heap = heap;
 }
+
+void IsolateEnvironment::PromiseRejectCallback(PromiseRejectMessage rejection) {
+	auto that = IsolateEnvironment::GetCurrent();
+	assert(that->isolate == Isolate::GetCurrent());
+	that->rejected_promise_error.Reset(that->isolate, rejection.GetValue());
+}
+
+void IsolateEnvironment::AsyncEntry() {
+	ExecutorLock lock(*this);
+	while (true) {
+		std::queue<unique_ptr<Runnable>> tasks;
+		std::queue<unique_ptr<std::function<void()>>> interrupts;
+		{
+			// Grab current tasks
+			Scheduler::Lock lock(scheduler);
+			tasks = lock.TakeTasks();
+			interrupts = lock.TakeInterrupts();
+			if (tasks.empty() && interrupts.empty()) {
+				lock.DoneRunning();
+				return;
+			}
+		}
+
+		// Execute interrupt tasks
+		while (!interrupts.empty()) {
+			(*interrupts.front())();
+			interrupts.pop();
+		}
+
+		// Execute handle tasks
+		while (!tasks.empty()) {
+			tasks.front()->Run();
+			tasks.pop();
+			if (hit_memory_limit) {
+				return;
+			}
+		}
+	}
+}
+
+IsolateEnvironment::IsolateEnvironment(Isolate* isolate, Local<Context> context) :
+	isolate(isolate),
+	default_context(isolate, context),
+	root(true),
+	bookkeeping_statics(bookkeeping_statics_shared) {
+	ExecutorLock::Init(*this);
+	Scheduler::Init();
+	std::unique_lock<std::mutex> lock(bookkeeping_statics->lookup_mutex);
+	bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
+}
+
+IsolateEnvironment::IsolateEnvironment(
+	const ResourceConstraints& resource_constraints,
+	unique_ptr<ArrayBuffer::Allocator> allocator,
+	shared_ptr<ExternalCopyArrayBuffer> snapshot_blob,
+	size_t memory_limit
+) :
+	allocator_ptr(std::move(allocator)),
+	snapshot_blob_ptr(std::move(snapshot_blob)),
+	memory_limit(memory_limit),
+	root(false),
+	bookkeeping_statics(bookkeeping_statics_shared) {
+
+	// Build isolate from create params
+	Isolate::CreateParams create_params;
+	create_params.constraints = resource_constraints;
+	create_params.array_buffer_allocator = allocator_ptr.get();
+	if (snapshot_blob_ptr) {
+		create_params.snapshot_blob = &startup_data;
+		startup_data.data = (const char*)snapshot_blob_ptr->Data();
+		startup_data.raw_size = snapshot_blob_ptr->Length();
+	}
+	isolate = Isolate::New(create_params);
+	{
+		std::unique_lock<std::mutex> lock(bookkeeping_statics->lookup_mutex);
+		bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
+	}
+	isolate->AddGCEpilogueCallback(GCEpilogueCallback);
+	isolate->SetPromiseRejectCallback(PromiseRejectCallback);
+
+	// Bootstrap inspector
+//			inspector_client = std::make_unique<InspectorClientImpl>(isolate, this);
+
+	// Create a default context for the library to use if needed
+	{
+		Locker locker(isolate);
+		HandleScope handle_scope(isolate);
+		Local<Context> context = Context::New(isolate);
+		default_context.Reset(isolate, context);
+		std::string name = "default";
+//			inspector_client->inspector->contextCreated(v8_inspector::V8ContextInfo(context, 1, v8_inspector::StringView((const uint8_t*)name.c_str(), name.length())));
+	}
+
+	// There is no asynchronous Isolate ctor so we should throw away thread specifics in case
+	// the client always uses async methods
+	isolate->DiscardThreadSpecificMetadata();
+}
+
+IsolateEnvironment::~IsolateEnvironment() {
+	if (root) return;
+	{
+		ExecutorLock lock(*this);
+		// Dispose of inspector first
+//				inspector_client.reset();
+		// Kill all weak persistents
+		while (!weak_persistents.empty()) {
+			auto it = weak_persistents.begin();
+			Persistent<Object>* handle = it->first;
+			void(*fn)(void*) = it->second.first;
+			void* param = it->second.second;
+			fn(param);
+			if (weak_persistents.find(handle) != weak_persistents.end()) {
+				throw std::runtime_error("Weak persistent callback failed to remove from global set");
+			}
+		}
+		// Destroy outstanding tasks. Do this here while the executor lock is up.
+		Scheduler::Lock lock2(scheduler);
+		lock2.TakeInterrupts();
+		lock2.TakeTasks();
+	}
+	isolate->Dispose();
+	std::unique_lock<std::mutex> lock(bookkeeping_statics->lookup_mutex);
+	bookkeeping_statics->isolate_map.erase(bookkeeping_statics->isolate_map.find(isolate));
+}
+
+void IsolateEnvironment::TaskEpilogue() {
+	isolate->RunMicrotasks();
+	if (hit_memory_limit) {
+		throw js_fatal_error();
+	}
+	if (!rejected_promise_error.IsEmpty()) {
+		Context::Scope context_scope(DefaultContext());
+		isolate->ThrowException(Local<Value>::New(isolate, rejected_promise_error));
+		rejected_promise_error.Reset();
+		throw js_runtime_error();
+	}
+}
+
+HeapStatistics IsolateEnvironment::GetHeapStatistics() const {
+	HeapStatistics heap;
+	isolate->GetHeapStatistics(&heap);
+	return heap;
+}
+
+void IsolateEnvironment::AddWeakCallback(Persistent<Object>* handle, void(*fn)(void*), void* param) {
+	if (root) return;
+	auto it = weak_persistents.find(handle);
+	if (it != weak_persistents.end()) {
+		throw std::runtime_error("Weak callback already added");
+	}
+	weak_persistents.insert(std::make_pair(handle, std::make_pair(fn, param)));
+}
+
+void IsolateEnvironment::RemoveWeakCallback(Persistent<Object>* handle) {
+	if (root) return;
+	auto it = weak_persistents.find(handle);
+	if (it == weak_persistents.end()) {
+		throw std::runtime_error("Weak callback doesn't exist");
+	}
+	weak_persistents.erase(it);
+}
+
+shared_ptr<IsolateHolder> IsolateEnvironment::LookupIsolate(Isolate* isolate) {
+	std::unique_lock<std::mutex> lock(bookkeeping_statics_shared->lookup_mutex);
+	auto it = bookkeeping_statics_shared->isolate_map.find(isolate);
+	if (it == bookkeeping_statics_shared->isolate_map.end()) {
+		return nullptr;
+	} else {
+		return it->second->holder;
+	}
+}
+
+} // namespace ivm

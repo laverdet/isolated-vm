@@ -72,7 +72,7 @@ class ThreePhaseTask {
 				} catch (const js_runtime_error& cc_error) {
 					// An error was caught while running ctor (phase 1)
 					assert(try_catch.HasCaught());
-					Maybe<bool> ret = promise_local->Reject(context_local, try_catch.Exception());
+					v8::Maybe<bool> ret = promise_local->Reject(context_local, try_catch.Exception());
 					try_catch.Reset();
 					Unmaybe(ret);
 				}

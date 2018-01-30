@@ -2,9 +2,9 @@
 
 namespace ivm {
 
-void SharedContextDtor(Persistent<Context>& handle, IsolateEnvironment* isolate) {
+void SharedContextDtor(v8::Persistent<v8::Context>& handle, IsolateEnvironment* isolate) {
 	if (isolate) {
-		auto lhandle = Local<Context>::New(Isolate::GetCurrent(), handle);
+		auto lhandle = v8::Local<v8::Context>::New(v8::Isolate::GetCurrent(), handle);
 //		IsolateEnvironment::GetCurrent().ContextDestroyed(lhandle);
 	}
 }

@@ -15,17 +15,17 @@ template <class T>
 class ShareablePersistent {
 	private:
 		std::shared_ptr<IsolateHolder> isolate;
-		std::unique_ptr<Persistent<T>> handle;
+		std::unique_ptr<v8::Persistent<T>> handle;
 
 	public:
 		ShareablePersistent(v8::Local<T> handle) :
 			isolate(IsolateEnvironment::GetCurrentHolder()),
-			handle(std::make_unique<Persistent<T>>(v8::Isolate::GetCurrent(), handle)) {
+			handle(std::make_unique<v8::Persistent<T>>(v8::Isolate::GetCurrent(), handle)) {
 		}
 
 		~ShareablePersistent() {
 			struct DisposalTask : public Runnable {
-				std::unique_ptr<Persistent<T>> handle;
+				std::unique_ptr<v8::Persistent<T>> handle;
 
 				DisposalTask(std::unique_ptr<v8::Persistent<T>> handle) : handle(std::move(handle)) {}
 

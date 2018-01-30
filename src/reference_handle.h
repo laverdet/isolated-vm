@@ -5,6 +5,7 @@
 #include "isolate/shareable_context.h"
 #include "isolate/shareable_persistent.h"
 #include "isolate/three_phase_task.h"
+#include "external_copy.h"
 #include "transferable.h"
 #include "transferable_handle.h"
 
