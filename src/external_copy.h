@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "transferable.h"
-#include "util.h"
+#include "isolate/util.h"
 
 namespace ivm {
 

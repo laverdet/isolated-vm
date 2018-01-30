@@ -1,5 +1,5 @@
 #include <node.h>
-#include "util.h"
+#include "isolate/util.h"
 #include "isolate/environment.h"
 #include "isolate_handle.h"
 #include "context_handle.h"
