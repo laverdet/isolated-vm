@@ -1,5 +1,5 @@
 #pragma once
-#include <node.h>
+#include <v8.h>
 #include "isolate/class_handle.h"
 #include "transferable.h"
 #include <memory>
@@ -13,7 +13,7 @@ class TransferableHandle : public ClassHandle {
 			return tmpl;
 		}
 
-		static Local<FunctionTemplate> Definition() {
+		static v8::Local<v8::FunctionTemplate> Definition() {
 			return MakeClass("Transferable", nullptr, 0);
 		}
 

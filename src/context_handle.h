@@ -1,5 +1,5 @@
 #pragma once
-#include <node.h>
+#include <v8.h>
 #include "isolate/holder.h"
 #include "transferable_handle.h"
 #include <memory>
@@ -17,13 +17,13 @@ class ContextHandle : public TransferableHandle {
 		class ContextHandleTransferable : public Transferable {
 			private:
 				std::shared_ptr<IsolateHolder> isolate;
-				std::shared_ptr<Persistent<Context>> context;
-				std::shared_ptr<Persistent<Value>> global;
+				std::shared_ptr<v8::Persistent<v8::Context>> context;
+				std::shared_ptr<v8::Persistent<v8::Value>> global;
 			public:
 				ContextHandleTransferable(
 					std::shared_ptr<IsolateHolder> isolate,
-					std::shared_ptr<Persistent<Context>> context,
-					std::shared_ptr<Persistent<Value>> global
+					std::shared_ptr<v8::Persistent<v8::Context>> context,
+					std::shared_ptr<v8::Persistent<v8::Value>> global
 				);
 				v8::Local<v8::Value> TransferIn() final;
 		};

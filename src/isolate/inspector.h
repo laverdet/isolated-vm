@@ -1,5 +1,5 @@
 #pragma once
-#include <node.h>
+#include <v8.h>
 #include <v8-inspector.h>
 #include "environment.h"
 
@@ -9,10 +9,6 @@
 #include <queue>
 
 namespace ivm {
-using namespace v8;
-using namespace v8_inspector;
-using std::shared_ptr;
-using std::unique_ptr;
 class IsolateEnvironment;
 
 class InspectorNotifyListener {

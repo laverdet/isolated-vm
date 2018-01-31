@@ -1,5 +1,5 @@
 #pragma once
-#include <node.h>
+#include <v8.h>
 #include "transferable_handle.h"
 #include <memory>
 #include <vector>
@@ -20,24 +20,24 @@ class ReferenceHandle : public TransferableHandle {
 		class ReferenceHandleTransferable : public Transferable {
 			private:
 				std::shared_ptr<IsolateHolder> isolate;
-				std::shared_ptr<Persistent<Value>> reference;
-				std::shared_ptr<Persistent<Context>> context;
+				std::shared_ptr<v8::Persistent<v8::Value>> reference;
+				std::shared_ptr<v8::Persistent<v8::Context>> context;
 				TypeOf type_of;
 
 			public:
 				ReferenceHandleTransferable(
 					std::shared_ptr<IsolateHolder> isolate,
-					std::shared_ptr<Persistent<Value>> reference,
-					std::shared_ptr<Persistent<Context>> context,
+					std::shared_ptr<v8::Persistent<v8::Value>> reference,
+					std::shared_ptr<v8::Persistent<v8::Context>> context,
 					TypeOf type_of
 				);
-				Local<Value> TransferIn() final;
+				v8::Local<v8::Value> TransferIn() final;
 		};
 
 	private:
 		std::shared_ptr<IsolateHolder> isolate;
-		std::shared_ptr<Persistent<Value>> reference;
-		std::shared_ptr<Persistent<Context>> context;
+		std::shared_ptr<v8::Persistent<v8::Value>> reference;
+		std::shared_ptr<v8::Persistent<v8::Context>> context;
 		TypeOf type_of;
 
 		void CheckDisposed() const;
@@ -45,16 +45,16 @@ class ReferenceHandle : public TransferableHandle {
 	public:
 		ReferenceHandle(
 			std::shared_ptr<IsolateHolder> isolate,
-			std::shared_ptr<Persistent<Value>> reference,
-			std::shared_ptr<Persistent<Context>> context,
+			std::shared_ptr<v8::Persistent<v8::Value>> reference,
+			std::shared_ptr<v8::Persistent<v8::Context>> context,
 			TypeOf type_of
 		);
-		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific();
-		static Local<FunctionTemplate> Definition();
+		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
+		static v8::Local<v8::FunctionTemplate> Definition();
 		std::unique_ptr<Transferable> TransferOut() final;
 		static std::unique_ptr<ReferenceHandle> New(v8::Local<v8::Value> var);
 
-		static void TypeOfGetter(Local<String> property, const PropertyCallbackInfo<Value>& info);
+		static void TypeOfGetter(v8::Local<v8::String> property, const v8::PropertyCallbackInfo<v8::Value>& info);
 		v8::Local<v8::Value> Deref();
 		v8::Local<v8::Value> DerefInto();
 		v8::Local<v8::Value> Dispose();
@@ -76,22 +76,22 @@ class DereferenceHandle : public TransferableHandle {
 
 	private:
 		std::shared_ptr<IsolateHolder> isolate;
-		std::shared_ptr<Persistent<Value>> reference;
+		std::shared_ptr<v8::Persistent<v8::Value>> reference;
 
 		class DereferenceHandleTransferable : public Transferable {
 			private:
 				std::shared_ptr<IsolateHolder> isolate;
-				std::shared_ptr<Persistent<Value>> reference;
+				std::shared_ptr<v8::Persistent<v8::Value>> reference;
 
 			public:
-				DereferenceHandleTransferable(std::shared_ptr<IsolateHolder> isolate, std::shared_ptr<Persistent<Value>> reference);
+				DereferenceHandleTransferable(std::shared_ptr<IsolateHolder> isolate, std::shared_ptr<v8::Persistent<v8::Value>> reference);
 				v8::Local<v8::Value> TransferIn() final;
 		};
 
 	public:
-		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific();
-		static Local<FunctionTemplate> Definition();
-		DereferenceHandle(std::shared_ptr<IsolateHolder> isolate, std::shared_ptr<Persistent<Value>> reference);
+		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
+		static v8::Local<v8::FunctionTemplate> Definition();
+		DereferenceHandle(std::shared_ptr<IsolateHolder> isolate, std::shared_ptr<v8::Persistent<v8::Value>> reference);
 		std::unique_ptr<Transferable> TransferOut() final;
 };
 

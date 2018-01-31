@@ -1,5 +1,5 @@
 #pragma once
-#include <node.h>
+#include <v8.h>
 #include "environment.h"
 #include "holder.h"
 #include "util.h"

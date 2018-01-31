@@ -1,5 +1,5 @@
 #pragma once
-#include <node.h>
+#include <v8.h>
 #include "isolate/holder.h"
 #include "transferable_handle.h"
 #include <memory>
@@ -11,13 +11,13 @@ class ScriptHandle : public TransferableHandle {
 		class ScriptHandleTransferable : public Transferable {
 			private:
 				std::shared_ptr<IsolateHolder> isolate;
-				std::shared_ptr<Persistent<UnboundScript>> script;
+				std::shared_ptr<v8::Persistent<v8::UnboundScript>> script;
 			public:
 				ScriptHandleTransferable(
 					std::shared_ptr<IsolateHolder> isolate,
 					std::shared_ptr<v8::Persistent<v8::UnboundScript>> script
 				);
-				Local<Value> TransferIn() final;
+				v8::Local<v8::Value> TransferIn() final;
 		};
 
 		std::shared_ptr<IsolateHolder> isolate;
@@ -29,8 +29,8 @@ class ScriptHandle : public TransferableHandle {
 			std::shared_ptr<v8::Persistent<v8::UnboundScript>> script
 		);
 
-		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific();
-		static Local<FunctionTemplate> Definition();
+		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
+		static v8::Local<v8::FunctionTemplate> Definition();
 		std::unique_ptr<Transferable> TransferOut() final;
 
 		template <bool async>

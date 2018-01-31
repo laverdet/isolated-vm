@@ -1,5 +1,5 @@
 #pragma once
-#include <node.h>
+#include <v8.h>
 #include <v8-platform.h>
 #include "environment.h"
 
@@ -16,38 +16,38 @@ namespace ivm {
 
 class PlatformDelegate : public v8::Platform {
 	private:
-		Isolate* node_isolate;
+		v8::Isolate* node_isolate;
 		v8::Platform* node_platform;
 
 		class TaskHolder : public Runnable {
 			private:
-				std::unique_ptr<Task> task;
+				std::unique_ptr<v8::Task> task;
 			public:
-				TaskHolder(Task* task) : task(task) {}
+				TaskHolder(v8::Task* task) : task(task) {}
 				void Run() {
 					task->Run();
 				}
 		};
 
 	public:
-		PlatformDelegate(Isolate* node_isolate, v8::Platform* node_platform) : node_isolate(node_isolate), node_platform(node_platform) {}
+		PlatformDelegate(v8::Isolate* node_isolate, v8::Platform* node_platform) : node_isolate(node_isolate), node_platform(node_platform) {}
 
 		static PlatformDelegate& DelegateInstance() {
-			static PlatformDelegate delegate(Isolate::GetCurrent(), v8::internal::V8::GetCurrentPlatform());
+			static PlatformDelegate delegate(v8::Isolate::GetCurrent(), v8::internal::V8::GetCurrentPlatform());
 			return delegate;
 		}
 
 		static void InitializeDelegate() {
 			PlatformDelegate& instance = DelegateInstance();
-			V8::ShutdownPlatform();
-			V8::InitializePlatform(&instance);
+			v8::V8::ShutdownPlatform();
+			v8::V8::InitializePlatform(&instance);
 		}
 
-		void CallOnBackgroundThread(Task* task, ExpectedRuntime expected_runtime) {
+		void CallOnBackgroundThread(v8::Task* task, ExpectedRuntime expected_runtime) {
 			node_platform->CallOnBackgroundThread(task, expected_runtime);
 		}
 
-		void CallOnForegroundThread(Isolate* isolate, Task* task) {
+		void CallOnForegroundThread(v8::Isolate* isolate, v8::Task* task) {
 			if (isolate == node_isolate) {
 				node_platform->CallOnForegroundThread(isolate, task);
 			} else {
@@ -57,7 +57,7 @@ class PlatformDelegate : public v8::Platform {
 			}
 		}
 
-		void CallDelayedOnForegroundThread(Isolate* isolate, Task* task, double delay_in_seconds) {
+		void CallDelayedOnForegroundThread(v8::Isolate* isolate, v8::Task* task, double delay_in_seconds) {
 			if (isolate == node_isolate) {
 				node_platform->CallDelayedOnForegroundThread(isolate, task, delay_in_seconds);
 			} else {
@@ -74,7 +74,7 @@ class PlatformDelegate : public v8::Platform {
 			}
 		}
 
-		void CallIdleOnForegroundThread(Isolate* isolate, IdleTask* task) {
+		void CallIdleOnForegroundThread(v8::Isolate* isolate, v8::IdleTask* task) {
 			if (isolate == node_isolate) {
 				node_platform->CallIdleOnForegroundThread(isolate, task);
 			} else {
@@ -82,7 +82,7 @@ class PlatformDelegate : public v8::Platform {
 			}
 		}
 
-		bool IdleTasksEnabled(Isolate* isolate) {
+		bool IdleTasksEnabled(v8::Isolate* isolate) {
 			if (isolate == node_isolate) {
 				return node_platform->IdleTasksEnabled(isolate);
 			} else {
@@ -94,7 +94,7 @@ class PlatformDelegate : public v8::Platform {
 			return node_platform->MonotonicallyIncreasingTime();
 		}
 
-		TracingController* GetTracingController() {
+		v8::TracingController* GetTracingController() {
 			return node_platform->GetTracingController();
 		}
 };

@@ -1,5 +1,5 @@
 #pragma once
-#include <node.h>
+#include <v8.h>
 #include "transferable_handle.h"
 #include <memory>
 
@@ -22,8 +22,8 @@ class IsolateHandle : public TransferableHandle {
 
 	public:
 		IsolateHandle(std::shared_ptr<IsolateHolder> isolate);
-		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific();
-		static Local<FunctionTemplate> Definition();
+		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
+		static v8::Local<v8::FunctionTemplate> Definition();
 		static std::unique_ptr<ClassHandle> New(v8::MaybeLocal<v8::Object> maybe_options);
 		std::unique_ptr<Transferable> TransferOut() final;
 

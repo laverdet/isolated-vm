@@ -1,4 +1,5 @@
-#include <node.h>
+#include <v8.h>
+#include <cassert>
 
 // This should hopefully be temporary, these will be pure virtual once Blink implements them
 namespace v8 {

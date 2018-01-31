@@ -1,5 +1,5 @@
 #pragma once
-#include <node.h>
+#include <v8.h>
 #include "transferable_handle.h"
 #include <memory>
 
@@ -15,7 +15,7 @@ class ExternalCopyHandle : public TransferableHandle {
 
 			public:
 				explicit ExternalCopyTransferable(std::shared_ptr<ExternalCopy> value);
-				Local<Value> TransferIn() final;
+				v8::Local<v8::Value> TransferIn() final;
 		};
 
 		std::shared_ptr<ExternalCopy> value;
@@ -51,8 +51,8 @@ class ExternalCopyIntoHandle : public TransferableHandle {
 
 	public:
 		ExternalCopyIntoHandle(std::shared_ptr<ExternalCopy> value);
-		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific();
-		static Local<FunctionTemplate> Definition();
+		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
+		static v8::Local<v8::FunctionTemplate> Definition();
 		std::unique_ptr<Transferable> TransferOut();
 };
 

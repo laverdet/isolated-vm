@@ -1,5 +1,5 @@
 #pragma once
-#include <node.h>
+#include <v8.h>
 #include <v8-inspector.h>
 
 #include "isolate/class_handle.h"
@@ -8,9 +8,6 @@
 #include <memory>
 
 namespace ivm {
-using namespace v8;
-using namespace v8_inspector;
-using std::unique_ptr;
 
 /**
  * This class handles sending messages from the backend to the frontend

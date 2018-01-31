@@ -1,5 +1,6 @@
 #pragma once
-#include <node.h>
+#include <v8.h>
+#include <cassert>
 #include <string>
 #include <functional>
 
