@@ -1,14 +1,15 @@
 #pragma once
 #include <node.h>
 #include "isolate/class_handle.h"
+#include "transferable.h"
 #include <memory>
 
 namespace ivm {
 
 class TransferableHandle : public ClassHandle {
 	public:
-		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
-			static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
+		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific() {
+			static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate> tmpl;
 			return tmpl;
 		}
 
@@ -19,4 +20,4 @@ class TransferableHandle : public ClassHandle {
 		virtual std::unique_ptr<Transferable> TransferOut() = 0;
 };
 
-}
+} // namespace ivm

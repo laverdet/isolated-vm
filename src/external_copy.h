@@ -42,7 +42,7 @@ class ExternalCopyTemplate : public ExternalCopy {
 		explicit ExternalCopyTemplate(const v8::Local<v8::Value>& value) : value(v8::Local<T>::Cast(value)->Value()) {}
 
 		v8::Local<v8::Value> CopyInto() const final {
-			return T::New(Isolate::GetCurrent(), value);
+			return T::New(v8::Isolate::GetCurrent(), value);
 		}
 
 		size_t Size() const final {
@@ -88,12 +88,12 @@ class ExternalCopyTemplate<v8::String, std::shared_ptr<std::vector<uint16_t>>> :
 
 		explicit ExternalCopyTemplate(const std::string& message) : value(std::make_shared<V>(message.begin(), message.end())) {}
 
-		Local<Value> CopyInto() const final {
+		v8::Local<v8::Value> CopyInto() const final {
 			if (value->empty()) {
 				// v8 crashes if you send it an empty external string :(
-				return v8::String::Empty(Isolate::GetCurrent());
+				return v8::String::Empty(v8::Isolate::GetCurrent());
 			} else {
-				return Unmaybe(v8::String::NewExternalTwoByte(Isolate::GetCurrent(), new ExternalString(value)));
+				return Unmaybe(v8::String::NewExternalTwoByte(v8::Isolate::GetCurrent(), new ExternalString(value)));
 			}
 		}
 

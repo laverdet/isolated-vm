@@ -3,7 +3,6 @@
 #include <memory>
 
 namespace ivm {
-using namespace v8;
 
 class Transferable {
 	public:
@@ -11,8 +10,8 @@ class Transferable {
 		Transferable(const Transferable&) = delete;
 		Transferable& operator= (const Transferable&) = delete;
 		virtual ~Transferable() = default;
-		static std::unique_ptr<Transferable> TransferOut(const Local<Value>& value);
-		virtual Local<Value> TransferIn() = 0;
+		static std::unique_ptr<Transferable> TransferOut(const v8::Local<v8::Value>& value);
+		virtual v8::Local<v8::Value> TransferIn() = 0;
 };
 
 } // namespace ivm

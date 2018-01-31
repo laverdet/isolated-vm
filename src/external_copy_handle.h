@@ -1,139 +1,59 @@
 #pragma once
 #include <node.h>
-#include "isolate/class_handle.h"
-#include "transferable.h"
 #include "transferable_handle.h"
-#include "external_copy.h"
-
 #include <memory>
 
 namespace ivm {
-using namespace v8;
-using std::shared_ptr;
 
-class ExternalCopyIntoHandle;
+class ExternalCopy;
 
 class ExternalCopyHandle : public TransferableHandle {
 	private:
-		shared_ptr<ExternalCopy> value;
-
-		/**
-		 * Wrapper to transfer this ExternalCopy handle into another ExternalCopy handle in another
-		 * isolate. ExternalCopyIntoHandle is the one that throws away the ExternalCopy reference and
-		 * returns the copy's value.
-		 */
 		class ExternalCopyTransferable : public Transferable {
 			private:
-				shared_ptr<ExternalCopy> value;
+				std::shared_ptr<ExternalCopy> value;
 
 			public:
-				ExternalCopyTransferable(shared_ptr<ExternalCopy>& value) : value(value) {}
-
-				virtual Local<Value> TransferIn() {
-					return ClassHandle::NewInstance<ExternalCopyHandle>(value);
-				}
+				explicit ExternalCopyTransferable(std::shared_ptr<ExternalCopy> value);
+				Local<Value> TransferIn() final;
 		};
 
-		/**
-		 * Just throws if this handle is disposed
-		 */
-		void CheckDisposed() {
-			if (value.get() == nullptr) {
-				throw js_generic_error("Copy is disposed");
-			}
-		}
+		std::shared_ptr<ExternalCopy> value;
+
+		void CheckDisposed();
 
 	public:
-		ExternalCopyHandle(shared_ptr<ExternalCopy> value) : value(value) {
-			Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(value->Size());
-		}
+		explicit ExternalCopyHandle(std::shared_ptr<ExternalCopy> value);
+		~ExternalCopyHandle() final;
+		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
+		static v8::Local<v8::FunctionTemplate> Definition();
+		std::unique_ptr<Transferable> TransferOut() final;
 
-		virtual ~ExternalCopyHandle() {
-			if (value.get() != nullptr) {
-				Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-(ssize_t)value->Size());
-			}
-		}
-
-		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
-			static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
-			return tmpl;
-		}
-
-		static Local<FunctionTemplate> Definition() {
-			return Inherit<TransferableHandle>(MakeClass(
-				"ExternalCopy", ParameterizeCtor<decltype(&New), &New>, 1,
-				"copy", Parameterize<decltype(&ExternalCopyHandle::Copy), &ExternalCopyHandle::Copy>, 0,
-				"copyInto", Parameterize<decltype(&ExternalCopyHandle::CopyInto), &ExternalCopyHandle::CopyInto>, 0,
-				"dispose", Parameterize<decltype(&ExternalCopyHandle::Dispose), &ExternalCopyHandle::Dispose>, 0
-			));
-		}
-
-		virtual unique_ptr<Transferable> TransferOut() {
-			return std::make_unique<ExternalCopyTransferable>(value);
-		}
-
-		static unique_ptr<ExternalCopyHandle> New(Local<Value> value) {
-			return std::make_unique<ExternalCopyHandle>(shared_ptr<ExternalCopy>(ExternalCopy::Copy(value)));
-		}
-
-		Local<Value> Copy() {
-			CheckDisposed();
-			return value->CopyInto();
-		}
-
-		Local<Value> CopyInto() {
-			CheckDisposed();
-			return ClassHandle::NewInstance<ExternalCopyIntoHandle>(value);
-		}
-
-		Local<Value> Dispose() {
-			CheckDisposed();
-			Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-(ssize_t)value->Size());
-			value.reset();
-			return Undefined(Isolate::GetCurrent());
-		}
-
-		shared_ptr<ExternalCopy> GetValue() {
-			return value;
-		}
+		static std::unique_ptr<ExternalCopyHandle> New(v8::Local<v8::Value> value);
+		v8::Local<v8::Value> Copy();
+		v8::Local<v8::Value> CopyInto();
+		v8::Local<v8::Value> Dispose();
+		std::shared_ptr<ExternalCopy> GetValue() const { return value; }
 };
 
 class ExternalCopyIntoHandle : public TransferableHandle {
 	private:
-		shared_ptr<ExternalCopy> value;
-
-		/**
-		 * Wrapper that calls CopyInto in the target isolate. We could actually just return an
-		 * ExternalCopy since that inherits from Transferable as well but we need a unique_ptr and we
-		 * have a shared_ptr here.
-		 */
 		class ExternalCopyIntoTransferable : public Transferable {
 			private:
-				shared_ptr<ExternalCopy> value;
+				std::shared_ptr<ExternalCopy> value;
 
 			public:
-				ExternalCopyIntoTransferable(shared_ptr<ExternalCopy>& value) : value(value) {}
-				virtual Local<Value> TransferIn() {
-					return value->CopyInto();
-				}
+				ExternalCopyIntoTransferable(std::shared_ptr<ExternalCopy> value);
+				v8::Local<v8::Value> TransferIn() final;
 		};
 
+		std::shared_ptr<ExternalCopy> value;
+
 	public:
-		ExternalCopyIntoHandle(shared_ptr<ExternalCopy> value) : value(value) {}
-
-		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
-			static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
-			return tmpl;
-		}
-
-		static Local<FunctionTemplate> Definition() {
-			return Inherit<TransferableHandle>(MakeClass("ExternalCopyInto", nullptr, 0));
-		}
-
-		unique_ptr<Transferable> TransferOut() {
-			return std::make_unique<ExternalCopyIntoTransferable>(value);
-		}
-
+		ExternalCopyIntoHandle(std::shared_ptr<ExternalCopy> value);
+		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific();
+		static Local<FunctionTemplate> Definition();
+		std::unique_ptr<Transferable> TransferOut();
 };
 
-}
+} // namespace ivm

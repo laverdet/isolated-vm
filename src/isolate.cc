@@ -23,15 +23,12 @@ class LibraryHandle : public TransferableHandle {
 	private:
 		class LibraryHandleTransferable : public Transferable {
 			public:
-				LibraryHandleTransferable() {}
 				virtual Local<Value> TransferIn() {
 					return LibraryHandle::Get();
 				}
 		};
 
 	public:
-		LibraryHandle() {}
-
 		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
 			static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
 			return tmpl;
@@ -79,6 +76,6 @@ void init(Local<Object> target) {
 	PlatformDelegate::InitializeDelegate();
 }
 
-}
+} // namespace ivm
 
 NODE_MODULE(isolated_vm, ivm::init)
