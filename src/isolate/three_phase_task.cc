@@ -143,7 +143,16 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate) {
 	if (second_isolate_ref->GetIsolate() == Isolate::GetCurrent()) {
 		// Shortcut when calling a sync method belonging to the currently entered isolate. This avoids
 		// the deadlock protection below
-		Phase2();
+		try {
+			Phase2();
+		} catch (const js_fatal_error& cc_error) {
+			// TODO: This assert() is true for me in testing but I'm leaving it out for now because I'm
+			// not sure if it's true in all cases.
+			// assert(second_isolate_ref->GetIsolate()->IsExecutionTerminating());
+
+			// Skip Phase3()
+			return Undefined(Isolate::GetCurrent());
+		}
 	} else {
 		// Deadlock protection
 		if (!IsolateEnvironment::ExecutorLock::IsDefaultThread()) {
