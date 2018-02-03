@@ -37,7 +37,9 @@ class ContextHandle : public TransferableHandle {
 		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();
 		std::unique_ptr<Transferable> TransferOut() final;
+		void CheckDisposed();
 		v8::Local<v8::Value> GlobalReference();
+		v8::Local<v8::Value> Release();
 };
 
 } // namespace ivm

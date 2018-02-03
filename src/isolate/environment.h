@@ -16,10 +16,14 @@
 
 namespace ivm {
 
+class Runnable;
+
 /**
  * Wrapper around Isolate with helpers to make working with multiple isolates easier.
  */
 class IsolateEnvironment {
+	friend class InspectorAgent;
+	friend class InspectorSession;
 	friend class IsolateHolder;
 
 	public:
@@ -65,13 +69,15 @@ class IsolateEnvironment {
 						~Lock();
 						void DoneRunning();
 						// Add work to the task queue
-						void PushTask(std::unique_ptr<class Runnable> task);
-						void PushInterrupt(std::unique_ptr<std::function<void()>> interrupt);
+						void PushTask(std::unique_ptr<Runnable> task);
+						void PushInterrupt(std::unique_ptr<Runnable> interrupt);
 						// Takes control of current tasks. Resets current queue
-						std::queue<std::unique_ptr<class Runnable>> TakeTasks();
-						std::queue<std::unique_ptr<std::function<void()>>> TakeInterrupts();
+						std::queue<std::unique_ptr<Runnable>> TakeTasks();
+						std::queue<std::unique_ptr<Runnable>> TakeInterrupts();
 						// Returns true if a wake was scheduled, true if the isolate is already running.
 						bool WakeIsolate(std::shared_ptr<IsolateEnvironment> isolate_ptr);
+						// Request an interrupt in this isolate. `status` must == Running to invoke this.
+						void InterruptIsolate(IsolateEnvironment& isolate);
 				};
 
 			private:
@@ -80,8 +86,8 @@ class IsolateEnvironment {
 				static std::atomic<int> uv_ref_count;
 				Status status = Status::Waiting;
 				std::mutex mutex;
-				std::queue<std::unique_ptr<class Runnable>> tasks;
-				std::queue<std::unique_ptr<std::function<void()>>> interrupts;
+				std::queue<std::unique_ptr<Runnable>> tasks;
+				std::queue<std::unique_ptr<Runnable>> interrupts;
 				thread_pool_t::affinity_t thread_affinity;
 
 			public:
@@ -94,6 +100,7 @@ class IsolateEnvironment {
 			private:
 				static void AsyncCallbackRoot(uv_async_t* async);
 				static void AsyncCallbackPool(bool pool_thread, void* param);
+				static void AsyncCallbackInterrupt(v8::Isolate* isolate_ptr, void* env_ptr);
 		};
 
 		/**
@@ -161,6 +168,7 @@ class IsolateEnvironment {
 		v8::Isolate* isolate;
 		Scheduler scheduler;
 		std::shared_ptr<IsolateHolder> holder;
+		std::unique_ptr<class InspectorAgent> inspector_agent;
 		v8::Persistent<v8::Context> default_context;
 		std::unique_ptr<v8::ArrayBuffer::Allocator> allocator_ptr;
 		std::shared_ptr<class ExternalCopyArrayBuffer> snapshot_blob_ptr;
@@ -196,6 +204,12 @@ class IsolateEnvironment {
 		 * Called by Scheduler when there is work to be done in this isolate.
 		 */
 		void AsyncEntry();
+		void InterruptEntry();
+
+		/**
+		 * Returns reference to the InspectorAgent for this class. It will create the agent if it does
+		 * not exist. Agent is valid until this environment is destructed.
+		 */
 
 	public:
 		/**
@@ -283,6 +297,16 @@ class IsolateEnvironment {
 		v8::ArrayBuffer::Allocator* GetAllocator() const {
 			return allocator_ptr.get();
 		}
+
+		/**
+		 * Enables the inspector for this isolate.
+		 */
+		void EnableInspectorAgent();
+
+		/**
+		 * Returns the InspectorAgent for this Isolate.
+		 */
+		InspectorAgent* GetInspectorAgent() const;
 
 		/**
 		 * Check memory limit flag

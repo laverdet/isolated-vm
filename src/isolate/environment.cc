@@ -1,4 +1,5 @@
 #include "environment.h"
+#include "inspector.h"
 #include "runnable.h"
 #include "../external_copy.h"
 #include <v8-platform.h>
@@ -50,8 +51,11 @@ void IsolateEnvironment::Scheduler::Init() {
 }
 
 void IsolateEnvironment::Scheduler::AsyncCallbackRoot(uv_async_t* async) {
+	if (async->data == nullptr) {
+		// This is the final message
+		return;
+	}
 	void* data = async->data;
-	assert(data);
 	async->data = nullptr;
 	AsyncCallbackPool(true, data);
 }
@@ -69,7 +73,17 @@ void IsolateEnvironment::Scheduler::AsyncCallbackPool(bool pool_thread, void* pa
 		// execute at the same time. I don't think that's possible because if uv_ref_count is 0 that means
 		// there aren't any concurrent threads running right now..
 		uv_unref((uv_handle_t*)&root_async);
+		// For some reason sending a pointless ping to the unref'd uv handle allows node to quit when
+		// isolated-vm is done.
+		assert(root_async.data == nullptr);
+		uv_async_send(&root_async);
 	}
+}
+
+
+void IsolateEnvironment::Scheduler::AsyncCallbackInterrupt(Isolate* isolate_ptr, void* env_ptr) {
+	IsolateEnvironment& env = *static_cast<IsolateEnvironment*>(env_ptr);
+	env.InterruptEntry();
 }
 
 IsolateEnvironment::Scheduler::Lock::Lock(Scheduler& scheduler) : scheduler(scheduler), lock(scheduler.mutex) {}
@@ -84,18 +98,18 @@ void IsolateEnvironment::Scheduler::Lock::PushTask(unique_ptr<Runnable> task) {
 	scheduler.tasks.push(std::move(task));
 }
 
-void IsolateEnvironment::Scheduler::Lock::PushInterrupt(unique_ptr<std::function<void()>> interrupt) {
+void IsolateEnvironment::Scheduler::Lock::PushInterrupt(unique_ptr<Runnable> interrupt) {
 	scheduler.interrupts.push(std::move(interrupt));
 }
 
 std::queue<unique_ptr<Runnable>> IsolateEnvironment::Scheduler::Lock::TakeTasks() {
-	decltype(TakeTasks()) tmp;
+	decltype(scheduler.tasks) tmp;
 	std::swap(tmp, scheduler.tasks);
 	return tmp;
 }
 
-std::queue<unique_ptr<std::function<void()>>> IsolateEnvironment::Scheduler::Lock::TakeInterrupts() {
-	decltype(TakeInterrupts()) tmp;
+std::queue<unique_ptr<Runnable>> IsolateEnvironment::Scheduler::Lock::TakeInterrupts() {
+	decltype(scheduler.interrupts) tmp;
 	std::swap(tmp, scheduler.interrupts);
 	return tmp;
 }
@@ -121,6 +135,12 @@ bool IsolateEnvironment::Scheduler::Lock::WakeIsolate(shared_ptr<IsolateEnvironm
 	} else {
 		return false;
 	}
+}
+
+void IsolateEnvironment::Scheduler::Lock::InterruptIsolate(IsolateEnvironment& isolate) {
+	assert(scheduler.status == Status::Running);
+	// Since this callback will be called by v8 we can be certain the pointer to `isolate` is still valid
+	isolate->RequestInterrupt(AsyncCallbackInterrupt, static_cast<void*>(&isolate));
 }
 
 /**
@@ -186,7 +206,7 @@ void IsolateEnvironment::AsyncEntry() {
 	ExecutorLock lock(*this);
 	while (true) {
 		std::queue<unique_ptr<Runnable>> tasks;
-		std::queue<unique_ptr<std::function<void()>>> interrupts;
+		std::queue<unique_ptr<Runnable>> interrupts;
 		{
 			// Grab current tasks
 			Scheduler::Lock lock(scheduler);
@@ -200,7 +220,7 @@ void IsolateEnvironment::AsyncEntry() {
 
 		// Execute interrupt tasks
 		while (!interrupts.empty()) {
-			(*interrupts.front())();
+			interrupts.front()->Run();
 			interrupts.pop();
 		}
 
@@ -212,6 +232,27 @@ void IsolateEnvironment::AsyncEntry() {
 				return;
 			}
 		}
+	}
+}
+
+void IsolateEnvironment::InterruptEntry() {
+	// ExecutorLock is already acquired
+	while (true) {
+		// Get interrupt callbacks
+		std::queue<unique_ptr<Runnable>> interrupts;
+		{
+			Scheduler::Lock lock(scheduler);
+			interrupts = lock.TakeInterrupts();
+			if (interrupts.empty()) {
+				return;
+			}
+		}
+
+		// Run the interrupts
+		do {
+			interrupts.front()->Run();
+			interrupts.pop();
+		} while (!interrupts.empty());
 	}
 }
 
@@ -255,17 +296,11 @@ IsolateEnvironment::IsolateEnvironment(
 	isolate->AddGCEpilogueCallback(GCEpilogueCallback);
 	isolate->SetPromiseRejectCallback(PromiseRejectCallback);
 
-	// Bootstrap inspector
-//			inspector_client = std::make_unique<InspectorClientImpl>(isolate, this);
-
 	// Create a default context for the library to use if needed
 	{
 		Locker locker(isolate);
 		HandleScope handle_scope(isolate);
-		Local<Context> context = Context::New(isolate);
-		default_context.Reset(isolate, context);
-		std::string name = "default";
-//			inspector_client->inspector->contextCreated(v8_inspector::V8ContextInfo(context, 1, v8_inspector::StringView((const uint8_t*)name.c_str(), name.length())));
+		default_context.Reset(isolate, Context::New(isolate));
 	}
 
 	// There is no asynchronous Isolate ctor so we should throw away thread specifics in case
@@ -278,9 +313,11 @@ IsolateEnvironment::~IsolateEnvironment() {
 	{
 		ExecutorLock lock(*this);
 		// Dispose of inspector first
-//				inspector_client.reset();
+		inspector_agent.reset();
 		// Kill all weak persistents
 		while (!weak_persistents.empty()) {
+			// TODO: This is definitely not the best way to clear this map. Also this should just be a
+			// set<> because the callback is the same
 			auto it = weak_persistents.begin();
 			Persistent<Object>* handle = it->first;
 			void(*fn)(void*) = it->second.first;
@@ -318,6 +355,14 @@ HeapStatistics IsolateEnvironment::GetHeapStatistics() const {
 	HeapStatistics heap;
 	isolate->GetHeapStatistics(&heap);
 	return heap;
+}
+
+void IsolateEnvironment::EnableInspectorAgent() {
+	inspector_agent = std::make_unique<InspectorAgent>(*this);
+}
+
+InspectorAgent* IsolateEnvironment::GetInspectorAgent() const {
+	return inspector_agent.get();
 }
 
 void IsolateEnvironment::AddWeakCallback(Persistent<Object>* handle, void(*fn)(void*), void* param) {

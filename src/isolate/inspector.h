@@ -1,70 +1,69 @@
 #pragma once
 #include <v8.h>
 #include <v8-inspector.h>
-#include "environment.h"
-
+#include <condition_variable>
 #include <memory>
 #include <mutex>
-#include <condition_variable>
-#include <queue>
+#include <set>
 
 namespace ivm {
 class IsolateEnvironment;
+class InspectorSession;
 
-class InspectorNotifyListener {
-	public:
-		virtual void Notify() = 0;
-};
-
-class InspectorSession {
+/**
+ * This handles communication to the v8 backend. There is only one of these per isolate, but many
+ * sessions may connect to this agent.
+ *
+ * This class combines the role of both V8Inspector and V8InspectorClient into a single class.
+ */
+class InspectorAgent : public v8_inspector::V8InspectorClient {
+	friend class InspectorSession;
 	private:
-		unique_ptr<V8InspectorSession> session;
-		shared_ptr<V8Inspector::Channel> channel;
-		IsolateEnvironment* isolate;
-		InspectorNotifyListener* listener;
-	public:
-		InspectorSession(
-			IsolateEnvironment* isolate,
-			V8Inspector* inspector,
-			shared_ptr<V8Inspector::Channel> channel,
-			InspectorNotifyListener* listener
-		) : channel(channel), isolate(isolate), listener(listener) {
-			session = inspector->connect(1, this->channel.get(), StringView());
-		}
-
-		void dispatchBackendProtocolMessage(std::vector<uint16_t> message);
-};
-
-class InspectorClientImpl : public V8InspectorClient, public InspectorNotifyListener {
-	public:
-		unique_ptr<V8Inspector> inspector;
-		IsolateEnvironment* isolate;
-
-		virtual void Notify() {
-			cv.notify_all();
-		}
-
-	private:
+		IsolateEnvironment& isolate;
+		std::unique_ptr<v8_inspector::V8Inspector> inspector;
 		std::condition_variable cv;
 		std::mutex mutex;
-		bool running;
+		struct {
+			std::mutex mutex;
+			std::set<InspectorSession*> active;
+		} sessions;
+		bool running = false;
 
-		void runMessageLoopOnPause(int context_group_id);
-
-		void quitMessageLoopOnPause() {
-			// This is called from within runMessageLoopOnPause, therefore lock is already acquired
-			running = false;
-			cv.notify_all();
-		}
+		std::unique_ptr<v8_inspector::V8InspectorSession> ConnectSession(InspectorSession& session);
+		void SessionDisconnected(InspectorSession& session);
+		void SendInterrupt(std::unique_ptr<class Runnable> task);
 
 	public:
-		InspectorClientImpl(Isolate* v8_isolate, IsolateEnvironment* isolate) : isolate(isolate) {
-			inspector = V8Inspector::create(v8_isolate, this);
-		}
+		explicit InspectorAgent(IsolateEnvironment& isolate);
+		~InspectorAgent();
+		InspectorAgent(const InspectorAgent&) = delete;
+		InspectorAgent& operator= (const InspectorAgent&) = delete;
+		void runMessageLoopOnPause(int context_group_id) final;
+		void quitMessageLoopOnPause() final;
+		void ContextCreated(v8::Local<v8::Context> context, std::string name);
+		void ContextDestroyed(v8::Local<v8::Context> context);
+};
 
-		unique_ptr<InspectorSession> createSession(shared_ptr<V8Inspector::Channel> channel) {
-			return std::make_unique<InspectorSession>(isolate, inspector.get(), channel, this);
-		}
+/**
+ * Individual session to the v8 inspector agent. This probably relays messages from a websocket to
+ * the v8 backend. To use the class you need to implement the abstract methods defined in Channel.
+ *
+ * This class combines the role of both V8Inspector::Channel and V8InspectorSession into a single
+ * class.
+ */
+class InspectorSession : public v8_inspector::V8Inspector::Channel {
+	friend class InspectorAgent;
+	private:
+		InspectorAgent& agent;
+		std::shared_ptr<v8_inspector::V8InspectorSession> session;
+		std::mutex mutex;
+	public:
+		explicit InspectorSession(IsolateEnvironment& isolate);
+		~InspectorSession();
+		InspectorSession(const InspectorSession&) = delete;
+		InspectorSession& operator= (const InspectorSession&) = delete;
+		void Disconnect();
+		void DispatchBackendProtocolMessage(std::vector<uint16_t> message);
 };
 
 }

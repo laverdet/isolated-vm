@@ -1,14 +1,14 @@
 #include <node.h>
 #include "isolate/util.h"
 #include "isolate/environment.h"
-#include "isolate_handle.h"
-#include "context_handle.h"
-#include "native_module_handle.h"
-#include "script_handle.h"
-#include "external_copy_handle.h"
-#include "lib_handle.h"
-#include "reference_handle.h"
 #include "isolate/platform_delegate.h"
+#include "context_handle.h"
+#include "external_copy_handle.h"
+#include "isolate_handle.h"
+#include "lib_handle.h"
+#include "native_module_handle.h"
+#include "reference_handle.h"
+#include "script_handle.h"
 
 #include <memory>
 

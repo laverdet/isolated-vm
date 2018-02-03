@@ -2,10 +2,16 @@
 let WebSocket = require('ws');
 let ivm = require('./isolated-vm');
 
+/**
+ * Note that allowing untrusted users to access the v8 inspector may result in security issues.
+ * Maybe it won't though, I don't know. I haven't really looked into everything the inspector can
+ * do.
+ */
+
 // Launch an infinite loop in another thread
-let isolate = new ivm.Isolate;
+let isolate = new ivm.Isolate({ inspector: true });
 (async function() {
-	let context = await isolate.createContext(isolate);
+	let context = await isolate.createContext({ inspector: true });
 	let script = await isolate.compileScript('for(;;)debugger;', { filename: 'example.js' });
 	await script.run(context);
 }()).catch(console.error);
@@ -16,6 +22,7 @@ let wss = new WebSocket.Server({ port: 10000 });
 
 wss.on('connection', function(ws) {
 	// Dispose inspector session on websocket disconnect
+	let channel = isolate.createInspectorSession();
 	function dispose() {
 		try {
 			channel.dispose();

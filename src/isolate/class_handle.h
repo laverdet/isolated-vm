@@ -258,7 +258,7 @@ class ClassHandle {
 		 * Builds a new instance of T from scratch, used in factory functions.
 		 */
 		template <typename T, typename ...Args>
-		static v8::Local<v8::Object> NewInstance(Args... args) {
+		static v8::Local<v8::Object> NewInstance(Args&&... args) {
 			v8::Local<v8::Object> instance = Unmaybe(GetFunctionTemplate<T>()->InstanceTemplate()->NewInstance(v8::Isolate::GetCurrent()->GetCurrentContext()));
 			Wrap(std::make_unique<T>(std::forward<Args>(args)...), instance);
 			return instance;

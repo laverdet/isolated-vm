@@ -93,6 +93,9 @@ Local<Value> NativeModuleHandle::Create(class ContextHandle* context_handle) {
 				return result->TransferIn();
 			}
 	};
+	// TODO: This should probably throw from the promise, but ThreePhaseTask can't handle invalid
+	// isolate references for now.
+	context_handle->CheckDisposed();
 	return ThreePhaseTask::Run<async, Create>(*context_handle->isolate, context_handle->context, module);
 }
 

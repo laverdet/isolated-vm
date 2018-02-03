@@ -30,7 +30,8 @@ IsolateEnvironment::IsolateSpecific<FunctionTemplate>& ContextHandle::TemplateSp
 Local<FunctionTemplate> ContextHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Context", nullptr, 0,
-		"globalReference", Parameterize<decltype(&ContextHandle::GlobalReference), &ContextHandle::GlobalReference>, 0
+		"globalReference", Parameterize<decltype(&ContextHandle::GlobalReference), &ContextHandle::GlobalReference>, 0,
+		"release", Parameterize<decltype(&ContextHandle::Release), &ContextHandle::Release>, 0
 	));
 }
 
@@ -38,8 +39,23 @@ std::unique_ptr<Transferable> ContextHandle::TransferOut() {
 	return std::make_unique<ContextHandleTransferable>(isolate, context, global);
 }
 
+void ContextHandle::CheckDisposed() {
+	if (!context) {
+		throw js_generic_error("Context is released");
+	}
+}
+
 Local<Value> ContextHandle::GlobalReference() {
+	CheckDisposed();
 	return ClassHandle::NewInstance<ReferenceHandle>(isolate, global, context, ReferenceHandle::TypeOf::Object);
+}
+
+Local<Value> ContextHandle::Release() {
+	CheckDisposed();
+	isolate.reset();
+	context.reset();
+	global.reset();
+	return Undefined(Isolate::GetCurrent());
 }
 
 }

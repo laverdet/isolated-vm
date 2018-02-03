@@ -58,6 +58,7 @@ Local<Value> ScriptHandle::Run(ContextHandle* context_handle, MaybeLocal<Object>
 			ContextHandle* context_handle
 		) : script(std::move(script)), context(context_handle->context) {
 			// Sanity check
+			context_handle->CheckDisposed();
 			if (isolate != context_handle->isolate.get()) {
 				throw js_generic_error("Invalid context");
 			}

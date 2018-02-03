@@ -3,6 +3,7 @@
 #include "external_copy.h"
 #include "external_copy_handle.h"
 #include "script_handle.h"
+#include "session_handle.h"
 #include "isolate/three_phase_task.h"
 #include <cmath>
 
@@ -143,7 +144,7 @@ Local<FunctionTemplate> IsolateHandle::Definition() {
 		"compileScriptSync", Parameterize<decltype(&IsolateHandle::CompileScript<false>), &IsolateHandle::CompileScript<false>>, 1,
 		"createContext", Parameterize<decltype(&IsolateHandle::CreateContext<true>), &IsolateHandle::CreateContext<true>>, 0,
 		"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContext<false>), &IsolateHandle::CreateContext<false>>, 0,
-//				"createInspectorSession", Parameterize<decltype(&IsolateHandle::CreateInspectorSession), &IsolateHandle::CreateInspectorSession>, 0,
+		"createInspectorSession", Parameterize<decltype(&IsolateHandle::CreateInspectorSession), &IsolateHandle::CreateInspectorSession>, 0,
 		"dispose", Parameterize<decltype(&IsolateHandle::Dispose), &IsolateHandle::Dispose>, 0,
 		"getHeapStatistics", Parameterize<decltype(&IsolateHandle::GetHeapStatistics), &IsolateHandle::GetHeapStatistics>, 0
 	));
@@ -162,6 +163,7 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 	shared_ptr<ExternalCopyArrayBuffer> snapshot_blob;
 	ResourceConstraints rc;
 	size_t memory_limit = 128;
+	bool inspector = false;
 
 	// Parse options
 	if (!maybe_options.IsEmpty()) {
@@ -194,6 +196,9 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 				throw js_type_error("`snapshot` must be an ExternalCopy to ArrayBuffer");
 			}
 		}
+
+		// Check inspector flag
+		inspector = Unmaybe(options->Get(context, v8_symbol("inspector")))->IsTrue();
 	}
 
 	// Set memory limit
@@ -202,7 +207,11 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 	auto allocator_ptr = std::make_unique<LimitedAllocator>(memory_limit * 1024 * 1024);
 
 	// Return isolate handle
-	return std::make_unique<IsolateHandle>(IsolateEnvironment::New(rc, std::move(allocator_ptr), std::move(snapshot_blob), memory_limit));
+	auto isolate = IsolateEnvironment::New(rc, std::move(allocator_ptr), std::move(snapshot_blob), memory_limit);
+	if (inspector) {
+		isolate->GetIsolate()->EnableInspectorAgent();
+	}
+	return std::make_unique<IsolateHandle>(isolate);
 }
 
 unique_ptr<Transferable> IsolateHandle::TransferOut() {
@@ -213,19 +222,73 @@ unique_ptr<Transferable> IsolateHandle::TransferOut() {
  * Create a new v8::Context in this isolate and returns a ContextHandle
  */
 template <bool async>
-Local<Value> IsolateHandle::CreateContext() {
+Local<Value> IsolateHandle::CreateContext(MaybeLocal<Object> maybe_options) {
 	struct CreateContext : public ThreePhaseTask {
+		bool enable_inspector = false;
 		shared_ptr<IsolateHolder> isolate;
 		shared_ptr<Persistent<Context>> context;
 		shared_ptr<Persistent<Value>> global;
 
-		CreateContext(shared_ptr<IsolateHolder> isolate) : isolate(std::move(isolate)) {}
+		CreateContext(MaybeLocal<Object>& maybe_options, shared_ptr<IsolateHolder> isolate) : isolate(std::move(isolate)) {
+			Local<Object> options;
+			if (maybe_options.ToLocal(&options)) {
+				Local<Value> enable_inspector = Unmaybe(options->Get(Isolate::GetCurrent()->GetCurrentContext(), v8_symbol("inspector")));
+				if (enable_inspector->IsTrue()) {
+					this->enable_inspector = true;
+				}
+			}
+		}
 
 		void Phase2() final {
-			// Make a new context and return the context and its global object
+			// Use custom deleter on the shared_ptr which will notify the isolate when the context is gone
+			struct ContextDeleter {
+				std::weak_ptr<IsolateHolder> isolate;
+				bool has_inspector;
+
+				explicit ContextDeleter(bool has_inspector) : isolate(IsolateEnvironment::GetCurrentHolder()), has_inspector(has_inspector) {}
+
+				void operator() (Persistent<Context>* ptr) {
+					// This part is called by any isolate. We need to schedule a task to run in the isolate so
+					// we can dispatch the correct notifications.
+					struct ContextDisposer : public Runnable {
+						unique_ptr<Persistent<Context>> context;
+						bool has_inspector;
+						ContextDisposer(unique_ptr<Persistent<Context>> context, bool has_inspector) : context(std::move(context)), has_inspector(has_inspector) {}
+						void Run() {
+							Isolate* isolate = Isolate::GetCurrent();
+							if (has_inspector) {
+								HandleScope handle_scope(isolate);
+								Local<Context> context = Local<Context>::New(isolate, *this->context);
+								this->context->Reset();
+								IsolateEnvironment::GetCurrent()->GetInspectorAgent()->ContextDestroyed(context);
+							}
+							this->context->Reset();
+							isolate->ContextDisposedNotification();
+						}
+					};
+					auto context = unique_ptr<Persistent<Context>>(ptr);
+					shared_ptr<IsolateHolder> isolate_ref = isolate.lock();
+					if (isolate_ref) {
+						isolate_ref->ScheduleTask(std::make_unique<ContextDisposer>(std::move(context), has_inspector), true, false);
+					}
+				}
+			};
+
 			Isolate* isolate = Isolate::GetCurrent();
+			auto env = IsolateEnvironment::GetCurrent();
+
+			// Sanity check before we build the context
+			if (enable_inspector && !env->GetInspectorAgent()) {
+				Context::Scope context_scope(env->DefaultContext()); // TODO: This is needed to throw, but is stupid and sloppy
+				throw js_generic_error("Inspector is not enabled for this isolate");
+			}
+
+			// Make a new context and setup shared pointers
 			Local<Context> context_handle = Context::New(isolate);
-			context = std::make_shared<Persistent<Context>>(isolate, context_handle);
+			if (enable_inspector) {
+				env->GetInspectorAgent()->ContextCreated(context_handle, "<isolated-vm>");
+			}
+			context = shared_ptr<Persistent<Context>>(new Persistent<Context>(isolate, context_handle), ContextDeleter(enable_inspector));
 			global = std::make_shared<Persistent<Value>>(isolate, context_handle->Global());
 		}
 
@@ -234,7 +297,7 @@ Local<Value> IsolateHandle::CreateContext() {
 			return ClassHandle::NewInstance<ContextHandle>(std::move(isolate), std::move(context), std::move(global));
 		}
 	};
-	return ThreePhaseTask::Run<async, CreateContext>(*isolate, isolate);
+	return ThreePhaseTask::Run<async, CreateContext>(*isolate, maybe_options, isolate);
 }
 
 /**
@@ -338,14 +401,19 @@ Local<Value> IsolateHandle::CompileScript(Local<String> code_handle, MaybeLocal<
 /**
  * Create a new channel for debugging on the inspector
  */
-/*
 Local<Value> IsolateHandle::CreateInspectorSession() {
 	if (IsolateEnvironment::GetCurrentHolder() == isolate) {
 		throw js_generic_error("An isolate is not debuggable from within itself");
 	}
-	return ClassHandle::NewInstance<SessionHandle>(isolate);
+	shared_ptr<IsolateEnvironment> env = isolate->GetIsolate();
+	if (!env) {
+		throw js_generic_error("Isolate is diposed");
+	}
+	if (!env->GetInspectorAgent()) {
+		throw js_generic_error("Inspector is not enabled for this isolate");
+	}
+	return ClassHandle::NewInstance<SessionHandle>(*env);
 }
-*/
 
 /**
  * Dispose an isolate
