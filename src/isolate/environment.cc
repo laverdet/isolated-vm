@@ -392,19 +392,13 @@ IsolateEnvironment::~IsolateEnvironment() {
 		// Dispose of inspector first
 		inspector_agent.reset();
 		// Kill all weak persistents
-		while (!weak_persistents.empty()) {
-			// TODO: This is definitely not the best way to clear this map. Also this should just be a
-			// set<> because the callback is the same
-			auto it = weak_persistents.begin();
-			Persistent<Object>* handle = it->first;
+		for (auto it = weak_persistents.begin(); it != weak_persistents.end(); ) {
 			void(*fn)(void*) = it->second.first;
 			void* param = it->second.second;
+			++it;
 			fn(param);
-			if (weak_persistents.find(handle) != weak_persistents.end()) {
-				// TODO: I can't throw from here
-				throw std::runtime_error("Weak persistent callback failed to remove from global set");
-			}
 		}
+		assert(weak_persistents.empty());
 		// Destroy outstanding tasks. Do this here while the executor lock is up.
 		Scheduler::Lock lock2(scheduler);
 		lock2.TakeInterrupts();
