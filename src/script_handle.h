@@ -6,6 +6,8 @@
 
 namespace ivm {
 
+class ContextHandle;
+
 class ScriptHandle : public TransferableHandle {
 	private:
 		class ScriptHandleTransferable : public Transferable {
@@ -34,7 +36,7 @@ class ScriptHandle : public TransferableHandle {
 		std::unique_ptr<Transferable> TransferOut() final;
 
 		template <bool async>
-		v8::Local<v8::Value> Run(class ContextHandle* context_handle, v8::MaybeLocal<v8::Object> maybe_options);
+		v8::Local<v8::Value> Run(ContextHandle* context_handle, v8::MaybeLocal<v8::Object> maybe_options);
 };
 
 } // namespace ivm
