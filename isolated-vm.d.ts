@@ -24,10 +24,12 @@ declare module 'isolated-vm' {
 
 				compileScriptSync(code: string, scriptInfo?: ScriptInfo): Script;
 
-				createContext(): Promise<Context>;
+				createContext(opts?: ContextOptions): Promise<Context>;
 
-				createContextSync(): Context;
+				createContextSync(opts?: ContextOptions): Context;
 			
+				createInspectorSession(): any;
+
 				/**
 				 * Returns heap statistics from v8.
 				 *
@@ -64,6 +66,12 @@ declare module 'isolated-vm' {
 				 * used to initialize the heap of this isolate.
 				 */
 				snapshot?: ExternalCopy<ArrayBuffer>;
+
+				inspector?: boolean
+		}
+
+		export interface ContextOptions {
+			inspector?: boolean
 		}
 
 		export interface HeapStatistics {
