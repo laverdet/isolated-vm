@@ -1,5 +1,5 @@
 #include "session_handle.h"
-#include "util.h"
+#include "isolate/util.h"
 
 using namespace v8;
 using namespace v8_inspector;
