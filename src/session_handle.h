@@ -19,12 +19,13 @@ class SessionHandle : public ClassHandle {
 		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();
 
+		void CheckDisposed();
 		v8::Local<v8::Value> DispatchProtocolMessage(v8::Local<v8::String> message);
 		v8::Local<v8::Value> Dispose();
-		static void OnNotificationGetter(v8::Local<v8::String> property, const v8::PropertyCallbackInfo<v8::Value>& info);
-		static void OnNotificationSetter(v8::Local<v8::String> property, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& info);
-		static void OnResponseGetter(v8::Local<v8::String> property, const v8::PropertyCallbackInfo<v8::Value>& info);
-		static void OnResponseSetter(v8::Local<v8::String> property, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& info);
+		v8::Local<v8::Value> OnNotificationGetter();
+		void OnNotificationSetter(v8::Local<v8::Function> value);
+		v8::Local<v8::Value> OnResponseGetter();
+		void OnResponseSetter(v8::Local<v8::Function> value);
 };
 
 }

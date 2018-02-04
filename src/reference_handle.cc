@@ -58,7 +58,7 @@ IsolateEnvironment::IsolateSpecific<FunctionTemplate>& ReferenceHandle::Template
 }
 
 Local<FunctionTemplate> ReferenceHandle::Definition() {
-	Local<FunctionTemplate> tmpl = Inherit<TransferableHandle>(MakeClass(
+	return Inherit<TransferableHandle>(MakeClass(
 		"Reference", ParameterizeCtor<decltype(&New), &New>, 1,
 		"deref", Parameterize<decltype(&ReferenceHandle::Deref), &ReferenceHandle::Deref>, 0,
 		"derefInto", Parameterize<decltype(&ReferenceHandle::DerefInto), &ReferenceHandle::DerefInto>, 0,
@@ -70,10 +70,9 @@ Local<FunctionTemplate> ReferenceHandle::Definition() {
 		"set", Parameterize<decltype(&ReferenceHandle::Set<true>), &ReferenceHandle::Set<true>>, 2,
 		"setSync", Parameterize<decltype(&ReferenceHandle::Set<false>), &ReferenceHandle::Set<false>>, 2,
 		"apply", Parameterize<decltype(&ReferenceHandle::Apply<true>), &ReferenceHandle::Apply<true>>, 2,
-		"applySync", Parameterize<decltype(&ReferenceHandle::Apply<false>), &ReferenceHandle::Apply<false>>, 2
+		"applySync", Parameterize<decltype(&ReferenceHandle::Apply<false>), &ReferenceHandle::Apply<false>>, 2,
+		"tyepof", ParameterizeAccessor<decltype(&ReferenceHandle::TypeOfGetter), &ReferenceHandle::TypeOfGetter>()
 	));
-	tmpl->InstanceTemplate()->SetAccessor(v8_symbol("typeof"), TypeOfGetter, nullptr, Local<Value>(), ALL_CAN_READ);
-	return tmpl;
 }
 
 unique_ptr<Transferable> ReferenceHandle::TransferOut() {
@@ -99,32 +98,23 @@ void ReferenceHandle::CheckDisposed() const {
 /**
  * Getter for typeof property.
  */
-void ReferenceHandle::TypeOfGetter(Local<String> property, const PropertyCallbackInfo<Value>& info) {
-	// TODO: This will crash if someone steals the getter and applies another object to it
-	ReferenceHandle& that = *dynamic_cast<ReferenceHandle*>(Unwrap(info.This()));
-	that.CheckDisposed();
-	switch (that.type_of) {
+Local<Value> ReferenceHandle::TypeOfGetter() {
+	CheckDisposed();
+	switch (type_of) {
 		case TypeOf::Null:
-			info.GetReturnValue().Set(v8_string("null"));
-			break;
+			return v8_string("null");
 		case TypeOf::Undefined:
-			info.GetReturnValue().Set(v8_string("undefined"));
-			break;
+			return v8_string("undefined");
 		case TypeOf::Number:
-			info.GetReturnValue().Set(v8_string("number"));
-			break;
+			return v8_string("number");
 		case TypeOf::String:
-			info.GetReturnValue().Set(v8_string("string"));
-			break;
+			return v8_string("string");
 		case TypeOf::Boolean:
-			info.GetReturnValue().Set(v8_string("boolean"));
-			break;
+			return v8_string("boolean");
 		case TypeOf::Object:
-			info.GetReturnValue().Set(v8_string("object"));
-			break;
+			return v8_string("object");
 		case TypeOf::Function:
-			info.GetReturnValue().Set(v8_string("function"));
-			break;
+			return v8_string("function");
 	}
 }
 

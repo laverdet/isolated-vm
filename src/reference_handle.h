@@ -54,7 +54,7 @@ class ReferenceHandle : public TransferableHandle {
 		std::unique_ptr<Transferable> TransferOut() final;
 		static std::unique_ptr<ReferenceHandle> New(v8::Local<v8::Value> var);
 
-		static void TypeOfGetter(v8::Local<v8::String> property, const v8::PropertyCallbackInfo<v8::Value>& info);
+		v8::Local<v8::Value> TypeOfGetter();
 		v8::Local<v8::Value> Deref();
 		v8::Local<v8::Value> DerefInto();
 		v8::Local<v8::Value> Dispose();

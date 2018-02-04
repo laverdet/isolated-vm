@@ -100,75 +100,71 @@ IsolateEnvironment::IsolateSpecific<FunctionTemplate>& SessionHandle::TemplateSp
 }
 
 Local<FunctionTemplate> SessionHandle::Definition() {
-	Local<FunctionTemplate> tmpl = MakeClass(
+	return MakeClass(
 		"Session", nullptr, 0,
 		"dispatchProtocolMessage", Parameterize<decltype(&SessionHandle::DispatchProtocolMessage), &SessionHandle::DispatchProtocolMessage>, 1,
-		"dispose", Parameterize<decltype(&SessionHandle::Dispose), &SessionHandle::Dispose>, 0
+		"dispose", Parameterize<decltype(&SessionHandle::Dispose), &SessionHandle::Dispose>, 0,
+		"onNotification", ParameterizeAccessor<
+			decltype(&SessionHandle::OnNotificationGetter), &SessionHandle::OnNotificationGetter,
+			decltype(&SessionHandle::OnNotificationSetter), &SessionHandle::OnNotificationSetter
+		>(),
+		"onResponse", ParameterizeAccessor<
+			decltype(&SessionHandle::OnResponseGetter), &SessionHandle::OnResponseGetter,
+			decltype(&SessionHandle::OnResponseSetter), &SessionHandle::OnResponseSetter
+		>()
 	);
-	tmpl->InstanceTemplate()->SetAccessor(v8_symbol("onNotification"), OnNotificationGetter, OnNotificationSetter);
-	tmpl->InstanceTemplate()->SetAccessor(v8_symbol("onResponse"), OnResponseGetter, OnResponseSetter);
-	return tmpl;
+}
+
+void SessionHandle::CheckDisposed() {
+	if (!session) {
+		throw js_generic_error("Session is dead");
+	}
 }
 
 /**
  * JS API methods
  */
 Local<Value> SessionHandle::DispatchProtocolMessage(Local<String> message) {
-	if (!session) {
-		throw js_generic_error("Session is dead");
-	}
+	CheckDisposed();
 	String::Value v8_str(message);
 	session->DispatchBackendProtocolMessage(std::vector<uint16_t>(*v8_str, *v8_str + v8_str.length()));
 	return Undefined(Isolate::GetCurrent());
 }
 
 Local<Value> SessionHandle::Dispose() {
-	if (session) {
-		session.reset();
-	} else {
-		throw js_generic_error("Session is dead");
-	}
+	CheckDisposed();
+	session.reset();
 	return Undefined(Isolate::GetCurrent());
 }
 
 // .onNotification
-void SessionHandle::OnNotificationGetter(Local<String> property, const PropertyCallbackInfo<Value>& info) {
-	SessionHandle& that = *dynamic_cast<SessionHandle*>(Unwrap(info.This()));
-	if (that.session) {
-		if (that.session->onNotification) {
-			info.GetReturnValue().Set(Deref(*that.session->onNotification));
-		}
+Local<Value> SessionHandle::OnNotificationGetter() {
+	CheckDisposed();
+	if (session->onNotification) {
+		return Deref(*session->onNotification);
+	} else {
+		return Undefined(Isolate::GetCurrent());
 	}
 }
 
-void SessionHandle::OnNotificationSetter(Local<String> property, Local<Value> value, const PropertyCallbackInfo<void>& info) {
-	SessionHandle& that = *dynamic_cast<SessionHandle*>(Unwrap(info.This()));
-	if (that.session) {
-		if (!value->IsFunction()) {
-			Isolate::GetCurrent()->ThrowException(Exception::TypeError(v8_string("`onNotification` must be a function")));
-		}
-		that.session->onNotification = std::make_shared<Persistent<Function>>(Isolate::GetCurrent(), value.As<Function>());
-	}
+void SessionHandle::OnNotificationSetter(Local<Function> value) {
+	CheckDisposed();
+	session->onNotification = std::make_shared<Persistent<Function>>(Isolate::GetCurrent(), value);
 }
 
 // .onResponse
-void SessionHandle::OnResponseGetter(Local<String> property, const PropertyCallbackInfo<Value>& info) {
-	SessionHandle& that = *dynamic_cast<SessionHandle*>(Unwrap(info.This()));
-	if (that.session) {
-		if (that.session->onResponse) {
-			info.GetReturnValue().Set(Deref(*that.session->onResponse));
-		}
+Local<Value> SessionHandle::OnResponseGetter() {
+	CheckDisposed();
+	if (session->onResponse) {
+		return Deref(*session->onResponse);
+	} else {
+		return Undefined(Isolate::GetCurrent());
 	}
 }
 
-void SessionHandle::OnResponseSetter(Local<String> property, Local<Value> value, const PropertyCallbackInfo<void>& info) {
-	SessionHandle& that = *dynamic_cast<SessionHandle*>(Unwrap(info.This()));
-	if (that.session) {
-		if (!value->IsFunction()) {
-			Isolate::GetCurrent()->ThrowException(Exception::TypeError(v8_string("`onResponse` must be a function")));
-		}
-		that.session->onResponse = std::make_shared<Persistent<Function>>(Isolate::GetCurrent(), value.As<Function>());
-	}
+void SessionHandle::OnResponseSetter(Local<Function> value) {
+	CheckDisposed();
+	session->onResponse = std::make_shared<Persistent<Function>>(Isolate::GetCurrent(), value);
 }
 
 }
