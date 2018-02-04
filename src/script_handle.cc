@@ -31,8 +31,9 @@ IsolateEnvironment::IsolateSpecific<FunctionTemplate>& ScriptHandle::TemplateSpe
 Local<FunctionTemplate> ScriptHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Script", nullptr,
-		"run", Parameterize<decltype(&ScriptHandle::Run<true>), &ScriptHandle::Run<true>>(),
-		"runSync", Parameterize<decltype(&ScriptHandle::Run<false>), &ScriptHandle::Run<false>>()
+		"run", Parameterize<decltype(&ScriptHandle::Run<1>), &ScriptHandle::Run<1>>(),
+		"runIgnored", Parameterize<decltype(&ScriptHandle::Run<2>), &ScriptHandle::Run<2>>(),
+		"runSync", Parameterize<decltype(&ScriptHandle::Run<0>), &ScriptHandle::Run<0>>()
 	));
 }
 
@@ -43,7 +44,7 @@ std::unique_ptr<Transferable> ScriptHandle::TransferOut() {
 /*
  * Run this script in a given context
  */
-template <bool async>
+template <int async>
 Local<Value> ScriptHandle::Run(ContextHandle* context_handle, MaybeLocal<Object> maybe_options) {
 	struct Run : public ThreePhaseTask {
 		uint32_t timeout_ms = 0;

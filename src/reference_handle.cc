@@ -63,14 +63,16 @@ Local<FunctionTemplate> ReferenceHandle::Definition() {
 		"deref", Parameterize<decltype(&ReferenceHandle::Deref), &ReferenceHandle::Deref>(),
 		"derefInto", Parameterize<decltype(&ReferenceHandle::DerefInto), &ReferenceHandle::DerefInto>(),
 		"dispose", Parameterize<decltype(&ReferenceHandle::Dispose), &ReferenceHandle::Dispose>(),
-		"copy", Parameterize<decltype(&ReferenceHandle::Copy<true>), &ReferenceHandle::Copy<true>>(),
-		"copySync", Parameterize<decltype(&ReferenceHandle::Copy<false>), &ReferenceHandle::Copy<false>>(),
-		"get", Parameterize<decltype(&ReferenceHandle::Get<true>), &ReferenceHandle::Get<true>>(),
-		"getSync", Parameterize<decltype(&ReferenceHandle::Get<false>), &ReferenceHandle::Get<false>>(),
-		"set", Parameterize<decltype(&ReferenceHandle::Set<true>), &ReferenceHandle::Set<true>>(),
-		"setSync", Parameterize<decltype(&ReferenceHandle::Set<false>), &ReferenceHandle::Set<false>>(),
-		"apply", Parameterize<decltype(&ReferenceHandle::Apply<true>), &ReferenceHandle::Apply<true>>(),
-		"applySync", Parameterize<decltype(&ReferenceHandle::Apply<false>), &ReferenceHandle::Apply<false>>(),
+		"copy", Parameterize<decltype(&ReferenceHandle::Copy<1>), &ReferenceHandle::Copy<1>>(),
+		"copySync", Parameterize<decltype(&ReferenceHandle::Copy<0>), &ReferenceHandle::Copy<0>>(),
+		"get", Parameterize<decltype(&ReferenceHandle::Get<1>), &ReferenceHandle::Get<1>>(),
+		"getSync", Parameterize<decltype(&ReferenceHandle::Get<0>), &ReferenceHandle::Get<0>>(),
+		"set", Parameterize<decltype(&ReferenceHandle::Set<1>), &ReferenceHandle::Set<1>>(),
+		"setIgnored", Parameterize<decltype(&ReferenceHandle::Set<2>), &ReferenceHandle::Set<2>>(),
+		"setSync", Parameterize<decltype(&ReferenceHandle::Set<0>), &ReferenceHandle::Set<0>>(),
+		"apply", Parameterize<decltype(&ReferenceHandle::Apply<1>), &ReferenceHandle::Apply<1>>(),
+		"applyIgnored", Parameterize<decltype(&ReferenceHandle::Apply<2>), &ReferenceHandle::Apply<2>>(),
+		"applySync", Parameterize<decltype(&ReferenceHandle::Apply<0>), &ReferenceHandle::Apply<0>>(),
 		"tyepof", ParameterizeAccessor<decltype(&ReferenceHandle::TypeOfGetter), &ReferenceHandle::TypeOfGetter>()
 	));
 }
@@ -151,7 +153,7 @@ Local<Value> ReferenceHandle::Dispose() {
 /**
  * Copy this reference's value into this isolate
  */
-template <bool async>
+template <int async>
 Local<Value> ReferenceHandle::Copy() {
 	struct Copy : public ThreePhaseTask {
 		shared_ptr<Persistent<Context>> context;
@@ -182,7 +184,7 @@ Local<Value> ReferenceHandle::Copy() {
 /**
  * Get a property from this reference, returned as another reference
  */
-template <bool async>
+template <int async>
 Local<Value> ReferenceHandle::Get(Local<Value> key_handle) {
 	struct Get : public ThreePhaseTask {
 		unique_ptr<ExternalCopy> key;
@@ -227,7 +229,7 @@ Local<Value> ReferenceHandle::Get(Local<Value> key_handle) {
 /**
  * Attempt to set a property on this reference
  */
-template <bool async>
+template <int async>
 Local<Value> ReferenceHandle::Set(Local<Value> key_handle, Local<Value> val_handle) {
 	struct Set : public ThreePhaseTask {
 		unique_ptr<ExternalCopy> key;
@@ -270,7 +272,7 @@ Local<Value> ReferenceHandle::Set(Local<Value> key_handle, Local<Value> val_hand
 /**
  * Call a function, like Function.prototype.apply
  */
-template <bool async>
+template <int async>
 Local<Value> ReferenceHandle::Apply(MaybeLocal<Value> recv_handle, MaybeLocal<Array> maybe_arguments, MaybeLocal<Object> maybe_options) {
 	struct Apply : public ThreePhaseTask {
 		shared_ptr<Persistent<Context>> context;

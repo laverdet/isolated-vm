@@ -53,8 +53,8 @@ IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& NativeModuleHandle::T
 Local<FunctionTemplate> NativeModuleHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 		"NativeModule", ParameterizeCtor<decltype(&New), &New>(),
-		"create", Parameterize<decltype(&NativeModuleHandle::Create<true>), &NativeModuleHandle::Create<true>>(),
-		"createSync", Parameterize<decltype(&NativeModuleHandle::Create<false>), &NativeModuleHandle::Create<false>>()
+		"create", Parameterize<decltype(&NativeModuleHandle::Create<1>), &NativeModuleHandle::Create<1>>(),
+		"createSync", Parameterize<decltype(&NativeModuleHandle::Create<0>), &NativeModuleHandle::Create<0>>()
 	));
 }
 
@@ -68,7 +68,7 @@ unique_ptr<Transferable> NativeModuleHandle::TransferOut() {
 	return std::make_unique<NativeModuleTransferable>(module);
 }
 
-template <bool async>
+template <int async>
 Local<Value> NativeModuleHandle::Create(class ContextHandle* context_handle) {
 	class Create : public ThreePhaseTask {
 		private:

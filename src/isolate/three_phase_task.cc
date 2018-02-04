@@ -7,6 +7,9 @@ using std::unique_ptr;
 
 namespace ivm {
 
+/**
+ * Phase2Runner implementation
+ */
 ThreePhaseTask::Phase2Runner::Phase2Runner(
 	unique_ptr<ThreePhaseTask> self,
 	shared_ptr<IsolateHolder> first_isolate_ref,
@@ -136,6 +139,23 @@ void ThreePhaseTask::Phase2Runner::Run() {
 	first_isolate_ref->ScheduleTask(std::make_unique<Phase3Failure>(std::move(self), std::move(promise_persistent), std::move(context_persistent), std::move(err)), false, true);
 }
 
+/**
+ * Phase2RunnerIgnored implementation
+ */
+ThreePhaseTask::Phase2RunnerIgnored::Phase2RunnerIgnored(unique_ptr<ThreePhaseTask> self) : self(std::move(self)) {}
+
+void ThreePhaseTask::Phase2RunnerIgnored::Run() {
+	TryCatch try_catch(Isolate::GetCurrent());
+	try {
+		self->Phase2();
+		IsolateEnvironment::GetCurrent()->TaskEpilogue();
+	} catch (const js_runtime_error& cc_error) {
+	} catch (const js_fatal_error& cc_error) {}
+}
+
+/**
+ * RunSync implementation
+ */
 Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate) {
 	// Grab a reference to second isolate
 	auto second_isolate_ref = second_isolate.GetIsolate();

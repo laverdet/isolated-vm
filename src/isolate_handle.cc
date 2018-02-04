@@ -141,14 +141,14 @@ Local<FunctionTemplate> IsolateHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 	 "Isolate", ParameterizeCtor<decltype(&New), &New>(),
 		"createSnapshot", ParameterizeStatic<decltype(&CreateSnapshot), &CreateSnapshot>(),
-		"compileScript", Parameterize<decltype(&IsolateHandle::CompileScript<true>), &IsolateHandle::CompileScript<true>>(),
-		"compileScriptSync", Parameterize<decltype(&IsolateHandle::CompileScript<false>), &IsolateHandle::CompileScript<false>>(),
-		"createContext", Parameterize<decltype(&IsolateHandle::CreateContext<true>), &IsolateHandle::CreateContext<true>>(),
-		"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContext<false>), &IsolateHandle::CreateContext<false>>(),
+		"compileScript", Parameterize<decltype(&IsolateHandle::CompileScript<1>), &IsolateHandle::CompileScript<1>>(),
+		"compileScriptSync", Parameterize<decltype(&IsolateHandle::CompileScript<0>), &IsolateHandle::CompileScript<0>>(),
+		"createContext", Parameterize<decltype(&IsolateHandle::CreateContext<1>), &IsolateHandle::CreateContext<1>>(),
+		"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContext<0>), &IsolateHandle::CreateContext<0>>(),
 		"createInspectorSession", Parameterize<decltype(&IsolateHandle::CreateInspectorSession), &IsolateHandle::CreateInspectorSession>(),
 		"dispose", Parameterize<decltype(&IsolateHandle::Dispose), &IsolateHandle::Dispose>(),
-		"getHeapStatistics", Parameterize<decltype(&IsolateHandle::GetHeapStatistics<true>), &IsolateHandle::GetHeapStatistics<true>>(),
-		"getHeapStatisticsSync", Parameterize<decltype(&IsolateHandle::GetHeapStatistics<false>), &IsolateHandle::GetHeapStatistics<false>>()
+		"getHeapStatistics", Parameterize<decltype(&IsolateHandle::GetHeapStatistics<1>), &IsolateHandle::GetHeapStatistics<1>>(),
+		"getHeapStatisticsSync", Parameterize<decltype(&IsolateHandle::GetHeapStatistics<0>), &IsolateHandle::GetHeapStatistics<0>>()
 	));
 }
 
@@ -218,7 +218,7 @@ unique_ptr<Transferable> IsolateHandle::TransferOut() {
 /**
  * Create a new v8::Context in this isolate and returns a ContextHandle
  */
-template <bool async>
+template <int async>
 Local<Value> IsolateHandle::CreateContext(MaybeLocal<Object> maybe_options) {
 	struct CreateContext : public ThreePhaseTask {
 		bool enable_inspector = false;
@@ -300,7 +300,7 @@ Local<Value> IsolateHandle::CreateContext(MaybeLocal<Object> maybe_options) {
 /**
  * Compiles a script in this isolate and returns a ScriptHandle
  */
-template <bool async>
+template <int async>
 Local<Value> IsolateHandle::CompileScript(Local<String> code_handle, MaybeLocal<Object> maybe_options) {
 	struct CompileScript : public ThreePhaseTask {
 		// phase 2
@@ -423,7 +423,7 @@ Local<Value> IsolateHandle::Dispose() {
 /**
  * Get heap statistics from v8
  */
-template <bool async>
+template <int async>
 Local<Value> IsolateHandle::GetHeapStatistics() {
 	struct HeapStatRunner : public ThreePhaseTask {
 		HeapStatistics heap;

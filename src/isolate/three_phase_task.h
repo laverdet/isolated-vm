@@ -39,6 +39,12 @@ class ThreePhaseTask {
 			void Run() final;
 		};
 
+		struct Phase2RunnerIgnored : public Runnable {
+			std::unique_ptr<ThreePhaseTask> self;
+			Phase2RunnerIgnored(std::unique_ptr<ThreePhaseTask> self);
+			void Run() final;
+		};
+
 		v8::Local<v8::Value> RunSync(IsolateHolder& second_isolate);
 
 	public:
@@ -50,10 +56,10 @@ class ThreePhaseTask {
 		virtual void Phase2() = 0;
 		virtual v8::Local<v8::Value> Phase3() = 0;
 
-		template <bool async, typename T, typename ...Args>
+		template <int async, typename T, typename ...Args>
 		static v8::Local<v8::Value> Run(IsolateHolder& second_isolate, Args&&... args) {
 
-			if (async) {
+			if (async == 1) { // Full async, promise returned
 				// Build a promise for outer isolate
 				v8::Isolate* isolate = v8::Isolate::GetCurrent();
 				auto context_local = isolate->GetCurrentContext();
@@ -77,6 +83,14 @@ class ThreePhaseTask {
 					Unmaybe(ret);
 				}
 				return promise_local->GetPromise();
+			} else if (async == 2) { // Async, promise ignored
+				// Schedule Phase2 async
+				second_isolate.ScheduleTask(
+					std::make_unique<Phase2RunnerIgnored>(
+						std::make_unique<T>(std::forward<Args>(args)...) // <-- Phase1 / ctor called here
+					), false, true
+				);
+				return v8::Undefined(v8::Isolate::GetCurrent());
 			} else {
 				// Execute syncronously
 				T self(std::forward<Args>(args)...);

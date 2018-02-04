@@ -23,6 +23,14 @@ best for your project and sticking to it throughout your code, i.e. don't mix an
 code. The only strict technical limitation, though, is that you may not call a synchronous method
 from within a asynchronous method.
 
+Additionally, some methods will provide an "ignored" version which runs asynchronously but returns
+no promise. This can be a good option when the calling isolate would ignore the promise anyway,
+since the ignored versions can skip an extra thread synchronization. Just be careful because this
+swallows any thrown exceptions which might make problems hard to track down. It's also worth noting
+that all asynchronous invocations will run in the order they were queued, regardless of whether or
+not you wait on them. So, for instance, you could call several "ignored" methods in a row and then
+`await` on a final async method to observe some side-effect of the ignored methods.
+
 
 ### Class: `Isolate` *[transferable]*
 This is the main reference to an isolate. Every handle to an isolate is transferable, which means
@@ -118,6 +126,7 @@ A script is a compiled chunk of JavaScript which can be executed in any context 
 isolate.
 
 ##### `script.run(context)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `script.runIgnored(context)`
 ##### `script.runSync(context)`
 * `context` *[`Context`](#class-context-transferable)* - The context in which this script will run.
 * `options` *[object]*
@@ -158,7 +167,7 @@ thrown.
 Returns an object, which when passed to another isolate will cause that isolate to dereference the
 handle.
 
-#### `reference.dispose()`
+##### `reference.dispose()`
 
 Releases this reference. If you're passing around a lot of references between isolates it's wise to
 release the references when you are done. Otherwise you may run into issues with isolates running
@@ -173,6 +182,7 @@ all attempts to access the reference will throw an error.
 Will access a reference as if using `reference[property]` and return a reference to that value.
 
 ##### `reference.set(property, value)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `reference.setIgnored(property, value)`
 ##### `reference.setSync(property, value)`
 * `property` *[transferable]* - The property to set on this object.
 * `value` *[transferable]* - The value to set on this object.
@@ -182,6 +192,7 @@ Returns a boolean indicating whether or not this operation succeeded. I'm actual
 when `false` would be returned, I'm just giving you the result back straight from the v8 API.
 
 ##### `reference.apply(receiver, arguments)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `reference.applyIgnored(receiver, arguments)`
 ##### `reference.applySync(receiver, arguments)`
 * `receiver` *[transferable]* - The value which will be `this`.
 * `arguments` *[array]* - Array of transferables which will be passed to the function.

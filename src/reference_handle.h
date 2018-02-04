@@ -58,10 +58,10 @@ class ReferenceHandle : public TransferableHandle {
 		v8::Local<v8::Value> Deref();
 		v8::Local<v8::Value> DerefInto();
 		v8::Local<v8::Value> Dispose();
-		template <bool async> v8::Local<v8::Value> Copy();
-		template <bool async> v8::Local<v8::Value> Get(v8::Local<v8::Value> key_handle);
-		template <bool async> v8::Local<v8::Value> Set(v8::Local<v8::Value> key_handle, v8::Local<v8::Value> val_handle);
-		template <bool async> v8::Local<v8::Value> Apply(
+		template <int async> v8::Local<v8::Value> Copy();
+		template <int async> v8::Local<v8::Value> Get(v8::Local<v8::Value> key_handle);
+		template <int async> v8::Local<v8::Value> Set(v8::Local<v8::Value> key_handle, v8::Local<v8::Value> val_handle);
+		template <int async> v8::Local<v8::Value> Apply(
 			v8::MaybeLocal<v8::Value> recv_handle,
 			v8::MaybeLocal<v8::Array> maybe_arguments,
 			v8::MaybeLocal<v8::Object> maybe_options

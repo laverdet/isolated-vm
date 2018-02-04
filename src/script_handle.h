@@ -35,7 +35,7 @@ class ScriptHandle : public TransferableHandle {
 		static v8::Local<v8::FunctionTemplate> Definition();
 		std::unique_ptr<Transferable> TransferOut() final;
 
-		template <bool async>
+		template <int async>
 		v8::Local<v8::Value> Run(ContextHandle* context_handle, v8::MaybeLocal<v8::Object> maybe_options);
 };
 

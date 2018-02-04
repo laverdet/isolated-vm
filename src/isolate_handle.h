@@ -27,11 +27,11 @@ class IsolateHandle : public TransferableHandle {
 		static std::unique_ptr<ClassHandle> New(v8::MaybeLocal<v8::Object> maybe_options);
 		std::unique_ptr<Transferable> TransferOut() final;
 
-		template <bool async> v8::Local<v8::Value> CreateContext(v8::MaybeLocal<v8::Object> maybe_options);
-		template <bool async> v8::Local<v8::Value> CompileScript(v8::Local<v8::String> code_handle, v8::MaybeLocal<v8::Object> maybe_options);
+		template <int async> v8::Local<v8::Value> CreateContext(v8::MaybeLocal<v8::Object> maybe_options);
+		template <int async> v8::Local<v8::Value> CompileScript(v8::Local<v8::String> code_handle, v8::MaybeLocal<v8::Object> maybe_options);
 		v8::Local<v8::Value> CreateInspectorSession();
 		v8::Local<v8::Value> Dispose();
-		template <bool async> v8::Local<v8::Value> GetHeapStatistics();
+		template <int async> v8::Local<v8::Value> GetHeapStatistics();
 		static v8::Local<v8::Value> CreateSnapshot(v8::Local<v8::Array> script_handles, v8::MaybeLocal<v8::String> warmup_handle);
 };
 
