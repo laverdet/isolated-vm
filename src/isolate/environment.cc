@@ -156,7 +156,7 @@ void IsolateEnvironment::Scheduler::Lock::InterruptIsolate(IsolateEnvironment& i
  * HeapCheck implementation
  */
 IsolateEnvironment::HeapCheck::HeapCheck(IsolateEnvironment& env, size_t expected_size) : env(env), did_increase(false) {
-	if (expected_size > 1024) {
+	if (expected_size > 1024 && !env.root) {
 		HeapStatistics heap;
 		env.GetIsolate()->GetHeapStatistics(&heap);
 		size_t old_space = env.memory_limit * 1024 * 1024 * 2;
