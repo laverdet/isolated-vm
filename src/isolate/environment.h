@@ -303,14 +303,6 @@ class IsolateEnvironment {
 		void TaskEpilogue();
 
 		/**
-		 * Fetch heap statistics from v8. This isn't explicitly marked as safe to do without a locker,
-		 * but based on the code it'll be fine unless you do something crazy like call Dispose() in the
-		 * one nanosecond this is running. And even that should be impossible because of the queue lock
-		 * we get.
-		 */
-		v8::HeapStatistics GetHeapStatistics() const;
-
-		/**
 		 * Get allocator used by this isolate. Will return nullptr for the default isolate.
 		 */
 		v8::ArrayBuffer::Allocator* GetAllocator() const {

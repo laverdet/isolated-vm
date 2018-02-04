@@ -1,7 +1,7 @@
 'use strict';
 let ivm = require('isolated-vm');
 let isolate = new ivm.Isolate;
-let size1 = isolate.getHeapStatistics();
+let size1 = isolate.getHeapStatisticsSync();
 let context = isolate.createContextSync();
 let global = context.globalReference();
 global.setSync('global', global.derefInto());
@@ -13,7 +13,7 @@ for (let ii = 0; ii < 100000; ++ii) {
 }
 `);
 script.runSync(context);
-let size2 = isolate.getHeapStatistics();
+let size2 = isolate.getHeapStatisticsSync();
 if (size1.total_heap_size === size2.total_heap_size) {
 	console.log('heap didn\'t increase?');
 } else if (size2.externally_allocated_size !== 1024) {

@@ -31,7 +31,7 @@ class IsolateHandle : public TransferableHandle {
 		template <bool async> v8::Local<v8::Value> CompileScript(v8::Local<v8::String> code_handle, v8::MaybeLocal<v8::Object> maybe_options);
 		v8::Local<v8::Value> CreateInspectorSession();
 		v8::Local<v8::Value> Dispose();
-		v8::Local<v8::Value> GetHeapStatistics();
+		template <bool async> v8::Local<v8::Value> GetHeapStatistics();
 		static v8::Local<v8::Value> CreateSnapshot(v8::Local<v8::Array> script_handles, v8::MaybeLocal<v8::String> warmup_handle);
 };
 

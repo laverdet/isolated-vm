@@ -87,7 +87,8 @@ Note that a [`Script`](#class-script-transferable) can only run in the isolate w
 ##### `isolate.dispose()`
 Destroys this isolate and invalidates all references obtained from it.
 
-##### `isolate.getHeapStatistics()`
+##### `isolate.getHeapStatistics()` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `isolate.getHeapStatisticsSync()`
 * **return** [object]
 
 Returns heap statistics from v8. The return value is almost identical to the nodejs function

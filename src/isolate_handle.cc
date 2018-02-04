@@ -147,7 +147,8 @@ Local<FunctionTemplate> IsolateHandle::Definition() {
 		"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContext<false>), &IsolateHandle::CreateContext<false>>(),
 		"createInspectorSession", Parameterize<decltype(&IsolateHandle::CreateInspectorSession), &IsolateHandle::CreateInspectorSession>(),
 		"dispose", Parameterize<decltype(&IsolateHandle::Dispose), &IsolateHandle::Dispose>(),
-		"getHeapStatistics", Parameterize<decltype(&IsolateHandle::GetHeapStatistics), &IsolateHandle::GetHeapStatistics>()
+		"getHeapStatistics", Parameterize<decltype(&IsolateHandle::GetHeapStatistics<true>), &IsolateHandle::GetHeapStatistics<true>>(),
+		"getHeapStatisticsSync", Parameterize<decltype(&IsolateHandle::GetHeapStatistics<false>), &IsolateHandle::GetHeapStatistics<false>>()
 	));
 }
 
@@ -422,25 +423,34 @@ Local<Value> IsolateHandle::Dispose() {
 /**
  * Get heap statistics from v8
  */
+template <bool async>
 Local<Value> IsolateHandle::GetHeapStatistics() {
-	auto ptr = isolate->GetIsolate();
-	if (!ptr) {
-		throw js_generic_error("Isolate is disposed");
-	}
-	HeapStatistics heap = ptr->GetHeapStatistics();
-	LimitedAllocator* allocator = static_cast<LimitedAllocator*>(ptr->GetAllocator());
-	Local<Object> ret = Object::New(Isolate::GetCurrent());
-	ret->Set(v8_string("total_heap_size"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.total_heap_size()));
-	ret->Set(v8_string("total_heap_size_executable"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.total_heap_size_executable()));
-	ret->Set(v8_string("total_physical_size"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.total_physical_size()));
-	ret->Set(v8_string("total_available_size"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.total_available_size()));
-	ret->Set(v8_string("used_heap_size"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.used_heap_size()));
-	ret->Set(v8_string("heap_size_limit"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.heap_size_limit()));
-	ret->Set(v8_string("malloced_memory"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.malloced_memory()));
-	ret->Set(v8_string("peak_malloced_memory"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.peak_malloced_memory()));
-	ret->Set(v8_string("does_zap_garbage"), Integer::NewFromUnsigned(Isolate::GetCurrent(), heap.does_zap_garbage()));
-	ret->Set(v8_string("externally_allocated_size"), Integer::NewFromUnsigned(Isolate::GetCurrent(), allocator->GetAllocatedSize()));
-	return ret;
+	struct HeapStatRunner : public ThreePhaseTask {
+		HeapStatistics heap;
+		size_t externally_allocated_size;
+
+		void Phase2() final {
+			Isolate::GetCurrent()->GetHeapStatistics(&heap);
+			externally_allocated_size = static_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator())->GetAllocatedSize();
+		}
+
+		Local<Value> Phase3() final {
+			Isolate* isolate = Isolate::GetCurrent();
+			Local<Object> ret = Object::New(isolate);
+			ret->Set(v8_string("total_heap_size"), Integer::NewFromUnsigned(isolate, heap.total_heap_size()));
+			ret->Set(v8_string("total_heap_size_executable"), Integer::NewFromUnsigned(isolate, heap.total_heap_size_executable()));
+			ret->Set(v8_string("total_physical_size"), Integer::NewFromUnsigned(isolate, heap.total_physical_size()));
+			ret->Set(v8_string("total_available_size"), Integer::NewFromUnsigned(isolate, heap.total_available_size()));
+			ret->Set(v8_string("used_heap_size"), Integer::NewFromUnsigned(isolate, heap.used_heap_size()));
+			ret->Set(v8_string("heap_size_limit"), Integer::NewFromUnsigned(isolate, heap.heap_size_limit()));
+			ret->Set(v8_string("malloced_memory"), Integer::NewFromUnsigned(isolate, heap.malloced_memory()));
+			ret->Set(v8_string("peak_malloced_memory"), Integer::NewFromUnsigned(isolate, heap.peak_malloced_memory()));
+			ret->Set(v8_string("does_zap_garbage"), Integer::NewFromUnsigned(isolate, heap.does_zap_garbage()));
+			ret->Set(v8_string("externally_allocated_size"), Integer::NewFromUnsigned(isolate, externally_allocated_size));
+			return ret;
+		}
+	};
+	return ThreePhaseTask::Run<async, HeapStatRunner>(*isolate);
 }
 
 /**

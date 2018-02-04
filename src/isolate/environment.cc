@@ -422,12 +422,6 @@ void IsolateEnvironment::TaskEpilogue() {
 	}
 }
 
-HeapStatistics IsolateEnvironment::GetHeapStatistics() const {
-	HeapStatistics heap;
-	isolate->GetHeapStatistics(&heap);
-	return heap;
-}
-
 void IsolateEnvironment::EnableInspectorAgent() {
 	inspector_agent = std::make_unique<InspectorAgent>(*this);
 }
