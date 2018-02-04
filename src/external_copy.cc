@@ -1,5 +1,6 @@
 #include "external_copy.h"
 
+#include "isolate/environment.h"
 #include "isolate/util.h"
 
 #include <cstring>
@@ -53,14 +54,10 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value) {
 		}
 		return make_unique<ExternalCopyArrayBufferView>(view, type);
 	} else if (value->IsObject()) {
-		Local<String> string = Unmaybe(JSON::Stringify(Isolate::GetCurrent()->GetCurrentContext(), Local<Object>::Cast(value)));
-		if (string->StrictEquals(v8_symbol("undefined"))) {
-			// v8 will return the string literal 'undefined' if there was a non-throw exception, like
-			// JSON.stringify(undefined). So we have to specifically check for that because 'undefined'
-			// isn't valid JSON
-			throw js_type_error("Could not JSON.stringify() object for an external copy");
-		}
-		return make_unique<ExternalCopyJSON>(string);
+		Isolate* isolate = Isolate::GetCurrent();
+		ValueSerializer serializer(isolate);
+		Unmaybe(serializer.WriteValue(isolate->GetCurrentContext(), value));
+		return make_unique<ExternalCopySerialized>(serializer.Release());
 	} else {
 		// ???
 		assert(false);
@@ -141,21 +138,35 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 	return CopyIfPrimitive(value);
 }
 
+Local<Value> ExternalCopy::CopyIntoCheckHeap() {
+	IsolateEnvironment::HeapCheck heap_check(*IsolateEnvironment::GetCurrent(), WorstCaseHeapSize());
+	auto value = CopyInto();
+	heap_check.Epilogue();
+	return value;
+}
+
 Local<Value> ExternalCopy::TransferIn() {
-	return CopyInto();
+	return CopyIntoCheckHeap();
 }
 
 /**
- * ExternalCopyJSON implemtation
+ * ExternalCopySerialized implemtation
  */
-ExternalCopyJSON::ExternalCopyJSON(const Local<Value>& value) : blob(value) {}
+ExternalCopySerialized::ExternalCopySerialized(std::pair<uint8_t*, size_t> val) : buffer(val.first, std::free), size(val.second) {}
 
-Local<Value> ExternalCopyJSON::CopyInto() const {
-	return Unmaybe(JSON::Parse(Isolate::GetCurrent()->GetCurrentContext(), Local<String>::Cast(blob.CopyInto())));
+Local<Value> ExternalCopySerialized::CopyInto() const {
+	Isolate* isolate = Isolate::GetCurrent();
+	ValueDeserializer deserializer(isolate, buffer.get(), size);
+	return Unmaybe(deserializer.ReadValue(isolate->GetCurrentContext()));
 }
 
-size_t ExternalCopyJSON::Size() const {
-	return blob.Size();
+size_t ExternalCopySerialized::Size() const {
+	return size;
+}
+
+uint32_t ExternalCopySerialized::WorstCaseHeapSize() const {
+	// The worst I could come up with was an array of strings each with length 2.
+	return size * 6;
 }
 
 /**
@@ -208,6 +219,10 @@ size_t ExternalCopyError::Size() const {
 		(stack ? stack->Size() : 0);
 }
 
+uint32_t ExternalCopyError::WorstCaseHeapSize() const {
+	return 128 + (message ? message->WorstCaseHeapSize() : 0) + (stack ? stack->WorstCaseHeapSize() : 0);
+}
+
 /**
  * ExternalCopyNull and ExternalCopyUndefined implemtations
  */
@@ -219,12 +234,20 @@ size_t ExternalCopyNull::Size() const {
 	return 0;
 }
 
+uint32_t ExternalCopyNull::WorstCaseHeapSize() const {
+	return 16;
+}
+
 Local<Value> ExternalCopyUndefined::CopyInto() const {
 	return Undefined(Isolate::GetCurrent());
 }
 
 size_t ExternalCopyUndefined::Size() const {
 	return 0;
+}
+
+uint32_t ExternalCopyUndefined::WorstCaseHeapSize() const {
+	return 16;
 }
 
 /**
@@ -238,6 +261,11 @@ Local<Value> ExternalCopyDate::CopyInto() const {
 
 size_t ExternalCopyDate::Size() const {
 	return sizeof(double);
+}
+
+uint32_t ExternalCopyDate::WorstCaseHeapSize() const {
+	// Seems pretty excessive, but that's what I observed
+	return 140;
 }
 
 /**
@@ -259,6 +287,11 @@ Local<Value> ExternalCopyArrayBuffer::CopyInto() const {
 
 size_t ExternalCopyArrayBuffer::Size() const {
 	return length;
+}
+
+uint32_t ExternalCopyArrayBuffer::WorstCaseHeapSize() const {
+	// ArrayBuffers use system heap, not the flimsy v8 heap
+	return 96;
 }
 
 const void* ExternalCopyArrayBuffer::Data() const {
@@ -305,6 +338,11 @@ Local<Value> ExternalCopyArrayBufferView::CopyInto() const {
 
 size_t ExternalCopyArrayBufferView::Size() const {
 	return buffer.Size();
+}
+
+uint32_t ExternalCopyArrayBufferView::WorstCaseHeapSize() const {
+	// This includes the overhead of the ArrayBuffer
+	return 208;
 }
 
 } // namespace ivm

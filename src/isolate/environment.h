@@ -104,6 +104,19 @@ class IsolateEnvironment {
 		};
 
 		/**
+		 * Ensures we don't blow up the v8 heap while transferring arbitrary data
+		 */
+		class HeapCheck {
+			private:
+				IsolateEnvironment& env;
+				bool did_increase;
+			public:
+				explicit HeapCheck(IsolateEnvironment& env, size_t expected_size);
+				~HeapCheck();
+				void Epilogue();
+		};
+
+		/**
 		 * Like thread_local data, but specific to an Isolate instead.
 		 */
 		template <typename T>
@@ -160,6 +173,7 @@ class IsolateEnvironment {
 			 */
 			std::map<v8::Isolate*, IsolateEnvironment*> isolate_map;
 			std::mutex lookup_mutex;
+			bool did_shutdown = false;
 		};
 
 		static std::shared_ptr<BookkeepingStatics> bookkeeping_statics_shared;
@@ -193,6 +207,11 @@ class IsolateEnvironment {
 		 * Catches garbage collections on the isolate and terminates if we use too much.
 		 */
 		static void GCEpilogueCallback(v8::Isolate* isolate, v8::GCType type, v8::GCCallbackFlags flags);
+
+		/**
+		 * If this function is called then I have failed you.
+		 */
+		static void OOMErrorCallback(const char* location, bool is_heap_oom);
 
 		/**
 		 * Called when an isolate has an uncaught error in a promise. This makes no distinction between
@@ -322,6 +341,7 @@ class IsolateEnvironment {
 			assert(!root);
 			terminated = true;
 			isolate->TerminateExecution();
+			holder->isolate.reset();
 		}
 
 		/**

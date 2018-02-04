@@ -62,7 +62,7 @@ void ExternalCopyHandle::CheckDisposed() {
  */
 Local<Value> ExternalCopyHandle::Copy() {
 	CheckDisposed();
-	return value->CopyInto();
+	return value->CopyIntoCheckHeap();
 }
 
 Local<Value> ExternalCopyHandle::CopyInto() {
@@ -83,7 +83,7 @@ Local<Value> ExternalCopyHandle::Dispose() {
 ExternalCopyIntoHandle::ExternalCopyIntoTransferable::ExternalCopyIntoTransferable(shared_ptr<ExternalCopy> value) : value(std::move(value)) {}
 
 Local<Value> ExternalCopyIntoHandle::ExternalCopyIntoTransferable::TransferIn() {
-	return value->CopyInto();
+	return value->CopyIntoCheckHeap();
 }
 
 ExternalCopyIntoHandle::ExternalCopyIntoHandle(shared_ptr<ExternalCopy> value) : value(std::move(value)) {}

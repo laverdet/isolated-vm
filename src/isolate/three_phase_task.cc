@@ -115,6 +115,8 @@ void ThreePhaseTask::Phase2Runner::Run() {
 					// If Reject fails then I think that's bad..
 					Unmaybe(promise_local->Reject(context_local, try_catch.Exception()));
 					isolate->RunMicrotasks();
+				} catch (const js_fatal_error& cc_error) {
+					// The invoking isolate is out of memory..
 				}
 			}
 		};
@@ -186,7 +188,11 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate) {
 		}
 	}
 	// Final phase
-	return Phase3();
+	try {
+		return Phase3();
+	} catch (const js_fatal_error& cc_error) {
+		return Undefined(Isolate::GetCurrent());
+	}
 }
 
 } // namespace ivm

@@ -203,7 +203,7 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 
 	// Set memory limit
 	rc.set_max_semi_space_size((int)std::pow(2, std::min(sizeof(void*) >= 8 ? 4 : 3, (int)(memory_limit / 128))));
-	rc.set_max_old_space_size((int)(memory_limit * 1.25));
+	rc.set_max_old_space_size((int)(memory_limit * 2));
 	auto allocator_ptr = std::make_unique<LimitedAllocator>(memory_limit * 1024 * 1024);
 
 	// Return isolate handle
@@ -356,7 +356,7 @@ Local<Value> IsolateHandle::CompileScript(Local<String> code_handle, MaybeLocal<
 			// Compile in second isolate and return UnboundScript persistent
 			auto isolate = IsolateEnvironment::GetCurrent();
 			Context::Scope context_scope(isolate->DefaultContext());
-			Local<String> code_inner = code_string->CopyInto().As<String>();
+			Local<String> code_inner = code_string->CopyIntoCheckHeap().As<String>();
 			ScriptOrigin script_origin = script_origin_holder->ToScriptOrigin();
 			ScriptCompiler::CompileOptions compile_options = ScriptCompiler::kNoCompileOptions;
 			unique_ptr<ScriptCompiler::CachedData> cached_data = nullptr;

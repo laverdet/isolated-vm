@@ -24,8 +24,10 @@ class ExternalCopy : public Transferable {
 		static std::unique_ptr<ExternalCopy> CopyIfPrimitive(const v8::Local<v8::Value>& value);
 		static std::unique_ptr<ExternalCopy> CopyIfPrimitiveOrError(const v8::Local<v8::Value>& value);
 
+		v8::Local<v8::Value> CopyIntoCheckHeap();
 		virtual v8::Local<v8::Value> CopyInto() const = 0;
 		virtual size_t Size() const = 0;
+		virtual uint32_t WorstCaseHeapSize() const = 0;
 		v8::Local<v8::Value> TransferIn() final;
 };
 
@@ -47,6 +49,10 @@ class ExternalCopyTemplate : public ExternalCopy {
 
 		size_t Size() const final {
 			return sizeof(V);
+		}
+
+		uint32_t WorstCaseHeapSize() const final {
+			return 24;
 		}
 };
 
@@ -100,22 +106,28 @@ class ExternalCopyTemplate<v8::String, std::shared_ptr<std::vector<uint16_t>>> :
 		size_t Size() const final {
 			return value->size() * sizeof(uint16_t);
 		}
+
+		uint32_t WorstCaseHeapSize() const final {
+			// These strings are always externalized so they don't use much v8 heap.
+			return 32;
+		}
 };
 
 using ExternalCopyString = ExternalCopyTemplate<v8::String, std::shared_ptr<std::vector<uint16_t>>>;
 
 /**
- * Just a JSON blob that will be automatically parsed.
+ * Serialized value from v8::ValueSerializer,
  */
-class ExternalCopyJSON : public ExternalCopy {
+class ExternalCopySerialized : public ExternalCopy {
 	private:
-		ExternalCopyString blob;
+		std::unique_ptr<uint8_t, decltype(std::free)*> buffer;
+		size_t size;
 
 	public:
-		// `value` here should be an already JSON'd string
-		explicit ExternalCopyJSON(const v8::Local<v8::Value>& value);
+		explicit ExternalCopySerialized(std::pair<uint8_t*, size_t> val);
 		v8::Local<v8::Value> CopyInto() const final;
 		size_t Size() const final;
+		uint32_t WorstCaseHeapSize() const final;
 };
 
 /**
@@ -137,6 +149,7 @@ class ExternalCopyError : public ExternalCopy {
 		ExternalCopyError(ErrorType error_type, const std::string& message);
 		v8::Local<v8::Value> CopyInto() const final;
 		size_t Size() const final;
+		uint32_t WorstCaseHeapSize() const final;
 };
 
 /**
@@ -146,12 +159,14 @@ class ExternalCopyNull : public ExternalCopy {
 	public:
 		v8::Local<v8::Value> CopyInto() const final;
 		size_t Size() const final;
+		uint32_t WorstCaseHeapSize() const final;
 };
 
 class ExternalCopyUndefined : public ExternalCopy {
 	public:
 		v8::Local<v8::Value> CopyInto() const final;
 		size_t Size() const final;
+		uint32_t WorstCaseHeapSize() const final;
 };
 
 /**
@@ -165,6 +180,7 @@ class ExternalCopyDate : public ExternalCopy {
 		explicit ExternalCopyDate(const v8::Local<v8::Value>& value);
 		v8::Local<v8::Value> CopyInto() const final;
 		size_t Size() const final;
+		uint32_t WorstCaseHeapSize() const final;
 };
 
 /**
@@ -180,6 +196,7 @@ class ExternalCopyArrayBuffer : public ExternalCopy {
 		explicit ExternalCopyArrayBuffer(const v8::Local<v8::ArrayBufferView>& handle);
 		v8::Local<v8::Value> CopyInto() const final;
 		size_t Size() const final;
+		uint32_t WorstCaseHeapSize() const final;
 		const void* Data() const;
 		size_t Length() const;
 };
@@ -199,6 +216,7 @@ class ExternalCopyArrayBufferView : public ExternalCopy {
 		ExternalCopyArrayBufferView(const v8::Local<v8::ArrayBufferView>& handle, ViewType type);
 		v8::Local<v8::Value> CopyInto() const override;
 		size_t Size() const override;
+		uint32_t WorstCaseHeapSize() const final;
 };
 
 } // namespace ivm

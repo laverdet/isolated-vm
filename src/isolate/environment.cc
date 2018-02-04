@@ -61,13 +61,22 @@ void IsolateEnvironment::Scheduler::AsyncCallbackRoot(uv_async_t* async) {
 }
 
 void IsolateEnvironment::Scheduler::AsyncCallbackPool(bool pool_thread, void* param) {
-	auto isolate_ptr_ptr = (shared_ptr<IsolateEnvironment>*)param;
-	auto isolate_ptr = shared_ptr<IsolateEnvironment>(std::move(*isolate_ptr_ptr));
-	delete isolate_ptr_ptr;
-	isolate_ptr->AsyncEntry();
-	if (!pool_thread) {
-		isolate_ptr->GetIsolate()->DiscardThreadSpecificMetadata();
+	{
+		auto isolate_ptr_ptr = (shared_ptr<IsolateEnvironment>*)param;
+		auto isolate_ptr = shared_ptr<IsolateEnvironment>(std::move(*isolate_ptr_ptr));
+		delete isolate_ptr_ptr;
+		isolate_ptr->AsyncEntry();
+		if (!pool_thread) {
+			isolate_ptr->GetIsolate()->DiscardThreadSpecificMetadata();
+		}
 	}
+	// nb: We reset the isolate pointer right now with the scoped block above. It's possible that this
+	// is the last remaining reference to the isolate, in which case the dtor for IsolateEnvironment
+	// will be called. If the environment has pending tasks these will be disposed without running. It
+	// is then further possible that those disposed tasks will schedule more work from their dtors
+	// (for instance calling Promise#reject). This all needs to happen *before* the uv_unref stuff
+	// below because otherwise we can end up in a situation where node thinks all work is done but
+	// isolated-vm is still finishing up.
 	if (--uv_ref_count == 0) {
 		// Is there a possibility of a race condition here? What happens if uv_ref() below and this
 		// execute at the same time. I don't think that's possible because if uv_ref_count is 0 that means
@@ -144,6 +153,45 @@ void IsolateEnvironment::Scheduler::Lock::InterruptIsolate(IsolateEnvironment& i
 }
 
 /**
+ * HeapCheck implementation
+ */
+IsolateEnvironment::HeapCheck::HeapCheck(IsolateEnvironment& env, size_t expected_size) : env(env), did_increase(false) {
+	if (expected_size > 1024) {
+		HeapStatistics heap;
+		env.GetIsolate()->GetHeapStatistics(&heap);
+		size_t old_space = env.memory_limit * 1024 * 1024 * 2;
+		size_t expected_total_heap = heap.used_heap_size() + expected_size;
+		if (expected_total_heap > old_space) {
+			// Heap limit increases by factor of 4
+			if (expected_total_heap > old_space * 4) {
+				throw js_generic_error("Value would likely exhaust isolate heap");
+			}
+			did_increase = true;
+			env.GetIsolate()->IncreaseHeapLimitForDebugging();
+		}
+	}
+}
+
+IsolateEnvironment::HeapCheck::~HeapCheck() {
+	if (did_increase) {
+		env.GetIsolate()->RestoreOriginalHeapLimit();
+	}
+}
+
+void IsolateEnvironment::HeapCheck::Epilogue() {
+	if (did_increase) {
+		HeapStatistics heap;
+		env.GetIsolate()->GetHeapStatistics(&heap);
+		if (heap.used_heap_size() > env.memory_limit * 1024 * 1024) {
+			env.hit_memory_limit = true;
+			env.Terminate();
+			did_increase = false; // Don't reset heap limit to decrease chance v8 will OOM
+			throw js_fatal_error();
+		}
+	}
+}
+
+/**
  * Template specializations for IsolateSpecific<FunctionTemplate>
  */
 template<>
@@ -194,6 +242,34 @@ void IsolateEnvironment::GCEpilogueCallback(Isolate* isolate, GCType type, GCCal
 	}
 
 	that->last_heap = heap;
+}
+
+void IsolateEnvironment::OOMErrorCallback(const char* location, bool is_heap_oom) {
+	fprintf(stderr, "%s\nis_heap_oom = %d\n\n\n", location, is_heap_oom);
+	HeapStatistics heap;
+	Isolate::GetCurrent()->GetHeapStatistics(&heap);
+	fprintf(stderr,
+		"<--- Heap statistics --->\n"
+		"total_heap_size = %zd\n"
+		"total_heap_size_executable = %zd\n"
+		"total_physical_size = %zd\n"
+		"total_available_size = %zd\n"
+		"used_heap_size = %zd\n"
+		"heap_size_limit = %zd\n"
+		"malloced_memory = %zd\n"
+		"peak_malloced_memory = %zd\n"
+		"does_zap_garbage = %zd\n",
+		heap.total_heap_size(),
+		heap.total_heap_size_executable(),
+		heap.total_physical_size(),
+		heap.total_available_size(),
+		heap.used_heap_size(),
+		heap.heap_size_limit(),
+		heap.malloced_memory(),
+		heap.peak_malloced_memory(),
+		heap.does_zap_garbage()
+	);
+	abort();
 }
 
 void IsolateEnvironment::PromiseRejectCallback(PromiseRejectMessage rejection) {
@@ -294,6 +370,7 @@ IsolateEnvironment::IsolateEnvironment(
 		bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
 	}
 	isolate->AddGCEpilogueCallback(GCEpilogueCallback);
+	isolate->SetOOMErrorHandler(OOMErrorCallback);
 	isolate->SetPromiseRejectCallback(PromiseRejectCallback);
 
 	// Create a default context for the library to use if needed
