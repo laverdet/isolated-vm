@@ -30,9 +30,9 @@ IsolateEnvironment::IsolateSpecific<FunctionTemplate>& ScriptHandle::TemplateSpe
 
 Local<FunctionTemplate> ScriptHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
-		"Script", nullptr, 0,
-		"run", Parameterize<decltype(&ScriptHandle::Run<true>), &ScriptHandle::Run<true>>, 1,
-		"runSync", Parameterize<decltype(&ScriptHandle::Run<false>), &ScriptHandle::Run<false>>, 1
+		"Script", nullptr,
+		"run", Parameterize<decltype(&ScriptHandle::Run<true>), &ScriptHandle::Run<true>>(),
+		"runSync", Parameterize<decltype(&ScriptHandle::Run<false>), &ScriptHandle::Run<false>>()
 	));
 }
 

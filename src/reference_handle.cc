@@ -59,18 +59,18 @@ IsolateEnvironment::IsolateSpecific<FunctionTemplate>& ReferenceHandle::Template
 
 Local<FunctionTemplate> ReferenceHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
-		"Reference", ParameterizeCtor<decltype(&New), &New>, 1,
-		"deref", Parameterize<decltype(&ReferenceHandle::Deref), &ReferenceHandle::Deref>, 0,
-		"derefInto", Parameterize<decltype(&ReferenceHandle::DerefInto), &ReferenceHandle::DerefInto>, 0,
-		"dispose", Parameterize<decltype(&ReferenceHandle::Dispose), &ReferenceHandle::Dispose>, 0,
-		"copy", Parameterize<decltype(&ReferenceHandle::Copy<true>), &ReferenceHandle::Copy<true>>, 1,
-		"copySync", Parameterize<decltype(&ReferenceHandle::Copy<false>), &ReferenceHandle::Copy<false>>, 1,
-		"get", Parameterize<decltype(&ReferenceHandle::Get<true>), &ReferenceHandle::Get<true>>, 1,
-		"getSync", Parameterize<decltype(&ReferenceHandle::Get<false>), &ReferenceHandle::Get<false>>, 1,
-		"set", Parameterize<decltype(&ReferenceHandle::Set<true>), &ReferenceHandle::Set<true>>, 2,
-		"setSync", Parameterize<decltype(&ReferenceHandle::Set<false>), &ReferenceHandle::Set<false>>, 2,
-		"apply", Parameterize<decltype(&ReferenceHandle::Apply<true>), &ReferenceHandle::Apply<true>>, 2,
-		"applySync", Parameterize<decltype(&ReferenceHandle::Apply<false>), &ReferenceHandle::Apply<false>>, 2,
+		"Reference", ParameterizeCtor<decltype(&New), &New>(),
+		"deref", Parameterize<decltype(&ReferenceHandle::Deref), &ReferenceHandle::Deref>(),
+		"derefInto", Parameterize<decltype(&ReferenceHandle::DerefInto), &ReferenceHandle::DerefInto>(),
+		"dispose", Parameterize<decltype(&ReferenceHandle::Dispose), &ReferenceHandle::Dispose>(),
+		"copy", Parameterize<decltype(&ReferenceHandle::Copy<true>), &ReferenceHandle::Copy<true>>(),
+		"copySync", Parameterize<decltype(&ReferenceHandle::Copy<false>), &ReferenceHandle::Copy<false>>(),
+		"get", Parameterize<decltype(&ReferenceHandle::Get<true>), &ReferenceHandle::Get<true>>(),
+		"getSync", Parameterize<decltype(&ReferenceHandle::Get<false>), &ReferenceHandle::Get<false>>(),
+		"set", Parameterize<decltype(&ReferenceHandle::Set<true>), &ReferenceHandle::Set<true>>(),
+		"setSync", Parameterize<decltype(&ReferenceHandle::Set<false>), &ReferenceHandle::Set<false>>(),
+		"apply", Parameterize<decltype(&ReferenceHandle::Apply<true>), &ReferenceHandle::Apply<true>>(),
+		"applySync", Parameterize<decltype(&ReferenceHandle::Apply<false>), &ReferenceHandle::Apply<false>>(),
 		"tyepof", ParameterizeAccessor<decltype(&ReferenceHandle::TypeOfGetter), &ReferenceHandle::TypeOfGetter>()
 	));
 }
@@ -376,7 +376,7 @@ IsolateEnvironment::IsolateSpecific<FunctionTemplate>& DereferenceHandle::Templa
 }
 
 Local<FunctionTemplate> DereferenceHandle::Definition() {
-	return Inherit<TransferableHandle>(MakeClass("Dereference", nullptr, 0));
+	return Inherit<TransferableHandle>(MakeClass("Dereference", nullptr));
 }
 
 DereferenceHandle::DereferenceHandle(

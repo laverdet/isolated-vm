@@ -36,10 +36,10 @@ IsolateEnvironment::IsolateSpecific<FunctionTemplate>& ExternalCopyHandle::Templ
 
 Local<FunctionTemplate> ExternalCopyHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
-		"ExternalCopy", ParameterizeCtor<decltype(&New), &New>, 1,
-		"copy", Parameterize<decltype(&ExternalCopyHandle::Copy), &ExternalCopyHandle::Copy>, 0,
-		"copyInto", Parameterize<decltype(&ExternalCopyHandle::CopyInto), &ExternalCopyHandle::CopyInto>, 0,
-		"dispose", Parameterize<decltype(&ExternalCopyHandle::Dispose), &ExternalCopyHandle::Dispose>, 0
+		"ExternalCopy", ParameterizeCtor<decltype(&New), &New>(),
+		"copy", Parameterize<decltype(&ExternalCopyHandle::Copy), &ExternalCopyHandle::Copy>(),
+		"copyInto", Parameterize<decltype(&ExternalCopyHandle::CopyInto), &ExternalCopyHandle::CopyInto>(),
+		"dispose", Parameterize<decltype(&ExternalCopyHandle::Dispose), &ExternalCopyHandle::Dispose>()
 	));
 }
 
@@ -94,7 +94,7 @@ IsolateEnvironment::IsolateSpecific<FunctionTemplate>& ExternalCopyIntoHandle::T
 }
 
 Local<FunctionTemplate> ExternalCopyIntoHandle::Definition() {
-	return Inherit<TransferableHandle>(MakeClass("ExternalCopyInto", nullptr, 0));
+	return Inherit<TransferableHandle>(MakeClass("ExternalCopyInto", nullptr));
 }
 
 unique_ptr<Transferable> ExternalCopyIntoHandle::TransferOut() {

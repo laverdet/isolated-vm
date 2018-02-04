@@ -138,21 +138,17 @@ IsolateEnvironment::IsolateSpecific<FunctionTemplate>& IsolateHandle::TemplateSp
 }
 
 Local<FunctionTemplate> IsolateHandle::Definition() {
-	auto tmpl = Inherit<TransferableHandle>(MakeClass(
-	 "Isolate", ParameterizeCtor<decltype(&New), &New>, 1,
-		"compileScript", Parameterize<decltype(&IsolateHandle::CompileScript<true>), &IsolateHandle::CompileScript<true>>, 1,
-		"compileScriptSync", Parameterize<decltype(&IsolateHandle::CompileScript<false>), &IsolateHandle::CompileScript<false>>, 1,
-		"createContext", Parameterize<decltype(&IsolateHandle::CreateContext<true>), &IsolateHandle::CreateContext<true>>, 0,
-		"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContext<false>), &IsolateHandle::CreateContext<false>>, 0,
-		"createInspectorSession", Parameterize<decltype(&IsolateHandle::CreateInspectorSession), &IsolateHandle::CreateInspectorSession>, 0,
-		"dispose", Parameterize<decltype(&IsolateHandle::Dispose), &IsolateHandle::Dispose>, 0,
-		"getHeapStatistics", Parameterize<decltype(&IsolateHandle::GetHeapStatistics), &IsolateHandle::GetHeapStatistics>, 0
+	return Inherit<TransferableHandle>(MakeClass(
+	 "Isolate", ParameterizeCtor<decltype(&New), &New>(),
+		"createSnapshot", ParameterizeStatic<decltype(&CreateSnapshot), &CreateSnapshot>(),
+		"compileScript", Parameterize<decltype(&IsolateHandle::CompileScript<true>), &IsolateHandle::CompileScript<true>>(),
+		"compileScriptSync", Parameterize<decltype(&IsolateHandle::CompileScript<false>), &IsolateHandle::CompileScript<false>>(),
+		"createContext", Parameterize<decltype(&IsolateHandle::CreateContext<true>), &IsolateHandle::CreateContext<true>>(),
+		"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContext<false>), &IsolateHandle::CreateContext<false>>(),
+		"createInspectorSession", Parameterize<decltype(&IsolateHandle::CreateInspectorSession), &IsolateHandle::CreateInspectorSession>(),
+		"dispose", Parameterize<decltype(&IsolateHandle::Dispose), &IsolateHandle::Dispose>(),
+		"getHeapStatistics", Parameterize<decltype(&IsolateHandle::GetHeapStatistics), &IsolateHandle::GetHeapStatistics>()
 	));
-	tmpl->Set(
-		v8_string("createSnapshot"),
-		FunctionTemplate::New(Isolate::GetCurrent(), ParameterizeStatic<decltype(&CreateSnapshot), &CreateSnapshot>, v8_string("createSnapshot"), Local<v8::Signature>(), 2)
-	);
-	return tmpl;
 }
 
 /**

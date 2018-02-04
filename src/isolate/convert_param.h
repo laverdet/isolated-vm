@@ -92,7 +92,11 @@ struct ConvertParamInvoke {
 				assert(false);
 			}
 		} catch (const param_incorrect& ex) {
-			throw js_type_error(CalleeName(*info.second)+ " setter requires `this` to be "+ ex.type);
+			if (ii == -1) {
+				throw js_type_error(CalleeName(*info.second)+ " setter requires `this` to be "+ ex.type);
+			} else {
+				throw js_type_error(CalleeName(*info.second)+ " must be "+ ex.type);
+			}
 		}
 	}
 

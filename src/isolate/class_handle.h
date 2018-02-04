@@ -15,6 +15,15 @@ namespace ivm {
  */
 class ClassHandle {
 	private:
+		struct CtorFunction {
+			v8::FunctionCallback fn;
+			int args;
+			constexpr CtorFunction(v8::FunctionCallback fn, int args) : fn(fn), args(args) {}
+			constexpr CtorFunction(nullptr_t ptr) : fn(nullptr), args(0) {}
+		};
+		// The int types here are just a lazy way to make these different types
+		using MemberFunction = std::pair<v8::FunctionCallback, uint32_t>;
+		using StaticFunction = std::pair<v8::FunctionCallback, uint64_t>;
 		using AccessorPair = std::pair<v8::AccessorGetterCallback, v8::AccessorSetterCallback>;
 		using SetterPair = std::pair<v8::Local<v8::Value>*, const v8::PropertyCallbackInfo<void>*>;
 		v8::Persistent<v8::Object> handle;
@@ -22,25 +31,62 @@ class ClassHandle {
 		/**
 		 * Utility methods to set up object prototype
 		 */
+		// This add regular methods
 		template <typename... Args>
 		static void AddMethods(
 			v8::Isolate* isolate,
+			v8::Local<v8::FunctionTemplate>& tmpl,
 			v8::Local<v8::ObjectTemplate>& proto,
 			v8::Local<v8::Signature>& sig,
 			v8::Local<v8::AccessorSignature>& asig,
 			const char* name,
-			v8::FunctionCallback impl,
-			int length,
+			MemberFunction impl,
 			Args... args
 		) {
 			v8::Local<v8::String> name_handle = v8_symbol(name);
-			proto->Set(name_handle, v8::FunctionTemplate::New(isolate, impl, name_handle, sig, length));
-			AddMethods(isolate, proto, sig, asig, args...);
+			proto->Set(name_handle, v8::FunctionTemplate::New(isolate, impl.first, name_handle, sig, impl.second));
+			AddMethods(isolate, tmpl, proto, sig, asig, args...);
 		}
 
+		// This adds object templates to the prototype
 		template <typename... Args>
 		static void AddMethods(
 			v8::Isolate* isolate,
+			v8::Local<v8::FunctionTemplate>& tmpl,
+			v8::Local<v8::ObjectTemplate>& proto,
+			v8::Local<v8::Signature>& sig,
+			v8::Local<v8::AccessorSignature>& asig,
+			const char* name,
+			v8::Local<v8::FunctionTemplate>& value,
+			Args... args
+		) {
+			v8::Local<v8::String> name_handle = v8_symbol(name);
+			proto->Set(name_handle, value);
+			AddMethods(isolate, tmpl, proto, sig, asig, args...);
+		}
+
+		// This adds static functions on the object constructor
+		template <typename... Args>
+		static void AddMethods(
+			v8::Isolate* isolate,
+			v8::Local<v8::FunctionTemplate>& tmpl,
+			v8::Local<v8::ObjectTemplate>& proto,
+			v8::Local<v8::Signature>& sig,
+			v8::Local<v8::AccessorSignature>& asig,
+			const char* name,
+			StaticFunction impl,
+			Args... args
+		) {
+			v8::Local<v8::String> name_handle = v8_symbol(name);
+			tmpl->Set(name_handle, v8::FunctionTemplate::New(isolate, impl.first, name_handle, v8::Local<v8::Signature>(), impl.second));
+			AddMethods(isolate, tmpl, proto, sig, asig, args...);
+		}
+
+		// This adds accessors
+		template <typename... Args>
+		static void AddMethods(
+			v8::Isolate* isolate,
+			v8::Local<v8::FunctionTemplate>& tmpl,
 			v8::Local<v8::ObjectTemplate>& proto,
 			v8::Local<v8::Signature>& sig,
 			v8::Local<v8::AccessorSignature>& asig,
@@ -50,10 +96,10 @@ class ClassHandle {
 		) {
 			v8::Local<v8::String> name_handle = v8_symbol(name);
 			proto->SetAccessor(name_handle, impl.first, impl.second, name_handle, v8::AccessControl::DEFAULT, v8::PropertyAttribute::None, asig);
-			AddMethods(isolate, proto, sig, asig, args...);
+			AddMethods(isolate, tmpl, proto, sig, asig, args...);
 		}
 
-		static void AddMethods(v8::Isolate* isolate, v8::Local<v8::ObjectTemplate>& proto, v8::Local<v8::Signature>& sig, v8::Local<v8::AccessorSignature>& asig) {}
+		static void AddMethods(v8::Isolate* isolate, v8::Local<v8::FunctionTemplate>, v8::Local<v8::ObjectTemplate>& proto, v8::Local<v8::Signature>& sig, v8::Local<v8::AccessorSignature>& asig) {}
 
 		/**
 		 * Below is the Parameterize<> template magic
@@ -167,7 +213,7 @@ class ClassHandle {
 			}
 		};
 
-		template<class C, class R, class... Args>
+		template<class C, class R, class ...Args>
 		struct MethodCast<R(C::*)(Args...)> : public MethodCast<R(Args...)> {
 			typedef R(*Type)(C*, Args...);
 			template <R(C::*F)(Args...)>
@@ -175,6 +221,10 @@ class ClassHandle {
 				return (that->*F)(args...);
 			}
 		};
+
+		template <typename R, typename ...Args> static constexpr size_t ArgCount(R(*fn)(Args...)) {
+			return sizeof...(Args);
+		}
 
 		/**
 		 * Convenience wrapper for the obtuse SetWeak function signature. When the callback is called
@@ -222,12 +272,12 @@ class ClassHandle {
 		 * Sets up this object's FunctionTemplate inside the current isolate
 		 */
 		template <typename... Args>
-		static v8::Local<v8::FunctionTemplate> MakeClass(const char* class_name, v8::FunctionCallback New, int length, Args... args) {
+		static v8::Local<v8::FunctionTemplate> MakeClass(const char* class_name, CtorFunction New, Args... args) {
 			v8::Isolate* isolate = v8::Isolate::GetCurrent();
 			v8::Local<v8::String> name_handle = v8_symbol(class_name);
 			v8::Local<v8::FunctionTemplate> tmpl = v8::FunctionTemplate::New(
-				isolate, New == nullptr ? PrivateConstructor : New,
-				name_handle, v8::Local<v8::Signature>(), length
+				isolate, New.fn == nullptr ? PrivateConstructor : New.fn,
+				name_handle, v8::Local<v8::Signature>(), New.args
 			);
 			tmpl->SetClassName(name_handle);
 			tmpl->InstanceTemplate()->SetInternalFieldCount(1);
@@ -235,7 +285,7 @@ class ClassHandle {
 			v8::Local<v8::ObjectTemplate> proto = tmpl->PrototypeTemplate();
 			v8::Local<v8::Signature> sig = v8::Signature::New(isolate, tmpl);
 			v8::Local<v8::AccessorSignature> asig = v8::AccessorSignature::New(isolate, tmpl);
-			AddMethods(isolate, proto, sig, asig, args...);
+			AddMethods(isolate, tmpl, proto, sig, asig, args...);
 
 			return tmpl;
 		}
@@ -254,22 +304,25 @@ class ClassHandle {
 		 * Automatically unpacks v8 FunctionCallbackInfo for you
 		 */
 		template <typename T, T F>
-		static inline void Parameterize(const v8::FunctionCallbackInfo<v8::Value>& info) {
-			ParameterizeEntry<-1, typename MethodCast<T>::Type, MethodCast<T>::template Invoke<F>>(info);
+		static inline constexpr MemberFunction Parameterize() {
+			return MemberFunction(
+				ParameterizeEntry<-1, typename MethodCast<T>::Type, MethodCast<T>::template Invoke<F>>,
+				ArgCount(MethodCast<T>::template Invoke<F>) - 1
+			);
 		}
 
 		template <typename T, T F>
-		static inline void ParameterizeCtor(const v8::FunctionCallbackInfo<v8::Value>& info) {
-			ParameterizeCtorEntry<T, F>(info);
+		static inline constexpr CtorFunction ParameterizeCtor() {
+			return CtorFunction(ParameterizeCtorEntry<T, F>, ArgCount(F));
 		}
 
 		template <typename T, T F>
-		static inline void ParameterizeStatic(const v8::FunctionCallbackInfo<v8::Value>& info) {
-			ParameterizeEntry<0, T, F>(info);
+		static inline constexpr StaticFunction ParameterizeStatic() {
+			return StaticFunction(ParameterizeEntry<0, T, F>, ArgCount(F));
 		}
 
 		template <typename T1, T1 F1, typename T2, T2 F2>
-		static inline AccessorPair ParameterizeAccessor() {
+		static inline constexpr AccessorPair ParameterizeAccessor() {
 			return std::make_pair(
 				ParameterizeGetterEntry<typename MethodCast<T1>::Type, MethodCast<T1>::template Invoke<F1>>,
 				ParameterizeSetterEntry<typename MethodCast<T2>::Type, MethodCast<T2>::template Invoke<F2>>
@@ -277,18 +330,11 @@ class ClassHandle {
 		}
 
 		template <typename T1, T1 F1>
-		static inline AccessorPair ParameterizeAccessor() {
+		static inline constexpr AccessorPair ParameterizeAccessor() {
 			return std::make_pair(
 				ParameterizeGetterEntry<typename MethodCast<T1>::Type, MethodCast<T1>::template Invoke<F1>>,
 				(v8::AccessorSetterCallback)nullptr
 			);
-		}
-
-		/*
-		 * Utilities for non-method properties / statics
-		 */
-		static void AddProtoTemplate(v8::Local<v8::FunctionTemplate>& proto, const char* name, v8::Local<v8::FunctionTemplate> property) {
-			proto->PrototypeTemplate()->Set(v8_symbol(name), property);
 		}
 
 	public:

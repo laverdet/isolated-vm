@@ -22,11 +22,10 @@ IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& LibHandle::TemplateSp
 }
 
 Local<FunctionTemplate> LibHandle::Definition() {
-	auto tmpl = Inherit<TransferableHandle>(MakeClass(
-		"Lib", nullptr, 0,
-		"hrtime", Parameterize<decltype(&LibHandle::Hrtime), &LibHandle::Hrtime>, 1
+	return Inherit<TransferableHandle>(MakeClass(
+		"Lib", nullptr,
+		"hrtime", Parameterize<decltype(&LibHandle::Hrtime), &LibHandle::Hrtime>()
 	));
-	return tmpl;
 }
 
 unique_ptr<Transferable> LibHandle::TransferOut() {

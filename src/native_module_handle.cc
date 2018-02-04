@@ -52,9 +52,9 @@ IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& NativeModuleHandle::T
 
 Local<FunctionTemplate> NativeModuleHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
-		"NativeModule", ParameterizeCtor<decltype(&New), &New>, 1,
-		"create", Parameterize<decltype(&NativeModuleHandle::Create<true>), &NativeModuleHandle::Create<true>>, 1,
-		"createSync", Parameterize<decltype(&NativeModuleHandle::Create<false>), &NativeModuleHandle::Create<false>>, 1
+		"NativeModule", ParameterizeCtor<decltype(&New), &New>(),
+		"create", Parameterize<decltype(&NativeModuleHandle::Create<true>), &NativeModuleHandle::Create<true>>(),
+		"createSync", Parameterize<decltype(&NativeModuleHandle::Create<false>), &NativeModuleHandle::Create<false>>()
 	));
 }
 

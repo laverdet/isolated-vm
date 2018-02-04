@@ -101,9 +101,9 @@ IsolateEnvironment::IsolateSpecific<FunctionTemplate>& SessionHandle::TemplateSp
 
 Local<FunctionTemplate> SessionHandle::Definition() {
 	return MakeClass(
-		"Session", nullptr, 0,
-		"dispatchProtocolMessage", Parameterize<decltype(&SessionHandle::DispatchProtocolMessage), &SessionHandle::DispatchProtocolMessage>, 1,
-		"dispose", Parameterize<decltype(&SessionHandle::Dispose), &SessionHandle::Dispose>, 0,
+		"Session", nullptr,
+		"dispatchProtocolMessage", Parameterize<decltype(&SessionHandle::DispatchProtocolMessage), &SessionHandle::DispatchProtocolMessage>(),
+		"dispose", Parameterize<decltype(&SessionHandle::Dispose), &SessionHandle::Dispose>(),
 		"onNotification", ParameterizeAccessor<
 			decltype(&SessionHandle::OnNotificationGetter), &SessionHandle::OnNotificationGetter,
 			decltype(&SessionHandle::OnNotificationSetter), &SessionHandle::OnNotificationSetter

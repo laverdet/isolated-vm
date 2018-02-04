@@ -35,14 +35,15 @@ class LibraryHandle : public TransferableHandle {
 		}
 
 		static Local<FunctionTemplate> Definition() {
-			auto tmpl = Inherit<TransferableHandle>(MakeClass("isolated_vm", nullptr, 0));
-			AddProtoTemplate(tmpl, "Context", ClassHandle::GetFunctionTemplate<ContextHandle>());
-			AddProtoTemplate(tmpl, "ExternalCopy", ClassHandle::GetFunctionTemplate<ExternalCopyHandle>());
-			AddProtoTemplate(tmpl, "Isolate", ClassHandle::GetFunctionTemplate<IsolateHandle>());
-			AddProtoTemplate(tmpl, "NativeModule", ClassHandle::GetFunctionTemplate<NativeModuleHandle>());
-			AddProtoTemplate(tmpl, "Reference", ClassHandle::GetFunctionTemplate<ReferenceHandle>());
-			AddProtoTemplate(tmpl, "Script", ClassHandle::GetFunctionTemplate<ScriptHandle>());
-			return tmpl;
+			return Inherit<TransferableHandle>(MakeClass(
+				"isolated_vm", nullptr,
+				"Context", ClassHandle::GetFunctionTemplate<ContextHandle>(),
+				"ExternalCopy", ClassHandle::GetFunctionTemplate<ExternalCopyHandle>(),
+				"Isolate", ClassHandle::GetFunctionTemplate<IsolateHandle>(),
+				"NativeModule", ClassHandle::GetFunctionTemplate<NativeModuleHandle>(),
+				"Reference", ClassHandle::GetFunctionTemplate<ReferenceHandle>(),
+				"Script", ClassHandle::GetFunctionTemplate<ScriptHandle>()
+			));
 		}
 
 		virtual std::unique_ptr<Transferable> TransferOut() {

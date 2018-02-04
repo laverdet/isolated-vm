@@ -29,9 +29,9 @@ IsolateEnvironment::IsolateSpecific<FunctionTemplate>& ContextHandle::TemplateSp
 
 Local<FunctionTemplate> ContextHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
-		"Context", nullptr, 0,
-		"globalReference", Parameterize<decltype(&ContextHandle::GlobalReference), &ContextHandle::GlobalReference>, 0,
-		"release", Parameterize<decltype(&ContextHandle::Release), &ContextHandle::Release>, 0
+		"Context", nullptr,
+		"globalReference", Parameterize<decltype(&ContextHandle::GlobalReference), &ContextHandle::GlobalReference>(),
+		"release", Parameterize<decltype(&ContextHandle::Release), &ContextHandle::Release>()
 	));
 }
 

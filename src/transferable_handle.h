@@ -14,7 +14,7 @@ class TransferableHandle : public ClassHandle {
 		}
 
 		static v8::Local<v8::FunctionTemplate> Definition() {
-			return MakeClass("Transferable", nullptr, 0);
+			return MakeClass("Transferable", nullptr);
 		}
 
 		virtual std::unique_ptr<Transferable> TransferOut() = 0;
