@@ -214,8 +214,8 @@ class ExternalCopyArrayBufferView : public ExternalCopy {
 
 	public:
 		ExternalCopyArrayBufferView(const v8::Local<v8::ArrayBufferView>& handle, ViewType type);
-		v8::Local<v8::Value> CopyInto() const override;
-		size_t Size() const override;
+		v8::Local<v8::Value> CopyInto() const final;
+		size_t Size() const final;
 		uint32_t WorstCaseHeapSize() const final;
 };
 

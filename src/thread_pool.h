@@ -10,7 +10,7 @@
 
 class thread_pool_t {
 	public:
-		typedef void(entry_t)(bool, void*);
+		using entry_t = void(bool, void*);
 		class affinity_t {
 			friend class thread_pool_t;
 			std::list<size_t> ids;
@@ -23,14 +23,10 @@ class thread_pool_t {
 
 		struct thread_data_t {
 			std::unique_ptr<std::condition_variable> cv;
-			bool should_exit;
-			entry_t* entry;
-			void* param;
-			thread_data_t() :
-				cv(std::make_unique<std::condition_variable>()),
-				should_exit(false), entry(nullptr), param(nullptr)
-				{
-			}
+			bool should_exit = false;
+			entry_t* entry = nullptr;
+			void* param = nullptr;
+			thread_data_t() : cv(std::make_unique<std::condition_variable>()) {}
 		};
 
 		std::vector<thread_data_t> thread_data;
@@ -43,7 +39,9 @@ class thread_pool_t {
 			threads.emplace_back(std::thread([ this, ii ]() {
 				std::unique_lock<std::mutex> lock(mutex);
 				while (!thread_data[ii].should_exit) {
-					if (thread_data[ii].entry) {
+					if (thread_data[ii].entry == nullptr) {
+						thread_data[ii].cv->wait(lock);
+					} else {
 						entry_t* entry = thread_data[ii].entry;
 						void* param = thread_data[ii].param;
 						lock.unlock();
@@ -51,8 +49,6 @@ class thread_pool_t {
 						lock.lock();
 						thread_data[ii].entry = nullptr;
 						thread_data[ii].param = nullptr;
-					} else {
-						thread_data[ii].cv->wait(lock);
 					}
 				}
 			}));
@@ -60,7 +56,9 @@ class thread_pool_t {
 		}
 
 	public:
-		thread_pool_t(size_t desired_size) : desired_size(desired_size), rr(0) {}
+		explicit thread_pool_t(size_t desired_size) noexcept : desired_size(desired_size), rr(0) {}
+		thread_pool_t(const thread_pool_t&) = delete;
+		thread_pool_t& operator= (const thread_pool_t&) = delete;
 
 		~thread_pool_t() {
 			resize(0);

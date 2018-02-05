@@ -118,6 +118,7 @@ Local<Value> ReferenceHandle::TypeOfGetter() {
 		case TypeOf::Function:
 			return v8_string("function");
 	}
+	throw std::logic_error("msvc doesn't understand enums");
 }
 
 /**
@@ -236,7 +237,7 @@ Local<Value> ReferenceHandle::Set(Local<Value> key_handle, Local<Value> val_hand
 		unique_ptr<Transferable> val;
 		shared_ptr<Persistent<Context>> context;
 		shared_ptr<Persistent<Value>> reference;
-		bool did_set;
+		bool did_set = false;
 
 		Set(
 			ReferenceHandle& that,

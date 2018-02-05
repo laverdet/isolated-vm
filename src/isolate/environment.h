@@ -112,6 +112,8 @@ class IsolateEnvironment {
 				bool did_increase;
 			public:
 				explicit HeapCheck(IsolateEnvironment& env, size_t expected_size);
+				HeapCheck(const HeapCheck&) = delete;
+				HeapCheck& operator= (const HeapCheck&) = delete;
 				~HeapCheck();
 				void Epilogue();
 		};
@@ -186,11 +188,11 @@ class IsolateEnvironment {
 		v8::Persistent<v8::Context> default_context;
 		std::unique_ptr<v8::ArrayBuffer::Allocator> allocator_ptr;
 		std::shared_ptr<class ExternalCopyArrayBuffer> snapshot_blob_ptr;
-		v8::StartupData startup_data;
-		size_t memory_limit;
+		v8::StartupData startup_data {};
+		size_t memory_limit = 0;
 		bool hit_memory_limit = false;
 		bool root;
-		v8::HeapStatistics last_heap;
+		v8::HeapStatistics last_heap {};
 		std::shared_ptr<BookkeepingStatics> bookkeeping_statics;
 		v8::Persistent<v8::Value> rejected_promise_error;
 
@@ -277,7 +279,7 @@ class IsolateEnvironment {
 		/**
 		 * Convenience operators to work with underlying isolate
 		 */
-		operator v8::Isolate*() const {
+		operator v8::Isolate*() const { // NOLINT
 			return isolate;
 		}
 
@@ -361,4 +363,4 @@ void IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>::Reset(v8::Local<
 template void IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>::Reset(v8::Local<v8::FunctionTemplate> handle);
 #pragma clang diagnostic pop
 
-}
+} // namespace ivm

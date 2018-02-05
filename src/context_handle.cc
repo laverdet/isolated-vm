@@ -58,4 +58,4 @@ Local<Value> ContextHandle::Release() {
 	return Undefined(Isolate::GetCurrent());
 }
 
-}
+} // namespace ivm

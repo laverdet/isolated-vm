@@ -47,7 +47,7 @@ IsolateEnvironment::Scheduler::~Scheduler() = default;
 void IsolateEnvironment::Scheduler::Init() {
 	uv_async_init(uv_default_loop(), &root_async, AsyncCallbackRoot);
 	root_async.data = nullptr;
-	uv_unref((uv_handle_t*)&root_async);
+	uv_unref(reinterpret_cast<uv_handle_t*>(&root_async));
 }
 
 void IsolateEnvironment::Scheduler::AsyncCallbackRoot(uv_async_t* async) {
@@ -62,7 +62,7 @@ void IsolateEnvironment::Scheduler::AsyncCallbackRoot(uv_async_t* async) {
 
 void IsolateEnvironment::Scheduler::AsyncCallbackPool(bool pool_thread, void* param) {
 	{
-		auto isolate_ptr_ptr = (shared_ptr<IsolateEnvironment>*)param;
+		auto isolate_ptr_ptr = static_cast<shared_ptr<IsolateEnvironment>*>(param);
 		auto isolate_ptr = shared_ptr<IsolateEnvironment>(std::move(*isolate_ptr_ptr));
 		delete isolate_ptr_ptr;
 		isolate_ptr->AsyncEntry();
@@ -81,7 +81,7 @@ void IsolateEnvironment::Scheduler::AsyncCallbackPool(bool pool_thread, void* pa
 		// Is there a possibility of a race condition here? What happens if uv_ref() below and this
 		// execute at the same time. I don't think that's possible because if uv_ref_count is 0 that means
 		// there aren't any concurrent threads running right now..
-		uv_unref((uv_handle_t*)&root_async);
+		uv_unref(reinterpret_cast<uv_handle_t*>(&root_async));
 		// For some reason sending a pointless ping to the unref'd uv handle allows node to quit when
 		// isolated-vm is done.
 		assert(root_async.data == nullptr);
@@ -90,7 +90,7 @@ void IsolateEnvironment::Scheduler::AsyncCallbackPool(bool pool_thread, void* pa
 }
 
 
-void IsolateEnvironment::Scheduler::AsyncCallbackInterrupt(Isolate* isolate_ptr, void* env_ptr) {
+void IsolateEnvironment::Scheduler::AsyncCallbackInterrupt(Isolate* /* isolate_ptr */, void* env_ptr) {
 	IsolateEnvironment& env = *static_cast<IsolateEnvironment*>(env_ptr);
 	env.InterruptEntry();
 }
@@ -131,7 +131,7 @@ bool IsolateEnvironment::Scheduler::Lock::WakeIsolate(shared_ptr<IsolateEnvironm
 		// IsolateEnvironment won't be deleted before a thread picks up this work.
 		auto isolate_ptr_ptr = new shared_ptr<IsolateEnvironment>(std::move(isolate_ptr));
 		if (++uv_ref_count == 1) {
-			uv_ref((uv_handle_t*)&root_async);
+			uv_ref(reinterpret_cast<uv_handle_t*>(&root_async));
 		}
 		if (isolate.root) {
 			assert(root_async.data == nullptr);
@@ -208,9 +208,9 @@ void IsolateEnvironment::IsolateSpecific<FunctionTemplate>::Reset(Local<Function
  * IsolateEnvironment implementation
  */
 size_t IsolateEnvironment::specifics_count = 0;
-shared_ptr<IsolateEnvironment::BookkeepingStatics> IsolateEnvironment::bookkeeping_statics_shared = std::make_shared<IsolateEnvironment::BookkeepingStatics>();
+shared_ptr<IsolateEnvironment::BookkeepingStatics> IsolateEnvironment::bookkeeping_statics_shared = std::make_shared<IsolateEnvironment::BookkeepingStatics>(); // NOLINT
 
-void IsolateEnvironment::GCEpilogueCallback(Isolate* isolate, GCType type, GCCallbackFlags flags) {
+void IsolateEnvironment::GCEpilogueCallback(Isolate* isolate, GCType /* type */, GCCallbackFlags /* flags */) {
 
 	// Get current heap statistics
 	auto that = GetCurrent();
@@ -232,7 +232,7 @@ void IsolateEnvironment::GCEpilogueCallback(Isolate* isolate, GCType type, GCCal
 	) {
 		struct LowMemoryTask : public Runnable {
 			Isolate* isolate;
-			LowMemoryTask(Isolate* isolate) : isolate(isolate) {}
+			explicit LowMemoryTask(Isolate* isolate) : isolate(isolate) {}
 			void Run() final {
 				isolate->LowMemoryNotification();
 			}
@@ -245,7 +245,7 @@ void IsolateEnvironment::GCEpilogueCallback(Isolate* isolate, GCType type, GCCal
 }
 
 void IsolateEnvironment::OOMErrorCallback(const char* location, bool is_heap_oom) {
-	fprintf(stderr, "%s\nis_heap_oom = %d\n\n\n", location, is_heap_oom);
+	fprintf(stderr, "%s\nis_heap_oom = %d\n\n\n", location, static_cast<int>(is_heap_oom));
 	HeapStatistics heap;
 	Isolate::GetCurrent()->GetHeapStatistics(&heap);
 	fprintf(stderr,
@@ -361,7 +361,7 @@ IsolateEnvironment::IsolateEnvironment(
 	create_params.array_buffer_allocator = allocator_ptr.get();
 	if (snapshot_blob_ptr) {
 		create_params.snapshot_blob = &startup_data;
-		startup_data.data = (const char*)snapshot_blob_ptr->Data();
+		startup_data.data = reinterpret_cast<const char*>(snapshot_blob_ptr->Data());
 		startup_data.raw_size = snapshot_blob_ptr->Length();
 	}
 	isolate = Isolate::New(create_params);
@@ -386,7 +386,9 @@ IsolateEnvironment::IsolateEnvironment(
 }
 
 IsolateEnvironment::~IsolateEnvironment() {
-	if (root) return;
+	if (root) {
+		return;
+	}
 	{
 		ExecutorLock lock(*this);
 		// Dispose of inspector first
@@ -431,7 +433,9 @@ InspectorAgent* IsolateEnvironment::GetInspectorAgent() const {
 }
 
 void IsolateEnvironment::AddWeakCallback(Persistent<Object>* handle, void(*fn)(void*), void* param) {
-	if (root) return;
+	if (root) {
+		return;
+	}
 	auto it = weak_persistents.find(handle);
 	if (it != weak_persistents.end()) {
 		throw std::runtime_error("Weak callback already added");
@@ -440,7 +444,9 @@ void IsolateEnvironment::AddWeakCallback(Persistent<Object>* handle, void(*fn)(v
 }
 
 void IsolateEnvironment::RemoveWeakCallback(Persistent<Object>* handle) {
-	if (root) return;
+	if (root) {
+		return;
+	}
 	auto it = weak_persistents.find(handle);
 	if (it == weak_persistents.end()) {
 		throw std::runtime_error("Weak callback doesn't exist");

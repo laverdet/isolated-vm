@@ -35,12 +35,12 @@ class InspectorAgent : public v8_inspector::V8InspectorClient {
 
 	public:
 		explicit InspectorAgent(IsolateEnvironment& isolate);
-		~InspectorAgent();
+		~InspectorAgent() override;
 		InspectorAgent(const InspectorAgent&) = delete;
 		InspectorAgent& operator= (const InspectorAgent&) = delete;
 		void runMessageLoopOnPause(int context_group_id) final;
 		void quitMessageLoopOnPause() final;
-		void ContextCreated(v8::Local<v8::Context> context, std::string name);
+		void ContextCreated(v8::Local<v8::Context> context, const std::string& name);
 		void ContextDestroyed(v8::Local<v8::Context> context);
 };
 
@@ -59,11 +59,11 @@ class InspectorSession : public v8_inspector::V8Inspector::Channel {
 		std::mutex mutex;
 	public:
 		explicit InspectorSession(IsolateEnvironment& isolate);
-		~InspectorSession();
+		~InspectorSession() override;
 		InspectorSession(const InspectorSession&) = delete;
 		InspectorSession& operator= (const InspectorSession&) = delete;
 		void Disconnect();
 		void DispatchBackendProtocolMessage(std::vector<uint16_t> message);
 };
 
-}
+} // namespace ivm

@@ -52,7 +52,7 @@ class timer_t {
 				> queue;
 				std::thread thread;
 
-				timer_thread_t(std::shared_ptr<timer_data_t> first_timer) :
+				explicit timer_thread_t(std::shared_ptr<timer_data_t> first_timer) :
 					next_timeout(first_timer->timeout), queue(&first_timer, &first_timer + 1),
 					thread(std::bind(&timer_thread_t::entry, this)) {
 					thread.detach();
@@ -117,6 +117,8 @@ class timer_t {
 			// Time to spawn a new thread
 			thread_list().emplace_back(std::make_unique<timer_thread_t>(data));
 		}
+		timer_t(const timer_t&) = delete;
+		timer_t& operator= (const timer_t&) = delete;
 
 		~timer_t() {
 			std::lock_guard<std::mutex> lock(global_mutex());
@@ -125,4 +127,4 @@ class timer_t {
 
 };
 
-}
+} // namespace ivm

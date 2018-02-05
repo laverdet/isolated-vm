@@ -9,8 +9,7 @@ namespace ivm {
 /**
  * Conversion functions for Parameterize
  */
-class ClassHandle;
-ClassHandle* _ClassHandleUnwrap(v8::Local<v8::Object>);
+class ClassHandle* _ClassHandleUnwrap(v8::Local<v8::Object> handle);
 
 inline std::string CalleeName(const v8::FunctionCallbackInfo<v8::Value>& info) {
 	return std::string("`")+ *v8::String::Utf8Value(info.Data()->ToString())+ "`";
@@ -107,7 +106,7 @@ struct ConvertParamInvoke {
  */
 template <typename T>
 struct ConvertParam {
-	static inline T Convert(const v8::Local<v8::Value> param);
+	static inline T Convert(v8::Local<v8::Value> param);
 };
 
 template <typename T>
@@ -168,7 +167,7 @@ template <>
 struct ConvertParam<v8::MaybeLocal<v8::Value>> {
 	static inline v8::MaybeLocal<v8::Value> Convert(const v8::Local<v8::Value>& param) {
 		if (param.IsEmpty()) {
-			return v8::MaybeLocal<v8::Value>();
+			return {};
 		}
 		return param;
 	}
@@ -190,7 +189,7 @@ template <>
 struct ConvertParam<v8::MaybeLocal<v8::String>> {
 	static inline v8::MaybeLocal<v8::String> Convert(const v8::Local<v8::Value>& param) {
 		if (param.IsEmpty() || param->IsUndefined()) {
-			return v8::MaybeLocal<v8::String>();
+			return {};
 		} else if (!param->IsString()) {
 			throw param_incorrect("a string");
 		}
@@ -214,7 +213,7 @@ template <>
 struct ConvertParam<v8::MaybeLocal<v8::Object>> {
 	static inline v8::MaybeLocal<v8::Object> Convert(const v8::Local<v8::Value>& param) {
 		if (param.IsEmpty() || param->IsUndefined()) {
-			return v8::MaybeLocal<v8::Object>();
+			return {};
 		} else if (!param->IsObject()) {
 			throw param_incorrect("an object");
 		}
@@ -238,7 +237,7 @@ template <>
 struct ConvertParam<v8::MaybeLocal<v8::Array>> {
 	static inline v8::MaybeLocal<v8::Array> Convert(const v8::Local<v8::Value>& param) {
 		if (param.IsEmpty() || param->IsUndefined()) {
-			return v8::MaybeLocal<v8::Array>();
+			return {};
 		} else if (!param->IsArray()) {
 			throw param_incorrect("an array");
 		}
@@ -262,7 +261,7 @@ template <>
 struct ConvertParam<v8::MaybeLocal<v8::Function>> {
 	static inline v8::MaybeLocal<v8::Function> Convert(const v8::Local<v8::Value>& param) {
 		if (param.IsEmpty() || param->IsUndefined()) {
-			return v8::MaybeLocal<v8::Function>();
+			return {};
 		} else if (!param->IsFunction()) {
 			throw param_incorrect("a function");
 		}
@@ -270,4 +269,4 @@ struct ConvertParam<v8::MaybeLocal<v8::Function>> {
 	}
 };
 
-}
+} // namespace ivm

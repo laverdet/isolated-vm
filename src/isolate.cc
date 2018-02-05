@@ -23,7 +23,7 @@ class LibraryHandle : public TransferableHandle {
 	private:
 		class LibraryHandleTransferable : public Transferable {
 			public:
-				virtual Local<Value> TransferIn() {
+				Local<Value> TransferIn() final {
 					return LibraryHandle::Get();
 				}
 		};
@@ -46,7 +46,7 @@ class LibraryHandle : public TransferableHandle {
 			));
 		}
 
-		virtual std::unique_ptr<Transferable> TransferOut() {
+		std::unique_ptr<Transferable> TransferOut() final {
 			return std::make_unique<LibraryHandleTransferable>();
 		}
 
@@ -69,7 +69,7 @@ void init(Local<Object> target) {
 		"--max-semi-space-size", "0",
 		"--max-old-space-size", "0"
 	};
-	V8::SetFlagsFromCommandLine(&argc, (char**)flags, false);
+	V8::SetFlagsFromCommandLine(&argc, const_cast<char**>(flags), false);
 
 	Isolate* isolate = Isolate::GetCurrent();
 	root_isolate = IsolateEnvironment::New(isolate, isolate->GetCurrentContext());

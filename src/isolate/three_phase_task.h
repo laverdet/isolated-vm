@@ -35,13 +35,15 @@ class ThreePhaseTask {
 				std::unique_ptr<v8::Persistent<v8::Promise::Resolver>> promise_persistent,
 				std::unique_ptr<v8::Persistent<v8::Context>> context_persistent
 			);
-			~Phase2Runner();
+			Phase2Runner(const Phase2Runner&) = delete;
+			Phase2Runner& operator= (const Phase2Runner&) = delete;
+			~Phase2Runner() final;
 			void Run() final;
 		};
 
 		struct Phase2RunnerIgnored : public Runnable {
 			std::unique_ptr<ThreePhaseTask> self;
-			Phase2RunnerIgnored(std::unique_ptr<ThreePhaseTask> self);
+			explicit Phase2RunnerIgnored(std::unique_ptr<ThreePhaseTask> self);
 			void Run() final;
 		};
 

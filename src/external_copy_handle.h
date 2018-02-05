@@ -24,6 +24,8 @@ class ExternalCopyHandle : public TransferableHandle {
 
 	public:
 		explicit ExternalCopyHandle(std::shared_ptr<ExternalCopy> value);
+		ExternalCopyHandle(const ExternalCopyHandle&) = delete;
+		ExternalCopyHandle& operator= (const ExternalCopyHandle&) = delete;
 		~ExternalCopyHandle() final;
 		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();
@@ -43,17 +45,17 @@ class ExternalCopyIntoHandle : public TransferableHandle {
 				std::shared_ptr<ExternalCopy> value;
 
 			public:
-				ExternalCopyIntoTransferable(std::shared_ptr<ExternalCopy> value);
+				explicit ExternalCopyIntoTransferable(std::shared_ptr<ExternalCopy> value);
 				v8::Local<v8::Value> TransferIn() final;
 		};
 
 		std::shared_ptr<ExternalCopy> value;
 
 	public:
-		ExternalCopyIntoHandle(std::shared_ptr<ExternalCopy> value);
+		explicit ExternalCopyIntoHandle(std::shared_ptr<ExternalCopy> value);
 		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();
-		std::unique_ptr<Transferable> TransferOut();
+		std::unique_ptr<Transferable> TransferOut() final;
 };
 
 } // namespace ivm

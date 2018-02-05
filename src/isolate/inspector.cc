@@ -43,7 +43,7 @@ InspectorAgent::~InspectorAgent() {
  * inspector messages until the inspector is done. This happens in the isolate's currently running
  * thread so we know that an ExecutorLock is up.
  */
-void InspectorAgent::runMessageLoopOnPause(int context_group_id) {
+void InspectorAgent::runMessageLoopOnPause(int /* context_group_id */) {
 	std::unique_lock<std::mutex> lock(mutex);
 	running = true;
 	while (running) {
@@ -106,8 +106,8 @@ void InspectorAgent::SendInterrupt(unique_ptr<class Runnable> task) {
 /**
  * Hook to add context to agent.
  */
-void InspectorAgent::ContextCreated(v8::Local<v8::Context> context, std::string name) {
-	inspector->contextCreated(V8ContextInfo(context, 1, StringView((const uint8_t*)name.c_str(), name.length())));
+void InspectorAgent::ContextCreated(v8::Local<v8::Context> context, const std::string& name) {
+	inspector->contextCreated(V8ContextInfo(context, 1, StringView(reinterpret_cast<const uint8_t*>(name.c_str()), name.length())));
 }
 
 /**

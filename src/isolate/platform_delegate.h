@@ -9,8 +9,8 @@ class V8 {
 	public:
 		static v8::Platform* GetCurrentPlatform(); // naughty
 };
-}
-}
+} // namespace internal
+} // namespace v8
 
 namespace ivm {
 
@@ -23,8 +23,8 @@ class PlatformDelegate : public v8::Platform {
 			private:
 				std::unique_ptr<v8::Task> task;
 			public:
-				TaskHolder(v8::Task* task) : task(task) {}
-				void Run() {
+				explicit TaskHolder(v8::Task* task) : task(task) {}
+				void Run() final {
 					task->Run();
 				}
 		};
@@ -43,11 +43,11 @@ class PlatformDelegate : public v8::Platform {
 			v8::V8::InitializePlatform(&instance);
 		}
 
-		void CallOnBackgroundThread(v8::Task* task, ExpectedRuntime expected_runtime) {
+		void CallOnBackgroundThread(v8::Task* task, ExpectedRuntime expected_runtime) final {
 			node_platform->CallOnBackgroundThread(task, expected_runtime);
 		}
 
-		void CallOnForegroundThread(v8::Isolate* isolate, v8::Task* task) {
+		void CallOnForegroundThread(v8::Isolate* isolate, v8::Task* task) final {
 			if (isolate == node_isolate) {
 				node_platform->CallOnForegroundThread(isolate, task);
 			} else {
@@ -57,13 +57,13 @@ class PlatformDelegate : public v8::Platform {
 			}
 		}
 
-		void CallDelayedOnForegroundThread(v8::Isolate* isolate, v8::Task* task, double delay_in_seconds) {
+		void CallDelayedOnForegroundThread(v8::Isolate* isolate, v8::Task* task, double delay_in_seconds) final {
 			if (isolate == node_isolate) {
 				node_platform->CallDelayedOnForegroundThread(isolate, task, delay_in_seconds);
 			} else {
 				// TODO: this could use timer_t if I add a wait() method
 				std::thread tmp_thread([isolate, task, delay_in_seconds]() {
-					std::this_thread::sleep_for(std::chrono::microseconds((long long)(delay_in_seconds * 1000000)));
+					std::this_thread::sleep_for(std::chrono::microseconds(static_cast<int>(delay_in_seconds * 1000000)));
 					auto holder = std::make_unique<TaskHolder>(task);
 					auto s_isolate = IsolateEnvironment::LookupIsolate(isolate);
 					if (s_isolate) {
@@ -74,7 +74,7 @@ class PlatformDelegate : public v8::Platform {
 			}
 		}
 
-		void CallIdleOnForegroundThread(v8::Isolate* isolate, v8::IdleTask* task) {
+		void CallIdleOnForegroundThread(v8::Isolate* isolate, v8::IdleTask* task) final {
 			if (isolate == node_isolate) {
 				node_platform->CallIdleOnForegroundThread(isolate, task);
 			} else {
@@ -82,7 +82,7 @@ class PlatformDelegate : public v8::Platform {
 			}
 		}
 
-		bool IdleTasksEnabled(v8::Isolate* isolate) {
+		bool IdleTasksEnabled(v8::Isolate* isolate) final {
 			if (isolate == node_isolate) {
 				return node_platform->IdleTasksEnabled(isolate);
 			} else {
@@ -90,13 +90,13 @@ class PlatformDelegate : public v8::Platform {
 			}
 		}
 
-		double MonotonicallyIncreasingTime() {
+		double MonotonicallyIncreasingTime() final {
 			return node_platform->MonotonicallyIncreasingTime();
 		}
 
-		v8::TracingController* GetTracingController() {
+		v8::TracingController* GetTracingController() final {
 			return node_platform->GetTracingController();
 		}
 };
 
-}
+} // namespace ivm

@@ -28,4 +28,4 @@ class SessionHandle : public ClassHandle {
 		void OnResponseSetter(v8::Local<v8::Function> value);
 };
 
-}
+} // namespace ivm

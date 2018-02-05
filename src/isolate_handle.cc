@@ -55,7 +55,7 @@ class ScriptOriginHolder {
 
 		ScriptOrigin ToScriptOrigin() {
 			Isolate* isolate = Isolate::GetCurrent();
-			return ScriptOrigin(v8_string(filename.c_str()), Integer::New(isolate, columnOffset), Integer::New(isolate, lineOffset));
+			return { v8_string(filename.c_str()), Integer::New(isolate, columnOffset), Integer::New(isolate, lineOffset) };
 		}
 };
 
@@ -89,10 +89,7 @@ class LimitedAllocator : public ArrayBuffer::Allocator {
 		}
 
 	public:
-		LimitedAllocator(size_t limit) : limit(limit), v8_heap(1024 * 1024 * 4), my_heap(0), next_check(1024 * 1024) {}
-		LimitedAllocator(const LimitedAllocator&) = delete;
-		LimitedAllocator& operator= (const LimitedAllocator&) = delete;
-		~LimitedAllocator() = default;
+		explicit LimitedAllocator(size_t limit) : limit(limit), v8_heap(1024 * 1024 * 4), my_heap(0), next_check(1024 * 1024) {}
 
 		void* Allocate(size_t length) final {
 			if (Check(length)) {
@@ -189,7 +186,7 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 			}
 			ExternalCopyHandle& copy_handle = *dynamic_cast<ExternalCopyHandle*>(ClassHandle::Unwrap(snapshot_handle.As<Object>()));
 			snapshot_blob = std::dynamic_pointer_cast<ExternalCopyArrayBuffer>(copy_handle.GetValue());
-			if (snapshot_blob.get() == nullptr) {
+			if (!snapshot_blob) {
 				throw js_type_error("`snapshot` must be an ExternalCopy to ArrayBuffer");
 			}
 		}
@@ -251,7 +248,7 @@ Local<Value> IsolateHandle::CreateContext(MaybeLocal<Object> maybe_options) {
 						unique_ptr<Persistent<Context>> context;
 						bool has_inspector;
 						ContextDisposer(unique_ptr<Persistent<Context>> context, bool has_inspector) : context(std::move(context)), has_inspector(has_inspector) {}
-						void Run() {
+						void Run() final {
 							Isolate* isolate = Isolate::GetCurrent();
 							if (has_inspector) {
 								HandleScope handle_scope(isolate);
@@ -406,7 +403,7 @@ Local<Value> IsolateHandle::CreateInspectorSession() {
 	if (!env) {
 		throw js_generic_error("Isolate is diposed");
 	}
-	if (!env->GetInspectorAgent()) {
+	if (env->GetInspectorAgent() == nullptr) {
 		throw js_generic_error("Inspector is not enabled for this isolate");
 	}
 	return ClassHandle::NewInstance<SessionHandle>(*env);
@@ -427,11 +424,11 @@ template <int async>
 Local<Value> IsolateHandle::GetHeapStatistics() {
 	struct HeapStatRunner : public ThreePhaseTask {
 		HeapStatistics heap;
-		size_t externally_allocated_size;
+		size_t externally_allocated_size = 0;
 
 		void Phase2() final {
 			Isolate::GetCurrent()->GetHeapStatistics(&heap);
-			externally_allocated_size = static_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator())->GetAllocatedSize();
+			externally_allocated_size = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator())->GetAllocatedSize();
 		}
 
 		Local<Value> Phase3() final {
@@ -477,7 +474,7 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 			throw js_type_error("`code` property is required");
 		}
 		ScriptOriginHolder script_origin(script_handle.As<Object>());
-		scripts.push_back(std::make_pair(std::string(*String::Utf8Value(script.As<String>())), std::move(script_origin)));
+		scripts.emplace_back(std::string(*String::Utf8Value(script.As<String>())), std::move(script_origin));
 	}
 	std::string warmup_script;
 	if (!warmup_handle.IsEmpty()) {
@@ -485,7 +482,7 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 	}
 
 	// Create the snapshot
-	StartupData snapshot;
+	StartupData snapshot {};
 	unique_ptr<const char> snapshot_data_ptr;
 	shared_ptr<ExternalCopy> error;
 	{
@@ -555,4 +552,4 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 	return ClassHandle::NewInstance<ExternalCopyHandle>(buffer);
 }
 
-}
+} // namespace ivm

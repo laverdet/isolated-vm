@@ -19,11 +19,11 @@ class ClassHandle {
 			v8::FunctionCallback fn;
 			int args;
 			constexpr CtorFunction(v8::FunctionCallback fn, int args) : fn(fn), args(args) {}
-			constexpr CtorFunction(nullptr_t ptr) : fn(nullptr), args(0) {}
+			constexpr CtorFunction(nullptr_t ptr) : fn(ptr), args(0) {} // NOLINT
 		};
 		// The int types here are just a lazy way to make these different types
-		using MemberFunction = std::pair<v8::FunctionCallback, uint32_t>;
-		using StaticFunction = std::pair<v8::FunctionCallback, uint64_t>;
+		using MemberFunction = std::pair<v8::FunctionCallback, int32_t>;
+		using StaticFunction = std::pair<v8::FunctionCallback, uint32_t>;
 		using AccessorPair = std::pair<v8::AccessorGetterCallback, v8::AccessorSetterCallback>;
 		using SetterPair = std::pair<v8::Local<v8::Value>*, const v8::PropertyCallbackInfo<void>*>;
 		v8::Persistent<v8::Object> handle;
@@ -99,14 +99,14 @@ class ClassHandle {
 			AddMethods(isolate, tmpl, proto, sig, asig, args...);
 		}
 
-		static void AddMethods(v8::Isolate* isolate, v8::Local<v8::FunctionTemplate>, v8::Local<v8::ObjectTemplate>& proto, v8::Local<v8::Signature>& sig, v8::Local<v8::AccessorSignature>& asig) {}
+		static void AddMethods(v8::Isolate*, v8::Local<v8::FunctionTemplate>, v8::Local<v8::ObjectTemplate>&, v8::Local<v8::Signature>&, v8::Local<v8::AccessorSignature>&) {} // NOLINT
 
 		/**
 		 * Below is the Parameterize<> template magic
 		 */
 		// These two templates will peel arguments off and run them through ConvertParam<T>
 		template <typename V, int O, typename FnT, typename R, typename ConvertedArgsT>
-		static inline R ParameterizeHelper(FnT fn, ConvertedArgsT convertedArgs, V info) {
+		static inline R ParameterizeHelper(FnT fn, ConvertedArgsT convertedArgs, V /* info */) {
 			return apply_from_tuple(fn, convertedArgs);
 		}
 
@@ -146,7 +146,7 @@ class ClassHandle {
 				std::tuple<>,
 				Args...
 			>(fn, std::tuple<>(), info);
-			if (result.get() != nullptr) {
+			if (result) {
 				v8::Local<v8::Object> handle = info.This().As<v8::Object>();
 				Wrap(std::move(result), handle);
 				return handle;
@@ -181,7 +181,7 @@ class ClassHandle {
 
 		// Main entry point for getter functions
 		template <typename T, T F>
-		static inline void ParameterizeGetterEntry(v8::Local<v8::String> property, const v8::PropertyCallbackInfo<v8::Value>& info) {
+		static inline void ParameterizeGetterEntry(v8::Local<v8::String> /* property */, const v8::PropertyCallbackInfo<v8::Value>& info) {
 			try {
 				v8::Local<v8::Value> result = ParameterizeHelperStart<const v8::PropertyCallbackInfo<v8::Value>&, -1>(info, F);
 				if (result.IsEmpty()) {
@@ -193,7 +193,7 @@ class ClassHandle {
 
 		// Main entry point for setter functions
 		template <typename T, T F>
-		static inline void ParameterizeSetterEntry(v8::Local<v8::String> property, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& info) {
+		static inline void ParameterizeSetterEntry(v8::Local<v8::String> /* property */, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& info) {
 			try {
 				ParameterizeHelperStart<SetterPair, -1>(SetterPair(&value, &info), F);
 				info.GetReturnValue().Set(v8::Boolean::New(v8::Isolate::GetCurrent(), true));
@@ -206,7 +206,7 @@ class ClassHandle {
 
 		template <typename R, typename ...Args>
 		struct MethodCast<R(Args...)> {
-			typedef R(*Type)(Args...);
+			using Type = R(*)(Args...);
 			template <R(*F)(Args...)>
 			static R Invoke(Args... args) {
 				return (*F)(args...);
@@ -215,14 +215,14 @@ class ClassHandle {
 
 		template<class C, class R, class ...Args>
 		struct MethodCast<R(C::*)(Args...)> : public MethodCast<R(Args...)> {
-			typedef R(*Type)(C*, Args...);
+			using Type = R(*)(C*, Args...);
 			template <R(C::*F)(Args...)>
 			static R Invoke(C* that, Args... args) {
 				return (that->*F)(args...);
 			}
 		};
 
-		template <typename R, typename ...Args> static constexpr size_t ArgCount(R(*fn)(Args...)) {
+		template <typename R, typename ...Args> static constexpr size_t ArgCount(R(* /* fn */)(Args...)) {
 			return sizeof...(Args);
 		}
 
@@ -340,6 +340,7 @@ class ClassHandle {
 	public:
 		ClassHandle() = default;
 		ClassHandle(const ClassHandle&) = delete;
+		ClassHandle& operator= (const ClassHandle&) = delete;
 		virtual ~ClassHandle() {
 			if (!handle.IsEmpty()) {
 				handle.ClearWeak();
@@ -393,4 +394,4 @@ class ClassHandle {
 
 };
 
-}
+} // namespace ivm

@@ -14,10 +14,10 @@ namespace ivm {
  * RAII wrapper around libuv dlopen
  */
 NativeModuleHandle::NativeModule::NativeModule(const std::string& filename) : init(nullptr) {
-	if (uv_dlopen(filename.c_str(), &lib)) {
+	if (uv_dlopen(filename.c_str(), &lib) != 0) {
 		throw js_generic_error("Failed to load module");
 	}
-	if (uv_dlsym(&lib, "InitForContext", reinterpret_cast<void**>(&init)) || init == nullptr) {
+	if (uv_dlsym(&lib, "InitForContext", reinterpret_cast<void**>(&init)) != 0 || init == nullptr) {
 		uv_dlclose(&lib);
 		throw js_generic_error("Module is not isolated-vm compatible");
 	}
@@ -77,7 +77,7 @@ Local<Value> NativeModuleHandle::Create(class ContextHandle* context_handle) {
 			unique_ptr<Transferable> result;
 
 		public:
-			Create(shared_ptr<Persistent<Context>> context, shared_ptr<NativeModuleHandle::NativeModule> module) : context(context), module(module) {}
+			Create(shared_ptr<Persistent<Context>> context, shared_ptr<NativeModuleHandle::NativeModule> module) : context(std::move(context)), module(std::move(module)) {}
 
 		protected:
 			void Phase2() final {
@@ -99,4 +99,4 @@ Local<Value> NativeModuleHandle::Create(class ContextHandle* context_handle) {
 	return ThreePhaseTask::Run<async, Create>(*context_handle->isolate, context_handle->context, module);
 }
 
-}
+} // namespace ivm

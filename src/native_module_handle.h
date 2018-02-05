@@ -14,13 +14,14 @@ class NativeModuleHandle : public TransferableHandle {
 	private:
 		class NativeModule {
 			private:
-				typedef void (*init_t)(v8::Isolate*, v8::Local<v8::Context>, v8::Local<v8::Object>);
-				uv_lib_t lib;
+				using init_t = void(*)(v8::Isolate *, v8::Local<v8::Context>, v8::Local<v8::Object>);
+				uv_lib_t lib {};
 				init_t init;
 
 			public:
-				NativeModule(const std::string& filename);
+				explicit NativeModule(const std::string& filename);
 				NativeModule(const NativeModule&) = delete;
+				NativeModule& operator= (const NativeModule&) = delete;
 				~NativeModule();
 				void InitForContext(v8::Isolate* isolate, v8::Local<v8::Context> context, v8::Local<v8::Object> target);
 		};
@@ -29,21 +30,21 @@ class NativeModuleHandle : public TransferableHandle {
 			private:
 				std::shared_ptr<NativeModule> module;
 			public:
-				NativeModuleTransferable(std::shared_ptr<NativeModule> module);
-				virtual v8::Local<v8::Value> TransferIn() override;
+				explicit NativeModuleTransferable(std::shared_ptr<NativeModule> module);
+				v8::Local<v8::Value> TransferIn() final;
 		};
 
 		std::shared_ptr<NativeModule> module;
 
 		template <int async>
-		v8::Local<v8::Value> Create(ContextHandle* context);
+		v8::Local<v8::Value> Create(ContextHandle* context_handle);
 
 	public:
-		NativeModuleHandle(std::shared_ptr<NativeModule> module);
+		explicit NativeModuleHandle(std::shared_ptr<NativeModule> module);
 		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();
 		static std::unique_ptr<NativeModuleHandle> New(v8::Local<v8::String> value);
-		virtual std::unique_ptr<Transferable> TransferOut() override;
+		std::unique_ptr<Transferable> TransferOut() final;
 };
 
-}
+} // namespace ivm

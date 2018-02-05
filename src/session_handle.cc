@@ -31,8 +31,10 @@ class SessionImpl : public InspectorSession {
 		}
 
 		// These functions are invoked directly from v8
-		void sendResponse(int call_id, unique_ptr<StringBuffer> message) {
-			if (!onResponse) return;
+		void sendResponse(int call_id, unique_ptr<StringBuffer> message) final {
+			if (!onResponse) {
+				return;
+			}
 			struct SendResponseTask : public Runnable {
 				int call_id;
 				unique_ptr<StringBuffer> message;
@@ -59,8 +61,10 @@ class SessionImpl : public InspectorSession {
 			isolate->ScheduleTask(std::make_unique<SendResponseTask>(call_id, std::move(message), onResponse), false, true);
 		}
 
-		void sendNotification(unique_ptr<StringBuffer> message) {
-			if (!onNotification) return;
+		void sendNotification(unique_ptr<StringBuffer> message) final {
+			if (!onNotification) {
+				return;
+			}
 			struct SendNotificationTask : public Runnable {
 				unique_ptr<StringBuffer> message;
 				shared_ptr<Persistent<Function>> onNotification;
@@ -84,7 +88,7 @@ class SessionImpl : public InspectorSession {
 			isolate->ScheduleTask(std::make_unique<SendNotificationTask>(std::move(message), onNotification), false, true);
 		}
 
-		void flushProtocolNotifications() {}
+		void flushProtocolNotifications() final {}
 };
 
 /**
@@ -167,4 +171,4 @@ void SessionHandle::OnResponseSetter(Local<Function> value) {
 	session->onResponse = std::make_shared<Persistent<Function>>(Isolate::GetCurrent(), value);
 }
 
-}
+} // namespace ivm

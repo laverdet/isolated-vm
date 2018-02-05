@@ -16,12 +16,12 @@ class IsolateHandle : public TransferableHandle {
 			private:
 				std::shared_ptr<IsolateHolder> isolate;
 			public:
-				IsolateHandleTransferable(std::shared_ptr<IsolateHolder> isolate);
+				explicit IsolateHandleTransferable(std::shared_ptr<IsolateHolder> isolate);
 				v8::Local<v8::Value> TransferIn() final;
 		};
 
 	public:
-		IsolateHandle(std::shared_ptr<IsolateHolder> isolate);
+		explicit IsolateHandle(std::shared_ptr<IsolateHolder> isolate);
 		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();
 		static std::unique_ptr<ClassHandle> New(v8::MaybeLocal<v8::Object> maybe_options);

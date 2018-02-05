@@ -51,4 +51,4 @@ Local<Value> LibHandle::Hrtime(MaybeLocal<Array> maybe_diff) {
 	return ret;
 }
 
-}
+} // namespace ivm

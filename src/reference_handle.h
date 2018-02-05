@@ -95,4 +95,4 @@ class DereferenceHandle : public TransferableHandle {
 		std::unique_ptr<Transferable> TransferOut() final;
 };
 
-}
+} // namespace ivm

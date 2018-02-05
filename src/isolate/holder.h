@@ -11,7 +11,7 @@ class IsolateHolder {
 		std::shared_ptr<IsolateEnvironment> isolate;
 
 	public:
-		IsolateHolder(std::shared_ptr<IsolateEnvironment> isolate);
+		explicit IsolateHolder(std::shared_ptr<IsolateEnvironment> isolate);
 		IsolateHolder(const IsolateHolder&) = delete;
 		IsolateHolder& operator= (const IsolateHolder&) = delete;
 		~IsolateHolder() = default;

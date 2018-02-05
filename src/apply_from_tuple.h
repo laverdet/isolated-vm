@@ -7,7 +7,7 @@
 // adapted from: http://www.cppsamples.com/common-tasks/apply-tuple-to-function.html
 
 template<typename F, typename Tuple, size_t ...S>
-decltype(auto) apply_tuple_impl(F&& fn, Tuple&& t, std::index_sequence<S...>) {
+decltype(auto) apply_tuple_impl(F&& fn, Tuple&& t, std::index_sequence<S...> /* unused */) {
 	return std::forward<F>(fn)(std::get<S>(std::forward<Tuple>(t))...);
 }
 

@@ -1,0 +1,16 @@
+#!/bin/bash
+# Run `brew install llvm` for this to work.
+PATH=/usr/local/opt/llvm/bin:$PATH
+GYP_PATH=~/.node-gyp/$(node -v | cut -c2-)
+CHECKS=
+clang-tidy "$@" \
+	-- \
+	-nostdinc \
+	-I$GYP_PATH/include/node \
+	-isystem /usr/local/include \
+	-isystem /usr/local/opt/llvm/include/c++/v1 \
+	-isystem /usr/local/opt/llvm/lib/clang/*/include \
+	-isystem /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include \
+	-isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include \
+	-isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks \
+	-std=c++14

@@ -18,10 +18,10 @@ unique_ptr<Transferable> Transferable::TransferOut(const Local<Value>& value) {
 		}
 	}
 	unique_ptr<Transferable> copy = ExternalCopy::CopyIfPrimitive(value);
-	if (copy.get() == nullptr) {
+	if (!copy) {
 		throw js_type_error("A non-transferable value was passed");
 	}
 	return copy;
 }
 
-}
+} // namespace ivm
