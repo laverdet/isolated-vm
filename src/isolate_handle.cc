@@ -426,6 +426,9 @@ Local<Value> IsolateHandle::GetHeapStatistics() {
 		HeapStatistics heap;
 		size_t externally_allocated_size = 0;
 
+		// Dummy constructor to workaround gcc bug
+		HeapStatRunner(int /* unused */) {}
+
 		void Phase2() final {
 			Isolate::GetCurrent()->GetHeapStatistics(&heap);
 			externally_allocated_size = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator())->GetAllocatedSize();
@@ -447,7 +450,7 @@ Local<Value> IsolateHandle::GetHeapStatistics() {
 			return ret;
 		}
 	};
-	return ThreePhaseTask::Run<async, HeapStatRunner>(*isolate);
+	return ThreePhaseTask::Run<async, HeapStatRunner>(*isolate, 0);
 }
 
 /**
