@@ -7,7 +7,7 @@
 namespace ivm {
 
 class ContextHandle : public TransferableHandle {
-	friend class ScriptHandle;
+	friend struct RunRunner;
 	friend class NativeModuleHandle;
 	private:
 		std::shared_ptr<IsolateHolder> isolate;

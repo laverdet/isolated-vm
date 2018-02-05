@@ -13,6 +13,10 @@ class DereferenceHandle;
  */
 class ReferenceHandle : public TransferableHandle {
 	friend class Transferable;
+	friend struct CopyRunner;
+	friend struct GetRunner;
+	friend struct SetRunner;
+	friend struct ApplyRunner;
 	public:
 		enum class TypeOf { Null, Undefined, Number, String, Boolean, Object, Function };
 

@@ -11,7 +11,7 @@
 namespace ivm {
 
 class NativeModuleHandle : public TransferableHandle {
-	private:
+	public:
 		class NativeModule {
 			private:
 				using init_t = void(*)(v8::Isolate *, v8::Local<v8::Context>, v8::Local<v8::Object>);
@@ -26,6 +26,7 @@ class NativeModuleHandle : public TransferableHandle {
 				void InitForContext(v8::Isolate* isolate, v8::Local<v8::Context> context, v8::Local<v8::Object> target);
 		};
 
+	private:
 		class NativeModuleTransferable : public Transferable {
 			private:
 				std::shared_ptr<NativeModule> module;

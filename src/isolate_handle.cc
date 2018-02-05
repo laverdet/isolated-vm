@@ -215,181 +215,181 @@ unique_ptr<Transferable> IsolateHandle::TransferOut() {
 /**
  * Create a new v8::Context in this isolate and returns a ContextHandle
  */
+struct CreateContextRunner : public ThreePhaseTask {
+	bool enable_inspector = false;
+	shared_ptr<IsolateHolder> isolate;
+	shared_ptr<Persistent<Context>> context;
+	shared_ptr<Persistent<Value>> global;
+
+	CreateContextRunner(MaybeLocal<Object>& maybe_options, shared_ptr<IsolateHolder> isolate) : isolate(std::move(isolate)) {
+		Local<Object> options;
+		if (maybe_options.ToLocal(&options)) {
+			Local<Value> enable_inspector = Unmaybe(options->Get(Isolate::GetCurrent()->GetCurrentContext(), v8_symbol("inspector")));
+			if (enable_inspector->IsTrue()) {
+				this->enable_inspector = true;
+			}
+		}
+	}
+
+	void Phase2() final {
+		// Use custom deleter on the shared_ptr which will notify the isolate when the context is gone
+		struct ContextDeleter {
+			std::weak_ptr<IsolateHolder> isolate;
+			bool has_inspector;
+
+			explicit ContextDeleter(bool has_inspector) : isolate(IsolateEnvironment::GetCurrentHolder()), has_inspector(has_inspector) {}
+
+			void operator() (Persistent<Context>* ptr) {
+				// This part is called by any isolate. We need to schedule a task to run in the isolate so
+				// we can dispatch the correct notifications.
+				struct ContextDisposer : public Runnable {
+					unique_ptr<Persistent<Context>> context;
+					bool has_inspector;
+					ContextDisposer(unique_ptr<Persistent<Context>> context, bool has_inspector) : context(std::move(context)), has_inspector(has_inspector) {}
+					void Run() final {
+						Isolate* isolate = Isolate::GetCurrent();
+						if (has_inspector) {
+							HandleScope handle_scope(isolate);
+							Local<Context> context = Local<Context>::New(isolate, *this->context);
+							this->context->Reset();
+							IsolateEnvironment::GetCurrent()->GetInspectorAgent()->ContextDestroyed(context);
+						}
+						this->context->Reset();
+						isolate->ContextDisposedNotification();
+					}
+				};
+				auto context = unique_ptr<Persistent<Context>>(ptr);
+				shared_ptr<IsolateHolder> isolate_ref = isolate.lock();
+				if (isolate_ref) {
+					isolate_ref->ScheduleTask(std::make_unique<ContextDisposer>(std::move(context), has_inspector), true, false);
+				}
+			}
+		};
+
+		Isolate* isolate = Isolate::GetCurrent();
+		auto env = IsolateEnvironment::GetCurrent();
+
+		// Sanity check before we build the context
+		if (enable_inspector && !env->GetInspectorAgent()) {
+			Context::Scope context_scope(env->DefaultContext()); // TODO: This is needed to throw, but is stupid and sloppy
+			throw js_generic_error("Inspector is not enabled for this isolate");
+		}
+
+		// Make a new context and setup shared pointers
+		Local<Context> context_handle = Context::New(isolate);
+		if (enable_inspector) {
+			env->GetInspectorAgent()->ContextCreated(context_handle, "<isolated-vm>");
+		}
+		context = shared_ptr<Persistent<Context>>(new Persistent<Context>(isolate, context_handle), ContextDeleter(enable_inspector));
+		global = std::make_shared<Persistent<Value>>(isolate, context_handle->Global());
+	}
+
+	Local<Value> Phase3() final {
+		// Make a new Context{} JS class
+		return ClassHandle::NewInstance<ContextHandle>(std::move(isolate), std::move(context), std::move(global));
+	}
+};
 template <int async>
 Local<Value> IsolateHandle::CreateContext(MaybeLocal<Object> maybe_options) {
-	struct CreateContext : public ThreePhaseTask {
-		bool enable_inspector = false;
-		shared_ptr<IsolateHolder> isolate;
-		shared_ptr<Persistent<Context>> context;
-		shared_ptr<Persistent<Value>> global;
-
-		CreateContext(MaybeLocal<Object>& maybe_options, shared_ptr<IsolateHolder> isolate) : isolate(std::move(isolate)) {
-			Local<Object> options;
-			if (maybe_options.ToLocal(&options)) {
-				Local<Value> enable_inspector = Unmaybe(options->Get(Isolate::GetCurrent()->GetCurrentContext(), v8_symbol("inspector")));
-				if (enable_inspector->IsTrue()) {
-					this->enable_inspector = true;
-				}
-			}
-		}
-
-		void Phase2() final {
-			// Use custom deleter on the shared_ptr which will notify the isolate when the context is gone
-			struct ContextDeleter {
-				std::weak_ptr<IsolateHolder> isolate;
-				bool has_inspector;
-
-				explicit ContextDeleter(bool has_inspector) : isolate(IsolateEnvironment::GetCurrentHolder()), has_inspector(has_inspector) {}
-
-				void operator() (Persistent<Context>* ptr) {
-					// This part is called by any isolate. We need to schedule a task to run in the isolate so
-					// we can dispatch the correct notifications.
-					struct ContextDisposer : public Runnable {
-						unique_ptr<Persistent<Context>> context;
-						bool has_inspector;
-						ContextDisposer(unique_ptr<Persistent<Context>> context, bool has_inspector) : context(std::move(context)), has_inspector(has_inspector) {}
-						void Run() final {
-							Isolate* isolate = Isolate::GetCurrent();
-							if (has_inspector) {
-								HandleScope handle_scope(isolate);
-								Local<Context> context = Local<Context>::New(isolate, *this->context);
-								this->context->Reset();
-								IsolateEnvironment::GetCurrent()->GetInspectorAgent()->ContextDestroyed(context);
-							}
-							this->context->Reset();
-							isolate->ContextDisposedNotification();
-						}
-					};
-					auto context = unique_ptr<Persistent<Context>>(ptr);
-					shared_ptr<IsolateHolder> isolate_ref = isolate.lock();
-					if (isolate_ref) {
-						isolate_ref->ScheduleTask(std::make_unique<ContextDisposer>(std::move(context), has_inspector), true, false);
-					}
-				}
-			};
-
-			Isolate* isolate = Isolate::GetCurrent();
-			auto env = IsolateEnvironment::GetCurrent();
-
-			// Sanity check before we build the context
-			if (enable_inspector && !env->GetInspectorAgent()) {
-				Context::Scope context_scope(env->DefaultContext()); // TODO: This is needed to throw, but is stupid and sloppy
-				throw js_generic_error("Inspector is not enabled for this isolate");
-			}
-
-			// Make a new context and setup shared pointers
-			Local<Context> context_handle = Context::New(isolate);
-			if (enable_inspector) {
-				env->GetInspectorAgent()->ContextCreated(context_handle, "<isolated-vm>");
-			}
-			context = shared_ptr<Persistent<Context>>(new Persistent<Context>(isolate, context_handle), ContextDeleter(enable_inspector));
-			global = std::make_shared<Persistent<Value>>(isolate, context_handle->Global());
-		}
-
-		Local<Value> Phase3() final {
-			// Make a new Context{} JS class
-			return ClassHandle::NewInstance<ContextHandle>(std::move(isolate), std::move(context), std::move(global));
-		}
-	};
-	return ThreePhaseTask::Run<async, CreateContext>(*isolate, maybe_options, isolate);
+	return ThreePhaseTask::Run<async, CreateContextRunner>(*isolate, maybe_options, isolate);
 }
 
 /**
  * Compiles a script in this isolate and returns a ScriptHandle
  */
+struct CompileScriptRunner : public ThreePhaseTask {
+	// phase 2
+	shared_ptr<IsolateHolder> isolate;
+	unique_ptr<ExternalCopyString> code_string;
+	unique_ptr<ScriptOriginHolder> script_origin_holder;
+	shared_ptr<ExternalCopyArrayBuffer> cached_data_blob; // also phase 3
+	bool produce_cached_data { false };
+	// phase 3
+	shared_ptr<Persistent<UnboundScript>> script;
+	bool supplied_cached_data { false };
+	bool cached_data_rejected { false };
+
+	CompileScriptRunner(shared_ptr<IsolateHolder> isolate, const Local<String>& code_handle, const MaybeLocal<Object>& maybe_options) : isolate(std::move(isolate)) {
+		// Read options
+		Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
+		Local<Object> options;
+
+		script_origin_holder = std::make_unique<ScriptOriginHolder>(maybe_options);
+		if (maybe_options.ToLocal(&options)) {
+
+			// Get cached data blob
+			Local<Value> cached_data_handle = Unmaybe(options->Get(context, v8_symbol("cachedData")));
+			if (!cached_data_handle->IsUndefined()) {
+				if (
+					!cached_data_handle->IsObject() ||
+					!ClassHandle::GetFunctionTemplate<ExternalCopyHandle>()->HasInstance(cached_data_handle.As<Object>())
+				) {
+					throw js_type_error("`cachedData` must be an ExternalCopy to ArrayBuffer");
+				}
+				ExternalCopyHandle& copy_handle = *dynamic_cast<ExternalCopyHandle*>(ClassHandle::Unwrap(cached_data_handle.As<Object>()));
+				cached_data_blob = std::dynamic_pointer_cast<ExternalCopyArrayBuffer>(copy_handle.GetValue());
+				if (!cached_data_blob) {
+					throw js_type_error("`cachedData` must be an ExternalCopy to ArrayBuffer");
+				}
+			}
+
+			// Get cached data flag
+			Local<Value> produce_cached_data_val;
+			if (options->Get(context, v8_symbol("produceCachedData")).ToLocal(&produce_cached_data_val)) {
+				produce_cached_data = produce_cached_data_val->IsTrue();
+			}
+		}
+
+		// Copy code string
+		code_string = std::make_unique<ExternalCopyString>(code_handle);
+	}
+
+	void Phase2() final {
+		// Compile in second isolate and return UnboundScript persistent
+		auto isolate = IsolateEnvironment::GetCurrent();
+		Context::Scope context_scope(isolate->DefaultContext());
+		Local<String> code_inner = code_string->CopyIntoCheckHeap().As<String>();
+		ScriptOrigin script_origin = script_origin_holder->ToScriptOrigin();
+		ScriptCompiler::CompileOptions compile_options = ScriptCompiler::kNoCompileOptions;
+		unique_ptr<ScriptCompiler::CachedData> cached_data = nullptr;
+		if (cached_data_blob) {
+			compile_options = ScriptCompiler::kConsumeCodeCache;
+			cached_data = std::make_unique<ScriptCompiler::CachedData>((const uint8_t*)cached_data_blob->Data(), cached_data_blob->Length());
+		} else if (produce_cached_data) {
+			compile_options = ScriptCompiler::kProduceCodeCache;
+		}
+		ScriptCompiler::Source source(code_inner, script_origin, cached_data.release());
+		script = std::make_shared<Persistent<UnboundScript>>(Isolate::GetCurrent(), RunWithAnnotatedErrors<Local<UnboundScript>>(
+			[&isolate, &source, compile_options]() { return Unmaybe(ScriptCompiler::CompileUnboundScript(*isolate, &source, compile_options)); }
+		));
+
+		// Check cached data flags
+		if (cached_data_blob) {
+			supplied_cached_data = true;
+			cached_data_rejected = source.GetCachedData()->rejected;
+			cached_data_blob.reset();
+		} else if (produce_cached_data) {
+			const ScriptCompiler::CachedData* cached_data = source.GetCachedData();
+			assert(cached_data != nullptr);
+			cached_data_blob = std::make_shared<ExternalCopyArrayBuffer>((void*)cached_data->data, cached_data->length);
+		}
+	}
+
+	Local<Value> Phase3() final {
+		// Wrap UnboundScript in JS Script{} class
+		Local<Object> value = ClassHandle::NewInstance<ScriptHandle>(std::move(isolate), std::move(script));
+		Isolate* isolate = Isolate::GetCurrent();
+		if (supplied_cached_data) {
+			value->Set(v8_symbol("cachedDataRejected"), Boolean::New(isolate, cached_data_rejected));
+		} else if (cached_data_blob) {
+			value->Set(v8_symbol("cachedData"), ClassHandle::NewInstance<ExternalCopyHandle>(cached_data_blob));
+		}
+		return value;
+	}
+};
 template <int async>
 Local<Value> IsolateHandle::CompileScript(Local<String> code_handle, MaybeLocal<Object> maybe_options) {
-	struct CompileScript : public ThreePhaseTask {
-		// phase 2
-		shared_ptr<IsolateHolder> isolate;
-		unique_ptr<ExternalCopyString> code_string;
-		unique_ptr<ScriptOriginHolder> script_origin_holder;
-		shared_ptr<ExternalCopyArrayBuffer> cached_data_blob; // also phase 3
-		bool produce_cached_data { false };
-		// phase 3
-		shared_ptr<Persistent<UnboundScript>> script;
-		bool supplied_cached_data { false };
-		bool cached_data_rejected { false };
-
-		CompileScript(shared_ptr<IsolateHolder> isolate, const Local<String>& code_handle, const MaybeLocal<Object>& maybe_options) : isolate(std::move(isolate)) {
-			// Read options
-			Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
-			Local<Object> options;
-
-			script_origin_holder = std::make_unique<ScriptOriginHolder>(maybe_options);
-			if (maybe_options.ToLocal(&options)) {
-
-				// Get cached data blob
-				Local<Value> cached_data_handle = Unmaybe(options->Get(context, v8_symbol("cachedData")));
-				if (!cached_data_handle->IsUndefined()) {
-					if (
-						!cached_data_handle->IsObject() ||
-						!ClassHandle::GetFunctionTemplate<ExternalCopyHandle>()->HasInstance(cached_data_handle.As<Object>())
-					) {
-						throw js_type_error("`cachedData` must be an ExternalCopy to ArrayBuffer");
-					}
-					ExternalCopyHandle& copy_handle = *dynamic_cast<ExternalCopyHandle*>(ClassHandle::Unwrap(cached_data_handle.As<Object>()));
-					cached_data_blob = std::dynamic_pointer_cast<ExternalCopyArrayBuffer>(copy_handle.GetValue());
-					if (!cached_data_blob) {
-						throw js_type_error("`cachedData` must be an ExternalCopy to ArrayBuffer");
-					}
-				}
-
-				// Get cached data flag
-				Local<Value> produce_cached_data_val;
-				if (options->Get(context, v8_symbol("produceCachedData")).ToLocal(&produce_cached_data_val)) {
-					produce_cached_data = produce_cached_data_val->IsTrue();
-				}
-			}
-
-			// Copy code string
-			code_string = std::make_unique<ExternalCopyString>(code_handle);
-		}
-
-		void Phase2() final {
-			// Compile in second isolate and return UnboundScript persistent
-			auto isolate = IsolateEnvironment::GetCurrent();
-			Context::Scope context_scope(isolate->DefaultContext());
-			Local<String> code_inner = code_string->CopyIntoCheckHeap().As<String>();
-			ScriptOrigin script_origin = script_origin_holder->ToScriptOrigin();
-			ScriptCompiler::CompileOptions compile_options = ScriptCompiler::kNoCompileOptions;
-			unique_ptr<ScriptCompiler::CachedData> cached_data = nullptr;
-			if (cached_data_blob) {
-				compile_options = ScriptCompiler::kConsumeCodeCache;
-				cached_data = std::make_unique<ScriptCompiler::CachedData>((const uint8_t*)cached_data_blob->Data(), cached_data_blob->Length());
-			} else if (produce_cached_data) {
-				compile_options = ScriptCompiler::kProduceCodeCache;
-			}
-			ScriptCompiler::Source source(code_inner, script_origin, cached_data.release());
-			script = std::make_shared<Persistent<UnboundScript>>(Isolate::GetCurrent(), RunWithAnnotatedErrors<Local<UnboundScript>>(
-				[&isolate, &source, compile_options]() { return Unmaybe(ScriptCompiler::CompileUnboundScript(*isolate, &source, compile_options)); }
-			));
-
-			// Check cached data flags
-			if (cached_data_blob) {
-				supplied_cached_data = true;
-				cached_data_rejected = source.GetCachedData()->rejected;
-				cached_data_blob.reset();
-			} else if (produce_cached_data) {
-				const ScriptCompiler::CachedData* cached_data = source.GetCachedData();
-				assert(cached_data != nullptr);
-				cached_data_blob = std::make_shared<ExternalCopyArrayBuffer>((void*)cached_data->data, cached_data->length);
-			}
-		}
-
-		Local<Value> Phase3() final {
-			// Wrap UnboundScript in JS Script{} class
-			Local<Object> value = ClassHandle::NewInstance<ScriptHandle>(std::move(isolate), std::move(script));
-			Isolate* isolate = Isolate::GetCurrent();
-			if (supplied_cached_data) {
-				value->Set(v8_symbol("cachedDataRejected"), Boolean::New(isolate, cached_data_rejected));
-			} else if (cached_data_blob) {
-				value->Set(v8_symbol("cachedData"), ClassHandle::NewInstance<ExternalCopyHandle>(cached_data_blob));
-			}
-			return value;
-		}
-	};
-	return ThreePhaseTask::Run<async, CompileScript>(*this->isolate, this->isolate, code_handle, maybe_options);
+	return ThreePhaseTask::Run<async, CompileScriptRunner>(*this->isolate, this->isolate, code_handle, maybe_options);
 }
 
 /**
@@ -420,36 +420,36 @@ Local<Value> IsolateHandle::Dispose() {
 /**
  * Get heap statistics from v8
  */
+struct HeapStatRunner : public ThreePhaseTask {
+	HeapStatistics heap;
+	size_t externally_allocated_size = 0;
+
+	// Dummy constructor to workaround gcc bug
+	HeapStatRunner(int /* unused */) {}
+
+	void Phase2() final {
+		Isolate::GetCurrent()->GetHeapStatistics(&heap);
+		externally_allocated_size = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator())->GetAllocatedSize();
+	}
+
+	Local<Value> Phase3() final {
+		Isolate* isolate = Isolate::GetCurrent();
+		Local<Object> ret = Object::New(isolate);
+		ret->Set(v8_string("total_heap_size"), Integer::NewFromUnsigned(isolate, heap.total_heap_size()));
+		ret->Set(v8_string("total_heap_size_executable"), Integer::NewFromUnsigned(isolate, heap.total_heap_size_executable()));
+		ret->Set(v8_string("total_physical_size"), Integer::NewFromUnsigned(isolate, heap.total_physical_size()));
+		ret->Set(v8_string("total_available_size"), Integer::NewFromUnsigned(isolate, heap.total_available_size()));
+		ret->Set(v8_string("used_heap_size"), Integer::NewFromUnsigned(isolate, heap.used_heap_size()));
+		ret->Set(v8_string("heap_size_limit"), Integer::NewFromUnsigned(isolate, heap.heap_size_limit()));
+		ret->Set(v8_string("malloced_memory"), Integer::NewFromUnsigned(isolate, heap.malloced_memory()));
+		ret->Set(v8_string("peak_malloced_memory"), Integer::NewFromUnsigned(isolate, heap.peak_malloced_memory()));
+		ret->Set(v8_string("does_zap_garbage"), Integer::NewFromUnsigned(isolate, heap.does_zap_garbage()));
+		ret->Set(v8_string("externally_allocated_size"), Integer::NewFromUnsigned(isolate, externally_allocated_size));
+		return ret;
+	}
+};
 template <int async>
 Local<Value> IsolateHandle::GetHeapStatistics() {
-	struct HeapStatRunner : public ThreePhaseTask {
-		HeapStatistics heap;
-		size_t externally_allocated_size = 0;
-
-		// Dummy constructor to workaround gcc bug
-		HeapStatRunner(int /* unused */) {}
-
-		void Phase2() final {
-			Isolate::GetCurrent()->GetHeapStatistics(&heap);
-			externally_allocated_size = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator())->GetAllocatedSize();
-		}
-
-		Local<Value> Phase3() final {
-			Isolate* isolate = Isolate::GetCurrent();
-			Local<Object> ret = Object::New(isolate);
-			ret->Set(v8_string("total_heap_size"), Integer::NewFromUnsigned(isolate, heap.total_heap_size()));
-			ret->Set(v8_string("total_heap_size_executable"), Integer::NewFromUnsigned(isolate, heap.total_heap_size_executable()));
-			ret->Set(v8_string("total_physical_size"), Integer::NewFromUnsigned(isolate, heap.total_physical_size()));
-			ret->Set(v8_string("total_available_size"), Integer::NewFromUnsigned(isolate, heap.total_available_size()));
-			ret->Set(v8_string("used_heap_size"), Integer::NewFromUnsigned(isolate, heap.used_heap_size()));
-			ret->Set(v8_string("heap_size_limit"), Integer::NewFromUnsigned(isolate, heap.heap_size_limit()));
-			ret->Set(v8_string("malloced_memory"), Integer::NewFromUnsigned(isolate, heap.malloced_memory()));
-			ret->Set(v8_string("peak_malloced_memory"), Integer::NewFromUnsigned(isolate, heap.peak_malloced_memory()));
-			ret->Set(v8_string("does_zap_garbage"), Integer::NewFromUnsigned(isolate, heap.does_zap_garbage()));
-			ret->Set(v8_string("externally_allocated_size"), Integer::NewFromUnsigned(isolate, externally_allocated_size));
-			return ret;
-		}
-	};
 	return ThreePhaseTask::Run<async, HeapStatRunner>(*isolate, 0);
 }
 
