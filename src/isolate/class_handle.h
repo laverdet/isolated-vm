@@ -106,12 +106,12 @@ class ClassHandle {
 		 */
 		// These two templates will peel arguments off and run them through ConvertParam<T>
 		template <typename V, int O, typename FnT, typename R, typename ConvertedArgsT>
-		static inline R ParameterizeHelper(FnT fn, ConvertedArgsT convertedArgs, V /* info */) {
+		static R ParameterizeHelper(FnT fn, ConvertedArgsT convertedArgs, V /* info */) {
 			return apply_from_tuple(fn, convertedArgs);
 		}
 
 		template <typename V, int O, typename FnT, typename R, typename ConvertedArgsT, typename T, typename... ConversionArgsRest>
-		static inline R ParameterizeHelper(FnT fn, ConvertedArgsT convertedArgs, V info) {
+		static R ParameterizeHelper(FnT fn, ConvertedArgsT convertedArgs, V info) {
 			auto t = std::tuple_cat(convertedArgs, std::make_tuple(
 				ConvertParamInvoke<
 					ConvertParam<T>,
@@ -124,19 +124,19 @@ class ClassHandle {
 
 		// Regular function that just returns a Local<Value>
 		template <typename V, int O, typename ...Args>
-		static inline v8::Local<v8::Value> ParameterizeHelperStart(V info, v8::Local<v8::Value>(*fn)(Args...)) {
+		static v8::Local<v8::Value> ParameterizeHelperStart(V info, v8::Local<v8::Value>(*fn)(Args...)) {
 			return ParameterizeHelper<V, O, v8::Local<v8::Value>(*)(Args...), v8::Local<v8::Value>, std::tuple<>, Args...>(fn, std::tuple<>(), info);
 		}
 
 		// Setter version (void return)
 		template <typename V, int O, typename ...Args>
-		static inline void ParameterizeHelperStart(V info, void(*fn)(Args...)) {
+		static void ParameterizeHelperStart(V info, void(*fn)(Args...)) {
 			return ParameterizeHelper<V, O, void(*)(Args...), void, std::tuple<>, Args...>(fn, std::tuple<>(), info);
 		}
 
 		// Constructor functions need to pair the C++ instance to the v8 handle
 		template <int O, typename R, typename ...Args>
-		static inline v8::Local<v8::Value> ParameterizeHelperCtorStart(const v8::FunctionCallbackInfo<v8::Value>& info, std::unique_ptr<R>(*fn)(Args...)) {
+		static v8::Local<v8::Value> ParameterizeHelperCtorStart(const v8::FunctionCallbackInfo<v8::Value>& info, std::unique_ptr<R>(*fn)(Args...)) {
 			RequireConstructorCall(info);
 			std::unique_ptr<R> result = ParameterizeHelper<
 				const v8::FunctionCallbackInfo<v8::Value>&,
@@ -157,7 +157,7 @@ class ClassHandle {
 
 		// Main entry point for parameterized functions
 		template <int O, typename T, T F>
-		static inline void ParameterizeEntry(const v8::FunctionCallbackInfo<v8::Value>& info) {
+		static void ParameterizeEntry(const v8::FunctionCallbackInfo<v8::Value>& info) {
 			try {
 				v8::Local<v8::Value> result = ParameterizeHelperStart<const v8::FunctionCallbackInfo<v8::Value>&, O>(info, F);
 				if (result.IsEmpty()) {
@@ -169,7 +169,7 @@ class ClassHandle {
 
 		// Main entry point for parameterized constructors
 		template <typename T, T F>
-		static inline void ParameterizeCtorEntry(const v8::FunctionCallbackInfo<v8::Value>& info) {
+		static void ParameterizeCtorEntry(const v8::FunctionCallbackInfo<v8::Value>& info) {
 			try {
 				v8::Local<v8::Value> result = ParameterizeHelperCtorStart<0>(info, F);
 				if (result.IsEmpty()) {
@@ -181,7 +181,7 @@ class ClassHandle {
 
 		// Main entry point for getter functions
 		template <typename T, T F>
-		static inline void ParameterizeGetterEntry(v8::Local<v8::String> /* property */, const v8::PropertyCallbackInfo<v8::Value>& info) {
+		static void ParameterizeGetterEntry(v8::Local<v8::String> /* property */, const v8::PropertyCallbackInfo<v8::Value>& info) {
 			try {
 				v8::Local<v8::Value> result = ParameterizeHelperStart<const v8::PropertyCallbackInfo<v8::Value>&, -1>(info, F);
 				if (result.IsEmpty()) {
@@ -193,7 +193,7 @@ class ClassHandle {
 
 		// Main entry point for setter functions
 		template <typename T, T F>
-		static inline void ParameterizeSetterEntry(v8::Local<v8::String> /* property */, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& info) {
+		static void ParameterizeSetterEntry(v8::Local<v8::String> /* property */, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& info) {
 			try {
 				ParameterizeHelperStart<SetterPair, -1>(SetterPair(&value, &info), F);
 				info.GetReturnValue().Set(v8::Boolean::New(v8::Isolate::GetCurrent(), true));
@@ -304,7 +304,7 @@ class ClassHandle {
 		 * Automatically unpacks v8 FunctionCallbackInfo for you
 		 */
 		template <typename T, T F>
-		static inline constexpr MemberFunction Parameterize() {
+		static constexpr MemberFunction Parameterize() {
 			return MemberFunction(
 				ParameterizeEntry<-1, typename MethodCast<T>::Type, MethodCast<T>::template Invoke<F>>,
 				ArgCount(MethodCast<T>::template Invoke<F>) - 1
@@ -312,17 +312,17 @@ class ClassHandle {
 		}
 
 		template <typename T, T F>
-		static inline constexpr CtorFunction ParameterizeCtor() {
+		static constexpr CtorFunction ParameterizeCtor() {
 			return CtorFunction(ParameterizeCtorEntry<T, F>, ArgCount(F));
 		}
 
 		template <typename T, T F>
-		static inline constexpr StaticFunction ParameterizeStatic() {
+		static constexpr StaticFunction ParameterizeStatic() {
 			return StaticFunction(ParameterizeEntry<0, T, F>, ArgCount(F));
 		}
 
 		template <typename T1, T1 F1, typename T2, T2 F2>
-		static inline constexpr AccessorPair ParameterizeAccessor() {
+		static constexpr AccessorPair ParameterizeAccessor() {
 			return std::make_pair(
 				ParameterizeGetterEntry<typename MethodCast<T1>::Type, MethodCast<T1>::template Invoke<F1>>,
 				ParameterizeSetterEntry<typename MethodCast<T2>::Type, MethodCast<T2>::template Invoke<F2>>
@@ -330,7 +330,7 @@ class ClassHandle {
 		}
 
 		template <typename T1, T1 F1>
-		static inline constexpr AccessorPair ParameterizeAccessor() {
+		static constexpr AccessorPair ParameterizeAccessor() {
 			return std::make_pair(
 				ParameterizeGetterEntry<typename MethodCast<T1>::Type, MethodCast<T1>::template Invoke<F1>>,
 				(v8::AccessorSetterCallback)nullptr

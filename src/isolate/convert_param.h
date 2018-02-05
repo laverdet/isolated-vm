@@ -49,7 +49,7 @@ struct param_incorrect : public std::exception {
 template <typename T, int ii, int num>
 struct ConvertParamInvoke {
 	// Function
-	static inline auto Invoke(const v8::FunctionCallbackInfo<v8::Value>& info) {
+	static auto Invoke(const v8::FunctionCallbackInfo<v8::Value>& info) {
 		try {
 			if (ii == -1) {
 				return T::Convert(info.This());
@@ -69,7 +69,7 @@ struct ConvertParamInvoke {
 		}
 	}
 	// Getter
-	static inline auto Invoke(const v8::PropertyCallbackInfo<v8::Value>& info) {
+	static auto Invoke(const v8::PropertyCallbackInfo<v8::Value>& info) {
 		try {
 			if (ii == -1) {
 				return T::Convert(info.This());
@@ -81,7 +81,7 @@ struct ConvertParamInvoke {
 		}
 	}
 	// Setter
-	static inline auto Invoke(std::pair<v8::Local<v8::Value>*, const v8::PropertyCallbackInfo<void>*> info) {
+	static auto Invoke(std::pair<v8::Local<v8::Value>*, const v8::PropertyCallbackInfo<void>*> info) {
 		try {
 			if (ii == -1) {
 				return T::Convert(info.second->This());
@@ -106,12 +106,12 @@ struct ConvertParamInvoke {
  */
 template <typename T>
 struct ConvertParam {
-	static inline T Convert(v8::Local<v8::Value> param);
+	static T Convert(v8::Local<v8::Value> param);
 };
 
 template <typename T>
 struct ConvertParam<v8::Maybe<T*>> {
-	static inline v8::Maybe<T*> Convert(const v8::Local<v8::Value> param) {
+	static v8::Maybe<T*> Convert(const v8::Local<v8::Value> param) {
 		if (param.IsEmpty() || !param->IsObject()) {
 			return v8::Nothing<T*>();
 		}
@@ -132,7 +132,7 @@ struct ConvertParam<v8::Maybe<T*>> {
 
 template <typename T>
 struct ConvertParam<T*> {
-	static inline T* Convert(const v8::Local<v8::Value> param) {
+	static T* Convert(const v8::Local<v8::Value> param) {
 		if (param.IsEmpty()) {
 			throw param_required();
 		} else if (!param->IsObject()) {
@@ -155,7 +155,7 @@ struct ConvertParam<T*> {
 
 template <>
 struct ConvertParam<v8::Local<v8::Value>> {
-	static inline v8::Local<v8::Value> Convert(const v8::Local<v8::Value>& param) {
+	static v8::Local<v8::Value> Convert(const v8::Local<v8::Value>& param) {
 		if (param.IsEmpty()) {
 			throw param_required();
 		}
@@ -165,7 +165,7 @@ struct ConvertParam<v8::Local<v8::Value>> {
 
 template <>
 struct ConvertParam<v8::MaybeLocal<v8::Value>> {
-	static inline v8::MaybeLocal<v8::Value> Convert(const v8::Local<v8::Value>& param) {
+	static v8::MaybeLocal<v8::Value> Convert(const v8::Local<v8::Value>& param) {
 		if (param.IsEmpty()) {
 			return {};
 		}
@@ -175,7 +175,7 @@ struct ConvertParam<v8::MaybeLocal<v8::Value>> {
 
 template <>
 struct ConvertParam<v8::Local<v8::String>> {
-	static inline v8::Local<v8::String> Convert(const v8::Local<v8::Value>& param) {
+	static v8::Local<v8::String> Convert(const v8::Local<v8::Value>& param) {
 		if (param.IsEmpty()) {
 			throw param_required();
 		} else if (!param->IsString()) {
@@ -187,7 +187,7 @@ struct ConvertParam<v8::Local<v8::String>> {
 
 template <>
 struct ConvertParam<v8::MaybeLocal<v8::String>> {
-	static inline v8::MaybeLocal<v8::String> Convert(const v8::Local<v8::Value>& param) {
+	static v8::MaybeLocal<v8::String> Convert(const v8::Local<v8::Value>& param) {
 		if (param.IsEmpty() || param->IsUndefined()) {
 			return {};
 		} else if (!param->IsString()) {
@@ -199,7 +199,7 @@ struct ConvertParam<v8::MaybeLocal<v8::String>> {
 
 template <>
 struct ConvertParam<v8::Local<v8::Object>> {
-	static inline v8::Local<v8::Object> Convert(const v8::Local<v8::Value>& param) {
+	static v8::Local<v8::Object> Convert(const v8::Local<v8::Value>& param) {
 		if (param.IsEmpty()) {
 			throw param_required();
 		} else if (!param->IsObject()) {
@@ -211,7 +211,7 @@ struct ConvertParam<v8::Local<v8::Object>> {
 
 template <>
 struct ConvertParam<v8::MaybeLocal<v8::Object>> {
-	static inline v8::MaybeLocal<v8::Object> Convert(const v8::Local<v8::Value>& param) {
+	static v8::MaybeLocal<v8::Object> Convert(const v8::Local<v8::Value>& param) {
 		if (param.IsEmpty() || param->IsUndefined()) {
 			return {};
 		} else if (!param->IsObject()) {
@@ -223,7 +223,7 @@ struct ConvertParam<v8::MaybeLocal<v8::Object>> {
 
 template <>
 struct ConvertParam<v8::Local<v8::Array>> {
-	static inline v8::Local<v8::Array> Convert(const v8::Local<v8::Value>& param) {
+	static v8::Local<v8::Array> Convert(const v8::Local<v8::Value>& param) {
 		if (param.IsEmpty()) {
 			throw param_required();
 		} else if (!param->IsArray()) {
@@ -235,7 +235,7 @@ struct ConvertParam<v8::Local<v8::Array>> {
 
 template <>
 struct ConvertParam<v8::MaybeLocal<v8::Array>> {
-	static inline v8::MaybeLocal<v8::Array> Convert(const v8::Local<v8::Value>& param) {
+	static v8::MaybeLocal<v8::Array> Convert(const v8::Local<v8::Value>& param) {
 		if (param.IsEmpty() || param->IsUndefined()) {
 			return {};
 		} else if (!param->IsArray()) {
@@ -247,7 +247,7 @@ struct ConvertParam<v8::MaybeLocal<v8::Array>> {
 
 template <>
 struct ConvertParam<v8::Local<v8::Function>> {
-	static inline v8::Local<v8::Function> Convert(const v8::Local<v8::Value>& param) {
+	static v8::Local<v8::Function> Convert(const v8::Local<v8::Value>& param) {
 		if (param.IsEmpty()) {
 			throw param_required();
 		} else if (!param->IsFunction()) {
@@ -259,7 +259,7 @@ struct ConvertParam<v8::Local<v8::Function>> {
 
 template <>
 struct ConvertParam<v8::MaybeLocal<v8::Function>> {
-	static inline v8::MaybeLocal<v8::Function> Convert(const v8::Local<v8::Value>& param) {
+	static v8::MaybeLocal<v8::Function> Convert(const v8::Local<v8::Value>& param) {
 		if (param.IsEmpty() || param->IsUndefined()) {
 			return {};
 		} else if (!param->IsFunction()) {
