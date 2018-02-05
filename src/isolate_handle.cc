@@ -435,16 +435,16 @@ struct HeapStatRunner : public ThreePhaseTask {
 	Local<Value> Phase3() final {
 		Isolate* isolate = Isolate::GetCurrent();
 		Local<Object> ret = Object::New(isolate);
-		ret->Set(v8_string("total_heap_size"), Integer::NewFromUnsigned(isolate, heap.total_heap_size()));
-		ret->Set(v8_string("total_heap_size_executable"), Integer::NewFromUnsigned(isolate, heap.total_heap_size_executable()));
-		ret->Set(v8_string("total_physical_size"), Integer::NewFromUnsigned(isolate, heap.total_physical_size()));
-		ret->Set(v8_string("total_available_size"), Integer::NewFromUnsigned(isolate, heap.total_available_size()));
-		ret->Set(v8_string("used_heap_size"), Integer::NewFromUnsigned(isolate, heap.used_heap_size()));
-		ret->Set(v8_string("heap_size_limit"), Integer::NewFromUnsigned(isolate, heap.heap_size_limit()));
-		ret->Set(v8_string("malloced_memory"), Integer::NewFromUnsigned(isolate, heap.malloced_memory()));
-		ret->Set(v8_string("peak_malloced_memory"), Integer::NewFromUnsigned(isolate, heap.peak_malloced_memory()));
-		ret->Set(v8_string("does_zap_garbage"), Integer::NewFromUnsigned(isolate, heap.does_zap_garbage()));
-		ret->Set(v8_string("externally_allocated_size"), Integer::NewFromUnsigned(isolate, externally_allocated_size));
+		ret->Set(v8_string("total_heap_size"), Number::New(isolate, heap.total_heap_size()));
+		ret->Set(v8_string("total_heap_size_executable"), Number::New(isolate, heap.total_heap_size_executable()));
+		ret->Set(v8_string("total_physical_size"), Number::New(isolate, heap.total_physical_size()));
+		ret->Set(v8_string("total_available_size"), Number::New(isolate, heap.total_available_size()));
+		ret->Set(v8_string("used_heap_size"), Number::New(isolate, heap.used_heap_size()));
+		ret->Set(v8_string("heap_size_limit"), Number::New(isolate, heap.heap_size_limit()));
+		ret->Set(v8_string("malloced_memory"), Number::New(isolate, heap.malloced_memory()));
+		ret->Set(v8_string("peak_malloced_memory"), Number::New(isolate, heap.peak_malloced_memory()));
+		ret->Set(v8_string("does_zap_garbage"), Number::New(isolate, heap.does_zap_garbage()));
+		ret->Set(v8_string("externally_allocated_size"), Number::New(isolate, externally_allocated_size));
 		return ret;
 	}
 };

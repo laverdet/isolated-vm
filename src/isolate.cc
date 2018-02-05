@@ -64,7 +64,7 @@ void init(Local<Object> target) {
 
 	// These flags will override limits set through code. Since the main node isolate is already
 	// created we can reset these so they won't affect the isolates we make.
-	int argc = 2;
+	int argc = 4;
 	const char* flags[] = {
 		"--max-semi-space-size", "0",
 		"--max-old-space-size", "0"
