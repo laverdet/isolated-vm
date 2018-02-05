@@ -368,7 +368,7 @@ class ClassHandle {
 				return tmpl;
 			} else {
 				tmpl = T::Definition();
-				specific.Reset(tmpl);
+				specific.Set(tmpl);
 				return tmpl;
 			}
 		}

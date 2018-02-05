@@ -130,22 +130,22 @@ class IsolateEnvironment {
 					IsolateEnvironment& isolate = *ExecutorLock::GetCurrent();
 					if ((isolate.*S).size() > key) {
 						if (!(isolate.*S)[key]->IsEmpty()) {
-							return v8::MaybeLocal<L>(v8::Local<L>::New(isolate, *(isolate.*S)[key]));
+							return v8::MaybeLocal<L>((isolate.*S)[key]->Get(isolate.isolate));
 						}
 					}
 					return v8::MaybeLocal<L>();
 				}
 
 				template <typename L, typename V, V IsolateEnvironment::*S>
-				void Reset(v8::Local<L> handle) {
+				void Set(v8::Local<L> handle) {
 					IsolateEnvironment& isolate = *ExecutorLock::GetCurrent();
 					if ((isolate.*S).size() <= key) {
 						(isolate.*S).reserve(key + 1);
 						while ((isolate.*S).size() <= key) {
-							(isolate.*S).emplace_back(std::make_unique<v8::Persistent<L>>());
+							(isolate.*S).emplace_back(std::make_unique<v8::Eternal<L>>());
 						}
 					}
-					(isolate.*S)[key]->Reset(isolate, handle);
+					(isolate.*S)[key]->Set(isolate, handle);
 				}
 
 			public:
@@ -160,8 +160,8 @@ class IsolateEnvironment {
 					}
 				}
 
-				void Reset(v8::Local<T> handle) {
-					Reset<v8::Value, decltype(IsolateEnvironment::specifics), &IsolateEnvironment::specifics>(handle);
+				void Set(v8::Local<T> handle) {
+					Set<v8::Value, decltype(IsolateEnvironment::specifics), &IsolateEnvironment::specifics>(handle);
 				}
 		};
 
@@ -196,8 +196,8 @@ class IsolateEnvironment {
 		std::shared_ptr<BookkeepingStatics> bookkeeping_statics;
 		v8::Persistent<v8::Value> rejected_promise_error;
 
-		std::vector<std::unique_ptr<v8::Persistent<v8::Value>>> specifics;
-		std::vector<std::unique_ptr<v8::Persistent<v8::FunctionTemplate>>> specifics_ft;
+		std::vector<std::unique_ptr<v8::Eternal<v8::Value>>> specifics;
+		std::vector<std::unique_ptr<v8::Eternal<v8::FunctionTemplate>>> specifics_ft;
 		std::map<v8::Persistent<v8::Object>*, std::pair<void(*)(void*), void*>> weak_persistents;
 
 	public:
@@ -359,8 +359,8 @@ v8::MaybeLocal<v8::FunctionTemplate> IsolateEnvironment::IsolateSpecific<v8::Fun
 template v8::MaybeLocal<v8::FunctionTemplate> IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>::Deref() const;
 
 template <>
-void IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>::Reset(v8::Local<v8::FunctionTemplate> handle);
-template void IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>::Reset(v8::Local<v8::FunctionTemplate> handle);
+void IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>::Set(v8::Local<v8::FunctionTemplate> handle);
+template void IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>::Set(v8::Local<v8::FunctionTemplate> handle);
 #pragma clang diagnostic pop
 
 } // namespace ivm

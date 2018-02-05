@@ -200,8 +200,8 @@ MaybeLocal<FunctionTemplate> IsolateEnvironment::IsolateSpecific<FunctionTemplat
 }
 
 template<>
-void IsolateEnvironment::IsolateSpecific<FunctionTemplate>::Reset(Local<FunctionTemplate> handle) {
-	Reset<FunctionTemplate, decltype(IsolateEnvironment::specifics_ft), &IsolateEnvironment::specifics_ft>(handle);
+void IsolateEnvironment::IsolateSpecific<FunctionTemplate>::Set(Local<FunctionTemplate> handle) {
+	Set<FunctionTemplate, decltype(IsolateEnvironment::specifics_ft), &IsolateEnvironment::specifics_ft>(handle);
 }
 
 /**
