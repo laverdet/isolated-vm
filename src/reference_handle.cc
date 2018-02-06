@@ -344,7 +344,7 @@ struct ApplyRunner : public ThreePhaseTask {
 		ret = Transferable::TransferOut(RunWithTimeout(
 			timeout,
 			[&fn, &context_handle, &recv_inner, argc, &argv_inner]() {
-				return fn.As<Function>()->Call(context_handle, recv_inner, argc, argc ? &argv_inner[0] : nullptr);
+				return fn.As<Function>()->Call(context_handle, recv_inner, argc, argc == 0 ? nullptr : &argv_inner[0]);
 			}
 		));
 	}
