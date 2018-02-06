@@ -312,6 +312,13 @@ class IsolateEnvironment {
 		}
 
 		/**
+		 * Get the set memory limit for this environment
+		 */
+		size_t GetMemoryLimit() const {
+			return memory_limit;
+		}
+
+		/**
 		 * Enables the inspector for this isolate.
 		 */
 		void EnableInspectorAgent();

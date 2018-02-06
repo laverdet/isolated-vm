@@ -423,12 +423,15 @@ Local<Value> IsolateHandle::Dispose() {
 struct HeapStatRunner : public ThreePhaseTask {
 	HeapStatistics heap;
 	size_t externally_allocated_size = 0;
+	size_t adjustment = 0;
 
 	// Dummy constructor to workaround gcc bug
-	HeapStatRunner(int /* unused */) {}
+	explicit HeapStatRunner(int /* unused */) {}
 
 	void Phase2() final {
-		Isolate::GetCurrent()->GetHeapStatistics(&heap);
+		IsolateEnvironment& isolate = *IsolateEnvironment::GetCurrent();
+		isolate->GetHeapStatistics(&heap);
+		adjustment = isolate.GetMemoryLimit() * 1024 * 1024;
 		externally_allocated_size = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator())->GetAllocatedSize();
 	}
 
@@ -438,9 +441,9 @@ struct HeapStatRunner : public ThreePhaseTask {
 		ret->Set(v8_string("total_heap_size"), Number::New(isolate, heap.total_heap_size()));
 		ret->Set(v8_string("total_heap_size_executable"), Number::New(isolate, heap.total_heap_size_executable()));
 		ret->Set(v8_string("total_physical_size"), Number::New(isolate, heap.total_physical_size()));
-		ret->Set(v8_string("total_available_size"), Number::New(isolate, heap.total_available_size()));
+		ret->Set(v8_string("total_available_size"), Number::New(isolate, static_cast<double>(heap.total_available_size()) - adjustment));
 		ret->Set(v8_string("used_heap_size"), Number::New(isolate, heap.used_heap_size()));
-		ret->Set(v8_string("heap_size_limit"), Number::New(isolate, heap.heap_size_limit()));
+		ret->Set(v8_string("heap_size_limit"), Number::New(isolate, static_cast<double>(heap.heap_size_limit()) - adjustment));
 		ret->Set(v8_string("malloced_memory"), Number::New(isolate, heap.malloced_memory()));
 		ret->Set(v8_string("peak_malloced_memory"), Number::New(isolate, heap.peak_malloced_memory()));
 		ret->Set(v8_string("does_zap_garbage"), Number::New(isolate, heap.does_zap_garbage()));
