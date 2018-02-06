@@ -99,6 +99,9 @@ Destroys this isolate and invalidates all references obtained from it.
 ##### `isolate.getHeapStatisticsSync()`
 * **return** [object]
 
+##### `isolate.isDisposed` *[boolean]*
+Flag that indicates whether this isolate has been disposed.
+
 Returns heap statistics from v8. The return value is almost identical to the nodejs function
 [v8.getHeapStatistics()](https://nodejs.org/dist/latest-v8.x/docs/api/v8.html#v8_v8_getheapstatistics).
 This function returns one additional property: `externally_allocated_size` which is the total amount

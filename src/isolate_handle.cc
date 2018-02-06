@@ -145,7 +145,8 @@ Local<FunctionTemplate> IsolateHandle::Definition() {
 		"createInspectorSession", Parameterize<decltype(&IsolateHandle::CreateInspectorSession), &IsolateHandle::CreateInspectorSession>(),
 		"dispose", Parameterize<decltype(&IsolateHandle::Dispose), &IsolateHandle::Dispose>(),
 		"getHeapStatistics", Parameterize<decltype(&IsolateHandle::GetHeapStatistics<1>), &IsolateHandle::GetHeapStatistics<1>>(),
-		"getHeapStatisticsSync", Parameterize<decltype(&IsolateHandle::GetHeapStatistics<0>), &IsolateHandle::GetHeapStatistics<0>>()
+		"getHeapStatisticsSync", Parameterize<decltype(&IsolateHandle::GetHeapStatistics<0>), &IsolateHandle::GetHeapStatistics<0>>(),
+		"isDisposed", ParameterizeAccessor<decltype(&IsolateHandle::IsDisposedGetter), &IsolateHandle::IsDisposedGetter>()
 	));
 }
 
@@ -454,6 +455,13 @@ struct HeapStatRunner : public ThreePhaseTask {
 template <int async>
 Local<Value> IsolateHandle::GetHeapStatistics() {
 	return ThreePhaseTask::Run<async, HeapStatRunner>(*isolate, 0);
+}
+
+/**
+ * Simple disposal checker
+ */
+Local<Value> IsolateHandle::IsDisposedGetter() {
+	return Boolean::New(Isolate::GetCurrent(), !isolate->GetIsolate());
 }
 
 /**
