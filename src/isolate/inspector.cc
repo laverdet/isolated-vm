@@ -46,10 +46,12 @@ InspectorAgent::~InspectorAgent() {
 void InspectorAgent::runMessageLoopOnPause(int /* context_group_id */) {
 	std::unique_lock<std::mutex> lock(mutex);
 	running = true;
-	while (running) {
-		isolate.InterruptEntry();
+	do {
 		cv.wait(lock);
-	}
+		lock.unlock();
+		isolate.InterruptEntry();
+		lock.lock();
+	} while (running);
 }
 
 /**
@@ -147,12 +149,12 @@ void InspectorSession::Disconnect() {
  * Send a message from this session to the backend.
  */
 void InspectorSession::DispatchBackendProtocolMessage(std::vector<uint16_t> message) {
+	std::unique_lock<std::mutex> lock(mutex);
 	struct DispatchMessage : public Runnable {
 		std::vector<uint16_t> message;
 		std::weak_ptr<V8InspectorSession> weak_session;
 		explicit DispatchMessage(std::vector<uint16_t> message, shared_ptr<V8InspectorSession>& session) : message(std::move(message)), weak_session(session) {}
 		void Run() final {
-			std::unique_lock<std::mutex> lock;
 			auto session = weak_session.lock();
 			if (session) {
 				session->dispatchProtocolMessage(StringView(&message[0], message.size()));
