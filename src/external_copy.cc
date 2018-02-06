@@ -26,7 +26,6 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value) {
 		return make_unique<ExternalCopyArrayBuffer>(contents.Data(), contents.ByteLength());
 	} else if (value->IsArrayBufferView()) {
 		Local<ArrayBufferView> view(Local<ArrayBufferView>::Cast(value));
-		assert(view->HasBuffer());
 		using ViewType = ExternalCopyArrayBufferView::ViewType;
 		ViewType type;
 		if (view->IsUint8Array()) {
@@ -276,7 +275,9 @@ ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const void* data, size_t length
 }
 
 ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const Local<ArrayBufferView>& handle) : value(malloc(handle->ByteLength()), std::free), length(handle->ByteLength()) {
-	handle->CopyContents(value.get(), length);
+	if (handle->CopyContents(value.get(), length) != length) {
+		throw js_generic_error("Failed to copy array contents");
+	}
 }
 
 Local<Value> ExternalCopyArrayBuffer::CopyInto() const {
