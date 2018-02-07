@@ -203,7 +203,6 @@ class ExternalCopyArrayBuffer : public ExternalCopy {
 			ptr_t cc_ptr;
 
 			Holder(const v8::Local<v8::ArrayBuffer>& buffer, ptr_t cc_ptr);
-			~Holder() { printf("dtor\n"); }
 			static void WeakCallbackV8(const v8::WeakCallbackInfo<void>& info);
 			static void WeakCallback(void* param);
 		};
