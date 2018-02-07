@@ -16,14 +16,14 @@ script:
   - npm run test
 
 env:
-  - CXX=g++-4.8 CC=gcc-4.8
+  - CXX=g++-5 CC=gcc-5
 
 addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
     packages:
-      - g++-4.8
+      - g++-5
 
 notifications:
   email: false
