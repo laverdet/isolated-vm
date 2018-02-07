@@ -258,6 +258,15 @@ declare module 'isolated-vm' {
 				applySync(receiver: any, arguments: any[], options?: ScriptRunOptions): any;
 		}
 
+		export interface ExternalCopyOptions {
+			/**
+			 * If true this will release ownership of the given resource from this isolate.
+			 * This operation completes in constant time since it doesn't have to copy an
+			 * arbitrarily large object. This only applies to ArrayBuffer and TypedArray instances.
+			*/
+			transfer?: boolean
+		}
+
 		/**
 		 * Instances of this class represent some value that is stored outside of any v8
 		 * isolate. This value can then be quickly copied into any isolate.
@@ -271,20 +280,20 @@ declare module 'isolated-vm' {
 				 *
 				 * @param value The value to copy
 				 */
-				constructor(value: T);
+				constructor(value: T, options?: ExternalCopyOptions);
 				
 				/**
 				 * Internalizes the ExternalCopy data into this isolate.
 				 *
 				 * @return JavaScript value of the external copy.
 				 */
-				copy(): T;
+				copy(options?: ExternalCopyOptions): T;
 
 				/**
 				 * Returns an object, which when passed to another isolate will cause that
 				 * isolate to internalize a copy of this value.
 				 */
-				copyInto(): T;
+				copyInto(options?: ExternalCopyOptions): T;
 
 				/**
 				 * Releases the reference to this copy. If there are other references to
