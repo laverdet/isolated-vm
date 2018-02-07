@@ -1,3 +1,5 @@
+[![npm version](https://img.shields.io/npm/v/isolated-vm.svg)](https://www.npmjs.com/package/isolated-vm) [![isc license](https://img.shields.io/npm/l/isolated-vm.svg)](https://github.com/laverdet/isolated-vm/blob/master/LICENSE) [![travis build](https://img.shields.io/travis/laverdet/isolated-vm/master.svg)](https://travis-ci.org/laverdet/isolated-vm)
+
 isolated-vm -- Access to multiple isolates in nodejs
 ====================================================
 
