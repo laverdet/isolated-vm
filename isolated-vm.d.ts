@@ -46,12 +46,18 @@ declare module 'isolated-vm' {
 				 * ArrayBuffer instances over a certain size are externally
 				 * allocated and will be counted here.
 				 */
-				getHeapStatistics(): HeapStatistics;
+				getHeapStatistics(): Promise<HeapStatistics>;
+				getHeapStatisticsSync(): HeapStatistics;
 
 				/**
 				 * Destroys this isolate and invalidates all references obtained from it.
 				 */
 				dispose(): void;
+
+				/**
+				 * Flag that indicates whether this isolate has been disposed.
+				 */
+				isDisposed: boolean;
 		}
 
 		export interface IsolateOptions {
