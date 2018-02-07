@@ -31,9 +31,9 @@ class ExternalCopyHandle : public TransferableHandle {
 		static v8::Local<v8::FunctionTemplate> Definition();
 		std::unique_ptr<Transferable> TransferOut() final;
 
-		static std::unique_ptr<ExternalCopyHandle> New(v8::Local<v8::Value> value);
-		v8::Local<v8::Value> Copy();
-		v8::Local<v8::Value> CopyInto();
+		static std::unique_ptr<ExternalCopyHandle> New(v8::Local<v8::Value> value, v8::MaybeLocal<v8::Object> maybe_options);
+		v8::Local<v8::Value> Copy(v8::MaybeLocal<v8::Object> maybe_options);
+		v8::Local<v8::Value> CopyInto(v8::MaybeLocal<v8::Object> maybe_options);
 		v8::Local<v8::Value> Dispose();
 		std::shared_ptr<ExternalCopy> GetValue() const { return value; }
 };
@@ -43,16 +43,18 @@ class ExternalCopyIntoHandle : public TransferableHandle {
 		class ExternalCopyIntoTransferable : public Transferable {
 			private:
 				std::shared_ptr<ExternalCopy> value;
+				bool transfer_in;
 
 			public:
-				explicit ExternalCopyIntoTransferable(std::shared_ptr<ExternalCopy> value);
+				explicit ExternalCopyIntoTransferable(std::shared_ptr<ExternalCopy> value, bool transfer_in);
 				v8::Local<v8::Value> TransferIn() final;
 		};
 
 		std::shared_ptr<ExternalCopy> value;
+		bool transfer_in;
 
 	public:
-		explicit ExternalCopyIntoHandle(std::shared_ptr<ExternalCopy> value);
+		explicit ExternalCopyIntoHandle(std::shared_ptr<ExternalCopy> value, bool transfer_in);
 		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();
 		std::unique_ptr<Transferable> TransferOut() final;

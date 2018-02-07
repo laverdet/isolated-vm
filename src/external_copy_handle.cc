@@ -47,8 +47,13 @@ unique_ptr<Transferable> ExternalCopyHandle::TransferOut() {
 	return std::make_unique<ExternalCopyTransferable>(value);
 }
 
-unique_ptr<ExternalCopyHandle> ExternalCopyHandle::New(Local<Value> value) {
-	return std::make_unique<ExternalCopyHandle>(shared_ptr<ExternalCopy>(ExternalCopy::Copy(value)));
+unique_ptr<ExternalCopyHandle> ExternalCopyHandle::New(Local<Value> value, MaybeLocal<Object> maybe_options) {
+	Local<Object> options;
+	bool transfer_out = false;
+	if (maybe_options.ToLocal(&options)) {
+		transfer_out = options->Get(v8_symbol("transfer"))->IsTrue();
+	}
+	return std::make_unique<ExternalCopyHandle>(shared_ptr<ExternalCopy>(ExternalCopy::Copy(value, transfer_out)));
 }
 
 void ExternalCopyHandle::CheckDisposed() {
@@ -60,14 +65,24 @@ void ExternalCopyHandle::CheckDisposed() {
 /**
  * JS API functions
  */
-Local<Value> ExternalCopyHandle::Copy() {
+Local<Value> ExternalCopyHandle::Copy(MaybeLocal<Object> maybe_options) {
 	CheckDisposed();
-	return value->CopyIntoCheckHeap();
+	Local<Object> options;
+	bool transfer_in = false;
+	if (maybe_options.ToLocal(&options)) {
+		transfer_in = options->Get(v8_symbol("transfer"))->IsTrue();
+	}
+	return value->CopyIntoCheckHeap(transfer_in);
 }
 
-Local<Value> ExternalCopyHandle::CopyInto() {
+Local<Value> ExternalCopyHandle::CopyInto(MaybeLocal<Object> maybe_options) {
 	CheckDisposed();
-	return ClassHandle::NewInstance<ExternalCopyIntoHandle>(value);
+	Local<Object> options;
+	bool transfer_in = false;
+	if (maybe_options.ToLocal(&options)) {
+		transfer_in = options->Get(v8_symbol("transfer"))->IsTrue();
+	}
+	return ClassHandle::NewInstance<ExternalCopyIntoHandle>(value, transfer_in);
 }
 
 Local<Value> ExternalCopyHandle::Dispose() {
@@ -80,13 +95,13 @@ Local<Value> ExternalCopyHandle::Dispose() {
 /**
  * ExternalCopyIntoHandle implementation
  */
-ExternalCopyIntoHandle::ExternalCopyIntoTransferable::ExternalCopyIntoTransferable(shared_ptr<ExternalCopy> value) : value(std::move(value)) {}
+ExternalCopyIntoHandle::ExternalCopyIntoTransferable::ExternalCopyIntoTransferable(shared_ptr<ExternalCopy> value, bool transfer_in) : value(std::move(value)), transfer_in(transfer_in) {}
 
 Local<Value> ExternalCopyIntoHandle::ExternalCopyIntoTransferable::TransferIn() {
-	return value->CopyIntoCheckHeap();
+	return value->CopyIntoCheckHeap(transfer_in);
 }
 
-ExternalCopyIntoHandle::ExternalCopyIntoHandle(shared_ptr<ExternalCopy> value) : value(std::move(value)) {}
+ExternalCopyIntoHandle::ExternalCopyIntoHandle(shared_ptr<ExternalCopy> value, bool transfer_in) : value(std::move(value)), transfer_in(transfer_in) {}
 
 IsolateEnvironment::IsolateSpecific<FunctionTemplate>& ExternalCopyIntoHandle::TemplateSpecific() {
 	static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
@@ -98,7 +113,7 @@ Local<FunctionTemplate> ExternalCopyIntoHandle::Definition() {
 }
 
 unique_ptr<Transferable> ExternalCopyIntoHandle::TransferOut() {
-	return std::make_unique<ExternalCopyIntoTransferable>(value);
+	return std::make_unique<ExternalCopyIntoTransferable>(value, transfer_in);
 }
 
 } // namespace ivm

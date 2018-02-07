@@ -1,5 +1,6 @@
 #include "external_copy.h"
 
+#include "isolate_handle.h"
 #include "isolate/environment.h"
 #include "isolate/util.h"
 
@@ -14,16 +15,20 @@ namespace ivm {
 /**
  * ExternalCopy implementation
  */
-unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value) {
+unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool transfer_out) {
 	unique_ptr<ExternalCopy> copy = CopyIfPrimitive(value);
 	if (copy) {
 		return copy;
 	} else if (value->IsDate()) {
 		return make_unique<ExternalCopyDate>(value);
 	} else if (value->IsArrayBuffer()) {
-		Local<ArrayBuffer> array_buffer(Local<ArrayBuffer>::Cast(value));
-		ArrayBuffer::Contents contents(array_buffer->GetContents());
-		return make_unique<ExternalCopyArrayBuffer>(contents.Data(), contents.ByteLength());
+		Local<ArrayBuffer> array_buffer = Local<ArrayBuffer>::Cast(value);
+		if (transfer_out) {
+			return ExternalCopyArrayBuffer::Transfer(array_buffer);
+		} else {
+			ArrayBuffer::Contents contents(array_buffer->GetContents());
+			return make_unique<ExternalCopyArrayBuffer>(contents.Data(), contents.ByteLength());
+		}
 	} else if (value->IsArrayBufferView()) {
 		Local<ArrayBufferView> view(Local<ArrayBufferView>::Cast(value));
 		using ViewType = ExternalCopyArrayBufferView::ViewType;
@@ -51,7 +56,15 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value) {
 		} else {
 			assert(false);
 		}
-		return make_unique<ExternalCopyArrayBufferView>(view, type);
+		if (transfer_out) {
+			Local<ArrayBuffer> array_buffer = view->Buffer();
+			if (view->ByteOffset() != 0 || view->ByteLength() != array_buffer->ByteLength()) {
+				throw js_generic_error("Cannot transfer sliced TypedArray (this.byteOffset != 0 || this.byteLength != this.buffer.byteLength)");
+			}
+			return make_unique<ExternalCopyArrayBufferView>(ExternalCopyArrayBuffer::Transfer(array_buffer), type);
+		} else {
+			return make_unique<ExternalCopyArrayBufferView>(view, type);
+		}
 	} else if (value->IsObject()) {
 		Isolate* isolate = Isolate::GetCurrent();
 		ValueSerializer serializer(isolate);
@@ -137,9 +150,9 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 	return CopyIfPrimitive(value);
 }
 
-Local<Value> ExternalCopy::CopyIntoCheckHeap() {
+Local<Value> ExternalCopy::CopyIntoCheckHeap(bool transfer_in) {
 	IsolateEnvironment::HeapCheck heap_check(*IsolateEnvironment::GetCurrent(), WorstCaseHeapSize());
-	auto value = CopyInto();
+	auto value = CopyInto(transfer_in);
 	heap_check.Epilogue();
 	return value;
 }
@@ -153,7 +166,7 @@ Local<Value> ExternalCopy::TransferIn() {
  */
 ExternalCopySerialized::ExternalCopySerialized(std::pair<uint8_t*, size_t> val) : buffer(val.first, std::free), size(val.second) {}
 
-Local<Value> ExternalCopySerialized::CopyInto() const {
+Local<Value> ExternalCopySerialized::CopyInto(bool transfer_in) {
 	Isolate* isolate = Isolate::GetCurrent();
 	ValueDeserializer deserializer(isolate, buffer.get(), size);
 	return Unmaybe(deserializer.ReadValue(isolate->GetCurrentContext()));
@@ -181,10 +194,10 @@ ExternalCopyError::ExternalCopyError(
 
 ExternalCopyError::ExternalCopyError(ErrorType error_type, const std::string& message) : error_type(error_type), message(make_unique<ExternalCopyString>(message)) {}
 
-Local<Value> ExternalCopyError::CopyInto() const {
+Local<Value> ExternalCopyError::CopyInto(bool transfer_in) {
 
 	// First make the exception w/ correct + message
-	Local<String> message(Local<String>::Cast(this->message->CopyInto()));
+	Local<String> message(Local<String>::Cast(this->message->CopyInto(false)));
 	Local<Value> handle;
 	switch (error_type) {
 		case ErrorType::RangeError:
@@ -206,7 +219,7 @@ Local<Value> ExternalCopyError::CopyInto() const {
 
 	// Now add stack information
 	if (this->stack) {
-		Local<String> stack(Local<String>::Cast(this->stack->CopyInto()));
+		Local<String> stack(Local<String>::Cast(this->stack->CopyInto(false)));
 		Local<Object>::Cast(handle)->Set(v8_symbol("stack"), stack);
 	}
 	return handle;
@@ -225,7 +238,7 @@ uint32_t ExternalCopyError::WorstCaseHeapSize() const {
 /**
  * ExternalCopyNull and ExternalCopyUndefined implementations
  */
-Local<Value> ExternalCopyNull::CopyInto() const {
+Local<Value> ExternalCopyNull::CopyInto(bool transfer_in) {
 	return Null(Isolate::GetCurrent());
 }
 
@@ -237,7 +250,7 @@ uint32_t ExternalCopyNull::WorstCaseHeapSize() const {
 	return 16;
 }
 
-Local<Value> ExternalCopyUndefined::CopyInto() const {
+Local<Value> ExternalCopyUndefined::CopyInto(bool transfer_in) {
 	return Undefined(Isolate::GetCurrent());
 }
 
@@ -254,7 +267,7 @@ uint32_t ExternalCopyUndefined::WorstCaseHeapSize() const {
  */
 ExternalCopyDate::ExternalCopyDate(const Local<Value>& value) : value(Local<Date>::Cast(value)->ValueOf()) {}
 
-Local<Value> ExternalCopyDate::CopyInto() const {
+Local<Value> ExternalCopyDate::CopyInto(bool transfer_in) {
 	return Date::New(Isolate::GetCurrent(), value);
 }
 
@@ -270,9 +283,27 @@ uint32_t ExternalCopyDate::WorstCaseHeapSize() const {
 /**
  * ExternalCopyArrayBuffer implementation
  */
+ExternalCopyArrayBuffer::Holder::Holder(const Local<ArrayBuffer>& buffer, ptr_t cc_ptr) : v8_ptr(Isolate::GetCurrent(), buffer), cc_ptr(std::move(cc_ptr)) {
+	v8_ptr.SetWeak(reinterpret_cast<void*>(this), &WeakCallbackV8, WeakCallbackType::kParameter);
+	IsolateEnvironment::GetCurrent()->AddWeakCallback(&this->v8_ptr, WeakCallback, this);
+	buffer->SetAlignedPointerInInternalField(0, this);
+}
+
+void ExternalCopyArrayBuffer::Holder::WeakCallbackV8(const v8::WeakCallbackInfo<void>& info) {
+	WeakCallback(info.GetParameter());
+}
+
+void ExternalCopyArrayBuffer::Holder::WeakCallback(void* param) {
+	Holder* that = reinterpret_cast<Holder*>(param);
+	IsolateEnvironment::GetCurrent()->RemoveWeakCallback(&that->v8_ptr);
+	delete that;
+}
+
 ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const void* data, size_t length) : value(malloc(length), std::free), length(length) {
 	std::memcpy(value.get(), data, length);
 }
+
+ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(ptr_t ptr, size_t length) : value(std::move(ptr)), length(length) {}
 
 ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const Local<ArrayBufferView>& handle) : value(malloc(handle->ByteLength()), std::free), length(handle->ByteLength()) {
 	if (handle->CopyContents(value.get(), length) != length) {
@@ -280,10 +311,53 @@ ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const Local<ArrayBufferView>& h
 	}
 }
 
-Local<Value> ExternalCopyArrayBuffer::CopyInto() const {
-	Local<ArrayBuffer> array_buffer(ArrayBuffer::New(Isolate::GetCurrent(), length));
-	std::memcpy(array_buffer->GetContents().Data(), value.get(), length);
-	return array_buffer;
+unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Local<ArrayBuffer>& handle) {
+	size_t length = handle->ByteLength();
+	if (length == 0) {
+		throw js_generic_error("Array buffer is invalid");
+	}
+	if (handle->IsExternal()) {
+		// Buffer lifespan is not handled by v8.. attempt to recover from isolated-vm
+		Holder* ptr = reinterpret_cast<Holder*>(handle->GetAlignedPointerFromInternalField(0));
+		if (!handle->IsNeuterable() || ptr == nullptr || ptr->magic != Holder::kMagic) { // dangerous
+			throw js_generic_error("Array buffer cannot be externalized");
+		}
+		handle->Neuter();
+		return std::make_unique<ExternalCopyArrayBuffer>(std::move(ptr->cc_ptr), length);
+	}
+	// In this case the buffer is internal and can be released easily
+	ArrayBuffer::Contents contents = handle->Externalize();
+	auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+	if (allocator != nullptr) {
+		allocator->AdjustAllocatedSize(-length);
+	}
+	assert(handle->IsNeuterable());
+	auto data_ptr = ptr_t(contents.Data(), std::free);
+	handle->Neuter();
+	return std::make_unique<ExternalCopyArrayBuffer>(std::move(data_ptr), length);
+}
+
+Local<Value> ExternalCopyArrayBuffer::CopyInto(bool transfer_in) {
+	if (transfer_in) {
+		auto tmp = ptr_t(nullptr, std::free);
+		std::swap(tmp, value);
+		if (!tmp) {
+			throw js_generic_error("Array buffer is invalid");
+		}
+		Local<ArrayBuffer> array_buffer = ArrayBuffer::New(Isolate::GetCurrent(), tmp.get(), length);
+		new Holder(array_buffer, std::move(tmp));
+		return array_buffer;
+	} else {
+		// There is a race condition here if you try to copy and transfer at the same time. Don't do
+		// that.
+		void* ptr = value.get();
+		if (ptr == nullptr) {
+			throw js_generic_error("Array buffer is invalid");
+		}
+		Local<ArrayBuffer> array_buffer = ArrayBuffer::New(Isolate::GetCurrent(), length);
+		std::memcpy(array_buffer->GetContents().Data(), ptr, length);
+		return array_buffer;
+	}
 }
 
 size_t ExternalCopyArrayBuffer::Size() const {
@@ -306,10 +380,12 @@ size_t ExternalCopyArrayBuffer::Length() const {
 /**
  * ExternalCopyArrayBufferView implementation
  */
-ExternalCopyArrayBufferView::ExternalCopyArrayBufferView(const Local<ArrayBufferView>& handle, ViewType type) : buffer(handle), type(type) {}
+ExternalCopyArrayBufferView::ExternalCopyArrayBufferView(const Local<ArrayBufferView>& handle, ViewType type) : buffer(std::make_unique<ExternalCopyArrayBuffer>(handle)), type(type) {}
 
-Local<Value> ExternalCopyArrayBufferView::CopyInto() const {
-	Local<ArrayBuffer> buffer = Local<ArrayBuffer>::Cast(this->buffer.CopyInto());
+ExternalCopyArrayBufferView::ExternalCopyArrayBufferView(std::unique_ptr<ExternalCopyArrayBuffer> buffer, ViewType type) : buffer(std::move(buffer)), type(type) {}
+
+Local<Value> ExternalCopyArrayBufferView::CopyInto(bool transfer_in) {
+	Local<ArrayBuffer> buffer = Local<ArrayBuffer>::Cast(this->buffer->CopyInto(transfer_in));
 	size_t length = buffer->ByteLength();
 	switch (type) {
 		case ViewType::Uint8:
@@ -338,7 +414,7 @@ Local<Value> ExternalCopyArrayBufferView::CopyInto() const {
 }
 
 size_t ExternalCopyArrayBufferView::Size() const {
-	return buffer.Size();
+	return buffer->Size();
 }
 
 uint32_t ExternalCopyArrayBufferView::WorstCaseHeapSize() const {

@@ -211,19 +211,29 @@ will be returned to the called of `apply`, otherwise an error will be thrown.
 Instances of this class represent some value that is stored outside of any v8 isolate. This value
 can then be quickly copied into any isolate.
 
-##### `new ivm.ExternalCopy(value)`
+##### `new ivm.ExternalCopy(value, options)`
 * `value` - The value to copy.
+* `options` *[object]*
+	* `transfer` *[boolean]* - If true this will release ownership of the given resource from this
+	isolate. This operation completes in constant time since it doesn't have to copy an arbitrarily
+	large object. This only applies to ArrayBuffer and TypedArray instances.
 
 Primitive values can be copied exactly as they are. Date objects will be copied as as Dates.
 ArrayBuffers, TypedArrays, and DataViews will be copied in an efficient format. All other objects
-will be passed to JSON.stringify() and stored in serialized form.
+will be copied in seralized form using the [structured clone algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm).
 
-##### `externalCopy.copy()`
+##### `externalCopy.copy(options)`
+* `options` *[object]*
+	* `transfer` *[boolean]* - If true this will transfer the resource directly into this isolate,
+	invalidating the ExternalCopy handle.
 * **return** - JavaScript value of the external copy.
 
 Internalizes the ExternalCopy data into this isolate.
 
-##### `externalCopy.copyInto()`
+##### `externalCopy.copyInto(options)`
+* `options` *[object]*
+	* `transfer` *[boolean]* - If true this will transfer the resource directly into this isolate,
+	invalidating the ExternalCopy handle.
 * **return** *[transferable]*
 
 Returns an object, which when passed to another isolate will cause that isolate to internalize a
