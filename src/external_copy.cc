@@ -12,7 +12,7 @@ using std::unique_ptr;
 namespace ivm {
 
 /**
- * ExternalCopy implemtation
+ * ExternalCopy implementation
  */
 unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value) {
 	unique_ptr<ExternalCopy> copy = CopyIfPrimitive(value);
@@ -149,7 +149,7 @@ Local<Value> ExternalCopy::TransferIn() {
 }
 
 /**
- * ExternalCopySerialized implemtation
+ * ExternalCopySerialized implementation
  */
 ExternalCopySerialized::ExternalCopySerialized(std::pair<uint8_t*, size_t> val) : buffer(val.first, std::free), size(val.second) {}
 
@@ -169,7 +169,7 @@ uint32_t ExternalCopySerialized::WorstCaseHeapSize() const {
 }
 
 /**
- * ExternalCopyError implemtation
+ * ExternalCopyError implementation
  */
 ExternalCopyError::ExternalCopyError(
 	ErrorType error_type,
@@ -223,7 +223,7 @@ uint32_t ExternalCopyError::WorstCaseHeapSize() const {
 }
 
 /**
- * ExternalCopyNull and ExternalCopyUndefined implemtations
+ * ExternalCopyNull and ExternalCopyUndefined implementations
  */
 Local<Value> ExternalCopyNull::CopyInto() const {
 	return Null(Isolate::GetCurrent());
@@ -250,7 +250,7 @@ uint32_t ExternalCopyUndefined::WorstCaseHeapSize() const {
 }
 
 /**
- * ExternalCopyDate implemtation
+ * ExternalCopyDate implementation
  */
 ExternalCopyDate::ExternalCopyDate(const Local<Value>& value) : value(Local<Date>::Cast(value)->ValueOf()) {}
 
@@ -268,7 +268,7 @@ uint32_t ExternalCopyDate::WorstCaseHeapSize() const {
 }
 
 /**
- * ExternalCopyArrayBuffer implemtation
+ * ExternalCopyArrayBuffer implementation
  */
 ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const void* data, size_t length) : value(malloc(length), std::free), length(length) {
 	std::memcpy(value.get(), data, length);
@@ -304,7 +304,7 @@ size_t ExternalCopyArrayBuffer::Length() const {
 }
 
 /**
- * ExternalCopyArrayBufferView implemtation
+ * ExternalCopyArrayBufferView implementation
  */
 ExternalCopyArrayBufferView::ExternalCopyArrayBufferView(const Local<ArrayBufferView>& handle, ViewType type) : buffer(handle), type(type) {}
 
