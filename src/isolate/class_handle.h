@@ -164,7 +164,8 @@ class ClassHandle {
 					throw std::runtime_error("Member function returned empty Local<> but did not set exception");
 				}
 				info.GetReturnValue().Set(result);
-			} catch (const js_runtime_error& err) {}
+			} catch (const js_runtime_error& err) {
+			} catch (const js_fatal_error& err) {}
 		}
 
 		// Main entry point for parameterized constructors
@@ -176,7 +177,8 @@ class ClassHandle {
 					throw std::runtime_error("Member function returned empty Local<> but did not set exception");
 				}
 				info.GetReturnValue().Set(result);
-			} catch (const js_runtime_error& err) {}
+			} catch (const js_runtime_error& err) {
+			} catch (const js_fatal_error& err) {}
 		}
 
 		// Main entry point for getter functions
@@ -188,7 +190,8 @@ class ClassHandle {
 					throw std::runtime_error("Member function returned empty Local<> but did not set exception");
 				}
 				info.GetReturnValue().Set(result);
-			} catch (const js_runtime_error& err) {}
+			} catch (const js_runtime_error& err) {
+			} catch (const js_fatal_error& err) {}
 		}
 
 		// Main entry point for setter functions
@@ -197,7 +200,8 @@ class ClassHandle {
 			try {
 				ParameterizeHelperStart<SetterPair, -1>(SetterPair(&value, &info), F);
 				info.GetReturnValue().Set(v8::Boolean::New(v8::Isolate::GetCurrent(), true));
-			} catch (const js_runtime_error& err) {}
+			} catch (const js_runtime_error& err) {
+			} catch (const js_fatal_error& err) {}
 		}
 
 		// Helper which converts member functions to `Type(Class* that, Args...)`
