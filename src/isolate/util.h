@@ -43,6 +43,7 @@ struct js_error : public js_runtime_error {
 
 using js_generic_error = js_error<v8::Exception::Error>;
 using js_type_error = js_error<v8::Exception::TypeError>;
+using js_range_error = js_error<v8::Exception::RangeError>;
 
 /**
  * Convert a MaybeLocal<T> to Local<T> and throw an error if it's empty. Someone else should throw

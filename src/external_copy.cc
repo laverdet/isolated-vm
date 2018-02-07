@@ -170,9 +170,22 @@ ExternalCopySerialized::ExternalCopySerialized(std::pair<uint8_t*, size_t> val) 
 Local<Value> ExternalCopySerialized::CopyInto(bool transfer_in) {
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
+	LimitedAllocator* allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+	int failures = allocator == nullptr ? 0 : allocator->GetFailureCount();
 	ValueDeserializer deserializer(isolate, buffer.get(), size);
 	Unmaybe(deserializer.ReadHeader(context));
-	return Unmaybe(deserializer.ReadValue(context));
+	Local<Value> value;
+	if (deserializer.ReadValue(context).ToLocal(&value)) {
+		return value;
+	} else {
+		// ValueDeserializer throws an unhelpful message when it fails to allocate an ArrayBuffer, so
+		// detect that case here and throw an appropriate message.
+		if (allocator != nullptr && allocator->GetFailureCount() != failures) {
+			throw js_range_error("Array buffer allocation failed");
+		} else {
+			throw js_runtime_error();
+		}
+	}
 }
 
 size_t ExternalCopySerialized::Size() const {

@@ -87,6 +87,7 @@ void* LimitedAllocator::Allocate(size_t length) {
 	if (Check(length)) {
 		return calloc(length, 1);
 	} else {
+		++failures;
 		return nullptr;
 	}
 }
@@ -95,6 +96,7 @@ void* LimitedAllocator::AllocateUninitialized(size_t length) {
 	if (Check(length)) {
 		return malloc(length);
 	} else {
+		++failures;
 		return nullptr;
 	}
 }
@@ -111,6 +113,10 @@ size_t LimitedAllocator::GetAllocatedSize() const {
 
 void LimitedAllocator::AdjustAllocatedSize(ssize_t length) {
 	my_heap += length;
+}
+
+int LimitedAllocator::GetFailureCount() const {
+	return failures;
 }
 
 /**
