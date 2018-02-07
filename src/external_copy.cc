@@ -68,6 +68,7 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool tran
 	} else if (value->IsObject()) {
 		Isolate* isolate = Isolate::GetCurrent();
 		ValueSerializer serializer(isolate);
+		serializer.WriteHeader();
 		Unmaybe(serializer.WriteValue(isolate->GetCurrentContext(), value));
 		return make_unique<ExternalCopySerialized>(serializer.Release());
 	} else {
@@ -168,8 +169,10 @@ ExternalCopySerialized::ExternalCopySerialized(std::pair<uint8_t*, size_t> val) 
 
 Local<Value> ExternalCopySerialized::CopyInto(bool transfer_in) {
 	Isolate* isolate = Isolate::GetCurrent();
+	Local<Context> context = isolate->GetCurrentContext();
 	ValueDeserializer deserializer(isolate, buffer.get(), size);
-	return Unmaybe(deserializer.ReadValue(isolate->GetCurrentContext()));
+	Unmaybe(deserializer.ReadHeader(context));
+	return Unmaybe(deserializer.ReadValue(context));
 }
 
 size_t ExternalCopySerialized::Size() const {
