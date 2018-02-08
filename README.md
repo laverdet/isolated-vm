@@ -216,7 +216,7 @@ can then be quickly copied into any isolate.
 ##### `new ivm.ExternalCopy(value, options)`
 * `value` - The value to copy.
 * `options` *[object]*
-	* `transfer` *[boolean]* - If true this will release ownership of the given resource from this
+	* `transferOut` *[boolean]* - If true this will release ownership of the given resource from this
 	isolate. This operation completes in constant time since it doesn't have to copy an arbitrarily
 	large object. This only applies to ArrayBuffer and TypedArray instances.
 
@@ -226,7 +226,7 @@ will be copied in seralized form using the [structured clone algorithm](https://
 
 ##### `externalCopy.copy(options)`
 * `options` *[object]*
-	* `transfer` *[boolean]* - If true this will transfer the resource directly into this isolate,
+	* `transferIn` *[boolean]* - If true this will transfer the resource directly into this isolate,
 	invalidating the ExternalCopy handle.
 * **return** - JavaScript value of the external copy.
 
@@ -234,7 +234,7 @@ Internalizes the ExternalCopy data into this isolate.
 
 ##### `externalCopy.copyInto(options)`
 * `options` *[object]*
-	* `transfer` *[boolean]* - If true this will transfer the resource directly into this isolate,
+	* `transferIn` *[boolean]* - If true this will transfer the resource directly into this isolate,
 	invalidating the ExternalCopy handle.
 * **return** *[transferable]*
 

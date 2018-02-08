@@ -15,7 +15,7 @@ let str = '1,2,3,4,5,6,7,8';
 {
 	let buffer = (new Uint8Array(arr)).buffer;
 	let view = new Uint8Array(buffer);
-	let copy = new ivm.ExternalCopy(buffer, { transfer: true });
+	let copy = new ivm.ExternalCopy(buffer, { transferOut: true });
 	try {
 		view.join();
 		console.log('fail2');
@@ -29,7 +29,7 @@ let str = '1,2,3,4,5,6,7,8';
 	}
 
 	// Transfer in
-	let buffer3 = copy.copy({ transfer: true });
+	let buffer3 = copy.copy({ transferIn: true });
 	let view3 = new Uint8Array(buffer3);
 	if (view3.join() !== str) {
 		console.log('fail4');
@@ -42,7 +42,7 @@ let str = '1,2,3,4,5,6,7,8';
 	} catch (err) {}
 
 	// Transfer out again (different code path)
-	let copy2 = new ivm.ExternalCopy(buffer3, { transfer: true });
+	let copy2 = new ivm.ExternalCopy(buffer3, { transferOut: true });
 	try {
 		view3.join();
 		console.log('fail6');
@@ -58,7 +58,7 @@ let str = '1,2,3,4,5,6,7,8';
 	// Transfer into an isolate
 	let isolate = new ivm.Isolate;
 	let global = isolate.createContextSync().globalReference();
-	global.setSync('foo', copy2.copyInto({ transfer: true }));
+	global.setSync('foo', copy2.copyInto({ transferIn: true }));
 	try {
 		copy2.copy();
 	} catch (err) {}
@@ -67,12 +67,12 @@ let str = '1,2,3,4,5,6,7,8';
 // Try typed array
 {
 	let view = new Uint8Array(arr);
-	let copy = new ivm.ExternalCopy(view, { transfer: true });
+	let copy = new ivm.ExternalCopy(view, { transferOut: true });
 	try {
 		view.join();
 		console.log('fail8');
 	} catch (err) {}
-	if (copy.copy({ transfer: true }).join() !== str) {
+	if (copy.copy({ transferIn: true }).join() !== str) {
 		console.log('fail9');
 	}
 	try {
