@@ -51,7 +51,7 @@ unique_ptr<ExternalCopyHandle> ExternalCopyHandle::New(Local<Value> value, Maybe
 	Local<Object> options;
 	bool transfer_out = false;
 	if (maybe_options.ToLocal(&options)) {
-		transfer_out = Unmaybe(options->Get(Isolate::GetCurrent()->GetCurrentContext(), v8_symbol("transferOut")))->IsTrue();
+		transfer_out = IsOptionSet(Isolate::GetCurrent()->GetCurrentContext(), options, "transferOut");
 	}
 	return std::make_unique<ExternalCopyHandle>(shared_ptr<ExternalCopy>(ExternalCopy::Copy(value, transfer_out)));
 }
@@ -70,7 +70,7 @@ Local<Value> ExternalCopyHandle::Copy(MaybeLocal<Object> maybe_options) {
 	Local<Object> options;
 	bool transfer_in = false;
 	if (maybe_options.ToLocal(&options)) {
-		transfer_in = Unmaybe(options->Get(Isolate::GetCurrent()->GetCurrentContext(), v8_symbol("transferIn")))->IsTrue();
+		transfer_in = IsOptionSet(Isolate::GetCurrent()->GetCurrentContext(), options, "transferIn");
 	}
 	return value->CopyIntoCheckHeap(transfer_in);
 }
@@ -80,7 +80,7 @@ Local<Value> ExternalCopyHandle::CopyInto(MaybeLocal<Object> maybe_options) {
 	Local<Object> options;
 	bool transfer_in = false;
 	if (maybe_options.ToLocal(&options)) {
-		transfer_in = Unmaybe(options->Get(Isolate::GetCurrent()->GetCurrentContext(), v8_symbol("transferIn")))->IsTrue();
+		transfer_in = IsOptionSet(Isolate::GetCurrent()->GetCurrentContext(), options, "transferIn");
 	}
 	return ClassHandle::NewInstance<ExternalCopyIntoHandle>(value, transfer_in);
 }

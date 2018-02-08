@@ -21,6 +21,13 @@ inline v8::Local<v8::String> v8_symbol(const char* string) {
 }
 
 /**
+ * Option checker
+ */
+inline bool IsOptionSet(const v8::Local<v8::Context>& context, const v8::Local<v8::Object>& options, const char* key) {
+	return Unmaybe(Unmaybe(options->Get(context, v8_string(key)))->ToBoolean(context))->IsTrue();
+}
+
+/**
  * JS + C++ exception, use with care
  */
 class js_runtime_error : public std::exception {};

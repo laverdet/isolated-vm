@@ -194,7 +194,7 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 		}
 
 		// Check inspector flag
-		inspector = Unmaybe(options->Get(context, v8_symbol("inspector")))->IsTrue();
+		inspector = IsOptionSet(context, options, "inspector");
 	}
 
 	// Set memory limit
@@ -226,10 +226,7 @@ struct CreateContextRunner : public ThreePhaseTask {
 	CreateContextRunner(MaybeLocal<Object>& maybe_options, shared_ptr<IsolateHolder> isolate) : isolate(std::move(isolate)) {
 		Local<Object> options;
 		if (maybe_options.ToLocal(&options)) {
-			Local<Value> enable_inspector = Unmaybe(options->Get(Isolate::GetCurrent()->GetCurrentContext(), v8_symbol("inspector")));
-			if (enable_inspector->IsTrue()) {
-				this->enable_inspector = true;
-			}
+			this->enable_inspector = IsOptionSet(Isolate::GetCurrent()->GetCurrentContext(), options, "inspector");
 		}
 	}
 
@@ -336,10 +333,7 @@ struct CompileScriptRunner : public ThreePhaseTask {
 			}
 
 			// Get cached data flag
-			Local<Value> produce_cached_data_val;
-			if (options->Get(context, v8_symbol("produceCachedData")).ToLocal(&produce_cached_data_val)) {
-				produce_cached_data = produce_cached_data_val->IsTrue();
-			}
+			produce_cached_data = IsOptionSet(context, options, "produceCachedData");
 		}
 
 		// Copy code string
