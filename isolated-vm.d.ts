@@ -139,6 +139,8 @@ declare module 'isolated-vm' {
 				 */
 				run(context: Context, options?: ScriptRunOptions): Promise<any>;
 
+				runIgnored(context: Context, options?: ScriptRunOptions): void;
+
 				/**
 				 * Runs a given script within a context synchronously. This will return the
 				 * last value evaluated in a given script, as long as that value was
@@ -242,6 +244,8 @@ declare module 'isolated-vm' {
 				 */
 				set(property: any, value: any): Promise<boolean>;
 
+				setIgnored(property: any, value: any): void;
+
 				/**
 				 * @return {boolean} Indicating whether or not this operation succeeded. I'm
 				 * actually not really sure when false would be returned, I'm just giving
@@ -255,6 +259,8 @@ declare module 'isolated-vm' {
 				 * otherwise an error will be thrown.
 				 */
 				apply(receiver: any, arguments: any[], options?: ScriptRunOptions): Promise<any>;
+
+				applyIgnored(receiver: any, arguments: any[], options?: ScriptRunOptions): void;
 
 				/**
 				 * Will attempt to invoke an object as if it were a function. If the return
@@ -270,7 +276,15 @@ declare module 'isolated-vm' {
 			 * This operation completes in constant time since it doesn't have to copy an
 			 * arbitrarily large object. This only applies to ArrayBuffer and TypedArray instances.
 			*/
-			transfer?: boolean
+			transferOut?: boolean
+		}
+
+		export interface ExternalCopyCopyOptions {
+			/**
+			 * If true this will transfer the resource directly into this isolate,
+			 * invalidating the ExternalCopy handle.
+			 */
+			transferIn?: boolean
 		}
 
 		/**
@@ -293,13 +307,13 @@ declare module 'isolated-vm' {
 				 *
 				 * @return JavaScript value of the external copy.
 				 */
-				copy(options?: ExternalCopyOptions): T;
+				copy(options?: ExternalCopyCopyOptions): T;
 
 				/**
 				 * Returns an object, which when passed to another isolate will cause that
 				 * isolate to internalize a copy of this value.
 				 */
-				copyInto(options?: ExternalCopyOptions): T;
+				copyInto(options?: ExternalCopyCopyOptions): T;
 
 				/**
 				 * Releases the reference to this copy. If there are other references to
