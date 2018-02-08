@@ -65,7 +65,7 @@ class ThreePhaseTask {
 				// Build a promise for outer isolate
 				v8::Isolate* isolate = v8::Isolate::GetCurrent();
 				auto context_local = isolate->GetCurrentContext();
-				auto promise_local = v8::Promise::Resolver::New(isolate);
+				auto promise_local = Unmaybe(v8::Promise::Resolver::New(context_local));
 				v8::TryCatch try_catch(isolate);
 				try {
 					// Schedule Phase2 async

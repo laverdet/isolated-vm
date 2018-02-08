@@ -100,8 +100,8 @@ T RunWithAnnotatedErrors(F&& fn) {
 				std::string(*v8::String::Utf8Value(message->GetScriptResourceName())) +
 				":" + std::to_string(linenum) +
 				":" + std::to_string(start_column + 1);
-			std::string message_str = *v8::String::Utf8Value(error.As<v8::Object>()->Get(v8_symbol("message")));
-			error.As<v8::Object>()->Set(v8_symbol("message"), v8_string((message_str + " [" + decorator + "]").c_str()));
+			std::string message_str = *v8::String::Utf8Value(Unmaybe(error.As<v8::Object>()->Get(context, v8_symbol("message"))));
+			Unmaybe(error.As<v8::Object>()->Set(context, v8_symbol("message"), v8_string((message_str + " [" + decorator + "]").c_str())));
 			isolate->ThrowException(error);
 			throw js_runtime_error();
 		} catch (const js_runtime_error& cc_error) {

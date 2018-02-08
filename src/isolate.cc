@@ -1,4 +1,12 @@
+#ifdef V8_IMMINENT_DEPRECATION_WARNINGS
+#undef V8_IMMINENT_DEPRECATION_WARNINGS
+#define IVM_V8_WARNINGS_DISABLED
+#endif
 #include <node.h>
+#ifdef IVM_V8_WARNINGS_DISABLED
+#undef IVM_V8_WARNINGS_DISABLED
+#define V8_IMMINENT_DEPRECATION_WARNINGS
+#endif
 #include "isolate/util.h"
 #include "isolate/environment.h"
 #include "isolate/platform_delegate.h"
@@ -52,7 +60,7 @@ class LibraryHandle : public TransferableHandle {
 
 		static Local<Object> Get() {
 			Local<Object> library = ClassHandle::NewInstance<LibraryHandle>().As<Object>();
-			library->Set(v8_symbol("lib"), ClassHandle::NewInstance<LibHandle>());
+			Unmaybe(library->Set(Isolate::GetCurrent()->GetCurrentContext(), v8_symbol("lib"), ClassHandle::NewInstance<LibHandle>()));
 			return library;
 		}
 };

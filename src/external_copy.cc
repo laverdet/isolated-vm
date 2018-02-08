@@ -124,27 +124,29 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 		if (error_type != (ExternalCopyError::ErrorType)0) {
 
 			// Get `message`
-			TryCatch try_catch(Isolate::GetCurrent());
-			Local<Value> message(object->Get(v8_symbol("message")));
+			Isolate* isolate = Isolate::GetCurrent();
+			Local<Context> context = isolate->GetCurrentContext();
+			TryCatch try_catch(isolate);
 			unique_ptr<ExternalCopyString> message_copy;
-			if (try_catch.HasCaught()) {
+			try {
+				Local<Value> message(Unmaybe(object->Get(context, v8_symbol("message"))));
+				if (message->IsString()) {
+					message_copy = make_unique<ExternalCopyString>(message);
+				} else {
+					message_copy = make_unique<ExternalCopyString>(v8_string(""));
+				}
+			} catch (const js_runtime_error& cc_err) {
 				try_catch.Reset();
-			} else if (message->IsString()) {
-				message_copy = make_unique<ExternalCopyString>(message);
-			} else {
-				message_copy = make_unique<ExternalCopyString>(v8_string(""));
 			}
 
 			// Get `stack`
-			Local<Value> stack(object->Get(v8_symbol("stack")));
 			unique_ptr<ExternalCopyString> stack_copy;
-			if (try_catch.HasCaught()) {
-				// printf("try_catch: %s<<\n", *String::Utf8Value(try_catch.Message()->Get()));
-				try_catch.Reset();
-			} else if (stack->IsString()) {
+			try {
+				Local<Value> stack(Unmaybe(object->Get(context, v8_symbol("stack"))));
 				stack_copy = make_unique<ExternalCopyString>(stack);
+			} catch (const js_runtime_error& cc_err) {
+				try_catch.Reset();
 			}
-
 			return make_unique<ExternalCopyError>(error_type, std::move(message_copy), std::move(stack_copy));
 		}
 	}
@@ -236,7 +238,7 @@ Local<Value> ExternalCopyError::CopyInto(bool transfer_in) {
 	// Now add stack information
 	if (this->stack) {
 		Local<String> stack(Local<String>::Cast(this->stack->CopyInto(false)));
-		Local<Object>::Cast(handle)->Set(v8_symbol("stack"), stack);
+		Unmaybe(Local<Object>::Cast(handle)->Set(Isolate::GetCurrent()->GetCurrentContext(), v8_symbol("stack"), stack));
 	}
 	return handle;
 }
@@ -284,7 +286,7 @@ uint32_t ExternalCopyUndefined::WorstCaseHeapSize() const {
 ExternalCopyDate::ExternalCopyDate(const Local<Value>& value) : value(Local<Date>::Cast(value)->ValueOf()) {}
 
 Local<Value> ExternalCopyDate::CopyInto(bool transfer_in) {
-	return Date::New(Isolate::GetCurrent(), value);
+	return Unmaybe(Date::New(Isolate::GetCurrent()->GetCurrentContext(), value));
 }
 
 size_t ExternalCopyDate::Size() const {

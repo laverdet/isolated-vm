@@ -381,10 +381,11 @@ struct CompileScriptRunner : public ThreePhaseTask {
 		// Wrap UnboundScript in JS Script{} class
 		Local<Object> value = ClassHandle::NewInstance<ScriptHandle>(std::move(isolate), std::move(script));
 		Isolate* isolate = Isolate::GetCurrent();
+		Local<Context> context = isolate->GetCurrentContext();
 		if (supplied_cached_data) {
-			value->Set(v8_symbol("cachedDataRejected"), Boolean::New(isolate, cached_data_rejected));
+			Unmaybe(value->Set(context, v8_symbol("cachedDataRejected"), Boolean::New(isolate, cached_data_rejected)));
 		} else if (cached_data_blob) {
-			value->Set(v8_symbol("cachedData"), ClassHandle::NewInstance<ExternalCopyHandle>(cached_data_blob));
+			Unmaybe(value->Set(context, v8_symbol("cachedData"), ClassHandle::NewInstance<ExternalCopyHandle>(cached_data_blob)));
 		}
 		return value;
 	}
@@ -439,17 +440,18 @@ struct HeapStatRunner : public ThreePhaseTask {
 
 	Local<Value> Phase3() final {
 		Isolate* isolate = Isolate::GetCurrent();
+		Local<Context> context = isolate->GetCurrentContext();
 		Local<Object> ret = Object::New(isolate);
-		ret->Set(v8_string("total_heap_size"), Number::New(isolate, heap.total_heap_size()));
-		ret->Set(v8_string("total_heap_size_executable"), Number::New(isolate, heap.total_heap_size_executable()));
-		ret->Set(v8_string("total_physical_size"), Number::New(isolate, heap.total_physical_size()));
-		ret->Set(v8_string("total_available_size"), Number::New(isolate, static_cast<double>(heap.total_available_size()) - adjustment));
-		ret->Set(v8_string("used_heap_size"), Number::New(isolate, heap.used_heap_size()));
-		ret->Set(v8_string("heap_size_limit"), Number::New(isolate, static_cast<double>(heap.heap_size_limit()) - adjustment));
-		ret->Set(v8_string("malloced_memory"), Number::New(isolate, heap.malloced_memory()));
-		ret->Set(v8_string("peak_malloced_memory"), Number::New(isolate, heap.peak_malloced_memory()));
-		ret->Set(v8_string("does_zap_garbage"), Number::New(isolate, heap.does_zap_garbage()));
-		ret->Set(v8_string("externally_allocated_size"), Number::New(isolate, externally_allocated_size));
+		Unmaybe(ret->Set(context, v8_string("total_heap_size"), Number::New(isolate, heap.total_heap_size())));
+		Unmaybe(ret->Set(context, v8_string("total_heap_size_executable"), Number::New(isolate, heap.total_heap_size_executable())));
+		Unmaybe(ret->Set(context, v8_string("total_physical_size"), Number::New(isolate, heap.total_physical_size())));
+		Unmaybe(ret->Set(context, v8_string("total_available_size"), Number::New(isolate, static_cast<double>(heap.total_available_size()) - adjustment)));
+		Unmaybe(ret->Set(context, v8_string("used_heap_size"), Number::New(isolate, heap.used_heap_size())));
+		Unmaybe(ret->Set(context, v8_string("heap_size_limit"), Number::New(isolate, static_cast<double>(heap.heap_size_limit()) - adjustment)));
+		Unmaybe(ret->Set(context, v8_string("malloced_memory"), Number::New(isolate, heap.malloced_memory())));
+		Unmaybe(ret->Set(context, v8_string("peak_malloced_memory"), Number::New(isolate, heap.peak_malloced_memory())));
+		Unmaybe(ret->Set(context, v8_string("does_zap_garbage"), Number::New(isolate, heap.does_zap_garbage())));
+		Unmaybe(ret->Set(context, v8_string("externally_allocated_size"), Number::New(isolate, externally_allocated_size)));
 		return ret;
 	}
 };
