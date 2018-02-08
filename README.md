@@ -297,7 +297,9 @@ let bootstrap = isolate.compileScriptSync('new '+ function() {
 	global.log = function(...args) {
 		// We use `copyInto()` here so that on the other side we don't have to call `copy()`. It
 		// doesn't make a difference who requests the copy, the result is the same.
-		log.apply(undefined, args.map(arg => new ivm.ExternalCopy(arg).copyInto()));
+		// `applyIgnored` calls `log` asynchronously but doesn't return a promise-- it ignores the
+		// return value or thrown exception from `log`.
+		log.applyIgnored(undefined, args.map(arg => new ivm.ExternalCopy(arg).copyInto()));
 	};
 });
 
