@@ -242,14 +242,26 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate) {
 				assert(try_catch.HasCaught());
 				Context::Scope context_scope(second_isolate_ref->DefaultContext());
 				error = ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception());
+				if (!error) {
+					error = std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::Error,
+						"An object was thrown from supplied code within isolated-vm, but that object was not an instance of `Error`."
+					);
+				}
 			} catch (const js_fatal_error& cc_error) {
 				error = std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::Error, "Isolate has exhausted v8 heap space.");
 			}
 		}
 		// Check error
 		if (error) {
-			Isolate::GetCurrent()->ThrowException(error->CopyInto());
-			return Undefined(Isolate::GetCurrent());
+			Isolate* isolate = Isolate::GetCurrent();
+			Local<Value> error_copy = error->CopyInto();
+			if (error_copy->IsObject()) {
+				isolate->ThrowException(StackTraceHolder::ChainStack(error_copy, StackTrace::CurrentStackTrace(isolate, 10)));
+			} else {
+				// Good luck on tracking this error lmbo
+				isolate->ThrowException(error_copy);
+			}
+			return Undefined(isolate);
 		}
 	}
 	// Final phase
