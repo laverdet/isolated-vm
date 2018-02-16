@@ -1,4 +1,5 @@
 #include "allocator.h"
+#include "environment.h"
 
 using namespace v8;
 
@@ -10,23 +11,23 @@ namespace ivm {
  * GetHeapStatistics() and I think it'll be ok.
  */
 bool LimitedAllocator::Check(const size_t length) {
-	if (v8_heap + my_heap + length > next_check) {
+	if (v8_heap + env.extra_allocated_memory + length > next_check) {
 		HeapStatistics heap_statistics;
 		Isolate::GetCurrent()->GetHeapStatistics(&heap_statistics);
 		v8_heap = heap_statistics.total_heap_size();
-		if (v8_heap + my_heap + length > limit) {
+		if (v8_heap + env.extra_allocated_memory + length > limit) {
 			return false;
 		}
-		next_check = v8_heap + my_heap + length + 1024 * 1024;
+		next_check = v8_heap + env.extra_allocated_memory + length + 1024 * 1024;
 	}
-	if (v8_heap + my_heap + length > limit) {
+	if (v8_heap + env.extra_allocated_memory + length > limit) {
 		return false;
 	}
-	my_heap += length;
+	env.extra_allocated_memory += length;
 	return true;
 }
 
-LimitedAllocator::LimitedAllocator(size_t limit) : limit(limit), v8_heap(1024 * 1024 * 4), my_heap(0), next_check(1024 * 1024) {}
+LimitedAllocator::LimitedAllocator(IsolateEnvironment& env, size_t limit) : env(env), limit(limit), v8_heap(1024 * 1024 * 4), next_check(1024 * 1024) {}
 
 void* LimitedAllocator::Allocate(size_t length) {
 	if (Check(length)) {
@@ -47,17 +48,13 @@ void* LimitedAllocator::AllocateUninitialized(size_t length) {
 }
 
 void LimitedAllocator::Free(void* data, size_t length) {
-	my_heap -= length;
+	env.extra_allocated_memory -= length;
 	next_check -= length;
 	free(data);
 }
 
-size_t LimitedAllocator::GetAllocatedSize() const {
-	return my_heap;
-}
-
 void LimitedAllocator::AdjustAllocatedSize(ssize_t length) {
-	my_heap += length;
+	env.extra_allocated_memory += length;
 }
 
 int LimitedAllocator::GetFailureCount() const {

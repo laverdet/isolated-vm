@@ -1,8 +1,10 @@
 #include "environment.h"
+#include "allocator.h"
 #include "inspector.h"
 #include "runnable.h"
 #include "../external_copy.h"
 #include <v8-platform.h>
+#include <cmath>
 
 using namespace v8;
 using std::shared_ptr;
@@ -331,20 +333,23 @@ IsolateEnvironment::IsolateEnvironment(Isolate* isolate, Local<Context> context)
 }
 
 IsolateEnvironment::IsolateEnvironment(
-	const ResourceConstraints& resource_constraints,
-	unique_ptr<ArrayBuffer::Allocator> allocator,
-	shared_ptr<ExternalCopyArrayBuffer> snapshot_blob,
-	size_t memory_limit
+	size_t memory_limit,
+	shared_ptr<ExternalCopyArrayBuffer> snapshot_blob
 ) :
-	allocator_ptr(std::move(allocator)),
+	allocator_ptr(std::make_unique<LimitedAllocator>(*this, memory_limit * 1024 * 1024)),
 	snapshot_blob_ptr(std::move(snapshot_blob)),
 	memory_limit(memory_limit),
 	root(false),
 	bookkeeping_statics(bookkeeping_statics_shared) {
 
+	// Calculate resource constraints
+	ResourceConstraints rc;
+	rc.set_max_semi_space_size((int)std::pow(2, std::min(sizeof(void*) >= 8 ? 4 : 3, (int)(memory_limit / 128))));
+	rc.set_max_old_space_size((int)(memory_limit * 2));
+
 	// Build isolate from create params
 	Isolate::CreateParams create_params;
-	create_params.constraints = resource_constraints;
+	create_params.constraints = rc;
 	create_params.array_buffer_allocator = allocator_ptr.get();
 	if (snapshot_blob_ptr) {
 		create_params.snapshot_blob = &startup_data;

@@ -6,7 +6,6 @@
 #include "session_handle.h"
 #include "isolate/allocator.h"
 #include "isolate/three_phase_task.h"
-#include <cmath>
 
 using namespace v8;
 using std::shared_ptr;
@@ -98,13 +97,12 @@ Local<FunctionTemplate> IsolateHandle::Definition() {
 unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 	Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
 	shared_ptr<ExternalCopyArrayBuffer> snapshot_blob;
-	ResourceConstraints rc;
 	size_t memory_limit = 128;
 	bool inspector = false;
 
 	// Parse options
-	if (!maybe_options.IsEmpty()) {
-		Local<Object> options = maybe_options.ToLocalChecked();
+	Local<Object> options;
+	if (maybe_options.ToLocal(&options)) {
 
 		// Check memory limits
 		Local<Value> maybe_memory_limit = Unmaybe(options->Get(context, v8_symbol("memoryLimit")));
@@ -138,13 +136,8 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 		inspector = IsOptionSet(context, options, "inspector");
 	}
 
-	// Set memory limit
-	rc.set_max_semi_space_size((int)std::pow(2, std::min(sizeof(void*) >= 8 ? 4 : 3, (int)(memory_limit / 128))));
-	rc.set_max_old_space_size((int)(memory_limit * 2));
-	auto allocator_ptr = std::make_unique<LimitedAllocator>(memory_limit * 1024 * 1024);
-
 	// Return isolate handle
-	auto isolate = IsolateEnvironment::New(rc, std::move(allocator_ptr), std::move(snapshot_blob), memory_limit);
+	auto isolate = IsolateEnvironment::New(memory_limit, std::move(snapshot_blob));
 	if (inspector) {
 		isolate->GetIsolate()->EnableInspectorAgent();
 	}
@@ -370,7 +363,7 @@ struct HeapStatRunner : public ThreePhaseTask {
 		IsolateEnvironment& isolate = *IsolateEnvironment::GetCurrent();
 		isolate->GetHeapStatistics(&heap);
 		adjustment = isolate.GetMemoryLimit() * 1024 * 1024;
-		externally_allocated_size = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator())->GetAllocatedSize();
+		externally_allocated_size = isolate.GetExtraAllocatedMemory();
 	}
 
 	Local<Value> Phase3() final {

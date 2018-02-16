@@ -25,6 +25,7 @@ class IsolateEnvironment {
 	friend class InspectorAgent;
 	friend class InspectorSession;
 	friend class IsolateHolder;
+	friend class LimitedAllocator;
 
 	public:
 		/**
@@ -181,6 +182,7 @@ class IsolateEnvironment {
 		std::shared_ptr<class ExternalCopyArrayBuffer> snapshot_blob_ptr;
 		v8::StartupData startup_data {};
 		size_t memory_limit = 0;
+		size_t extra_allocated_memory = 0;
 		bool hit_memory_limit = false;
 		bool root;
 		v8::HeapStatistics last_heap {};
@@ -232,10 +234,8 @@ class IsolateEnvironment {
 		 * Create a new wrapped Isolate
 		 */
 		IsolateEnvironment(
-			const v8::ResourceConstraints& resource_constraints,
-			std::unique_ptr<v8::ArrayBuffer::Allocator> allocator,
-			std::shared_ptr<class ExternalCopyArrayBuffer> snapshot_blob,
-			size_t memory_limit
+			size_t memory_limit,
+			std::shared_ptr<class ExternalCopyArrayBuffer> snapshot_blob
 		);
 		IsolateEnvironment(const IsolateEnvironment&) = delete;
 		IsolateEnvironment operator= (const IsolateEnvironment&) = delete;
@@ -323,6 +323,15 @@ class IsolateEnvironment {
 		 */
 		bool DidHitMemoryLimit() const {
 			return hit_memory_limit;
+		}
+
+		/**
+		 * Not to be confused with v8's `ExternalAllocatedMemory`. This counts up how much memory this
+		 * isolate is holding onto outside of v8's heap, even if that memory is shared amongst other
+		 * isolates.
+		 */
+		size_t GetExtraAllocatedMemory() const {
+			return extra_allocated_memory;
 		}
 
 		/**
