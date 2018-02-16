@@ -2,6 +2,7 @@
 
 #include "isolate_handle.h"
 #include "isolate/environment.h"
+#include "isolate/allocator.h"
 #include "isolate/util.h"
 
 #include <cstring>

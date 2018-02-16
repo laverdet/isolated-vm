@@ -39,6 +39,7 @@
 			],
 			'defines': [ 'V8_IMMINENT_DEPRECATION_WARNINGS' ],
 			'sources': [
+				'src/isolate/allocator.cc',
 				'src/isolate/class_handle.cc',
 				'src/isolate/environment.cc',
 				'src/isolate/holder.cc',
