@@ -125,43 +125,34 @@ class IsolateEnvironment {
 		class IsolateSpecific {
 			private:
 				size_t key;
-				template <typename L, typename V, V IsolateEnvironment::*S>
-				v8::MaybeLocal<L> Deref() const {
-					IsolateEnvironment& isolate = *ExecutorLock::GetCurrent();
-					if ((isolate.*S).size() > key) {
-						if (!(isolate.*S)[key]->IsEmpty()) {
-							return v8::MaybeLocal<L>((isolate.*S)[key]->Get(isolate.isolate));
-						}
-					}
-					return v8::MaybeLocal<L>();
-				}
-
-				template <typename L, typename V, V IsolateEnvironment::*S>
-				void Set(v8::Local<L> handle) {
-					IsolateEnvironment& isolate = *ExecutorLock::GetCurrent();
-					if ((isolate.*S).size() <= key) {
-						(isolate.*S).reserve(key + 1);
-						while ((isolate.*S).size() <= key) {
-							(isolate.*S).emplace_back(std::make_unique<v8::Eternal<L>>());
-						}
-					}
-					(isolate.*S)[key]->Set(isolate, handle);
-				}
 
 			public:
 				IsolateSpecific() : key(IsolateEnvironment::specifics_count++) {}
 
 				v8::MaybeLocal<T> Deref() const {
-					v8::Local<v8::Value> local;
-					if (Deref<v8::Value, decltype(IsolateEnvironment::specifics), &IsolateEnvironment::specifics>().ToLocal(&local)) {
-						return v8::MaybeLocal<T>(v8::Local<v8::Object>::Cast(local));
-					} else {
-						return v8::MaybeLocal<T>();
+					IsolateEnvironment& env = *ExecutorLock::GetCurrent();
+					if (env.specifics.size() > key) {
+						if (!env.specifics[key]->IsEmpty()) {
+							// This is dangerous but `Local` doesn't let you upcast from Data to
+							// `FunctionTemplate` or `Private` which is stupid.
+							v8::Local<v8::Data> tmp = env.specifics[key]->Get(env.isolate);
+							return v8::MaybeLocal<T>(*reinterpret_cast<v8::Local<T>*>(&tmp));
+						}
 					}
+					return v8::MaybeLocal<T>();
 				}
 
 				void Set(v8::Local<T> handle) {
-					Set<v8::Value, decltype(IsolateEnvironment::specifics), &IsolateEnvironment::specifics>(handle);
+					IsolateEnvironment& env = *ExecutorLock::GetCurrent();
+					if (env.specifics.size() <= key) {
+						env.specifics.reserve(key + 1);
+						while (env.specifics.size() < key) {
+							env.specifics.emplace_back(std::make_unique<v8::Eternal<v8::Data>>());
+						}
+						env.specifics.emplace_back(std::make_unique<v8::Eternal<v8::Data>>(env.isolate, handle));
+					} else {
+						env.specifics[key]->Set(env.isolate, handle);
+					}
 				}
 		};
 
@@ -196,8 +187,7 @@ class IsolateEnvironment {
 		std::shared_ptr<BookkeepingStatics> bookkeeping_statics;
 		v8::Persistent<v8::Value> rejected_promise_error;
 
-		std::vector<std::unique_ptr<v8::Eternal<v8::Value>>> specifics;
-		std::vector<std::unique_ptr<v8::Eternal<v8::FunctionTemplate>>> specifics_ft;
+		std::vector<std::unique_ptr<v8::Eternal<v8::Data>>> specifics;
 		std::map<v8::Persistent<v8::Object>*, std::pair<void(*)(void*), void*>> weak_persistents;
 
 	public:
@@ -357,17 +347,5 @@ class IsolateEnvironment {
 		 */
 		static std::shared_ptr<IsolateHolder> LookupIsolate(v8::Isolate* isolate);
 };
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Winstantiation-after-specialization"
-// These instantiations make msvc correctly link the template specializations in environment.cc, but clang whines about it
-template <>
-v8::MaybeLocal<v8::FunctionTemplate> IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>::Deref() const;
-template v8::MaybeLocal<v8::FunctionTemplate> IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>::Deref() const;
-
-template <>
-void IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>::Set(v8::Local<v8::FunctionTemplate> handle);
-template void IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>::Set(v8::Local<v8::FunctionTemplate> handle);
-#pragma clang diagnostic pop
 
 } // namespace ivm

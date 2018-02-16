@@ -192,19 +192,6 @@ void IsolateEnvironment::HeapCheck::Epilogue() {
 }
 
 /**
- * Template specializations for IsolateSpecific<FunctionTemplate>
- */
-template<>
-MaybeLocal<FunctionTemplate> IsolateEnvironment::IsolateSpecific<FunctionTemplate>::Deref() const {
-  return Deref<FunctionTemplate, decltype(IsolateEnvironment::specifics_ft), &IsolateEnvironment::specifics_ft>();
-}
-
-template<>
-void IsolateEnvironment::IsolateSpecific<FunctionTemplate>::Set(Local<FunctionTemplate> handle) {
-	Set<FunctionTemplate, decltype(IsolateEnvironment::specifics_ft), &IsolateEnvironment::specifics_ft>(handle);
-}
-
-/**
  * IsolateEnvironment implementation
  */
 size_t IsolateEnvironment::specifics_count = 0;
