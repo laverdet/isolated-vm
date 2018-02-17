@@ -127,6 +127,11 @@ class IsolateEnvironment {
 		template <typename T>
 		class IsolateSpecific {
 			private:
+				union HandleConvert {
+					v8::Local<v8::Data> data;
+					v8::Local<T> value;
+					explicit HandleConvert(v8::Local<v8::Data> data) : data(data) {}
+				};
 				size_t key;
 
 			public:
@@ -138,8 +143,8 @@ class IsolateEnvironment {
 						if (!env.specifics[key]->IsEmpty()) {
 							// This is dangerous but `Local` doesn't let you upcast from Data to
 							// `FunctionTemplate` or `Private` which is stupid.
-							v8::Local<v8::Data> tmp = env.specifics[key]->Get(env.isolate);
-							return v8::MaybeLocal<T>(*reinterpret_cast<v8::Local<T>*>(&tmp));
+							HandleConvert handle(env.specifics[key]->Get(env.isolate));
+							return v8::MaybeLocal<T>(handle.value);
 						}
 					}
 					return v8::MaybeLocal<T>();

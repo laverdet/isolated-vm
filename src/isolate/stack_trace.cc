@@ -1,4 +1,5 @@
 #include "stack_trace.h"
+#include <cstring>
 #include <sstream>
 #include <string>
 
