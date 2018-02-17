@@ -25,7 +25,12 @@ class ClassHandle {
 		using MemberFunction = std::pair<v8::FunctionCallback, int32_t>;
 		using StaticFunction = std::pair<v8::FunctionCallback, uint32_t>;
 		using AccessorPair = std::pair<v8::AccessorGetterCallback, v8::AccessorSetterCallback>;
-		using SetterPair = std::pair<v8::Local<v8::Value>*, const v8::PropertyCallbackInfo<void>*>;
+		struct StaticAccessorPair {
+			std::pair<v8::FunctionCallback, v8::FunctionCallback> fn;
+			constexpr StaticAccessorPair(decltype(fn) f) : fn(f) {}
+		};
+
+		using SetterParam = std::pair<v8::Local<v8::Value>*, const v8::PropertyCallbackInfo<void>*>;
 		v8::Persistent<v8::Object> handle;
 
 		/**
@@ -96,6 +101,27 @@ class ClassHandle {
 		) {
 			v8::Local<v8::String> name_handle = v8_symbol(name);
 			proto->SetAccessor(name_handle, impl.first, impl.second, name_handle, v8::AccessControl::DEFAULT, v8::PropertyAttribute::None, asig);
+			AddMethods(isolate, tmpl, proto, sig, asig, args...);
+		}
+
+		// This adds static accessors
+		template <typename... Args>
+		static void AddMethods(
+			v8::Isolate* isolate,
+			v8::Local<v8::FunctionTemplate>& tmpl,
+			v8::Local<v8::ObjectTemplate>& proto,
+			v8::Local<v8::Signature>& sig,
+			v8::Local<v8::AccessorSignature>& asig,
+			const char* name,
+			StaticAccessorPair impl,
+			Args... args
+		) {
+			v8::Local<v8::String> name_handle = v8_symbol(name);
+			v8::Local<v8::FunctionTemplate> setter;
+			if (impl.fn.second != nullptr) {
+				setter = v8::FunctionTemplate::New(isolate, impl.fn.second, name_handle);
+			}
+			tmpl->SetAccessorProperty(name_handle, v8::FunctionTemplate::New(isolate, impl.fn.first, name_handle), setter);
 			AddMethods(isolate, tmpl, proto, sig, asig, args...);
 		}
 
@@ -198,7 +224,7 @@ class ClassHandle {
 		template <typename T, T F>
 		static void ParameterizeSetterEntry(v8::Local<v8::String> /* property */, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& info) {
 			try {
-				ParameterizeHelperStart<SetterPair, -1>(SetterPair(&value, &info), F);
+				ParameterizeHelperStart<SetterParam, -1>(SetterParam(&value, &info), F);
 				info.GetReturnValue().Set(v8::Boolean::New(v8::Isolate::GetCurrent(), true));
 			} catch (const js_runtime_error& err) {
 			} catch (const js_fatal_error& err) {}
@@ -327,7 +353,7 @@ class ClassHandle {
 
 		template <typename T1, T1 F1, typename T2, T2 F2>
 		static constexpr AccessorPair ParameterizeAccessor() {
-			return std::make_pair(
+			return AccessorPair(
 				ParameterizeGetterEntry<typename MethodCast<T1>::Type, MethodCast<T1>::template Invoke<F1>>,
 				ParameterizeSetterEntry<typename MethodCast<T2>::Type, MethodCast<T2>::template Invoke<F2>>
 			);
@@ -335,9 +361,25 @@ class ClassHandle {
 
 		template <typename T1, T1 F1>
 		static constexpr AccessorPair ParameterizeAccessor() {
-			return std::make_pair(
+			return AccessorPair(
 				ParameterizeGetterEntry<typename MethodCast<T1>::Type, MethodCast<T1>::template Invoke<F1>>,
 				(v8::AccessorSetterCallback)nullptr
+			);
+		}
+
+		template <typename T1, T1 F1, typename T2, T2 F2>
+		static constexpr StaticAccessorPair ParameterizeStaticAccessor() {
+			return std::make_pair(
+				ParameterizeEntry<0, T1, F1>,
+				ParameterizeEntry<0, T2, F2>
+			);
+		}
+
+		template <typename T1, T1 F1>
+		static constexpr StaticAccessorPair ParameterizeStaticAccessor() {
+			return std::make_pair(
+				ParameterizeEntry<0, T1, F1>,
+				(v8::FunctionCallback)nullptr
 			);
 		}
 

@@ -20,12 +20,12 @@ Local<Value> ExternalCopyHandle::ExternalCopyTransferable::TransferIn() {
  * ExternalCopyHandle implementation
  */
 ExternalCopyHandle::ExternalCopyHandle(shared_ptr<ExternalCopy> value) : value(std::move(value)) {
-	Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(this->value->Size());
+	Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(this->value->OriginalSize());
 }
 
 ExternalCopyHandle::~ExternalCopyHandle() {
 	if (value) {
-		Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-(ssize_t)value->Size());
+		Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-(ssize_t)value->OriginalSize());
 	}
 }
 
@@ -37,6 +37,7 @@ IsolateEnvironment::IsolateSpecific<FunctionTemplate>& ExternalCopyHandle::Templ
 Local<FunctionTemplate> ExternalCopyHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 		"ExternalCopy", ParameterizeCtor<decltype(&New), &New>(),
+		"totalExternalSize", ParameterizeStaticAccessor<decltype(&ExternalCopyHandle::TotalExternalSizeGetter), &ExternalCopyHandle::TotalExternalSizeGetter>(),
 		"copy", Parameterize<decltype(&ExternalCopyHandle::Copy), &ExternalCopyHandle::Copy>(),
 		"copyInto", Parameterize<decltype(&ExternalCopyHandle::CopyInto), &ExternalCopyHandle::CopyInto>(),
 		"dispose", Parameterize<decltype(&ExternalCopyHandle::Dispose), &ExternalCopyHandle::Dispose>()
@@ -65,6 +66,10 @@ void ExternalCopyHandle::CheckDisposed() {
 /**
  * JS API functions
  */
+Local<Value> ExternalCopyHandle::TotalExternalSizeGetter() {
+	return Number::New(Isolate::GetCurrent(), ExternalCopy::TotalExternalSize());
+}
+
 Local<Value> ExternalCopyHandle::Copy(MaybeLocal<Object> maybe_options) {
 	CheckDisposed();
 	Local<Object> options;
@@ -87,7 +92,7 @@ Local<Value> ExternalCopyHandle::CopyInto(MaybeLocal<Object> maybe_options) {
 
 Local<Value> ExternalCopyHandle::Dispose() {
 	CheckDisposed();
-	Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-(ssize_t)value->Size());
+	Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-(ssize_t)value->OriginalSize());
 	value.reset();
 	return Undefined(Isolate::GetCurrent());
 }

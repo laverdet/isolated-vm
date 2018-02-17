@@ -32,6 +32,7 @@ class ExternalCopyHandle : public TransferableHandle {
 		std::unique_ptr<Transferable> TransferOut() final;
 
 		static std::unique_ptr<ExternalCopyHandle> New(v8::Local<v8::Value> value, v8::MaybeLocal<v8::Object> maybe_options);
+		static v8::Local<v8::Value> TotalExternalSizeGetter();
 		v8::Local<v8::Value> Copy(v8::MaybeLocal<v8::Object> maybe_options);
 		v8::Local<v8::Value> CopyInto(v8::MaybeLocal<v8::Object> maybe_options);
 		v8::Local<v8::Value> Dispose();

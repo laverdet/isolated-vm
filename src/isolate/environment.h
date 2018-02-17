@@ -22,6 +22,8 @@ class Runnable;
  * Wrapper around Isolate with helpers to make working with multiple isolates easier.
  */
 class IsolateEnvironment {
+	friend class ExternalCopyArrayBuffer;
+	friend class ExternalCopyString;
 	friend class InspectorAgent;
 	friend class InspectorSession;
 	friend class IsolateHolder;

@@ -162,7 +162,7 @@ IsolateEnvironment::HeapCheck::HeapCheck(IsolateEnvironment& env, size_t expecte
 		HeapStatistics heap;
 		env.GetIsolate()->GetHeapStatistics(&heap);
 		size_t old_space = env.memory_limit * 1024 * 1024 * 2;
-		size_t expected_total_heap = heap.used_heap_size() + expected_size;
+		size_t expected_total_heap = heap.used_heap_size() + env.extra_allocated_memory + expected_size;
 		if (expected_total_heap > old_space) {
 			// Heap limit increases by factor of 4
 			if (expected_total_heap > old_space * 4) {
@@ -184,7 +184,7 @@ void IsolateEnvironment::HeapCheck::Epilogue() {
 	if (did_increase) {
 		HeapStatistics heap;
 		env.GetIsolate()->GetHeapStatistics(&heap);
-		if (heap.used_heap_size() > env.memory_limit * 1024 * 1024) {
+		if (heap.used_heap_size() + env.extra_allocated_memory > env.memory_limit * 1024 * 1024) {
 			env.hit_memory_limit = true;
 			env.Terminate();
 			did_increase = false; // Don't reset heap limit to decrease chance v8 will OOM

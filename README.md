@@ -224,6 +224,11 @@ Primitive values can be copied exactly as they are. Date objects will be copied 
 ArrayBuffers, TypedArrays, and DataViews will be copied in an efficient format. All other objects
 will be copied in seralized form using the [structured clone algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm).
 
+##### `ExternalCopy.totalExternalSize` *[number]*
+
+This is a static property which will return the total number of bytes that isolated-vm has allocated
+outside of v8 due to instances of `ExternalCopy`.
+
 ##### `externalCopy.copy(options)`
 * `options` *[object]*
 	* `transferIn` *[boolean]* - If true this will transfer the resource directly into this isolate,
