@@ -11,11 +11,11 @@ let env = [ 0, 0, 0 ].map(function() {
 });
 
 env[0].script = env[0].isolate.compileScriptSync('function env0() { throw new Error("here"); }; env0();');
-env[1].global.set('nextScript', env[0].script);
-env[1].global.set('nextContext', env[0].context);
+env[1].global.setSync('nextScript', env[0].script);
+env[1].global.setSync('nextContext', env[0].context);
 env[1].script = env[1].isolate.compileScriptSync('function env1() { nextScript.runSync(nextContext) }; env1();');
-env[2].global.set('nextScript', env[1].script);
-env[2].global.set('nextContext', env[1].context);
+env[2].global.setSync('nextScript', env[1].script);
+env[2].global.setSync('nextContext', env[1].context);
 env[2].script = env[2].isolate.compileScriptSync('function env2() { nextScript.runSync(nextContext) }; env2();');
 
 // Checker
