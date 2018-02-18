@@ -1,4 +1,10 @@
 declare module 'isolated-vm' {
+		type Transferable =
+			null | undefined |
+			string | number | boolean |
+			ExternalCopy<any> | Copy<any> |
+			Reference<any> | Dereference<any>;
+
 		/**
 		 * This is the main reference to an isolate. Every handle to an isolate is
 		 * transferable, which means you can give isolates references to each other. An
@@ -208,13 +214,13 @@ declare module 'isolated-vm' {
 				 * reference. Note that in order to call this function the reference must be
 				 * owned by the current isolate, otherwise an error will be thrown.
 				 */
-				deref(): T;
+				deref(opts?: ReferencingOptions): T;
 
 				/**
 				 * Returns an object, which when passed to another isolate will cause that
 				 * isolate to dereference the handle.
 				 */
-				derefInto(): T;
+				derefInto(opts?: ReferencingOptions): Dereference<T>;
 
 				/**
 				 * Releases this reference. If you're passing around a lot of references
@@ -223,6 +229,7 @@ declare module 'isolated-vm' {
 				 * because other isolates haven't garbage collected recently. After calling
 				 * this method all attempts to access the reference will throw an error.
 				 */
+				release(): void;
 				dispose(): void;
 
 				/**
@@ -242,32 +249,41 @@ declare module 'isolated-vm' {
 				 * actually not really sure when false would be returned, I'm just giving
 				 * you the result back straight from the v8 API.
 				 */
-				set(property: any, value: any): Promise<boolean>;
+				set(property: any, value: Transferable): Promise<boolean>;
 
-				setIgnored(property: any, value: any): void;
+				setIgnored(property: any, value: Transferable): void;
 
 				/**
 				 * @return {boolean} Indicating whether or not this operation succeeded. I'm
 				 * actually not really sure when false would be returned, I'm just giving
 				 * you the result back straight from the v8 API.
 				 */
-				setSync(property: any, value: any): boolean;
+				setSync(property: any, value: Transferable): boolean;
 
 				/**
 				 * Will attempt to invoke an object as if it were a function. If the return
 				 * value is transferable it will be returned to the called of apply,
 				 * otherwise an error will be thrown.
 				 */
-				apply(receiver: any, arguments: any[], options?: ScriptRunOptions): Promise<any>;
+				apply(receiver?: any, arguments?: Transferable[], options?: ScriptRunOptions): Promise<any>;
 
-				applyIgnored(receiver: any, arguments: any[], options?: ScriptRunOptions): void;
+				applyIgnored(receiver?: any, arguments?: Transferable[], options?: ScriptRunOptions): void;
 
 				/**
 				 * Will attempt to invoke an object as if it were a function. If the return
 				 * value is transferable it will be returned to the called of apply,
 				 * otherwise an error will be thrown.
 				 */
-				applySync(receiver: any, arguments: any[], options?: ScriptRunOptions): any;
+				applySync(receiver?: any, arguments?: Transferable[], options?: ScriptRunOptions): any;
+		}
+
+		export interface AutomaticallyReleasableOptions {
+			// If true `release()` will automatically be called on this instance.
+			release?: boolean
+		}
+
+		export interface ReferencingOptions extends AutomaticallyReleasableOptions {
+
 		}
 
 		export interface ExternalCopyOptions {
@@ -279,13 +295,22 @@ declare module 'isolated-vm' {
 			transferOut?: boolean
 		}
 
-		export interface ExternalCopyCopyOptions {
+		export interface ExternalCopyCopyOptions extends AutomaticallyReleasableOptions {
 			/**
 			 * If true this will transfer the resource directly into this isolate,
 			 * invalidating the ExternalCopy handle.
 			 */
 			transferIn?: boolean
 		}
+
+		/**
+		 * Dummy type referencing a type copied into a different Isolate.
+		*/
+		export interface Copy<T> {}
+		/**
+		 * Dummy type referencing a type dereferenced into a different Isolate.
+		*/
+		export interface Dereference<T> {}
 
 		/**
 		 * Instances of this class represent some value that is stored outside of any v8
@@ -303,6 +328,12 @@ declare module 'isolated-vm' {
 				constructor(value: T, options?: ExternalCopyOptions);
 				
 				/**
+				 * Static property which will return the total number of bytes that isolated-vm
+				 * has allocated outside of v8 due to instances of `ExternalCopy`.
+				 */
+				static totalExternalSize : number
+
+				/**
 				 * Internalizes the ExternalCopy data into this isolate.
 				 *
 				 * @return JavaScript value of the external copy.
@@ -313,7 +344,7 @@ declare module 'isolated-vm' {
 				 * Returns an object, which when passed to another isolate will cause that
 				 * isolate to internalize a copy of this value.
 				 */
-				copyInto(options?: ExternalCopyCopyOptions): T;
+				copyInto(options?: ExternalCopyCopyOptions): Copy<T>;
 
 				/**
 				 * Releases the reference to this copy. If there are other references to
@@ -322,6 +353,38 @@ declare module 'isolated-vm' {
 				 * important, v8 is a lot better at cleaning these up automatically because
 				 * there's no inter-isolate dependencies.
 				 */
+				release(): void;
 				dispose(): void;
+		}
+
+		/**
+		 * C++ native module for v8 representation.
+		 */
+		export class NativeModule {
+			/**
+			 * Instantiate a native module with the full path to the compiled library.
+			 * For instance, filename would represent the path to a .node file
+			 * compiled using node-gyp.
+			 * 
+			 * @param filename Full path to compiled library.
+			*/
+			constructor(filename: string)
+
+			/**
+			 * Instantiates the module with a Context by running the `InitForContext`
+			 * symbol, throws if that symbol is not present.
+			 * 
+			 * Returned Reference<NativeModule> should be dereferenced into a context
+			 * 
+			 * @param context Context to initialize the module with.
+			 */
+			create(context: Context): Promise<Reference<NativeModule>>
+			
+			/**
+			 * Synchronous version of `create`
+			 * 
+			 * @param context Context to initialize the module with.
+			 */
+			createSync(context: Context): Reference<NativeModule>
 		}
 }
