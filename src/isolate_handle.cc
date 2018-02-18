@@ -181,13 +181,15 @@ struct CreateContextRunner : public ThreePhaseTask {
 					ContextDisposer(unique_ptr<Persistent<Context>> context, bool has_inspector) : context(std::move(context)), has_inspector(has_inspector) {}
 					void Run() final {
 						Isolate* isolate = Isolate::GetCurrent();
-						if (has_inspector) {
+						{
 							HandleScope handle_scope(isolate);
 							Local<Context> context = Local<Context>::New(isolate, *this->context);
+							context->DetachGlobal();
 							this->context->Reset();
-							IsolateEnvironment::GetCurrent()->GetInspectorAgent()->ContextDestroyed(context);
+							if (has_inspector) {
+								IsolateEnvironment::GetCurrent()->GetInspectorAgent()->ContextDestroyed(context);
+							}
 						}
-						this->context->Reset();
 						isolate->ContextDisposedNotification();
 					}
 				};
