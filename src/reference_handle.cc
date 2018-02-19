@@ -146,6 +146,7 @@ Local<Value> ReferenceHandle::DerefInto() {
 Local<Value> ReferenceHandle::Dispose() {
 	CheckDisposed();
 	isolate.reset();
+	reference->Reset();
 	reference.reset();
 	context.reset();
 	return Undefined(Isolate::GetCurrent());
