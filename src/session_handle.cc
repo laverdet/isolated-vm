@@ -1,4 +1,5 @@
 #include "session_handle.h"
+#include "isolate/remote_handle.h"
 #include "isolate/util.h"
 
 using namespace v8;
@@ -14,8 +15,8 @@ namespace ivm {
 class SessionImpl : public InspectorSession {
 	public:
 		shared_ptr<IsolateHolder> isolate; // This is the isolate that owns the session
-		shared_ptr<Persistent<Function>> onNotification;
-		shared_ptr<Persistent<Function>> onResponse;
+		shared_ptr<RemoteHandle<Function>> onNotification;
+		shared_ptr<RemoteHandle<Function>> onResponse;
 
 		explicit SessionImpl(IsolateEnvironment& isolate) : InspectorSession(isolate) {}
 
@@ -24,9 +25,9 @@ class SessionImpl : public InspectorSession {
 		static MaybeLocal<String> bufferToString(StringBuffer& buffer) {
 			const StringView& view = buffer.string();
 			if (view.is8Bit()) {
-				return String::NewFromOneByte(Isolate::GetCurrent(), view.characters8(), v8::NewStringType::kNormal, view.length());
+				return String::NewFromOneByte(Isolate::GetCurrent(), view.characters8(), NewStringType::kNormal, view.length());
 			} else {
-				return String::NewFromTwoByte(Isolate::GetCurrent(), view.characters16(), v8::NewStringType::kNormal, view.length());
+				return String::NewFromTwoByte(Isolate::GetCurrent(), view.characters16(), NewStringType::kNormal, view.length());
 			}
 		}
 
@@ -38,10 +39,10 @@ class SessionImpl : public InspectorSession {
 			struct SendResponseTask : public Runnable {
 				int call_id;
 				unique_ptr<StringBuffer> message;
-				shared_ptr<Persistent<Function>> onResponse;
+				shared_ptr<RemoteHandle<Function>> onResponse;
 
 				SendResponseTask(
-					int call_id, unique_ptr<StringBuffer> message, shared_ptr<Persistent<Function>> onResponse
+					int call_id, unique_ptr<StringBuffer> message, shared_ptr<RemoteHandle<Function>> onResponse
 				) :	call_id(call_id), message(std::move(message)), onResponse(std::move(onResponse)) {}
 
 				void Run() final {
@@ -67,9 +68,9 @@ class SessionImpl : public InspectorSession {
 			}
 			struct SendNotificationTask : public Runnable {
 				unique_ptr<StringBuffer> message;
-				shared_ptr<Persistent<Function>> onNotification;
+				shared_ptr<RemoteHandle<Function>> onNotification;
 				SendNotificationTask(
-					unique_ptr<StringBuffer> message, shared_ptr<Persistent<Function>> onNotification
+					unique_ptr<StringBuffer> message, shared_ptr<RemoteHandle<Function>> onNotification
 				) : message(std::move(message)), onNotification(std::move(onNotification)) {}
 
 				void Run() final {
@@ -153,7 +154,7 @@ Local<Value> SessionHandle::OnNotificationGetter() {
 
 void SessionHandle::OnNotificationSetter(Local<Function> value) {
 	CheckDisposed();
-	session->onNotification = std::make_shared<Persistent<Function>>(Isolate::GetCurrent(), value);
+	session->onNotification = std::make_shared<RemoteHandle<Function>>(value);
 }
 
 // .onResponse
@@ -168,7 +169,7 @@ Local<Value> SessionHandle::OnResponseGetter() {
 
 void SessionHandle::OnResponseSetter(Local<Function> value) {
 	CheckDisposed();
-	session->onResponse = std::make_shared<Persistent<Function>>(Isolate::GetCurrent(), value);
+	session->onResponse = std::make_shared<RemoteHandle<Function>>(value);
 }
 
 } // namespace ivm

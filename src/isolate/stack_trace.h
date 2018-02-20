@@ -10,7 +10,7 @@ namespace ivm {
  */
 class StackTraceHolder : public ClassHandle {
 	public:
-		v8::Persistent<v8::StackTrace> stack_trace;
+		v8::Persistent<v8::StackTrace, v8::CopyablePersistentTraits<v8::StackTrace>> stack_trace;
 		explicit StackTraceHolder(v8::Local<v8::StackTrace> stack_handle);
 		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();

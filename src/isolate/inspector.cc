@@ -108,14 +108,14 @@ void InspectorAgent::SendInterrupt(unique_ptr<class Runnable> task) {
 /**
  * Hook to add context to agent.
  */
-void InspectorAgent::ContextCreated(v8::Local<v8::Context> context, const std::string& name) {
+void InspectorAgent::ContextCreated(Local<Context> context, const std::string& name) {
 	inspector->contextCreated(V8ContextInfo(context, 1, StringView(reinterpret_cast<const uint8_t*>(name.c_str()), name.length())));
 }
 
 /**
  * Hook to remove context from agent.
  */
-void InspectorAgent::ContextDestroyed(v8::Local<v8::Context> context) {
+void InspectorAgent::ContextDestroyed(Local<Context> context) {
 	inspector->contextDestroyed(context);
 }
 

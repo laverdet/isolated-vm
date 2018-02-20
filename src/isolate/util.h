@@ -3,6 +3,7 @@
 #include <cassert>
 #include <string>
 #include <functional>
+#include "remote_handle.h"
 
 namespace ivm {
 
@@ -82,6 +83,16 @@ T Unmaybe(v8::Maybe<T> handle) {
 template <typename T>
 v8::Local<T> Deref(const v8::Persistent<T>& handle) {
 	return v8::Local<T>::New(v8::Isolate::GetCurrent(), handle);
+}
+
+template <typename T>
+v8::Local<T> Deref(const v8::Persistent<T, v8::CopyablePersistentTraits<T>>& handle) {
+	return v8::Local<T>::New(v8::Isolate::GetCurrent(), handle);
+}
+
+template <typename T>
+v8::Local<T> Deref(const RemoteHandle<T>& handle) {
+	return handle.Deref();
 }
 
 /**

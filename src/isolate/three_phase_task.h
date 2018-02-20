@@ -2,6 +2,7 @@
 #include <v8.h>
 #include "environment.h"
 #include "holder.h"
+#include "remote_handle.h"
 #include "util.h"
 #include <memory>
 
@@ -25,17 +26,17 @@ class ThreePhaseTask {
 		struct Phase2Runner : public Runnable {
 			std::unique_ptr<ThreePhaseTask> self;
 			std::shared_ptr<IsolateHolder> first_isolate_ref;
-			std::unique_ptr<v8::Persistent<v8::Promise::Resolver>> promise_persistent;
-			std::unique_ptr<v8::Persistent<v8::Context>> context_persistent;
-			std::unique_ptr<v8::Persistent<v8::StackTrace>> stack_trace;
+			std::unique_ptr<RemoteHandle<v8::Promise::Resolver>> promise_persistent;
+			std::unique_ptr<RemoteHandle<v8::Context>> context_persistent;
+			std::unique_ptr<RemoteHandle<v8::StackTrace>> stack_trace;
 			bool did_run = false;
 
 			Phase2Runner(
 				std::unique_ptr<ThreePhaseTask> self,
 				std::shared_ptr<IsolateHolder> first_isolate_ref,
-				std::unique_ptr<v8::Persistent<v8::Promise::Resolver>> promise_persistent,
-				std::unique_ptr<v8::Persistent<v8::Context>> context_persistent,
-				std::unique_ptr<v8::Persistent<v8::StackTrace>> stack_trace
+				std::unique_ptr<RemoteHandle<v8::Promise::Resolver>> promise_persistent,
+				std::unique_ptr<RemoteHandle<v8::Context>> context_persistent,
+				std::unique_ptr<RemoteHandle<v8::StackTrace>> stack_trace
 			);
 			Phase2Runner(const Phase2Runner&) = delete;
 			Phase2Runner& operator= (const Phase2Runner&) = delete;
@@ -75,9 +76,9 @@ class ThreePhaseTask {
 						std::make_unique<Phase2Runner>(
 							std::make_unique<T>(std::forward<Args>(args)...), // <-- Phase1 / ctor called here
 							IsolateEnvironment::GetCurrentHolder(),
-							std::make_unique<v8::Persistent<v8::Promise::Resolver>>(isolate, promise_local),
-							std::make_unique<v8::Persistent<v8::Context>>(isolate, context_local),
-							std::make_unique<v8::Persistent<v8::StackTrace>>(isolate, v8::StackTrace::CurrentStackTrace(isolate, 10))
+							std::make_unique<RemoteHandle<v8::Promise::Resolver>>(promise_local),
+							std::make_unique<RemoteHandle<v8::Context>>(context_local),
+							std::make_unique<RemoteHandle<v8::StackTrace>>(v8::StackTrace::CurrentStackTrace(isolate, 10))
 						), false, true
 					);
 				} catch (const js_runtime_error& cc_error) {

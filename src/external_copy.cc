@@ -407,12 +407,13 @@ ExternalCopyArrayBuffer::Holder::Holder(const Local<ArrayBuffer>& buffer, ptr_t 
 }
 
 ExternalCopyArrayBuffer::Holder::~Holder() {
+	v8_ptr.Reset();
 	if (cc_ptr) {
 		IsolateEnvironment::GetCurrent()->extra_allocated_memory -= size;
 	}
 }
 
-void ExternalCopyArrayBuffer::Holder::WeakCallbackV8(const v8::WeakCallbackInfo<void>& info) {
+void ExternalCopyArrayBuffer::Holder::WeakCallbackV8(const WeakCallbackInfo<void>& info) {
 	WeakCallback(info.GetParameter());
 }
 

@@ -14,9 +14,9 @@ namespace ivm {
 ThreePhaseTask::Phase2Runner::Phase2Runner(
 	unique_ptr<ThreePhaseTask> self,
 	shared_ptr<IsolateHolder> first_isolate_ref,
-	unique_ptr<Persistent<Promise::Resolver>> promise_persistent,
-	unique_ptr<Persistent<Context>> context_persistent,
-	unique_ptr<Persistent<StackTrace>> stack_trace
+	unique_ptr<RemoteHandle<Promise::Resolver>> promise_persistent,
+	unique_ptr<RemoteHandle<Context>> context_persistent,
+	unique_ptr<RemoteHandle<StackTrace>> stack_trace
 ) :
 	self(std::move(self)),
 	first_isolate_ref(std::move(first_isolate_ref)),
@@ -30,15 +30,15 @@ ThreePhaseTask::Phase2Runner::~Phase2Runner() {
 		// The task never got to run
 		struct Phase3Orphan : public Runnable {
 			unique_ptr<ThreePhaseTask> self;
-			unique_ptr<Persistent<Promise::Resolver>> promise_persistent;
-			unique_ptr<Persistent<Context>> context_persistent;
-			unique_ptr<Persistent<StackTrace>> stack_trace;
+			unique_ptr<RemoteHandle<Promise::Resolver>> promise_persistent;
+			unique_ptr<RemoteHandle<Context>> context_persistent;
+			unique_ptr<RemoteHandle<StackTrace>> stack_trace;
 
 			Phase3Orphan(
 				unique_ptr<ThreePhaseTask> self,
-				unique_ptr<Persistent<Promise::Resolver>> promise_persistent,
-				unique_ptr<Persistent<Context>> context_persistent,
-				unique_ptr<Persistent<StackTrace>> stack_trace
+				unique_ptr<RemoteHandle<Promise::Resolver>> promise_persistent,
+				unique_ptr<RemoteHandle<Context>> context_persistent,
+				unique_ptr<RemoteHandle<StackTrace>> stack_trace
 			) :
 				self(std::move(self)),
 				promise_persistent(std::move(promise_persistent)),
@@ -48,9 +48,9 @@ ThreePhaseTask::Phase2Runner::~Phase2Runner() {
 			void Run() final {
 				// Revive our persistent handles
 				Isolate* isolate = Isolate::GetCurrent();
-				auto context_local = Local<Context>::New(isolate, *context_persistent);
+				auto context_local = Deref(*context_persistent);
 				Context::Scope context_scope(context_local);
-				auto promise_local = Local<Promise::Resolver>::New(isolate, *promise_persistent);
+				auto promise_local = Deref(*promise_persistent);
 				// Throw from promise
 				Unmaybe(promise_local->Reject(context_local,
 					StackTraceHolder::AttachStack(Exception::Error(v8_string("Isolate is disposed")), Deref(*stack_trace))
@@ -77,16 +77,16 @@ void ThreePhaseTask::Phase2Runner::Run() {
 	// This class will be used if Phase2() throws an error
 	struct Phase3Failure : public Runnable {
 		unique_ptr<ThreePhaseTask> self;
-		unique_ptr<Persistent<Promise::Resolver>> promise_persistent;
-		unique_ptr<Persistent<Context>> context_persistent;
-		unique_ptr<Persistent<StackTrace>> stack_trace;
+		unique_ptr<RemoteHandle<Promise::Resolver>> promise_persistent;
+		unique_ptr<RemoteHandle<Context>> context_persistent;
+		unique_ptr<RemoteHandle<StackTrace>> stack_trace;
 		unique_ptr<ExternalCopy> err;
 
 		Phase3Failure(
 			unique_ptr<ThreePhaseTask> self,
-			unique_ptr<Persistent<Promise::Resolver>> promise_persistent,
-			unique_ptr<Persistent<Context>> context_persistent,
-			unique_ptr<Persistent<StackTrace>> stack_trace,
+			unique_ptr<RemoteHandle<Promise::Resolver>> promise_persistent,
+			unique_ptr<RemoteHandle<Context>> context_persistent,
+			unique_ptr<RemoteHandle<StackTrace>> stack_trace,
 			unique_ptr<ExternalCopy> err
 		) :
 			self(std::move(self)),
@@ -98,9 +98,9 @@ void ThreePhaseTask::Phase2Runner::Run() {
 		void Run() final {
 			// Revive our persistent handles
 			Isolate* isolate = Isolate::GetCurrent();
-			auto context_local = Local<Context>::New(isolate, *context_persistent);
+			auto context_local = Deref(*context_persistent);
 			Context::Scope context_scope(context_local);
-			auto promise_local = Local<Promise::Resolver>::New(isolate, *promise_persistent);
+			auto promise_local = Deref(*promise_persistent);
 			Local<Value> rejection;
 			if (err) {
 				rejection = err->CopyInto();
@@ -122,15 +122,15 @@ void ThreePhaseTask::Phase2Runner::Run() {
 		// Finish back in first isolate
 		struct Phase3Success : public Runnable {
 			unique_ptr<ThreePhaseTask> self;
-			unique_ptr<Persistent<Promise::Resolver>> promise_persistent;
-			unique_ptr<Persistent<Context>> context_persistent;
-			unique_ptr<Persistent<StackTrace>> stack_trace;
+			unique_ptr<RemoteHandle<Promise::Resolver>> promise_persistent;
+			unique_ptr<RemoteHandle<Context>> context_persistent;
+			unique_ptr<RemoteHandle<StackTrace>> stack_trace;
 
 			Phase3Success(
 				unique_ptr<ThreePhaseTask> self,
-				unique_ptr<Persistent<Promise::Resolver>> promise_persistent,
-				unique_ptr<Persistent<Context>> context_persistent,
-				unique_ptr<Persistent<StackTrace>> stack_trace
+				unique_ptr<RemoteHandle<Promise::Resolver>> promise_persistent,
+				unique_ptr<RemoteHandle<Context>> context_persistent,
+				unique_ptr<RemoteHandle<StackTrace>> stack_trace
 			) :
 				self(std::move(self)),
 				promise_persistent(std::move(promise_persistent)),
@@ -139,9 +139,9 @@ void ThreePhaseTask::Phase2Runner::Run() {
 
 			void Run() final {
 				Isolate* isolate = Isolate::GetCurrent();
-				auto context_local = Local<Context>::New(isolate, *context_persistent);
+				auto context_local = Deref(*context_persistent);
 				Context::Scope context_scope(context_local);
-				auto promise_local = Local<Promise::Resolver>::New(isolate, *promise_persistent);
+				auto promise_local = Deref(*promise_persistent);
 				TryCatch try_catch(isolate);
 				try {
 					// Final callback

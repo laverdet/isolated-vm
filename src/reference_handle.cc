@@ -33,8 +33,8 @@ static TypeOf InferTypeOf(Local<Value> value) {
  */
 ReferenceHandle::ReferenceHandleTransferable::ReferenceHandleTransferable(
 	shared_ptr<IsolateHolder> isolate,
-	shared_ptr<Persistent<Value>> reference,
-	shared_ptr<Persistent<Context>> context,
+	shared_ptr<RemoteHandle<Value>> reference,
+	shared_ptr<RemoteHandle<Context>> context,
 	TypeOf type_of
 ) : isolate(std::move(isolate)), reference(std::move(reference)), context(std::move(context)), type_of(type_of) {}
 
@@ -47,8 +47,8 @@ Local<Value> ReferenceHandle::ReferenceHandleTransferable::TransferIn() {
  */
 ReferenceHandle::ReferenceHandle(
 	shared_ptr<IsolateHolder> isolate,
-	shared_ptr<Persistent<Value>> reference,
-	shared_ptr<Persistent<Context>> context,
+	shared_ptr<RemoteHandle<Value>> reference,
+	shared_ptr<RemoteHandle<Context>> context,
 	TypeOf type_of
 ) : isolate(std::move(isolate)), reference(std::move(reference)), context(std::move(context)), type_of(type_of) {}
 
@@ -82,11 +82,10 @@ unique_ptr<Transferable> ReferenceHandle::TransferOut() {
 }
 
 unique_ptr<ReferenceHandle> ReferenceHandle::New(Local<Value> var) {
-	Isolate* isolate = Isolate::GetCurrent();
 	return std::make_unique<ReferenceHandle>(
 		IsolateEnvironment::GetCurrentHolder(),
-		std::make_shared<Persistent<Value>>(isolate, var),
-		std::make_shared<Persistent<Context>>(isolate, isolate->GetCurrentContext()),
+		std::make_shared<RemoteHandle<Value>>(var),
+		std::make_shared<RemoteHandle<Context>>(Isolate::GetCurrent()->GetCurrentContext()),
 		InferTypeOf(var)
 	);
 }
@@ -155,14 +154,14 @@ Local<Value> ReferenceHandle::Dispose() {
  * Copy this reference's value into this isolate
  */
 struct CopyRunner : public ThreePhaseTask {
-	shared_ptr<Persistent<Context>> context;
-	shared_ptr<Persistent<Value>> reference;
+	shared_ptr<RemoteHandle<Context>> context;
+	shared_ptr<RemoteHandle<Value>> reference;
 	unique_ptr<Transferable> copy;
 
 	CopyRunner(
 		const ReferenceHandle& that,
-		shared_ptr<Persistent<Context>> context,
-		shared_ptr<Persistent<Value>> reference
+		shared_ptr<RemoteHandle<Context>> context,
+		shared_ptr<RemoteHandle<Value>> reference
 	) : context(std::move(context)), reference(std::move(reference)) {
 		that.CheckDisposed();
 	}
@@ -188,15 +187,15 @@ Local<Value> ReferenceHandle::Copy() {
  */
 struct GetRunner : public ThreePhaseTask {
 	unique_ptr<ExternalCopy> key;
-	shared_ptr<Persistent<Context>> context;
-	shared_ptr<Persistent<Value>> reference;
+	shared_ptr<RemoteHandle<Context>> context;
+	shared_ptr<RemoteHandle<Value>> reference;
 	unique_ptr<ReferenceHandle::ReferenceHandleTransferable> ret;
 
 	GetRunner(
 		const ReferenceHandle& that,
 		Local<Value>& key_handle,
-		shared_ptr<Persistent<Context>> context,
-		shared_ptr<Persistent<Value>> reference
+		shared_ptr<RemoteHandle<Context>> context,
+		shared_ptr<RemoteHandle<Value>> reference
 	) : context(std::move(context)), reference(std::move(reference)) {
 		that.CheckDisposed();
 		key = ExternalCopy::CopyIfPrimitive(key_handle);
@@ -213,7 +212,7 @@ struct GetRunner : public ThreePhaseTask {
 		Local<Value> value = Unmaybe(object->Get(context_handle, key_inner));
 		ret = std::make_unique<ReferenceHandle::ReferenceHandleTransferable>(
 			IsolateEnvironment::GetCurrentHolder(),
-			std::make_shared<Persistent<Value>>(Isolate::GetCurrent(), value),
+			std::make_shared<RemoteHandle<Value>>(value),
 			context,
 			InferTypeOf(value)
 		);
@@ -234,16 +233,16 @@ Local<Value> ReferenceHandle::Get(Local<Value> key_handle) {
 struct SetRunner : public ThreePhaseTask {
 	unique_ptr<ExternalCopy> key;
 	unique_ptr<Transferable> val;
-	shared_ptr<Persistent<Context>> context;
-	shared_ptr<Persistent<Value>> reference;
+	shared_ptr<RemoteHandle<Context>> context;
+	shared_ptr<RemoteHandle<Value>> reference;
 	bool did_set = false;
 
 	SetRunner(
 		ReferenceHandle& that,
 		Local<Value>& key_handle,
 		Local<Value>& val_handle,
-		shared_ptr<Persistent<Context>> context,
-		shared_ptr<Persistent<Value>> reference
+		shared_ptr<RemoteHandle<Context>> context,
+		shared_ptr<RemoteHandle<Value>> reference
 	) :	context(std::move(context)), reference(std::move(reference)) {
 		that.CheckDisposed();
 		key = ExternalCopy::CopyIfPrimitive(key_handle);
@@ -275,8 +274,8 @@ Local<Value> ReferenceHandle::Set(Local<Value> key_handle, Local<Value> val_hand
  * Call a function, like Function.prototype.apply
  */
 struct ApplyRunner : public ThreePhaseTask {
-	shared_ptr<Persistent<Context>> context;
-	shared_ptr<Persistent<Value>> reference;
+	shared_ptr<RemoteHandle<Context>> context;
+	shared_ptr<RemoteHandle<Value>> reference;
 	unique_ptr<Transferable> recv;
 	std::vector<unique_ptr<Transferable>> argv;
 	uint32_t timeout = 0;
@@ -287,8 +286,8 @@ struct ApplyRunner : public ThreePhaseTask {
 		MaybeLocal<Value>& recv_handle,
 		MaybeLocal<Array>& maybe_arguments,
 		MaybeLocal<Object>& maybe_options,
-		shared_ptr<Persistent<Context>> context,
-		shared_ptr<Persistent<Value>> reference
+		shared_ptr<RemoteHandle<Context>> context,
+		shared_ptr<RemoteHandle<Value>> reference
 	) :	context(std::move(context)), reference(std::move(reference))
 	{
 		that.CheckDisposed();
@@ -363,7 +362,7 @@ Local<Value> ReferenceHandle::Apply(MaybeLocal<Value> recv_handle, MaybeLocal<Ar
  */
 DereferenceHandle::DereferenceHandleTransferable::DereferenceHandleTransferable(
 	shared_ptr<IsolateHolder> isolate,
-	shared_ptr<Persistent<Value>> reference
+	shared_ptr<RemoteHandle<Value>> reference
 ) : isolate(std::move(isolate)), reference(std::move(reference)) {}
 
 Local<Value> DereferenceHandle::DereferenceHandleTransferable::TransferIn() {
@@ -385,7 +384,7 @@ Local<FunctionTemplate> DereferenceHandle::Definition() {
 
 DereferenceHandle::DereferenceHandle(
 	shared_ptr<IsolateHolder> isolate,
-	shared_ptr<Persistent<Value>> reference
+	shared_ptr<RemoteHandle<Value>> reference
 ) : isolate(std::move(isolate)), reference(std::move(reference)) {}
 
 unique_ptr<Transferable> DereferenceHandle::TransferOut() {

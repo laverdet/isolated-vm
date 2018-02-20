@@ -8,8 +8,8 @@ namespace ivm {
 
 ContextHandle::ContextHandleTransferable::ContextHandleTransferable(
 	shared_ptr<IsolateHolder> isolate,
-	shared_ptr<Persistent<Context>> context,
-	shared_ptr<Persistent<Value>> global
+	shared_ptr<RemoteHandle<Context>> context,
+	shared_ptr<RemoteHandle<Value>> global
 ) : isolate(std::move(isolate)), context(std::move(context)), global(std::move(global)) {}
 
 Local<Value> ContextHandle::ContextHandleTransferable::TransferIn() {
@@ -18,8 +18,8 @@ Local<Value> ContextHandle::ContextHandleTransferable::TransferIn() {
 
 ContextHandle::ContextHandle(
 	shared_ptr<IsolateHolder> isolate,
-	shared_ptr<Persistent<Context>> context,
-	shared_ptr<Persistent<Value>> global
+	shared_ptr<RemoteHandle<Context>> context,
+	shared_ptr<RemoteHandle<Value>> global
 ) : isolate(std::move(isolate)), context(std::move(context)), global(std::move(global)) {}
 
 IsolateEnvironment::IsolateSpecific<FunctionTemplate>& ContextHandle::TemplateSpecific() {

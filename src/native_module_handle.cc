@@ -2,6 +2,7 @@
 #include "context_handle.h"
 #include "reference_handle.h"
 #include "isolate/environment.h"
+#include "isolate/remote_handle.h"
 #include "isolate/three_phase_task.h"
 
 using namespace v8;
@@ -45,7 +46,7 @@ Local<Value> NativeModuleHandle::NativeModuleTransferable::TransferIn() {
  */
 NativeModuleHandle::NativeModuleHandle(shared_ptr<NativeModule> module) : module(std::move(module)) {}
 
-IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& NativeModuleHandle::TemplateSpecific() {
+IsolateEnvironment::IsolateSpecific<FunctionTemplate>& NativeModuleHandle::TemplateSpecific() {
 	static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
 	return tmpl;
 }
@@ -70,12 +71,12 @@ unique_ptr<Transferable> NativeModuleHandle::TransferOut() {
 
 class CreateRunner : public ThreePhaseTask {
 	private:
-		shared_ptr<Persistent<Context>> context;
+		shared_ptr<RemoteHandle<Context>> context;
 		shared_ptr<NativeModuleHandle::NativeModule> module;
 		unique_ptr<Transferable> result;
 
 	public:
-		CreateRunner(shared_ptr<Persistent<Context>> context, shared_ptr<NativeModuleHandle::NativeModule> module) : context(std::move(context)), module(std::move(module)) {}
+		CreateRunner(shared_ptr<RemoteHandle<Context>> context, shared_ptr<NativeModuleHandle::NativeModule> module) : context(std::move(context)), module(std::move(module)) {}
 
 	protected:
 		void Phase2() final {

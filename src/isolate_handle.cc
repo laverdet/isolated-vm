@@ -5,6 +5,7 @@
 #include "script_handle.h"
 #include "session_handle.h"
 #include "isolate/allocator.h"
+#include "isolate/remote_handle.h"
 #include "isolate/three_phase_task.h"
 
 using namespace v8;
@@ -154,8 +155,8 @@ unique_ptr<Transferable> IsolateHandle::TransferOut() {
 struct CreateContextRunner : public ThreePhaseTask {
 	bool enable_inspector = false;
 	shared_ptr<IsolateHolder> isolate;
-	shared_ptr<Persistent<Context>> context;
-	shared_ptr<Persistent<Value>> global;
+	shared_ptr<RemoteHandle<Context>> context;
+	shared_ptr<RemoteHandle<Value>> global;
 
 	CreateContextRunner(MaybeLocal<Object>& maybe_options, shared_ptr<IsolateHolder> isolate) : isolate(std::move(isolate)) {
 		Local<Object> options;
@@ -172,18 +173,18 @@ struct CreateContextRunner : public ThreePhaseTask {
 
 			explicit ContextDeleter(bool has_inspector) : isolate(IsolateEnvironment::GetCurrentHolder()), has_inspector(has_inspector) {}
 
-			void operator() (Persistent<Context>* ptr) {
+			void operator() (RemoteHandle<Context>* ptr) {
 				// This part is called by any isolate. We need to schedule a task to run in the isolate so
 				// we can dispatch the correct notifications.
 				struct ContextDisposer : public Runnable {
-					unique_ptr<Persistent<Context>> context;
+					unique_ptr<RemoteHandle<Context>> context;
 					bool has_inspector;
-					ContextDisposer(unique_ptr<Persistent<Context>> context, bool has_inspector) : context(std::move(context)), has_inspector(has_inspector) {}
+					ContextDisposer(unique_ptr<RemoteHandle<Context>> context, bool has_inspector) : context(std::move(context)), has_inspector(has_inspector) {}
 					void Run() final {
 						Isolate* isolate = Isolate::GetCurrent();
 						{
 							HandleScope handle_scope(isolate);
-							Local<Context> context = Local<Context>::New(isolate, *this->context);
+							Local<Context> context = Deref(*this->context);
 							context->DetachGlobal();
 							this->context->Reset();
 							if (has_inspector) {
@@ -193,7 +194,7 @@ struct CreateContextRunner : public ThreePhaseTask {
 						isolate->ContextDisposedNotification();
 					}
 				};
-				auto context = unique_ptr<Persistent<Context>>(ptr);
+				auto context = unique_ptr<RemoteHandle<Context>>(ptr);
 				shared_ptr<IsolateHolder> isolate_ref = isolate.lock();
 				if (isolate_ref) {
 					isolate_ref->ScheduleTask(std::make_unique<ContextDisposer>(std::move(context), has_inspector), true, false);
@@ -215,8 +216,8 @@ struct CreateContextRunner : public ThreePhaseTask {
 		if (enable_inspector) {
 			env->GetInspectorAgent()->ContextCreated(context_handle, "<isolated-vm>");
 		}
-		context = shared_ptr<Persistent<Context>>(new Persistent<Context>(isolate, context_handle), ContextDeleter(enable_inspector));
-		global = std::make_shared<Persistent<Value>>(isolate, context_handle->Global());
+		context = shared_ptr<RemoteHandle<Context>>(new RemoteHandle<Context>(context_handle), ContextDeleter(enable_inspector));
+		global = std::make_shared<RemoteHandle<Value>>(context_handle->Global());
 	}
 
 	Local<Value> Phase3() final {
@@ -240,7 +241,7 @@ struct CompileScriptRunner : public ThreePhaseTask {
 	shared_ptr<ExternalCopyArrayBuffer> cached_data_blob; // also phase 3
 	bool produce_cached_data { false };
 	// phase 3
-	shared_ptr<Persistent<UnboundScript>> script;
+	shared_ptr<RemoteHandle<UnboundScript>> script;
 	bool supplied_cached_data { false };
 	bool cached_data_rejected { false };
 
@@ -291,7 +292,7 @@ struct CompileScriptRunner : public ThreePhaseTask {
 			compile_options = ScriptCompiler::kProduceCodeCache;
 		}
 		ScriptCompiler::Source source(code_inner, script_origin, cached_data.release());
-		script = std::make_shared<Persistent<UnboundScript>>(Isolate::GetCurrent(), RunWithAnnotatedErrors<Local<UnboundScript>>(
+		script = std::make_shared<RemoteHandle<UnboundScript>>(RunWithAnnotatedErrors<Local<UnboundScript>>(
 			[&isolate, &source, compile_options]() { return Unmaybe(ScriptCompiler::CompileUnboundScript(*isolate, &source, compile_options)); }
 		));
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <v8.h>
 #include "isolate/holder.h"
+#include "isolate/remote_handle.h"
 #include "transferable_handle.h"
 #include <memory>
 
@@ -11,19 +12,19 @@ class ContextHandle : public TransferableHandle {
 	friend class NativeModuleHandle;
 	private:
 		std::shared_ptr<IsolateHolder> isolate;
-		std::shared_ptr<v8::Persistent<v8::Context>> context;
-		std::shared_ptr<v8::Persistent<v8::Value>> global;
+		std::shared_ptr<RemoteHandle<v8::Context>> context;
+		std::shared_ptr<RemoteHandle<v8::Value>> global;
 
 		class ContextHandleTransferable : public Transferable {
 			private:
 				std::shared_ptr<IsolateHolder> isolate;
-				std::shared_ptr<v8::Persistent<v8::Context>> context;
-				std::shared_ptr<v8::Persistent<v8::Value>> global;
+				std::shared_ptr<RemoteHandle<v8::Context>> context;
+				std::shared_ptr<RemoteHandle<v8::Value>> global;
 			public:
 				ContextHandleTransferable(
 					std::shared_ptr<IsolateHolder> isolate,
-					std::shared_ptr<v8::Persistent<v8::Context>> context,
-					std::shared_ptr<v8::Persistent<v8::Value>> global
+					std::shared_ptr<RemoteHandle<v8::Context>> context,
+					std::shared_ptr<RemoteHandle<v8::Value>> global
 				);
 				v8::Local<v8::Value> TransferIn() final;
 		};
@@ -31,8 +32,8 @@ class ContextHandle : public TransferableHandle {
 	public:
 		ContextHandle(
 			std::shared_ptr<IsolateHolder> isolate,
-			std::shared_ptr<v8::Persistent<v8::Context>> context,
-			std::shared_ptr<v8::Persistent<v8::Value>> global
+			std::shared_ptr<RemoteHandle<v8::Context>> context,
+			std::shared_ptr<RemoteHandle<v8::Value>> global
 		);
 		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();

@@ -1,6 +1,7 @@
 #pragma once
 #include <v8.h>
 #include "isolate/holder.h"
+#include "isolate/remote_handle.h"
 #include "transferable_handle.h"
 #include <memory>
 
@@ -13,22 +14,22 @@ class ScriptHandle : public TransferableHandle {
 		class ScriptHandleTransferable : public Transferable {
 			private:
 				std::shared_ptr<IsolateHolder> isolate;
-				std::shared_ptr<v8::Persistent<v8::UnboundScript>> script;
+				std::shared_ptr<RemoteHandle<v8::UnboundScript>> script;
 			public:
 				ScriptHandleTransferable(
 					std::shared_ptr<IsolateHolder> isolate,
-					std::shared_ptr<v8::Persistent<v8::UnboundScript>> script
+					std::shared_ptr<RemoteHandle<v8::UnboundScript>> script
 				);
 				v8::Local<v8::Value> TransferIn() final;
 		};
 
 		std::shared_ptr<IsolateHolder> isolate;
-		std::shared_ptr<v8::Persistent<v8::UnboundScript>> script;
+		std::shared_ptr<RemoteHandle<v8::UnboundScript>> script;
 
 	public:
 		ScriptHandle(
 			std::shared_ptr<IsolateHolder> isolate,
-			std::shared_ptr<v8::Persistent<v8::UnboundScript>> script
+			std::shared_ptr<RemoteHandle<v8::UnboundScript>> script
 		);
 
 		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();

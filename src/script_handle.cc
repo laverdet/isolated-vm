@@ -11,7 +11,7 @@ namespace ivm {
 
 ScriptHandle::ScriptHandleTransferable::ScriptHandleTransferable(
 	shared_ptr<IsolateHolder> isolate,
-	shared_ptr<Persistent<UnboundScript>> script
+	shared_ptr<RemoteHandle<UnboundScript>> script
 ) : isolate(std::move(isolate)), script(std::move(script)) {}
 
 Local<Value> ScriptHandle::ScriptHandleTransferable::TransferIn() {
@@ -20,7 +20,7 @@ Local<Value> ScriptHandle::ScriptHandleTransferable::TransferIn() {
 
 ScriptHandle::ScriptHandle(
 	shared_ptr<IsolateHolder> isolate,
-	shared_ptr<v8::Persistent<v8::UnboundScript>> script
+	shared_ptr<RemoteHandle<UnboundScript>> script
 ) : isolate(std::move(isolate)), script(std::move(script)) {}
 
 IsolateEnvironment::IsolateSpecific<FunctionTemplate>& ScriptHandle::TemplateSpecific() {
@@ -46,14 +46,14 @@ std::unique_ptr<Transferable> ScriptHandle::TransferOut() {
  */
 struct RunRunner /* lol */ : public ThreePhaseTask {
 	uint32_t timeout_ms = 0;
-	shared_ptr<Persistent<UnboundScript>> script;
-	shared_ptr<Persistent<Context>> context;
+	shared_ptr<RemoteHandle<UnboundScript>> script;
+	shared_ptr<RemoteHandle<Context>> context;
 	std::unique_ptr<Transferable> result;
 
 	RunRunner(
 		const MaybeLocal<Object>& maybe_options,
 		IsolateHolder* isolate,
-		shared_ptr<Persistent<UnboundScript>> script,
+		shared_ptr<RemoteHandle<UnboundScript>> script,
 		ContextHandle* context_handle
 	) : script(std::move(script)), context(context_handle->context) {
 		// Sanity check
@@ -79,7 +79,7 @@ struct RunRunner /* lol */ : public ThreePhaseTask {
 		// Enter script's context and run it
 		Local<Context> context_local = Deref(*context);
 		Context::Scope context_scope(context_local);
-		Local<Script> script_handle = Local<UnboundScript>::New(Isolate::GetCurrent(), *script)->BindToCurrentContext();
+		Local<Script> script_handle = Deref(*script)->BindToCurrentContext();
 		result = ExternalCopy::CopyIfPrimitive(
 			RunWithTimeout(timeout_ms, [&script_handle, &context_local]() { return script_handle->Run(context_local); })
 		);
