@@ -186,7 +186,7 @@ struct CreateContextRunner : public ThreePhaseTask {
 							HandleScope handle_scope(isolate);
 							Local<Context> context = Deref(*this->context);
 							context->DetachGlobal();
-							this->context->Reset();
+							this->context.reset();
 							if (has_inspector) {
 								IsolateEnvironment::GetCurrent()->GetInspectorAgent()->ContextDestroyed(context);
 							}

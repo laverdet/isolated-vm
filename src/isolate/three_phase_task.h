@@ -23,20 +23,15 @@ namespace ivm {
  */
 class ThreePhaseTask {
 	private:
+		using CalleeInfo = RemoteTuple<v8::Promise::Resolver, v8::Context, v8::StackTrace>;
 		struct Phase2Runner : public Runnable {
 			std::unique_ptr<ThreePhaseTask> self;
-			std::shared_ptr<IsolateHolder> first_isolate_ref;
-			std::unique_ptr<RemoteHandle<v8::Promise::Resolver>> promise_persistent;
-			std::unique_ptr<RemoteHandle<v8::Context>> context_persistent;
-			std::unique_ptr<RemoteHandle<v8::StackTrace>> stack_trace;
+			std::unique_ptr<CalleeInfo> info;
 			bool did_run = false;
 
 			Phase2Runner(
 				std::unique_ptr<ThreePhaseTask> self,
-				std::shared_ptr<IsolateHolder> first_isolate_ref,
-				std::unique_ptr<RemoteHandle<v8::Promise::Resolver>> promise_persistent,
-				std::unique_ptr<RemoteHandle<v8::Context>> context_persistent,
-				std::unique_ptr<RemoteHandle<v8::StackTrace>> stack_trace
+				std::unique_ptr<CalleeInfo> info
 			);
 			Phase2Runner(const Phase2Runner&) = delete;
 			Phase2Runner& operator= (const Phase2Runner&) = delete;
@@ -75,10 +70,11 @@ class ThreePhaseTask {
 					second_isolate.ScheduleTask(
 						std::make_unique<Phase2Runner>(
 							std::make_unique<T>(std::forward<Args>(args)...), // <-- Phase1 / ctor called here
-							IsolateEnvironment::GetCurrentHolder(),
-							std::make_unique<RemoteHandle<v8::Promise::Resolver>>(promise_local),
-							std::make_unique<RemoteHandle<v8::Context>>(context_local),
-							std::make_unique<RemoteHandle<v8::StackTrace>>(v8::StackTrace::CurrentStackTrace(isolate, 10))
+							std::make_unique<CalleeInfo>(
+								promise_local,
+								context_local,
+								v8::StackTrace::CurrentStackTrace(isolate, 10)
+							)
 						), false, true
 					);
 				} catch (const js_runtime_error& cc_error) {
