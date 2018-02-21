@@ -63,6 +63,7 @@ class ReferenceHandle : public TransferableHandle {
 		v8::Local<v8::Value> Deref();
 		v8::Local<v8::Value> DerefInto();
 		v8::Local<v8::Value> Dispose();
+		v8::Local<v8::Value> Release();
 		template <int async> v8::Local<v8::Value> Copy();
 		template <int async> v8::Local<v8::Value> Get(v8::Local<v8::Value> key_handle);
 		template <int async> v8::Local<v8::Value> Set(v8::Local<v8::Value> key_handle, v8::Local<v8::Value> val_handle);

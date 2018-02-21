@@ -40,7 +40,8 @@ Local<FunctionTemplate> ExternalCopyHandle::Definition() {
 		"totalExternalSize", ParameterizeStaticAccessor<decltype(&ExternalCopyHandle::TotalExternalSizeGetter), &ExternalCopyHandle::TotalExternalSizeGetter>(),
 		"copy", Parameterize<decltype(&ExternalCopyHandle::Copy), &ExternalCopyHandle::Copy>(),
 		"copyInto", Parameterize<decltype(&ExternalCopyHandle::CopyInto), &ExternalCopyHandle::CopyInto>(),
-		"dispose", Parameterize<decltype(&ExternalCopyHandle::Dispose), &ExternalCopyHandle::Dispose>()
+		"dispose", Parameterize<decltype(&ExternalCopyHandle::Dispose), &ExternalCopyHandle::Dispose>(),
+		"release", Parameterize<decltype(&ExternalCopyHandle::Release), &ExternalCopyHandle::Release>()
 	));
 }
 
@@ -59,7 +60,7 @@ unique_ptr<ExternalCopyHandle> ExternalCopyHandle::New(Local<Value> value, Maybe
 
 void ExternalCopyHandle::CheckDisposed() {
 	if (!value) {
-		throw js_generic_error("Copy is disposed");
+		throw js_generic_error("Copy has been released");
 	}
 }
 
@@ -91,6 +92,11 @@ Local<Value> ExternalCopyHandle::CopyInto(MaybeLocal<Object> maybe_options) {
 }
 
 Local<Value> ExternalCopyHandle::Dispose() {
+	Release();
+	return Undefined(Isolate::GetCurrent());
+}
+
+Local<Value> ExternalCopyHandle::Release() {
 	CheckDisposed();
 	Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-(ssize_t)value->OriginalSize());
 	value.reset();

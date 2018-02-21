@@ -32,8 +32,8 @@ if (ivm.ExternalCopy.totalExternalSize < 1024 + 2048) {
 }
 
 // Dispose and verify they were collected. Do this here to ensure no v8 handles.
-copy1.dispose();
-copy2.dispose();
+copy1.release();
+copy2.release();
 if (ivm.ExternalCopy.totalExternalSize) {
 	console.log('external copy size is ', ivm.ExternalCopy.totalExternalSize);
 }

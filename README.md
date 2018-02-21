@@ -172,7 +172,7 @@ thrown.
 Returns an object, which when passed to another isolate will cause that isolate to dereference the
 handle.
 
-##### `reference.dispose()`
+##### `reference.release()`
 
 Releases this reference. If you're passing around a lot of references between isolates it's wise to
 release the references when you are done. Otherwise you may run into issues with isolates running
@@ -246,7 +246,7 @@ Internalizes the ExternalCopy data into this isolate.
 Returns an object, which when passed to another isolate will cause that isolate to internalize a
 copy of this value.
 
-#### `externalCopy.dispose()`
+#### `externalCopy.release()`
 
 Releases the reference to this copy. If there are other references to this copy elsewhere the copy
 will still remain in memory, but this handle will no longer be active. Disposing ExternalCopy

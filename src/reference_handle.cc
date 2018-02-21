@@ -63,6 +63,7 @@ Local<FunctionTemplate> ReferenceHandle::Definition() {
 		"deref", Parameterize<decltype(&ReferenceHandle::Deref), &ReferenceHandle::Deref>(),
 		"derefInto", Parameterize<decltype(&ReferenceHandle::DerefInto), &ReferenceHandle::DerefInto>(),
 		"dispose", Parameterize<decltype(&ReferenceHandle::Dispose), &ReferenceHandle::Dispose>(),
+		"release", Parameterize<decltype(&ReferenceHandle::Release), &ReferenceHandle::Release>(),
 		"copy", Parameterize<decltype(&ReferenceHandle::Copy<1>), &ReferenceHandle::Copy<1>>(),
 		"copySync", Parameterize<decltype(&ReferenceHandle::Copy<0>), &ReferenceHandle::Copy<0>>(),
 		"get", Parameterize<decltype(&ReferenceHandle::Get<1>), &ReferenceHandle::Get<1>>(),
@@ -92,7 +93,7 @@ unique_ptr<ReferenceHandle> ReferenceHandle::New(Local<Value> var) {
 
 void ReferenceHandle::CheckDisposed() const {
 	if (!reference) {
-		throw js_generic_error("Reference is disposed");
+		throw js_generic_error("Reference has been released");
 	}
 }
 
@@ -143,6 +144,11 @@ Local<Value> ReferenceHandle::DerefInto() {
  * Release this reference.
  */
 Local<Value> ReferenceHandle::Dispose() {
+	Release();
+	return Undefined(Isolate::GetCurrent());
+}
+
+Local<Value> ReferenceHandle::Release() {
 	CheckDisposed();
 	isolate.reset();
 	reference.reset();
