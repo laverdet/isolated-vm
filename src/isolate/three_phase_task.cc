@@ -46,7 +46,8 @@ ThreePhaseTask::Phase2Runner::~Phase2Runner() {
 			}
 		};
 		// Schedule a throw task back in first isolate
-		info->GetIsolateHolder()->ScheduleTask(
+		auto holder = info->GetIsolateHolder();
+		holder->ScheduleTask(
 			std::make_unique<Phase3Orphan>(
 				std::move(self),
 				std::move(info)
@@ -133,10 +134,11 @@ void ThreePhaseTask::Phase2Runner::Run() {
 				}
 			}
 		};
-		info->GetIsolateHolder()->ScheduleTask(std::make_unique<Phase3Success>(std::move(self), std::move(info)), false, true);
+		auto holder = info->GetIsolateHolder();
+		holder->ScheduleTask(std::make_unique<Phase3Success>(std::move(self), std::move(info)), false, true);
 		return;
 	} catch (const js_runtime_error& cc_error) {
-		// An error was caught while running Phase2(). Or perhaps info->GetIsolateHolder()->ScheduleTask() threw.
+		// An error was caught while running Phase2(). Or perhaps holder->ScheduleTask() threw.
 		assert(try_catch.HasCaught());
 		Context::Scope context_scope(second_isolate->DefaultContext());
 		err = ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception());
@@ -146,7 +148,8 @@ void ThreePhaseTask::Phase2Runner::Run() {
 	}
 
 	// Schedule a task to enter the first isolate so we can throw the error at the promise
-	info->GetIsolateHolder()->ScheduleTask(std::make_unique<Phase3Failure>(
+	auto holder = info->GetIsolateHolder();
+	holder->ScheduleTask(std::make_unique<Phase3Failure>(
 		std::move(self),
 		std::move(info),
 		std::move(err)
