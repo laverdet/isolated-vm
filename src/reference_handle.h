@@ -60,8 +60,8 @@ class ReferenceHandle : public TransferableHandle {
 		static std::unique_ptr<ReferenceHandle> New(v8::Local<v8::Value> var);
 
 		v8::Local<v8::Value> TypeOfGetter();
-		v8::Local<v8::Value> Deref();
-		v8::Local<v8::Value> DerefInto();
+		v8::Local<v8::Value> Deref(v8::MaybeLocal<v8::Object> maybe_options);
+		v8::Local<v8::Value> DerefInto(v8::MaybeLocal<v8::Object> maybe_options);
 		v8::Local<v8::Value> Dispose();
 		v8::Local<v8::Value> Release();
 		template <int async> v8::Local<v8::Value> Copy();

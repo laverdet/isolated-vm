@@ -160,6 +160,8 @@ Creates a copy of the referenced value and internalizes it into this isolate. Th
 copy rules as [`ExternalCopy`](#class-externalcopy-transferable).
 
 ##### `reference.deref()`
+* `options` *[object]*
+	* `release` *[boolean]* - If true `release()` will automatically be called on this instance.
 * **return** The value referenced by this handle.
 
 Will attempt to return the actual value or object pointed to by this reference. Note that in order
@@ -167,6 +169,8 @@ to call this function the reference must be owned by the current isolate, otherw
 thrown.
 
 ##### `reference.derefInto()`
+* `options` *[object]*
+	* `release` *[boolean]* - If true `release()` will automatically be called on this instance.
 * **return** *[transferable]*
 
 Returns an object, which when passed to another isolate will cause that isolate to dereference the
@@ -231,6 +235,7 @@ outside of v8 due to instances of `ExternalCopy`.
 
 ##### `externalCopy.copy(options)`
 * `options` *[object]*
+	* `release` *[boolean]* - If true `release()` will automatically be called on this instance.
 	* `transferIn` *[boolean]* - If true this will transfer the resource directly into this isolate,
 	invalidating the ExternalCopy handle.
 * **return** - JavaScript value of the external copy.
@@ -239,6 +244,7 @@ Internalizes the ExternalCopy data into this isolate.
 
 ##### `externalCopy.copyInto(options)`
 * `options` *[object]*
+	* `release` *[boolean]* - If true `release()` will automatically be called on this instance.
 	* `transferIn` *[boolean]* - If true this will transfer the resource directly into this isolate,
 	invalidating the ExternalCopy handle.
 * **return** *[transferable]*

@@ -74,21 +74,35 @@ Local<Value> ExternalCopyHandle::TotalExternalSizeGetter() {
 Local<Value> ExternalCopyHandle::Copy(MaybeLocal<Object> maybe_options) {
 	CheckDisposed();
 	Local<Object> options;
+	bool release = false;
 	bool transfer_in = false;
 	if (maybe_options.ToLocal(&options)) {
-		transfer_in = IsOptionSet(Isolate::GetCurrent()->GetCurrentContext(), options, "transferIn");
+		Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
+		release = IsOptionSet(context, options, "release");
+		transfer_in = IsOptionSet(context, options, "transferIn");
 	}
-	return value->CopyIntoCheckHeap(transfer_in);
+	Local<Value> ret = value->CopyIntoCheckHeap(transfer_in);
+	if (release) {
+		Release();
+	}
+	return ret;
 }
 
 Local<Value> ExternalCopyHandle::CopyInto(MaybeLocal<Object> maybe_options) {
 	CheckDisposed();
 	Local<Object> options;
+	bool release = false;
 	bool transfer_in = false;
 	if (maybe_options.ToLocal(&options)) {
-		transfer_in = IsOptionSet(Isolate::GetCurrent()->GetCurrentContext(), options, "transferIn");
+		Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
+		release = IsOptionSet(context, options, "release");
+		transfer_in = IsOptionSet(context, options, "transferIn");
 	}
-	return ClassHandle::NewInstance<ExternalCopyIntoHandle>(value, transfer_in);
+	Local<Value> ret = ClassHandle::NewInstance<ExternalCopyIntoHandle>(value, transfer_in);
+	if (release) {
+		Release();
+	}
+	return ret;
 }
 
 Local<Value> ExternalCopyHandle::Dispose() {
@@ -124,7 +138,10 @@ Local<FunctionTemplate> ExternalCopyIntoHandle::Definition() {
 }
 
 unique_ptr<Transferable> ExternalCopyIntoHandle::TransferOut() {
-	return std::make_unique<ExternalCopyIntoTransferable>(value, transfer_in);
+	if (!value) {
+		throw js_generic_error("The return value of `copyInto()` should only be used once");
+	}
+	return std::make_unique<ExternalCopyIntoTransferable>(std::move(value), transfer_in);
 }
 
 } // namespace ivm

@@ -124,20 +124,38 @@ Local<Value> ReferenceHandle::TypeOfGetter() {
 /**
  * Attempt to return this handle to the current context.
  */
-Local<Value> ReferenceHandle::Deref() {
+Local<Value> ReferenceHandle::Deref(MaybeLocal<Object> maybe_options) {
 	CheckDisposed();
 	if (isolate.get() != IsolateEnvironment::GetCurrentHolder().get()) {
 		throw js_type_error("Cannot dereference this from current isolate");
 	}
-	return ivm::Deref(*reference);
+	Local<Object> options;
+	bool release = false;
+	if (maybe_options.ToLocal(&options)) {
+		release = IsOptionSet(Isolate::GetCurrent()->GetCurrentContext(), options, "release");
+	}
+	Local<Value> ret = ivm::Deref(*reference);
+	if (release) {
+		Release();
+	}
+	return ret;
 }
 
 /**
  * Return a handle which will dereference itself when passing into another isolate.
  */
-Local<Value> ReferenceHandle::DerefInto() {
+Local<Value> ReferenceHandle::DerefInto(MaybeLocal<Object> maybe_options) {
 	CheckDisposed();
-	return ClassHandle::NewInstance<DereferenceHandle>(isolate, reference);
+	Local<Object> options;
+	bool release = false;
+	if (maybe_options.ToLocal(&options)) {
+		release = IsOptionSet(Isolate::GetCurrent()->GetCurrentContext(), options, "release");
+	}
+	Local<Value> ret = ClassHandle::NewInstance<DereferenceHandle>(isolate, reference);
+	if (release) {
+		Release();
+	}
+	return ret;
 }
 
 /**
@@ -394,7 +412,10 @@ DereferenceHandle::DereferenceHandle(
 ) : isolate(std::move(isolate)), reference(std::move(reference)) {}
 
 unique_ptr<Transferable> DereferenceHandle::TransferOut() {
-	return std::make_unique<DereferenceHandleTransferable>(isolate, reference);
+	if (!reference) {
+		throw js_generic_error("The return value of `derefInto()` should only be used once");
+	}
+	return std::make_unique<DereferenceHandleTransferable>(std::move(isolate), std::move(reference));
 }
 
 } // namespace ivm
