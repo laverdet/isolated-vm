@@ -53,7 +53,7 @@ void LimitedAllocator::Free(void* data, size_t length) {
 	free(data);
 }
 
-void LimitedAllocator::AdjustAllocatedSize(ssize_t length) {
+void LimitedAllocator::AdjustAllocatedSize(ptrdiff_t length) {
 	env.extra_allocated_memory += length;
 }
 

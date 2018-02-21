@@ -195,7 +195,7 @@ size_t ExternalCopy::OriginalSize() const {
 }
 
 void ExternalCopy::UpdateSize(size_t size) {
-	total_allocated_size -= static_cast<ssize_t>(this->size) - static_cast<ssize_t>(size);
+	total_allocated_size -= static_cast<ptrdiff_t>(this->size) - static_cast<ptrdiff_t>(size);
 	this->size = size;
 }
 
@@ -465,7 +465,7 @@ unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Loca
 	ArrayBuffer::Contents contents = handle->Externalize();
 	auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
 	if (allocator != nullptr) {
-		allocator->AdjustAllocatedSize(-length);
+		allocator->AdjustAllocatedSize(-static_cast<ptrdiff_t>(length));
 	}
 	assert(handle->IsNeuterable());
 	auto data_ptr = ptr_t(contents.Data(), std::free);

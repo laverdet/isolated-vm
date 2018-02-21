@@ -20,7 +20,7 @@ class LimitedAllocator : public v8::ArrayBuffer::Allocator {
 		void Free(void* data, size_t length) final;
 		// This is used by ExternalCopy when an ArrayBuffer is transferred. The memory is not freed but
 		// we should no longer count it against the isolate
-		void AdjustAllocatedSize(ssize_t length);
+		void AdjustAllocatedSize(ptrdiff_t length);
 		int GetFailureCount() const;
 };
 

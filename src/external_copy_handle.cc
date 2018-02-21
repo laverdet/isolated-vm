@@ -25,7 +25,7 @@ ExternalCopyHandle::ExternalCopyHandle(shared_ptr<ExternalCopy> value) : value(s
 
 ExternalCopyHandle::~ExternalCopyHandle() {
 	if (value) {
-		Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-(ssize_t)value->OriginalSize());
+		Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-static_cast<ptrdiff_t>(value->OriginalSize()));
 	}
 }
 
