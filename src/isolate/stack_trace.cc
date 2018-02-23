@@ -135,6 +135,7 @@ Local<FunctionTemplate> StackTraceHolder::Definition() {
 }
 
 Local<Value> StackTraceHolder::AttachStack(Local<Value> error, Local<StackTrace> stack) {
+	return error;
 	try {
 		AttachStackGetter(error.As<Object>(), ClassHandle::NewInstance<StackTraceHolder>(stack));
 	} catch (const js_runtime_error& cc_err) {
@@ -143,6 +144,7 @@ Local<Value> StackTraceHolder::AttachStack(Local<Value> error, Local<StackTrace>
 }
 
 Local<Value> StackTraceHolder::ChainStack(Local<Value> error, Local<StackTrace> stack) {
+	return error;
 	try {
 		Isolate* isolate = Isolate::GetCurrent();
 		Local<Context> context = isolate->GetCurrentContext();
