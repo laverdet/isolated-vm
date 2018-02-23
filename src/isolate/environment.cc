@@ -18,12 +18,7 @@ namespace ivm {
 thread_local IsolateEnvironment* IsolateEnvironment::ExecutorLock::current;
 std::thread::id IsolateEnvironment::ExecutorLock::default_thread;
 
-IsolateEnvironment::ExecutorLock::ExecutorLock(IsolateEnvironment& env) : last(current), locker(env.isolate), isolate_scope(env.isolate), handle_scope(env.isolate) {
-	current = &env;
-}
-
-IsolateEnvironment::ExecutorLock::~ExecutorLock() {
-	current = last;
+IsolateEnvironment::ExecutorLock::ExecutorLock(IsolateEnvironment& env) : scope(env), locker(env.isolate), isolate_scope(env.isolate), handle_scope(env.isolate) {
 }
 
 void IsolateEnvironment::ExecutorLock::Init(IsolateEnvironment& default_isolate) {
@@ -35,6 +30,15 @@ void IsolateEnvironment::ExecutorLock::Init(IsolateEnvironment& default_isolate)
 bool IsolateEnvironment::ExecutorLock::IsDefaultThread() {
 	return std::this_thread::get_id() == default_thread;
 }
+
+IsolateEnvironment::ExecutorLock::Scope::Scope(IsolateEnvironment& env) : last(current) {
+	current = &env;
+}
+
+IsolateEnvironment::ExecutorLock::Scope::~Scope() {
+	current = last;
+}
+
 
 /*
  * Scheduler implementation
@@ -398,7 +402,12 @@ IsolateEnvironment::~IsolateEnvironment() {
 		lock2.TakeInterrupts();
 		lock2.TakeTasks();
 	}
-	isolate->Dispose();
+	{
+		// Dispose() will call destructors for external strings and array buffers, so this lock sets the
+		// "current" isolate for those C++ dtors to function correctly without locking v8
+		ExecutorLock::Scope lock(*this);
+		isolate->Dispose();
+	}
 	std::unique_lock<std::mutex> lock(bookkeeping_statics->lookup_mutex);
 	bookkeeping_statics->isolate_map.erase(bookkeeping_statics->isolate_map.find(isolate));
 }

@@ -35,10 +35,21 @@ class IsolateEnvironment {
 		 * handled by v8::Locker. This also enters the isolate and sets up a handle scope.
 		 */
 		class ExecutorLock {
+			public:
+				class Scope {
+					private:
+						IsolateEnvironment* last;
+					public:
+						explicit Scope(IsolateEnvironment& env);
+						Scope(const Scope&) = delete;
+						Scope operator= (const Scope&) = delete;
+						~Scope();
+				};
+
 			private:
 				static thread_local IsolateEnvironment* current;
 				static std::thread::id default_thread;
-				IsolateEnvironment* last;
+				Scope scope;
 				v8::Locker locker;
 				v8::Isolate::Scope isolate_scope;
 				v8::HandleScope handle_scope;
@@ -47,7 +58,6 @@ class IsolateEnvironment {
 				explicit ExecutorLock(IsolateEnvironment& env);
 				ExecutorLock(const ExecutorLock&) = delete;
 				ExecutorLock operator= (const ExecutorLock&) = delete;
-				~ExecutorLock();
 				static IsolateEnvironment* GetCurrent() { return current; }
 				static void Init(IsolateEnvironment& default_isolate);
 				static bool IsDefaultThread();
