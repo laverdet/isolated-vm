@@ -12,9 +12,9 @@ namespace ivm {
  * CalleeInfo implementation
  */
 ThreePhaseTask::CalleeInfo::CalleeInfo(
-	v8::Local<v8::Promise::Resolver> resolver,
-	v8::Local<v8::Context> context,
-	v8::Local<v8::StackTrace> stack_trace
+	Local<Promise::Resolver> resolver,
+	Local<Context> context,
+	Local<StackTrace> stack_trace
 ) : remotes(resolver, context, stack_trace) {
 	IsolateEnvironment* env = IsolateEnvironment::GetCurrent();
 	if (env->IsDefault()) {
