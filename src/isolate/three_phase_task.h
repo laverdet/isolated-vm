@@ -1,5 +1,5 @@
 #pragma once
-#include <v8.h>
+#include "node-wrapper.h"
 #include "environment.h"
 #include "holder.h"
 #include "remote_handle.h"
@@ -23,7 +23,24 @@ namespace ivm {
  */
 class ThreePhaseTask {
 	private:
-		using CalleeInfo = RemoteTuple<v8::Promise::Resolver, v8::Context, v8::StackTrace>;
+		/**
+		 * Contains references back to the original isolate which will be used after phase 2 to wake the
+		 * isolate up and begin phase 3
+		 */
+		struct CalleeInfo {
+			RemoteTuple<v8::Promise::Resolver, v8::Context, v8::StackTrace> remotes;
+			node::async_context async;
+			CalleeInfo(
+				v8::Local<v8::Promise::Resolver> resolver,
+				v8::Local<v8::Context> context,
+				v8::Local<v8::StackTrace> stack_trace
+			);
+			~CalleeInfo();
+		};
+
+		/**
+		 * Class which manages running async phase 2, then phase 3
+		 */
 		struct Phase2Runner : public Runnable {
 			std::unique_ptr<ThreePhaseTask> self;
 			std::unique_ptr<CalleeInfo> info;
@@ -39,6 +56,9 @@ class ThreePhaseTask {
 			void Run() final;
 		};
 
+		/**
+		 * Class which manages running async phase 2 in ignored mode (ie no phase 3)
+		 */
 		struct Phase2RunnerIgnored : public Runnable {
 			std::unique_ptr<ThreePhaseTask> self;
 			explicit Phase2RunnerIgnored(std::unique_ptr<ThreePhaseTask> self);

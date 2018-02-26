@@ -352,6 +352,13 @@ class IsolateEnvironment {
 		}
 
 		/**
+		 * Is this the default nodejs isolate?
+		 */
+		bool IsDefault() const {
+			return root;
+		}
+
+		/**
 		 * Ask this isolate to finish everything it's doing.
 		 */
 		void Terminate() {

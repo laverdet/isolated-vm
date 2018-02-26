@@ -9,6 +9,45 @@ using std::unique_ptr;
 namespace ivm {
 
 /**
+ * CalleeInfo implementation
+ */
+ThreePhaseTask::CalleeInfo::CalleeInfo(
+	v8::Local<v8::Promise::Resolver> resolver,
+	v8::Local<v8::Context> context,
+	v8::Local<v8::StackTrace> stack_trace
+) : remotes(resolver, context, stack_trace) {
+	IsolateEnvironment* env = IsolateEnvironment::GetCurrent();
+	if (env->IsDefault()) {
+		async = node::EmitAsyncInit(env->GetIsolate(), resolver->GetPromise(), v8_symbol("isolated-vm"));
+	}
+}
+
+ThreePhaseTask::CalleeInfo::~CalleeInfo() {
+	IsolateEnvironment* env = IsolateEnvironment::GetCurrent();
+	if (env->IsDefault()) {
+		node::EmitAsyncDestroy(env->GetIsolate(), async);
+	}
+}
+
+/**
+ * Wrapper around node's version of the same class which does nothing if this isn't the node
+ * isolate.
+ *
+ * nb: CallbackScope sets up a v8::TryCatch so if you need to catch an exception do this *before*
+ * the v8::TryCatch.
+ */
+struct CallbackScope {
+	unique_ptr<node::CallbackScope> scope;
+
+	CallbackScope(node::async_context async, Local<Object> resource) {
+		IsolateEnvironment* env = IsolateEnvironment::GetCurrent();
+		if (env->IsDefault()) {
+			scope = std::make_unique<node::CallbackScope>(env->GetIsolate(), resource, async);
+		}
+	}
+};
+
+/**
  * Phase2Runner implementation
  */
 ThreePhaseTask::Phase2Runner::Phase2Runner(
@@ -35,18 +74,19 @@ ThreePhaseTask::Phase2Runner::~Phase2Runner() {
 			void Run() final {
 				// Revive our persistent handles
 				Isolate* isolate = Isolate::GetCurrent();
-				auto context_local = info->Deref<1>();
+				auto context_local = info->remotes.Deref<1>();
 				Context::Scope context_scope(context_local);
-				auto promise_local = info->Deref<0>();
+				auto promise_local = info->remotes.Deref<0>();
+				CallbackScope callback_scope(info->async, promise_local);
 				// Throw from promise
 				Unmaybe(promise_local->Reject(context_local,
-					StackTraceHolder::AttachStack(Exception::Error(v8_string("Isolate is disposed")), info->Deref<2>())
+					StackTraceHolder::AttachStack(Exception::Error(v8_string("Isolate is disposed")), info->remotes.Deref<2>())
 				));
 				isolate->RunMicrotasks();
 			}
 		};
 		// Schedule a throw task back in first isolate
-		auto holder = info->GetIsolateHolder();
+		auto holder = info->remotes.GetIsolateHolder();
 		holder->ScheduleTask(
 			std::make_unique<Phase3Orphan>(
 				std::move(self),
@@ -78,9 +118,10 @@ void ThreePhaseTask::Phase2Runner::Run() {
 		void Run() final {
 			// Revive our persistent handles
 			Isolate* isolate = Isolate::GetCurrent();
-			auto context_local = info->Deref<1>();
+			auto context_local = info->remotes.Deref<1>();
 			Context::Scope context_scope(context_local);
-			auto promise_local = info->Deref<0>();
+			auto promise_local = info->remotes.Deref<0>();
+			CallbackScope callback_scope(info->async, promise_local);
 			Local<Value> rejection;
 			if (err) {
 				rejection = err->CopyInto();
@@ -89,7 +130,7 @@ void ThreePhaseTask::Phase2Runner::Run() {
 			}
 			// If Reject fails then I think that's bad..
 			Unmaybe(promise_local->Reject(context_local,
-				StackTraceHolder::ChainStack(rejection, info->Deref<2>())
+				StackTraceHolder::ChainStack(rejection, info->remotes.Deref<2>())
 			));
 			isolate->RunMicrotasks();
 		}
@@ -113,9 +154,10 @@ void ThreePhaseTask::Phase2Runner::Run() {
 
 			void Run() final {
 				Isolate* isolate = Isolate::GetCurrent();
-				auto context_local = info->Deref<1>();
+				auto context_local = info->remotes.Deref<1>();
 				Context::Scope context_scope(context_local);
-				auto promise_local = info->Deref<0>();
+				auto promise_local = info->remotes.Deref<0>();
+				CallbackScope callback_scope(info->async, promise_local);
 				TryCatch try_catch(isolate);
 				try {
 					// Final callback
@@ -126,7 +168,7 @@ void ThreePhaseTask::Phase2Runner::Run() {
 					assert(try_catch.HasCaught());
 					// If Reject fails then I think that's bad..
 					Unmaybe(promise_local->Reject(context_local,
-						StackTraceHolder::AttachStack(try_catch.Exception(), info->Deref<2>())
+						StackTraceHolder::AttachStack(try_catch.Exception(), info->remotes.Deref<2>())
 					));
 					isolate->RunMicrotasks();
 				} catch (const js_fatal_error& cc_error) {
@@ -134,7 +176,7 @@ void ThreePhaseTask::Phase2Runner::Run() {
 				}
 			}
 		};
-		auto holder = info->GetIsolateHolder();
+		auto holder = info->remotes.GetIsolateHolder();
 		holder->ScheduleTask(std::make_unique<Phase3Success>(std::move(self), std::move(info)), false, true);
 		return;
 	} catch (const js_runtime_error& cc_error) {
@@ -148,7 +190,7 @@ void ThreePhaseTask::Phase2Runner::Run() {
 	}
 
 	// Schedule a task to enter the first isolate so we can throw the error at the promise
-	auto holder = info->GetIsolateHolder();
+	auto holder = info->remotes.GetIsolateHolder();
 	holder->ScheduleTask(std::make_unique<Phase3Failure>(
 		std::move(self),
 		std::move(info),
