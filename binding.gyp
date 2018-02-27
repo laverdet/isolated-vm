@@ -19,6 +19,7 @@
 				'GCC_ENABLE_CPP_RTTI': 'YES',
 				'GCC_GENERATE_DEBUGGING_SYMBOLS': 'YES',
 				'CLANG_CXX_LANGUAGE_STANDARD': 'c++14',
+				'MACOSX_DEPLOYMENT_TARGET': '10.9',
 			},
 			'msvs_settings': {
 				'VCCLCompilerTool': {
