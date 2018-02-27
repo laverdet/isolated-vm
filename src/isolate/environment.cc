@@ -338,7 +338,8 @@ IsolateEnvironment::IsolateEnvironment(Isolate* isolate, Local<Context> context)
 
 IsolateEnvironment::IsolateEnvironment(
 	size_t memory_limit,
-	shared_ptr<ExternalCopyArrayBuffer> snapshot_blob
+	shared_ptr<void> snapshot_blob,
+	size_t snapshot_length
 ) :
 	allocator_ptr(std::make_unique<LimitedAllocator>(*this, memory_limit * 1024 * 1024)),
 	snapshot_blob_ptr(std::move(snapshot_blob)),
@@ -357,8 +358,8 @@ IsolateEnvironment::IsolateEnvironment(
 	create_params.array_buffer_allocator = allocator_ptr.get();
 	if (snapshot_blob_ptr) {
 		create_params.snapshot_blob = &startup_data;
-		startup_data.data = reinterpret_cast<const char*>(snapshot_blob_ptr->Data());
-		startup_data.raw_size = snapshot_blob_ptr->Length();
+		startup_data.data = reinterpret_cast<char*>(snapshot_blob_ptr.get());
+		startup_data.raw_size = snapshot_length;
 	}
 	isolate = Isolate::New(create_params);
 	{

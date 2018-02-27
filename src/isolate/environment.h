@@ -22,8 +22,11 @@ class Runnable;
  * Wrapper around Isolate with helpers to make working with multiple isolates easier.
  */
 class IsolateEnvironment {
+	// These are here so they can adjust `extra_allocated_memory`
+	friend class ExternalCopyBytes;
 	friend class ExternalCopyArrayBuffer;
 	friend class ExternalCopyString;
+
 	friend class InspectorAgent;
 	friend class InspectorSession;
 	friend class IsolateHolder;
@@ -197,7 +200,7 @@ class IsolateEnvironment {
 		std::unique_ptr<class InspectorAgent> inspector_agent;
 		v8::Persistent<v8::Context> default_context;
 		std::unique_ptr<v8::ArrayBuffer::Allocator> allocator_ptr;
-		std::shared_ptr<class ExternalCopyArrayBuffer> snapshot_blob_ptr;
+		std::shared_ptr<void> snapshot_blob_ptr;
 		v8::StartupData startup_data {};
 		size_t memory_limit = 0;
 		size_t extra_allocated_memory = 0;
@@ -253,7 +256,8 @@ class IsolateEnvironment {
 		 */
 		IsolateEnvironment(
 			size_t memory_limit,
-			std::shared_ptr<class ExternalCopyArrayBuffer> snapshot_blob
+			std::shared_ptr<void> snapshot_blob,
+			size_t snapshot_length
 		);
 		IsolateEnvironment(const IsolateEnvironment&) = delete;
 		IsolateEnvironment operator= (const IsolateEnvironment&) = delete;

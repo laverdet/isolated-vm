@@ -134,7 +134,8 @@ Local<FunctionTemplate> IsolateHandle::Definition() {
  */
 unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 	Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
-	shared_ptr<ExternalCopyArrayBuffer> snapshot_blob;
+	shared_ptr<void> snapshot_blob;
+	size_t snapshot_blob_length = 0;
 	size_t memory_limit = 128;
 	bool inspector = false;
 
@@ -158,13 +159,16 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 		Local<Value> snapshot_handle = Unmaybe(options->Get(context, v8_symbol("snapshot")));
 		if (!snapshot_handle->IsUndefined()) {
 			if (
-				!snapshot_handle->IsObject() ||
-				!ClassHandle::GetFunctionTemplate<ExternalCopyHandle>()->HasInstance(snapshot_handle.As<Object>())
+				snapshot_handle->IsObject() &&
+				ClassHandle::GetFunctionTemplate<ExternalCopyHandle>()->HasInstance(snapshot_handle.As<Object>())
 			) {
-				throw js_type_error("`snapshot` must be an ExternalCopy to ArrayBuffer");
+				ExternalCopyHandle* copy_handle = dynamic_cast<ExternalCopyHandle*>(ClassHandle::Unwrap(snapshot_handle.As<Object>()));
+				ExternalCopyArrayBuffer* copy_ptr = dynamic_cast<ExternalCopyArrayBuffer*>(copy_handle->GetValue().get());
+				if (copy_ptr != nullptr) {
+					snapshot_blob = copy_ptr->GetSharedPointer();
+					snapshot_blob_length = copy_ptr->Length();
+				}
 			}
-			ExternalCopyHandle& copy_handle = *dynamic_cast<ExternalCopyHandle*>(ClassHandle::Unwrap(snapshot_handle.As<Object>()));
-			snapshot_blob = std::dynamic_pointer_cast<ExternalCopyArrayBuffer>(copy_handle.GetValue());
 			if (!snapshot_blob) {
 				throw js_type_error("`snapshot` must be an ExternalCopy to ArrayBuffer");
 			}
@@ -175,7 +179,7 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 	}
 
 	// Return isolate handle
-	auto isolate = IsolateEnvironment::New(memory_limit, std::move(snapshot_blob));
+	auto isolate = IsolateEnvironment::New(memory_limit, std::move(snapshot_blob), snapshot_blob_length);
 	if (inspector) {
 		isolate->GetIsolate()->EnableInspectorAgent();
 	}

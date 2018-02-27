@@ -179,26 +179,22 @@ class ExternalCopyDate : public ExternalCopy {
 };
 
 /**
- * ArrayBuffer, just the raw bytes part.
+ * Base class for ArrayBuffer and SharedArrayBuffer
  */
-class ExternalCopyArrayBuffer : public ExternalCopy {
-	private:
-		using ptr_t = std::unique_ptr<void, decltype(std::free)*>;
-		std::atomic<void*> value;
-		const size_t length;
-
+class ExternalCopyBytes : public ExternalCopy {
+	protected:
 		/**
-		* Holder is responsible for keeping the unique_ptr to the C++ ExternalCopyArrayBuffer while the
-		* JS instance is alive.
-		*/
+		 * Holder is responsible for keeping a referenced to the shared_ptr around as long as the  JS
+		 * instance is alive.
+		 */
 		struct Holder {
 			static constexpr uint64_t kMagic = 0xa4d3c462f7fd1741;
 			uint64_t magic = kMagic;
 			v8::Persistent<v8::Object> v8_ptr;
-			ptr_t cc_ptr;
+			std::shared_ptr<void> cc_ptr;
 			size_t size;
 
-			Holder(const v8::Local<v8::ArrayBuffer>& buffer, void* cc_ptr, size_t size);
+			Holder(const v8::Local<v8::Object>& buffer, std::shared_ptr<void> cc_ptr, size_t size);
 			Holder(const Holder&) = delete;
 			Holder& operator= (const Holder&) = delete;
 			~Holder();
@@ -207,22 +203,32 @@ class ExternalCopyArrayBuffer : public ExternalCopy {
 		};
 
 	public:
+		explicit ExternalCopyBytes(size_t size);
+};
+
+/**
+ * ArrayBuffer instances
+ */
+class ExternalCopyArrayBuffer : public ExternalCopyBytes {
+	private:
+		std::shared_ptr<void> value;
+		const size_t length;
+
+	public:
 		ExternalCopyArrayBuffer(const void* data, size_t length);
-		ExternalCopyArrayBuffer(ptr_t ptr, size_t length);
+		ExternalCopyArrayBuffer(std::shared_ptr<void> ptr, size_t length);
 		explicit ExternalCopyArrayBuffer(const v8::Local<v8::ArrayBufferView>& handle);
-		ExternalCopyArrayBuffer (const ExternalCopyArrayBuffer&) = delete;
-		ExternalCopyArrayBuffer& operator= (const ExternalCopyArrayBuffer&) = delete;
-		~ExternalCopyArrayBuffer() override;
 
 		static std::unique_ptr<ExternalCopyArrayBuffer> Transfer(const v8::Local<v8::ArrayBuffer>& handle);
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
 		uint32_t WorstCaseHeapSize() const final;
+		std::shared_ptr<void> GetSharedPointer() const;
 		const void* Data() const;
 		size_t Length() const;
 };
 
 /**
- * All types of ArrayBuffer views
+ * All types of TypedArray views w/ underlying buffer handle
  */
 class ExternalCopyArrayBufferView : public ExternalCopy {
 	public:

@@ -396,10 +396,12 @@ uint32_t ExternalCopyDate::WorstCaseHeapSize() const {
 }
 
 /**
- * ExternalCopyArrayBuffer implementation
+ * ExternalCopyBytes implementation
  */
-ExternalCopyArrayBuffer::Holder::Holder(const Local<ArrayBuffer>& buffer, void* cc_ptr, size_t size) :
-	v8_ptr(Isolate::GetCurrent(), buffer), cc_ptr(cc_ptr, std::free), size(size)
+ExternalCopyBytes::ExternalCopyBytes(size_t size) : ExternalCopy(size) {}
+
+ExternalCopyBytes::Holder::Holder(const Local<Object>& buffer, shared_ptr<void> cc_ptr, size_t size) :
+	v8_ptr(Isolate::GetCurrent(), buffer), cc_ptr(std::move(cc_ptr)), size(size)
 {
 	v8_ptr.SetWeak(reinterpret_cast<void*>(this), &WeakCallbackV8, WeakCallbackType::kParameter);
 	IsolateEnvironment::GetCurrent()->AddWeakCallback(&this->v8_ptr, WeakCallback, this);
@@ -407,48 +409,47 @@ ExternalCopyArrayBuffer::Holder::Holder(const Local<ArrayBuffer>& buffer, void* 
 	IsolateEnvironment::GetCurrent()->extra_allocated_memory += size;
 }
 
-ExternalCopyArrayBuffer::Holder::~Holder() {
+ExternalCopyBytes::Holder::~Holder() {
 	v8_ptr.Reset();
 	if (cc_ptr) {
 		IsolateEnvironment::GetCurrent()->extra_allocated_memory -= size;
 	}
 }
 
-void ExternalCopyArrayBuffer::Holder::WeakCallbackV8(const WeakCallbackInfo<void>& info) {
+void ExternalCopyBytes::Holder::WeakCallbackV8(const WeakCallbackInfo<void>& info) {
 	WeakCallback(info.GetParameter());
 }
 
-void ExternalCopyArrayBuffer::Holder::WeakCallback(void* param) {
+void ExternalCopyBytes::Holder::WeakCallback(void* param) {
 	Holder* that = reinterpret_cast<Holder*>(param);
 	IsolateEnvironment::GetCurrent()->RemoveWeakCallback(&that->v8_ptr);
 	delete that;
 }
 
+/**
+ * ExternalCopyArrayBuffer implementation
+ */
 ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const void* data, size_t length) :
-	ExternalCopy(length + sizeof(ExternalCopyArrayBuffer)),
-	value(malloc(length)),
+	ExternalCopyBytes(length + sizeof(ExternalCopyArrayBuffer)),
+	value(shared_ptr<void>(malloc(length), std::free)),
 	length(length)
 {
-	std::memcpy(value, data, length);
+	std::memcpy(value.get(), data, length);
 }
 
-ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(ptr_t ptr, size_t length) :
-	ExternalCopy(length + sizeof(ExternalCopyArrayBuffer)),
-	value(ptr.release()),
+ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(shared_ptr<void> ptr, size_t length) :
+	ExternalCopyBytes(length + sizeof(ExternalCopyArrayBuffer)),
+	value(std::move(ptr)),
 	length(length) {}
 
 ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const Local<ArrayBufferView>& handle) :
-	ExternalCopy(handle->ByteLength() + sizeof(ExternalCopyArrayBuffer)),
-	value(malloc(handle->ByteLength())),
+	ExternalCopyBytes(handle->ByteLength() + sizeof(ExternalCopyArrayBuffer)),
+	value(malloc(handle->ByteLength()), std::free),
 	length(handle->ByteLength())
 {
-	if (handle->CopyContents(value, length) != length) {
+	if (handle->CopyContents(value.get(), length) != length) {
 		throw js_generic_error("Failed to copy array contents");
 	}
-}
-
-ExternalCopyArrayBuffer::~ExternalCopyArrayBuffer() {
-	free(value);
 }
 
 unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Local<ArrayBuffer>& handle) {
@@ -464,6 +465,7 @@ unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Loca
 		}
 		handle->Neuter();
 		IsolateEnvironment::GetCurrent()->extra_allocated_memory -= length;
+		// No race conditions here because only one thread can access `Holder`
 		return std::make_unique<ExternalCopyArrayBuffer>(std::move(ptr->cc_ptr), length);
 	}
 	// In this case the buffer is internal and can be released easily
@@ -473,30 +475,29 @@ unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Loca
 		allocator->AdjustAllocatedSize(-static_cast<ptrdiff_t>(length));
 	}
 	assert(handle->IsNeuterable());
-	void* data_ptr = contents.Data();
+	auto data_ptr = shared_ptr<void>(contents.Data(), std::free);
 	handle->Neuter();
-	return std::make_unique<ExternalCopyArrayBuffer>(data_ptr, length);
+	return std::make_unique<ExternalCopyArrayBuffer>(std::move(data_ptr), length);
 }
 
 Local<Value> ExternalCopyArrayBuffer::CopyInto(bool transfer_in) {
 	if (transfer_in) {
-		auto tmp = value.exchange(nullptr);
+		auto tmp = std::atomic_exchange(&value, shared_ptr<void>());
 		if (tmp == nullptr) {
 			throw js_generic_error("Array buffer is invalid");
 		}
+		if (tmp.use_count() != 1) {
+			std::atomic_store(&value, std::move(tmp));
+			throw js_generic_error("Array buffer is in use and may not be transferred");
+		}
 		UpdateSize(0);
-		Local<ArrayBuffer> array_buffer = ArrayBuffer::New(Isolate::GetCurrent(), tmp, length);
-		new Holder(array_buffer, tmp, length);
+		Local<ArrayBuffer> array_buffer = ArrayBuffer::New(Isolate::GetCurrent(), tmp.get(), length);
+		new Holder(array_buffer, std::move(tmp), length);
 		return array_buffer;
 	} else {
-		// There is a race condition here if you try to copy and transfer at the same time. Don't do
-		// that.
-		void* ptr = value;
-		if (ptr == nullptr) {
-			throw js_generic_error("Array buffer is invalid");
-		}
+		auto ptr = GetSharedPointer();
 		Local<ArrayBuffer> array_buffer = ArrayBuffer::New(Isolate::GetCurrent(), length);
-		std::memcpy(array_buffer->GetContents().Data(), ptr, length);
+		std::memcpy(array_buffer->GetContents().Data(), ptr.get(), length);
 		return array_buffer;
 	}
 }
@@ -505,8 +506,16 @@ uint32_t ExternalCopyArrayBuffer::WorstCaseHeapSize() const {
 	return length;
 }
 
+shared_ptr<void> ExternalCopyArrayBuffer::GetSharedPointer() const {
+	auto ptr = std::atomic_load(&value);
+	if (!ptr) {
+		throw js_generic_error("Array buffer is invalid");
+	}
+	return ptr;
+}
+
 const void* ExternalCopyArrayBuffer::Data() const {
-	return value;
+	return value.get();
 }
 
 size_t ExternalCopyArrayBuffer::Length() const {
