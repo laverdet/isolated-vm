@@ -3,6 +3,7 @@
 #include "../apply_from_tuple.h"
 #include "convert_param.h"
 #include "environment.h"
+#include "functor_runners.h"
 #include "util.h"
 
 #include <cassert>
@@ -184,50 +185,34 @@ class ClassHandle {
 		// Main entry point for parameterized functions
 		template <int O, typename T, T F>
 		static void ParameterizeEntry(const v8::FunctionCallbackInfo<v8::Value>& info) {
-			try {
-				v8::Local<v8::Value> result = ParameterizeHelperStart<const v8::FunctionCallbackInfo<v8::Value>&, O>(info, F);
-				if (result.IsEmpty()) {
-					throw std::runtime_error("Member function returned empty Local<> but did not set exception");
-				}
-				info.GetReturnValue().Set(result);
-			} catch (const js_runtime_error& err) {
-			} catch (const js_fatal_error& err) {}
+			FunctorRunners::RunCallback(info, [ &info ]() {
+				return ParameterizeHelperStart<const v8::FunctionCallbackInfo<v8::Value>&, O>(info, F);
+			});
 		}
 
 		// Main entry point for parameterized constructors
 		template <typename T, T F>
 		static void ParameterizeCtorEntry(const v8::FunctionCallbackInfo<v8::Value>& info) {
-			try {
-				v8::Local<v8::Value> result = ParameterizeHelperCtorStart<0>(info, F);
-				if (result.IsEmpty()) {
-					throw std::runtime_error("Member function returned empty Local<> but did not set exception");
-				}
-				info.GetReturnValue().Set(result);
-			} catch (const js_runtime_error& err) {
-			} catch (const js_fatal_error& err) {}
+			FunctorRunners::RunCallback(info, [ &info ]() {
+				return ParameterizeHelperCtorStart<0>(info, F);
+			});
 		}
 
 		// Main entry point for getter functions
 		template <typename T, T F>
 		static void ParameterizeGetterEntry(v8::Local<v8::String> /* property */, const v8::PropertyCallbackInfo<v8::Value>& info) {
-			try {
-				v8::Local<v8::Value> result = ParameterizeHelperStart<const v8::PropertyCallbackInfo<v8::Value>&, -1>(info, F);
-				if (result.IsEmpty()) {
-					throw std::runtime_error("Member function returned empty Local<> but did not set exception");
-				}
-				info.GetReturnValue().Set(result);
-			} catch (const js_runtime_error& err) {
-			} catch (const js_fatal_error& err) {}
+			FunctorRunners::RunCallback(info, [ &info ]() {
+				return ParameterizeHelperStart<const v8::PropertyCallbackInfo<v8::Value>&, -1>(info, F);
+			});
 		}
 
 		// Main entry point for setter functions
 		template <typename T, T F>
 		static void ParameterizeSetterEntry(v8::Local<v8::String> /* property */, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& info) {
-			try {
+			FunctorRunners::RunCallback(info, [ &info, &value ]() {
 				ParameterizeHelperStart<SetterParam, -1>(SetterParam(&value, &info), F);
-				info.GetReturnValue().Set(v8::Boolean::New(v8::Isolate::GetCurrent(), true));
-			} catch (const js_runtime_error& err) {
-			} catch (const js_fatal_error& err) {}
+				return v8::Boolean::New(v8::Isolate::GetCurrent(), true);
+			});
 		}
 
 		// Helper which converts member functions to `Type(Class* that, Args...)`

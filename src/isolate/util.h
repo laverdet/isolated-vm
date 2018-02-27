@@ -31,27 +31,62 @@ inline bool IsOptionSet(const v8::Local<v8::Context>& context, const v8::Local<v
 /**
  * JS + C++ exception, use with care
  */
-class js_runtime_error : public std::exception {};
-class js_fatal_error : public std::exception {};
-
-template <v8::Local<v8::Value> (*F)(v8::Local<v8::String>)>
-struct js_error : public js_runtime_error {
-	explicit js_error(const std::string& message) {
-		v8::Isolate* isolate = v8::Isolate::GetCurrent();
-		const uint8_t* c_str = (const uint8_t*)message.c_str(); // NOLINT
-		v8::MaybeLocal<v8::String> maybe_message = v8::String::NewFromOneByte(isolate, c_str, v8::NewStringType::kNormal);
-		v8::Local<v8::String> message_handle;
-		if (maybe_message.ToLocal(&message_handle)) {
-			isolate->ThrowException(F(message_handle));
-		}
-		// If the MaybeLocal is empty then I think v8 will have an exception on deck. I don't know if
-		// there's any way to assert() this though.
-	}
+class js_runtime_error : public std::exception {
 };
 
-using js_generic_error = js_error<v8::Exception::Error>;
-using js_type_error = js_error<v8::Exception::TypeError>;
-using js_range_error = js_error<v8::Exception::RangeError>;
+class js_error_message : public js_runtime_error {
+	private:
+		const char* c_str;
+		std::string cc_str;
+
+	public:
+		explicit js_error_message(const char* message) : c_str(message) {}
+		explicit js_error_message(const std::string message) : c_str(nullptr), cc_str(std::move(message)) {}
+
+		const char* GetMessage() const {
+			if (c_str == nullptr) {
+				return cc_str.c_str();
+			} else {
+				return c_str;
+			}
+		}
+};
+
+class js_fatal_error : public js_error_message {
+	public:
+		explicit js_fatal_error(const char* message) : js_error_message(message) {}
+		explicit js_fatal_error(const std::string message) : js_error_message(std::move(message)) {}
+};
+
+class js_error_ctor_base : public js_error_message {
+	public:
+		explicit js_error_ctor_base(const char* message) : js_error_message(message) {}
+		explicit js_error_ctor_base(const std::string message) : js_error_message(std::move(message)) {}
+		virtual v8::Local<v8::Value> ConstructError() const = 0;
+};
+
+template <v8::Local<v8::Value> (*F)(v8::Local<v8::String>)>
+class js_error_ctor : public js_error_ctor_base {
+	public:
+		explicit js_error_ctor(const char* message) : js_error_ctor_base(message) {}
+		explicit js_error_ctor(const std::string message) : js_error_ctor_base(std::move(message)) {}
+
+		v8::Local<v8::Value> ConstructError() const final {
+			v8::Isolate* isolate = v8::Isolate::GetCurrent();
+			v8::MaybeLocal<v8::String> maybe_message = v8::String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>(GetMessage()), v8::NewStringType::kNormal);
+			v8::Local<v8::String> message_handle;
+			if (maybe_message.ToLocal(&message_handle)) {
+				return F(message_handle);
+			}
+			// If the MaybeLocal is empty then I think v8 will have an exception on deck. I don't know if
+			// there's any way to assert() this though.
+			return v8::Local<v8::Value>();
+		}
+};
+
+using js_generic_error = js_error_ctor<v8::Exception::Error>;
+using js_type_error = js_error_ctor<v8::Exception::TypeError>;
+using js_range_error = js_error_ctor<v8::Exception::RangeError>;
 
 /**
  * Convert a MaybeLocal<T> to Local<T> and throw an error if it's empty. Someone else should throw
@@ -93,40 +128,6 @@ v8::Local<T> Deref(const v8::Persistent<T, v8::CopyablePersistentTraits<T>>& han
 template <typename T>
 v8::Local<T> Deref(const RemoteHandle<T>& handle) {
 	return handle.Deref();
-}
-
-/**
- * Run a function and annotate the exception with source / line number if it throws
- */
-// TODO: This is only used by isolate_handle.h -- move this to .cc file
-template <typename T, typename F>
-T RunWithAnnotatedErrors(F&& fn) {
-	v8::Isolate* isolate = v8::Isolate::GetCurrent();
-	v8::TryCatch try_catch(isolate);
-	try {
-		return fn();
-	} catch (const js_runtime_error& cc_error) {
-		try {
-			assert(try_catch.HasCaught());
-			v8::Local<v8::Context> context = isolate->GetCurrentContext();
-			v8::Local<v8::Value> error = try_catch.Exception();
-			v8::Local<v8::Message> message = try_catch.Message();
-			assert(error->IsObject());
-			int linenum = Unmaybe(message->GetLineNumber(context));
-			int start_column = Unmaybe(message->GetStartColumn(context));
-			std::string decorator =
-				std::string(*v8::String::Utf8Value(message->GetScriptResourceName())) +
-				":" + std::to_string(linenum) +
-				":" + std::to_string(start_column + 1);
-			std::string message_str = *v8::String::Utf8Value(Unmaybe(error.As<v8::Object>()->Get(context, v8_symbol("message"))));
-			Unmaybe(error.As<v8::Object>()->Set(context, v8_symbol("message"), v8_string((message_str + " [" + decorator + "]").c_str())));
-			isolate->ThrowException(error);
-			throw js_runtime_error();
-		} catch (const js_runtime_error& cc_error) {
-			try_catch.ReThrow();
-			throw js_runtime_error();
-		}
-	}
 }
 
 } // namespace ivm

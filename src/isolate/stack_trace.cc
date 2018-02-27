@@ -1,4 +1,5 @@
 #include "stack_trace.h"
+#include "functor_runners.h"
 #include <cstring>
 #include <sstream>
 #include <string>
@@ -38,7 +39,8 @@ Local<String> RenderErrorStack(Local<Value> data) {
 		// Find the newline
 		const char* newline = strchr(c_str, '\n');
 		if (newline == nullptr) {
-			return data.As<String>();
+			// No stack, just a message
+			return String::Empty(isolate);
 		}
 		// Slice up to start of stack
 		return Unmaybe(String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>(newline), NewStringType::kNormal));
@@ -87,11 +89,11 @@ Local<String> RenderErrorStack(Local<Value> data) {
  * Accessor on error `stack`. Renders from previously saved stack trace.
  */
 void ErrorStackGetter(Local<Name> property, const PropertyCallbackInfo<Value>& info) {
-	try {
+	FunctorRunners::RunCallback(info, [ &info ]() {
 		Isolate* isolate = Isolate::GetCurrent();
 		Local<Context> context = isolate->GetCurrentContext();
 		Local<Object> holder = info.This();
-		info.GetReturnValue().Set(String::Concat(
+		return String::Concat(
 			String::Concat(holder->GetConstructorName(), v8_string(": ")),
 			String::Concat(
 				Unmaybe(
@@ -99,9 +101,8 @@ void ErrorStackGetter(Local<Name> property, const PropertyCallbackInfo<Value>& i
 				),
 				RenderErrorStack(Unmaybe(holder->GetPrivate(context, GetPrivateStackSymbol())))
 			)
-		));
-	} catch (const js_runtime_error& cc_err) {
-	} catch (const js_fatal_error& cc_err) {}
+		);
+	});
 }
 
 /**
@@ -134,43 +135,32 @@ Local<FunctionTemplate> StackTraceHolder::Definition() {
 	return MakeClass("StackTraceHolder", nullptr);
 }
 
-Local<Value> StackTraceHolder::AttachStack(Local<Value> error, Local<StackTrace> stack) {
-	return error;
-	try {
-		AttachStackGetter(error.As<Object>(), ClassHandle::NewInstance<StackTraceHolder>(stack));
-	} catch (const js_runtime_error& cc_err) {
-	} catch (const js_fatal_error& cc_err) {}
-	return error;
+void StackTraceHolder::AttachStack(Local<Object> error, Local<StackTrace> stack) {
+	AttachStackGetter(error, ClassHandle::NewInstance<StackTraceHolder>(stack));
 }
 
-Local<Value> StackTraceHolder::ChainStack(Local<Value> error, Local<StackTrace> stack) {
-	return error;
-	try {
-		Isolate* isolate = Isolate::GetCurrent();
-		Local<Context> context = isolate->GetCurrentContext();
-		Local<Object> error_object = error.As<Object>();
-		Local<Value> existing_data = Unmaybe(error_object->GetPrivate(context, GetPrivateStackSymbol()));
-		if (existing_data->IsUndefined()) {
-			// This error has not passed through ivm yet. Get the existing stack trace.
-			Local<StackTrace> existing_stack = Exception::GetStackTrace(error);
-			if (existing_stack.IsEmpty()) {
-				// In this case it's probably passed through ExternalCopy which flattens the `stack` property
-				// into a plain value
-				existing_data = Unmaybe(error_object->Get(context, v8_string("stack")));
-				if (existing_data->IsUndefined() || !existing_data->IsString()) {
-					return AttachStack(error, stack);
-				}
-			} else {
-				existing_data = ClassHandle::NewInstance<StackTraceHolder>(existing_stack);
+void StackTraceHolder::ChainStack(Local<Object> error, Local<StackTrace> stack) {
+	Isolate* isolate = Isolate::GetCurrent();
+	Local<Context> context = isolate->GetCurrentContext();
+	Local<Value> existing_data = Unmaybe(error->GetPrivate(context, GetPrivateStackSymbol()));
+	if (existing_data->IsUndefined()) {
+		// This error has not passed through ivm yet. Get the existing stack trace.
+		Local<StackTrace> existing_stack = Exception::GetStackTrace(error);
+		if (existing_stack.IsEmpty()) {
+			// In this case it's probably passed through ExternalCopy which flattens the `stack` property
+			// into a plain value
+			existing_data = Unmaybe(error->Get(context, v8_string("stack")));
+			if (existing_data->IsUndefined() || !existing_data->IsString()) {
+				return AttachStack(error, stack);
 			}
+		} else {
+			existing_data = ClassHandle::NewInstance<StackTraceHolder>(existing_stack);
 		}
-		Local<Array> pair = Array::New(isolate, 2);
-		Unmaybe(pair->Set(context, 0, ClassHandle::NewInstance<StackTraceHolder>(stack)));
-		Unmaybe(pair->Set(context, 1, existing_data));
-		AttachStackGetter(error_object, pair);
-	} catch (const js_runtime_error& cc_err) {
-	} catch (const js_fatal_error& cc_err) {}
-	return error;
+	}
+	Local<Array> pair = Array::New(isolate, 2);
+	Unmaybe(pair->Set(context, 0, ClassHandle::NewInstance<StackTraceHolder>(stack)));
+	Unmaybe(pair->Set(context, 1, existing_data));
+	AttachStackGetter(error, pair);
 }
 
 } // namespace ivm

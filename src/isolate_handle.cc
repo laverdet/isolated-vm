@@ -5,6 +5,7 @@
 #include "script_handle.h"
 #include "session_handle.h"
 #include "isolate/allocator.h"
+#include "isolate/functor_runners.h"
 #include "isolate/remote_handle.h"
 #include "isolate/three_phase_task.h"
 
@@ -59,6 +60,42 @@ class ScriptOriginHolder {
 			return { v8_string(filename.c_str()), Integer::New(isolate, columnOffset), Integer::New(isolate, lineOffset) };
 		}
 };
+
+/**
+ * Run a function and annotate the exception with source / line number if it throws. Note that this
+ * only handles errors that live inside v8, not C++ errors
+ */
+template <typename T, typename F>
+T RunWithAnnotatedErrors(F&& fn) {
+	Isolate* isolate = Isolate::GetCurrent();
+	TryCatch try_catch(isolate);
+	try {
+		return fn();
+	} catch (const js_error_message& cc_error) {
+		throw std::logic_error("Invalid error thrown by RunWithAnnotatedErrors");
+	} catch (const js_runtime_error& cc_error) {
+		try {
+			assert(try_catch.HasCaught());
+			Local<Context> context = isolate->GetCurrentContext();
+			Local<Value> error = try_catch.Exception();
+			Local<Message> message = try_catch.Message();
+			assert(error->IsObject());
+			int linenum = Unmaybe(message->GetLineNumber(context));
+			int start_column = Unmaybe(message->GetStartColumn(context));
+			std::string decorator =
+				std::string(*String::Utf8Value(message->GetScriptResourceName())) +
+				":" + std::to_string(linenum) +
+				":" + std::to_string(start_column + 1);
+			std::string message_str = *String::Utf8Value(Unmaybe(error.As<Object>()->Get(context, v8_symbol("message"))));
+			Unmaybe(error.As<Object>()->Set(context, v8_symbol("message"), v8_string((message_str + " [" + decorator + "]").c_str())));
+			isolate->ThrowException(error);
+			throw js_runtime_error();
+		} catch (const js_runtime_error& cc_error) {
+			try_catch.ReThrow();
+			throw js_runtime_error();
+		}
+	}
+}
 
 /**
  * IsolateHandle implementation
@@ -438,50 +475,45 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 		Isolate* isolate = snapshot_creator.GetIsolate();
 		{
 			Locker locker(isolate);
-			TryCatch try_catch(isolate);
+			Isolate::Scope isolate_scope(isolate);
 			HandleScope handle_scope(isolate);
 			Local<Context> context = Context::New(isolate);
 			snapshot_creator.SetDefaultContext(context);
-			try {
-				{
-					HandleScope handle_scope(isolate);
-					Local<Context> context_dirty = Context::New(isolate);
-					for (auto& script : scripts) {
-						Local<String> code = v8_string(script.first.c_str());
-						ScriptOrigin script_origin = script.second.ToScriptOrigin();
-						ScriptCompiler::Source source(code, script_origin);
-						Local<UnboundScript> unbound_script;
-						{
-							Context::Scope context_scope(context);
-							Local<Script> compiled_script = RunWithAnnotatedErrors<Local<Script>>(
-								[&context, &source]() { return Unmaybe(ScriptCompiler::Compile(context, &source, ScriptCompiler::kNoCompileOptions)); }
-							);
-							Unmaybe(compiled_script->Run(context));
-							unbound_script = compiled_script->GetUnboundScript();
-						}
-						{
-							Context::Scope context_scope(context_dirty);
-							Unmaybe(unbound_script->BindToCurrentContext()->Run(context_dirty));
-						}
+			FunctorRunners::RunCatchExternal(context, [&]() {
+				HandleScope handle_scope(isolate);
+				Local<Context> context_dirty = Context::New(isolate);
+				for (auto& script : scripts) {
+					Local<String> code = v8_string(script.first.c_str());
+					ScriptOrigin script_origin = script.second.ToScriptOrigin();
+					ScriptCompiler::Source source(code, script_origin);
+					Local<UnboundScript> unbound_script;
+					{
+						Context::Scope context_scope(context);
+						Local<Script> compiled_script = RunWithAnnotatedErrors<Local<Script>>(
+							[&context, &source]() { return Unmaybe(ScriptCompiler::Compile(context, &source, ScriptCompiler::kNoCompileOptions)); }
+						);
+						Unmaybe(compiled_script->Run(context));
+						unbound_script = compiled_script->GetUnboundScript();
 					}
-					if (warmup_script.length() != 0) {
+					{
 						Context::Scope context_scope(context_dirty);
-						MaybeLocal<Object> tmp;
-						ScriptOriginHolder script_origin(tmp);
-						ScriptCompiler::Source source(v8_string(warmup_script.c_str()), script_origin.ToScriptOrigin());
-						RunWithAnnotatedErrors<void>([&context_dirty, &source]() {
-							Unmaybe(Unmaybe(ScriptCompiler::Compile(context_dirty, &source, ScriptCompiler::kNoCompileOptions))->Run(context_dirty));
-						});
+						Unmaybe(unbound_script->BindToCurrentContext()->Run(context_dirty));
 					}
 				}
-				isolate->ContextDisposedNotification(false);
-				snapshot_creator.AddContext(context);
-			} catch (const js_runtime_error& cc_error) {
-				assert(try_catch.HasCaught());
-				HandleScope handle_scope(isolate);
-				Context::Scope context_scope(context);
-				error = ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception());
-			}
+				if (warmup_script.length() != 0) {
+					Context::Scope context_scope(context_dirty);
+					MaybeLocal<Object> tmp;
+					ScriptOriginHolder script_origin(tmp);
+					ScriptCompiler::Source source(v8_string(warmup_script.c_str()), script_origin.ToScriptOrigin());
+					RunWithAnnotatedErrors<void>([&context_dirty, &source]() {
+						Unmaybe(Unmaybe(ScriptCompiler::Compile(context_dirty, &source, ScriptCompiler::kNoCompileOptions))->Run(context_dirty));
+					});
+				}
+			}, [ &error ](unique_ptr<ExternalCopy> error_inner) {
+				error = std::move(error_inner);
+			});
+			isolate->ContextDisposedNotification(false);
+			snapshot_creator.AddContext(context);
 		}
 		if (!error) {
 			snapshot = snapshot_creator.CreateBlob(SnapshotCreator::FunctionCodeHandling::kKeep);

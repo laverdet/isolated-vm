@@ -14,8 +14,8 @@ class StackTraceHolder : public ClassHandle {
 		explicit StackTraceHolder(v8::Local<v8::StackTrace> stack_handle);
 		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();
-		static v8::Local<v8::Value> AttachStack(v8::Local<v8::Value> error, v8::Local<v8::StackTrace> stack);
-		static v8::Local<v8::Value> ChainStack(v8::Local<v8::Value> error, v8::Local<v8::StackTrace> stack);
+		static void AttachStack(v8::Local<v8::Object> error, v8::Local<v8::StackTrace> stack);
+		static void ChainStack(v8::Local<v8::Object> error, v8::Local<v8::StackTrace> stack);
 };
 
 } // namespace ivm

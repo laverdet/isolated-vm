@@ -45,9 +45,11 @@ v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 		did_finish = true;
 	}
 	if (isolate.DidHitMemoryLimit()) {
-		throw js_fatal_error();
+		throw js_fatal_error("Isolate was disposed during execution due to memory limit");
+	} else if (isolate.terminated) {
+		throw js_fatal_error("Isolate was disposed during execution");
 	} else if (did_timeout) {
-		if (!isolate.terminated && --isolate.terminate_depth == 0) {
+		if (--isolate.terminate_depth == 0) {
 			isolate->CancelTerminateExecution();
 		}
 		throw js_generic_error("Script execution timed out.");

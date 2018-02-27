@@ -46,11 +46,12 @@ class SessionImpl : public InspectorSession {
 				) :	call_id(call_id), message(std::move(message)), onResponse(std::move(onResponse)) {}
 
 				void Run() final {
+					Isolate* isolate = Isolate::GetCurrent();
+					TryCatch try_catch(isolate);
 					Local<String> string;
 					if (bufferToString(*message).ToLocal(&string)) {
 						Local<Function> fn = Deref(*onResponse);
 						Local<Value> argv[2];
-						Isolate* isolate = Isolate::GetCurrent();
 						argv[0] = Integer::New(isolate, call_id);
 						argv[1] = string;
 						try {
@@ -74,11 +75,12 @@ class SessionImpl : public InspectorSession {
 				) : message(std::move(message)), onNotification(std::move(onNotification)) {}
 
 				void Run() final {
+					Isolate* isolate = Isolate::GetCurrent();
+					TryCatch try_catch(isolate);
 					Local<String> string;
 					if (bufferToString(*message).ToLocal(&string)) {
 						Local<Function> fn = Deref(*onNotification);
 						Local<Value> argv[1];
-						Isolate* isolate = Isolate::GetCurrent();
 						argv[0] = string;
 						try {
 							Unmaybe(fn->Call(isolate->GetCurrentContext(), Undefined(isolate), 1, argv));

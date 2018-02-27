@@ -83,7 +83,7 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool tran
 	} else {
 		// ???
 		assert(false);
-		throw std::exception();
+		throw std::logic_error("Exotic value passed to ExternalCopy");
 	}
 }
 
@@ -142,10 +142,11 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 				if (message->IsString()) {
 					message_copy = make_unique<ExternalCopyString>(message.As<String>());
 				} else {
-					message_copy = make_unique<ExternalCopyString>(v8_string(""));
+					message_copy = make_unique<ExternalCopyString>("");
 				}
 			} catch (const js_runtime_error& cc_err) {
 				try_catch.Reset();
+				message_copy = make_unique<ExternalCopyString>("");
 			}
 
 			// Get `stack`
@@ -154,8 +155,6 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 				Local<Value> stack(Unmaybe(object->Get(context, v8_symbol("stack"))));
 				if (stack->IsString()) {
 					stack_copy = make_unique<ExternalCopyString>(stack.As<String>());
-				} else {
-					stack_copy = make_unique<ExternalCopyString>("");
 				}
 			} catch (const js_runtime_error& cc_err) {
 				try_catch.Reset();
@@ -250,6 +249,8 @@ ExternalCopyString::ExternalCopyString(Local<String> string) : ExternalCopy((str
 	}
 }
 
+ExternalCopyString::ExternalCopyString(const char* message) : one_byte(true), value(std::make_shared<V>(message, message + strlen(message))) {}
+
 ExternalCopyString::ExternalCopyString(const std::string& message) : one_byte(true), value(std::make_shared<V>(message.begin(), message.end())) {}
 
 Local<Value> ExternalCopyString::CopyInto(bool transfer_in) {
@@ -321,7 +322,7 @@ ExternalCopyError::ExternalCopyError(
 	message(std::move(message)),
 	stack(std::move(stack)) {}
 
-ExternalCopyError::ExternalCopyError(ErrorType error_type, const std::string& message) :
+ExternalCopyError::ExternalCopyError(ErrorType error_type, const char* message) :
 	ExternalCopy(sizeof(ExternalCopyError)),
 	error_type(error_type),
 	message(make_unique<ExternalCopyString>(message)) {}

@@ -2,7 +2,9 @@
 #include "node-wrapper.h"
 #include "environment.h"
 #include "holder.h"
+#include "functor_runners.h"
 #include "remote_handle.h"
+#include "stack_trace.h"
 #include "util.h"
 #include <memory>
 
@@ -84,26 +86,22 @@ class ThreePhaseTask {
 				v8::Isolate* isolate = v8::Isolate::GetCurrent();
 				auto context_local = isolate->GetCurrentContext();
 				auto promise_local = Unmaybe(v8::Promise::Resolver::New(context_local));
-				v8::TryCatch try_catch(isolate);
-				try {
+				auto stack_trace = v8::StackTrace::CurrentStackTrace(isolate, 10);
+				FunctorRunners::RunCatchValue([&]() {
 					// Schedule Phase2 async
 					second_isolate.ScheduleTask(
 						std::make_unique<Phase2Runner>(
 							std::make_unique<T>(std::forward<Args>(args)...), // <-- Phase1 / ctor called here
-							std::make_unique<CalleeInfo>(
-								promise_local,
-								context_local,
-								v8::StackTrace::CurrentStackTrace(isolate, 10)
-							)
+							std::make_unique<CalleeInfo>(promise_local, context_local, stack_trace)
 						), false, true
 					);
-				} catch (const js_runtime_error& cc_error) {
-					// An error was caught while running ctor (phase 1)
-					assert(try_catch.HasCaught());
-					v8::Maybe<bool> ret = promise_local->Reject(context_local, try_catch.Exception());
-					try_catch.Reset();
-					Unmaybe(ret);
-				}
+				}, [&](v8::Local<v8::Value> error) {
+					// A C++ error was caught while running ctor (phase 1)
+					if (error->IsObject()) {
+						StackTraceHolder::AttachStack(error.As<v8::Object>(), stack_trace);
+					}
+					Unmaybe(promise_local->Reject(context_local, error));
+				});
 				return promise_local->GetPromise();
 			} else if (async == 2) { // Async, promise ignored
 				// Schedule Phase2 async

@@ -192,7 +192,7 @@ void IsolateEnvironment::HeapCheck::Epilogue() {
 			env.hit_memory_limit = true;
 			env.Terminate();
 			did_increase = false; // Don't reset heap limit to decrease chance v8 will OOM
-			throw js_fatal_error();
+			throw js_fatal_error("Isolate was disposed during execution due to memory limit");
 		}
 	}
 }
@@ -415,7 +415,7 @@ IsolateEnvironment::~IsolateEnvironment() {
 void IsolateEnvironment::TaskEpilogue() {
 	isolate->RunMicrotasks();
 	if (hit_memory_limit) {
-		throw js_fatal_error();
+		throw js_fatal_error("Isolate was disposed during execution due to memory limit");
 	}
 	if (!rejected_promise_error.IsEmpty()) {
 		Context::Scope context_scope(DefaultContext());
@@ -439,7 +439,7 @@ void IsolateEnvironment::AddWeakCallback(Persistent<Object>* handle, void(*fn)(v
 	}
 	auto it = weak_persistents.find(handle);
 	if (it != weak_persistents.end()) {
-		throw std::runtime_error("Weak callback already added");
+		throw std::logic_error("Weak callback already added");
 	}
 	weak_persistents.insert(std::make_pair(handle, std::make_pair(fn, param)));
 }
@@ -450,7 +450,7 @@ void IsolateEnvironment::RemoveWeakCallback(Persistent<Object>* handle) {
 	}
 	auto it = weak_persistents.find(handle);
 	if (it == weak_persistents.end()) {
-		throw std::runtime_error("Weak callback doesn't exist");
+		throw std::logic_error("Weak callback doesn't exist");
 	}
 	weak_persistents.erase(it);
 }

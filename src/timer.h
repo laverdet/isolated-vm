@@ -75,7 +75,7 @@ class timer_t {
 									return;
 								}
 							}
-							throw std::runtime_error("Didn't find thread in thread list");
+							throw std::logic_error("Didn't find thread in thread list");
 						}
 						next_timeout = queue.top()->timeout;
 						lock.unlock();
