@@ -68,7 +68,7 @@ void InspectorAgent::quitMessageLoopOnPause() {
  * Connects a V8Inspector::Channel to a V8Inspector which returns an instance of V8InspectorSession.
  */
 unique_ptr<V8InspectorSession> InspectorAgent::ConnectSession(InspectorSession& session) {
-	std::unique_lock<std::mutex> lock(sessions.mutex);
+	std::lock_guard<std::mutex> lock(sessions.mutex);
 	sessions.active.insert(&session);
 	return inspector->connect(1, &session, StringView());
 }
@@ -77,7 +77,7 @@ unique_ptr<V8InspectorSession> InspectorAgent::ConnectSession(InspectorSession& 
  * Called from the session when it disconnects.
  */
 void InspectorAgent::SessionDisconnected(InspectorSession& session) {
-	std::unique_lock<std::mutex> lock(sessions.mutex);
+	std::lock_guard<std::mutex> lock(sessions.mutex);
 	assert(sessions.active.erase(&session) == 1);
 }
 
@@ -94,7 +94,7 @@ void InspectorAgent::SendInterrupt(unique_ptr<class Runnable> task) {
 	// Wake up the isolate
 	if (!scheduler.WakeIsolate(ptr)) { // `true` if isolate is inactive
 		// Isolate is currently running
-		std::unique_lock<std::mutex> lock(mutex);
+		std::lock_guard<std::mutex> lock(mutex);
 		if (running) {
 			// Isolate is being debugged and is in `runMessageLoopOnPause`
 			cv.notify_all();
@@ -132,7 +132,7 @@ InspectorSession::~InspectorSession() {
  * Disconnects this session from the v8 inspector. Allows inspector to deallocate gracefully.
  */
 void InspectorSession::Disconnect() {
-	std::unique_lock<std::mutex> lock(mutex);
+	std::lock_guard<std::mutex> lock(mutex);
 	if (session) {
 		agent.SessionDisconnected(*this);
 		struct DeleteSession : public Runnable {
@@ -149,7 +149,7 @@ void InspectorSession::Disconnect() {
  * Send a message from this session to the backend.
  */
 void InspectorSession::DispatchBackendProtocolMessage(std::vector<uint16_t> message) {
-	std::unique_lock<std::mutex> lock(mutex);
+	std::lock_guard<std::mutex> lock(mutex);
 	struct DispatchMessage : public Runnable {
 		std::vector<uint16_t> message;
 		std::weak_ptr<V8InspectorSession> weak_session;

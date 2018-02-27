@@ -332,7 +332,7 @@ IsolateEnvironment::IsolateEnvironment(Isolate* isolate, Local<Context> context)
 	bookkeeping_statics(bookkeeping_statics_shared) {
 	ExecutorLock::Init(*this);
 	Scheduler::Init();
-	std::unique_lock<std::mutex> lock(bookkeeping_statics->lookup_mutex);
+	std::lock_guard<std::mutex> lock(bookkeeping_statics->lookup_mutex);
 	bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
 }
 
@@ -362,7 +362,7 @@ IsolateEnvironment::IsolateEnvironment(
 	}
 	isolate = Isolate::New(create_params);
 	{
-		std::unique_lock<std::mutex> lock(bookkeeping_statics->lookup_mutex);
+		std::lock_guard<std::mutex> lock(bookkeeping_statics->lookup_mutex);
 		bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
 	}
 	isolate->AddGCEpilogueCallback(GCEpilogueCallback);
@@ -408,7 +408,7 @@ IsolateEnvironment::~IsolateEnvironment() {
 		ExecutorLock::Scope lock(*this);
 		isolate->Dispose();
 	}
-	std::unique_lock<std::mutex> lock(bookkeeping_statics->lookup_mutex);
+	std::lock_guard<std::mutex> lock(bookkeeping_statics->lookup_mutex);
 	bookkeeping_statics->isolate_map.erase(bookkeeping_statics->isolate_map.find(isolate));
 }
 
@@ -456,7 +456,7 @@ void IsolateEnvironment::RemoveWeakCallback(Persistent<Object>* handle) {
 }
 
 shared_ptr<IsolateHolder> IsolateEnvironment::LookupIsolate(Isolate* isolate) {
-	std::unique_lock<std::mutex> lock(bookkeeping_statics_shared->lookup_mutex);
+	std::lock_guard<std::mutex> lock(bookkeeping_statics_shared->lookup_mutex);
 	auto it = bookkeeping_statics_shared->isolate_map.find(isolate);
 	if (it == bookkeeping_statics_shared->isolate_map.end()) {
 		return nullptr;

@@ -65,7 +65,7 @@ class thread_pool_t {
 		}
 
 		void exec(affinity_t& affinity, entry_t* entry, void* param) {
-			std::unique_lock<std::mutex> lock(this->mutex);
+			std::lock_guard<std::mutex> lock(this->mutex);
 
 			// First try to use an old thread
 			int thread = -1;
