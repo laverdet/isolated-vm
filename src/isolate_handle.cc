@@ -515,10 +515,10 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 			isolate->ContextDisposedNotification(false);
 			snapshot_creator.AddContext(context);
 		}
-		if (!error) {
-			snapshot = snapshot_creator.CreateBlob(SnapshotCreator::FunctionCodeHandling::kKeep);
-			snapshot_data_ptr.reset(snapshot.data);
-		}
+		// nb: Snapshot must be created even in the error case, because `~SnapshotCreator` will crash if
+		// you don't
+		snapshot = snapshot_creator.CreateBlob(SnapshotCreator::FunctionCodeHandling::kKeep);
+		snapshot_data_ptr.reset(snapshot.data);
 	}
 
 	// Export to outer scope
