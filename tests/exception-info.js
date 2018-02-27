@@ -1,8 +1,6 @@
 'use strict';
 let v8 = require('v8');
 let ivm = require('isolated-vm');
-console.log('pass');
-return;
 
 // Get the error chain set up
 let env = [ 0, 0, 0 ].map(function() {
