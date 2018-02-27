@@ -11,7 +11,7 @@ class LimitedAllocator : public v8::ArrayBuffer::Allocator {
 		size_t next_check;
 		int failures = 0;
 
-		bool Check(const size_t length);
+		bool Check(size_t length);
 
 	public:
 		explicit LimitedAllocator(class IsolateEnvironment& env, size_t limit);

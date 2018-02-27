@@ -58,6 +58,7 @@ class IsolateEnvironment {
 				explicit ExecutorLock(IsolateEnvironment& env);
 				ExecutorLock(const ExecutorLock&) = delete;
 				ExecutorLock operator= (const ExecutorLock&) = delete;
+				~ExecutorLock() = default;
 				static IsolateEnvironment* GetCurrent() { return current; }
 				static void Init(IsolateEnvironment& default_isolate);
 				static bool IsDefaultThread();

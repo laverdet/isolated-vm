@@ -12,14 +12,16 @@ namespace ivm {
 
 class ExternalCopy : public Transferable {
 	private:
-		size_t size;
-		size_t original_size;
+		size_t size = 0;
+		size_t original_size = 0;
 		static std::atomic<size_t> total_allocated_size;
 
 	public:
 		ExternalCopy();
 		explicit ExternalCopy(size_t size);
-		virtual ~ExternalCopy();
+		ExternalCopy(const ExternalCopy&) = delete;
+		ExternalCopy& operator= (const ExternalCopy&) = delete;
+		~ExternalCopy() override;
 
 		/**
 		 * `Copy` may throw a v8 exception if JSON.stringify(value) throws
@@ -56,7 +58,7 @@ class ExternalCopyTemplate : public ExternalCopy {
 	public:
 		explicit ExternalCopyTemplate(const v8::Local<v8::Value>& value) : value(v8::Local<T>::Cast(value)->Value()) {}
 
-		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final {
+		v8::Local<v8::Value> CopyInto(bool /*transfer_in*/ = false) final {
 			return T::New(v8::Isolate::GetCurrent(), value);
 		}
 
@@ -85,7 +87,9 @@ class ExternalCopyString : public ExternalCopy {
 
 			public:
 				explicit ExternalString(std::shared_ptr<V> value);
-				~ExternalString();
+				ExternalString(const ExternalString&) = delete;
+				ExternalString& operator= (const ExternalString&) = delete;
+				~ExternalString() final;
 				const uint16_t* data() const final;
 				size_t length() const final;
 		};
@@ -96,16 +100,18 @@ class ExternalCopyString : public ExternalCopy {
 
 			public:
 				explicit ExternalStringOneByte(std::shared_ptr<V> value);
-				~ExternalStringOneByte();
+				ExternalStringOneByte(const ExternalStringOneByte&) = delete;
+				ExternalStringOneByte& operator= (const ExternalStringOneByte&) = delete;
+				~ExternalStringOneByte() final;
 				const char* data() const final;
 				size_t length() const final;
 		};
 
 	public:
-		explicit ExternalCopyString(v8::Local<v8::String> value);
+		explicit ExternalCopyString(v8::Local<v8::String> string);
 		explicit ExternalCopyString(const char* message);
 		explicit ExternalCopyString(const std::string& message);
-		v8::Local<v8::Value> CopyInto(bool transfer_in = false);
+		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
 		uint32_t WorstCaseHeapSize() const final;
 };
 
@@ -193,6 +199,8 @@ class ExternalCopyArrayBuffer : public ExternalCopy {
 			size_t size;
 
 			Holder(const v8::Local<v8::ArrayBuffer>& buffer, void* cc_ptr, size_t size);
+			Holder(const Holder&) = delete;
+			Holder& operator= (const Holder&) = delete;
 			~Holder();
 			static void WeakCallbackV8(const v8::WeakCallbackInfo<void>& info);
 			static void WeakCallback(void* param);
@@ -201,9 +209,12 @@ class ExternalCopyArrayBuffer : public ExternalCopy {
 	public:
 		ExternalCopyArrayBuffer(const void* data, size_t length);
 		ExternalCopyArrayBuffer(ptr_t ptr, size_t length);
-		~ExternalCopyArrayBuffer();
 		explicit ExternalCopyArrayBuffer(const v8::Local<v8::ArrayBufferView>& handle);
-		static std::unique_ptr<ExternalCopyArrayBuffer> Transfer(const v8::Local<v8::ArrayBuffer>& buffer);
+		ExternalCopyArrayBuffer (const ExternalCopyArrayBuffer&) = delete;
+		ExternalCopyArrayBuffer& operator= (const ExternalCopyArrayBuffer&) = delete;
+		~ExternalCopyArrayBuffer() override;
+
+		static std::unique_ptr<ExternalCopyArrayBuffer> Transfer(const v8::Local<v8::ArrayBuffer>& handle);
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
 		uint32_t WorstCaseHeapSize() const final;
 		const void* Data() const;

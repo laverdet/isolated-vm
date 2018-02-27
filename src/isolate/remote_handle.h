@@ -28,7 +28,7 @@ class RemoteTuple {
 		// This calls Reset() on each handle.
 		struct DisposalTask : public Runnable {
 			HandlesType handles;
-			DisposalTask(HandlesType&& handles) : handles(std::move(handles)) {}
+			explicit DisposalTask(HandlesType&& handles) : handles(std::move(handles)) {}
 
 			template <int> void Reset() {}
 
@@ -38,7 +38,7 @@ class RemoteTuple {
 				Reset<0, Rest...>();
 			}
 
-			void Run() {
+			void Run() final {
 				Reset<0, Types...>();
 			}
 		};
@@ -47,7 +47,7 @@ class RemoteTuple {
 		HandlesType handles;
 
 	public:
-		RemoteTuple(v8::Local<Types>... handles) :
+		explicit RemoteTuple(v8::Local<Types>... handles) :
 			isolate(IsolateEnvironment::GetCurrentHolder()),
 			handles(std::make_unique<HandleType<Types>>(v8::Isolate::GetCurrent(), std::move(handles))...)
 		{
@@ -80,7 +80,7 @@ class RemoteHandle {
 		RemoteTuple<T> handle;
 
 	public:
-		RemoteHandle(v8::Local<T> handle) : handle(handle) {}
+		explicit RemoteHandle(v8::Local<T> handle) : handle(handle) {}
 
 		auto Deref() const {
 			return handle.template Deref<0>();

@@ -243,7 +243,7 @@ struct CreateContextRunner : public ThreePhaseTask {
 		auto env = IsolateEnvironment::GetCurrent();
 
 		// Sanity check before we build the context
-		if (enable_inspector && !env->GetInspectorAgent()) {
+		if (enable_inspector && env->GetInspectorAgent() == nullptr) {
 			Context::Scope context_scope(env->DefaultContext()); // TODO: This is needed to throw, but is stupid and sloppy
 			throw js_generic_error("Inspector is not enabled for this isolate");
 		}
@@ -324,7 +324,7 @@ struct CompileScriptRunner : public ThreePhaseTask {
 		unique_ptr<ScriptCompiler::CachedData> cached_data = nullptr;
 		if (cached_data_blob) {
 			compile_options = ScriptCompiler::kConsumeCodeCache;
-			cached_data = std::make_unique<ScriptCompiler::CachedData>((const uint8_t*)cached_data_blob->Data(), cached_data_blob->Length());
+			cached_data = std::make_unique<ScriptCompiler::CachedData>(reinterpret_cast<const uint8_t*>(cached_data_blob->Data()), cached_data_blob->Length());
 		} else if (produce_cached_data) {
 			compile_options = ScriptCompiler::kProduceCodeCache;
 		}

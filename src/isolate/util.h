@@ -41,7 +41,7 @@ class js_error_message : public js_runtime_error {
 
 	public:
 		explicit js_error_message(const char* message) : c_str(message) {}
-		explicit js_error_message(const std::string message) : c_str(nullptr), cc_str(std::move(message)) {}
+		explicit js_error_message(std::string message) : c_str(nullptr), cc_str(std::move(message)) {}
 
 		const char* GetMessage() const {
 			if (c_str == nullptr) {
@@ -55,13 +55,13 @@ class js_error_message : public js_runtime_error {
 class js_fatal_error : public js_error_message {
 	public:
 		explicit js_fatal_error(const char* message) : js_error_message(message) {}
-		explicit js_fatal_error(const std::string message) : js_error_message(std::move(message)) {}
+		explicit js_fatal_error(std::string message) : js_error_message(std::move(message)) {}
 };
 
 class js_error_ctor_base : public js_error_message {
 	public:
 		explicit js_error_ctor_base(const char* message) : js_error_message(message) {}
-		explicit js_error_ctor_base(const std::string message) : js_error_message(std::move(message)) {}
+		explicit js_error_ctor_base(std::string message) : js_error_message(std::move(message)) {}
 		virtual v8::Local<v8::Value> ConstructError() const = 0;
 };
 
@@ -69,7 +69,7 @@ template <v8::Local<v8::Value> (*F)(v8::Local<v8::String>)>
 class js_error_ctor : public js_error_ctor_base {
 	public:
 		explicit js_error_ctor(const char* message) : js_error_ctor_base(message) {}
-		explicit js_error_ctor(const std::string message) : js_error_ctor_base(std::move(message)) {}
+		explicit js_error_ctor(std::string message) : js_error_ctor_base(std::move(message)) {}
 
 		v8::Local<v8::Value> ConstructError() const final {
 			v8::Isolate* isolate = v8::Isolate::GetCurrent();

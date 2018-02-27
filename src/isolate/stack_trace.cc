@@ -88,7 +88,7 @@ Local<String> RenderErrorStack(Local<Value> data) {
 /**
  * Accessor on error `stack`. Renders from previously saved stack trace.
  */
-void ErrorStackGetter(Local<Name> property, const PropertyCallbackInfo<Value>& info) {
+void ErrorStackGetter(Local<Name> /*property*/, const PropertyCallbackInfo<Value>& info) {
 	FunctorRunners::RunCallback(info, [ &info ]() {
 		Isolate* isolate = Isolate::GetCurrent();
 		Local<Context> context = isolate->GetCurrentContext();

@@ -31,12 +31,14 @@ class ThreePhaseTask {
 		 */
 		struct CalleeInfo {
 			RemoteTuple<v8::Promise::Resolver, v8::Context, v8::StackTrace> remotes;
-			node::async_context async;
+			node::async_context async { 0, 0 };
 			CalleeInfo(
 				v8::Local<v8::Promise::Resolver> resolver,
 				v8::Local<v8::Context> context,
 				v8::Local<v8::StackTrace> stack_trace
 			);
+			CalleeInfo(const CalleeInfo&) = delete;
+			CalleeInfo& operator= (const CalleeInfo&) = delete;
 			~CalleeInfo();
 		};
 

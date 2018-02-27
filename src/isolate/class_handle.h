@@ -26,10 +26,7 @@ class ClassHandle {
 		using MemberFunction = std::pair<v8::FunctionCallback, int32_t>;
 		using StaticFunction = std::pair<v8::FunctionCallback, uint32_t>;
 		using AccessorPair = std::pair<v8::AccessorGetterCallback, v8::AccessorSetterCallback>;
-		struct StaticAccessorPair {
-			std::pair<v8::FunctionCallback, v8::FunctionCallback> fn;
-			constexpr StaticAccessorPair(decltype(fn) f) : fn(f) {}
-		};
+		using StaticAccessorPair = std::pair<v8::FunctionCallback, v8::FunctionCallback>;
 
 		using SetterParam = std::pair<v8::Local<v8::Value>*, const v8::PropertyCallbackInfo<void>*>;
 		v8::Persistent<v8::Object> handle;
@@ -119,10 +116,10 @@ class ClassHandle {
 		) {
 			v8::Local<v8::String> name_handle = v8_symbol(name);
 			v8::Local<v8::FunctionTemplate> setter;
-			if (impl.fn.second != nullptr) {
-				setter = v8::FunctionTemplate::New(isolate, impl.fn.second, name_handle);
+			if (impl.second != nullptr) {
+				setter = v8::FunctionTemplate::New(isolate, impl.second, name_handle);
 			}
-			tmpl->SetAccessorProperty(name_handle, v8::FunctionTemplate::New(isolate, impl.fn.first, name_handle), setter);
+			tmpl->SetAccessorProperty(name_handle, v8::FunctionTemplate::New(isolate, impl.first, name_handle), setter);
 			AddMethods(isolate, tmpl, proto, sig, asig, args...);
 		}
 
@@ -354,7 +351,7 @@ class ClassHandle {
 
 		template <typename T1, T1 F1, typename T2, T2 F2>
 		static constexpr StaticAccessorPair ParameterizeStaticAccessor() {
-			return std::make_pair(
+			return StaticAccessorPair(
 				ParameterizeEntry<0, T1, F1>,
 				ParameterizeEntry<0, T2, F2>
 			);
@@ -362,9 +359,9 @@ class ClassHandle {
 
 		template <typename T1, T1 F1>
 		static constexpr StaticAccessorPair ParameterizeStaticAccessor() {
-			return std::make_pair(
+			return StaticAccessorPair(
 				ParameterizeEntry<0, T1, F1>,
-				(v8::FunctionCallback)nullptr
+				nullptr
 			);
 		}
 

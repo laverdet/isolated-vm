@@ -2,7 +2,6 @@
 #include "../external_copy.h"
 
 using namespace v8;
-using std::shared_ptr;
 using std::unique_ptr;
 
 namespace ivm {

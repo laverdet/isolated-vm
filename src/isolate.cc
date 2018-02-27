@@ -87,4 +87,4 @@ void init(Local<Object> target) {
 
 } // namespace ivm
 
-NODE_MODULE(isolated_vm, ivm::init)
+NODE_MODULE(isolated_vm, ivm::init) // NOLINT

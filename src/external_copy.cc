@@ -166,14 +166,14 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 }
 
 // Instance methods
-ExternalCopy::ExternalCopy() : size(0), original_size(0) {}
+ExternalCopy::ExternalCopy() = default;
 
 ExternalCopy::ExternalCopy(size_t size) : size(size), original_size(size) {
 	total_allocated_size += size;
 }
 
 ExternalCopy::~ExternalCopy() {
-	if (size) {
+	if (size != 0) {
 		total_allocated_size -= size;
 	}
 }
@@ -253,7 +253,7 @@ ExternalCopyString::ExternalCopyString(const char* message) : one_byte(true), va
 
 ExternalCopyString::ExternalCopyString(const std::string& message) : one_byte(true), value(std::make_shared<V>(message.begin(), message.end())) {}
 
-Local<Value> ExternalCopyString::CopyInto(bool transfer_in) {
+Local<Value> ExternalCopyString::CopyInto(bool /*transfer_in*/) {
 	if (value->size() < 1024) {
 		// Strings under 1kb will be internal v8 strings. I didn't experiment with this at all, but it
 		// seems self-evident that there's some byte length under which it doesn't make sense to create
@@ -285,7 +285,7 @@ ExternalCopySerialized::ExternalCopySerialized(std::pair<uint8_t*, size_t> val) 
 	buffer(val.first, std::free),
 	size(val.second) {}
 
-Local<Value> ExternalCopySerialized::CopyInto(bool transfer_in) {
+Local<Value> ExternalCopySerialized::CopyInto(bool /*transfer_in*/) {
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
 	LimitedAllocator* allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
@@ -327,7 +327,7 @@ ExternalCopyError::ExternalCopyError(ErrorType error_type, const char* message) 
 	error_type(error_type),
 	message(make_unique<ExternalCopyString>(message)) {}
 
-Local<Value> ExternalCopyError::CopyInto(bool transfer_in) {
+Local<Value> ExternalCopyError::CopyInto(bool /*transfer_in*/) {
 
 	// First make the exception w/ correct + message
 	Local<String> message(Local<String>::Cast(this->message->CopyInto(false)));
@@ -365,7 +365,7 @@ uint32_t ExternalCopyError::WorstCaseHeapSize() const {
 /**
  * ExternalCopyNull and ExternalCopyUndefined implementations
  */
-Local<Value> ExternalCopyNull::CopyInto(bool transfer_in) {
+Local<Value> ExternalCopyNull::CopyInto(bool /*transfer_in*/) {
 	return Null(Isolate::GetCurrent());
 }
 
@@ -373,7 +373,7 @@ uint32_t ExternalCopyNull::WorstCaseHeapSize() const {
 	return 16;
 }
 
-Local<Value> ExternalCopyUndefined::CopyInto(bool transfer_in) {
+Local<Value> ExternalCopyUndefined::CopyInto(bool /*transfer_in*/) {
 	return Undefined(Isolate::GetCurrent());
 }
 
@@ -386,7 +386,7 @@ uint32_t ExternalCopyUndefined::WorstCaseHeapSize() const {
  */
 ExternalCopyDate::ExternalCopyDate(const Local<Value>& value) : ExternalCopy(sizeof(ExternalCopyDate)), value(Local<Date>::Cast(value)->ValueOf()) {}
 
-Local<Value> ExternalCopyDate::CopyInto(bool transfer_in) {
+Local<Value> ExternalCopyDate::CopyInto(bool /*transfer_in*/) {
 	return Unmaybe(Date::New(Isolate::GetCurrent()->GetCurrentContext(), value));
 }
 
