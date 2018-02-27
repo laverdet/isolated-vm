@@ -178,7 +178,7 @@ class ExternalCopyDate : public ExternalCopy {
 class ExternalCopyArrayBuffer : public ExternalCopy {
 	private:
 		using ptr_t = std::unique_ptr<void, decltype(std::free)*>;
-		ptr_t value;
+		std::atomic<void*> value;
 		const size_t length;
 
 		/**
@@ -192,7 +192,7 @@ class ExternalCopyArrayBuffer : public ExternalCopy {
 			ptr_t cc_ptr;
 			size_t size;
 
-			Holder(const v8::Local<v8::ArrayBuffer>& buffer, ptr_t cc_ptr, size_t size);
+			Holder(const v8::Local<v8::ArrayBuffer>& buffer, void* cc_ptr, size_t size);
 			~Holder();
 			static void WeakCallbackV8(const v8::WeakCallbackInfo<void>& info);
 			static void WeakCallback(void* param);
@@ -201,6 +201,7 @@ class ExternalCopyArrayBuffer : public ExternalCopy {
 	public:
 		ExternalCopyArrayBuffer(const void* data, size_t length);
 		ExternalCopyArrayBuffer(ptr_t ptr, size_t length);
+		~ExternalCopyArrayBuffer();
 		explicit ExternalCopyArrayBuffer(const v8::Local<v8::ArrayBufferView>& handle);
 		static std::unique_ptr<ExternalCopyArrayBuffer> Transfer(const v8::Local<v8::ArrayBuffer>& buffer);
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;

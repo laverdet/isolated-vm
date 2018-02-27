@@ -398,8 +398,8 @@ uint32_t ExternalCopyDate::WorstCaseHeapSize() const {
 /**
  * ExternalCopyArrayBuffer implementation
  */
-ExternalCopyArrayBuffer::Holder::Holder(const Local<ArrayBuffer>& buffer, ptr_t cc_ptr, size_t size) :
-	v8_ptr(Isolate::GetCurrent(), buffer), cc_ptr(std::move(cc_ptr)), size(size)
+ExternalCopyArrayBuffer::Holder::Holder(const Local<ArrayBuffer>& buffer, void* cc_ptr, size_t size) :
+	v8_ptr(Isolate::GetCurrent(), buffer), cc_ptr(cc_ptr, std::free), size(size)
 {
 	v8_ptr.SetWeak(reinterpret_cast<void*>(this), &WeakCallbackV8, WeakCallbackType::kParameter);
 	IsolateEnvironment::GetCurrent()->AddWeakCallback(&this->v8_ptr, WeakCallback, this);
@@ -426,25 +426,29 @@ void ExternalCopyArrayBuffer::Holder::WeakCallback(void* param) {
 
 ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const void* data, size_t length) :
 	ExternalCopy(length + sizeof(ExternalCopyArrayBuffer)),
-	value(malloc(length), std::free),
+	value(malloc(length)),
 	length(length)
 {
-	std::memcpy(value.get(), data, length);
+	std::memcpy(value, data, length);
 }
 
 ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(ptr_t ptr, size_t length) :
 	ExternalCopy(length + sizeof(ExternalCopyArrayBuffer)),
-	value(std::move(ptr)),
+	value(ptr.release()),
 	length(length) {}
 
 ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const Local<ArrayBufferView>& handle) :
 	ExternalCopy(handle->ByteLength() + sizeof(ExternalCopyArrayBuffer)),
-	value(malloc(handle->ByteLength()), std::free),
+	value(malloc(handle->ByteLength())),
 	length(handle->ByteLength())
 {
-	if (handle->CopyContents(value.get(), length) != length) {
+	if (handle->CopyContents(value, length) != length) {
 		throw js_generic_error("Failed to copy array contents");
 	}
+}
+
+ExternalCopyArrayBuffer::~ExternalCopyArrayBuffer() {
+	free(value);
 }
 
 unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Local<ArrayBuffer>& handle) {
@@ -469,26 +473,25 @@ unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Loca
 		allocator->AdjustAllocatedSize(-static_cast<ptrdiff_t>(length));
 	}
 	assert(handle->IsNeuterable());
-	auto data_ptr = ptr_t(contents.Data(), std::free);
+	void* data_ptr = contents.Data();
 	handle->Neuter();
-	return std::make_unique<ExternalCopyArrayBuffer>(std::move(data_ptr), length);
+	return std::make_unique<ExternalCopyArrayBuffer>(data_ptr, length);
 }
 
 Local<Value> ExternalCopyArrayBuffer::CopyInto(bool transfer_in) {
 	if (transfer_in) {
-		auto tmp = ptr_t(nullptr, std::free);
-		std::swap(tmp, value);
-		if (!tmp) {
+		auto tmp = value.exchange(nullptr);
+		if (tmp == nullptr) {
 			throw js_generic_error("Array buffer is invalid");
 		}
 		UpdateSize(0);
-		Local<ArrayBuffer> array_buffer = ArrayBuffer::New(Isolate::GetCurrent(), tmp.get(), length);
-		new Holder(array_buffer, std::move(tmp), length);
+		Local<ArrayBuffer> array_buffer = ArrayBuffer::New(Isolate::GetCurrent(), tmp, length);
+		new Holder(array_buffer, tmp, length);
 		return array_buffer;
 	} else {
 		// There is a race condition here if you try to copy and transfer at the same time. Don't do
 		// that.
-		void* ptr = value.get();
+		void* ptr = value;
 		if (ptr == nullptr) {
 			throw js_generic_error("Array buffer is invalid");
 		}
@@ -503,7 +506,7 @@ uint32_t ExternalCopyArrayBuffer::WorstCaseHeapSize() const {
 }
 
 const void* ExternalCopyArrayBuffer::Data() const {
-	return value.get();
+	return value;
 }
 
 size_t ExternalCopyArrayBuffer::Length() const {
