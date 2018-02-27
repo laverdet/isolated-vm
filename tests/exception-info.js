@@ -47,18 +47,20 @@ try {
 }
 
 // Try async
-env[0].script.run(env[0].context).then(() => console.log('no stack')).catch(checkError);
+env[0].script.run(env[0].context).then(() => console.log('no stack')).catch(checkError).then(function() {
 
-// Try plain object error
-try {
-	env[0].isolate.compileSync('throw {}');
-	console.log('did not throw');
-} catch (err) {}
+	// Try plain object error
+	try {
+		env[0].isolate.compileSync('throw {}');
+		console.log('did not throw');
+	} catch (err) {}
 
-// Try disposed
-env[0].isolate.dispose();
-env[0].isolate.compileScript('1').catch(function(err) {
-	if (/Module/.test(err.stack)) {
-		console.log('pass');
-	}
+	// Try disposed
+	env[0].isolate.dispose();
+	env[0].isolate.compileScript('1').catch(function(err) {
+		if (/\.js/.test(err.stack)) {
+			console.log('pass');
+		}
+	});
+
 });
