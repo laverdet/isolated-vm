@@ -35,11 +35,12 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool tran
 		if (transfer_out) {
 			return ExternalCopyArrayBuffer::Transfer(array_buffer);
 		} else {
-			ArrayBuffer::Contents contents(array_buffer->GetContents());
-			return make_unique<ExternalCopyArrayBuffer>(contents.Data(), contents.ByteLength());
+			return make_unique<ExternalCopyArrayBuffer>(array_buffer);
 		}
+	} else if (value->IsSharedArrayBuffer()) {
+		return make_unique<ExternalCopySharedArrayBuffer>(value.As<SharedArrayBuffer>());
 	} else if (value->IsArrayBufferView()) {
-		Local<ArrayBufferView> view(Local<ArrayBufferView>::Cast(value));
+		Local<ArrayBufferView> view = value.As<ArrayBufferView>();
 		using ViewType = ExternalCopyArrayBufferView::ViewType;
 		ViewType type;
 		if (view->IsUint8Array()) {
@@ -65,14 +66,25 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool tran
 		} else {
 			assert(false);
 		}
-		if (transfer_out) {
-			Local<ArrayBuffer> array_buffer = view->Buffer();
+		// `Buffer()` returns a Local<ArrayBuffer> but it may be a Local<SharedArrayBuffer>
+		Local<Object> tmp = view->Buffer();
+		if (tmp->IsArrayBuffer()) {
+			Local<ArrayBuffer> array_buffer = tmp.As<ArrayBuffer>();
+			if (transfer_out) {
+				if (view->ByteOffset() != 0 || view->ByteLength() != array_buffer->ByteLength()) {
+					throw js_generic_error("Cannot transfer sliced TypedArray (this.byteOffset != 0 || this.byteLength != this.buffer.byteLength)");
+				}
+				return make_unique<ExternalCopyArrayBufferView>(ExternalCopyArrayBuffer::Transfer(array_buffer), type);
+			} else {
+				return make_unique<ExternalCopyArrayBufferView>(make_unique<ExternalCopyArrayBuffer>(array_buffer), type);
+			}
+		} else {
+			assert(tmp->IsSharedArrayBuffer());
+			Local<SharedArrayBuffer> array_buffer = tmp.As<SharedArrayBuffer>();
 			if (view->ByteOffset() != 0 || view->ByteLength() != array_buffer->ByteLength()) {
 				throw js_generic_error("Cannot transfer sliced TypedArray (this.byteOffset != 0 || this.byteLength != this.buffer.byteLength)");
 			}
-			return make_unique<ExternalCopyArrayBufferView>(ExternalCopyArrayBuffer::Transfer(array_buffer), type);
-		} else {
-			return make_unique<ExternalCopyArrayBufferView>(view, type);
+			return make_unique<ExternalCopyArrayBufferView>(make_unique<ExternalCopySharedArrayBuffer>(array_buffer), type);
 		}
 	} else if (value->IsObject()) {
 		Isolate* isolate = Isolate::GetCurrent();
@@ -442,14 +454,12 @@ ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(shared_ptr<void> ptr, size_t le
 	value(std::move(ptr)),
 	length(length) {}
 
-ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const Local<ArrayBufferView>& handle) :
+ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const Local<ArrayBuffer>& handle) :
 	ExternalCopyBytes(handle->ByteLength() + sizeof(ExternalCopyArrayBuffer)),
 	value(malloc(handle->ByteLength()), std::free),
 	length(handle->ByteLength())
 {
-	if (handle->CopyContents(value.get(), length) != length) {
-		throw js_generic_error("Failed to copy array contents");
-	}
+	std::memcpy(value.get(), handle->GetContents().Data(), length);
 }
 
 unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Local<ArrayBuffer>& handle) {
@@ -523,44 +533,100 @@ size_t ExternalCopyArrayBuffer::Length() const {
 }
 
 /**
+ * ExternalCopySharedArrayBuffer implementation
+ */
+ExternalCopySharedArrayBuffer::ExternalCopySharedArrayBuffer(const v8::Local<v8::SharedArrayBuffer>& handle) :
+	ExternalCopyBytes(handle->ByteLength() + sizeof(ExternalCopySharedArrayBuffer)),
+	length(handle->ByteLength())
+{
+	// Similar to ArrayBuffer::Transfer but different enough to make it not worth abstracting out..
+	size_t length = handle->ByteLength();
+	if (length == 0) {
+		throw js_generic_error("Array buffer is invalid");
+	}
+	if (handle->IsExternal()) {
+		// Buffer lifespan is not handled by v8.. attempt to recover from isolated-vm
+		Holder* ptr = reinterpret_cast<Holder*>(handle->GetAlignedPointerFromInternalField(0));
+		if (ptr == nullptr || ptr->magic != Holder::kMagic) { // dangerous pointer dereference
+			throw js_generic_error("Array buffer cannot be externalized");
+		}
+		// No race conditions here because only one thread can access `Holder`
+		value = ptr->cc_ptr;
+		return;
+	}
+	// In this case the buffer is internal and should be externalized
+	SharedArrayBuffer::Contents contents = handle->Externalize();
+	value = shared_ptr<void>(contents.Data(), std::free);
+	new Holder(handle, value, length);
+	// Adjust allocator memory down, and `Holder` will adjust memory back up
+	auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+	if (allocator != nullptr) {
+		allocator->AdjustAllocatedSize(-static_cast<ptrdiff_t>(length));
+	}
+}
+
+Local<Value> ExternalCopySharedArrayBuffer::CopyInto(bool /*transfer_in*/) {
+	auto ptr = GetSharedPointer();
+	Local<SharedArrayBuffer> array_buffer = SharedArrayBuffer::New(Isolate::GetCurrent(), ptr.get(), length);
+	new Holder(array_buffer, std::move(ptr), length);
+	return array_buffer;
+}
+
+uint32_t ExternalCopySharedArrayBuffer::WorstCaseHeapSize() const {
+	return length;
+}
+
+shared_ptr<void> ExternalCopySharedArrayBuffer::GetSharedPointer() const {
+	auto ptr = std::atomic_load(&value);
+	if (!ptr) {
+		throw js_generic_error("Array buffer is invalid");
+	}
+	return ptr;
+}
+
+/**
  * ExternalCopyArrayBufferView implementation
  */
-ExternalCopyArrayBufferView::ExternalCopyArrayBufferView(const Local<ArrayBufferView>& handle, ViewType type) :
-	ExternalCopy(sizeof(ExternalCopyArrayBufferView)),
-	buffer(std::make_unique<ExternalCopyArrayBuffer>(handle)),
-	type(type) {}
-
-ExternalCopyArrayBufferView::ExternalCopyArrayBufferView(std::unique_ptr<ExternalCopyArrayBuffer> buffer, ViewType type) :
+ExternalCopyArrayBufferView::ExternalCopyArrayBufferView(std::unique_ptr<ExternalCopyBytes> buffer, ViewType type) :
 	ExternalCopy(sizeof(ExternalCopyArrayBufferView)),
 	buffer(std::move(buffer)),
 	type(type) {}
 
-Local<Value> ExternalCopyArrayBufferView::CopyInto(bool transfer_in) {
-	Local<ArrayBuffer> buffer = Local<ArrayBuffer>::Cast(this->buffer->CopyInto(transfer_in));
+template <typename T>
+Local<Value> NewTypedArrayView(Local<T> buffer, ExternalCopyArrayBufferView::ViewType type) {
 	size_t length = buffer->ByteLength();
 	switch (type) {
-		case ViewType::Uint8:
+		case ExternalCopyArrayBufferView::ViewType::Uint8:
 			return Uint8Array::New(buffer, 0, length);
-		case ViewType::Uint8Clamped:
+		case ExternalCopyArrayBufferView::ViewType::Uint8Clamped:
 			return Uint8ClampedArray::New(buffer, 0, length);
-		case ViewType::Int8:
+		case ExternalCopyArrayBufferView::ViewType::Int8:
 			return Int8Array::New(buffer, 0, length);
-		case ViewType::Uint16:
+		case ExternalCopyArrayBufferView::ViewType::Uint16:
 			return Uint16Array::New(buffer, 0, length);
-		case ViewType::Int16:
+		case ExternalCopyArrayBufferView::ViewType::Int16:
 			return Int16Array::New(buffer, 0, length);
-		case ViewType::Uint32:
+		case ExternalCopyArrayBufferView::ViewType::Uint32:
 			return Uint32Array::New(buffer, 0, length);
-		case ViewType::Int32:
+		case ExternalCopyArrayBufferView::ViewType::Int32:
 			return Int32Array::New(buffer, 0, length);
-		case ViewType::Float32:
+		case ExternalCopyArrayBufferView::ViewType::Float32:
 			return Float32Array::New(buffer, 0, length);
-		case ViewType::Float64:
+		case ExternalCopyArrayBufferView::ViewType::Float64:
 			return Float64Array::New(buffer, 0, length);
-		case ViewType::DataView:
+		case ExternalCopyArrayBufferView::ViewType::DataView:
 			return DataView::New(buffer, 0, length);
 		default:
 			throw std::exception();
+	}
+}
+
+Local<Value> ExternalCopyArrayBufferView::CopyInto(bool transfer_in) {
+	Local<Value> buffer = this->buffer->CopyInto(transfer_in);
+	if (buffer->IsArrayBuffer()) {
+		return NewTypedArrayView(buffer.As<ArrayBuffer>(), type);
+	} else {
+		return NewTypedArrayView(buffer.As<SharedArrayBuffer>(), type);
 	}
 }
 

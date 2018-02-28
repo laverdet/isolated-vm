@@ -22,9 +22,10 @@ class Runnable;
  * Wrapper around Isolate with helpers to make working with multiple isolates easier.
  */
 class IsolateEnvironment {
-	// These are here so they can adjust `extra_allocated_memory`
+	// These are here so they can adjust `extra_allocated_memory`. TODO: Make this a method
 	friend class ExternalCopyBytes;
 	friend class ExternalCopyArrayBuffer;
+	friend class ExternalCopySharedArrayBuffer;
 	friend class ExternalCopyString;
 
 	friend class InspectorAgent;

@@ -5,16 +5,25 @@ let path = require('path');
 
 let ret = 0;
 function runTest(test, cb) {
+	// Copy env variables
 	let env = {};
 	for (let ii in process.env) {
 		env[ii] = process.env[ii];
 	}
 	env.NODE_PATH = __dirname;
-	let proc = spawn(
-		process.execPath,
-		[ path.join('tests', test) ],
-		{ env: env }
-	);
+
+	// Get extra args
+	let args = [];
+	let testPath = path.join('tests', test);
+	let content = fs.readFileSync(testPath, 'utf8');
+	let match = /node-args: *(.+)/.exec(content);
+	if (match) {
+		args = match[1].split(/ /g);
+	}
+	args.push(testPath);
+
+	// Launch process
+	let proc = spawn(process.execPath, args, { env });
 	proc.stdout.setEncoding('utf8');
 	proc.stderr.setEncoding('utf8');
 
@@ -27,6 +36,7 @@ function runTest(test, cb) {
 	});
 	proc.stdin.end();
 
+	// Wait for completion
 	process.stderr.write(`${test}: `);
 	proc.on('exit', function(code) {
 		if (stdout !== 'pass\n' || stderr !== '') {
@@ -50,7 +60,7 @@ function runTest(test, cb) {
 let cb = function() {
 	process.exit(ret);
 };
-fs.readdirSync('./tests').reverse().forEach(function(file) {
+fs.readdirSync('./tests').sort().reverse().forEach(function(file) {
 	cb = new function(cb) {
 		return function(err) {
 			if (err) return cb(err);

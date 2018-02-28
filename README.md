@@ -225,8 +225,13 @@ can then be quickly copied into any isolate.
 	large object. This only applies to ArrayBuffer and TypedArray instances.
 
 Primitive values can be copied exactly as they are. Date objects will be copied as as Dates.
-ArrayBuffers, TypedArrays, and DataViews will be copied in an efficient format. All other objects
-will be copied in seralized form using the [structured clone algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm).
+ArrayBuffers, TypedArrays, and DataViews will be copied in an efficient format. SharedArrayBuffers
+will simply copy a reference to the existing memory and when copied into another isolate the new
+SharedArrayBuffer will point to the same underlying data. After passing a SharedArrayBuffer to
+ExternalCopy for the first time isolated-vm will take over management of the underlying memory
+block, so a "copied" SharedArrayBuffer can outlive the isolate that created the memory originally.
+
+All other objects will be copied in seralized form using the [structured clone algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm).
 
 ##### `ExternalCopy.totalExternalSize` *[number]*
 

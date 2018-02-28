@@ -217,7 +217,7 @@ class ExternalCopyArrayBuffer : public ExternalCopyBytes {
 	public:
 		ExternalCopyArrayBuffer(const void* data, size_t length);
 		ExternalCopyArrayBuffer(std::shared_ptr<void> ptr, size_t length);
-		explicit ExternalCopyArrayBuffer(const v8::Local<v8::ArrayBufferView>& handle);
+		explicit ExternalCopyArrayBuffer(const v8::Local<v8::ArrayBuffer>& handle);
 
 		static std::unique_ptr<ExternalCopyArrayBuffer> Transfer(const v8::Local<v8::ArrayBuffer>& handle);
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
@@ -228,6 +228,22 @@ class ExternalCopyArrayBuffer : public ExternalCopyBytes {
 };
 
 /**
+ * SharedArrayBuffer instances
+ */
+class ExternalCopySharedArrayBuffer : public ExternalCopyBytes {
+	private:
+		std::shared_ptr<void> value;
+		const size_t length;
+
+	public:
+		explicit ExternalCopySharedArrayBuffer(const v8::Local<v8::SharedArrayBuffer>& handle);
+
+		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
+		uint32_t WorstCaseHeapSize() const final;
+		std::shared_ptr<void> GetSharedPointer() const;
+};
+
+/**
  * All types of TypedArray views w/ underlying buffer handle
  */
 class ExternalCopyArrayBufferView : public ExternalCopy {
@@ -235,12 +251,11 @@ class ExternalCopyArrayBufferView : public ExternalCopy {
 		enum class ViewType { Uint8, Uint8Clamped, Int8, Uint16, Int16, Uint32, Int32, Float32, Float64, DataView };
 
 	private:
-		std::unique_ptr<ExternalCopyArrayBuffer> buffer;
+		std::unique_ptr<ExternalCopyBytes> buffer;
 		ViewType type;
 
 	public:
-		ExternalCopyArrayBufferView(const v8::Local<v8::ArrayBufferView>& handle, ViewType type);
-		ExternalCopyArrayBufferView(std::unique_ptr<ExternalCopyArrayBuffer> buffer, ViewType type);
+		ExternalCopyArrayBufferView(std::unique_ptr<ExternalCopyBytes> buffer, ViewType type);
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
 		uint32_t WorstCaseHeapSize() const final;
 };
