@@ -27,7 +27,6 @@ class ExternalCopyHandle : public TransferableHandle {
 		ExternalCopyHandle(const ExternalCopyHandle&) = delete;
 		ExternalCopyHandle& operator= (const ExternalCopyHandle&) = delete;
 		~ExternalCopyHandle() final;
-		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();
 		std::unique_ptr<Transferable> TransferOut() final;
 
@@ -57,7 +56,6 @@ class ExternalCopyIntoHandle : public TransferableHandle {
 
 	public:
 		explicit ExternalCopyIntoHandle(std::shared_ptr<ExternalCopy> value, bool transfer_in);
-		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();
 		std::unique_ptr<Transferable> TransferOut() final;
 };

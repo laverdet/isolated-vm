@@ -42,7 +42,6 @@ class NativeModuleHandle : public TransferableHandle {
 
 	public:
 		explicit NativeModuleHandle(std::shared_ptr<NativeModule> module);
-		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();
 		static std::unique_ptr<NativeModuleHandle> New(v8::Local<v8::String> value);
 		std::unique_ptr<Transferable> TransferOut() final;

@@ -57,7 +57,7 @@ Local<String> RenderErrorStack(Local<Value> data) {
 		);
 	} else {
 		// StackTraceHolder
-		StackTraceHolder& that = *dynamic_cast<StackTraceHolder*>(ClassHandle::Unwrap(data.As<Object>()));
+		StackTraceHolder& that = *ClassHandle::Unwrap<StackTraceHolder>(data.As<Object>());
 		Local<StackTrace> stack_trace = Deref(that.stack_trace);
 		std::stringstream ss;
 		int size = stack_trace->GetFrameCount();
@@ -125,11 +125,6 @@ void AttachStackGetter(Local<Object> error, Local<Value> data) {
  * StackTraceHolder implementation
  */
 StackTraceHolder::StackTraceHolder(Local<StackTrace> stack_handle) : stack_trace(Isolate::GetCurrent(), stack_handle) {}
-
-IsolateEnvironment::IsolateSpecific<FunctionTemplate>& StackTraceHolder::TemplateSpecific() {
-	static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
-	return tmpl;
-}
 
 Local<FunctionTemplate> StackTraceHolder::Definition() {
 	return MakeClass("StackTraceHolder", nullptr);

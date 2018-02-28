@@ -37,11 +37,6 @@ class LibraryHandle : public TransferableHandle {
 		};
 
 	public:
-		static IsolateEnvironment::IsolateSpecific<FunctionTemplate>& TemplateSpecific() {
-			static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
-			return tmpl;
-		}
-
 		static Local<FunctionTemplate> Definition() {
 			return Inherit<TransferableHandle>(MakeClass(
 				"isolated_vm", nullptr,

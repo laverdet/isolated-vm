@@ -8,11 +8,6 @@ namespace ivm {
 
 class TransferableHandle : public ClassHandle {
 	public:
-		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific() {
-			static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate> tmpl;
-			return tmpl;
-		}
-
 		static v8::Local<v8::FunctionTemplate> Definition() {
 			return MakeClass("Transferable", nullptr);
 		}

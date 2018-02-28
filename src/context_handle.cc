@@ -22,11 +22,6 @@ ContextHandle::ContextHandle(
 	shared_ptr<RemoteHandle<Value>> global
 ) : isolate(std::move(isolate)), context(std::move(context)), global(std::move(global)) {}
 
-IsolateEnvironment::IsolateSpecific<FunctionTemplate>& ContextHandle::TemplateSpecific() {
-	static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
-	return tmpl;
-}
-
 Local<FunctionTemplate> ContextHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Context", nullptr,

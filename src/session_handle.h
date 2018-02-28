@@ -16,7 +16,6 @@ class SessionHandle : public ClassHandle {
 
 	public:
 		explicit SessionHandle(IsolateEnvironment& isolate);
-		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();
 
 		void CheckDisposed();

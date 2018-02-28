@@ -108,11 +108,6 @@ Local<Value> IsolateHandle::IsolateHandleTransferable::TransferIn() {
 
 IsolateHandle::IsolateHandle(shared_ptr<IsolateHolder> isolate) : isolate(std::move(isolate)) {}
 
-IsolateEnvironment::IsolateSpecific<FunctionTemplate>& IsolateHandle::TemplateSpecific() {
-	static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
-	return tmpl;
-}
-
 Local<FunctionTemplate> IsolateHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 	 "Isolate", ParameterizeCtor<decltype(&New), &New>(),
@@ -158,15 +153,14 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 		// Set snapshot
 		Local<Value> snapshot_handle = Unmaybe(options->Get(context, v8_symbol("snapshot")));
 		if (!snapshot_handle->IsUndefined()) {
-			if (
-				snapshot_handle->IsObject() &&
-				ClassHandle::GetFunctionTemplate<ExternalCopyHandle>()->HasInstance(snapshot_handle.As<Object>())
-			) {
-				ExternalCopyHandle* copy_handle = dynamic_cast<ExternalCopyHandle*>(ClassHandle::Unwrap(snapshot_handle.As<Object>()));
-				ExternalCopyArrayBuffer* copy_ptr = dynamic_cast<ExternalCopyArrayBuffer*>(copy_handle->GetValue().get());
-				if (copy_ptr != nullptr) {
-					snapshot_blob = copy_ptr->GetSharedPointer();
-					snapshot_blob_length = copy_ptr->Length();
+			if (snapshot_handle->IsObject()) {
+				ExternalCopyHandle* copy_handle = ClassHandle::Unwrap<ExternalCopyHandle>(snapshot_handle.As<Object>());
+				if (copy_handle != nullptr) {
+					ExternalCopyArrayBuffer* copy_ptr = dynamic_cast<ExternalCopyArrayBuffer*>(copy_handle->GetValue().get());
+					if (copy_ptr != nullptr) {
+						snapshot_blob = copy_ptr->GetSharedPointer();
+						snapshot_blob_length = copy_ptr->Length();
+					}
 				}
 			}
 			if (!snapshot_blob) {
@@ -279,10 +273,12 @@ struct CompileScriptRunner : public ThreePhaseTask {
 	shared_ptr<IsolateHolder> isolate;
 	unique_ptr<ExternalCopyString> code_string;
 	unique_ptr<ScriptOriginHolder> script_origin_holder;
-	shared_ptr<ExternalCopyArrayBuffer> cached_data_blob; // also phase 3
+	shared_ptr<void> cached_data_in;
+	size_t cached_data_in_size = 0;
 	bool produce_cached_data { false };
 	// phase 3
 	shared_ptr<RemoteHandle<UnboundScript>> script;
+	shared_ptr<ExternalCopyArrayBuffer> cached_data_out;
 	bool supplied_cached_data { false };
 	bool cached_data_rejected { false };
 
@@ -297,15 +293,17 @@ struct CompileScriptRunner : public ThreePhaseTask {
 			// Get cached data blob
 			Local<Value> cached_data_handle = Unmaybe(options->Get(context, v8_symbol("cachedData")));
 			if (!cached_data_handle->IsUndefined()) {
-				if (
-					!cached_data_handle->IsObject() ||
-					!ClassHandle::GetFunctionTemplate<ExternalCopyHandle>()->HasInstance(cached_data_handle.As<Object>())
-				) {
-					throw js_type_error("`cachedData` must be an ExternalCopy to ArrayBuffer");
+				if (cached_data_handle->IsObject()) {
+					ExternalCopyHandle* copy_handle = ClassHandle::Unwrap<ExternalCopyHandle>(cached_data_handle.As<Object>());
+					if (copy_handle != nullptr) {
+						ExternalCopyArrayBuffer* copy_ptr = dynamic_cast<ExternalCopyArrayBuffer*>(copy_handle->GetValue().get());
+						if (copy_ptr != nullptr) {
+							cached_data_in = copy_ptr->GetSharedPointer();
+							cached_data_in_size = copy_ptr->Length();
+						}
+					}
 				}
-				ExternalCopyHandle& copy_handle = *dynamic_cast<ExternalCopyHandle*>(ClassHandle::Unwrap(cached_data_handle.As<Object>()));
-				cached_data_blob = std::dynamic_pointer_cast<ExternalCopyArrayBuffer>(copy_handle.GetValue());
-				if (!cached_data_blob) {
+				if (!cached_data_in) {
 					throw js_type_error("`cachedData` must be an ExternalCopy to ArrayBuffer");
 				}
 			}
@@ -326,9 +324,9 @@ struct CompileScriptRunner : public ThreePhaseTask {
 		ScriptOrigin script_origin = script_origin_holder->ToScriptOrigin();
 		ScriptCompiler::CompileOptions compile_options = ScriptCompiler::kNoCompileOptions;
 		unique_ptr<ScriptCompiler::CachedData> cached_data = nullptr;
-		if (cached_data_blob) {
+		if (cached_data_in) {
 			compile_options = ScriptCompiler::kConsumeCodeCache;
-			cached_data = std::make_unique<ScriptCompiler::CachedData>(reinterpret_cast<const uint8_t*>(cached_data_blob->Data()), cached_data_blob->Length());
+			cached_data = std::make_unique<ScriptCompiler::CachedData>(reinterpret_cast<const uint8_t*>(cached_data_in.get()), cached_data_in_size);
 		} else if (produce_cached_data) {
 			compile_options = ScriptCompiler::kProduceCodeCache;
 		}
@@ -338,14 +336,14 @@ struct CompileScriptRunner : public ThreePhaseTask {
 		));
 
 		// Check cached data flags
-		if (cached_data_blob) {
+		if (cached_data_in) {
 			supplied_cached_data = true;
 			cached_data_rejected = source.GetCachedData()->rejected;
-			cached_data_blob.reset();
+			cached_data_in.reset();
 		} else if (produce_cached_data) {
 			const ScriptCompiler::CachedData* cached_data = source.GetCachedData();
 			assert(cached_data != nullptr);
-			cached_data_blob = std::make_shared<ExternalCopyArrayBuffer>((void*)cached_data->data, cached_data->length);
+			cached_data_out = std::make_shared<ExternalCopyArrayBuffer>((void*)cached_data->data, cached_data->length);
 		}
 	}
 
@@ -356,8 +354,8 @@ struct CompileScriptRunner : public ThreePhaseTask {
 		Local<Context> context = isolate->GetCurrentContext();
 		if (supplied_cached_data) {
 			Unmaybe(value->Set(context, v8_symbol("cachedDataRejected"), Boolean::New(isolate, cached_data_rejected)));
-		} else if (cached_data_blob) {
-			Unmaybe(value->Set(context, v8_symbol("cachedData"), ClassHandle::NewInstance<ExternalCopyHandle>(cached_data_blob)));
+		} else if (cached_data_out) {
+			Unmaybe(value->Set(context, v8_symbol("cachedData"), ClassHandle::NewInstance<ExternalCopyHandle>(std::move(cached_data_out))));
 		}
 		return value;
 	}

@@ -279,6 +279,15 @@ class ClassHandle {
 			PrivateConstructorError(info);
 		}
 
+		/**
+		 * Returns a unique IsolateSpecific for each subclass
+		 */
+		template <typename T>
+		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific() {
+			static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate> tmpl;
+			return tmpl;
+		}
+
 	protected:
 		/**
 		 * Sets up this object's FunctionTemplate inside the current isolate
@@ -389,7 +398,7 @@ class ClassHandle {
 		 */
 		template <typename T>
 		static v8::Local<v8::FunctionTemplate> GetFunctionTemplate() {
-			IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& specific = T::TemplateSpecific();
+			IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& specific = TemplateSpecific<T>();
 			v8::MaybeLocal<v8::FunctionTemplate> maybe_tmpl = specific.Deref();
 			v8::Local<v8::FunctionTemplate> tmpl;
 			if (maybe_tmpl.ToLocal(&tmpl)) {
@@ -414,7 +423,17 @@ class ClassHandle {
 		/**
 		 * Pull out native pointer from v8 handle
 		 */
-		static ClassHandle* Unwrap(v8::Local<v8::Object> handle) {
+		template <typename T>
+		static T* Unwrap(v8::Local<v8::Object> handle) {
+			assert(!handle.IsEmpty());
+			if (!ClassHandle::GetFunctionTemplate<T>()->HasInstance(handle)) {
+				return nullptr;
+			}
+			assert(handle->InternalFieldCount() > 0);
+			return dynamic_cast<T*>(static_cast<ClassHandle*>(handle->GetAlignedPointerFromInternalField(0)));
+		}
+
+		static ClassHandle* UnwrapClassHandle(v8::Local<v8::Object> handle) {
 			assert(!handle.IsEmpty());
 			assert(handle->InternalFieldCount() > 0);
 			return static_cast<ClassHandle*>(handle->GetAlignedPointerFromInternalField(0));

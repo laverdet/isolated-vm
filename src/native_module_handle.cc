@@ -46,11 +46,6 @@ Local<Value> NativeModuleHandle::NativeModuleTransferable::TransferIn() {
  */
 NativeModuleHandle::NativeModuleHandle(shared_ptr<NativeModule> module) : module(std::move(module)) {}
 
-IsolateEnvironment::IsolateSpecific<FunctionTemplate>& NativeModuleHandle::TemplateSpecific() {
-	static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
-	return tmpl;
-}
-
 Local<FunctionTemplate> NativeModuleHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 		"NativeModule", ParameterizeCtor<decltype(&New), &New>(),

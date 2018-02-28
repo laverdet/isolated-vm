@@ -54,7 +54,6 @@ class ReferenceHandle : public TransferableHandle {
 			std::shared_ptr<RemoteHandle<v8::Context>> context,
 			TypeOf type_of
 		);
-		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();
 		std::unique_ptr<Transferable> TransferOut() final;
 		static std::unique_ptr<ReferenceHandle> New(v8::Local<v8::Value> var);
@@ -95,7 +94,6 @@ class DereferenceHandle : public TransferableHandle {
 		};
 
 	public:
-		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();
 		DereferenceHandle(std::shared_ptr<IsolateHolder> isolate, std::shared_ptr<RemoteHandle<v8::Value>> reference);
 		std::unique_ptr<Transferable> TransferOut() final;

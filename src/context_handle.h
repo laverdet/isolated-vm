@@ -35,7 +35,6 @@ class ContextHandle : public TransferableHandle {
 			std::shared_ptr<RemoteHandle<v8::Context>> context,
 			std::shared_ptr<RemoteHandle<v8::Value>> global
 		);
-		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();
 		std::unique_ptr<Transferable> TransferOut() final;
 		void CheckDisposed();

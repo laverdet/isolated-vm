@@ -101,11 +101,6 @@ SessionHandle::SessionHandle(IsolateEnvironment& isolate) : session(std::make_sh
 	session->isolate = IsolateEnvironment::GetCurrentHolder();
 }
 
-IsolateEnvironment::IsolateSpecific<FunctionTemplate>& SessionHandle::TemplateSpecific() {
-	static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
-	return tmpl;
-}
-
 Local<FunctionTemplate> SessionHandle::Definition() {
 	return MakeClass(
 		"Session", nullptr,

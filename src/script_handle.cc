@@ -23,11 +23,6 @@ ScriptHandle::ScriptHandle(
 	shared_ptr<RemoteHandle<UnboundScript>> script
 ) : isolate(std::move(isolate)), script(std::move(script)) {}
 
-IsolateEnvironment::IsolateSpecific<FunctionTemplate>& ScriptHandle::TemplateSpecific() {
-	static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
-	return tmpl;
-}
-
 Local<FunctionTemplate> ScriptHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Script", nullptr,

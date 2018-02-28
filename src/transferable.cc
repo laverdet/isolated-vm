@@ -11,10 +11,9 @@ namespace ivm {
 
 unique_ptr<Transferable> Transferable::TransferOut(const Local<Value>& value) {
 	if (value->IsObject()) {
-		Local<Object> object = value.As<Object>();
-		if (object->InternalFieldCount() > 0 && ClassHandle::GetFunctionTemplate<TransferableHandle>()->HasInstance(object)) {
-			ClassHandle* handle = ClassHandle::Unwrap(object);
-			return dynamic_cast<TransferableHandle*>(handle)->TransferOut();
+		TransferableHandle* ptr = ClassHandle::Unwrap<TransferableHandle>(value.As<Object>());
+		if (ptr != nullptr) {
+			return ptr->TransferOut();
 		}
 	}
 	unique_ptr<Transferable> copy = ExternalCopy::CopyIfPrimitive(value);

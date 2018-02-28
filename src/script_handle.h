@@ -32,7 +32,6 @@ class ScriptHandle : public TransferableHandle {
 			std::shared_ptr<RemoteHandle<v8::UnboundScript>> script
 		);
 
-		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific();
 		static v8::Local<v8::FunctionTemplate> Definition();
 		std::unique_ptr<Transferable> TransferOut() final;
 

@@ -29,11 +29,6 @@ ExternalCopyHandle::~ExternalCopyHandle() {
 	}
 }
 
-IsolateEnvironment::IsolateSpecific<FunctionTemplate>& ExternalCopyHandle::TemplateSpecific() {
-	static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
-	return tmpl;
-}
-
 Local<FunctionTemplate> ExternalCopyHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 		"ExternalCopy", ParameterizeCtor<decltype(&New), &New>(),
@@ -127,11 +122,6 @@ Local<Value> ExternalCopyIntoHandle::ExternalCopyIntoTransferable::TransferIn() 
 }
 
 ExternalCopyIntoHandle::ExternalCopyIntoHandle(shared_ptr<ExternalCopy> value, bool transfer_in) : value(std::move(value)), transfer_in(transfer_in) {}
-
-IsolateEnvironment::IsolateSpecific<FunctionTemplate>& ExternalCopyIntoHandle::TemplateSpecific() {
-	static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
-	return tmpl;
-}
 
 Local<FunctionTemplate> ExternalCopyIntoHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass("ExternalCopyInto", nullptr));

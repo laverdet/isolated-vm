@@ -52,11 +52,6 @@ ReferenceHandle::ReferenceHandle(
 	TypeOf type_of
 ) : isolate(std::move(isolate)), reference(std::move(reference)), context(std::move(context)), type_of(type_of) {}
 
-IsolateEnvironment::IsolateSpecific<FunctionTemplate>& ReferenceHandle::TemplateSpecific() {
-	static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
-	return tmpl;
-}
-
 Local<FunctionTemplate> ReferenceHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Reference", ParameterizeCtor<decltype(&New), &New>(),
@@ -395,11 +390,6 @@ Local<Value> DereferenceHandle::DereferenceHandleTransferable::TransferIn() {
 	} else {
 		throw js_type_error("Cannot dereference this into target isolate");
 	}
-}
-
-IsolateEnvironment::IsolateSpecific<FunctionTemplate>& DereferenceHandle::TemplateSpecific() {
-	static IsolateEnvironment::IsolateSpecific<FunctionTemplate> tmpl;
-	return tmpl;
 }
 
 Local<FunctionTemplate> DereferenceHandle::Definition() {
