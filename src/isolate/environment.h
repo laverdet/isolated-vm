@@ -8,10 +8,10 @@
 #include <atomic>
 #include <cassert>
 #include <functional>
-#include <map>
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <unordered_map>
 #include <vector>
 
 namespace ivm {
@@ -207,7 +207,7 @@ class IsolateEnvironment {
 			 * may be destroyed before that happens. So we stash them here and wrap the whole in a
 			 * shared_ptr so we can ensure access to them even when the module is being torn down.
 			 */
-			std::map<v8::Isolate*, IsolateEnvironment*> isolate_map;
+			std::unordered_map<v8::Isolate*, IsolateEnvironment*> isolate_map;
 			std::mutex lookup_mutex;
 			bool did_shutdown = false;
 		};
@@ -232,7 +232,7 @@ class IsolateEnvironment {
 		v8::Persistent<v8::Value> rejected_promise_error;
 
 		std::vector<std::unique_ptr<v8::Eternal<v8::Data>>> specifics;
-		std::map<v8::Persistent<v8::Object>*, std::pair<void(*)(void*), void*>> weak_persistents;
+		std::unordered_map<v8::Persistent<v8::Object>*, std::pair<void(*)(void*), void*>> weak_persistents;
 
 	public:
 		std::atomic<int> terminate_depth { 0 };

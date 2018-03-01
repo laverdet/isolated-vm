@@ -4,7 +4,7 @@
 #include <condition_variable>
 #include <memory>
 #include <mutex>
-#include <set>
+#include <unordered_set>
 
 namespace ivm {
 class IsolateEnvironment;
@@ -25,7 +25,7 @@ class InspectorAgent : public v8_inspector::V8InspectorClient {
 		std::mutex mutex;
 		struct {
 			std::mutex mutex;
-			std::set<InspectorSession*> active;
+			std::unordered_set<InspectorSession*> active;
 		} sessions;
 		bool running = false;
 
