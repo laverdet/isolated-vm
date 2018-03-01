@@ -206,43 +206,101 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate) {
 		// Shortcut when calling a sync method belonging to the currently entered isolate. This avoids
 		// the deadlock protection below
 		Phase2();
+
 	} else {
 
-		// Deadlock protection
-		if (!IsolateEnvironment::ExecutorLock::IsDefaultThread()) {
+		bool is_recursive = Locker::IsLocked(second_isolate_ref->GetIsolate());
+		if (IsolateEnvironment::ExecutorLock::IsDefaultThread() || is_recursive) {
+			// This is the simple sync runner case
+			unique_ptr<ExternalCopy> error;
+			{
+				IsolateEnvironment::ExecutorLock lock(*second_isolate_ref);
+				FunctorRunners::RunCatchExternal(second_isolate_ref->DefaultContext(), [ this, is_recursive, &second_isolate_ref ]() {
+					// Run Phase2 and externalize errors
+					Phase2();
+					if (!is_recursive) {
+						second_isolate_ref->TaskEpilogue();
+					}
+				}, [ &error ](unique_ptr<ExternalCopy> error_inner) {
+
+					// We need to stash the error in the outer unique_ptr because the executor lock is still up
+					error = std::move(error_inner);
+				});
+			}
+
+			if (error) {
+				// Throw to outer isolate
+				Isolate* isolate = Isolate::GetCurrent();
+				Local<Value> error_copy = error->CopyInto();
+				if (error_copy->IsObject()) {
+					StackTraceHolder::ChainStack(error_copy.As<Object>(), StackTrace::CurrentStackTrace(isolate, 10));
+				}
+				isolate->ThrowException(error_copy);
+				throw js_runtime_error();
+			}
+
+		} else if (second_isolate_ref->IsDefault()) {
+
+			// In this case we asyncronously call the default thread and suspend this thread
+			struct AsyncRunner : public Runnable {
+				bool did_run = false;
+				ThreePhaseTask& self;
+				IsolateEnvironment::Scheduler::AsyncWait& wait;
+				unique_ptr<ExternalCopy>& error;
+
+				AsyncRunner(
+					ThreePhaseTask& self,
+					IsolateEnvironment::Scheduler::AsyncWait& wait,
+					unique_ptr<ExternalCopy>& error
+				) : self(self), wait(wait), error(error) {}
+
+				~AsyncRunner() {
+					if (!did_run) {
+						error = std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::Error, "Isolate is disposed");
+					}
+					wait.Wake();
+				}
+
+				void Run() {
+					did_run = true;
+					FunctorRunners::RunCatchExternal(IsolateEnvironment::GetCurrent()->DefaultContext(), [ this ]() {
+						// Now in the default thread
+						self.Phase2();
+						IsolateEnvironment::GetCurrent()->TaskEpilogue();
+					}, [ this ](unique_ptr<ExternalCopy> error) {
+						this->error = std::move(error);
+					});
+				}
+			};
+
+			unique_ptr<ExternalCopy> error;
+			{
+				// Scope to unlock v8 in this thread and set up the wait
+				IsolateEnvironment::Scheduler::AsyncWait wait(IsolateEnvironment::GetCurrent()->scheduler);
+				Unlocker unlocker(Isolate::GetCurrent());
+				second_isolate.ScheduleTask(std::make_unique<AsyncRunner>(*this, wait, error), false, true);
+			}
+
+			// At this point thread synchronization is done and Phase2() has finished
+			if (error) {
+				Isolate* isolate = Isolate::GetCurrent();
+				Local<Value> error_copy = error->CopyInto();
+				if (error_copy->IsObject()) {
+					StackTraceHolder::ChainStack(error_copy.As<Object>(), StackTrace::CurrentStackTrace(isolate, 10));
+				}
+				isolate->ThrowException(error_copy);
+				throw js_runtime_error();
+			}
+
+		} else {
+
+			// ~ very specific error message ~
 			throw js_generic_error(
-				"Calling a synchronous isolated-vm function from within an asynchronous isolated-vm function is not allowed."
+				"Calling a synchronous isolated-vm function on a non-default isolate from within an asynchronous isolated-vm function is not allowed."
 			);
 		}
-
-		// Run Phase2 and externalize errors
-		unique_ptr<ExternalCopy> error;
-		bool is_recursive = Locker::IsLocked(second_isolate_ref->GetIsolate());
-		{
-			IsolateEnvironment::ExecutorLock lock(*second_isolate_ref);
-			FunctorRunners::RunCatchExternal(second_isolate_ref->DefaultContext(), [ this, is_recursive, &second_isolate_ref ]() {
-				Phase2();
-				if (!is_recursive) {
-					second_isolate_ref->TaskEpilogue();
-				}
-			}, [ &error ](unique_ptr<ExternalCopy> error_inner) {
-
-				// We need to stash the error in the outer unique_ptr because the executor lock is still up
-				error = std::move(error_inner);
-			});
-		}
-
-		if (error) {
-			// Throw to outer isolate
-			Isolate* isolate = Isolate::GetCurrent();
-			Local<Value> error_copy = error->CopyInto();
-			if (error_copy->IsObject()) {
-				StackTraceHolder::ChainStack(error_copy.As<Object>(), StackTrace::CurrentStackTrace(isolate, 10));
-			}
-			isolate->ThrowException(error_copy);
-			throw js_runtime_error();
-		}
 	}
+
 	// Final phase
 	return Phase3();
 }

@@ -158,6 +158,22 @@ void IsolateEnvironment::Scheduler::Lock::InterruptIsolate(IsolateEnvironment& i
 	isolate->RequestInterrupt(AsyncCallbackInterrupt, static_cast<void*>(&isolate));
 }
 
+IsolateEnvironment::Scheduler::AsyncWait::AsyncWait(Scheduler& scheduler) : scheduler(scheduler), lock(scheduler.wait_mutex) {}
+
+IsolateEnvironment::Scheduler::AsyncWait::~AsyncWait() {
+	while (!done) {
+		scheduler.wait_cv.wait(lock);
+	}
+}
+
+void IsolateEnvironment::Scheduler::AsyncWait::Wake() {
+	{
+		std::lock_guard<std::recursive_mutex> lock(scheduler.wait_mutex);
+		done = true;
+	}
+	scheduler.wait_cv.notify_one();
+}
+
 /**
  * HeapCheck implementation
  */

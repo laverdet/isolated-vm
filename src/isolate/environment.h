@@ -32,6 +32,7 @@ class IsolateEnvironment {
 	friend class InspectorSession;
 	friend class IsolateHolder;
 	friend class LimitedAllocator;
+	friend class ThreePhaseTask;
 
 	public:
 		/**
@@ -77,6 +78,7 @@ class IsolateEnvironment {
 				enum class Status { Waiting, Running };
 				// A Scheduler::Lock is needed to interact with the task queue
 				class Lock {
+					friend class AsyncWait;
 					private:
 						Scheduler& scheduler;
 						std::unique_lock<std::mutex> lock;
@@ -98,12 +100,30 @@ class IsolateEnvironment {
 						void InterruptIsolate(IsolateEnvironment& isolate);
 				};
 
+				// Scheduler::AsyncWait will pause the current thread until woken up by another thread
+				class AsyncWait {
+					private:
+						Scheduler& scheduler;
+						std::unique_lock<std::recursive_mutex> lock;
+						bool done = false;
+					public:
+						explicit AsyncWait(Scheduler& scheduler);
+						AsyncWait(const AsyncWait&) = delete;
+						AsyncWait& operator= (const AsyncWait&) = delete;
+						~AsyncWait();
+						void Wake();
+				};
+
 			private:
 				static uv_async_t root_async;
 				static thread_pool_t thread_pool;
 				static std::atomic<int> uv_ref_count;
 				Status status = Status::Waiting;
 				std::mutex mutex;
+				// This is recursive because AsyncWait.Wake() might be called from the same thread in the
+				// case the isolate was disposed.
+				std::recursive_mutex wait_mutex;
+				std::condition_variable_any wait_cv;
 				std::queue<std::unique_ptr<Runnable>> tasks;
 				std::queue<std::unique_ptr<Runnable>> interrupts;
 				thread_pool_t::affinity_t thread_affinity;
