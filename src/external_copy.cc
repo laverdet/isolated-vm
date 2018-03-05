@@ -517,7 +517,7 @@ Local<Value> ExternalCopyArrayBuffer::CopyInto(bool transfer_in) {
 		return array_buffer;
 	} else {
 		auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
-		if (allocator && !allocator->Check(length)) {
+		if (allocator != nullptr && !allocator->Check(length)) {
 			// ArrayBuffer::New will crash the process if there is an allocation failure, so we check
 			// here.
 			throw js_range_error("Array buffer allocation failed");

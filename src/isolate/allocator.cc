@@ -20,10 +20,7 @@ bool LimitedAllocator::Check(const size_t length) {
 		}
 		next_check = v8_heap + env.extra_allocated_memory + length + 1024 * 1024;
 	}
-	if (v8_heap + env.extra_allocated_memory + length > limit) {
-		return false;
-	}
-	return true;
+	return v8_heap + env.extra_allocated_memory + length <= limit;
 }
 
 LimitedAllocator::LimitedAllocator(IsolateEnvironment& env, size_t limit) : env(env), limit(limit), v8_heap(1024 * 1024 * 4), next_check(1024 * 1024) {}
