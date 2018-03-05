@@ -23,7 +23,6 @@ bool LimitedAllocator::Check(const size_t length) {
 	if (v8_heap + env.extra_allocated_memory + length > limit) {
 		return false;
 	}
-	env.extra_allocated_memory += length;
 	return true;
 }
 
@@ -31,6 +30,7 @@ LimitedAllocator::LimitedAllocator(IsolateEnvironment& env, size_t limit) : env(
 
 void* LimitedAllocator::Allocate(size_t length) {
 	if (Check(length)) {
+		env.extra_allocated_memory += length;
 		return calloc(length, 1);
 	} else {
 		++failures;
@@ -40,6 +40,7 @@ void* LimitedAllocator::Allocate(size_t length) {
 
 void* LimitedAllocator::AllocateUninitialized(size_t length) {
 	if (Check(length)) {
+		env.extra_allocated_memory += length;
 		return malloc(length);
 	} else {
 		++failures;

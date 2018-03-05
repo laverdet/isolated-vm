@@ -66,6 +66,17 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool tran
 		} else {
 			assert(false);
 		}
+
+		// Sometimes TypedArrays don't actually have a real buffer allocated for them. The call to
+		// `Buffer()` below will force v8 to attempt to create a buffer if it doesn't exist, and if
+		// there is an allocation failure it will crash the process.
+		if (!view->HasBuffer()) {
+			LimitedAllocator* allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+			if (allocator != nullptr && !allocator->Check(view->ByteLength())) {
+				throw js_range_error("Array buffer allocation failed");
+			}
+		}
+
 		// `Buffer()` returns a Local<ArrayBuffer> but it may be a Local<SharedArrayBuffer>
 		Local<Object> tmp = view->Buffer();
 		if (tmp->IsArrayBuffer()) {
@@ -505,6 +516,12 @@ Local<Value> ExternalCopyArrayBuffer::CopyInto(bool transfer_in) {
 		new Holder(array_buffer, std::move(tmp), length);
 		return array_buffer;
 	} else {
+		auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+		if (allocator && !allocator->Check(length)) {
+			// ArrayBuffer::New will crash the process if there is an allocation failure, so we check
+			// here.
+			throw js_range_error("Array buffer allocation failed");
+		}
 		auto ptr = GetSharedPointer();
 		Local<ArrayBuffer> array_buffer = ArrayBuffer::New(Isolate::GetCurrent(), length);
 		std::memcpy(array_buffer->GetContents().Data(), ptr.get(), length);

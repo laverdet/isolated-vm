@@ -11,6 +11,15 @@ let str = '1,2,3,4,5,6,7,8';
 	}
 }
 
+{
+	// ArrayBuffer::New will crash if the allocator fails
+	let isolate = new ivm.Isolate({ memoryLimit: 16 });
+	let array = new ivm.ExternalCopy(new Uint8Array(1024 * 1024 * 16));
+	try {
+		isolate.createContextSync().globalReference().setSync('a', array.copyInto());
+	} catch (err) {}
+}
+
 // Test transfer out
 {
 	let buffer = (new Uint8Array(arr)).buffer;
