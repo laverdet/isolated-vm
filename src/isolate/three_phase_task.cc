@@ -196,13 +196,16 @@ void ThreePhaseTask::Phase2RunnerIgnored::Run() {
 /**
  * RunSync implementation
  */
-Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate) {
+Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_async) {
 	// Grab a reference to second isolate
 	auto second_isolate_ref = second_isolate.GetIsolate();
 	if (!second_isolate_ref) {
 		throw js_generic_error("Isolated is disposed");
 	}
 	if (second_isolate_ref->GetIsolate() == Isolate::GetCurrent()) {
+		if (allow_async) {
+			throw js_generic_error("This function may not be called from the default thread");
+		}
 		// Shortcut when calling a sync method belonging to the currently entered isolate. This avoids
 		// the deadlock protection below
 		Phase2();
@@ -211,6 +214,10 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate) {
 
 		bool is_recursive = Locker::IsLocked(second_isolate_ref->GetIsolate());
 		if (IsolateEnvironment::ExecutorLock::IsDefaultThread() || is_recursive) {
+			if (allow_async) {
+				throw js_generic_error("This function may not be called from the default thread");
+			}
+
 			// This is the simple sync runner case
 			unique_ptr<ExternalCopy> error;
 			{
@@ -243,7 +250,9 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate) {
 
 			// In this case we asyncronously call the default thread and suspend this thread
 			struct AsyncRunner : public Runnable {
+				bool allow_async = false;
 				bool did_run = false;
+				bool is_async = false;
 				ThreePhaseTask& self;
 				IsolateEnvironment::Scheduler::AsyncWait& wait;
 				unique_ptr<ExternalCopy>& error;
@@ -251,21 +260,31 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate) {
 				AsyncRunner(
 					ThreePhaseTask& self,
 					IsolateEnvironment::Scheduler::AsyncWait& wait,
+					bool allow_async,
 					unique_ptr<ExternalCopy>& error
-				) : self(self), wait(wait), error(error) {}
+				) : allow_async(allow_async), self(self), wait(wait), error(error) {}
 
-				~AsyncRunner() {
+				AsyncRunner(const AsyncRunner&) = delete;
+				AsyncRunner& operator=(const AsyncRunner&) = delete;
+
+				~AsyncRunner() final {
 					if (!did_run) {
 						error = std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::Error, "Isolate is disposed");
 					}
-					wait.Wake();
+					if (!is_async) {
+						wait.Wake();
+					}
 				}
 
-				void Run() {
+				void Run() final {
 					did_run = true;
 					FunctorRunners::RunCatchExternal(IsolateEnvironment::GetCurrent()->DefaultContext(), [ this ]() {
 						// Now in the default thread
-						self.Phase2();
+						if (allow_async) {
+							is_async = self.Phase2Async(wait);
+						} else {
+							self.Phase2();
+						}
 						IsolateEnvironment::GetCurrent()->TaskEpilogue();
 					}, [ this ](unique_ptr<ExternalCopy> error) {
 						this->error = std::move(error);
@@ -273,17 +292,20 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate) {
 				}
 			};
 
+			Isolate* isolate = Isolate::GetCurrent();
 			unique_ptr<ExternalCopy> error;
 			{
-				// Scope to unlock v8 in this thread and set up the wait
+				// Setup condition variable to sleep this thread
 				IsolateEnvironment::Scheduler::AsyncWait wait(IsolateEnvironment::GetCurrent()->scheduler);
-				Unlocker unlocker(Isolate::GetCurrent());
-				second_isolate.ScheduleTask(std::make_unique<AsyncRunner>(*this, wait, error), false, true);
+				// Scope to unlock v8 in this thread and set up the wait
+				Unlocker unlocker(isolate);
+				// Run it and sleep
+				second_isolate.ScheduleTask(std::make_unique<AsyncRunner>(*this, wait, allow_async, error), false, true);
+				wait.Wait();
 			}
 
 			// At this point thread synchronization is done and Phase2() has finished
 			if (error) {
-				Isolate* isolate = Isolate::GetCurrent();
 				Local<Value> error_copy = error->CopyInto();
 				if (error_copy->IsObject()) {
 					StackTraceHolder::ChainStack(error_copy.As<Object>(), StackTrace::CurrentStackTrace(isolate, 10));

@@ -110,7 +110,8 @@ class IsolateEnvironment {
 						explicit AsyncWait(Scheduler& scheduler);
 						AsyncWait(const AsyncWait&) = delete;
 						AsyncWait& operator= (const AsyncWait&) = delete;
-						~AsyncWait();
+						~AsyncWait() = default;
+						void Wait();
 						void Wake();
 				};
 

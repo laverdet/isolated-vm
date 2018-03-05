@@ -20,8 +20,13 @@ namespace ivm {
  * This class handles the locking and thread synchronization for either synchronous or
  * asynchronous functions. That way the same code can be used for both versions of each function.
  *
- * When `async=true` a promise is return which will be resolved after all the work is done
- * When `async=false` this will run in the calling thread until completion
+ * These runners are invoked via: ThreePhaseTask::Run<async, T>(isolate, args...);
+ *
+ * Where:
+ *   async = 0 -- Synchronous execution
+ *   async = 1 -- Asynchronous execution, promise returned
+ *   async = 2 -- Asynchronous execution, result ignored (Phase3() is never called)
+ *   async = 4 -- Synchronous + asyncronous, original thread waits for async Phase2()
  */
 class ThreePhaseTask {
 	private:
@@ -69,7 +74,7 @@ class ThreePhaseTask {
 			void Run() final;
 		};
 
-		v8::Local<v8::Value> RunSync(IsolateHolder& second_isolate);
+		v8::Local<v8::Value> RunSync(IsolateHolder& second_isolate, bool allow_async);
 
 	public:
 		ThreePhaseTask() = default;
@@ -78,6 +83,11 @@ class ThreePhaseTask {
 		virtual ~ThreePhaseTask() = default;
 
 		virtual void Phase2() = 0;
+		virtual bool Phase2Async(IsolateEnvironment::Scheduler::AsyncWait& /*wait*/) {
+			Phase2();
+			return false;
+		}
+
 		virtual v8::Local<v8::Value> Phase3() = 0;
 
 		template <int async, typename T, typename ...Args>
@@ -114,9 +124,9 @@ class ThreePhaseTask {
 				);
 				return v8::Undefined(v8::Isolate::GetCurrent());
 			} else {
-				// Execute syncronously
+				// Execute synchronously
 				T self(std::forward<Args>(args)...);
-				return self.RunSync(second_isolate);
+				return self.RunSync(second_isolate, async == 4);
 			}
 		}
 };

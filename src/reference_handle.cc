@@ -69,6 +69,7 @@ Local<FunctionTemplate> ReferenceHandle::Definition() {
 		"apply", Parameterize<decltype(&ReferenceHandle::Apply<1>), &ReferenceHandle::Apply<1>>(),
 		"applyIgnored", Parameterize<decltype(&ReferenceHandle::Apply<2>), &ReferenceHandle::Apply<2>>(),
 		"applySync", Parameterize<decltype(&ReferenceHandle::Apply<0>), &ReferenceHandle::Apply<0>>(),
+		"applySyncPromise", Parameterize<decltype(&ReferenceHandle::Apply<4>), &ReferenceHandle::Apply<4>>(),
 		"typeof", ParameterizeAccessor<decltype(&ReferenceHandle::TypeOfGetter), &ReferenceHandle::TypeOfGetter>()
 	));
 }
@@ -299,6 +300,9 @@ struct ApplyRunner : public ThreePhaseTask {
 	std::vector<unique_ptr<Transferable>> argv;
 	uint32_t timeout = 0;
 	unique_ptr<Transferable> ret;
+	// Only used in the AsyncPhase2 case
+	IsolateEnvironment::Scheduler::AsyncWait* async_wait = nullptr;
+	unique_ptr<ExternalCopy> async_error;
 
 	ApplyRunner(
 		ReferenceHandle& that,
@@ -344,6 +348,68 @@ struct ApplyRunner : public ThreePhaseTask {
 		}
 	}
 
+	/**
+	 * This is an internal callback that will be called after a Promise returned from
+	 * `applySyncPromise` has resolved
+	 */
+	static void AsyncCallback(const v8::FunctionCallbackInfo<v8::Value>& info) {
+		ApplyRunner& self = *reinterpret_cast<ApplyRunner*>(info[0].As<External>()->Value());
+		if (info.Length() == 2) {
+			// Resolved
+			FunctorRunners::RunCatchExternal(IsolateEnvironment::GetCurrent()->DefaultContext(), [ &self, &info ]() {
+				self.ret = Transferable::TransferOut(info[1]);
+			}, [ &self ](unique_ptr<ExternalCopy> error) {
+				self.async_error = std::move(error);
+			});
+		} else {
+			// Rejected
+			self.async_error = ExternalCopy::CopyIfPrimitiveOrError(info[2]);
+			if (!self.async_error) {
+				self.async_error = std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::Error,
+					"An object was thrown from supplied code within isolated-vm, but that object was not an instance of `Error`."
+        );
+      }
+		}
+		self.async_wait->Wake();
+	}
+
+	/**
+	 * The C++ promise interface is a little clumsy so this does some work in JS for us. This function
+	 * is called once and returns a JS function that will be reused.
+	 */
+	static Local<Function> CompileAsyncWrapper() {
+		Isolate* isolate = Isolate::GetCurrent();
+		Local<Context> context = IsolateEnvironment::GetCurrent()->DefaultContext();
+		Local<Script> script = Unmaybe(Script::Compile(context, v8_string(
+			"'use strict';"
+			"(function(AsyncCallback) {"
+				"return function(ptr, promise) {"
+					"promise.then(function(val) {"
+						"AsyncCallback(ptr, val);"
+					"}, function(err) {"
+						"AsyncCallback(ptr, null, err);"
+					"});"
+				"};"
+			"})"
+		)));
+		Local<Value> outer_fn = Unmaybe(script->Run(context));
+		assert(outer_fn->IsFunction());
+		Local<Value> callback_fn = Unmaybe(FunctionTemplate::New(isolate, AsyncCallback)->GetFunction(context));
+		Local<Value> inner_fn = Unmaybe(outer_fn.As<Function>()->Call(context, Undefined(isolate), 1, &callback_fn));
+		assert(inner_fn->IsFunction());
+		return inner_fn.As<Function>();
+	}
+
+	std::vector<Local<Value>> TransferArguments() {
+		std::vector<Local<Value>> argv_inner;
+		size_t argc = argv.size();
+		argv_inner.reserve(argc);
+		for (size_t ii = 0; ii < argc; ++ii) {
+			argv_inner.emplace_back(argv[ii]->TransferIn());
+		}
+		return argv_inner;
+	}
+
 	void Phase2() final {
 		// Invoke in the isolate
 		Local<Context> context_handle = ivm::Deref(*context);
@@ -352,23 +418,56 @@ struct ApplyRunner : public ThreePhaseTask {
 		if (!fn->IsFunction()) {
 			throw js_type_error("Reference is not a function");
 		}
+		std::vector<Local<Value>> argv_inner = TransferArguments();
 		Local<Value> recv_inner = recv->TransferIn();
-		std::vector<Local<Value>> argv_inner;
-		size_t argc = argv.size();
-		argv_inner.reserve(argc);
-		for (size_t ii = 0; ii < argc; ++ii) {
-			argv_inner.emplace_back(argv[ii]->TransferIn());
-		}
 		ret = Transferable::TransferOut(RunWithTimeout(
 			timeout,
-			[&fn, &context_handle, &recv_inner, argc, &argv_inner]() {
-				return fn.As<Function>()->Call(context_handle, recv_inner, argc, argc == 0 ? nullptr : &argv_inner[0]);
+			[&fn, &context_handle, &recv_inner, &argv_inner]() {
+				return fn.As<Function>()->Call(context_handle, recv_inner, argv_inner.size(), argv_inner.empty() ? nullptr : &argv_inner[0]);
 			}
 		));
 	}
 
+	bool Phase2Async(IsolateEnvironment::Scheduler::AsyncWait& wait) final {
+		// Same as regular `Phase2()` but if it returns a promise we will wait on it
+		Local<Context> context_handle = ivm::Deref(*context);
+		Context::Scope context_scope(context_handle);
+		Local<Value> fn = ivm::Deref(*reference);
+		if (!fn->IsFunction()) {
+			throw js_type_error("Reference is not a function");
+		}
+		Local<Value> recv_inner = recv->TransferIn();
+		std::vector<Local<Value>> argv_inner = TransferArguments();
+		Local<Value> value = RunWithTimeout(
+			timeout,
+			[&fn, &context_handle, &recv_inner, &argv_inner]() {
+				return fn.As<Function>()->Call(context_handle, recv_inner, argv_inner.size(), argv_inner.empty() ? nullptr : &argv_inner[0]);
+			}
+		);
+		if (value->IsPromise()) {
+			Isolate* isolate = Isolate::GetCurrent();
+			// This is only called from the default isolate, so we don't need an IsolateSpecific
+			static Persistent<Function> callback_persistent(isolate, CompileAsyncWrapper());
+			Local<Function> callback_fn = Deref(callback_persistent);
+			Local<Value> argv[2];
+			argv[0] = External::New(isolate, reinterpret_cast<void*>(this));
+			argv[1] = value;
+			this->async_wait = &wait;
+			Unmaybe(callback_fn->Call(context_handle, callback_fn, 2, argv));
+			return true;
+		} else {
+			ret = Transferable::TransferOut(value);
+			return false;
+		}
+	}
+
 	Local<Value> Phase3() final {
-		return ret->TransferIn();
+		if (async_error) {
+			Isolate::GetCurrent()->ThrowException(async_error->CopyInto());
+			throw js_runtime_error();
+		} else {
+			return ret->TransferIn();
+		}
 	}
 };
 template <int async>

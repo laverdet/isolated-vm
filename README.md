@@ -4,34 +4,44 @@ isolated-vm -- Access to multiple isolates in nodejs
 ====================================================
 
 `isolated-vm` is a library for nodejs which gives you access to v8's `Isolate` interface. This
-allows you to create JavaScript environments which are completely *isolated* from each other.
+allows you to create JavaScript environments which are completely *isolated* from each other. You
+might find this module useful if you need to run some untrusted code in a secure way. You may also
+find this module useful if you need to run some JavaScript simultaneously in multiple threads. You
+may find this project *very* useful if you need to do both at the same time!
 
 API DOCUMENTATION
 -----------------
 
-Since isolates share no resources with each other, the primary goal of this API is to provide
-primitives which make marshalling data between many isolates quick and easy. The only way to pass
-data from one isolate to another is to first make that data *transferable*. Primitives (except for
-`Symbol`) are always transferable. This means if you invoke a function in a different isolate with a
-number or string as the argument, it will work fine. If you need to pass more complex information
-you will have to first make the data transferable with one of the methods here.
+Since isolates share no resources with each other, most of this API is built to provide primitives
+which make marshalling data between many isolates quick and easy. The only way to pass data from one
+isolate to another is to first make that data *transferable*. Primitives (except for `Symbol`) are
+always transferable. This means if you invoke a function in a different isolate with a number or
+string as the argument, it will work fine. If you need to pass more complex information you will
+have to first make the data transferable with one of the methods here.
 
 Most methods will provide both a synchronous and an asynchronous version. Calling the synchronous
 functions will block your thread while the method runs and eventually returns a value. The
 asynchronous functions will return a
 [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)
-while the work runs in a separate thread pool. I recommend deciding which version of the API is the
-best for your project and sticking to it throughout your code, i.e. don't mix and match async/sync
-code. The only strict technical limitation, though, is that you may not call a synchronous method
-from within a asynchronous method.
+while the work runs in a separate thread pool.
+
+There are some rules about which functions may be called from certain contexts:
+
+1. Asynchronous functions may be called at any time
+2. Synchronous functions usually may not be called from an asynchronous function
+3. You may call a synchronous function from an asynchronous function as long as that function
+	 belongs to current isolate
+4. You may call a synchronous function belonging to the default nodejs isolate at any time
 
 Additionally, some methods will provide an "ignored" version which runs asynchronously but returns
 no promise. This can be a good option when the calling isolate would ignore the promise anyway,
 since the ignored versions can skip an extra thread synchronization. Just be careful because this
-swallows any thrown exceptions which might make problems hard to track down. It's also worth noting
-that all asynchronous invocations will run in the order they were queued, regardless of whether or
-not you wait on them. So, for instance, you could call several "ignored" methods in a row and then
-`await` on a final async method to observe some side-effect of the ignored methods.
+swallows any thrown exceptions which might make problems hard to track down.
+
+It's also worth noting that all asynchronous invocations will run in the order they were queued,
+regardless of whether or not you wait on them. So, for instance, you could call several "ignored"
+methods in a row and then `await` on a final async method to observe some side-effect of the
+ignored methods.
 
 
 ### Class: `Isolate` *[transferable]*
@@ -203,6 +213,7 @@ when `false` would be returned, I'm just giving you the result back straight fro
 ##### `reference.apply(receiver, arguments)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `reference.applyIgnored(receiver, arguments)`
 ##### `reference.applySync(receiver, arguments)`
+##### `reference.applySyncPromise(receiver, arguments)`
 * `receiver` *[transferable]* - The value which will be `this`.
 * `arguments` *[array]* - Array of transferables which will be passed to the function.
 * `options` *[object]*
@@ -211,7 +222,16 @@ when `false` would be returned, I'm just giving you the result back straight fro
 * **return** *[transferable]*
 
 Will attempt to invoke an object as if it were a function. If the return value is transferable it
-will be returned to the called of `apply`, otherwise an error will be thrown.
+will be returned to the caller of `apply`, otherwise an error will be thrown.
+
+`applySyncPromise` is a special version of `applySync` which may only be invoked on functions
+belonging to the default isolate AND may only be invoked from a non-default thread. Functions
+invoked in this way may return a promise and the invoking isolate will wait for that promise to
+resolve before resuming execution. You can use this to implement functions like `readFileSync` in a
+way that doesn't block the default isolate. Note that the invoking isolate will not respond to any
+async functions until this promise is resolved, however synchronous functions will still function
+correctly.  Misuse of this feature may result in deadlocked isolates, though the default isolate
+will never be at risk of a deadlock.
 
 ### Class: `ExternalCopy` *[transferable]*
 Instances of this class represent some value that is stored outside of any v8 isolate. This value

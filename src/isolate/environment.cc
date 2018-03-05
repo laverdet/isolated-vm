@@ -160,7 +160,7 @@ void IsolateEnvironment::Scheduler::Lock::InterruptIsolate(IsolateEnvironment& i
 
 IsolateEnvironment::Scheduler::AsyncWait::AsyncWait(Scheduler& scheduler) : scheduler(scheduler), lock(scheduler.wait_mutex) {}
 
-IsolateEnvironment::Scheduler::AsyncWait::~AsyncWait() {
+void IsolateEnvironment::Scheduler::AsyncWait::Wait() {
 	while (!done) {
 		scheduler.wait_cv.wait(lock);
 	}
