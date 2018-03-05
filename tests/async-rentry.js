@@ -49,3 +49,13 @@ let recursiveFn = global.getSync('recursive');
 		console.log('nevermind it didnt pass');
 	}
 })().catch(console.error);
+
+// Test slow promise timeout
+global.setSync('slowPromise', new ivm.Reference(function() {
+	return new Promise(function(resolve) {
+		setTimeout(function() {
+			resolve();
+		}, 50);
+	});
+}));
+isolate.compileScriptSync('slowPromise.applySyncPromise(undefined, [])').run(context, { timeout: 5 }).catch(() => 0);

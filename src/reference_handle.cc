@@ -301,6 +301,7 @@ struct ApplyRunner : public ThreePhaseTask {
 	uint32_t timeout = 0;
 	unique_ptr<Transferable> ret;
 	// Only used in the AsyncPhase2 case
+	shared_ptr<bool> did_finish;
 	IsolateEnvironment::Scheduler::AsyncWait* async_wait = nullptr;
 	unique_ptr<ExternalCopy> async_error;
 
@@ -353,23 +354,30 @@ struct ApplyRunner : public ThreePhaseTask {
 	 * `applySyncPromise` has resolved
 	 */
 	static void AsyncCallback(const v8::FunctionCallbackInfo<v8::Value>& info) {
+		// It's possible the invocation timed out, in which case the ApplyRunner will be dead. The
+		// shared_ptr<bool> here will be marked as true and we can exit early.
+		unique_ptr<shared_ptr<bool>> did_finish(reinterpret_cast<shared_ptr<bool>*>(info[1].As<External>()->Value()));
+		if (**did_finish) {
+			return;
+		}
 		ApplyRunner& self = *reinterpret_cast<ApplyRunner*>(info[0].As<External>()->Value());
-		if (info.Length() == 2) {
+		if (info.Length() == 3) {
 			// Resolved
 			FunctorRunners::RunCatchExternal(IsolateEnvironment::GetCurrent()->DefaultContext(), [ &self, &info ]() {
-				self.ret = Transferable::TransferOut(info[1]);
+				self.ret = Transferable::TransferOut(info[2]);
 			}, [ &self ](unique_ptr<ExternalCopy> error) {
 				self.async_error = std::move(error);
 			});
 		} else {
 			// Rejected
-			self.async_error = ExternalCopy::CopyIfPrimitiveOrError(info[2]);
+			self.async_error = ExternalCopy::CopyIfPrimitiveOrError(info[3]);
 			if (!self.async_error) {
 				self.async_error = std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::Error,
 					"An object was thrown from supplied code within isolated-vm, but that object was not an instance of `Error`."
         );
       }
 		}
+		*self.did_finish = true;
 		self.async_wait->Wake();
 	}
 
@@ -383,11 +391,11 @@ struct ApplyRunner : public ThreePhaseTask {
 		Local<Script> script = Unmaybe(Script::Compile(context, v8_string(
 			"'use strict';"
 			"(function(AsyncCallback) {"
-				"return function(ptr, promise) {"
+				"return function(ptr, did_finish, promise) {"
 					"promise.then(function(val) {"
-						"AsyncCallback(ptr, val);"
+						"AsyncCallback(ptr, did_finish, val);"
 					"}, function(err) {"
-						"AsyncCallback(ptr, null, err);"
+						"AsyncCallback(ptr, did_finish, null, err);"
 					"});"
 				"};"
 			"})"
@@ -449,11 +457,13 @@ struct ApplyRunner : public ThreePhaseTask {
 			// This is only called from the default isolate, so we don't need an IsolateSpecific
 			static Persistent<Function> callback_persistent(isolate, CompileAsyncWrapper());
 			Local<Function> callback_fn = Deref(callback_persistent);
-			Local<Value> argv[2];
+			did_finish = std::make_shared<bool>(false);
+			Local<Value> argv[3];
 			argv[0] = External::New(isolate, reinterpret_cast<void*>(this));
-			argv[1] = value;
+			argv[1] = External::New(isolate, reinterpret_cast<void*>(new std::shared_ptr<bool>(did_finish)));
+			argv[2] = value;
 			this->async_wait = &wait;
-			Unmaybe(callback_fn->Call(context_handle, callback_fn, 2, argv));
+			Unmaybe(callback_fn->Call(context_handle, callback_fn, 3, argv));
 			return true;
 		} else {
 			ret = Transferable::TransferOut(value);
@@ -462,7 +472,10 @@ struct ApplyRunner : public ThreePhaseTask {
 	}
 
 	Local<Value> Phase3() final {
-		if (async_error) {
+		if (did_finish && !*did_finish) {
+			*did_finish = true;
+			throw js_generic_error("Script execution timed out.");
+		} else if (async_error) {
 			Isolate::GetCurrent()->ThrowException(async_error->CopyInto());
 			throw js_runtime_error();
 		} else {

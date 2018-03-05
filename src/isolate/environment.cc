@@ -158,7 +158,15 @@ void IsolateEnvironment::Scheduler::Lock::InterruptIsolate(IsolateEnvironment& i
 	isolate->RequestInterrupt(AsyncCallbackInterrupt, static_cast<void*>(&isolate));
 }
 
-IsolateEnvironment::Scheduler::AsyncWait::AsyncWait(Scheduler& scheduler) : scheduler(scheduler), lock(scheduler.wait_mutex) {}
+IsolateEnvironment::Scheduler::AsyncWait::AsyncWait(Scheduler& scheduler) : scheduler(scheduler), lock(scheduler.wait_mutex) {
+	std::lock_guard<std::mutex> lock(scheduler.mutex);
+	scheduler.async_wait = this;
+}
+
+IsolateEnvironment::Scheduler::AsyncWait::~AsyncWait() {
+	std::lock_guard<std::mutex> lock(scheduler.mutex);
+	scheduler.async_wait = nullptr;
+}
 
 void IsolateEnvironment::Scheduler::AsyncWait::Wait() {
 	while (!done) {
@@ -167,6 +175,9 @@ void IsolateEnvironment::Scheduler::AsyncWait::Wait() {
 }
 
 void IsolateEnvironment::Scheduler::AsyncWait::Wake() {
+	if (done) {
+		return;
+	}
 	{
 		std::lock_guard<std::recursive_mutex> lock(scheduler.wait_mutex);
 		done = true;

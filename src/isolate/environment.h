@@ -74,8 +74,10 @@ class IsolateEnvironment {
 		 * This does all the interaction with libuv async and the thread pool.
 		 */
 		class Scheduler {
+			friend IsolateEnvironment;
 			public:
 				enum class Status { Waiting, Running };
+
 				// A Scheduler::Lock is needed to interact with the task queue
 				class Lock {
 					friend class AsyncWait;
@@ -110,7 +112,7 @@ class IsolateEnvironment {
 						explicit AsyncWait(Scheduler& scheduler);
 						AsyncWait(const AsyncWait&) = delete;
 						AsyncWait& operator= (const AsyncWait&) = delete;
-						~AsyncWait() = default;
+						~AsyncWait();
 						void Wait();
 						void Wake();
 				};
@@ -128,6 +130,7 @@ class IsolateEnvironment {
 				std::queue<std::unique_ptr<Runnable>> tasks;
 				std::queue<std::unique_ptr<Runnable>> interrupts;
 				thread_pool_t::affinity_t thread_affinity;
+				AsyncWait* async_wait = nullptr;
 
 			public:
 				Scheduler();
@@ -393,6 +396,16 @@ class IsolateEnvironment {
 			terminated = true;
 			isolate->TerminateExecution();
 			holder->isolate.reset();
+		}
+
+		/**
+		 * Cancels an async three_phase_runner if one exists, i.e. applySyncPromise
+		 */
+		void CancelAsync() {
+			Scheduler::Lock lock(scheduler);
+			if (scheduler.async_wait != nullptr) {
+				scheduler.async_wait->Wake();
+			}
 		}
 
 		/**
