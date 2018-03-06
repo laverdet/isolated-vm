@@ -4,7 +4,7 @@ let ivm = require('isolated-vm');
 function makeIsolate() {
 	let isolate = new ivm.Isolate;
 	let context = isolate.createContextSync();
-	let global = context.globalReference();
+	let global = context.global;
 	return { isolate, context, global };
 }
 

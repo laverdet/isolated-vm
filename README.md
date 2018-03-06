@@ -125,10 +125,9 @@ counted here.
 A context is a sandboxed execution environment within an isolate. Each context contains its own
 built-in objects and global space.
 
-##### `context.globalReference()`
-* **return** A [`Reference`](#class-reference-transferable) object.
-
-Returns a [`Reference`](#class-reference-transferable) to this context's global object.
+##### `context.global` *[`Reference`](#class-reference-transferable)*
+[`Reference`](#class-reference-transferable) to this context's global object. Note that if you call
+`context.release()` the global reference will be released as well.
 
 ##### `context.release()`
 
@@ -301,7 +300,7 @@ let isolate = new ivm.Isolate({ memoryLimit: 128 });
 let context = isolate.createContextSync();
 
 // Get a Reference{} to the global object within the context.
-let jail = context.globalReference();
+let jail = context.global;
 
 // This make the global object available in the context as `global`. We use `derefInto()` here
 // because otherwise `global` would actually be a Reference{} object in the new isolate.
@@ -403,10 +402,9 @@ let promises = Array(numThreads).fill().map(async function(_, ii) {
 	// Set up 4 isolates with the `sum` function from above
 	let isolate = new ivm.Isolate();
 	let context = await isolate.createContext();
-	let jail = context.globalReference();
 	let script = await isolate.compileScript(sum+ '');
 	await script.run(context);
-	let fnReference = await jail.get('sum');
+	let fnReference = await context.global.get('sum');
 
 	// Run one slice of the sum loop
 	let min = Math.floor(num / numThreads * ii);

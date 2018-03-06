@@ -3,7 +3,7 @@ let ivm = require('isolated-vm');
 let isolate = new ivm.Isolate;
 
 let context = isolate.createContextSync();
-let jail = context.globalReference();
+let jail = context.global;
 jail.setSync('context', context);
 jail.setSync('isolate', isolate);
 isolate.compileScriptSync('new '+ function() {

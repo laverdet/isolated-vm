@@ -3,7 +3,7 @@ let ivm = require('isolated-vm');
 function makeIsolate() {
 	let isolate = new ivm.Isolate({ memoryLimit: 16 });
 	let context = isolate.createContextSync();
-	let jail = context.globalReference();
+	let jail = context.global;
 	jail.setSync('context', context);
 	jail.setSync('isolate', isolate);
 	jail.setSync('global', jail.derefInto());
@@ -39,7 +39,7 @@ function makeIsolate() {
 					stash.push({});
 				}
 			}
-			let ref = context.globalReference().getSync('sabotage');
+			let ref = context.global.getSync('sabotage');
 			ref.applySync(undefined, []);
 		});
 		await script.run(env.context);

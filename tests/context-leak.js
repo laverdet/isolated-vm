@@ -6,8 +6,7 @@ let snapshot = ivm.Isolate.createSnapshot([
 let isolate = new ivm.Isolate({ memoryLimit: 32, snapshot });
 for (let ii = 0; ii < 500; ++ii) {
 	let context = isolate.createContextSync();
-	let global = context.globalReference();
-	global.release();
+	let global = context.global;
 	context.release();
 }
 console.log('pass');

@@ -4,7 +4,7 @@ let fs = require('fs');
 
 let isolate = new ivm.Isolate;
 let context = isolate.createContextSync();
-let global = context.globalReference();
+let global = context.global;
 let fnPromiseRef;
 global.setSync('fnPromise', fnPromiseRef = new ivm.Reference(function() {
 	return new Promise(function(resolve, reject) {

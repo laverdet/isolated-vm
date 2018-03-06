@@ -14,7 +14,7 @@ for (let memoryLimit of [ 8, 32, 64, 128 ]) {
 	for (let copy of copies) {
 		let isolate = new ivm.Isolate({ memoryLimit });
 		let context = isolate.createContextSync();
-		let global = context.globalReference();
+		let global = context.global;
 		try {
 			for (let ii = 0; ii < 256; ++ii) {
 				global.setSync(ii, copy.copyInto());

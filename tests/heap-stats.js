@@ -3,7 +3,7 @@ let ivm = require('isolated-vm');
 let isolate = new ivm.Isolate;
 let size1 = isolate.getHeapStatisticsSync();
 let context = isolate.createContextSync();
-let global = context.globalReference();
+let global = context.global;
 global.setSync('global', global.derefInto());
 let script = isolate.compileScriptSync(`
 global.data = new Uint8Array(1024);

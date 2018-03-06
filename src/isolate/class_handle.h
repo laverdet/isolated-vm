@@ -439,6 +439,12 @@ class ClassHandle {
 			return static_cast<ClassHandle*>(handle->GetAlignedPointerFromInternalField(0));
 		}
 
+		/**
+		 * Returns the JS value that this ClassHandle points to
+		 */
+		v8::Local<v8::Object> This() {
+			return Deref(handle);
+		}
 };
 
 } // namespace ivm

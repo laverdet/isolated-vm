@@ -4,7 +4,7 @@ let ivm = require('isolated-vm');
 let isolates = Array(2).fill().map(function() {
 	let isolate = new ivm.Isolate;
 	let context = isolate.createContextSync();
-	let jail = context.globalReference();
+	let jail = context.global;
 	jail.setSync('global', jail.derefInto());
 	isolate.compileScriptSync('new '+ function() {
 		global.random = function() {

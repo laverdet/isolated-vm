@@ -7,31 +7,33 @@ using std::shared_ptr;
 namespace ivm {
 
 ContextHandle::ContextHandleTransferable::ContextHandleTransferable(
-	shared_ptr<IsolateHolder> isolate,
 	shared_ptr<RemoteHandle<Context>> context,
 	shared_ptr<RemoteHandle<Value>> global
-) : isolate(std::move(isolate)), context(std::move(context)), global(std::move(global)) {}
+) : context(std::move(context)), global(std::move(global)) {}
 
 Local<Value> ContextHandle::ContextHandleTransferable::TransferIn() {
-	return ClassHandle::NewInstance<ContextHandle>(isolate, context, global);
+	return ClassHandle::NewInstance<ContextHandle>(context, global);
 }
 
 ContextHandle::ContextHandle(
-	shared_ptr<IsolateHolder> isolate,
 	shared_ptr<RemoteHandle<Context>> context,
 	shared_ptr<RemoteHandle<Value>> global
-) : isolate(std::move(isolate)), context(std::move(context)), global(std::move(global)) {}
+) : context(std::move(context)), global(std::move(global)) {}
 
 Local<FunctionTemplate> ContextHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Context", nullptr,
 		"globalReference", Parameterize<decltype(&ContextHandle::GlobalReference), &ContextHandle::GlobalReference>(),
+		"global", ParameterizeAccessor<
+			decltype(&ContextHandle::GlobalGetter), &ContextHandle::GlobalGetter,
+			decltype(&ContextHandle::GlobalSetter), &ContextHandle::GlobalSetter
+		>(),
 		"release", Parameterize<decltype(&ContextHandle::Release), &ContextHandle::Release>()
 	));
 }
 
 std::unique_ptr<Transferable> ContextHandle::TransferOut() {
-	return std::make_unique<ContextHandleTransferable>(isolate, context, global);
+	return std::make_unique<ContextHandleTransferable>(context, global);
 }
 
 void ContextHandle::CheckDisposed() {
@@ -42,14 +44,37 @@ void ContextHandle::CheckDisposed() {
 
 Local<Value> ContextHandle::GlobalReference() {
 	CheckDisposed();
-	return ClassHandle::NewInstance<ReferenceHandle>(isolate, global, context, ReferenceHandle::TypeOf::Object);
+	return ClassHandle::NewInstance<ReferenceHandle>(global->GetSharedIsolateHolder(), global, context, ReferenceHandle::TypeOf::Object);
+}
+
+Local<Value> ContextHandle::GlobalGetter() {
+	Isolate* isolate = Isolate::GetCurrent();
+	if (!context) {
+		return Undefined(isolate);
+	}
+	Local<Object> ref;
+	if (global_reference) {
+		ref = Deref(*global_reference);
+	} else {
+		ref = ClassHandle::NewInstance<ReferenceHandle>(global->GetSharedIsolateHolder(), global, context, ReferenceHandle::TypeOf::Object);
+		global_reference = std::make_unique<RemoteHandle<v8::Object>>(ref);
+	}
+	Unmaybe(This()->CreateDataProperty(isolate->GetCurrentContext(), v8_string("global"), ref));
+	return ref;
+}
+
+void ContextHandle::GlobalSetter(Local<Value> value) {
+	Unmaybe(This()->CreateDataProperty(Isolate::GetCurrent()->GetCurrentContext(), v8_string("global"), value));
 }
 
 Local<Value> ContextHandle::Release() {
 	CheckDisposed();
-	isolate.reset();
 	context.reset();
 	global.reset();
+	if (global_reference) {
+		ClassHandle::Unwrap<ReferenceHandle>(Deref(*global_reference))->Release();
+		global_reference.reset();
+	}
 	return Undefined(Isolate::GetCurrent());
 }
 

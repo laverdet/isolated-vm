@@ -3,7 +3,7 @@ let isolate = new ivm.Isolate;
 
 function makeContext() {
 	let context = isolate.createContextSync();
-	let global = context.globalReference();
+	let global = context.global;
 	global.setSync('ivm', ivm);
 	isolate.compileScriptSync(`
 		function makeReference(ref) {

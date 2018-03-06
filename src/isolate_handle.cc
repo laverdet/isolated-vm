@@ -189,11 +189,10 @@ unique_ptr<Transferable> IsolateHandle::TransferOut() {
  */
 struct CreateContextRunner : public ThreePhaseTask {
 	bool enable_inspector = false;
-	shared_ptr<IsolateHolder> isolate;
 	shared_ptr<RemoteHandle<Context>> context;
 	shared_ptr<RemoteHandle<Value>> global;
 
-	CreateContextRunner(MaybeLocal<Object>& maybe_options, shared_ptr<IsolateHolder> isolate) : isolate(std::move(isolate)) {
+	CreateContextRunner(MaybeLocal<Object>& maybe_options) {
 		Local<Object> options;
 		if (maybe_options.ToLocal(&options)) {
 			this->enable_inspector = IsOptionSet(Isolate::GetCurrent()->GetCurrentContext(), options, "inspector");
@@ -257,12 +256,12 @@ struct CreateContextRunner : public ThreePhaseTask {
 
 	Local<Value> Phase3() final {
 		// Make a new Context{} JS class
-		return ClassHandle::NewInstance<ContextHandle>(std::move(isolate), std::move(context), std::move(global));
+		return ClassHandle::NewInstance<ContextHandle>(std::move(context), std::move(global));
 	}
 };
 template <int async>
 Local<Value> IsolateHandle::CreateContext(MaybeLocal<Object> maybe_options) {
-	return ThreePhaseTask::Run<async, CreateContextRunner>(*isolate, maybe_options, isolate);
+	return ThreePhaseTask::Run<async, CreateContextRunner>(*isolate, maybe_options);
 }
 
 /**

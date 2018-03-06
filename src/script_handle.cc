@@ -53,7 +53,7 @@ struct RunRunner /* lol */ : public ThreePhaseTask {
 	) : script(std::move(script)), context(context_handle->context) {
 		// Sanity check
 		context_handle->CheckDisposed();
-		if (isolate != context_handle->isolate.get()) {
+		if (isolate != context_handle->context->GetIsolateHolder()) {
 			throw js_generic_error("Invalid context");
 		}
 

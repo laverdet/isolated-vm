@@ -11,18 +11,16 @@ class ContextHandle : public TransferableHandle {
 	friend struct RunRunner;
 	friend class NativeModuleHandle;
 	private:
-		std::shared_ptr<IsolateHolder> isolate;
 		std::shared_ptr<RemoteHandle<v8::Context>> context;
 		std::shared_ptr<RemoteHandle<v8::Value>> global;
+		std::unique_ptr<RemoteHandle<v8::Object>> global_reference;
 
 		class ContextHandleTransferable : public Transferable {
 			private:
-				std::shared_ptr<IsolateHolder> isolate;
 				std::shared_ptr<RemoteHandle<v8::Context>> context;
 				std::shared_ptr<RemoteHandle<v8::Value>> global;
 			public:
 				ContextHandleTransferable(
-					std::shared_ptr<IsolateHolder> isolate,
 					std::shared_ptr<RemoteHandle<v8::Context>> context,
 					std::shared_ptr<RemoteHandle<v8::Value>> global
 				);
@@ -31,7 +29,6 @@ class ContextHandle : public TransferableHandle {
 
 	public:
 		ContextHandle(
-			std::shared_ptr<IsolateHolder> isolate,
 			std::shared_ptr<RemoteHandle<v8::Context>> context,
 			std::shared_ptr<RemoteHandle<v8::Value>> global
 		);
@@ -39,6 +36,8 @@ class ContextHandle : public TransferableHandle {
 		std::unique_ptr<Transferable> TransferOut() final;
 		void CheckDisposed();
 		v8::Local<v8::Value> GlobalReference();
+		v8::Local<v8::Value> GlobalGetter();
+		void GlobalSetter(v8::Local<v8::Value> value);
 		v8::Local<v8::Value> Release();
 };
 

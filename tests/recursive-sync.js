@@ -1,7 +1,7 @@
 let ivm = require('isolated-vm');
 let isolate = new ivm.Isolate;
 let context = isolate.createContextSync();
-let global = context.globalReference();
+let global = context.global;
 
 function recur1() {
 	return global.getSync('recur2').applySync(undefined, []);

@@ -69,6 +69,11 @@ class RemoteTuple {
 		IsolateHolder* GetIsolateHolder() {
 			return isolate.get();
 		}
+
+		std::shared_ptr<IsolateHolder> GetSharedIsolateHolder() {
+			return isolate;
+		}
+
 };
 
 /**
@@ -84,6 +89,14 @@ class RemoteHandle {
 
 		auto Deref() const {
 			return handle.template Deref<0>();
+		}
+
+		IsolateHolder* GetIsolateHolder() {
+			return handle.GetIsolateHolder();
+		}
+
+		std::shared_ptr<IsolateHolder> GetSharedIsolateHolder() {
+			return handle.GetSharedIsolateHolder();
 		}
 };
 

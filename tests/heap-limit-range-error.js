@@ -38,7 +38,7 @@ let failure = bisect(function(ii) {
 		}
 	}).runSync(context);
 	try {
-		context.globalReference().getSync('load').applySync(null, [ ii ]);
+		context.global.getSync('load').applySync(null, [ ii ]);
 		return false;
 	} catch (err) {
 		return true;
@@ -58,7 +58,7 @@ isolate.compileScriptSync(''+ function loadAndCopy(num, copy) {
 	copy.copy();
 }).runSync(context);
 try {
-	context.globalReference().getSync('loadAndCopy').applySync(null, [ failure - 1024, new ivm.ExternalCopy(overflow) ]);
+	context.global.getSync('loadAndCopy').applySync(null, [ failure - 1024, new ivm.ExternalCopy(overflow) ]);
 	console.log('did not fail?');
 } catch (err) {
 	if (err instanceof RangeError) {

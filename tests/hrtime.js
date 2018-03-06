@@ -2,7 +2,7 @@
 let ivm = require('isolated-vm');
 let isolate = new ivm.Isolate;
 let context = isolate.createContextSync();
-let jail = context.globalReference();
+let jail = context.global;
 jail.setSync('lib', ivm.lib);
 isolate.compileScriptSync('new '+ function() {
 	let time1 = lib.hrtime();
