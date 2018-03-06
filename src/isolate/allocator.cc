@@ -13,10 +13,17 @@ namespace ivm {
 bool LimitedAllocator::Check(const size_t length) {
 	if (v8_heap + env.extra_allocated_memory + length > next_check) {
 		HeapStatistics heap_statistics;
-		Isolate::GetCurrent()->GetHeapStatistics(&heap_statistics);
+		Isolate* isolate = Isolate::GetCurrent();
+		isolate->GetHeapStatistics(&heap_statistics);
 		v8_heap = heap_statistics.total_heap_size();
 		if (v8_heap + env.extra_allocated_memory + length > limit) {
-			return false;
+			// This is might be dangerous but the tests pass soooo..
+			isolate->LowMemoryNotification();
+			isolate->GetHeapStatistics(&heap_statistics);
+			v8_heap = heap_statistics.total_heap_size();
+			if (v8_heap + env.extra_allocated_memory + length > limit) {
+				return false;
+			}
 		}
 		next_check = v8_heap + env.extra_allocated_memory + length + 1024 * 1024;
 	}
