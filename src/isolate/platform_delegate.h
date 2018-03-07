@@ -2,6 +2,7 @@
 #include <v8.h>
 #include <v8-platform.h>
 #include "environment.h"
+#include "../timer.h"
 
 namespace v8 {
 namespace internal {
@@ -61,16 +62,13 @@ class PlatformDelegate : public v8::Platform {
 			if (isolate == node_isolate) {
 				node_platform->CallDelayedOnForegroundThread(isolate, task, delay_in_seconds);
 			} else {
-				// TODO: this could use timer_t if I add a wait() method
-				std::thread tmp_thread([isolate, task, delay_in_seconds]() {
-					std::this_thread::sleep_for(std::chrono::microseconds(static_cast<int>(delay_in_seconds * 1000000)));
+				timer_t::wait_detached(delay_in_seconds * 1000, [isolate, task]() {
 					auto holder = std::make_unique<TaskHolder>(task);
 					auto s_isolate = IsolateEnvironment::LookupIsolate(isolate);
 					if (s_isolate) {
 						s_isolate->ScheduleTask(std::move(holder), false, true);
 					}
 				});
-				tmp_thread.detach();
 			}
 		}
 

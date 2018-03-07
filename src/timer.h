@@ -96,26 +96,30 @@ class timer_t {
 			return thread_list;
 		}
 
-	public:
-		std::shared_ptr<timer_data_t> data;
-
-		timer_t(uint32_t ms, std::function<void()> callback) :
-			data(std::make_shared<timer_data_t>(
-				std::chrono::steady_clock::now() + std::chrono::milliseconds(ms),
-				std::move(callback)
-			)) {
-
-			// Need to find a thread to put this timer into
+		static void start_or_join_timer(std::shared_ptr<timer_data_t> data) {
+			// Try to find a thread to put this timer into
 			std::lock_guard<std::mutex> lock(global_mutex());
 			for (auto& thread : thread_list()) {
 				if (thread->next_timeout < data->timeout) {
-					thread->queue.push(data);
+					thread->queue.push(std::move(data));
 					return;
 				}
 			}
 
 			// Time to spawn a new thread
-			thread_list().emplace_back(std::make_unique<timer_thread_t>(data));
+			thread_list().emplace_back(std::make_unique<timer_thread_t>(std::move(data)));
+		}
+
+	public:
+		std::shared_ptr<timer_data_t> data;
+
+		// Runs a callback unless the `timer_t` destructor is called.
+		timer_t(uint32_t ms, std::function<void()> callback) :
+			data(std::make_shared<timer_data_t>(
+				std::chrono::steady_clock::now() + std::chrono::milliseconds(ms),
+				std::move(callback)
+			)) {
+			start_or_join_timer(data);
 		}
 		timer_t(const timer_t&) = delete;
 		timer_t& operator= (const timer_t&) = delete;
@@ -125,6 +129,13 @@ class timer_t {
 			data->is_alive = false;
 		}
 
+		// Runs a callback in `ms` with no `timer_t` object.
+		static void wait_detached(uint32_t ms, std::function<void()> callback) {
+			start_or_join_timer(std::make_shared<timer_data_t>(
+				std::chrono::steady_clock::now() + std::chrono::milliseconds(ms),
+				std::move(callback)
+			));
+		}
 };
 
 } // namespace ivm
