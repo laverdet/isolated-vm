@@ -8,6 +8,7 @@
 #include <queue>
 #include <stdexcept>
 #include <thread>
+#include <unordered_set>
 
 namespace ivm {
 
@@ -26,10 +27,26 @@ class timer_t {
 		struct timer_data_t {
 			std::function<void()> callback;
 			bool is_alive;
+			bool is_running;
+			bool is_dtor_waiting;
 			const std::chrono::steady_clock::time_point timeout;
 
 			timer_data_t(std::chrono::steady_clock::time_point timeout, std::function<void()> callback) :
-				callback(std::move(callback)), is_alive(true), timeout(timeout) {
+				callback(std::move(callback)), is_alive(true), is_running(false), is_dtor_waiting(false), timeout(timeout) {
+			}
+
+			// Lock must be locked! It will be returned locked as well.
+			void run(std::unique_lock<std::mutex>& lock) {
+				if (is_alive) {
+					is_running = true;
+					lock.unlock();
+					callback();
+					lock.lock();
+					is_running = false;
+					if (is_dtor_waiting) {
+						global_cv().notify_all();
+					}
+				}
 			}
 
 			struct cmp {
@@ -50,11 +67,10 @@ class timer_t {
 					std::deque<std::shared_ptr<timer_data_t>>,
 					timer_data_t::cmp
 				> queue;
-				std::thread thread;
 
 				explicit timer_thread_t(std::shared_ptr<timer_data_t> first_timer) :
-					next_timeout(first_timer->timeout), queue(&first_timer, &first_timer + 1),
-					thread(std::bind(&timer_thread_t::entry, this)) {
+					next_timeout(first_timer->timeout), queue(&first_timer, &first_timer + 1) {
+					std::thread thread(std::bind(&timer_thread_t::entry, this));
 					thread.detach();
 				}
 
@@ -65,19 +81,19 @@ class timer_t {
 						lock.lock();
 						std::shared_ptr<timer_data_t> current = queue.top();
 						queue.pop();
-						if (current->is_alive) {
-							current->callback();
-						}
 						if (queue.empty()) {
-							for (auto ii = thread_list().begin(); ii != thread_list().end(); ++ii) {
-								if (ii->get() == this) {
-									thread_list().erase(ii);
-									return;
-								}
+							auto& threads = thread_list();
+							auto ii = threads.find(this);
+							if (ii == threads.end()) {
+								throw std::logic_error("Didn't find thread in thread list");
 							}
-							throw std::logic_error("Didn't find thread in thread list");
+							threads.erase(ii);
+							current->run(lock);
+							delete this;
+							return;
 						}
 						next_timeout = queue.top()->timeout;
+						current->run(lock);
 						lock.unlock();
 					}
 				}
@@ -91,8 +107,13 @@ class timer_t {
 			return global_mutex;
 		}
 
-		static std::deque<std::unique_ptr<timer_thread_t>>& thread_list() {
-			static std::deque<std::unique_ptr<timer_thread_t>> thread_list;
+		static std::condition_variable& global_cv() {
+			static std::condition_variable cv;
+			return cv;
+		}
+
+		static std::unordered_set<timer_thread_t*>& thread_list() {
+			static std::unordered_set<timer_thread_t*> thread_list;
 			return thread_list;
 		}
 
@@ -107,7 +128,7 @@ class timer_t {
 			}
 
 			// Time to spawn a new thread
-			thread_list().emplace_back(std::make_unique<timer_thread_t>(std::move(data)));
+			thread_list().insert(new timer_thread_t(std::move(data)));
 		}
 
 	public:
@@ -125,7 +146,14 @@ class timer_t {
 		timer_t& operator= (const timer_t&) = delete;
 
 		~timer_t() {
-			std::lock_guard<std::mutex> lock(global_mutex());
+			std::unique_lock<std::mutex> lock(global_mutex());
+			if (data->is_running) {
+				data->is_dtor_waiting = true;
+				auto& cv = global_cv();
+				do {
+					cv.wait(lock);
+				} while (data->is_running);
+			}
 			data->is_alive = false;
 		}
 
