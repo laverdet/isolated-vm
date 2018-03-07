@@ -41,7 +41,7 @@ InspectorAgent::~InspectorAgent() {
 /**
  * When debugging running JS code this function is called and is expected to block and process
  * inspector messages until the inspector is done. This happens in the isolate's currently running
- * thread so we know that an ExecutorLock is up.
+ * thread so we know that an Executor::Lock is up.
  */
 void InspectorAgent::runMessageLoopOnPause(int /* context_group_id */) {
 	std::unique_lock<std::mutex> lock(mutex);

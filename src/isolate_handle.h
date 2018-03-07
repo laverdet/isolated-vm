@@ -31,6 +31,8 @@ class IsolateHandle : public TransferableHandle {
 		v8::Local<v8::Value> CreateInspectorSession();
 		v8::Local<v8::Value> Dispose();
 		template <int async> v8::Local<v8::Value> GetHeapStatistics();
+		v8::Local<v8::Value> GetCpuTime();
+		v8::Local<v8::Value> GetWallTime();
 		v8::Local<v8::Value> IsDisposedGetter();
 		static v8::Local<v8::Value> CreateSnapshot(v8::Local<v8::Array> script_handles, v8::MaybeLocal<v8::String> warmup_handle);
 };

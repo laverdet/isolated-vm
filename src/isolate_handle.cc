@@ -114,13 +114,15 @@ Local<FunctionTemplate> IsolateHandle::Definition() {
 		"createSnapshot", ParameterizeStatic<decltype(&CreateSnapshot), &CreateSnapshot>(),
 		"compileScript", Parameterize<decltype(&IsolateHandle::CompileScript<1>), &IsolateHandle::CompileScript<1>>(),
 		"compileScriptSync", Parameterize<decltype(&IsolateHandle::CompileScript<0>), &IsolateHandle::CompileScript<0>>(),
+		"cpuTime", ParameterizeAccessor<decltype(&IsolateHandle::GetCpuTime), &IsolateHandle::GetCpuTime>(),
 		"createContext", Parameterize<decltype(&IsolateHandle::CreateContext<1>), &IsolateHandle::CreateContext<1>>(),
 		"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContext<0>), &IsolateHandle::CreateContext<0>>(),
 		"createInspectorSession", Parameterize<decltype(&IsolateHandle::CreateInspectorSession), &IsolateHandle::CreateInspectorSession>(),
 		"dispose", Parameterize<decltype(&IsolateHandle::Dispose), &IsolateHandle::Dispose>(),
 		"getHeapStatistics", Parameterize<decltype(&IsolateHandle::GetHeapStatistics<1>), &IsolateHandle::GetHeapStatistics<1>>(),
 		"getHeapStatisticsSync", Parameterize<decltype(&IsolateHandle::GetHeapStatistics<0>), &IsolateHandle::GetHeapStatistics<0>>(),
-		"isDisposed", ParameterizeAccessor<decltype(&IsolateHandle::IsDisposedGetter), &IsolateHandle::IsDisposedGetter>()
+		"isDisposed", ParameterizeAccessor<decltype(&IsolateHandle::IsDisposedGetter), &IsolateHandle::IsDisposedGetter>(),
+		"wallTime", ParameterizeAccessor<decltype(&IsolateHandle::GetWallTime), &IsolateHandle::GetWallTime>()
 	));
 }
 
@@ -427,6 +429,39 @@ struct HeapStatRunner : public ThreePhaseTask {
 template <int async>
 Local<Value> IsolateHandle::GetHeapStatistics() {
 	return ThreePhaseTask::Run<async, HeapStatRunner>(*isolate, 0);
+}
+
+/**
+ * Timers
+ */
+v8::Local<v8::Value> IsolateHandle::GetCpuTime() {
+	auto env = this->isolate->GetIsolate();
+	if (!env) {
+		throw js_generic_error("Isolated is disposed");
+	}
+	uint64_t time = std::chrono::duration_cast<std::chrono::nanoseconds>(env->GetCpuTime()).count();
+	Isolate* isolate = Isolate::GetCurrent();
+	Local<Context> context = isolate->GetCurrentContext();
+	constexpr uint64_t kNanos = (uint64_t)1e9;
+	Local<Array> ret = Array::New(isolate, 2);
+	Unmaybe(ret->Set(context, 0, Uint32::New(isolate, (uint32_t)(time / kNanos))));
+	Unmaybe(ret->Set(context, 1, Uint32::New(isolate, (uint32_t)(time - (time / kNanos) * kNanos))));
+	return ret;
+}
+
+v8::Local<v8::Value> IsolateHandle::GetWallTime() {
+	auto env = this->isolate->GetIsolate();
+	if (!env) {
+		throw js_generic_error("Isolated is disposed");
+	}
+	uint64_t time = std::chrono::duration_cast<std::chrono::nanoseconds>(env->GetWallTime()).count();
+	Isolate* isolate = Isolate::GetCurrent();
+	Local<Context> context = isolate->GetCurrentContext();
+	constexpr uint64_t kNanos = (uint64_t)1e9;
+	Local<Array> ret = Array::New(isolate, 2);
+	Unmaybe(ret->Set(context, 0, Uint32::New(isolate, (uint32_t)(time / kNanos))));
+	Unmaybe(ret->Set(context, 1, Uint32::New(isolate, (uint32_t)(time - (time / kNanos) * kNanos))));
+	return ret;
 }
 
 /**

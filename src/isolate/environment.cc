@@ -13,30 +13,108 @@ using std::unique_ptr;
 namespace ivm {
 
 /**
- * ExecutorLock implementation
+ * Executor implementation
  */
-thread_local IsolateEnvironment* IsolateEnvironment::ExecutorLock::current;
-std::thread::id IsolateEnvironment::ExecutorLock::default_thread;
+thread_local IsolateEnvironment* IsolateEnvironment::Executor::current_env = nullptr;
+std::thread::id IsolateEnvironment::Executor::default_thread;
+thread_local IsolateEnvironment::Executor::Lock* IsolateEnvironment::Executor::Lock::current = nullptr;
+thread_local IsolateEnvironment::Executor::CpuTimer* IsolateEnvironment::Executor::cpu_timer_thread = nullptr;
 
-IsolateEnvironment::ExecutorLock::ExecutorLock(IsolateEnvironment& env) : scope(env), locker(env.isolate), isolate_scope(env.isolate), handle_scope(env.isolate) {
+IsolateEnvironment::Executor::Lock::Lock(
+	IsolateEnvironment& env
+) :
+	last(current),
+	scope(env),
+	wall_timer(env.executor),
+	locker(env.isolate),
+	cpu_timer(env.executor),
+	isolate_scope(env.isolate),
+	handle_scope(env.isolate) {
+	current = this;
 }
 
-void IsolateEnvironment::ExecutorLock::Init(IsolateEnvironment& default_isolate) {
-	assert(current == nullptr);
-	current = &default_isolate;
+IsolateEnvironment::Executor::Lock::~Lock() {
+	current = last;
+}
+
+IsolateEnvironment::Executor::Unlock::Unlock(IsolateEnvironment& env) : unlocker(env.isolate), cpu_timer(env.executor.cpu_timer) {
+	cpu_timer->Pause();
+}
+
+IsolateEnvironment::Executor::Unlock::~Unlock() {
+	cpu_timer->Resume();
+}
+
+IsolateEnvironment::Executor::CpuTimer::CpuTimer(Executor& executor) : executor(executor), last(Executor::cpu_timer_thread), time(std::chrono::high_resolution_clock::now()) {
+	Executor::cpu_timer_thread = this;
+	std::lock_guard<std::mutex> lock(executor.timer_mutex);
+	executor.cpu_timer = this;
+}
+
+IsolateEnvironment::Executor::CpuTimer::~CpuTimer() {
+	Executor::cpu_timer_thread = last;
+	std::lock_guard<std::mutex> lock(executor.timer_mutex);
+	executor.cpu_time += std::chrono::high_resolution_clock::now() - time;
+	executor.cpu_timer = last;
+}
+
+void IsolateEnvironment::Executor::CpuTimer::Pause() {
+	std::lock_guard<std::mutex> lock(executor.timer_mutex);
+	executor.cpu_time += std::chrono::high_resolution_clock::now() - time;
+	executor.cpu_timer = nullptr;
+}
+
+void IsolateEnvironment::Executor::CpuTimer::Resume() {
+	std::lock_guard<std::mutex> lock(executor.timer_mutex);
+	time = std::chrono::high_resolution_clock::now();
+	executor.cpu_timer = this;
+}
+
+IsolateEnvironment::Executor::WallTimer::WallTimer(Executor& executor) : executor(executor), cpu_timer(Executor::cpu_timer_thread) {
+	// Pause current CPU timer which may not belong to this isolate
+	if (cpu_timer != nullptr) {
+		cpu_timer->Pause();
+	}
+	// Maybe start wall timer
+	if (executor.wall_timer == nullptr) {
+		std::lock_guard<std::mutex> lock(executor.timer_mutex);
+		executor.wall_timer = this;
+		time = std::chrono::high_resolution_clock::now();
+	}
+}
+
+IsolateEnvironment::Executor::WallTimer::~WallTimer() {
+	// Resume old CPU timer
+	if (cpu_timer != nullptr) {
+		cpu_timer->Resume();
+	}
+	// Maybe update wall time
+	if (executor.wall_timer == this) {
+		std::lock_guard<std::mutex> lock(executor.timer_mutex);
+		executor.wall_timer = nullptr;
+		executor.wall_time += std::chrono::high_resolution_clock::now() - time;
+	}
+}
+
+IsolateEnvironment::Executor::Executor(IsolateEnvironment& env) : env(env) {
+}
+
+void IsolateEnvironment::Executor::Init(IsolateEnvironment& default_isolate) {
+	assert(current_env == nullptr);
+	current_env = &default_isolate;
 	default_thread = std::this_thread::get_id();
 }
 
-bool IsolateEnvironment::ExecutorLock::IsDefaultThread() {
+bool IsolateEnvironment::Executor::IsDefaultThread() {
 	return std::this_thread::get_id() == default_thread;
 }
 
-IsolateEnvironment::ExecutorLock::Scope::Scope(IsolateEnvironment& env) : last(current) {
-	current = &env;
+IsolateEnvironment::Executor::Scope::Scope(IsolateEnvironment& env) : last(current_env) {
+	current_env = &env;
 }
 
-IsolateEnvironment::ExecutorLock::Scope::~Scope() {
-	current = last;
+IsolateEnvironment::Executor::Scope::~Scope() {
+	current_env = last;
 }
 
 
@@ -299,7 +377,7 @@ void IsolateEnvironment::PromiseRejectCallback(PromiseRejectMessage rejection) {
 }
 
 void IsolateEnvironment::AsyncEntry() {
-	ExecutorLock lock(*this);
+	Executor::Lock lock(*this);
 	while (true) {
 		std::queue<unique_ptr<Runnable>> tasks;
 		std::queue<unique_ptr<Runnable>> interrupts;
@@ -332,7 +410,7 @@ void IsolateEnvironment::AsyncEntry() {
 }
 
 void IsolateEnvironment::InterruptEntry() {
-	// ExecutorLock is already acquired
+	// Executor::Lock is already acquired
 	while (true) {
 		// Get interrupt callbacks
 		std::queue<unique_ptr<Runnable>> interrupts;
@@ -354,10 +432,11 @@ void IsolateEnvironment::InterruptEntry() {
 
 IsolateEnvironment::IsolateEnvironment(Isolate* isolate, Local<Context> context) :
 	isolate(isolate),
+	executor(*this),
 	default_context(isolate, context),
 	root(true),
 	bookkeeping_statics(bookkeeping_statics_shared) {
-	ExecutorLock::Init(*this);
+	Executor::Init(*this);
 	Scheduler::Init();
 	std::lock_guard<std::mutex> lock(bookkeeping_statics->lookup_mutex);
 	bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
@@ -368,6 +447,7 @@ IsolateEnvironment::IsolateEnvironment(
 	shared_ptr<void> snapshot_blob,
 	size_t snapshot_length
 ) :
+	executor(*this),
 	allocator_ptr(std::make_unique<LimitedAllocator>(*this, memory_limit * 1024 * 1024)),
 	snapshot_blob_ptr(std::move(snapshot_blob)),
 	memory_limit(memory_limit),
@@ -414,7 +494,7 @@ IsolateEnvironment::~IsolateEnvironment() {
 		return;
 	}
 	{
-		ExecutorLock lock(*this);
+		Executor::Lock lock(*this);
 		// Dispose of inspector first
 		inspector_agent.reset();
 		// Kill all weak persistents
@@ -433,7 +513,7 @@ IsolateEnvironment::~IsolateEnvironment() {
 	{
 		// Dispose() will call destructors for external strings and array buffers, so this lock sets the
 		// "current" isolate for those C++ dtors to function correctly without locking v8
-		ExecutorLock::Scope lock(*this);
+		Executor::Scope lock(*this);
 		isolate->Dispose();
 	}
 	std::lock_guard<std::mutex> lock(bookkeeping_statics->lookup_mutex);
@@ -459,6 +539,24 @@ void IsolateEnvironment::EnableInspectorAgent() {
 
 InspectorAgent* IsolateEnvironment::GetInspectorAgent() const {
 	return inspector_agent.get();
+}
+
+std::chrono::high_resolution_clock::duration IsolateEnvironment::GetCpuTime() {
+	std::lock_guard<std::mutex> lock(executor.timer_mutex);
+	std::chrono::high_resolution_clock::duration time = executor.cpu_time;
+	if (executor.cpu_timer != nullptr) {
+		time += std::chrono::high_resolution_clock::now() - executor.cpu_timer->time;
+	}
+	return time;
+}
+
+std::chrono::high_resolution_clock::duration IsolateEnvironment::GetWallTime() {
+	std::lock_guard<std::mutex> lock(executor.timer_mutex);
+	std::chrono::high_resolution_clock::duration time = executor.wall_time;
+	if (executor.wall_timer != nullptr) {
+		time += std::chrono::high_resolution_clock::now() - executor.wall_timer->time;
+	}
+	return time;
 }
 
 void IsolateEnvironment::AddWeakCallback(Persistent<Object>* handle, void(*fn)(void*), void* param) {

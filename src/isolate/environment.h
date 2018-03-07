@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <cassert>
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -36,14 +37,40 @@ class IsolateEnvironment {
 
 	public:
 		/**
-		 * ExecutorLock class handles v8 locking while C++ code is running. Thread syncronization is
-		 * handled by v8::Locker. This also enters the isolate and sets up a handle scope.
+		 * Executor class handles v8 locking while C++ code is running. Thread syncronization is handled
+		 * by v8::Locker. This also enters the isolate and sets up a handle scope.
 		 */
-		class ExecutorLock {
+		class Executor { // "En taro adun"
+			private:
+				struct CpuTimer {
+					Executor& executor;
+					CpuTimer* last;
+					std::chrono::time_point<std::chrono::high_resolution_clock> time;
+					CpuTimer(Executor& executor);
+					CpuTimer(const CpuTimer&) = delete;
+					CpuTimer operator= (const CpuTimer&) = delete;
+					~CpuTimer();
+					void Pause();
+					void Resume();
+				};
+
+				// WallTimer is also responsible for pausing the current CpuTimer before we attempt to
+				// acquire the v8::Locker, because that could block in which case CPU shouldn't be counted.
+				struct WallTimer {
+					Executor& executor;
+					CpuTimer* cpu_timer;
+					std::chrono::time_point<std::chrono::high_resolution_clock> time;
+					WallTimer(Executor& executor);
+					WallTimer(const WallTimer&) = delete;
+					WallTimer operator= (const WallTimer&) = delete;
+					~WallTimer();
+				};
+
 			public:
 				class Scope {
 					private:
 						IsolateEnvironment* last;
+
 					public:
 						explicit Scope(IsolateEnvironment& env);
 						Scope(const Scope&) = delete;
@@ -51,21 +78,56 @@ class IsolateEnvironment {
 						~Scope();
 				};
 
-			private:
-				static thread_local IsolateEnvironment* current;
+				class Lock {
+					private:
+						// These need to be separate from `Executor::current` because the default isolate
+						// doesn't actually get a lock.
+						static thread_local Lock* current;
+						Lock* last;
+						Scope scope;
+						WallTimer wall_timer;
+						v8::Locker locker;
+						CpuTimer cpu_timer;
+						v8::Isolate::Scope isolate_scope;
+						v8::HandleScope handle_scope;
+
+					public:
+						explicit Lock(IsolateEnvironment& env);
+						Lock(const Lock&) = delete;
+						Lock operator= (const Lock&) = delete;
+						~Lock();
+				};
+
+				class Unlock {
+					private:
+						v8::Unlocker unlocker;
+						CpuTimer* cpu_timer;
+
+					public:
+						explicit Unlock(IsolateEnvironment& env);
+						Unlock(const Unlock&) = delete;
+						Unlock operator= (const Unlock&) = delete;
+						~Unlock();
+				};
+
+				static thread_local IsolateEnvironment* current_env;
 				static std::thread::id default_thread;
-				Scope scope;
-				v8::Locker locker;
-				v8::Isolate::Scope isolate_scope;
-				v8::HandleScope handle_scope;
+				IsolateEnvironment& env;
+				Lock* current_lock = nullptr;
+				static thread_local CpuTimer* cpu_timer_thread;
+				CpuTimer* cpu_timer;
+				WallTimer* wall_timer = nullptr;
+				std::mutex timer_mutex;
+				std::chrono::high_resolution_clock::duration cpu_time = std::chrono::seconds::zero();
+				std::chrono::high_resolution_clock::duration wall_time = std::chrono::seconds::zero();
 
 			public:
-				explicit ExecutorLock(IsolateEnvironment& env);
-				ExecutorLock(const ExecutorLock&) = delete;
-				ExecutorLock operator= (const ExecutorLock&) = delete;
-				~ExecutorLock() = default;
-				static IsolateEnvironment* GetCurrent() { return current; }
+				explicit Executor(IsolateEnvironment& env);
+				Executor(const Executor&) = delete;
+				Executor operator= (const Executor&) = delete;
+				~Executor() = default;
 				static void Init(IsolateEnvironment& default_isolate);
+				static IsolateEnvironment* GetCurrent() { return current_env; }
 				static bool IsDefaultThread();
 		};
 
@@ -177,7 +239,7 @@ class IsolateEnvironment {
 				IsolateSpecific() : key(IsolateEnvironment::specifics_count++) {}
 
 				v8::MaybeLocal<T> Deref() const {
-					IsolateEnvironment& env = *ExecutorLock::GetCurrent();
+					IsolateEnvironment& env = *Executor::GetCurrent();
 					if (env.specifics.size() > key) {
 						if (!env.specifics[key]->IsEmpty()) {
 							// This is dangerous but `Local` doesn't let you upcast from Data to
@@ -190,7 +252,7 @@ class IsolateEnvironment {
 				}
 
 				void Set(v8::Local<T> handle) {
-					IsolateEnvironment& env = *ExecutorLock::GetCurrent();
+					IsolateEnvironment& env = *Executor::GetCurrent();
 					if (env.specifics.size() <= key) {
 						env.specifics.reserve(key + 1);
 						while (env.specifics.size() < key) {
@@ -221,6 +283,7 @@ class IsolateEnvironment {
 
 		v8::Isolate* isolate;
 		Scheduler scheduler;
+		Executor executor;
 		std::shared_ptr<IsolateHolder> holder;
 		std::unique_ptr<class InspectorAgent> inspector_agent;
 		v8::Persistent<v8::Context> default_context;
@@ -303,14 +366,14 @@ class IsolateEnvironment {
 		 * Return pointer the currently running IsolateEnvironment
 		 */
 		static IsolateEnvironment* GetCurrent() {
-			return ExecutorLock::GetCurrent();
+			return Executor::GetCurrent();
 		}
 
 		/**
 		 * Return shared_ptr to current IsolateHolder
 		 */
 		static std::shared_ptr<IsolateHolder> GetCurrentHolder() {
-			return ExecutorLock::GetCurrent()->holder;
+			return Executor::GetCurrent()->holder;
 		}
 
 		/**
@@ -387,6 +450,12 @@ class IsolateEnvironment {
 		bool IsDefault() const {
 			return root;
 		}
+
+		/**
+		 * Timer getters
+		 */
+		std::chrono::high_resolution_clock::duration GetCpuTime();
+		std::chrono::high_resolution_clock::duration GetWallTime();
 
 		/**
 		 * Ask this isolate to finish everything it's doing.
