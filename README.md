@@ -130,7 +130,7 @@ isolate makes a call into another isolate, wall time will continue increasing wh
 remain the same.
 
 The return format is `[ seconds, nanoseconds ]`, which is the same as the nodejs method
-`[process.hrtime](https://nodejs.org/api/process.html#process_process_hrtime_time)`. To convert this
+[`process.hrtime`](https://nodejs.org/api/process.html#process_process_hrtime_time). To convert this
 value to milliseconds you could do something like: `(ret[0] + ret[1] / 1e9) * 1000`. Some precision
 is lost in this conversion but for most applications it's probably not a big deal.
 
