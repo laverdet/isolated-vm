@@ -18,6 +18,8 @@
 namespace ivm {
 
 class Runnable;
+template <typename F>
+v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn);
 
 /**
  * Wrapper around Isolate with helpers to make working with multiple isolates easier.
@@ -34,6 +36,8 @@ class IsolateEnvironment {
 	friend class IsolateHolder;
 	friend class LimitedAllocator;
 	friend class ThreePhaseTask;
+	template <typename F>
+	friend v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn);
 
 	public:
 		/**
@@ -155,13 +159,17 @@ class IsolateEnvironment {
 						// Add work to the task queue
 						void PushTask(std::unique_ptr<Runnable> task);
 						void PushInterrupt(std::unique_ptr<Runnable> interrupt);
+						void PushSyncInterrupt(std::unique_ptr<Runnable> interrupt);
 						// Takes control of current tasks. Resets current queue
 						std::queue<std::unique_ptr<Runnable>> TakeTasks();
 						std::queue<std::unique_ptr<Runnable>> TakeInterrupts();
+						std::queue<std::unique_ptr<Runnable>> TakeSyncInterrupts();
 						// Returns true if a wake was scheduled, true if the isolate is already running.
 						bool WakeIsolate(std::shared_ptr<IsolateEnvironment> isolate_ptr);
 						// Request an interrupt in this isolate. `status` must == Running to invoke this.
 						void InterruptIsolate(IsolateEnvironment& isolate);
+						// Interrupts an isolate running in the default thread
+						void InterruptSyncIsolate(IsolateEnvironment& isolate);
 				};
 
 				// Scheduler::AsyncWait will pause the current thread until woken up by another thread
@@ -191,6 +199,7 @@ class IsolateEnvironment {
 				std::condition_variable_any wait_cv;
 				std::queue<std::unique_ptr<Runnable>> tasks;
 				std::queue<std::unique_ptr<Runnable>> interrupts;
+				std::queue<std::unique_ptr<Runnable>> sync_interrupts;
 				thread_pool_t::affinity_t thread_affinity;
 				AsyncWait* async_wait = nullptr;
 
@@ -205,6 +214,7 @@ class IsolateEnvironment {
 				static void AsyncCallbackRoot(uv_async_t* async);
 				static void AsyncCallbackPool(bool pool_thread, void* param);
 				static void AsyncCallbackInterrupt(v8::Isolate* isolate_ptr, void* env_ptr);
+				static void SyncCallbackInterrupt(v8::Isolate* isolate_ptr, void* env_ptr);
 		};
 
 		/**
@@ -326,6 +336,7 @@ class IsolateEnvironment {
 		 * Called by Scheduler when there is work to be done in this isolate.
 		 */
 		void AsyncEntry();
+		template <std::queue<std::unique_ptr<Runnable>> (Scheduler::Lock::*Take)()>
 		void InterruptEntry();
 
 		/**

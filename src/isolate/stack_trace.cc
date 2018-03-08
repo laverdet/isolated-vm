@@ -59,29 +59,7 @@ Local<String> RenderErrorStack(Local<Value> data) {
 		// StackTraceHolder
 		StackTraceHolder& that = *ClassHandle::Unwrap<StackTraceHolder>(data.As<Object>());
 		Local<StackTrace> stack_trace = Deref(that.stack_trace);
-		std::stringstream ss;
-		int size = stack_trace->GetFrameCount();
-		for (int ii = 0; ii < size; ++ii) {
-			Local<StackFrame> frame = stack_trace->GetFrame(ii);
-			String::Utf8Value script_name(frame->GetScriptName());
-			int line_number = frame->GetLineNumber();
-			int column = frame->GetColumn();
-			if (frame->IsEval()) {
-				if (frame->GetScriptId() == Message::kNoScriptIdInfo) {
-					ss <<"\n    at [eval]:" <<line_number <<":" <<column;
-				} else {
-					ss <<"\n    at [eval] (" <<*script_name <<":" <<line_number <<":" <<column;
-				}
-			} else {
-				String::Utf8Value fn_name(frame->GetFunctionName());
-				if (fn_name.length() == 0) {
-					ss <<"\n    at " <<*script_name <<":" <<line_number <<":" <<column;
-				} else {
-					ss <<"\n    at " <<*fn_name <<" (" <<*script_name <<":" <<line_number <<":" <<column <<")";
-				}
-			}
-		}
-		return Unmaybe(String::NewFromUtf8(isolate, ss.str().c_str(), NewStringType::kNormal));
+		return Unmaybe(String::NewFromUtf8(isolate, StackTraceHolder::RenderSingleStack(stack_trace).c_str(), NewStringType::kNormal));
 	}
 }
 
@@ -156,6 +134,32 @@ void StackTraceHolder::ChainStack(Local<Object> error, Local<StackTrace> stack) 
 	Unmaybe(pair->Set(context, 0, ClassHandle::NewInstance<StackTraceHolder>(stack)));
 	Unmaybe(pair->Set(context, 1, existing_data));
 	AttachStackGetter(error, pair);
+}
+
+std::string StackTraceHolder::RenderSingleStack(v8::Local<v8::StackTrace> stack_trace) {
+	std::stringstream ss;
+	int size = stack_trace->GetFrameCount();
+	for (int ii = 0; ii < size; ++ii) {
+		Local<StackFrame> frame = stack_trace->GetFrame(ii);
+		String::Utf8Value script_name(frame->GetScriptName());
+		int line_number = frame->GetLineNumber();
+		int column = frame->GetColumn();
+		if (frame->IsEval()) {
+			if (frame->GetScriptId() == Message::kNoScriptIdInfo) {
+				ss <<"\n    at [eval]:" <<line_number <<":" <<column;
+			} else {
+				ss <<"\n    at [eval] (" <<*script_name <<":" <<line_number <<":" <<column;
+			}
+		} else {
+			String::Utf8Value fn_name(frame->GetFunctionName());
+			if (fn_name.length() == 0) {
+				ss <<"\n    at " <<*script_name <<":" <<line_number <<":" <<column;
+			} else {
+				ss <<"\n    at " <<*fn_name <<" (" <<*script_name <<":" <<line_number <<":" <<column <<")";
+			}
+		}
+	}
+	return ss.str();
 }
 
 } // namespace ivm

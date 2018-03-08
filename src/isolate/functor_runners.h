@@ -39,9 +39,11 @@ void RunCatchExternal(v8::Local<v8::Context> default_context, F1 fn1, F2 fn2) {
 			fn1();
 		} catch (const js_type_error& cc_error) {
 			// The following errors are just various C++ strings with an error type
-			fn2(std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::TypeError, cc_error.GetMessage()));
+			fn2(std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::TypeError, cc_error.GetMessage(), cc_error.GetStackTrace()));
 		} catch (const js_range_error& cc_error) {
-			fn2(std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::RangeError, cc_error.GetMessage()));
+			fn2(std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::RangeError, cc_error.GetMessage(), cc_error.GetStackTrace()));
+		} catch (const js_generic_error& cc_error) {
+			fn2(std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::Error, cc_error.GetMessage(), cc_error.GetStackTrace()));
 		} catch (const js_error_message& cc_error) {
 			fn2(std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::Error, cc_error.GetMessage()));
 		} catch (const js_runtime_error& cc_error) {

@@ -173,10 +173,14 @@ void IsolateEnvironment::Scheduler::AsyncCallbackPool(bool pool_thread, void* pa
 	}
 }
 
-
 void IsolateEnvironment::Scheduler::AsyncCallbackInterrupt(Isolate* /* isolate_ptr */, void* env_ptr) {
 	IsolateEnvironment& env = *static_cast<IsolateEnvironment*>(env_ptr);
-	env.InterruptEntry();
+	env.InterruptEntry<&Lock::TakeInterrupts>();
+}
+
+void IsolateEnvironment::Scheduler::SyncCallbackInterrupt(Isolate* /* isolate_ptr */, void* env_ptr) {
+	IsolateEnvironment& env = *static_cast<IsolateEnvironment*>(env_ptr);
+	env.InterruptEntry<&Lock::TakeSyncInterrupts>();
 }
 
 IsolateEnvironment::Scheduler::Lock::Lock(Scheduler& scheduler) : scheduler(scheduler), lock(scheduler.mutex) {}
@@ -195,6 +199,10 @@ void IsolateEnvironment::Scheduler::Lock::PushInterrupt(unique_ptr<Runnable> int
 	scheduler.interrupts.push(std::move(interrupt));
 }
 
+void IsolateEnvironment::Scheduler::Lock::PushSyncInterrupt(unique_ptr<Runnable> interrupt) {
+	scheduler.sync_interrupts.push(std::move(interrupt));
+}
+
 std::queue<unique_ptr<Runnable>> IsolateEnvironment::Scheduler::Lock::TakeTasks() {
 	decltype(scheduler.tasks) tmp;
 	std::swap(tmp, scheduler.tasks);
@@ -204,6 +212,12 @@ std::queue<unique_ptr<Runnable>> IsolateEnvironment::Scheduler::Lock::TakeTasks(
 std::queue<unique_ptr<Runnable>> IsolateEnvironment::Scheduler::Lock::TakeInterrupts() {
 	decltype(scheduler.interrupts) tmp;
 	std::swap(tmp, scheduler.interrupts);
+	return tmp;
+}
+
+std::queue<unique_ptr<Runnable>> IsolateEnvironment::Scheduler::Lock::TakeSyncInterrupts() {
+	decltype(scheduler.sync_interrupts) tmp;
+	std::swap(tmp, scheduler.sync_interrupts);
 	return tmp;
 }
 
@@ -234,6 +248,10 @@ void IsolateEnvironment::Scheduler::Lock::InterruptIsolate(IsolateEnvironment& i
 	assert(scheduler.status == Status::Running);
 	// Since this callback will be called by v8 we can be certain the pointer to `isolate` is still valid
 	isolate->RequestInterrupt(AsyncCallbackInterrupt, static_cast<void*>(&isolate));
+}
+
+void IsolateEnvironment::Scheduler::Lock::InterruptSyncIsolate(IsolateEnvironment& isolate) {
+	isolate->RequestInterrupt(SyncCallbackInterrupt, static_cast<void*>(&isolate));
 }
 
 IsolateEnvironment::Scheduler::AsyncWait::AsyncWait(Scheduler& scheduler) : scheduler(scheduler), lock(scheduler.wait_mutex) {
@@ -409,6 +427,7 @@ void IsolateEnvironment::AsyncEntry() {
 	}
 }
 
+template <std::queue<std::unique_ptr<Runnable>> (IsolateEnvironment::Scheduler::Lock::*Take)()>
 void IsolateEnvironment::InterruptEntry() {
 	// Executor::Lock is already acquired
 	while (true) {
@@ -416,7 +435,7 @@ void IsolateEnvironment::InterruptEntry() {
 		std::queue<unique_ptr<Runnable>> interrupts;
 		{
 			Scheduler::Lock lock(scheduler);
-			interrupts = lock.TakeInterrupts();
+			interrupts = (lock.*Take)();
 			if (interrupts.empty()) {
 				return;
 			}
@@ -508,6 +527,7 @@ IsolateEnvironment::~IsolateEnvironment() {
 		// Destroy outstanding tasks. Do this here while the executor lock is up.
 		Scheduler::Lock lock2(scheduler);
 		lock2.TakeInterrupts();
+		lock2.TakeSyncInterrupts();
 		lock2.TakeTasks();
 	}
 	{

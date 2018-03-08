@@ -1,5 +1,7 @@
 #pragma once
 #include "environment.h"
+#include "runnable.h"
+#include "stack_trace.h"
 #include "../timer.h"
 #include <chrono>
 #include <memory>
@@ -8,21 +10,91 @@
 namespace ivm {
 
 /**
+ * Cross-thread wait. I think I've implemented this same thing like three times with slightly
+ * different requirements. It might be a good idea to abstract it out.
+ */
+class ThreadWait {
+	private:
+		static std::mutex& global_mutex() {
+			static std::mutex mutex;
+			return mutex;
+		}
+
+		static std::condition_variable& global_cv() {
+			static std::condition_variable cv;
+			return cv;
+		}
+
+		bool finished = false;
+
+	public:
+		~ThreadWait() {
+			std::unique_lock<std::mutex> lock(global_mutex());
+			while (!finished) {
+				global_cv().wait(lock);
+			}
+		}
+
+		void Done() {
+			std::lock_guard<std::mutex> lock(global_mutex());
+			finished = true;
+			global_cv().notify_all();
+		}
+};
+
+/**
+ * Grabs a stack trace of the runaway script
+ */
+struct TimeoutRunner : public Runnable {
+	std::string& stack_trace;
+	ThreadWait& wait;
+
+	TimeoutRunner(std::string& stack_trace, ThreadWait& wait) : stack_trace(stack_trace), wait(wait) {}
+
+	~TimeoutRunner() {
+		wait.Done();
+	}
+
+	void Run() final {
+		v8::Isolate* isolate = v8::Isolate::GetCurrent();
+		stack_trace = StackTraceHolder::RenderSingleStack(v8::StackTrace::CurrentStackTrace(isolate, 10));
+		isolate->TerminateExecution();
+	}
+};
+
+/**
  * Run some v8 thing with a timeout. Also throws error if memory limit is hit.
  */
 template <typename F>
 v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 	IsolateEnvironment& isolate = *IsolateEnvironment::GetCurrent();
 	bool did_timeout = false, did_finish = false;
+	bool is_default_thread = IsolateEnvironment::Executor::IsDefaultThread();
 	v8::MaybeLocal<v8::Value> result;
+	std::string stack_trace;
 	{
 		std::unique_ptr<timer_t> timer_ptr;
 		if (timeout_ms != 0) {
-			timer_ptr = std::make_unique<timer_t>(timeout_ms, [&did_timeout, &did_finish, &isolate]() {
+			timer_ptr = std::make_unique<timer_t>(timeout_ms, [&did_timeout, &did_finish, is_default_thread, &isolate, &stack_trace]() {
 				did_timeout = true;
 				++isolate.terminate_depth;
-				isolate.CancelAsync();
-				isolate->TerminateExecution();
+				{
+					ThreadWait wait;
+					auto timeout_runner = std::make_unique<TimeoutRunner>(stack_trace, wait);
+					if (is_default_thread) {
+						// In this case this is a pure sync function. We should not cancel any async waits.
+						IsolateEnvironment::Scheduler::Lock scheduler(isolate.scheduler);
+						scheduler.PushSyncInterrupt(std::move(timeout_runner));
+						scheduler.InterruptSyncIsolate(isolate);
+					} else {
+						{
+							IsolateEnvironment::Scheduler::Lock scheduler(isolate.scheduler);
+							scheduler.PushInterrupt(std::move(timeout_runner));
+							scheduler.InterruptIsolate(isolate);
+						}
+						isolate.CancelAsync();
+					}
+				}
 				// FIXME(?): It seems that one call to TerminateExecution() doesn't kill the script if
 				// there is a promise handler scheduled. This is unexpected behavior but I can't
 				// reproduce it in vanilla v8 so the issue seems more complex. I'm punting on this for
@@ -44,6 +116,18 @@ v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 		}
 		result = fn();
 		did_finish = true;
+		{
+			// It's possible that fn() finished and the timer triggered at the same time. So here we throw
+			// away existing interrupts to let the ThreadWait finish and also avoid interrupting an
+			// unrelated function call.
+			// TODO: This probably breaks the inspector in some cases
+			IsolateEnvironment::Scheduler::Lock lock(isolate.scheduler);
+			if (is_default_thread) {
+				lock.TakeSyncInterrupts();
+			} else {
+				lock.TakeInterrupts();
+			}
+		}
 	}
 	if (isolate.DidHitMemoryLimit()) {
 		throw js_fatal_error("Isolate was disposed during execution due to memory limit");
@@ -53,7 +137,7 @@ v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 		if (--isolate.terminate_depth == 0) {
 			isolate->CancelTerminateExecution();
 		}
-		throw js_generic_error("Script execution timed out.");
+		throw js_generic_error("Script execution timed out.", std::move(stack_trace));
 	}
 	return Unmaybe(result);
 }

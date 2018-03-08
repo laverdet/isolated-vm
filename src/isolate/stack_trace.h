@@ -1,6 +1,7 @@
 #pragma once
 #include <v8.h>
 #include "class_handle.h"
+#include <string>
 
 namespace ivm {
 
@@ -15,6 +16,7 @@ class StackTraceHolder : public ClassHandle {
 		static v8::Local<v8::FunctionTemplate> Definition();
 		static void AttachStack(v8::Local<v8::Object> error, v8::Local<v8::StackTrace> stack);
 		static void ChainStack(v8::Local<v8::Object> error, v8::Local<v8::StackTrace> stack);
+		static std::string RenderSingleStack(v8::Local<v8::StackTrace> stack_trace);
 };
 
 } // namespace ivm

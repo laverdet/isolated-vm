@@ -4,6 +4,7 @@ let spawn = require('child_process').spawn;
 let path = require('path');
 
 let ret = 0;
+let passCount = 0, failCount = 0;
 function runTest(test, cb) {
 	// Copy env variables
 	let env = {};
@@ -40,6 +41,7 @@ function runTest(test, cb) {
 	process.stderr.write(`${test}: `);
 	proc.on('exit', function(code) {
 		if (stdout !== 'pass\n' || stderr !== '') {
+			++failCount;
 			ret = 1;
 			console.error(
 				`*fail*\n`+
@@ -48,9 +50,11 @@ function runTest(test, cb) {
 				`stdout: ${stdout}`
 			);
 		} else if (code !== 0) {
+			++failCount;
 			ret = 1;
 			console.error(`fail (${code})`);
 		} else {
+			++passCount;
 			console.log(`pass`);
 		}
 		cb();
@@ -58,6 +62,7 @@ function runTest(test, cb) {
 }
 
 let cb = function() {
+	console.log('\nCompleted: '+ passCount+ ' passed, '+ failCount+ ' failed.');
 	process.exit(ret);
 };
 fs.readdirSync('./tests').sort().reverse().forEach(function(file) {

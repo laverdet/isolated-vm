@@ -345,10 +345,11 @@ ExternalCopyError::ExternalCopyError(
 	message(std::move(message)),
 	stack(std::move(stack)) {}
 
-ExternalCopyError::ExternalCopyError(ErrorType error_type, const char* message) :
+ExternalCopyError::ExternalCopyError(ErrorType error_type, const char* message, std::string stack) :
 	ExternalCopy(sizeof(ExternalCopyError)),
 	error_type(error_type),
-	message(make_unique<ExternalCopyString>(message)) {}
+	message(make_unique<ExternalCopyString>(message)),
+	stack(stack.empty() ? unique_ptr<ExternalCopyString>() : make_unique<ExternalCopyString>(std::move(stack))) {}
 
 Local<Value> ExternalCopyError::CopyInto(bool /*transfer_in*/) {
 

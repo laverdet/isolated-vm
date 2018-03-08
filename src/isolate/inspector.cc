@@ -49,7 +49,7 @@ void InspectorAgent::runMessageLoopOnPause(int /* context_group_id */) {
 	do {
 		cv.wait(lock);
 		lock.unlock();
-		isolate.InterruptEntry();
+		isolate.InterruptEntry<&IsolateEnvironment::Scheduler::Lock::TakeInterrupts>();
 		lock.lock();
 	} while (running);
 }

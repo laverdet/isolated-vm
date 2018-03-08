@@ -6,21 +6,28 @@ let ivm = require('isolated-vm');
 	let context = isolate.createContextSync();
 	let global = context.global;
 	global.setSync('global', global.derefInto());
-	isolate.compileScriptSync('global.run = () => { for(;;); }').runSync(context);
+	isolate.compileScriptSync('global.run = () => { function the_stack() { for(;;); }; the_stack(); }').runSync(context);
 	let run = global.getSync('run');
 	let uhoh = false;
-	setTimeout(function() {
+	let timeout = setTimeout(function() {
 		uhoh = true;
 	}, 500);
 	try {
 		run.applySync(undefined, [], { timeout: 20 });
-		console.log('what?');
-	} catch (err) {}
+	} catch (err) {
+		if (!/the_stack/.test(err.stack)) {
+			console.log('missing stack');
+		}
+	}
 
 	try {
 		await run.apply(undefined, [], { timeout: 20 });
 		console.log('what?');
 	} catch (err) {
+		if (!/the_stack/.test(err.stack)) {
+			console.log('missing stack');
+		}
 		console.log(uhoh ? 'uhoh' : 'pass');
+		clearTimeout(timeout);
 	}
 })().catch(console.error);

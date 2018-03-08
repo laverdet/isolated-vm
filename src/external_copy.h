@@ -145,7 +145,7 @@ class ExternalCopyError : public ExternalCopy {
 
 	public:
 		ExternalCopyError(ErrorType error_type, std::unique_ptr<ExternalCopyString> message, std::unique_ptr<ExternalCopyString> stack);
-		ExternalCopyError(ErrorType error_type, const char* message);
+		ExternalCopyError(ErrorType error_type, const char* message, std::string stack = "");
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
 		uint32_t WorstCaseHeapSize() const final;
 };

@@ -67,9 +67,15 @@ class js_error_ctor_base : public js_error_message {
 
 template <v8::Local<v8::Value> (*F)(v8::Local<v8::String>)>
 class js_error_ctor : public js_error_ctor_base {
+	private:
+		std::string stack_trace;
 	public:
-		explicit js_error_ctor(const char* message) : js_error_ctor_base(message) {}
+		explicit js_error_ctor(const char* message, std::string stack_trace) : js_error_ctor_base(message), stack_trace(std::move(stack_trace)) {}
 		explicit js_error_ctor(std::string message) : js_error_ctor_base(std::move(message)) {}
+
+		std::string GetStackTrace() const {
+			return stack_trace;
+		}
 
 		v8::Local<v8::Value> ConstructError() const final {
 			v8::Isolate* isolate = v8::Isolate::GetCurrent();
