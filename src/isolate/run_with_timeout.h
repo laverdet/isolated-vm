@@ -75,7 +75,9 @@ v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 	{
 		std::unique_ptr<timer_t> timer_ptr;
 		if (timeout_ms != 0) {
-			timer_ptr = std::make_unique<timer_t>(timeout_ms, [&did_timeout, &did_finish, is_default_thread, &isolate, &stack_trace]() {
+			timer_ptr = std::make_unique<timer_t>(timeout_ms, [
+				&did_timeout, &did_finish, is_default_thread, &isolate, &stack_trace
+			](void* next) {
 				did_timeout = true;
 				++isolate.terminate_depth;
 				{
@@ -94,6 +96,7 @@ v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 						}
 						isolate.CancelAsync();
 					}
+					timer_t::chain(next);
 				}
 				// FIXME(?): It seems that one call to TerminateExecution() doesn't kill the script if
 				// there is a promise handler scheduled. This is unexpected behavior but I can't

@@ -62,12 +62,13 @@ class PlatformDelegate : public v8::Platform {
 			if (isolate == node_isolate) {
 				node_platform->CallDelayedOnForegroundThread(isolate, task, delay_in_seconds);
 			} else {
-				timer_t::wait_detached(delay_in_seconds * 1000, [isolate, task]() {
+				timer_t::wait_detached(delay_in_seconds * 1000, [isolate, task](void* next) {
 					auto holder = std::make_unique<TaskHolder>(task);
 					auto s_isolate = IsolateEnvironment::LookupIsolate(isolate);
 					if (s_isolate) {
 						s_isolate->ScheduleTask(std::move(holder), false, true);
 					}
+					timer_t::chain(next);
 				});
 			}
 		}
