@@ -12,15 +12,15 @@ namespace ivm {
 class ClassHandle* _ClassHandleUnwrap(v8::Local<v8::Object> handle);
 
 inline std::string CalleeName(const v8::FunctionCallbackInfo<v8::Value>& info) {
-	return std::string("`")+ *v8::String::Utf8Value(Unmaybe(info.Data()->ToString(v8::Isolate::GetCurrent()->GetCurrentContext())))+ "`";
+	return std::string("`")+ *v8::String::Utf8Value(v8::Isolate::GetCurrent(), Unmaybe(info.Data()->ToString(v8::Isolate::GetCurrent()->GetCurrentContext())))+ "`";
 }
 
 inline std::string CalleeName(const v8::PropertyCallbackInfo<v8::Value>& info) {
-	return std::string("`")+ *v8::String::Utf8Value(Unmaybe(info.Data()->ToString(v8::Isolate::GetCurrent()->GetCurrentContext())))+ "`";
+	return std::string("`")+ *v8::String::Utf8Value(v8::Isolate::GetCurrent(), Unmaybe(info.Data()->ToString(v8::Isolate::GetCurrent()->GetCurrentContext())))+ "`";
 }
 
 inline std::string CalleeName(const v8::PropertyCallbackInfo<void>& info) {
-	return std::string("`")+ *v8::String::Utf8Value(Unmaybe(info.Data()->ToString(v8::Isolate::GetCurrent()->GetCurrentContext())))+ "`";
+	return std::string("`")+ *v8::String::Utf8Value(v8::Isolate::GetCurrent(), Unmaybe(info.Data()->ToString(v8::Isolate::GetCurrent()->GetCurrentContext())))+ "`";
 }
 
 inline void PrivateConstructorError(const v8::FunctionCallbackInfo<v8::Value>& info) {

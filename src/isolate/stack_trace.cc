@@ -30,7 +30,7 @@ Local<String> RenderErrorStack(Local<Value> data) {
 	if (data->IsString()) {
 		// Plain string. We need to remove the first line of `stack` to avoid repeating the error
 		// message
-		String::Utf8Value string_value(data.As<String>());
+		String::Utf8Value string_value(isolate, data.As<String>());
 		const char* c_str = *string_value;
 		// Must not start with indentation
 		if (c_str[0] == ' ' && c_str[1] == ' ' && c_str[2] == ' ' && c_str[3] == ' ') {
@@ -137,11 +137,12 @@ void StackTraceHolder::ChainStack(Local<Object> error, Local<StackTrace> stack) 
 }
 
 std::string StackTraceHolder::RenderSingleStack(v8::Local<v8::StackTrace> stack_trace) {
+	Isolate* isolate = Isolate::GetCurrent();
 	std::stringstream ss;
 	int size = stack_trace->GetFrameCount();
 	for (int ii = 0; ii < size; ++ii) {
 		Local<StackFrame> frame = stack_trace->GetFrame(ii);
-		String::Utf8Value script_name(frame->GetScriptName());
+		String::Utf8Value script_name(isolate, frame->GetScriptName());
 		int line_number = frame->GetLineNumber();
 		int column = frame->GetColumn();
 		if (frame->IsEval()) {
@@ -151,7 +152,7 @@ std::string StackTraceHolder::RenderSingleStack(v8::Local<v8::StackTrace> stack_
 				ss <<"\n    at [eval] (" <<*script_name <<":" <<line_number <<":" <<column;
 			}
 		} else {
-			String::Utf8Value fn_name(frame->GetFunctionName());
+			String::Utf8Value fn_name(isolate, frame->GetFunctionName());
 			if (fn_name.length() == 0) {
 				ss <<"\n    at " <<*script_name <<":" <<line_number <<":" <<column;
 			} else {

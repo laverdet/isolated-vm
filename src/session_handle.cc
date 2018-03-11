@@ -128,7 +128,7 @@ void SessionHandle::CheckDisposed() {
  */
 Local<Value> SessionHandle::DispatchProtocolMessage(Local<String> message) {
 	CheckDisposed();
-	String::Value v8_str(message);
+	String::Value v8_str(Isolate::GetCurrent(), message);
 	session->DispatchBackendProtocolMessage(std::vector<uint16_t>(*v8_str, *v8_str + v8_str.length()));
 	return Undefined(Isolate::GetCurrent());
 }
