@@ -2,6 +2,7 @@
 #include <v8.h>
 #include <atomic>
 #include <cstdint>
+#include <cstdlib>
 #include <memory>
 #include <vector>
 

@@ -1,5 +1,6 @@
 #include "allocator.h"
 #include "environment.h"
+#include <cstdlib>
 
 using namespace v8;
 
@@ -35,7 +36,7 @@ LimitedAllocator::LimitedAllocator(IsolateEnvironment& env, size_t limit) : env(
 void* LimitedAllocator::Allocate(size_t length) {
 	if (Check(length)) {
 		env.extra_allocated_memory += length;
-		return calloc(length, 1);
+		return std::calloc(length, 1);
 	} else {
 		++failures;
 		return nullptr;
@@ -45,7 +46,7 @@ void* LimitedAllocator::Allocate(size_t length) {
 void* LimitedAllocator::AllocateUninitialized(size_t length) {
 	if (Check(length)) {
 		env.extra_allocated_memory += length;
-		return malloc(length);
+		return std::malloc(length);
 	} else {
 		++failures;
 		return nullptr;
@@ -55,7 +56,7 @@ void* LimitedAllocator::AllocateUninitialized(size_t length) {
 void LimitedAllocator::Free(void* data, size_t length) {
 	env.extra_allocated_memory -= length;
 	next_check -= length;
-	free(data);
+	std::free(data);
 }
 
 void LimitedAllocator::AdjustAllocatedSize(ptrdiff_t length) {

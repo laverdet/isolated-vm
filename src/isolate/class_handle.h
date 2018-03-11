@@ -7,6 +7,7 @@
 #include "util.h"
 
 #include <cassert>
+#include <cstddef>
 #include <stdexcept>
 
 namespace ivm {
@@ -20,7 +21,7 @@ class ClassHandle {
 			v8::FunctionCallback fn;
 			int args;
 			constexpr CtorFunction(v8::FunctionCallback fn, int args) : fn(fn), args(args) {}
-			constexpr CtorFunction(nullptr_t ptr) : fn(ptr), args(0) {} // NOLINT
+			constexpr CtorFunction(std::nullptr_t ptr) : fn(ptr), args(0) {} // NOLINT
 		};
 		// The int types here are just a lazy way to make these different types
 		using MemberFunction = std::pair<v8::FunctionCallback, int32_t>;
