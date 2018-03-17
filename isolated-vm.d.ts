@@ -61,6 +61,26 @@ declare module 'isolated-vm' {
 				dispose(): void;
 
 				/**
+				 * The total CPU and wall time spent in this isolate. CPU time is the amount
+				 * of time the isolate has spent actively doing work on the CPU. Wall time
+				 * is the amount of time the isolate has been running, including passive
+				 * time spent waiting (think "wall" like a clock on the wall). For instance,
+				 * if an isolate makes a call into another isolate, wall time will continue
+				 * increasing while CPU time will remain the same.
+				 * 
+				 * The return format is [ seconds, nanoseconds ], which is the same as the
+				 * nodejs method [process.hrtime](https://nodejs.org/api/process.html#process_process_hrtime_time).
+				 * To convert this value to milliseconds you could do something like: (ret[0] + ret[1] / 1e9) * 1000.
+				 * Some precision is lost in this conversion but for most applications it's probably not a big deal.
+				 * 
+				 * Note that CPU time may vary drastically if there is contention for the CPU.
+				 * This could occur if other processes are trying to do work, or if you have
+				 * more than require('os').cpus().length isolates currently doing work in the same nodejs process.
+				 */
+				cpuTime: [number, number];
+				wallTime: [number, number];
+
+				/**
 				 * Flag that indicates whether this isolate has been disposed.
 				 */
 				isDisposed: boolean;
@@ -177,6 +197,7 @@ declare module 'isolated-vm' {
 				/**
 				 * Returns a Reference to this context's global object.
 				 */
+				global: Reference<Object>;
 				globalReference(): Reference<Object>;
 
 				release(): void;
@@ -275,6 +296,20 @@ declare module 'isolated-vm' {
 				 * otherwise an error will be thrown.
 				 */
 				applySync(receiver?: any, arguments?: Transferable[], options?: ScriptRunOptions): any;
+
+				/**
+				 * `applySyncPromise` is a special version of `applySync` which may only be
+				 * invoked on functions belonging to the default isolate AND may only be
+				 * invoked from a non-default thread. Functions invoked in this way may
+				 * return a promise and the invoking isolate will wait for that promise to
+				 * resolve before resuming execution. You can use this to implement functions
+				 * like readFileSync in a way that doesn't block the default isolate. Note that
+				 * the invoking isolate will not respond to any async functions until this
+				 * promise is resolved, however synchronous functions will still function
+				 * correctly. Misuse of this feature may result in deadlocked isolates, though
+				 * the default isolate will never be at risk of a deadlock.
+				 */
+				applySyncPromise(receiver?: any, arguments?: Transferable[], options?: ScriptRunOptions): any;
 		}
 
 		export interface AutomaticallyReleasableOptions {
