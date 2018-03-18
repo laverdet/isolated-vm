@@ -123,7 +123,7 @@ IsolateEnvironment::Executor::Scope::~Scope() {
  */
 uv_async_t IsolateEnvironment::Scheduler::root_async;
 thread_pool_t IsolateEnvironment::Scheduler::thread_pool(std::thread::hardware_concurrency() + 1);
-std::atomic<int> IsolateEnvironment::Scheduler::uv_ref_count(0);
+std::atomic<unsigned int> IsolateEnvironment::Scheduler::uv_ref_count(0);
 
 IsolateEnvironment::Scheduler::Scheduler() = default;
 IsolateEnvironment::Scheduler::~Scheduler() = default;

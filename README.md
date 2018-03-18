@@ -138,6 +138,15 @@ Note that CPU time may vary drastically if there is contention for the CPU. This
 other processes are trying to do work, or if you have more than `require('os').cpus().length`
 isolates currently doing work in the same nodejs process.
 
+##### `isolate.referenceCount` *[number]*
+Returns the total count of active `Reference` instances that belong to this isolate. Note that in
+certain cases many `Reference` instances in JavaScript will point to the same underlying reference
+handle, in which case this number will only reflect the underlying reference handle. This happens
+when you transfer a `Reference` instance via some method which accepts transferable values. This
+will also include underlying reference handles created by isolated-vm like `Script` or `Context`
+objects.
+
+
 ### Class: `Context` *[transferable]*
 A context is a sandboxed execution environment within an isolate. Each context contains its own
 built-in objects and global space.

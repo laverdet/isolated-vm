@@ -122,6 +122,7 @@ Local<FunctionTemplate> IsolateHandle::Definition() {
 		"getHeapStatistics", Parameterize<decltype(&IsolateHandle::GetHeapStatistics<1>), &IsolateHandle::GetHeapStatistics<1>>(),
 		"getHeapStatisticsSync", Parameterize<decltype(&IsolateHandle::GetHeapStatistics<0>), &IsolateHandle::GetHeapStatistics<0>>(),
 		"isDisposed", ParameterizeAccessor<decltype(&IsolateHandle::IsDisposedGetter), &IsolateHandle::IsDisposedGetter>(),
+		"referenceCount", ParameterizeAccessor<decltype(&IsolateHandle::GetReferenceCount), &IsolateHandle::GetReferenceCount>(),
 		"wallTime", ParameterizeAccessor<decltype(&IsolateHandle::GetWallTime), &IsolateHandle::GetWallTime>()
 	));
 }
@@ -434,7 +435,7 @@ Local<Value> IsolateHandle::GetHeapStatistics() {
 /**
  * Timers
  */
-v8::Local<v8::Value> IsolateHandle::GetCpuTime() {
+Local<Value> IsolateHandle::GetCpuTime() {
 	auto env = this->isolate->GetIsolate();
 	if (!env) {
 		throw js_generic_error("Isolated is disposed");
@@ -449,7 +450,7 @@ v8::Local<v8::Value> IsolateHandle::GetCpuTime() {
 	return ret;
 }
 
-v8::Local<v8::Value> IsolateHandle::GetWallTime() {
+Local<Value> IsolateHandle::GetWallTime() {
 	auto env = this->isolate->GetIsolate();
 	if (!env) {
 		throw js_generic_error("Isolated is disposed");
@@ -462,6 +463,17 @@ v8::Local<v8::Value> IsolateHandle::GetWallTime() {
 	Unmaybe(ret->Set(context, 0, Uint32::New(isolate, (uint32_t)(time / kNanos))));
 	Unmaybe(ret->Set(context, 1, Uint32::New(isolate, (uint32_t)(time - (time / kNanos) * kNanos))));
 	return ret;
+}
+
+/**
+ * Reference count
+ */
+Local<Value> IsolateHandle::GetReferenceCount() {
+	auto env = this->isolate->GetIsolate();
+	if (!env) {
+		throw js_generic_error("Isolated is disposed");
+	}
+	return Number::New(Isolate::GetCurrent(), env->GetRemotesCount());
 }
 
 /**
