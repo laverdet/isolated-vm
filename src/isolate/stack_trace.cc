@@ -136,31 +136,73 @@ void StackTraceHolder::ChainStack(Local<Object> error, Local<StackTrace> stack) 
 	AttachStackGetter(error, pair);
 }
 
-std::string StackTraceHolder::RenderSingleStack(v8::Local<v8::StackTrace> stack_trace) {
+std::string StackTraceHolder::RenderSingleStack(Local<StackTrace> stack_trace) {
 	Isolate* isolate = Isolate::GetCurrent();
 	std::stringstream ss;
 	int size = stack_trace->GetFrameCount();
 	for (int ii = 0; ii < size; ++ii) {
 		Local<StackFrame> frame = stack_trace->GetFrame(ii);
-		String::Utf8Value script_name(isolate, frame->GetScriptName());
-		int line_number = frame->GetLineNumber();
-		int column = frame->GetColumn();
-		if (frame->IsEval()) {
-			if (frame->GetScriptId() == Message::kNoScriptIdInfo) {
-				ss <<"\n    at [eval]:" <<line_number <<":" <<column;
-			} else {
-				ss <<"\n    at [eval] (" <<*script_name <<":" <<line_number <<":" <<column;
+		ss <<"\n    at ";
+		String::Utf8Value fn_name(isolate, frame->GetFunctionName());
+		if (frame->IsWasm()) {
+			String::Utf8Value script_name(isolate, frame->GetScriptName());
+			bool has_name = fn_name.length() != 0 || script_name.length() != 0;
+			if (has_name) {
+				if (script_name.length() == 0) {
+					ss <<*fn_name;
+				} else {
+					ss <<*script_name;
+					if (fn_name.length() != 0) {
+						ss <<"." <<*fn_name;
+					}
+				}
+				ss <<" (<WASM>";
+			}
+			ss <<frame->GetLineNumber() <<":" <<frame->GetColumn();
+			if (has_name) {
+				ss <<")";
 			}
 		} else {
-			String::Utf8Value fn_name(isolate, frame->GetFunctionName());
-			if (fn_name.length() == 0) {
-				ss <<"\n    at " <<*script_name <<":" <<line_number <<":" <<column;
+			if (frame->IsConstructor()) {
+				ss <<"new ";
+				if (fn_name.length() == 0) {
+					ss <<"<anonymous>";
+				} else {
+					ss <<*fn_name;
+				}
+			} else if (fn_name.length() != 0) {
+				ss <<*fn_name;
 			} else {
-				ss <<"\n    at " <<*fn_name <<" (" <<*script_name <<":" <<line_number <<":" <<column <<")";
+				AppendFileLocation(isolate, frame, ss);
+				return ss.str();
 			}
+			ss <<" (";
+			AppendFileLocation(isolate, frame, ss);
+			ss <<")";
 		}
 	}
 	return ss.str();
+}
+
+void StackTraceHolder::AppendFileLocation(Isolate* isolate, Local<StackFrame> frame, std::stringstream& ss) {
+	String::Utf8Value script_name(isolate, frame->GetScriptNameOrSourceURL());
+	if (script_name.length() == 0) {
+		if (frame->IsEval()) {
+			ss <<"[eval]";
+		} else {
+			ss <<"<anonymous>";
+		}
+	} else {
+		ss <<*script_name;
+	}
+	int line_number = frame->GetLineNumber();
+	if (line_number != -1) {
+		ss <<":" <<line_number;
+		int column = frame->GetColumn();
+		if (column != -1) {
+			ss <<":" <<column;
+		}
+	}
 }
 
 } // namespace ivm

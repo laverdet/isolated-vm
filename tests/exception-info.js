@@ -26,7 +26,7 @@ function checkError(err, sync) {
 	let i0 = err.stack.indexOf('env0');
 	let i1 = err.stack.indexOf('env1');
 	let i2 = err.stack.indexOf('env2');
-	let i3 = err.stack.indexOf('Module');
+	let i3 = err.stack.indexOf('exception-info.js');
 	if (sync === true) {
 		if (i0 == -1 || i1 == -1 || i2 == -1 || i3 == -1 || i0 > i1 || i1 > i2 || i2 > i3) {
 			console.log('Out of order stack');
