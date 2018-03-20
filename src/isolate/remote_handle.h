@@ -40,6 +40,7 @@ class RemoteTuple {
 
 			void Run() final {
 				Reset<0, Types...>();
+				IsolateEnvironment::GetCurrent()->remotes_count.fetch_sub(sizeof...(Types));
 			}
 		};
 
@@ -51,6 +52,7 @@ class RemoteTuple {
 			isolate(IsolateEnvironment::GetCurrentHolder()),
 			handles(std::make_unique<HandleType<Types>>(v8::Isolate::GetCurrent(), std::move(handles))...)
 		{
+			IsolateEnvironment::GetCurrent()->remotes_count.fetch_add(sizeof...(Types));
 			static_assert(!v8::NonCopyablePersistentTraits<v8::Value>::kResetInDestructor, "Do not reset in destructor");
 		}
 

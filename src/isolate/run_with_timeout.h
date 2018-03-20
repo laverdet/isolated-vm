@@ -46,6 +46,8 @@ class ThreadWait {
  * Grabs a stack trace of the runaway script
  */
 struct TimeoutRunner : public Runnable {
+	// TODO: This should return a StackStaceHolder instead which would avoid rendering the stack when
+	// it is not observed.
 	std::string& stack_trace;
 	ThreadWait& wait;
 

@@ -10,6 +10,8 @@ namespace ivm {
  * is what we need to do to pass stack traces in an efficent way.  So this gets around that.
  */
 class StackTraceHolder : public ClassHandle {
+	private:
+		static void AppendFileLocation(v8::Isolate* isolate, v8::Local<v8::StackFrame> frame, std::stringstream& ss);
 	public:
 		v8::Persistent<v8::StackTrace, v8::CopyablePersistentTraits<v8::StackTrace>> stack_trace;
 		explicit StackTraceHolder(v8::Local<v8::StackTrace> stack_handle);

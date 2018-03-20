@@ -38,6 +38,8 @@ class IsolateEnvironment {
 	friend class ThreePhaseTask;
 	template <typename F>
 	friend v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn);
+	template <typename ...Types>
+	friend class RemoteTuple;
 
 	public:
 		/**
@@ -190,7 +192,7 @@ class IsolateEnvironment {
 			private:
 				static uv_async_t root_async;
 				static thread_pool_t thread_pool;
-				static std::atomic<int> uv_ref_count;
+				static std::atomic<unsigned int> uv_ref_count;
 				Status status = Status::Waiting;
 				std::mutex mutex;
 				// This is recursive because AsyncWait.Wake() might be called from the same thread in the
@@ -304,6 +306,7 @@ class IsolateEnvironment {
 		size_t extra_allocated_memory = 0;
 		bool hit_memory_limit = false;
 		bool root;
+		std::atomic<unsigned int> remotes_count{0};
 		v8::HeapStatistics last_heap {};
 		std::shared_ptr<BookkeepingStatics> bookkeeping_statics;
 		v8::Persistent<v8::Value> rejected_promise_error;
@@ -453,6 +456,13 @@ class IsolateEnvironment {
 		 */
 		size_t GetExtraAllocatedMemory() const {
 			return extra_allocated_memory;
+		}
+
+		/**
+		 * Returns the current number of outstanding RemoteHandles<> to this isolate.
+		 */
+		unsigned int GetRemotesCount() const {
+			return remotes_count.load();
 		}
 
 		/**

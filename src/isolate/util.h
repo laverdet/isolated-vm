@@ -82,7 +82,16 @@ class js_error_ctor : public js_error_ctor_base {
 			v8::MaybeLocal<v8::String> maybe_message = v8::String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>(GetMessage()), v8::NewStringType::kNormal);
 			v8::Local<v8::String> message_handle;
 			if (maybe_message.ToLocal(&message_handle)) {
-				return F(message_handle);
+				v8::Local<v8::Object> error = F(message_handle).As<v8::Object>();
+				if (!stack_trace.empty() && isolate->InContext()) {
+					std::string stack_str = std::string(GetMessage()) + stack_trace;
+					v8::MaybeLocal<v8::String> maybe_stack = v8::String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>(stack_str.c_str()), v8::NewStringType::kNormal);
+					v8::Local<v8::String> stack;
+					if (maybe_stack.ToLocal(&stack)) {
+						Unmaybe(error->Set(isolate->GetCurrentContext(), v8_string("stack"), stack));
+					}
+				}
+				return error;
 			}
 			// If the MaybeLocal is empty then I think v8 will have an exception on deck. I don't know if
 			// there's any way to assert() this though.
