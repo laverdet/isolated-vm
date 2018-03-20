@@ -9,6 +9,32 @@ might find this module useful if you need to run some untrusted code in a secure
 find this module useful if you need to run some JavaScript simultaneously in multiple threads. You
 may find this project *very* useful if you need to do both at the same time!
 
+An important note about bugs in v8
+----------------------------------
+
+There are currently some bugs in v8 that are out of my control that affect this project. This
+project *is* production ready, though you will need to run a special version of nodejs for the time
+being.
+
+The first is [v8 issue #6933](https://bugs.chromium.org/p/v8/issues/detail?id=6933). This bug causes
+v8 to generate some infinite loops which will not respond to termination requests. The result is
+that if a script running in isolated-vm times out (via the `timeout` parameter) it may refuse to
+terminate which causes this library to panic. This bug has been fixed in node v8.10.0 which is good
+news, however v8.10.0 introduced a different v8 bug..
+
+[v8 issue #7573](https://bugs.chromium.org/p/v8/issues/detail?id=7573) / [nodejs issue #19274](https://github.com/nodejs/node/issues/19274)
+causes v8 to segfault when running the same isolate concurrently from different threads which can
+sometimes happen by using isolated-vm's API. This bug will be backported to the node v8.10.x branch,
+though that will take some time to be released.
+
+I have a forked copy of nodejs v8.9.4 on github available at [laverdet/node branch:tailcall-backport](https://github.com/laverdet/node/tree/tailcall-backport).
+This includes a single cherry-pick'd commit which fixes the infinite loop bug mentioned above. This
+version has been well-tested in a production environment under load.
+
+If you are just playing around with isolated-vm then you won't need to worry about this for now, as
+these issues only pop up under increased load.
+
+
 API DOCUMENTATION
 -----------------
 
