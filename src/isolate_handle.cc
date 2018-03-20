@@ -36,7 +36,7 @@ class ScriptOriginHolder {
 					if (!filename->IsString()) {
 						throw js_type_error("`filename` must be a string");
 					}
-					this->filename = *String::Utf8Value(Isolate::GetCurrent(), filename.As<String>());
+					this->filename = *String::Utf8Value(filename.As<String>());
 				}
 				Local<Value> columnOffset = Unmaybe(options->Get(context, v8_string("columnOffset")));
 				if (!columnOffset->IsUndefined()) {
@@ -83,10 +83,10 @@ T RunWithAnnotatedErrors(F&& fn) {
 			int linenum = Unmaybe(message->GetLineNumber(context));
 			int start_column = Unmaybe(message->GetStartColumn(context));
 			std::string decorator =
-				std::string(*String::Utf8Value(isolate, message->GetScriptResourceName())) +
+				std::string(*String::Utf8Value(message->GetScriptResourceName())) +
 				":" + std::to_string(linenum) +
 				":" + std::to_string(start_column + 1);
-			std::string message_str = *String::Utf8Value(isolate, Unmaybe(error.As<Object>()->Get(context, v8_symbol("message"))));
+			std::string message_str = *String::Utf8Value(Unmaybe(error.As<Object>()->Get(context, v8_symbol("message"))));
 			Unmaybe(error.As<Object>()->Set(context, v8_symbol("message"), v8_string((message_str + " [" + decorator + "]").c_str())));
 			isolate->ThrowException(error);
 			throw js_runtime_error();
@@ -490,8 +490,7 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 
 	// Copy embed scripts and warmup script from outer isolate
 	std::vector<std::pair<std::string, ScriptOriginHolder>> scripts;
-	Isolate* isolate = Isolate::GetCurrent();
-	Local<Context> context = isolate->GetCurrentContext();
+	Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
 	Local<Array> keys = Unmaybe(script_handles->GetOwnPropertyNames(context));
 	scripts.reserve(keys->Length());
 	for (uint32_t ii = 0; ii < keys->Length(); ++ii) {
@@ -508,11 +507,11 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 			throw js_type_error("`code` property is required");
 		}
 		ScriptOriginHolder script_origin(script_handle.As<Object>());
-		scripts.emplace_back(std::string(*String::Utf8Value(isolate, script.As<String>())), std::move(script_origin));
+		scripts.emplace_back(std::string(*String::Utf8Value(script.As<String>())), std::move(script_origin));
 	}
 	std::string warmup_script;
 	if (!warmup_handle.IsEmpty()) {
-		warmup_script = *String::Utf8Value(isolate, warmup_handle.ToLocalChecked().As<String>());
+		warmup_script = *String::Utf8Value(warmup_handle.ToLocalChecked().As<String>());
 	}
 
 	// Create the snapshot

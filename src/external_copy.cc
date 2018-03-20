@@ -139,7 +139,7 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 		// Detect which subclass of Error was thrown (no better way to do this??)
 		Isolate* isolate = Isolate::GetCurrent();
 		Local<Object> object(Local<Object>::Cast(value));
-		std::string name(*String::Utf8Value(isolate, object->GetConstructorName()));
+		std::string name(*String::Utf8Value(object->GetConstructorName()));
 		ExternalCopyError::ErrorType error_type = (ExternalCopyError::ErrorType)0;
 		if (name == "RangeError") {
 			error_type = ExternalCopyError::ErrorType::RangeError;

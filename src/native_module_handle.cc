@@ -56,7 +56,7 @@ Local<FunctionTemplate> NativeModuleHandle::Definition() {
 
 unique_ptr<NativeModuleHandle> NativeModuleHandle::New(Local<String> value) {
 	return std::make_unique<NativeModuleHandle>(
-		std::make_shared<NativeModule>(*String::Utf8Value(Isolate::GetCurrent(), value))
+		std::make_shared<NativeModule>(*String::Utf8Value(value))
 	);
 }
 
