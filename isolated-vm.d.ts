@@ -81,6 +81,16 @@ declare module 'isolated-vm' {
 				wallTime: [number, number];
 
 				/**
+				 * Returns the total count of active Reference instances that belong to this isolate.
+				 * Note that in certain cases many Reference instances in JavaScript will point to
+				 * the same underlying reference handle, in which case this number will only reflect
+				 * the underlying reference handle. This happens when you transfer a Reference instance
+				 * via some method which accepts transferable values. This will also include underlying
+				 * reference handles created by isolated-vm like Script or Context objects.
+				 */
+				referenceCount: number;
+
+				/**
 				 * Flag that indicates whether this isolate has been disposed.
 				 */
 				isDisposed: boolean;
