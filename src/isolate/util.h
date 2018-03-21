@@ -86,9 +86,10 @@ class js_error_ctor : public js_error_ctor_base {
 				if (!stack_trace.empty() && isolate->InContext()) {
 					std::string stack_str = std::string(GetMessage()) + stack_trace;
 					v8::MaybeLocal<v8::String> maybe_stack = v8::String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>(stack_str.c_str()), v8::NewStringType::kNormal);
-					v8::Local<v8::String> stack;
-					if (maybe_stack.ToLocal(&stack)) {
-						Unmaybe(error->Set(isolate->GetCurrentContext(), v8_string("stack"), stack));
+					v8::MaybeLocal<v8::String> maybe_stack_symbol = v8::String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>("stack"), v8::NewStringType::kNormal);
+					v8::Local<v8::String> stack, stack_symbol;
+					if (maybe_stack.ToLocal(&stack) && maybe_stack_symbol.ToLocal(&stack_symbol)) {
+						error->Set(isolate->GetCurrentContext(), stack_symbol, stack).IsJust();
 					}
 				}
 				return error;
