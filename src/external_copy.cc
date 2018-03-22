@@ -612,28 +612,28 @@ ExternalCopyArrayBufferView::ExternalCopyArrayBufferView(std::unique_ptr<Externa
 
 template <typename T>
 Local<Value> NewTypedArrayView(Local<T> buffer, ExternalCopyArrayBufferView::ViewType type) {
-	size_t length = buffer->ByteLength();
+	size_t byte_length = buffer->ByteLength();
 	switch (type) {
 		case ExternalCopyArrayBufferView::ViewType::Uint8:
-			return Uint8Array::New(buffer, 0, length);
+			return Uint8Array::New(buffer, 0, byte_length >> 0);
 		case ExternalCopyArrayBufferView::ViewType::Uint8Clamped:
-			return Uint8ClampedArray::New(buffer, 0, length);
+			return Uint8ClampedArray::New(buffer, 0, byte_length >> 0);
 		case ExternalCopyArrayBufferView::ViewType::Int8:
-			return Int8Array::New(buffer, 0, length);
+			return Int8Array::New(buffer, 0, byte_length >> 0);
 		case ExternalCopyArrayBufferView::ViewType::Uint16:
-			return Uint16Array::New(buffer, 0, length);
+			return Uint16Array::New(buffer, 0, byte_length >> 1);
 		case ExternalCopyArrayBufferView::ViewType::Int16:
-			return Int16Array::New(buffer, 0, length);
+			return Int16Array::New(buffer, 0, byte_length >> 1);
 		case ExternalCopyArrayBufferView::ViewType::Uint32:
-			return Uint32Array::New(buffer, 0, length);
+			return Uint32Array::New(buffer, 0, byte_length>> 2);
 		case ExternalCopyArrayBufferView::ViewType::Int32:
-			return Int32Array::New(buffer, 0, length);
+			return Int32Array::New(buffer, 0, byte_length >> 2);
 		case ExternalCopyArrayBufferView::ViewType::Float32:
-			return Float32Array::New(buffer, 0, length);
+			return Float32Array::New(buffer, 0, byte_length >> 2);
 		case ExternalCopyArrayBufferView::ViewType::Float64:
-			return Float64Array::New(buffer, 0, length);
+			return Float64Array::New(buffer, 0, byte_length >> 3);
 		case ExternalCopyArrayBufferView::ViewType::DataView:
-			return DataView::New(buffer, 0, length);
+			return DataView::New(buffer, 0, byte_length);
 		default:
 			throw std::exception();
 	}
