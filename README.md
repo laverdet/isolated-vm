@@ -281,7 +281,7 @@ invoked in this way may return a promise and the invoking isolate will wait for 
 resolve before resuming execution. You can use this to implement functions like `readFileSync` in a
 way that doesn't block the default isolate. Note that the invoking isolate will not respond to any
 async functions until this promise is resolved, however synchronous functions will still function
-correctly.  Misuse of this feature may result in deadlocked isolates, though the default isolate
+correctly. Misuse of this feature may result in deadlocked isolates, though the default isolate
 will never be at risk of a deadlock.
 
 ### Class: `ExternalCopy` *[transferable]*

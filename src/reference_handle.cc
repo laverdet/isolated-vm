@@ -376,8 +376,8 @@ struct ApplyRunner : public ThreePhaseTask {
 			if (!self.async_error) {
 				self.async_error = std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::Error,
 					"An object was thrown from supplied code within isolated-vm, but that object was not an instance of `Error`."
-        );
-      }
+				);
+			}
 		}
 		*self.did_finish = true;
 		self.async_wait->Wake();

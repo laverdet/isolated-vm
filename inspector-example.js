@@ -32,14 +32,14 @@ wss.on('connection', function(ws) {
 	ws.on('close', dispose);
 
 	// Relay messages from frontend to backend
-  ws.on('message', function(message) {
+	ws.on('message', function(message) {
 		try {
 			channel.dispatchProtocolMessage(message);
 		} catch (err) {
 			// This happens if inspector session was closed unexpectedly
 			ws.close();
 		}
-  });
+	});
 
 	// Relay messages from backend to frontend
 	function send(message) {
