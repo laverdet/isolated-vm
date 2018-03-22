@@ -39,7 +39,20 @@ void* LimitedAllocator::Allocate(size_t length) {
 		return std::calloc(length, 1);
 	} else {
 		++failures;
-		return nullptr;
+		if (length <= 16) { // kMinAddedElementsCapacity
+			// When a tiny TypedArray is created v8 will avoid calling the allocator and instead just use
+			// the internal heap. This is all fine until someone wants a pointer to the underlying buffer,
+			// in that case v8 will "materialize" an ArrayBuffer which does invoke this allocator. If the
+			// allocator refuses to return a valid pointer it will result in a hard crash so we have no
+			// choice but to let this allocation succeed. Luckily the amount of memory allocated is tiny
+			// and will soon be freed because at the same time we terminate the isolate.
+			env.extra_allocated_memory += length;
+			env.Terminate();
+			return std::calloc(length, 1);
+		} else {
+			// The places end up here are more graceful and will throw a RangeError
+			return nullptr;
+		}
 	}
 }
 
@@ -49,7 +62,13 @@ void* LimitedAllocator::AllocateUninitialized(size_t length) {
 		return std::malloc(length);
 	} else {
 		++failures;
-		return nullptr;
+		if (length <= 16) {
+			env.extra_allocated_memory += length;
+			env.Terminate();
+			return std::malloc(length);
+		} else {
+			return nullptr;
+		}
 	}
 }
 
