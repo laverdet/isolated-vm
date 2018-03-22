@@ -191,11 +191,19 @@ references to this context it will not be disposed. This only affects this refer
 A script is a compiled chunk of JavaScript which can be executed in any context within a single
 isolate.
 
-##### `script.run(context)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
-##### `script.runIgnored(context)`
-##### `script.runSync(context)`
+##### `script.release()`
+
+Releases the reference to this script, allowing the script data to be garbage collected. Functions
+and data created in the isolate by previous invocations to `script.run(...)` will still be alive in
+their respective contexts-- this only means that you can't invoke `script.run(...)` again with this
+reference.
+
+##### `script.run(context, options)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `script.runIgnored(context, options)`
+##### `script.runSync(context, options)`
 * `context` *[`Context`](#class-context-transferable)* - The context in which this script will run.
 * `options` *[object]*
+	* `release` *[boolean]* - If true `release()` will automatically be called on this instance.
 	* `timeout` *[number]* - Maximum amount of time this script is allowed to run before execution is
 	canceled. Default is no timeout.
 * **return** *[transferable]*
@@ -204,6 +212,7 @@ Runs a given script within a context. This will return the last value evaluated 
 as long as that value was transferable, otherwise `undefined` will be returned. For instance if your
 script was "let foo = 1; let bar = 2; bar = foo + bar" then the return value will be 3 because that
 is the last expression.
+
 
 ### Class: `Reference` *[transferable]*
 A instance of [`Reference`](#class-reference-transferable) is a pointer to a value stored in any isolate.
@@ -283,6 +292,7 @@ way that doesn't block the default isolate. Note that the invoking isolate will 
 async functions until this promise is resolved, however synchronous functions will still function
 correctly. Misuse of this feature may result in deadlocked isolates, though the default isolate
 will never be at risk of a deadlock.
+
 
 ### Class: `ExternalCopy` *[transferable]*
 Instances of this class represent some value that is stored outside of any v8 isolate. This value

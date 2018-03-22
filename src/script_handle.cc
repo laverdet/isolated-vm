@@ -26,6 +26,7 @@ ScriptHandle::ScriptHandle(
 Local<FunctionTemplate> ScriptHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Script", nullptr,
+		"release", Parameterize<decltype(&ScriptHandle::Release), &ScriptHandle::Release>(),
 		"run", Parameterize<decltype(&ScriptHandle::Run<1>), &ScriptHandle::Run<1>>(),
 		"runIgnored", Parameterize<decltype(&ScriptHandle::Run<2>), &ScriptHandle::Run<2>>(),
 		"runSync", Parameterize<decltype(&ScriptHandle::Run<0>), &ScriptHandle::Run<0>>()
@@ -46,27 +47,15 @@ struct RunRunner /* lol */ : public ThreePhaseTask {
 	std::unique_ptr<Transferable> result;
 
 	RunRunner(
-		const MaybeLocal<Object>& maybe_options,
 		IsolateHolder* isolate,
 		shared_ptr<RemoteHandle<UnboundScript>> script,
+		uint32_t timeout_ms,
 		ContextHandle* context_handle
-	) : script(std::move(script)), context(context_handle->context) {
+	) : timeout_ms(timeout_ms), script(std::move(script)), context(context_handle->context) {
 		// Sanity check
 		context_handle->CheckDisposed();
 		if (isolate != context_handle->context->GetIsolateHolder()) {
 			throw js_generic_error("Invalid context");
-		}
-
-		// Get run options
-		Local<Object> options;
-		if (maybe_options.ToLocal(&options)) {
-			Local<Value> timeout_handle = Unmaybe(options->Get(Isolate::GetCurrent()->GetCurrentContext(), v8_string("timeout")));
-			if (!timeout_handle->IsUndefined()) {
-				if (!timeout_handle->IsUint32()) {
-					throw js_type_error("`timeout` must be integer");
-				}
-				timeout_ms = timeout_handle.As<Uint32>()->Value();
-			}
 		}
 	}
 
@@ -90,7 +79,33 @@ struct RunRunner /* lol */ : public ThreePhaseTask {
 };
 template <int async>
 Local<Value> ScriptHandle::Run(ContextHandle* context_handle, MaybeLocal<Object> maybe_options) {
-	return ThreePhaseTask::Run<async, RunRunner>(*isolate, maybe_options, isolate.get(), script, context_handle);
+	if (!script) {
+		throw js_generic_error("Script has been released");
+	}
+	Isolate* isolate = Isolate::GetCurrent();
+	bool release = false;
+	uint32_t timeout_ms = 0;
+	Local<Object> options;
+	if (maybe_options.ToLocal(&options)) {
+		release = IsOptionSet(isolate->GetCurrentContext(), options, "release");
+		Local<Value> timeout_handle = Unmaybe(options->Get(isolate->GetCurrentContext(), v8_string("timeout")));
+		if (!timeout_handle->IsUndefined()) {
+			if (!timeout_handle->IsUint32()) {
+				throw js_type_error("`timeout` must be integer");
+			}
+			timeout_ms = timeout_handle.As<Uint32>()->Value();
+		}
+	}
+	shared_ptr<RemoteHandle<UnboundScript>> script_ref = script;
+	if (release) {
+		script.reset();
+	}
+	return ThreePhaseTask::Run<async, RunRunner>(*this->isolate, this->isolate.get(), std::move(script_ref), timeout_ms, context_handle);
+}
+
+Local<Value> ScriptHandle::Release() {
+	script.reset();
+	return Undefined(Isolate::GetCurrent());
 }
 
 } // namespace ivm

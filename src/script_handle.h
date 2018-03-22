@@ -37,6 +37,8 @@ class ScriptHandle : public TransferableHandle {
 
 		template <int async>
 		v8::Local<v8::Value> Run(ContextHandle* context_handle, v8::MaybeLocal<v8::Object> maybe_options);
+
+		v8::Local<v8::Value> Release();
 };
 
 } // namespace ivm

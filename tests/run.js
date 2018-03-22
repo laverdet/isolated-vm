@@ -4,5 +4,15 @@ let ivm = require('isolated-vm');
 let isolate = new ivm.Isolate;
 let context = isolate.createContextSync();
 let script = isolate.compileScriptSync('1');
-script.runSync(context);
-console.log('pass');
+script.runSync(context, { release: true });
+try {
+	script.runSync(context);
+} catch (err) {
+	let script = isolate.compileScriptSync('1');
+	script.release();
+	try {
+		script.run(context);
+	} catch (err) {
+		console.log('pass');
+	}
+}
