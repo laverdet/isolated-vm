@@ -473,29 +473,5 @@ Promise.all(promises).then(function(sums) {
 // > Calculated 9007199187632128 in 439ms
 ```
 
-A quick example which shows how the snapshot feature works.
-```js
-let ivm = require('isolated-vm');
-
-// Create a new snapshot which adds the `sum` function to all contexts created
-let snapshot = ivm.Isolate.createSnapshot([ { code: 'function sum(a,b) { return a + b }' } ]);
-
-// v8 provides the ability to "warmup" snapshots by calling the functions inside your snapshot which
-// will trigger a code compilation, you can use the second parameter for that. A much easier way to
-// included compiled code in the snapshot would be to run node with `--nolazy` when you generate the
-// snapshot, then you can load the snapshot into your node instances using no special flags.
-//
-// `snapshot` is an ExternalCopy[ArrayBuffer]. If you wanted to save this snapshot to a file you
-// would do this:
-// fs.writeFileSync('snapshot.bin', Buffer.from(snapshot.copy()))
-//
-// And then to read it in again:
-// snapshot = new ivm.ExternalCopy(fs.readFileSync('snapshot.bin').buffer);
-
-// Here we'll create a new isolate using this snapshot and confirm that our `sum` function is there
-let isolate = new ivm.Isolate({ snapshot });
-let context = isolate.createContextSync();
-let script = isolate.compileScriptSync('sum(1, 2)');
-console.log(script.runSync(context));
-// logs: 3
-```
+Included in the repository is an example of how you can write quicksort using a SharedArrayBuffer to
+sort over multiple threads. See: [parallel-sort-example.js](https://github.com/laverdet/isolated-vm/blob/master/parallel-sort-example.js).
