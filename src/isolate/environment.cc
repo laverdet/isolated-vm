@@ -37,17 +37,14 @@ IsolateEnvironment::Executor::Lock::~Lock() {
 	current = last;
 }
 
-IsolateEnvironment::Executor::Unlock::Unlock(IsolateEnvironment& env) : unlocker(env.isolate), cpu_timer(env.executor.cpu_timer) {
-	cpu_timer->Pause();
-}
+IsolateEnvironment::Executor::Unlock::Unlock(IsolateEnvironment& env) : pause_scope(env.executor.cpu_timer), unlocker(env.isolate) {}
 
-IsolateEnvironment::Executor::Unlock::~Unlock() {
-	cpu_timer->Resume();
-}
+IsolateEnvironment::Executor::Unlock::~Unlock() = default;
 
 IsolateEnvironment::Executor::CpuTimer::CpuTimer(Executor& executor) : executor(executor), last(Executor::cpu_timer_thread), time(std::chrono::high_resolution_clock::now()) {
 	Executor::cpu_timer_thread = this;
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
+	assert(executor.cpu_timer == nullptr);
 	executor.cpu_timer = this;
 }
 
@@ -55,19 +52,30 @@ IsolateEnvironment::Executor::CpuTimer::~CpuTimer() {
 	Executor::cpu_timer_thread = last;
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
 	executor.cpu_time += std::chrono::high_resolution_clock::now() - time;
-	executor.cpu_timer = last;
+	assert(executor.cpu_timer == this);
+	executor.cpu_timer = nullptr;
 }
 
 void IsolateEnvironment::Executor::CpuTimer::Pause() {
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
 	executor.cpu_time += std::chrono::high_resolution_clock::now() - time;
+	assert(executor.cpu_timer == this);
 	executor.cpu_timer = nullptr;
 }
 
 void IsolateEnvironment::Executor::CpuTimer::Resume() {
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
 	time = std::chrono::high_resolution_clock::now();
+	assert(executor.cpu_timer == nullptr);
 	executor.cpu_timer = this;
+}
+
+IsolateEnvironment::Executor::CpuTimer::PauseScope::PauseScope(CpuTimer* timer) : timer(timer) {
+	timer->Pause();
+}
+
+IsolateEnvironment::Executor::CpuTimer::PauseScope::~PauseScope() {
+	timer->Resume();
 }
 
 IsolateEnvironment::Executor::WallTimer::WallTimer(Executor& executor) : executor(executor), cpu_timer(Executor::cpu_timer_thread) {
@@ -96,8 +104,7 @@ IsolateEnvironment::Executor::WallTimer::~WallTimer() {
 	}
 }
 
-IsolateEnvironment::Executor::Executor(IsolateEnvironment& env) : env(env) {
-}
+IsolateEnvironment::Executor::Executor(IsolateEnvironment& env) : env(env) {}
 
 void IsolateEnvironment::Executor::Init(IsolateEnvironment& default_isolate) {
 	assert(current_env == nullptr);

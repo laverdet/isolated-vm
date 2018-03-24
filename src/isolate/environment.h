@@ -49,6 +49,11 @@ class IsolateEnvironment {
 		class Executor { // "En taro adun"
 			private:
 				struct CpuTimer {
+					struct PauseScope {
+						CpuTimer* timer;
+						PauseScope(CpuTimer* timer);
+						~PauseScope();
+					};
 					Executor& executor;
 					CpuTimer* last;
 					std::chrono::time_point<std::chrono::high_resolution_clock> time;
@@ -106,8 +111,8 @@ class IsolateEnvironment {
 
 				class Unlock {
 					private:
+						CpuTimer::PauseScope pause_scope;
 						v8::Unlocker unlocker;
-						CpuTimer* cpu_timer;
 
 					public:
 						explicit Unlock(IsolateEnvironment& env);
@@ -121,7 +126,7 @@ class IsolateEnvironment {
 				IsolateEnvironment& env;
 				Lock* current_lock = nullptr;
 				static thread_local CpuTimer* cpu_timer_thread;
-				CpuTimer* cpu_timer;
+				CpuTimer* cpu_timer = nullptr;
 				WallTimer* wall_timer = nullptr;
 				std::mutex timer_mutex;
 				std::chrono::high_resolution_clock::duration cpu_time = std::chrono::seconds::zero();
