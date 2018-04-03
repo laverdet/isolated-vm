@@ -195,7 +195,7 @@ struct CreateContextRunner : public ThreePhaseTask {
 	shared_ptr<RemoteHandle<Context>> context;
 	shared_ptr<RemoteHandle<Value>> global;
 
-	CreateContextRunner(MaybeLocal<Object>& maybe_options) {
+	explicit CreateContextRunner(MaybeLocal<Object>& maybe_options) {
 		Local<Object> options;
 		if (maybe_options.ToLocal(&options)) {
 			this->enable_inspector = IsOptionSet(Isolate::GetCurrent()->GetCurrentContext(), options, "inspector");

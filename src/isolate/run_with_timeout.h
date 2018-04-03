@@ -28,6 +28,9 @@ class ThreadWait {
 		bool finished = false;
 
 	public:
+		ThreadWait() = default;
+		ThreadWait(const ThreadWait&) = delete;
+		ThreadWait& operator=(const ThreadWait&) = delete;
 		~ThreadWait() {
 			std::unique_lock<std::mutex> lock(global_mutex());
 			while (!finished) {
@@ -52,8 +55,10 @@ struct TimeoutRunner : public Runnable {
 	ThreadWait& wait;
 
 	TimeoutRunner(std::string& stack_trace, ThreadWait& wait) : stack_trace(stack_trace), wait(wait) {}
+	TimeoutRunner(const TimeoutRunner&) = delete;
+	TimeoutRunner& operator=(const TimeoutRunner&) = delete;
 
-	~TimeoutRunner() {
+	~TimeoutRunner() final {
 		wait.Done();
 	}
 

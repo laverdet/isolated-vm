@@ -82,7 +82,7 @@ class timer_t {
 					while (true) {
 						std::this_thread::sleep_until(next_timeout);
 						lock.lock();
-						std::shared_ptr<timer_data_t> current = std::move(queue.top());
+						std::shared_ptr<timer_data_t> current = queue.top();
 						queue.pop();
 						if (queue.empty()) {
 							timer_data_t* ptr = nullptr;
@@ -93,7 +93,7 @@ class timer_t {
 						std::vector<timer_data_t*> callbacks;
 						auto now = std::chrono::steady_clock::now();
 						while (queue.top()->timeout <= now) {
-							std::shared_ptr<timer_data_t> next = std::move(queue.top());
+							std::shared_ptr<timer_data_t> next = queue.top();
 							queue.pop();
 							callbacks.emplace_back(next.get());
 							holder.emplace_back(std::move(next));
@@ -119,7 +119,6 @@ class timer_t {
 					threads.erase(ii);
 					current.run(lock, next);
 					delete this;
-					return;
 				}
 		};
 

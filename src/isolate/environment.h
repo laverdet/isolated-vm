@@ -18,8 +18,6 @@
 namespace ivm {
 
 class Runnable;
-template <typename F>
-v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn);
 
 /**
  * Wrapper around Isolate with helpers to make working with multiple isolates easier.
@@ -51,13 +49,15 @@ class IsolateEnvironment {
 				struct CpuTimer {
 					struct PauseScope {
 						CpuTimer* timer;
-						PauseScope(CpuTimer* timer);
+						explicit PauseScope(CpuTimer* timer);
+						PauseScope(const PauseScope&) = delete;
+						PauseScope& operator=(const PauseScope&) = delete;
 						~PauseScope();
 					};
 					Executor& executor;
 					CpuTimer* last;
 					std::chrono::time_point<std::chrono::high_resolution_clock> time;
-					CpuTimer(Executor& executor);
+					explicit CpuTimer(Executor& executor);
 					CpuTimer(const CpuTimer&) = delete;
 					CpuTimer operator= (const CpuTimer&) = delete;
 					~CpuTimer();
@@ -71,7 +71,7 @@ class IsolateEnvironment {
 					Executor& executor;
 					CpuTimer* cpu_timer;
 					std::chrono::time_point<std::chrono::high_resolution_clock> time;
-					WallTimer(Executor& executor);
+					explicit WallTimer(Executor& executor);
 					WallTimer(const WallTimer&) = delete;
 					WallTimer operator= (const WallTimer&) = delete;
 					~WallTimer();

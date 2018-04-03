@@ -184,7 +184,7 @@ std::string StackTraceHolder::RenderSingleStack(Local<StackTrace> stack_trace) {
 	return ss.str();
 }
 
-void StackTraceHolder::AppendFileLocation(Isolate* isolate, Local<StackFrame> frame, std::stringstream& ss) {
+void StackTraceHolder::AppendFileLocation(Isolate* /* isolate */, Local<StackFrame> frame, std::stringstream& ss) {
 	String::Utf8Value script_name(frame->GetScriptNameOrSourceURL());
 	if (script_name.length() == 0) {
 		if (frame->IsEval()) {
