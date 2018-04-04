@@ -128,6 +128,7 @@ IsolateEnvironment::Executor::Scope::~Scope() {
 /*
  * Scheduler implementation
  */
+IsolateEnvironment::Scheduler* IsolateEnvironment::Scheduler::default_scheduler;
 uv_async_t IsolateEnvironment::Scheduler::root_async;
 thread_pool_t IsolateEnvironment::Scheduler::thread_pool(std::thread::hardware_concurrency() + 1);
 std::atomic<unsigned int> IsolateEnvironment::Scheduler::uv_ref_count(0);
@@ -135,48 +136,50 @@ std::atomic<unsigned int> IsolateEnvironment::Scheduler::uv_ref_count(0);
 IsolateEnvironment::Scheduler::Scheduler() = default;
 IsolateEnvironment::Scheduler::~Scheduler() = default;
 
-void IsolateEnvironment::Scheduler::Init() {
-	uv_async_init(uv_default_loop(), &root_async, AsyncCallbackRoot);
+void IsolateEnvironment::Scheduler::Init(IsolateEnvironment& default_isolate) {
+	default_scheduler = &default_isolate.scheduler;
+	uv_async_init(uv_default_loop(), &root_async, AsyncCallbackDefaultIsolate);
 	root_async.data = nullptr;
 	uv_unref(reinterpret_cast<uv_handle_t*>(&root_async));
 }
 
-void IsolateEnvironment::Scheduler::AsyncCallbackRoot(uv_async_t* async) {
-	if (async->data == nullptr) {
-		// This is the final message
-		return;
+void IsolateEnvironment::Scheduler::AsyncCallbackCommon(bool pool_thread, void* param) {
+	auto isolate_ptr_ptr = static_cast<shared_ptr<IsolateEnvironment>*>(param);
+	auto isolate_ptr = shared_ptr<IsolateEnvironment>(std::move(*isolate_ptr_ptr));
+	delete isolate_ptr_ptr;
+	isolate_ptr->AsyncEntry();
+	if (!pool_thread) {
+		isolate_ptr->GetIsolate()->DiscardThreadSpecificMetadata();
 	}
-	void* data = async->data;
-	async->data = nullptr;
-	AsyncCallbackPool(true, data);
 }
 
-void IsolateEnvironment::Scheduler::AsyncCallbackPool(bool pool_thread, void* param) {
-	{
-		auto isolate_ptr_ptr = static_cast<shared_ptr<IsolateEnvironment>*>(param);
-		auto isolate_ptr = shared_ptr<IsolateEnvironment>(std::move(*isolate_ptr_ptr));
-		delete isolate_ptr_ptr;
-		isolate_ptr->AsyncEntry();
-		if (!pool_thread) {
-			isolate_ptr->GetIsolate()->DiscardThreadSpecificMetadata();
-		}
-	}
-	// nb: We reset the isolate pointer right now with the scoped block above. It's possible that this
-	// is the last remaining reference to the isolate, in which case the dtor for IsolateEnvironment
-	// will be called. If the environment has pending tasks these will be disposed without running. It
-	// is then further possible that those disposed tasks will schedule more work from their dtors
-	// (for instance calling Promise#reject). This all needs to happen *before* the uv_unref stuff
-	// below because otherwise we can end up in a situation where node thinks all work is done but
-	// isolated-vm is still finishing up.
+void IsolateEnvironment::Scheduler::AsyncCallbackNonDefaultIsolate(bool pool_thread, void* param) {
+	AsyncCallbackCommon(pool_thread, param);
 	if (--uv_ref_count == 0) {
-		// Is there a possibility of a race condition here? What happens if uv_ref() below and this
-		// execute at the same time. I don't think that's possible because if uv_ref_count is 0 that means
-		// there aren't any concurrent threads running right now..
-		uv_unref(reinterpret_cast<uv_handle_t*>(&root_async));
-		// For some reason sending a pointless ping to the unref'd uv handle allows node to quit when
-		// isolated-vm is done.
-		assert(root_async.data == nullptr);
+		// Wake up the libuv loop so we can unref the async handle from the default thread.
 		uv_async_send(&root_async);
+	}
+}
+
+void IsolateEnvironment::Scheduler::AsyncCallbackDefaultIsolate(uv_async_t* async) {
+	// We need a lock on the default isolate's scheduler to access this data because it can be
+	// modified from `WakeIsolate` while `AsyncCallbackNonDefaultIsolate` (which doesn't acquire a
+	// lock) is triggering the uv_async_send.
+	void* data;
+	{
+		Lock scheduler_lock(*default_scheduler);
+		data = async->data;
+		async->data = nullptr;
+	}
+	if (data == nullptr) {
+		if (uv_ref_count.load() == 0) {
+			uv_unref(reinterpret_cast<uv_handle_t*>(&root_async));
+		}
+	} else {
+		AsyncCallbackCommon(true, data);
+		if (--uv_ref_count == 0) {
+			uv_unref(reinterpret_cast<uv_handle_t*>(&root_async));
+		}
 	}
 }
 
@@ -236,6 +239,8 @@ bool IsolateEnvironment::Scheduler::Lock::WakeIsolate(shared_ptr<IsolateEnvironm
 		// IsolateEnvironment won't be deleted before a thread picks up this work.
 		auto isolate_ptr_ptr = new shared_ptr<IsolateEnvironment>(std::move(isolate_ptr));
 		if (++uv_ref_count == 1) {
+			// Only the default thread should be able to reach this branch
+			assert(std::this_thread::get_id() == Executor::default_thread);
 			uv_ref(reinterpret_cast<uv_handle_t*>(&root_async));
 		}
 		if (isolate.root) {
@@ -243,7 +248,7 @@ bool IsolateEnvironment::Scheduler::Lock::WakeIsolate(shared_ptr<IsolateEnvironm
 			root_async.data = isolate_ptr_ptr;
 			uv_async_send(&root_async);
 		} else {
-			thread_pool.exec(scheduler.thread_affinity, Scheduler::AsyncCallbackPool, isolate_ptr_ptr);
+			thread_pool.exec(scheduler.thread_affinity, Scheduler::AsyncCallbackNonDefaultIsolate, isolate_ptr_ptr);
 		}
 		return true;
 	} else {
@@ -463,7 +468,7 @@ IsolateEnvironment::IsolateEnvironment(Isolate* isolate, Local<Context> context)
 	root(true),
 	bookkeeping_statics(bookkeeping_statics_shared) {
 	Executor::Init(*this);
-	Scheduler::Init();
+	Scheduler::Init(*this);
 	std::lock_guard<std::mutex> lock(bookkeeping_statics->lookup_mutex);
 	bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
 }

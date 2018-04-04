@@ -198,6 +198,7 @@ class IsolateEnvironment {
 				static uv_async_t root_async;
 				static thread_pool_t thread_pool;
 				static std::atomic<unsigned int> uv_ref_count;
+				static Scheduler* default_scheduler;
 				Status status = Status::Waiting;
 				std::mutex mutex;
 				// This is recursive because AsyncWait.Wake() might be called from the same thread in the
@@ -215,11 +216,12 @@ class IsolateEnvironment {
 				Scheduler(const Scheduler&) = delete;
 				Scheduler operator= (const Scheduler&) = delete;
 				~Scheduler();
-				static void Init();
+				static void Init(IsolateEnvironment& default_isolate);
 
 			private:
-				static void AsyncCallbackRoot(uv_async_t* async);
-				static void AsyncCallbackPool(bool pool_thread, void* param);
+				static void AsyncCallbackCommon(bool pool_thread, void* param);
+				static void AsyncCallbackDefaultIsolate(uv_async_t* async);
+				static void AsyncCallbackNonDefaultIsolate(bool pool_thread, void* param);
 				static void AsyncCallbackInterrupt(v8::Isolate* isolate_ptr, void* env_ptr);
 				static void SyncCallbackInterrupt(v8::Isolate* isolate_ptr, void* env_ptr);
 		};
