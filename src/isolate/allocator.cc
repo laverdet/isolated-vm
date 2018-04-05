@@ -39,7 +39,7 @@ void* LimitedAllocator::Allocate(size_t length) {
 		return std::calloc(length, 1);
 	} else {
 		++failures;
-		if (length <= 16) { // kMinAddedElementsCapacity
+		if (length <= 64) { // kMinAddedElementsCapacity * sizeof(uint32_t)
 			// When a tiny TypedArray is created v8 will avoid calling the allocator and instead just use
 			// the internal heap. This is all fine until someone wants a pointer to the underlying buffer,
 			// in that case v8 will "materialize" an ArrayBuffer which does invoke this allocator. If the
@@ -62,7 +62,7 @@ void* LimitedAllocator::AllocateUninitialized(size_t length) {
 		return std::malloc(length);
 	} else {
 		++failures;
-		if (length <= 16) {
+		if (length <= 64) {
 			env.extra_allocated_memory += length;
 			env.Terminate();
 			return std::malloc(length);
