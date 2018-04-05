@@ -274,6 +274,7 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 					if (!is_async) {
 						wait.Wake();
 					}
+					wait.Ready();
 				}
 
 				void Run() final {

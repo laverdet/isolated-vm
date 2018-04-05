@@ -266,7 +266,7 @@ void IsolateEnvironment::Scheduler::Lock::InterruptSyncIsolate(IsolateEnvironmen
 	isolate->RequestInterrupt(SyncCallbackInterrupt, static_cast<void*>(&isolate));
 }
 
-IsolateEnvironment::Scheduler::AsyncWait::AsyncWait(Scheduler& scheduler) : scheduler(scheduler), lock(scheduler.wait_mutex) {
+IsolateEnvironment::Scheduler::AsyncWait::AsyncWait(Scheduler& scheduler) : scheduler(scheduler) {
 	std::lock_guard<std::mutex> lock(scheduler.mutex);
 	scheduler.async_wait = this;
 }
@@ -276,21 +276,27 @@ IsolateEnvironment::Scheduler::AsyncWait::~AsyncWait() {
 	scheduler.async_wait = nullptr;
 }
 
+void IsolateEnvironment::Scheduler::AsyncWait::Ready() {
+	std::lock_guard<std::mutex> lock(scheduler.wait_mutex);
+	ready = true;
+	if (done) {
+		scheduler.wait_cv.notify_one();
+	}
+}
+
 void IsolateEnvironment::Scheduler::AsyncWait::Wait() {
-	while (!done) {
+	std::unique_lock<std::mutex> lock(scheduler.wait_mutex);
+	while (!ready || !done) {
 		scheduler.wait_cv.wait(lock);
 	}
 }
 
 void IsolateEnvironment::Scheduler::AsyncWait::Wake() {
-	if (done) {
-		return;
+	std::lock_guard<std::mutex> lock(scheduler.wait_mutex);
+	done = true;
+	if (ready) {
+		scheduler.wait_cv.notify_one();
 	}
-	{
-		std::lock_guard<std::recursive_mutex> lock(scheduler.wait_mutex);
-		done = true;
-	}
-	scheduler.wait_cv.notify_one();
 }
 
 /**

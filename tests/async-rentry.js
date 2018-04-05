@@ -58,10 +58,10 @@ global.setSync('slowPromise', new ivm.Reference(function() {
 		}, 50);
 	});
 }));
-isolate.compileScriptSync('slowPromise.applySyncPromise(undefined, [])').run(context, { timeout: 5 }).catch(() => 0);
+isolate.compileScriptSync('slowPromise.applySyncPromise(undefined, [])').run(context, { timeout: 1 }).catch(() => 0);
 
 // Test dead promise (This causes a memory leak! Don't do this!)
 global.setSync('deadPromise', new ivm.Reference(function() {
 	return new Promise(() => {});
 }));
-isolate.compileScriptSync('deadPromise.applySyncPromise(undefined, [])').run(context, { timeout: 5 }).catch(() => 0);
+isolate.compileScriptSync('deadPromise.applySyncPromise(undefined, [])').run(context, { timeout: 1 }).catch(() => 0);

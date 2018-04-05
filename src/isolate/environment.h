@@ -183,13 +183,14 @@ class IsolateEnvironment {
 				class AsyncWait {
 					private:
 						Scheduler& scheduler;
-						std::unique_lock<std::recursive_mutex> lock;
 						bool done = false;
+						bool ready = false;
 					public:
 						explicit AsyncWait(Scheduler& scheduler);
 						AsyncWait(const AsyncWait&) = delete;
 						AsyncWait& operator= (const AsyncWait&) = delete;
 						~AsyncWait();
+						void Ready();
 						void Wait();
 						void Wake();
 				};
@@ -201,9 +202,7 @@ class IsolateEnvironment {
 				static Scheduler* default_scheduler;
 				Status status = Status::Waiting;
 				std::mutex mutex;
-				// This is recursive because AsyncWait.Wake() might be called from the same thread in the
-				// case the isolate was disposed.
-				std::recursive_mutex wait_mutex;
+				std::mutex wait_mutex;
 				std::condition_variable_any wait_cv;
 				std::queue<std::unique_ptr<Runnable>> tasks;
 				std::queue<std::unique_ptr<Runnable>> interrupts;
