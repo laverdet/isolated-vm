@@ -7,6 +7,9 @@
 					'GCC_OPTIMIZATION_LEVEL': '3',
 				},
 			},
+			'Debug': {
+				'defines': [ 'V8_IMMINENT_DEPRECATION_WARNINGS' ],
+			},
 		},
 	},
 	'targets': [
@@ -38,7 +41,6 @@
 					{ 'sources': [ 'src/array_buffer_shim.cc' ] },
 				],
 			],
-			'defines': [ 'V8_IMMINENT_DEPRECATION_WARNINGS' ],
 			'sources': [
 				'src/isolate/allocator.cc',
 				'src/isolate/class_handle.cc',
