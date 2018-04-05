@@ -234,7 +234,7 @@ struct CreateContextRunner : public ThreePhaseTask {
 				auto context = unique_ptr<RemoteHandle<Context>>(ptr);
 				shared_ptr<IsolateHolder> isolate_ref = isolate.lock();
 				if (isolate_ref) {
-					isolate_ref->ScheduleTask(std::make_unique<ContextDisposer>(std::move(context), has_inspector), true, false);
+					isolate_ref->ScheduleTask(std::make_unique<ContextDisposer>(std::move(context), has_inspector), true, false, true);
 				}
 			}
 		};

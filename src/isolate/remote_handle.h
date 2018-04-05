@@ -57,7 +57,7 @@ class RemoteTuple {
 		}
 
 		~RemoteTuple() {
-			isolate->ScheduleTask(std::make_unique<DisposalTask>(std::move(handles)), true, false);
+			isolate->ScheduleTask(std::make_unique<DisposalTask>(std::move(handles)), true, false, true);
 		}
 
 		RemoteTuple(const RemoteTuple&) = delete;

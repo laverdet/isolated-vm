@@ -222,6 +222,19 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 			unique_ptr<ExternalCopy> error;
 			{
 				IsolateEnvironment::Executor::Lock lock(*second_isolate_ref);
+
+				// Run handle tasks first
+				std::queue<std::unique_ptr<Runnable>> handle_tasks;
+				{
+					IsolateEnvironment::Scheduler::Lock scheduler_lock(second_isolate_ref->scheduler);
+					handle_tasks = scheduler_lock.TakeHandleTasks();
+				}
+				while (!handle_tasks.empty()) {
+					handle_tasks.front()->Run();
+					handle_tasks.pop();
+				}
+
+				// Now run the actual work
 				FunctorRunners::RunCatchExternal(second_isolate_ref->DefaultContext(), [ this, is_recursive, &second_isolate_ref ]() {
 					// Run Phase2 and externalize errors
 					Phase2();

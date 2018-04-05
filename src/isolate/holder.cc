@@ -24,7 +24,7 @@ shared_ptr<IsolateEnvironment> IsolateHolder::GetIsolate() {
 	return std::atomic_load(&isolate);
 }
 
-void IsolateHolder::ScheduleTask(unique_ptr<Runnable> task, bool run_inline, bool wake_isolate) {
+void IsolateHolder::ScheduleTask(unique_ptr<Runnable> task, bool run_inline, bool wake_isolate, bool handle_task) {
 	shared_ptr<IsolateEnvironment> ref = std::atomic_load(&isolate);
 	if (ref) {
 		if (run_inline && IsolateEnvironment::GetCurrent() == ref.get()) {
@@ -32,7 +32,11 @@ void IsolateHolder::ScheduleTask(unique_ptr<Runnable> task, bool run_inline, boo
 			return;
 		}
 		IsolateEnvironment::Scheduler::Lock lock(ref->scheduler);
-		lock.PushTask(std::move(task));
+		if (handle_task) {
+			lock.PushHandleTask(std::move(task));
+		} else {
+			lock.PushTask(std::move(task));
+		}
 		if (wake_isolate) {
 			lock.WakeIsolate(std::move(ref));
 		}

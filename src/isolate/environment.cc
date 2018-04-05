@@ -205,6 +205,10 @@ void IsolateEnvironment::Scheduler::Lock::PushTask(unique_ptr<Runnable> task) {
 	scheduler.tasks.push(std::move(task));
 }
 
+void IsolateEnvironment::Scheduler::Lock::PushHandleTask(unique_ptr<Runnable> handle_task) {
+	scheduler.handle_tasks.push(std::move(handle_task));
+}
+
 void IsolateEnvironment::Scheduler::Lock::PushInterrupt(unique_ptr<Runnable> interrupt) {
 	scheduler.interrupts.push(std::move(interrupt));
 }
@@ -216,6 +220,12 @@ void IsolateEnvironment::Scheduler::Lock::PushSyncInterrupt(unique_ptr<Runnable>
 std::queue<unique_ptr<Runnable>> IsolateEnvironment::Scheduler::Lock::TakeTasks() {
 	decltype(scheduler.tasks) tmp;
 	std::swap(tmp, scheduler.tasks);
+	return tmp;
+}
+
+std::queue<unique_ptr<Runnable>> IsolateEnvironment::Scheduler::Lock::TakeHandleTasks() {
+	decltype(scheduler.handle_tasks) tmp;
+	std::swap(tmp, scheduler.handle_tasks);
 	return tmp;
 }
 
@@ -372,7 +382,7 @@ void IsolateEnvironment::GCEpilogueCallback(Isolate* isolate, GCType /* type */,
 			}
 		};
 		Scheduler::Lock lock(that->scheduler);
-		lock.PushTask(std::make_unique<LowMemoryTask>(isolate));
+		lock.PushHandleTask(std::make_unique<LowMemoryTask>(isolate));
 	}
 
 	that->last_heap = heap;
@@ -416,13 +426,15 @@ void IsolateEnvironment::AsyncEntry() {
 	Executor::Lock lock(*this);
 	while (true) {
 		std::queue<unique_ptr<Runnable>> tasks;
+		std::queue<unique_ptr<Runnable>> handle_tasks;
 		std::queue<unique_ptr<Runnable>> interrupts;
 		{
 			// Grab current tasks
 			Scheduler::Lock lock(scheduler);
 			tasks = lock.TakeTasks();
+			handle_tasks = lock.TakeHandleTasks();
 			interrupts = lock.TakeInterrupts();
-			if (tasks.empty() && interrupts.empty()) {
+			if (tasks.empty() && handle_tasks.empty() && interrupts.empty()) {
 				lock.DoneRunning();
 				return;
 			}
@@ -435,6 +447,12 @@ void IsolateEnvironment::AsyncEntry() {
 		}
 
 		// Execute handle tasks
+		while (!handle_tasks.empty()) {
+			handle_tasks.front()->Run();
+			handle_tasks.pop();
+		}
+
+		// Execute tasks
 		while (!tasks.empty()) {
 			tasks.front()->Run();
 			tasks.pop();
@@ -546,6 +564,7 @@ IsolateEnvironment::~IsolateEnvironment() {
 		Scheduler::Lock lock2(scheduler);
 		lock2.TakeInterrupts();
 		lock2.TakeSyncInterrupts();
+		lock2.TakeHandleTasks();
 		lock2.TakeTasks();
 	}
 	{

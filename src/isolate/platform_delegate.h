@@ -56,7 +56,7 @@ class PlatformDelegate : public v8::Platform {
 				// We could further assert that IsolateEnvironment::GetCurrent() == s_isolate
 				assert(s_isolate);
 				// wakeup == false but it shouldn't matter because this isolate is already awake
-				s_isolate->ScheduleTask(std::make_unique<TaskHolder>(task), false, false);
+				s_isolate->ScheduleTask(std::make_unique<TaskHolder>(task), false, false, true);
 			}
 		}
 
@@ -71,7 +71,7 @@ class PlatformDelegate : public v8::Platform {
 						// Don't wake the isolate because that will affect the libuv ref/unref stuff. Instead,
 						// if this isolate is not running then whatever task v8 wanted to run will fire first
 						// thing next time the isolate is awake.
-						s_isolate->ScheduleTask(std::move(holder), false, false);
+						s_isolate->ScheduleTask(std::move(holder), false, false, true);
 					}
 					timer_t::chain(next);
 				});

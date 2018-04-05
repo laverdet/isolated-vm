@@ -165,10 +165,12 @@ class IsolateEnvironment {
 						void DoneRunning();
 						// Add work to the task queue
 						void PushTask(std::unique_ptr<Runnable> task);
+						void PushHandleTask(std::unique_ptr<Runnable> handle_task);
 						void PushInterrupt(std::unique_ptr<Runnable> interrupt);
 						void PushSyncInterrupt(std::unique_ptr<Runnable> interrupt);
 						// Takes control of current tasks. Resets current queue
 						std::queue<std::unique_ptr<Runnable>> TakeTasks();
+						std::queue<std::unique_ptr<Runnable>> TakeHandleTasks();
 						std::queue<std::unique_ptr<Runnable>> TakeInterrupts();
 						std::queue<std::unique_ptr<Runnable>> TakeSyncInterrupts();
 						// Returns true if a wake was scheduled, true if the isolate is already running.
@@ -205,6 +207,7 @@ class IsolateEnvironment {
 				std::mutex wait_mutex;
 				std::condition_variable_any wait_cv;
 				std::queue<std::unique_ptr<Runnable>> tasks;
+				std::queue<std::unique_ptr<Runnable>> handle_tasks;
 				std::queue<std::unique_ptr<Runnable>> interrupts;
 				std::queue<std::unique_ptr<Runnable>> sync_interrupts;
 				thread_pool_t::affinity_t thread_affinity;

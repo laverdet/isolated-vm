@@ -17,7 +17,7 @@ class IsolateHolder {
 		~IsolateHolder() = default;
 		void Dispose();
 		std::shared_ptr<IsolateEnvironment> GetIsolate();
-		void ScheduleTask(std::unique_ptr<Runnable> task, bool run_inline, bool wake_isolate);
+		void ScheduleTask(std::unique_ptr<Runnable> task, bool run_inline, bool wake_isolate, bool handle_task = false);
 };
 
 } // namespace ivm
