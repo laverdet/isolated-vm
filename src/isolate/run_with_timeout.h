@@ -1,5 +1,6 @@
 #pragma once
 #include "environment.h"
+#include "inspector.h"
 #include "runnable.h"
 #include "stack_trace.h"
 #include "../timer.h"
@@ -85,6 +86,16 @@ v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 			timer_ptr = std::make_unique<timer_t>(timeout_ms, [
 				&did_timeout, &did_finish, is_default_thread, &isolate, &stack_trace
 			](void* next) {
+				InspectorAgent* inspector = isolate.GetInspectorAgent();
+				if (inspector != nullptr) {
+					while (inspector->WaitForLoop()) {
+						// This will loop until the inspector releases the isolate for more than 500ms. In the
+						// case there is no inspector connected, or in the case the inspector is not blocking
+						// the isolate nothing will happen. I'm not sure if there's a more graceful way to
+						// really handle this.
+						std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(500));
+					}
+				}
 				did_timeout = true;
 				++isolate.terminate_depth;
 				{
@@ -104,6 +115,16 @@ v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 						isolate.CancelAsync();
 					}
 					timer_t::chain(next);
+					if (did_finish) {
+						// fn() could have finished and threw away the interrupts below before we got a chance
+						// to set them up. In this case we throw away the interrupts ourselves.
+						IsolateEnvironment::Scheduler::Lock scheduler(isolate.scheduler);
+						if (is_default_thread) {
+							scheduler.TakeSyncInterrupts();
+						} else {
+							scheduler.TakeInterrupts();
+						}
+					}
 				}
 				// FIXME(?): It seems that one call to TerminateExecution() doesn't kill the script if
 				// there is a promise handler scheduled. This is unexpected behavior but I can't

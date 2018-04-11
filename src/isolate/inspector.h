@@ -42,6 +42,7 @@ class InspectorAgent : public v8_inspector::V8InspectorClient {
 		void quitMessageLoopOnPause() final;
 		void ContextCreated(v8::Local<v8::Context> context, const std::string& name);
 		void ContextDestroyed(v8::Local<v8::Context> context);
+		bool WaitForLoop();
 };
 
 /**

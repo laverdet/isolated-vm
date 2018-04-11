@@ -45,6 +45,7 @@ class IsolateEnvironment {
 		 * by v8::Locker. This also enters the isolate and sets up a handle scope.
 		 */
 		class Executor { // "En taro adun"
+			friend class InspectorAgent;
 			private:
 				struct CpuTimer {
 					struct PauseScope {

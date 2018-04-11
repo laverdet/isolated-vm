@@ -44,6 +44,7 @@ InspectorAgent::~InspectorAgent() {
  * thread so we know that an Executor::Lock is up.
  */
 void InspectorAgent::runMessageLoopOnPause(int /* context_group_id */) {
+	IsolateEnvironment::Executor::CpuTimer::PauseScope pause_cpu_timer(isolate.executor.cpu_timer);
 	std::unique_lock<std::mutex> lock(mutex);
 	running = true;
 	do {
@@ -117,6 +118,21 @@ void InspectorAgent::ContextCreated(Local<Context> context, const std::string& n
  */
 void InspectorAgent::ContextDestroyed(Local<Context> context) {
 	inspector->contextDestroyed(context);
+}
+
+/**
+ * If the inspector session has this isolate paused then this will block until the inspector is
+ * done.
+ */
+bool InspectorAgent::WaitForLoop() {
+	std::unique_lock<std::mutex> lock(mutex);
+	if (!running) {
+		return false;
+	}
+	do {
+		cv.wait(lock);
+	} while (running);
+	return true;
 }
 
 /**
