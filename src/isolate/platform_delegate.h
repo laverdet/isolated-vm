@@ -19,6 +19,7 @@ class PlatformDelegate : public v8::Platform {
 	private:
 		v8::Isolate* node_isolate;
 		v8::Platform* node_platform;
+		v8::Isolate* tmp_isolate = nullptr;
 
 		class TaskHolder : public Runnable {
 			private:
@@ -31,6 +32,18 @@ class PlatformDelegate : public v8::Platform {
 		};
 
 	public:
+		struct TmpIsolateScope {
+			explicit TmpIsolateScope(v8::Isolate* isolate) {
+				PlatformDelegate::DelegateInstance().tmp_isolate = isolate;
+			}
+			TmpIsolateScope(TmpIsolateScope&) = delete;
+			TmpIsolateScope& operator=(const TmpIsolateScope&) = delete;
+
+			~TmpIsolateScope() {
+				PlatformDelegate::DelegateInstance().tmp_isolate = nullptr;
+			}
+		};
+
 		PlatformDelegate(v8::Isolate* node_isolate, v8::Platform* node_platform) : node_isolate(node_isolate), node_platform(node_platform) {}
 
 		static PlatformDelegate& DelegateInstance() {
@@ -51,7 +64,7 @@ class PlatformDelegate : public v8::Platform {
 		void CallOnForegroundThread(v8::Isolate* isolate, v8::Task* task) final {
 			if (isolate == node_isolate) {
 				node_platform->CallOnForegroundThread(isolate, task);
-			} else {
+			} else if (isolate != tmp_isolate) {
 				auto s_isolate = IsolateEnvironment::LookupIsolate(isolate);
 				// We could further assert that IsolateEnvironment::GetCurrent() == s_isolate
 				assert(s_isolate);
@@ -63,7 +76,7 @@ class PlatformDelegate : public v8::Platform {
 		void CallDelayedOnForegroundThread(v8::Isolate* isolate, v8::Task* task, double delay_in_seconds) final {
 			if (isolate == node_isolate) {
 				node_platform->CallDelayedOnForegroundThread(isolate, task, delay_in_seconds);
-			} else {
+			} else if (isolate != tmp_isolate) {
 				timer_t::wait_detached(delay_in_seconds * 1000, [isolate, task](void* next) {
 					auto holder = std::make_unique<TaskHolder>(task);
 					auto s_isolate = IsolateEnvironment::LookupIsolate(isolate);
@@ -92,6 +105,10 @@ class PlatformDelegate : public v8::Platform {
 			} else {
 				return false;
 			}
+		}
+
+		double CurrentClockTimeMillis() final {
+			return SystemClockTimeMillis();
 		}
 
 		double MonotonicallyIncreasingTime() final {

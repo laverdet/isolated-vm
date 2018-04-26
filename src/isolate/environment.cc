@@ -3,7 +3,6 @@
 #include "inspector.h"
 #include "runnable.h"
 #include "../external_copy.h"
-#include <v8-platform.h>
 #include <cmath>
 
 using namespace v8;

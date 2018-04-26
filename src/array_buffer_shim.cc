@@ -1,7 +1,9 @@
-#include <v8.h>
+// These shims are no longer necessary as of v8 version 6.7.9; commit 9568cea8
+// The change was backported to nodejs v10.0.0 in a rolled up commit 2a3f8c3a
+#include "isolate/v8_version.h"
+#if defined(NODE_MODULE_VERSION) ? NODE_MODULE_VERSION < 64 : !V8_AT_LEAST(6, 7, 9)
 #include <cassert>
 
-// This should hopefully be temporary, these will be pure virtual once Blink implements them
 namespace v8 {
 
 void ArrayBuffer::Allocator::Free(void* data, size_t length, ArrayBuffer::Allocator::AllocationMode mode) {
@@ -25,3 +27,5 @@ void ArrayBuffer::Allocator::SetProtection(void* /* data */, size_t /* length */
 }
 
 } // namespace v8
+
+#endif

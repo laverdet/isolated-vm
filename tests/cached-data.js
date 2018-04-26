@@ -17,7 +17,7 @@ let src = Array(20000).fill('function a(){}').join(';');
 {
 	// Try broken cache data
 	let isolate = new ivm.Isolate;
-	let script = isolate.compileScriptSync(src, { cachedData: new ivm.ExternalCopy(new Buffer('garbage').buffer) });
+	let script = isolate.compileScriptSync(src, { cachedData: new ivm.ExternalCopy(Buffer.from('garbage').buffer) });
 	if (script.cachedDataRejected !== true) {
 		console.log('fail2');
 	}

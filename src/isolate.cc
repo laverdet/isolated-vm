@@ -1,12 +1,4 @@
-#ifdef V8_IMMINENT_DEPRECATION_WARNINGS
-#undef V8_IMMINENT_DEPRECATION_WARNINGS
-#define IVM_V8_WARNINGS_DISABLED
-#endif
-#include <node.h>
-#ifdef IVM_V8_WARNINGS_DISABLED
-#undef IVM_V8_WARNINGS_DISABLED
-#define V8_IMMINENT_DEPRECATION_WARNINGS
-#endif
+#include "isolate/node_wrapper.h"
 #include "isolate/util.h"
 #include "isolate/environment.h"
 #include "isolate/platform_delegate.h"

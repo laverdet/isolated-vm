@@ -6,8 +6,10 @@
 #include "session_handle.h"
 #include "isolate/allocator.h"
 #include "isolate/functor_runners.h"
+#include "isolate/platform_delegate.h"
 #include "isolate/remote_handle.h"
 #include "isolate/three_phase_task.h"
+#include "isolate/v8_version.h"
 
 using namespace v8;
 using std::shared_ptr;
@@ -330,7 +332,9 @@ struct CompileScriptRunner : public ThreePhaseTask {
 			compile_options = ScriptCompiler::kConsumeCodeCache;
 			cached_data = std::make_unique<ScriptCompiler::CachedData>(reinterpret_cast<const uint8_t*>(cached_data_in.get()), cached_data_in_size);
 		} else if (produce_cached_data) {
+#if !V8_AT_LEAST(6, 5, 1)
 			compile_options = ScriptCompiler::kProduceCodeCache;
+#endif
 		}
 		ScriptCompiler::Source source(code_inner, script_origin, cached_data.release());
 		script = std::make_shared<RemoteHandle<UnboundScript>>(RunWithAnnotatedErrors<Local<UnboundScript>>(
@@ -343,7 +347,16 @@ struct CompileScriptRunner : public ThreePhaseTask {
 			cached_data_rejected = source.GetCachedData()->rejected;
 			cached_data_in.reset();
 		} else if (produce_cached_data) {
-			const ScriptCompiler::CachedData* cached_data = source.GetCachedData();
+			const ScriptCompiler::CachedData* cached_data // continued next line
+#if V8_AT_LEAST(6, 8, 11)
+			// `code` parameter removed in v8 commit a440efb27
+			= ScriptCompiler::CreateCodeCache(script->Deref())
+#elif V8_AT_LEAST(6, 5, 1)
+			// Added in v8 commit dae20b064
+			= ScriptCompiler::CreateCodeCache(script->Deref(), code_inner);
+#else
+			= source.GetCachedData();
+#endif
 			assert(cached_data != nullptr);
 			cached_data_out = std::make_shared<ExternalCopyArrayBuffer>((void*)cached_data->data, cached_data->length);
 		}
@@ -521,6 +534,7 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 	{
 		SnapshotCreator snapshot_creator;
 		Isolate* isolate = snapshot_creator.GetIsolate();
+		PlatformDelegate::TmpIsolateScope delegate_scope(isolate);
 		{
 			Locker locker(isolate);
 			Isolate::Scope isolate_scope(isolate);

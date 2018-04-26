@@ -3,8 +3,10 @@
 		'default_configuration': 'Release',
 		'configurations': {
 			'Release': {
+				'cflags': [ '-Wno-deprecated-declarations' ],
 				'xcode_settings': {
 					'GCC_OPTIMIZATION_LEVEL': '3',
+					'OTHER_CFLAGS': [ '-Wno-deprecated-declarations' ],
 				},
 			},
 			'Debug': {
