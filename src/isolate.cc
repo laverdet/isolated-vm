@@ -67,8 +67,9 @@ void init(Local<Object> target) {
 	V8::SetFlagsFromCommandLine(&argc, const_cast<char**>(flags), false);
 
 	Isolate* isolate = Isolate::GetCurrent();
-	root_isolate = IsolateEnvironment::New(isolate, isolate->GetCurrentContext());
-	target->Set(v8_symbol("ivm"), LibraryHandle::Get());
+	Local<Context> context = isolate->GetCurrentContext();
+	root_isolate = IsolateEnvironment::New(isolate, context);
+	Unmaybe(target->Set(context, v8_symbol("ivm"), LibraryHandle::Get()));
 	PlatformDelegate::InitializeDelegate();
 }
 

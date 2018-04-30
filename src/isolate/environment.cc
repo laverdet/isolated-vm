@@ -1,6 +1,7 @@
 #include "environment.h"
 #include "allocator.h"
 #include "inspector.h"
+#include "legacy.h"
 #include "runnable.h"
 #include "../external_copy.h"
 #include <cmath>
@@ -510,7 +511,12 @@ IsolateEnvironment::IsolateEnvironment(
 
 	// Calculate resource constraints
 	ResourceConstraints rc;
+#if defined(NODE_MODULE_VERSION) ? NODE_MODULE_VERSION >= 59 : V8_AT_LEAST(6, 1, 202)
+	// Added in v8 bb29f9a4 but reverted in nodejs aa1a3ea9. It made it back in nodejs v10.x
+	rc.set_max_semi_space_size_in_kb((int)std::pow(2, std::min(sizeof(void*) >= 8 ? 4.0 : 3.0, memory_limit / 128.0) + 10));
+#else
 	rc.set_max_semi_space_size((int)std::pow(2, std::min(sizeof(void*) >= 8 ? 4 : 3, (int)(memory_limit / 128))));
+#endif
 	rc.set_max_old_space_size((int)(memory_limit * 2));
 
 	// Build isolate from create params

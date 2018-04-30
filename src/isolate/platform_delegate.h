@@ -58,9 +58,22 @@ class PlatformDelegate : public v8::Platform {
 			v8::V8::InitializePlatform(&instance);
 		}
 
+#if defined(NODE_MODULE_VERSION) ? NODE_MODULE_VERSION >= 64 : V8_AT_LEAST(6, 7, 179)
+		// v8 commit 86b4b534 renamed this function and changed the signature. This made it to v8
+		// v6.7.1, but 1983f305 further changed the signature.
+		// These were both backported to nodejs in commmit 2a3f8c3a.
+		void CallOnWorkerThread(std::unique_ptr<v8::Task> task) final {
+			node_platform->CallOnWorkerThread(std::move(task));
+		}
+
+		void CallOnBackgroundThread(v8::Task* task, ExpectedRuntime expected_runtime) final {
+			node_platform->CallOnWorkerThread(std::unique_ptr<v8::Task>(task));
+		}
+#else
 		void CallOnBackgroundThread(v8::Task* task, ExpectedRuntime expected_runtime) final {
 			node_platform->CallOnBackgroundThread(task, expected_runtime);
 		}
+#endif
 
 		void CallOnForegroundThread(v8::Isolate* isolate, v8::Task* task) final {
 			if (isolate == node_isolate) {
