@@ -1,5 +1,6 @@
 #include "stack_trace.h"
 #include "functor_runners.h"
+#include "legacy.h"
 #include <cstring>
 #include <sstream>
 #include <string>
@@ -30,7 +31,7 @@ Local<String> RenderErrorStack(Local<Value> data) {
 	if (data->IsString()) {
 		// Plain string. We need to remove the first line of `stack` to avoid repeating the error
 		// message
-		String::Utf8Value string_value(data.As<String>());
+		Utf8ValueWrapper string_value(isolate, data.As<String>());
 		const char* c_str = *string_value;
 		// Must not start with indentation
 		if (c_str[0] == ' ' && c_str[1] == ' ' && c_str[2] == ' ' && c_str[3] == ' ') {
@@ -143,9 +144,9 @@ std::string StackTraceHolder::RenderSingleStack(Local<StackTrace> stack_trace) {
 	for (int ii = 0; ii < size; ++ii) {
 		Local<StackFrame> frame = stack_trace->GetFrame(ii);
 		ss <<"\n    at ";
-		String::Utf8Value fn_name(frame->GetFunctionName());
+		Utf8ValueWrapper fn_name(isolate, frame->GetFunctionName());
 		if (frame->IsWasm()) {
-			String::Utf8Value script_name(frame->GetScriptName());
+			Utf8ValueWrapper script_name(isolate, frame->GetScriptName());
 			bool has_name = fn_name.length() != 0 || script_name.length() != 0;
 			if (has_name) {
 				if (script_name.length() == 0) {
@@ -185,7 +186,7 @@ std::string StackTraceHolder::RenderSingleStack(Local<StackTrace> stack_trace) {
 }
 
 void StackTraceHolder::AppendFileLocation(Isolate* /* isolate */, Local<StackFrame> frame, std::stringstream& ss) {
-	String::Utf8Value script_name(frame->GetScriptNameOrSourceURL());
+	Utf8ValueWrapper script_name(Isolate::GetCurrent(), frame->GetScriptNameOrSourceURL());
 	if (script_name.length() == 0) {
 		if (frame->IsEval()) {
 			ss <<"[eval]";
