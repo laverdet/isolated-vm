@@ -66,7 +66,7 @@ class PlatformDelegate : public v8::Platform {
 			node_platform->CallOnWorkerThread(std::move(task));
 		}
 
-		void CallOnBackgroundThread(v8::Task* task, ExpectedRuntime expected_runtime) final {
+		void CallOnBackgroundThread(v8::Task* task, ExpectedRuntime /* expected_runtime */) final {
 			node_platform->CallOnWorkerThread(std::unique_ptr<v8::Task>(task));
 		}
 #else

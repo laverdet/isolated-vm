@@ -72,7 +72,7 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool tran
 		// `Buffer()` below will force v8 to attempt to create a buffer if it doesn't exist, and if
 		// there is an allocation failure it will crash the process.
 		if (!view->HasBuffer()) {
-			LimitedAllocator* allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+			auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
 			if (allocator != nullptr && !allocator->Check(view->ByteLength())) {
 				throw js_range_error("Array buffer allocation failed");
 			}
@@ -141,7 +141,7 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 		Isolate* isolate = Isolate::GetCurrent();
 		Local<Object> object(Local<Object>::Cast(value));
 		std::string name(*Utf8ValueWrapper(isolate, object->GetConstructorName()));
-		ExternalCopyError::ErrorType error_type = (ExternalCopyError::ErrorType)0;
+		auto error_type = (ExternalCopyError::ErrorType)0;
 		if (name == "RangeError") {
 			error_type = ExternalCopyError::ErrorType::RangeError;
 		} else if (name == "ReferenceError") {
@@ -312,7 +312,7 @@ ExternalCopySerialized::ExternalCopySerialized(std::pair<uint8_t*, size_t> val) 
 Local<Value> ExternalCopySerialized::CopyInto(bool /*transfer_in*/) {
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
-	LimitedAllocator* allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+	auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
 	int failures = allocator == nullptr ? 0 : allocator->GetFailureCount();
 	ValueDeserializer deserializer(isolate, buffer.get(), size);
 	Unmaybe(deserializer.ReadHeader(context));
@@ -446,7 +446,7 @@ void ExternalCopyBytes::Holder::WeakCallbackV8(const WeakCallbackInfo<void>& inf
 }
 
 void ExternalCopyBytes::Holder::WeakCallback(void* param) {
-	Holder* that = reinterpret_cast<Holder*>(param);
+	auto that = reinterpret_cast<Holder*>(param);
 	IsolateEnvironment::GetCurrent()->RemoveWeakCallback(&that->v8_ptr);
 	delete that;
 }
@@ -482,7 +482,7 @@ unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Loca
 	}
 	if (handle->IsExternal()) {
 		// Buffer lifespan is not handled by v8.. attempt to recover from isolated-vm
-		Holder* ptr = reinterpret_cast<Holder*>(handle->GetAlignedPointerFromInternalField(0));
+		auto ptr = reinterpret_cast<Holder*>(handle->GetAlignedPointerFromInternalField(0));
 		if (!handle->IsNeuterable() || ptr == nullptr || ptr->magic != Holder::kMagic) { // dangerous
 			throw js_generic_error("Array buffer cannot be externalized");
 		}
@@ -565,7 +565,7 @@ ExternalCopySharedArrayBuffer::ExternalCopySharedArrayBuffer(const v8::Local<v8:
 	}
 	if (handle->IsExternal()) {
 		// Buffer lifespan is not handled by v8.. attempt to recover from isolated-vm
-		Holder* ptr = reinterpret_cast<Holder*>(handle->GetAlignedPointerFromInternalField(0));
+		auto ptr = reinterpret_cast<Holder*>(handle->GetAlignedPointerFromInternalField(0));
 		if (ptr == nullptr || ptr->magic != Holder::kMagic) { // dangerous pointer dereference
 			throw js_generic_error("Array buffer cannot be externalized");
 		}

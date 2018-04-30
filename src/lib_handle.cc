@@ -31,7 +31,7 @@ Local<Value> LibHandle::Hrtime(MaybeLocal<Array> maybe_diff) {
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
 	uint64_t time = uv_hrtime();
-	constexpr uint64_t kNanos = (uint64_t)1e9;
+	constexpr auto kNanos = (uint64_t)1e9;
 	Local<Array> diff;
 	if (maybe_diff.ToLocal(&diff)) {
 		if (diff->Length() != 2) {

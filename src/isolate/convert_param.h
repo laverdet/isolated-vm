@@ -125,7 +125,7 @@ struct ConvertParam<v8::Maybe<T*>> {
 			// and crash
 			return v8::Nothing<T*>();
 		}
-		T* ptr = dynamic_cast<T*>(_ClassHandleUnwrap(handle));
+		auto ptr = dynamic_cast<T*>(_ClassHandleUnwrap(handle));
 		if (ptr == nullptr) {
 			return v8::Nothing<T*>();
 		} else {
@@ -148,7 +148,7 @@ struct ConvertParam<T*> {
 			// and crash
 			throw param_incorrect("something else");
 		}
-		T* ptr = dynamic_cast<T*>(_ClassHandleUnwrap(handle));
+		auto ptr = dynamic_cast<T*>(_ClassHandleUnwrap(handle));
 		if (ptr == nullptr) {
 			throw param_incorrect("something else");
 		} else {

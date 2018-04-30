@@ -1,5 +1,5 @@
 ---
-Checks:          '*,-cppcoreguidelines-no-malloc,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-pro-type-const-cast,-cppcoreguidelines-pro-type-reinterpret-cast,-cppcoreguidelines-pro-type-union-access,-cppcoreguidelines-pro-type-vararg,-google-build-using-namespace,-google-default-arguments,-google-readability-casting,-google-readability-todo,-google-runtime-references,-hicpp-special-member-functions,-llvm-header-guard,-llvm-include-order,-modernize-use-auto,-readability-else-after-return'
+Checks: 'bugprone-*,clang-*,hicpp-*,misc-*,modernize-*,performance-*,readability-*,-hicpp-no-array-decay,-hicpp-no-malloc,-hicpp-signed-bitwise,-hicpp-special-member-functions,-hicpp-vararg,-modernize-use-auto,-readability-else-after-return'
 HeaderFilterRegex: 'src/*'
 CheckOptions:    
   - key:             cppcoreguidelines-special-member-functions.AllowMissingMoveFunctions

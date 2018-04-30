@@ -161,7 +161,7 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 		Local<Value> snapshot_handle = Unmaybe(options->Get(context, v8_symbol("snapshot")));
 		if (!snapshot_handle->IsUndefined()) {
 			if (snapshot_handle->IsObject()) {
-				ExternalCopyHandle* copy_handle = ClassHandle::Unwrap<ExternalCopyHandle>(snapshot_handle.As<Object>());
+				auto copy_handle = ClassHandle::Unwrap<ExternalCopyHandle>(snapshot_handle.As<Object>());
 				if (copy_handle != nullptr) {
 					ExternalCopyArrayBuffer* copy_ptr = dynamic_cast<ExternalCopyArrayBuffer*>(copy_handle->GetValue().get());
 					if (copy_ptr != nullptr) {
@@ -300,7 +300,7 @@ struct CompileScriptRunner : public ThreePhaseTask {
 			Local<Value> cached_data_handle = Unmaybe(options->Get(context, v8_symbol("cachedData")));
 			if (!cached_data_handle->IsUndefined()) {
 				if (cached_data_handle->IsObject()) {
-					ExternalCopyHandle* copy_handle = ClassHandle::Unwrap<ExternalCopyHandle>(cached_data_handle.As<Object>());
+					auto copy_handle = ClassHandle::Unwrap<ExternalCopyHandle>(cached_data_handle.As<Object>());
 					if (copy_handle != nullptr) {
 						ExternalCopyArrayBuffer* copy_ptr = dynamic_cast<ExternalCopyArrayBuffer*>(copy_handle->GetValue().get());
 						if (copy_ptr != nullptr) {
@@ -458,7 +458,7 @@ Local<Value> IsolateHandle::GetCpuTime() {
 	uint64_t time = std::chrono::duration_cast<std::chrono::nanoseconds>(env->GetCpuTime()).count();
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
-	constexpr uint64_t kNanos = (uint64_t)1e9;
+	constexpr auto kNanos = (uint64_t)1e9;
 	Local<Array> ret = Array::New(isolate, 2);
 	Unmaybe(ret->Set(context, 0, Uint32::New(isolate, (uint32_t)(time / kNanos))));
 	Unmaybe(ret->Set(context, 1, Uint32::New(isolate, (uint32_t)(time - (time / kNanos) * kNanos))));
@@ -473,7 +473,7 @@ Local<Value> IsolateHandle::GetWallTime() {
 	uint64_t time = std::chrono::duration_cast<std::chrono::nanoseconds>(env->GetWallTime()).count();
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
-	constexpr uint64_t kNanos = (uint64_t)1e9;
+	constexpr auto kNanos = (uint64_t)1e9;
 	Local<Array> ret = Array::New(isolate, 2);
 	Unmaybe(ret->Set(context, 0, Uint32::New(isolate, (uint32_t)(time / kNanos))));
 	Unmaybe(ret->Set(context, 1, Uint32::New(isolate, (uint32_t)(time - (time / kNanos) * kNanos))));

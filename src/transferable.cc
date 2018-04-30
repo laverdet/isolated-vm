@@ -11,7 +11,7 @@ namespace ivm {
 
 unique_ptr<Transferable> Transferable::TransferOut(const Local<Value>& value) {
 	if (value->IsObject()) {
-		TransferableHandle* ptr = ClassHandle::Unwrap<TransferableHandle>(value.As<Object>());
+		auto ptr = ClassHandle::Unwrap<TransferableHandle>(value.As<Object>());
 		if (ptr != nullptr) {
 			return ptr->TransferOut();
 		}

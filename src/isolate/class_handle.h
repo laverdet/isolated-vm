@@ -260,7 +260,7 @@ class ClassHandle {
 		static void WeakCallback(ClassHandle* that) {
 			auto isolate = IsolateEnvironment::GetCurrent();
 			isolate->RemoveWeakCallback(&that->handle);
-			delete that;
+			delete that; // NOLINT
 		}
 
 		/**
