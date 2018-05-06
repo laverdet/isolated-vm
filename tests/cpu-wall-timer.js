@@ -28,10 +28,10 @@ isolate.compileScriptSync(`
 	recurse.applySync(undefined, [ 'spin(100);' ]);
 `).runSync(context);
 
-if (Math.abs(hrToFloat(isolate.cpuTime)) - 200 > 8) {
+if (Math.abs(hrToFloat(isolate.cpuTime)) - 200 > 20) {
 	console.log('cpu time wrong');
 }
-if (Math.abs(hrToFloat(isolate.wallTime)) - 300 > 8) {
+if (Math.abs(hrToFloat(isolate.wallTime)) - 300 > 20) {
 	console.log('wall time wrong');
 }
 
