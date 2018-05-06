@@ -124,7 +124,7 @@ class PlatformDelegate : public v8::Platform {
 #if V8_AT_LEAST(6, 2, 383)
 		// 11ba497c made this implementation required, 837b8016 added `SystemClockTimeMillis()`
 		double CurrentClockTimeMillis() final {
-			return SystemClockTimeMillis();
+			return node_platform->CurrentClockTimeMillis();
 		}
 #endif
 
