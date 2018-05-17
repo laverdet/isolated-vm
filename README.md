@@ -1,7 +1,9 @@
-[![npm version](https://img.shields.io/npm/v/isolated-vm.svg)](https://www.npmjs.com/package/isolated-vm) [![isc license](https://img.shields.io/npm/l/isolated-vm.svg)](https://github.com/laverdet/isolated-vm/blob/master/LICENSE) [![travis build](https://img.shields.io/travis/laverdet/isolated-vm/master.svg)](https://travis-ci.org/laverdet/isolated-vm)
+[![npm version](https://img.shields.io/npm/v/isolated-vm.svg)](https://www.npmjs.com/package/isolated-vm) [![isc license](https://img.shields.io/npm/l/isolated-vm.svg)](https://github.com/laverdet/isolated-vm/blob/master/LICENSE) [![travis build](https://img.shields.io/travis/laverdet/isolated-vm/master.svg)](https://travis-ci.org/laverdet/isolated-vm) [![npm downloads](https://img.shields.io/npm/dm/isolated-vm.svg)](https://www.npmjs.com/package/isolated-vm)
 
 isolated-vm -- Access to multiple isolates in nodejs
 ====================================================
+
+[![NPM](https://nodei.co/npm/isolated-vm.png)](https://www.npmjs.com/package/isolated-vm)
 
 `isolated-vm` is a library for nodejs which gives you access to v8's `Isolate` interface. This
 allows you to create JavaScript environments which are completely *isolated* from each other. You
@@ -9,30 +11,36 @@ might find this module useful if you need to run some untrusted code in a secure
 find this module useful if you need to run some JavaScript simultaneously in multiple threads. You
 may find this project *very* useful if you need to do both at the same time!
 
-An important note about bugs in v8
+
+REQUIREMENTS
 ----------------------------------
 
-There are currently some bugs in v8 that are out of my control that affect this project. This
-project *is* production ready, though you will need to run a special version of nodejs for the time
-being.
+This project works best on nodejs LTS version 8.11.2 (or later) *or* nodejs current version 10.x
+(any version). It will compile and generally run alright on earlier 8.x versions but under load you
+will run into crashes and hangs due to some bugs in v8.
 
-The first is [v8 issue #6933](https://bugs.chromium.org/p/v8/issues/detail?id=6933). This bug causes
-v8 to generate some infinite loops which will not respond to termination requests. The result is
-that if a script running in isolated-vm times out (via the `timeout` parameter) it may refuse to
-terminate which causes this library to panic. This bug has been fixed in node v8.10.0 which is good
-news, however v8.10.0 introduced a different v8 bug..
+Furthermore, to install this module you will need a compiler installed. If you run into errors while
+running `npm install isolated-vm` it is likely you don't have a compiler set up, or your compiler is
+too old.
 
-[v8 issue #7573](https://bugs.chromium.org/p/v8/issues/detail?id=7573) / [nodejs issue #19274](https://github.com/nodejs/node/issues/19274)
-causes v8 to segfault when running the same isolate concurrently from different threads which can
-sometimes happen by using isolated-vm's API. This bug will be backported to the node v8.10.x branch,
-though that will take some time to be released.
+* Windows + OS X users should follow the instuctions here: [node-gyp](https://github.com/nodejs/node-gyp)
+* Ubuntu users should run: `sudo apt-get install g++ build-essential`
+* Alpine users should run: `sudo apk add python make g++`
 
-I have a forked copy of nodejs v8.9.4 on github available at [laverdet/node branch:tailcall-backport](https://github.com/laverdet/node/tree/tailcall-backport).
-This includes a single cherry-pick'd commit which fixes the infinite loop bug mentioned above. This
-version has been well-tested in a production environment under load.
+If you are using Ubuntu please note that version 16 (Xenial) or greater is required. This project
+will *not* build using gcc 4.9.
 
-If you are just playing around with isolated-vm then you won't need to worry about this for now, as
-these issues only pop up under increased load.
+
+WHO IS USING ISOLATED-VM
+------------------------
+
+* [Screeps](https://screeps.com/) - Screeps is an online JavaScript-based MMO+RPG game. They are
+using isolated-vm to run arbitrary player-supplied code in secure enviroments which can persistent
+for several days at a time.
+
+* [Fly](https://fly.io/) - Fly is a programmable CDN which hosts dynamic endpoints as opposed to
+just static resources. They are using isolated-vm to run globally distributed applications, where
+each application may have wildly different traffic patterns.
 
 
 API DOCUMENTATION
