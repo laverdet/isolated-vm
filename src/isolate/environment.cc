@@ -153,6 +153,24 @@ void IsolateEnvironment::Scheduler::AsyncCallbackCommon(bool pool_thread, void* 
 	}
 }
 
+void IsolateEnvironment::Scheduler::IncrementUvRef() {
+	if (++uv_ref_count == 1) {
+		// Only the default thread should be able to reach this branch
+		assert(std::this_thread::get_id() == Executor::default_thread);
+		uv_ref(reinterpret_cast<uv_handle_t*>(&root_async));
+	}
+}
+
+void IsolateEnvironment::Scheduler::DecrementUvRef() {
+	if (--uv_ref_count == 0) {
+		if (std::this_thread::get_id() == Executor::default_thread) {
+			uv_unref(reinterpret_cast<uv_handle_t*>(&root_async));
+		} else {
+			uv_async_send(&root_async);
+		}
+	}
+}
+
 void IsolateEnvironment::Scheduler::AsyncCallbackNonDefaultIsolate(bool pool_thread, void* param) {
 	AsyncCallbackCommon(pool_thread, param);
 	if (--uv_ref_count == 0) {
@@ -248,11 +266,7 @@ bool IsolateEnvironment::Scheduler::Lock::WakeIsolate(shared_ptr<IsolateEnvironm
 		// Grab shared reference to this which will be passed to the worker entry. This ensures the
 		// IsolateEnvironment won't be deleted before a thread picks up this work.
 		auto isolate_ptr_ptr = new shared_ptr<IsolateEnvironment>(std::move(isolate_ptr));
-		if (++uv_ref_count == 1) {
-			// Only the default thread should be able to reach this branch
-			assert(std::this_thread::get_id() == Executor::default_thread);
-			uv_ref(reinterpret_cast<uv_handle_t*>(&root_async));
-		}
+		IncrementUvRef();
 		if (isolate.root) {
 			assert(root_async.data == nullptr);
 			root_async.data = isolate_ptr_ptr;

@@ -220,6 +220,11 @@ class IsolateEnvironment {
 				Scheduler operator= (const Scheduler&) = delete;
 				~Scheduler();
 				static void Init(IsolateEnvironment& default_isolate);
+				/**
+				 * Use to ref/unref the uv handle from C++ API
+				 */
+				static void IncrementUvRef();
+				static void DecrementUvRef();
 
 			private:
 				static void AsyncCallbackCommon(bool pool_thread, void* param);

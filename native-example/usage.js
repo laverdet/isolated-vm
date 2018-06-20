@@ -20,7 +20,16 @@ let global = context.globalReference();
 // plain nodejs as well.
 global.setSync('module', example.createSync(context).derefInto());
 
+// Create unsafe log function
+global.setSync('log', new ivm.Reference(function(...args) {
+	console.log(...args);
+}));
+
 // Now we can test the function
-let script = isolate.compileScriptSync('module.fn()');
-console.log(script.runSync(context));
+let script = isolate.compileScriptSync(`module.timeout(function() {
+	log.apply(0, [ "Timeout triggered" ]);
+}, 1000);`);
+console.log("Before runSync");
+script.runSync(context);
+console.log("After runSync");
 // logs: 123
