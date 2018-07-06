@@ -351,6 +351,11 @@ class IsolateEnvironment {
 		static void PromiseRejectCallback(v8::PromiseRejectMessage rejection);
 
 		/**
+		 * Called by v8 when this isolate is about to hit the heap limit (node v10.4.0 and above)
+		 */
+		static size_t NearHeapLimitCallback(void* data, size_t current_heap_limit, size_t initial_heap_limit);
+
+		/**
 		 * Called by Scheduler when there is work to be done in this isolate.
 		 */
 		void AsyncEntry();

@@ -338,15 +338,19 @@ IsolateEnvironment::HeapCheck::HeapCheck(IsolateEnvironment& env, size_t expecte
 				throw js_generic_error("Value would likely exhaust isolate heap");
 			}
 			did_increase = true;
+#if !V8_AT_LEAST(6, 7, 185)
 			env.GetIsolate()->IncreaseHeapLimitForDebugging();
+#endif
 		}
 	}
 }
 
 IsolateEnvironment::HeapCheck::~HeapCheck() {
+#if !V8_AT_LEAST(6, 7, 185)
 	if (did_increase) {
 		env.GetIsolate()->RestoreOriginalHeapLimit();
 	}
+#endif
 }
 
 void IsolateEnvironment::HeapCheck::Epilogue() {
@@ -434,6 +438,15 @@ void IsolateEnvironment::PromiseRejectCallback(PromiseRejectMessage rejection) {
 	auto that = IsolateEnvironment::GetCurrent();
 	assert(that->isolate == Isolate::GetCurrent());
 	that->rejected_promise_error.Reset(that->isolate, rejection.GetValue());
+}
+
+size_t IsolateEnvironment::NearHeapLimitCallback(void* data, size_t current_heap_limit, size_t initial_heap_limit) {
+	// This callback will give the v8 vm as much memory as it needs to prevent the application from
+	// crashing. After the JS stack unwinds the isolate will be disposed.
+	IsolateEnvironment* that = static_cast<IsolateEnvironment*>(data);
+	that->hit_memory_limit = true;
+	that->Terminate();
+	return current_heap_limit + 1024 * 1024;
 }
 
 void IsolateEnvironment::AsyncEntry() {
@@ -550,6 +563,10 @@ IsolateEnvironment::IsolateEnvironment(
 	isolate->AddGCEpilogueCallback(GCEpilogueCallback);
 	isolate->SetOOMErrorHandler(OOMErrorCallback);
 	isolate->SetPromiseRejectCallback(PromiseRejectCallback);
+
+#if V8_AT_LEAST(6, 7, 185)
+	isolate->AddNearHeapLimitCallback(NearHeapLimitCallback, static_cast<void*>(this));
+#endif
 
 	// Create a default context for the library to use if needed
 	{
