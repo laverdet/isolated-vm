@@ -355,13 +355,18 @@ IsolateEnvironment::HeapCheck::~HeapCheck() {
 
 void IsolateEnvironment::HeapCheck::Epilogue() {
 	if (did_increase) {
+		Isolate* isolate = env.GetIsolate();
 		HeapStatistics heap;
-		env.GetIsolate()->GetHeapStatistics(&heap);
+		isolate->GetHeapStatistics(&heap);
 		if (heap.used_heap_size() + env.extra_allocated_memory > env.memory_limit * 1024 * 1024) {
-			env.hit_memory_limit = true;
-			env.Terminate();
-			did_increase = false; // Don't reset heap limit to decrease chance v8 will OOM
-			throw js_fatal_error("Isolate was disposed during execution due to memory limit");
+			isolate->LowMemoryNotification();
+			isolate->GetHeapStatistics(&heap);
+			if (heap.used_heap_size() + env.extra_allocated_memory > env.memory_limit * 1024 * 1024) {
+				env.hit_memory_limit = true;
+				env.Terminate();
+				did_increase = false; // Don't reset heap limit to decrease chance v8 will OOM
+				throw js_fatal_error("Isolate was disposed during execution due to memory limit");
+			}
 		}
 	}
 }
