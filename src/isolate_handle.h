@@ -28,6 +28,7 @@ class IsolateHandle : public TransferableHandle {
 
 		template <int async> v8::Local<v8::Value> CreateContext(v8::MaybeLocal<v8::Object> maybe_options);
 		template <int async> v8::Local<v8::Value> CompileScript(v8::Local<v8::String> code_handle, v8::MaybeLocal<v8::Object> maybe_options);
+		template <int async> v8::Local<v8::Value> CompileModule(v8::Local<v8::String> code_handle, v8::MaybeLocal<v8::Object> maybe_options);
 		v8::Local<v8::Value> CreateInspectorSession();
 		v8::Local<v8::Value> Dispose();
 		template <int async> v8::Local<v8::Value> GetHeapStatistics();

@@ -3,6 +3,7 @@
 #include "external_copy.h"
 #include "external_copy_handle.h"
 #include "script_handle.h"
+#include "module_handle.h"
 #include "session_handle.h"
 #include "isolate/allocator.h"
 #include "isolate/functor_runners.h"
@@ -28,9 +29,15 @@ class ScriptOriginHolder {
 		std::string filename;
 		int columnOffset;
 		int lineOffset;
-
+    bool isModule;
 	public:
-		explicit ScriptOriginHolder(MaybeLocal<Object> maybe_options) : filename("<isolated-vm>"), columnOffset(0), lineOffset(0) {
+		explicit ScriptOriginHolder(MaybeLocal<Object> maybe_options)
+		  :
+		    filename("<isolated-vm>"),
+		    columnOffset(0),
+		    lineOffset(0),
+		    isModule(false)
+    {
 			Local<Object> options;
 			if (maybe_options.ToLocal(&options)) {
 				Isolate* isolate = Isolate::GetCurrent();
@@ -59,9 +66,24 @@ class ScriptOriginHolder {
 			}
 		}
 
+		ScriptOriginHolder & AsModule() {
+		  this->isModule = true;
+		  return *this;
+		}
+
 		ScriptOrigin ToScriptOrigin() {
 			Isolate* isolate = Isolate::GetCurrent();
-			return { v8_string(filename.c_str()), Integer::New(isolate, columnOffset), Integer::New(isolate, lineOffset) };
+			return {
+			  v8_string(filename.c_str()),			    // resource_name,
+			  Integer::New(isolate, columnOffset),	// resource_line_offset
+			  Integer::New(isolate, lineOffset),	  // resource_column_offset
+			  Boolean::New(isolate, false),			    // resource_is_shared_cross_origin
+			  Integer::New(isolate, 0),				      // script_id
+			  v8_string(""),						            // source_map_url
+			  Boolean::New(isolate, false),			    // resource_is_opaque
+			  Boolean::New(isolate, false),			    // is_wasm
+			  Boolean::New(isolate, isModule)
+            };
 		}
 };
 
@@ -118,6 +140,8 @@ Local<FunctionTemplate> IsolateHandle::Definition() {
 		"createSnapshot", ParameterizeStatic<decltype(&CreateSnapshot), &CreateSnapshot>(),
 		"compileScript", Parameterize<decltype(&IsolateHandle::CompileScript<1>), &IsolateHandle::CompileScript<1>>(),
 		"compileScriptSync", Parameterize<decltype(&IsolateHandle::CompileScript<0>), &IsolateHandle::CompileScript<0>>(),
+		"compileModule", Parameterize<decltype(&IsolateHandle::CompileModule<1>), &IsolateHandle::CompileModule<1>>(),
+		"compileModuleSync", Parameterize<decltype(&IsolateHandle::CompileModule<0>), &IsolateHandle::CompileModule<0>>(),
 		"cpuTime", ParameterizeAccessor<decltype(&IsolateHandle::GetCpuTime), &IsolateHandle::GetCpuTime>(),
 		"createContext", Parameterize<decltype(&IsolateHandle::CreateContext<1>), &IsolateHandle::CreateContext<1>>(),
 		"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContext<0>), &IsolateHandle::CreateContext<0>>(),
@@ -380,6 +404,52 @@ struct CompileScriptRunner : public ThreePhaseTask {
 template <int async>
 Local<Value> IsolateHandle::CompileScript(Local<String> code_handle, MaybeLocal<Object> maybe_options) {
 	return ThreePhaseTask::Run<async, CompileScriptRunner>(*this->isolate, this->isolate, code_handle, maybe_options);
+}
+
+
+/**
+* Compiles a module in this isolate and returns a ModuleHandle
+*/
+struct CompileModuleRunner : public ThreePhaseTask {
+	
+	shared_ptr<IsolateHolder> isolate;
+	unique_ptr<ExternalCopyString> code_string;
+	unique_ptr<ScriptOriginHolder> script_origin_holder;
+	shared_ptr<RemoteHandle<Module>> module_handle;
+
+	CompileModuleRunner(
+		shared_ptr<IsolateHolder> isolate,
+		const Local<String>& code_handle,
+		const MaybeLocal<Object>& maybe_options) : isolate(std::move(isolate))
+	{
+		// Read options
+		Local<Context> context = Isolate::GetCurrent()->GetCurrentContext(); // is this needed?
+		script_origin_holder = std::make_unique<ScriptOriginHolder>(maybe_options);
+		code_string = std::make_unique<ExternalCopyString>(code_handle);
+	}
+
+	void Phase2() final {
+		// Compile in second isolate and return UnboundScript persistent
+		auto isolate = IsolateEnvironment::GetCurrent();
+		Context::Scope context_scope(isolate->DefaultContext());
+		Local<String> code_inner = code_string->CopyIntoCheckHeap().As<String>();
+		ScriptOrigin script_origin = script_origin_holder->AsModule().ToScriptOrigin();
+		ScriptCompiler::Source source(code_inner, script_origin);
+		module_handle = std::make_shared<RemoteHandle<Module>>(RunWithAnnotatedErrors<Local<Module>>(
+			[&isolate, &source]() { return Unmaybe(ScriptCompiler::CompileModule(*isolate, &source)); }
+		));
+	}
+
+	Local<Value> Phase3() final {
+		// Wrap Module in JS Module{} class
+		Local<Object> value = ClassHandle::NewInstance<ModuleHandle>(std::move(isolate), std::move(module_handle));
+		return value;
+	}
+};
+
+template <int async>
+Local<Value> IsolateHandle::CompileModule(Local<String> code_handle, MaybeLocal<Object> maybe_options) {
+	return ThreePhaseTask::Run<async, CompileModuleRunner>(*this->isolate, this->isolate, code_handle, maybe_options);
 }
 
 /**

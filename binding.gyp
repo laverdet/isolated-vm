@@ -60,6 +60,7 @@
 				'src/native_module_handle.cc',
 				'src/reference_handle.cc',
 				'src/script_handle.cc',
+				'src/module_handle.cc',
 				'src/session_handle.cc',
 				'src/transferable.cc',
 			],
