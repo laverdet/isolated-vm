@@ -30,8 +30,8 @@ Local<FunctionTemplate> ModuleHandle::Definition() {
 		"getModuleRequest", Parameterize<decltype(&ModuleHandle::GetModuleRequest<1>), &ModuleHandle::GetModuleRequest<1>>(),
 		"getModuleRequestSync", Parameterize<decltype(&ModuleHandle::GetModuleRequest<0>), &ModuleHandle::GetModuleRequest<0>>(),
 		"release", Parameterize<decltype(&ModuleHandle::Release), &ModuleHandle::Release>(),
-		"link", Parameterize<decltype(&ModuleHandle::Link), &ModuleHandle::Link>(),
-		"instantiate", Parameterize<decltype(&ModuleHandle::Instantiate), &ModuleHandle::Instantiate>(),
+		"instantiate", Parameterize<decltype(&ModuleHandle::Instantiate<1>), &ModuleHandle::Instantiate<1>>(),
+		"instantiateSync", Parameterize<decltype(&ModuleHandle::Instantiate<0>), &ModuleHandle::Instantiate<0>>(),
 		"evaluate", Parameterize<decltype(&ModuleHandle::Evaluate), &ModuleHandle::Evaluate>()
 	));
 }
@@ -68,7 +68,6 @@ struct GetModuleRequestRunner : public ThreePhaseTask {
 };
 
 
-
 v8::Local<v8::Value> ModuleHandle::GetModuleRequestsLength() {
   const std::size_t length = this->_module->Deref()->GetModuleRequestsLength();
   Isolate* isolate = Isolate::GetCurrent();
@@ -81,14 +80,51 @@ v8::Local<v8::Value> ModuleHandle::GetModuleRequest(v8::Local<v8::Value> index) 
 }
 
 
-//template <int async>
-Local<Value> ModuleHandle::Link(Local<Function> linker) {
-	throw js_generic_error("Not yet implemented");
-}
 
+struct InstantiateRunner : public ThreePhaseTask {
+	shared_ptr<RemoteHandle<Context>> context;
+	std::shared_ptr<RemoteHandle<v8::Module>> _module;
+	std::unique_ptr<Transferable> result;
 
-Local<Value> ModuleHandle::Instantiate() {
-	throw js_generic_error("Not yet implemented");
+	InstantiateRunner(IsolateHolder* isolate, ContextHandle* context_handle, std::shared_ptr<RemoteHandle<v8::Module>> myModule)
+		: context(context_handle->context), _module(std::move(myModule))
+	{
+		// Sanity check
+		context_handle->CheckDisposed();
+		if (isolate != context_handle->context->GetIsolateHolder()) {
+			throw js_generic_error("Invalid context");
+		}
+	}
+
+	void Phase2() final {
+		v8::Isolate* isolate = v8::Isolate::GetCurrent();
+		v8::Module::ResolveCallback resolveCallback = 0;
+		//[&](v8::Local<v8::Context> _context, v8::Local<v8::String> specifier, v8::Local<v8::Module> referrer) {
+			// map the specifier 
+			//return v8::MaybeLocal<v8::Module>();
+		//};
+		v8::Maybe<bool> maybe = this->_module->Deref()->InstantiateModule(this->context->Deref(), resolveCallback);
+		result = ExternalCopy::CopyIfPrimitive(v8::Boolean::New(isolate, maybe.FromMaybe(false)));
+	}
+
+	Local<Value> Phase3() final {
+		if (result) {
+			return result->TransferIn();
+		}
+		else {
+			return v8::Undefined(v8::Isolate::GetCurrent()).As<v8::Value>();
+		}
+	}
+
+};
+
+template <int async>
+v8::Local<v8::Value> ModuleHandle::Instantiate(ContextHandle* context_handle, v8::MaybeLocal<v8::Object> modules) {
+	if (!this->_module) {
+		throw js_generic_error("Module has been released");
+	}
+	std::shared_ptr<RemoteHandle<v8::Module>> module_ref = this->_module;
+	return ThreePhaseTask::Run<async, InstantiateRunner>(*this->isolate, this->isolate.get(), context_handle, std::move(module_ref));
 }
 
 //template <int async>

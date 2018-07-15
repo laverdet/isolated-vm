@@ -6,20 +6,24 @@ const { strictEqual } = require('assert');
 
 (function () {
   const isolate = new ivm.Isolate();
-  const code = `
-    import first from './first';
-    import second from './second';
-    export default function add(a, b) { return a + b; }
-  `;
-  try {
-    const module = isolate.compileModuleSync(code);
+  const context = isolate.createContextSync(); // All modules must share the same context
+
+  const moduleMap = {};
+
+  function setupModuleAddAndRunChecks() {
+    const data = (moduleMap.add = {});
+    const code = `export default function add(a, b) { return a + b; }`;
+    const module = data.module = isolate.compileModuleSync(code);
     strictEqual(typeof module.getModuleRequestsLength, 'function');
     const moduleRequestsLength = module.getModuleRequestsLength();
-    strictEqual(moduleRequestsLength, 2);
-    const moduleRequests = Array.from({ length: moduleRequestsLength }).map((val, index) => module.getModuleRequestSync(index));
-    strictEqual(JSON.stringify(moduleRequests), JSON.stringify(['./first', './second']))
-    strictEqual(typeof module.instantiate, 'function');
-    strictEqual(typeof module.evaluate, 'function');
+    strictEqual(moduleRequestsLength, 0);
+    strictEqual(typeof module.instantiateSync, 'function');
+    const success = module.instantiateSync(context);
+    strictEqual(success, true);
+  }
+
+  try {
+    setupModuleAddAndRunChecks();
     console.log('pass');
   } catch(err) {
     console.log(err);

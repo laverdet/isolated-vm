@@ -35,10 +35,8 @@ class ModuleHandle : public TransferableHandle {
 		v8::Local<v8::Value> GetModuleRequest(v8::Local<v8::Value>);
 
 
-		//template <int async>
-		v8::Local<v8::Value> Link(v8::Local<v8::Function>);
-
-		v8::Local<v8::Value> Instantiate();
+		template <int async>
+		v8::Local<v8::Value> Instantiate(ContextHandle*, v8::MaybeLocal<v8::Object>);	
 
 		//template <int async>
 		v8::Local<v8::Value> Evaluate(v8::MaybeLocal<v8::Object>);
