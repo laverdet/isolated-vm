@@ -38,8 +38,8 @@ class ModuleHandle : public TransferableHandle {
 		template <int async>
 		v8::Local<v8::Value> Instantiate(ContextHandle*, v8::MaybeLocal<v8::Object>);	
 
-		//template <int async>
-		v8::Local<v8::Value> Evaluate(v8::MaybeLocal<v8::Object>);
+		template <int async>
+		v8::Local<v8::Value> Evaluate(ContextHandle*, v8::MaybeLocal<v8::Object>);
 
 		v8::Local<v8::Value> Release();
 };

@@ -32,7 +32,8 @@ Local<FunctionTemplate> ModuleHandle::Definition() {
 		"release", Parameterize<decltype(&ModuleHandle::Release), &ModuleHandle::Release>(),
 		"instantiate", Parameterize<decltype(&ModuleHandle::Instantiate<1>), &ModuleHandle::Instantiate<1>>(),
 		"instantiateSync", Parameterize<decltype(&ModuleHandle::Instantiate<0>), &ModuleHandle::Instantiate<0>>(),
-		"evaluate", Parameterize<decltype(&ModuleHandle::Evaluate), &ModuleHandle::Evaluate>()
+		"evaluate", Parameterize<decltype(&ModuleHandle::Evaluate<1>), &ModuleHandle::Evaluate<1>>(),
+		"evaluateSync", Parameterize<decltype(&ModuleHandle::Evaluate<0>), &ModuleHandle::Evaluate<0>>()
 	));
 }
 
@@ -78,7 +79,6 @@ template <int async>
 v8::Local<v8::Value> ModuleHandle::GetModuleRequest(v8::Local<v8::Value> index) {
 	return ThreePhaseTask::Run<async, GetModuleRequestRunner>(*this->isolate, this->_module, index->Int32Value());
 }
-
 
 
 struct InstantiateRunner : public ThreePhaseTask {
@@ -127,9 +127,63 @@ v8::Local<v8::Value> ModuleHandle::Instantiate(ContextHandle* context_handle, v8
 	return ThreePhaseTask::Run<async, InstantiateRunner>(*this->isolate, this->isolate.get(), context_handle, std::move(module_ref));
 }
 
-//template <int async>
-Local<Value> ModuleHandle::Evaluate(v8::MaybeLocal<v8::Object> options) {
-	throw js_generic_error("Not yet implemented");
+
+
+struct EvaluateRunner : public ThreePhaseTask {
+	shared_ptr<RemoteHandle<Context>> context;
+	std::shared_ptr<RemoteHandle<v8::Module>> _module;
+	std::unique_ptr<Transferable> result;
+	uint32_t timeout;
+
+	EvaluateRunner(IsolateHolder* isolate, ContextHandle* context_handle, std::shared_ptr<RemoteHandle<v8::Module>> myModule, uint32_t t)
+		: context(context_handle->context), _module(std::move(myModule)), timeout(t)
+	{
+		// Sanity check
+		context_handle->CheckDisposed();
+		if (isolate != context_handle->context->GetIsolateHolder()) {
+			throw js_generic_error("Invalid context");
+		}
+	}
+
+	void Phase2() final {
+		Local<Context> context_local = Deref(*this->context);
+		Context::Scope context_scope(context_local);
+		result = ExternalCopy::CopyIfPrimitive(
+			RunWithTimeout(this->timeout, [&]() {
+				return this->_module->Deref()->Evaluate(context_local);
+			})
+		);
+	}
+
+	Local<Value> Phase3() final {
+		if (result) {
+			return result->TransferIn();
+		}
+		else {
+			return v8::Undefined(v8::Isolate::GetCurrent()).As<v8::Value>();
+		}
+	}
+
+};
+template <int async>
+v8::Local<v8::Value> ModuleHandle::Evaluate(ContextHandle* context_handle, v8::MaybeLocal<v8::Object> maybe_options) {
+	if (!this->_module) {
+		throw js_generic_error("Module has been released");
+	}
+	v8::Isolate* isolate = v8::Isolate::GetCurrent();
+	uint32_t timeout_ms = 0;
+	v8::Local<v8::Object> options;
+	if (maybe_options.ToLocal(&options)) {
+		v8::Local<v8::Value> timeout_handle = Unmaybe(options->Get(isolate->GetCurrentContext(), v8_string("timeout")));
+		if (!timeout_handle->IsUndefined()) {
+			if (!timeout_handle->IsUint32()) {
+				throw js_type_error("`timeout` must be integer");
+			}
+			timeout_ms = timeout_handle.As<Uint32>()->Value();
+		}
+	}
+	std::shared_ptr<RemoteHandle<v8::Module>> module_ref = this->_module;
+	return ThreePhaseTask::Run<async, EvaluateRunner>(*this->isolate, this->isolate.get(), context_handle, std::move(module_ref), timeout_ms);
 }
 
 Local<Value> ModuleHandle::Release() {
