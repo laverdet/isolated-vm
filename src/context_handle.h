@@ -11,6 +11,7 @@ class ContextHandle : public TransferableHandle {
 	friend struct RunRunner;
 	friend struct InstantiateRunner;
 	friend struct EvaluateRunner;
+	friend struct GetModuleNamespaceRunner;
 	friend class NativeModuleHandle;
 	private:
 		std::shared_ptr<RemoteHandle<v8::Context>> context;

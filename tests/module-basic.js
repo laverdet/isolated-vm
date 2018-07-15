@@ -23,6 +23,14 @@ const { strictEqual, throws } = require('assert');
     strictEqual(typeof module.evaluateSync, 'function');
     const evaluateResult = module.evaluateSync(context);
     strictEqual('This is awesome!', evaluateResult);
+
+    const reference = module.getModuleNamespaceSync(context);
+    strictEqual(reference.typeof, 'object');
+    const defaultExport = reference.getSync('default');
+    strictEqual(typeof defaultExport, 'object');
+    strictEqual(defaultExport.typeof, 'function');
+    const result = defaultExport.applySync(null, [ 2, 4 ]);
+    strictEqual(result, 6);
   }
 
   function setupModuleTimeoutAndRunChecks() {

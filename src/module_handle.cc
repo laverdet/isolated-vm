@@ -1,6 +1,8 @@
 #include "module_handle.h"
 #include "context_handle.h"
 #include "external_copy.h"
+#include "reference_handle.h"
+#include "isolate/class_handle.h"
 #include "isolate/run_with_timeout.h"
 #include "isolate/three_phase_task.h"
 
@@ -33,7 +35,9 @@ Local<FunctionTemplate> ModuleHandle::Definition() {
 		"instantiate", Parameterize<decltype(&ModuleHandle::Instantiate<1>), &ModuleHandle::Instantiate<1>>(),
 		"instantiateSync", Parameterize<decltype(&ModuleHandle::Instantiate<0>), &ModuleHandle::Instantiate<0>>(),
 		"evaluate", Parameterize<decltype(&ModuleHandle::Evaluate<1>), &ModuleHandle::Evaluate<1>>(),
-		"evaluateSync", Parameterize<decltype(&ModuleHandle::Evaluate<0>), &ModuleHandle::Evaluate<0>>()
+		"evaluateSync", Parameterize<decltype(&ModuleHandle::Evaluate<0>), &ModuleHandle::Evaluate<0>>(),
+		"getModuleNamespace", Parameterize<decltype(&ModuleHandle::GetModuleNamespace<1>), &ModuleHandle::GetModuleNamespace<1>>(),
+		"getModuleNamespaceSync", Parameterize<decltype(&ModuleHandle::GetModuleNamespace<0>), &ModuleHandle::GetModuleNamespace<0>>()
 	));
 }
 
@@ -46,11 +50,11 @@ std::unique_ptr<Transferable> ModuleHandle::TransferOut() {
 struct GetModuleRequestRunner : public ThreePhaseTask {
 	std::unique_ptr<Transferable> result;
 	std::shared_ptr<RemoteHandle<v8::Module>> _module;
-  std::size_t _index;
+	std::size_t _index;
 
 	GetModuleRequestRunner(std::shared_ptr<RemoteHandle<v8::Module>> myModule, std::size_t index)
 	  : _module(std::move(myModule)), _index(index)
-  {
+	{
 	}
 
 	void Phase2() final {
@@ -165,6 +169,7 @@ struct EvaluateRunner : public ThreePhaseTask {
 	}
 
 };
+
 template <int async>
 v8::Local<v8::Value> ModuleHandle::Evaluate(ContextHandle* context_handle, v8::MaybeLocal<v8::Object> maybe_options) {
 	if (!this->_module) {
@@ -186,9 +191,53 @@ v8::Local<v8::Value> ModuleHandle::Evaluate(ContextHandle* context_handle, v8::M
 	return ThreePhaseTask::Run<async, EvaluateRunner>(*this->isolate, this->isolate.get(), context_handle, std::move(module_ref), timeout_ms);
 }
 
+struct GetModuleNamespaceRunner : public ThreePhaseTask {
+	std::shared_ptr<IsolateHolder> isolate;
+	std::shared_ptr<RemoteHandle<Context>> context;
+	std::shared_ptr<RemoteHandle<v8::Module>> _module;
+	//std::unique_ptr<ReferenceHandle> result;
+	std::shared_ptr<RemoteHandle<v8::Value>> result;
+	
+	GetModuleNamespaceRunner(std::shared_ptr<IsolateHolder> myIsolate, ContextHandle* context_handle, std::shared_ptr<RemoteHandle<v8::Module>> myModule)
+		: isolate(std::move(myIsolate)), context(context_handle->context), _module(std::move(myModule))
+	{
+		// Sanity check
+		context_handle->CheckDisposed();
+		if (isolate.get() != context_handle->context->GetIsolateHolder()) {
+			throw js_generic_error("Invalid context");
+		}
+	}
+
+	void Phase2() final {
+		v8::Local<v8::Context> context_handle = ivm::Deref(*this->context);
+		v8::Context::Scope context_scope(context_handle);
+		v8::Local<v8::Value> moduleNamespace = this->_module->Deref()->GetModuleNamespace();
+		result = std::make_shared<RemoteHandle<v8::Value>>(moduleNamespace);
+	}
+
+
+	Local<Value> Phase3() final {
+		if (this->result) {
+			Local<Object> value = ClassHandle::NewInstance<ReferenceHandle>(this->isolate, this->result, this->context, ReferenceHandle::TypeOf::Object);
+			return value;
+		}
+		return v8::Undefined(v8::Isolate::GetCurrent());
+	}
+
+};
+
+template <int async>
+v8::Local<v8::Value> ModuleHandle::GetModuleNamespace(ContextHandle* context_handle) {
+	std::shared_ptr<RemoteHandle<v8::Module>> module_ref = this->_module;
+	return ThreePhaseTask::Run<async, GetModuleNamespaceRunner>(*this->isolate, this->isolate, context_handle, std::move(module_ref));
+}
+
+
 Local<Value> ModuleHandle::Release() {
 	_module.reset();
 	return Undefined(Isolate::GetCurrent());
 }
+
+
 
 } // namespace ivm

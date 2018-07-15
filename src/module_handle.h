@@ -41,6 +41,9 @@ class ModuleHandle : public TransferableHandle {
 		template <int async>
 		v8::Local<v8::Value> Evaluate(ContextHandle*, v8::MaybeLocal<v8::Object>);
 
+		template <int async>
+		v8::Local<v8::Value> GetModuleNamespace(ContextHandle*);
+
 		v8::Local<v8::Value> Release();
 };
 
