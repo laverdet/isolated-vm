@@ -29,13 +29,19 @@ class ModuleHandle : public TransferableHandle {
 		static v8::Local<v8::FunctionTemplate> Definition();
 		std::unique_ptr<Transferable> TransferOut() final;
 
+		v8::Local<v8::Value> GetModuleRequestsLength();
+
+		template <int async>
+		v8::Local<v8::Value> GetModuleRequest(v8::Local<v8::Value>);
+
+
 		//template <int async>
 		v8::Local<v8::Value> Link(v8::Local<v8::Function>);
 
 		v8::Local<v8::Value> Instantiate();
 
 		//template <int async>
-    v8::Local<v8::Value> Evaluate(v8::MaybeLocal<v8::Object>);
+		v8::Local<v8::Value> Evaluate(v8::MaybeLocal<v8::Object>);
 
 		v8::Local<v8::Value> Release();
 };
