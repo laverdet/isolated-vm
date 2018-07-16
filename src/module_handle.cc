@@ -6,6 +6,9 @@
 #include "isolate/run_with_timeout.h"
 #include "isolate/three_phase_task.h"
 
+#include <map>
+#include <mutex>
+
 using namespace v8;
 using std::shared_ptr;
 
@@ -21,7 +24,7 @@ Local<Value> ModuleHandle::ModuleHandleTransferable::TransferIn() {
 };
 
 ModuleHandle::ModuleHandle(shared_ptr<IsolateHolder> isolate, shared_ptr<RemoteHandle<Module>> myModule)
-	: isolate(std::move(isolate)), _module(std::move(myModule))
+	: isolate(std::move(isolate)), _module(std::move(myModule)), dependencies(std::make_shared<dependency_map_type>())
 {
 }
 
@@ -31,6 +34,7 @@ Local<FunctionTemplate> ModuleHandle::Definition() {
 		"getModuleRequestsLength", Parameterize<decltype(&ModuleHandle::GetModuleRequestsLength), &ModuleHandle::GetModuleRequestsLength>(),
 		"getModuleRequest", Parameterize<decltype(&ModuleHandle::GetModuleRequest<1>), &ModuleHandle::GetModuleRequest<1>>(),
 		"getModuleRequestSync", Parameterize<decltype(&ModuleHandle::GetModuleRequest<0>), &ModuleHandle::GetModuleRequest<0>>(),
+		"setDependency", Parameterize<decltype(&ModuleHandle::SetDependency), &ModuleHandle::SetDependency>(),
 		"release", Parameterize<decltype(&ModuleHandle::Release), &ModuleHandle::Release>(),
 		"instantiate", Parameterize<decltype(&ModuleHandle::Instantiate<1>), &ModuleHandle::Instantiate<1>>(),
 		"instantiateSync", Parameterize<decltype(&ModuleHandle::Instantiate<0>), &ModuleHandle::Instantiate<0>>(),
@@ -85,29 +89,61 @@ v8::Local<v8::Value> ModuleHandle::GetModuleRequest(v8::Local<v8::Value> index) 
 }
 
 
+v8::Local<v8::Value> ModuleHandle::SetDependency(v8::Local<v8::Value> value, ModuleHandle* module_handle_ptr) {
+	if (!value->IsString()) {
+		return v8::Boolean::New(v8::Isolate::GetCurrent(), false);
+	}
+	v8::Local<v8::String> key = value->ToString();
+	v8::String::Utf8Value keyAsCharPointer(v8::Isolate::GetCurrent(), key);
+	if (!keyAsCharPointer.length()) {
+		// UTF8-conversion error probably
+		return v8::Boolean::New(v8::Isolate::GetCurrent(), false);
+	}
+	// Assume the code cannot invoke SetDependency() in parallel, otherwise will the code below not be thread safe
+	this->dependencies->insert(dependency_map_type::value_type(*keyAsCharPointer, module_handle_ptr->_module));
+	return v8::Boolean::New(v8::Isolate::GetCurrent(), true);
+}
+
+
+std::mutex InstantiateRunnerMutex;
+std::shared_ptr<ModuleHandle::dependency_map_type> InstantiateRunnerDependencies;
+
 struct InstantiateRunner : public ThreePhaseTask {
 	shared_ptr<RemoteHandle<Context>> context;
 	std::shared_ptr<RemoteHandle<v8::Module>> _module;
 	std::unique_ptr<Transferable> result;
-
-	InstantiateRunner(IsolateHolder* isolate, ContextHandle* context_handle, std::shared_ptr<RemoteHandle<v8::Module>> myModule)
-		: context(context_handle->context), _module(std::move(myModule))
+	std::lock_guard<std::mutex> lock_guard;
+	
+	
+	InstantiateRunner(IsolateHolder* isolate, ContextHandle* context_handle, std::shared_ptr<RemoteHandle<v8::Module>> myModule, std::shared_ptr<ModuleHandle::dependency_map_type> deps)
+		: context(context_handle->context), _module(std::move(myModule)), lock_guard(InstantiateRunnerMutex)Deref
 	{
 		// Sanity check
 		context_handle->CheckDisposed();
 		if (isolate != context_handle->context->GetIsolateHolder()) {
 			throw js_generic_error("Invalid context");
 		}
+		InstantiateRunnerDependencies = std::move(deps);
+	}
+
+	static v8::MaybeLocal<v8::Module> ResolveCallback(v8::Local<v8::Context> context, v8::Local<v8::String> specifierAsLocal, v8::Local<v8::Module> referrer) {
+		v8::String::Utf8Value specifierHelper(v8::Isolate::GetCurrent(), specifierAsLocal);
+		const std::size_t length = specifierHelper.length();
+		if (length) {
+			std::string specifierAsString(*specifierHelper, length);
+			// We can safely use InstantiateRunnerDependencies
+			auto & dependencies = InstantiateRunnerDependencies;
+			ModuleHandle::dependency_map_type::iterator it = dependencies->find(specifierAsString);
+			if (it != dependencies->end()) {
+				return v8::MaybeLocal<v8::Module>(it->second->Deref());
+			}
+		}
+		return v8::MaybeLocal<v8::Module>();
 	}
 
 	void Phase2() final {
 		v8::Isolate* isolate = v8::Isolate::GetCurrent();
-		v8::Module::ResolveCallback resolveCallback = 0;
-		//[&](v8::Local<v8::Context> _context, v8::Local<v8::String> specifier, v8::Local<v8::Module> referrer) {
-			// map the specifier 
-			//return v8::MaybeLocal<v8::Module>();
-		//};
-		v8::Maybe<bool> maybe = this->_module->Deref()->InstantiateModule(this->context->Deref(), resolveCallback);
+		v8::Maybe<bool> maybe = this->_module->Deref()->InstantiateModule(this->context->Deref(), this->ResolveCallback);
 		result = ExternalCopy::CopyIfPrimitive(v8::Boolean::New(isolate, maybe.FromMaybe(false)));
 	}
 
@@ -123,12 +159,12 @@ struct InstantiateRunner : public ThreePhaseTask {
 };
 
 template <int async>
-v8::Local<v8::Value> ModuleHandle::Instantiate(ContextHandle* context_handle, v8::MaybeLocal<v8::Object> modules) {
+v8::Local<v8::Value> ModuleHandle::Instantiate(ContextHandle* context_handle) {
 	if (!this->_module) {
 		throw js_generic_error("Module has been released");
 	}
 	std::shared_ptr<RemoteHandle<v8::Module>> module_ref = this->_module;
-	return ThreePhaseTask::Run<async, InstantiateRunner>(*this->isolate, this->isolate.get(), context_handle, std::move(module_ref));
+	return ThreePhaseTask::Run<async, InstantiateRunner>(*this->isolate, this->isolate.get(), context_handle, std::move(module_ref), this->dependencies);
 }
 
 
