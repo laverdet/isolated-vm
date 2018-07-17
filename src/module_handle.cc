@@ -116,7 +116,7 @@ struct InstantiateRunner : public ThreePhaseTask {
 	
 	
 	InstantiateRunner(IsolateHolder* isolate, ContextHandle* context_handle, std::shared_ptr<RemoteHandle<v8::Module>> myModule, std::shared_ptr<ModuleHandle::dependency_map_type> deps)
-		: context(context_handle->context), _module(std::move(myModule)), lock_guard(InstantiateRunnerMutex)Deref
+		: context(context_handle->context), _module(std::move(myModule)), lock_guard(InstantiateRunnerMutex)
 	{
 		// Sanity check
 		context_handle->CheckDisposed();
@@ -143,7 +143,7 @@ struct InstantiateRunner : public ThreePhaseTask {
 
 	void Phase2() final {
 		v8::Isolate* isolate = v8::Isolate::GetCurrent();
-		v8::Maybe<bool> maybe = this->_module->Deref()->InstantiateModule(this->context->Deref(), this->ResolveCallback);
+		v8::Maybe<bool> maybe = this->_module->Deref()->InstantiateModule(this->context->Deref(), InstantiateRunner::ResolveCallback);
 		result = ExternalCopy::CopyIfPrimitive(v8::Boolean::New(isolate, maybe.FromMaybe(false)));
 	}
 
