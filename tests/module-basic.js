@@ -72,7 +72,7 @@ const { strictEqual, throws } = require('assert');
     strictEqual(module.setDependency('./add', moduleMap.add.module), true);
     const instantiateResult = module.instantiateSync(context);
     strictEqual(instantiateResult, true);
-
+    module.evaluateSync(context);
     // lets try to use add through our "math" library
     const reference = module.getModuleNamespaceSync(context);
     strictEqual(reference.typeof, 'object');
