@@ -130,6 +130,19 @@ variables, and compiled code. Check out the examples section for tips on using t
 
 Note that a [`Script`](#class-script-transferable) can only run in the isolate which created it.
 
+
+##### `isolate.compileModule(code)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `isolate.compileModuleSync(code)`
+* `code` *[string]* - The JavaScript code to compile.
+* `options` *[object]*
+	* `filename` *[string]* - Optional filename of this script, used in stack traces
+	* `columnOffset` *[number]* - Optional column offset of this script
+	* `lineOffset` *[number]* - Optional line offset of this script
+
+* **return** A [`Module`](#class-script-transferable) object.
+
+Note that a [`Module`](#class-script-transferable) can only run in the isolate which created it.
+
 ##### `isolate.createContext()` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `isolate.createContextSync()`
 * `options` *[object]*
@@ -220,6 +233,84 @@ Runs a given script within a context. This will return the last value evaluated 
 as long as that value was transferable, otherwise `undefined` will be returned. For instance if your
 script was "let foo = 1; let bar = 2; bar = foo + bar" then the return value will be 3 because that
 is the last expression.
+
+
+### Class: `Module` *[transferable]*
+A module is a compiled es6 ECMAScript module. Except for all modules is being bound to the isolate who
+created them, must all modules once instantiated, only be used together with modules that share the same
+context.
+
+##### `module.release()`
+Releases the reference to this module, allowing the module data to be garbage collected.
+
+##### `module.getModuleRequestsLength()`
+Returns the number of dependencies specifiers the module has.
+
+##### `module.getModuleRequest(index, options = {})` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `module.getModuleRequestSync(index, options = {})`
+* `index` - The dependencies specifiers index. It must be a value between zero and module.getModuleRequestsLength()
+* **return** *[string]*
+
+Returns a dependency specifiers import name:
+
+    const code = `import something from './something';`;
+    const module = await isolate.compileModule(code);
+    const dependency = await module.getModuleRequest(0);
+    console.log(dependency); // prints "./something";
+
+##### `module.setDependency(specifier, module)`
+* `specifier` - The dependency specifier as string. You may use **getModuleRequest** to receive it.
+* `module` - Another *[`Module`](#class-module-transferable)* instance.
+* **return** *[boolean]*
+
+Update the dependency the module should resolve to when the module is instantiated.
+
+##### `module.instantiate(context)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `module.instantiateSync(context)`
+* `context` *[`Context`](#class-context-transferable)* - The context the module should use.
+* **return** *[boolean]*
+
+Instantiate the module together will all its dependencies.
+
+##### `module.evaluate(context, options)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `module.evaluateSync(context)`
+* `context` *[`Context`](#class-context-transferable)* - The context the module should use.
+* `options` *[object]*
+	* `timeout` *[number]* - Maximum amount of time this module is allowed to run before execution is
+	canceled. Default is no timeout.
+* **return** last expression
+
+Evaluate the module and return the last expression (same as script.run).
+
+
+##### `module.getModuleNamespace(context, options)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `module.getModuleNamespaceSync(context)`
+* `context` *[`Context`](#class-context-transferable)* - The context the module should use.
+* **return** [`Reference`](#class-reference-transferable)
+
+Receive the module namespace as a reference. There is currently a minor bug that causes "let"
+variables to be copied and behave as "const". The code below will not work:
+
+    // create isolare and context...
+    const code = `
+        export let value = 0;
+        export const change = val => {
+            value += val;
+            return value;
+        };
+    `;
+    const module = isolate.compileModuleSync(code);
+    module.instantiateSync(context);
+    module.evaluateSync(context);
+    const reference = module.getModuleNamespaceSync(context);
+    const value = reference.getSync('value');
+    const change = reference.getSync('change');
+    console.log(value.copySync());                      // will print 0 because add have not yet changed the value
+    const returnValue = change.applySync(null, [123]);  // call the module export "change" with the value: 123
+    console.log(returnValue)                            // print 123 as ecpected
+    console.log(value.copySync())                       // will print 0 because of the bug, even if "123" is the expected value
+
+    // To receive the "current" value, do: reference.getSync('value').copySync()
 
 
 ### Class: `Reference` *[transferable]*
