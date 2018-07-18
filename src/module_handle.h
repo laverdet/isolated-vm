@@ -4,18 +4,18 @@
 #include "isolate/remote_handle.h"
 #include "transferable_handle.h"
 #include <memory>
-#include <unordered_map>
+#include <unordered_set>
 
 namespace ivm {
 
 
-class IsolatedModule /*: public std::enable_shared_from_this<IsolatedModule>*/  { // we need this to access the parent shared_ptr
+class IsolatedModule : public std::enable_shared_from_this<IsolatedModule>  { // we need this to access the parent shared_ptr
 private:
 	struct shared {
-		// keeps track of the information ResolveCallback need to dynamically resolve a module
-		// the information is also probably required by SetHostImportModuleDynamicallyCallback - if added
+		// My idea is we could some how store information here so all modules could be resolved using only this information.
+		// in that case may it be simple to support dynamic  import() too
 		static std::mutex mutex;
-		s//tatic std::unordered_map<std::weak_ptr<IsolatedModule>, std::shared_ptr<IsolatedModule>> resolutions;
+		static std::unordered_set<IsolatedModule> available_modules;
 	};
 
 	std::mutex mutex;
