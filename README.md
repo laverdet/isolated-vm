@@ -139,7 +139,7 @@ Note that a [`Script`](#class-script-transferable) can only run in the isolate w
 	* `columnOffset` *[number]* - Optional column offset of this script
 	* `lineOffset` *[number]* - Optional line offset of this script
 
-* **return** A [`Module`](#class-script-transferable) object.
+* **return** A [`Module`](#class-module-transferable) object.
 
 Note that a [`Module`](#class-script-transferable) can only run in the isolate which created it.
 
@@ -236,34 +236,24 @@ is the last expression.
 
 
 ### Class: `Module` *[transferable]*
-A module is a compiled es6 ECMAScript module. Except for all modules is being bound to the isolate who
-created them, must all modules once instantiated, only be used together with modules that share the same
-context.
+A JavaScript module. Note that a [`Module`](#class-module-transferable) can only run in the isolate which created it and once instantiated,
+can it only be used within that [`context`](#class-context-transferable).
 
-##### `module.release()`
-Releases the reference to this module, allowing the module data to be garbage collected.
 
-##### `module.getModuleRequestsLength()`
-Returns the number of dependencies specifiers the module has.
-
-##### `module.getModuleRequest(index, options = {})` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
-##### `module.getModuleRequestSync(index, options = {})`
-* `index` - The dependencies specifiers index. It must be a value between zero and module.getModuleRequestsLength()
-* **return** *[string]*
-
-Returns a dependency specifiers import name:
+##### `module.dependencySpecifiers`
+An read-only array of all dependency specifiers the module has.
 
     const code = `import something from './something';`;
     const module = await isolate.compileModule(code);
-    const dependency = await module.getModuleRequest(0);
-    console.log(dependency); // prints "./something";
+    const dependencySpecifiers = module.dependencySpecifiers;
+    // dependencySpecifiers => ["./something"];
 
 ##### `module.setDependency(specifier, module)`
-* `specifier` - The dependency specifier as string. You may use **getModuleRequest** to receive it.
+* `specifier` - The dependency specifier.
 * `module` - Another *[`Module`](#class-module-transferable)* instance.
-* **return** *[boolean]*
+* **return** *[undefined]*
 
-Update the dependency the module should resolve to when the module is instantiated.
+Set the dependency the referrer-module should resolve use when [specifier] is requested.
 
 ##### `module.instantiate(context)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `module.instantiateSync(context)`
@@ -283,13 +273,11 @@ Instantiate the module together will all its dependencies.
 Evaluate the module and return the last expression (same as script.run).
 
 
-##### `module.getModuleNamespace(context, options)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
-##### `module.getModuleNamespaceSync(context)`
-* `context` *[`Context`](#class-context-transferable)* - The context the module should use.
-* **return** [`Reference`](#class-reference-transferable)
+##### `module.namespace`
+Returns a [`Reference`](#class-reference-transferable) containing all exported values.
 
-Receive the module namespace as a reference. There is currently a minor bug that causes "let"
-variables to be copied and behave as "const". The code below will not work:
+There is currently a minor bug that causes "let" variables to be copied and behave as "const".
+The code below will not work:
 
     // create isolare and context...
     const code = `
@@ -301,8 +289,8 @@ variables to be copied and behave as "const". The code below will not work:
     `;
     const module = isolate.compileModuleSync(code);
     module.instantiateSync(context);
-    module.evaluateSync(context);
-    const reference = module.getModuleNamespaceSync(context);
+    module.evaluateSync();
+    const reference = module.namespace;
     const value = reference.getSync('value');
     const change = reference.getSync('change');
     console.log(value.copySync());                      // will print 0 because add have not yet changed the value
