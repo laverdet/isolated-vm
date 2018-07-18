@@ -14,17 +14,15 @@ const { strictEqual, throws } = require('assert');
     const data = (moduleMap.add = {});
     const code = `export default function add(a, b) { return a + b; };"This is awesome!";`;
     const module = data.module = isolate.compileModuleSync(code);
-    strictEqual(typeof module.getModuleRequestsLength, 'function');
-    const moduleRequestsLength = module.getModuleRequestsLength();
-    strictEqual(moduleRequestsLength, 0);
+    const dependencySpecifiers = module.dependencySpecifiers;
+    strictEqual(Array.isArray(dependencySpecifiers), true);
+    strictEqual(dependencySpecifiers.length, 0);
     strictEqual(typeof module.instantiateSync, 'function');
-    const instantiateResult = module.instantiateSync(context);
-    strictEqual(instantiateResult, true);
+    module.instantiateSync(context);
     strictEqual(typeof module.evaluateSync, 'function');
-    const evaluateResult = module.evaluateSync(context);
+    const evaluateResult = module.evaluateSync();
     strictEqual('This is awesome!', evaluateResult);
-
-    const reference = module.getModuleNamespaceSync(context);
+    const reference = module.namespace;
     strictEqual(reference.typeof, 'object');
     const defaultExport = reference.getSync('default');
     strictEqual(typeof defaultExport, 'object');
@@ -33,21 +31,29 @@ const { strictEqual, throws } = require('assert');
     strictEqual(result, 6);
   }
 
+  function setupModuleInstantiateErrorAndRunChecks() {
+    const data = (moduleMap.instantiateError = {});
+    const code = `
+      import something from './something';
+      export default "hello world";
+    `;
+    const module = data.module = isolate.compileModuleSync(code);
+    throws(() => module.instantiateSync(context));
+  }
+
   function setupModuleTimeoutAndRunChecks() {
     const data = (moduleMap.timeout = {});
     const code = `let i = 0; while(++i); i;`; // should generate a timeout
     const module = data.module = isolate.compileModuleSync(code);
-    const instantiateResult = module.instantiateSync(context);
-    strictEqual(instantiateResult, true);
-    throws(() => module.evaluateSync(context, { timeout: 50 }));
+    module.instantiateSync(context);
+    throws(() => module.evaluateSync({ timeout: 50 }));
   }
 
   function setupModuleEvaluateErrorAndRunChecks() {
     const data = (moduleMap.evaluate = {});
     const code = `throw new Error('Some error');`;
     const module = data.module = isolate.compileModuleSync(code);
-    const instantiateResult = module.instantiateSync(context);
-    strictEqual(instantiateResult, true);
+    module.instantiateSync(context);
     throws(() => module.evaluateSync(context));
   }
 
@@ -62,19 +68,16 @@ const { strictEqual, throws } = require('assert');
       };
     `;
     const module = data.module = isolate.compileModuleSync(code);
-    const moduleRequestsLength = module.getModuleRequestsLength();
-    strictEqual(moduleRequestsLength, 1);
-    const dependencySpecifiers = Array.from({ length: moduleRequestsLength})
-      .map((val, index) => module.getModuleRequestSync(index));
+    const dependencySpecifiers = module.dependencySpecifiers
 
     strictEqual(JSON.stringify(dependencySpecifiers), JSON.stringify(['./add']));
     strictEqual(typeof module.setDependency, 'function');
     strictEqual(module.setDependency('./add', moduleMap.add.module), true);
     const instantiateResult = module.instantiateSync(context);
     strictEqual(instantiateResult, true);
-    module.evaluateSync(context);
+    module.evaluateSync();
     // lets try to use add through our "math" library
-    const reference = module.getModuleNamespaceSync(context);
+    const reference = module.namespace;
     strictEqual(reference.typeof, 'object');
     const add = reference.getSync('add');
     strictEqual(typeof add, 'object');
@@ -89,6 +92,7 @@ const { strictEqual, throws } = require('assert');
 
   try {
     setupModuleAddAndRunChecks();
+    setupModuleInstantiateErrorAndRunChecks();
     setupModuleTimeoutAndRunChecks();
     setupModuleEvaluateErrorAndRunChecks();
     setupModuleMathAndRunChecks();

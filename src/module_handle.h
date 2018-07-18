@@ -4,51 +4,87 @@
 #include "isolate/remote_handle.h"
 #include "transferable_handle.h"
 #include <memory>
-#include <map>
+#include <unordered_map>
 
 namespace ivm {
 
-class ContextHandle;
 
+class IsolatedModule /*: public std::enable_shared_from_this<IsolatedModule>*/  { // we need this to access the parent shared_ptr
+private:
+	struct shared {
+		// keeps track of the information ResolveCallback need to dynamically resolve a module
+		// the information is also probably required by SetHostImportModuleDynamicallyCallback - if added
+		static std::mutex mutex;
+		s//tatic std::unordered_map<std::weak_ptr<IsolatedModule>, std::shared_ptr<IsolatedModule>> resolutions;
+	};
+
+	std::mutex mutex;
+	std::shared_ptr<IsolateHolder> isolate; // required by ClassHandle used to construct the namespace reference
+	std::vector<std::string> dependencySpecifiers;
+	std::shared_ptr<RemoteHandle<v8::Module>> module_handle;
+	std::shared_ptr<RemoteHandle<v8::Context>> context_handle;
+	std::shared_ptr<RemoteHandle<v8::Value>> global_namespace;
+	std::unordered_map<std::string, std::shared_ptr<IsolatedModule>> resolutions;
+private:
+	// helper methods
+	static v8::MaybeLocal<v8::Module> ResolveCallback(v8::Local<v8::Context>, v8::Local<v8::String>, v8::Local<v8::Module>); // we may be able to use a weak map so can the ResolveCallback use the referrer value
+public:
+	IsolatedModule(std::shared_ptr<IsolateHolder>, std::shared_ptr<RemoteHandle<v8::Module>>, std::vector<std::string>);
+
+	// BasicLockable requirements
+	void lock();
+	void unlock();
+
+	const std::vector<std::string> & GetDependencySpecifiers() const;
+
+	void SetDependency(std::string, std::shared_ptr<IsolatedModule>);
+	
+	void Instantiate(std::shared_ptr<RemoteHandle<v8::Context>>);
+
+	std::unique_ptr<Transferable> Evaluate(std::size_t);
+
+	v8::Local<v8::Value> GetNamespace();
+};
+
+class ContextHandle;
 class ModuleHandle : public TransferableHandle {
 	public:
-	typedef std::map<std::string, std::shared_ptr<RemoteHandle<v8::Module>>> dependency_map_type;
+	//typedef std::map<std::string, std::shared_ptr<RemoteHandle<v8::Module>>> dependency_map_type;
 	private:
 		class ModuleHandleTransferable : public Transferable {
 			private:
 				std::shared_ptr<IsolateHolder> isolate;
-				std::shared_ptr<RemoteHandle<v8::Module>> _module;
+				std::shared_ptr<IsolatedModule> isolated_module;
 			public:
-				ModuleHandleTransferable(std::shared_ptr<IsolateHolder>, std::shared_ptr<RemoteHandle<v8::Module>>);
+				ModuleHandleTransferable(std::shared_ptr<IsolateHolder>, std::shared_ptr<IsolatedModule>);
 				v8::Local<v8::Value> TransferIn() final;
 		};
 
 		std::shared_ptr<IsolateHolder> isolate;
-		std::shared_ptr<RemoteHandle<v8::Module>> _module;
-		std::shared_ptr<dependency_map_type> dependencies;
+		std::shared_ptr<IsolatedModule> isolated_module; 
 	public:
-		ModuleHandle(std::shared_ptr<IsolateHolder>,std::shared_ptr<RemoteHandle<v8::Module>>);
+		ModuleHandle(std::shared_ptr<IsolateHolder>, std::shared_ptr<IsolatedModule>);
 
 		static v8::Local<v8::FunctionTemplate> Definition();
 		std::unique_ptr<Transferable> TransferOut() final;
 
-		v8::Local<v8::Value> GetModuleRequestsLength();
-
-		template <int async>
-		v8::Local<v8::Value> GetModuleRequest(v8::Local<v8::Value>);
-
-		v8::Local<v8::Value> SetDependency(v8::Local<v8::Value>, ModuleHandle*);
-
+		v8::Local<v8::Value> GetDependencySpecifiers();
+		
+		v8::Local<v8::Value> SetDependency(v8::Local<v8::String>, ModuleHandle*);
+		
 		template <int async>
 		v8::Local<v8::Value> Instantiate(ContextHandle*);	
 
+		
 		template <int async>
-		v8::Local<v8::Value> Evaluate(ContextHandle*, v8::MaybeLocal<v8::Object>);
+		v8::Local<v8::Value> Evaluate(v8::MaybeLocal<v8::Object>);
 
+		v8::Local<v8::Value> GetNamespace();
+		/*
 		template <int async>
 		v8::Local<v8::Value> GetModuleNamespace(ContextHandle*);
 
-		v8::Local<v8::Value> Release();
+		v8::Local<v8::Value> Release();*/
 };
 
 } // namespace ivm

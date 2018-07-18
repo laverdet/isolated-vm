@@ -5,217 +5,228 @@
 #include "isolate/class_handle.h"
 #include "isolate/run_with_timeout.h"
 #include "isolate/three_phase_task.h"
+#include "isolate/legacy.h"
 
-#include <map>
+#include <algorithm>
 #include <mutex>
+
 
 using namespace v8;
 using std::shared_ptr;
 
 namespace ivm {
 
-ModuleHandle::ModuleHandleTransferable::ModuleHandleTransferable(shared_ptr<IsolateHolder> isolate, shared_ptr<RemoteHandle<Module>> myModule)
-	: isolate(std::move(isolate)), _module(std::move(myModule))
+IsolatedModule::IsolatedModule(std::shared_ptr<IsolateHolder> isolate, std::shared_ptr<RemoteHandle<v8::Module>> handle, std::vector<std::string> dependencySpecifiers)
+	: isolate(std::move(isolate)), module_handle(std::move(handle)), dependencySpecifiers(std::move(dependencySpecifiers))
+{
+}
+
+
+void IsolatedModule::lock()
+{
+	return mutex.lock();
+}
+
+void IsolatedModule::unlock()
+{
+	return mutex.unlock();
+}
+
+
+const std::vector<std::string> & IsolatedModule::GetDependencySpecifiers() const
+{
+	return dependencySpecifiers;
+}
+
+void IsolatedModule::SetDependency(std::string specifier, std::shared_ptr<IsolatedModule> isolated_module) {
+	// Probably not a good idea because if dynamic import() anytime get supported()
+	//
+	// if (std::find(dependencySpecifiers.begin(), dependencySpecifiers.end(), specifier) == dependencySpecifiers.end()) {
+	//	const std::string errorMessage = "Module has no dependency named: \"" + specifier + "\".";
+	//	throw js_generic_error(errorMessage.c_str());
+	// }
+	resolutions[specifier] = isolated_module;
+}
+
+
+
+MaybeLocal<Module> IsolatedModule::ResolveCallback(Local<Context> context, Local<String> specifier, Local<Module> referrer) {
+	//	We want to use the current global data
+
+	std::string dependency = *Utf8ValueWrapper(Isolate::GetCurrent(), specifier);
+	
+	//return Undefined(Isolate::GetCurrent());
+	/*
+	if (length) {
+		std::string specifierAsString(*specifierHelper, length);
+		// We can safely use InstantiateRunnerDependencies
+		auto & dependencies = InstantiateRunnerDependencies;
+		ModuleHandle::dependency_map_type::iterator it = dependencies->find(specifierAsString);
+		if (it != dependencies->end()) {
+			return MaybeLocal<Module>(it->second->Deref());
+		}
+	}*/
+	
+	throw js_generic_error((std::string("Failed to resolve dependency: ") + dependency).c_str());
+	return MaybeLocal<Module>();
+}
+
+
+void IsolatedModule::Instantiate(std::shared_ptr<RemoteHandle<v8::Context>> c) {
+	std::lock_guard<IsolatedModule> lock(*this);
+	context_handle = c;
+	Isolate* isolate = Isolate::GetCurrent();
+	Local<Context> context = context_handle->Deref();
+	Local<Module> mod = module_handle->Deref();
+	bool result = Unmaybe(mod->InstantiateModule(context, IsolatedModule::ResolveCallback));
+	if (!result) {
+		throw js_generic_error("Failed to instantiate module");
+	}
+}
+
+std::unique_ptr<Transferable> IsolatedModule::Evaluate(std::size_t timeout) {
+	std::lock_guard<IsolatedModule> lock(*this);
+	Local<Context> context_local = Deref(*context_handle);
+	Context::Scope context_scope(context_local);
+	Local<Module> mod = module_handle->Deref();
+	return ExternalCopy::CopyIfPrimitive(RunWithTimeout(timeout, [&]() {
+		auto returnValue = mod->Evaluate(context_local);
+		Local<Value> moduleNamespace = mod->GetModuleNamespace();
+		global_namespace = std::make_shared<RemoteHandle<Value>>(moduleNamespace);
+		return returnValue;
+	}));
+}
+
+
+Local<Value> IsolatedModule::GetNamespace() {
+	Local<Object> value = ClassHandle::NewInstance<ReferenceHandle>(isolate, global_namespace, context_handle, ReferenceHandle::TypeOf::Object);
+	return value;
+}
+
+
+ModuleHandle::ModuleHandleTransferable::ModuleHandleTransferable(shared_ptr<IsolateHolder> isolate, shared_ptr<IsolatedModule> isolated_module)
+	: isolate(std::move(isolate)), isolated_module(std::move(isolated_module))
 {
 }
 
 Local<Value> ModuleHandle::ModuleHandleTransferable::TransferIn() {
-	return ClassHandle::NewInstance<ModuleHandle>(isolate, _module);
+	return ClassHandle::NewInstance<ModuleHandle>(isolate, isolated_module);
 };
 
-ModuleHandle::ModuleHandle(shared_ptr<IsolateHolder> isolate, shared_ptr<RemoteHandle<Module>> myModule)
-	: isolate(std::move(isolate)), _module(std::move(myModule)), dependencies(std::make_shared<dependency_map_type>())
+ModuleHandle::ModuleHandle(shared_ptr<IsolateHolder> isolate, shared_ptr<IsolatedModule> isolated_module)
+	: isolate(std::move(isolate)), isolated_module(std::move(isolated_module))
 {
 }
 
 Local<FunctionTemplate> ModuleHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Module", nullptr,
-		"getModuleRequestsLength", Parameterize<decltype(&ModuleHandle::GetModuleRequestsLength), &ModuleHandle::GetModuleRequestsLength>(),
-		"getModuleRequest", Parameterize<decltype(&ModuleHandle::GetModuleRequest<1>), &ModuleHandle::GetModuleRequest<1>>(),
-		"getModuleRequestSync", Parameterize<decltype(&ModuleHandle::GetModuleRequest<0>), &ModuleHandle::GetModuleRequest<0>>(),
+		"dependencySpecifiers", ParameterizeAccessor<decltype(&ModuleHandle::GetDependencySpecifiers), &ModuleHandle::GetDependencySpecifiers>(),
 		"setDependency", Parameterize<decltype(&ModuleHandle::SetDependency), &ModuleHandle::SetDependency>(),
-		"release", Parameterize<decltype(&ModuleHandle::Release), &ModuleHandle::Release>(),
 		"instantiate", Parameterize<decltype(&ModuleHandle::Instantiate<1>), &ModuleHandle::Instantiate<1>>(),
 		"instantiateSync", Parameterize<decltype(&ModuleHandle::Instantiate<0>), &ModuleHandle::Instantiate<0>>(),
 		"evaluate", Parameterize<decltype(&ModuleHandle::Evaluate<1>), &ModuleHandle::Evaluate<1>>(),
 		"evaluateSync", Parameterize<decltype(&ModuleHandle::Evaluate<0>), &ModuleHandle::Evaluate<0>>(),
-		"getModuleNamespace", Parameterize<decltype(&ModuleHandle::GetModuleNamespace<1>), &ModuleHandle::GetModuleNamespace<1>>(),
-		"getModuleNamespaceSync", Parameterize<decltype(&ModuleHandle::GetModuleNamespace<0>), &ModuleHandle::GetModuleNamespace<0>>()
+		"namespace", ParameterizeAccessor<decltype(&ModuleHandle::GetNamespace), &ModuleHandle::GetNamespace>()
+		//"getModuleNamespace", Parameterize<decltype(&ModuleHandle::GetModuleNamespace<1>), &ModuleHandle::GetModuleNamespace<1>>(),
+		//"getModuleNamespaceSync", Parameterize<decltype(&ModuleHandle::GetModuleNamespace<0>), &ModuleHandle::GetModuleNamespace<0>>()
+		/*"release", Parameterize<decltype(&ModuleHandle::Release), &ModuleHandle::Release>(),
+		*/
 	));
 }
 
 std::unique_ptr<Transferable> ModuleHandle::TransferOut() {
-	return std::make_unique<ModuleHandleTransferable>(isolate, _module);
+	return std::make_unique<ModuleHandleTransferable>(isolate, isolated_module);
+}
+
+Local<Value> ModuleHandle::GetDependencySpecifiers() {
+	
+	std::lock_guard<IsolatedModule> lock(*isolated_module);
+	const std::vector<std::string> & dependencySpecifiers = isolated_module->GetDependencySpecifiers();
+	std::size_t size = dependencySpecifiers.size();
+
+	Local<Array> deps = Array::New(Isolate::GetCurrent(), size);
+
+	if (deps.IsEmpty()) {
+		return Local<Array>();
+	}
+	
+	for (std::size_t index = 0; index < size; ++index) {
+		deps->Set(index, v8_string(dependencySpecifiers[index].c_str()));
+	}
+	return deps;
 }
 
 
-
-struct GetModuleRequestRunner : public ThreePhaseTask {
-	std::unique_ptr<Transferable> result;
-	std::shared_ptr<RemoteHandle<v8::Module>> _module;
-	std::size_t _index;
-
-	GetModuleRequestRunner(std::shared_ptr<RemoteHandle<v8::Module>> myModule, std::size_t index)
-	  : _module(std::move(myModule)), _index(index)
-	{
-	}
-
-	void Phase2() final {
-		auto request = this->_module->Deref()->GetModuleRequest(this->_index);
-		result = ExternalCopy::CopyIfPrimitive(request);
-	}
-
-	Local<Value> Phase3() final {
-		if (result) {
-			return result->TransferIn();
-		} else {
-			return v8::Undefined(v8::Isolate::GetCurrent()).As<v8::Value>();
-		}
-	}
-
-};
-
-
-v8::Local<v8::Value> ModuleHandle::GetModuleRequestsLength() {
-  const std::size_t length = this->_module->Deref()->GetModuleRequestsLength();
-  Isolate* isolate = Isolate::GetCurrent();
-  return v8::Integer::New(isolate, length);
+Local<Value> ModuleHandle::SetDependency(Local<String> value, ModuleHandle* module_handle) {
+	std::string dependency = *Utf8ValueWrapper(Isolate::GetCurrent(), value);
+	isolated_module->SetDependency(dependency, module_handle->isolated_module);
 }
 
-template <int async>
-v8::Local<v8::Value> ModuleHandle::GetModuleRequest(v8::Local<v8::Value> index) {
-	return ThreePhaseTask::Run<async, GetModuleRequestRunner>(*this->isolate, this->_module, index->Int32Value());
-}
-
-
-v8::Local<v8::Value> ModuleHandle::SetDependency(v8::Local<v8::Value> value, ModuleHandle* module_handle_ptr) {
-	if (!value->IsString()) {
-		return v8::Boolean::New(v8::Isolate::GetCurrent(), false);
-	}
-	v8::Local<v8::String> key = value->ToString();
-	v8::String::Utf8Value keyAsCharPointer(v8::Isolate::GetCurrent(), key);
-	if (!keyAsCharPointer.length()) {
-		// UTF8-conversion error probably
-		return v8::Boolean::New(v8::Isolate::GetCurrent(), false);
-	}
-	// Assume the code cannot invoke SetDependency() in parallel, otherwise will the code below not be thread safe
-	this->dependencies->insert(dependency_map_type::value_type(*keyAsCharPointer, module_handle_ptr->_module));
-	return v8::Boolean::New(v8::Isolate::GetCurrent(), true);
-}
-
-
-std::mutex InstantiateRunnerMutex;
-std::shared_ptr<ModuleHandle::dependency_map_type> InstantiateRunnerDependencies;
 
 struct InstantiateRunner : public ThreePhaseTask {
 	shared_ptr<RemoteHandle<Context>> context;
-	std::shared_ptr<RemoteHandle<v8::Module>> _module;
-	std::unique_ptr<Transferable> result;
-	std::lock_guard<std::mutex> lock_guard;
+	shared_ptr<IsolatedModule> isolated_module;
 	
-	
-	InstantiateRunner(IsolateHolder* isolate, ContextHandle* context_handle, std::shared_ptr<RemoteHandle<v8::Module>> myModule, std::shared_ptr<ModuleHandle::dependency_map_type> deps)
-		: context(context_handle->context), _module(std::move(myModule)), lock_guard(InstantiateRunnerMutex)
+	InstantiateRunner(IsolateHolder* isolate, ContextHandle* context_handle, shared_ptr<IsolatedModule> isolated_module)
+		: context(context_handle->context), isolated_module(std::move(isolated_module))
 	{
 		// Sanity check
 		context_handle->CheckDisposed();
 		if (isolate != context_handle->context->GetIsolateHolder()) {
-			throw js_generic_error("Invalid context");
+			throw js_generic_error("Invalid context 1233");
 		}
-		InstantiateRunnerDependencies = std::move(deps);
-	}
-
-	static v8::MaybeLocal<v8::Module> ResolveCallback(v8::Local<v8::Context> context, v8::Local<v8::String> specifierAsLocal, v8::Local<v8::Module> referrer) {
-		v8::String::Utf8Value specifierHelper(v8::Isolate::GetCurrent(), specifierAsLocal);
-		const std::size_t length = specifierHelper.length();
-		if (length) {
-			std::string specifierAsString(*specifierHelper, length);
-			// We can safely use InstantiateRunnerDependencies
-			auto & dependencies = InstantiateRunnerDependencies;
-			ModuleHandle::dependency_map_type::iterator it = dependencies->find(specifierAsString);
-			if (it != dependencies->end()) {
-				return v8::MaybeLocal<v8::Module>(it->second->Deref());
-			}
-		}
-		return v8::MaybeLocal<v8::Module>();
 	}
 
 	void Phase2() final {
-		v8::Isolate* isolate = v8::Isolate::GetCurrent();
-		v8::Maybe<bool> maybe = this->_module->Deref()->InstantiateModule(this->context->Deref(), InstantiateRunner::ResolveCallback);
-		result = ExternalCopy::CopyIfPrimitive(v8::Boolean::New(isolate, maybe.FromMaybe(false)));
+		isolated_module->Instantiate(context);
 	}
 
 	Local<Value> Phase3() final {
-		if (result) {
-			return result->TransferIn();
-		}
-		else {
-			return v8::Undefined(v8::Isolate::GetCurrent()).As<v8::Value>();
-		}
+		return Undefined(Isolate::GetCurrent());
 	}
 
 };
 
 template <int async>
-v8::Local<v8::Value> ModuleHandle::Instantiate(ContextHandle* context_handle) {
-	if (!this->_module) {
+Local<Value> ModuleHandle::Instantiate(ContextHandle* context_handle) {
+	if (!isolated_module) {
 		throw js_generic_error("Module has been released");
 	}
-	std::shared_ptr<RemoteHandle<v8::Module>> module_ref = this->_module;
-	return ThreePhaseTask::Run<async, InstantiateRunner>(*this->isolate, this->isolate.get(), context_handle, std::move(module_ref), this->dependencies);
+	return ThreePhaseTask::Run<async, InstantiateRunner>(*isolate, isolate.get(), context_handle, isolated_module);
 }
 
 
-
 struct EvaluateRunner : public ThreePhaseTask {
-	shared_ptr<RemoteHandle<Context>> context;
-	std::shared_ptr<RemoteHandle<v8::Module>> _module;
+	shared_ptr<IsolatedModule> isolated_module;
 	std::unique_ptr<Transferable> result;
 	uint32_t timeout;
 
-	EvaluateRunner(IsolateHolder* isolate, ContextHandle* context_handle, std::shared_ptr<RemoteHandle<v8::Module>> myModule, uint32_t t)
-		: context(context_handle->context), _module(std::move(myModule)), timeout(t)
+	EvaluateRunner(shared_ptr<IsolatedModule> isolated_module, uint32_t t)
+		: isolated_module(std::move(isolated_module)), timeout(t)
 	{
-		// Sanity check
-		context_handle->CheckDisposed();
-		if (isolate != context_handle->context->GetIsolateHolder()) {
-			throw js_generic_error("Invalid context");
-		}
 	}
 
 	void Phase2() final {
-		Local<Context> context_local = Deref(*this->context);
-		Context::Scope context_scope(context_local);
-		result = ExternalCopy::CopyIfPrimitive(
-			RunWithTimeout(this->timeout, [&]() {
-				return this->_module->Deref()->Evaluate(context_local);
-			})
-		);
+		result = isolated_module->Evaluate(timeout);
 	}
 
 	Local<Value> Phase3() final {
-		if (result) {
-			return result->TransferIn();
-		}
-		else {
-			return v8::Undefined(v8::Isolate::GetCurrent()).As<v8::Value>();
-		}
+		return result->TransferIn();
 	}
 
 };
 
 template <int async>
-v8::Local<v8::Value> ModuleHandle::Evaluate(ContextHandle* context_handle, v8::MaybeLocal<v8::Object> maybe_options) {
-	if (!this->_module) {
+Local<Value> ModuleHandle::Evaluate(MaybeLocal<Object> maybe_options) {
+	if (!isolated_module) {
 		throw js_generic_error("Module has been released");
 	}
-	v8::Isolate* isolate = v8::Isolate::GetCurrent();
+	Isolate* isolate = Isolate::GetCurrent();
 	uint32_t timeout_ms = 0;
-	v8::Local<v8::Object> options;
+	Local<Object> options;
 	if (maybe_options.ToLocal(&options)) {
-		v8::Local<v8::Value> timeout_handle = Unmaybe(options->Get(isolate->GetCurrentContext(), v8_string("timeout")));
+		Local<Value> timeout_handle = Unmaybe(options->Get(isolate->GetCurrentContext(), v8_string("timeout")));
 		if (!timeout_handle->IsUndefined()) {
 			if (!timeout_handle->IsUint32()) {
 				throw js_type_error("`timeout` must be integer");
@@ -223,18 +234,24 @@ v8::Local<v8::Value> ModuleHandle::Evaluate(ContextHandle* context_handle, v8::M
 			timeout_ms = timeout_handle.As<Uint32>()->Value();
 		}
 	}
-	std::shared_ptr<RemoteHandle<v8::Module>> module_ref = this->_module;
-	return ThreePhaseTask::Run<async, EvaluateRunner>(*this->isolate, this->isolate.get(), context_handle, std::move(module_ref), timeout_ms);
+	return ThreePhaseTask::Run<async, EvaluateRunner>(*this->isolate, isolated_module, timeout_ms);
 }
+
+
+Local<Value> ModuleHandle::GetNamespace() {
+	return isolated_module->GetNamespace();
+}
+
+/*
 
 struct GetModuleNamespaceRunner : public ThreePhaseTask {
 	std::shared_ptr<IsolateHolder> isolate;
 	std::shared_ptr<RemoteHandle<Context>> context;
-	std::shared_ptr<RemoteHandle<v8::Module>> _module;
+	std::shared_ptr<RemoteHandle<Module>> _module;
 	//std::unique_ptr<ReferenceHandle> result;
-	std::shared_ptr<RemoteHandle<v8::Value>> result;
+	std::shared_ptr<RemoteHandle<Value>> result;
 	
-	GetModuleNamespaceRunner(std::shared_ptr<IsolateHolder> myIsolate, ContextHandle* context_handle, std::shared_ptr<RemoteHandle<v8::Module>> myModule)
+	GetModuleNamespaceRunner(std::shared_ptr<IsolateHolder> myIsolate, ContextHandle* context_handle, std::shared_ptr<RemoteHandle<Module>> myModule)
 		: isolate(std::move(myIsolate)), context(context_handle->context), _module(std::move(myModule))
 	{
 		// Sanity check
@@ -245,10 +262,10 @@ struct GetModuleNamespaceRunner : public ThreePhaseTask {
 	}
 
 	void Phase2() final {
-		v8::Local<v8::Context> context_handle = ivm::Deref(*this->context);
-		v8::Context::Scope context_scope(context_handle);
-		v8::Local<v8::Value> moduleNamespace = this->_module->Deref()->GetModuleNamespace();
-		result = std::make_shared<RemoteHandle<v8::Value>>(moduleNamespace);
+		Local<Context> context_handle = ivm::Deref(*this->context);
+		Context::Scope context_scope(context_handle);
+		Local<Value> moduleNamespace = this->_module->Deref()->GetModuleNamespace();
+		result = std::make_shared<RemoteHandle<Value>>(moduleNamespace);
 	}
 
 
@@ -257,14 +274,14 @@ struct GetModuleNamespaceRunner : public ThreePhaseTask {
 			Local<Object> value = ClassHandle::NewInstance<ReferenceHandle>(this->isolate, this->result, this->context, ReferenceHandle::TypeOf::Object);
 			return value;
 		}
-		return v8::Undefined(v8::Isolate::GetCurrent());
+		return Undefined(Isolate::GetCurrent());
 	}
 
 };
 
 template <int async>
-v8::Local<v8::Value> ModuleHandle::GetModuleNamespace(ContextHandle* context_handle) {
-	std::shared_ptr<RemoteHandle<v8::Module>> module_ref = this->_module;
+Local<Value> ModuleHandle::GetModuleNamespace(ContextHandle* context_handle) {
+	std::shared_ptr<RemoteHandle<Module>> module_ref = this->_module;
 	return ThreePhaseTask::Run<async, GetModuleNamespaceRunner>(*this->isolate, this->isolate, context_handle, std::move(module_ref));
 }
 
@@ -273,7 +290,7 @@ Local<Value> ModuleHandle::Release() {
 	_module.reset();
 	return Undefined(Isolate::GetCurrent());
 }
-
+*/
 
 
 } // namespace ivm
