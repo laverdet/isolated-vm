@@ -68,13 +68,13 @@ const { strictEqual, throws } = require('assert');
       };
     `;
     const module = data.module = isolate.compileModuleSync(code);
-    const dependencySpecifiers = module.dependencySpecifiers
 
+    const dependencySpecifiers = module.dependencySpecifiers;
     strictEqual(JSON.stringify(dependencySpecifiers), JSON.stringify(['./add']));
+
     strictEqual(typeof module.setDependency, 'function');
-    strictEqual(module.setDependency('./add', moduleMap.add.module), true);
-    const instantiateResult = module.instantiateSync(context);
-    strictEqual(instantiateResult, true);
+    module.setDependency('./add', moduleMap.add.module);
+    module.instantiateSync(context);
     module.evaluateSync();
     // lets try to use add through our "math" library
     const reference = module.namespace;
@@ -90,15 +90,38 @@ const { strictEqual, throws } = require('assert');
     strictEqual(sub.applySync(null, [ 2, 4 ]), -2);
   }
 
+  function setupModuleBugRunChecks() {
+    const data = (moduleMap.bug = {});
+    const code = `
+      export let value = 0;
+      
+      export function countUp() {
+        return ++value;
+      };
+    `;
+    const module = data.module = isolate.compileModuleSync(code);
+    module.instantiateSync(context);
+    module.evaluateSync();
+    // lets try to use add through our "math" library
+    const reference = module.namespace;
+    const value = reference.getSync('value');
+    const countUp = reference.getSync('countUp');
+    strictEqual(value.copySync(), 0);
+    countUp.applySync(null, [ ]);
+    strictEqual(value.copySync(), 1);
+  }
   try {
     setupModuleAddAndRunChecks();
     setupModuleInstantiateErrorAndRunChecks();
     setupModuleTimeoutAndRunChecks();
     setupModuleEvaluateErrorAndRunChecks();
     setupModuleMathAndRunChecks();
+
+    // @TODO: Fix the bug and enable it
+    // setupModuleBugRunChecks();
     console.log('pass');
   } catch(err) {
-    console.log(err);
+    console.error(err);
   }
 
 })();

@@ -439,7 +439,8 @@ struct CompileModuleRunner : public ThreePhaseTask {
 			std::string dependencySpecifier = *Utf8ValueWrapper(*isolate, remote_handle->Deref()->GetModuleRequest(index));
 			dependencySpecifiers[index] = dependencySpecifier;
 		}
-		isolated_module = std::make_shared<IsolatedModule>(isolate_holder, remote_handle, dependencySpecifiers);
+		isolated_module = std::shared_ptr<IsolatedModule>(new IsolatedModule(isolate_holder, remote_handle, dependencySpecifiers), IsolatedModule::shared::remove);
+		IsolatedModule::shared::add(isolated_module.get());
 	}
 
 	Local<Value> Phase3() final {

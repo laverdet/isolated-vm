@@ -4,21 +4,27 @@
 #include "isolate/remote_handle.h"
 #include "transferable_handle.h"
 #include <memory>
-#include <unordered_set>
+#include <unordered_map>
+#include <mutex>
 
 namespace ivm {
 
 
-class IsolatedModule : public std::enable_shared_from_this<IsolatedModule>  { // we need this to access the parent shared_ptr
-private:
-	struct shared {
-		// My idea is we could some how store information here so all modules could be resolved using only this information.
-		// in that case may it be simple to support dynamic  import() too
+class IsolatedModule : public std::enable_shared_from_this<IsolatedModule> {
+public:
+	class shared {
+	private:
+		typedef std::unordered_multimap<int, IsolatedModule*> available_modules_type; // managed by a shared_ptr::deleter in compileModule::phase2
 		static std::mutex mutex;
-		static std::unordered_set<IsolatedModule> available_modules;
+		static available_modules_type available_modules;
+	public:
+		// using raw pointers locks dangerous maybe, but couldn´t get it to work with weak_ptr.
+		static IsolatedModule* find(v8::Local<v8::Module>);
+		static void add(IsolatedModule*);
+		static void remove(IsolatedModule*);
 	};
-
-	std::mutex mutex;
+private:
+	std::recursive_mutex mutex;
 	std::shared_ptr<IsolateHolder> isolate; // required by ClassHandle used to construct the namespace reference
 	std::vector<std::string> dependencySpecifiers;
 	std::shared_ptr<RemoteHandle<v8::Module>> module_handle;
@@ -30,7 +36,7 @@ private:
 	static v8::MaybeLocal<v8::Module> ResolveCallback(v8::Local<v8::Context>, v8::Local<v8::String>, v8::Local<v8::Module>); // we may be able to use a weak map so can the ResolveCallback use the referrer value
 public:
 	IsolatedModule(std::shared_ptr<IsolateHolder>, std::shared_ptr<RemoteHandle<v8::Module>>, std::vector<std::string>);
-
+	
 	// BasicLockable requirements
 	void lock();
 	void unlock();
@@ -44,6 +50,8 @@ public:
 	std::unique_ptr<Transferable> Evaluate(std::size_t);
 
 	v8::Local<v8::Value> GetNamespace();
+
+	friend bool operator==(const IsolatedModule&, const v8::Local<v8::Module>&);
 };
 
 class ContextHandle;

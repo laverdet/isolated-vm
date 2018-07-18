@@ -16,6 +16,47 @@ using std::shared_ptr;
 
 namespace ivm {
 
+std::mutex IsolatedModule::shared::mutex;
+std::unordered_multimap<int, IsolatedModule*> IsolatedModule::shared::available_modules;
+
+IsolatedModule* IsolatedModule::shared::find(v8::Local<v8::Module> handle) {
+	std::lock_guard<std::mutex> lock(mutex);
+	int hash = handle->GetIdentityHash();
+	auto range = available_modules.equal_range(hash);
+	
+	auto it = std::find_if(range.first, range.second, [&](const available_modules_type::value_type & data) {
+		return data.second->module_handle->Deref() == handle;
+	});
+	return it == range.second ? nullptr : it->second;
+}
+
+void IsolatedModule::shared::add(IsolatedModule* ptr) {
+	std::lock_guard<std::mutex> lock(mutex);
+	int hash = ptr->module_handle->Deref()->GetIdentityHash();
+	std::pair<int, IsolatedModule*> item(hash, ptr);
+	auto it = available_modules.insert(item);
+	if (it == available_modules.end()) {
+		throw js_generic_error("Failed to insert isolated_module object to available_modules");
+	}
+}
+
+void IsolatedModule::shared::remove(IsolatedModule* ptr) {
+	std::lock_guard<std::mutex> lock(mutex);
+	int hash = ptr->module_handle->Deref()->GetIdentityHash();
+	auto range = available_modules.equal_range(hash);
+	auto it = std::find_if(range.first, range.second, [&](const available_modules_type::value_type & data) {
+		return ptr == data.second;
+	});
+	if (it != range.second) {
+		available_modules.erase(it);
+	}
+	
+	//std::remove_if(range.first, range.second, [=](available_modules_type::value_type & data) {
+	//	return ptr == data.second;
+	//});
+}
+
+
 IsolatedModule::IsolatedModule(std::shared_ptr<IsolateHolder> isolate, std::shared_ptr<RemoteHandle<v8::Module>> handle, std::vector<std::string> dependencySpecifiers)
 	: isolate(std::move(isolate)), module_handle(std::move(handle)), dependencySpecifiers(std::move(dependencySpecifiers))
 {
@@ -40,35 +81,37 @@ const std::vector<std::string> & IsolatedModule::GetDependencySpecifiers() const
 
 void IsolatedModule::SetDependency(std::string specifier, std::shared_ptr<IsolatedModule> isolated_module) {
 	// Probably not a good idea because if dynamic import() anytime get supported()
-	//
-	// if (std::find(dependencySpecifiers.begin(), dependencySpecifiers.end(), specifier) == dependencySpecifiers.end()) {
-	//	const std::string errorMessage = "Module has no dependency named: \"" + specifier + "\".";
-	//	throw js_generic_error(errorMessage.c_str());
-	// }
+	std::lock_guard<IsolatedModule> lock(*this);
+	if (std::find(GetDependencySpecifiers().begin(), GetDependencySpecifiers().end(), specifier) == GetDependencySpecifiers().end()) {
+	  const std::string errorMessage = "Module has no dependency named: \"" + specifier + "\".";
+	  throw js_generic_error(errorMessage.c_str());
+	}
 	resolutions[specifier] = isolated_module;
 }
 
 
 
 MaybeLocal<Module> IsolatedModule::ResolveCallback(Local<Context> context, Local<String> specifier, Local<Module> referrer) {
-	//	We want to use the current global data
-
 	std::string dependency = *Utf8ValueWrapper(Isolate::GetCurrent(), specifier);
-	
-	//return Undefined(Isolate::GetCurrent());
-	/*
-	if (length) {
-		std::string specifierAsString(*specifierHelper, length);
-		// We can safely use InstantiateRunnerDependencies
-		auto & dependencies = InstantiateRunnerDependencies;
-		ModuleHandle::dependency_map_type::iterator it = dependencies->find(specifierAsString);
-		if (it != dependencies->end()) {
-			return MaybeLocal<Module>(it->second->Deref());
+	IsolatedModule* ptr = shared::find(referrer);
+	if (ptr != nullptr) {
+		shared_ptr<IsolatedModule> found = ptr->shared_from_this();
+		
+		// I don´t believe we must check the context, but I am unsure
+		if (found->context_handle->Deref() != context) {
+			throw js_generic_error((std::string("Failed to resolve dependency: \"") + dependency + std::string("\". Invalid context")).c_str());
 		}
-	}*/
-	
+
+		std::lock_guard<IsolatedModule> lock(*found);
+		auto & resolutions = found->resolutions;
+		auto it = resolutions.find(dependency);
+		
+
+		if (it != resolutions.end()) {
+			return it->second->module_handle->Deref();
+		}
+	}
 	throw js_generic_error((std::string("Failed to resolve dependency: ") + dependency).c_str());
-	return MaybeLocal<Module>();
 }
 
 
@@ -103,6 +146,11 @@ Local<Value> IsolatedModule::GetNamespace() {
 	return value;
 }
 
+
+
+bool operator==(const IsolatedModule& isolated_module, const v8::Local<v8::Module>& mod) {
+	return isolated_module.module_handle->Deref() == mod;
+}
 
 ModuleHandle::ModuleHandleTransferable::ModuleHandleTransferable(shared_ptr<IsolateHolder> isolate, shared_ptr<IsolatedModule> isolated_module)
 	: isolate(std::move(isolate)), isolated_module(std::move(isolated_module))
@@ -161,6 +209,7 @@ Local<Value> ModuleHandle::GetDependencySpecifiers() {
 Local<Value> ModuleHandle::SetDependency(Local<String> value, ModuleHandle* module_handle) {
 	std::string dependency = *Utf8ValueWrapper(Isolate::GetCurrent(), value);
 	isolated_module->SetDependency(dependency, module_handle->isolated_module);
+	return Undefined(Isolate::GetCurrent());
 }
 
 
