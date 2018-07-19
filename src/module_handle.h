@@ -44,7 +44,7 @@ public:
 
 	const std::vector<std::string> & GetDependencySpecifiers() const;
 
-	void SetDependency(std::string, std::shared_ptr<IsolatedModule>);
+	void SetDependency(const std::string &, std::shared_ptr<IsolatedModule>);
 	
 	void Instantiate(std::shared_ptr<RemoteHandle<v8::Context>>);
 

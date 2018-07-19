@@ -77,7 +77,7 @@ const std::vector<std::string> & IsolatedModule::GetDependencySpecifiers() const
 	return dependency_specifiers;
 }
 
-void IsolatedModule::SetDependency(std::string specifier, std::shared_ptr<IsolatedModule> isolated_module) {
+void IsolatedModule::SetDependency(const std::string & specifier, std::shared_ptr<IsolatedModule> isolated_module) {
 	// Probably not a good idea because if dynamic import() anytime get supported()
 	std::lock_guard<IsolatedModule> lock(*this);
 	if (std::find(GetDependencySpecifiers().begin(), GetDependencySpecifiers().end(), specifier) == GetDependencySpecifiers().end()) {
