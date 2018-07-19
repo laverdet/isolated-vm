@@ -130,6 +130,19 @@ variables, and compiled code. Check out the examples section for tips on using t
 
 Note that a [`Script`](#class-script-transferable) can only run in the isolate which created it.
 
+
+##### `isolate.compileModule(code)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `isolate.compileModuleSync(code)`
+* `code` *[string]* - The JavaScript code to compile.
+* `options` *[object]*
+	* `filename` *[string]* - Optional filename of this script, used in stack traces
+	* `columnOffset` *[number]* - Optional column offset of this script
+	* `lineOffset` *[number]* - Optional line offset of this script
+
+* **return** A [`Module`](#class-module-transferable) object.
+
+Note that a [`Module`](#class-script-transferable) can only run in the isolate which created it.
+
 ##### `isolate.createContext()` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `isolate.createContextSync()`
 * `options` *[object]*
@@ -220,6 +233,47 @@ Runs a given script within a context. This will return the last value evaluated 
 as long as that value was transferable, otherwise `undefined` will be returned. For instance if your
 script was "let foo = 1; let bar = 2; bar = foo + bar" then the return value will be 3 because that
 is the last expression.
+
+
+### Class: `Module` *[transferable]*
+A JavaScript module. Note that a [`Module`](#class-module-transferable) can only run in the isolate which created it.
+
+
+##### `module.dependencySpecifiers`
+A read-only array of all dependency specifiers the module has.
+
+    const code = `import something from './something';`;
+    const module = await isolate.compileModule(code);
+    const dependencySpecifiers = module.dependencySpecifiers;
+    // dependencySpecifiers => ["./something"];
+
+##### `module.setDependency(specifier, module)`
+* `specifier` - The dependency specifier.
+* `module` - Another *[`Module`](#class-module-transferable)* instance.
+* **return** *[undefined]*
+
+Set the dependency the referrer-module should resolve use when [specifier] is requested. Module
+must belong to the same context if it has already been instantiated.
+
+##### `module.instantiate(context)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `module.instantiateSync(context)`
+* `context` *[`Context`](#class-context-transferable)* - The context the module should use.
+* **return** *[undefined]*
+
+Instantiate the module together with all its dependencies.
+
+##### `module.evaluate(options)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `module.evaluateSync(options)`
+* `options` *[object]* - Optional.
+	* `timeout` *[number]* - Maximum amount of time this module is allowed to run before execution is
+	canceled. Default is no timeout.
+* **return** last expression
+
+Evaluate the module and return the last expression (same as script.run).
+
+
+##### `module.namespace`
+Returns a [`Reference`](#class-reference-transferable) containing all exported values.
 
 
 ### Class: `Reference` *[transferable]*
