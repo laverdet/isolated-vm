@@ -35,7 +35,7 @@ private:
 	// helper methods
 	static v8::MaybeLocal<v8::Module> ResolveCallback(v8::Local<v8::Context>, v8::Local<v8::String>, v8::Local<v8::Module>); // we may be able to use a weak map so can the ResolveCallback use the referrer value
 public:
-	IsolatedModule(std::shared_ptr<IsolateHolder>, std::shared_ptr<RemoteHandle<v8::Module>>, std::vector<std::string>);
+    IsolatedModule(std::shared_ptr<IsolateHolder> isolate, std::shared_ptr<RemoteHandle<v8::Module>> handle, std::vector<std::string> dependency_specifiers);
 	~IsolatedModule();
 	
 	// BasicLockable requirements
