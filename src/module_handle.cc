@@ -82,7 +82,7 @@ void IsolatedModule::SetDependency(const std::string & specifier, std::shared_pt
 	std::lock_guard<IsolatedModule> lock(*this);
 	if (std::find(GetDependencySpecifiers().begin(), GetDependencySpecifiers().end(), specifier) == GetDependencySpecifiers().end()) {
 	  const std::string errorMessage = "Module has no dependency named: \"" + specifier + "\".";
-	  throw js_generic_error(errorMessage.c_str());
+	  throw js_generic_error(errorMessage);
 	}
 	resolutions[specifier] = std::move(isolated_module);
 }
