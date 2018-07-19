@@ -236,12 +236,11 @@ is the last expression.
 
 
 ### Class: `Module` *[transferable]*
-A JavaScript module. Note that a [`Module`](#class-module-transferable) can only run in the isolate which created it and once instantiated,
-can it only be used within that [`context`](#class-context-transferable).
+A JavaScript module. Note that a [`Module`](#class-module-transferable) can only run in the isolate which created it.
 
 
 ##### `module.dependencySpecifiers`
-An read-only array of all dependency specifiers the module has.
+A read-only array of all dependency specifiers the module has.
 
     const code = `import something from './something';`;
     const module = await isolate.compileModule(code);
@@ -253,19 +252,19 @@ An read-only array of all dependency specifiers the module has.
 * `module` - Another *[`Module`](#class-module-transferable)* instance.
 * **return** *[undefined]*
 
-Set the dependency the referrer-module should resolve use when [specifier] is requested.
+Set the dependency the referrer-module should resolve use when [specifier] is requested. Module
+must belong to the same context if it has already been instantiated.
 
 ##### `module.instantiate(context)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `module.instantiateSync(context)`
 * `context` *[`Context`](#class-context-transferable)* - The context the module should use.
 * **return** *[boolean]*
 
-Instantiate the module together will all its dependencies.
+Instantiate the module together with all its dependencies.
 
-##### `module.evaluate(context, options)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
-##### `module.evaluateSync(context)`
-* `context` *[`Context`](#class-context-transferable)* - The context the module should use.
-* `options` *[object]*
+##### `module.evaluate(options)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `module.evaluateSync(options)`
+* `options` *[object]* - Optional.
 	* `timeout` *[number]* - Maximum amount of time this module is allowed to run before execution is
 	canceled. Default is no timeout.
 * **return** last expression
@@ -275,30 +274,6 @@ Evaluate the module and return the last expression (same as script.run).
 
 ##### `module.namespace`
 Returns a [`Reference`](#class-reference-transferable) containing all exported values.
-
-There is currently a minor bug that causes "let" variables to be copied and behave as "const".
-The code below will not work:
-
-    // create isolare and context...
-    const code = `
-        export let value = 0;
-        export const change = val => {
-            value += val;
-            return value;
-        };
-    `;
-    const module = isolate.compileModuleSync(code);
-    module.instantiateSync(context);
-    module.evaluateSync();
-    const reference = module.namespace;
-    const value = reference.getSync('value');
-    const change = reference.getSync('change');
-    console.log(value.copySync());                      // will print 0 because add have not yet changed the value
-    const returnValue = change.applySync(null, [123]);  // call the module export "change" with the value: 123
-    console.log(returnValue)                            // print 123 as ecpected
-    console.log(value.copySync())                       // will print 0 because of the bug, even if "123" is the expected value
-
-    // To receive the "current" value, do: reference.getSync('value').copySync()
 
 
 ### Class: `Reference` *[transferable]*

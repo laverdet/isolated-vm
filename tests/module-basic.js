@@ -30,6 +30,12 @@ const { strictEqual, throws } = require('assert');
     const result = defaultExport.applySync(null, [ 2, 4 ]);
     strictEqual(result, 6);
   }
+  function setupModuleNamespaceAndRunChecks() {
+    const data = (moduleMap.namespace = {});
+    const code = `export default function add(a, b) { return a + b; };`;
+    const module = data.module = isolate.compileModuleSync(code);
+    throws(() => module.namespace);
+  }
 
   function setupModuleInstantiateErrorAndRunChecks() {
     const data = (moduleMap.instantiateError = {});
@@ -112,6 +118,7 @@ const { strictEqual, throws } = require('assert');
   }
   try {
     setupModuleAddAndRunChecks();
+    setupModuleNamespaceAndRunChecks();
     setupModuleInstantiateErrorAndRunChecks();
     setupModuleTimeoutAndRunChecks();
     setupModuleEvaluateErrorAndRunChecks();

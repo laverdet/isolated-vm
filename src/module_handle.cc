@@ -32,12 +32,7 @@ IsolatedModule* IsolatedModule::shared::find(v8::Local<v8::Module> handle) {
 
 void IsolatedModule::shared::add(IsolatedModule* ptr) {
 	std::lock_guard<std::mutex> lock(mutex);
-	int hash = ptr->module_handle->Deref()->GetIdentityHash();
-	std::pair<int, IsolatedModule*> item(hash, ptr);
-	auto it = available_modules.insert(item);
-	if (it == available_modules.end()) {
-		throw js_generic_error("Failed to insert isolated_module object to available_modules");
-	}
+	available_modules.emplace(ptr->module_handle->Deref()->GetIdentityHash(), ptr);
 }
 
 void IsolatedModule::shared::remove(IsolatedModule* ptr) {
@@ -50,16 +45,19 @@ void IsolatedModule::shared::remove(IsolatedModule* ptr) {
 	if (it != range.second) {
 		available_modules.erase(it);
 	}
-	
-	//std::remove_if(range.first, range.second, [=](available_modules_type::value_type & data) {
-	//	return ptr == data.second;
-	//});
 }
 
 
-IsolatedModule::IsolatedModule(std::shared_ptr<IsolateHolder> isolate, std::shared_ptr<RemoteHandle<v8::Module>> handle, std::vector<std::string> dependencySpecifiers)
-	: isolate(std::move(isolate)), module_handle(std::move(handle)), dependencySpecifiers(std::move(dependencySpecifiers))
+IsolatedModule::IsolatedModule(std::shared_ptr<IsolateHolder> isolate, std::shared_ptr<RemoteHandle<v8::Module>> handle, std::vector<std::string> dependency_specifiers)
+    : isolate(std::move(isolate)),
+      dependency_specifiers(std::move(dependency_specifiers)),
+      module_handle(std::move(handle))
 {
+  shared::add(this);
+}
+
+IsolatedModule::~IsolatedModule() {
+	shared::remove(this);
 }
 
 
@@ -76,7 +74,7 @@ void IsolatedModule::unlock()
 
 const std::vector<std::string> & IsolatedModule::GetDependencySpecifiers() const
 {
-	return dependencySpecifiers;
+	return dependency_specifiers;
 }
 
 void IsolatedModule::SetDependency(std::string specifier, std::shared_ptr<IsolatedModule> isolated_module) {
@@ -86,20 +84,22 @@ void IsolatedModule::SetDependency(std::string specifier, std::shared_ptr<Isolat
 	  const std::string errorMessage = "Module has no dependency named: \"" + specifier + "\".";
 	  throw js_generic_error(errorMessage.c_str());
 	}
-	resolutions[specifier] = isolated_module;
+	resolutions[specifier] = std::move(isolated_module);
 }
 
 
 
 MaybeLocal<Module> IsolatedModule::ResolveCallback(Local<Context> context, Local<String> specifier, Local<Module> referrer) {
+	
 	std::string dependency = *Utf8ValueWrapper(Isolate::GetCurrent(), specifier);
-	IsolatedModule* ptr = shared::find(referrer);
-	if (ptr != nullptr) {
-		shared_ptr<IsolatedModule> found = ptr->shared_from_this();
-		
+	IsolatedModule* found = shared::find(referrer);
+	
+	std::string base_error_message = std::string("Failed to resolve dependency: \"") + dependency + std::string("\". ");
+
+	if (found != nullptr) {
 		// I don´t believe we must check the context, but I am unsure
 		if (found->context_handle->Deref() != context) {
-			throw js_generic_error((std::string("Failed to resolve dependency: \"") + dependency + std::string("\". Invalid context")).c_str());
+			throw js_generic_error(base_error_message + std::string("Invalid context"));
 		}
 
 		std::lock_guard<IsolatedModule> lock(*found);
@@ -111,20 +111,16 @@ MaybeLocal<Module> IsolatedModule::ResolveCallback(Local<Context> context, Local
 			return it->second->module_handle->Deref();
 		}
 	}
-	throw js_generic_error((std::string("Failed to resolve dependency: ") + dependency).c_str());
+	throw js_generic_error(base_error_message);
 }
 
 
-void IsolatedModule::Instantiate(std::shared_ptr<RemoteHandle<v8::Context>> c) {
+void IsolatedModule::Instantiate(std::shared_ptr<RemoteHandle<v8::Context>> _context_handle) {
 	std::lock_guard<IsolatedModule> lock(*this);
-	context_handle = c;
-	Isolate* isolate = Isolate::GetCurrent();
+	context_handle = std::move(_context_handle);
 	Local<Context> context = context_handle->Deref();
 	Local<Module> mod = module_handle->Deref();
-	bool result = Unmaybe(mod->InstantiateModule(context, IsolatedModule::ResolveCallback));
-	if (!result) {
-		throw js_generic_error("Failed to instantiate module");
-	}
+	Unmaybe(mod->InstantiateModule(context, IsolatedModule::ResolveCallback)); // Assume the Unmaybe will throw an exception if InstantiateModule returns false
 }
 
 std::unique_ptr<Transferable> IsolatedModule::Evaluate(std::size_t timeout) {
@@ -132,16 +128,16 @@ std::unique_ptr<Transferable> IsolatedModule::Evaluate(std::size_t timeout) {
 	Local<Context> context_local = Deref(*context_handle);
 	Context::Scope context_scope(context_local);
 	Local<Module> mod = module_handle->Deref();
-	return ExternalCopy::CopyIfPrimitive(RunWithTimeout(timeout, [&]() {
-		auto returnValue = mod->Evaluate(context_local);
-		Local<Value> moduleNamespace = mod->GetModuleNamespace();
-		global_namespace = std::make_shared<RemoteHandle<Value>>(moduleNamespace);
-		return returnValue;
-	}));
+	std::unique_ptr<Transferable> ret = ExternalCopy::CopyIfPrimitive(RunWithTimeout(timeout, [&]() { return mod->Evaluate(context_local); }));
+	global_namespace =std::make_shared<RemoteHandle<Value>>(mod->GetModuleNamespace());
+	return ret;
 }
 
 
 Local<Value> IsolatedModule::GetNamespace() {
+	if (!global_namespace) {
+		throw js_generic_error("No namespace object exist. Have you evaluated the module?");
+	}
 	Local<Object> value = ClassHandle::NewInstance<ReferenceHandle>(isolate, global_namespace, context_handle, ReferenceHandle::TypeOf::Object);
 	return value;
 }
@@ -194,10 +190,6 @@ Local<Value> ModuleHandle::GetDependencySpecifiers() {
 	std::size_t size = dependencySpecifiers.size();
 
 	Local<Array> deps = Array::New(Isolate::GetCurrent(), size);
-
-	if (deps.IsEmpty()) {
-		return Local<Array>();
-	}
 	
 	for (std::size_t index = 0; index < size; ++index) {
 		deps->Set(index, v8_string(dependencySpecifiers[index].c_str()));
@@ -223,7 +215,7 @@ struct InstantiateRunner : public ThreePhaseTask {
 		// Sanity check
 		context_handle->CheckDisposed();
 		if (isolate != context_handle->context->GetIsolateHolder()) {
-			throw js_generic_error("Invalid context 1233");
+			throw js_generic_error("Invalid context");
 		}
 	}
 
@@ -290,56 +282,5 @@ Local<Value> ModuleHandle::Evaluate(MaybeLocal<Object> maybe_options) {
 Local<Value> ModuleHandle::GetNamespace() {
 	return isolated_module->GetNamespace();
 }
-
-/*
-
-struct GetModuleNamespaceRunner : public ThreePhaseTask {
-	std::shared_ptr<IsolateHolder> isolate;
-	std::shared_ptr<RemoteHandle<Context>> context;
-	std::shared_ptr<RemoteHandle<Module>> _module;
-	//std::unique_ptr<ReferenceHandle> result;
-	std::shared_ptr<RemoteHandle<Value>> result;
-	
-	GetModuleNamespaceRunner(std::shared_ptr<IsolateHolder> myIsolate, ContextHandle* context_handle, std::shared_ptr<RemoteHandle<Module>> myModule)
-		: isolate(std::move(myIsolate)), context(context_handle->context), _module(std::move(myModule))
-	{
-		// Sanity check
-		context_handle->CheckDisposed();
-		if (isolate.get() != context_handle->context->GetIsolateHolder()) {
-			throw js_generic_error("Invalid context");
-		}
-	}
-
-	void Phase2() final {
-		Local<Context> context_handle = ivm::Deref(*this->context);
-		Context::Scope context_scope(context_handle);
-		Local<Value> moduleNamespace = this->_module->Deref()->GetModuleNamespace();
-		result = std::make_shared<RemoteHandle<Value>>(moduleNamespace);
-	}
-
-
-	Local<Value> Phase3() final {
-		if (this->result) {
-			Local<Object> value = ClassHandle::NewInstance<ReferenceHandle>(this->isolate, this->result, this->context, ReferenceHandle::TypeOf::Object);
-			return value;
-		}
-		return Undefined(Isolate::GetCurrent());
-	}
-
-};
-
-template <int async>
-Local<Value> ModuleHandle::GetModuleNamespace(ContextHandle* context_handle) {
-	std::shared_ptr<RemoteHandle<Module>> module_ref = this->_module;
-	return ThreePhaseTask::Run<async, GetModuleNamespaceRunner>(*this->isolate, this->isolate, context_handle, std::move(module_ref));
-}
-
-
-Local<Value> ModuleHandle::Release() {
-	_module.reset();
-	return Undefined(Isolate::GetCurrent());
-}
-*/
-
 
 } // namespace ivm

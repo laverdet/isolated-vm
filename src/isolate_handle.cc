@@ -431,16 +431,17 @@ struct CompileModuleRunner : public ThreePhaseTask {
 		Local<String> code_inner = code_string->CopyIntoCheckHeap().As<String>();
 		ScriptOrigin script_origin = script_origin_holder->ToScriptOrigin();
 		ScriptCompiler::Source source(code_inner, script_origin);
-		std::shared_ptr<RemoteHandle<Module>> remote_handle = std::make_shared<RemoteHandle<Module>>(RunWithAnnotatedErrors<Local<Module>>([&]() { return Unmaybe(ScriptCompiler::CompileModule(*isolate, &source)); }));
+
+		Local<Module> compiled_module = Unmaybe(ScriptCompiler::CompileModule(*isolate, &source));
+		std::shared_ptr<RemoteHandle<Module>> remote_handle = std::make_shared<RemoteHandle<Module>>(compiled_module);
 		// grab all dependency specifiers
-		size_t dependencySpecifiersLength = remote_handle->Deref()->GetModuleRequestsLength();
+		size_t dependencySpecifiersLength = compiled_module->GetModuleRequestsLength();
 		std::vector<std::string> dependencySpecifiers(dependencySpecifiersLength);
 		for (size_t index = 0; index < dependencySpecifiersLength; ++index) {
-			std::string dependencySpecifier = *Utf8ValueWrapper(*isolate, remote_handle->Deref()->GetModuleRequest(index));
+			std::string dependencySpecifier = *Utf8ValueWrapper(*isolate, compiled_module->GetModuleRequest(index));
 			dependencySpecifiers[index] = dependencySpecifier;
 		}
-		isolated_module = std::shared_ptr<IsolatedModule>(new IsolatedModule(isolate_holder, remote_handle, dependencySpecifiers), IsolatedModule::shared::remove);
-		IsolatedModule::shared::add(isolated_module.get());
+		isolated_module = std::make_shared<IsolatedModule>(isolate_holder, remote_handle, dependencySpecifiers);
 	}
 
 	Local<Value> Phase3() final {

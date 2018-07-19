@@ -10,11 +10,11 @@
 namespace ivm {
 
 
-class IsolatedModule : public std::enable_shared_from_this<IsolatedModule> {
+class IsolatedModule {
 public:
 	class shared {
 	private:
-		typedef std::unordered_multimap<int, IsolatedModule*> available_modules_type; // managed by a shared_ptr::deleter in compileModule::phase2
+		using available_modules_type = std::unordered_multimap<int, IsolatedModule*>;
 		static std::mutex mutex;
 		static available_modules_type available_modules;
 	public:
@@ -26,7 +26,7 @@ public:
 private:
 	std::recursive_mutex mutex;
 	std::shared_ptr<IsolateHolder> isolate; // required by ClassHandle used to construct the namespace reference
-	std::vector<std::string> dependencySpecifiers;
+	std::vector<std::string> dependency_specifiers;
 	std::shared_ptr<RemoteHandle<v8::Module>> module_handle;
 	std::shared_ptr<RemoteHandle<v8::Context>> context_handle;
 	std::shared_ptr<RemoteHandle<v8::Value>> global_namespace;
@@ -36,6 +36,7 @@ private:
 	static v8::MaybeLocal<v8::Module> ResolveCallback(v8::Local<v8::Context>, v8::Local<v8::String>, v8::Local<v8::Module>); // we may be able to use a weak map so can the ResolveCallback use the referrer value
 public:
 	IsolatedModule(std::shared_ptr<IsolateHolder>, std::shared_ptr<RemoteHandle<v8::Module>>, std::vector<std::string>);
+	~IsolatedModule();
 	
 	// BasicLockable requirements
 	void lock();
