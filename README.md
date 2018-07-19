@@ -258,7 +258,7 @@ must belong to the same context if it has already been instantiated.
 ##### `module.instantiate(context)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `module.instantiateSync(context)`
 * `context` *[`Context`](#class-context-transferable)* - The context the module should use.
-* **return** *[boolean]*
+* **return** *[undefined]*
 
 Instantiate the module together with all its dependencies.
 

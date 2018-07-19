@@ -120,7 +120,7 @@ void IsolatedModule::Instantiate(std::shared_ptr<RemoteHandle<v8::Context>> _con
 	context_handle = std::move(_context_handle);
 	Local<Context> context = context_handle->Deref();
 	Local<Module> mod = module_handle->Deref();
-	Unmaybe(mod->InstantiateModule(context, IsolatedModule::ResolveCallback)); // Assume the Unmaybe will throw an exception if InstantiateModule returns false
+	Unmaybe(mod->InstantiateModule(context, IsolatedModule::ResolveCallback));
 }
 
 std::unique_ptr<Transferable> IsolatedModule::Evaluate(std::size_t timeout) {
@@ -172,10 +172,6 @@ Local<FunctionTemplate> ModuleHandle::Definition() {
 		"evaluate", Parameterize<decltype(&ModuleHandle::Evaluate<1>), &ModuleHandle::Evaluate<1>>(),
 		"evaluateSync", Parameterize<decltype(&ModuleHandle::Evaluate<0>), &ModuleHandle::Evaluate<0>>(),
 		"namespace", ParameterizeAccessor<decltype(&ModuleHandle::GetNamespace), &ModuleHandle::GetNamespace>()
-		//"getModuleNamespace", Parameterize<decltype(&ModuleHandle::GetModuleNamespace<1>), &ModuleHandle::GetModuleNamespace<1>>(),
-		//"getModuleNamespaceSync", Parameterize<decltype(&ModuleHandle::GetModuleNamespace<0>), &ModuleHandle::GetModuleNamespace<0>>()
-		/*"release", Parameterize<decltype(&ModuleHandle::Release), &ModuleHandle::Release>(),
-		*/
 	));
 }
 
@@ -198,8 +194,8 @@ Local<Value> ModuleHandle::GetDependencySpecifiers() {
 }
 
 
-Local<Value> ModuleHandle::SetDependency(Local<String> value, ModuleHandle* module_handle) {
-	std::string dependency = *Utf8ValueWrapper(Isolate::GetCurrent(), value);
+Local<Value> ModuleHandle::SetDependency(Local<String> specifier, ModuleHandle* module_handle) {
+	std::string dependency = *Utf8ValueWrapper(Isolate::GetCurrent(), specifier);
 	isolated_module->SetDependency(dependency, module_handle->isolated_module);
 	return Undefined(Isolate::GetCurrent());
 }

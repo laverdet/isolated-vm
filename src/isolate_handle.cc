@@ -426,6 +426,7 @@ struct CompileModuleRunner : public ThreePhaseTask {
 	}
 
 	void Phase2() final {
+#if V8_AT_LEAST(6, 1, 328)
 		auto isolate = IsolateEnvironment::GetCurrent();
 		Context::Scope context_scope(isolate->DefaultContext());
 		Local<String> code_inner = code_string->CopyIntoCheckHeap().As<String>();
@@ -442,6 +443,9 @@ struct CompileModuleRunner : public ThreePhaseTask {
 			dependencySpecifiers[index] = dependencySpecifier;
 		}
 		isolated_module = std::make_shared<IsolatedModule>(isolate_holder, remote_handle, dependencySpecifiers);
+#else
+          throw js_generic_error("No module support. At least v8 version 6.1.328 is required");
+#endif
 	}
 
 	Local<Value> Phase3() final {
