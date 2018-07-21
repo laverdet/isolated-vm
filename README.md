@@ -11,9 +11,21 @@ might find this module useful if you need to run some untrusted code in a secure
 find this module useful if you need to run some JavaScript simultaneously in multiple threads. You
 may find this project *very* useful if you need to do both at the same time!
 
+* [Requirements](#requirements)
+* [Who Is Using isolated-vm](#who-is-using-isolated-vm)
+* [API Documentation](#api-documentation)
+	* [Isolate](#class-isolate-transferable)
+	* [Context](#class-context-transferable)
+	* [Script](#class-script-transferable)
+	* [Module](#class-module-transferable)
+	* [Reference](#class-reference-transferable)
+	* [ExternalCopy](#class-externalcopy-transferable)
+* [Examples](#examples)
+* [Alternatives](#alternatives)
+
 
 REQUIREMENTS
-----------------------------------
+------------
 
 This project works best on nodejs LTS version 8.11.2 (or later) *or* nodejs current version 10.x
 (any version). It will compile and generally run alright on earlier 8.x versions but under load you
@@ -547,3 +559,31 @@ Promise.all(promises).then(function(sums) {
 
 Included in the repository is an example of how you can write quicksort using a SharedArrayBuffer to
 sort over multiple threads. See: [parallel-sort-example.js](https://github.com/laverdet/isolated-vm/blob/master/parallel-sort-example.js).
+
+ALTERNATIVES
+------------
+
+The primary goal of isolated-vm is to create a powerful and secure environment for running untrusted
+JavaScript code. isolated-vm is also a good way to build single-process multithreaded JavaScript
+applications, though if parallelism is your only goal then there are probably better options out
+there.
+
+Below is a quick summary of some other options available on nodejs and how they differ from
+isolated-vm. The table headers are defined as follows:
+
+* **Secure**: Safely run untrusted code
+* **Memory Limits**: Possible to set memory limits / safe against heap overflow DoS attacks
+* **Isolated**: Is garbage collection, heap, etc isolated from application
+* **Multithreaded**: Run code on many threads from a single process
+* **Module Support**: Is `require` supported out of the box
+* **Inspector Support**: Chrome DevTools supported
+
+| Module                                                                       | Secure | Memory Limits | Isolated | Multithreaded | Module Support | Inspector Support |
+| ---------------------------------------------------------------------------- | :----: | :-----------: | :------: | :-----------: | :------------: | :---------------: |
+| [vm](https://nodejs.org/api/vm.html)                                         |        |               |          |               |       ✅       |        ✅         |
+| [worker_threads](https://nodejs.org/api/worker_threads.html)                 |        |               |    ✅    |      ✅       |       ✅       |                   |
+| [vm2](https://github.com/patriksimek/vm2)                                    |   ✅   |               |          |               |       ✅       |        ✅         |
+| [napajs](https://github.com/Microsoft/napajs)                                |        |               |    ✅    |      ✅       |     Partial    |                   |
+| [webworker-threads](https://github.com/audreyt/node-webworker-threads)       |        |               |    ✅    |      ✅       |                |                   |
+| [tiny-worker](https://github.com/avoidwork/tiny-worker)                      |        |               |    ✅    |               |       ✅       |                   |
+| isolated-vm                                                                  |   ✅   |       ✅      |    ✅    |      ✅       |                |        ✅         |
