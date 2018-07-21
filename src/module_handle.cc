@@ -116,30 +116,40 @@ MaybeLocal<Module> IsolatedModule::ResolveCallback(Local<Context> context, Local
 
 
 void IsolatedModule::Instantiate(std::shared_ptr<RemoteHandle<v8::Context>> _context_handle) {
+#if V8_AT_LEAST(6, 1, 328)
 	std::lock_guard<IsolatedModule> lock(*this);
 	context_handle = std::move(_context_handle);
 	Local<Context> context = context_handle->Deref();
 	Local<Module> mod = module_handle->Deref();
 	Unmaybe(mod->InstantiateModule(context, IsolatedModule::ResolveCallback));
+#endif
 }
 
 std::unique_ptr<Transferable> IsolatedModule::Evaluate(std::size_t timeout) {
+#if V8_AT_LEAST(6, 1, 328)
 	std::lock_guard<IsolatedModule> lock(*this);
 	Local<Context> context_local = Deref(*context_handle);
 	Context::Scope context_scope(context_local);
 	Local<Module> mod = module_handle->Deref();
 	std::unique_ptr<Transferable> ret = ExternalCopy::CopyIfPrimitive(RunWithTimeout(timeout, [&]() { return mod->Evaluate(context_local); }));
-	global_namespace =std::make_shared<RemoteHandle<Value>>(mod->GetModuleNamespace());
+	global_namespace = std::make_shared<RemoteHandle<Value>>(mod->GetModuleNamespace());
 	return ret;
+#else
+	return {};
+#endif
 }
 
 
 Local<Value> IsolatedModule::GetNamespace() {
+#if V8_AT_LEAST(6, 1, 328)
 	if (!global_namespace) {
 		throw js_generic_error("No namespace object exist. Have you evaluated the module?");
 	}
 	Local<Object> value = ClassHandle::NewInstance<ReferenceHandle>(isolate, global_namespace, context_handle, ReferenceHandle::TypeOf::Object);
 	return value;
+#else
+	return {};
+#endif
 }
 
 

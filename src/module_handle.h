@@ -11,7 +11,6 @@ namespace ivm {
 
 class IsolatedModule {
 	public:
-#if V8_AT_LEAST(6, 1, 328)
 		class shared {
 			private:
 				using available_modules_type = std::unordered_multimap<int, IsolatedModule*>;
@@ -64,29 +63,6 @@ class IsolatedModule {
 		v8::Local<v8::Value> GetNamespace();
 
 		friend bool operator==(const IsolatedModule&, const v8::Local<v8::Module>&);
-#else
-		inline void lock() {}
-		inline void unlock() {};
-
-		inline const std::vector<std::string> & GetDependencySpecifiers() const {
-			throw js_generic_error("OPERATION NOT SUPPORTED");
-		}
-
-		inline void SetDependency(const std::string & specifier, std::shared_ptr<IsolatedModule> isolated_module) {
-		}
-
-		inline void Instantiate(std::shared_ptr<RemoteHandle<v8::Context>> _context_handle) {
-
-		}
-
-		std::unique_ptr<Transferable> Evaluate(std::size_t timeout) {
-			throw js_generic_error("OPERATION NOT SUPPORTED");
-		}
-
-		v8::Local<v8::Value> GetNamespace() {
-			throw js_generic_error("OPERATION NOT SUPPORTED");
-		}
-#endif
 };
 
 class ContextHandle;

@@ -444,7 +444,7 @@ struct CompileModuleRunner : public ThreePhaseTask {
 		}
 		isolated_module = std::make_shared<IsolatedModule>(isolate_holder, remote_handle, dependencySpecifiers);
 #else
-		throw js_generic_error("No module support. At least v8 version 6.1.328 is required");
+		throw js_generic_error("No module support. At least nodejs version 8.7.0 / v8 version 6.1.328 is required");
 #endif
 	}
 

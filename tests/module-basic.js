@@ -116,6 +116,10 @@ const { strictEqual, throws } = require('assert');
 		countUp.applySync(null, [ ]);
 		strictEqual(value.copySync(), 1);
 	}
+	if (/^v8\.[0-6]/.test(process.version)) {
+		console.log('pass');
+		return;
+	}
 	try {
 		setupModuleAddAndRunChecks();
 		setupModuleNamespaceAndRunChecks();
