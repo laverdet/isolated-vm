@@ -638,12 +638,12 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 						Unmaybe(compiled_script->Run(context));
 						unbound_script = compiled_script->GetUnboundScript();
 					}
-					{
+					if (!warmup_script.empty()) {
 						Context::Scope context_scope(context_dirty);
 						Unmaybe(unbound_script->BindToCurrentContext()->Run(context_dirty));
 					}
 				}
-				if (warmup_script.length() != 0) {
+				if (!warmup_script.empty()) {
 					Context::Scope context_scope(context_dirty);
 					MaybeLocal<Object> tmp;
 					ScriptOriginHolder script_origin(tmp);
