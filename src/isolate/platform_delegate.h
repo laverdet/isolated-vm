@@ -58,6 +58,12 @@ class PlatformDelegate : public v8::Platform {
 			v8::V8::InitializePlatform(&instance);
 		}
 
+#if V8_AT_LEAST(6, 7, 1)
+		int NumberOfWorkerThreads() final {
+			return node_platform->NumberOfWorkerThreads();
+		}
+#endif
+
 #if defined(NODE_MODULE_VERSION) ? NODE_MODULE_VERSION >= 64 : V8_AT_LEAST(6, 7, 179)
 		// v8 commit 86b4b534 renamed this function and changed the signature. This made it to v8
 		// v6.7.1, but 1983f305 further changed the signature.
@@ -72,6 +78,20 @@ class PlatformDelegate : public v8::Platform {
 #else
 		void CallOnBackgroundThread(v8::Task* task, ExpectedRuntime expected_runtime) final {
 			node_platform->CallOnBackgroundThread(task, expected_runtime);
+		}
+#endif
+
+#if V8_AT_LEAST(6, 4, 168)
+		// These are the new APIs that will be used instead of `CallOn` functions, but as of now they
+		// are just placeholders. An explicit termination is invoked so that future versions of nodejs
+		// won't have undefined behavior. When these functions become active this whole platform thing
+		// will need to be refactored.
+		std::shared_ptr<v8::TaskRunner> GetBackgroundTaskRunner(v8::Isolate* isolate) final {
+			std::terminate();
+		}
+
+		std::shared_ptr<v8::TaskRunner> GetForegroundTaskRunner(v8::Isolate* isolate) final {
+			std::terminate();
 		}
 #endif
 
