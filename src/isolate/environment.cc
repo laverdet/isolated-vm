@@ -345,13 +345,15 @@ IsolateEnvironment::HeapCheck::HeapCheck(IsolateEnvironment& env, size_t expecte
 	}
 }
 
+#if V8_AT_LEAST(6, 7, 185)
+IsolateEnvironment::HeapCheck::~HeapCheck() = default;
+#else
 IsolateEnvironment::HeapCheck::~HeapCheck() {
-#if !V8_AT_LEAST(6, 7, 185)
 	if (did_increase) {
 		env.GetIsolate()->RestoreOriginalHeapLimit();
 	}
-#endif
 }
+#endif
 
 void IsolateEnvironment::HeapCheck::Epilogue() {
 	if (did_increase) {
@@ -445,10 +447,10 @@ void IsolateEnvironment::PromiseRejectCallback(PromiseRejectMessage rejection) {
 	that->rejected_promise_error.Reset(that->isolate, rejection.GetValue());
 }
 
-size_t IsolateEnvironment::NearHeapLimitCallback(void* data, size_t current_heap_limit, size_t initial_heap_limit) {
+size_t IsolateEnvironment::NearHeapLimitCallback(void* data, size_t current_heap_limit, size_t /* initial_heap_limit */) {
 	// This callback will give the v8 vm as much memory as it needs to prevent the application from
 	// crashing. After the JS stack unwinds the isolate will be disposed.
-	IsolateEnvironment* that = static_cast<IsolateEnvironment*>(data);
+	auto that = static_cast<IsolateEnvironment*>(data);
 	that->hit_memory_limit = true;
 	that->Terminate();
 	return current_heap_limit + 1024 * 1024;

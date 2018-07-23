@@ -22,7 +22,7 @@ ModuleInfo::ModuleInfo(Local<Module> handle) : handle(handle) {
 	size_t length = handle->GetModuleRequestsLength();
 	dependency_specifiers.reserve(length);
 	for (size_t ii = 0; ii < length; ++ii) {
-		dependency_specifiers.push_back(*Utf8ValueWrapper(isolate, handle->GetModuleRequest(ii)));
+		dependency_specifiers.emplace_back(*Utf8ValueWrapper(isolate, handle->GetModuleRequest(ii)));
 	}
 }
 
@@ -89,7 +89,7 @@ struct InstantiateRunner : public ThreePhaseTask {
 	shared_ptr<RemoteHandle<Context>> context;
 	shared_ptr<ModuleInfo> info;
 
-	static MaybeLocal<Module> ResolveCallback(Local<Context> context, Local<String> specifier, Local<Module> referrer) {
+	static MaybeLocal<Module> ResolveCallback(Local<Context> /* context */, Local<String> specifier, Local<Module> referrer) {
 		MaybeLocal<Module> ret;
 		FunctorRunners::RunBarrier([&]() {
 			// Lookup ModuleInfo* instance from `referrer`

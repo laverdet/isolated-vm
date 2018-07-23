@@ -19,7 +19,7 @@ struct ModuleInfo {
 	RemoteHandle<v8::Module> handle;
 	std::shared_ptr<RemoteHandle<v8::Context>> context_handle;
 	std::shared_ptr<RemoteHandle<v8::Value>> global_namespace;
-	ModuleInfo(v8::Local<v8::Module> module);
+	explicit ModuleInfo(v8::Local<v8::Module> handle);
 	~ModuleInfo();
 };
 
@@ -29,21 +29,21 @@ class ModuleHandle : public TransferableHandle {
 			private:
 				std::shared_ptr<ModuleInfo> info;
 			public:
-				ModuleHandleTransferable(std::shared_ptr<ModuleInfo> info);
+				explicit ModuleHandleTransferable(std::shared_ptr<ModuleInfo> info);
 				v8::Local<v8::Value> TransferIn() final;
 		};
 
 		std::shared_ptr<ModuleInfo> info;
 
 	public:
-		ModuleHandle(std::shared_ptr<ModuleInfo> info);
+		explicit ModuleHandle(std::shared_ptr<ModuleInfo> info);
 
 		static v8::Local<v8::FunctionTemplate> Definition();
 		std::unique_ptr<Transferable> TransferOut() final;
 
 		v8::Local<v8::Value> GetDependencySpecifiers();
 
-		v8::Local<v8::Value> SetDependency(v8::Local<v8::String> specifier, ModuleHandle* module_handle);
+		v8::Local<v8::Value> SetDependency(v8::Local<v8::String> specifier_handle, ModuleHandle* module_handle);
 
 		template <int async>
 		v8::Local<v8::Value> Instantiate(class ContextHandle* context_handle);

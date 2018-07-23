@@ -86,11 +86,11 @@ class PlatformDelegate : public v8::Platform {
 		// are just placeholders. An explicit termination is invoked so that future versions of nodejs
 		// won't have undefined behavior. When these functions become active this whole platform thing
 		// will need to be refactored.
-		std::shared_ptr<v8::TaskRunner> GetBackgroundTaskRunner(v8::Isolate* isolate) final {
+		std::shared_ptr<v8::TaskRunner> GetBackgroundTaskRunner(v8::Isolate* /* isolate */) final {
 			std::terminate();
 		}
 
-		std::shared_ptr<v8::TaskRunner> GetForegroundTaskRunner(v8::Isolate* isolate) final {
+		std::shared_ptr<v8::TaskRunner> GetForegroundTaskRunner(v8::Isolate* /* isolate */) final {
 			std::terminate();
 		}
 #endif
