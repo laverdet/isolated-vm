@@ -9,6 +9,21 @@ namespace ivm {
  */
 namespace FunctorRunners {
 
+template <typename F>
+void RunBarrier(F fn) {
+	// Runs a function and converts C++ errors to immediate v8 errors. Pretty much the same as
+	// `RunCallback` but with no return value.
+	try {
+		fn();
+	} catch (const js_fatal_error& cc_error) {
+		// Execution is terminating
+	} catch (const js_error_ctor_base& cc_error) {
+		v8::Isolate::GetCurrent()->ThrowException(cc_error.ConstructError());
+	} catch (const js_runtime_error& cc_error) {
+		// A JS error is waiting in the isolate
+	}
+}
+
 template <typename F, typename T>
 void RunCallback(T& info, F fn) {
 	// This function is used when C++ code is invoked from a JS callback. We are given an instance of

@@ -8,169 +8,42 @@
 #include "isolate/legacy.h"
 
 #include <algorithm>
-#include <mutex>
-
 
 using namespace v8;
 using std::shared_ptr;
 
 namespace ivm {
 
-std::mutex IsolatedModule::shared::mutex;
-std::unordered_multimap<int, IsolatedModule*> IsolatedModule::shared::available_modules;
+ModuleInfo::ModuleInfo(Local<Module> handle) : handle(handle) {
+	// Add to isolate's list of modules
+	IsolateEnvironment::GetCurrent()->module_handles.emplace(handle->GetIdentityHash(), this);
+	// Grab all dependency specifiers
+	Isolate* isolate = Isolate::GetCurrent();
+	size_t length = handle->GetModuleRequestsLength();
+	dependency_specifiers.reserve(length);
+	for (size_t ii = 0; ii < length; ++ii) {
+		dependency_specifiers.push_back(*Utf8ValueWrapper(isolate, handle->GetModuleRequest(ii)));
+	}
+}
 
-IsolatedModule* IsolatedModule::shared::find(v8::Local<v8::Module> handle) {
-	std::lock_guard<std::mutex> lock(mutex);
-	int hash = handle->GetIdentityHash();
-	auto range = available_modules.equal_range(hash);
-
-	auto it = std::find_if(range.first, range.second, [&](const available_modules_type::value_type & data) {
-		return data.second->module_handle->Deref() == handle;
+ModuleInfo::~ModuleInfo() {
+	// Remove from isolate's list of modules
+	auto& module_map = IsolateEnvironment::GetCurrent()->module_handles;
+	auto range = module_map.equal_range(handle.Deref()->GetIdentityHash());
+	auto it = std::find_if(range.first, range.second, [&](decltype(*module_map.begin()) data) {
+		return this == data.second;
 	});
-	return it == range.second ? nullptr : it->second;
+	assert(it != range.second);
+	module_map.erase(it);
 }
 
-void IsolatedModule::shared::add(IsolatedModule* ptr) {
-	std::lock_guard<std::mutex> lock(mutex);
-	available_modules.emplace(ptr->module_handle->Deref()->GetIdentityHash(), ptr);
-}
-
-void IsolatedModule::shared::remove(IsolatedModule* ptr) {
-	std::lock_guard<std::mutex> lock(mutex);
-	int hash = ptr->module_handle->Deref()->GetIdentityHash();
-	auto range = available_modules.equal_range(hash);
-	auto it = std::find_if(range.first, range.second, [&](const available_modules_type::value_type & data) {
-		return ptr == data.second;
-	});
-	if (it != range.second) {
-		available_modules.erase(it);
-	}
-}
-
-
-IsolatedModule::IsolatedModule(std::shared_ptr<IsolateHolder> isolate, std::shared_ptr<RemoteHandle<v8::Module>> handle, std::vector<std::string> dependency_specifiers)
-		: isolate(std::move(isolate)),
-			dependency_specifiers(std::move(dependency_specifiers)),
-			module_handle(std::move(handle))
-{
-	shared::add(this);
-}
-
-IsolatedModule::~IsolatedModule() {
-	shared::remove(this);
-}
-
-
-void IsolatedModule::lock()
-{
-	return mutex.lock();
-}
-
-void IsolatedModule::unlock()
-{
-	return mutex.unlock();
-}
-
-
-const std::vector<std::string> & IsolatedModule::GetDependencySpecifiers() const
-{
-	return dependency_specifiers;
-}
-
-void IsolatedModule::SetDependency(const std::string & specifier, std::shared_ptr<IsolatedModule> isolated_module) {
-	// Probably not a good idea because if dynamic import() anytime get supported()
-	std::lock_guard<IsolatedModule> lock(*this);
-	if (std::find(GetDependencySpecifiers().begin(), GetDependencySpecifiers().end(), specifier) == GetDependencySpecifiers().end()) {
-		const std::string errorMessage = "Module has no dependency named: \"" + specifier + "\".";
-		throw js_generic_error(errorMessage);
-	}
-	resolutions[specifier] = std::move(isolated_module);
-}
-
-
-
-MaybeLocal<Module> IsolatedModule::ResolveCallback(Local<Context> context, Local<String> specifier, Local<Module> referrer) {
-
-	std::string dependency = *Utf8ValueWrapper(Isolate::GetCurrent(), specifier);
-	IsolatedModule* found = shared::find(referrer);
-
-	std::string base_error_message = std::string("Failed to resolve dependency: \"") + dependency + std::string("\". ");
-
-	if (found != nullptr) {
-		// I don´t believe we must check the context, but I am unsure
-		if (found->context_handle->Deref() != context) {
-			throw js_generic_error(base_error_message + std::string("Invalid context"));
-		}
-
-		std::lock_guard<IsolatedModule> lock(*found);
-		auto & resolutions = found->resolutions;
-		auto it = resolutions.find(dependency);
-
-
-		if (it != resolutions.end()) {
-			return it->second->module_handle->Deref();
-		}
-	}
-	throw js_generic_error(base_error_message);
-}
-
-
-void IsolatedModule::Instantiate(std::shared_ptr<RemoteHandle<v8::Context>> _context_handle) {
-#if V8_AT_LEAST(6, 1, 328)
-	std::lock_guard<IsolatedModule> lock(*this);
-	context_handle = std::move(_context_handle);
-	Local<Context> context = context_handle->Deref();
-	Local<Module> mod = module_handle->Deref();
-	Unmaybe(mod->InstantiateModule(context, IsolatedModule::ResolveCallback));
-#endif
-}
-
-std::unique_ptr<Transferable> IsolatedModule::Evaluate(std::size_t timeout) {
-#if V8_AT_LEAST(6, 1, 328)
-	std::lock_guard<IsolatedModule> lock(*this);
-	Local<Context> context_local = Deref(*context_handle);
-	Context::Scope context_scope(context_local);
-	Local<Module> mod = module_handle->Deref();
-	std::unique_ptr<Transferable> ret = ExternalCopy::CopyIfPrimitive(RunWithTimeout(timeout, [&]() { return mod->Evaluate(context_local); }));
-	global_namespace = std::make_shared<RemoteHandle<Value>>(mod->GetModuleNamespace());
-	return ret;
-#else
-	return {};
-#endif
-}
-
-
-Local<Value> IsolatedModule::GetNamespace() {
-#if V8_AT_LEAST(6, 1, 328)
-	if (!global_namespace) {
-		throw js_generic_error("No namespace object exist. Have you evaluated the module?");
-	}
-	Local<Object> value = ClassHandle::NewInstance<ReferenceHandle>(isolate, global_namespace, context_handle, ReferenceHandle::TypeOf::Object);
-	return value;
-#else
-	return {};
-#endif
-}
-
-
-
-bool operator==(const IsolatedModule& isolated_module, const v8::Local<v8::Module>& mod) {
-	return isolated_module.module_handle->Deref() == mod;
-}
-
-ModuleHandle::ModuleHandleTransferable::ModuleHandleTransferable(shared_ptr<IsolateHolder> isolate, shared_ptr<IsolatedModule> isolated_module)
-	: isolate(std::move(isolate)), isolated_module(std::move(isolated_module))
-{
-}
+ModuleHandle::ModuleHandleTransferable::ModuleHandleTransferable(shared_ptr<ModuleInfo> info) : info(std::move(info)) {}
 
 Local<Value> ModuleHandle::ModuleHandleTransferable::TransferIn() {
-	return ClassHandle::NewInstance<ModuleHandle>(isolate, isolated_module);
+	return ClassHandle::NewInstance<ModuleHandle>(info);
 };
 
-ModuleHandle::ModuleHandle(shared_ptr<IsolateHolder> isolate, shared_ptr<IsolatedModule> isolated_module)
-	: isolate(std::move(isolate)), isolated_module(std::move(isolated_module))
-{
-}
+ModuleHandle::ModuleHandle(shared_ptr<ModuleInfo> info) : info(std::move(info)) {}
 
 Local<FunctionTemplate> ModuleHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
@@ -186,47 +59,86 @@ Local<FunctionTemplate> ModuleHandle::Definition() {
 }
 
 std::unique_ptr<Transferable> ModuleHandle::TransferOut() {
-	return std::make_unique<ModuleHandleTransferable>(isolate, isolated_module);
+	return std::make_unique<ModuleHandleTransferable>(info);
 }
 
 Local<Value> ModuleHandle::GetDependencySpecifiers() {
-
-	std::lock_guard<IsolatedModule> lock(*isolated_module);
-	const std::vector<std::string> & dependencySpecifiers = isolated_module->GetDependencySpecifiers();
-	std::size_t size = dependencySpecifiers.size();
-
-	Local<Array> deps = Array::New(Isolate::GetCurrent(), size);
-
-	for (std::size_t index = 0; index < size; ++index) {
-		deps->Set(index, v8_string(dependencySpecifiers[index].c_str()));
+	std::lock_guard<std::mutex> lock(info->mutex);
+	size_t length = info->dependency_specifiers.size();
+	Local<Array> deps = Array::New(Isolate::GetCurrent(), length);
+	for (size_t ii = 0; ii < length; ++ii) {
+		deps->Set(ii, v8_string(info->dependency_specifiers[ii].c_str()));
 	}
 	return deps;
 }
 
 
-Local<Value> ModuleHandle::SetDependency(Local<String> specifier, ModuleHandle* module_handle) {
-	std::string dependency = *Utf8ValueWrapper(Isolate::GetCurrent(), specifier);
-	isolated_module->SetDependency(dependency, module_handle->isolated_module);
+Local<Value> ModuleHandle::SetDependency(Local<String> specifier_handle, ModuleHandle* module_handle) {
+	// Probably not a good idea because if dynamic import() anytime get supported()
+	std::string specifier = *Utf8ValueWrapper(Isolate::GetCurrent(), specifier_handle);
+	std::lock_guard<std::mutex> lock(info->mutex);
+	if (std::find(info->dependency_specifiers.begin(), info->dependency_specifiers.end(), specifier) == info->dependency_specifiers.end()) {
+		throw js_generic_error(std::string("Module has no dependency named: \"") + specifier + "\".");
+	}
+	info->resolutions[specifier] = module_handle->info;
 	return Undefined(Isolate::GetCurrent());
 }
 
 
 struct InstantiateRunner : public ThreePhaseTask {
 	shared_ptr<RemoteHandle<Context>> context;
-	shared_ptr<IsolatedModule> isolated_module;
+	shared_ptr<ModuleInfo> info;
 
-	InstantiateRunner(IsolateHolder* isolate, ContextHandle* context_handle, shared_ptr<IsolatedModule> isolated_module)
-		: context(context_handle->context), isolated_module(std::move(isolated_module))
-	{
+	static MaybeLocal<Module> ResolveCallback(Local<Context> context, Local<String> specifier, Local<Module> referrer) {
+		MaybeLocal<Module> ret;
+		FunctorRunners::RunBarrier([&]() {
+			// Lookup ModuleInfo* instance from `referrer`
+			auto& module_map = IsolateEnvironment::GetCurrent()->module_handles;
+			auto range = module_map.equal_range(referrer->GetIdentityHash());
+			auto it = std::find_if(range.first, range.second, [&](decltype(*module_map.begin()) data) {
+				return data.second->handle.Deref() == referrer;
+			});
+			ModuleInfo* found = it == range.second ? nullptr : it->second;
+
+			std::string dependency = *Utf8ValueWrapper(Isolate::GetCurrent(), specifier);
+
+			if (found != nullptr) {
+				// nb: lock is already acquired in `Instantiate`
+				auto& resolutions = found->resolutions;
+				auto it = resolutions.find(*Utf8ValueWrapper(Isolate::GetCurrent(), specifier));
+				if (it != resolutions.end()) {
+					ret = it->second->handle.Deref();
+				}
+			}
+			throw js_generic_error(std::string("Failed to resolve dependency: \"") + dependency + "\".");
+		});
+		return ret;
+	}
+
+	InstantiateRunner(
+		ContextHandle* context_handle,
+		shared_ptr<ModuleInfo> info
+	) :
+		context(context_handle->context),
+		info(std::move(info)) {
 		// Sanity check
 		context_handle->CheckDisposed();
-		if (isolate != context_handle->context->GetIsolateHolder()) {
+		if (this->info->handle.GetIsolateHolder() != context_handle->context->GetIsolateHolder()) {
 			throw js_generic_error("Invalid context");
 		}
 	}
 
 	void Phase2() final {
-		isolated_module->Instantiate(context);
+#if V8_AT_LEAST(6, 1, 328)
+		Local<Module> mod = info->handle.Deref();
+		if (mod->GetStatus() != Module::Status::kUninstantiated) {
+			throw js_generic_error("Module is already instantiated");
+		}
+		Local<Context> context_local = context->Deref();
+		info->context_handle = std::move(context);
+		std::lock_guard<std::mutex> lock(info->mutex);
+		Unmaybe(mod->InstantiateModule(context_local, ResolveCallback));
+#endif
 	}
 
 	Local<Value> Phase3() final {
@@ -237,36 +149,46 @@ struct InstantiateRunner : public ThreePhaseTask {
 
 template <int async>
 Local<Value> ModuleHandle::Instantiate(ContextHandle* context_handle) {
-	if (!isolated_module) {
+	if (!info) {
 		throw js_generic_error("Module has been released");
 	}
-	return ThreePhaseTask::Run<async, InstantiateRunner>(*isolate, isolate.get(), context_handle, isolated_module);
+	return ThreePhaseTask::Run<async, InstantiateRunner>(*info->handle.GetIsolateHolder(), context_handle, info);
 }
 
 
 struct EvaluateRunner : public ThreePhaseTask {
-	shared_ptr<IsolatedModule> isolated_module;
+	shared_ptr<ModuleInfo> info;
 	std::unique_ptr<Transferable> result;
 	uint32_t timeout;
 
-	EvaluateRunner(shared_ptr<IsolatedModule> isolated_module, uint32_t t)
-		: isolated_module(std::move(isolated_module)), timeout(t)
-	{
-	}
+	EvaluateRunner(shared_ptr<ModuleInfo> info, uint32_t ms) : info(std::move(info)), timeout(ms) {}
 
 	void Phase2() final {
-		result = isolated_module->Evaluate(timeout);
+#if V8_AT_LEAST(6, 1, 328)
+		Local<Module> mod = info->handle.Deref();
+		if (mod->GetStatus() != Module::Status::kInstantiated) {
+			throw js_generic_error("Module is uninitialized or already evaluated");
+		}
+		Local<Context> context_local = Deref(*info->context_handle);
+		Context::Scope context_scope(context_local);
+		result = ExternalCopy::CopyIfPrimitive(RunWithTimeout(timeout, [&]() { return mod->Evaluate(context_local); }));
+		std::lock_guard<std::mutex> lock(info->mutex);
+		info->global_namespace = std::make_shared<RemoteHandle<Value>>(mod->GetModuleNamespace());
+#endif
 	}
 
 	Local<Value> Phase3() final {
-		return result->TransferIn();
+		if (result) {
+			return result->TransferIn();
+		} else {
+			return Undefined(Isolate::GetCurrent()).As<Value>();
+		}
 	}
-
 };
 
 template <int async>
 Local<Value> ModuleHandle::Evaluate(MaybeLocal<Object> maybe_options) {
-	if (!isolated_module) {
+	if (!info) {
 		throw js_generic_error("Module has been released");
 	}
 	Isolate* isolate = Isolate::GetCurrent();
@@ -281,12 +203,19 @@ Local<Value> ModuleHandle::Evaluate(MaybeLocal<Object> maybe_options) {
 			timeout_ms = timeout_handle.As<Uint32>()->Value();
 		}
 	}
-	return ThreePhaseTask::Run<async, EvaluateRunner>(*this->isolate, isolated_module, timeout_ms);
+	return ThreePhaseTask::Run<async, EvaluateRunner>(*info->handle.GetIsolateHolder(), info, timeout_ms);
 }
 
-
 Local<Value> ModuleHandle::GetNamespace() {
-	return isolated_module->GetNamespace();
+#if V8_AT_LEAST(6, 1, 328)
+	std::lock_guard<std::mutex> lock(info->mutex);
+	if (!info->global_namespace) {
+		throw js_generic_error("Module has not been instantiated.");
+	}
+	return ClassHandle::NewInstance<ReferenceHandle>(info->handle.GetSharedIsolateHolder(), info->global_namespace, info->context_handle, ReferenceHandle::TypeOf::Object);
+#else
+	throw js_generic_error("Module has not been instantiated.");
+#endif
 }
 
 } // namespace ivm

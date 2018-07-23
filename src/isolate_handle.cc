@@ -409,17 +409,11 @@ Local<Value> IsolateHandle::CompileScript(Local<String> code_handle, MaybeLocal<
 * Compiles a module in this isolate and returns a ModuleHandle
 */
 struct CompileModuleRunner : public ThreePhaseTask {
-
-	shared_ptr<IsolateHolder> isolate_holder;
 	unique_ptr<ExternalCopyString> code_string;
 	unique_ptr<ScriptOriginHolder> script_origin_holder;
-	shared_ptr<IsolatedModule> isolated_module;
+	shared_ptr<ModuleInfo> module_info;
 
-	CompileModuleRunner(
-		shared_ptr<IsolateHolder> isolate_holder,
-		const Local<String>& code_handle,
-		const MaybeLocal<Object>& maybe_options) : isolate_holder(std::move(isolate_holder))
-	{
+	CompileModuleRunner(const Local<String>& code_handle, const MaybeLocal<Object>& maybe_options) {
 		// Read options
 		script_origin_holder = std::make_unique<ScriptOriginHolder>(maybe_options, true);
 		code_string = std::make_unique<ExternalCopyString>(code_handle);
@@ -433,31 +427,20 @@ struct CompileModuleRunner : public ThreePhaseTask {
 		ScriptOrigin script_origin = script_origin_holder->ToScriptOrigin();
 		ScriptCompiler::Source source(code_inner, script_origin);
 
-		Local<Module> compiled_module = Unmaybe(ScriptCompiler::CompileModule(*isolate, &source));
-		std::shared_ptr<RemoteHandle<Module>> remote_handle = std::make_shared<RemoteHandle<Module>>(compiled_module);
-		// grab all dependency specifiers
-		size_t dependencySpecifiersLength = compiled_module->GetModuleRequestsLength();
-		std::vector<std::string> dependencySpecifiers(dependencySpecifiersLength);
-		for (size_t index = 0; index < dependencySpecifiersLength; ++index) {
-			std::string dependencySpecifier = *Utf8ValueWrapper(*isolate, compiled_module->GetModuleRequest(index));
-			dependencySpecifiers[index] = dependencySpecifier;
-		}
-		isolated_module = std::make_shared<IsolatedModule>(isolate_holder, remote_handle, dependencySpecifiers);
+		module_info = std::make_shared<ModuleInfo>(Unmaybe(ScriptCompiler::CompileModule(*isolate, &source)));
 #else
 		throw js_generic_error("No module support. At least nodejs version 8.7.0 / v8 version 6.1.328 is required");
 #endif
 	}
 
 	Local<Value> Phase3() final {
-		// Wrap Module in JS Module{} class
-		Local<Object> value = ClassHandle::NewInstance<ModuleHandle>(std::move(isolate_holder), std::move(isolated_module));
-		return value;
+		return ClassHandle::NewInstance<ModuleHandle>(std::move(module_info));
 	}
 };
 
 template <int async>
 Local<Value> IsolateHandle::CompileModule(Local<String> code_handle, MaybeLocal<Object> maybe_options) {
-	return ThreePhaseTask::Run<async, CompileModuleRunner>(*this->isolate, this->isolate, code_handle, maybe_options);
+	return ThreePhaseTask::Run<async, CompileModuleRunner>(*this->isolate, code_handle, maybe_options);
 }
 
 /**

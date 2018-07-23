@@ -18,7 +18,9 @@ const { strictEqual, throws } = require('assert');
 		strictEqual(Array.isArray(dependencySpecifiers), true);
 		strictEqual(dependencySpecifiers.length, 0);
 		strictEqual(typeof module.instantiateSync, 'function');
+		throws(() => module.evaluateSync());
 		module.instantiateSync(context);
+		throws(() => module.instantiateSync());
 		strictEqual(typeof module.evaluateSync, 'function');
 		const evaluateResult = module.evaluateSync();
 		strictEqual('This is awesome!', evaluateResult);
@@ -112,9 +114,9 @@ const { strictEqual, throws } = require('assert');
 		const reference = module.namespace;
 		const value = reference.getSync('value');
 		const countUp = reference.getSync('countUp');
-		strictEqual(value.copySync(), 0);
+		strictEqual(reference.getSync('value').copySync(), 0);
 		countUp.applySync(null, [ ]);
-		strictEqual(value.copySync(), 1);
+		strictEqual(reference.getSync('value').copySync(), 1);
 	}
 	if (/^v8\.[0-6]/.test(process.version)) {
 		console.log('pass');
@@ -127,9 +129,7 @@ const { strictEqual, throws } = require('assert');
 		setupModuleTimeoutAndRunChecks();
 		setupModuleEvaluateErrorAndRunChecks();
 		setupModuleMathAndRunChecks();
-
-		// @TODO: Fix the bug and enable it
-		// setupModuleBugRunChecks();
+		setupModuleBugRunChecks();
 		console.log('pass');
 	} catch(err) {
 		console.error(err);

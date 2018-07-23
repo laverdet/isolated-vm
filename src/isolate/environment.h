@@ -330,6 +330,7 @@ class IsolateEnvironment {
 		std::unordered_map<v8::Persistent<v8::Object>*, std::pair<void(*)(void*), void*>> weak_persistents;
 
 	public:
+		std::unordered_multimap<int, struct ModuleInfo*> module_handles;
 		std::atomic<int> terminate_depth { 0 };
 		std::atomic<bool> terminated { false };
 
