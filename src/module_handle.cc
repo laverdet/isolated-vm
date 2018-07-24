@@ -63,11 +63,12 @@ std::unique_ptr<Transferable> ModuleHandle::TransferOut() {
 }
 
 Local<Value> ModuleHandle::GetDependencySpecifiers() {
+	Isolate* isolate = Isolate::GetCurrent();
 	std::lock_guard<std::mutex> lock(info->mutex);
 	size_t length = info->dependency_specifiers.size();
-	Local<Array> deps = Array::New(Isolate::GetCurrent(), length);
+	Local<Array> deps = Array::New(isolate, length);
 	for (size_t ii = 0; ii < length; ++ii) {
-		deps->Set(ii, v8_string(info->dependency_specifiers[ii].c_str()));
+		Unmaybe(deps->Set(isolate->GetCurrentContext(), ii, v8_string(info->dependency_specifiers[ii].c_str())));
 	}
 	return deps;
 }
