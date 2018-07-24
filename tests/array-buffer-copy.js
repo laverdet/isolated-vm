@@ -1,5 +1,6 @@
 'use strict';
 let ivm = require('isolated-vm');
+let assert = require('assert');
 let arr = [ 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 ];
 let str = '1,2,3,4,5,6,7,8';
 
@@ -56,6 +57,26 @@ let str = '1,2,3,4,5,6,7,8';
 		view3.join();
 		console.log('fail6');
 	} catch (err) {}
+
+	// Test transfer list
+	assert.doesNotThrow(() => {
+		let view = new Uint8Array(arr);
+		let copy = new ivm.ExternalCopy(view, { transferList: [ view.buffer ] });
+		assert.throws(() => view.join(), /detached ArrayBuffer/); // has been released
+		assert.strictEqual(copy.copy().join(), str);
+	});
+
+	assert.doesNotThrow(() => {
+		let view = new Uint8Array(arr);
+		let ext = new ivm.ExternalCopy({ buffer: view.buffer, view }, { transferList: [ view.buffer ] });
+		let copy1 = ext.copy();
+		assert.strictEqual(copy1.buffer, copy1.view.buffer);
+		assert.strictEqual(copy1.view.join(), str);
+		let copy2 = ext.copy({ transferIn: true });
+		assert.strictEqual(copy2.buffer, copy2.view.buffer);
+		assert.strictEqual(copy2.view.join(), str);
+		assert.throws(() => ext.copy(), /Array buffer is invalid/);
+	});
 
 	// Transfer in one last time
 	let buffer4 = copy2.copy();

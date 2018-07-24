@@ -11,6 +11,38 @@
 
 namespace ivm {
 
+using handle_vector_t = std::vector<v8::Local<v8::Value>>;
+using transferable_vector_t = std::vector<std::unique_ptr<Transferable>>;
+using array_buffer_vector_t = std::vector<std::unique_ptr<class ExternalCopyArrayBuffer>>;
+using shared_buffer_vector_t = std::vector<std::unique_ptr<class ExternalCopySharedArrayBuffer>>;
+
+class ExternalCopySerializerDelegate : public v8::ValueSerializer::Delegate {
+	private:
+		transferable_vector_t& references;
+		shared_buffer_vector_t& shared_buffers;
+
+	public:
+		v8::ValueSerializer* serializer = nullptr;
+		ExternalCopySerializerDelegate(
+			transferable_vector_t& references,
+			shared_buffer_vector_t& shared_buffers
+		);
+		void ThrowDataCloneError(v8::Local<v8::String> message) final;
+		v8::Maybe<bool> WriteHostObject(v8::Isolate* isolate, v8::Local<v8::Object> object) final;
+		v8::Maybe<uint32_t> GetSharedArrayBufferId(v8::Isolate* isolate, v8::Local<v8::SharedArrayBuffer> shared_array_buffer) final;
+};
+
+class ExternalCopyDeserializerDelegate : public v8::ValueDeserializer::Delegate {
+	private:
+		transferable_vector_t& references;
+
+	public:
+		v8::ValueDeserializer* deserializer = nullptr;
+		ExternalCopyDeserializerDelegate(transferable_vector_t& references);
+		v8::MaybeLocal<v8::Object> ReadHostObject(v8::Isolate* isolate) final;
+};
+
+
 class ExternalCopy : public Transferable {
 	private:
 		size_t size = 0;
@@ -27,7 +59,11 @@ class ExternalCopy : public Transferable {
 		/**
 		 * `Copy` may throw a v8 exception if JSON.stringify(value) throws
 		 */
-		static std::unique_ptr<ExternalCopy> Copy(const v8::Local<v8::Value>& value, bool transfer_out = false);
+		static std::unique_ptr<ExternalCopy> Copy(
+			const v8::Local<v8::Value>& value,
+			bool transfer_out = false,
+			const handle_vector_t& transfer_list = handle_vector_t()
+		);
 
 		/**
 		 * If you give this a primitive v8::Value (except Symbol) it will return a ExternalCopy for you.
@@ -123,9 +159,17 @@ class ExternalCopySerialized : public ExternalCopy {
 	private:
 		std::unique_ptr<uint8_t, decltype(std::free)*> buffer;
 		size_t size;
+		transferable_vector_t references;
+		array_buffer_vector_t array_buffers;
+		shared_buffer_vector_t shared_buffers;
 
 	public:
-		explicit ExternalCopySerialized(std::pair<uint8_t*, size_t> val);
+		explicit ExternalCopySerialized(
+			std::pair<uint8_t*, size_t> val,
+			transferable_vector_t references,
+			array_buffer_vector_t array_buffers,
+			shared_buffer_vector_t shared_buffers
+		);
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
 		uint32_t WorstCaseHeapSize() const final;
 };

@@ -370,11 +370,14 @@ will never be at risk of a deadlock.
 
 ### Class: `ExternalCopy` *[transferable]*
 Instances of this class represent some value that is stored outside of any v8 isolate. This value
-can then be quickly copied into any isolate.
+can then be quickly copied into any isolate without any extra thread synchronization.
 
 ##### `new ivm.ExternalCopy(value, options)`
 * `value` - The value to copy.
 * `options` *[object]*
+	* `transferList` *[boolean]* - An array of `ArrayBuffer` instances to transfer ownership.
+	This behaves in a similar way to
+	[`postMessage`](https://developer.mozilla.org/en-US/docs/Web/API/Worker/postMessage).
 	* `transferOut` *[boolean]* - If true this will release ownership of the given resource from this
 	isolate. This operation completes in constant time since it doesn't have to copy an arbitrarily
 	large object. This only applies to ArrayBuffer and TypedArray instances.
@@ -387,6 +390,14 @@ ExternalCopy for the first time isolated-vm will take over management of the und
 block, so a "copied" SharedArrayBuffer can outlive the isolate that created the memory originally.
 
 All other objects will be copied in seralized form using the [structured clone algorithm](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm).
+`ExternalCopy` can copy objects with deeply nested *transferable* objects. For example:
+
+```js
+let isolate = new ivm.Isolate;
+let context = isolate.createContextSync();
+let global = context.global;
+let data = new ExternalCopy({ isolate, context, global });
+```
 
 ##### `ExternalCopy.totalExternalSize` *[number]*
 

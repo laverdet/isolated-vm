@@ -39,7 +39,7 @@ void NativeModuleHandle::NativeModule::InitForContext(Isolate* isolate, Local<Co
 NativeModuleHandle::NativeModuleTransferable::NativeModuleTransferable(shared_ptr<NativeModule> module) : module(std::move(module)) {}
 
 Local<Value> NativeModuleHandle::NativeModuleTransferable::TransferIn() {
-	return ClassHandle::NewInstance<NativeModuleHandle>(std::move(module));
+	return ClassHandle::NewInstance<NativeModuleHandle>(module);
 }
 
 /**

@@ -3,6 +3,7 @@
 #include "isolate_handle.h"
 #include "isolate/allocator.h"
 #include "isolate/environment.h"
+#include "isolate/functor_runners.h"
 #include "isolate/legacy.h"
 #include "isolate/util.h"
 
@@ -25,7 +26,7 @@ size_t ExternalCopy::TotalExternalSize() {
 	return total_allocated_size;
 }
 
-unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool transfer_out) {
+unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool transfer_out, const handle_vector_t& transfer_list) {
 	unique_ptr<ExternalCopy> copy = CopyIfPrimitive(value);
 	if (copy) {
 		return copy;
@@ -33,6 +34,9 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool tran
 		return make_unique<ExternalCopyDate>(value);
 	} else if (value->IsArrayBuffer()) {
 		Local<ArrayBuffer> array_buffer = Local<ArrayBuffer>::Cast(value);
+		if (!transfer_out) {
+			transfer_out = std::find(transfer_list.begin(), transfer_list.end(), array_buffer) != transfer_list.end();
+		}
 		if (transfer_out) {
 			return ExternalCopyArrayBuffer::Transfer(array_buffer);
 		} else {
@@ -82,6 +86,9 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool tran
 		Local<Object> tmp = view->Buffer();
 		if (tmp->IsArrayBuffer()) {
 			Local<ArrayBuffer> array_buffer = tmp.As<ArrayBuffer>();
+			if (!transfer_out) {
+				transfer_out = std::find(transfer_list.begin(), transfer_list.end(), array_buffer) != transfer_list.end();
+			}
 			if (transfer_out) {
 				if (view->ByteOffset() != 0 || view->ByteLength() != array_buffer->ByteLength()) {
 					throw js_generic_error("Cannot transfer sliced TypedArray (this.byteOffset != 0 || this.byteLength != this.buffer.byteLength)");
@@ -99,11 +106,37 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool tran
 			return make_unique<ExternalCopyArrayBufferView>(make_unique<ExternalCopySharedArrayBuffer>(array_buffer), type);
 		}
 	} else if (value->IsObject()) {
+		// Initialize serializer and transferred buffer vectors
 		Isolate* isolate = Isolate::GetCurrent();
-		ValueSerializer serializer(isolate);
+		transferable_vector_t references;
+		array_buffer_vector_t transferred_buffers;
+		transferred_buffers.reserve(transfer_list.size());
+		shared_buffer_vector_t shared_buffers;
+		ExternalCopySerializerDelegate delegate(references, shared_buffers);
+		ValueSerializer serializer(isolate, &delegate);
+		// Mark array buffers as transferred (transfer must happen *after* serialization)
+		for (size_t ii = 0; ii < transfer_list.size(); ++ii) {
+			Local<Value> handle = transfer_list[ii];
+			if (handle->IsArrayBuffer()) {
+				serializer.TransferArrayBuffer(ii, handle.As<ArrayBuffer>());
+			} else {
+				throw js_type_error("Non-ArrayBuffer passed in `transferList`");
+			}
+		}
+		// Serialize object and perform array buffer transfer
+		delegate.serializer = &serializer;
 		serializer.WriteHeader();
 		Unmaybe(serializer.WriteValue(isolate->GetCurrentContext(), value));
-		return make_unique<ExternalCopySerialized>(serializer.Release());
+		for (auto& handle : transfer_list) {
+			transferred_buffers.emplace_back(ExternalCopyArrayBuffer::Transfer(handle.As<ArrayBuffer>()));
+		}
+		// Create ExternalCopy instance
+		return make_unique<ExternalCopySerialized>(
+			serializer.Release(),
+			std::move(references),
+			std::move(transferred_buffers),
+			std::move(shared_buffers)
+		);
 	} else {
 		// ???
 		assert(false);
@@ -304,17 +337,36 @@ uint32_t ExternalCopyString::WorstCaseHeapSize() const {
 /**
  * ExternalCopySerialized implementation
  */
-ExternalCopySerialized::ExternalCopySerialized(std::pair<uint8_t*, size_t> val) :
+ExternalCopySerialized::ExternalCopySerialized(
+	std::pair<uint8_t*, size_t> val,
+	transferable_vector_t references,
+	array_buffer_vector_t array_buffers,
+	shared_buffer_vector_t shared_buffers
+) :
 	ExternalCopy(val.second + sizeof(ExternalCopySerialized)),
 	buffer(val.first, std::free),
-	size(val.second) {}
+	size(val.second),
+	references(std::move(references)),
+	array_buffers(std::move(array_buffers)),
+	shared_buffers(std::move(shared_buffers)) {}
 
-Local<Value> ExternalCopySerialized::CopyInto(bool /*transfer_in*/) {
+Local<Value> ExternalCopySerialized::CopyInto(bool transfer_in) {
+	// Initialize deserializer
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
 	auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
 	int failures = allocator == nullptr ? 0 : allocator->GetFailureCount();
-	ValueDeserializer deserializer(isolate, buffer.get(), size);
+	ExternalCopyDeserializerDelegate delegate(references);
+	ValueDeserializer deserializer(isolate, buffer.get(), size, &delegate);
+	delegate.deserializer = &deserializer;
+	// Transfer array buffers into isolate
+	for (size_t ii = 0; ii < array_buffers.size(); ++ii) {
+		deserializer.TransferArrayBuffer(ii, array_buffers[ii]->CopyIntoCheckHeap(transfer_in).As<ArrayBuffer>());
+	}
+	for (size_t ii = 0; ii < shared_buffers.size(); ++ii) {
+		deserializer.TransferSharedArrayBuffer(ii, shared_buffers[ii]->CopyIntoCheckHeap(false).As<SharedArrayBuffer>());
+	}
+	// Deserialize object
 	Unmaybe(deserializer.ReadHeader(context));
 	Local<Value> value;
 	if (deserializer.ReadValue(context).ToLocal(&value)) {
