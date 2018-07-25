@@ -1,9 +1,9 @@
 // node-args: --expose-gc
-/**
- * Checks if it is possible to create es6 modules.
- **/
+
+//
+// Checks if it is possible to create es6 modules.
 const ivm = require('isolated-vm');
-const { strictEqual, throws } = require('assert');
+const { doesNotReject, rejects, strictEqual, throws } = require('assert');
 
 (function () {
 	const isolate = new ivm.Isolate();
@@ -20,7 +20,7 @@ const { strictEqual, throws } = require('assert');
 		strictEqual(dependencySpecifiers.length, 0);
 		strictEqual(typeof module.instantiateSync, 'function');
 		throws(() => module.evaluateSync());
-		module.instantiateSync(context);
+		module.instantiateSync(context, function(){});
 		throws(() => module.instantiateSync());
 		strictEqual(typeof module.evaluateSync, 'function');
 		const evaluateResult = module.evaluateSync();
@@ -37,7 +37,7 @@ const { strictEqual, throws } = require('assert');
 		const data = (moduleMap.namespace = {});
 		const code = `export default function add(a, b) { return a + b; };`;
 		const module = data.module = isolate.compileModuleSync(code);
-		throws(() => module.namespace);
+		throws(() => module.namespace, /not been instantiated/);
 	}
 
 	function setupModuleInstantiateErrorAndRunChecks() {
@@ -47,23 +47,23 @@ const { strictEqual, throws } = require('assert');
 			export default "hello world";
 		`;
 		const module = data.module = isolate.compileModuleSync(code);
-		throws(() => module.instantiateSync(context));
+		throws(() => module.instantiateSync(context, function(){}), /dependency was not/);
 	}
 
 	function setupModuleTimeoutAndRunChecks() {
 		const data = (moduleMap.timeout = {});
 		const code = `let i = 0; while(++i); i;`; // should generate a timeout
 		const module = data.module = isolate.compileModuleSync(code);
-		module.instantiateSync(context);
-		throws(() => module.evaluateSync({ timeout: 50 }));
+		module.instantiateSync(context, function(){});
+		throws(() => module.evaluateSync({ timeout: 50 }), /execution timed out/);
 	}
 
 	function setupModuleEvaluateErrorAndRunChecks() {
 		const data = (moduleMap.evaluate = {});
 		const code = `throw new Error('Some error');`;
 		const module = data.module = isolate.compileModuleSync(code);
-		module.instantiateSync(context);
-		throws(() => module.evaluateSync(context));
+		module.instantiateSync(context, function(){});
+		throws(() => module.evaluateSync(context), /Some error/);
 	}
 
 	function setupModuleMathAndRunChecks() {
@@ -81,9 +81,11 @@ const { strictEqual, throws } = require('assert');
 		const dependencySpecifiers = module.dependencySpecifiers;
 		strictEqual(JSON.stringify(dependencySpecifiers), JSON.stringify(['./add']));
 
-		strictEqual(typeof module.setDependency, 'function');
-		module.setDependency('./add', moduleMap.add.module);
-		module.instantiateSync(context);
+		module.instantiateSync(context, function(spec) {
+			if (spec == './add') {
+				return moduleMap.add.module;
+			}
+		});
 		module.evaluateSync();
 		// lets try to use add through our "math" library
 		const reference = module.namespace;
@@ -109,7 +111,7 @@ const { strictEqual, throws } = require('assert');
 			};
 		`;
 		const module = data.module = isolate.compileModuleSync(code);
-		module.instantiateSync(context);
+		module.instantiateSync(context, function(){});
 		module.evaluateSync();
 		// lets try to use add through our "math" library
 		const reference = module.namespace;
@@ -121,9 +123,44 @@ const { strictEqual, throws } = require('assert');
 	}
 
 	function moduleCollectionChecks() {
-		const isolate = new ivm.Isolate();
 		isolate.compileModuleSync('');
 		global.gc();
+	}
+
+	function linkChecks() {
+		doesNotReject(async function() {
+			let context = isolate.createContextSync();
+			let modules = {
+				'a': isolate.compileModuleSync('import * as foo from "b";'),
+				'b': isolate.compileModuleSync('import * as foo from "a"; import * as bar from "c";'),
+				'c': isolate.compileModuleSync('1'),
+			};
+
+			// Test sync module resets
+			throws(function() {
+				modules.a.instantiateSync(context, function(spec) {
+					if (spec == 'c') throw new Error('hello');
+					return modules[spec];
+				});
+			}, /hello/);
+
+			// Test async module resets
+			await rejects(async function() {
+				await modules.a.instantiate(context, function(spec) {
+					if (spec == 'c') throw new Error('hello');
+					return Promise.resolve(modules[spec]);
+				});
+			}, /hello/);
+
+			// Instantiate module successfully
+			await modules.a.instantiate(context, function(spec) {
+				return Promise.resolve(modules[spec]);
+			});
+
+			// Make sure links are remembered
+			modules.a.instantiateSync(context, () => { throw new Error });
+			await modules.a.instantiate(context, () => { throw new Error });
+		});
 	}
 
 	if (/^v8\.[0-6]/.test(process.version)) {
@@ -139,6 +176,7 @@ const { strictEqual, throws } = require('assert');
 		setupModuleMathAndRunChecks();
 		setupModuleBugRunChecks();
 		moduleCollectionChecks();
+		linkChecks();
 		console.log('pass');
 	} catch(err) {
 		console.error(err);

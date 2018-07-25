@@ -137,11 +137,12 @@ class ClassHandle {
 
 		template <typename V, int O, typename FnT, typename R, typename ConvertedArgsT, typename T, typename... ConversionArgsRest>
 		static R ParameterizeHelper(FnT fn, ConvertedArgsT convertedArgs, V info) {
+			constexpr auto pos = (int)std::tuple_size<ConvertedArgsT>::value;
 			auto t = std::tuple_cat(convertedArgs, std::make_tuple(
 				ConvertParamInvoke<
 					ConvertParam<T>,
-					(int)(std::tuple_size<ConvertedArgsT>::value) + O,
-					(int)(sizeof...(ConversionArgsRest) + std::tuple_size<ConvertedArgsT>::value) + O + 1
+					pos == 0 ? O : pos - (O < 0 ? 1 : 0),
+					(int)(sizeof...(ConversionArgsRest) + pos) + (O < 0 ? 0 : O + 1)
 				>::Invoke(info)
 			));
 			return ParameterizeHelper<V, O, FnT, R, decltype(t), ConversionArgsRest...>(fn, t, info);
@@ -445,6 +446,14 @@ class ClassHandle {
 		 */
 		v8::Local<v8::Object> This() {
 			return Deref(handle);
+		}
+
+		/**
+		 * Creates a new callback function with given `data`
+		 */
+		template <typename T, T F>
+		static v8::Local<v8::Function> ParameterizeCallback(v8::Local<v8::Value> data) {
+			return Unmaybe(v8::Function::New(v8::Isolate::GetCurrent()->GetCurrentContext(), ParameterizeEntry<-2, T, F>, data, ArgCount(F) - 1));
 		}
 };
 

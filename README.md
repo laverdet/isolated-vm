@@ -250,7 +250,6 @@ is the last expression.
 ### Class: `Module` *[transferable]*
 A JavaScript module. Note that a [`Module`](#class-module-transferable) can only run in the isolate which created it.
 
-
 ##### `module.dependencySpecifiers`
 A read-only array of all dependency specifiers the module has.
 
@@ -259,33 +258,30 @@ A read-only array of all dependency specifiers the module has.
     const dependencySpecifiers = module.dependencySpecifiers;
     // dependencySpecifiers => ["./something"];
 
-##### `module.setDependency(specifier, module)`
-* `specifier` - The dependency specifier.
-* `module` - Another *[`Module`](#class-module-transferable)* instance.
-* **return** *[undefined]*
+##### `module.namespace`
+Returns a [`Reference`](#class-reference-transferable) containing all exported values.
 
-Set the dependency the referrer-module should resolve use when [specifier] is requested. Module
-must belong to the same context if it has already been instantiated.
-
-##### `module.instantiate(context)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
-##### `module.instantiateSync(context)`
+##### `module.instantiate(context, resolveCallback)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `module.instantiateSync(context, resolveCallback)`
 * `context` *[`Context`](#class-context-transferable)* - The context the module should use.
-* **return** *[undefined]*
+* `resolveCallback` - This callback is responsible for resolving all direct and indirect
+dependencies of this module. It accepts two parameters: `specifier` and `referrer`. It must return a
+`Module` instance which will be used to satisfy the dependency. The asynchronous version of
+`instantiate` may return a promise from `resolveCallback`.
 
-Instantiate the module together with all its dependencies.
+Instantiate the module together with all its dependencies. Calling this more than once on a single
+module will have no effect.
 
 ##### `module.evaluate(options)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `module.evaluateSync(options)`
 * `options` *[object]* - Optional.
 	* `timeout` *[number]* - Maximum amount of time this module is allowed to run before execution is
 	canceled. Default is no timeout.
-* **return** last expression
+* **return** *[transferable]*
 
-Evaluate the module and return the last expression (same as script.run).
-
-
-##### `module.namespace`
-Returns a [`Reference`](#class-reference-transferable) containing all exported values.
+Evaluate the module and return the last expression (same as script.run). If `evaluate` is called
+more than once on the same module the return value from the first invocation will be returned (or
+thrown).
 
 
 ### Class: `Reference` *[transferable]*

@@ -57,6 +57,8 @@ struct ConvertParamInvoke {
 		try {
 			if (ii == -1) {
 				return T::Convert(info.This());
+			} else if (ii == -2) {
+				return T::Convert(info.Data());
 			} else if (ii <= info.Length()) {
 				return T::Convert(info[ii]);
 			} else {

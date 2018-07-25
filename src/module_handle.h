@@ -13,7 +13,10 @@ struct ModuleInfo {
 	// struct to hold this data, which is then referenced by any number of handles.
 	friend struct InstantiateRunner;
 	friend class ModuleHandle;
+	enum class LinkStatus { None, Linking, Linked };
 	std::mutex mutex;
+	class ModuleLinker* linker = nullptr;
+	LinkStatus link_status = LinkStatus::None;
 	std::vector<std::string> dependency_specifiers;
 	std::unordered_map<std::string, std::shared_ptr<ModuleInfo>> resolutions;
 	RemoteHandle<v8::Module> handle;
@@ -42,11 +45,10 @@ class ModuleHandle : public TransferableHandle {
 		std::unique_ptr<Transferable> TransferOut() final;
 
 		v8::Local<v8::Value> GetDependencySpecifiers();
+		std::shared_ptr<ModuleInfo> GetInfo() const;
 
-		v8::Local<v8::Value> SetDependency(v8::Local<v8::String> specifier_handle, ModuleHandle* module_handle);
-
-		template <int async>
-		v8::Local<v8::Value> Instantiate(class ContextHandle* context_handle);
+		v8::Local<v8::Value> Instantiate(class ContextHandle* context_handle, v8::Local<v8::Function> callback);
+		v8::Local<v8::Value> InstantiateSync(class ContextHandle* context_handle, v8::Local<v8::Function> callback);
 
 		template <int async>
 		v8::Local<v8::Value> Evaluate(v8::MaybeLocal<v8::Object> maybe_options);
