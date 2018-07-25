@@ -19,7 +19,7 @@ void ExternalCopySerializerDelegate::ThrowDataCloneError(Local<String> message) 
 	Isolate::GetCurrent()->ThrowException(Exception::TypeError(message));
 }
 
-Maybe<bool> ExternalCopySerializerDelegate::WriteHostObject(Isolate* isolate, Local<Object> object) {
+Maybe<bool> ExternalCopySerializerDelegate::WriteHostObject(Isolate* /* isolate */, Local<Object> object) {
 	Maybe<bool> result = Nothing<bool>();
 	FunctorRunners::RunBarrier([&]() {
 		references.emplace_back(Transferable::TransferOut(object));
@@ -29,7 +29,7 @@ Maybe<bool> ExternalCopySerializerDelegate::WriteHostObject(Isolate* isolate, Lo
 	return result;
 }
 
-Maybe<uint32_t> ExternalCopySerializerDelegate::GetSharedArrayBufferId(Isolate* isolate, Local<SharedArrayBuffer> shared_array_buffer) {
+Maybe<uint32_t> ExternalCopySerializerDelegate::GetSharedArrayBufferId(Isolate* /* isolate */, Local<SharedArrayBuffer> shared_array_buffer) {
 	Maybe<uint32_t> result = Nothing<uint32_t>();
 	FunctorRunners::RunBarrier([&]() {
 		shared_buffers.emplace_back(std::make_unique<ExternalCopySharedArrayBuffer>(shared_array_buffer));
@@ -40,7 +40,7 @@ Maybe<uint32_t> ExternalCopySerializerDelegate::GetSharedArrayBufferId(Isolate* 
 
 ExternalCopyDeserializerDelegate::ExternalCopyDeserializerDelegate(transferable_vector_t& references) : references(references) {}
 
-MaybeLocal<Object> ExternalCopyDeserializerDelegate::ReadHostObject(Isolate* isolate) {
+MaybeLocal<Object> ExternalCopyDeserializerDelegate::ReadHostObject(Isolate* /* isolate */) {
 	MaybeLocal<Object> result;
 	FunctorRunners::RunBarrier([&]() {
 		uint32_t ii;

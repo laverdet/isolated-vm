@@ -38,7 +38,7 @@ class ExternalCopyDeserializerDelegate : public v8::ValueDeserializer::Delegate 
 
 	public:
 		v8::ValueDeserializer* deserializer = nullptr;
-		ExternalCopyDeserializerDelegate(transferable_vector_t& references);
+		explicit ExternalCopyDeserializerDelegate(transferable_vector_t& references);
 		v8::MaybeLocal<v8::Object> ReadHostObject(v8::Isolate* isolate) final;
 };
 
@@ -164,7 +164,7 @@ class ExternalCopySerialized : public ExternalCopy {
 		shared_buffer_vector_t shared_buffers;
 
 	public:
-		explicit ExternalCopySerialized(
+		ExternalCopySerialized(
 			std::pair<uint8_t*, size_t> val,
 			transferable_vector_t references,
 			array_buffer_vector_t array_buffers,

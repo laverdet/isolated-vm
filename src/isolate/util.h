@@ -96,7 +96,7 @@ class js_error_ctor : public js_error_ctor_base {
 			}
 			// If the MaybeLocal is empty then I think v8 will have an exception on deck. I don't know if
 			// there's any way to assert() this though.
-			return v8::Local<v8::Value>();
+			return {};
 		}
 };
 
