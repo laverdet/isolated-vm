@@ -1,3 +1,4 @@
+// node-args: --expose-gc
 /**
  * Checks if it is possible to create es6 modules.
  **/
@@ -118,6 +119,13 @@ const { strictEqual, throws } = require('assert');
 		countUp.applySync(null, [ ]);
 		strictEqual(reference.getSync('value').copySync(), 1);
 	}
+
+	function moduleCollectionChecks() {
+		const isolate = new ivm.Isolate();
+		isolate.compileModuleSync('');
+		global.gc();
+	}
+
 	if (/^v8\.[0-6]/.test(process.version)) {
 		console.log('pass');
 		return;
@@ -130,6 +138,7 @@ const { strictEqual, throws } = require('assert');
 		setupModuleEvaluateErrorAndRunChecks();
 		setupModuleMathAndRunChecks();
 		setupModuleBugRunChecks();
+		moduleCollectionChecks();
 		console.log('pass');
 	} catch(err) {
 		console.error(err);

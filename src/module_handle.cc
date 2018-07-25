@@ -28,13 +28,16 @@ ModuleInfo::ModuleInfo(Local<Module> handle) : handle(handle) {
 
 ModuleInfo::~ModuleInfo() {
 	// Remove from isolate's list of modules
-	auto& module_map = IsolateEnvironment::GetCurrent()->module_handles;
-	auto range = module_map.equal_range(handle.Deref()->GetIdentityHash());
-	auto it = std::find_if(range.first, range.second, [&](decltype(*module_map.begin()) data) {
-		return this == data.second;
-	});
-	assert(it != range.second);
-	module_map.erase(it);
+	auto environment = handle.GetIsolateHolder()->GetIsolate();
+	if (environment) {
+		auto& module_map = environment->module_handles;
+		auto range = module_map.equal_range(handle.Deref()->GetIdentityHash());
+		auto it = std::find_if(range.first, range.second, [&](decltype(*module_map.begin()) data) {
+			return this == data.second;
+		});
+		assert(it != range.second);
+		module_map.erase(it);
+	}
 }
 
 ModuleHandle::ModuleHandleTransferable::ModuleHandleTransferable(shared_ptr<ModuleInfo> info) : info(std::move(info)) {}
