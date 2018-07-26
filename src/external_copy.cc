@@ -7,6 +7,7 @@
 #include "isolate/legacy.h"
 #include "isolate/util.h"
 
+#include <algorithm>
 #include <cstring>
 
 using namespace v8;

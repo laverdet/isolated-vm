@@ -3,7 +3,13 @@
 //
 // Checks if it is possible to create es6 modules.
 const ivm = require('isolated-vm');
-const { doesNotReject, rejects, strictEqual, throws } = require('assert');
+const { strictEqual, throws } = require('assert');
+function doesNotReject(fn) {
+	return fn().catch(console.error);
+}
+function rejects(fn) {
+	return fn().then(() => { throw new Error('Promise did not reject') }).catch(() => 0);
+}
 
 (function () {
 	const isolate = new ivm.Isolate();
