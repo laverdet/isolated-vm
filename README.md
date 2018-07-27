@@ -31,8 +31,10 @@ REQUIREMENTS
 ------------
 
 This project works best on nodejs LTS version 8.11.2 (or later) *or* nodejs current version 10.x
-(any version). It will compile and generally run alright on earlier 8.x versions but under load you
-will run into crashes and hangs due to some bugs in v8.
+(any version). It will compile and generally run alright on nodejs version 8.6.0 and later, but
+under load you will run into crashes and hangs due to some bugs in v8. The snapshot feature is
+broken on nodejs version 10.2.0 and above. Please see
+[nodejs #21992](https://github.com/nodejs/node/pull/21992) for updates on that.
 
 Furthermore, to install this module you will need a compiler installed. If you run into errors while
 running `npm install isolated-vm` it is likely you don't have a compiler set up, or your compiler is
@@ -79,7 +81,7 @@ There are some rules about which functions may be called from certain contexts:
 1. Asynchronous functions may be called at any time
 2. Synchronous functions usually may not be called from an asynchronous function
 3. You may call a synchronous function from an asynchronous function as long as that function
-	 belongs to current isolate
+	belongs to current isolate
 4. You may call a synchronous function belonging to the default nodejs isolate at any time
 
 Additionally, some methods will provide an "ignored" version which runs asynchronously but returns
@@ -110,7 +112,8 @@ contains can represent quite a large chunk of memory though you may want to expl
 	* `inspector` *[boolean]* - Enable v8 inspector support in this isolate. See
 	`inspector-example.js` in this repository for an example of how to use this.
 	* `snapshot` *[ExternalCopy[ArrayBuffer]]* - This is an optional snapshot created from
-	`createSnapshot` which will be used to initialize the heap of this isolate.
+	`createSnapshot` which will be used to initialize the heap of this isolate. **Please note
+	that versions of nodejs 10.2.0 and higher may crash while using the snapshot feature.**
 
 ##### `ivm.Isolate.createSnapshot(scripts, warmup_script)`
 * `scripts` *[array]*
@@ -124,6 +127,9 @@ compilation
 Isolate snapshots are a very useful feature if you intend to create several isolates running common
 libraries between them. A snapshot serializes the entire v8 heap including parsed code, global
 variables, and compiled code. Check out the examples section for tips on using this.
+
+**Please note that versions of nodejs 10.2.0 and higher may crash while using the snapshot
+feature.**
 
 ##### `isolate.compileScript(code)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `isolate.compileScriptSync(code)`
