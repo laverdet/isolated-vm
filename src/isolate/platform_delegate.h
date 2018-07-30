@@ -88,10 +88,12 @@ class PlatformDelegate : public v8::Platform {
 		// will need to be refactored.
 		std::shared_ptr<v8::TaskRunner> GetBackgroundTaskRunner(v8::Isolate* /* isolate */) final {
 			std::terminate();
+			return {nullptr};
 		}
 
 		std::shared_ptr<v8::TaskRunner> GetForegroundTaskRunner(v8::Isolate* /* isolate */) final {
 			std::terminate();
+			return {nullptr};
 		}
 #endif
 
