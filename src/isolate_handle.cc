@@ -374,7 +374,7 @@ struct CompileScriptRunner : public ThreePhaseTask {
 			const ScriptCompiler::CachedData* cached_data // continued next line
 #if V8_AT_LEAST(6, 8, 11)
 			// `code` parameter removed in v8 commit a440efb27
-			= ScriptCompiler::CreateCodeCache(script->Deref())
+			= ScriptCompiler::CreateCodeCache(script->Deref());
 #elif V8_AT_LEAST(6, 5, 1)
 			// Added in v8 commit dae20b064
 			= ScriptCompiler::CreateCodeCache(script->Deref(), code_inner);
