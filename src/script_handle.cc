@@ -10,18 +10,16 @@ using std::shared_ptr;
 namespace ivm {
 
 ScriptHandle::ScriptHandleTransferable::ScriptHandleTransferable(
-	shared_ptr<IsolateHolder> isolate,
 	shared_ptr<RemoteHandle<UnboundScript>> script
-) : isolate(std::move(isolate)), script(std::move(script)) {}
+) : script(std::move(script)) {}
 
 Local<Value> ScriptHandle::ScriptHandleTransferable::TransferIn() {
-	return ClassHandle::NewInstance<ScriptHandle>(isolate, script);
+	return ClassHandle::NewInstance<ScriptHandle>(script);
 };
 
 ScriptHandle::ScriptHandle(
-	shared_ptr<IsolateHolder> isolate,
 	shared_ptr<RemoteHandle<UnboundScript>> script
-) : isolate(std::move(isolate)), script(std::move(script)) {}
+) : script(std::move(script)) {}
 
 Local<FunctionTemplate> ScriptHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
@@ -34,7 +32,7 @@ Local<FunctionTemplate> ScriptHandle::Definition() {
 }
 
 std::unique_ptr<Transferable> ScriptHandle::TransferOut() {
-	return std::make_unique<ScriptHandleTransferable>(isolate, script);
+	return std::make_unique<ScriptHandleTransferable>(script);
 }
 
 /*
@@ -47,14 +45,13 @@ struct RunRunner /* lol */ : public ThreePhaseTask {
 	std::unique_ptr<Transferable> result;
 
 	RunRunner(
-		IsolateHolder* isolate,
 		shared_ptr<RemoteHandle<UnboundScript>> script,
 		uint32_t timeout_ms,
 		ContextHandle* context_handle
 	) : timeout_ms(timeout_ms), script(std::move(script)), context(context_handle->context) {
 		// Sanity check
 		context_handle->CheckDisposed();
-		if (isolate != context_handle->context->GetIsolateHolder()) {
+		if (this->script->GetIsolateHolder() != context_handle->context->GetIsolateHolder()) {
 			throw js_generic_error("Invalid context");
 		}
 	}
@@ -100,7 +97,7 @@ Local<Value> ScriptHandle::Run(ContextHandle* context_handle, MaybeLocal<Object>
 	if (release) {
 		script.reset();
 	}
-	return ThreePhaseTask::Run<async, RunRunner>(*this->isolate, this->isolate.get(), std::move(script_ref), timeout_ms, context_handle);
+	return ThreePhaseTask::Run<async, RunRunner>(*script_ref->GetIsolateHolder(), std::move(script_ref), timeout_ms, context_handle);
 }
 
 Local<Value> ScriptHandle::Release() {

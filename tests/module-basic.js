@@ -4,6 +4,8 @@
 // Checks if it is possible to create es6 modules.
 const ivm = require('isolated-vm');
 const { strictEqual, throws } = require('assert');
+const assert = require('assert');
+
 function doesNotReject(fn) {
 	return fn().catch(console.error);
 }
@@ -169,6 +171,24 @@ function rejects(fn) {
 		});
 	}
 
+	function cachedDataChecks() {
+		// Generate cached data
+		let context = isolate.createContextSync();
+		let code = 'export function foo() { return 123; }';
+		let module = isolate.compileModuleSync(code, { produceCachedData: true });
+		let cachedData = module.cachedData;
+		console.log(cachedData.copy());
+		assert.ok(cachedData, 'did not produce cached data');
+		// Test cached data
+		let module2 = isolate.compileModuleSync(code, { cachedData: cachedData });
+		assert.strictEqual(module2.cachedDataRejected, false, 'cache data was rejected');
+		module2.instantiateSync(context, function(){});
+		module2.evaluateSync();
+		assert.strictEqual(module2.namespace.getSync('foo').applySync(undefined, []), 123, 'invalid result from cached module');
+		// Test invalid cached data
+		assert.ok(isolate.compileModuleSync('void 0', { cachedData: cachedData }).cachedDataRejected, 'cache data wasn\'t rejected');
+	}
+
 	if (/^v8\.[0-6]/.test(process.version)) {
 		console.log('pass');
 		return;
@@ -183,6 +203,7 @@ function rejects(fn) {
 		setupModuleBugRunChecks();
 		moduleCollectionChecks();
 		linkChecks();
+		// cachedDataChecks(); TODO: enable after v8 6.9.37
 		console.log('pass');
 	} catch(err) {
 		console.error(err);
