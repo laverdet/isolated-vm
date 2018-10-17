@@ -33,8 +33,9 @@ REQUIREMENTS
 This project works best on nodejs LTS version 8.11.2 (or later) *or* nodejs current version 10.x
 (any version). It will compile and generally run alright on nodejs version 8.6.0 and later, but
 under load you will run into crashes and hangs due to some bugs in v8. The snapshot feature is
-broken on nodejs version 10.2.0 and above. Please see
-[nodejs #21992](https://github.com/nodejs/node/pull/21992) for updates on that.
+broken on nodejs versions 10.2.0 through 10.9.0. Please see
+[nodejs #21992](https://github.com/nodejs/node/pull/21992) for updates on that. There are no known
+issues with nodejs versions 10.10.0 and above.
 
 Furthermore, to install this module you will need a compiler installed. If you run into errors while
 running `npm install isolated-vm` it is likely you don't have a compiler set up, or your compiler is
