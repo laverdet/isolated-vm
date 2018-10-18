@@ -393,7 +393,7 @@ struct CompileScriptRunner : public CompileCodeRunner {
 			// Added in v8 commit dae20b064
 			= ScriptCompiler::CreateCodeCache(script->Deref(), code_string->CopyIntoCheckHeap().As<String>());
 #else
-			= source.GetCachedData();
+			= source->GetCachedData();
 #endif
 			assert(cached_data != nullptr);
 			cached_data_out = std::make_shared<ExternalCopyArrayBuffer>((void*)cached_data->data, cached_data->length);
