@@ -6,6 +6,18 @@
 #include "../external_copy.h"
 #include <cmath>
 
+#ifdef __APPLE__
+#include <pthread.h>
+static void* GetStackBase() {
+	pthread_t self = pthread_self();
+	return (void*)((char*)pthread_get_stackaddr_np(self) - pthread_get_stacksize_np(self));
+}
+#else
+static void* GetStackBase() {
+	return nullptr;
+}
+#endif
+
 using namespace v8;
 using std::shared_ptr;
 using std::unique_ptr;
@@ -458,6 +470,18 @@ size_t IsolateEnvironment::NearHeapLimitCallback(void* data, size_t current_heap
 
 void IsolateEnvironment::AsyncEntry() {
 	Executor::Lock lock(*this);
+	if (!root) {
+		// Set v8 stack limit on non-default isolate. This is only needed on non-default threads while
+		// on OS X because it allocates just 512kb for each pthread stack, instead of 2mb on other
+		// systems. 512kb is lower than the default v8 stack size so JS stack overflows result in
+		// segfaults.
+		thread_local void* stack_base = GetStackBase();
+		if (stack_base != nullptr) {
+			// Add 6kb of padding for native code to run
+			isolate->SetStackLimit(reinterpret_cast<uintptr_t>(reinterpret_cast<char*>(stack_base) + 1024 * 6));
+		}
+	}
+
 	while (true) {
 		std::queue<unique_ptr<Runnable>> tasks;
 		std::queue<unique_ptr<Runnable>> handle_tasks;
