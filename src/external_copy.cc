@@ -299,11 +299,23 @@ ExternalCopyString::ExternalCopyString(Local<String> string) : ExternalCopy((str
 	if (string->IsOneByte()) {
 		one_byte = true;
 		value = std::make_shared<V>(string->Length());
-		string->WriteOneByte(reinterpret_cast<uint8_t*>(value->data()), 0, -1, String::WriteOptions::NO_NULL_TERMINATION);
+#if V8_AT_LEAST(6, 9, 408)
+		string->WriteOneByte(Isolate::GetCurrent(),
+#else
+		string->WriteOneByte(
+#endif
+			reinterpret_cast<uint8_t*>(value->data()), 0, -1, String::WriteOptions::NO_NULL_TERMINATION
+		);
 	} else {
 		one_byte = false;
 		value = std::make_shared<V>(string->Length() << 1);
-		string->Write(reinterpret_cast<uint16_t*>(value->data()), 0, -1, String::WriteOptions::NO_NULL_TERMINATION);
+#if V8_AT_LEAST(6, 9, 408)
+		string->Write(Isolate::GetCurrent(),
+#else
+		string->Write(
+#endif
+			reinterpret_cast<uint16_t*>(value->data()), 0, -1, String::WriteOptions::NO_NULL_TERMINATION
+		);
 	}
 }
 

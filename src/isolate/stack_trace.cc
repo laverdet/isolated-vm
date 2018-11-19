@@ -9,6 +9,16 @@ using namespace v8;
 
 namespace ivm {
 
+#if V8_AT_LEAST(6, 9, 408)
+static Local<String> StringConcat(Isolate* isolate, Local<String> left, Local<String> right) {
+	return String::Concat(isolate, left, right);
+}
+#else
+static Local<String> StringConcat(Isolate* /* isolate */, Local<String> left, Local<String> right) {
+	return String::Concat(left, right);
+}
+#endif
+
 /**
  * This returns an object that's like Symbol() in JS but only C++ can see it.
  */
@@ -49,8 +59,8 @@ Local<String> RenderErrorStack(Local<Value> data) {
 		// Array pair
 		Local<Context> context = isolate->GetCurrentContext();
 		Local<Array> array = data.As<Array>();
-		return String::Concat(
-			String::Concat(
+		return StringConcat(isolate,
+			StringConcat(isolate,
 				RenderErrorStack(Unmaybe(array->Get(context, 1))),
 				Unmaybe(String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>("\n    at (<isolated-vm boundary>)"), NewStringType::kNormal))
 			),
@@ -72,9 +82,9 @@ void ErrorStackGetter(Local<Name> /*property*/, const PropertyCallbackInfo<Value
 		Isolate* isolate = Isolate::GetCurrent();
 		Local<Context> context = isolate->GetCurrentContext();
 		Local<Object> holder = info.This();
-		return String::Concat(
-			String::Concat(holder->GetConstructorName(), v8_string(": ")),
-			String::Concat(
+		return StringConcat(isolate,
+			StringConcat(isolate, holder->GetConstructorName(), v8_string(": ")),
+			StringConcat(isolate,
 				Unmaybe(
 					Unmaybe(info.This()->Get(context, v8_string("message")))->ToString(context)
 				),
@@ -142,7 +152,11 @@ std::string StackTraceHolder::RenderSingleStack(Local<StackTrace> stack_trace) {
 	std::stringstream ss;
 	int size = stack_trace->GetFrameCount();
 	for (int ii = 0; ii < size; ++ii) {
+#if V8_AT_LEAST(6, 9, 408)
+		Local<StackFrame> frame = stack_trace->GetFrame(isolate, ii);
+#else
 		Local<StackFrame> frame = stack_trace->GetFrame(ii);
+#endif
 		ss <<"\n    at ";
 		Utf8ValueWrapper fn_name(isolate, frame->GetFunctionName());
 		if (frame->IsWasm()) {
