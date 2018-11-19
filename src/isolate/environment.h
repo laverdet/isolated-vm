@@ -364,24 +364,20 @@ class IsolateEnvironment {
 		void InterruptEntry();
 
 		/**
-		 * Returns reference to the InspectorAgent for this class. It will create the agent if it does
-		 * not exist. Agent is valid until this environment is destructed.
+		 * Wrap an existing Isolate. This should only be called for the main node Isolate.
 		 */
+		void IsolateCtor(v8::Isolate* isolate, v8::Local<v8::Context> context);
+
+		/**
+		 * Create a new wrapped Isolate.
+		 */
+		void IsolateCtor(size_t memory_limit, std::shared_ptr<void> snapshot_blob, size_t snapshot_length);
 
 	public:
 		/**
-		 * Wrap an existing Isolate. This should only be called for the main node Isolate.
+		 * The constructor should be called through the factory.
 		 */
-		IsolateEnvironment(v8::Isolate* isolate, v8::Local<v8::Context> context);
-
-		/**
-		 * Create a new wrapped Isolate
-		 */
-		IsolateEnvironment(
-			size_t memory_limit,
-			std::shared_ptr<void> snapshot_blob,
-			size_t snapshot_length
-		);
+		IsolateEnvironment();
 		IsolateEnvironment(const IsolateEnvironment&) = delete;
 		IsolateEnvironment operator= (const IsolateEnvironment&) = delete;
 		~IsolateEnvironment();
@@ -391,9 +387,10 @@ class IsolateEnvironment {
 		 */
 		template <typename ...Args>
 		static std::shared_ptr<IsolateHolder> New(Args&&... args) {
-			auto isolate = std::make_shared<IsolateEnvironment>(std::forward<Args>(args)...);
+			auto isolate = std::make_shared<IsolateEnvironment>();
 			auto holder = std::make_shared<IsolateHolder>(isolate);
 			isolate->holder = holder;
+			isolate->IsolateCtor(std::forward<Args>(args)...);
 			return holder;
 		}
 

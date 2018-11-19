@@ -627,9 +627,10 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 	unique_ptr<const char> snapshot_data_ptr;
 	shared_ptr<ExternalCopy> error;
 	{
+		PlatformDelegate::TmpIsolateScope delegate_scope;
 		SnapshotCreator snapshot_creator;
 		Isolate* isolate = snapshot_creator.GetIsolate();
-		PlatformDelegate::TmpIsolateScope delegate_scope(isolate);
+		delegate_scope.SetIsolate(isolate);
 		{
 			Locker locker(isolate);
 			Isolate::Scope isolate_scope(isolate);
@@ -670,6 +671,7 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 				error = std::move(error_inner);
 			});
 			isolate->ContextDisposedNotification(false);
+			delegate_scope.FlushTasks();
 			snapshot_creator.AddContext(context);
 		}
 		// nb: Snapshot must be created even in the error case, because `~SnapshotCreator` will crash if

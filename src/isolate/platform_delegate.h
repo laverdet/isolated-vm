@@ -4,6 +4,7 @@
 #include "environment.h"
 #include "v8_version.h"
 #include "../timer.h"
+#include <vector>
 
 namespace v8 {
 namespace internal {
@@ -17,17 +18,20 @@ class V8 {
 namespace ivm {
 
 class PlatformDelegate : public v8::Platform {
+	public:
+		struct TmpIsolateScope;
 	private:
 		v8::Isolate* node_isolate;
 		v8::Platform* node_platform;
-		v8::Isolate* tmp_isolate = nullptr;
+		TmpIsolateScope* tmp_scope = nullptr;
+		std::shared_ptr<IsolateHolder> isolate_ctor_holder;
 
 		class TaskHolder : public Runnable {
 			private:
 				std::unique_ptr<v8::Task> task;
 			public:
 				explicit TaskHolder(v8::Task* task) : task(task) {}
-				explicit TaskHolder(std::unique_ptr<v8::Task>&& task) : task(std::move(task)) {}
+				explicit TaskHolder(std::unique_ptr<v8::Task>&& task) : task(std::move(task)) {	}
 				explicit TaskHolder(TaskHolder&& task) : task(std::move(task.task)) {}
 				void Run() final {
 					task->Run();
@@ -35,17 +39,49 @@ class PlatformDelegate : public v8::Platform {
 		};
 
 	public:
+		// TODO: This stuff isn't thread safe but since people tend to create isolates from the same
+		// thread it probably isn't a big issue (until it all of a sudden is).
 		struct TmpIsolateScope {
-			explicit TmpIsolateScope(v8::Isolate* isolate) {
-				PlatformDelegate::DelegateInstance().tmp_isolate = isolate;
+			v8::Isolate* isolate = nullptr;
+			std::shared_ptr<std::vector<std::unique_ptr<v8::Task>>> foreground_tasks;
+			explicit TmpIsolateScope() : foreground_tasks(std::make_shared<std::vector<std::unique_ptr<v8::Task>>>()) {
+				PlatformDelegate::DelegateInstance().tmp_scope = this;
 			}
 			TmpIsolateScope(TmpIsolateScope&) = delete;
 			TmpIsolateScope& operator=(const TmpIsolateScope&) = delete;
 
 			~TmpIsolateScope() {
-				PlatformDelegate::DelegateInstance().tmp_isolate = nullptr;
+				PlatformDelegate::DelegateInstance().tmp_scope = nullptr;
+			}
+
+			bool IsIsolate(v8::Isolate* isolate) {
+				return this->isolate == nullptr || this->isolate == isolate;
+			}
+
+			void SetIsolate(v8::Isolate* isolate) {
+				this->isolate = isolate;
+			}
+
+			void FlushTasks() {
+				auto tasks = std::move(*foreground_tasks);
+				for (auto& task : tasks) {
+					task->Run();
+				}
 			}
 		};
+
+		struct IsolateCtorScope {
+			explicit IsolateCtorScope(std::shared_ptr<IsolateHolder> holder) {
+				PlatformDelegate::DelegateInstance().isolate_ctor_holder = std::move(holder);
+			}
+			IsolateCtorScope(IsolateCtorScope&) = delete;
+			IsolateCtorScope& operator=(const IsolateCtorScope&) = delete;
+
+			~IsolateCtorScope() {
+				PlatformDelegate::DelegateInstance().isolate_ctor_holder.reset();
+			}
+		};
+
 
 		PlatformDelegate(v8::Isolate* node_isolate, v8::Platform* node_platform) : node_isolate(node_isolate), node_platform(node_platform) {}
 
@@ -177,37 +213,75 @@ class PlatformDelegate : public v8::Platform {
 				}
 		};
 
+		class TmpForegroundTaskRunner : public v8::TaskRunner {
+			private:
+				std::shared_ptr<std::vector<std::unique_ptr<v8::Task>>> tasks;
+
+			public:
+				TmpForegroundTaskRunner(std::shared_ptr<std::vector<std::unique_ptr<v8::Task>>> tasks) : tasks(std::move(tasks)) {}
+
+				void PostTask(std::unique_ptr<v8::Task> task) final {
+					tasks->push_back(std::move(task));
+				}
+
+				void PostDelayedTask(std::unique_ptr<v8::Task> task, double delay_in_seconds) final {
+					tasks->push_back(std::move(task));
+				}
+
+				void PostIdleTask(std::unique_ptr<v8::IdleTask> task) final {
+					std::terminate();
+				}
+
+				bool IdleTasksEnabled() final {
+					return false;
+				}
+		};
+
 	public:
 		std::shared_ptr<v8::TaskRunner> GetForegroundTaskRunner(v8::Isolate* isolate) final {
 			if (isolate == node_isolate) {
-				node_platform->GetForegroundTaskRunner(isolate);
-			} else if (isolate != tmp_isolate) {
+				return node_platform->GetForegroundTaskRunner(isolate);
+			} else {
 				auto s_isolate = IsolateEnvironment::LookupIsolate(isolate);
-				// We could further assert that IsolateEnvironment::GetCurrent() == s_isolate
-				assert(s_isolate);
-				// TODO: Don't make a new runner each time
-				return std::make_shared<ForegroundTaskRunner>(s_isolate);
+				if (!s_isolate) {
+					s_isolate = isolate_ctor_holder;
+				}
+				if (s_isolate) {
+					// We could further assert that IsolateEnvironment::GetCurrent() == s_isolate
+					// TODO: Don't make a new runner each time
+					return std::make_shared<ForegroundTaskRunner>(s_isolate);
+				} else if (tmp_scope != nullptr && tmp_scope->IsIsolate(isolate)) {
+					return std::make_shared<TmpForegroundTaskRunner>(tmp_scope->foreground_tasks);
+				} else {
+					throw std::runtime_error("Unknown isolate");
+				}
 			}
-			return {nullptr};
 		}
 #endif
 
 		void CallOnForegroundThread(v8::Isolate* isolate, v8::Task* task) final {
 			if (isolate == node_isolate) {
 				node_platform->CallOnForegroundThread(isolate, task);
-			} else if (isolate != tmp_isolate) {
+			} else {
 				auto s_isolate = IsolateEnvironment::LookupIsolate(isolate);
-				// We could further assert that IsolateEnvironment::GetCurrent() == s_isolate
-				assert(s_isolate);
-				// wakeup == false but it shouldn't matter because this isolate is already awake
-				s_isolate->ScheduleTask(std::make_unique<TaskHolder>(task), false, false, true);
+				if (!s_isolate) {
+					s_isolate = isolate_ctor_holder;
+				}
+				if (s_isolate) {
+					// wakeup == false but it shouldn't matter because this isolate is already awake
+					s_isolate->ScheduleTask(std::make_unique<TaskHolder>(task), false, false, true);
+				} else if (tmp_scope != nullptr && tmp_scope->IsIsolate(isolate)) {
+					tmp_scope->foreground_tasks->push_back(std::unique_ptr<v8::Task>(task));
+				} else {
+					throw std::runtime_error("Unknown isolate");
+				}
 			}
 		}
 
 		void CallDelayedOnForegroundThread(v8::Isolate* isolate, v8::Task* task, double delay_in_seconds) final {
 			if (isolate == node_isolate) {
 				node_platform->CallDelayedOnForegroundThread(isolate, task, delay_in_seconds);
-			} else if (isolate != tmp_isolate) {
+			} else {
 				timer_t::wait_detached(delay_in_seconds * 1000, [isolate, task](void* next) {
 					auto holder = std::make_unique<TaskHolder>(task);
 					auto s_isolate = IsolateEnvironment::LookupIsolate(isolate);

@@ -2,6 +2,7 @@
 #include "allocator.h"
 #include "inspector.h"
 #include "legacy.h"
+#include "platform_delegate.h"
 #include "runnable.h"
 #include "../external_copy.h"
 #include <cmath>
@@ -543,29 +544,26 @@ void IsolateEnvironment::InterruptEntry() {
 	}
 }
 
-IsolateEnvironment::IsolateEnvironment(Isolate* isolate, Local<Context> context) :
-	isolate(isolate),
+IsolateEnvironment::IsolateEnvironment() :
 	executor(*this),
-	default_context(isolate, context),
-	root(true),
 	bookkeeping_statics(bookkeeping_statics_shared) {
+}
+
+void IsolateEnvironment::IsolateCtor(Isolate* isolate, Local<Context> context) {
+	this->isolate = isolate;
+	default_context.Reset(isolate, context);
+	root = true;
 	Executor::Init(*this);
 	Scheduler::Init(*this);
 	std::lock_guard<std::mutex> lock(bookkeeping_statics->lookup_mutex);
 	bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
 }
 
-IsolateEnvironment::IsolateEnvironment(
-	size_t memory_limit,
-	shared_ptr<void> snapshot_blob,
-	size_t snapshot_length
-) :
-	executor(*this),
-	allocator_ptr(std::make_unique<LimitedAllocator>(*this, memory_limit * 1024 * 1024)),
-	snapshot_blob_ptr(std::move(snapshot_blob)),
-	memory_limit(memory_limit),
-	root(false),
-	bookkeeping_statics(bookkeeping_statics_shared) {
+void IsolateEnvironment::IsolateCtor(size_t memory_limit, shared_ptr<void> snapshot_blob, size_t snapshot_length) {
+	allocator_ptr = std::make_unique<LimitedAllocator>(*this, memory_limit * 1024 * 1024);
+	snapshot_blob_ptr = std::move(snapshot_blob);
+	this->memory_limit = memory_limit;
+	root = false;
 
 	// Calculate resource constraints
 	ResourceConstraints rc;
@@ -586,7 +584,10 @@ IsolateEnvironment::IsolateEnvironment(
 		startup_data.data = reinterpret_cast<char*>(snapshot_blob_ptr.get());
 		startup_data.raw_size = snapshot_length;
 	}
-	isolate = Isolate::New(create_params);
+	{
+		PlatformDelegate::IsolateCtorScope scope(holder);
+		isolate = Isolate::New(create_params);
+	}
 	{
 		std::lock_guard<std::mutex> lock(bookkeeping_statics->lookup_mutex);
 		bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
