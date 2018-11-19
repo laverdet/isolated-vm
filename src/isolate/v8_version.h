@@ -19,3 +19,7 @@
 	(V8_MAJOR_VERSION == (major) && V8_MINOR_VERSION >= (minor)) || \
 	(V8_MAJOR_VERSION == (major) && V8_MINOR_VERSION == (minor) && V8_PATCH_LEVEL >= (patch)) \
 )
+
+#define NODE_MODULE_OR_V8_AT_LEAST(nodejs, v8_major, v8_minor, v8_patch) (\
+	defined(NODE_MODULE_VERSION) ? NODE_MODULE_VERSION >= nodejs : V8_AT_LEAST(v8_major, v8_minor, v8_patch) \
+)
