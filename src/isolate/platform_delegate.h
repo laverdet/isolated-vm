@@ -67,7 +67,8 @@ class PlatformDelegate : public v8::Platform {
 		 * - `GetForegroundTaskRunner(Isolate*)` and `GetBackgroundTaskRunner(Isolate*)` are introduced [c690f54d]
 		 *
 		 * 6.7.1:
-		 * - `GetBackgroundTaskRunner` renamed to `GetWorkerThreadsTaskRunner` [70222a9d]
+		 * - `GetBackgroundTaskRunner` renamed to `GetWorkerThreadsTaskRunner` (old function is
+		 *   deprecated) [70222a9d]
 		 * - `CallOnBackgroundThread(Task*, ExpectedRuntime)` unofficially deprecated in favor of new
 		 *   `CallOnWorkerThread(Task* task)` [86b4b534]
 		 * - `CallBlockingTaskFromBackgroundThread(Task* task)` added [2600038d]
@@ -97,13 +98,13 @@ class PlatformDelegate : public v8::Platform {
 		 *
 		 * ~ Meanwhile in nodejs ~
 		 *
-		 * 10.0.0:
+		 * 10.0.0 (module version 64):
 		 * - Updates v8 to 6.6.346 but includes random internal changes from v8 6.7.x [2a3f8c3a]
 		 *
-		 * 10.9.0:
+		 * 10.9.0 (module version 64):
 		 * - Updates v8 to 6.8.275 but continues to include old API requirements from v8 v6.7.x [5fa3ffad]
 		 *
-		 * 11.2.0:
+		 * 11.2.0 (module version 67):
 		 * - Updates v8 to 7.0.276.38
 		 *
 		 */
@@ -118,7 +119,7 @@ class PlatformDelegate : public v8::Platform {
 		void CallOnWorkerThread(std::unique_ptr<v8::Task> task) final {
 			node_platform->CallOnWorkerThread(std::move(task));
 		}
-#elif defined(NODE_MODULE_VERSION) ? NODE_MODULE_VERSION >= 64 : V8_AT_LEAST(6, 7, 179)
+#elif NODE_MODULE_OR_V8_AT_LEAST(64, 6, 7, 179)
 		void CallOnBackgroundThread(v8::Task* task, ExpectedRuntime /* expected_runtime */) final {
 			// TODO: Properly count these tasks against isolate timers. How common are background tasks??
 			node_platform->CallOnWorkerThread(std::unique_ptr<v8::Task>(task));
@@ -129,7 +130,7 @@ class PlatformDelegate : public v8::Platform {
 		}
 #endif
 
-#if V8_AT_LEAST(6, 4, 168) && !V8_AT_LEAST(6, 8, 242)
+#if V8_AT_LEAST(6, 4, 168) && !NODE_MODULE_OR_V8_AT_LEAST(64, 6, 7, 1)
 		std::shared_ptr<v8::TaskRunner> GetBackgroundTaskRunner(v8::Isolate* /* isolate */) final {
 			return node_platform->GetBackgroundTaskRunner(node_isolate);
 		}
@@ -221,8 +222,12 @@ class PlatformDelegate : public v8::Platform {
 			}
 		}
 
-#if V8_AT_LEAST(6, 8, 117)
+#if NODE_MODULE_OR_V8_AT_LEAST(67, 6, 8, 242)
 		void CallDelayedOnWorkerThread(std::unique_ptr<v8::Task> task, double delay_in_seconds) final {
+			node_platform->CallDelayedOnWorkerThread(std::move(task), delay_in_seconds);
+		}
+#elif NODE_MODULE_OR_V8_AT_LEAST(67, 6, 8, 117)
+		void CallDelayedOnWorkerThread(std::unique_ptr<v8::Task> task, double delay_in_seconds) {
 			node_platform->CallDelayedOnWorkerThread(std::move(task), delay_in_seconds);
 		}
 #endif

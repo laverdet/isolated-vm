@@ -294,7 +294,6 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 		static Local<Value> ModuleResolved(Local<Array> holder, Local<Value> value) {
 			FunctorRunners::RunBarrier([&]() {
 				ModuleHandle* resolved = value->IsObject() ? ClassHandle::Unwrap<ModuleHandle>(value.As<Object>()) : nullptr;
-				Utf8ValueWrapper a(Isolate::GetCurrent(), value.As<Object>()->ToString());
 				if (resolved == nullptr) {
 					throw js_type_error("Resolved dependency was not `Module`");
 				}
@@ -334,9 +333,9 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 			Local<Promise::Resolver> resolver = Unmaybe(Promise::Resolver::New(context));
 			Local<Promise> promise = resolver->GetPromise();
 			Local<Array> holder = Array::New(isolate, 3);
-			holder->Set(0, linker.Deref());
-			holder->Set(1, module->This());
-			holder->Set(2, Uint32::New(isolate, ii));
+			Unmaybe(holder->Set(context, 0, linker.Deref()));
+			Unmaybe(holder->Set(context, 1, module->This()));
+			Unmaybe(holder->Set(context, 2, Uint32::New(isolate, ii)));
 			promise = Unmaybe(promise->Then(context, ClassHandle::ParameterizeCallback<decltype(&ModuleResolved), &ModuleResolved>(holder)));
 			Unmaybe(promise->Catch(context, async_handles.Deref<1>()));
 			Unmaybe(resolver->Resolve(context, value));
