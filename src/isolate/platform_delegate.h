@@ -68,8 +68,8 @@ class PlatformDelegate : public v8::Platform {
 		 *
 		 * 6.7.1:
 		 * - `GetBackgroundTaskRunner` renamed to `GetWorkerThreadsTaskRunner` [70222a9d]
-		 * - `CallOnWorkerThread(Task* task)` added [86b4b534]
-		 * - `ExpectedRuntime` parameter removed from `CallOnBackgroundThread(Task*, ExpectedRuntime)` [86b4b534]
+		 * - `CallOnBackgroundThread(Task*, ExpectedRuntime)` unofficially deprecated in favor of new
+		 *   `CallOnWorkerThread(Task* task)` [86b4b534]
 		 * - `CallBlockingTaskFromBackgroundThread(Task* task)` added [2600038d]
 		 *
 		 * 6.7.179:
@@ -81,9 +81,10 @@ class PlatformDelegate : public v8::Platform {
 		 * - `CallDelayedOnWorkerThread(std::unique_ptr<Task> task, double delay_in_seconds)` added [4b13a22f]
 		 *
 		 * 6.8.242:
-		 * - `CallOnBackgroundThread`, `NumberOfWorkerThreads`, `GetForegroundTaskRunner`, and
-		 *   `CallOnWorkerThread` removed [8f6ffbfc]
-		 * - `CallDelayedOnWorkerThread` becomse pure virtual [8f6ffbfc]
+		 * - `CallOnBackgroundThread`, `GetBackgroundTaskRunner`, `NumberOfAvailableBackgroundThreads`
+		 *   removed [8f6ffbfc]
+		 * - `CallDelayedOnWorkerThread`, `CallOnWorkerThread`, `GetForegroundTaskRunner`,
+		 *   `NumberOfWorkerThreads` becomes pure virtual [8f6ffbfc]
 		 *
 		 * 7.1.263:
 		 * - `CallOnForegroundThread`, `CallDelayedOnForegroundThread`, and `CallIdleOnForegroundThread`
@@ -102,6 +103,9 @@ class PlatformDelegate : public v8::Platform {
 		 * 10.9.0:
 		 * - Updates v8 to 6.8.275 but continues to include old API requirements from v8 v6.7.x [5fa3ffad]
 		 *
+		 * 11.2.0:
+		 * - Updates v8 to 7.0.276.38
+		 *
 		 */
 
 #if V8_AT_LEAST(6, 7, 1)
@@ -110,14 +114,11 @@ class PlatformDelegate : public v8::Platform {
 		}
 #endif
 
-#if defined(NODE_MODULE_VERSION) ? NODE_MODULE_VERSION >= 64 : V8_AT_LEAST(6, 7, 179)
-		// v8 commit 86b4b534 renamed this function and changed the signature. This made it to v8
-		// v6.7.1, but 1983f305 further changed the signature.
-		// These were both backported to nodejs in commmit 2a3f8c3a.
+#if V8_AT_LEAST(6, 8, 242)
 		void CallOnWorkerThread(std::unique_ptr<v8::Task> task) final {
 			node_platform->CallOnWorkerThread(std::move(task));
 		}
-
+#elif defined(NODE_MODULE_VERSION) ? NODE_MODULE_VERSION >= 64 : V8_AT_LEAST(6, 7, 179)
 		void CallOnBackgroundThread(v8::Task* task, ExpectedRuntime /* expected_runtime */) final {
 			// TODO: Properly count these tasks against isolate timers. How common are background tasks??
 			node_platform->CallOnWorkerThread(std::unique_ptr<v8::Task>(task));
@@ -128,11 +129,13 @@ class PlatformDelegate : public v8::Platform {
 		}
 #endif
 
-#if V8_AT_LEAST(6, 4, 168)
+#if V8_AT_LEAST(6, 4, 168) && !V8_AT_LEAST(6, 8, 242)
 		std::shared_ptr<v8::TaskRunner> GetBackgroundTaskRunner(v8::Isolate* /* isolate */) final {
 			return node_platform->GetBackgroundTaskRunner(node_isolate);
 		}
+#endif
 
+#if V8_AT_LEAST(6, 4, 168)
 	private:
 		// nb: The v8 documentation says that methods on this object may be called from any thread.
 		class ForegroundTaskRunner : public v8::TaskRunner {
@@ -217,6 +220,12 @@ class PlatformDelegate : public v8::Platform {
 				});
 			}
 		}
+
+#if V8_AT_LEAST(6, 8, 117)
+		void CallDelayedOnWorkerThread(std::unique_ptr<v8::Task> task, double delay_in_seconds) final {
+			node_platform->CallDelayedOnWorkerThread(std::move(task), delay_in_seconds);
+		}
+#endif
 
 		void CallIdleOnForegroundThread(v8::Isolate* isolate, v8::IdleTask* task) final {
 			if (isolate == node_isolate) {

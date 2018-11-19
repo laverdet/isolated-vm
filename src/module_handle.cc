@@ -343,9 +343,10 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 		}
 
 		void Instantiate() {
-			async_handles.Deref<0>()->Resolve(
+			Unmaybe(async_handles.Deref<0>()->Resolve(
+				Isolate::GetCurrent()->GetCurrentContext(),
 				ThreePhaseTask::Run<1, InstantiateRunner>(*info->handle.GetIsolateHolder(), context, info, linker.Deref())
-			);
+			));
 		}
 
 	public:
