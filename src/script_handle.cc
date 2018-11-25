@@ -1,6 +1,6 @@
 #include "script_handle.h"
 #include "context_handle.h"
-#include "external_copy.h"
+#include "transferable.h"
 #include "isolate/run_with_timeout.h"
 #include "isolate/three_phase_task.h"
 
@@ -61,7 +61,7 @@ struct RunRunner /* lol */ : public ThreePhaseTask {
 		Local<Context> context_local = Deref(*context);
 		Context::Scope context_scope(context_local);
 		Local<Script> script_handle = Deref(*script)->BindToCurrentContext();
-		result = ExternalCopy::CopyIfPrimitive(
+		result = Transferable::OptionalTransferOut(
 			RunWithTimeout(timeout_ms, [&script_handle, &context_local]() { return script_handle->Run(context_local); })
 		);
 	}

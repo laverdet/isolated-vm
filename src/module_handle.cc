@@ -1,7 +1,7 @@
 #include "module_handle.h"
 #include "context_handle.h"
-#include "external_copy.h"
 #include "reference_handle.h"
+#include "transferable.h"
 #include "isolate/class_handle.h"
 #include "isolate/run_with_timeout.h"
 #include "isolate/three_phase_task.h"
@@ -397,7 +397,7 @@ struct EvaluateRunner : public ThreePhaseTask {
 		}
 		Local<Context> context_local = Deref(*info->context_handle);
 		Context::Scope context_scope(context_local);
-		result = ExternalCopy::CopyIfPrimitive(RunWithTimeout(timeout, [&]() { return mod->Evaluate(context_local); }));
+		result = Transferable::OptionalTransferOut(RunWithTimeout(timeout, [&]() { return mod->Evaluate(context_local); }));
 		std::lock_guard<std::mutex> lock(info->mutex);
 		info->global_namespace = std::make_shared<RemoteHandle<Value>>(mod->GetModuleNamespace());
 #endif
