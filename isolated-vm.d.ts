@@ -268,7 +268,7 @@ declare module "isolated-vm" {
 		instantiateSync(
 			context: Context,
 			resolveCallback: (specifier: string, referrer: Module) => Module
-		);
+		): void;
 
 		/**
 		 * Evaluate the module and return the last expression (same as script.run). If evaluate is called more than once on the same module the return value from the first invocation will be returned (or thrown).
