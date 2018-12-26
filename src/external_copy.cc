@@ -90,10 +90,10 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool tran
 			if (!transfer_out) {
 				transfer_out = std::find(transfer_list.begin(), transfer_list.end(), array_buffer) != transfer_list.end();
 			}
+			if (view->ByteOffset() != 0 || view->ByteLength() != array_buffer->ByteLength()) {
+				throw js_generic_error("Cannot copy sliced TypedArray (this.byteOffset != 0 || this.byteLength != this.buffer.byteLength)");
+			}
 			if (transfer_out) {
-				if (view->ByteOffset() != 0 || view->ByteLength() != array_buffer->ByteLength()) {
-					throw js_generic_error("Cannot transfer sliced TypedArray (this.byteOffset != 0 || this.byteLength != this.buffer.byteLength)");
-				}
 				return make_unique<ExternalCopyArrayBufferView>(ExternalCopyArrayBuffer::Transfer(array_buffer), type);
 			} else {
 				return make_unique<ExternalCopyArrayBufferView>(make_unique<ExternalCopyArrayBuffer>(array_buffer), type);
