@@ -4,9 +4,16 @@ language: node_js
 
 node_js:
   - "8.6.0"
+  - "8.7.0"
   - "8"
   - "10.0.0"
+  - "10.4.0"
+  - "10.9.0"
   - "10"
+
+os:
+  - linux
+  - windows
 
 cache:
   directories:
