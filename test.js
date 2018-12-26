@@ -66,11 +66,13 @@ let cb = function() {
 	process.exit(ret);
 };
 fs.readdirSync('./tests').sort().reverse().forEach(function(file) {
-	cb = new function(cb) {
-		return function(err) {
-			if (err) return cb(err);
-			runTest(file, cb);
-		};
-	}(cb);
+	if (/\.js$/.test(file)) {
+		cb = new function(cb) {
+			return function(err) {
+				if (err) return cb(err);
+				runTest(file, cb);
+			};
+		}(cb);
+	}
 });
 cb();

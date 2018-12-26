@@ -166,7 +166,7 @@ class PlatformDelegate : public v8::Platform {
 		}
 #endif
 
-#if V8_AT_LEAST(6, 4, 168) && !NODE_MODULE_OR_V8_AT_LEAST(64, 6, 7, 1)
+#if V8_AT_LEAST(6, 4, 168) && !NODE_MODULE_OR_V8_AT_LEAST(67, 6, 7, 1)
 		std::shared_ptr<v8::TaskRunner> GetBackgroundTaskRunner(v8::Isolate* /* isolate */) final {
 			return node_platform->GetBackgroundTaskRunner(node_isolate);
 		}
