@@ -1,7 +1,7 @@
 'use strict';
 const kTimeout = 100;
 const kTimeoutRange = 115;
-let ivm = require('../isolated-vm');
+let ivm = require('isolated-vm');
 let isolate = new ivm.Isolate;
 let context = isolate.createContextSync();
 
