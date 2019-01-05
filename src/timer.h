@@ -27,29 +27,49 @@ class timer_t {
 		 */
 		struct timer_data_t {
 			callback_t callback;
-			bool is_alive;
-			bool is_running;
-			bool is_dtor_waiting;
-			const std::chrono::steady_clock::time_point timeout;
+			void** holder = nullptr;
+			std::chrono::steady_clock::time_point timeout;
+			std::chrono::steady_clock::time_point paused_at{};
+			std::chrono::steady_clock::duration paused_duration{};
+			std::shared_ptr<timer_data_t> threadless_self;
+			bool is_alive = true;
+			bool is_running = false;
+			bool is_dtor_waiting = false;
 
-			timer_data_t(std::chrono::steady_clock::time_point timeout, callback_t callback) :
-				callback(std::move(callback)), is_alive(true), is_running(false), is_dtor_waiting(false), timeout(timeout) {
+			timer_data_t(std::chrono::steady_clock::time_point timeout, void** holder, callback_t callback) :
+				callback(std::move(callback)), holder(holder), timeout(timeout) {
+				if (holder != nullptr) {
+					*holder = static_cast<void*>(this);
+				}
 			}
 
-			// Lock must be locked! It will be returned locked as well.
-			void run(std::unique_lock<std::mutex>& lock, timer_data_t** next) {
-				if (is_alive) {
-					is_running = true;
-					lock.unlock();
-					callback(reinterpret_cast<void*>(next));
-					lock.lock();
-					is_running = false;
-					if (is_dtor_waiting) {
-						global_cv().notify_all();
-					}
-				} else if (*next != nullptr) {
-					(*next)->run(lock, next + 1);
+			~timer_data_t() {
+				if (holder != nullptr) {
+					*holder = nullptr;
 				}
+			}
+
+			bool adjust() {
+				if (paused_duration == std::chrono::steady_clock::duration{}) {
+					return false;
+				} else {
+					timeout += paused_duration;
+					paused_duration = {};
+					return true;
+				}
+			}
+
+			bool is_paused() {
+				return paused_at != std::chrono::steady_clock::time_point{};
+			}
+
+			void pause() {
+				paused_at = std::chrono::steady_clock::now();
+			}
+
+			void resume() {
+				paused_duration += std::chrono::steady_clock::now() - paused_at;
+				paused_at = {};
 			}
 
 			struct cmp {
@@ -58,6 +78,7 @@ class timer_t {
 				}
 			};
 		};
+		static void run(std::shared_ptr<timer_data_t> data, std::unique_lock<std::mutex>& lock, class timer_thread_t& thread);
 
 		/**
 		 * Manager for a thread which handles 1 or many timers.
@@ -82,43 +103,33 @@ class timer_t {
 					while (true) {
 						std::this_thread::sleep_until(next_timeout);
 						lock.lock();
-						std::shared_ptr<timer_data_t> current = queue.top();
-						queue.pop();
+						next_timeout = std::chrono::steady_clock::now();
+						run_next(lock);
 						if (queue.empty()) {
-							timer_data_t* ptr = nullptr;
-							run_and_terminate(lock, *current, &ptr);
+							auto& threads = thread_list();
+							auto ii = threads.find(this);
+							if (ii == threads.end()) {
+								throw std::logic_error("Didn't find thread in thread list");
+							}
+							threads.erase(ii);
+							delete this;
 							return;
 						}
-						std::vector<std::shared_ptr<timer_data_t>> holder;
-						std::vector<timer_data_t*> callbacks;
-						auto now = std::chrono::steady_clock::now();
-						while (queue.top()->timeout <= now) {
-							std::shared_ptr<timer_data_t> next = queue.top();
-							queue.pop();
-							callbacks.emplace_back(next.get());
-							holder.emplace_back(std::move(next));
-							if (queue.empty()) {
-								callbacks.emplace_back(nullptr);
-								run_and_terminate(lock, *current, callbacks.data());
-								return;
-							}
-						}
 						next_timeout = queue.top()->timeout;
-						callbacks.emplace_back(nullptr);
-						current->run(lock, callbacks.data());
 						lock.unlock();
 					}
 				}
 
-				void run_and_terminate(std::unique_lock<std::mutex>& lock, timer_data_t& current, timer_data_t** next) {
-					auto& threads = thread_list();
-					auto ii = threads.find(this);
-					if (ii == threads.end()) {
-						throw std::logic_error("Didn't find thread in thread list");
+				void run_next(std::unique_lock<std::mutex>& lock) {
+					auto data = std::move(queue.top());
+					queue.pop();
+					run(std::move(data), lock, *this);
+				}
+
+				void maybe_run_next(std::unique_lock<std::mutex>& lock) {
+					if (!queue.empty() && queue.top()->timeout <= next_timeout) {
+						run_next(lock);
 					}
-					threads.erase(ii);
-					current.run(lock, next);
-					delete this;
 				}
 		};
 
@@ -140,9 +151,9 @@ class timer_t {
 			return thread_list;
 		}
 
+		// Lock must be locked!
 		static void start_or_join_timer(std::shared_ptr<timer_data_t> data) {
 			// Try to find a thread to put this timer into
-			std::lock_guard<std::mutex> lock(global_mutex());
 			for (auto& thread : thread_list()) {
 				if (thread->next_timeout < data->timeout) {
 					thread->queue.push(std::move(data));
@@ -154,17 +165,43 @@ class timer_t {
 			thread_list().insert(new timer_thread_t(std::move(data)));
 		}
 
+		// Lock must be locked! It will be returned locked as well.
+		static void run(std::shared_ptr<timer_data_t> data, std::unique_lock<std::mutex>& lock, timer_thread_t& thread) {
+			if (data->is_alive) {
+				if (data->is_paused()) {
+					data->threadless_self = std::move(data);
+				} else if (data->adjust()) {
+					start_or_join_timer(std::move(data));
+				} else {
+					data->is_running = true;
+					lock.unlock();
+					data->callback(reinterpret_cast<void*>(&thread));
+					lock.lock();
+					data->is_running = false;
+					if (data->is_dtor_waiting) {
+						global_cv().notify_all();
+					}
+					return;
+				}
+			} else {
+				data.reset();
+			}
+			thread.maybe_run_next(lock);
+		}
+
 	public:
 		std::shared_ptr<timer_data_t> data;
 
 		// Runs a callback unless the `timer_t` destructor is called.
-		timer_t(uint32_t ms, callback_t callback) :
-			data(std::make_shared<timer_data_t>(
+		timer_t(uint32_t ms, void** holder, callback_t callback) {
+			std::lock_guard<std::mutex> lock(global_mutex());
+			data = std::make_shared<timer_data_t>(
 				std::chrono::steady_clock::now() + std::chrono::milliseconds(ms),
-				std::move(callback)
-			)) {
+				holder, std::move(callback)
+			);
 			start_or_join_timer(data);
 		}
+		timer_t(uint32_t ms, callback_t callback) : timer_t(ms, nullptr, std::move(callback)) {}
 		timer_t(const timer_t&) = delete;
 		timer_t& operator= (const timer_t&) = delete;
 
@@ -182,18 +219,36 @@ class timer_t {
 
 		// Runs a callback in `ms` with no `timer_t` object.
 		static void wait_detached(uint32_t ms, callback_t callback) {
+			std::lock_guard<std::mutex> lock(global_mutex());
 			start_or_join_timer(std::make_shared<timer_data_t>(
 				std::chrono::steady_clock::now() + std::chrono::milliseconds(ms),
-				std::move(callback)
+				nullptr, std::move(callback)
 			));
 		}
 
 		// Invoked from callbacks when they are done scheduling and may need to wait
-		static void chain(void* next_ptr) {
-			auto next = reinterpret_cast<timer_data_t**>(next_ptr);
-			if (*next != nullptr) {
-				std::unique_lock<std::mutex> lock(global_mutex());
-				(*next)->run(lock, next + 1);
+		static void chain(void* ptr) {
+			auto& thread = *reinterpret_cast<timer_thread_t*>(ptr);
+			std::unique_lock<std::mutex> lock(global_mutex());
+			thread.maybe_run_next(lock);
+		}
+
+		static void pause(void*& holder) {
+			std::lock_guard<std::mutex> lock(global_mutex());
+			if (holder != nullptr) {
+				auto& data = *static_cast<timer_data_t*>(holder);
+				data.pause();
+			}
+		}
+
+		static void resume(void*& holder) {
+			std::lock_guard<std::mutex> lock(global_mutex());
+			if (holder != nullptr) {
+				auto& data = *static_cast<timer_data_t*>(holder);
+				data.resume();
+				if (data.threadless_self) {
+					start_or_join_timer(std::move(data.threadless_self));
+				}
 			}
 		}
 };

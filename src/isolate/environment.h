@@ -317,6 +317,7 @@ class IsolateEnvironment {
 		std::unique_ptr<v8::ArrayBuffer::Allocator> allocator_ptr;
 		std::shared_ptr<void> snapshot_blob_ptr;
 		v8::StartupData startup_data {};
+		void* timer_holder = nullptr;
 		size_t memory_limit = 0;
 		size_t extra_allocated_memory = 0;
 		bool hit_memory_limit = false;

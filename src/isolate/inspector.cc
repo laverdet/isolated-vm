@@ -1,6 +1,7 @@
 #include "inspector.h"
 #include "environment.h"
 #include "runnable.h"
+#include "../timer.h"
 #include <string>
 
 using namespace ivm;
@@ -44,6 +45,7 @@ InspectorAgent::~InspectorAgent() {
  * thread so we know that an Executor::Lock is up.
  */
 void InspectorAgent::runMessageLoopOnPause(int /* context_group_id */) {
+	timer_t::pause(isolate.timer_holder);
 	IsolateEnvironment::Executor::CpuTimer::PauseScope pause_cpu_timer(isolate.executor.cpu_timer);
 	std::unique_lock<std::mutex> lock(mutex);
 	running = true;
@@ -53,6 +55,7 @@ void InspectorAgent::runMessageLoopOnPause(int /* context_group_id */) {
 		isolate.InterruptEntry<&IsolateEnvironment::Scheduler::Lock::TakeInterrupts>();
 		lock.lock();
 	} while (running);
+	timer_t::resume(isolate.timer_holder);
 }
 
 /**
@@ -118,21 +121,6 @@ void InspectorAgent::ContextCreated(Local<Context> context, const std::string& n
  */
 void InspectorAgent::ContextDestroyed(Local<Context> context) {
 	inspector->contextDestroyed(context);
-}
-
-/**
- * If the inspector session has this isolate paused then this will block until the inspector is
- * done.
- */
-bool InspectorAgent::WaitForLoop() {
-	std::unique_lock<std::mutex> lock(mutex);
-	if (!running) {
-		return false;
-	}
-	do {
-		cv.wait(lock);
-	} while (running);
-	return true;
 }
 
 /**

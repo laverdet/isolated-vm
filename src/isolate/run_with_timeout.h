@@ -83,19 +83,9 @@ v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 	{
 		std::unique_ptr<timer_t> timer_ptr;
 		if (timeout_ms != 0) {
-			timer_ptr = std::make_unique<timer_t>(timeout_ms, [
+			timer_ptr = std::make_unique<timer_t>(timeout_ms, &isolate.timer_holder, [
 				&did_timeout, &did_finish, is_default_thread, &isolate, &stack_trace
 			](void* next) {
-				InspectorAgent* inspector = isolate.GetInspectorAgent();
-				if (inspector != nullptr) {
-					while (inspector->WaitForLoop()) {
-						// This will loop until the inspector releases the isolate for more than 500ms. In the
-						// case there is no inspector connected, or in the case the inspector is not blocking
-						// the isolate nothing will happen. I'm not sure if there's a more graceful way to
-						// really handle this.
-						std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(500));
-					}
-				}
 				did_timeout = true;
 				++isolate.terminate_depth;
 				{
