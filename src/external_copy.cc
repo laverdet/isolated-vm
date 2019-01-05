@@ -90,21 +90,20 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool tran
 			if (!transfer_out) {
 				transfer_out = std::find(transfer_list.begin(), transfer_list.end(), array_buffer) != transfer_list.end();
 			}
-			if (view->ByteOffset() != 0 || view->ByteLength() != array_buffer->ByteLength()) {
-				throw js_generic_error("Cannot copy sliced TypedArray (this.byteOffset != 0 || this.byteLength != this.buffer.byteLength)");
-			}
+			// Grab byte_offset and byte_length before the transfer because "neutering" the array buffer will null these out
+			size_t byte_offset = view->ByteOffset();
+			size_t byte_length = view->ByteLength();
+			std::unique_ptr<ExternalCopyArrayBuffer> external_buffer;
 			if (transfer_out) {
-				return make_unique<ExternalCopyArrayBufferView>(ExternalCopyArrayBuffer::Transfer(array_buffer), type);
+				external_buffer = ExternalCopyArrayBuffer::Transfer(array_buffer);
 			} else {
-				return make_unique<ExternalCopyArrayBufferView>(make_unique<ExternalCopyArrayBuffer>(array_buffer), type);
+				external_buffer = make_unique<ExternalCopyArrayBuffer>(array_buffer);
 			}
+			return make_unique<ExternalCopyArrayBufferView>(std::move(external_buffer), type, byte_offset, byte_length);
 		} else {
 			assert(tmp->IsSharedArrayBuffer());
 			Local<SharedArrayBuffer> array_buffer = tmp.As<SharedArrayBuffer>();
-			if (view->ByteOffset() != 0 || view->ByteLength() != array_buffer->ByteLength()) {
-				throw js_generic_error("Cannot transfer sliced TypedArray (this.byteOffset != 0 || this.byteLength != this.buffer.byteLength)");
-			}
-			return make_unique<ExternalCopyArrayBufferView>(make_unique<ExternalCopySharedArrayBuffer>(array_buffer), type);
+			return make_unique<ExternalCopyArrayBufferView>(make_unique<ExternalCopySharedArrayBuffer>(array_buffer), type, view->ByteOffset(), view->ByteLength());
 		}
 	} else if (value->IsObject()) {
 		// Initialize serializer and transferred buffer vectors
@@ -671,35 +670,38 @@ shared_ptr<void> ExternalCopySharedArrayBuffer::GetSharedPointer() const {
 /**
  * ExternalCopyArrayBufferView implementation
  */
-ExternalCopyArrayBufferView::ExternalCopyArrayBufferView(std::unique_ptr<ExternalCopyBytes> buffer, ViewType type) :
+ExternalCopyArrayBufferView::ExternalCopyArrayBufferView(
+	std::unique_ptr<ExternalCopyBytes> buffer,
+	ViewType type, size_t byte_offset, size_t byte_length
+) :
 	ExternalCopy(sizeof(ExternalCopyArrayBufferView)),
 	buffer(std::move(buffer)),
-	type(type) {}
+	type(type),
+	byte_offset(byte_offset), byte_length(byte_length) {}
 
 template <typename T>
-Local<Value> NewTypedArrayView(Local<T> buffer, ExternalCopyArrayBufferView::ViewType type) {
-	size_t byte_length = buffer->ByteLength();
+Local<Value> NewTypedArrayView(Local<T> buffer, ExternalCopyArrayBufferView::ViewType type, size_t byte_offset, size_t byte_length) {
 	switch (type) {
 		case ExternalCopyArrayBufferView::ViewType::Uint8:
-			return Uint8Array::New(buffer, 0, byte_length >> 0);
+			return Uint8Array::New(buffer, byte_offset, byte_length >> 0);
 		case ExternalCopyArrayBufferView::ViewType::Uint8Clamped:
-			return Uint8ClampedArray::New(buffer, 0, byte_length >> 0);
+			return Uint8ClampedArray::New(buffer, byte_offset, byte_length >> 0);
 		case ExternalCopyArrayBufferView::ViewType::Int8:
-			return Int8Array::New(buffer, 0, byte_length >> 0);
+			return Int8Array::New(buffer, byte_offset, byte_length >> 0);
 		case ExternalCopyArrayBufferView::ViewType::Uint16:
-			return Uint16Array::New(buffer, 0, byte_length >> 1);
+			return Uint16Array::New(buffer, byte_offset, byte_length >> 1);
 		case ExternalCopyArrayBufferView::ViewType::Int16:
-			return Int16Array::New(buffer, 0, byte_length >> 1);
+			return Int16Array::New(buffer, byte_offset, byte_length >> 1);
 		case ExternalCopyArrayBufferView::ViewType::Uint32:
-			return Uint32Array::New(buffer, 0, byte_length>> 2);
+			return Uint32Array::New(buffer, byte_offset, byte_length >> 2);
 		case ExternalCopyArrayBufferView::ViewType::Int32:
-			return Int32Array::New(buffer, 0, byte_length >> 2);
+			return Int32Array::New(buffer, byte_offset, byte_length >> 2);
 		case ExternalCopyArrayBufferView::ViewType::Float32:
-			return Float32Array::New(buffer, 0, byte_length >> 2);
+			return Float32Array::New(buffer, byte_offset, byte_length >> 2);
 		case ExternalCopyArrayBufferView::ViewType::Float64:
-			return Float64Array::New(buffer, 0, byte_length >> 3);
+			return Float64Array::New(buffer, byte_offset, byte_length >> 3);
 		case ExternalCopyArrayBufferView::ViewType::DataView:
-			return DataView::New(buffer, 0, byte_length);
+			return DataView::New(buffer, byte_offset, byte_length);
 		default:
 			throw std::exception();
 	}
@@ -708,9 +710,9 @@ Local<Value> NewTypedArrayView(Local<T> buffer, ExternalCopyArrayBufferView::Vie
 Local<Value> ExternalCopyArrayBufferView::CopyInto(bool transfer_in) {
 	Local<Value> buffer = this->buffer->CopyInto(transfer_in);
 	if (buffer->IsArrayBuffer()) {
-		return NewTypedArrayView(buffer.As<ArrayBuffer>(), type);
+		return NewTypedArrayView(buffer.As<ArrayBuffer>(), type, byte_offset, byte_length);
 	} else {
-		return NewTypedArrayView(buffer.As<SharedArrayBuffer>(), type);
+		return NewTypedArrayView(buffer.As<SharedArrayBuffer>(), type, byte_offset, byte_length);
 	}
 }
 

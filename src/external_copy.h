@@ -298,9 +298,10 @@ class ExternalCopyArrayBufferView : public ExternalCopy {
 	private:
 		std::unique_ptr<ExternalCopyBytes> buffer;
 		ViewType type;
+		size_t byte_offset, byte_length;
 
 	public:
-		ExternalCopyArrayBufferView(std::unique_ptr<ExternalCopyBytes> buffer, ViewType type);
+		ExternalCopyArrayBufferView(std::unique_ptr<ExternalCopyBytes> buffer, ViewType type, size_t byte_offset, size_t byte_length);
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
 		uint32_t WorstCaseHeapSize() const final;
 };

@@ -78,6 +78,15 @@ let str = '1,2,3,4,5,6,7,8';
 		assert.throws(() => ext.copy(), /Array buffer is invalid/);
 	});
 
+	// Test sliced array
+	assert.doesNotThrow(() => {
+		let view = new Uint8Array(arr);
+		let view2 = new Uint8Array(view.buffer, 4);
+		let copy = new ivm.ExternalCopy(view2).copy();
+		assert.ok(copy.length == arr.length - 4);
+		assert.strictEqual(new Uint8Array(copy.buffer).join(), str);
+	});
+
 	// Transfer in one last time
 	let buffer4 = copy2.copy();
 	let view4 = new Uint8Array(buffer4);
