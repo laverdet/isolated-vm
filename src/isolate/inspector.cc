@@ -1,6 +1,7 @@
 #include "inspector.h"
 #include "environment.h"
 #include "runnable.h"
+#include "util.h"
 #include "../timer.h"
 #include <string>
 
@@ -45,6 +46,9 @@ InspectorAgent::~InspectorAgent() {
  * thread so we know that an Executor::Lock is up.
  */
 void InspectorAgent::runMessageLoopOnPause(int /* context_group_id */) {
+	if (terminated) {
+		return;
+	}
 	timer_t::pause(isolate.timer_holder);
 	IsolateEnvironment::Executor::CpuTimer::PauseScope pause_cpu_timer(isolate.executor.cpu_timer);
 	std::unique_lock<std::mutex> lock(mutex);
@@ -54,7 +58,7 @@ void InspectorAgent::runMessageLoopOnPause(int /* context_group_id */) {
 		lock.unlock();
 		isolate.InterruptEntry<&IsolateEnvironment::Scheduler::Lock::TakeInterrupts>();
 		lock.lock();
-	} while (running);
+	} while (running && !terminated);
 	timer_t::resume(isolate.timer_holder);
 }
 
@@ -89,6 +93,12 @@ void InspectorAgent::SessionDisconnected(InspectorSession& session) {
  * Request to send an interrupt to the inspected isolate
  */
 void InspectorAgent::SendInterrupt(unique_ptr<class Runnable> task) {
+	// If this isolate is already locked just run the task. This happens at least when the isolate is disposing
+	// and `holder` no longer has a valid shared_ptr
+	if (IsolateEnvironment::Executor::GetCurrent() == &isolate) {
+		task->Run();
+		return;
+	}
 	// Grab pointer because it's needed for WakeIsolate
 	shared_ptr<IsolateEnvironment> ptr = isolate.holder->GetIsolate();
 	assert(ptr);
@@ -124,6 +134,15 @@ void InspectorAgent::ContextDestroyed(Local<Context> context) {
 }
 
 /**
+ * Called when this isolate needs to dispose, disables all inspector activity
+ */
+void InspectorAgent::Terminate() {
+	std::lock_guard<std::mutex> lock(mutex);
+	terminated = true;
+	cv.notify_all();
+}
+
+/**
  * Creates a new session and connects it to a given agent.
  */
 InspectorSession::InspectorSession(IsolateEnvironment& isolate) : agent(*isolate.GetInspectorAgent()), session(agent.ConnectSession(*this)) {}
@@ -154,18 +173,22 @@ void InspectorSession::Disconnect() {
  */
 void InspectorSession::DispatchBackendProtocolMessage(std::vector<uint16_t> message) {
 	std::lock_guard<std::mutex> lock(mutex);
-	struct DispatchMessage : public Runnable {
-		std::vector<uint16_t> message;
-		std::weak_ptr<V8InspectorSession> weak_session;
-		explicit DispatchMessage(std::vector<uint16_t> message, shared_ptr<V8InspectorSession>& session) : message(std::move(message)), weak_session(session) {}
-		void Run() final {
-			auto session = weak_session.lock();
-			if (session) {
-				session->dispatchProtocolMessage(StringView(&message[0], message.size()));
+	if (session) {
+		struct DispatchMessage : public Runnable {
+			std::vector<uint16_t> message;
+			std::weak_ptr<V8InspectorSession> weak_session;
+			explicit DispatchMessage(std::vector<uint16_t> message, shared_ptr<V8InspectorSession>& session) : message(std::move(message)), weak_session(session) {}
+			void Run() final {
+				auto session = weak_session.lock();
+				if (session) {
+					session->dispatchProtocolMessage(StringView(&message[0], message.size()));
+				}
 			}
-		}
-	};
-	agent.SendInterrupt(std::make_unique<DispatchMessage>(std::move(message), session));
+		};
+		agent.SendInterrupt(std::make_unique<DispatchMessage>(std::move(message), session));
+	} else {
+		throw js_generic_error("Session is dead");
+	}
 }
 
 } // namespace ivm

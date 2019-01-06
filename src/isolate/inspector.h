@@ -28,6 +28,7 @@ class InspectorAgent : public v8_inspector::V8InspectorClient {
 			std::unordered_set<InspectorSession*> active;
 		} sessions;
 		bool running = false;
+		bool terminated = false;
 
 		std::unique_ptr<v8_inspector::V8InspectorSession> ConnectSession(InspectorSession& session);
 		void SessionDisconnected(InspectorSession& session);
@@ -42,6 +43,7 @@ class InspectorAgent : public v8_inspector::V8InspectorClient {
 		void quitMessageLoopOnPause() final;
 		void ContextCreated(v8::Local<v8::Context> context, const std::string& name);
 		void ContextDestroyed(v8::Local<v8::Context> context);
+		void Terminate();
 };
 
 /**

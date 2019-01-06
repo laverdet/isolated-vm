@@ -500,12 +500,7 @@ class IsolateEnvironment {
 		/**
 		 * Ask this isolate to finish everything it's doing.
 		 */
-		void Terminate() {
-			assert(!root);
-			terminated = true;
-			isolate->TerminateExecution();
-			holder->isolate.reset();
-		}
+		void Terminate();
 
 		/**
 		 * Cancels an async three_phase_runner if one exists, i.e. applySyncPromise

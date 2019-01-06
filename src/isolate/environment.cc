@@ -617,9 +617,15 @@ IsolateEnvironment::~IsolateEnvironment() {
 		return;
 	}
 	{
+		// Grab local pointer to inspector agent with scheduler lock active
+		std::unique_ptr<InspectorAgent> agent_ptr;
+		{
+			Scheduler::Lock lock(scheduler);
+			agent_ptr = std::move(inspector_agent);
+		}
+		// Now activate executor lock and invoke inspector agent's dtor
 		Executor::Lock lock(*this);
-		// Dispose of inspector first
-		inspector_agent.reset();
+		agent_ptr.reset();
 		// Kill all weak persistents
 		for (auto it = weak_persistents.begin(); it != weak_persistents.end(); ) {
 			void(*fn)(void*) = it->second.first;
@@ -682,6 +688,19 @@ std::chrono::high_resolution_clock::duration IsolateEnvironment::GetWallTime() {
 		time += std::chrono::high_resolution_clock::now() - executor.wall_timer->time;
 	}
 	return time;
+}
+
+void IsolateEnvironment::Terminate() {
+	assert(!root);
+	terminated = true;
+	{
+		Scheduler::Lock lock(scheduler);
+		if (inspector_agent) {
+			inspector_agent->Terminate();
+		}
+	}
+	isolate->TerminateExecution();
+	holder->isolate.reset();
 }
 
 void IsolateEnvironment::AddWeakCallback(Persistent<Object>* handle, void(*fn)(void*), void* param) {
