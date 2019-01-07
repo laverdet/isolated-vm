@@ -10,22 +10,21 @@
 
 namespace ivm {
 
-class NativeModuleHandle : public TransferableHandle {
+class NativeModule {
+	private:
+		using init_t = void(*)(v8::Isolate *, v8::Local<v8::Context>, v8::Local<v8::Object>);
+		uv_lib_t lib {};
+		init_t init;
+
 	public:
-		class NativeModule {
-			private:
-				using init_t = void(*)(v8::Isolate *, v8::Local<v8::Context>, v8::Local<v8::Object>);
-				uv_lib_t lib {};
-				init_t init;
+		explicit NativeModule(const std::string& filename);
+		NativeModule(const NativeModule&) = delete;
+		NativeModule& operator= (const NativeModule&) = delete;
+		~NativeModule();
+		void InitForContext(v8::Isolate* isolate, v8::Local<v8::Context> context, v8::Local<v8::Object> target);
+};
 
-			public:
-				explicit NativeModule(const std::string& filename);
-				NativeModule(const NativeModule&) = delete;
-				NativeModule& operator= (const NativeModule&) = delete;
-				~NativeModule();
-				void InitForContext(v8::Isolate* isolate, v8::Local<v8::Context> context, v8::Local<v8::Object> target);
-		};
-
+class NativeModuleHandle : public TransferableHandle {
 	private:
 		class NativeModuleTransferable : public Transferable {
 			private:

@@ -15,7 +15,7 @@ namespace ivm {
 /**
  * RAII wrapper around libuv dlopen
  */
-NativeModuleHandle::NativeModule::NativeModule(const std::string& filename) : init(nullptr) {
+NativeModule::NativeModule(const std::string& filename) : init(nullptr) {
 	if (uv_dlopen(filename.c_str(), &lib) != 0) {
 		throw js_generic_error("Failed to load module");
 	}
@@ -25,11 +25,11 @@ NativeModuleHandle::NativeModule::NativeModule(const std::string& filename) : in
 	}
 }
 
-NativeModuleHandle::NativeModule::~NativeModule() {
+NativeModule::~NativeModule() {
 	uv_dlclose(&lib);
 }
 
-void NativeModuleHandle::NativeModule::InitForContext(Isolate* isolate, Local<Context> context, Local<Object> target) {
+void NativeModule::InitForContext(Isolate* isolate, Local<Context> context, Local<Object> target) {
 	init(isolate, context, target);
 }
 
@@ -68,11 +68,11 @@ unique_ptr<Transferable> NativeModuleHandle::TransferOut() {
 class CreateRunner : public ThreePhaseTask {
 	private:
 		shared_ptr<RemoteHandle<Context>> context;
-		shared_ptr<NativeModuleHandle::NativeModule> module;
+		shared_ptr<NativeModule> module;
 		unique_ptr<Transferable> result;
 
 	public:
-		CreateRunner(shared_ptr<RemoteHandle<Context>> context, shared_ptr<NativeModuleHandle::NativeModule> module) : context(std::move(context)), module(std::move(module)) {}
+		CreateRunner(shared_ptr<RemoteHandle<Context>> context, shared_ptr<NativeModule> module) : context(std::move(context)), module(std::move(module)) {}
 
 	protected:
 		void Phase2() final {
@@ -81,6 +81,9 @@ class CreateRunner : public ThreePhaseTask {
 			Context::Scope context_scope(context_handle);
 			Local<Object> exports = Object::New(isolate);
 			module->InitForContext(isolate, context_handle, exports);
+			// Once a native module is imported into an isolate, that isolate holds a reference to the module forever
+			auto ptr = module.get();
+			IsolateEnvironment::Executor::GetCurrent()->native_modules.emplace(ptr, std::move(module));
 			result = ReferenceHandle::New(exports)->TransferOut();
 		}
 
