@@ -32,7 +32,7 @@ class PlatformDelegate : public v8::Platform {
 			public:
 				explicit TaskHolder(v8::Task* task) : task(task) {}
 				explicit TaskHolder(std::unique_ptr<v8::Task>&& task) : task(std::move(task)) {	}
-				explicit TaskHolder(TaskHolder&& task) : task(std::move(task.task)) {}
+				TaskHolder(TaskHolder&& task) noexcept : task(std::move(task.task)) {}
 				void Run() final {
 					task->Run();
 				}
@@ -180,7 +180,7 @@ class PlatformDelegate : public v8::Platform {
 				std::weak_ptr<IsolateHolder> holder;
 
 			public:
-				ForegroundTaskRunner(std::shared_ptr<IsolateHolder> holder) : holder(std::move(holder)) {}
+				explicit ForegroundTaskRunner(const std::shared_ptr<IsolateHolder>& holder) : holder(holder) {}
 
 				void PostTask(std::unique_ptr<v8::Task> task) final {
 					auto ref = holder.lock();
@@ -192,7 +192,7 @@ class PlatformDelegate : public v8::Platform {
 				void PostDelayedTask(std::unique_ptr<v8::Task> task, double delay_in_seconds) final {
 					auto shared_task = std::make_shared<TaskHolder>(std::move(task));
 					auto holder = this->holder;
-					timer_t::wait_detached(delay_in_seconds * 1000, [holder, shared_task](void* next) {
+					timer_t::wait_detached(static_cast<uint32_t>(delay_in_seconds * 1000), [holder, shared_task](void* next) {
 						auto ref = holder.lock();
 						if (ref) {
 							// Don't wake the isolate because that will affect the libuv ref/unref stuff. Instead,
@@ -204,7 +204,7 @@ class PlatformDelegate : public v8::Platform {
 					});
 				}
 
-				void PostIdleTask(std::unique_ptr<v8::IdleTask> task) final {
+				void PostIdleTask(std::unique_ptr<v8::IdleTask> /* task */) final {
 					std::terminate();
 				}
 
@@ -218,17 +218,17 @@ class PlatformDelegate : public v8::Platform {
 				std::shared_ptr<std::vector<std::unique_ptr<v8::Task>>> tasks;
 
 			public:
-				TmpForegroundTaskRunner(std::shared_ptr<std::vector<std::unique_ptr<v8::Task>>> tasks) : tasks(std::move(tasks)) {}
+				explicit TmpForegroundTaskRunner(std::shared_ptr<std::vector<std::unique_ptr<v8::Task>>> tasks) : tasks(std::move(tasks)) {}
 
 				void PostTask(std::unique_ptr<v8::Task> task) final {
 					tasks->push_back(std::move(task));
 				}
 
-				void PostDelayedTask(std::unique_ptr<v8::Task> task, double delay_in_seconds) final {
+				void PostDelayedTask(std::unique_ptr<v8::Task> task, double /* delay_in_seconds */) final {
 					tasks->push_back(std::move(task));
 				}
 
-				void PostIdleTask(std::unique_ptr<v8::IdleTask> task) final {
+				void PostIdleTask(std::unique_ptr<v8::IdleTask> /* task */) final {
 					std::terminate();
 				}
 
@@ -282,7 +282,7 @@ class PlatformDelegate : public v8::Platform {
 			if (isolate == node_isolate) {
 				node_platform->CallDelayedOnForegroundThread(isolate, task, delay_in_seconds);
 			} else {
-				timer_t::wait_detached(delay_in_seconds * 1000, [isolate, task](void* next) {
+				timer_t::wait_detached(static_cast<uint32_t>(delay_in_seconds * 1000), [isolate, task](void* next) {
 					auto holder = std::make_unique<TaskHolder>(task);
 					auto s_isolate = IsolateEnvironment::LookupIsolate(isolate);
 					if (s_isolate) {

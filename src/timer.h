@@ -121,7 +121,7 @@ class timer_t {
 				}
 
 				void run_next(std::unique_lock<std::mutex>& lock) {
-					auto data = std::move(queue.top());
+					auto data = queue.top();
 					queue.pop();
 					run(std::move(data), lock, *this);
 				}

@@ -6,7 +6,7 @@
   "types": "isolated-vm.d.ts",
   "scripts": {
     "install": "node-gyp rebuild --release -j 4",
-    "lint": "find src -name '*.cc' | xargs -n1 ./clang-tidy-wrapper",
+    "lint": "find src -name '*.cc' | xargs -n1 clang-tidy",
     "test": "node test.js || nodejs test.js"
   },
   "repository": {

@@ -21,7 +21,7 @@
 )
 
 #ifdef NODE_MODULE_VERSION
-#define NODE_MODULE_OR_V8_AT_LEAST(nodejs, v8_major, v8_minor, v8_patch) (NODE_MODULE_VERSION >= nodejs)
+#define NODE_MODULE_OR_V8_AT_LEAST(nodejs, v8_major, v8_minor, v8_patch) (NODE_MODULE_VERSION >= (nodejs))
 #else
 #define NODE_MODULE_OR_V8_AT_LEAST(nodejs, v8_major, v8_minor, v8_patch) (V8_AT_LEAST(v8_major, v8_minor, v8_patch))
 #endif
