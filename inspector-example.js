@@ -17,7 +17,6 @@ let isolate = new ivm.Isolate({ inspector: true });
 }()).catch(console.error);
 
 // Create an inspector channel on port 10000
-let channel = isolate.createInspectorSession();
 let wss = new WebSocket.Server({ port: 10000 });
 
 wss.on('connection', function(ws) {

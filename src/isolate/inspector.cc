@@ -56,7 +56,10 @@ void InspectorAgent::runMessageLoopOnPause(int /* context_group_id */) {
 	do {
 		cv.wait(lock);
 		lock.unlock();
-		isolate.InterruptEntry<&IsolateEnvironment::Scheduler::Lock::TakeInterrupts>();
+		{
+			IsolateEnvironment::Executor::CpuTimer::UnpauseScope unpause_cpu_timer(pause_cpu_timer);
+			isolate.InterruptEntry<&IsolateEnvironment::Scheduler::Lock::TakeInterrupts>();
+		}
 		lock.lock();
 	} while (running && !terminated);
 	timer_t::resume(isolate.timer_holder);

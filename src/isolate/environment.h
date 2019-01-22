@@ -55,6 +55,13 @@ class IsolateEnvironment {
 						PauseScope& operator=(const PauseScope&) = delete;
 						~PauseScope();
 					};
+					struct UnpauseScope {
+						CpuTimer* timer;
+						explicit UnpauseScope(PauseScope& pause);
+						UnpauseScope(const UnpauseScope&) = delete;
+						UnpauseScope& operator=(const UnpauseScope&) = delete;
+						~UnpauseScope();
+					};
 					Executor& executor;
 					CpuTimer* last;
 					std::chrono::time_point<std::chrono::high_resolution_clock> time;

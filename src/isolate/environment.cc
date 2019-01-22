@@ -91,6 +91,14 @@ IsolateEnvironment::Executor::CpuTimer::PauseScope::~PauseScope() {
 	timer->Resume();
 }
 
+IsolateEnvironment::Executor::CpuTimer::UnpauseScope::UnpauseScope(PauseScope& pause) : timer(pause.timer) {
+	timer->Resume();
+}
+
+IsolateEnvironment::Executor::CpuTimer::UnpauseScope::~UnpauseScope() {
+	timer->Pause();
+}
+
 IsolateEnvironment::Executor::WallTimer::WallTimer(Executor& executor) : executor(executor), cpu_timer(Executor::cpu_timer_thread) {
 	// Pause current CPU timer which may not belong to this isolate
 	if (cpu_timer != nullptr) {
