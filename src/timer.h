@@ -43,12 +43,6 @@ class timer_t {
 				}
 			}
 
-			~timer_data_t() {
-				if (is_alive && holder != nullptr) {
-					*holder = nullptr;
-				}
-			}
-
 			bool adjust() {
 				if (paused_duration == std::chrono::steady_clock::duration{}) {
 					return false;
@@ -215,6 +209,9 @@ class timer_t {
 				} while (data->is_running);
 			}
 			data->is_alive = false;
+			if (data->holder != nullptr) {
+				*data->holder = nullptr;
+			}
 		}
 
 		// Runs a callback in `ms` with no `timer_t` object.
