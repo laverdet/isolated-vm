@@ -64,7 +64,7 @@ class IsolateEnvironment {
 					};
 					Executor& executor;
 					CpuTimer* last;
-					std::chrono::time_point<std::chrono::high_resolution_clock> time;
+					std::chrono::time_point<std::chrono::steady_clock> time;
 					explicit CpuTimer(Executor& executor);
 					CpuTimer(const CpuTimer&) = delete;
 					CpuTimer operator= (const CpuTimer&) = delete;
@@ -78,7 +78,7 @@ class IsolateEnvironment {
 				struct WallTimer {
 					Executor& executor;
 					CpuTimer* cpu_timer;
-					std::chrono::time_point<std::chrono::high_resolution_clock> time;
+					std::chrono::time_point<std::chrono::steady_clock> time;
 					explicit WallTimer(Executor& executor);
 					WallTimer(const WallTimer&) = delete;
 					WallTimer operator= (const WallTimer&) = delete;
@@ -137,8 +137,8 @@ class IsolateEnvironment {
 				CpuTimer* cpu_timer = nullptr;
 				WallTimer* wall_timer = nullptr;
 				std::mutex timer_mutex;
-				std::chrono::high_resolution_clock::duration cpu_time = std::chrono::seconds::zero();
-				std::chrono::high_resolution_clock::duration wall_time = std::chrono::seconds::zero();
+				std::chrono::steady_clock::duration cpu_time = std::chrono::seconds::zero();
+				std::chrono::steady_clock::duration wall_time = std::chrono::seconds::zero();
 
 			public:
 				explicit Executor(IsolateEnvironment& env);
@@ -502,8 +502,8 @@ class IsolateEnvironment {
 		/**
 		 * Timer getters
 		 */
-		std::chrono::high_resolution_clock::duration GetCpuTime();
-		std::chrono::high_resolution_clock::duration GetWallTime();
+		std::chrono::steady_clock::duration GetCpuTime();
+		std::chrono::steady_clock::duration GetWallTime();
 
 		/**
 		 * Ask this isolate to finish everything it's doing.

@@ -54,7 +54,7 @@ IsolateEnvironment::Executor::Unlock::Unlock(IsolateEnvironment& env) : pause_sc
 
 IsolateEnvironment::Executor::Unlock::~Unlock() = default;
 
-IsolateEnvironment::Executor::CpuTimer::CpuTimer(Executor& executor) : executor(executor), last(Executor::cpu_timer_thread), time(std::chrono::high_resolution_clock::now()) {
+IsolateEnvironment::Executor::CpuTimer::CpuTimer(Executor& executor) : executor(executor), last(Executor::cpu_timer_thread), time(std::chrono::steady_clock::now()) {
 	Executor::cpu_timer_thread = this;
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
 	assert(executor.cpu_timer == nullptr);
@@ -64,21 +64,21 @@ IsolateEnvironment::Executor::CpuTimer::CpuTimer(Executor& executor) : executor(
 IsolateEnvironment::Executor::CpuTimer::~CpuTimer() {
 	Executor::cpu_timer_thread = last;
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
-	executor.cpu_time += std::chrono::high_resolution_clock::now() - time;
+	executor.cpu_time += std::chrono::steady_clock::now() - time;
 	assert(executor.cpu_timer == this);
 	executor.cpu_timer = nullptr;
 }
 
 void IsolateEnvironment::Executor::CpuTimer::Pause() {
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
-	executor.cpu_time += std::chrono::high_resolution_clock::now() - time;
+	executor.cpu_time += std::chrono::steady_clock::now() - time;
 	assert(executor.cpu_timer == this);
 	executor.cpu_timer = nullptr;
 }
 
 void IsolateEnvironment::Executor::CpuTimer::Resume() {
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
-	time = std::chrono::high_resolution_clock::now();
+	time = std::chrono::steady_clock::now();
 	assert(executor.cpu_timer == nullptr);
 	executor.cpu_timer = this;
 }
@@ -108,7 +108,7 @@ IsolateEnvironment::Executor::WallTimer::WallTimer(Executor& executor) : executo
 	if (executor.wall_timer == nullptr) {
 		std::lock_guard<std::mutex> lock(executor.timer_mutex);
 		executor.wall_timer = this;
-		time = std::chrono::high_resolution_clock::now();
+		time = std::chrono::steady_clock::now();
 	}
 }
 
@@ -121,7 +121,7 @@ IsolateEnvironment::Executor::WallTimer::~WallTimer() {
 	if (executor.wall_timer == this) {
 		std::lock_guard<std::mutex> lock(executor.timer_mutex);
 		executor.wall_timer = nullptr;
-		executor.wall_time += std::chrono::high_resolution_clock::now() - time;
+		executor.wall_time += std::chrono::steady_clock::now() - time;
 	}
 }
 
@@ -680,20 +680,20 @@ InspectorAgent* IsolateEnvironment::GetInspectorAgent() const {
 	return inspector_agent.get();
 }
 
-std::chrono::high_resolution_clock::duration IsolateEnvironment::GetCpuTime() {
+std::chrono::steady_clock::duration IsolateEnvironment::GetCpuTime() {
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
-	std::chrono::high_resolution_clock::duration time = executor.cpu_time;
+	std::chrono::steady_clock::duration time = executor.cpu_time;
 	if (executor.cpu_timer != nullptr) {
-		time += std::chrono::high_resolution_clock::now() - executor.cpu_timer->time;
+		time += std::chrono::steady_clock::now() - executor.cpu_timer->time;
 	}
 	return time;
 }
 
-std::chrono::high_resolution_clock::duration IsolateEnvironment::GetWallTime() {
+std::chrono::steady_clock::duration IsolateEnvironment::GetWallTime() {
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
-	std::chrono::high_resolution_clock::duration time = executor.wall_time;
+	std::chrono::steady_clock::duration time = executor.wall_time;
 	if (executor.wall_timer != nullptr) {
-		time += std::chrono::high_resolution_clock::now() - executor.wall_timer->time;
+		time += std::chrono::steady_clock::now() - executor.wall_timer->time;
 	}
 	return time;
 }
