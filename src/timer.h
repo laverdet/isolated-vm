@@ -44,7 +44,7 @@ class timer_t {
 			}
 
 			~timer_data_t() {
-				if (holder != nullptr) {
+				if (is_alive && holder != nullptr) {
 					*holder = nullptr;
 				}
 			}
