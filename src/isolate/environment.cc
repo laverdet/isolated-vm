@@ -400,7 +400,7 @@ void IsolateEnvironment::HeapCheck::Epilogue() {
 size_t IsolateEnvironment::specifics_count = 0;
 shared_ptr<IsolateEnvironment::BookkeepingStatics> IsolateEnvironment::bookkeeping_statics_shared = std::make_shared<IsolateEnvironment::BookkeepingStatics>(); // NOLINT
 
-void IsolateEnvironment::GCEpilogueCallback(Isolate* isolate, GCType /* type */, GCCallbackFlags /* flags */) {
+void IsolateEnvironment::GCEpilogueCallback(Isolate* isolate, GCType type, GCCallbackFlags /* flags */) {
 
 	// Get current heap statistics
 	auto that = GetCurrent();
@@ -409,7 +409,7 @@ void IsolateEnvironment::GCEpilogueCallback(Isolate* isolate, GCType /* type */,
 	isolate->GetHeapStatistics(&heap);
 
 	// If we are above the heap limit then kill this isolate
-	if (heap.used_heap_size() > that->memory_limit * 1024 * 1024) {
+	if (type != GCType::kGCTypeIncrementalMarking && heap.used_heap_size() > that->memory_limit * 1024 * 1024) {
 		that->hit_memory_limit = true;
 		that->Terminate();
 		return;
