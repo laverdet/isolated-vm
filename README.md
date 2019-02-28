@@ -247,8 +247,8 @@ reference.
 * `context` *[`Context`](#class-context-transferable)* - The context in which this script will run.
 * `options` *[object]*
 	* `release` *[boolean]* - If true `release()` will automatically be called on this instance.
-	* `timeout` *[number]* - Maximum amount of time this script is allowed to run before execution is
-	canceled. Default is no timeout.
+	* `timeout` *[number]* - Maximum amount of time in milliseconds this script is allowed to
+	run before execution is canceled. Default is no timeout.
 * **return** *[transferable]*
 
 Runs a given script within a context. This will return the last value evaluated in a given script,
@@ -285,8 +285,8 @@ module will have no effect.
 ##### `module.evaluate(options)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `module.evaluateSync(options)`
 * `options` *[object]* - Optional.
-	* `timeout` *[number]* - Maximum amount of time this module is allowed to run before execution is
-	canceled. Default is no timeout.
+	* `timeout` *[number]* - Maximum amount of time in milliseconds this module is allowed to
+	run before execution is canceled. Default is no timeout.
 * **return** *[transferable]*
 
 Evaluate the module and return the last expression (same as script.run). If `evaluate` is called
@@ -357,8 +357,8 @@ when `false` would be returned, I'm just giving you the result back straight fro
 * `receiver` *[transferable]* - The value which will be `this`.
 * `arguments` *[array]* - Array of transferables which will be passed to the function.
 * `options` *[object]*
-	* `timeout` *[number]* - Maximum amount of time this function is allowed to run before execution is
-	canceled. Default is no timeout.
+	* `timeout` *[number]* - Maximum amount of time in milliseconds this function is allowed to
+	run before execution is canceled. Default is no timeout.
 * **return** *[transferable]*
 
 Will attempt to invoke an object as if it were a function. If the return value is transferable it
