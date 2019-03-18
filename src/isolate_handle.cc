@@ -639,7 +639,7 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 			Isolate::Scope isolate_scope(isolate);
 			HandleScope handle_scope(isolate);
 			Local<Context> context = Context::New(isolate);
-#if V8_AT_LEAST(6, 2, 193)
+#if NODE_MODULE_OR_V8_AT_LEAST(64, 6, 2, 193)
 			snapshot_creator.SetDefaultContext(context, {&SerializeInternalFieldsCallback, nullptr});
 #else
 			snapshot_creator.SetDefaultContext(context);

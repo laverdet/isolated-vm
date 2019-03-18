@@ -663,7 +663,7 @@ static void DeserializeInternalFieldsCallback(Local<Object> /*holder*/, int /*in
 }
 
 Local<Context> IsolateEnvironment::NewContext() {
-#if V8_AT_LEAST(6, 2, 193)
+#if NODE_MODULE_OR_V8_AT_LEAST(64, 6, 2, 193)
 	return Context::New(isolate, nullptr, {}, {}, &DeserializeInternalFieldsCallback);
 #else
 	return Context::New(isolate);

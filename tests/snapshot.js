@@ -2,20 +2,11 @@
 const ivm = require('isolated-vm');
 const assert = require('assert');
 
-function v8AtLeast(major, minor, revision) {
-	let v8 = process.versions.v8.split(/\./g);
-	return v8[0] > major ||
-		(v8[0] == major && v8[1] >= minor) ||
-		(v8[0] == major && v8[1] == minor && v8[2] >= revision);
+let code = 'function sum(a,b) { return a + b }\n';
+if (process.versions.modules >= 64) {
+	code += 'const array = new Uint32Array(128); array[100] = 0xdeadbeef;\n';
 }
-
-let snapshot = ivm.Isolate.createSnapshot([ { code:
-`
-	const array = new Uint32Array(128);
-	array[100] = 0xdeadbeef;
-	function sum(a,b) { return a + b }
-`
-} ]);
+let snapshot = ivm.Isolate.createSnapshot([ { code } ]);
 let isolate = new ivm.Isolate({ snapshot });
 try {
 	snapshot.copy({ transferIn: true });
@@ -25,7 +16,7 @@ try {
 }
 let context = isolate.createContextSync();
 assert.equal(isolate.compileScriptSync('sum(1, 2)').runSync(context), 3);
-if (v8AtLeast(6, 2, 193)) {
+if (process.versions.modules >= 64) {
 	assert.equal(isolate.compileScriptSync('array[100]').runSync(context), 0xdeadbeef);
 }
 console.log('pass');
