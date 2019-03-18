@@ -87,6 +87,21 @@ class ExternalCopy : public Transferable {
  * This will make a copy of any Number (several C++ types), or Boolean. Strings are handled
  * by the specialization below.
  */
+template <typename Type>
+struct ExternalCopyTemplateCtor {
+	template <typename Value>
+	static v8::Local<v8::Value> New(v8::Isolate* isolate, Value value) {
+		return Type::New(isolate, value);
+	}
+};
+
+template <>
+struct ExternalCopyTemplateCtor<v8::Uint32> {
+	static v8::Local<v8::Value> New(v8::Isolate* isolate, uint32_t value) {
+		return v8::Uint32::NewFromUnsigned(isolate, value);
+	}
+};
+
 template <typename T, typename V>
 class ExternalCopyTemplate : public ExternalCopy {
 	private:
@@ -96,7 +111,7 @@ class ExternalCopyTemplate : public ExternalCopy {
 		explicit ExternalCopyTemplate(const v8::Local<v8::Value>& value) : value(v8::Local<T>::Cast(value)->Value()) {}
 
 		v8::Local<v8::Value> CopyInto(bool /*transfer_in*/ = false) final {
-			return T::New(v8::Isolate::GetCurrent(), value);
+			return ExternalCopyTemplateCtor<T>::New(v8::Isolate::GetCurrent(), value);
 		}
 
 		uint32_t WorstCaseHeapSize() const final {
