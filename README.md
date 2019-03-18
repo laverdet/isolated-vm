@@ -129,8 +129,9 @@ Isolate snapshots are a very useful feature if you intend to create several isol
 libraries between them. A snapshot serializes the entire v8 heap including parsed code, global
 variables, and compiled code. Check out the examples section for tips on using this.
 
-**Please note that versions of nodejs 10.2.0 and higher may crash while using the snapshot
-feature.**
+**Please note that versions of nodejs 10.2.0 - 10.9.0 may crash while using the snapshot feature.
+Additionally, `ArrayBuffer` and `TypedArray` instances will be silently forgotten on nodejs 8.x
+[they work fine on nodejs 10.0.0 and higher]**
 
 ##### `isolate.compileScript(code)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `isolate.compileScriptSync(code)`

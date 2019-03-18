@@ -639,7 +639,11 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 			Isolate::Scope isolate_scope(isolate);
 			HandleScope handle_scope(isolate);
 			Local<Context> context = Context::New(isolate);
+#if V8_AT_LEAST(6, 2, 193)
 			snapshot_creator.SetDefaultContext(context, {&SerializeInternalFieldsCallback, nullptr});
+#else
+			snapshot_creator.SetDefaultContext(context);
+#endif
 			FunctorRunners::RunCatchExternal(context, [&]() {
 				HandleScope handle_scope(isolate);
 				Local<Context> context_dirty = Context::New(isolate);
