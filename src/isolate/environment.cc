@@ -612,7 +612,7 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit, shared_ptr<void> snaps
 	{
 		Locker locker(isolate);
 		HandleScope handle_scope(isolate);
-		default_context.Reset(isolate, Context::New(isolate));
+		default_context.Reset(isolate, NewContext());
 	}
 
 	// There is no asynchronous Isolate ctor so we should throw away thread specifics in case
@@ -657,6 +657,13 @@ IsolateEnvironment::~IsolateEnvironment() {
 	}
 	std::lock_guard<std::mutex> lock(bookkeeping_statics->lookup_mutex);
 	bookkeeping_statics->isolate_map.erase(bookkeeping_statics->isolate_map.find(isolate));
+}
+
+static void DeserializeInternalFieldsCallback(Local<Object> /*holder*/, int /*index*/, StartupData /*payload*/, void* /*data*/) {
+}
+
+Local<Context> IsolateEnvironment::NewContext() {
+	return Context::New(isolate, nullptr, {}, {}, DeserializeInternalFieldsCallback);
 }
 
 void IsolateEnvironment::TaskEpilogue() {

@@ -265,7 +265,6 @@ struct CreateContextRunner : public ThreePhaseTask {
 			}
 		};
 
-		Isolate* isolate = Isolate::GetCurrent();
 		auto env = IsolateEnvironment::GetCurrent();
 
 		// Sanity check before we build the context
@@ -275,7 +274,7 @@ struct CreateContextRunner : public ThreePhaseTask {
 		}
 
 		// Make a new context and setup shared pointers
-		Local<Context> context_handle = Context::New(isolate);
+		Local<Context> context_handle = env->NewContext();
 		if (enable_inspector) {
 			env->GetInspectorAgent()->ContextCreated(context_handle, "<isolated-vm>");
 		}
@@ -593,6 +592,10 @@ Local<Value> IsolateHandle::IsDisposedGetter() {
 /**
 * Create a snapshot from some code and return it as an external ArrayBuffer
 */
+static StartupData SerializeInternalFieldsCallback(Local<Object> /*holder*/, int /*index*/, void* /*data*/) {
+	return {nullptr, 0};
+}
+
 Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLocal<String> warmup_handle) {
 
 	// Copy embed scripts and warmup script from outer isolate
@@ -636,7 +639,7 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 			Isolate::Scope isolate_scope(isolate);
 			HandleScope handle_scope(isolate);
 			Local<Context> context = Context::New(isolate);
-			snapshot_creator.SetDefaultContext(context);
+			snapshot_creator.SetDefaultContext(context, {&SerializeInternalFieldsCallback, nullptr});
 			FunctorRunners::RunCatchExternal(context, [&]() {
 				HandleScope handle_scope(isolate);
 				Local<Context> context_dirty = Context::New(isolate);
@@ -672,7 +675,6 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 			});
 			isolate->ContextDisposedNotification(false);
 			delegate_scope.FlushTasks();
-			snapshot_creator.AddContext(context);
 		}
 		// nb: Snapshot must be created even in the error case, because `~SnapshotCreator` will crash if
 		// you don't

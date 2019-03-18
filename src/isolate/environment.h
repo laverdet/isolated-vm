@@ -440,6 +440,11 @@ class IsolateEnvironment {
 		}
 
 		/**
+		 * Creates a new context. Must be used instead of Context::New() because of snapshot deserialization
+		 */
+		v8::Local<v8::Context> NewContext();
+
+		/**
 		 * This is called after user code runs. This throws a fatal error if the memory limit was hit.
 		 * If an asyncronous exception (promise) was lost, this will throw it for real.
 		 */

@@ -1,14 +1,22 @@
 "use strict";
-let ivm = require('isolated-vm');
-let snapshot = ivm.Isolate.createSnapshot([ { code: 'function sum(a,b) { return a + b }' } ]);
+const ivm = require('isolated-vm');
+const assert = require('assert');
+
+let snapshot = ivm.Isolate.createSnapshot([ { code:
+`
+	const array = new Uint32Array(128);
+	array[100] = 0xdeadbeef;
+	function sum(a,b) { return a + b }
+`
+} ]);
 let isolate = new ivm.Isolate({ snapshot });
 try {
 	snapshot.copy({ transferIn: true });
-	console.log('buffer transferred');
+	assert.fail('buffer transferred');
 } catch (err) {
-	if (!/in use/.test(err)) {
-		console.log('weird error');
-	}
+	assert.ok(/in use/.test(err), 'weird error');
 }
 let context = isolate.createContextSync();
-console.log(isolate.compileScriptSync('sum(1, 2)').runSync(context) === 3 ? 'pass' : 'fail');
+assert.equal(isolate.compileScriptSync('sum(1, 2)').runSync(context), 3);
+assert.equal(isolate.compileScriptSync('array[100]').runSync(context), 0xdeadbeef);
+console.log('pass');
