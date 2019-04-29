@@ -372,11 +372,15 @@ void IsolateEnvironment::Scheduler::AsyncWait::Wake() {
 /**
  * HeapCheck implementation
  */
-IsolateEnvironment::HeapCheck::HeapCheck(IsolateEnvironment& env, size_t expected_size) : env(env), did_increase(false) {
+IsolateEnvironment::HeapCheck::HeapCheck(IsolateEnvironment& env, size_t expected_size) : env{env}, did_increase{false} {
 	if (expected_size > 1024 && !env.root) {
 		HeapStatistics heap;
 		env.GetIsolate()->GetHeapStatistics(&heap);
+#if V8_AT_LEAST(6, 7, 185)
+		size_t old_space = env.memory_limit * 1024 * 1024;
+#else
 		size_t old_space = env.memory_limit * 1024 * 1024 * 2;
+#endif
 		size_t expected_total_heap = heap.used_heap_size() + env.extra_allocated_memory + expected_size;
 		if (expected_total_heap > old_space) {
 			// Heap limit increases by factor of 4
@@ -394,6 +398,7 @@ IsolateEnvironment::HeapCheck::HeapCheck(IsolateEnvironment& env, size_t expecte
 #if V8_AT_LEAST(6, 7, 185)
 IsolateEnvironment::HeapCheck::~HeapCheck() = default;
 #else
+
 IsolateEnvironment::HeapCheck::~HeapCheck() {
 	if (did_increase) {
 		env.GetIsolate()->RestoreOriginalHeapLimit();
@@ -499,7 +504,7 @@ size_t IsolateEnvironment::NearHeapLimitCallback(void* data, size_t current_heap
 	auto that = static_cast<IsolateEnvironment*>(data);
 	that->hit_memory_limit = true;
 	that->Terminate();
-	return current_heap_limit + 1024 * 1024;
+	return current_heap_limit * 4;
 }
 
 void IsolateEnvironment::AsyncEntry() {
@@ -606,7 +611,12 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit, shared_ptr<void> snaps
 #else
 	rc.set_max_semi_space_size((int)std::pow(2, std::min(sizeof(void*) >= 8 ? 4 : 3, (int)(memory_limit / 128))));
 #endif
+
+#if V8_AT_LEAST(6, 7, 185)
+	rc.set_max_old_space_size((int)(memory_limit));
+#else
 	rc.set_max_old_space_size((int)(memory_limit * 2));
+#endif
 
 	// Build isolate from create params
 	Isolate::CreateParams create_params;
@@ -625,12 +635,13 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit, shared_ptr<void> snaps
 		std::lock_guard<std::mutex> lock(bookkeeping_statics->lookup_mutex);
 		bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
 	}
-	isolate->AddGCEpilogueCallback(GCEpilogueCallback);
 	isolate->SetOOMErrorHandler(OOMErrorCallback);
 	isolate->SetPromiseRejectCallback(PromiseRejectCallback);
 
 #if V8_AT_LEAST(6, 7, 185)
 	isolate->AddNearHeapLimitCallback(NearHeapLimitCallback, static_cast<void*>(this));
+#else
+	isolate->AddGCEpilogueCallback(GCEpilogueCallback);
 #endif
 
 	// Create a default context for the library to use if needed

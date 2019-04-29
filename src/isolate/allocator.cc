@@ -16,12 +16,12 @@ bool LimitedAllocator::Check(const size_t length) {
 		HeapStatistics heap_statistics;
 		Isolate* isolate = Isolate::GetCurrent();
 		isolate->GetHeapStatistics(&heap_statistics);
-		v8_heap = heap_statistics.total_heap_size();
+		v8_heap = heap_statistics.used_heap_size();
 		if (v8_heap + env.extra_allocated_memory + length > limit) {
 			// This is might be dangerous but the tests pass soooo..
 			isolate->LowMemoryNotification();
 			isolate->GetHeapStatistics(&heap_statistics);
-			v8_heap = heap_statistics.total_heap_size();
+			v8_heap = heap_statistics.used_heap_size();
 			if (v8_heap + env.extra_allocated_memory + length > limit) {
 				return false;
 			}
