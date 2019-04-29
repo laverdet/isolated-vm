@@ -53,6 +53,7 @@
 				},
 			},
 			'conditions': [
+				[ 'OS == "linux"', { 'defines': [ 'USE_CLOCK_THREAD_CPUTIME_ID' ] } ],
 				[ 'OS != "win"', { 'sources': [ 'src/array_buffer_shim.cc' ] } ],
 			],
 			'sources': [

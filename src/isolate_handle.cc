@@ -546,7 +546,7 @@ Local<Value> IsolateHandle::GetCpuTime() {
 	if (!env) {
 		throw js_generic_error("Isolated is disposed");
 	}
-	uint64_t time = std::chrono::duration_cast<std::chrono::nanoseconds>(env->GetCpuTime()).count();
+	uint64_t time = env->GetCpuTime().count();
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
 	constexpr auto kNanos = (uint64_t)1e9;
@@ -561,7 +561,7 @@ Local<Value> IsolateHandle::GetWallTime() {
 	if (!env) {
 		throw js_generic_error("Isolated is disposed");
 	}
-	uint64_t time = std::chrono::duration_cast<std::chrono::nanoseconds>(env->GetWallTime()).count();
+	uint64_t time = env->GetWallTime().count();
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
 	constexpr auto kNanos = (uint64_t)1e9;

@@ -48,6 +48,7 @@ class IsolateEnvironment {
 			friend class InspectorAgent;
 			private:
 				struct CpuTimer {
+					using TimePoint = std::chrono::time_point<std::chrono::steady_clock, std::chrono::nanoseconds>;
 					struct PauseScope {
 						CpuTimer* timer;
 						explicit PauseScope(CpuTimer* timer);
@@ -64,13 +65,15 @@ class IsolateEnvironment {
 					};
 					Executor& executor;
 					CpuTimer* last;
-					std::chrono::time_point<std::chrono::steady_clock> time;
+					TimePoint time;
 					explicit CpuTimer(Executor& executor);
 					CpuTimer(const CpuTimer&) = delete;
 					CpuTimer operator= (const CpuTimer&) = delete;
 					~CpuTimer();
+					std::chrono::nanoseconds Delta(const std::lock_guard<std::mutex>& /* lock */) const;
 					void Pause();
 					void Resume();
+					static TimePoint Now();
 				};
 
 				// WallTimer is also responsible for pausing the current CpuTimer before we attempt to
@@ -83,6 +86,7 @@ class IsolateEnvironment {
 					WallTimer(const WallTimer&) = delete;
 					WallTimer operator= (const WallTimer&) = delete;
 					~WallTimer();
+					std::chrono::nanoseconds Delta(const std::lock_guard<std::mutex>& /* lock */) const;
 				};
 
 			public:
@@ -137,8 +141,8 @@ class IsolateEnvironment {
 				CpuTimer* cpu_timer = nullptr;
 				WallTimer* wall_timer = nullptr;
 				std::mutex timer_mutex;
-				std::chrono::steady_clock::duration cpu_time = std::chrono::seconds::zero();
-				std::chrono::steady_clock::duration wall_time = std::chrono::seconds::zero();
+				std::chrono::nanoseconds cpu_time{};
+				std::chrono::nanoseconds wall_time{};
 
 			public:
 				explicit Executor(IsolateEnvironment& env);
@@ -507,8 +511,8 @@ class IsolateEnvironment {
 		/**
 		 * Timer getters
 		 */
-		std::chrono::steady_clock::duration GetCpuTime();
-		std::chrono::steady_clock::duration GetWallTime();
+		std::chrono::nanoseconds GetCpuTime();
+		std::chrono::nanoseconds GetWallTime();
 
 		/**
 		 * Ask this isolate to finish everything it's doing.

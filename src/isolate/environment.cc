@@ -7,6 +7,10 @@
 #include "../external_copy.h"
 #include <cmath>
 
+#ifdef USE_CLOCK_THREAD_CPUTIME_ID
+#include <time.h>
+#endif
+
 #ifdef __APPLE__
 #include <pthread.h>
 static void* GetStackBase() {
@@ -50,11 +54,11 @@ IsolateEnvironment::Executor::Lock::~Lock() {
 	current = last;
 }
 
-IsolateEnvironment::Executor::Unlock::Unlock(IsolateEnvironment& env) : pause_scope(env.executor.cpu_timer), unlocker(env.isolate) {}
+IsolateEnvironment::Executor::Unlock::Unlock(IsolateEnvironment& env) : pause_scope{env.executor.cpu_timer}, unlocker{env.isolate} {}
 
 IsolateEnvironment::Executor::Unlock::~Unlock() = default;
 
-IsolateEnvironment::Executor::CpuTimer::CpuTimer(Executor& executor) : executor(executor), last(Executor::cpu_timer_thread), time(std::chrono::steady_clock::now()) {
+IsolateEnvironment::Executor::CpuTimer::CpuTimer(Executor& executor) : executor{executor}, last{Executor::cpu_timer_thread}, time{Now()} {
 	Executor::cpu_timer_thread = this;
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
 	assert(executor.cpu_timer == nullptr);
@@ -64,25 +68,42 @@ IsolateEnvironment::Executor::CpuTimer::CpuTimer(Executor& executor) : executor(
 IsolateEnvironment::Executor::CpuTimer::~CpuTimer() {
 	Executor::cpu_timer_thread = last;
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
-	executor.cpu_time += std::chrono::steady_clock::now() - time;
+	executor.cpu_time += Now() - time;
 	assert(executor.cpu_timer == this);
 	executor.cpu_timer = nullptr;
 }
 
+std::chrono::nanoseconds IsolateEnvironment::Executor::CpuTimer::Delta(const std::lock_guard<std::mutex>& /* lock */) const {
+	return std::chrono::duration_cast<std::chrono::nanoseconds>(Now() - time);
+}
+
 void IsolateEnvironment::Executor::CpuTimer::Pause() {
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
-	executor.cpu_time += std::chrono::steady_clock::now() - time;
+	executor.cpu_time += Now() - time;
 	assert(executor.cpu_timer == this);
 	executor.cpu_timer = nullptr;
 }
 
 void IsolateEnvironment::Executor::CpuTimer::Resume() {
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
-	time = std::chrono::steady_clock::now();
+	time = Now();
 	assert(executor.cpu_timer == nullptr);
 	executor.cpu_timer = this;
 }
 
+#if USE_CLOCK_THREAD_CPUTIME_ID
+IsolateEnvironment::Executor::CpuTimer::TimePoint IsolateEnvironment::Executor::CpuTimer::Now() {
+	timespec ts;
+	assert(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) == 0);
+	return TimePoint{std::chrono::duration_cast<std::chrono::system_clock::duration>(
+		std::chrono::seconds(ts.tv_sec) + std::chrono::nanoseconds(ts.tv_nsec)
+	)};
+}
+#else
+IsolateEnvironment::Executor::CpuTimer::TimePoint IsolateEnvironment::Executor::CpuTimer::Now() {
+	return std::chrono::steady_clock::now();
+}
+#endif
 IsolateEnvironment::Executor::CpuTimer::PauseScope::PauseScope(CpuTimer* timer) : timer(timer) {
 	timer->Pause();
 }
@@ -123,6 +144,10 @@ IsolateEnvironment::Executor::WallTimer::~WallTimer() {
 		executor.wall_timer = nullptr;
 		executor.wall_time += std::chrono::steady_clock::now() - time;
 	}
+}
+
+std::chrono::nanoseconds IsolateEnvironment::Executor::WallTimer::Delta(const std::lock_guard<std::mutex>& /* lock */) const {
+	return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - time);
 }
 
 IsolateEnvironment::Executor::Executor(IsolateEnvironment& env) : env(env) {}
@@ -691,20 +716,20 @@ InspectorAgent* IsolateEnvironment::GetInspectorAgent() const {
 	return inspector_agent.get();
 }
 
-std::chrono::steady_clock::duration IsolateEnvironment::GetCpuTime() {
+std::chrono::nanoseconds IsolateEnvironment::GetCpuTime() {
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
-	std::chrono::steady_clock::duration time = executor.cpu_time;
+	std::chrono::nanoseconds time = executor.cpu_time;
 	if (executor.cpu_timer != nullptr) {
-		time += std::chrono::steady_clock::now() - executor.cpu_timer->time;
+		time += executor.cpu_timer->Delta(lock);
 	}
 	return time;
 }
 
-std::chrono::steady_clock::duration IsolateEnvironment::GetWallTime() {
+std::chrono::nanoseconds IsolateEnvironment::GetWallTime() {
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
-	std::chrono::steady_clock::duration time = executor.wall_time;
+	std::chrono::nanoseconds time = executor.wall_time;
 	if (executor.wall_timer != nullptr) {
-		time += std::chrono::steady_clock::now() - executor.wall_timer->time;
+		time += executor.wall_timer->Delta(lock);
 	}
 	return time;
 }
