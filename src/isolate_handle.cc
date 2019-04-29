@@ -512,7 +512,9 @@ struct HeapStatRunner : public ThreePhaseTask {
 	void Phase2() final {
 		IsolateEnvironment& isolate = *IsolateEnvironment::GetCurrent();
 		isolate->GetHeapStatistics(&heap);
+#if !V8_AT_LEAST(6, 7, 185)
 		adjustment = isolate.GetMemoryLimit() * 1024 * 1024;
+#endif
 		externally_allocated_size = isolate.GetExtraAllocatedMemory();
 	}
 
