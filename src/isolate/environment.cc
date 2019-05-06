@@ -499,12 +499,12 @@ void IsolateEnvironment::PromiseRejectCallback(PromiseRejectMessage rejection) {
 }
 
 size_t IsolateEnvironment::NearHeapLimitCallback(void* data, size_t current_heap_limit, size_t /* initial_heap_limit */) {
-	// This callback will give the v8 vm as much memory as it needs to prevent the application from
-	// crashing. After the JS stack unwinds the isolate will be disposed.
+	// This callback will temporarily give the v8 vm up to an extra 1 GB of memory to prevent the
+	// application from crashing. After the JS stack unwinds the isolate will be disposed.
 	auto that = static_cast<IsolateEnvironment*>(data);
 	that->hit_memory_limit = true;
 	that->Terminate();
-	return current_heap_limit * 4;
+	return current_heap_limit + 1024 * 1024 * 1024;
 }
 
 void IsolateEnvironment::AsyncEntry() {
