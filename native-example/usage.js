@@ -11,7 +11,7 @@ const example = new ivm.NativeModule(require.resolve('.'));
 // Create an isolate like normal
 let isolate = new ivm.Isolate;
 let context = isolate.createContextSync();
-let global = context.globalReference();
+let global = context.global;
 
 // Now you can load this module into the isolate. `create` or `createSync` call `InitForContext` in
 // C++ which returns a reference to this module for a specific context. The return value is an

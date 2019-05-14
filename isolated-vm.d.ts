@@ -294,7 +294,6 @@ declare module "isolated-vm" {
 		 * Returns a Reference to this context's global object.
 		 */
 		global: Reference<Object>;
-		globalReference(): Reference<Object>;
 
 		release(): void;
 	}

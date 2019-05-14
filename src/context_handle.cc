@@ -23,7 +23,6 @@ ContextHandle::ContextHandle(
 Local<FunctionTemplate> ContextHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Context", nullptr,
-		"globalReference", Parameterize<decltype(&ContextHandle::GlobalReference), &ContextHandle::GlobalReference>(),
 		"global", ParameterizeAccessor<
 			decltype(&ContextHandle::GlobalGetter), &ContextHandle::GlobalGetter,
 			decltype(&ContextHandle::GlobalSetter), &ContextHandle::GlobalSetter
@@ -40,11 +39,6 @@ void ContextHandle::CheckDisposed() {
 	if (!context) {
 		throw js_generic_error("Context is released");
 	}
-}
-
-Local<Value> ContextHandle::GlobalReference() {
-	CheckDisposed();
-	return ClassHandle::NewInstance<ReferenceHandle>(global->GetSharedIsolateHolder(), global, context, ReferenceHandle::TypeOf::Object);
 }
 
 Local<Value> ContextHandle::GlobalGetter() {

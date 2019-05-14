@@ -36,7 +36,6 @@ class ContextHandle : public TransferableHandle {
 		static v8::Local<v8::FunctionTemplate> Definition();
 		std::unique_ptr<Transferable> TransferOut() final;
 		void CheckDisposed();
-		v8::Local<v8::Value> GlobalReference();
 		v8::Local<v8::Value> GlobalGetter();
 		void GlobalSetter(v8::Local<v8::Value> value);
 		v8::Local<v8::Value> Release();
