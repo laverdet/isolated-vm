@@ -35,7 +35,6 @@ Local<FunctionTemplate> ExternalCopyHandle::Definition() {
 		"totalExternalSize", ParameterizeStaticAccessor<decltype(&ExternalCopyHandle::TotalExternalSizeGetter), &ExternalCopyHandle::TotalExternalSizeGetter>(),
 		"copy", Parameterize<decltype(&ExternalCopyHandle::Copy), &ExternalCopyHandle::Copy>(),
 		"copyInto", Parameterize<decltype(&ExternalCopyHandle::CopyInto), &ExternalCopyHandle::CopyInto>(),
-		"dispose", Parameterize<decltype(&ExternalCopyHandle::Dispose), &ExternalCopyHandle::Dispose>(),
 		"release", Parameterize<decltype(&ExternalCopyHandle::Release), &ExternalCopyHandle::Release>()
 	));
 }
@@ -111,11 +110,6 @@ Local<Value> ExternalCopyHandle::CopyInto(MaybeLocal<Object> maybe_options) {
 		Release();
 	}
 	return ret;
-}
-
-Local<Value> ExternalCopyHandle::Dispose() {
-	Release();
-	return Undefined(Isolate::GetCurrent());
 }
 
 Local<Value> ExternalCopyHandle::Release() {

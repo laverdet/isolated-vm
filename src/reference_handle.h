@@ -61,7 +61,6 @@ class ReferenceHandle : public TransferableHandle {
 		v8::Local<v8::Value> TypeOfGetter();
 		v8::Local<v8::Value> Deref(v8::MaybeLocal<v8::Object> maybe_options);
 		v8::Local<v8::Value> DerefInto(v8::MaybeLocal<v8::Object> maybe_options);
-		v8::Local<v8::Value> Dispose();
 		v8::Local<v8::Value> Release();
 		template <int async> v8::Local<v8::Value> Copy();
 		template <int async> v8::Local<v8::Value> Get(v8::Local<v8::Value> key_handle);

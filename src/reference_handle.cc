@@ -57,7 +57,6 @@ Local<FunctionTemplate> ReferenceHandle::Definition() {
 		"Reference", ParameterizeCtor<decltype(&New), &New>(),
 		"deref", Parameterize<decltype(&ReferenceHandle::Deref), &ReferenceHandle::Deref>(),
 		"derefInto", Parameterize<decltype(&ReferenceHandle::DerefInto), &ReferenceHandle::DerefInto>(),
-		"dispose", Parameterize<decltype(&ReferenceHandle::Dispose), &ReferenceHandle::Dispose>(),
 		"release", Parameterize<decltype(&ReferenceHandle::Release), &ReferenceHandle::Release>(),
 		"copy", Parameterize<decltype(&ReferenceHandle::Copy<1>), &ReferenceHandle::Copy<1>>(),
 		"copySync", Parameterize<decltype(&ReferenceHandle::Copy<0>), &ReferenceHandle::Copy<0>>(),
@@ -157,11 +156,6 @@ Local<Value> ReferenceHandle::DerefInto(MaybeLocal<Object> maybe_options) {
 /**
  * Release this reference.
  */
-Local<Value> ReferenceHandle::Dispose() {
-	Release();
-	return Undefined(Isolate::GetCurrent());
-}
-
 Local<Value> ReferenceHandle::Release() {
 	CheckDisposed();
 	isolate.reset();

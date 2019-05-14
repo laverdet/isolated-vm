@@ -34,7 +34,6 @@ class ExternalCopyHandle : public TransferableHandle {
 		static v8::Local<v8::Value> TotalExternalSizeGetter();
 		v8::Local<v8::Value> Copy(v8::MaybeLocal<v8::Object> maybe_options);
 		v8::Local<v8::Value> CopyInto(v8::MaybeLocal<v8::Object> maybe_options);
-		v8::Local<v8::Value> Dispose();
 		v8::Local<v8::Value> Release();
 		std::shared_ptr<ExternalCopy> GetValue() const { return value; }
 };
