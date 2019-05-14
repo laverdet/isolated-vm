@@ -80,7 +80,6 @@ class ExternalCopy : public Transferable {
 		virtual v8::Local<v8::Value> CopyInto(bool transfer_in = false) = 0;
 		void UpdateSize(size_t size);
 		size_t OriginalSize() const;
-		virtual uint32_t WorstCaseHeapSize() const = 0;
 		v8::Local<v8::Value> TransferIn() final;
 };
 
@@ -113,10 +112,6 @@ class ExternalCopyTemplate : public ExternalCopy {
 
 		v8::Local<v8::Value> CopyInto(bool /*transfer_in*/ = false) final {
 			return ExternalCopyTemplateCtor<T>::New(v8::Isolate::GetCurrent(), value);
-		}
-
-		uint32_t WorstCaseHeapSize() const final {
-			return 24;
 		}
 };
 
@@ -166,7 +161,6 @@ class ExternalCopyString : public ExternalCopy {
 		explicit ExternalCopyString(const char* message);
 		explicit ExternalCopyString(const std::string& message);
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
-		uint32_t WorstCaseHeapSize() const final;
 };
 
 /**
@@ -188,7 +182,6 @@ class ExternalCopySerialized : public ExternalCopy {
 			shared_buffer_vector_t shared_buffers
 		);
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
-		uint32_t WorstCaseHeapSize() const final;
 };
 
 /**
@@ -209,7 +202,6 @@ class ExternalCopyError : public ExternalCopy {
 		ExternalCopyError(ErrorType error_type, std::unique_ptr<ExternalCopyString> message, std::unique_ptr<ExternalCopyString> stack);
 		ExternalCopyError(ErrorType error_type, const char* message, std::string stack = "");
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
-		uint32_t WorstCaseHeapSize() const final;
 };
 
 /**
@@ -218,13 +210,11 @@ class ExternalCopyError : public ExternalCopy {
 class ExternalCopyNull : public ExternalCopy {
 	public:
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
-		uint32_t WorstCaseHeapSize() const final;
 };
 
 class ExternalCopyUndefined : public ExternalCopy {
 	public:
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
-		uint32_t WorstCaseHeapSize() const final;
 };
 
 /**
@@ -237,7 +227,6 @@ class ExternalCopyDate : public ExternalCopy {
 	public:
 		explicit ExternalCopyDate(const v8::Local<v8::Value>& value);
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
-		uint32_t WorstCaseHeapSize() const final;
 };
 
 /**
@@ -283,7 +272,6 @@ class ExternalCopyArrayBuffer : public ExternalCopyBytes {
 
 		static std::unique_ptr<ExternalCopyArrayBuffer> Transfer(const v8::Local<v8::ArrayBuffer>& handle);
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
-		uint32_t WorstCaseHeapSize() const final;
 		std::shared_ptr<void> GetSharedPointer() const;
 		const void* Data() const;
 		size_t Length() const;
@@ -301,7 +289,6 @@ class ExternalCopySharedArrayBuffer : public ExternalCopyBytes {
 		explicit ExternalCopySharedArrayBuffer(const v8::Local<v8::SharedArrayBuffer>& handle);
 
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
-		uint32_t WorstCaseHeapSize() const final;
 		std::shared_ptr<void> GetSharedPointer() const;
 };
 
@@ -320,7 +307,6 @@ class ExternalCopyArrayBufferView : public ExternalCopy {
 	public:
 		ExternalCopyArrayBufferView(std::unique_ptr<ExternalCopyBytes> buffer, ViewType type, size_t byte_offset, size_t byte_length);
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
-		uint32_t WorstCaseHeapSize() const final;
 };
 
 } // namespace ivm

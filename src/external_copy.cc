@@ -238,7 +238,7 @@ ExternalCopy::~ExternalCopy() {
 }
 
 Local<Value> ExternalCopy::CopyIntoCheckHeap(bool transfer_in) {
-	IsolateEnvironment::HeapCheck heap_check(*IsolateEnvironment::GetCurrent(), WorstCaseHeapSize());
+	IsolateEnvironment::HeapCheck heap_check{*IsolateEnvironment::GetCurrent()};
 	auto value = CopyInto(transfer_in);
 	heap_check.Epilogue();
 	return value;
@@ -344,10 +344,6 @@ Local<Value> ExternalCopyString::CopyInto(bool /*transfer_in*/) {
 	}
 }
 
-uint32_t ExternalCopyString::WorstCaseHeapSize() const {
-	return value->size();
-}
-
 /**
  * ExternalCopySerialized implementation
  */
@@ -394,11 +390,6 @@ Local<Value> ExternalCopySerialized::CopyInto(bool transfer_in) {
 			throw js_runtime_error();
 		}
 	}
-}
-
-uint32_t ExternalCopySerialized::WorstCaseHeapSize() const {
-	// The worst I could come up with was an array of strings each with length 2.
-	return size * 6;
 }
 
 /**
@@ -449,10 +440,6 @@ Local<Value> ExternalCopyError::CopyInto(bool /*transfer_in*/) {
 	return handle;
 }
 
-uint32_t ExternalCopyError::WorstCaseHeapSize() const {
-	return 128 + (message ? message->WorstCaseHeapSize() : 0) + (stack ? stack->WorstCaseHeapSize() : 0);
-}
-
 /**
  * ExternalCopyNull and ExternalCopyUndefined implementations
  */
@@ -460,16 +447,8 @@ Local<Value> ExternalCopyNull::CopyInto(bool /*transfer_in*/) {
 	return Null(Isolate::GetCurrent());
 }
 
-uint32_t ExternalCopyNull::WorstCaseHeapSize() const {
-	return 16;
-}
-
 Local<Value> ExternalCopyUndefined::CopyInto(bool /*transfer_in*/) {
 	return Undefined(Isolate::GetCurrent());
-}
-
-uint32_t ExternalCopyUndefined::WorstCaseHeapSize() const {
-	return 16;
 }
 
 /**
@@ -479,11 +458,6 @@ ExternalCopyDate::ExternalCopyDate(const Local<Value>& value) : ExternalCopy(siz
 
 Local<Value> ExternalCopyDate::CopyInto(bool /*transfer_in*/) {
 	return Unmaybe(Date::New(Isolate::GetCurrent()->GetCurrentContext(), value));
-}
-
-uint32_t ExternalCopyDate::WorstCaseHeapSize() const {
-	// Seems pretty excessive, but that's what I observed
-	return 140;
 }
 
 /**
@@ -597,10 +571,6 @@ Local<Value> ExternalCopyArrayBuffer::CopyInto(bool transfer_in) {
 	}
 }
 
-uint32_t ExternalCopyArrayBuffer::WorstCaseHeapSize() const {
-	return length;
-}
-
 shared_ptr<void> ExternalCopyArrayBuffer::GetSharedPointer() const {
 	auto ptr = std::atomic_load(&value);
 	if (!ptr) {
@@ -655,10 +625,6 @@ Local<Value> ExternalCopySharedArrayBuffer::CopyInto(bool /*transfer_in*/) {
 	Local<SharedArrayBuffer> array_buffer = SharedArrayBuffer::New(Isolate::GetCurrent(), ptr.get(), length);
 	new Holder(array_buffer, std::move(ptr), length);
 	return array_buffer;
-}
-
-uint32_t ExternalCopySharedArrayBuffer::WorstCaseHeapSize() const {
-	return length;
 }
 
 shared_ptr<void> ExternalCopySharedArrayBuffer::GetSharedPointer() const {
@@ -716,11 +682,6 @@ Local<Value> ExternalCopyArrayBufferView::CopyInto(bool transfer_in) {
 	} else {
 		return NewTypedArrayView(buffer.As<SharedArrayBuffer>(), type, byte_offset, byte_length);
 	}
-}
-
-uint32_t ExternalCopyArrayBufferView::WorstCaseHeapSize() const {
-	// This includes the overhead of the ArrayBuffer
-	return 208 + buffer->WorstCaseHeapSize();
 }
 
 } // namespace ivm

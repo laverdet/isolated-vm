@@ -371,24 +371,11 @@ void IsolateEnvironment::Scheduler::AsyncWait::Wake() {
 /**
  * HeapCheck implementation
  */
-IsolateEnvironment::HeapCheck::HeapCheck(IsolateEnvironment& env, size_t expected_size) : env{env}, did_increase{false} {
-	if (expected_size > 1024 && !env.root) {
-		HeapStatistics heap;
-		env.GetIsolate()->GetHeapStatistics(&heap);
-		size_t old_space = env.memory_limit * 1024 * 1024;
-		size_t expected_total_heap = heap.used_heap_size() + env.extra_allocated_memory + expected_size;
-		if (expected_total_heap > old_space) {
-			// Heap limit increases by factor of 4
-			if (expected_total_heap > old_space * 4) {
-				throw js_generic_error("Value would likely exhaust isolate heap");
-			}
-			did_increase = true;
-		}
-	}
+IsolateEnvironment::HeapCheck::HeapCheck(IsolateEnvironment& env) : env{env}, extra_size_before{env.extra_allocated_memory} {
 }
 
 void IsolateEnvironment::HeapCheck::Epilogue() {
-	if (did_increase) {
+	if (!env.root && env.extra_allocated_memory != extra_size_before) {
 		Isolate* isolate = env.GetIsolate();
 		HeapStatistics heap;
 		isolate->GetHeapStatistics(&heap);
@@ -398,7 +385,6 @@ void IsolateEnvironment::HeapCheck::Epilogue() {
 			if (heap.used_heap_size() + env.extra_allocated_memory > env.memory_limit * 1024 * 1024) {
 				env.hit_memory_limit = true;
 				env.Terminate();
-				did_increase = false; // Don't reset heap limit to decrease chance v8 will OOM
 				throw js_fatal_error("Isolate was disposed during execution due to memory limit");
 			}
 		}

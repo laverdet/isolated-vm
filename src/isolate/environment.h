@@ -251,9 +251,9 @@ class IsolateEnvironment {
 		class HeapCheck {
 			private:
 				IsolateEnvironment& env;
-				bool did_increase;
+				size_t extra_size_before;
 			public:
-				explicit HeapCheck(IsolateEnvironment& env, size_t expected_size);
+				explicit HeapCheck(IsolateEnvironment& env);
 				HeapCheck(const HeapCheck&) = delete;
 				HeapCheck& operator= (const HeapCheck&) = delete;
 				void Epilogue();
