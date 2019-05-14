@@ -4,6 +4,9 @@
   "description": "Access to multiple isolates",
   "main": "isolated-vm.js",
   "types": "isolated-vm.d.ts",
+  "engines": {
+    "node": ">=10.4.0"
+  },
   "scripts": {
     "install": "node-gyp rebuild --release -j 4",
     "lint": "find src -name '*.cc' | xargs -n1 clang-tidy",

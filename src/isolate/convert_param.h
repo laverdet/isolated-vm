@@ -2,7 +2,6 @@
 #include <v8.h>
 #include "util.h"
 #include "class_handle.h"
-#include "legacy.h"
 #include <string>
 
 namespace ivm {
@@ -14,17 +13,17 @@ class ClassHandle* _ClassHandleUnwrap(v8::Local<v8::Object> handle);
 
 inline std::string CalleeName(const v8::FunctionCallbackInfo<v8::Value>& info) {
 	v8::Isolate* isolate = v8::Isolate::GetCurrent();
-	return std::string("`")+ *Utf8ValueWrapper(isolate, Unmaybe(info.Data()->ToString(isolate->GetCurrentContext())))+ "`";
+	return std::string("`")+ *v8::String::Utf8Value{isolate, Unmaybe(info.Data()->ToString(isolate->GetCurrentContext()))}+ "`";
 }
 
 inline std::string CalleeName(const v8::PropertyCallbackInfo<v8::Value>& info) {
 	v8::Isolate* isolate = v8::Isolate::GetCurrent();
-	return std::string("`")+ *Utf8ValueWrapper(isolate, Unmaybe(info.Data()->ToString(isolate->GetCurrentContext())))+ "`";
+	return std::string("`")+ *v8::String::Utf8Value{isolate, Unmaybe(info.Data()->ToString(isolate->GetCurrentContext()))}+ "`";
 }
 
 inline std::string CalleeName(const v8::PropertyCallbackInfo<void>& info) {
 	v8::Isolate* isolate = v8::Isolate::GetCurrent();
-	return std::string("`")+ *Utf8ValueWrapper(isolate, Unmaybe(info.Data()->ToString(isolate->GetCurrentContext())))+ "`";
+	return std::string("`")+ *v8::String::Utf8Value{isolate, Unmaybe(info.Data()->ToString(isolate->GetCurrentContext()))}+ "`";
 }
 
 inline void PrivateConstructorError(const v8::FunctionCallbackInfo<v8::Value>& info) {

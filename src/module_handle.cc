@@ -5,7 +5,6 @@
 #include "isolate/class_handle.h"
 #include "isolate/run_with_timeout.h"
 #include "isolate/three_phase_task.h"
-#include "isolate/legacy.h"
 
 #include <algorithm>
 
@@ -22,7 +21,7 @@ ModuleInfo::ModuleInfo(Local<Module> handle) : handle(handle) {
 	size_t length = handle->GetModuleRequestsLength();
 	dependency_specifiers.reserve(length);
 	for (size_t ii = 0; ii < length; ++ii) {
-		dependency_specifiers.emplace_back(*Utf8ValueWrapper(isolate, handle->GetModuleRequest(ii)));
+		dependency_specifiers.emplace_back(*String::Utf8Value{isolate, handle->GetModuleRequest(ii)});
 	}
 }
 
@@ -216,7 +215,7 @@ struct InstantiateRunner : public ThreePhaseTask {
 			if (found != nullptr) {
 				// nb: lock is already acquired in `Instantiate`
 				auto& resolutions = found->resolutions;
-				auto it = resolutions.find(*Utf8ValueWrapper(Isolate::GetCurrent(), specifier));
+				auto it = resolutions.find(*String::Utf8Value{Isolate::GetCurrent(), specifier});
 				if (it != resolutions.end()) {
 					ret = it->second->handle.Deref();
 				}
@@ -241,13 +240,11 @@ struct InstantiateRunner : public ThreePhaseTask {
 	}
 
 	void Phase2() final {
-#if V8_AT_LEAST(6, 1, 328)
 		Local<Module> mod = info->handle.Deref();
 		Local<Context> context_local = context->Deref();
 		info->context_handle = std::move(context);
 		std::lock_guard<std::mutex> lock(info->mutex);
 		Unmaybe(mod->InstantiateModule(context_local, ResolveCallback));
-#endif
 	}
 
 	Local<Value> Phase3() final {
@@ -390,7 +387,6 @@ struct EvaluateRunner : public ThreePhaseTask {
 	EvaluateRunner(shared_ptr<ModuleInfo> info, uint32_t ms) : info(std::move(info)), timeout(ms) {}
 
 	void Phase2() final {
-#if V8_AT_LEAST(6, 1, 328)
 		Local<Module> mod = info->handle.Deref();
 		if (mod->GetStatus() == Module::Status::kUninstantiated) {
 			throw js_generic_error("Module is uninstantiated");
@@ -400,7 +396,6 @@ struct EvaluateRunner : public ThreePhaseTask {
 		result = Transferable::OptionalTransferOut(RunWithTimeout(timeout, [&]() { return mod->Evaluate(context_local); }));
 		std::lock_guard<std::mutex> lock(info->mutex);
 		info->global_namespace = std::make_shared<RemoteHandle<Value>>(mod->GetModuleNamespace());
-#endif
 	}
 
 	Local<Value> Phase3() final {
@@ -431,15 +426,11 @@ Local<Value> ModuleHandle::Evaluate(MaybeLocal<Object> maybe_options) {
 }
 
 Local<Value> ModuleHandle::GetNamespace() {
-#if V8_AT_LEAST(6, 1, 328)
 	std::lock_guard<std::mutex> lock(info->mutex);
 	if (!info->global_namespace) {
 		throw js_generic_error("Module has not been instantiated.");
 	}
 	return ClassHandle::NewInstance<ReferenceHandle>(info->handle.GetSharedIsolateHolder(), info->global_namespace, info->context_handle, ReferenceHandle::TypeOf::Object);
-#else
-	throw js_generic_error("Module has not been instantiated.");
-#endif
 }
 
 } // namespace ivm

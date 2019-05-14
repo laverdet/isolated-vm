@@ -145,34 +145,27 @@ class PlatformDelegate : public v8::Platform {
 		 *
 		 */
 
-#if V8_AT_LEAST(6, 7, 1)
 		int NumberOfWorkerThreads() final {
 			return node_platform->NumberOfWorkerThreads();
 		}
-#endif
 
 #if V8_AT_LEAST(6, 8, 242)
 		void CallOnWorkerThread(std::unique_ptr<v8::Task> task) final {
 			node_platform->CallOnWorkerThread(std::move(task));
 		}
-#elif NODE_MODULE_OR_V8_AT_LEAST(64, 6, 7, 179)
+#else
 		void CallOnBackgroundThread(v8::Task* task, ExpectedRuntime /* expected_runtime */) final {
 			// TODO: Properly count these tasks against isolate timers. How common are background tasks??
 			node_platform->CallOnWorkerThread(std::unique_ptr<v8::Task>(task));
 		}
-#else
-		void CallOnBackgroundThread(v8::Task* task, ExpectedRuntime expected_runtime) final {
-			node_platform->CallOnBackgroundThread(task, expected_runtime);
-		}
 #endif
 
-#if V8_AT_LEAST(6, 4, 168) && !NODE_MODULE_OR_V8_AT_LEAST(67, 6, 7, 1)
+#if !NODE_MODULE_OR_V8_AT_LEAST(67, 6, 7, 1)
 		std::shared_ptr<v8::TaskRunner> GetBackgroundTaskRunner(v8::Isolate* /* isolate */) final {
 			return node_platform->GetBackgroundTaskRunner(node_isolate);
 		}
 #endif
 
-#if V8_AT_LEAST(6, 4, 168)
 	private:
 		// nb: The v8 documentation says that methods on this object may be called from any thread.
 		class ForegroundTaskRunner : public v8::TaskRunner {
@@ -257,7 +250,6 @@ class PlatformDelegate : public v8::Platform {
 				}
 			}
 		}
-#endif
 
 		void CallOnForegroundThread(v8::Isolate* isolate, v8::Task* task) final {
 			if (isolate == node_isolate) {
@@ -322,12 +314,10 @@ class PlatformDelegate : public v8::Platform {
 			}
 		}
 
-#if V8_AT_LEAST(6, 2, 383)
 		// 11ba497c made this implementation required, 837b8016 added `SystemClockTimeMillis()`
 		double CurrentClockTimeMillis() final {
 			return node_platform->CurrentClockTimeMillis();
 		}
-#endif
 
 		double MonotonicallyIncreasingTime() final {
 			return node_platform->MonotonicallyIncreasingTime();

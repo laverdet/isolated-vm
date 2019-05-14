@@ -4,8 +4,8 @@
 #include "isolate/allocator.h"
 #include "isolate/environment.h"
 #include "isolate/functor_runners.h"
-#include "isolate/legacy.h"
 #include "isolate/util.h"
+#include "isolate/v8_version.h"
 
 #include <algorithm>
 #include <cstring>
@@ -173,7 +173,7 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 		// Detect which subclass of Error was thrown (no better way to do this??)
 		Isolate* isolate = Isolate::GetCurrent();
 		Local<Object> object(Local<Object>::Cast(value));
-		std::string name(*Utf8ValueWrapper(isolate, object->GetConstructorName()));
+		std::string name = *String::Utf8Value{isolate, object->GetConstructorName()};
 		auto error_type = (ExternalCopyError::ErrorType)0;
 		if (name == "RangeError") {
 			error_type = ExternalCopyError::ErrorType::RangeError;

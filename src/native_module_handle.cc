@@ -2,7 +2,6 @@
 #include "context_handle.h"
 #include "reference_handle.h"
 #include "isolate/environment.h"
-#include "isolate/legacy.h"
 #include "isolate/remote_handle.h"
 #include "isolate/three_phase_task.h"
 
@@ -57,7 +56,7 @@ Local<FunctionTemplate> NativeModuleHandle::Definition() {
 
 unique_ptr<NativeModuleHandle> NativeModuleHandle::New(Local<String> value) {
 	return std::make_unique<NativeModuleHandle>(
-		std::make_shared<NativeModule>(*Utf8ValueWrapper(Isolate::GetCurrent(), value))
+		std::make_shared<NativeModule>(*String::Utf8Value{Isolate::GetCurrent(), value})
 	);
 }
 

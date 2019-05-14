@@ -7,7 +7,6 @@
 #include "session_handle.h"
 #include "isolate/allocator.h"
 #include "isolate/functor_runners.h"
-#include "isolate/legacy.h"
 #include "isolate/platform_delegate.h"
 #include "isolate/remote_handle.h"
 #include "isolate/three_phase_task.h"
@@ -47,7 +46,7 @@ class ScriptOriginHolder {
 					if (!filename->IsString()) {
 						throw js_type_error("`filename` must be a string");
 					}
-					this->filename = *Utf8ValueWrapper(isolate, filename.As<String>());
+					this->filename = *String::Utf8Value{isolate, filename.As<String>()};
 				}
 				Local<Value> columnOffset = Unmaybe(options->Get(context, v8_string("columnOffset")));
 				if (!columnOffset->IsUndefined()) {
@@ -107,10 +106,10 @@ T RunWithAnnotatedErrors(F&& fn) {
 			int linenum = Unmaybe(message->GetLineNumber(context));
 			int start_column = Unmaybe(message->GetStartColumn(context));
 			std::string decorator =
-				std::string(*Utf8ValueWrapper(isolate, message->GetScriptResourceName())) +
+				std::string{*String::Utf8Value{isolate, message->GetScriptResourceName()}} +
 				":" + std::to_string(linenum) +
 				":" + std::to_string(start_column + 1);
-			std::string message_str = *Utf8ValueWrapper(isolate, Unmaybe(error.As<Object>()->Get(context, v8_symbol("message"))));
+			std::string message_str = *String::Utf8Value{isolate, Unmaybe(error.As<Object>()->Get(context, v8_symbol("message")))};
 			Unmaybe(error.As<Object>()->Set(context, v8_symbol("message"), v8_string((message_str + " [" + decorator + "]").c_str())));
 			isolate->ThrowException(error);
 			throw js_runtime_error();
@@ -369,10 +368,6 @@ struct CompileScriptRunner : public CompileCodeRunner {
 		ScriptCompiler::CompileOptions compile_options = ScriptCompiler::kNoCompileOptions;
 		if (cached_data_in) {
 			compile_options = ScriptCompiler::kConsumeCodeCache;
-		} else if (produce_cached_data) {
-#if !V8_AT_LEAST(6, 5, 1)
-			compile_options = ScriptCompiler::kProduceCodeCache;
-#endif
 		}
 		script = std::make_shared<RemoteHandle<UnboundScript>>(RunWithAnnotatedErrors<Local<UnboundScript>>(
 			[&isolate, &source, compile_options]() { return Unmaybe(ScriptCompiler::CompileUnboundScript(*isolate, source.get(), compile_options)); }
@@ -388,11 +383,9 @@ struct CompileScriptRunner : public CompileCodeRunner {
 #if V8_AT_LEAST(6, 8, 11)
 			// `code` parameter removed in v8 commit a440efb27
 			= ScriptCompiler::CreateCodeCache(script->Deref());
-#elif V8_AT_LEAST(6, 5, 1)
+#else
 			// Added in v8 commit dae20b064
 			= ScriptCompiler::CreateCodeCache(script->Deref(), code_string->CopyIntoCheckHeap().As<String>());
-#else
-			= source->GetCachedData();
 #endif
 			assert(cached_data != nullptr);
 			cached_data_out = std::make_shared<ExternalCopyArrayBuffer>((void*)cached_data->data, cached_data->length);
@@ -428,7 +421,6 @@ struct CompileModuleRunner : public CompileCodeRunner {
 		CompileCodeRunner(code_handle, maybe_options, true) {}
 
 	void Phase2() final {
-#if V8_AT_LEAST(6, 1, 328)
 		auto isolate = IsolateEnvironment::GetCurrent();
 		Context::Scope context_scope(isolate->DefaultContext());
 		auto source = GetCompilerSource();
@@ -450,9 +442,6 @@ struct CompileModuleRunner : public CompileCodeRunner {
 			*/
 		}
 		module_info = std::make_shared<ModuleInfo>(module_handle);
-#else
-		throw js_generic_error("No module support. At least nodejs version 8.7.0 / v8 version 6.1.328 is required");
-#endif
 	}
 
 	Local<Value> Phase3() final {
@@ -512,9 +501,6 @@ struct HeapStatRunner : public ThreePhaseTask {
 	void Phase2() final {
 		IsolateEnvironment& isolate = *IsolateEnvironment::GetCurrent();
 		isolate->GetHeapStatistics(&heap);
-#if !V8_AT_LEAST(6, 7, 185)
-		adjustment = isolate.GetMemoryLimit() * 1024 * 1024;
-#endif
 		externally_allocated_size = isolate.GetExtraAllocatedMemory();
 	}
 
@@ -641,11 +627,7 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 			Isolate::Scope isolate_scope(isolate);
 			HandleScope handle_scope(isolate);
 			Local<Context> context = Context::New(isolate);
-#if NODE_MODULE_OR_V8_AT_LEAST(64, 6, 2, 193)
 			snapshot_creator.SetDefaultContext(context, {&SerializeInternalFieldsCallback, nullptr});
-#else
-			snapshot_creator.SetDefaultContext(context);
-#endif
 			FunctorRunners::RunCatchExternal(context, [&]() {
 				HandleScope handle_scope(isolate);
 				Local<Context> context_dirty = Context::New(isolate);

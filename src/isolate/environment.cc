@@ -1,7 +1,6 @@
 #include "environment.h"
 #include "allocator.h"
 #include "inspector.h"
-#include "legacy.h"
 #include "platform_delegate.h"
 #include "runnable.h"
 #include "../external_copy.h"
@@ -376,11 +375,7 @@ IsolateEnvironment::HeapCheck::HeapCheck(IsolateEnvironment& env, size_t expecte
 	if (expected_size > 1024 && !env.root) {
 		HeapStatistics heap;
 		env.GetIsolate()->GetHeapStatistics(&heap);
-#if V8_AT_LEAST(6, 7, 185)
 		size_t old_space = env.memory_limit * 1024 * 1024;
-#else
-		size_t old_space = env.memory_limit * 1024 * 1024 * 2;
-#endif
 		size_t expected_total_heap = heap.used_heap_size() + env.extra_allocated_memory + expected_size;
 		if (expected_total_heap > old_space) {
 			// Heap limit increases by factor of 4
@@ -388,23 +383,9 @@ IsolateEnvironment::HeapCheck::HeapCheck(IsolateEnvironment& env, size_t expecte
 				throw js_generic_error("Value would likely exhaust isolate heap");
 			}
 			did_increase = true;
-#if !V8_AT_LEAST(6, 7, 185)
-			env.GetIsolate()->IncreaseHeapLimitForDebugging();
-#endif
 		}
 	}
 }
-
-#if V8_AT_LEAST(6, 7, 185)
-IsolateEnvironment::HeapCheck::~HeapCheck() = default;
-#else
-
-IsolateEnvironment::HeapCheck::~HeapCheck() {
-	if (did_increase) {
-		env.GetIsolate()->RestoreOriginalHeapLimit();
-	}
-}
-#endif
 
 void IsolateEnvironment::HeapCheck::Epilogue() {
 	if (did_increase) {
@@ -429,40 +410,6 @@ void IsolateEnvironment::HeapCheck::Epilogue() {
  */
 size_t IsolateEnvironment::specifics_count = 0;
 shared_ptr<IsolateEnvironment::BookkeepingStatics> IsolateEnvironment::bookkeeping_statics_shared = std::make_shared<IsolateEnvironment::BookkeepingStatics>(); // NOLINT
-
-void IsolateEnvironment::GCEpilogueCallback(Isolate* isolate, GCType type, GCCallbackFlags /* flags */) {
-
-	// Get current heap statistics
-	auto that = GetCurrent();
-	assert(that->isolate == isolate);
-	HeapStatistics heap;
-	isolate->GetHeapStatistics(&heap);
-
-	// If we are above the heap limit then kill this isolate
-	if (type != GCType::kGCTypeIncrementalMarking && heap.used_heap_size() > that->memory_limit * 1024 * 1024) {
-		that->hit_memory_limit = true;
-		that->Terminate();
-		return;
-	}
-
-	// Ask for a deep clean at 80% heap
-	if (
-		heap.used_heap_size() * 1.25 > that->memory_limit * 1024 * 1024 &&
-		that->last_heap.used_heap_size() * 1.25 < that->memory_limit * 1024 * 1024
-	) {
-		struct LowMemoryTask : public Runnable {
-			Isolate* isolate;
-			explicit LowMemoryTask(Isolate* isolate) : isolate(isolate) {}
-			void Run() final {
-				isolate->LowMemoryNotification();
-			}
-		};
-		Scheduler::Lock lock(that->scheduler);
-		lock.PushHandleTask(std::make_unique<LowMemoryTask>(isolate));
-	}
-
-	that->last_heap = heap;
-}
 
 void IsolateEnvironment::OOMErrorCallback(const char* location, bool is_heap_oom) {
 	fprintf(stderr, "%s\nis_heap_oom = %d\n\n\n", location, static_cast<int>(is_heap_oom));
@@ -605,18 +552,10 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit, shared_ptr<void> snaps
 
 	// Calculate resource constraints
 	ResourceConstraints rc;
-#if defined(NODE_MODULE_VERSION) ? NODE_MODULE_VERSION >= 59 : V8_AT_LEAST(6, 1, 202)
 	// Added in v8 bb29f9a4 but reverted in nodejs aa1a3ea9. It made it back in nodejs v10.x
 	rc.set_max_semi_space_size_in_kb((int)std::pow(2, std::min(sizeof(void*) >= 8 ? 4.0 : 3.0, memory_limit / 128.0) + 10));
-#else
-	rc.set_max_semi_space_size((int)std::pow(2, std::min(sizeof(void*) >= 8 ? 4 : 3, (int)(memory_limit / 128))));
-#endif
 
-#if V8_AT_LEAST(6, 7, 185)
-	rc.set_max_old_space_size((int)(memory_limit));
-#else
-	rc.set_max_old_space_size((int)(memory_limit * 2));
-#endif
+	rc.set_max_old_space_size((int)memory_limit);
 
 	// Build isolate from create params
 	Isolate::CreateParams create_params;
@@ -638,11 +577,7 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit, shared_ptr<void> snaps
 	isolate->SetOOMErrorHandler(OOMErrorCallback);
 	isolate->SetPromiseRejectCallback(PromiseRejectCallback);
 
-#if V8_AT_LEAST(6, 7, 185)
 	isolate->AddNearHeapLimitCallback(NearHeapLimitCallback, static_cast<void*>(this));
-#else
-	isolate->AddGCEpilogueCallback(GCEpilogueCallback);
-#endif
 
 	// Create a default context for the library to use if needed
 	{

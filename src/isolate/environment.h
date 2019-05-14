@@ -256,7 +256,6 @@ class IsolateEnvironment {
 				explicit HeapCheck(IsolateEnvironment& env, size_t expected_size);
 				HeapCheck(const HeapCheck&) = delete;
 				HeapCheck& operator= (const HeapCheck&) = delete;
-				~HeapCheck();
 				void Epilogue();
 		};
 
@@ -348,10 +347,6 @@ class IsolateEnvironment {
 		std::atomic<bool> terminated { false };
 
 	private:
-		/**
-		 * Catches garbage collections on the isolate and terminates if we use too much.
-		 */
-		static void GCEpilogueCallback(v8::Isolate* isolate, v8::GCType type, v8::GCCallbackFlags flags);
 
 		/**
 		 * If this function is called then I have failed you.
