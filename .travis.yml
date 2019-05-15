@@ -3,7 +3,6 @@ sudo: false
 language: node_js
 
 node_js:
-  - "10.0.0"
   - "10.4.0"
   - "10.9.0"
   - "10"
@@ -12,6 +11,8 @@ node_js:
 os:
   - linux
   - windows
+
+dist: xenial
 
 cache:
   directories:
@@ -22,16 +23,6 @@ install:
 
 script:
   - npm run test
-
-env:
-  - CXX=g++-5 CC=gcc-5
-
-addons:
-  apt:
-    sources:
-      - ubuntu-toolchain-r-test
-    packages:
-      - g++-5
 
 notifications:
   email: false
