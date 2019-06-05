@@ -599,11 +599,10 @@ static StartupData SerializeInternalFieldsCallback(Local<Object> /*holder*/, int
 Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLocal<String> warmup_handle) {
 
 	// Copy embed scripts and warmup script from outer isolate
-	std::vector<std::pair<std::string, ScriptOriginHolder>> scripts;
+	std::deque<std::pair<ExternalCopyString, ScriptOriginHolder>> scripts;
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
 	Local<Array> keys = Unmaybe(script_handles->GetOwnPropertyNames(context));
-	scripts.reserve(keys->Length());
 	for (uint32_t ii = 0; ii < keys->Length(); ++ii) {
 		Local<Uint32> key = Unmaybe(Unmaybe(keys->Get(context, ii))->ToArrayIndex(context));
 		if (key->Value() != ii) {
@@ -618,11 +617,11 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 			throw js_type_error("`code` property is required");
 		}
 		ScriptOriginHolder script_origin(script_handle.As<Object>());
-		scripts.emplace_back(std::string(*Utf8ValueWrapper(isolate, script.As<String>())), std::move(script_origin));
+		scripts.emplace_back(script.As<String>(), std::move(script_origin));
 	}
-	std::string warmup_script;
+	std::unique_ptr<ExternalCopyString> warmup_script;
 	if (!warmup_handle.IsEmpty()) {
-		warmup_script = *Utf8ValueWrapper(isolate, warmup_handle.ToLocalChecked().As<String>());
+		warmup_script = std::make_unique<ExternalCopyString>(warmup_handle.ToLocalChecked().As<String>());
 	}
 
 	// Create the snapshot
@@ -648,28 +647,28 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 				HandleScope handle_scope(isolate);
 				Local<Context> context_dirty = Context::New(isolate);
 				for (auto& script : scripts) {
-					Local<String> code = v8_string(script.first.c_str());
+					Local<String> code = script.first.CopyInto().As<String>();
 					ScriptOrigin script_origin = script.second.ToScriptOrigin();
-					ScriptCompiler::Source source(code, script_origin);
+					ScriptCompiler::Source source{code, script_origin};
 					Local<UnboundScript> unbound_script;
 					{
-						Context::Scope context_scope(context);
+						Context::Scope context_scope{context};
 						Local<Script> compiled_script = RunWithAnnotatedErrors<Local<Script>>(
 							[&context, &source]() { return Unmaybe(ScriptCompiler::Compile(context, &source, ScriptCompiler::kNoCompileOptions)); }
 						);
 						Unmaybe(compiled_script->Run(context));
 						unbound_script = compiled_script->GetUnboundScript();
 					}
-					if (!warmup_script.empty()) {
-						Context::Scope context_scope(context_dirty);
+					if (warmup_script) {
+						Context::Scope context_scope{context_dirty};
 						Unmaybe(unbound_script->BindToCurrentContext()->Run(context_dirty));
 					}
 				}
-				if (!warmup_script.empty()) {
-					Context::Scope context_scope(context_dirty);
+				if (warmup_script) {
+					Context::Scope context_scope{context_dirty};
 					MaybeLocal<Object> tmp;
-					ScriptOriginHolder script_origin(tmp);
-					ScriptCompiler::Source source(v8_string(warmup_script.c_str()), script_origin.ToScriptOrigin());
+					ScriptOriginHolder script_origin{tmp};
+					ScriptCompiler::Source source{warmup_script->CopyInto().As<String>(), script_origin.ToScriptOrigin()};
 					RunWithAnnotatedErrors<void>([&context_dirty, &source]() {
 						Unmaybe(Unmaybe(ScriptCompiler::Compile(context_dirty, &source, ScriptCompiler::kNoCompileOptions))->Run(context_dirty));
 					});

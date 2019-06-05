@@ -19,4 +19,14 @@ assert.equal(isolate.compileScriptSync('sum(1, 2)').runSync(context), 3);
 if (process.versions.modules >= 64) {
 	assert.equal(isolate.compileScriptSync('array[100]').runSync(context), 0xdeadbeef);
 }
+
+{
+	let snapshot = ivm.Isolate.createSnapshot([{
+		code: `utf8 = 'è';`
+	}]);
+	let isolate = new ivm.Isolate({ snapshot });
+	let context = isolate.createContextSync();
+	assert.equal(context.global.getSync('utf8').copySync(), 'è');
+}
+
 console.log('pass');
