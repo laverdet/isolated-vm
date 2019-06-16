@@ -599,10 +599,11 @@ static StartupData SerializeInternalFieldsCallback(Local<Object> /*holder*/, int
 Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLocal<String> warmup_handle) {
 
 	// Copy embed scripts and warmup script from outer isolate
-	std::deque<std::pair<ExternalCopyString, ScriptOriginHolder>> scripts;
+	std::vector<std::pair<ExternalCopyString, ScriptOriginHolder>> scripts;
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
 	Local<Array> keys = Unmaybe(script_handles->GetOwnPropertyNames(context));
+	scripts.reserve(keys->Length());
 	for (uint32_t ii = 0; ii < keys->Length(); ++ii) {
 		Local<Uint32> key = Unmaybe(Unmaybe(keys->Get(context, ii))->ToArrayIndex(context));
 		if (key->Value() != ii) {
