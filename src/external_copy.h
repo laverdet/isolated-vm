@@ -54,6 +54,7 @@ class ExternalCopy : public Transferable {
 		explicit ExternalCopy(size_t size);
 		ExternalCopy(const ExternalCopy&) = delete;
 		ExternalCopy& operator= (const ExternalCopy&) = delete;
+		ExternalCopy(ExternalCopy&& that);
 		~ExternalCopy() override;
 
 		/**
@@ -160,7 +161,8 @@ class ExternalCopyString : public ExternalCopy {
 		};
 
 	public:
-		explicit ExternalCopyString(v8::Local<v8::String> string);
+		// gcc 5 doesn't want this to be explicit
+		ExternalCopyString(v8::Local<v8::String> string);
 		explicit ExternalCopyString(const char* message);
 		explicit ExternalCopyString(const std::string& message);
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;

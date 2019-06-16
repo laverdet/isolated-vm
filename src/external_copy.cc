@@ -225,14 +225,16 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 // Instance methods
 ExternalCopy::ExternalCopy() = default;
 
-ExternalCopy::ExternalCopy(size_t size) : size(size), original_size(size) {
+ExternalCopy::ExternalCopy(size_t size) : size{size}, original_size{size} {
 	total_allocated_size += size;
 }
 
+ExternalCopy::ExternalCopy(ExternalCopy&& that) : size{that.size}, original_size{that.size} {
+	that.size = 0;
+}
+
 ExternalCopy::~ExternalCopy() {
-	if (size != 0) {
-		total_allocated_size -= size;
-	}
+	total_allocated_size -= size;
 }
 
 Local<Value> ExternalCopy::CopyIntoCheckHeap(bool transfer_in) {
