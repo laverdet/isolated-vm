@@ -62,7 +62,7 @@ let str = '1,2,3,4,5,6,7,8';
 	assert.doesNotThrow(() => {
 		let view = new Uint8Array(arr);
 		let copy = new ivm.ExternalCopy(view, { transferList: [ view.buffer ] });
-		assert.throws(() => view.join(), /detached ArrayBuffer/); // has been released
+		assert.throws(() => view.join(), /(?:neutered|detached) ArrayBuffer/); // has been released
 		assert.strictEqual(copy.copy().join(), str);
 	});
 
