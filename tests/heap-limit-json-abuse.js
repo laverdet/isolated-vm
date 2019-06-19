@@ -7,7 +7,10 @@ global.setSync('blob', new ivm.ExternalCopy({ val: `[${Array(count).fill('"aa"')
 
 try {
 	isolate.compileScriptSync('new '+ function() {
-		JSON.parse(blob.val);
+		let storage = [];
+		for (;;) {
+			storage.push(JSON.parse(blob.val));
+		}
 	}).runSync(context);
 } catch (err) {
 	console.log('pass');

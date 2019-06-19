@@ -379,10 +379,10 @@ void IsolateEnvironment::HeapCheck::Epilogue() {
 		Isolate* isolate = env.GetIsolate();
 		HeapStatistics heap;
 		isolate->GetHeapStatistics(&heap);
-		if (heap.used_heap_size() + env.extra_allocated_memory > env.memory_limit * 1024 * 1024) {
+		if (heap.used_heap_size() + env.extra_allocated_memory > env.memory_limit) {
 			isolate->LowMemoryNotification();
 			isolate->GetHeapStatistics(&heap);
-			if (heap.used_heap_size() + env.extra_allocated_memory > env.memory_limit * 1024 * 1024) {
+			if (heap.used_heap_size() + env.extra_allocated_memory > env.memory_limit) {
 				env.hit_memory_limit = true;
 				env.Terminate();
 				throw js_fatal_error("Isolate was disposed during execution due to memory limit");
@@ -430,14 +430,85 @@ void IsolateEnvironment::PromiseRejectCallback(PromiseRejectMessage rejection) {
 	assert(that->isolate == Isolate::GetCurrent());
 	that->rejected_promise_error.Reset(that->isolate, rejection.GetValue());
 }
+void IsolateEnvironment::MarkSweepCompactEpilogue(Isolate* isolate, GCType gc_type, GCCallbackFlags gc_flags, void* data) {
+	auto that = static_cast<IsolateEnvironment*>(data);
+	HeapStatistics heap;
+	that->isolate->GetHeapStatistics(&heap);
+	size_t total_memory = heap.used_heap_size() + that->extra_allocated_memory;
+	size_t memory_limit = that->memory_limit + that->misc_memory_size;
+	if (total_memory > memory_limit) {
+		if (gc_flags & (GCCallbackFlags::kGCCallbackFlagCollectAllAvailableGarbage | GCCallbackFlags::kGCCallbackFlagForced)) {
+			that->Terminate();
+			that->hit_memory_limit = true;
+		} else {
+			// Force full garbage collection
+			that->RequestMemoryPressureNotification(MemoryPressureLevel::kCritical, true);
+		}
+	} else if (!(gc_flags & GCCallbackFlags::kGCCallbackFlagCollectAllAvailableGarbage)) {
+		if (that->did_adjust_heap_limit) {
+			// There is also `AutomaticallyRestoreInitialHeapLimit` introduced in v8 7.3.411 / 93283bf04
+			// but it seems less effective than this ratcheting strategy.
+			isolate->RemoveNearHeapLimitCallback(NearHeapLimitCallback, that->memory_limit);
+			isolate->AddNearHeapLimitCallback(NearHeapLimitCallback, data);
+			HeapStatistics heap;
+			that->isolate->GetHeapStatistics(&heap);
+			if (heap.heap_size_limit() == that->initial_heap_size_limit) {
+				that->did_adjust_heap_limit = false;
+			}
+		}
+		if (total_memory + total_memory / 4 > memory_limit) {
+			// Send "moderate" pressure at 80%
+			that->RequestMemoryPressureNotification(MemoryPressureLevel::kModerate, true);
+		}
+	}
+}
 
 size_t IsolateEnvironment::NearHeapLimitCallback(void* data, size_t current_heap_limit, size_t /* initial_heap_limit */) {
 	// This callback will temporarily give the v8 vm up to an extra 1 GB of memory to prevent the
-	// application from crashing. After the JS stack unwinds the isolate will be disposed.
+	// application from crashing.
 	auto that = static_cast<IsolateEnvironment*>(data);
-	that->hit_memory_limit = true;
-	that->Terminate();
+	that->did_adjust_heap_limit = true;
+	HeapStatistics heap;
+	that->isolate->GetHeapStatistics(&heap);
+	if (heap.used_heap_size() + that->extra_allocated_memory > that->memory_limit + that->misc_memory_size) {
+		that->RequestMemoryPressureNotification(MemoryPressureLevel::kCritical, true, true);
+	} else {
+		that->RequestMemoryPressureNotification(MemoryPressureLevel::kModerate, true, true);
+	}
 	return current_heap_limit + 1024 * 1024 * 1024;
+}
+
+void IsolateEnvironment::RequestMemoryPressureNotification(MemoryPressureLevel memory_pressure, bool is_reentrant_gc, bool as_interrupt) {
+	// Before commit v8 6.9.406 / 0fb4f6a2a triggering the GC from within a GC callback would output
+	// some GC tracing diagnostics. After the commit it is properly gated behind a v8 debug flag.
+	if (
+#if !V8_AT_LEAST(6, 9, 406)
+		is_reentrant_gc ||
+#endif
+		as_interrupt
+	) {
+		this->memory_pressure = memory_pressure;
+		isolate->RequestInterrupt(MemoryPressureInterrupt, static_cast<void*>(this));
+	} else {
+		this->memory_pressure = MemoryPressureLevel::kNone;
+		isolate->MemoryPressureNotification(memory_pressure);
+		if (is_reentrant_gc && memory_pressure == MemoryPressureLevel::kCritical) {
+			// Reentrant GC doesn't trigger callbacks
+			MarkSweepCompactEpilogue(isolate, GCType::kGCTypeMarkSweepCompact, GCCallbackFlags::kGCCallbackFlagForced, reinterpret_cast<void*>(this));
+		}
+	}
+}
+
+void IsolateEnvironment::MemoryPressureInterrupt(Isolate* /* isolate */, void* data) {
+	static_cast<IsolateEnvironment*>(data)->CheckMemoryPressure();
+}
+
+void IsolateEnvironment::CheckMemoryPressure() {
+	MemoryPressureLevel pressure = memory_pressure;
+	if (pressure != MemoryPressureLevel::kNone) {
+		memory_pressure = MemoryPressureLevel::kNone;
+		isolate->MemoryPressureNotification(pressure);
+	}
 }
 
 void IsolateEnvironment::AsyncEntry() {
@@ -489,6 +560,7 @@ void IsolateEnvironment::AsyncEntry() {
 			if (hit_memory_limit) {
 				return;
 			}
+			CheckMemoryPressure();
 		}
 	}
 }
@@ -530,18 +602,19 @@ void IsolateEnvironment::IsolateCtor(Isolate* isolate, Local<Context> context) {
 	bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
 }
 
-void IsolateEnvironment::IsolateCtor(size_t memory_limit, shared_ptr<void> snapshot_blob, size_t snapshot_length) {
-	allocator_ptr = std::make_unique<LimitedAllocator>(*this, memory_limit * 1024 * 1024);
+void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void> snapshot_blob, size_t snapshot_length) {
+	memory_limit = memory_limit_in_mb * 1024 * 1024;
+	allocator_ptr = std::make_unique<LimitedAllocator>(*this, memory_limit);
 	snapshot_blob_ptr = std::move(snapshot_blob);
-	this->memory_limit = memory_limit;
 	root = false;
 
 	// Calculate resource constraints
 	ResourceConstraints rc;
-	// Added in v8 bb29f9a4 but reverted in nodejs aa1a3ea9. It made it back in nodejs v10.x
-	rc.set_max_semi_space_size_in_kb((int)std::pow(2, std::min(sizeof(void*) >= 8 ? 4.0 : 3.0, memory_limit / 128.0) + 10));
-
-	rc.set_max_old_space_size((int)memory_limit);
+	rc.set_max_semi_space_size_in_kb((size_t)std::pow(2, memory_limit_in_mb / 128.0 + 10.0));
+	// When adjusting the max size of the heap via NearHeapLimit callback the smallest value we can
+	// set the heap to is `current_heap + current_heap / 4` (see RestoreHeapLimit in v8 heap.h). So we
+	// just the limit to that from the start.
+	rc.set_max_old_space_size(memory_limit_in_mb);
 
 	// Build isolate from create params
 	Isolate::CreateParams create_params;
@@ -563,7 +636,16 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit, shared_ptr<void> snaps
 	isolate->SetOOMErrorHandler(OOMErrorCallback);
 	isolate->SetPromiseRejectCallback(PromiseRejectCallback);
 
+	// Add GC callbacks
+	isolate->AddGCEpilogueCallback(MarkSweepCompactEpilogue, static_cast<void*>(this), GCType::kGCTypeMarkSweepCompact);
 	isolate->AddNearHeapLimitCallback(NearHeapLimitCallback, static_cast<void*>(this));
+
+	// Heap statistics crushes down lots of different memory spaces into a single number. We note the
+	// difference between the requested old space and v8's calculated heap size.
+	HeapStatistics heap;
+	isolate->GetHeapStatistics(&heap);
+	initial_heap_size_limit = heap.heap_size_limit();
+	misc_memory_size = heap.heap_size_limit() - memory_limit_in_mb * 1024 * 1024;
 
 	// Create a default context for the library to use if needed
 	{
@@ -629,6 +711,7 @@ Local<Context> IsolateEnvironment::NewContext() {
 
 void IsolateEnvironment::TaskEpilogue() {
 	isolate->RunMicrotasks();
+	CheckMemoryPressure();
 	if (hit_memory_limit) {
 		throw js_fatal_error("Isolate was disposed during execution due to memory limit");
 	}

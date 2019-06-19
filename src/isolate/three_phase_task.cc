@@ -209,6 +209,7 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 		// Shortcut when calling a sync method belonging to the currently entered isolate. This avoids
 		// the deadlock protection below
 		Phase2();
+		second_isolate_ref->CheckMemoryPressure();
 
 	} else {
 
