@@ -218,21 +218,26 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 				throw js_generic_error("This function may not be called from the default thread");
 			}
 
-			// This is the simple sync runner case
-			unique_ptr<ExternalCopy> error;
-			{
-				IsolateEnvironment::Executor::Lock lock(*second_isolate_ref);
-
-				// Run handle tasks first
+			// Helper function which flushes handle tasks
+			auto run_handle_tasks = [](IsolateEnvironment& env) {
 				std::queue<std::unique_ptr<Runnable>> handle_tasks;
 				{
-					IsolateEnvironment::Scheduler::Lock scheduler_lock(second_isolate_ref->scheduler);
+					IsolateEnvironment::Scheduler::Lock scheduler_lock(env.scheduler);
 					handle_tasks = scheduler_lock.TakeHandleTasks();
 				}
 				while (!handle_tasks.empty()) {
 					handle_tasks.front()->Run();
 					handle_tasks.pop();
 				}
+			};
+
+			// This is the simple sync runner case
+			unique_ptr<ExternalCopy> error;
+			{
+				IsolateEnvironment::Executor::Lock lock(*second_isolate_ref);
+
+				// Run handle tasks first
+				run_handle_tasks(*second_isolate_ref);
 
 				// Now run the actual work
 				FunctorRunners::RunCatchExternal(second_isolate_ref->DefaultContext(), [ this, is_recursive, &second_isolate_ref ]() {
@@ -246,6 +251,12 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 					// We need to stash the error in the outer unique_ptr because the executor lock is still up
 					error = std::move(error_inner);
 				});
+			}
+
+			// Run handle tasks for default isolate now
+			IsolateEnvironment& current_env = *IsolateEnvironment::GetCurrent();
+			if (current_env.IsDefault()) {
+				run_handle_tasks(current_env);
 			}
 
 			if (error) {
