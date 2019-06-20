@@ -1,6 +1,7 @@
 'use strict';
 const kTimeout = 100;
 const kTimeoutRange = 115;
+const kError = 0.98;
 let ivm = require('isolated-vm');
 let isolate = new ivm.Isolate;
 let context = isolate.createContextSync();
@@ -19,7 +20,7 @@ function hrToFloat(hr) {
 }
 
 function checkRange(val, min, max) {
-	return val <= max && val >= min;
+	return val <= max / kError && val >= min * kError;
 }
 
 // Synchronous timers
