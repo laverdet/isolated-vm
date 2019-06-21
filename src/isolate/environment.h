@@ -465,10 +465,10 @@ class IsolateEnvironment {
 		}
 
 		/**
-		 * Get the set memory limit for this environment
+		 * Get the initial v8 heap_size_limit when the isolate was created.
 		 */
-		size_t GetMemoryLimit() const {
-			return memory_limit;
+		size_t GetInitialHeapSizeLimit() const {
+			return initial_heap_size_limit;
 		}
 
 		/**
