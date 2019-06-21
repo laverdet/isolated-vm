@@ -4,6 +4,7 @@
 #include "platform_delegate.h"
 #include "runnable.h"
 #include "../external_copy.h"
+#include <algorithm>
 #include <cmath>
 
 #ifdef USE_CLOCK_THREAD_CPUTIME_ID
@@ -430,6 +431,7 @@ void IsolateEnvironment::PromiseRejectCallback(PromiseRejectMessage rejection) {
 	assert(that->isolate == Isolate::GetCurrent());
 	that->rejected_promise_error.Reset(that->isolate, rejection.GetValue());
 }
+
 void IsolateEnvironment::MarkSweepCompactEpilogue(Isolate* isolate, GCType gc_type, GCCallbackFlags gc_flags, void* data) {
 	auto that = static_cast<IsolateEnvironment*>(data);
 	HeapStatistics heap;
@@ -611,10 +613,17 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void>
 	// Calculate resource constraints
 	ResourceConstraints rc;
 	rc.set_max_semi_space_size_in_kb((size_t)std::pow(2, memory_limit_in_mb / 128.0 + 10.0));
-	// When adjusting the max size of the heap via NearHeapLimit callback the smallest value we can
-	// set the heap to is `current_heap + current_heap / 4` (see RestoreHeapLimit in v8 heap.h). So we
-	// just the limit to that from the start.
-	rc.set_max_old_space_size(memory_limit_in_mb);
+	rc.set_max_old_space_size(
+#if V8_AT_LEAST(7, 0, 0)
+		memory_limit_in_mb
+#else
+		// node v10.x seems to not call NearHeapLimit dependably for smaller heap sizes. I'm not sure
+		// exactly sure when this was resolved and bisecting on v8 would be frustrating, but since
+		// nodejs v11.x it seems ok. For these earlier versions of node the gc epilogue will have to
+		// enforce the limit as best it can.
+		std::max(size_t{128}, memory_limit_in_mb)
+#endif
+	);
 
 	// Build isolate from create params
 	Isolate::CreateParams create_params;
