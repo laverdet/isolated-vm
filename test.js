@@ -39,13 +39,13 @@ function runTest(test, cb) {
 
 	// Wait for completion
 	process.stderr.write(`${test}: `);
-	proc.on('exit', function(code) {
+	proc.on('exit', function(code, signal) {
 		if (stdout !== 'pass\n' || stderr !== '') {
 			++failCount;
 			ret = 1;
 			console.error(
 				`*fail*\n`+
-				`code: ${code}\n`+
+				`code: ${code} signal: ${signal}\n`+
 				`stderr: ${stderr}\n`+
 				`stdout: ${stdout}`
 			);
