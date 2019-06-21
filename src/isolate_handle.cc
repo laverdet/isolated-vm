@@ -273,12 +273,14 @@ struct CreateContextRunner : public ThreePhaseTask {
 		}
 
 		// Make a new context and setup shared pointers
+		IsolateEnvironment::HeapCheck heap_check{*env, true};
 		Local<Context> context_handle = env->NewContext();
 		if (enable_inspector) {
 			env->GetInspectorAgent()->ContextCreated(context_handle, "<isolated-vm>");
 		}
 		context = shared_ptr<RemoteHandle<Context>>(new RemoteHandle<Context>(context_handle), ContextDeleter(enable_inspector));
 		global = std::make_shared<RemoteHandle<Value>>(context_handle->Global());
+		heap_check.Epilogue();
 	}
 
 	Local<Value> Phase3() final {
@@ -364,6 +366,7 @@ struct CompileScriptRunner : public CompileCodeRunner {
 		// Compile in second isolate and return UnboundScript persistent
 		auto isolate = IsolateEnvironment::GetCurrent();
 		Context::Scope context_scope(isolate->DefaultContext());
+		IsolateEnvironment::HeapCheck heap_check{*isolate, true};
 		auto source = GetCompilerSource();
 		ScriptCompiler::CompileOptions compile_options = ScriptCompiler::kNoCompileOptions;
 		if (cached_data_in) {
@@ -390,6 +393,7 @@ struct CompileScriptRunner : public CompileCodeRunner {
 			assert(cached_data != nullptr);
 			cached_data_out = std::make_shared<ExternalCopyArrayBuffer>((void*)cached_data->data, cached_data->length);
 		}
+		heap_check.Epilogue();
 	}
 
 	Local<Value> Phase3() final {
@@ -423,6 +427,7 @@ struct CompileModuleRunner : public CompileCodeRunner {
 	void Phase2() final {
 		auto isolate = IsolateEnvironment::GetCurrent();
 		Context::Scope context_scope(isolate->DefaultContext());
+		IsolateEnvironment::HeapCheck heap_check{*isolate, true};
 		auto source = GetCompilerSource();
 		Local<Module> module_handle = Unmaybe(ScriptCompiler::CompileModule(*isolate, source.get()));
 
@@ -442,6 +447,7 @@ struct CompileModuleRunner : public CompileCodeRunner {
 			*/
 		}
 		module_info = std::make_shared<ModuleInfo>(module_handle);
+		heap_check.Epilogue();
 	}
 
 	Local<Value> Phase3() final {

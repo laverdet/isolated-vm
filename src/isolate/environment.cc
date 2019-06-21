@@ -372,11 +372,12 @@ void IsolateEnvironment::Scheduler::AsyncWait::Wake() {
 /**
  * HeapCheck implementation
  */
-IsolateEnvironment::HeapCheck::HeapCheck(IsolateEnvironment& env) : env{env}, extra_size_before{env.extra_allocated_memory} {
+IsolateEnvironment::HeapCheck::HeapCheck(IsolateEnvironment& env, bool force) :
+		env{env}, extra_size_before{env.extra_allocated_memory}, force{force} {
 }
 
 void IsolateEnvironment::HeapCheck::Epilogue() {
-	if (!env.root && env.extra_allocated_memory != extra_size_before) {
+	if (!env.root && (force || env.extra_allocated_memory != extra_size_before)) {
 		Isolate* isolate = env.GetIsolate();
 		HeapStatistics heap;
 		isolate->GetHeapStatistics(&heap);

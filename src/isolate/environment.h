@@ -252,8 +252,9 @@ class IsolateEnvironment {
 			private:
 				IsolateEnvironment& env;
 				size_t extra_size_before;
+				bool force;
 			public:
-				explicit HeapCheck(IsolateEnvironment& env);
+				explicit HeapCheck(IsolateEnvironment& env, bool force = false);
 				HeapCheck(const HeapCheck&) = delete;
 				HeapCheck& operator= (const HeapCheck&) = delete;
 				void Epilogue();
