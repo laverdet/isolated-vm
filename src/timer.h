@@ -85,27 +85,31 @@ class timer_t {
 					std::deque<std::shared_ptr<timer_data_t>>,
 					timer_data_t::cmp
 				> queue;
+				// Keep copies to these references because in some cases the library will unload while
+				// threads are still active causing an ungraceful exit
+				std::mutex& global_mutex;
+				std::unordered_set<timer_thread_t*>& thread_list;
 
 				explicit timer_thread_t(std::shared_ptr<timer_data_t> first_timer) :
-					next_timeout(first_timer->timeout), queue(&first_timer, &first_timer + 1) {
-					std::thread thread(std::bind(&timer_thread_t::entry, this));
+						next_timeout{first_timer->timeout}, queue{&first_timer, &first_timer + 1},
+						global_mutex{timer_t::global_mutex()}, thread_list{timer_t::thread_list()} {
+					std::thread thread{std::bind(&timer_thread_t::entry, this)};
 					thread.detach();
 				}
 
 				void entry() {
-					std::unique_lock<std::mutex> lock(timer_t::global_mutex(), std::defer_lock);
+					std::unique_lock<std::mutex> lock{global_mutex, std::defer_lock};
 					while (true) {
 						std::this_thread::sleep_until(next_timeout);
 						lock.lock();
 						next_timeout = std::chrono::steady_clock::now();
 						run_next(lock);
 						if (queue.empty()) {
-							auto& threads = thread_list();
-							auto ii = threads.find(this);
-							if (ii == threads.end()) {
+							auto ii = thread_list.find(this);
+							if (ii == thread_list.end()) {
 								throw std::logic_error("Didn't find thread in thread list");
 							}
-							threads.erase(ii);
+							thread_list.erase(ii);
 							delete this;
 							return;
 						}
@@ -115,7 +119,7 @@ class timer_t {
 				}
 
 				void run_next(std::unique_lock<std::mutex>& lock) {
-					auto data = queue.top();
+					auto data = std::move(queue.top());
 					queue.pop();
 					run(std::move(data), lock, *this);
 				}
@@ -131,8 +135,8 @@ class timer_t {
 		 * Global mutex and list of active threads
 		 */
 		static std::mutex& global_mutex() {
-			static std::mutex global_mutex;
-			return global_mutex;
+			static auto global_mutex = new std::mutex;
+			return *global_mutex;
 		}
 
 		static std::condition_variable& global_cv() {
@@ -141,8 +145,8 @@ class timer_t {
 		}
 
 		static std::unordered_set<timer_thread_t*>& thread_list() {
-			static std::unordered_set<timer_thread_t*> thread_list;
-			return thread_list;
+			static auto thread_list = new std::unordered_set<timer_thread_t*>;
+			return *thread_list;
 		}
 
 		// Lock must be locked!
