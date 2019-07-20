@@ -13,7 +13,7 @@ namespace ivm {
 class NativeModule {
 	private:
 		using init_t = void(*)(v8::Isolate *, v8::Local<v8::Context>, v8::Local<v8::Object>);
-		uv_lib_t lib {};
+		uv_lib_t lib;
 		init_t init;
 
 	public:
