@@ -186,7 +186,7 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 				if (copy_handle != nullptr) {
 					ExternalCopyArrayBuffer* copy_ptr = dynamic_cast<ExternalCopyArrayBuffer*>(copy_handle->GetValue().get());
 					if (copy_ptr != nullptr) {
-						snapshot_blob = copy_ptr->GetSharedPointer();
+						snapshot_blob = copy_ptr->Acquire();
 						snapshot_blob_length = copy_ptr->Length();
 					}
 				}
@@ -323,7 +323,7 @@ struct CompileCodeRunner : public ThreePhaseTask {
 					if (copy_handle != nullptr) {
 						ExternalCopyArrayBuffer* copy_ptr = dynamic_cast<ExternalCopyArrayBuffer*>(copy_handle->GetValue().get());
 						if (copy_ptr != nullptr) {
-							cached_data_in = copy_ptr->GetSharedPointer();
+							cached_data_in = copy_ptr->Acquire();
 							cached_data_in_size = copy_ptr->Length();
 						}
 					}

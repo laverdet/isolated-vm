@@ -1,5 +1,6 @@
 #pragma once
 #include "runnable.h"
+#include <mutex>
 #include <memory>
 
 namespace ivm {
@@ -9,6 +10,7 @@ class IsolateHolder {
 	friend class IsolateEnvironment;
 	private:
 		std::shared_ptr<IsolateEnvironment> isolate;
+		std::mutex mutex;
 
 	public:
 		explicit IsolateHolder(std::shared_ptr<IsolateEnvironment> isolate);

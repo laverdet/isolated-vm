@@ -253,18 +253,24 @@ class ExternalCopyBytes : public ExternalCopy {
 			static void WeakCallback(void* param);
 		};
 
+		std::shared_ptr<void> Release();
+		void Replace(std::shared_ptr<void> value);
+
 	public:
-		explicit ExternalCopyBytes(size_t size);
+		explicit ExternalCopyBytes(size_t size, std::shared_ptr<void> value, size_t length);
+		std::shared_ptr<void> Acquire() const;
+		size_t Length() { return length; }
+
+	private:
+		std::shared_ptr<void> value;
+		const size_t length;
+		mutable std::mutex mutex;
 };
 
 /**
  * ArrayBuffer instances
  */
 class ExternalCopyArrayBuffer : public ExternalCopyBytes {
-	private:
-		std::shared_ptr<void> value;
-		const size_t length;
-
 	public:
 		ExternalCopyArrayBuffer(const void* data, size_t length);
 		ExternalCopyArrayBuffer(std::shared_ptr<void> ptr, size_t length);
@@ -272,24 +278,16 @@ class ExternalCopyArrayBuffer : public ExternalCopyBytes {
 
 		static std::unique_ptr<ExternalCopyArrayBuffer> Transfer(const v8::Local<v8::ArrayBuffer>& handle);
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
-		std::shared_ptr<void> GetSharedPointer() const;
-		const void* Data() const;
-		size_t Length() const;
 };
 
 /**
  * SharedArrayBuffer instances
  */
 class ExternalCopySharedArrayBuffer : public ExternalCopyBytes {
-	private:
-		std::shared_ptr<void> value;
-		const size_t length;
-
 	public:
 		explicit ExternalCopySharedArrayBuffer(const v8::Local<v8::SharedArrayBuffer>& handle);
 
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
-		std::shared_ptr<void> GetSharedPointer() const;
 };
 
 /**

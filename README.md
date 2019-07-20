@@ -45,9 +45,6 @@ too old.
 * Ubuntu users should run: `sudo apt-get install g++ build-essential`
 * Alpine users should run: `sudo apk add python make g++`
 
-If you are using Ubuntu please note that version 16 (Xenial) or greater is required. This project
-will *not* build using gcc 4.9.
-
 
 WHO IS USING ISOLATED-VM
 ------------------------

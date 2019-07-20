@@ -463,7 +463,27 @@ Local<Value> ExternalCopyDate::CopyInto(bool /*transfer_in*/) {
 /**
  * ExternalCopyBytes implementation
  */
-ExternalCopyBytes::ExternalCopyBytes(size_t size) : ExternalCopy(size) {}
+ExternalCopyBytes::ExternalCopyBytes(size_t size, shared_ptr<void> value, size_t length) :
+		ExternalCopy{size}, value{std::move(value)}, length{length} {}
+
+std::shared_ptr<void> ExternalCopyBytes::Acquire() const {
+	std::lock_guard<std::mutex> lock{mutex};
+	auto ret = value;
+	if (!ret) {
+		throw js_generic_error("Array buffer is invalid");
+	}
+	return ret;
+}
+
+std::shared_ptr<void> ExternalCopyBytes::Release() {
+	std::lock_guard<std::mutex> lock{mutex};
+	return std::move(value);
+}
+
+void ExternalCopyBytes::Replace(shared_ptr<void> value) {
+	std::lock_guard<std::mutex> lock{mutex};
+	this->value = std::move(value);
+}
 
 ExternalCopyBytes::Holder::Holder(const Local<Object>& buffer, shared_ptr<void> cc_ptr, size_t size) :
 	v8_ptr(Isolate::GetCurrent(), buffer), cc_ptr(std::move(cc_ptr)), size(size)
@@ -495,24 +515,19 @@ void ExternalCopyBytes::Holder::WeakCallback(void* param) {
  * ExternalCopyArrayBuffer implementation
  */
 ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const void* data, size_t length) :
-	ExternalCopyBytes(length + sizeof(ExternalCopyArrayBuffer)),
-	value(shared_ptr<void>(malloc(length), std::free)),
-	length(length)
-{
-	std::memcpy(value.get(), data, length);
+		ExternalCopyBytes{length + sizeof(ExternalCopyArrayBuffer), {malloc(length), std::free}, length} {
+	std::memcpy(Acquire().get(), data, length);
 }
 
 ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(shared_ptr<void> ptr, size_t length) :
-	ExternalCopyBytes(length + sizeof(ExternalCopyArrayBuffer)),
-	value(std::move(ptr)),
-	length(length) {}
+		ExternalCopyBytes{length + sizeof(ExternalCopyArrayBuffer), std::move(ptr), length} {}
 
 ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const Local<ArrayBuffer>& handle) :
-	ExternalCopyBytes(handle->ByteLength() + sizeof(ExternalCopyArrayBuffer)),
-	value(malloc(handle->ByteLength()), std::free),
-	length(handle->ByteLength())
-{
-	std::memcpy(value.get(), handle->GetContents().Data(), length);
+		ExternalCopyBytes{
+			handle->ByteLength() + sizeof(ExternalCopyArrayBuffer),
+			{malloc(handle->ByteLength()), std::free},
+			handle->ByteLength()} {
+	std::memcpy(Acquire().get(), handle->GetContents().Data(), Length());
 }
 
 unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Local<ArrayBuffer>& handle) {
@@ -545,94 +560,69 @@ unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Loca
 
 Local<Value> ExternalCopyArrayBuffer::CopyInto(bool transfer_in) {
 	if (transfer_in) {
-		auto tmp = std::atomic_exchange(&value, shared_ptr<void>());
-		if (tmp == nullptr) {
+		auto tmp = Release();
+		if (!tmp) {
 			throw js_generic_error("Array buffer is invalid");
 		}
 		if (tmp.use_count() != 1) {
-			std::atomic_store(&value, std::move(tmp));
+			Replace(std::move(tmp));
 			throw js_generic_error("Array buffer is in use and may not be transferred");
 		}
 		UpdateSize(0);
-		Local<ArrayBuffer> array_buffer = ArrayBuffer::New(Isolate::GetCurrent(), tmp.get(), length);
-		new Holder(array_buffer, std::move(tmp), length);
+		Local<ArrayBuffer> array_buffer = ArrayBuffer::New(Isolate::GetCurrent(), tmp.get(), Length());
+		new Holder{array_buffer, std::move(tmp), Length()};
 		return array_buffer;
 	} else {
 		auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
-		if (allocator != nullptr && !allocator->Check(length)) {
+		if (allocator != nullptr && !allocator->Check(Length())) {
 			// ArrayBuffer::New will crash the process if there is an allocation failure, so we check
 			// here.
 			throw js_range_error("Array buffer allocation failed");
 		}
-		auto ptr = GetSharedPointer();
-		Local<ArrayBuffer> array_buffer = ArrayBuffer::New(Isolate::GetCurrent(), length);
-		std::memcpy(array_buffer->GetContents().Data(), ptr.get(), length);
+		auto ptr = Acquire();
+		Local<ArrayBuffer> array_buffer = ArrayBuffer::New(Isolate::GetCurrent(), Length());
+		std::memcpy(array_buffer->GetContents().Data(), ptr.get(), Length());
 		return array_buffer;
 	}
-}
-
-shared_ptr<void> ExternalCopyArrayBuffer::GetSharedPointer() const {
-	auto ptr = std::atomic_load(&value);
-	if (!ptr) {
-		throw js_generic_error("Array buffer is invalid");
-	}
-	return ptr;
-}
-
-const void* ExternalCopyArrayBuffer::Data() const {
-	return value.get();
-}
-
-size_t ExternalCopyArrayBuffer::Length() const {
-	return length;
 }
 
 /**
  * ExternalCopySharedArrayBuffer implementation
  */
 ExternalCopySharedArrayBuffer::ExternalCopySharedArrayBuffer(const v8::Local<v8::SharedArrayBuffer>& handle) :
-	ExternalCopyBytes(handle->ByteLength() + sizeof(ExternalCopySharedArrayBuffer)),
-	length(handle->ByteLength())
-{
-	// Similar to ArrayBuffer::Transfer but different enough to make it not worth abstracting out..
-	size_t length = handle->ByteLength();
-	if (length == 0) {
-		throw js_generic_error("Array buffer is invalid");
-	}
-	if (handle->IsExternal()) {
-		// Buffer lifespan is not handled by v8.. attempt to recover from isolated-vm
-		auto ptr = reinterpret_cast<Holder*>(handle->GetAlignedPointerFromInternalField(0));
-		if (ptr == nullptr || ptr->magic != Holder::kMagic) { // dangerous pointer dereference
-			throw js_generic_error("Array buffer cannot be externalized");
-		}
-		// No race conditions here because only one thread can access `Holder`
-		value = ptr->cc_ptr;
-		return;
-	}
-	// In this case the buffer is internal and should be externalized
-	SharedArrayBuffer::Contents contents = handle->Externalize();
-	value = shared_ptr<void>(contents.Data(), std::free);
-	new Holder(handle, value, length);
-	// Adjust allocator memory down, and `Holder` will adjust memory back up
-	auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
-	if (allocator != nullptr) {
-		allocator->AdjustAllocatedSize(-static_cast<ptrdiff_t>(length));
-	}
-}
+		ExternalCopyBytes{handle->ByteLength() + sizeof(ExternalCopySharedArrayBuffer), [&]() -> shared_ptr<void> {
+			// Inline lambda generates shared_ptr<void> for ExternalCopyBytes ctor. Similar to
+			// ArrayBuffer::Transfer but different enough to make it not worth abstracting out..
+			size_t length = handle->ByteLength();
+			if (length == 0) {
+				throw js_generic_error("Array buffer is invalid");
+			}
+			if (handle->IsExternal()) {
+				// Buffer lifespan is not handled by v8.. attempt to recover from isolated-vm
+				auto ptr = reinterpret_cast<Holder*>(handle->GetAlignedPointerFromInternalField(0));
+				if (ptr == nullptr || ptr->magic != Holder::kMagic) { // dangerous pointer dereference
+					throw js_generic_error("Array buffer cannot be externalized");
+				}
+				// No race conditions here because only one thread can access `Holder`
+				return ptr->cc_ptr;
+			}
+			// In this case the buffer is internal and should be externalized
+			SharedArrayBuffer::Contents contents = handle->Externalize();
+			auto value = shared_ptr<void>{contents.Data(), std::free};
+			new Holder{handle, value, length};
+			// Adjust allocator memory down, and `Holder` will adjust memory back up
+			auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+			if (allocator != nullptr) {
+				allocator->AdjustAllocatedSize(-static_cast<ptrdiff_t>(length));
+			}
+			return value;
+		}(), handle->ByteLength()} {}
 
 Local<Value> ExternalCopySharedArrayBuffer::CopyInto(bool /*transfer_in*/) {
-	auto ptr = GetSharedPointer();
-	Local<SharedArrayBuffer> array_buffer = SharedArrayBuffer::New(Isolate::GetCurrent(), ptr.get(), length);
-	new Holder(array_buffer, std::move(ptr), length);
+	auto ptr = Acquire();
+	Local<SharedArrayBuffer> array_buffer = SharedArrayBuffer::New(Isolate::GetCurrent(), ptr.get(), Length());
+	new Holder{array_buffer, std::move(ptr), Length()};
 	return array_buffer;
-}
-
-shared_ptr<void> ExternalCopySharedArrayBuffer::GetSharedPointer() const {
-	auto ptr = std::atomic_load(&value);
-	if (!ptr) {
-		throw js_generic_error("Array buffer is invalid");
-	}
-	return ptr;
 }
 
 /**
