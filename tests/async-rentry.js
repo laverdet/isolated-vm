@@ -61,7 +61,10 @@ global.setSync('slowPromise', new ivm.Reference(function() {
 isolate.compileScriptSync('slowPromise.applySyncPromise(undefined, [])').run(context, { timeout: 1 }).catch(() => 0);
 
 // Test dead promise (This causes a memory leak! Don't do this!)
+// Disabled test because `timeout` is now paused when the isolate is not active.
+/*
 global.setSync('deadPromise', new ivm.Reference(function() {
 	return new Promise(() => {});
 }));
 isolate.compileScriptSync('deadPromise.applySyncPromise(undefined, [])').run(context, { timeout: 1 }).catch(() => 0);
+*/

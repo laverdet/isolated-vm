@@ -49,20 +49,18 @@ void InspectorAgent::runMessageLoopOnPause(int /* context_group_id */) {
 	if (terminated) {
 		return;
 	}
-	timer_t::pause(isolate.timer_holder);
-	IsolateEnvironment::Executor::CpuTimer::PauseScope pause_cpu_timer(isolate.executor.cpu_timer);
-	std::unique_lock<std::mutex> lock(mutex);
+	IsolateEnvironment::Executor::CpuTimer::PauseScope pause_cpu_timer{isolate.executor.cpu_timer};
+	std::unique_lock<std::mutex> lock{mutex};
 	running = true;
 	do {
 		cv.wait(lock);
 		lock.unlock();
 		{
-			IsolateEnvironment::Executor::CpuTimer::UnpauseScope unpause_cpu_timer(pause_cpu_timer);
+			IsolateEnvironment::Executor::CpuTimer::UnpauseScope unpause_cpu_timer{pause_cpu_timer};
 			isolate.InterruptEntry<&IsolateEnvironment::Scheduler::Lock::TakeInterrupts>();
 		}
 		lock.lock();
 	} while (running && !terminated);
-	timer_t::resume(isolate.timer_holder);
 }
 
 /**

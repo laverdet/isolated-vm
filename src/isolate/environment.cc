@@ -78,17 +78,19 @@ std::chrono::nanoseconds IsolateEnvironment::Executor::CpuTimer::Delta(const std
 }
 
 void IsolateEnvironment::Executor::CpuTimer::Pause() {
-	std::lock_guard<std::mutex> lock(executor.timer_mutex);
+	std::lock_guard<std::mutex> lock{executor.timer_mutex};
 	executor.cpu_time += Now() - time;
 	assert(executor.cpu_timer == this);
 	executor.cpu_timer = nullptr;
+	timer_t::pause(executor.env.timer_holder);
 }
 
 void IsolateEnvironment::Executor::CpuTimer::Resume() {
-	std::lock_guard<std::mutex> lock(executor.timer_mutex);
+	std::lock_guard<std::mutex> lock{executor.timer_mutex};
 	time = Now();
 	assert(executor.cpu_timer == nullptr);
 	executor.cpu_timer = this;
+	timer_t::resume(executor.env.timer_holder);
 }
 
 #if USE_CLOCK_THREAD_CPUTIME_ID

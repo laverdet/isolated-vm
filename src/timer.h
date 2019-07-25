@@ -28,6 +28,7 @@ class timer_t {
 		struct timer_data_t {
 			callback_t callback;
 			void** holder = nullptr;
+			void* last_holder_value;
 			std::chrono::steady_clock::time_point timeout;
 			std::chrono::steady_clock::time_point paused_at{};
 			std::chrono::steady_clock::duration paused_duration{};
@@ -39,7 +40,7 @@ class timer_t {
 			timer_data_t(std::chrono::steady_clock::time_point timeout, void** holder, callback_t callback) :
 				callback(std::move(callback)), holder(holder), timeout(timeout) {
 				if (holder != nullptr) {
-					*holder = static_cast<void*>(this);
+					last_holder_value = std::exchange(*holder, static_cast<void*>(this));
 				}
 			}
 
@@ -214,7 +215,7 @@ class timer_t {
 			}
 			data->is_alive = false;
 			if (data->holder != nullptr) {
-				*data->holder = nullptr;
+				*data->holder = data->last_holder_value;
 			}
 		}
 
