@@ -1,6 +1,7 @@
 'use strict';
-let v8 = require('v8');
-let ivm = require('isolated-vm');
+const v8 = require('v8');
+const ivm = require('isolated-vm');
+const assert = require('assert');
 
 // Get the error chain set up
 let env = [ 0, 0, 0 ].map(function() {
@@ -87,4 +88,37 @@ env[0].script.run(env[0].context).then(() => console.log('no stack')).catch(chec
 			console.log('no recursive stack');
 		}
 	});
+}
+
+// Try custom errors
+{
+	let isolate = new ivm.Isolate;
+	let context = isolate.createContextSync();
+	let script = isolate.compileScriptSync(`
+		class Hello extends Error {
+			get name() { return 'Hello';}
+		};
+		throw new Hello('message');
+	`);
+	try {
+		script.runSync(context);
+		assert.fail('Did not throw');
+	} catch (err) {
+		assert.equal(err.name, 'Hello');
+		assert.equal(err.message, 'message');
+	}
+}
+
+// Check errors with newlines in message
+{
+	let isolate = new ivm.Isolate;
+	let context = isolate.createContextSync();
+	let script = isolate.compileScriptSync('throw new Error("HELLO\\nWORLD")');
+	try {
+		script.runSync(context);
+		assert.fail('Did not throw');
+	} catch (err) {
+		assert.equal(err.stack.match(/HELLO/g).length, 1);
+		assert.equal(err.stack.match(/WORLD/g).length, 1);
+	}
 }

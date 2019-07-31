@@ -43,18 +43,22 @@ Local<String> RenderErrorStack(Local<Value> data) {
 		// message
 		String::Utf8Value string_value{isolate, data.As<String>()};
 		const char* c_str = *string_value;
-		// Must not start with indentation
-		if (c_str[0] == ' ' && c_str[1] == ' ' && c_str[2] == ' ' && c_str[3] == ' ') {
+		// If it starts with "    at" then the message has already been removed
+		if (strncmp(c_str, "    at", 6) == 0) {
 			return data.As<String>();
 		}
 		// Find the newline
-		const char* newline = strchr(c_str, '\n');
-		if (newline == nullptr) {
-			// No stack, just a message
-			return String::Empty(isolate);
+		const char* pos = strchr(c_str, '\n');
+		while (pos != nullptr) {
+			if (strncmp(pos + 1, "    at", 6) == 0) {
+				// Found the start of the stack
+				return Unmaybe(String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>(pos), NewStringType::kNormal));
+			}
+			pos = strchr(pos + 1, '\n');
 		}
-		// Slice up to start of stack
-		return Unmaybe(String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>(newline), NewStringType::kNormal));
+		// No stack, just a message
+		return String::Empty(isolate);
+
 	} else if (data->IsArray()) {
 		// Array pair
 		Local<Context> context = isolate->GetCurrentContext();
@@ -82,8 +86,12 @@ void ErrorStackGetter(Local<Name> /*property*/, const PropertyCallbackInfo<Value
 		Isolate* isolate = Isolate::GetCurrent();
 		Local<Context> context = isolate->GetCurrentContext();
 		Local<Object> holder = info.This();
+		Local<Value> name = Unmaybe(holder->Get(context, v8_string("name")));
+		if (!name->IsString()) {
+			name = holder->GetConstructorName();
+		}
 		return StringConcat(isolate,
-			StringConcat(isolate, holder->GetConstructorName(), v8_string(": ")),
+			StringConcat(isolate, name.As<String>(), v8_string(": ")),
 			StringConcat(isolate,
 				Unmaybe(
 					Unmaybe(info.This()->Get(context, v8_string("message")))->ToString(context)

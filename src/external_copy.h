@@ -191,15 +191,22 @@ class ExternalCopySerialized : public ExternalCopy {
 class ExternalCopyError : public ExternalCopy {
 	friend class ExternalCopy;
 	public:
-		enum class ErrorType { RangeError = 1, ReferenceError, SyntaxError, TypeError, Error };
+		enum class ErrorType { Error, RangeError, ReferenceError, SyntaxError, TypeError, CustomError };
 
 	private:
 		ErrorType error_type;
+		// these could be std::optional
+		std::unique_ptr<ExternalCopyString> name;
 		std::unique_ptr<ExternalCopyString> message;
 		std::unique_ptr<ExternalCopyString> stack;
 
 	public:
-		ExternalCopyError(ErrorType error_type, std::unique_ptr<ExternalCopyString> message, std::unique_ptr<ExternalCopyString> stack);
+		ExternalCopyError(
+			ErrorType error_type,
+			std::unique_ptr<ExternalCopyString> name,
+			std::unique_ptr<ExternalCopyString> message,
+			std::unique_ptr<ExternalCopyString> stack
+		);
 		ExternalCopyError(ErrorType error_type, const char* message, std::string stack = "");
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
 };

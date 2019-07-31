@@ -172,10 +172,12 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 
 		// Detect which subclass of Error was thrown (no better way to do this??)
 		Isolate* isolate = Isolate::GetCurrent();
-		Local<Object> object(Local<Object>::Cast(value));
+		Local<Object> object = Local<Object>::Cast(value);
 		std::string name = *String::Utf8Value{isolate, object->GetConstructorName()};
-		auto error_type = (ExternalCopyError::ErrorType)0;
-		if (name == "RangeError") {
+		auto error_type = ExternalCopyError::ErrorType::CustomError;
+		if (name == "Error") {
+			error_type = ExternalCopyError::ErrorType::Error;
+		} else if (name == "RangeError") {
 			error_type = ExternalCopyError::ErrorType::RangeError;
 		} else if (name == "ReferenceError") {
 			error_type = ExternalCopyError::ErrorType::ReferenceError;
@@ -183,40 +185,42 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 			error_type = ExternalCopyError::ErrorType::SyntaxError;
 		} else if (name == "TypeError") {
 			error_type = ExternalCopyError::ErrorType::TypeError;
-		} else if (name == "Error") {
-			error_type = ExternalCopyError::ErrorType::Error;
 		}
 
-		// If we matched one of the Error constructors will copy this object
-		if (error_type != (ExternalCopyError::ErrorType)0) {
-
-			// Get `message`
-			Local<Context> context = isolate->GetCurrentContext();
-			TryCatch try_catch(isolate);
-			unique_ptr<ExternalCopyString> message_copy;
-			try {
-				Local<Value> message(Unmaybe(object->Get(context, v8_symbol("message"))));
-				if (message->IsString()) {
-					message_copy = make_unique<ExternalCopyString>(message.As<String>());
-				} else {
-					message_copy = make_unique<ExternalCopyString>("");
-				}
-			} catch (const js_runtime_error& cc_err) {
-				try_catch.Reset();
-				message_copy = make_unique<ExternalCopyString>("");
+		// Get `message`
+		Local<Context> context = isolate->GetCurrentContext();
+		TryCatch try_catch{isolate};
+		unique_ptr<ExternalCopyString> message_copy;
+		try {
+			Local<Value> message = Unmaybe(object->Get(context, v8_symbol("message")));
+			if (message->IsString()) {
+				message_copy = make_unique<ExternalCopyString>(message.As<String>());
 			}
+		} catch (const js_runtime_error& cc_err) {
+			try_catch.Reset();
+		}
 
-			// Get `stack`
-			unique_ptr<ExternalCopyString> stack_copy;
-			try {
-				Local<Value> stack(Unmaybe(object->Get(context, v8_symbol("stack"))));
-				if (stack->IsString()) {
-					stack_copy = make_unique<ExternalCopyString>(stack.As<String>());
-				}
-			} catch (const js_runtime_error& cc_err) {
-				try_catch.Reset();
+		// Get `stack`
+		unique_ptr<ExternalCopyString> stack_copy;
+		try {
+			Local<Value> stack = Unmaybe(object->Get(context, v8_symbol("stack")));
+			if (stack->IsString()) {
+				stack_copy = make_unique<ExternalCopyString>(stack.As<String>());
 			}
-			return make_unique<ExternalCopyError>(error_type, std::move(message_copy), std::move(stack_copy));
+		} catch (const js_runtime_error& cc_err) {
+			try_catch.Reset();
+		}
+
+		// Return external error copy if this looked like an error
+		if (error_type != ExternalCopyError::ErrorType::CustomError || message_copy || stack_copy) {
+			unique_ptr<ExternalCopyString> name_copy;
+			if (error_type == ExternalCopyError::ErrorType::CustomError) {
+				Local<Value> name = Unmaybe(object->Get(context, v8_symbol("name")));
+				if (name->IsString()) {
+					name_copy = make_unique<ExternalCopyString>(name.As<String>());
+				}
+			}
+			return make_unique<ExternalCopyError>(error_type, std::move(name_copy), std::move(message_copy), std::move(stack_copy));
 		}
 	}
 	return CopyIfPrimitive(value);
@@ -397,24 +401,34 @@ Local<Value> ExternalCopySerialized::CopyInto(bool transfer_in) {
  */
 ExternalCopyError::ExternalCopyError(
 	ErrorType error_type,
+	unique_ptr<ExternalCopyString> name,
 	unique_ptr<ExternalCopyString> message,
-	unique_ptr<ExternalCopyString> stack)
-	: error_type(error_type),
-	message(std::move(message)),
-	stack(std::move(stack)) {}
+	unique_ptr<ExternalCopyString> stack
+) :
+	error_type{error_type},
+	name{std::move(name)},
+	message{std::move(message)},
+	stack{std::move(stack)} {}
 
 ExternalCopyError::ExternalCopyError(ErrorType error_type, const char* message, std::string stack) :
-	ExternalCopy(sizeof(ExternalCopyError)),
-	error_type(error_type),
-	message(make_unique<ExternalCopyString>(message)),
-	stack(stack.empty() ? unique_ptr<ExternalCopyString>() : make_unique<ExternalCopyString>(std::move(stack))) {}
+	ExternalCopy{sizeof(ExternalCopyError)},
+	error_type{error_type},
+	message{make_unique<ExternalCopyString>(message)},
+	stack{stack.empty() ? unique_ptr<ExternalCopyString>() : make_unique<ExternalCopyString>(std::move(stack))} {}
 
 Local<Value> ExternalCopyError::CopyInto(bool /*transfer_in*/) {
 
 	// First make the exception w/ correct + message
-	Local<String> message(Local<String>::Cast(this->message->CopyInto(false)));
+	Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
+	Local<String> message = Local<String>::Cast(this->message->CopyInto(false));
 	Local<Value> handle;
 	switch (error_type) {
+		default:
+			handle = Exception::Error(message);
+			if (name) {
+				Unmaybe(handle.As<Object>()->DefineOwnProperty(context, v8_symbol("name"), name->CopyInto(), PropertyAttribute::DontEnum));
+			}
+			break;
 		case ErrorType::RangeError:
 			handle = Exception::RangeError(message);
 			break;
@@ -427,15 +441,12 @@ Local<Value> ExternalCopyError::CopyInto(bool /*transfer_in*/) {
 		case ErrorType::TypeError:
 			handle = Exception::TypeError(message);
 			break;
-		case ErrorType::Error:
-			handle = Exception::Error(message);
-			break;
 	}
 
 	// Now add stack information
 	if (this->stack) {
-		Local<String> stack(Local<String>::Cast(this->stack->CopyInto(false)));
-		Unmaybe(Local<Object>::Cast(handle)->Set(Isolate::GetCurrent()->GetCurrentContext(), v8_symbol("stack"), stack));
+		Local<String> stack = Local<String>::Cast(this->stack->CopyInto(false));
+		Unmaybe(Local<Object>::Cast(handle)->Set(context, v8_symbol("stack"), stack));
 	}
 	return handle;
 }
