@@ -8,33 +8,56 @@
 
 namespace ivm {
 
+template <size_t Index, class Type>
+struct RemoteTupleElement {
+	RemoteTupleElement(v8::Isolate* isolate, v8::Local<Type> local) : persistent{isolate, local} {}
+	v8::Persistent<Type, v8::NonCopyablePersistentTraits<Type>> persistent;
+};
+
 /**
  * This holds a number of persistent handles to some values in a single isolate. It also holds a
  * handle to the isolate. When the destructor of this class is called it will run `Reset()` on each
  * handle in the context of the isolate. If the destructor of this class is called after the isolate
  * has been disposed then Reset() will not be called (but I don't think that causes a memory leak).
  */
-template <typename ...Types>
+template <class ...Types>
 class RemoteTuple {
 	private:
-		template <typename T>
-		using HandleType = v8::Persistent<T, v8::NonCopyablePersistentTraits<T>>;
+		/**
+		 * This is basically a tuple that can be constructed in place in a way that v8::Persistent<> will
+		 * accept.
+		 */
+		template <class Indices>
+		struct Holder;
 
-		// This uses unique_ptrs because the handles may outlive the RemoteTuple instance (we need to
-		// transfer ownership to DisposalTask). It's a tuple of unique_ptrs and not the other way around
-		// because there is no reasonable way to construct in place with tuple like there is with pair.
-		using HandlesType = std::tuple<std::unique_ptr<HandleType<Types>>...>;
+		template <size_t ...Indices>
+		struct Holder<std::index_sequence<Indices...>> : RemoteTupleElement<Indices, Types>... {
+			template <class... Args>
+			Holder(v8::Isolate* isolate, v8::Local<Types>... locals) :
+					RemoteTupleElement<Indices, Types>{isolate, locals}... {
+			}
+
+			template <size_t Index>
+			auto& get() {
+				return RemoteTupleElement<Index, std::tuple_element_t<Index, std::tuple<Types...>>>::persistent;
+			}
+		};
+
+		// This uses a unique_ptr because the handles may outlive the RemoteTuple instance (we need to
+		// transfer ownership to DisposalTask).
+		using TupleType = Holder<std::make_index_sequence<sizeof...(Types)>>;
+		using HandlesType = std::unique_ptr<TupleType>;
 
 		// This calls Reset() on each handle.
 		struct DisposalTask : public Runnable {
 			HandlesType handles;
-			explicit DisposalTask(HandlesType&& handles) : handles(std::move(handles)) {}
+			explicit DisposalTask(HandlesType&& handles) : handles{std::move(handles)} {}
 
 			template <int> void Reset() {}
 
 			template <int, typename T, typename ...Rest>
 			void Reset() {
-				std::get<sizeof...(Rest)>(handles)->Reset();
+				handles->template get<sizeof...(Rest)>().Reset();
 				Reset<0, Rest...>();
 			}
 
@@ -49,8 +72,8 @@ class RemoteTuple {
 
 	public:
 		explicit RemoteTuple(v8::Local<Types>... handles) :
-			isolate(IsolateEnvironment::GetCurrentHolder()),
-			handles(std::make_unique<HandleType<Types>>(v8::Isolate::GetCurrent(), std::move(handles))...)
+			isolate{IsolateEnvironment::GetCurrentHolder()},
+			handles{std::make_unique<TupleType>(v8::Isolate::GetCurrent(), handles...)}
 		{
 			IsolateEnvironment::GetCurrent()->remotes_count.fetch_add(sizeof...(Types));
 			static_assert(!v8::NonCopyablePersistentTraits<v8::Value>::kResetInDestructor, "Do not reset in destructor");
@@ -65,7 +88,7 @@ class RemoteTuple {
 
 		template <size_t N>
 		auto Deref() const {
-			return v8::Local<typename std::tuple_element<N, std::tuple<Types...>>::type>::New(v8::Isolate::GetCurrent(), *std::get<N>(handles));
+			return v8::Local<std::tuple_element_t<N, std::tuple<Types...>>>::New(v8::Isolate::GetCurrent(), handles->template get<N>());
 		}
 
 		IsolateHolder* GetIsolateHolder() {
