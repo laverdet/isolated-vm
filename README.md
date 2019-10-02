@@ -30,12 +30,7 @@ may find this project *very* useful if you need to do both at the same time!
 REQUIREMENTS
 ------------
 
-This project works best on nodejs LTS version 8.11.2 (or later) *or* nodejs current version 10.x
-(any version). It will compile and generally run alright on nodejs version 8.6.0 and later, but
-under load you will run into crashes and hangs due to some bugs in v8. The snapshot feature is
-broken on nodejs versions 10.2.0 through 10.9.0. Please see
-[nodejs #21992](https://github.com/nodejs/node/pull/21992) for updates on that. There are no known
-issues with nodejs versions 10.10.0 and above.
+This project requires nodejs LTS version 10.4.0 (or later).
 
 Furthermore, to install this module you will need a compiler installed. If you run into errors while
 running `npm install isolated-vm` it is likely you don't have a compiler set up, or your compiler is
@@ -110,8 +105,7 @@ contains can represent quite a large chunk of memory though you may want to expl
 	* `inspector` *[boolean]* - Enable v8 inspector support in this isolate. See
 	`inspector-example.js` in this repository for an example of how to use this.
 	* `snapshot` *[ExternalCopy[ArrayBuffer]]* - This is an optional snapshot created from
-	`createSnapshot` which will be used to initialize the heap of this isolate. **Please note
-	that versions of nodejs 10.2.0 and higher may crash while using the snapshot feature.**
+	`createSnapshot` which will be used to initialize the heap of this isolate.
 
 ##### `ivm.Isolate.createSnapshot(scripts, warmup_script)`
 * `scripts` *[array]*
@@ -126,10 +120,7 @@ Isolate snapshots are a very useful feature if you intend to create several isol
 libraries between them. A snapshot serializes the entire v8 heap including parsed code, global
 variables, and compiled code. Check out the examples section for tips on using this.
 
-**Please note that versions of nodejs 10.2.0 - 10.9.0 may crash while using the snapshot feature.
-Additionally, on nodejs 8.x if you try to create a snapshot that contains an instance of
-`ArrayBuffer` or `TypedArray` [i.e.  `Uint8Array`, `Float32Array`, and so on] the process will
-crash. It will work fine on nodejs 10.0.0 and higher.**
+**Please note that versions of nodejs 10.4.0 - 10.9.0 may crash while using the snapshot feature.
 
 ##### `isolate.compileScript(code)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `isolate.compileScriptSync(code)`
