@@ -86,7 +86,7 @@ class PlatformDelegate : public v8::Platform {
 		PlatformDelegate(v8::Isolate* node_isolate, v8::Platform* node_platform) : node_isolate(node_isolate), node_platform(node_platform) {}
 
 		static PlatformDelegate& DelegateInstance() {
-			static PlatformDelegate delegate(v8::Isolate::GetCurrent(), v8::internal::V8::GetCurrentPlatform());
+			static PlatformDelegate delegate(v8::Isolate::GetCurrent(), node::GetMainThreadMultiIsolatePlatform());
 			return delegate;
 		}
 

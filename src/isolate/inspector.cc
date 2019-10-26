@@ -16,6 +16,11 @@ namespace ivm {
 /**
  * This constructor will be called from a non-locked thread.
  */
+#ifdef SKIP_INSPECTOR
+InspectorAgent::InspectorAgent(IsolateEnvironment& isolate) : isolate(isolate) {
+	throw js_generic_error("Inspector support is not available");
+}
+#else
 InspectorAgent::InspectorAgent(IsolateEnvironment& isolate) : isolate(isolate), inspector(V8Inspector::create(isolate, this)) {
 	struct AddDefaultContext : public Runnable {
 		InspectorAgent& that;
@@ -27,6 +32,7 @@ InspectorAgent::InspectorAgent(IsolateEnvironment& isolate) : isolate(isolate), 
 	};
 	SendInterrupt(std::make_unique<AddDefaultContext>(*this));
 }
+#endif
 
 /**
  * Called right before the isolate is disposed.

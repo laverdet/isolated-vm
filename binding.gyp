@@ -55,6 +55,7 @@
 			'conditions': [
 				[ 'OS == "linux"', { 'defines': [ 'USE_CLOCK_THREAD_CPUTIME_ID' ] } ],
 			],
+			'defines': [ 'SKIP_INSPECTOR' ],
 			'sources': [
 				'src/isolate/allocator.cc',
 				'src/isolate/class_handle.cc',
