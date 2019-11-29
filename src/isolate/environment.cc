@@ -641,6 +641,8 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void>
 		PlatformDelegate::IsolateCtorScope scope(holder);
 		isolate = Isolate::New(create_params);
 	}
+	// Workaround for bug in snapshot deserializer in v8 in nodejs v10.x
+	isolate->SetHostImportModuleDynamicallyCallback(nullptr);
 	{
 		std::lock_guard<std::mutex> lock(bookkeeping_statics->lookup_mutex);
 		bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
