@@ -25,7 +25,7 @@ inline v8::Local<v8::String> v8_symbol(const char* string) {
  * Option checker
  */
 inline bool IsOptionSet(const v8::Local<v8::Context>& context, const v8::Local<v8::Object>& options, const char* key) {
-	return Unmaybe(Unmaybe(options->Get(context, v8_string(key)))->ToBoolean(context))->IsTrue();
+	return Unmaybe(options->Get(context, v8_string(key)))->ToBoolean(v8::Isolate::GetCurrent())->IsTrue();
 }
 
 /**
