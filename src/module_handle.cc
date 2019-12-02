@@ -13,7 +13,7 @@ using std::shared_ptr;
 
 namespace ivm {
 
-ModuleInfo::ModuleInfo(Local<Module> handle) : handle{handle}, identity_hash{handle->GetIdentityHash()} {
+ModuleInfo::ModuleInfo(Local<Module> handle) : identity_hash{handle->GetIdentityHash()}, handle{handle} {
 	// Add to isolate's list of modules
 	IsolateEnvironment::GetCurrent()->module_handles.emplace(identity_hash, this);
 	// Grab all dependency specifiers
