@@ -5,6 +5,7 @@
 #include <thread>
 
 namespace ivm {
+class InspectorAgent;
 class IsolateEnvironment;
 
 /**
@@ -12,67 +13,104 @@ class IsolateEnvironment;
  * by v8::Locker. This also enters the isolate and sets up a handle scope.
  */
 class Executor { // "En taro adun"
-	friend class InspectorAgent;
+	friend InspectorAgent;
+	friend IsolateEnvironment;
 	private:
-		struct CpuTimer {
-			using TimePoint = std::chrono::time_point<std::chrono::steady_clock, std::chrono::nanoseconds>;
-			struct PauseScope {
-				CpuTimer* timer;
-				explicit PauseScope(CpuTimer* timer);
-				PauseScope(const PauseScope&) = delete;
-				PauseScope& operator=(const PauseScope&) = delete;
-				~PauseScope();
-			};
-			struct UnpauseScope {
-				CpuTimer* timer;
-				explicit UnpauseScope(PauseScope& pause);
-				UnpauseScope(const UnpauseScope&) = delete;
-				UnpauseScope& operator=(const UnpauseScope&) = delete;
-				~UnpauseScope();
-			};
-			Executor& executor;
-			CpuTimer* last;
-			TimePoint time;
-			explicit CpuTimer(Executor& executor);
-			CpuTimer(const CpuTimer&) = delete;
-			CpuTimer operator= (const CpuTimer&) = delete;
-			~CpuTimer();
-			std::chrono::nanoseconds Delta(const std::lock_guard<std::mutex>& /* lock */) const;
-			void Pause();
-			void Resume();
-			static TimePoint Now();
+		class CpuTimer {
+			public:
+				explicit CpuTimer(Executor& executor);
+				CpuTimer(const CpuTimer&) = delete;
+				~CpuTimer();
+				auto operator= (const CpuTimer&) = delete;
+
+				using TimePoint = std::chrono::time_point<std::chrono::steady_clock, std::chrono::nanoseconds>;
+				auto Delta(const std::lock_guard<std::mutex>& /* lock */) const -> std::chrono::nanoseconds;
+				void Pause();
+				void Resume();
+				static auto Now() -> TimePoint;
+
+			private:
+				Executor& executor;
+				CpuTimer* last;
+				TimePoint time;
 		};
 
 		// WallTimer is also responsible for pausing the current CpuTimer before we attempt to
 		// acquire the v8::Locker, because that could block in which case CPU shouldn't be counted.
-		struct WallTimer {
-			Executor& executor;
-			CpuTimer* cpu_timer;
-			std::chrono::time_point<std::chrono::steady_clock> time;
-			explicit WallTimer(Executor& executor);
-			WallTimer(const WallTimer&) = delete;
-			WallTimer operator= (const WallTimer&) = delete;
-			~WallTimer();
-			std::chrono::nanoseconds Delta(const std::lock_guard<std::mutex>& /* lock */) const;
+		class WallTimer {
+			public:
+				explicit WallTimer(Executor& executor);
+				WallTimer(const WallTimer&) = delete;
+				~WallTimer();
+				auto operator= (const WallTimer&) = delete;
+
+				auto Delta(const std::lock_guard<std::mutex>& /* lock */) const -> std::chrono::nanoseconds;
+
+			private:
+				Executor& executor;
+				CpuTimer* cpu_timer;
+				std::chrono::time_point<std::chrono::steady_clock> time;
 		};
 
 	public:
-		class Scope {
-			private:
-				IsolateEnvironment* last;
+		explicit Executor(IsolateEnvironment& env) : env{env} {};
+		Executor(const Executor&) = delete;
+		~Executor() = default;
+		auto operator= (const Executor&) = delete;
 
+		static void Init(IsolateEnvironment& default_isolate);
+		static auto GetCurrent() { return current_env; }
+		static auto IsDefaultThread() { return std::this_thread::get_id() == default_thread; };
+
+		// Pauses CpuTimer
+		class UnpauseScope;
+		class PauseScope {
+			friend UnpauseScope;
 			public:
-				explicit Scope(IsolateEnvironment& env);
-				Scope(const Scope&) = delete;
-				Scope operator= (const Scope&) = delete;
-				~Scope();
+				explicit PauseScope(CpuTimer* timer) : timer{timer} { timer->Pause(); }
+				PauseScope(const PauseScope&) = delete;
+				~PauseScope() { timer->Resume(); }
+				auto operator=(const PauseScope&) = delete;
+
+			private:
+				CpuTimer* timer;
 		};
 
+		// Unpauses CpuTimer
+		class UnpauseScope {
+			public:
+				explicit UnpauseScope(PauseScope& pause) : timer{pause.timer} { timer->Resume(); }
+				UnpauseScope(const UnpauseScope&) = delete;
+				~UnpauseScope() { timer->Pause(); }
+				auto operator=(const UnpauseScope&) = delete;
+
+			public:
+				CpuTimer* timer;
+		};
+
+		// A scope sets the current environment without locking v8
+		class Scope {
+			public:
+				explicit Scope(IsolateEnvironment& env) : last{current_env} { current_env = &env; }
+				Scope(const Scope&) = delete;
+				~Scope() { current_env = last; }
+				auto operator= (const Scope&) = delete;
+
+			private:
+				IsolateEnvironment* last;
+		};
+
+		// Locks this environment for execution. Implies `Scope` as well.
 		class Lock {
+			public:
+				explicit Lock(IsolateEnvironment& env);
+				Lock(const Lock&) = delete;
+				~Lock();
+				auto operator= (const Lock&) = delete;
+
 			private:
 				// These need to be separate from `Executor::current` because the default isolate
 				// doesn't actually get a lock.
-				static thread_local Lock* current;
 				Lock* last;
 				Scope scope;
 				WallTimer wall_timer;
@@ -81,44 +119,33 @@ class Executor { // "En taro adun"
 				v8::Isolate::Scope isolate_scope;
 				v8::HandleScope handle_scope;
 
-			public:
-				explicit Lock(IsolateEnvironment& env);
-				Lock(const Lock&) = delete;
-				Lock operator= (const Lock&) = delete;
-				~Lock();
+				static thread_local Lock* current;
 		};
 
 		class Unlock {
-			private:
-				CpuTimer::PauseScope pause_scope;
-				v8::Unlocker unlocker;
-
 			public:
 				explicit Unlock(IsolateEnvironment& env);
 				Unlock(const Unlock&) = delete;
-				Unlock operator= (const Unlock&) = delete;
 				~Unlock();
+				auto operator= (const Unlock&) = delete;
+
+			private:
+				PauseScope pause_scope;
+				v8::Unlocker unlocker;
 		};
 
-		static thread_local IsolateEnvironment* current_env;
-		static std::thread::id default_thread;
+	private:
 		IsolateEnvironment& env;
 		Lock* current_lock = nullptr;
-		static thread_local CpuTimer* cpu_timer_thread;
 		CpuTimer* cpu_timer = nullptr;
 		WallTimer* wall_timer = nullptr;
 		std::mutex timer_mutex;
 		std::chrono::nanoseconds cpu_time{};
 		std::chrono::nanoseconds wall_time{};
 
-	public:
-		explicit Executor(IsolateEnvironment& env);
-		Executor(const Executor&) = delete;
-		Executor operator= (const Executor&) = delete;
-		~Executor() = default;
-		static void Init(IsolateEnvironment& default_isolate);
-		static IsolateEnvironment* GetCurrent() { return current_env; }
-		static bool IsDefaultThread();
+		static std::thread::id default_thread;
+		static thread_local IsolateEnvironment* current_env;
+		static thread_local CpuTimer* cpu_timer_thread;
 };
 
 } // namespace ivm
