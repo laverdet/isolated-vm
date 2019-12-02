@@ -49,14 +49,14 @@ void InspectorAgent::runMessageLoopOnPause(int /* context_group_id */) {
 	if (terminated) {
 		return;
 	}
-	IsolateEnvironment::Executor::CpuTimer::PauseScope pause_cpu_timer{isolate.executor.cpu_timer};
+	Executor::CpuTimer::PauseScope pause_cpu_timer{isolate.executor.cpu_timer};
 	std::unique_lock<std::mutex> lock{mutex};
 	running = true;
 	do {
 		cv.wait(lock);
 		lock.unlock();
 		{
-			IsolateEnvironment::Executor::CpuTimer::UnpauseScope unpause_cpu_timer{pause_cpu_timer};
+			Executor::CpuTimer::UnpauseScope unpause_cpu_timer{pause_cpu_timer};
 			isolate.InterruptEntry<&IsolateEnvironment::Scheduler::Lock::TakeInterrupts>();
 		}
 		lock.lock();
@@ -96,7 +96,7 @@ void InspectorAgent::SessionDisconnected(InspectorSession& session) {
 void InspectorAgent::SendInterrupt(unique_ptr<class Runnable> task) {
 	// If this isolate is already locked just run the task. This happens at least when the isolate is disposing
 	// and `holder` no longer has a valid shared_ptr
-	if (IsolateEnvironment::Executor::GetCurrent() == &isolate) {
+	if (Executor::GetCurrent() == &isolate) {
 		task->Run();
 		return;
 	}

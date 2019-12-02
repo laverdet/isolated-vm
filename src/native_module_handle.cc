@@ -82,7 +82,7 @@ class CreateRunner : public ThreePhaseTask {
 			module->InitForContext(isolate, context_handle, exports);
 			// Once a native module is imported into an isolate, that isolate holds a reference to the module forever
 			auto ptr = module.get();
-			IsolateEnvironment::Executor::GetCurrent()->native_modules.emplace(ptr, std::move(module));
+			Executor::GetCurrent()->native_modules.emplace(ptr, std::move(module));
 			result = ReferenceHandle::New(exports)->TransferOut();
 		}
 

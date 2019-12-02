@@ -77,7 +77,7 @@ template <typename F>
 v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 	IsolateEnvironment& isolate = *IsolateEnvironment::GetCurrent();
 	bool did_timeout = false, did_finish = false;
-	bool is_default_thread = IsolateEnvironment::Executor::IsDefaultThread();
+	bool is_default_thread = Executor::IsDefaultThread();
 	v8::MaybeLocal<v8::Value> result;
 	std::string stack_trace;
 	{

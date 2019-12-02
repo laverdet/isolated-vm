@@ -214,7 +214,7 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 	} else {
 
 		bool is_recursive = Locker::IsLocked(second_isolate_ref->GetIsolate());
-		if (IsolateEnvironment::Executor::IsDefaultThread() || is_recursive) {
+		if (Executor::IsDefaultThread() || is_recursive) {
 			if (allow_async) {
 				throw js_generic_error("This function may not be called from the default thread");
 			}
@@ -235,7 +235,7 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 			// This is the simple sync runner case
 			unique_ptr<ExternalCopy> error;
 			{
-				IsolateEnvironment::Executor::Lock lock(*second_isolate_ref);
+				Executor::Lock lock(*second_isolate_ref);
 
 				// Run handle tasks first
 				run_handle_tasks(*second_isolate_ref);
@@ -325,7 +325,7 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 				IsolateEnvironment& env = *IsolateEnvironment::GetCurrent();
 				IsolateEnvironment::Scheduler::AsyncWait wait(env.scheduler);
 				// Scope to unlock v8 in this thread and set up the wait
-				IsolateEnvironment::Executor::Unlock unlocker(env);
+				Executor::Unlock unlocker(env);
 				// Run it and sleep
 				second_isolate.ScheduleTask(std::make_unique<AsyncRunner>(*this, wait, allow_async, error), false, true);
 				wait.Wait();

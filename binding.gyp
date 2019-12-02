@@ -59,6 +59,7 @@
 				'src/isolate/allocator.cc',
 				'src/isolate/class_handle.cc',
 				'src/isolate/environment.cc',
+				'src/isolate/executor.cc',
 				'src/isolate/holder.cc',
 				'src/isolate/inspector.cc',
 				'src/isolate/stack_trace.cc',
