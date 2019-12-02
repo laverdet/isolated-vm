@@ -13,9 +13,9 @@ using std::shared_ptr;
 
 namespace ivm {
 
-ModuleInfo::ModuleInfo(Local<Module> handle) : handle(handle) {
+ModuleInfo::ModuleInfo(Local<Module> handle) : handle{handle}, identity_hash{handle->GetIdentityHash()} {
 	// Add to isolate's list of modules
-	IsolateEnvironment::GetCurrent()->module_handles.emplace(handle->GetIdentityHash(), this);
+	IsolateEnvironment::GetCurrent()->module_handles.emplace(identity_hash, this);
 	// Grab all dependency specifiers
 	Isolate* isolate = Isolate::GetCurrent();
 	size_t length = handle->GetModuleRequestsLength();
@@ -30,7 +30,7 @@ ModuleInfo::~ModuleInfo() {
 	auto environment = handle.GetIsolateHolder()->GetIsolate();
 	if (environment) {
 		auto& module_map = environment->module_handles;
-		auto range = module_map.equal_range(handle.Deref()->GetIdentityHash());
+		auto range = module_map.equal_range(identity_hash);
 		auto it = std::find_if(range.first, range.second, [&](decltype(*module_map.begin()) data) {
 			return this == data.second;
 		});

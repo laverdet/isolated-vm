@@ -17,6 +17,7 @@ struct ModuleInfo {
 	std::mutex mutex;
 	class ModuleLinker* linker = nullptr;
 	LinkStatus link_status = LinkStatus::None;
+	int identity_hash;
 	std::vector<std::string> dependency_specifiers;
 	std::unordered_map<std::string, std::shared_ptr<ModuleInfo>> resolutions;
 	RemoteHandle<v8::Module> handle;
