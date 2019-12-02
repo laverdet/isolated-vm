@@ -3,7 +3,7 @@
 #include <v8-platform.h>
 #include "environment.h"
 #include "v8_version.h"
-#include "../timer.h"
+#include "../lib/timer.h"
 #include <vector>
 
 namespace v8 {

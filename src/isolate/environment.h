@@ -4,7 +4,7 @@
 
 #include "executor.h"
 #include "holder.h"
-#include "../thread_pool.h"
+#include "../lib/thread_pool.h"
 
 #include <atomic>
 #include <cassert>

@@ -2,7 +2,7 @@
 #include "environment.h"
 #include "runnable.h"
 #include "util.h"
-#include "../timer.h"
+#include "../lib/timer.h"
 #include <string>
 
 using namespace ivm;
