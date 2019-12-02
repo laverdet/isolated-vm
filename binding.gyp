@@ -64,6 +64,7 @@
 				'src/isolate/inspector.cc',
 				'src/isolate/stack_trace.cc',
 				'src/isolate/three_phase_task.cc',
+				'src/lib/thread_pool.cc',
 				'src/context_handle.cc',
 				'src/external_copy.cc',
 				'src/external_copy_handle.cc',
