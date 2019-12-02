@@ -35,96 +35,59 @@ class ClassHandle {
 		/**
 		 * Utility methods to set up object prototype
 		 */
-		// This add regular methods
-		template <typename... Args>
-		static void AddMethods(
-			v8::Isolate* isolate,
-			v8::Local<v8::FunctionTemplate>& tmpl,
-			v8::Local<v8::ObjectTemplate>& proto,
-			v8::Local<v8::Signature>& sig,
-			v8::Local<v8::AccessorSignature>& asig,
-			const char* name,
-			MemberFunction impl,
-			Args... args
-		) {
-			v8::Local<v8::String> name_handle = v8_symbol(name);
-			proto->Set(name_handle, v8::FunctionTemplate::New(isolate, impl.first, name_handle, sig, impl.second));
-			AddMethods(isolate, tmpl, proto, sig, asig, args...);
-		}
+		struct TemplateDefinition {
+			v8::Isolate* isolate;
+			v8::Local<v8::FunctionTemplate>& tmpl;
+			v8::Local<v8::ObjectTemplate>& proto;
+			v8::Local<v8::Signature>& sig;
+			v8::Local<v8::AccessorSignature>& asig;
 
-		// This adds object templates to the prototype
-		template <typename... Args>
-		static void AddMethods(
-			v8::Isolate* isolate,
-			v8::Local<v8::FunctionTemplate>& tmpl,
-			v8::Local<v8::ObjectTemplate>& proto,
-			v8::Local<v8::Signature>& sig,
-			v8::Local<v8::AccessorSignature>& asig,
-			const char* name,
-			v8::Local<v8::FunctionTemplate>& value,
-			Args... args
-		) {
-			v8::Local<v8::String> name_handle = v8_symbol(name);
-			proto->Set(name_handle, value);
-			AddMethods(isolate, tmpl, proto, sig, asig, args...);
-		}
-
-		// This adds static functions on the object constructor
-		template <typename... Args>
-		static void AddMethods(
-			v8::Isolate* isolate,
-			v8::Local<v8::FunctionTemplate>& tmpl,
-			v8::Local<v8::ObjectTemplate>& proto,
-			v8::Local<v8::Signature>& sig,
-			v8::Local<v8::AccessorSignature>& asig,
-			const char* name,
-			StaticFunction impl,
-			Args... args
-		) {
-			v8::Local<v8::String> name_handle = v8_symbol(name);
-			tmpl->Set(name_handle, v8::FunctionTemplate::New(isolate, impl.first, name_handle, v8::Local<v8::Signature>(), impl.second));
-			AddMethods(isolate, tmpl, proto, sig, asig, args...);
-		}
-
-		// This adds accessors
-		template <typename... Args>
-		static void AddMethods(
-			v8::Isolate* isolate,
-			v8::Local<v8::FunctionTemplate>& tmpl,
-			v8::Local<v8::ObjectTemplate>& proto,
-			v8::Local<v8::Signature>& sig,
-			v8::Local<v8::AccessorSignature>& asig,
-			const char* name,
-			AccessorPair impl,
-			Args... args
-		) {
-			v8::Local<v8::String> name_handle = v8_symbol(name);
-			proto->SetAccessor(name_handle, impl.first, impl.second, name_handle, v8::AccessControl::DEFAULT, v8::PropertyAttribute::None, asig);
-			AddMethods(isolate, tmpl, proto, sig, asig, args...);
-		}
-
-		// This adds static accessors
-		template <typename... Args>
-		static void AddMethods(
-			v8::Isolate* isolate,
-			v8::Local<v8::FunctionTemplate>& tmpl,
-			v8::Local<v8::ObjectTemplate>& proto,
-			v8::Local<v8::Signature>& sig,
-			v8::Local<v8::AccessorSignature>& asig,
-			const char* name,
-			StaticAccessorPair impl,
-			Args... args
-		) {
-			v8::Local<v8::String> name_handle = v8_symbol(name);
-			v8::Local<v8::FunctionTemplate> setter;
-			if (impl.second != nullptr) {
-				setter = v8::FunctionTemplate::New(isolate, impl.second, name_handle);
+			// This add regular methods
+			template <typename... Args>
+			void Add(const char* name, MemberFunction impl, Args... args) {
+				v8::Local<v8::String> name_handle = v8_symbol(name);
+				proto->Set(name_handle, v8::FunctionTemplate::New(isolate, impl.first, name_handle, sig, impl.second));
+				Add(args...);
 			}
-			tmpl->SetAccessorProperty(name_handle, v8::FunctionTemplate::New(isolate, impl.first, name_handle), setter);
-			AddMethods(isolate, tmpl, proto, sig, asig, args...);
-		}
 
-		static void AddMethods(v8::Isolate*, v8::Local<v8::FunctionTemplate>, v8::Local<v8::ObjectTemplate>&, v8::Local<v8::Signature>&, v8::Local<v8::AccessorSignature>&) {} // NOLINT
+			// This adds function templates to the prototype
+			template <typename... Args>
+			void Add(const char* name, v8::Local<v8::FunctionTemplate>& value, Args... args) {
+				v8::Local<v8::String> name_handle = v8_symbol(name);
+				proto->Set(name_handle, value);
+				Add(args...);
+			}
+
+			// This adds static functions on the object constructor
+			template <typename... Args>
+			void Add(const char* name, StaticFunction impl, Args... args) {
+				v8::Local<v8::String> name_handle = v8_symbol(name);
+				tmpl->Set(name_handle, v8::FunctionTemplate::New(isolate, impl.first, name_handle, v8::Local<v8::Signature>(), impl.second));
+				Add(args...);
+			}
+
+			// This adds accessors
+			template <typename... Args>
+			void Add(const char* name, AccessorPair impl, Args... args) {
+				v8::Local<v8::String> name_handle = v8_symbol(name);
+				proto->SetAccessor(name_handle, impl.first, impl.second, name_handle, v8::AccessControl::DEFAULT, v8::PropertyAttribute::None, asig);
+				Add(args...);
+			}
+
+			// This adds static accessors
+			template <typename... Args>
+			void Add(const char* name, StaticAccessorPair impl, Args... args) {
+				v8::Local<v8::String> name_handle = v8_symbol(name);
+				v8::Local<v8::FunctionTemplate> setter;
+				if (impl.second != nullptr) {
+					setter = v8::FunctionTemplate::New(isolate, impl.second, name_handle);
+				}
+				tmpl->SetAccessorProperty(name_handle, v8::FunctionTemplate::New(isolate, impl.first, name_handle), setter);
+				Add(args...);
+			}
+
+			void Add() {} // NOLINT
+		};
 
 		/**
 		 * Below is the Parameterize<> template magic
@@ -308,7 +271,8 @@ class ClassHandle {
 			v8::Local<v8::ObjectTemplate> proto = tmpl->PrototypeTemplate();
 			v8::Local<v8::Signature> sig = v8::Signature::New(isolate, tmpl);
 			v8::Local<v8::AccessorSignature> asig = v8::AccessorSignature::New(isolate, tmpl);
-			AddMethods(isolate, tmpl, proto, sig, asig, args...);
+			TemplateDefinition def{isolate, tmpl, proto, sig, asig};
+			def.Add(args...);
 
 			return tmpl;
 		}
