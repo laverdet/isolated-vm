@@ -1,31 +1,48 @@
 #include "environment.h"
 #include "executor.h"
 #include "scheduler.h"
+#include <v8.h>
+#include <node.h>
+#include <utility>
 
 using namespace v8;
 namespace ivm {
 namespace {
-
-void AsyncCallbackCommon(bool pool_thread, void* param) {
-	auto isolate_ptr_ptr = static_cast<std::shared_ptr<IsolateEnvironment>*>(param);
-	auto isolate_ptr = std::shared_ptr<IsolateEnvironment>(std::move(*isolate_ptr_ptr));
-	delete isolate_ptr_ptr;
-	isolate_ptr->AsyncEntry();
-	if (!pool_thread) {
-		isolate_ptr->GetIsolate()->DiscardThreadSpecificMetadata();
-	}
+	thread_pool_t thread_pool{std::thread::hardware_concurrency() + 1};
 }
-
-Scheduler* default_scheduler;
-uv_async_t root_async;
-thread_pool_t thread_pool{std::thread::hardware_concurrency() + 1};
-std::atomic<int> uv_ref_count{0};
-
-} // anonymous namespace
 
 /*
  * Scheduler::Implementation implementation
  */
+Scheduler::Implementation::Implementation(IsolateEnvironment& env, Scheduler* current_scheduler) :
+		env{env},
+		default_scheduler{current_scheduler == nullptr ? *this : current_scheduler->impl.default_scheduler} {
+	if (this == &default_scheduler) {
+		uv_async_init(node::GetCurrentEventLoop(v8::Isolate::GetCurrent()), &uv_async, [](uv_async_t* async) {
+			auto& scheduler = *static_cast<Scheduler::Implementation*>(async->data);
+			auto ref = [&]() {
+				// Lock is required to access env_ref on the default scheduler but a non-default scheduler
+				// doesn't need it. This is because `WakeIsolate` can trigger this function via
+				// `uv_async_send` while another thread is writing to `env_ref`
+				std::lock_guard<std::mutex> lock{scheduler.mutex};
+				return std::exchange(scheduler.env_ref, {});
+			}();
+			if (ref) {
+				ref->AsyncEntry();
+				if (--scheduler.uv_ref_count == 0) {
+					uv_unref(reinterpret_cast<uv_handle_t*>(&scheduler.uv_async));
+				}
+			} else {
+				if (scheduler.uv_ref_count.load() == 0) {
+					uv_unref(reinterpret_cast<uv_handle_t*>(&scheduler.uv_async));
+				}
+			}
+		});
+		uv_async.data = this;
+		uv_unref(reinterpret_cast<uv_handle_t*>(&uv_async));
+	}
+}
+
 void Scheduler::Implementation::CancelAsync() {
 	if (async_wait != nullptr) {
 		async_wait->Wake();
@@ -54,23 +71,26 @@ void Scheduler::Implementation::InterruptSyncIsolate() {
 auto Scheduler::Implementation::WakeIsolate(std::shared_ptr<IsolateEnvironment> isolate_ptr) -> bool {
 	if (status == Status::Waiting) {
 		status = Status::Running;
-		IsolateEnvironment& isolate = *isolate_ptr;
-		// Grab shared reference to this which will be passed to the worker entry. This ensures the
-		// IsolateEnvironment won't be deleted before a thread picks up this work.
-		auto isolate_ptr_ptr = new std::shared_ptr<IsolateEnvironment>(std::move(isolate_ptr));
+		// Move shared reference to this scheduler to ensure the IsolateEnvironment won't be deleted
+		// before a thread picks up this work.
+		assert(!env_ref);
+		env_ref = std::move(isolate_ptr);
 		IncrementUvRef();
-		if (isolate.root) {
-			assert(root_async.data == nullptr);
-			root_async.data = isolate_ptr_ptr;
-			uv_async_send(&root_async);
+		if (this == &default_scheduler) {
+			uv_async_send(&uv_async);
 		} else {
 			thread_pool.exec(thread_affinity, [](bool pool_thread, void* param) {
-				AsyncCallbackCommon(pool_thread, param);
-				if (--uv_ref_count == 0) {
-					// Wake up the libuv loop so we can unref the async handle from the default thread.
-					uv_async_send(&root_async);
+				auto& scheduler = *static_cast<Scheduler::Implementation*>(param);
+				auto ref = std::exchange(scheduler.env_ref, {});
+				ref->AsyncEntry();
+				if (!pool_thread) {
+					ref->GetIsolate()->DiscardThreadSpecificMetadata();
 				}
-			}, isolate_ptr_ptr);
+				if (--scheduler.default_scheduler.uv_ref_count == 0) {
+					// Wake up the libuv loop so we can unref the async handle from the default thread.
+					uv_async_send(&scheduler.default_scheduler.uv_async);
+				}
+			}, this);
 		}
 		return true;
 	} else {
@@ -78,49 +98,35 @@ auto Scheduler::Implementation::WakeIsolate(std::shared_ptr<IsolateEnvironment> 
 	}
 }
 
-void Scheduler::Init(IsolateEnvironment& default_isolate) {
-	default_scheduler = &default_isolate.scheduler;
-	uv_async_init(uv_default_loop(), &root_async, [](uv_async_t* async) {
-		// We need a lock on the default isolate's scheduler to access this data because it can be
-		// modified from `WakeIsolate` while the non-default case (which doesn't acquire a lock) is
-		// triggering the uv_async_send.
-		void* data;
-		{
-			Scheduler::Lock lock{*default_scheduler};
-			data = async->data;
-			async->data = nullptr;
-		}
-		if (data == nullptr) {
-			if (uv_ref_count.load() == 0) {
-				uv_unref(reinterpret_cast<uv_handle_t*>(&root_async));
-			}
-		} else {
-			AsyncCallbackCommon(true, data);
-			if (--uv_ref_count == 0) {
-				uv_unref(reinterpret_cast<uv_handle_t*>(&root_async));
-			}
-		}
-	});
-	root_async.data = nullptr;
-	uv_unref(reinterpret_cast<uv_handle_t*>(&root_async));
-}
-
-
-void Scheduler::IncrementUvRef() {
-	if (++uv_ref_count == 1) {
+void Scheduler::Implementation::IncrementUvRef() {
+	if (++default_scheduler.uv_ref_count == 1) {
 		// Only the default thread should be able to reach this branch
 		assert(std::this_thread::get_id() == Executor::default_thread);
-		uv_ref(reinterpret_cast<uv_handle_t*>(&root_async));
+		uv_ref(reinterpret_cast<uv_handle_t*>(&default_scheduler.uv_async));
 	}
 }
 
-void Scheduler::DecrementUvRef() {
-	if (--uv_ref_count == 0) {
+void Scheduler::Implementation::DecrementUvRef() {
+	if (--default_scheduler.uv_ref_count == 0) {
 		if (std::this_thread::get_id() == Executor::default_thread) {
-			uv_unref(reinterpret_cast<uv_handle_t*>(&root_async));
+			uv_unref(reinterpret_cast<uv_handle_t*>(&default_scheduler.uv_async));
 		} else {
-			uv_async_send(&root_async);
+			uv_async_send(&default_scheduler.uv_async);
 		}
+	}
+}
+
+void Scheduler::IncrementUvRef(const std::shared_ptr<IsolateHolder>& holder) {
+	auto ref = holder->GetIsolate();
+	if (ref) {
+		ref->scheduler.impl.IncrementUvRef();
+	}
+}
+
+void Scheduler::DecrementUvRef(const std::shared_ptr<IsolateHolder>& holder) {
+	auto ref = holder->GetIsolate();
+	if (ref) {
+		ref->scheduler.impl.DecrementUvRef();
 	}
 }
 

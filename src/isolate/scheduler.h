@@ -8,6 +8,7 @@
 
 namespace ivm {
 class IsolateEnvironment;
+class IsolateHolder;
 
 /**
  * Keeps track of tasks an isolate needs to run and manages its run state (running or waiting).
@@ -24,8 +25,9 @@ class Scheduler {
 		class Implementation {
 			friend AsyncWait;
 			friend Lock;
+			friend Scheduler;
 			public:
-				explicit Implementation(IsolateEnvironment& env) : env{env} {}
+				Implementation(IsolateEnvironment& env, Scheduler* current_scheduler);
 				Implementation(const Implementation&) = delete;
 				~Implementation() = default;
 				auto operator= (const Implementation&) = delete;
@@ -47,8 +49,15 @@ class Scheduler {
 				std::queue<std::unique_ptr<Runnable>> sync_interrupts;
 
 			private:
+				void IncrementUvRef();
+				void DecrementUvRef();
+
 				enum class Status { Waiting, Running };
+				std::shared_ptr<IsolateEnvironment> env_ref;
 				IsolateEnvironment& env;
+				Implementation& default_scheduler;
+				uv_async_t uv_async{}; // only used on default isolate
+				std::atomic<int> uv_ref_count{0};
 				std::mutex mutex;
 				std::mutex wait_mutex;
 				std::condition_variable wait_cv;
@@ -58,16 +67,15 @@ class Scheduler {
 		};
 
 	public:
-		explicit Scheduler(IsolateEnvironment& isolate) : impl{isolate} {}
+		explicit Scheduler(IsolateEnvironment& isolate, Scheduler* current_scheduler) :
+			impl{isolate, current_scheduler} {}
 		Scheduler(const Scheduler&) = delete;
 		~Scheduler() = default;
 		auto operator= (const Scheduler&) = delete;
 
-		static void Init(IsolateEnvironment& default_isolate);
-
 		// Used to ref/unref the uv handle from C++ API
-		static void IncrementUvRef();
-		static void DecrementUvRef();
+		static void IncrementUvRef(const std::shared_ptr<IsolateHolder>& holder);
+		static void DecrementUvRef(const std::shared_ptr<IsolateHolder>& holder);
 
 		// Scheduler::AsyncWait will pause the current thread until woken up by another thread
 		class AsyncWait {

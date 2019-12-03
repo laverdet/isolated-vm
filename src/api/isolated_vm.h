@@ -18,28 +18,29 @@ namespace isolated_vm {
 	class IsolateHolder {
 		private:
 			std::shared_ptr<ivm::IsolateHolder> holder;
-			IsolateHolder(std::shared_ptr<ivm::IsolateHolder> holder) : holder(std::move(holder)) {
-				ivm::Scheduler::IncrementUvRef();
+			explicit IsolateHolder(std::shared_ptr<ivm::IsolateHolder> holder) : holder{std::move(holder)} {
+				ivm::Scheduler::IncrementUvRef(holder);
 			}
 
 		public:
-			IsolateHolder(const IsolateHolder& that) : holder(that.holder) {
-				ivm::Scheduler::IncrementUvRef();
+			IsolateHolder(const IsolateHolder& that) : holder{that.holder} {
+				ivm::Scheduler::IncrementUvRef(holder);
 			}
 
-			IsolateHolder(IsolateHolder&& that) : holder(std::move(that.holder)) {
-				ivm::Scheduler::IncrementUvRef();
+			IsolateHolder(IsolateHolder&& that) noexcept : holder{std::move(that.holder)} {
 			}
-
-			IsolateHolder& operator=(const IsolateHolder&) = default;
-			IsolateHolder& operator=(IsolateHolder&) = default;
 
 			~IsolateHolder() {
-				ivm::Scheduler::DecrementUvRef();
+				if (holder) {
+					ivm::Scheduler::DecrementUvRef(holder);
+				}
 			}
 
-			static IsolateHolder GetCurrent() {
-				return IsolateHolder(ivm::IsolateEnvironment::GetCurrentHolder());
+			auto operator=(const IsolateHolder&) -> IsolateHolder& = default;
+			auto operator=(IsolateHolder&&) -> IsolateHolder& = default;
+
+			static auto GetCurrent() -> IsolateHolder {
+				return IsolateHolder{ivm::IsolateEnvironment::GetCurrentHolder()};
 			}
 
 			void ScheduleTask(std::unique_ptr<Runnable> runnable) {
