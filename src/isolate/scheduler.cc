@@ -14,9 +14,12 @@ namespace {
 /*
  * Scheduler::Implementation implementation
  */
-Scheduler::Implementation::Implementation(IsolateEnvironment& env, Scheduler* current_scheduler) :
+Scheduler::Implementation::Implementation(IsolateEnvironment& env) :
 		env{env},
-		default_scheduler{current_scheduler == nullptr ? *this : current_scheduler->impl.default_scheduler} {
+		default_scheduler{[&]() -> Implementation& {
+			auto env = Executor::GetCurrent();
+			return env == nullptr ? *this : env->scheduler.impl;
+		}()} {
 	if (this == &default_scheduler) {
 		uv_async_init(node::GetCurrentEventLoop(v8::Isolate::GetCurrent()), &uv_async, [](uv_async_t* async) {
 			auto& scheduler = *static_cast<Scheduler::Implementation*>(async->data);
@@ -101,14 +104,14 @@ auto Scheduler::Implementation::WakeIsolate(std::shared_ptr<IsolateEnvironment> 
 void Scheduler::Implementation::IncrementUvRef() {
 	if (++default_scheduler.uv_ref_count == 1) {
 		// Only the default thread should be able to reach this branch
-		assert(std::this_thread::get_id() == Executor::default_thread);
+		assert(Executor::IsDefaultThread());
 		uv_ref(reinterpret_cast<uv_handle_t*>(&default_scheduler.uv_async));
 	}
 }
 
 void Scheduler::Implementation::DecrementUvRef() {
 	if (--default_scheduler.uv_ref_count == 0) {
-		if (std::this_thread::get_id() == Executor::default_thread) {
+		if (Executor::IsDefaultThread()) {
 			uv_unref(reinterpret_cast<uv_handle_t*>(&default_scheduler.uv_async));
 		} else {
 			uv_async_send(&default_scheduler.uv_async);

@@ -27,7 +27,7 @@ class Scheduler {
 			friend Lock;
 			friend Scheduler;
 			public:
-				Implementation(IsolateEnvironment& env, Scheduler* current_scheduler);
+				explicit Implementation(IsolateEnvironment& env);
 				Implementation(const Implementation&) = delete;
 				~Implementation() = default;
 				auto operator= (const Implementation&) = delete;
@@ -67,8 +67,7 @@ class Scheduler {
 		};
 
 	public:
-		explicit Scheduler(IsolateEnvironment& isolate, Scheduler* current_scheduler) :
-			impl{isolate, current_scheduler} {}
+		explicit Scheduler(IsolateEnvironment& isolate) : impl{isolate} {}
 		Scheduler(const Scheduler&) = delete;
 		~Scheduler() = default;
 		auto operator= (const Scheduler&) = delete;

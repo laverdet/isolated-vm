@@ -258,10 +258,7 @@ void IsolateEnvironment::InterruptEntrySync() {
 }
 
 IsolateEnvironment::IsolateEnvironment() :
-	scheduler{*this, [&]() -> Scheduler* {
-		auto env = Executor::GetCurrent();
-		return env == nullptr ? nullptr : &env->scheduler;
-	}()},
+	scheduler{*this},
 	executor(*this),
 	bookkeeping_statics(bookkeeping_statics_shared) {
 }
@@ -270,7 +267,6 @@ void IsolateEnvironment::IsolateCtor(Isolate* isolate, Local<Context> context) {
 	this->isolate = isolate;
 	default_context.Reset(isolate, context);
 	root = true;
-	Executor::Init(*this);
 	std::lock_guard<std::mutex> lock(bookkeeping_statics->lookup_mutex);
 	bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
 }

@@ -5,6 +5,17 @@
 namespace ivm {
 
 /**
+ * Executor implementation
+ */
+Executor::Executor(IsolateEnvironment& env) :
+	env{env},
+	default_executor{*(current_executor == nullptr ? (current_executor = this) : current_executor)},
+	default_thread{&default_executor == this ? std::this_thread::get_id() : default_executor.default_thread} {}
+
+thread_local Executor* Executor::current_executor = nullptr;
+thread_local Executor::CpuTimer* Executor::cpu_timer_thread = nullptr;
+
+/**
  * CpuTimer implementation
  */
 Executor::CpuTimer::CpuTimer(Executor& executor) :
@@ -92,43 +103,26 @@ auto Executor::WallTimer::Delta(const std::lock_guard<std::mutex>& /* lock */) c
 }
 
 /**
- * Executor implementation
+ * Scope ctor
  */
-void Executor::Init(IsolateEnvironment& default_isolate) {
-	assert(current_env == nullptr);
-	current_env = &default_isolate;
-	default_thread = std::this_thread::get_id();
+Executor::Scope::Scope(IsolateEnvironment& env) : last{current_executor} {
+	current_executor = &env.executor;
 }
-
-std::thread::id Executor::default_thread;
-thread_local IsolateEnvironment* Executor::current_env = nullptr;
-thread_local Executor::CpuTimer* Executor::cpu_timer_thread = nullptr;
 
 /**
  * Lock implementation
  */
 Executor::Lock::Lock(IsolateEnvironment& env) :
-		last{current},
-		scope{env},
-		wall_timer{env.executor},
-		locker{env.isolate},
-		cpu_timer{env.executor},
-		isolate_scope{env.isolate},
-		handle_scope{env.isolate} {
-	current = this;
-}
-
-Executor::Lock::~Lock() {
-	current = last;
-}
-
-thread_local Executor::Lock* Executor::Lock::current = nullptr;
+	scope{env},
+	wall_timer{env.executor},
+	locker{env.isolate},
+	cpu_timer{env.executor},
+	isolate_scope{env.isolate},
+	handle_scope{env.isolate} {}
 
 /**
  * Unlock implementation
  */
 Executor::Unlock::Unlock(IsolateEnvironment& env) : pause_scope{env.executor.cpu_timer}, unlocker{env.isolate} {}
-
-Executor::Unlock::~Unlock() = default;
 
 } // namespace ivm

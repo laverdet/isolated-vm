@@ -16,7 +16,15 @@ class Scheduler;
 class Executor { // "En taro adun"
 	friend InspectorAgent;
 	friend IsolateEnvironment;
-	friend Scheduler;
+	public:
+		explicit Executor(IsolateEnvironment& env);
+		Executor(const Executor&) = delete;
+		~Executor() = default;
+		auto operator= (const Executor&) = delete;
+
+		static auto GetCurrent() -> IsolateEnvironment*;
+		static auto IsDefaultThread() -> bool;
+
 	private:
 		class CpuTimer {
 			public:
@@ -55,15 +63,6 @@ class Executor { // "En taro adun"
 		};
 
 	public:
-		explicit Executor(IsolateEnvironment& env) : env{env} {};
-		Executor(const Executor&) = delete;
-		~Executor() = default;
-		auto operator= (const Executor&) = delete;
-
-		static void Init(IsolateEnvironment& default_isolate);
-		static auto GetCurrent() { return current_env; }
-		static auto IsDefaultThread() { return std::this_thread::get_id() == default_thread; };
-
 		// Pauses CpuTimer
 		class UnpauseScope;
 		class PauseScope {
@@ -93,13 +92,13 @@ class Executor { // "En taro adun"
 		// A scope sets the current environment without locking v8
 		class Scope {
 			public:
-				explicit Scope(IsolateEnvironment& env) : last{current_env} { current_env = &env; }
+				explicit Scope(IsolateEnvironment& env);
 				Scope(const Scope&) = delete;
-				~Scope() { current_env = last; }
+				~Scope() { current_executor = last; }
 				auto operator= (const Scope&) = delete;
 
 			private:
-				IsolateEnvironment* last;
+				Executor* last;
 		};
 
 		// Locks this environment for execution. Implies `Scope` as well.
@@ -107,28 +106,25 @@ class Executor { // "En taro adun"
 			public:
 				explicit Lock(IsolateEnvironment& env);
 				Lock(const Lock&) = delete;
-				~Lock();
+				~Lock() = default;
 				auto operator= (const Lock&) = delete;
 
 			private:
-				// These need to be separate from `Executor::current` because the default isolate
+				// These need to be separate from `Executor::current_executor` because the default isolate
 				// doesn't actually get a lock.
-				Lock* last;
 				Scope scope;
 				WallTimer wall_timer;
 				v8::Locker locker;
 				CpuTimer cpu_timer;
 				v8::Isolate::Scope isolate_scope;
 				v8::HandleScope handle_scope;
-
-				static thread_local Lock* current;
 		};
 
 		class Unlock {
 			public:
 				explicit Unlock(IsolateEnvironment& env);
 				Unlock(const Unlock&) = delete;
-				~Unlock();
+				~Unlock() = default;
 				auto operator= (const Unlock&) = delete;
 
 			private:
@@ -138,6 +134,8 @@ class Executor { // "En taro adun"
 
 	private:
 		IsolateEnvironment& env;
+		Executor& default_executor;
+		std::thread::id default_thread;
 		Lock* current_lock = nullptr;
 		CpuTimer* cpu_timer = nullptr;
 		WallTimer* wall_timer = nullptr;
@@ -145,9 +143,16 @@ class Executor { // "En taro adun"
 		std::chrono::nanoseconds cpu_time{};
 		std::chrono::nanoseconds wall_time{};
 
-		static std::thread::id default_thread;
-		static thread_local IsolateEnvironment* current_env;
 		static thread_local CpuTimer* cpu_timer_thread;
+		static thread_local Executor* current_executor;
+};
+
+inline auto Executor::GetCurrent() -> IsolateEnvironment* {
+	return current_executor == nullptr ? nullptr : &current_executor->env;
+}
+
+inline auto Executor::IsDefaultThread() -> bool {
+	return std::this_thread::get_id() == current_executor->default_thread;
 };
 
 } // namespace ivm
