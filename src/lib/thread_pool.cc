@@ -7,7 +7,7 @@ void thread_pool_t::exec(affinity_t& affinity, entry_t* entry, void* param) {
 	std::lock_guard<std::mutex> lock{mutex};
 
 	// First try to use an old thread
-	unsigned thread = INT_MAX;
+	unsigned thread = std::numeric_limits<unsigned>::max();
 	if (affinity.previous < thread_data.size() && thread_data[affinity.previous].entry == nullptr) {
 		thread = affinity.previous;
 	} else {
@@ -24,7 +24,7 @@ void thread_pool_t::exec(affinity_t& affinity, entry_t* entry, void* param) {
 		}
 	}
 
-	if (thread == INT_MAX) {
+	if (thread == std::numeric_limits<unsigned>::max()) {
 		if (desired_size > thread_data.size()) {
 			// Thread pool hasn't yet reached `desired_size`, so we can make a new thread
 			thread = new_thread(lock);
@@ -43,7 +43,7 @@ void thread_pool_t::exec(affinity_t& affinity, entry_t* entry, void* param) {
 				}
 			}
 
-			if (thread == INT_MAX) {
+			if (thread == std::numeric_limits<unsigned>::max()) {
 				// All threads are busy and pool is full, just run this in a new thread
 				std::thread tmp_thread{std::bind(entry, false, param)};
 				tmp_thread.detach();

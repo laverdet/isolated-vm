@@ -1,6 +1,7 @@
 #pragma once
 #include <condition_variable>
 #include <deque>
+#include <limits>
 #include <mutex>
 #include <thread>
 #include <unordered_set>
@@ -13,7 +14,7 @@ class thread_pool_t {
 		class affinity_t {
 			friend thread_pool_t;
 			std::unordered_set<unsigned> ids;
-			unsigned previous = INT_MAX;
+			unsigned previous = std::numeric_limits<unsigned>::max();
 		};
 
 		explicit thread_pool_t(size_t desired_size) noexcept : desired_size{desired_size} {}
