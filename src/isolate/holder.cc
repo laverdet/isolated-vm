@@ -40,14 +40,14 @@ void IsolateHolder::ScheduleTask(unique_ptr<Runnable> task, bool run_inline, boo
 			task->Run();
 			return;
 		}
-		Scheduler::Lock lock(ref->scheduler);
+		Scheduler::Lock lock{ref->scheduler};
 		if (handle_task) {
-			lock.PushHandleTask(std::move(task));
+			lock.scheduler.handle_tasks.push(std::move(task));
 		} else {
-			lock.PushTask(std::move(task));
+			lock.scheduler.tasks.push(std::move(task));
 		}
 		if (wake_isolate) {
-			lock.WakeIsolate(std::move(ref));
+			lock.scheduler.WakeIsolate(std::move(ref));
 		}
 	}
 }

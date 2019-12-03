@@ -4,6 +4,7 @@
 #include "platform_delegate.h"
 #include "runnable.h"
 #include "../external_copy.h"
+#include "scheduler.h"
 #include <algorithm>
 #include <cmath>
 
@@ -194,12 +195,14 @@ void IsolateEnvironment::AsyncEntry() {
 		std::queue<unique_ptr<Runnable>> interrupts;
 		{
 			// Grab current tasks
-			Scheduler::Lock lock(scheduler);
-			tasks = lock.TakeTasks();
-			handle_tasks = lock.TakeHandleTasks();
-			interrupts = lock.TakeInterrupts();
+			Scheduler::Lock lock{scheduler};
+			auto foo = !lock.scheduler.tasks.empty() ? &lock.scheduler.tasks.front() : nullptr;
+			tasks = std::exchange(lock.scheduler.tasks, {});
+			assert(tasks.empty() || foo == &tasks.front());
+			handle_tasks = std::exchange(lock.scheduler.handle_tasks, {});
+			interrupts = std::exchange(lock.scheduler.interrupts, {});
 			if (tasks.empty() && handle_tasks.empty() && interrupts.empty()) {
-				lock.DoneRunning();
+				lock.scheduler.DoneRunning();
 				return;
 			}
 		}
@@ -228,31 +231,34 @@ void IsolateEnvironment::AsyncEntry() {
 	}
 }
 
-template <std::queue<std::unique_ptr<Runnable>> (Scheduler::Lock::*Take)()>
-void IsolateEnvironment::InterruptEntry() {
+template <std::queue<std::unique_ptr<Runnable>> Scheduler::Implementation::*Tasks>
+void IsolateEnvironment::InterruptEntryImplementation() {
 	// Executor::Lock is already acquired
 	while (true) {
-		// Get interrupt callbacks
-		std::queue<unique_ptr<Runnable>> interrupts;
-		{
-			Scheduler::Lock lock(scheduler);
-			interrupts = (lock.*Take)();
-			if (interrupts.empty()) {
-				return;
-			}
+		auto interrupts = [&]() {
+			Scheduler::Lock lock{scheduler};
+			return std::exchange(lock.scheduler.*Tasks, {});
+		}();
+		if (interrupts.empty()) {
+			return;
 		}
-
-		// Run the interrupts
 		do {
 			interrupts.front()->Run();
 			interrupts.pop();
 		} while (!interrupts.empty());
 	}
 }
-template void IsolateEnvironment::InterruptEntry<&Scheduler::Lock::TakeInterrupts>();
-template void IsolateEnvironment::InterruptEntry<&Scheduler::Lock::TakeSyncInterrupts>();
+
+void IsolateEnvironment::InterruptEntryAsync() {
+	return InterruptEntryImplementation<&Scheduler::Implementation::interrupts>();
+}
+
+void IsolateEnvironment::InterruptEntrySync() {
+	return InterruptEntryImplementation<&Scheduler::Implementation::sync_interrupts>();
+}
 
 IsolateEnvironment::IsolateEnvironment() :
+	scheduler(*this),
 	executor(*this),
 	bookkeeping_statics(bookkeeping_statics_shared) {
 }
@@ -356,11 +362,11 @@ IsolateEnvironment::~IsolateEnvironment() {
 		}
 		assert(weak_persistents.empty());
 		// Destroy outstanding tasks. Do this here while the executor lock is up.
-		Scheduler::Lock lock2(scheduler);
-		lock2.TakeInterrupts();
-		lock2.TakeSyncInterrupts();
-		lock2.TakeHandleTasks();
-		lock2.TakeTasks();
+		Scheduler::Lock scheduler_lock{scheduler};
+		scheduler_lock.scheduler.interrupts = {};
+		scheduler_lock.scheduler.sync_interrupts = {};
+		scheduler_lock.scheduler.handle_tasks = {};
+		scheduler_lock.scheduler.tasks = {};
 	}
 	{
 		// Dispose() will call destructors for external strings and array buffers, so this lock sets the

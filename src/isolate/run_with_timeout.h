@@ -93,14 +93,14 @@ v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 					auto timeout_runner = std::make_unique<TimeoutRunner>(stack_trace, wait);
 					if (is_default_thread) {
 						// In this case this is a pure sync function. We should not cancel any async waits.
-						Scheduler::Lock scheduler(isolate.scheduler);
-						scheduler.PushSyncInterrupt(std::move(timeout_runner));
-						scheduler.InterruptSyncIsolate(isolate);
+						Scheduler::Lock lock{isolate.scheduler};
+						lock.scheduler.sync_interrupts.push(std::move(timeout_runner));
+						lock.scheduler.InterruptSyncIsolate();
 					} else {
 						{
-							Scheduler::Lock scheduler(isolate.scheduler);
-							scheduler.PushInterrupt(std::move(timeout_runner));
-							scheduler.InterruptIsolate(isolate);
+							Scheduler::Lock lock(isolate.scheduler);
+							lock.scheduler.interrupts.push(std::move(timeout_runner));
+							lock.scheduler.InterruptIsolate();
 						}
 						isolate.CancelAsync();
 					}
@@ -108,11 +108,11 @@ v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 					if (did_finish) {
 						// fn() could have finished and threw away the interrupts below before we got a chance
 						// to set them up. In this case we throw away the interrupts ourselves.
-						Scheduler::Lock scheduler(isolate.scheduler);
+						Scheduler::Lock lock{isolate.scheduler};
 						if (is_default_thread) {
-							scheduler.TakeSyncInterrupts();
+							lock.scheduler.sync_interrupts = {};
 						} else {
-							scheduler.TakeInterrupts();
+							lock.scheduler.interrupts = {};
 						}
 					}
 				}
@@ -142,11 +142,11 @@ v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 			// away existing interrupts to let the ThreadWait finish and also avoid interrupting an
 			// unrelated function call.
 			// TODO: This probably breaks the inspector in some cases
-			Scheduler::Lock lock(isolate.scheduler);
+			Scheduler::Lock lock{isolate.scheduler};
 			if (is_default_thread) {
-				lock.TakeSyncInterrupts();
+				lock.scheduler.sync_interrupts = {};
 			} else {
-				lock.TakeInterrupts();
+				lock.scheduler.interrupts = {};
 			}
 		}
 	}

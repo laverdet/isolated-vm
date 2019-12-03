@@ -16,88 +16,92 @@ class IsolateEnvironment;
 class Scheduler {
 	friend IsolateEnvironment;
 	public:
-		enum class Status { Waiting, Running };
+		class AsyncWait;
+		class Lock;
 
-		// A Scheduler::Lock is needed to interact with the task queue
-		class Lock {
-			friend class AsyncWait;
-			private:
-				Scheduler& scheduler;
-				std::unique_lock<std::mutex> lock;
+	private:
+		// This is exposed after instantiating a Scheduler::Lock
+		class Implementation {
+			friend AsyncWait;
+			friend Lock;
 			public:
-				explicit Lock(Scheduler& scheduler);
-				Lock(const Lock&) = delete;
-				Lock operator= (const Lock&) = delete;
-				~Lock();
+				explicit Implementation(IsolateEnvironment& env) : env{env} {}
+				Implementation(const Implementation&) = delete;
+				~Implementation() = default;
+				auto operator= (const Implementation&) = delete;
+
+				void CancelAsync();
+				// Called after AsyncEntry finishes
 				void DoneRunning();
-				// Add work to the task queue
-				void PushTask(std::unique_ptr<Runnable> task);
-				void PushHandleTask(std::unique_ptr<Runnable> handle_task);
-				void PushInterrupt(std::unique_ptr<Runnable> interrupt);
-				void PushSyncInterrupt(std::unique_ptr<Runnable> interrupt);
-				// Takes control of current tasks. Resets current queue
-				std::queue<std::unique_ptr<Runnable>> TakeTasks();
-				std::queue<std::unique_ptr<Runnable>> TakeHandleTasks();
-				std::queue<std::unique_ptr<Runnable>> TakeInterrupts();
-				std::queue<std::unique_ptr<Runnable>> TakeSyncInterrupts();
-				// Returns true if a wake was scheduled, true if the isolate is already running.
-				bool WakeIsolate(std::shared_ptr<IsolateEnvironment> isolate_ptr);
 				// Request an interrupt in this isolate. `status` must == Running to invoke this.
-				void InterruptIsolate(IsolateEnvironment& isolate);
+				void InterruptIsolate();
 				// Interrupts an isolate running in the default thread
-				void InterruptSyncIsolate(IsolateEnvironment& isolate);
+				void InterruptSyncIsolate();
+				// Returns true if a wake was scheduled, false if the isolate is already running.
+				auto WakeIsolate(std::shared_ptr<IsolateEnvironment> isolate_ptr) -> bool;
+
+				// Task queues
+				std::queue<std::unique_ptr<Runnable>> tasks;
+				std::queue<std::unique_ptr<Runnable>> handle_tasks;
+				std::queue<std::unique_ptr<Runnable>> interrupts;
+				std::queue<std::unique_ptr<Runnable>> sync_interrupts;
+
+			private:
+				enum class Status { Waiting, Running };
+				IsolateEnvironment& env;
+				std::mutex mutex;
+				std::mutex wait_mutex;
+				std::condition_variable wait_cv;
+				thread_pool_t::affinity_t thread_affinity;
+				AsyncWait* async_wait = nullptr;
+				Status status = Status::Waiting;
 		};
+
+	public:
+		explicit Scheduler(IsolateEnvironment& isolate) : impl{isolate} {}
+		Scheduler(const Scheduler&) = delete;
+		~Scheduler() = default;
+		auto operator= (const Scheduler&) = delete;
+
+		static void Init(IsolateEnvironment& default_isolate);
+
+		// Used to ref/unref the uv handle from C++ API
+		static void IncrementUvRef();
+		static void DecrementUvRef();
 
 		// Scheduler::AsyncWait will pause the current thread until woken up by another thread
 		class AsyncWait {
+			public:
+				explicit AsyncWait(Scheduler& scheduler);
+				AsyncWait(const AsyncWait&);
+				~AsyncWait();
+				auto operator= (const AsyncWait&) = delete;
+
+				void Ready();
+				void Wait();
+				void Wake();
+
 			private:
 				Scheduler& scheduler;
 				bool done = false;
 				bool ready = false;
+		};
+
+		// A Scheduler::Lock is needed to interact with the task queue
+		class Lock {
 			public:
-				explicit AsyncWait(Scheduler& scheduler);
-				AsyncWait(const AsyncWait&) = delete;
-				AsyncWait& operator= (const AsyncWait&) = delete;
-				~AsyncWait();
-				void Ready();
-				void Wait();
-				void Wake();
+				explicit Lock(Scheduler& scheduler) : scheduler{scheduler.impl}, lock{scheduler.impl.mutex} {}
+				Lock(const Lock&) = delete;
+				~Lock() = default;
+				auto operator= (const Lock&) = delete;
+				Implementation& scheduler;
+
+			private:
+				std::lock_guard<std::mutex> lock;
 		};
 
 	private:
-		static uv_async_t root_async;
-		static thread_pool_t thread_pool;
-		static std::atomic<unsigned int> uv_ref_count;
-		static Scheduler* default_scheduler;
-		Status status = Status::Waiting;
-		std::mutex mutex;
-		std::mutex wait_mutex;
-		std::condition_variable_any wait_cv;
-		std::queue<std::unique_ptr<Runnable>> tasks;
-		std::queue<std::unique_ptr<Runnable>> handle_tasks;
-		std::queue<std::unique_ptr<Runnable>> interrupts;
-		std::queue<std::unique_ptr<Runnable>> sync_interrupts;
-		thread_pool_t::affinity_t thread_affinity;
-		AsyncWait* async_wait = nullptr;
-
-	public:
-		Scheduler();
-		Scheduler(const Scheduler&) = delete;
-		Scheduler operator= (const Scheduler&) = delete;
-		~Scheduler();
-		static void Init(IsolateEnvironment& default_isolate);
-		/**
-		 * Use to ref/unref the uv handle from C++ API
-		 */
-		static void IncrementUvRef();
-		static void DecrementUvRef();
-
-	private:
-		static void AsyncCallbackCommon(bool pool_thread, void* param);
-		static void AsyncCallbackDefaultIsolate(uv_async_t* async);
-		static void AsyncCallbackNonDefaultIsolate(bool pool_thread, void* param);
-		static void AsyncCallbackInterrupt(v8::Isolate* isolate_ptr, void* env_ptr);
-		static void SyncCallbackInterrupt(v8::Isolate* isolate_ptr, void* env_ptr);
+		Implementation impl;
 };
 
 } // namespace ivm

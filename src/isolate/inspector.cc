@@ -57,7 +57,7 @@ void InspectorAgent::runMessageLoopOnPause(int /* context_group_id */) {
 		lock.unlock();
 		{
 			Executor::UnpauseScope unpause_cpu_timer{pause_cpu_timer};
-			isolate.InterruptEntry<&Scheduler::Lock::TakeInterrupts>();
+			isolate.InterruptEntryAsync();
 		}
 		lock.lock();
 	} while (running && !terminated);
@@ -104,18 +104,18 @@ void InspectorAgent::SendInterrupt(unique_ptr<Runnable> task) {
 	shared_ptr<IsolateEnvironment> ptr = isolate.holder->GetIsolate();
 	assert(ptr);
 	// Push interrupt onto queue
-	Scheduler::Lock scheduler(isolate.scheduler);
-	scheduler.PushInterrupt(std::move(task));
+	Scheduler::Lock scheduler_lock{isolate.scheduler};
+	scheduler_lock.scheduler.interrupts.push(std::move(task));
 	// Wake up the isolate
-	if (!scheduler.WakeIsolate(ptr)) { // `true` if isolate is inactive
+	if (!scheduler_lock.scheduler.WakeIsolate(ptr)) { // `true` if isolate is inactive
 		// Isolate is currently running
-		std::lock_guard<std::mutex> lock(mutex);
+		std::lock_guard<std::mutex> lock{mutex};
 		if (running) {
 			// Isolate is being debugged and is in `runMessageLoopOnPause`
 			cv.notify_all();
 		} else {
 			// Isolate is busy running JS code
-			scheduler.InterruptIsolate(isolate);
+			scheduler_lock.scheduler.InterruptIsolate();
 		}
 	}
 }

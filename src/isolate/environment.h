@@ -172,13 +172,6 @@ class IsolateEnvironment {
 		void CheckMemoryPressure();
 
 		/**
-		 * Called by Scheduler when there is work to be done in this isolate.
-		 */
-		void AsyncEntry();
-		template <std::queue<std::unique_ptr<Runnable>> (Scheduler::Lock::*Take)()>
-		void InterruptEntry();
-
-		/**
 		 * Wrap an existing Isolate. This should only be called for the main node Isolate.
 		 */
 		void IsolateCtor(v8::Isolate* isolate, v8::Local<v8::Context> context);
@@ -249,6 +242,17 @@ class IsolateEnvironment {
 		 * Creates a new context. Must be used instead of Context::New() because of snapshot deserialization
 		 */
 		v8::Local<v8::Context> NewContext();
+
+		/**
+		 * Called by Scheduler when there is work to be done in this isolate.
+		 */
+		void AsyncEntry();
+	private:
+		template <std::queue<std::unique_ptr<Runnable>> Scheduler::Implementation::*Tasks>
+		void InterruptEntryImplementation();
+	public:
+		void InterruptEntryAsync();
+		void InterruptEntrySync();
 
 		/**
 		 * This is called after user code runs. This throws a fatal error if the memory limit was hit.
@@ -325,10 +329,8 @@ class IsolateEnvironment {
 		 * Cancels an async three_phase_runner if one exists, i.e. applySyncPromise
 		 */
 		void CancelAsync() {
-			Scheduler::Lock lock(scheduler);
-			if (scheduler.async_wait != nullptr) {
-				scheduler.async_wait->Wake();
-			}
+			Scheduler::Lock lock{scheduler};
+			lock.scheduler.CancelAsync();
 		}
 
 		/**

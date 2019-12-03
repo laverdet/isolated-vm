@@ -221,15 +221,17 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 
 			// Helper function which flushes handle tasks
 			auto run_handle_tasks = [](IsolateEnvironment& env) {
-				std::queue<std::unique_ptr<Runnable>> handle_tasks;
-				{
-					Scheduler::Lock scheduler_lock(env.scheduler);
-					handle_tasks = scheduler_lock.TakeHandleTasks();
+				auto handle_tasks = [&]() {
+					Scheduler::Lock scheduler_lock{env.scheduler};
+					return std::exchange(scheduler_lock.scheduler.handle_tasks, {});
+				}();
+				if (handle_tasks.empty()) {
+					return;
 				}
-				while (!handle_tasks.empty()) {
+				do {
 					handle_tasks.front()->Run();
 					handle_tasks.pop();
-				}
+				} while (!handle_tasks.empty());
 			};
 
 			// This is the simple sync runner case
