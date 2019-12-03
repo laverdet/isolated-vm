@@ -1,9 +1,9 @@
 ---
-Checks: 'bugprone-*,clang-*,hicpp-*,misc-*,modernize-*,performance-*,readability-*,-hicpp-no-array-decay,-hicpp-no-malloc,-hicpp-signed-bitwise,-hicpp-special-member-functions,-hicpp-vararg,-misc-non-private-member-variables-in-classes,-modernize-use-auto,-readability-else-after-return'
+Checks: 'bugprone-*,clang-*,hicpp-*,misc-*,modernize-*,performance-*,readability-*,-hicpp-no-array-decay,-hicpp-no-malloc,-hicpp-signed-bitwise,-hicpp-vararg,-misc-non-private-member-variables-in-classes,-modernize-use-auto,-readability-else-after-return'
 HeaderFilterRegex: 'src/*'
 CheckOptions:
-  - key:             cppcoreguidelines-special-member-functions.AllowMissingMoveFunctions
+  - key:             hicpp-special-member-functions.AllowMissingMoveFunctions
     value:           '1'
-  - key:             cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor
+  - key:             hicpp-special-member-functions.AllowSoleDefaultDtor
     value:           '1'
 ...
