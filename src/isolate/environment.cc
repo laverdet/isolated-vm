@@ -29,204 +29,6 @@ using std::unique_ptr;
 
 namespace ivm {
 
-/*
- * Scheduler implementation
- */
-IsolateEnvironment::Scheduler* IsolateEnvironment::Scheduler::default_scheduler;
-uv_async_t IsolateEnvironment::Scheduler::root_async;
-thread_pool_t IsolateEnvironment::Scheduler::thread_pool(std::thread::hardware_concurrency() + 1);
-std::atomic<unsigned int> IsolateEnvironment::Scheduler::uv_ref_count(0);
-
-IsolateEnvironment::Scheduler::Scheduler() = default;
-IsolateEnvironment::Scheduler::~Scheduler() = default;
-
-void IsolateEnvironment::Scheduler::Init(IsolateEnvironment& default_isolate) {
-	default_scheduler = &default_isolate.scheduler;
-	uv_async_init(uv_default_loop(), &root_async, AsyncCallbackDefaultIsolate);
-	root_async.data = nullptr;
-	uv_unref(reinterpret_cast<uv_handle_t*>(&root_async));
-}
-
-void IsolateEnvironment::Scheduler::AsyncCallbackCommon(bool pool_thread, void* param) {
-	auto isolate_ptr_ptr = static_cast<shared_ptr<IsolateEnvironment>*>(param);
-	auto isolate_ptr = shared_ptr<IsolateEnvironment>(std::move(*isolate_ptr_ptr));
-	delete isolate_ptr_ptr;
-	isolate_ptr->AsyncEntry();
-	if (!pool_thread) {
-		isolate_ptr->GetIsolate()->DiscardThreadSpecificMetadata();
-	}
-}
-
-void IsolateEnvironment::Scheduler::IncrementUvRef() {
-	if (++uv_ref_count == 1) {
-		// Only the default thread should be able to reach this branch
-		assert(std::this_thread::get_id() == Executor::default_thread);
-		uv_ref(reinterpret_cast<uv_handle_t*>(&root_async));
-	}
-}
-
-void IsolateEnvironment::Scheduler::DecrementUvRef() {
-	if (--uv_ref_count == 0) {
-		if (std::this_thread::get_id() == Executor::default_thread) {
-			uv_unref(reinterpret_cast<uv_handle_t*>(&root_async));
-		} else {
-			uv_async_send(&root_async);
-		}
-	}
-}
-
-void IsolateEnvironment::Scheduler::AsyncCallbackNonDefaultIsolate(bool pool_thread, void* param) {
-	AsyncCallbackCommon(pool_thread, param);
-	if (--uv_ref_count == 0) {
-		// Wake up the libuv loop so we can unref the async handle from the default thread.
-		uv_async_send(&root_async);
-	}
-}
-
-void IsolateEnvironment::Scheduler::AsyncCallbackDefaultIsolate(uv_async_t* async) {
-	// We need a lock on the default isolate's scheduler to access this data because it can be
-	// modified from `WakeIsolate` while `AsyncCallbackNonDefaultIsolate` (which doesn't acquire a
-	// lock) is triggering the uv_async_send.
-	void* data;
-	{
-		Lock scheduler_lock(*default_scheduler);
-		data = async->data;
-		async->data = nullptr;
-	}
-	if (data == nullptr) {
-		if (uv_ref_count.load() == 0) {
-			uv_unref(reinterpret_cast<uv_handle_t*>(&root_async));
-		}
-	} else {
-		AsyncCallbackCommon(true, data);
-		if (--uv_ref_count == 0) {
-			uv_unref(reinterpret_cast<uv_handle_t*>(&root_async));
-		}
-	}
-}
-
-void IsolateEnvironment::Scheduler::AsyncCallbackInterrupt(Isolate* /* isolate_ptr */, void* env_ptr) {
-	IsolateEnvironment& env = *static_cast<IsolateEnvironment*>(env_ptr);
-	env.InterruptEntry<&Lock::TakeInterrupts>();
-}
-
-void IsolateEnvironment::Scheduler::SyncCallbackInterrupt(Isolate* /* isolate_ptr */, void* env_ptr) {
-	IsolateEnvironment& env = *static_cast<IsolateEnvironment*>(env_ptr);
-	env.InterruptEntry<&Lock::TakeSyncInterrupts>();
-}
-
-IsolateEnvironment::Scheduler::Lock::Lock(Scheduler& scheduler) : scheduler(scheduler), lock(scheduler.mutex) {}
-IsolateEnvironment::Scheduler::Lock::~Lock() = default;
-
-void IsolateEnvironment::Scheduler::Lock::DoneRunning() {
-	assert(scheduler.status == Status::Running);
-	scheduler.status = Status::Waiting;
-}
-
-void IsolateEnvironment::Scheduler::Lock::PushTask(unique_ptr<Runnable> task) {
-	scheduler.tasks.push(std::move(task));
-}
-
-void IsolateEnvironment::Scheduler::Lock::PushHandleTask(unique_ptr<Runnable> handle_task) {
-	scheduler.handle_tasks.push(std::move(handle_task));
-}
-
-void IsolateEnvironment::Scheduler::Lock::PushInterrupt(unique_ptr<Runnable> interrupt) {
-	scheduler.interrupts.push(std::move(interrupt));
-}
-
-void IsolateEnvironment::Scheduler::Lock::PushSyncInterrupt(unique_ptr<Runnable> interrupt) {
-	scheduler.sync_interrupts.push(std::move(interrupt));
-}
-
-std::queue<unique_ptr<Runnable>> IsolateEnvironment::Scheduler::Lock::TakeTasks() {
-	decltype(scheduler.tasks) tmp;
-	std::swap(tmp, scheduler.tasks);
-	return tmp;
-}
-
-std::queue<unique_ptr<Runnable>> IsolateEnvironment::Scheduler::Lock::TakeHandleTasks() {
-	decltype(scheduler.handle_tasks) tmp;
-	std::swap(tmp, scheduler.handle_tasks);
-	return tmp;
-}
-
-std::queue<unique_ptr<Runnable>> IsolateEnvironment::Scheduler::Lock::TakeInterrupts() {
-	decltype(scheduler.interrupts) tmp;
-	std::swap(tmp, scheduler.interrupts);
-	return tmp;
-}
-
-std::queue<unique_ptr<Runnable>> IsolateEnvironment::Scheduler::Lock::TakeSyncInterrupts() {
-	decltype(scheduler.sync_interrupts) tmp;
-	std::swap(tmp, scheduler.sync_interrupts);
-	return tmp;
-}
-
-bool IsolateEnvironment::Scheduler::Lock::WakeIsolate(shared_ptr<IsolateEnvironment> isolate_ptr) {
-	if (scheduler.status == Status::Waiting) {
-		scheduler.status = Status::Running;
-		IsolateEnvironment& isolate = *isolate_ptr;
-		// Grab shared reference to this which will be passed to the worker entry. This ensures the
-		// IsolateEnvironment won't be deleted before a thread picks up this work.
-		auto isolate_ptr_ptr = new shared_ptr<IsolateEnvironment>(std::move(isolate_ptr));
-		IncrementUvRef();
-		if (isolate.root) {
-			assert(root_async.data == nullptr);
-			root_async.data = isolate_ptr_ptr;
-			uv_async_send(&root_async);
-		} else {
-			thread_pool.exec(scheduler.thread_affinity, Scheduler::AsyncCallbackNonDefaultIsolate, isolate_ptr_ptr);
-		}
-		return true;
-	} else {
-		return false;
-	}
-}
-
-void IsolateEnvironment::Scheduler::Lock::InterruptIsolate(IsolateEnvironment& isolate) {
-	assert(scheduler.status == Status::Running);
-	// Since this callback will be called by v8 we can be certain the pointer to `isolate` is still valid
-	isolate->RequestInterrupt(AsyncCallbackInterrupt, static_cast<void*>(&isolate));
-}
-
-void IsolateEnvironment::Scheduler::Lock::InterruptSyncIsolate(IsolateEnvironment& isolate) {
-	isolate->RequestInterrupt(SyncCallbackInterrupt, static_cast<void*>(&isolate));
-}
-
-IsolateEnvironment::Scheduler::AsyncWait::AsyncWait(Scheduler& scheduler) : scheduler(scheduler) {
-	std::lock_guard<std::mutex> lock(scheduler.mutex);
-	scheduler.async_wait = this;
-}
-
-IsolateEnvironment::Scheduler::AsyncWait::~AsyncWait() {
-	std::lock_guard<std::mutex> lock(scheduler.mutex);
-	scheduler.async_wait = nullptr;
-}
-
-void IsolateEnvironment::Scheduler::AsyncWait::Ready() {
-	std::lock_guard<std::mutex> lock(scheduler.wait_mutex);
-	ready = true;
-	if (done) {
-		scheduler.wait_cv.notify_one();
-	}
-}
-
-void IsolateEnvironment::Scheduler::AsyncWait::Wait() {
-	std::unique_lock<std::mutex> lock(scheduler.wait_mutex);
-	while (!ready || !done) {
-		scheduler.wait_cv.wait(lock);
-	}
-}
-
-void IsolateEnvironment::Scheduler::AsyncWait::Wake() {
-	std::lock_guard<std::mutex> lock(scheduler.wait_mutex);
-	done = true;
-	if (ready) {
-		scheduler.wait_cv.notify_one();
-	}
-}
-
 /**
  * HeapCheck implementation
  */
@@ -426,7 +228,7 @@ void IsolateEnvironment::AsyncEntry() {
 	}
 }
 
-template <std::queue<std::unique_ptr<Runnable>> (IsolateEnvironment::Scheduler::Lock::*Take)()>
+template <std::queue<std::unique_ptr<Runnable>> (Scheduler::Lock::*Take)()>
 void IsolateEnvironment::InterruptEntry() {
 	// Executor::Lock is already acquired
 	while (true) {
@@ -447,6 +249,8 @@ void IsolateEnvironment::InterruptEntry() {
 		} while (!interrupts.empty());
 	}
 }
+template void IsolateEnvironment::InterruptEntry<&Scheduler::Lock::TakeInterrupts>();
+template void IsolateEnvironment::InterruptEntry<&Scheduler::Lock::TakeSyncInterrupts>();
 
 IsolateEnvironment::IsolateEnvironment() :
 	executor(*this),

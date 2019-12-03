@@ -93,12 +93,12 @@ v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 					auto timeout_runner = std::make_unique<TimeoutRunner>(stack_trace, wait);
 					if (is_default_thread) {
 						// In this case this is a pure sync function. We should not cancel any async waits.
-						IsolateEnvironment::Scheduler::Lock scheduler(isolate.scheduler);
+						Scheduler::Lock scheduler(isolate.scheduler);
 						scheduler.PushSyncInterrupt(std::move(timeout_runner));
 						scheduler.InterruptSyncIsolate(isolate);
 					} else {
 						{
-							IsolateEnvironment::Scheduler::Lock scheduler(isolate.scheduler);
+							Scheduler::Lock scheduler(isolate.scheduler);
 							scheduler.PushInterrupt(std::move(timeout_runner));
 							scheduler.InterruptIsolate(isolate);
 						}
@@ -108,7 +108,7 @@ v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 					if (did_finish) {
 						// fn() could have finished and threw away the interrupts below before we got a chance
 						// to set them up. In this case we throw away the interrupts ourselves.
-						IsolateEnvironment::Scheduler::Lock scheduler(isolate.scheduler);
+						Scheduler::Lock scheduler(isolate.scheduler);
 						if (is_default_thread) {
 							scheduler.TakeSyncInterrupts();
 						} else {
@@ -142,7 +142,7 @@ v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 			// away existing interrupts to let the ThreadWait finish and also avoid interrupting an
 			// unrelated function call.
 			// TODO: This probably breaks the inspector in some cases
-			IsolateEnvironment::Scheduler::Lock lock(isolate.scheduler);
+			Scheduler::Lock lock(isolate.scheduler);
 			if (is_default_thread) {
 				lock.TakeSyncInterrupts();
 			} else {

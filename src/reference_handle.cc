@@ -298,7 +298,7 @@ struct ApplyRunner : public ThreePhaseTask {
 	unique_ptr<Transferable> ret;
 	// Only used in the AsyncPhase2 case
 	shared_ptr<bool> did_finish;
-	IsolateEnvironment::Scheduler::AsyncWait* async_wait = nullptr;
+	Scheduler::AsyncWait* async_wait = nullptr;
 	unique_ptr<ExternalCopy> async_error;
 
 	ApplyRunner(
@@ -432,7 +432,7 @@ struct ApplyRunner : public ThreePhaseTask {
 		));
 	}
 
-	bool Phase2Async(IsolateEnvironment::Scheduler::AsyncWait& wait) final {
+	bool Phase2Async(Scheduler::AsyncWait& wait) final {
 		// Same as regular `Phase2()` but if it returns a promise we will wait on it
 		Local<Context> context_handle = ivm::Deref(*context);
 		Context::Scope context_scope(context_handle);

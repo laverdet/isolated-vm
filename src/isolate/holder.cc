@@ -40,7 +40,7 @@ void IsolateHolder::ScheduleTask(unique_ptr<Runnable> task, bool run_inline, boo
 			task->Run();
 			return;
 		}
-		IsolateEnvironment::Scheduler::Lock lock(ref->scheduler);
+		Scheduler::Lock lock(ref->scheduler);
 		if (handle_task) {
 			lock.PushHandleTask(std::move(task));
 		} else {

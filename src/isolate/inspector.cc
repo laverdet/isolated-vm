@@ -57,7 +57,7 @@ void InspectorAgent::runMessageLoopOnPause(int /* context_group_id */) {
 		lock.unlock();
 		{
 			Executor::UnpauseScope unpause_cpu_timer{pause_cpu_timer};
-			isolate.InterruptEntry<&IsolateEnvironment::Scheduler::Lock::TakeInterrupts>();
+			isolate.InterruptEntry<&Scheduler::Lock::TakeInterrupts>();
 		}
 		lock.lock();
 	} while (running && !terminated);
@@ -104,7 +104,7 @@ void InspectorAgent::SendInterrupt(unique_ptr<Runnable> task) {
 	shared_ptr<IsolateEnvironment> ptr = isolate.holder->GetIsolate();
 	assert(ptr);
 	// Push interrupt onto queue
-	IsolateEnvironment::Scheduler::Lock scheduler(isolate.scheduler);
+	Scheduler::Lock scheduler(isolate.scheduler);
 	scheduler.PushInterrupt(std::move(task));
 	// Wake up the isolate
 	if (!scheduler.WakeIsolate(ptr)) { // `true` if isolate is inactive

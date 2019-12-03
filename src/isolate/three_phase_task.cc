@@ -223,7 +223,7 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 			auto run_handle_tasks = [](IsolateEnvironment& env) {
 				std::queue<std::unique_ptr<Runnable>> handle_tasks;
 				{
-					IsolateEnvironment::Scheduler::Lock scheduler_lock(env.scheduler);
+					Scheduler::Lock scheduler_lock(env.scheduler);
 					handle_tasks = scheduler_lock.TakeHandleTasks();
 				}
 				while (!handle_tasks.empty()) {
@@ -279,12 +279,12 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 				bool did_run = false;
 				bool is_async = false;
 				ThreePhaseTask& self;
-				IsolateEnvironment::Scheduler::AsyncWait& wait;
+				Scheduler::AsyncWait& wait;
 				unique_ptr<ExternalCopy>& error;
 
 				AsyncRunner(
 					ThreePhaseTask& self,
-					IsolateEnvironment::Scheduler::AsyncWait& wait,
+					Scheduler::AsyncWait& wait,
 					bool allow_async,
 					unique_ptr<ExternalCopy>& error
 				) : allow_async(allow_async), self(self), wait(wait), error(error) {}
@@ -323,7 +323,7 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 			{
 				// Setup condition variable to sleep this thread
 				IsolateEnvironment& env = *IsolateEnvironment::GetCurrent();
-				IsolateEnvironment::Scheduler::AsyncWait wait(env.scheduler);
+				Scheduler::AsyncWait wait(env.scheduler);
 				// Scope to unlock v8 in this thread and set up the wait
 				Executor::Unlock unlocker(env);
 				// Run it and sleep

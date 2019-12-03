@@ -83,7 +83,7 @@ class ThreePhaseTask {
 		virtual ~ThreePhaseTask() = default;
 
 		virtual void Phase2() = 0;
-		virtual bool Phase2Async(IsolateEnvironment::Scheduler::AsyncWait& /*wait*/) {
+		virtual bool Phase2Async(Scheduler::AsyncWait& /*wait*/) {
 			Phase2();
 			return false;
 		}

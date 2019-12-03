@@ -7,6 +7,7 @@
 namespace ivm {
 class InspectorAgent;
 class IsolateEnvironment;
+class Scheduler;
 
 /**
  * Executor class handles v8 locking while C++ code is running. Thread syncronization is handled
@@ -15,6 +16,7 @@ class IsolateEnvironment;
 class Executor { // "En taro adun"
 	friend InspectorAgent;
 	friend IsolateEnvironment;
+	friend Scheduler;
 	private:
 		class CpuTimer {
 			public:

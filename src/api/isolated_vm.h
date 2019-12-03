@@ -19,23 +19,23 @@ namespace isolated_vm {
 		private:
 			std::shared_ptr<ivm::IsolateHolder> holder;
 			IsolateHolder(std::shared_ptr<ivm::IsolateHolder> holder) : holder(std::move(holder)) {
-				ivm::IsolateEnvironment::Scheduler::IncrementUvRef();
+				ivm::Scheduler::IncrementUvRef();
 			}
 
 		public:
 			IsolateHolder(const IsolateHolder& that) : holder(that.holder) {
-				ivm::IsolateEnvironment::Scheduler::IncrementUvRef();
+				ivm::Scheduler::IncrementUvRef();
 			}
 
 			IsolateHolder(IsolateHolder&& that) : holder(std::move(that.holder)) {
-				ivm::IsolateEnvironment::Scheduler::IncrementUvRef();
+				ivm::Scheduler::IncrementUvRef();
 			}
 
 			IsolateHolder& operator=(const IsolateHolder&) = default;
 			IsolateHolder& operator=(IsolateHolder&) = default;
 
 			~IsolateHolder() {
-				ivm::IsolateEnvironment::Scheduler::DecrementUvRef();
+				ivm::Scheduler::DecrementUvRef();
 			}
 
 			static IsolateHolder GetCurrent() {
