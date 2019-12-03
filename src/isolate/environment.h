@@ -4,6 +4,7 @@
 
 #include "executor.h"
 #include "holder.h"
+#include "runnable.h"
 #include "../lib/thread_pool.h"
 
 #include <atomic>
@@ -17,8 +18,6 @@
 #include <vector>
 
 namespace ivm {
-
-class Runnable;
 
 /**
  * Wrapper around Isolate with helpers to make working with multiple isolates easier.

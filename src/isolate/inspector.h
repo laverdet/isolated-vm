@@ -1,5 +1,6 @@
 #pragma once
 #include <v8.h>
+#include "./runnable.h"
 #include "./v8_inspector_wrapper.h"
 #include <condition_variable>
 #include <memory>
@@ -32,7 +33,7 @@ class InspectorAgent : public v8_inspector::V8InspectorClient {
 
 		std::unique_ptr<v8_inspector::V8InspectorSession> ConnectSession(InspectorSession& session);
 		void SessionDisconnected(InspectorSession& session);
-		void SendInterrupt(std::unique_ptr<class Runnable> task);
+		void SendInterrupt(std::unique_ptr<Runnable> task);
 
 	public:
 		explicit InspectorAgent(IsolateEnvironment& isolate);

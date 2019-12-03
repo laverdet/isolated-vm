@@ -26,18 +26,6 @@ class PlatformDelegate : public v8::Platform {
 		TmpIsolateScope* tmp_scope = nullptr;
 		std::shared_ptr<IsolateHolder> isolate_ctor_holder;
 
-		class TaskHolder : public Runnable {
-			private:
-				std::unique_ptr<v8::Task> task;
-			public:
-				explicit TaskHolder(v8::Task* task) : task(task) {}
-				explicit TaskHolder(std::unique_ptr<v8::Task>&& task) : task(std::move(task)) {	}
-				TaskHolder(TaskHolder&& task) noexcept : task(std::move(task.task)) {}
-				void Run() final {
-					task->Run();
-				}
-		};
-
 	public:
 		// TODO: This stuff isn't thread safe but since people tend to create isolates from the same
 		// thread it probably isn't a big issue (until it all of a sudden is).
@@ -178,12 +166,14 @@ class PlatformDelegate : public v8::Platform {
 				void PostTask(std::unique_ptr<v8::Task> task) final {
 					auto ref = holder.lock();
 					if (ref) {
-						ref->ScheduleTask(std::make_unique<TaskHolder>(std::move(task)), false, false, true);
+						ref->ScheduleTask(std::move(task), false, false, true);
 					}
 				}
 
 				void PostDelayedTask(std::unique_ptr<v8::Task> task, double delay_in_seconds) final {
-					auto shared_task = std::make_shared<TaskHolder>(std::move(task));
+					// wait_detached erases the type of the lambda into a std::function which must be
+					// copyable. The unique_ptr is store in a shared pointer so ownership can be handled correctly.
+					auto shared_task = std::make_shared<std::unique_ptr<v8::Task>>(std::move(task));
 					auto holder = this->holder;
 					timer_t::wait_detached(static_cast<uint32_t>(delay_in_seconds * 1000), [holder, shared_task](void* next) {
 						auto ref = holder.lock();
@@ -191,7 +181,7 @@ class PlatformDelegate : public v8::Platform {
 							// Don't wake the isolate because that will affect the libuv ref/unref stuff. Instead,
 							// if this isolate is not running then whatever task v8 wanted to run will fire first
 							// thing next time the isolate is awake.
-							ref->ScheduleTask(std::make_unique<TaskHolder>(std::move(*shared_task)), false, false, true);
+							ref->ScheduleTask(std::move(*shared_task), false, false, true);
 						}
 						timer_t::chain(next);
 					});
@@ -261,9 +251,9 @@ class PlatformDelegate : public v8::Platform {
 				}
 				if (s_isolate) {
 					// wakeup == false but it shouldn't matter because this isolate is already awake
-					s_isolate->ScheduleTask(std::make_unique<TaskHolder>(task), false, false, true);
+					s_isolate->ScheduleTask(std::unique_ptr<v8::Task>{task}, false, false, true);
 				} else if (tmp_scope != nullptr && tmp_scope->IsIsolate(isolate)) {
-					tmp_scope->foreground_tasks->push_back(std::unique_ptr<v8::Task>(task));
+					tmp_scope->foreground_tasks->push_back(std::unique_ptr<v8::Task>{task});
 				} else {
 					throw std::runtime_error("Unknown isolate");
 				}
@@ -275,7 +265,7 @@ class PlatformDelegate : public v8::Platform {
 				node_platform->CallDelayedOnForegroundThread(isolate, task, delay_in_seconds);
 			} else {
 				timer_t::wait_detached(static_cast<uint32_t>(delay_in_seconds * 1000), [isolate, task](void* next) {
-					auto holder = std::make_unique<TaskHolder>(task);
+					auto holder = std::unique_ptr<v8::Task>{task};
 					auto s_isolate = IsolateEnvironment::LookupIsolate(isolate);
 					if (s_isolate) {
 						// Don't wake the isolate because that will affect the libuv ref/unref stuff. Instead,

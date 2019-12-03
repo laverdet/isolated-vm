@@ -93,7 +93,7 @@ void InspectorAgent::SessionDisconnected(InspectorSession& session) {
 /**
  * Request to send an interrupt to the inspected isolate
  */
-void InspectorAgent::SendInterrupt(unique_ptr<class Runnable> task) {
+void InspectorAgent::SendInterrupt(unique_ptr<Runnable> task) {
 	// If this isolate is already locked just run the task. This happens at least when the isolate is disposing
 	// and `holder` no longer has a valid shared_ptr
 	if (Executor::GetCurrent() == &isolate) {
