@@ -1,8 +1,8 @@
 #include "environment.h"
 #include "executor.h"
+#include "node_wrapper.h"
 #include "scheduler.h"
 #include <v8.h>
-#include <node.h>
 #include <utility>
 
 using namespace v8;
@@ -21,7 +21,8 @@ Scheduler::Implementation::Implementation(IsolateEnvironment& env) :
 			return env == nullptr ? *this : env->scheduler.impl;
 		}()} {
 	if (this == &default_scheduler) {
-		uv_async_init(node::GetCurrentEventLoop(v8::Isolate::GetCurrent()), &uv_async, [](uv_async_t* async) {
+		loop = node::GetCurrentEventLoop(v8::Isolate::GetCurrent());
+		uv_async_init(loop, &uv_async, [](uv_async_t* async) {
 			auto& scheduler = *static_cast<Scheduler::Implementation*>(async->data);
 			auto ref = [&]() {
 				// Lock is required to access env_ref on the default scheduler but a non-default scheduler
@@ -43,6 +44,18 @@ Scheduler::Implementation::Implementation(IsolateEnvironment& env) :
 		});
 		uv_async.data = this;
 		uv_unref(reinterpret_cast<uv_handle_t*>(&uv_async));
+	}
+}
+
+Scheduler::Implementation::~Implementation() {
+	if (this == &default_scheduler) {
+		uv_close(reinterpret_cast<uv_handle_t*>(&uv_async), [](uv_handle_t* handle) {
+			auto& scheduler = *static_cast<Scheduler::Implementation*>(handle->data);
+			scheduler.disposed = true;
+		});
+		do {
+			uv_run(loop, UV_RUN_ONCE);
+		} while (!disposed);
 	}
 }
 
@@ -147,25 +160,25 @@ Scheduler::AsyncWait::~AsyncWait() {
 }
 
 void Scheduler::AsyncWait::Ready() {
-	std::lock_guard<std::mutex> lock{scheduler.impl.wait_mutex};
+	std::lock_guard<std::mutex> lock{scheduler.impl.mutex};
 	ready = true;
 	if (done) {
-		scheduler.impl.wait_cv.notify_one();
+		scheduler.impl.cv.notify_one();
 	}
 }
 
 void Scheduler::AsyncWait::Wait() {
-	std::unique_lock<std::mutex> lock{scheduler.impl.wait_mutex};
+	std::unique_lock<std::mutex> lock{scheduler.impl.mutex};
 	while (!ready || !done) {
-		scheduler.impl.wait_cv.wait(lock);
+		scheduler.impl.cv.wait(lock);
 	}
 }
 
 void Scheduler::AsyncWait::Wake() {
-	std::lock_guard<std::mutex> lock{scheduler.impl.wait_mutex};
+	std::lock_guard<std::mutex> lock{scheduler.impl.mutex};
 	done = true;
 	if (ready) {
-		scheduler.impl.wait_cv.notify_one();
+		scheduler.impl.cv.notify_one();
 	}
 }
 

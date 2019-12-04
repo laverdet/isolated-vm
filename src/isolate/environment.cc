@@ -7,6 +7,7 @@
 #include "scheduler.h"
 #include <algorithm>
 #include <cmath>
+#include <mutex>
 
 #ifdef USE_CLOCK_THREAD_CPUTIME_ID
 #include <time.h>
@@ -267,8 +268,6 @@ void IsolateEnvironment::IsolateCtor(Isolate* isolate, Local<Context> context) {
 	this->isolate = isolate;
 	default_context.Reset(isolate, context);
 	root = true;
-	std::lock_guard<std::mutex> lock(bookkeeping_statics->lookup_mutex);
-	bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
 }
 
 void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void> snapshot_blob, size_t snapshot_length) {
@@ -301,10 +300,12 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void>
 		startup_data.data = reinterpret_cast<char*>(snapshot_blob_ptr.get());
 		startup_data.raw_size = snapshot_length;
 	}
+	isolate = Isolate::Allocate();
 	{
-		PlatformDelegate::IsolateCtorScope scope(holder);
-		isolate = Isolate::New(create_params);
+		std::lock_guard<std::mutex> lock{bookkeeping_statics->lookup_mutex};
+		bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
 	}
+	Isolate::Initialize(isolate, create_params);
 	// Workaround for bug in snapshot deserializer in v8 in nodejs v10.x
 	isolate->SetHostImportModuleDynamicallyCallback(nullptr);
 	{
@@ -338,42 +339,49 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void>
 }
 
 IsolateEnvironment::~IsolateEnvironment() {
-	if (root) {
-		return;
-	}
-	{
-		// Grab local pointer to inspector agent with scheduler lock active
-		std::unique_ptr<InspectorAgent> agent_ptr;
+	if (!root) {
 		{
-			Scheduler::Lock lock(scheduler);
-			agent_ptr = std::move(inspector_agent);
+			// Grab local pointer to inspector agent with scheduler lock active
+			auto agent_ptr = [&]() {
+				Scheduler::Lock lock{scheduler};
+				return std::move(inspector_agent);
+			}();
+			// Now activate executor lock and invoke inspector agent's dtor
+			Executor::Lock lock{*this};
+			agent_ptr.reset();
+			// Kill all weak persistents
+			for (auto it = weak_persistents.begin(); it != weak_persistents.end(); ) {
+				void(*fn)(void*) = it->second.first;
+				void* param = it->second.second;
+				++it;
+				fn(param);
+			}
+			assert(weak_persistents.empty());
+			// Destroy outstanding tasks. Do this here while the executor lock is up.
+			Scheduler::Lock scheduler_lock{scheduler};
+			scheduler_lock.scheduler.interrupts = {};
+			scheduler_lock.scheduler.sync_interrupts = {};
+			scheduler_lock.scheduler.handle_tasks = {};
+			scheduler_lock.scheduler.tasks = {};
 		}
-		// Now activate executor lock and invoke inspector agent's dtor
-		Executor::Lock lock(*this);
-		agent_ptr.reset();
-		// Kill all weak persistents
-		for (auto it = weak_persistents.begin(); it != weak_persistents.end(); ) {
-			void(*fn)(void*) = it->second.first;
-			void* param = it->second.second;
-			++it;
-			fn(param);
+		{
+			// Dispose() will call destructors for external strings and array buffers, so this lock sets the
+			// "current" isolate for those C++ dtors to function correctly without locking v8
+			Executor::Scope lock{*this};
+			isolate->Dispose();
 		}
-		assert(weak_persistents.empty());
-		// Destroy outstanding tasks. Do this here while the executor lock is up.
-		Scheduler::Lock scheduler_lock{scheduler};
-		scheduler_lock.scheduler.interrupts = {};
-		scheduler_lock.scheduler.sync_interrupts = {};
-		scheduler_lock.scheduler.handle_tasks = {};
-		scheduler_lock.scheduler.tasks = {};
+		// Unregister from Platform
+		{
+			std::lock_guard<std::mutex> lock{bookkeeping_statics->lookup_mutex};
+			bookkeeping_statics->isolate_map.erase(isolate);
+		}
 	}
+	// Send notification that this isolate is totally disposed
 	{
-		// Dispose() will call destructors for external strings and array buffers, so this lock sets the
-		// "current" isolate for those C++ dtors to function correctly without locking v8
-		Executor::Scope lock(*this);
-		isolate->Dispose();
+		std::lock_guard<std::mutex> lock{holder->mutex};
+		holder->is_disposed = true;
+		holder->cv.notify_all();
 	}
-	std::lock_guard<std::mutex> lock(bookkeeping_statics->lookup_mutex);
-	bookkeeping_statics->isolate_map.erase(bookkeeping_statics->isolate_map.find(isolate));
 }
 
 static void DeserializeInternalFieldsCallback(Local<Object> /*holder*/, int /*index*/, StartupData /*payload*/, void* /*data*/) {

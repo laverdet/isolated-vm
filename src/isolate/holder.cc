@@ -11,16 +11,27 @@ namespace ivm {
 IsolateHolder::IsolateHolder(shared_ptr<IsolateEnvironment> isolate) : isolate(std::move(isolate)) {}
 
 void IsolateHolder::Dispose() {
-	shared_ptr<IsolateEnvironment> tmp;
-	{
+	auto ref = [&]() {
 		std::lock_guard<std::mutex> lock{mutex};
-		tmp = std::exchange(isolate, {});
-	}
-	if (tmp) {
-		tmp->Terminate();
-		tmp.reset();
+		return std::exchange(isolate, {});
+	}();
+	if (ref) {
+		ref->Terminate();
+		ref.reset();
 	} else {
 		throw js_generic_error("Isolate is already disposed");
+	}
+}
+
+void IsolateHolder::ReleaseAndJoin() {
+	auto ref = [&]() {
+		std::lock_guard<std::mutex> lock{mutex};
+		return std::exchange(isolate, {});
+	}();
+	ref.reset();
+	std::unique_lock<std::mutex> lock{mutex};
+	while (!is_disposed) {
+		cv.wait(lock);
 	}
 }
 

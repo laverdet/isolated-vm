@@ -29,7 +29,7 @@ class Scheduler {
 			public:
 				explicit Implementation(IsolateEnvironment& env);
 				Implementation(const Implementation&) = delete;
-				~Implementation() = default;
+				~Implementation();
 				auto operator= (const Implementation&) = delete;
 
 				void CancelAsync();
@@ -56,14 +56,16 @@ class Scheduler {
 				std::shared_ptr<IsolateEnvironment> env_ref;
 				IsolateEnvironment& env;
 				Implementation& default_scheduler;
-				uv_async_t uv_async{}; // only used on default isolate
-				std::atomic<int> uv_ref_count{0};
 				std::mutex mutex;
-				std::mutex wait_mutex;
-				std::condition_variable wait_cv;
+				std::condition_variable cv;
 				thread_pool_t::affinity_t thread_affinity;
 				AsyncWait* async_wait = nullptr;
 				Status status = Status::Waiting;
+				// following properties are only used on default isolate
+				uv_loop_t* loop = nullptr;
+				uv_async_t uv_async{};
+				std::atomic<int> uv_ref_count{0};
+				bool disposed = false;
 		};
 
 	public:
