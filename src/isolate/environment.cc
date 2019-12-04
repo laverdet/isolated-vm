@@ -59,7 +59,7 @@ void IsolateEnvironment::HeapCheck::Epilogue() {
  * IsolateEnvironment implementation
  */
 size_t IsolateEnvironment::specifics_count = 0;
-shared_ptr<IsolateEnvironment::BookkeepingStatics> IsolateEnvironment::bookkeeping_statics_shared = std::make_shared<IsolateEnvironment::BookkeepingStatics>(); // NOLINT
+std::shared_ptr<IsolateEnvironment::IsolateMap> IsolateEnvironment::isolate_map_shared = std::make_shared<IsolateMap>();
 
 void IsolateEnvironment::OOMErrorCallback(const char* location, bool is_heap_oom) {
 	fprintf(stderr, "%s\nis_heap_oom = %d\n\n\n", location, static_cast<int>(is_heap_oom));
@@ -260,8 +260,8 @@ void IsolateEnvironment::InterruptEntrySync() {
 
 IsolateEnvironment::IsolateEnvironment() :
 	scheduler{*this},
-	executor(*this),
-	bookkeeping_statics(bookkeeping_statics_shared) {
+	executor{*this},
+	isolate_map{isolate_map_shared} {
 }
 
 void IsolateEnvironment::IsolateCtor(Isolate* isolate, Local<Context> context) {
@@ -301,17 +301,10 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void>
 		startup_data.raw_size = snapshot_length;
 	}
 	isolate = Isolate::Allocate();
-	{
-		std::lock_guard<std::mutex> lock{bookkeeping_statics->lookup_mutex};
-		bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
-	}
+	isolate_map->write()->insert(std::make_pair(isolate, this));
 	Isolate::Initialize(isolate, create_params);
 	// Workaround for bug in snapshot deserializer in v8 in nodejs v10.x
 	isolate->SetHostImportModuleDynamicallyCallback(nullptr);
-	{
-		std::lock_guard<std::mutex> lock(bookkeeping_statics->lookup_mutex);
-		bookkeeping_statics->isolate_map.insert(std::make_pair(isolate, this));
-	}
 	isolate->SetOOMErrorHandler(OOMErrorCallback);
 	isolate->SetPromiseRejectCallback(PromiseRejectCallback);
 
@@ -371,10 +364,7 @@ IsolateEnvironment::~IsolateEnvironment() {
 			isolate->Dispose();
 		}
 		// Unregister from Platform
-		{
-			std::lock_guard<std::mutex> lock{bookkeeping_statics->lookup_mutex};
-			bookkeeping_statics->isolate_map.erase(isolate);
-		}
+		isolate_map->write()->erase(isolate);
 	}
 	// Send notification that this isolate is totally disposed
 	{
@@ -471,9 +461,9 @@ void IsolateEnvironment::RemoveWeakCallback(Persistent<Object>* handle) {
 }
 
 shared_ptr<IsolateHolder> IsolateEnvironment::LookupIsolate(Isolate* isolate) {
-	std::lock_guard<std::mutex> lock(bookkeeping_statics_shared->lookup_mutex);
-	auto it = bookkeeping_statics_shared->isolate_map.find(isolate);
-	if (it == bookkeeping_statics_shared->isolate_map.end()) {
+	auto lock = isolate_map_shared->read();
+	auto it = lock->find(isolate);
+	if (it == lock->end()) {
 		return nullptr;
 	} else {
 		return it->second->holder;

@@ -6,6 +6,7 @@
 #include "holder.h"
 #include "runnable.h"
 #include "scheduler.h"
+#include "../lib/lockable.h"
 #include "../lib/thread_pool.h"
 
 #include <atomic>
@@ -102,19 +103,9 @@ class IsolateEnvironment {
 		};
 
 	private:
-		struct BookkeepingStatics {
-			/**
-			 * These statics are needed in the destructor to update bookkeeping information. The root
-			 * IsolateEnvironment will be be destroyed when the module is being destroyed, and static members
-			 * may be destroyed before that happens. So we stash them here and wrap the whole in a
-			 * shared_ptr so we can ensure access to them even when the module is being torn down.
-			 */
-			std::unordered_map<v8::Isolate*, IsolateEnvironment*> isolate_map;
-			std::mutex lookup_mutex;
-			bool did_shutdown = false;
-		};
-
-		static std::shared_ptr<BookkeepingStatics> bookkeeping_statics_shared;
+		// IsolateMap is stored in a shared_ptr to ensure access to instances while the module is being destroyed.
+		using IsolateMap = lockable_t<std::unordered_map<v8::Isolate*, IsolateEnvironment*>>;
+		static std::shared_ptr<IsolateMap> isolate_map_shared;
 		static size_t specifics_count;
 
 		v8::Isolate* isolate;
@@ -137,7 +128,7 @@ class IsolateEnvironment {
 		bool root;
 		std::atomic<unsigned int> remotes_count{0};
 		v8::HeapStatistics last_heap {};
-		std::shared_ptr<BookkeepingStatics> bookkeeping_statics;
+		std::shared_ptr<IsolateMap> isolate_map;
 		v8::Persistent<v8::Value> rejected_promise_error;
 
 		std::vector<std::unique_ptr<v8::Eternal<v8::Data>>> specifics;
