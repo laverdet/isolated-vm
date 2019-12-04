@@ -1,5 +1,5 @@
 ---
-Checks: 'bugprone-*,clang-*,hicpp-*,misc-*,modernize-*,performance-*,readability-*,-hicpp-no-array-decay,-hicpp-no-malloc,-hicpp-signed-bitwise,-hicpp-vararg,-misc-non-private-member-variables-in-classes,-modernize-use-auto,-readability-else-after-return'
+Checks: 'bugprone-*,clang-*,hicpp-*,misc-*,modernize-*,performance-*,readability-*,-hicpp-no-array-decay,-hicpp-no-malloc,-hicpp-signed-bitwise,-hicpp-vararg,-misc-non-private-member-variables-in-classes,-modernize-use-auto,-modernize-use-trailing-return-type,-readability-else-after-return'
 HeaderFilterRegex: 'src/*'
 CheckOptions:
   - key:             hicpp-special-member-functions.AllowMissingMoveFunctions
