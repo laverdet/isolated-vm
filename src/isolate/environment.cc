@@ -278,7 +278,7 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void>
 
 	// Calculate resource constraints
 	ResourceConstraints rc;
-	rc.set_max_semi_space_size_in_kb((size_t)std::pow(2, memory_limit_in_mb / 128.0 + 10.0));
+	rc.set_max_semi_space_size_in_kb((size_t)std::pow(2, std::min(sizeof(void*) >= 8 ? 4.0 : 3.0, memory_limit_in_mb / 128.0) + 10));
 	rc.set_max_old_space_size(
 #if V8_AT_LEAST(7, 0, 0)
 		memory_limit_in_mb
