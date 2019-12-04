@@ -22,7 +22,7 @@ class Executor { // "En taro adun"
 		~Executor() = default;
 		auto operator= (const Executor&) = delete;
 
-		static auto GetCurrent() -> IsolateEnvironment*;
+		static auto GetCurrentEnvironment() -> IsolateEnvironment*;
 		static auto IsDefaultThread() -> bool;
 
 	private:
@@ -147,7 +147,7 @@ class Executor { // "En taro adun"
 		static thread_local Executor* current_executor;
 };
 
-inline auto Executor::GetCurrent() -> IsolateEnvironment* {
+inline auto Executor::GetCurrentEnvironment() -> IsolateEnvironment* {
 	return current_executor == nullptr ? nullptr : &current_executor->env;
 }
 

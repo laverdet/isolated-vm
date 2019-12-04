@@ -75,7 +75,7 @@ class IsolateEnvironment {
 				IsolateSpecific() : key(IsolateEnvironment::specifics_count++) {}
 
 				v8::MaybeLocal<T> Deref() const {
-					IsolateEnvironment& env = *Executor::GetCurrent();
+					IsolateEnvironment& env = *Executor::GetCurrentEnvironment();
 					if (env.specifics.size() > key) {
 						if (!env.specifics[key]->IsEmpty()) {
 							// This is dangerous but `Local` doesn't let you upcast from Data to
@@ -88,7 +88,7 @@ class IsolateEnvironment {
 				}
 
 				void Set(v8::Local<T> handle) {
-					IsolateEnvironment& env = *Executor::GetCurrent();
+					IsolateEnvironment& env = *Executor::GetCurrentEnvironment();
 					if (env.specifics.size() <= key) {
 						env.specifics.reserve(key + 1);
 						while (env.specifics.size() < key) {
@@ -206,14 +206,14 @@ class IsolateEnvironment {
 		 * Return pointer the currently running IsolateEnvironment
 		 */
 		static IsolateEnvironment* GetCurrent() {
-			return Executor::GetCurrent();
+			return Executor::GetCurrentEnvironment();
 		}
 
 		/**
 		 * Return shared_ptr to current IsolateHolder
 		 */
 		static std::shared_ptr<IsolateHolder> GetCurrentHolder() {
-			return Executor::GetCurrent()->holder;
+			return Executor::GetCurrentEnvironment()->holder;
 		}
 
 		/**

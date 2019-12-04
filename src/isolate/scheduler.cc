@@ -17,7 +17,7 @@ namespace {
 Scheduler::Implementation::Implementation(IsolateEnvironment& env) :
 		env{env},
 		default_scheduler{[&]() -> Implementation& {
-			auto env = Executor::GetCurrent();
+			auto env = Executor::GetCurrentEnvironment();
 			return env == nullptr ? *this : env->scheduler.impl;
 		}()} {
 	if (this == &default_scheduler) {
