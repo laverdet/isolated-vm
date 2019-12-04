@@ -223,7 +223,7 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 			auto run_handle_tasks = [](IsolateEnvironment& env) {
 				auto handle_tasks = [&]() {
 					Scheduler::Lock scheduler_lock{env.scheduler};
-					return std::exchange(scheduler_lock.scheduler.handle_tasks, {});
+					return ExchangeDefault(scheduler_lock.scheduler.handle_tasks);
 				}();
 				if (handle_tasks.empty()) {
 					return;

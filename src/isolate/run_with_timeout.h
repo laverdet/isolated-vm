@@ -110,9 +110,9 @@ v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 						// to set them up. In this case we throw away the interrupts ourselves.
 						Scheduler::Lock lock{isolate.scheduler};
 						if (is_default_thread) {
-							lock.scheduler.sync_interrupts = {};
+							ExchangeDefault(lock.scheduler.sync_interrupts);
 						} else {
-							lock.scheduler.interrupts = {};
+							ExchangeDefault(lock.scheduler.interrupts);
 						}
 					}
 				}
@@ -144,9 +144,9 @@ v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 			// TODO: This probably breaks the inspector in some cases
 			Scheduler::Lock lock{isolate.scheduler};
 			if (is_default_thread) {
-				lock.scheduler.sync_interrupts = {};
+				ExchangeDefault(lock.scheduler.sync_interrupts);
 			} else {
-				lock.scheduler.interrupts = {};
+				ExchangeDefault(lock.scheduler.interrupts);
 			}
 		}
 	}

@@ -198,10 +198,10 @@ void IsolateEnvironment::AsyncEntry() {
 			// Grab current tasks
 			Scheduler::Lock lock{scheduler};
 			auto foo = !lock.scheduler.tasks.empty() ? &lock.scheduler.tasks.front() : nullptr;
-			tasks = std::exchange(lock.scheduler.tasks, {});
+			tasks = ExchangeDefault(lock.scheduler.tasks);
 			assert(tasks.empty() || foo == &tasks.front());
-			handle_tasks = std::exchange(lock.scheduler.handle_tasks, {});
-			interrupts = std::exchange(lock.scheduler.interrupts, {});
+			handle_tasks = ExchangeDefault(lock.scheduler.handle_tasks);
+			interrupts = ExchangeDefault(lock.scheduler.interrupts);
 			if (tasks.empty() && handle_tasks.empty() && interrupts.empty()) {
 				lock.scheduler.DoneRunning();
 				return;
@@ -238,7 +238,7 @@ void IsolateEnvironment::InterruptEntryImplementation() {
 	while (true) {
 		auto interrupts = [&]() {
 			Scheduler::Lock lock{scheduler};
-			return std::exchange(lock.scheduler.*Tasks, {});
+			return ExchangeDefault(lock.scheduler.*Tasks);
 		}();
 		if (interrupts.empty()) {
 			return;
@@ -359,10 +359,10 @@ IsolateEnvironment::~IsolateEnvironment() {
 			assert(weak_persistents.empty());
 			// Destroy outstanding tasks. Do this here while the executor lock is up.
 			Scheduler::Lock scheduler_lock{scheduler};
-			scheduler_lock.scheduler.interrupts = {};
-			scheduler_lock.scheduler.sync_interrupts = {};
-			scheduler_lock.scheduler.handle_tasks = {};
-			scheduler_lock.scheduler.tasks = {};
+			ExchangeDefault(scheduler_lock.scheduler.interrupts);
+			ExchangeDefault(scheduler_lock.scheduler.sync_interrupts);
+			ExchangeDefault(scheduler_lock.scheduler.handle_tasks);
+			ExchangeDefault(scheduler_lock.scheduler.tasks);
 		}
 		{
 			// Dispose() will call destructors for external strings and array buffers, so this lock sets the

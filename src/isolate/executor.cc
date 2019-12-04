@@ -58,9 +58,9 @@ void Executor::CpuTimer::Resume() {
 auto Executor::CpuTimer::Now() -> TimePoint {
 	timespec ts{};
 	assert(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) == 0);
-	return TimePoint{std::chrono::duration_cast<std::chrono::system_clock::duration>{
+	return TimePoint{std::chrono::duration_cast<std::chrono::system_clock::duration>(
 		std::chrono::seconds{ts.tv_sec} + std::chrono::nanoseconds{ts.tv_nsec}
-	}};
+	)};
 }
 #else
 auto Executor::CpuTimer::Now() -> TimePoint{

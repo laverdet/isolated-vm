@@ -2,6 +2,7 @@
 #include "runnable.h"
 #include "../lib/thread_pool.h"
 #include <uv.h>
+#include <atomic>
 #include <condition_variable>
 #include <mutex>
 #include <queue>
@@ -9,6 +10,13 @@
 namespace ivm {
 class IsolateEnvironment;
 class IsolateHolder;
+
+// gcc 5's std::queue implementation has an explicit default ctor so std::exchange(..., {})
+// doesn't work. This changed in C++11 and I guess they're behind.
+template <class Type>
+auto ExchangeDefault(Type& container) {
+	return std::exchange(container, Type{});
+}
 
 /**
  * Keeps track of tasks an isolate needs to run and manages its run state (running or waiting).
