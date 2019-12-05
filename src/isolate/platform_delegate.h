@@ -134,8 +134,8 @@ class PlatformDelegate : public v8::Platform {
 #endif
 
 #if !NODE_MODULE_OR_V8_AT_LEAST(67, 6, 7, 1)
-		std::shared_ptr<v8::TaskRunner> GetBackgroundTaskRunner(v8::Isolate* /* isolate */) final {
-			return node_platform->GetBackgroundTaskRunner(node_isolate);
+		std::shared_ptr<v8::TaskRunner> GetBackgroundTaskRunner(v8::Isolate* isolate) final {
+			return node_platform->GetBackgroundTaskRunner(isolate);
 		}
 #endif
 
@@ -242,6 +242,8 @@ class PlatformDelegate : public v8::Platform {
 					s_isolate->ScheduleTask(std::move(holder), false, false, true);
 					timer_t::chain(next);
 				});
+			} else if (tmp_scope != nullptr && tmp_scope->IsIsolate(isolate)) {
+				tmp_scope->foreground_tasks->push_back(std::unique_ptr<v8::Task>{task});
 			} else {
 				node_platform->CallDelayedOnForegroundThread(isolate, task, delay_in_seconds);
 			}

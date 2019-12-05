@@ -300,9 +300,14 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void>
 		startup_data.data = reinterpret_cast<char*>(snapshot_blob_ptr.get());
 		startup_data.raw_size = snapshot_length;
 	}
+#if V8_AT_LEAST(6, 8, 57)
 	isolate = Isolate::Allocate();
 	isolate_map->write()->insert(std::make_pair(isolate, this));
 	Isolate::Initialize(isolate, create_params);
+#else
+	isolate = Isolate::New(create_params);
+	isolate_map->write()->insert(std::make_pair(isolate, this));
+#endif
 	// Workaround for bug in snapshot deserializer in v8 in nodejs v10.x
 	isolate->SetHostImportModuleDynamicallyCallback(nullptr);
 	isolate->SetOOMErrorHandler(OOMErrorCallback);

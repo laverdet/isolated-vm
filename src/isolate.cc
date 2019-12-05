@@ -63,6 +63,11 @@ void init(Local<Object> target) {
 	// Create default isolate env
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
+#if NODE_MODULE_VERSION < 72
+	if (node::GetCurrentEventLoop(isolate) != uv_default_loop()) {
+		isolate->ThrowException(v8_string("nodejs 12.0.0 or higher is required to use `isolated-vm` from within `worker_threads`"));
+	}
+#endif
 	// Maybe this would happen if you include the module from `vm`?
 	assert(default_isolates.find(isolate) == default_isolates.end());
 	{
@@ -70,6 +75,7 @@ void init(Local<Object> target) {
 		default_isolates.insert(std::make_pair(isolate, IsolateEnvironment::New(isolate, context)));
 	}
 	Unmaybe(target->Set(context, v8_symbol("ivm"), LibraryHandle::Get()));
+#if NODE_MODULE_VERSION >= 72
 	auto platform = node::GetMainThreadMultiIsolatePlatform();
 	assert(platform != nullptr);
 	platform->AddIsolateFinishedCallback(isolate, [](void* param) {
@@ -81,6 +87,7 @@ void init(Local<Object> target) {
 		std::lock_guard<std::mutex> lock{default_isolates_mutex};
 		default_isolates.erase(it);
 	}, isolate);
+#endif
 
 	if (!did_global_init.exchange(true)) {
 		// These flags will override limits set through code. Since the main node isolate is already
