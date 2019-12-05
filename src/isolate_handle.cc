@@ -489,7 +489,9 @@ Local<Value> IsolateHandle::CreateInspectorSession() {
  * Dispose an isolate
  */
 Local<Value> IsolateHandle::Dispose() {
-	isolate->Dispose();
+	if (!isolate->Dispose()) {
+		throw js_generic_error("Isolate is already disposed");
+	}
 	return Undefined(Isolate::GetCurrent());
 }
 

@@ -39,7 +39,7 @@ IsolateEnvironment::HeapCheck::HeapCheck(IsolateEnvironment& env, bool force) :
 }
 
 void IsolateEnvironment::HeapCheck::Epilogue() {
-	if (!env.root && (force || env.extra_allocated_memory != extra_size_before)) {
+	if (!env.nodejs_isolate && (force || env.extra_allocated_memory != extra_size_before)) {
 		Isolate* isolate = env.GetIsolate();
 		HeapStatistics heap;
 		isolate->GetHeapStatistics(&heap);
@@ -178,7 +178,7 @@ void IsolateEnvironment::CheckMemoryPressure() {
 
 void IsolateEnvironment::AsyncEntry() {
 	Executor::Lock lock(*this);
-	if (!root) {
+	if (!nodejs_isolate) {
 		// Set v8 stack limit on non-default isolate. This is only needed on non-default threads while
 		// on OS X because it allocates just 512kb for each pthread stack, instead of 2mb on other
 		// systems. 512kb is lower than the default v8 stack size so JS stack overflows result in
@@ -259,22 +259,24 @@ void IsolateEnvironment::InterruptEntrySync() {
 }
 
 IsolateEnvironment::IsolateEnvironment() :
+	owned_isolates{std::make_unique<OwnedIsolates>()},
 	scheduler{*this},
 	executor{*this},
 	isolate_map{isolate_map_shared} {
+
 }
 
 void IsolateEnvironment::IsolateCtor(Isolate* isolate, Local<Context> context) {
 	this->isolate = isolate;
 	default_context.Reset(isolate, context);
-	root = true;
+	nodejs_isolate = true;
 }
 
 void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void> snapshot_blob, size_t snapshot_length) {
 	memory_limit = memory_limit_in_mb * 1024 * 1024;
 	allocator_ptr = std::make_unique<LimitedAllocator>(*this, memory_limit);
 	snapshot_blob_ptr = std::move(snapshot_blob);
-	root = false;
+	nodejs_isolate = false;
 
 	// Calculate resource constraints
 	ResourceConstraints rc;
@@ -334,10 +336,22 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void>
 	// There is no asynchronous Isolate ctor so we should throw away thread specifics in case
 	// the client always uses async methods
 	isolate->DiscardThreadSpecificMetadata();
+
+	// Save reference to this isolate in the default isolate
+	Executor::GetDefaultEnvironment().owned_isolates->write()->insert(holder);
 }
 
 IsolateEnvironment::~IsolateEnvironment() {
-	if (!root) {
+	if (nodejs_isolate) {
+		// Throw away all owned isolates when the root one dies
+		auto isolates = *owned_isolates->read(); // copy
+		for (auto& holder : isolates) {
+			holder->Dispose();
+		}
+		for (auto& holder : isolates) {
+			holder->ReleaseAndJoin();
+		}
+	} else {
 		{
 			// Grab local pointer to inspector agent with scheduler lock active
 			auto agent_ptr = [&]() {
@@ -370,6 +384,8 @@ IsolateEnvironment::~IsolateEnvironment() {
 		}
 		// Unregister from Platform
 		isolate_map->write()->erase(isolate);
+		// Unreference from default isolate
+		executor.default_executor.env.owned_isolates->write()->erase(holder);
 	}
 	// Send notification that this isolate is totally disposed
 	{
@@ -430,7 +446,7 @@ std::chrono::nanoseconds IsolateEnvironment::GetWallTime() {
 }
 
 void IsolateEnvironment::Terminate() {
-	assert(!root);
+	assert(!nodejs_isolate);
 	terminated = true;
 	{
 		Scheduler::Lock lock(scheduler);
@@ -443,7 +459,7 @@ void IsolateEnvironment::Terminate() {
 }
 
 void IsolateEnvironment::AddWeakCallback(Persistent<Object>* handle, void(*fn)(void*), void* param) {
-	if (root) {
+	if (nodejs_isolate) {
 		return;
 	}
 	auto it = weak_persistents.find(handle);
@@ -454,7 +470,7 @@ void IsolateEnvironment::AddWeakCallback(Persistent<Object>* handle, void(*fn)(v
 }
 
 void IsolateEnvironment::RemoveWeakCallback(Persistent<Object>* handle) {
-	if (root) {
+	if (nodejs_isolate) {
 		return;
 	}
 	auto it = weak_persistents.find(handle);

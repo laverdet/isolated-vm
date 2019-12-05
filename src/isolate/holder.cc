@@ -8,13 +8,14 @@ using std::unique_ptr;
 
 namespace ivm {
 
-void IsolateHolder::Dispose() {
+auto IsolateHolder::Dispose() -> bool {
 	auto ref = std::exchange(state.write()->isolate, {});
 	if (ref) {
 		ref->Terminate();
 		ref.reset();
+		return true;
 	} else {
-		throw js_generic_error("Isolate is already disposed");
+		return false;
 	}
 }
 

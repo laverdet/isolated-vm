@@ -17,7 +17,7 @@ class IsolateHolder {
 		~IsolateHolder() = default;
 		auto operator=(const IsolateHolder&) = delete;
 
-		void Dispose();
+		auto Dispose() -> bool;
 		void ReleaseAndJoin();
 		std::shared_ptr<IsolateEnvironment> GetIsolate();
 		void ScheduleTask(std::unique_ptr<Runnable> task, bool run_inline, bool wake_isolate, bool handle_task = false);

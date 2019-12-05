@@ -106,6 +106,9 @@ class IsolateEnvironment {
 		// IsolateMap is stored in a shared_ptr to ensure access to instances while the module is being destroyed.
 		using IsolateMap = lockable_t<std::unordered_map<v8::Isolate*, IsolateEnvironment*>, true>;
 		static std::shared_ptr<IsolateMap> isolate_map_shared;
+		// Another good candidate for std::optional<>
+		using OwnedIsolates = lockable_t<std::unordered_set<std::shared_ptr<IsolateHolder>>, true>;
+		std::unique_ptr<OwnedIsolates> owned_isolates;
 		static size_t specifics_count;
 
 		v8::Isolate* isolate;
@@ -125,7 +128,7 @@ class IsolateEnvironment {
 		v8::MemoryPressureLevel memory_pressure = v8::MemoryPressureLevel::kNone;
 		bool hit_memory_limit = false;
 		bool did_adjust_heap_limit = false;
-		bool root;
+		bool nodejs_isolate;
 		std::atomic<unsigned int> remotes_count{0};
 		v8::HeapStatistics last_heap {};
 		std::shared_ptr<IsolateMap> isolate_map;
@@ -302,7 +305,7 @@ class IsolateEnvironment {
 		 * Is this the default nodejs isolate?
 		 */
 		bool IsDefault() const {
-			return root;
+			return nodejs_isolate;
 		}
 
 		/**
