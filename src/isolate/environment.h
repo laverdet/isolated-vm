@@ -104,7 +104,7 @@ class IsolateEnvironment {
 
 	private:
 		// IsolateMap is stored in a shared_ptr to ensure access to instances while the module is being destroyed.
-		using IsolateMap = lockable_t<std::unordered_map<v8::Isolate*, IsolateEnvironment*>>;
+		using IsolateMap = lockable_t<std::unordered_map<v8::Isolate*, IsolateEnvironment*>, true>;
 		static std::shared_ptr<IsolateMap> isolate_map_shared;
 		static size_t specifics_count;
 

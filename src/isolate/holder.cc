@@ -8,13 +8,8 @@ using std::unique_ptr;
 
 namespace ivm {
 
-IsolateHolder::IsolateHolder(shared_ptr<IsolateEnvironment> isolate) : isolate(std::move(isolate)) {}
-
 void IsolateHolder::Dispose() {
-	auto ref = [&]() {
-		std::lock_guard<std::mutex> lock{mutex};
-		return std::exchange(isolate, {});
-	}();
+	auto ref = std::exchange(state.write()->isolate, {});
 	if (ref) {
 		ref->Terminate();
 		ref.reset();
@@ -24,28 +19,20 @@ void IsolateHolder::Dispose() {
 }
 
 void IsolateHolder::ReleaseAndJoin() {
-	auto ref = [&]() {
-		std::lock_guard<std::mutex> lock{mutex};
-		return std::exchange(isolate, {});
-	}();
+	auto ref = std::exchange(state.write()->isolate, {});
 	ref.reset();
-	std::unique_lock<std::mutex> lock{mutex};
-	while (!is_disposed) {
+	auto lock = state.read();
+	while (!lock->is_disposed) {
 		cv.wait(lock);
 	}
 }
 
 shared_ptr<IsolateEnvironment> IsolateHolder::GetIsolate() {
-	std::lock_guard<std::mutex> lock{mutex};
-	return isolate;
+	return state.read()->isolate;
 }
 
 void IsolateHolder::ScheduleTask(unique_ptr<Runnable> task, bool run_inline, bool wake_isolate, bool handle_task) {
-	shared_ptr<IsolateEnvironment> ref;
-	{
-		std::lock_guard<std::mutex> lock{mutex};
-		ref = isolate;
-	}
+	auto ref = state.read()->isolate;
 	if (ref) {
 		if (run_inline && IsolateEnvironment::GetCurrent() == ref.get()) {
 			task->Run();

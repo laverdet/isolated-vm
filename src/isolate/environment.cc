@@ -373,8 +373,7 @@ IsolateEnvironment::~IsolateEnvironment() {
 	}
 	// Send notification that this isolate is totally disposed
 	{
-		std::lock_guard<std::mutex> lock{holder->mutex};
-		holder->is_disposed = true;
+		holder->state.write()->is_disposed = true;
 		holder->cv.notify_all();
 	}
 }
@@ -440,7 +439,7 @@ void IsolateEnvironment::Terminate() {
 		}
 	}
 	isolate->TerminateExecution();
-	holder->isolate.reset();
+	holder->state.write()->isolate.reset();
 }
 
 void IsolateEnvironment::AddWeakCallback(Persistent<Object>* handle, void(*fn)(void*), void* param) {
