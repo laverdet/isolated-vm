@@ -1,5 +1,6 @@
 #pragma once
 #include <v8.h>
+#include "../lib/lockable.h"
 #include "./runnable.h"
 #include "./v8_inspector_wrapper.h"
 #include <condition_variable>
@@ -24,10 +25,7 @@ class InspectorAgent : public v8_inspector::V8InspectorClient {
 		std::unique_ptr<v8_inspector::V8Inspector> inspector;
 		std::condition_variable cv;
 		std::mutex mutex;
-		struct {
-			std::mutex mutex;
-			std::unordered_set<InspectorSession*> active;
-		} sessions;
+		lockable_t<std::unordered_set<InspectorSession*>> active_sessions;
 		bool running = false;
 		bool terminated = false;
 

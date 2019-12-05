@@ -32,12 +32,13 @@ InspectorAgent::InspectorAgent(IsolateEnvironment& isolate) : isolate(isolate), 
  * Called right before the isolate is disposed.
  */
 InspectorAgent::~InspectorAgent() {
-	for (auto ii = sessions.active.begin(); ii != sessions.active.end(); ) {
+	auto sessions_lock = active_sessions.write();
+	for (auto ii = sessions_lock->begin(); ii != sessions_lock->end(); ) {
 		InspectorSession* session = *ii;
 		++ii;
 		session->Disconnect();
 	}
-	assert(sessions.active.empty());
+	assert(sessions_lock->empty());
 }
 
 /**
@@ -77,8 +78,7 @@ void InspectorAgent::quitMessageLoopOnPause() {
  * Connects a V8Inspector::Channel to a V8Inspector which returns an instance of V8InspectorSession.
  */
 unique_ptr<V8InspectorSession> InspectorAgent::ConnectSession(InspectorSession& session) {
-	std::lock_guard<std::mutex> lock(sessions.mutex);
-	sessions.active.insert(&session);
+	active_sessions.write()->insert(&session);
 	return inspector->connect(1, &session, StringView());
 }
 
@@ -86,8 +86,7 @@ unique_ptr<V8InspectorSession> InspectorAgent::ConnectSession(InspectorSession& 
  * Called from the session when it disconnects.
  */
 void InspectorAgent::SessionDisconnected(InspectorSession& session) {
-	std::lock_guard<std::mutex> lock(sessions.mutex);
-	assert(sessions.active.erase(&session) == 1);
+	assert(active_sessions.write()->erase(&session) == 1);
 }
 
 /**

@@ -3,6 +3,7 @@
 #include "isolate/environment.h"
 #include "isolate/node_wrapper.h"
 #include "isolate/platform_delegate.h"
+#include "lib/lockable.h"
 #include "context_handle.h"
 #include "external_copy_handle.h"
 #include "isolate_handle.h"
@@ -56,8 +57,7 @@ class LibraryHandle : public TransferableHandle {
 
 // Module entry point
 std::atomic<bool> did_global_init{false};
-std::mutex default_isolates_mutex;
-std::unordered_map<v8::Isolate*, std::shared_ptr<IsolateHolder>> default_isolates;
+lockable_t<std::unordered_map<v8::Isolate*, std::shared_ptr<IsolateHolder>>> default_isolates;
 extern "C"
 void init(Local<Object> target) {
 	// Create default isolate env
@@ -69,23 +69,20 @@ void init(Local<Object> target) {
 	}
 #endif
 	// Maybe this would happen if you include the module from `vm`?
-	assert(default_isolates.find(isolate) == default_isolates.end());
 	{
-		std::lock_guard<std::mutex> lock{default_isolates_mutex};
-		default_isolates.insert(std::make_pair(isolate, IsolateEnvironment::New(isolate, context)));
+		auto isolates = default_isolates.write();
+		assert(isolates->find(isolate) == isolates->end());
+		isolates->insert(std::make_pair(isolate, IsolateEnvironment::New(isolate, context)));
 	}
 	Unmaybe(target->Set(context, v8_symbol("ivm"), LibraryHandle::Get()));
 #if NODE_MODULE_VERSION >= 72
 	auto platform = node::GetMainThreadMultiIsolatePlatform();
 	assert(platform != nullptr);
 	platform->AddIsolateFinishedCallback(isolate, [](void* param) {
-		auto it = [&]() {
-			std::lock_guard<std::mutex> lock{default_isolates_mutex};
-			return default_isolates.find(static_cast<v8::Isolate*>(param));
-		}();
+		auto isolate = static_cast<v8::Isolate*>(param);
+		auto it = default_isolates.read()->find(isolate);
 		it->second->ReleaseAndJoin();
-		std::lock_guard<std::mutex> lock{default_isolates_mutex};
-		default_isolates.erase(it);
+		default_isolates.write()->erase(isolate); // `it` might have changed, don't use it
 	}, isolate);
 #endif
 
