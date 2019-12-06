@@ -17,6 +17,7 @@
 #include <mutex>
 #include <queue>
 #include <unordered_map>
+#include <set>
 #include <vector>
 
 namespace ivm {
@@ -106,15 +107,21 @@ class IsolateEnvironment {
 		// IsolateMap is stored in a shared_ptr to ensure access to instances while the module is being destroyed.
 		using IsolateMap = lockable_t<std::unordered_map<v8::Isolate*, IsolateEnvironment*>, true>;
 		static std::shared_ptr<IsolateMap> isolate_map_shared;
-		// Another good candidate for std::optional<>
-		using OwnedIsolates = lockable_t<std::unordered_set<std::shared_ptr<IsolateHolder>>, true>;
+		template <class Type>
+		struct WeakPtrCompare {
+			bool operator()(const std::weak_ptr<Type>& left, const std::weak_ptr<Type>& right) const {
+				return left.owner_before(right);
+			}
+		};
+		// Another good candidate for std::optional<> (because this is only used by the root isolate)
+		using OwnedIsolates = lockable_t<std::set<std::weak_ptr<IsolateHolder>, WeakPtrCompare<IsolateHolder>>, true>;
 		std::unique_ptr<OwnedIsolates> owned_isolates;
 		static size_t specifics_count;
 
 		v8::Isolate* isolate;
 		Scheduler scheduler;
 		Executor executor;
-		std::shared_ptr<IsolateHolder> holder;
+		std::weak_ptr<IsolateHolder> holder;
 		std::unique_ptr<class InspectorAgent> inspector_agent;
 		v8::Persistent<v8::Context> default_context;
 		std::unique_ptr<v8::ArrayBuffer::Allocator> allocator_ptr;
@@ -207,7 +214,7 @@ class IsolateEnvironment {
 		 * Return shared_ptr to current IsolateHolder
 		 */
 		static std::shared_ptr<IsolateHolder> GetCurrentHolder() {
-			return Executor::GetCurrentEnvironment()->holder;
+			return Executor::GetCurrentEnvironment()->holder.lock();
 		}
 
 		/**

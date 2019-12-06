@@ -71,9 +71,8 @@ class Scheduler {
 				Status status = Status::Waiting;
 				// following properties are only used on default isolate
 				uv_loop_t* loop = nullptr;
-				uv_async_t uv_async{};
+				uv_async_t* uv_async = nullptr;
 				std::atomic<int> uv_ref_count{0};
-				bool disposed = false;
 		};
 
 	public:

@@ -22,7 +22,8 @@ Scheduler::Implementation::Implementation(IsolateEnvironment& env) :
 		}()} {
 	if (this == &default_scheduler) {
 		loop = node::GetCurrentEventLoop(v8::Isolate::GetCurrent());
-		uv_async_init(loop, &uv_async, [](uv_async_t* async) {
+		uv_async = new uv_async_t;
+		uv_async_init(loop, uv_async, [](uv_async_t* async) {
 			auto& scheduler = *static_cast<Scheduler::Implementation*>(async->data);
 			auto ref = [&]() {
 				// Lock is required to access env_ref on the default scheduler but a non-default scheduler
@@ -34,28 +35,24 @@ Scheduler::Implementation::Implementation(IsolateEnvironment& env) :
 			if (ref) {
 				ref->AsyncEntry();
 				if (--scheduler.uv_ref_count == 0) {
-					uv_unref(reinterpret_cast<uv_handle_t*>(&scheduler.uv_async));
+					uv_unref(reinterpret_cast<uv_handle_t*>(scheduler.uv_async));
 				}
 			} else {
 				if (scheduler.uv_ref_count.load() == 0) {
-					uv_unref(reinterpret_cast<uv_handle_t*>(&scheduler.uv_async));
+					uv_unref(reinterpret_cast<uv_handle_t*>(scheduler.uv_async));
 				}
 			}
 		});
-		uv_async.data = this;
-		uv_unref(reinterpret_cast<uv_handle_t*>(&uv_async));
+		uv_async->data = this;
+		uv_unref(reinterpret_cast<uv_handle_t*>(uv_async));
 	}
 }
 
 Scheduler::Implementation::~Implementation() {
 	if (this == &default_scheduler) {
-		uv_close(reinterpret_cast<uv_handle_t*>(&uv_async), [](uv_handle_t* handle) {
-			auto& scheduler = *static_cast<Scheduler::Implementation*>(handle->data);
-			scheduler.disposed = true;
+		uv_close(reinterpret_cast<uv_handle_t*>(uv_async), [](uv_handle_t* handle) {
+			delete handle;
 		});
-		do {
-			uv_run(loop, UV_RUN_ONCE);
-		} while (!disposed);
 	}
 }
 
@@ -93,7 +90,7 @@ auto Scheduler::Implementation::WakeIsolate(std::shared_ptr<IsolateEnvironment> 
 		env_ref = std::move(isolate_ptr);
 		IncrementUvRef();
 		if (this == &default_scheduler) {
-			uv_async_send(&uv_async);
+			uv_async_send(uv_async);
 		} else {
 			thread_pool.exec(thread_affinity, [](bool pool_thread, void* param) {
 				auto& scheduler = *static_cast<Scheduler::Implementation*>(param);
@@ -104,7 +101,7 @@ auto Scheduler::Implementation::WakeIsolate(std::shared_ptr<IsolateEnvironment> 
 				}
 				if (--scheduler.default_scheduler.uv_ref_count == 0) {
 					// Wake up the libuv loop so we can unref the async handle from the default thread.
-					uv_async_send(&scheduler.default_scheduler.uv_async);
+					uv_async_send(scheduler.default_scheduler.uv_async);
 				}
 			}, this);
 		}
@@ -118,16 +115,16 @@ void Scheduler::Implementation::IncrementUvRef() {
 	if (++default_scheduler.uv_ref_count == 1) {
 		// Only the default thread should be able to reach this branch
 		assert(Executor::IsDefaultThread());
-		uv_ref(reinterpret_cast<uv_handle_t*>(&default_scheduler.uv_async));
+		uv_ref(reinterpret_cast<uv_handle_t*>(default_scheduler.uv_async));
 	}
 }
 
 void Scheduler::Implementation::DecrementUvRef() {
 	if (--default_scheduler.uv_ref_count == 0) {
 		if (Executor::IsDefaultThread()) {
-			uv_unref(reinterpret_cast<uv_handle_t*>(&default_scheduler.uv_async));
+			uv_unref(reinterpret_cast<uv_handle_t*>(default_scheduler.uv_async));
 		} else {
-			uv_async_send(&default_scheduler.uv_async);
+			uv_async_send(default_scheduler.uv_async);
 		}
 	}
 }

@@ -57,7 +57,9 @@ class LibraryHandle : public TransferableHandle {
 
 // Module entry point
 std::atomic<bool> did_global_init{false};
-lockable_t<std::unordered_map<v8::Isolate*, std::shared_ptr<IsolateHolder>>> default_isolates;
+// TODO: This is here so that these dtors don't get called when the module is being torn down. They
+// end up invoking a bunch of v8 functions which fail because nodejs already shut down the platform.
+auto default_isolates = new lockable_t<std::unordered_map<v8::Isolate*, std::shared_ptr<IsolateHolder>>>;
 extern "C"
 void init(Local<Object> target) {
 	// Create default isolate env
@@ -70,21 +72,19 @@ void init(Local<Object> target) {
 #endif
 	// Maybe this would happen if you include the module from `vm`?
 	{
-		auto isolates = default_isolates.write();
+		auto isolates = default_isolates->write();
 		assert(isolates->find(isolate) == isolates->end());
 		isolates->insert(std::make_pair(isolate, IsolateEnvironment::New(isolate, context)));
 	}
 	Unmaybe(target->Set(context, v8_symbol("ivm"), LibraryHandle::Get()));
-#if NODE_MODULE_VERSION >= 72
-	auto platform = node::GetMainThreadMultiIsolatePlatform();
-	assert(platform != nullptr);
-	platform->AddIsolateFinishedCallback(isolate, [](void* param) {
+
+	node::AddEnvironmentCleanupHook(isolate, [](void* param) {
 		auto isolate = static_cast<v8::Isolate*>(param);
-		auto it = default_isolates.read()->find(isolate);
+		auto it = default_isolates->read()->find(isolate);
 		it->second->ReleaseAndJoin();
-		default_isolates.write()->erase(isolate); // `it` might have changed, don't use it
+		default_isolates->write()->erase(isolate); // `it` might have changed, don't use it
 	}, isolate);
-#endif
+
 
 	if (!did_global_init.exchange(true)) {
 		// These flags will override limits set through code. Since the main node isolate is already

@@ -100,7 +100,9 @@ void InspectorAgent::SendInterrupt(unique_ptr<Runnable> task) {
 		return;
 	}
 	// Grab pointer because it's needed for WakeIsolate
-	shared_ptr<IsolateEnvironment> ptr = isolate.holder->GetIsolate();
+	auto holder = isolate.holder.lock();
+	assert(holder);
+	auto ptr = holder->GetIsolate();
 	assert(ptr);
 	// Push interrupt onto queue
 	Scheduler::Lock scheduler_lock{isolate.scheduler};

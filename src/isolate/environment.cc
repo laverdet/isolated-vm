@@ -345,11 +345,20 @@ IsolateEnvironment::~IsolateEnvironment() {
 	if (nodejs_isolate) {
 		// Throw away all owned isolates when the root one dies
 		auto isolates = *owned_isolates->read(); // copy
-		for (auto& holder : isolates) {
-			holder->Dispose();
+		for (auto ii = isolates.begin(); ii != isolates.end(); ) {
+			auto ref = ii->lock();
+			if (ref) {
+				ref->Dispose();
+				++ii;
+			} else {
+				ii = isolates.erase(ii);
+			}
 		}
 		for (auto& holder : isolates) {
-			holder->ReleaseAndJoin();
+			auto ref = holder.lock();
+			if (ref) {
+				ref->ReleaseAndJoin();
+			}
 		}
 	} else {
 		{
@@ -389,8 +398,11 @@ IsolateEnvironment::~IsolateEnvironment() {
 	}
 	// Send notification that this isolate is totally disposed
 	{
-		holder->state.write()->is_disposed = true;
-		holder->cv.notify_all();
+		auto ref = holder.lock();
+		if (ref) {
+			ref->state.write()->is_disposed = true;
+			ref->cv.notify_all();
+		}
 	}
 }
 
@@ -455,7 +467,10 @@ void IsolateEnvironment::Terminate() {
 		}
 	}
 	isolate->TerminateExecution();
-	holder->state.write()->isolate.reset();
+	auto ref = holder.lock();
+	if (ref) {
+		ref->state.write()->isolate.reset();
+	}
 }
 
 void IsolateEnvironment::AddWeakCallback(Persistent<Object>* handle, void(*fn)(void*), void* param) {
@@ -486,7 +501,7 @@ shared_ptr<IsolateHolder> IsolateEnvironment::LookupIsolate(Isolate* isolate) {
 	if (it == lock->end()) {
 		return nullptr;
 	} else {
-		return it->second->holder;
+		return it->second->holder.lock();
 	}
 }
 

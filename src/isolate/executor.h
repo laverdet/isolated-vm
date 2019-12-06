@@ -3,6 +3,7 @@
 #include <chrono>
 #include <mutex>
 #include <thread>
+#include "holder.h"
 
 namespace ivm {
 class InspectorAgent;
