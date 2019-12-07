@@ -542,6 +542,21 @@ ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const Local<ArrayBuffer>& handl
 }
 
 unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Local<ArrayBuffer>& handle) {
+	auto Detach = [](Local<ArrayBuffer> handle) {
+#if V8_AT_LEAST(7, 3, 89)
+		handle->Detach();
+#else
+		handle->Neuter();
+#endif
+	};
+	auto IsDetachable = [](Local<ArrayBuffer> handle) {
+#if V8_AT_LEAST(7, 3, 89)
+		return handle->IsDetachable();
+#else
+		return handle->IsNeuterable();
+#endif
+	};
+
 	size_t length = handle->ByteLength();
 	if (length == 0) {
 		throw js_generic_error("Array buffer is invalid");
@@ -549,10 +564,10 @@ unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Loca
 	if (handle->IsExternal()) {
 		// Buffer lifespan is not handled by v8.. attempt to recover from isolated-vm
 		auto ptr = reinterpret_cast<Holder*>(handle->GetAlignedPointerFromInternalField(0));
-		if (!handle->IsNeuterable() || ptr == nullptr || ptr->magic != Holder::kMagic) { // dangerous
+		if (!IsDetachable(handle) || ptr == nullptr || ptr->magic != Holder::kMagic) { // dangerous
 			throw js_generic_error("Array buffer cannot be externalized");
 		}
-		handle->Neuter();
+		Detach(handle);
 		IsolateEnvironment::GetCurrent()->extra_allocated_memory -= length;
 		// No race conditions here because only one thread can access `Holder`
 		return std::make_unique<ExternalCopyArrayBuffer>(std::move(ptr->cc_ptr), length);
@@ -563,9 +578,9 @@ unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Loca
 	if (allocator != nullptr) {
 		allocator->AdjustAllocatedSize(-static_cast<ptrdiff_t>(length));
 	}
-	assert(handle->IsNeuterable());
+	assert(IsDetachable(handle));
 	auto data_ptr = shared_ptr<void>(contents.Data(), std::free);
-	handle->Neuter();
+	Detach(handle);
 	return std::make_unique<ExternalCopyArrayBuffer>(std::move(data_ptr), length);
 }
 
