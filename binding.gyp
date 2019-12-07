@@ -62,6 +62,7 @@
 				'src/isolate/executor.cc',
 				'src/isolate/holder.cc',
 				'src/isolate/inspector.cc',
+				'src/isolate/platform_delegate.cc',
 				'src/isolate/scheduler.cc',
 				'src/isolate/stack_trace.cc',
 				'src/isolate/three_phase_task.cc',

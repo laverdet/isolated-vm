@@ -2,6 +2,7 @@
 #include "executor.h"
 #include "node_wrapper.h"
 #include "scheduler.h"
+#include <memory>
 #include <v8.h>
 #include <utility>
 
@@ -127,6 +128,13 @@ void Scheduler::Implementation::DecrementUvRef() {
 			uv_async_send(default_scheduler.uv_async);
 		}
 	}
+}
+
+/**
+ * Scheduler (unlocked) implementation
+ */
+auto Scheduler::GetForegroundTaskRunner() -> std::shared_ptr<v8::TaskRunner> {
+	return impl.env.GetTaskRunner();
 }
 
 void Scheduler::IncrementUvRef(const std::shared_ptr<IsolateHolder>& holder) {

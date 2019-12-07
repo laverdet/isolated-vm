@@ -1,11 +1,16 @@
 #pragma once
-#include <v8.h>
-#include <v8-platform.h>
-#include "environment.h"
+#include "../lib/lockable.h"
+#include "node_wrapper.h"
 #include "v8_version.h"
-#include "../lib/timer.h"
-#include <vector>
+#include <v8-platform.h>
+#include <mutex>
+#include <unordered_map>
 
+#if NODE_MODULE_VERSION < 81
+#define IVM_USE_PLATFORM_DELEGATE_HACK 1
+#endif
+
+#if IVM_USE_PLATFORM_DELEGATE_HACK
 namespace v8 {
 namespace internal {
 class V8 {
@@ -14,61 +19,73 @@ class V8 {
 };
 } // namespace internal
 } // namespace v8
+#endif
 
 namespace ivm {
 
+#if NODE_MODULE_VERSION < 81
+class IsolatePlatformDelegate {
+	public:
+		virtual std::shared_ptr<v8::TaskRunner> GetForegroundTaskRunner() = 0;
+		virtual bool IdleTasksEnabled() = 0;
+};
+#else
+using IsolatePlatformDelegate = node::IsolatePlatformDelegate;
+#endif
+
+// Normalize this interface from v8
+class TaskRunner : public v8::TaskRunner {
+	public:
+		// Methods for v8::TaskRunner
+		void PostTask(std::unique_ptr<v8::Task> task) override = 0;
+		void PostDelayedTask(std::unique_ptr<v8::Task> task, double delay_in_seconds) override = 0;
+		void PostIdleTask(std::unique_ptr<v8::IdleTask> /*task*/) final { std::terminate(); }
+		// Can't be final because symbol is also used in IsolatePlatformDelegate
+		bool IdleTasksEnabled() override { return false; };
+
+#if V8_AT_LEAST(7, 1, 316)
+		bool NonNestableTasksEnabled() const final { return true; }
+#else
+		// Added in e8faae72
+		virtual void PostNonNestableTask(std::unique_ptr<v8::Task> task) = 0;
+#endif
+
+#if V8_AT_LEAST(7, 4, 197)
+		// Added in d342122f
+		void PostNonNestableDelayedTask(std::unique_ptr<v8::Task> task, double delay_in_seconds) final {
+			// Delayed tasks are always non-nested
+			PostDelayedTask(std::move(task), delay_in_seconds);
+		}
+		bool NonNestableDelayedTasksEnabled() const final { return true; }
+#endif
+};
+
+#if IVM_USE_PLATFORM_DELEGATE_HACK
 class PlatformDelegate : public v8::Platform {
-	public:
-		struct TmpIsolateScope;
-	private:
-		v8::Platform* node_platform;
-		TmpIsolateScope* tmp_scope = nullptr;
+#else
+class PlatformDelegate {
+#endif
 
 	public:
-		// TODO: This stuff isn't thread safe but since people tend to create isolates from the same
-		// thread it probably isn't a big issue (until it all of a sudden is).
-		struct TmpIsolateScope {
-			v8::Isolate* isolate = nullptr;
-			std::shared_ptr<std::vector<std::unique_ptr<v8::Task>>> foreground_tasks;
-			explicit TmpIsolateScope() : foreground_tasks(std::make_shared<std::vector<std::unique_ptr<v8::Task>>>()) {
-				PlatformDelegate::DelegateInstance().tmp_scope = this;
-			}
-			TmpIsolateScope(TmpIsolateScope&) = delete;
-			TmpIsolateScope& operator=(const TmpIsolateScope&) = delete;
-
-			~TmpIsolateScope() {
-				PlatformDelegate::DelegateInstance().tmp_scope = nullptr;
-			}
-
-			bool IsIsolate(v8::Isolate* isolate) {
-				return this->isolate == nullptr || this->isolate == isolate;
-			}
-
-			void SetIsolate(v8::Isolate* isolate) {
-				this->isolate = isolate;
-			}
-
-			void FlushTasks() {
-				auto tasks = std::move(*foreground_tasks);
-				for (auto& task : tasks) {
-					task->Run();
-				}
-			}
-		};
-
-		PlatformDelegate(v8::Platform* node_platform) : node_platform(node_platform) {}
-
-		static PlatformDelegate& DelegateInstance() {
-			static PlatformDelegate delegate(v8::internal::V8::GetCurrentPlatform());
-			return delegate;
+		PlatformDelegate() = default;
+		explicit PlatformDelegate(node::MultiIsolatePlatform* node_platform) : node_platform{node_platform} {}
+		PlatformDelegate(const PlatformDelegate&) = delete;
+		PlatformDelegate(PlatformDelegate&&) = delete;
+		~PlatformDelegate() = default; // NOLINT(modernize-use-override) -- this only sometimes inherits from v8::Platform
+		auto operator=(const PlatformDelegate&) = delete;
+		auto operator=(PlatformDelegate&& delegate) noexcept -> PlatformDelegate& {
+			node_platform = std::exchange(delegate.node_platform, nullptr);
+#if IVM_USE_PLATFORM_DELEGATE_HACK
+			*isolate_map.write() = std::move(*delegate.isolate_map.write());
+#endif
+			return *this;
 		}
 
-		static void InitializeDelegate() {
-			PlatformDelegate& instance = DelegateInstance();
-			v8::V8::ShutdownPlatform();
-			v8::V8::InitializePlatform(&instance);
-		}
+		static void InitializeDelegate();
+		static void RegisterIsolate(v8::Isolate* isolate, IsolatePlatformDelegate* isolate_delegate);
+		static void UnregisterIsolate(v8::Isolate* isolate);
 
+#if IVM_USE_PLATFORM_DELEGATE_HACK
 		/**
 		 * ~ An Abridged History of v8's threading and task API ~
 		 *
@@ -117,7 +134,6 @@ class PlatformDelegate : public v8::Platform {
 		 * - Updates v8 to 7.0.276.38
 		 *
 		 */
-
 		int NumberOfWorkerThreads() final {
 			return node_platform->NumberOfWorkerThreads();
 		}
@@ -128,7 +144,6 @@ class PlatformDelegate : public v8::Platform {
 		}
 #else
 		void CallOnBackgroundThread(v8::Task* task, ExpectedRuntime /* expected_runtime */) final {
-			// TODO: Properly count these tasks against isolate timers. How common are background tasks??
 			node_platform->CallOnWorkerThread(std::unique_ptr<v8::Task>(task));
 		}
 #endif
@@ -139,114 +154,22 @@ class PlatformDelegate : public v8::Platform {
 		}
 #endif
 
-	private:
-		// nb: The v8 documentation says that methods on this object may be called from any thread.
-		class ForegroundTaskRunner : public v8::TaskRunner {
-			private:
-				std::weak_ptr<IsolateHolder> holder;
-
-			public:
-				explicit ForegroundTaskRunner(const std::shared_ptr<IsolateHolder>& holder) : holder(holder) {}
-
-				void PostTask(std::unique_ptr<v8::Task> task) final {
-					auto ref = holder.lock();
-					if (ref) {
-						ref->ScheduleTask(std::move(task), false, false, true);
-					}
-				}
-
-				void PostDelayedTask(std::unique_ptr<v8::Task> task, double delay_in_seconds) final {
-					// wait_detached erases the type of the lambda into a std::function which must be
-					// copyable. The unique_ptr is store in a shared pointer so ownership can be handled correctly.
-					auto shared_task = std::make_shared<std::unique_ptr<v8::Task>>(std::move(task));
-					auto holder = this->holder;
-					timer_t::wait_detached(static_cast<uint32_t>(delay_in_seconds * 1000), [holder, shared_task](void* next) {
-						auto ref = holder.lock();
-						if (ref) {
-							// Don't wake the isolate because that will affect the libuv ref/unref stuff. Instead,
-							// if this isolate is not running then whatever task v8 wanted to run will fire first
-							// thing next time the isolate is awake.
-							ref->ScheduleTask(std::move(*shared_task), false, false, true);
-						}
-						timer_t::chain(next);
-					});
-				}
-
-				void PostIdleTask(std::unique_ptr<v8::IdleTask> /* task */) final {
-					std::terminate();
-				}
-
-				bool IdleTasksEnabled() final {
-					return false;
-				}
-		};
-
-		class TmpForegroundTaskRunner : public v8::TaskRunner {
-			private:
-				std::shared_ptr<std::vector<std::unique_ptr<v8::Task>>> tasks;
-
-			public:
-				explicit TmpForegroundTaskRunner(std::shared_ptr<std::vector<std::unique_ptr<v8::Task>>> tasks) : tasks(std::move(tasks)) {}
-
-				void PostTask(std::unique_ptr<v8::Task> task) final {
-					tasks->push_back(std::move(task));
-				}
-
-				void PostDelayedTask(std::unique_ptr<v8::Task> task, double /* delay_in_seconds */) final {
-					tasks->push_back(std::move(task));
-				}
-
-				void PostIdleTask(std::unique_ptr<v8::IdleTask> /* task */) final {
-					std::terminate();
-				}
-
-				bool IdleTasksEnabled() final {
-					return false;
-				}
-		};
-
-	public:
 		std::shared_ptr<v8::TaskRunner> GetForegroundTaskRunner(v8::Isolate* isolate) final {
-			auto s_isolate = IsolateEnvironment::LookupIsolate(isolate);
-			if (s_isolate) {
-				// We could further assert that IsolateEnvironment::GetCurrent() == s_isolate
-				// TODO: Don't make a new runner each time
-				return std::make_shared<ForegroundTaskRunner>(s_isolate);
-			} else if (tmp_scope != nullptr && tmp_scope->IsIsolate(isolate)) {
-				return std::make_shared<TmpForegroundTaskRunner>(tmp_scope->foreground_tasks);
-			} else {
+			auto lock = isolate_map.read();
+			auto ii = lock->find(isolate);
+			if (ii == lock->end()) {
 				return node_platform->GetForegroundTaskRunner(isolate);
+			} else {
+				return ii->second->GetForegroundTaskRunner();
 			}
 		}
 
 		void CallOnForegroundThread(v8::Isolate* isolate, v8::Task* task) final {
-			auto s_isolate = IsolateEnvironment::LookupIsolate(isolate);
-			if (s_isolate) {
-				// wakeup == false but it shouldn't matter because this isolate is already awake
-				s_isolate->ScheduleTask(std::unique_ptr<v8::Task>{task}, false, false, true);
-			} else if (tmp_scope != nullptr && tmp_scope->IsIsolate(isolate)) {
-				tmp_scope->foreground_tasks->push_back(std::unique_ptr<v8::Task>{task});
-			} else {
-				node_platform->CallOnForegroundThread(isolate, task);
-			}
+			GetForegroundTaskRunner(isolate)->PostTask(std::unique_ptr<v8::Task>{task});
 		}
 
 		void CallDelayedOnForegroundThread(v8::Isolate* isolate, v8::Task* task, double delay_in_seconds) final {
-			auto s_isolate = IsolateEnvironment::LookupIsolate(isolate);
-			if (s_isolate) {
-				timer_t::wait_detached(static_cast<uint32_t>(delay_in_seconds * 1000), [task, s_isolate](void* next) {
-					auto holder = std::unique_ptr<v8::Task>{task};
-					// Don't wake the isolate because that will affect the libuv ref/unref stuff. Instead,
-					// if this isolate is not running then whatever task v8 wanted to run will fire first
-					// thing next time the isolate is awake.
-					s_isolate->ScheduleTask(std::move(holder), false, false, true);
-					timer_t::chain(next);
-				});
-			} else if (tmp_scope != nullptr && tmp_scope->IsIsolate(isolate)) {
-				tmp_scope->foreground_tasks->push_back(std::unique_ptr<v8::Task>{task});
-			} else {
-				node_platform->CallDelayedOnForegroundThread(isolate, task, delay_in_seconds);
-			}
+			GetForegroundTaskRunner(isolate)->PostDelayedTask(std::unique_ptr<v8::Task>{task}, delay_in_seconds);
 		}
 
 #if NODE_MODULE_OR_V8_AT_LEAST(67, 6, 8, 242)
@@ -264,11 +187,7 @@ class PlatformDelegate : public v8::Platform {
 		}
 
 		bool IdleTasksEnabled(v8::Isolate* isolate) final {
-			if (!IsolateEnvironment::LookupIsolate(isolate)) {
-				return node_platform->IdleTasksEnabled(isolate);
-			} else {
-				return false;
-			}
+			return GetForegroundTaskRunner(isolate)->IdleTasksEnabled();
 		}
 
 		// 11ba497c made this implementation required, 837b8016 added `SystemClockTimeMillis()`
@@ -283,6 +202,13 @@ class PlatformDelegate : public v8::Platform {
 		v8::TracingController* GetTracingController() final {
 			return node_platform->GetTracingController();
 		}
+
+	private:
+		lockable_t<std::unordered_map<v8::Isolate*, IsolatePlatformDelegate*>> isolate_map;
+#endif
+
+	private:
+		node::MultiIsolatePlatform* node_platform = nullptr;
 };
 
 } // namespace ivm

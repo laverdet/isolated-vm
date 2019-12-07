@@ -5,12 +5,16 @@
 #include "script_handle.h"
 #include "module_handle.h"
 #include "session_handle.h"
+#include "lib/lockable.h"
 #include "isolate/allocator.h"
 #include "isolate/functor_runners.h"
 #include "isolate/platform_delegate.h"
 #include "isolate/remote_handle.h"
 #include "isolate/three_phase_task.h"
 #include "isolate/v8_version.h"
+#include "v8-platform.h"
+#include <deque>
+#include <memory>
 
 using namespace v8;
 using std::shared_ptr;
@@ -595,6 +599,49 @@ static StartupData SerializeInternalFieldsCallback(Local<Object> /*holder*/, int
 
 Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLocal<String> warmup_handle) {
 
+	// Simple platform delegate and task queue
+	using TaskDeque = lockable_t<std::deque<std::unique_ptr<v8::Task>>>;
+	class SnapshotPlatformDelegate :
+			public IsolatePlatformDelegate, public TaskRunner,
+			public std::enable_shared_from_this<SnapshotPlatformDelegate> {
+
+		public:
+			explicit SnapshotPlatformDelegate(TaskDeque& tasks) : tasks{tasks} {}
+
+			// v8 will continually post delayed tasks so we cut it off when work is done
+			void DoneWithWork() {
+				done = true;
+			}
+
+			// Methods for IsolatePlatformDelegate
+			auto GetForegroundTaskRunner() -> std::shared_ptr<v8::TaskRunner> final {
+			 return shared_from_this();
+			}
+			bool IdleTasksEnabled() final {
+				return false;
+			}
+
+			// Methods for v8::TaskRunner
+			void PostTask(std::unique_ptr<v8::Task> task) final {
+				tasks.write()->push_back(std::move(task));
+			}
+			void PostNonNestableTask(std::unique_ptr<v8::Task> task) final {
+				PostTask(std::move(task));
+			}
+			void PostDelayedTask(std::unique_ptr<v8::Task> task, double /*delay_in_seconds*/) final {
+				if (!done) {
+					PostTask(std::move(task));
+				}
+			}
+
+		private:
+			lockable_t<std::deque<std::unique_ptr<v8::Task>>>& tasks;
+			bool done = false;
+	};
+
+	TaskDeque tasks;
+	auto delegate = std::make_shared<SnapshotPlatformDelegate>(tasks);
+
 	// Copy embed scripts and warmup script from outer isolate
 	std::vector<std::pair<ExternalCopyString, ScriptOriginHolder>> scripts;
 	Isolate* isolate = Isolate::GetCurrent();
@@ -627,10 +674,16 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 	unique_ptr<const char> snapshot_data_ptr;
 	shared_ptr<ExternalCopy> error;
 	{
-		PlatformDelegate::TmpIsolateScope delegate_scope;
-		SnapshotCreator snapshot_creator;
-		Isolate* isolate = snapshot_creator.GetIsolate();
-		delegate_scope.SetIsolate(isolate);
+		Isolate* isolate;
+#if V8_AT_LEAST(6, 8, 57)
+		isolate = isolate = Isolate::Allocate();
+		PlatformDelegate::RegisterIsolate(isolate, delegate.get());
+		SnapshotCreator snapshot_creator{isolate};
+#else
+		SnapshotCreator snapshot_creator{isolate};
+		isolate = snapshot_creator.GetIsolate();
+		PlatformDelegate::RegisterIsolate(isolate, delegate.get());
+#endif
 		{
 			Locker locker(isolate);
 			Isolate::Scope isolate_scope(isolate);
@@ -671,12 +724,31 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 				error = std::move(error_inner);
 			});
 			isolate->ContextDisposedNotification(false);
-			delegate_scope.FlushTasks();
+
+			// Run all queued tasks
+			delegate->DoneWithWork();
+			while (true) {
+				auto task = [&]() -> std::unique_ptr<v8::Task> {
+					auto lock = tasks.write();
+					if (lock->empty()) {
+						return nullptr;
+					}
+					auto task = std::move(lock->front());
+					lock->pop_front();
+					return task;
+				}();
+				if (task) {
+					task->Run();
+				} else {
+					break;
+				}
+			}
 		}
 		// nb: Snapshot must be created even in the error case, because `~SnapshotCreator` will crash if
 		// you don't
 		snapshot = snapshot_creator.CreateBlob(SnapshotCreator::FunctionCodeHandling::kKeep);
 		snapshot_data_ptr.reset(snapshot.data);
+		PlatformDelegate::UnregisterIsolate(isolate);
 	}
 
 	// Export to outer scope

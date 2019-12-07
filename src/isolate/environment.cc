@@ -59,7 +59,6 @@ void IsolateEnvironment::HeapCheck::Epilogue() {
  * IsolateEnvironment implementation
  */
 size_t IsolateEnvironment::specifics_count = 0;
-std::shared_ptr<IsolateEnvironment::IsolateMap> IsolateEnvironment::isolate_map_shared = std::make_shared<IsolateMap>();
 
 void IsolateEnvironment::OOMErrorCallback(const char* location, bool is_heap_oom) {
 	fprintf(stderr, "%s\nis_heap_oom = %d\n\n\n", location, static_cast<int>(is_heap_oom));
@@ -261,8 +260,7 @@ void IsolateEnvironment::InterruptEntrySync() {
 IsolateEnvironment::IsolateEnvironment() :
 	owned_isolates{std::make_unique<OwnedIsolates>()},
 	scheduler{*this},
-	executor{*this},
-	isolate_map{isolate_map_shared} {
+	executor{*this} {
 
 }
 
@@ -302,13 +300,14 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void>
 		startup_data.data = reinterpret_cast<char*>(snapshot_blob_ptr.get());
 		startup_data.raw_size = snapshot_length;
 	}
+	task_runner = std::make_shared<IsolateTaskRunner>(holder.lock()->GetIsolate());
 #if V8_AT_LEAST(6, 8, 57)
 	isolate = Isolate::Allocate();
-	isolate_map->write()->insert(std::make_pair(isolate, this));
+	PlatformDelegate::RegisterIsolate(isolate, &scheduler);
 	Isolate::Initialize(isolate, create_params);
 #else
 	isolate = Isolate::New(create_params);
-	isolate_map->write()->insert(std::make_pair(isolate, this));
+	PlatformDelegate::RegisterIsolate(isolate, &scheduler);
 #endif
 	// Workaround for bug in snapshot deserializer in v8 in nodejs v10.x
 	isolate->SetHostImportModuleDynamicallyCallback(nullptr);
@@ -392,7 +391,7 @@ IsolateEnvironment::~IsolateEnvironment() {
 			isolate->Dispose();
 		}
 		// Unregister from Platform
-		isolate_map->write()->erase(isolate);
+		PlatformDelegate::UnregisterIsolate(isolate);
 		// Unreference from default isolate
 		executor.default_executor.env.owned_isolates->write()->erase(holder);
 	}
@@ -493,16 +492,6 @@ void IsolateEnvironment::RemoveWeakCallback(Persistent<Object>* handle) {
 		throw std::logic_error("Weak callback doesn't exist");
 	}
 	weak_persistents.erase(it);
-}
-
-shared_ptr<IsolateHolder> IsolateEnvironment::LookupIsolate(Isolate* isolate) {
-	auto lock = isolate_map_shared->read();
-	auto it = lock->find(isolate);
-	if (it == lock->end()) {
-		return nullptr;
-	} else {
-		return it->second->holder.lock();
-	}
 }
 
 } // namespace ivm

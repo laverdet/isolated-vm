@@ -1,9 +1,11 @@
 #pragma once
+#include "platform_delegate.h"
 #include "runnable.h"
 #include "../lib/thread_pool.h"
 #include <uv.h>
 #include <atomic>
 #include <condition_variable>
+#include <memory>
 #include <mutex>
 #include <queue>
 
@@ -22,7 +24,7 @@ auto ExchangeDefault(Type& container) {
  * Keeps track of tasks an isolate needs to run and manages its run state (running or waiting).
  * This does all the interaction with libuv async and the thread pool.
  */
-class Scheduler {
+class Scheduler : IsolatePlatformDelegate {
 	friend IsolateEnvironment;
 	public:
 		class AsyncWait;
@@ -80,6 +82,10 @@ class Scheduler {
 		Scheduler(const Scheduler&) = delete;
 		~Scheduler() = default;
 		auto operator= (const Scheduler&) = delete;
+
+		// IsolatePlatformDelegate overrides
+		auto GetForegroundTaskRunner() -> std::shared_ptr<v8::TaskRunner> final;
+		bool IdleTasksEnabled() final { return false; }
 
 		// Used to ref/unref the uv handle from C++ API
 		static void IncrementUvRef(const std::shared_ptr<IsolateHolder>& holder);

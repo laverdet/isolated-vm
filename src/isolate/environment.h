@@ -104,9 +104,6 @@ class IsolateEnvironment {
 		};
 
 	private:
-		// IsolateMap is stored in a shared_ptr to ensure access to instances while the module is being destroyed.
-		using IsolateMap = lockable_t<std::unordered_map<v8::Isolate*, IsolateEnvironment*>, true>;
-		static std::shared_ptr<IsolateMap> isolate_map_shared;
 		template <class Type>
 		struct WeakPtrCompare {
 			bool operator()(const std::weak_ptr<Type>& left, const std::weak_ptr<Type>& right) const {
@@ -122,6 +119,7 @@ class IsolateEnvironment {
 		Scheduler scheduler;
 		Executor executor;
 		std::weak_ptr<IsolateHolder> holder;
+		std::shared_ptr<IsolateTaskRunner> task_runner;
 		std::unique_ptr<class InspectorAgent> inspector_agent;
 		v8::Persistent<v8::Context> default_context;
 		std::unique_ptr<v8::ArrayBuffer::Allocator> allocator_ptr;
@@ -138,7 +136,6 @@ class IsolateEnvironment {
 		bool nodejs_isolate;
 		std::atomic<unsigned int> remotes_count{0};
 		v8::HeapStatistics last_heap {};
-		std::shared_ptr<IsolateMap> isolate_map;
 		v8::Persistent<v8::Value> rejected_promise_error;
 
 		std::vector<std::unique_ptr<v8::Eternal<v8::Data>>> specifics;
@@ -217,6 +214,14 @@ class IsolateEnvironment {
 			return Executor::GetCurrentEnvironment()->holder.lock();
 		}
 
+		auto GetScheduler() -> Scheduler& {
+			return scheduler;
+		}
+
+		auto GetTaskRunner() -> const std::shared_ptr<IsolateTaskRunner>& {
+			return task_runner;
+		}
+
 		/**
 		 * Convenience operators to work with underlying isolate
 		 */
@@ -285,6 +290,9 @@ class IsolateEnvironment {
 		 */
 		InspectorAgent* GetInspectorAgent() const;
 
+		// Return IsolateHolder
+		auto GetHolder() { return holder; }
+
 		/**
 		 * Check memory limit flag
 		 */
@@ -340,11 +348,6 @@ class IsolateEnvironment {
 		 */
 		void AddWeakCallback(v8::Persistent<v8::Object>* handle, void(*fn)(void*), void* param);
 		void RemoveWeakCallback(v8::Persistent<v8::Object>* handle);
-
-		/**
-		 * Given a v8 isolate this will find the IsolateEnvironment instance, if any, that belongs to it.
-		 */
-		static std::shared_ptr<IsolateHolder> LookupIsolate(v8::Isolate* isolate);
 };
 
 } // namespace ivm

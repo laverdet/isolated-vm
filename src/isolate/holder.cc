@@ -1,10 +1,9 @@
 #include "holder.h"
 #include "environment.h"
+#include "scheduler.h"
 #include "util.h"
+#include "../lib/timer.h"
 #include <utility>
-
-using std::shared_ptr;
-using std::unique_ptr;
 
 namespace ivm {
 
@@ -28,11 +27,11 @@ void IsolateHolder::ReleaseAndJoin() {
 	}
 }
 
-shared_ptr<IsolateEnvironment> IsolateHolder::GetIsolate() {
+auto IsolateHolder::GetIsolate() -> std::shared_ptr<IsolateEnvironment> {
 	return state.read()->isolate;
 }
 
-void IsolateHolder::ScheduleTask(unique_ptr<Runnable> task, bool run_inline, bool wake_isolate, bool handle_task) {
+void IsolateHolder::ScheduleTask(std::unique_ptr<Runnable> task, bool run_inline, bool wake_isolate, bool handle_task) {
 	auto ref = state.read()->isolate;
 	if (ref) {
 		if (run_inline && IsolateEnvironment::GetCurrent() == ref.get()) {
@@ -49,6 +48,44 @@ void IsolateHolder::ScheduleTask(unique_ptr<Runnable> task, bool run_inline, boo
 			lock.scheduler.WakeIsolate(std::move(ref));
 		}
 	}
+}
+
+// Methods for v8::TaskRunner
+void IsolateTaskRunner::PostTask(std::unique_ptr<v8::Task> task) {
+	auto env = weak_env.lock();
+	if (env) {
+		if (IsolateEnvironment::GetCurrent() == env.get()) {
+			task->Run();
+			return;
+		} else {
+			Scheduler::Lock lock{env->GetScheduler()};
+			lock.scheduler.tasks.push(std::move(task));
+		}
+	}
+}
+
+void IsolateTaskRunner::PostNonNestableTask(std::unique_ptr<v8::Task> task) {
+	auto env = weak_env.lock();
+	if (env) {
+		Scheduler::Lock lock{env->GetScheduler()};
+		lock.scheduler.tasks.push(std::move(task));
+	}
+}
+
+void IsolateTaskRunner::PostDelayedTask(std::unique_ptr<v8::Task> task, double delay_in_seconds) {
+	// wait_detached erases the type of the lambda into a std::function which must be
+	// copyable. The unique_ptr is stored in a shared pointer so ownership can be handled correctly.
+	auto shared_task = std::make_shared<std::unique_ptr<v8::Task>>(std::move(task));
+	auto weak_env = this->weak_env;
+	timer_t::wait_detached(static_cast<uint32_t>(delay_in_seconds * 1000), [shared_task, weak_env](void* next) {
+		auto env = weak_env.lock();
+		if (env) {
+			// Don't wake the isolate, this will just run the next time the isolate is doing something
+			Scheduler::Lock lock{env->GetScheduler()};
+			lock.scheduler.tasks.push(std::move(*shared_task));
+		}
+		timer_t::chain(next);
+	});
 }
 
 } // namespace ivm
