@@ -221,8 +221,8 @@ unique_ptr<Transferable> IsolateHandle::TransferOut() {
  */
 struct CreateContextRunner : public ThreePhaseTask {
 	bool enable_inspector = false;
-	shared_ptr<RemoteHandle<Context>> context;
-	shared_ptr<RemoteHandle<Value>> global;
+	RemoteHandle<Context> context;
+	RemoteHandle<Value> global;
 
 	explicit CreateContextRunner(MaybeLocal<Object>& maybe_options) {
 		Local<Object> options;
@@ -234,37 +234,16 @@ struct CreateContextRunner : public ThreePhaseTask {
 	void Phase2() final {
 		// Use custom deleter on the shared_ptr which will notify the isolate when the context is gone
 		struct ContextDeleter {
-			std::weak_ptr<IsolateHolder> isolate;
 			bool has_inspector;
 
-			explicit ContextDeleter(bool has_inspector) : isolate(IsolateEnvironment::GetCurrentHolder()), has_inspector(has_inspector) {}
+			explicit ContextDeleter(bool has_inspector) : has_inspector{has_inspector} {}
 
-			void operator() (RemoteHandle<Context>* ptr) {
-				// This part is called by any isolate. We need to schedule a task to run in the isolate so
-				// we can dispatch the correct notifications.
-				struct ContextDisposer : public Runnable {
-					unique_ptr<RemoteHandle<Context>> context;
-					bool has_inspector;
-					ContextDisposer(unique_ptr<RemoteHandle<Context>> context, bool has_inspector) : context(std::move(context)), has_inspector(has_inspector) {}
-					void Run() final {
-						Isolate* isolate = Isolate::GetCurrent();
-						{
-							HandleScope handle_scope(isolate);
-							Local<Context> context = Deref(*this->context);
-							context->DetachGlobal();
-							this->context.reset();
-							if (has_inspector) {
-								IsolateEnvironment::GetCurrent()->GetInspectorAgent()->ContextDestroyed(context);
-							}
-						}
-						isolate->ContextDisposedNotification();
-					}
-				};
-				auto context = unique_ptr<RemoteHandle<Context>>(ptr);
-				shared_ptr<IsolateHolder> isolate_ref = isolate.lock();
-				if (isolate_ref) {
-					isolate_ref->ScheduleTask(std::make_unique<ContextDisposer>(std::move(context), has_inspector), true, false, true);
+			void operator() (Local<Context> context) {
+				context->DetachGlobal();
+				if (has_inspector) {
+					IsolateEnvironment::GetCurrent()->GetInspectorAgent()->ContextDestroyed(context);
 				}
+				Isolate::GetCurrent()->ContextDisposedNotification();
 			}
 		};
 
@@ -282,8 +261,8 @@ struct CreateContextRunner : public ThreePhaseTask {
 		if (enable_inspector) {
 			env->GetInspectorAgent()->ContextCreated(context_handle, "<isolated-vm>");
 		}
-		context = shared_ptr<RemoteHandle<Context>>(new RemoteHandle<Context>(context_handle), ContextDeleter(enable_inspector));
-		global = std::make_shared<RemoteHandle<Value>>(context_handle->Global());
+		context = RemoteHandle<Context>{context_handle, ContextDeleter{enable_inspector}};
+		global = RemoteHandle<Value>{context_handle->Global()};
 		heap_check.Epilogue();
 	}
 
@@ -361,7 +340,7 @@ struct CompileCodeRunner : public ThreePhaseTask {
  * Compiles a script in this isolate and returns a ScriptHandle
  */
 struct CompileScriptRunner : public CompileCodeRunner {
-	shared_ptr<RemoteHandle<UnboundScript>> script;
+	RemoteHandle<UnboundScript> script;
 
 	CompileScriptRunner(const Local<String>& code_handle, const MaybeLocal<Object>& maybe_options) :
 		CompileCodeRunner(code_handle, maybe_options, false) {}
@@ -376,7 +355,7 @@ struct CompileScriptRunner : public CompileCodeRunner {
 		if (cached_data_in) {
 			compile_options = ScriptCompiler::kConsumeCodeCache;
 		}
-		script = std::make_shared<RemoteHandle<UnboundScript>>(RunWithAnnotatedErrors<Local<UnboundScript>>(
+		script = RemoteHandle<UnboundScript>(RunWithAnnotatedErrors<Local<UnboundScript>>(
 			[&isolate, &source, compile_options]() { return Unmaybe(ScriptCompiler::CompileUnboundScript(*isolate, source.get(), compile_options)); }
 		));
 
@@ -389,10 +368,10 @@ struct CompileScriptRunner : public CompileCodeRunner {
 			const ScriptCompiler::CachedData* cached_data // continued next line
 #if V8_AT_LEAST(6, 8, 11)
 			// `code` parameter removed in v8 commit a440efb27
-			= ScriptCompiler::CreateCodeCache(script->Deref());
+			= ScriptCompiler::CreateCodeCache(script.Deref());
 #else
 			// Added in v8 commit dae20b064
-			= ScriptCompiler::CreateCodeCache(script->Deref(), code_string->CopyIntoCheckHeap().As<String>());
+			= ScriptCompiler::CreateCodeCache(script.Deref(), code_string->CopyIntoCheckHeap().As<String>());
 #endif
 			assert(cached_data != nullptr);
 			cached_data_out = std::make_shared<ExternalCopyArrayBuffer>((void*)cached_data->data, cached_data->length);

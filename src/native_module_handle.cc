@@ -66,17 +66,17 @@ unique_ptr<Transferable> NativeModuleHandle::TransferOut() {
 
 class CreateRunner : public ThreePhaseTask {
 	private:
-		shared_ptr<RemoteHandle<Context>> context;
+		RemoteHandle<Context> context;
 		shared_ptr<NativeModule> module;
 		unique_ptr<Transferable> result;
 
 	public:
-		CreateRunner(shared_ptr<RemoteHandle<Context>> context, shared_ptr<NativeModule> module) : context(std::move(context)), module(std::move(module)) {}
+		CreateRunner(RemoteHandle<Context> context, shared_ptr<NativeModule> module) : context(std::move(context)), module(std::move(module)) {}
 
 	protected:
 		void Phase2() final {
 			Isolate* isolate = Isolate::GetCurrent();
-			Local<Context> context_handle = Deref(*context);
+			Local<Context> context_handle = Deref(context);
 			Context::Scope context_scope(context_handle);
 			Local<Object> exports = Object::New(isolate);
 			module->InitForContext(isolate, context_handle, exports);
@@ -95,7 +95,7 @@ Local<Value> NativeModuleHandle::Create(class ContextHandle* context_handle) {
 	// TODO: This should probably throw from the promise, but ThreePhaseTask can't handle invalid
 	// isolate references for now.
 	context_handle->CheckDisposed();
-	return ThreePhaseTask::Run<async, CreateRunner>(*context_handle->context->GetIsolateHolder(), context_handle->context, module);
+	return ThreePhaseTask::Run<async, CreateRunner>(*context_handle->context.GetIsolateHolder(), context_handle->context, module);
 }
 
 } // namespace ivm

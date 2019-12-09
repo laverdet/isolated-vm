@@ -96,7 +96,7 @@ class ModuleLinker : public ClassHandle {
 			explicit Implementation(Local<Object> linker) : linker(linker) {}
 			virtual ~Implementation() = default;
 			virtual void HandleCallbackReturn(ModuleHandle* module, size_t ii, Local<Value> value) = 0;
-			virtual Local<Value> Begin(ModuleHandle* module, shared_ptr<RemoteHandle<Context>> context) = 0;
+			virtual Local<Value> Begin(ModuleHandle* module, RemoteHandle<Context> context) = 0;
 			ModuleLinker& GetLinker() {
 				auto ptr = ClassHandle::Unwrap<ModuleLinker>(linker.Deref());
 				assert(ptr);
@@ -130,7 +130,7 @@ class ModuleLinker : public ClassHandle {
 			return *dynamic_cast<T*>(impl.get());
 		}
 
-		Local<Value> Begin(ModuleHandle* module, shared_ptr<RemoteHandle<Context>> context) {
+		Local<Value> Begin(ModuleHandle* module, RemoteHandle<Context> context) {
 			return impl->Begin(module, std::move(context));
 		}
 
@@ -197,7 +197,7 @@ class ModuleLinker : public ClassHandle {
  * dependencies resolved by the linker.
  */
 struct InstantiateRunner : public ThreePhaseTask {
-	shared_ptr<RemoteHandle<Context>> context;
+	RemoteHandle<Context> context;
 	shared_ptr<ModuleInfo> info;
 	RemoteHandle<Object> linker;
 
@@ -226,7 +226,7 @@ struct InstantiateRunner : public ThreePhaseTask {
 	}
 
 	InstantiateRunner(
-		shared_ptr<RemoteHandle<Context>> context,
+		RemoteHandle<Context> context,
 		shared_ptr<ModuleInfo> info,
 		Local<Object> linker
 	) :
@@ -234,14 +234,14 @@ struct InstantiateRunner : public ThreePhaseTask {
 		info(std::move(info)),
 		linker(linker) {
 		// Sanity check
-		if (this->info->handle.GetIsolateHolder() != this->context->GetIsolateHolder()) {
+		if (this->info->handle.GetIsolateHolder() != this->context.GetIsolateHolder()) {
 			throw js_generic_error("Invalid context");
 		}
 	}
 
 	void Phase2() final {
 		Local<Module> mod = info->handle.Deref();
-		Local<Context> context_local = context->Deref();
+		Local<Context> context_local = context.Deref();
 		info->context_handle = std::move(context);
 		std::lock_guard<std::mutex> lock(info->mutex);
 		Unmaybe(mod->InstantiateModule(context_local, ResolveCallback));
@@ -268,7 +268,7 @@ class ModuleLinkerSync : public ModuleLinker::Implementation {
 
 	public:
 		using ModuleLinker::Implementation::Implementation;
-		Local<Value> Begin(ModuleHandle* module, shared_ptr<RemoteHandle<Context>> context) final {
+		Local<Value> Begin(ModuleHandle* module, RemoteHandle<Context> context) final {
 			try {
 				GetLinker().Link(module);
 			} catch (const js_runtime_error& err) {
@@ -283,7 +283,7 @@ class ModuleLinkerSync : public ModuleLinker::Implementation {
 class ModuleLinkerAsync : public ModuleLinker::Implementation {
 	private:
 		RemoteTuple<Promise::Resolver, Function> async_handles;
-		shared_ptr<RemoteHandle<Context>> context;
+		RemoteHandle<Context> context;
 		shared_ptr<ModuleInfo> info;
 		bool rejected = false;
 		uint32_t pending = 0;
@@ -352,7 +352,7 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 		) {}
 
 		using ModuleLinker::Implementation::Implementation;
-		Local<Value> Begin(ModuleHandle* module, shared_ptr<RemoteHandle<Context>> context) final {
+		Local<Value> Begin(ModuleHandle* module, RemoteHandle<Context> context) final {
 			GetLinker().Link(module);
 			info = module->GetInfo();
 			this->context = std::move(context);
@@ -391,11 +391,11 @@ struct EvaluateRunner : public ThreePhaseTask {
 		if (mod->GetStatus() == Module::Status::kUninstantiated) {
 			throw js_generic_error("Module is uninstantiated");
 		}
-		Local<Context> context_local = Deref(*info->context_handle);
+		Local<Context> context_local = Deref(info->context_handle);
 		Context::Scope context_scope(context_local);
 		result = Transferable::OptionalTransferOut(RunWithTimeout(timeout, [&]() { return mod->Evaluate(context_local); }));
 		std::lock_guard<std::mutex> lock(info->mutex);
-		info->global_namespace = std::make_shared<RemoteHandle<Value>>(mod->GetModuleNamespace());
+		info->global_namespace = RemoteHandle<Value>(mod->GetModuleNamespace());
 	}
 
 	Local<Value> Phase3() final {

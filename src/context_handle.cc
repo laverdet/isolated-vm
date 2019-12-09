@@ -2,22 +2,21 @@
 #include "reference_handle.h"
 
 using namespace v8;
-using std::shared_ptr;
 
 namespace ivm {
 
 ContextHandle::ContextHandleTransferable::ContextHandleTransferable(
-	shared_ptr<RemoteHandle<Context>> context,
-	shared_ptr<RemoteHandle<Value>> global
-) : context(std::move(context)), global(std::move(global)) {}
+	RemoteHandle<Context> context,
+	RemoteHandle<Value> global
+) : context{std::move(context)}, global{std::move(global)} {}
 
 Local<Value> ContextHandle::ContextHandleTransferable::TransferIn() {
 	return ClassHandle::NewInstance<ContextHandle>(context, global);
 }
 
 ContextHandle::ContextHandle(
-	shared_ptr<RemoteHandle<Context>> context,
-	shared_ptr<RemoteHandle<Value>> global
+	RemoteHandle<Context> context,
+	RemoteHandle<Value> global
 ) : context(std::move(context)), global(std::move(global)) {}
 
 Local<FunctionTemplate> ContextHandle::Definition() {
@@ -48,10 +47,10 @@ Local<Value> ContextHandle::GlobalGetter() {
 	}
 	Local<Object> ref;
 	if (global_reference) {
-		ref = Deref(*global_reference);
+		ref = Deref(global_reference);
 	} else {
-		ref = ClassHandle::NewInstance<ReferenceHandle>(global->GetSharedIsolateHolder(), global, context, ReferenceHandle::TypeOf::Object);
-		global_reference = std::make_unique<RemoteHandle<v8::Object>>(ref);
+		ref = ClassHandle::NewInstance<ReferenceHandle>(global.GetSharedIsolateHolder(), global, context, ReferenceHandle::TypeOf::Object);
+		global_reference = RemoteHandle<v8::Object>(ref);
 	}
 	Unmaybe(This()->CreateDataProperty(isolate->GetCurrentContext(), v8_string("global"), ref));
 	return ref;
@@ -63,11 +62,11 @@ void ContextHandle::GlobalSetter(Local<Value> value) {
 
 Local<Value> ContextHandle::Release() {
 	CheckDisposed();
-	context.reset();
-	global.reset();
+	context = {};
+	global = {};
 	if (global_reference) {
-		ClassHandle::Unwrap<ReferenceHandle>(Deref(*global_reference))->Release();
-		global_reference.reset();
+		ClassHandle::Unwrap<ReferenceHandle>(Deref(global_reference))->Release();
+		global_reference = {};
 	}
 	return Undefined(Isolate::GetCurrent());
 }

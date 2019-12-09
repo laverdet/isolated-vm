@@ -10,7 +10,7 @@ using std::shared_ptr;
 namespace ivm {
 
 ScriptHandle::ScriptHandleTransferable::ScriptHandleTransferable(
-	shared_ptr<RemoteHandle<UnboundScript>> script
+	RemoteHandle<UnboundScript> script
 ) : script(std::move(script)) {}
 
 Local<Value> ScriptHandle::ScriptHandleTransferable::TransferIn() {
@@ -18,7 +18,7 @@ Local<Value> ScriptHandle::ScriptHandleTransferable::TransferIn() {
 };
 
 ScriptHandle::ScriptHandle(
-	shared_ptr<RemoteHandle<UnboundScript>> script
+	RemoteHandle<UnboundScript> script
 ) : script(std::move(script)) {}
 
 Local<FunctionTemplate> ScriptHandle::Definition() {
@@ -40,27 +40,27 @@ std::unique_ptr<Transferable> ScriptHandle::TransferOut() {
  */
 struct RunRunner /* lol */ : public ThreePhaseTask {
 	uint32_t timeout_ms = 0;
-	shared_ptr<RemoteHandle<UnboundScript>> script;
-	shared_ptr<RemoteHandle<Context>> context;
+	RemoteHandle<UnboundScript> script;
+	RemoteHandle<Context> context;
 	std::unique_ptr<Transferable> result;
 
 	RunRunner(
-		shared_ptr<RemoteHandle<UnboundScript>> script,
+		RemoteHandle<UnboundScript> script,
 		uint32_t timeout_ms,
 		ContextHandle* context_handle
 	) : timeout_ms(timeout_ms), script(std::move(script)), context(context_handle->context) {
 		// Sanity check
 		context_handle->CheckDisposed();
-		if (this->script->GetIsolateHolder() != context_handle->context->GetIsolateHolder()) {
+		if (this->script.GetIsolateHolder() != context_handle->context.GetIsolateHolder()) {
 			throw js_generic_error("Invalid context");
 		}
 	}
 
 	void Phase2() final {
 		// Enter script's context and run it
-		Local<Context> context_local = Deref(*context);
+		Local<Context> context_local = Deref(context);
 		Context::Scope context_scope(context_local);
-		Local<Script> script_handle = Deref(*script)->BindToCurrentContext();
+		Local<Script> script_handle = Deref(script)->BindToCurrentContext();
 		result = Transferable::OptionalTransferOut(
 			RunWithTimeout(timeout_ms, [&script_handle, &context_local]() { return script_handle->Run(context_local); })
 		);
@@ -93,15 +93,15 @@ Local<Value> ScriptHandle::Run(ContextHandle* context_handle, MaybeLocal<Object>
 			timeout_ms = timeout_handle.As<Uint32>()->Value();
 		}
 	}
-	shared_ptr<RemoteHandle<UnboundScript>> script_ref = script;
+	RemoteHandle<UnboundScript> script_ref = script;
 	if (release) {
-		script.reset();
+		script = {};
 	}
-	return ThreePhaseTask::Run<async, RunRunner>(*script_ref->GetIsolateHolder(), std::move(script_ref), timeout_ms, context_handle);
+	return ThreePhaseTask::Run<async, RunRunner>(*script_ref.GetIsolateHolder(), std::move(script_ref), timeout_ms, context_handle);
 }
 
 Local<Value> ScriptHandle::Release() {
-	script.reset();
+	script = {};
 	return Undefined(Isolate::GetCurrent());
 }
 

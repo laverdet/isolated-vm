@@ -15,8 +15,8 @@ namespace ivm {
 class SessionImpl : public InspectorSession {
 	public:
 		shared_ptr<IsolateHolder> isolate; // This is the isolate that owns the session
-		shared_ptr<RemoteHandle<Function>> onNotification;
-		shared_ptr<RemoteHandle<Function>> onResponse;
+		RemoteHandle<Function> onNotification;
+		RemoteHandle<Function> onResponse;
 
 		explicit SessionImpl(IsolateEnvironment& isolate) : InspectorSession(isolate) {}
 
@@ -39,10 +39,10 @@ class SessionImpl : public InspectorSession {
 			struct SendResponseTask : public Runnable {
 				int call_id;
 				unique_ptr<StringBuffer> message;
-				shared_ptr<RemoteHandle<Function>> onResponse;
+				RemoteHandle<Function> onResponse;
 
 				SendResponseTask(
-					int call_id, unique_ptr<StringBuffer> message, shared_ptr<RemoteHandle<Function>> onResponse
+					int call_id, unique_ptr<StringBuffer> message, RemoteHandle<Function> onResponse
 				) :	call_id(call_id), message(std::move(message)), onResponse(std::move(onResponse)) {}
 
 				void Run() final {
@@ -50,7 +50,7 @@ class SessionImpl : public InspectorSession {
 					TryCatch try_catch(isolate);
 					Local<String> string;
 					if (bufferToString(*message).ToLocal(&string)) {
-						Local<Function> fn = Deref(*onResponse);
+						Local<Function> fn = Deref(onResponse);
 						Local<Value> argv[2];
 						argv[0] = Integer::New(isolate, call_id);
 						argv[1] = string;
@@ -69,9 +69,9 @@ class SessionImpl : public InspectorSession {
 			}
 			struct SendNotificationTask : public Runnable {
 				unique_ptr<StringBuffer> message;
-				shared_ptr<RemoteHandle<Function>> onNotification;
+				RemoteHandle<Function> onNotification;
 				SendNotificationTask(
-					unique_ptr<StringBuffer> message, shared_ptr<RemoteHandle<Function>> onNotification
+					unique_ptr<StringBuffer> message, RemoteHandle<Function> onNotification
 				) : message(std::move(message)), onNotification(std::move(onNotification)) {}
 
 				void Run() final {
@@ -79,7 +79,7 @@ class SessionImpl : public InspectorSession {
 					TryCatch try_catch(isolate);
 					Local<String> string;
 					if (bufferToString(*message).ToLocal(&string)) {
-						Local<Function> fn = Deref(*onNotification);
+						Local<Function> fn = Deref(onNotification);
 						Local<Value> argv[1];
 						argv[0] = string;
 						try {
@@ -144,7 +144,7 @@ Local<Value> SessionHandle::Dispose() {
 Local<Value> SessionHandle::OnNotificationGetter() {
 	CheckDisposed();
 	if (session->onNotification) {
-		return Deref(*session->onNotification);
+		return Deref(session->onNotification);
 	} else {
 		return Undefined(Isolate::GetCurrent());
 	}
@@ -152,14 +152,14 @@ Local<Value> SessionHandle::OnNotificationGetter() {
 
 void SessionHandle::OnNotificationSetter(Local<Function> value) {
 	CheckDisposed();
-	session->onNotification = std::make_shared<RemoteHandle<Function>>(value);
+	session->onNotification = RemoteHandle<Function>(value);
 }
 
 // .onResponse
 Local<Value> SessionHandle::OnResponseGetter() {
 	CheckDisposed();
 	if (session->onResponse) {
-		return Deref(*session->onResponse);
+		return Deref(session->onResponse);
 	} else {
 		return Undefined(Isolate::GetCurrent());
 	}
@@ -167,7 +167,7 @@ Local<Value> SessionHandle::OnResponseGetter() {
 
 void SessionHandle::OnResponseSetter(Local<Function> value) {
 	CheckDisposed();
-	session->onResponse = std::make_shared<RemoteHandle<Function>>(value);
+	session->onResponse = RemoteHandle<Function>(value);
 }
 
 } // namespace ivm

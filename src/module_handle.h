@@ -21,8 +21,8 @@ struct ModuleInfo {
 	std::vector<std::string> dependency_specifiers;
 	std::unordered_map<std::string, std::shared_ptr<ModuleInfo>> resolutions;
 	RemoteHandle<v8::Module> handle;
-	std::shared_ptr<RemoteHandle<v8::Context>> context_handle;
-	std::shared_ptr<RemoteHandle<v8::Value>> global_namespace;
+	RemoteHandle<v8::Context> context_handle;
+	RemoteHandle<v8::Value> global_namespace;
 	explicit ModuleInfo(v8::Local<v8::Module> handle);
 	~ModuleInfo();
 };

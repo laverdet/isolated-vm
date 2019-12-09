@@ -13,16 +13,16 @@ class ScriptHandle : public TransferableHandle {
 	private:
 		class ScriptHandleTransferable : public Transferable {
 			private:
-				std::shared_ptr<RemoteHandle<v8::UnboundScript>> script;
+				RemoteHandle<v8::UnboundScript> script;
 			public:
-				explicit ScriptHandleTransferable(std::shared_ptr<RemoteHandle<v8::UnboundScript>> script);
+				explicit ScriptHandleTransferable(RemoteHandle<v8::UnboundScript> script);
 				v8::Local<v8::Value> TransferIn() final;
 		};
 
-		std::shared_ptr<RemoteHandle<v8::UnboundScript>> script;
+		RemoteHandle<v8::UnboundScript> script;
 
 	public:
-		explicit ScriptHandle(std::shared_ptr<RemoteHandle<v8::UnboundScript>> script);
+		explicit ScriptHandle(RemoteHandle<v8::UnboundScript> script);
 
 		static v8::Local<v8::FunctionTemplate> Definition();
 		std::unique_ptr<Transferable> TransferOut() final;
