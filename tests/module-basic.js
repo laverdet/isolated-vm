@@ -125,9 +125,9 @@ function rejects(fn) {
 		const reference = module.namespace;
 		const value = reference.getSync('value');
 		const countUp = reference.getSync('countUp');
-		strictEqual(reference.getSync('value').copySync(), 0);
+		strictEqual(reference.getSync('value'), 0);
 		countUp.applySync(null, [ ]);
-		strictEqual(reference.getSync('value').copySync(), 1);
+		strictEqual(reference.getSync('value'), 1);
 	}
 
 	function moduleCollectionChecks() {

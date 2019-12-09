@@ -8,7 +8,7 @@ namespace ivm {
 class ExternalCopy;
 
 class ExternalCopyHandle : public TransferableHandle {
-	private:
+	public:
 		class ExternalCopyTransferable : public Transferable {
 			private:
 				std::shared_ptr<ExternalCopy> value;
@@ -22,7 +22,6 @@ class ExternalCopyHandle : public TransferableHandle {
 
 		void CheckDisposed();
 
-	public:
 		explicit ExternalCopyHandle(std::shared_ptr<ExternalCopy> value);
 		ExternalCopyHandle(const ExternalCopyHandle&) = delete;
 		ExternalCopyHandle& operator= (const ExternalCopyHandle&) = delete;

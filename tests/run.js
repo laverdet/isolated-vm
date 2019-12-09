@@ -11,7 +11,7 @@ try {
 	let script = isolate.compileScriptSync('1');
 	script.release();
 	try {
-		script.run(context);
+		script.runSync(context);
 	} catch (err) {
 		console.log('pass');
 	}

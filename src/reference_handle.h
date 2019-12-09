@@ -1,101 +1,95 @@
 #pragma once
-#include <v8.h>
 #include "isolate/remote_handle.h"
+#include "transferable.h"
 #include "transferable_handle.h"
+#include <v8.h>
 #include <memory>
+#include <utility>
 #include <vector>
 
 namespace ivm {
-
-class DereferenceHandle;
+namespace detail {
 
 /**
- * This will be a reference to any v8 Value in any isolate.
+ * Holds common data for ReferenceHandle and ReferenceHandleTransferable
  */
-class ReferenceHandle : public TransferableHandle {
-	friend class Transferable;
-	friend struct CopyRunner;
-	friend struct GetRunner;
-	friend struct SetRunner;
-	friend struct ApplyRunner;
+class ReferenceData {
 	public:
 		enum class TypeOf { Null, Undefined, Number, String, Boolean, Object, Function };
 
-	private:
-		class ReferenceHandleTransferable : public Transferable {
-			private:
-				std::shared_ptr<IsolateHolder> isolate;
-				RemoteHandle<v8::Value> reference;
-				RemoteHandle<v8::Context> context;
-				TypeOf type_of;
-
-			public:
-				ReferenceHandleTransferable(
-					std::shared_ptr<IsolateHolder> isolate,
-					RemoteHandle<v8::Value> reference,
-					RemoteHandle<v8::Context> context,
-					TypeOf type_of
-				);
-				v8::Local<v8::Value> TransferIn() final;
-		};
-
-	private:
-		std::shared_ptr<IsolateHolder> isolate;
-		RemoteHandle<v8::Value> reference;
-		RemoteHandle<v8::Context> context;
-		TypeOf type_of;
-
-		void CheckDisposed() const;
-
-	public:
-		ReferenceHandle(
+		explicit ReferenceData(v8::Local<v8::Value> value);
+		ReferenceData(
 			std::shared_ptr<IsolateHolder> isolate,
 			RemoteHandle<v8::Value> reference,
 			RemoteHandle<v8::Context> context,
 			TypeOf type_of
 		);
-		static v8::Local<v8::FunctionTemplate> Definition();
-		std::unique_ptr<Transferable> TransferOut() final;
-		static std::unique_ptr<ReferenceHandle> New(v8::Local<v8::Value> var);
 
-		v8::Local<v8::Value> TypeOfGetter();
-		v8::Local<v8::Value> Deref(v8::MaybeLocal<v8::Object> maybe_options);
-		v8::Local<v8::Value> DerefInto(v8::MaybeLocal<v8::Object> maybe_options);
-		v8::Local<v8::Value> Release();
-		template <int async> v8::Local<v8::Value> Copy();
-		template <int async> v8::Local<v8::Value> Get(v8::Local<v8::Value> key_handle);
-		template <int async> v8::Local<v8::Value> Set(v8::Local<v8::Value> key_handle, v8::Local<v8::Value> val_handle);
-		template <int async> v8::Local<v8::Value> Apply(
+	protected:
+		std::shared_ptr<IsolateHolder> isolate;
+		RemoteHandle<v8::Value> reference;
+		RemoteHandle<v8::Context> context;
+		TypeOf type_of;
+};
+
+} // namespace detail
+
+/**
+ * This will be a reference to any v8 Value in any isolate.
+ */
+class ReferenceHandle : public TransferableHandle, public detail::ReferenceData {
+	friend class ApplyRunner;
+	friend class CopyRunner;
+	friend class GetRunner;
+	friend class SetRunner;
+	public:
+		using TypeOf = detail::ReferenceData::TypeOf;
+
+		template <class ...Args>
+		explicit ReferenceHandle(Args&&... args) : ReferenceData{std::forward<Args>(args)...} {}
+
+		static auto Definition() -> v8::Local<v8::FunctionTemplate>;
+		static auto New(v8::Local<v8::Value> value) -> std::unique_ptr<ReferenceHandle>;
+		auto TransferOut() -> std::unique_ptr<Transferable> final;
+
+		auto Deref(v8::MaybeLocal<v8::Object> maybe_options) -> v8::Local<v8::Value>;
+		auto DerefInto(v8::MaybeLocal<v8::Object> maybe_options) -> v8::Local<v8::Value>;
+		auto Release() -> v8::Local<v8::Value>;
+		auto TypeOfGetter() -> v8::Local<v8::Value>;
+
+		template <int async>
+		auto Apply(
 			v8::MaybeLocal<v8::Value> recv_handle,
 			v8::MaybeLocal<v8::Array> maybe_arguments,
 			v8::MaybeLocal<v8::Object> maybe_options
-		);
+		) -> v8::Local<v8::Value>;
+		template <int async>
+		auto Copy() -> v8::Local<v8::Value>;
+		template <int async>
+		auto Get(
+			v8::Local<v8::Value> key_handle,
+			v8::MaybeLocal<v8::Object> maybe_options
+		) -> v8::Local<v8::Value>;
+		template <int async>
+		auto Set(
+			v8::Local<v8::Value> key_handle,
+			v8::Local<v8::Value> val_handle,
+			v8::MaybeLocal<v8::Object> maybe_options
+		) -> v8::Local<v8::Value>;
+
+	private:
+		void CheckDisposed() const;
 };
 
 /**
- * The return value for .derefInto()
+ * Instances of this turn into a ReferenceHandle when they are transferred in
  */
-class DereferenceHandle : public TransferableHandle {
-	friend class Transferable;
-
-	private:
-		std::shared_ptr<IsolateHolder> isolate;
-		RemoteHandle<v8::Value> reference;
-
-		class DereferenceHandleTransferable : public Transferable {
-			private:
-				std::shared_ptr<IsolateHolder> isolate;
-				RemoteHandle<v8::Value> reference;
-
-			public:
-				DereferenceHandleTransferable(std::shared_ptr<IsolateHolder> isolate, RemoteHandle<v8::Value> reference);
-				v8::Local<v8::Value> TransferIn() final;
-		};
-
+class ReferenceHandleTransferable : public Transferable, public detail::ReferenceData {
 	public:
-		static v8::Local<v8::FunctionTemplate> Definition();
-		DereferenceHandle(std::shared_ptr<IsolateHolder> isolate, RemoteHandle<v8::Value> reference);
-		std::unique_ptr<Transferable> TransferOut() final;
+		template <class ...Args>
+		explicit ReferenceHandleTransferable(Args&&... args) : ReferenceData{std::forward<Args>(args)...} {}
+
+		auto TransferIn() -> v8::Local<v8::Value> final;
 };
 
 } // namespace ivm

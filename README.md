@@ -238,6 +238,9 @@ reference.
 * `options` *[object]*
 	* `release` *[boolean]* - If true `release()` will automatically be called on this instance.
 	* `timeout` *[number]* - Maximum amount of time in milliseconds this script is allowed to
+	* `copy` *[boolean]* - Automatically deep copy last value into function call
+	* `externalCopy` *[boolean]* - Automatically wrap last value in `ExternalCopy` instance
+	* `reference` *[boolean]* - Automatically wrap last value in `Reference` instance
 	run before execution is canceled. Default is no timeout.
 * **return** *[transferable]*
 
@@ -323,36 +326,52 @@ release the references when you are done. Otherwise you may run into issues with
 out of memory because other isolates haven't garbage collected recently. After calling this method
 all attempts to access the reference will throw an error.
 
-##### `reference.get(property)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
-##### `reference.getSync(property)`
+##### `reference.get(property, options)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `reference.getSync(property, options)`
 * `property` *[transferable]* - The property to access on this object.
+* `options` *[object]*
+	* `copy` *[boolean]* - Automatically deep copy value
+	* `externalCopy` *[boolean]* - Automatically wrap value in `ExternalCopy` instance
+  * `reference` *[boolean]* - Automatically wrap value in `Reference` instance
 * **return** A [`Reference`](#class-reference-transferable) object.
 
-Will access a reference as if using `reference[property]` and return a reference to that value.
+Will access a reference as if using `reference[property]` and transfer the value out.
 
-##### `reference.set(property, value)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
-##### `reference.setIgnored(property, value)`
-##### `reference.setSync(property, value)`
+##### `reference.set(property, value, options)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `reference.setIgnored(property, value, options)`
+##### `reference.setSync(property, value, options)`
 * `property` *[transferable]* - The property to set on this object.
 * `value` *[transferable]* - The value to set on this object.
+* `options` *[object]*
+	* `copy` *[boolean]* - Automatically deep copy value
+	* `externalCopy` *[boolean]* - Automatically wrap value in `ExternalCopy` instance
+  * `reference` *[boolean]* - Automatically wrap value in `Reference` instance
 * **return** `true` or `false`
 
 Returns a boolean indicating whether or not this operation succeeded. I'm actually not really sure
 when `false` would be returned, I'm just giving you the result back straight from the v8 API.
 
-##### `reference.apply(receiver, arguments)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
-##### `reference.applyIgnored(receiver, arguments)`
-##### `reference.applySync(receiver, arguments)`
-##### `reference.applySyncPromise(receiver, arguments)`
+##### `reference.apply(receiver, arguments, options)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `reference.applyIgnored(receiver, arguments, options)`
+##### `reference.applySync(receiver, arguments, options)`
+##### `reference.applySyncPromise(receiver, arguments, options)`
 * `receiver` *[transferable]* - The value which will be `this`.
 * `arguments` *[array]* - Array of transferables which will be passed to the function.
 * `options` *[object]*
 	* `timeout` *[number]* - Maximum amount of time in milliseconds this function is allowed to
+	* `arguments` *[object]*
+		* `copy` *[boolean]* - Automatically deep copy arguments into function call
+		* `externalCopy` *[boolean]* - Automatically wrap arguments in `ExternalCopy` instance
+		* `reference` *[boolean]* - Automatically wrap arguments in `Reference` instance
+	* `return` *[object]*
+		* `copy` *[boolean]* - Automatically deep copy returned value
+		* `externalCopy` *[boolean]* - Automatically wrap returned value in `ExternalCopy` instance
+		* `reference` *[boolean]* - Automatically wrap returned value in `Reference` instance
 	run before execution is canceled. Default is no timeout.
 * **return** *[transferable]*
 
 Will attempt to invoke an object as if it were a function. If the return value is transferable it
-will be returned to the caller of `apply`, otherwise an error will be thrown.
+will be returned to the caller of `apply`, otherwise it will return an instance of `Reference`.
 
 `applySyncPromise` is a special version of `applySync` which may only be invoked on functions
 belonging to the default isolate AND may only be invoked from a non-default thread. Functions

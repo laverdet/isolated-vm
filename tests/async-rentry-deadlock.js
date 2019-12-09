@@ -12,7 +12,7 @@ function makeIsolate() {
 	// Basic test.. tests unlocking
 	let env = makeIsolate();
 	env.global.setSync('fn', new ivm.Reference(function() {}));
-	env.isolate.compileScriptSync('fn.applySync(undefined, []);').run(env.context);
+	env.isolate.compileScriptSync('fn.applySync(undefined, []);').runSync(env.context);
 
 	let d = Date.now();
 	while (Date.now() < d + 5);

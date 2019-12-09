@@ -1,8 +1,8 @@
 #pragma once
-#include <v8.h>
-#include "isolate/holder.h"
 #include "isolate/remote_handle.h"
+#include "transferable.h"
 #include "transferable_handle.h"
+#include <v8.h>
 #include <memory>
 
 namespace ivm {
@@ -10,27 +10,26 @@ namespace ivm {
 class ContextHandle;
 
 class ScriptHandle : public TransferableHandle {
+	public:
+		explicit ScriptHandle(RemoteHandle<v8::UnboundScript> script);
+		static auto Definition() -> v8::Local<v8::FunctionTemplate>;
+
+		auto TransferOut() -> std::unique_ptr<Transferable> final;
+
+		auto Release() -> v8::Local<v8::Value>;
+		template <int async>
+		auto Run(ContextHandle* context_handle, v8::MaybeLocal<v8::Object> maybe_options) -> v8::Local<v8::Value>;
+
 	private:
 		class ScriptHandleTransferable : public Transferable {
-			private:
-				RemoteHandle<v8::UnboundScript> script;
 			public:
 				explicit ScriptHandleTransferable(RemoteHandle<v8::UnboundScript> script);
-				v8::Local<v8::Value> TransferIn() final;
+				auto TransferIn() -> v8::Local<v8::Value> final;
+			private:
+				RemoteHandle<v8::UnboundScript> script;
 		};
 
 		RemoteHandle<v8::UnboundScript> script;
-
-	public:
-		explicit ScriptHandle(RemoteHandle<v8::UnboundScript> script);
-
-		static v8::Local<v8::FunctionTemplate> Definition();
-		std::unique_ptr<Transferable> TransferOut() final;
-
-		template <int async>
-		v8::Local<v8::Value> Run(ContextHandle* context_handle, v8::MaybeLocal<v8::Object> maybe_options);
-
-		v8::Local<v8::Value> Release();
 };
 
 } // namespace ivm

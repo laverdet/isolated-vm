@@ -26,7 +26,7 @@ if (process.versions.modules >= 64) {
 	}]);
 	let isolate = new ivm.Isolate({ snapshot });
 	let context = isolate.createContextSync();
-	assert.equal(context.global.getSync('utf8').copySync(), 'è');
+	assert.equal(context.global.getSync('utf8'), 'è');
 }
 
 console.log('pass');

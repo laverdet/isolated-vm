@@ -1,27 +1,19 @@
-#include "script_handle.h"
-#include "context_handle.h"
-#include "transferable.h"
 #include "isolate/run_with_timeout.h"
 #include "isolate/three_phase_task.h"
+#include "context_handle.h"
+#include "script_handle.h"
 
 using namespace v8;
-using std::shared_ptr;
 
 namespace ivm {
 
-ScriptHandle::ScriptHandleTransferable::ScriptHandleTransferable(
-	RemoteHandle<UnboundScript> script
-) : script(std::move(script)) {}
+/**
+ * ScriptHandle implementation
+ */
+ScriptHandle::ScriptHandle(RemoteHandle<UnboundScript> script) :
+	script{std::move(script)} {}
 
-Local<Value> ScriptHandle::ScriptHandleTransferable::TransferIn() {
-	return ClassHandle::NewInstance<ScriptHandle>(script);
-};
-
-ScriptHandle::ScriptHandle(
-	RemoteHandle<UnboundScript> script
-) : script(std::move(script)) {}
-
-Local<FunctionTemplate> ScriptHandle::Definition() {
+auto ScriptHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Script", nullptr,
 		"release", Parameterize<decltype(&ScriptHandle::Release), &ScriptHandle::Release>(),
@@ -31,78 +23,93 @@ Local<FunctionTemplate> ScriptHandle::Definition() {
 	));
 }
 
-std::unique_ptr<Transferable> ScriptHandle::TransferOut() {
+auto ScriptHandle::TransferOut() -> std::unique_ptr<Transferable> {
 	return std::make_unique<ScriptHandleTransferable>(script);
+}
+
+auto ScriptHandle::Release() -> Local<Value> {
+	script = {};
+	return Undefined(Isolate::GetCurrent());
 }
 
 /*
  * Run this script in a given context
  */
 struct RunRunner /* lol */ : public ThreePhaseTask {
-	uint32_t timeout_ms = 0;
-	RemoteHandle<UnboundScript> script;
-	RemoteHandle<Context> context;
-	std::unique_ptr<Transferable> result;
-
 	RunRunner(
-		RemoteHandle<UnboundScript> script,
-		uint32_t timeout_ms,
-		ContextHandle* context_handle
-	) : timeout_ms(timeout_ms), script(std::move(script)), context(context_handle->context) {
+		RemoteHandle<UnboundScript>& script,
+		ContextHandle* context_handle,
+		MaybeLocal<Object> maybe_options
+	) : context{context_handle->context} {
 		// Sanity check
+		if (!script) {
+			throw js_generic_error("Script has been released");
+		}
 		context_handle->CheckDisposed();
-		if (this->script.GetIsolateHolder() != context_handle->context.GetIsolateHolder()) {
+		if (script.GetIsolateHolder() != context.GetIsolateHolder()) {
 			throw js_generic_error("Invalid context");
 		}
+
+		// Parse options
+		Isolate* isolate = Isolate::GetCurrent();
+		bool release = false;
+		Local<Object> options;
+		if (maybe_options.ToLocal(&options)) {
+			release = IsOptionSet(isolate->GetCurrentContext(), options, "release");
+			Local<Value> timeout_handle = Unmaybe(options->Get(isolate->GetCurrentContext(), v8_string("timeout")));
+			if (!timeout_handle->IsUndefined()) {
+				if (!timeout_handle->IsUint32()) {
+					throw js_type_error("`timeout` must be integer");
+				}
+				timeout_ms = timeout_handle.As<Uint32>()->Value();
+			}
+		}
+		if (release) {
+			this->script = std::move(script);
+		} else {
+			this->script = script;
+		}
+		transfer_options = Transferable::Options{maybe_options};
 	}
 
 	void Phase2() final {
 		// Enter script's context and run it
 		Local<Context> context_local = Deref(context);
-		Context::Scope context_scope(context_local);
+		Context::Scope context_scope{context_local};
 		Local<Script> script_handle = Deref(script)->BindToCurrentContext();
-		result = Transferable::OptionalTransferOut(
-			RunWithTimeout(timeout_ms, [&script_handle, &context_local]() { return script_handle->Run(context_local); })
-		);
+		Local<Value> script_result = RunWithTimeout(timeout_ms, [&script_handle, &context_local]() {
+			return script_handle->Run(context_local);
+		});
+		result = Transferable::OptionalTransferOut(script_result, transfer_options);
 	}
 
-	Local<Value> Phase3() final {
+	auto Phase3() -> Local<Value> final {
 		if (result) {
 			return result->TransferIn();
 		} else {
 			return Undefined(Isolate::GetCurrent()).As<Value>();
 		}
 	}
+
+	RemoteHandle<UnboundScript> script;
+	RemoteHandle<Context> context;
+	Transferable::Options transfer_options;
+	std::unique_ptr<Transferable> result;
+	uint32_t timeout_ms = 0;
 };
 template <int async>
-Local<Value> ScriptHandle::Run(ContextHandle* context_handle, MaybeLocal<Object> maybe_options) {
-	if (!script) {
-		throw js_generic_error("Script has been released");
-	}
-	Isolate* isolate = Isolate::GetCurrent();
-	bool release = false;
-	uint32_t timeout_ms = 0;
-	Local<Object> options;
-	if (maybe_options.ToLocal(&options)) {
-		release = IsOptionSet(isolate->GetCurrentContext(), options, "release");
-		Local<Value> timeout_handle = Unmaybe(options->Get(isolate->GetCurrentContext(), v8_string("timeout")));
-		if (!timeout_handle->IsUndefined()) {
-			if (!timeout_handle->IsUint32()) {
-				throw js_type_error("`timeout` must be integer");
-			}
-			timeout_ms = timeout_handle.As<Uint32>()->Value();
-		}
-	}
-	RemoteHandle<UnboundScript> script_ref = script;
-	if (release) {
-		script = {};
-	}
-	return ThreePhaseTask::Run<async, RunRunner>(*script_ref.GetIsolateHolder(), std::move(script_ref), timeout_ms, context_handle);
+auto ScriptHandle::Run(ContextHandle* context_handle, MaybeLocal<Object> maybe_options) -> Local<Value> {
+	return ThreePhaseTask::Run<async, RunRunner>(*script.GetIsolateHolder(), script, context_handle, maybe_options);
 }
 
-Local<Value> ScriptHandle::Release() {
-	script = {};
-	return Undefined(Isolate::GetCurrent());
-}
+/**
+ * ScriptHandleTransferable implementation
+ */
+ScriptHandle::ScriptHandleTransferable::ScriptHandleTransferable(RemoteHandle<UnboundScript> script) :
+	script{std::move(script)} {}
+
+auto ScriptHandle::ScriptHandleTransferable::TransferIn() -> Local<Value> {
+	return ClassHandle::NewInstance<ScriptHandle>(script);
+};
 
 } // namespace ivm
