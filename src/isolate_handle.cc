@@ -625,9 +625,6 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 			void PostTask(std::unique_ptr<v8::Task> task) final {
 				tasks.write()->push_back(std::move(task));
 			}
-			void PostNonNestableTask(std::unique_ptr<v8::Task> task) final {
-				PostTask(std::move(task));
-			}
 			void PostDelayedTask(std::unique_ptr<v8::Task> task, double /*delay_in_seconds*/) final {
 				if (!done) {
 					PostTask(std::move(task));
@@ -680,7 +677,7 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 		PlatformDelegate::RegisterIsolate(isolate, delegate.get());
 		SnapshotCreator snapshot_creator{isolate};
 #else
-		SnapshotCreator snapshot_creator{isolate};
+		SnapshotCreator snapshot_creator;
 		isolate = snapshot_creator.GetIsolate();
 		PlatformDelegate::RegisterIsolate(isolate, delegate.get());
 #endif

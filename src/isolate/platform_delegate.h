@@ -44,19 +44,15 @@ class TaskRunner : public v8::TaskRunner {
 		bool IdleTasksEnabled() override { return false; };
 
 #if V8_AT_LEAST(7, 1, 316)
-		bool NonNestableTasksEnabled() const final { return true; }
-#else
 		// Added in e8faae72
-		virtual void PostNonNestableTask(std::unique_ptr<v8::Task> task) = 0;
+		void PostNonNestableTask(std::unique_ptr<v8::Task> task) final { std::terminate(); };
+		bool NonNestableTasksEnabled() const final { return false; }
 #endif
 
 #if V8_AT_LEAST(7, 4, 197)
 		// Added in d342122f
-		void PostNonNestableDelayedTask(std::unique_ptr<v8::Task> task, double delay_in_seconds) final {
-			// Delayed tasks are always non-nested
-			PostDelayedTask(std::move(task), delay_in_seconds);
-		}
-		bool NonNestableDelayedTasksEnabled() const final { return true; }
+		void PostNonNestableDelayedTask(std::unique_ptr<v8::Task> /*task*/, double /*delay_in_seconds*/) final { std::terminate(); }
+		bool NonNestableDelayedTasksEnabled() const final { return false; }
 #endif
 };
 

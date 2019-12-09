@@ -54,19 +54,6 @@ void IsolateHolder::ScheduleTask(std::unique_ptr<Runnable> task, bool run_inline
 void IsolateTaskRunner::PostTask(std::unique_ptr<v8::Task> task) {
 	auto env = weak_env.lock();
 	if (env) {
-		if (IsolateEnvironment::GetCurrent() == env.get()) {
-			task->Run();
-			return;
-		} else {
-			Scheduler::Lock lock{env->GetScheduler()};
-			lock.scheduler.tasks.push(std::move(task));
-		}
-	}
-}
-
-void IsolateTaskRunner::PostNonNestableTask(std::unique_ptr<v8::Task> task) {
-	auto env = weak_env.lock();
-	if (env) {
 		Scheduler::Lock lock{env->GetScheduler()};
 		lock.scheduler.tasks.push(std::move(task));
 	}
