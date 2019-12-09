@@ -7,12 +7,41 @@
 #include <utility>
 
 namespace ivm {
+namespace detail {
 
+/**
+ * This is basically a tuple that can be constructed in place in a way that v8::Persistent<> will
+ * accept.
+ */
 template <size_t Index, class Type>
-struct RemoteTupleElement {
-	RemoteTupleElement(v8::Isolate* isolate, v8::Local<Type> local) : persistent{isolate, local} {}
+struct HandleTupleElement {
+	HandleTupleElement(v8::Isolate* isolate, v8::Local<Type> local) : persistent{isolate, local} {}
 	v8::Persistent<Type, v8::NonCopyablePersistentTraits<Type>> persistent;
 };
+
+template <class Indices, class ...Types>
+struct HandleTupleImpl;
+
+template <size_t ...Indices, class ...Types_>
+struct HandleTupleImpl<std::index_sequence<Indices...>, Types_...> : HandleTupleElement<Indices, Types_>... {
+	template <class ...Args>
+	explicit HandleTupleImpl(v8::Isolate* isolate, v8::Local<Types_>... locals) :
+		HandleTupleElement<Indices, Types_>{isolate, locals}... {
+	}
+
+	template <size_t Index>
+	auto& get() {
+		return HandleTupleElement<Index, std::tuple_element_t<Index, std::tuple<Types_...>>>::persistent;
+	}
+
+	static constexpr auto Size = sizeof...(Types_);
+	using Types = std::tuple<Types_...>;
+};
+
+template <class... Types>
+using HandleTuple = HandleTupleImpl<std::make_index_sequence<sizeof...(Types)>, Types...>;
+
+} // namespace detail
 
 /**
  * This holds a number of persistent handles to some values in a single isolate. It also holds a
@@ -20,109 +49,119 @@ struct RemoteTupleElement {
  * handle in the context of the isolate. If the destructor of this class is called after the isolate
  * has been disposed then Reset() will not be called (but I don't think that causes a memory leak).
  */
+
 template <class ...Types>
 class RemoteTuple {
-	private:
-		/**
-		 * This is basically a tuple that can be constructed in place in a way that v8::Persistent<> will
-		 * accept.
-		 */
-		template <class Indices>
-		struct Holder;
-
-		template <size_t ...Indices>
-		struct Holder<std::index_sequence<Indices...>> : RemoteTupleElement<Indices, Types>... {
-			template <class... Args>
-			Holder(v8::Isolate* isolate, v8::Local<Types>... locals) :
-					RemoteTupleElement<Indices, Types>{isolate, locals}... {
-			}
-
-			template <size_t Index>
-			auto& get() {
-				return RemoteTupleElement<Index, std::tuple_element_t<Index, std::tuple<Types...>>>::persistent;
-			}
-		};
-
-		// This uses a unique_ptr because the handles may outlive the RemoteTuple instance (we need to
-		// transfer ownership to DisposalTask).
-		using TupleType = Holder<std::make_index_sequence<sizeof...(Types)>>;
-		using HandlesType = std::unique_ptr<TupleType>;
-
-		// This calls Reset() on each handle.
-		struct DisposalTask : public Runnable {
-			HandlesType handles;
-			explicit DisposalTask(HandlesType&& handles) : handles{std::move(handles)} {}
-
-			template <int> void Reset() {}
-
-			template <int, typename T, typename ...Rest>
-			void Reset() {
-				handles->template get<sizeof...(Rest)>().Reset();
-				Reset<0, Rest...>();
-			}
-
-			void Run() final {
-				Reset<0, Types...>();
-				IsolateEnvironment::GetCurrent()->remotes_count.fetch_sub(sizeof...(Types));
-			}
-		};
-
-		std::shared_ptr<IsolateHolder> isolate;
-		HandlesType handles;
-
 	public:
-		explicit RemoteTuple(v8::Local<Types>... handles) :
+		RemoteTuple() = default;
+
+		template <class Disposer>
+		explicit RemoteTuple(v8::Local<Types>... handles, Disposer disposer) :
 			isolate{IsolateEnvironment::GetCurrentHolder()},
-			handles{std::make_unique<TupleType>(v8::Isolate::GetCurrent(), handles...)}
-		{
-			IsolateEnvironment::GetCurrent()->remotes_count.fetch_add(sizeof...(Types));
+			handles{
+				new TupleType{v8::Isolate::GetCurrent(), handles...},
+				RemoteHandleFree<Disposer>{IsolateEnvironment::GetCurrentHolder(), std::move(disposer)}
+			} {
+			IsolateEnvironment::GetCurrent()->AdjustRemotes(sizeof...(Types));
 			static_assert(!v8::NonCopyablePersistentTraits<v8::Value>::kResetInDestructor, "Do not reset in destructor");
 		}
 
-		~RemoteTuple() {
-			isolate->ScheduleTask(std::make_unique<DisposalTask>(std::move(handles)), true, false, true);
+		explicit RemoteTuple(v8::Local<Types>... handles) : RemoteTuple{handles..., DefaultDisposer{}} {}
+
+		operator bool() const { // NOLINT(hicpp-explicit-conversions)
+			return bool{handles};
 		}
 
-		RemoteTuple(const RemoteTuple&) = delete;
-		RemoteTuple& operator= (const RemoteTuple&) = delete;
-
-		template <size_t N>
-		auto Deref() const {
-			return v8::Local<std::tuple_element_t<N, std::tuple<Types...>>>::New(v8::Isolate::GetCurrent(), handles->template get<N>());
-		}
-
-		IsolateHolder* GetIsolateHolder() {
+		auto GetIsolateHolder() -> IsolateHolder* {
 			return isolate.get();
 		}
 
-		std::shared_ptr<IsolateHolder> GetSharedIsolateHolder() {
+		auto GetSharedIsolateHolder() -> std::shared_ptr<IsolateHolder> {
 			return isolate;
 		}
 
+		template <size_t N>
+		auto Deref() const {
+			using Type = std::tuple_element_t<N, std::tuple<Types...>>;
+			return v8::Local<Type>::New(v8::Isolate::GetCurrent(), handles->template get<N>());
+		}
+
+	private:
+		using TupleType = detail::HandleTuple<Types...>;
+
+		struct DefaultDisposer {
+			void operator()(v8::Local<Types>... /*values*/) const {}
+		};
+
+		template <class Disposer>
+		class RemoteHandleFree {
+			public:
+				RemoteHandleFree(std::shared_ptr<IsolateHolder> isolate, Disposer disposer) :
+					isolate{std::move(isolate)}, disposer{std::move(disposer)} {}
+
+				void operator()(TupleType* handles) {
+					isolate->ScheduleTask(std::make_unique<DisposalTask<Disposer>>(std::move(handles), std::move(disposer)), true, false, true);
+				}
+
+			private:
+				std::shared_ptr<IsolateHolder> isolate;
+				Disposer disposer;
+		};
+
+		template <class Disposer>
+		class DisposalTask : public Runnable {
+			public:
+				explicit DisposalTask(TupleType* handles, Disposer disposer) :
+					handles{handles}, disposer{std::move(disposer)} {}
+
+			private:
+				template <int Idx> void Dispose() {
+					Dispose<Idx - 1>();
+					handles->template get<Idx - 1>().Reset();
+				}
+
+				template <> void Dispose<0>() {}
+
+				template <size_t ...Indices>
+				void Apply(std::index_sequence<Indices...> /*unused*/) {
+					disposer(v8::Local<std::tuple_element_t<Indices, typename TupleType::Types>>::New(
+						v8::Isolate::GetCurrent(), handles->template get<Indices>()
+					)...);
+				}
+
+				void Run() final {
+					Apply(std::make_index_sequence<TupleType::Size>{});
+					Dispose<TupleType::Size>();
+					IsolateEnvironment::GetCurrent()->AdjustRemotes(TupleType::Size);
+				}
+
+				std::unique_ptr<TupleType> handles;
+				Disposer disposer;
+		};
+
+		std::shared_ptr<IsolateHolder> isolate;
+		std::shared_ptr<TupleType> handles;
 };
 
 /**
  * Convenient when you only need 1 handle
  */
-template <typename T>
+template <class Type>
 class RemoteHandle {
-	private:
-		RemoteTuple<T> handle;
-
 	public:
-		explicit RemoteHandle(v8::Local<T> handle) : handle(handle) {}
+		RemoteHandle() = default;
+		explicit RemoteHandle(v8::Local<Type> handle) : handle{handle} {}
 
-		auto Deref() const {
-			return handle.template Deref<0>();
-		}
+		template <class Disposer>
+		RemoteHandle(v8::Local<Type> handle, Disposer disposer) : handle{handle, std::move(disposer)} {}
 
-		IsolateHolder* GetIsolateHolder() {
-			return handle.GetIsolateHolder();
-		}
+		operator bool() const { return bool{handle}; } // NOLINT(hicpp-explicit-conversions)
+		auto Deref() const { return handle.template Deref<0>(); }
+		auto GetIsolateHolder() { return handle.GetIsolateHolder(); }
+		auto GetSharedIsolateHolder() { return handle.GetSharedIsolateHolder(); }
 
-		std::shared_ptr<IsolateHolder> GetSharedIsolateHolder() {
-			return handle.GetSharedIsolateHolder();
-		}
+	private:
+		RemoteTuple<Type> handle;
 };
 
 } // namespace ivm

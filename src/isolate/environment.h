@@ -41,8 +41,6 @@ class IsolateEnvironment {
 	friend class ThreePhaseTask;
 	template <typename F>
 	friend v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn);
-	template <typename ...Types>
-	friend class RemoteTuple;
 
 	public:
 		/**
@@ -314,6 +312,9 @@ class IsolateEnvironment {
 		 */
 		unsigned int GetRemotesCount() const {
 			return remotes_count.load();
+		}
+		void AdjustRemotes(int delta) {
+			remotes_count.fetch_add(delta);
 		}
 
 		/**
