@@ -20,9 +20,14 @@ ThreePhaseTask::CalleeInfo::CalleeInfo(
 	}
 }
 
+ThreePhaseTask::CalleeInfo::CalleeInfo(CalleeInfo&& that) noexcept :
+		remotes{std::move(that.remotes)}, async{std::exchange(that.async, {0, 0})} {}
+	IsolateEnvironment* env = IsolateEnvironment::GetCurrent();
+
 ThreePhaseTask::CalleeInfo::~CalleeInfo() {
 	IsolateEnvironment* env = IsolateEnvironment::GetCurrent();
-	if (env->IsDefault()) {
+	node::async_context tmp{0, 0};
+	if (env->IsDefault() && std::memcmp(&async, &tmp, sizeof(node::async_context)) != 0) {
 		node::EmitAsyncDestroy(env->GetIsolate(), async);
 	}
 }
@@ -50,7 +55,7 @@ struct CallbackScope {
  */
 ThreePhaseTask::Phase2Runner::Phase2Runner(
 	unique_ptr<ThreePhaseTask> self,
-	unique_ptr<CalleeInfo> info
+	CalleeInfo info
 ) :
 	self(std::move(self)),
 	info(std::move(info))	{}
@@ -60,11 +65,11 @@ ThreePhaseTask::Phase2Runner::~Phase2Runner() {
 		// The task never got to run
 		struct Phase3Orphan : public Runnable {
 			unique_ptr<ThreePhaseTask> self;
-			unique_ptr<CalleeInfo> info;
+			CalleeInfo info;
 
 			Phase3Orphan(
 				unique_ptr<ThreePhaseTask> self,
-				unique_ptr<CalleeInfo> info
+				CalleeInfo info
 			) :
 				self(std::move(self)),
 				info(std::move(info)) {}
@@ -72,19 +77,19 @@ ThreePhaseTask::Phase2Runner::~Phase2Runner() {
 			void Run() final {
 				// Revive our persistent handles
 				Isolate* isolate = Isolate::GetCurrent();
-				auto context_local = info->remotes.Deref<1>();
+				auto context_local = info.remotes.Deref<1>();
 				Context::Scope context_scope(context_local);
-				auto promise_local = info->remotes.Deref<0>();
-				CallbackScope callback_scope(info->async, promise_local);
+				auto promise_local = info.remotes.Deref<0>();
+				CallbackScope callback_scope(info.async, promise_local);
 				// Throw from promise
 				Local<Object> error = Exception::Error(v8_string("Isolate is disposed")).As<Object>();
-				StackTraceHolder::AttachStack(error, info->remotes.Deref<2>());
+				StackTraceHolder::AttachStack(error, info.remotes.Deref<2>());
 				Unmaybe(promise_local->Reject(context_local, error));
 				isolate->RunMicrotasks();
 			}
 		};
 		// Schedule a throw task back in first isolate
-		auto holder = info->remotes.GetIsolateHolder();
+		auto holder = info.remotes.GetIsolateHolder();
 		holder->ScheduleTask(
 			std::make_unique<Phase3Orphan>(
 				std::move(self),
@@ -99,12 +104,12 @@ void ThreePhaseTask::Phase2Runner::Run() {
 	// This class will be used if Phase2() throws an error
 	struct Phase3Failure : public Runnable {
 		unique_ptr<ThreePhaseTask> self;
-		unique_ptr<CalleeInfo> info;
+		CalleeInfo info;
 		unique_ptr<ExternalCopy> error;
 
 		Phase3Failure(
 			unique_ptr<ThreePhaseTask> self,
-			unique_ptr<CalleeInfo> info,
+			CalleeInfo info,
 			unique_ptr<ExternalCopy> error
 		) :
 			self(std::move(self)),
@@ -114,10 +119,10 @@ void ThreePhaseTask::Phase2Runner::Run() {
 		void Run() final {
 			// Revive our persistent handles
 			Isolate* isolate = Isolate::GetCurrent();
-			auto context_local = info->remotes.Deref<1>();
+			auto context_local = info.remotes.Deref<1>();
 			Context::Scope context_scope(context_local);
-			auto promise_local = info->remotes.Deref<0>();
-			CallbackScope callback_scope(info->async, promise_local);
+			auto promise_local = info.remotes.Deref<0>();
+			CallbackScope callback_scope(info.async, promise_local);
 			Local<Value> rejection;
 			if (error) {
 				rejection = error->CopyInto();
@@ -125,7 +130,7 @@ void ThreePhaseTask::Phase2Runner::Run() {
 				rejection = Exception::Error(v8_string("An exception was thrown. Sorry I don't know more."));
 			}
 			if (rejection->IsObject()) {
-				StackTraceHolder::ChainStack(rejection.As<Object>(), info->remotes.Deref<2>());
+				StackTraceHolder::ChainStack(rejection.As<Object>(), info.remotes.Deref<2>());
 			}
 			// If Reject fails then I think that's bad..
 			Unmaybe(promise_local->Reject(context_local, rejection));
@@ -136,28 +141,28 @@ void ThreePhaseTask::Phase2Runner::Run() {
 	// This is called if Phase2() does not throw
 	struct Phase3Success : public Runnable {
 		unique_ptr<ThreePhaseTask> self;
-		unique_ptr<CalleeInfo> info;
+		CalleeInfo info;
 
 		Phase3Success(
 			unique_ptr<ThreePhaseTask> self,
-			unique_ptr<CalleeInfo> info
+			CalleeInfo info
 		) :
 			self(std::move(self)),
 			info(std::move(info)) {}
 
 		void Run() final {
 			Isolate* isolate = Isolate::GetCurrent();
-			auto context_local = info->remotes.Deref<1>();
+			auto context_local = info.remotes.Deref<1>();
 			Context::Scope context_scope(context_local);
-			auto promise_local = info->remotes.Deref<0>();
-			CallbackScope callback_scope(info->async, promise_local);
+			auto promise_local = info.remotes.Deref<0>();
+			CallbackScope callback_scope(info.async, promise_local);
 			FunctorRunners::RunCatchValue([&]() {
 				// Final callback
 				Unmaybe(promise_local->Resolve(context_local, self->Phase3()));
 			}, [&](Local<Value> error) {
 				// Error was thrown
 				if (error->IsObject()) {
-					StackTraceHolder::AttachStack(error.As<Object>(), info->remotes.Deref<2>());
+					StackTraceHolder::AttachStack(error.As<Object>(), info.remotes.Deref<2>());
 				}
 				Unmaybe(promise_local->Reject(context_local, error));
 			});
@@ -170,12 +175,12 @@ void ThreePhaseTask::Phase2Runner::Run() {
 		// Continue the task
 		self->Phase2();
 		IsolateEnvironment::GetCurrent()->TaskEpilogue();
-		auto holder = info->remotes.GetIsolateHolder();
+		auto holder = info.remotes.GetIsolateHolder();
 		holder->ScheduleTask(std::make_unique<Phase3Success>(std::move(self), std::move(info)), false, true);
 	}, [ this ](unique_ptr<ExternalCopy> error) {
 
 		// Schedule a task to enter the first isolate so we can throw the error at the promise
-		auto holder = info->remotes.GetIsolateHolder();
+		auto holder = info.remotes.GetIsolateHolder();
 		holder->ScheduleTask(std::make_unique<Phase3Failure>(std::move(self), std::move(info), std::move(error)), false, true);
 	});
 }

@@ -36,14 +36,16 @@ class ThreePhaseTask {
 		 */
 		struct CalleeInfo {
 			RemoteTuple<v8::Promise::Resolver, v8::Context, v8::StackTrace> remotes;
-			node::async_context async { 0, 0 };
+			node::async_context async {0, 0};
 			CalleeInfo(
 				v8::Local<v8::Promise::Resolver> resolver,
 				v8::Local<v8::Context> context,
 				v8::Local<v8::StackTrace> stack_trace
 			);
 			CalleeInfo(const CalleeInfo&) = delete;
-			CalleeInfo& operator= (const CalleeInfo&) = delete;
+			CalleeInfo(CalleeInfo&&) noexcept;
+			auto operator= (const CalleeInfo&) = delete;
+			auto operator= (CalleeInfo&&) = delete;
 			~CalleeInfo();
 		};
 
@@ -52,12 +54,12 @@ class ThreePhaseTask {
 		 */
 		struct Phase2Runner : public Runnable {
 			std::unique_ptr<ThreePhaseTask> self;
-			std::unique_ptr<CalleeInfo> info;
+			CalleeInfo info;
 			bool did_run = false;
 
 			Phase2Runner(
 				std::unique_ptr<ThreePhaseTask> self,
-				std::unique_ptr<CalleeInfo> info
+				CalleeInfo info
 			);
 			Phase2Runner(const Phase2Runner&) = delete;
 			Phase2Runner& operator= (const Phase2Runner&) = delete;
@@ -104,7 +106,7 @@ class ThreePhaseTask {
 					second_isolate.ScheduleTask(
 						std::make_unique<Phase2Runner>(
 							std::make_unique<T>(std::forward<Args>(args)...), // <-- Phase1 / ctor called here
-							std::make_unique<CalleeInfo>(promise_local, context_local, stack_trace)
+							CalleeInfo{promise_local, context_local, stack_trace}
 						), false, true
 					);
 				}, [&](v8::Local<v8::Value> error) {
