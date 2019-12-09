@@ -69,7 +69,7 @@ class RemoteTuple {
 		explicit RemoteTuple(v8::Local<Types>... handles) : RemoteTuple{handles..., DefaultDisposer{}} {}
 
 		operator bool() const { // NOLINT(hicpp-explicit-conversions)
-			return bool{handles};
+			return static_cast<bool>(handles);
 		}
 
 		auto GetIsolateHolder() -> IsolateHolder* {
@@ -115,12 +115,13 @@ class RemoteTuple {
 					handles{handles}, disposer{std::move(disposer)} {}
 
 			private:
-				template <int Idx> void Dispose() {
-					Dispose<Idx - 1>();
-					handles->template get<Idx - 1>().Reset();
-				}
+				template <int> void Dispose() {}
 
-				template <> void Dispose<0>() {}
+				template <int, class Type, class ...Rest>
+				void Dispose() {
+					Dispose<0, Rest...>();
+					handles->template get<sizeof...(Rest)>().Reset();
+				}
 
 				template <size_t ...Indices>
 				void Apply(std::index_sequence<Indices...> /*unused*/) {
@@ -131,7 +132,7 @@ class RemoteTuple {
 
 				void Run() final {
 					Apply(std::make_index_sequence<TupleType::Size>{});
-					Dispose<TupleType::Size>();
+					Dispose<0, Types...>();
 					IsolateEnvironment::GetCurrent()->AdjustRemotes(TupleType::Size);
 				}
 

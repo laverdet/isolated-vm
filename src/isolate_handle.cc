@@ -652,7 +652,7 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 	{
 		Isolate* isolate;
 #if V8_AT_LEAST(6, 8, 57)
-		isolate = isolate = Isolate::Allocate();
+		isolate = Isolate::Allocate();
 		PlatformDelegate::RegisterIsolate(isolate, delegate.get());
 		SnapshotCreator snapshot_creator{isolate};
 #else

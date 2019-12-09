@@ -1,5 +1,6 @@
 #include "three_phase_task.h"
 #include "../external_copy.h"
+#include <cstring>
 
 using namespace v8;
 using std::unique_ptr;
