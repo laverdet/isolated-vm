@@ -1,46 +1,57 @@
 #include "context_handle.h"
 #include "reference_handle.h"
+#include "transferable.h"
 
 using namespace v8;
 
 namespace ivm {
+namespace {
 
-ContextHandle::ContextHandleTransferable::ContextHandleTransferable(
-	RemoteHandle<Context> context,
-	RemoteHandle<Value> global
-) : context{std::move(context)}, global{std::move(global)} {}
+/**
+ * Instances of this turn into a ContextHandle when they are transferred in
+ */
+class ContextHandleTransferable : public Transferable {
+	public:
+		ContextHandleTransferable(RemoteHandle<Context> context, RemoteHandle<Value> global) :
+			context{std::move(context)}, global{std::move(global)} {}
 
-Local<Value> ContextHandle::ContextHandleTransferable::TransferIn() {
-	return ClassHandle::NewInstance<ContextHandle>(context, global);
-}
+		auto TransferIn() -> Local<Value> final {
+			return ClassHandle::NewInstance<ContextHandle>(std::move(context), std::move(global));
+		}
 
-ContextHandle::ContextHandle(
-	RemoteHandle<Context> context,
-	RemoteHandle<Value> global
-) : context(std::move(context)), global(std::move(global)) {}
+	private:
+		RemoteHandle<v8::Context> context;
+		RemoteHandle<v8::Value> global;
+};
+
+} // anonymous namespace
+
+/**
+ * ContextHandle implementation
+ */
+ContextHandle::ContextHandle(RemoteHandle<Context> context, RemoteHandle<Value> global) :
+	context{std::move(context)}, global{std::move(global)} {}
 
 Local<FunctionTemplate> ContextHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Context", nullptr,
-		"global", ParameterizeAccessor<
-			decltype(&ContextHandle::GlobalGetter), &ContextHandle::GlobalGetter,
-			decltype(&ContextHandle::GlobalSetter), &ContextHandle::GlobalSetter
-		>(),
+		"global", ParameterizeAccessor<decltype(&ContextHandle::GlobalGetter), &ContextHandle::GlobalGetter>(),
 		"release", Parameterize<decltype(&ContextHandle::Release), &ContextHandle::Release>()
 	));
 }
 
-std::unique_ptr<Transferable> ContextHandle::TransferOut() {
+auto ContextHandle::TransferOut() -> std::unique_ptr<Transferable> {
 	return std::make_unique<ContextHandleTransferable>(context, global);
 }
 
-void ContextHandle::CheckDisposed() {
+auto ContextHandle::GetContext() const -> RemoteHandle<v8::Context> {
 	if (!context) {
 		throw js_generic_error("Context is released");
 	}
+	return context;
 }
 
-Local<Value> ContextHandle::GlobalGetter() {
+auto ContextHandle::GlobalGetter() -> Local<Value> {
 	Isolate* isolate = Isolate::GetCurrent();
 	if (!context) {
 		return Undefined(isolate);
@@ -56,19 +67,20 @@ Local<Value> ContextHandle::GlobalGetter() {
 	return ref;
 }
 
-void ContextHandle::GlobalSetter(Local<Value> value) {
-	Unmaybe(This()->CreateDataProperty(Isolate::GetCurrent()->GetCurrentContext(), v8_string("global"), value));
-}
-
-Local<Value> ContextHandle::Release() {
-	CheckDisposed();
-	context = {};
-	global = {};
-	if (global_reference) {
-		ClassHandle::Unwrap<ReferenceHandle>(Deref(global_reference))->Release();
-		global_reference = {};
-	}
-	return Undefined(Isolate::GetCurrent());
+auto ContextHandle::Release() -> Local<Value> {
+	return Boolean::New(Isolate::GetCurrent(), [&]() {
+		if (context) {
+			context = {};
+			global = {};
+			if (global_reference) {
+				ClassHandle::Unwrap<ReferenceHandle>(Deref(global_reference))->Release();
+				global_reference = {};
+			}
+			return true;
+		} else {
+			return false;
+		}
+	}());
 }
 
 } // namespace ivm

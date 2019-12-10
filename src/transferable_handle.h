@@ -1,7 +1,7 @@
 #pragma once
-#include <v8.h>
 #include "isolate/class_handle.h"
 #include "transferable.h"
+#include <v8.h>
 #include <memory>
 
 namespace ivm {

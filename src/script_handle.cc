@@ -40,12 +40,11 @@ struct RunRunner /* lol */ : public ThreePhaseTask {
 		RemoteHandle<UnboundScript>& script,
 		ContextHandle* context_handle,
 		MaybeLocal<Object> maybe_options
-	) : context{context_handle->context} {
+	) : context{context_handle->GetContext()} {
 		// Sanity check
 		if (!script) {
 			throw js_generic_error("Script has been released");
 		}
-		context_handle->CheckDisposed();
 		if (script.GetIsolateHolder() != context.GetIsolateHolder()) {
 			throw js_generic_error("Invalid context");
 		}

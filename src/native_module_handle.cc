@@ -94,8 +94,8 @@ template <int async>
 Local<Value> NativeModuleHandle::Create(class ContextHandle* context_handle) {
 	// TODO: This should probably throw from the promise, but ThreePhaseTask can't handle invalid
 	// isolate references for now.
-	context_handle->CheckDisposed();
-	return ThreePhaseTask::Run<async, CreateRunner>(*context_handle->context.GetIsolateHolder(), context_handle->context, module);
+	auto context = context_handle->GetContext();
+	return ThreePhaseTask::Run<async, CreateRunner>(*context.GetIsolateHolder(), context, module);
 }
 
 } // namespace ivm

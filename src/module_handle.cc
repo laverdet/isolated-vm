@@ -364,19 +364,19 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 };
 
 Local<Value> ModuleHandle::Instantiate(ContextHandle* context_handle, Local<Function> callback) {
-	context_handle->CheckDisposed();
+	auto context = context_handle->GetContext();
 	Local<Object> linker_handle = ClassHandle::NewInstance<ModuleLinker>(callback);
 	auto linker = ClassHandle::Unwrap<ModuleLinker>(linker_handle);
 	linker->SetImplementation<ModuleLinkerAsync>();
-	return linker->Begin(this, context_handle->context);
+	return linker->Begin(this, context);
 }
 
 Local<Value> ModuleHandle::InstantiateSync(ContextHandle* context_handle, Local<Function> callback) {
-	context_handle->CheckDisposed();
+	auto context = context_handle->GetContext();
 	Local<Object> linker_handle = ClassHandle::NewInstance<ModuleLinker>(callback);
 	auto linker = ClassHandle::Unwrap<ModuleLinker>(linker_handle);
 	linker->SetImplementation<ModuleLinkerSync>();
-	return linker->Begin(this, context_handle->context);
+	return linker->Begin(this, context);
 }
 
 struct EvaluateRunner : public ThreePhaseTask {
