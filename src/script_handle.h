@@ -18,7 +18,7 @@ class ScriptHandle : public TransferableHandle {
 
 		auto Release() -> v8::Local<v8::Value>;
 		template <int async>
-		auto Run(ContextHandle* context_handle, v8::MaybeLocal<v8::Object> maybe_options) -> v8::Local<v8::Value>;
+		auto Run(ContextHandle& context_handle, v8::MaybeLocal<v8::Object> maybe_options) -> v8::Local<v8::Value>;
 
 	private:
 		class ScriptHandleTransferable : public Transferable {

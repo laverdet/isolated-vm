@@ -35,8 +35,8 @@ ContextHandle::ContextHandle(RemoteHandle<Context> context, RemoteHandle<Value> 
 Local<FunctionTemplate> ContextHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Context", nullptr,
-		"global", ParameterizeAccessor<decltype(&ContextHandle::GlobalGetter), &ContextHandle::GlobalGetter>(),
-		"release", Parameterize<decltype(&ContextHandle::Release), &ContextHandle::Release>()
+		"global", MemberAccessor<decltype(&ContextHandle::GlobalGetter), &ContextHandle::GlobalGetter>{},
+		"release", MemberFunction<decltype(&ContextHandle::Release), &ContextHandle::Release>{}
 	));
 }
 

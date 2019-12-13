@@ -37,7 +37,7 @@ class NativeModuleHandle : public TransferableHandle {
 		std::shared_ptr<NativeModule> module;
 
 		template <int async>
-		v8::Local<v8::Value> Create(ContextHandle* context_handle);
+		v8::Local<v8::Value> Create(ContextHandle& context_handle);
 
 	public:
 		explicit NativeModuleHandle(std::shared_ptr<NativeModule> module);

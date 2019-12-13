@@ -137,22 +137,22 @@ IsolateHandle::IsolateHandle(shared_ptr<IsolateHolder> isolate) : isolate(std::m
 
 Local<FunctionTemplate> IsolateHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
-	 "Isolate", ParameterizeCtor<decltype(&New), &New>(),
-		"createSnapshot", ParameterizeStatic<decltype(&CreateSnapshot), &CreateSnapshot>(),
-		"compileScript", Parameterize<decltype(&IsolateHandle::CompileScript<1>), &IsolateHandle::CompileScript<1>>(),
-		"compileScriptSync", Parameterize<decltype(&IsolateHandle::CompileScript<0>), &IsolateHandle::CompileScript<0>>(),
-		"compileModule", Parameterize<decltype(&IsolateHandle::CompileModule<1>), &IsolateHandle::CompileModule<1>>(),
-		"compileModuleSync", Parameterize<decltype(&IsolateHandle::CompileModule<0>), &IsolateHandle::CompileModule<0>>(),
-		"cpuTime", ParameterizeAccessor<decltype(&IsolateHandle::GetCpuTime), &IsolateHandle::GetCpuTime>(),
-		"createContext", Parameterize<decltype(&IsolateHandle::CreateContext<1>), &IsolateHandle::CreateContext<1>>(),
-		"createContextSync", Parameterize<decltype(&IsolateHandle::CreateContext<0>), &IsolateHandle::CreateContext<0>>(),
-		"createInspectorSession", Parameterize<decltype(&IsolateHandle::CreateInspectorSession), &IsolateHandle::CreateInspectorSession>(),
-		"dispose", Parameterize<decltype(&IsolateHandle::Dispose), &IsolateHandle::Dispose>(),
-		"getHeapStatistics", Parameterize<decltype(&IsolateHandle::GetHeapStatistics<1>), &IsolateHandle::GetHeapStatistics<1>>(),
-		"getHeapStatisticsSync", Parameterize<decltype(&IsolateHandle::GetHeapStatistics<0>), &IsolateHandle::GetHeapStatistics<0>>(),
-		"isDisposed", ParameterizeAccessor<decltype(&IsolateHandle::IsDisposedGetter), &IsolateHandle::IsDisposedGetter>(),
-		"referenceCount", ParameterizeAccessor<decltype(&IsolateHandle::GetReferenceCount), &IsolateHandle::GetReferenceCount>(),
-		"wallTime", ParameterizeAccessor<decltype(&IsolateHandle::GetWallTime), &IsolateHandle::GetWallTime>()
+	 "Isolate", ConstructorFunction<decltype(New), New>{},
+		"createSnapshot", FreeFunction<decltype(&CreateSnapshot), &CreateSnapshot>{},
+		"compileScript", MemberFunction<decltype(&IsolateHandle::CompileScript<1>), &IsolateHandle::CompileScript<1>>{},
+		"compileScriptSync", MemberFunction<decltype(&IsolateHandle::CompileScript<0>), &IsolateHandle::CompileScript<0>>{},
+		"compileModule", MemberFunction<decltype(&IsolateHandle::CompileModule<1>), &IsolateHandle::CompileModule<1>>{},
+		"compileModuleSync", MemberFunction<decltype(&IsolateHandle::CompileModule<0>), &IsolateHandle::CompileModule<0>>{},
+		"cpuTime", MemberAccessor<decltype(&IsolateHandle::GetCpuTime), &IsolateHandle::GetCpuTime>{},
+		"createContext", MemberFunction<decltype(&IsolateHandle::CreateContext<1>), &IsolateHandle::CreateContext<1>>{},
+		"createContextSync", MemberFunction<decltype(&IsolateHandle::CreateContext<0>), &IsolateHandle::CreateContext<0>>{},
+		"createInspectorSession", MemberFunction<decltype(&IsolateHandle::CreateInspectorSession), &IsolateHandle::CreateInspectorSession>{},
+		"dispose", MemberFunction<decltype(&IsolateHandle::Dispose), &IsolateHandle::Dispose>{},
+		"getHeapStatistics", MemberFunction<decltype(&IsolateHandle::GetHeapStatistics<1>), &IsolateHandle::GetHeapStatistics<1>>{},
+		"getHeapStatisticsSync", MemberFunction<decltype(&IsolateHandle::GetHeapStatistics<0>), &IsolateHandle::GetHeapStatistics<0>>{},
+		"isDisposed", MemberAccessor<decltype(&IsolateHandle::IsDisposedGetter), &IsolateHandle::IsDisposedGetter>{},
+		"referenceCount", MemberAccessor<decltype(&IsolateHandle::GetReferenceCount), &IsolateHandle::GetReferenceCount>{},
+		"wallTime", MemberAccessor<decltype(&IsolateHandle::GetWallTime), &IsolateHandle::GetWallTime>{}
 	));
 }
 

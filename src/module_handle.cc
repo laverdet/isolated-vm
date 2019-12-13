@@ -50,12 +50,12 @@ ModuleHandle::ModuleHandle(shared_ptr<ModuleInfo> info) : info(std::move(info)) 
 Local<FunctionTemplate> ModuleHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Module", nullptr,
-		"dependencySpecifiers", ParameterizeAccessor<decltype(&ModuleHandle::GetDependencySpecifiers), &ModuleHandle::GetDependencySpecifiers>(),
-		"instantiate", Parameterize<decltype(&ModuleHandle::Instantiate), &ModuleHandle::Instantiate>(),
-		"instantiateSync", Parameterize<decltype(&ModuleHandle::InstantiateSync), &ModuleHandle::InstantiateSync>(),
-		"evaluate", Parameterize<decltype(&ModuleHandle::Evaluate<1>), &ModuleHandle::Evaluate<1>>(),
-		"evaluateSync", Parameterize<decltype(&ModuleHandle::Evaluate<0>), &ModuleHandle::Evaluate<0>>(),
-		"namespace", ParameterizeAccessor<decltype(&ModuleHandle::GetNamespace), &ModuleHandle::GetNamespace>()
+		"dependencySpecifiers", MemberAccessor<decltype(&ModuleHandle::GetDependencySpecifiers), &ModuleHandle::GetDependencySpecifiers>{},
+		"instantiate", MemberFunction<decltype(&ModuleHandle::Instantiate), &ModuleHandle::Instantiate>{},
+		"instantiateSync", MemberFunction<decltype(&ModuleHandle::InstantiateSync), &ModuleHandle::InstantiateSync>{},
+		"evaluate", MemberFunction<decltype(&ModuleHandle::Evaluate<1>), &ModuleHandle::Evaluate<1>>{},
+		"evaluateSync", MemberFunction<decltype(&ModuleHandle::Evaluate<0>), &ModuleHandle::Evaluate<0>>{},
+		"namespace", MemberAccessor<decltype(&ModuleHandle::GetNamespace), &ModuleHandle::GetNamespace>{}
 	));
 }
 
@@ -96,7 +96,7 @@ class ModuleLinker : public ClassHandle {
 			explicit Implementation(Local<Object> linker) : linker(linker) {}
 			virtual ~Implementation() = default;
 			virtual void HandleCallbackReturn(ModuleHandle* module, size_t ii, Local<Value> value) = 0;
-			virtual Local<Value> Begin(ModuleHandle* module, RemoteHandle<Context> context) = 0;
+			virtual Local<Value> Begin(ModuleHandle& module, RemoteHandle<Context> context) = 0;
 			ModuleLinker& GetLinker() {
 				auto ptr = ClassHandle::Unwrap<ModuleLinker>(linker.Deref());
 				assert(ptr);
@@ -130,7 +130,7 @@ class ModuleLinker : public ClassHandle {
 			return *dynamic_cast<T*>(impl.get());
 		}
 
-		Local<Value> Begin(ModuleHandle* module, RemoteHandle<Context> context) {
+		Local<Value> Begin(ModuleHandle& module, RemoteHandle<Context> context) {
 			return impl->Begin(module, std::move(context));
 		}
 
@@ -268,14 +268,14 @@ class ModuleLinkerSync : public ModuleLinker::Implementation {
 
 	public:
 		using ModuleLinker::Implementation::Implementation;
-		Local<Value> Begin(ModuleHandle* module, RemoteHandle<Context> context) final {
+		Local<Value> Begin(ModuleHandle& module, RemoteHandle<Context> context) final {
 			try {
-				GetLinker().Link(module);
+				GetLinker().Link(&module);
 			} catch (const js_runtime_error& err) {
 				GetLinker().Reset();
 				throw;
 			}
-			auto info = module->GetInfo();
+			auto info = module.GetInfo();
 			return ThreePhaseTask::Run<0, InstantiateRunner>(*info->handle.GetIsolateHolder(), context, info, linker.Deref());
 		}
 };
@@ -310,12 +310,12 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 			return Undefined(Isolate::GetCurrent());
 		}
 
-		static Local<Value> ModuleRejected(ModuleLinker* linker, Local<Value> error) {
+		static Local<Value> ModuleRejected(ModuleLinker& linker, Local<Value> error) {
 			FunctorRunners::RunBarrier([&]() {
-				auto& impl = linker->GetImplementation<ModuleLinkerAsync>();
+				auto& impl = linker.GetImplementation<ModuleLinkerAsync>();
 				if (!impl.rejected) {
 					impl.rejected = true;
-					linker->Reset();
+					linker.Reset();
 					Unmaybe(impl.async_handles.Deref<0>()->Reject(Isolate::GetCurrent()->GetCurrentContext(), error));
 				}
 			});
@@ -333,7 +333,9 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 			Unmaybe(holder->Set(context, 0, linker.Deref()));
 			Unmaybe(holder->Set(context, 1, module->This()));
 			Unmaybe(holder->Set(context, 2, Uint32::New(isolate, ii)));
-			promise = Unmaybe(promise->Then(context, ClassHandle::ParameterizeCallback<decltype(&ModuleResolved), &ModuleResolved>(holder)));
+			promise = Unmaybe(promise->Then(context, Unmaybe(
+				Function::New(context, FreeFunctionWithData<decltype(&ModuleResolved), &ModuleResolved>{}.callback, holder)
+			)));
 			Unmaybe(promise->Catch(context, async_handles.Deref<1>()));
 			Unmaybe(resolver->Resolve(context, value));
 		}
@@ -348,13 +350,16 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 	public:
 		explicit ModuleLinkerAsync(Local<Object> linker) : Implementation(linker), async_handles(
 			Unmaybe(Promise::Resolver::New(Isolate::GetCurrent()->GetCurrentContext())),
-			ClassHandle::ParameterizeCallback<decltype(&ModuleRejected), &ModuleRejected>(linker)
-		) {}
+			Unmaybe(Function::New(
+				Isolate::GetCurrent()->GetCurrentContext(),
+				FreeFunctionWithData<decltype(&ModuleRejected), &ModuleRejected>{}.callback, linker)
+			)
+		 ) {}
 
 		using ModuleLinker::Implementation::Implementation;
-		Local<Value> Begin(ModuleHandle* module, RemoteHandle<Context> context) final {
-			GetLinker().Link(module);
-			info = module->GetInfo();
+		Local<Value> Begin(ModuleHandle& module, RemoteHandle<Context> context) final {
+			GetLinker().Link(&module);
+			info = module.GetInfo();
 			this->context = std::move(context);
 			if (pending == 0) {
 				Instantiate();
@@ -363,20 +368,20 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 		}
 };
 
-Local<Value> ModuleHandle::Instantiate(ContextHandle* context_handle, Local<Function> callback) {
-	auto context = context_handle->GetContext();
+Local<Value> ModuleHandle::Instantiate(ContextHandle& context_handle, Local<Function> callback) {
+	auto context = context_handle.GetContext();
 	Local<Object> linker_handle = ClassHandle::NewInstance<ModuleLinker>(callback);
 	auto linker = ClassHandle::Unwrap<ModuleLinker>(linker_handle);
 	linker->SetImplementation<ModuleLinkerAsync>();
-	return linker->Begin(this, context);
+	return linker->Begin(*this, context);
 }
 
-Local<Value> ModuleHandle::InstantiateSync(ContextHandle* context_handle, Local<Function> callback) {
-	auto context = context_handle->GetContext();
+Local<Value> ModuleHandle::InstantiateSync(ContextHandle& context_handle, Local<Function> callback) {
+	auto context = context_handle.GetContext();
 	Local<Object> linker_handle = ClassHandle::NewInstance<ModuleLinker>(callback);
 	auto linker = ClassHandle::Unwrap<ModuleLinker>(linker_handle);
 	linker->SetImplementation<ModuleLinkerSync>();
-	return linker->Begin(this, context);
+	return linker->Begin(*this, context);
 }
 
 struct EvaluateRunner : public ThreePhaseTask {

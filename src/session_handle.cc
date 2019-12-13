@@ -104,16 +104,16 @@ SessionHandle::SessionHandle(IsolateEnvironment& isolate) : session(std::make_sh
 Local<FunctionTemplate> SessionHandle::Definition() {
 	return MakeClass(
 		"Session", nullptr,
-		"dispatchProtocolMessage", Parameterize<decltype(&SessionHandle::DispatchProtocolMessage), &SessionHandle::DispatchProtocolMessage>(),
-		"dispose", Parameterize<decltype(&SessionHandle::Dispose), &SessionHandle::Dispose>(),
-		"onNotification", ParameterizeAccessor<
+		"dispatchProtocolMessage", MemberFunction<decltype(&SessionHandle::DispatchProtocolMessage), &SessionHandle::DispatchProtocolMessage>{},
+		"dispose", MemberFunction<decltype(&SessionHandle::Dispose), &SessionHandle::Dispose>{},
+		"onNotification", MemberAccessor<
 			decltype(&SessionHandle::OnNotificationGetter), &SessionHandle::OnNotificationGetter,
 			decltype(&SessionHandle::OnNotificationSetter), &SessionHandle::OnNotificationSetter
-		>(),
-		"onResponse", ParameterizeAccessor<
+		>{},
+		"onResponse", MemberAccessor<
 			decltype(&SessionHandle::OnResponseGetter), &SessionHandle::OnResponseGetter,
 			decltype(&SessionHandle::OnResponseSetter), &SessionHandle::OnResponseSetter
-		>()
+		>{}
 	);
 }
 

@@ -48,9 +48,9 @@ NativeModuleHandle::NativeModuleHandle(shared_ptr<NativeModule> module) : module
 
 Local<FunctionTemplate> NativeModuleHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
-		"NativeModule", ParameterizeCtor<decltype(&New), &New>(),
-		"create", Parameterize<decltype(&NativeModuleHandle::Create<1>), &NativeModuleHandle::Create<1>>(),
-		"createSync", Parameterize<decltype(&NativeModuleHandle::Create<0>), &NativeModuleHandle::Create<0>>()
+		"NativeModule", ConstructorFunction<decltype(New), New>{},
+		"create", MemberFunction<decltype(&NativeModuleHandle::Create<1>), &NativeModuleHandle::Create<1>>{},
+		"createSync", MemberFunction<decltype(&NativeModuleHandle::Create<0>), &NativeModuleHandle::Create<0>>{}
 	));
 }
 
@@ -91,10 +91,10 @@ class CreateRunner : public ThreePhaseTask {
 		}
 };
 template <int async>
-Local<Value> NativeModuleHandle::Create(class ContextHandle* context_handle) {
+Local<Value> NativeModuleHandle::Create(class ContextHandle& context_handle) {
 	// TODO: This should probably throw from the promise, but ThreePhaseTask can't handle invalid
 	// isolate references for now.
-	auto context = context_handle->GetContext();
+	auto context = context_handle.GetContext();
 	return ThreePhaseTask::Run<async, CreateRunner>(*context.GetIsolateHolder(), context, module);
 }
 

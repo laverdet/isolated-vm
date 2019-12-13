@@ -16,10 +16,10 @@ ScriptHandle::ScriptHandle(RemoteHandle<UnboundScript> script) :
 auto ScriptHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Script", nullptr,
-		"release", Parameterize<decltype(&ScriptHandle::Release), &ScriptHandle::Release>(),
-		"run", Parameterize<decltype(&ScriptHandle::Run<1>), &ScriptHandle::Run<1>>(),
-		"runIgnored", Parameterize<decltype(&ScriptHandle::Run<2>), &ScriptHandle::Run<2>>(),
-		"runSync", Parameterize<decltype(&ScriptHandle::Run<0>), &ScriptHandle::Run<0>>()
+		"release", MemberFunction<decltype(&ScriptHandle::Release), &ScriptHandle::Release>{},
+		"run", MemberFunction<decltype(&ScriptHandle::Run<1>), &ScriptHandle::Run<1>>{},
+		"runIgnored", MemberFunction<decltype(&ScriptHandle::Run<2>), &ScriptHandle::Run<2>>{},
+		"runSync", MemberFunction<decltype(&ScriptHandle::Run<0>), &ScriptHandle::Run<0>>{}
 	));
 }
 
@@ -38,9 +38,9 @@ auto ScriptHandle::Release() -> Local<Value> {
 struct RunRunner /* lol */ : public ThreePhaseTask {
 	RunRunner(
 		RemoteHandle<UnboundScript>& script,
-		ContextHandle* context_handle,
+		ContextHandle& context_handle,
 		MaybeLocal<Object> maybe_options
-	) : context{context_handle->GetContext()} {
+	) : context{context_handle.GetContext()} {
 		// Sanity check
 		if (!script) {
 			throw js_generic_error("Script has been released");
@@ -97,7 +97,7 @@ struct RunRunner /* lol */ : public ThreePhaseTask {
 	uint32_t timeout_ms = 0;
 };
 template <int async>
-auto ScriptHandle::Run(ContextHandle* context_handle, MaybeLocal<Object> maybe_options) -> Local<Value> {
+auto ScriptHandle::Run(ContextHandle& context_handle, MaybeLocal<Object> maybe_options) -> Local<Value> {
 	return ThreePhaseTask::Run<async, RunRunner>(*script.GetIsolateHolder(), script, context_handle, maybe_options);
 }
 

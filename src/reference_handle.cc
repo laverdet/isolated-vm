@@ -101,22 +101,22 @@ ReferenceData::ReferenceData(
  */
 auto ReferenceHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
-		"Reference", ParameterizeCtor<decltype(&New), &New>(),
-		"deref", Parameterize<decltype(&ReferenceHandle::Deref), &ReferenceHandle::Deref>(),
-		"derefInto", Parameterize<decltype(&ReferenceHandle::DerefInto), &ReferenceHandle::DerefInto>(),
-		"release", Parameterize<decltype(&ReferenceHandle::Release), &ReferenceHandle::Release>(),
-		"copy", Parameterize<decltype(&ReferenceHandle::Copy<1>), &ReferenceHandle::Copy<1>>(),
-		"copySync", Parameterize<decltype(&ReferenceHandle::Copy<0>), &ReferenceHandle::Copy<0>>(),
-		"get", Parameterize<decltype(&ReferenceHandle::Get<1>), &ReferenceHandle::Get<1>>(),
-		"getSync", Parameterize<decltype(&ReferenceHandle::Get<0>), &ReferenceHandle::Get<0>>(),
-		"set", Parameterize<decltype(&ReferenceHandle::Set<1>), &ReferenceHandle::Set<1>>(),
-		"setIgnored", Parameterize<decltype(&ReferenceHandle::Set<2>), &ReferenceHandle::Set<2>>(),
-		"setSync", Parameterize<decltype(&ReferenceHandle::Set<0>), &ReferenceHandle::Set<0>>(),
-		"apply", Parameterize<decltype(&ReferenceHandle::Apply<1>), &ReferenceHandle::Apply<1>>(),
-		"applyIgnored", Parameterize<decltype(&ReferenceHandle::Apply<2>), &ReferenceHandle::Apply<2>>(),
-		"applySync", Parameterize<decltype(&ReferenceHandle::Apply<0>), &ReferenceHandle::Apply<0>>(),
-		"applySyncPromise", Parameterize<decltype(&ReferenceHandle::Apply<4>), &ReferenceHandle::Apply<4>>(),
-		"typeof", ParameterizeAccessor<decltype(&ReferenceHandle::TypeOfGetter), &ReferenceHandle::TypeOfGetter>()
+		"Reference", ConstructorFunction<decltype(New), New>{},
+		"deref", MemberFunction<decltype(&ReferenceHandle::Deref), &ReferenceHandle::Deref>{},
+		"derefInto", MemberFunction<decltype(&ReferenceHandle::DerefInto), &ReferenceHandle::DerefInto>{},
+		"release", MemberFunction<decltype(&ReferenceHandle::Release), &ReferenceHandle::Release>{},
+		"copy", MemberFunction<decltype(&ReferenceHandle::Copy<1>), &ReferenceHandle::Copy<1>>{},
+		"copySync", MemberFunction<decltype(&ReferenceHandle::Copy<0>), &ReferenceHandle::Copy<0>>{},
+		"get", MemberFunction<decltype(&ReferenceHandle::Get<1>), &ReferenceHandle::Get<1>>{},
+		"getSync", MemberFunction<decltype(&ReferenceHandle::Get<0>), &ReferenceHandle::Get<0>>{},
+		"set", MemberFunction<decltype(&ReferenceHandle::Set<1>), &ReferenceHandle::Set<1>>{},
+		"setIgnored", MemberFunction<decltype(&ReferenceHandle::Set<2>), &ReferenceHandle::Set<2>>{},
+		"setSync", MemberFunction<decltype(&ReferenceHandle::Set<0>), &ReferenceHandle::Set<0>>{},
+		"apply", MemberFunction<decltype(&ReferenceHandle::Apply<1>), &ReferenceHandle::Apply<1>>{},
+		"applyIgnored", MemberFunction<decltype(&ReferenceHandle::Apply<2>), &ReferenceHandle::Apply<2>>{},
+		"applySync", MemberFunction<decltype(&ReferenceHandle::Apply<0>), &ReferenceHandle::Apply<0>>{},
+		"applySyncPromise", MemberFunction<decltype(&ReferenceHandle::Apply<4>), &ReferenceHandle::Apply<4>>{},
+		"typeof", MemberAccessor<decltype(&ReferenceHandle::TypeOfGetter), &ReferenceHandle::TypeOfGetter>{}
 	));
 }
 

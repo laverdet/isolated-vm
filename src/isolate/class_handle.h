@@ -1,35 +1,36 @@
 #pragma once
 #include <v8.h>
 #include "../apply_from_tuple.h"
-#include "convert_param.h"
 #include "environment.h"
 #include "functor_runners.h"
 #include "util.h"
+#include "generic/callbacks.h"
+#include "generic/extract_params.h"
+#include "generic/handle_cast.h"
 
 #include <cassert>
 #include <cstddef>
+#include <type_traits>
 #include <stdexcept>
 
 namespace ivm {
+
+namespace detail {
+	struct ConstructorFunctionHolder : detail::FreeFunctionHolder {
+		using FreeFunctionHolder::FreeFunctionHolder;
+	};
+
+	template <class Signature>
+	struct ConstructorFunctionImpl;
+}
 
 /**
  * Analogous to node::ObjectWrap but Isolate-aware. Also has a bunch of unnecessary template stuff.
  */
 class ClassHandle {
+	template <class Signature>
+	friend struct detail::ConstructorFunctionImpl;
 	private:
-		struct CtorFunction {
-			v8::FunctionCallback fn;
-			int args;
-			constexpr CtorFunction(v8::FunctionCallback fn, int args) : fn(fn), args(args) {}
-			constexpr CtorFunction(std::nullptr_t ptr) : fn(ptr), args(0) {} // NOLINT
-		};
-		// The int types here are just a lazy way to make these different types
-		using MemberFunction = std::pair<v8::FunctionCallback, int32_t>;
-		using StaticFunction = std::pair<v8::FunctionCallback, uint32_t>;
-		using AccessorPair = std::pair<v8::AccessorGetterCallback, v8::AccessorSetterCallback>;
-		using StaticAccessorPair = std::pair<v8::FunctionCallback, v8::FunctionCallback>;
-
-		using SetterParam = std::pair<v8::Local<v8::Value>*, const v8::PropertyCallbackInfo<void>*>;
 		v8::Persistent<v8::Object> handle;
 
 		/**
@@ -44,9 +45,9 @@ class ClassHandle {
 
 			// This add regular methods
 			template <typename... Args>
-			void Add(const char* name, MemberFunction impl, Args... args) {
+			void Add(const char* name, detail::MemberFunctionHolder impl, Args... args) {
 				v8::Local<v8::String> name_handle = v8_symbol(name);
-				proto->Set(name_handle, v8::FunctionTemplate::New(isolate, impl.first, name_handle, sig, impl.second));
+				proto->Set(name_handle, v8::FunctionTemplate::New(isolate, impl.callback, name_handle, sig, impl.length));
 				Add(args...);
 			}
 
@@ -60,148 +61,34 @@ class ClassHandle {
 
 			// This adds static functions on the object constructor
 			template <typename... Args>
-			void Add(const char* name, StaticFunction impl, Args... args) {
+			void Add(const char* name, detail::FreeFunctionHolder impl, Args... args) {
 				v8::Local<v8::String> name_handle = v8_symbol(name);
-				tmpl->Set(name_handle, v8::FunctionTemplate::New(isolate, impl.first, name_handle, v8::Local<v8::Signature>(), impl.second));
+				tmpl->Set(name_handle, v8::FunctionTemplate::New(isolate, impl.callback, name_handle, v8::Local<v8::Signature>(), impl.length));
 				Add(args...);
 			}
 
 			// This adds accessors
 			template <typename... Args>
-			void Add(const char* name, AccessorPair impl, Args... args) {
+			void Add(const char* name, detail::MemberAccessorHolder impl, Args... args) {
 				v8::Local<v8::String> name_handle = v8_symbol(name);
-				proto->SetAccessor(name_handle, impl.first, impl.second, name_handle, v8::AccessControl::DEFAULT, v8::PropertyAttribute::None, asig);
+				proto->SetAccessor(name_handle, impl.getter.callback, impl.setter.callback, name_handle, v8::AccessControl::DEFAULT, v8::PropertyAttribute::None, asig);
 				Add(args...);
 			}
 
 			// This adds static accessors
 			template <typename... Args>
-			void Add(const char* name, StaticAccessorPair impl, Args... args) {
+			void Add(const char* name, detail::StaticAccessorHolder impl, Args... args) {
 				v8::Local<v8::String> name_handle = v8_symbol(name);
 				v8::Local<v8::FunctionTemplate> setter;
-				if (impl.second != nullptr) {
-					setter = v8::FunctionTemplate::New(isolate, impl.second, name_handle);
+				if (impl.setter.callback != nullptr) {
+					setter = v8::FunctionTemplate::New(isolate, impl.setter.callback, name_handle);
 				}
-				tmpl->SetAccessorProperty(name_handle, v8::FunctionTemplate::New(isolate, impl.first, name_handle), setter);
+				tmpl->SetAccessorProperty(name_handle, v8::FunctionTemplate::New(isolate, impl.getter.callback, name_handle), setter);
 				Add(args...);
 			}
 
 			void Add() {} // NOLINT
 		};
-
-		/**
-		 * Below is the Parameterize<> template magic
-		 */
-		// These two templates will peel arguments off and run them through ConvertParam<T>
-		template <typename V, int O, typename FnT, typename R, typename ConvertedArgsT>
-		static R ParameterizeHelper(FnT fn, ConvertedArgsT convertedArgs, V /* info */) {
-			return apply_from_tuple(fn, convertedArgs);
-		}
-
-		template <typename V, int O, typename FnT, typename R, typename ConvertedArgsT, typename T, typename... ConversionArgsRest>
-		static R ParameterizeHelper(FnT fn, ConvertedArgsT convertedArgs, V info) {
-			constexpr auto pos = (int)std::tuple_size<ConvertedArgsT>::value;
-			auto t = std::tuple_cat(convertedArgs, std::make_tuple(
-				ConvertParamInvoke<
-					ConvertParam<T>,
-					pos == 0 ? O : pos - (O < 0 ? 1 : 0),
-					(int)(sizeof...(ConversionArgsRest) + pos) + (O < 0 ? 0 : O + 1)
-				>::Invoke(info)
-			));
-			return ParameterizeHelper<V, O, FnT, R, decltype(t), ConversionArgsRest...>(fn, t, info);
-		}
-
-		// Regular function that just returns a Local<Value>
-		template <typename V, int O, typename ...Args>
-		static v8::Local<v8::Value> ParameterizeHelperStart(V info, v8::Local<v8::Value>(*fn)(Args...)) {
-			return ParameterizeHelper<V, O, v8::Local<v8::Value>(*)(Args...), v8::Local<v8::Value>, std::tuple<>, Args...>(fn, std::tuple<>(), info);
-		}
-
-		// Setter version (void return)
-		template <typename V, int O, typename ...Args>
-		static void ParameterizeHelperStart(V info, void(*fn)(Args...)) {
-			return ParameterizeHelper<V, O, void(*)(Args...), void, std::tuple<>, Args...>(fn, std::tuple<>(), info);
-		}
-
-		// Constructor functions need to pair the C++ instance to the v8 handle
-		template <int O, typename R, typename ...Args>
-		static v8::Local<v8::Value> ParameterizeHelperCtorStart(const v8::FunctionCallbackInfo<v8::Value>& info, std::unique_ptr<R>(*fn)(Args...)) {
-			RequireConstructorCall(info);
-			std::unique_ptr<R> result = ParameterizeHelper<
-				const v8::FunctionCallbackInfo<v8::Value>&,
-				O,
-				std::unique_ptr<R>(*)(Args...),
-				std::unique_ptr<R>,
-				std::tuple<>,
-				Args...
-			>(fn, std::tuple<>(), info);
-			if (result) {
-				v8::Local<v8::Object> handle = info.This().As<v8::Object>();
-				Wrap(std::move(result), handle);
-				return handle;
-			} else {
-				return Undefined(v8::Isolate::GetCurrent());
-			}
-		}
-
-		// Main entry point for parameterized functions
-		template <int O, typename T, T F>
-		static void ParameterizeEntry(const v8::FunctionCallbackInfo<v8::Value>& info) {
-			FunctorRunners::RunCallback(info, [ &info ]() {
-				return ParameterizeHelperStart<const v8::FunctionCallbackInfo<v8::Value>&, O>(info, F);
-			});
-		}
-
-		// Main entry point for parameterized constructors
-		template <typename T, T F>
-		static void ParameterizeCtorEntry(const v8::FunctionCallbackInfo<v8::Value>& info) {
-			FunctorRunners::RunCallback(info, [ &info ]() {
-				return ParameterizeHelperCtorStart<0>(info, F);
-			});
-		}
-
-		// Main entry point for getter functions
-		template <typename T, T F>
-		static void ParameterizeGetterEntry(v8::Local<v8::String> /* property */, const v8::PropertyCallbackInfo<v8::Value>& info) {
-			FunctorRunners::RunCallback(info, [ &info ]() {
-				return ParameterizeHelperStart<const v8::PropertyCallbackInfo<v8::Value>&, -1>(info, F);
-			});
-		}
-
-		// Main entry point for setter functions
-		template <typename T, T F>
-		static void ParameterizeSetterEntry(v8::Local<v8::String> /* property */, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& info) {
-			FunctorRunners::RunCallback(info, [ &info, &value ]() {
-				ParameterizeHelperStart<SetterParam, -1>(SetterParam(&value, &info), F);
-				return v8::Boolean::New(v8::Isolate::GetCurrent(), true);
-			});
-		}
-
-		// Helper which converts member functions to `Type(Class* that, Args...)`
-		template <typename F>
-		struct MethodCast;
-
-		template <typename R, typename ...Args>
-		struct MethodCast<R(Args...)> {
-			using Type = R(*)(Args...);
-			template <R(*F)(Args...)>
-			static R Invoke(Args... args) {
-				return (*F)(args...);
-			}
-		};
-
-		template<class C, class R, class ...Args>
-		struct MethodCast<R(C::*)(Args...)> : public MethodCast<R(Args...)> {
-			using Type = R(*)(C*, Args...);
-			template <R(C::*F)(Args...)>
-			static R Invoke(C* that, Args... args) {
-				return (that->*F)(args...);
-			}
-		};
-
-		template <typename R, typename ...Args> static constexpr size_t ArgCount(R(* /* fn */)(Args...)) {
-			return sizeof...(Args);
-		}
 
 		/**
 		 * Convenience wrapper for the obtuse SetWeak function signature. When the callback is called
@@ -241,7 +128,7 @@ class ClassHandle {
 		 * It just throws when you call it; used when `nullptr` is passed as constructor
 		 */
 		static void PrivateConstructor(const v8::FunctionCallbackInfo<v8::Value>& info) {
-			PrivateConstructorError(info);
+			throw js_type_error(detail::CalleeName(info)+ " constructor is private");
 		}
 
 		/**
@@ -258,12 +145,12 @@ class ClassHandle {
 		 * Sets up this object's FunctionTemplate inside the current isolate
 		 */
 		template <typename... Args>
-		static v8::Local<v8::FunctionTemplate> MakeClass(const char* class_name, CtorFunction New, Args... args) {
+		static v8::Local<v8::FunctionTemplate> MakeClass(const char* class_name, detail::ConstructorFunctionHolder New, Args... args) {
 			v8::Isolate* isolate = v8::Isolate::GetCurrent();
 			v8::Local<v8::String> name_handle = v8_symbol(class_name);
 			v8::Local<v8::FunctionTemplate> tmpl = v8::FunctionTemplate::New(
-				isolate, New.fn == nullptr ? PrivateConstructor : New.fn,
-				name_handle, v8::Local<v8::Signature>(), New.args
+				isolate, New.callback == nullptr ? PrivateConstructor : New.callback,
+				name_handle, {}, New.length
 			);
 			tmpl->SetClassName(name_handle);
 			tmpl->InstanceTemplate()->SetInternalFieldCount(1);
@@ -285,59 +172,6 @@ class ClassHandle {
 			v8::Local<v8::FunctionTemplate> parent = GetFunctionTemplate<T>();
 			definition->Inherit(parent);
 			return definition;
-		}
-
-		/**
-		 * Automatically unpacks v8 FunctionCallbackInfo for you
-		 */
-		template <typename T, T F>
-		static constexpr MemberFunction Parameterize() {
-			return MemberFunction(
-				ParameterizeEntry<-1, typename MethodCast<T>::Type, MethodCast<T>::template Invoke<F>>,
-				ArgCount(MethodCast<T>::template Invoke<F>) - 1
-			);
-		}
-
-		template <typename T, T F>
-		static constexpr CtorFunction ParameterizeCtor() {
-			return CtorFunction(ParameterizeCtorEntry<T, F>, ArgCount(F));
-		}
-
-		template <typename T, T F>
-		static constexpr StaticFunction ParameterizeStatic() {
-			return StaticFunction(ParameterizeEntry<0, T, F>, ArgCount(F));
-		}
-
-		template <typename T1, T1 F1, typename T2, T2 F2>
-		static constexpr AccessorPair ParameterizeAccessor() {
-			return AccessorPair(
-				ParameterizeGetterEntry<typename MethodCast<T1>::Type, MethodCast<T1>::template Invoke<F1>>,
-				ParameterizeSetterEntry<typename MethodCast<T2>::Type, MethodCast<T2>::template Invoke<F2>>
-			);
-		}
-
-		template <typename T1, T1 F1>
-		static constexpr AccessorPair ParameterizeAccessor() {
-			return AccessorPair(
-				ParameterizeGetterEntry<typename MethodCast<T1>::Type, MethodCast<T1>::template Invoke<F1>>,
-				(v8::AccessorSetterCallback)nullptr
-			);
-		}
-
-		template <typename T1, T1 F1, typename T2, T2 F2>
-		static constexpr StaticAccessorPair ParameterizeStaticAccessor() {
-			return StaticAccessorPair(
-				ParameterizeEntry<0, T1, F1>,
-				ParameterizeEntry<0, T2, F2>
-			);
-		}
-
-		template <typename T1, T1 F1>
-		static constexpr StaticAccessorPair ParameterizeStaticAccessor() {
-			return StaticAccessorPair(
-				ParameterizeEntry<0, T1, F1>,
-				nullptr
-			);
 		}
 
 	public:
@@ -399,26 +233,71 @@ class ClassHandle {
 			return dynamic_cast<T*>(static_cast<ClassHandle*>(handle->GetAlignedPointerFromInternalField(0)));
 		}
 
-		static ClassHandle* UnwrapClassHandle(v8::Local<v8::Object> handle) {
-			assert(!handle.IsEmpty());
-			assert(handle->InternalFieldCount() > 0);
-			return static_cast<ClassHandle*>(handle->GetAlignedPointerFromInternalField(0));
-		}
-
 		/**
 		 * Returns the JS value that this ClassHandle points to
 		 */
 		v8::Local<v8::Object> This() {
 			return Deref(handle);
 		}
+};
 
-		/**
-		 * Creates a new callback function with given `data`
-		 */
-		template <typename T, T F>
-		static v8::Local<v8::Function> ParameterizeCallback(v8::Local<v8::Value> data) {
-			return Unmaybe(v8::Function::New(v8::Isolate::GetCurrent()->GetCurrentContext(), ParameterizeEntry<-2, T, F>, data, ArgCount(F) - 1));
+// Conversions from v8::Value -> Type&
+template <class Type>
+inline auto HandleCastImpl(v8::Local<v8::Value> value, HandleCastArguments /*arguments*/, HandleCastTag<Type&> /*tag*/) -> Type& {
+	if (!value->IsObject()) {
+		throw ParamIncorrect("an object");
+	}
+	v8::Local<v8::Object> handle = value.As<v8::Object>();
+	if (handle->InternalFieldCount() != 1) {
+		throw ParamIncorrect("something else");
+	}
+	auto ptr = ClassHandle::Unwrap<Type>(handle);
+	if (ptr == nullptr) {
+		throw ParamIncorrect("something else");
+	} else {
+		return *ptr;
+	}
+}
+
+namespace detail {
+
+template <class Signature>
+struct ConstructorFunctionImpl;
+
+template <class Return, class ...Args>
+struct ConstructorFunctionImpl<Return(Args...)> {
+	using Type = v8::Local<v8::Value>(v8::Local<v8::Value> This, Args... args);
+
+	template <Return(Function)(Args...)>
+	static v8::Local<v8::Value> Invoke(v8::Local<v8::Value> This, Args... args) {
+		auto instance = Function(args...);
+		if (instance) {
+			v8::Local<v8::Object> handle = This.As<v8::Object>();
+			ClassHandle::Wrap(std::move(instance), handle);
+			return handle;
+		} else {
+			return Undefined(v8::Isolate::GetCurrent());
 		}
+	}
+};
+
+} // namespace detail
+
+template <class Signature, Signature Function>
+struct ConstructorFunction : detail::ConstructorFunctionHolder {
+	using ConstructorFunctionHolder::ConstructorFunctionHolder;
+	ConstructorFunction() : ConstructorFunctionHolder{
+		Entry,
+		std::tuple_size<typename detail::extract_arguments<Signature>::arguments>::value} {}
+
+	static void Entry(const v8::FunctionCallbackInfo<v8::Value>& info) {
+		if (!info.IsConstructCall()) {
+			throw js_type_error(detail::CalleeName(info)+ " must be called with `new`");
+		}
+		ToCallback<-1, typename Impl::Type, Impl::template Invoke<Function>>()(info);
+	}
+
+	using Impl = detail::ConstructorFunctionImpl<Signature>;
 };
 
 } // namespace ivm

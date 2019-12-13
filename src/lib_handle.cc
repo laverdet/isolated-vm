@@ -19,7 +19,7 @@ Local<Value> LibHandle::LibTransferable::TransferIn() {
 Local<FunctionTemplate> LibHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Lib", nullptr,
-		"hrtime", Parameterize<decltype(&LibHandle::Hrtime), &LibHandle::Hrtime>()
+		"hrtime", MemberFunction<decltype(&LibHandle::Hrtime), &LibHandle::Hrtime>{}
 	));
 }
 
