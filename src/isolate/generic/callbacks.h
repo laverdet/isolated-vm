@@ -40,7 +40,7 @@ template<class Class, class Return, class ...Args>
 struct unbind_member_function<Return(Class::*)(Args...)> {
 	using type = Return(*)(Class&, Args...);
 	template <Return(Class::*Function)(Args...)>
-	static Return invoke(Class& instance, Args... args) {
+	static inline Return invoke(Class& instance, Args... args) {
 		return (instance.*Function)(args...);
 	}
 };
@@ -55,7 +55,7 @@ inline auto HandleCastImpl(VoidReturn /*value*/, HandleCastArguments arguments, 
 // is needed because the return value from any function needs to be used as a parameter to
 // another function.
 template <class Function>
-auto InvokeWithoutVoid(
+inline auto InvokeWithoutVoid(
 	Function function,
 	typename std::enable_if<std::is_same<void, decltype(function())>::value>::type* /*conditional*/ = nullptr
 ) {
@@ -64,7 +64,7 @@ auto InvokeWithoutVoid(
 }
 
 template <class Function>
-decltype(auto) InvokeWithoutVoid(
+inline decltype(auto) InvokeWithoutVoid(
 	Function function,
 	typename std::enable_if<!std::is_same<void, decltype(function())>::value>::type* /*conditional*/ = nullptr
 ) {
@@ -73,13 +73,13 @@ decltype(auto) InvokeWithoutVoid(
 
 // The return value of C++ callbacks are run through this to forward the value to v8
 template <class Type>
-void Returner(Type return_value, const v8::FunctionCallbackInfo<v8::Value>& info) {
+inline void Returner(Type return_value, const v8::FunctionCallbackInfo<v8::Value>& info) {
 	info.GetReturnValue().Set(HandleCast<v8::Local<v8::Value>>(return_value, info));
 }
 
 template <class Type>
-void Returner(Type return_value, v8::Local<v8::String> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
-	info.GetReturnValue().Set(HandleCast<v8::Local<v8::Value>>(return_value, name, info));
+inline void Returner(Type return_value, v8::Local<v8::String> /*name*/, const v8::PropertyCallbackInfo<v8::Value>& info) {
+	info.GetReturnValue().Set(HandleCast<v8::Local<v8::Value>>(return_value, info));
 }
 
 inline void Returner(
@@ -97,13 +97,20 @@ struct CallbackMaker {
 	// This is responsible for unpacking the arguments from the C++ function, invoking the param
 	// extracter on the v8 info descriptors, and passing the results to the C++ function
 	template <size_t ...Indices>
-	static void Spread(Args... args, std::index_sequence<Indices...> /*indices*/) {
+	static inline void Spread(Args... args, std::index_sequence<Indices...> /*indices*/) {
 		using FnArgs = typename extract_arguments<Signature>::arguments;
 		return Returner(InvokeWithoutVoid([&]() {
 			// ParamExtractor is implemented as a struct which holds the arguments because earlier
 			// versions of gcc segfault on nested template packs
-			ParamExtractor<Args...> extractor{args...};
-			return Function(extractor.template Invoke<Offset, Indices, std::tuple_element_t<Indices, FnArgs>>()...);
+			ParamExtractor<Offset, Args...> extractor{args...};
+			// try/catch is here instead of in ParamExtractor to avoid having to set up / tear down stack
+			// guard once per parameter
+			try {
+				extractor.CheckLength(static_cast<FnArgs*>(nullptr));
+				return Function(extractor.template Invoke<Indices, std::tuple_element_t<Indices, FnArgs>>()...);
+			} catch (const ParamIncorrect& ex) {
+				extractor.Caught(ex);
+			}
 		}), args...);
 	}
 

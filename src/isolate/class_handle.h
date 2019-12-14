@@ -243,7 +243,7 @@ class ClassHandle {
 
 // Conversions from v8::Value -> Type&
 template <class Type>
-inline auto HandleCastImpl(v8::Local<v8::Value> value, HandleCastArguments /*arguments*/, HandleCastTag<Type&> /*tag*/) -> Type& {
+inline auto HandleCastImpl(v8::Local<v8::Value> value, const HandleCastArguments& /*arguments*/, HandleCastTag<Type&> /*tag*/) -> Type& {
 	if (!value->IsObject()) {
 		throw ParamIncorrect("an object");
 	}
@@ -269,7 +269,7 @@ struct ConstructorFunctionImpl<Return(Args...)> {
 	using Type = v8::Local<v8::Value>(v8::Local<v8::Value> This, Args... args);
 
 	template <Return(Function)(Args...)>
-	static v8::Local<v8::Value> Invoke(v8::Local<v8::Value> This, Args... args) {
+	static inline v8::Local<v8::Value> Invoke(v8::Local<v8::Value> This, Args... args) {
 		auto instance = Function(args...);
 		if (instance) {
 			v8::Local<v8::Object> handle = This.As<v8::Object>();

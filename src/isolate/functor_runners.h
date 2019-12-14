@@ -10,7 +10,7 @@ namespace ivm {
 namespace FunctorRunners {
 
 template <typename F>
-void RunBarrier(F fn) {
+inline void RunBarrier(F fn) {
 	// Runs a function and converts C++ errors to immediate v8 errors. Pretty much the same as
 	// `RunCallback` but with no return value.
 	try {
@@ -25,7 +25,7 @@ void RunBarrier(F fn) {
 }
 
 template <typename F, typename T>
-void RunCallback(T& info, F fn) {
+inline void RunCallback(T& info, F fn) {
 	// This function is used when C++ code is invoked from a JS callback. We are given an instance of
 	// `FunctionCallbackInfo`, or `PropertyCallbackInfo` which is used to give the return value to v8.
 	// C++ exceptions will be caught, converted to JS exceptions, and then thrown back to JS.
@@ -45,7 +45,7 @@ void RunCallback(T& info, F fn) {
 }
 
 template <typename F1, typename F2>
-void RunCatchExternal(v8::Local<v8::Context> default_context, F1 fn1, F2 fn2) {
+inline void RunCatchExternal(v8::Local<v8::Context> default_context, F1 fn1, F2 fn2) {
 	// This function will call `fn1()` and if that fails it will convert the caught error to an
 	// `ExternalCopy` and call `fn2(err)`
 	v8::TryCatch try_catch(v8::Isolate::GetCurrent());
@@ -83,7 +83,7 @@ void RunCatchExternal(v8::Local<v8::Context> default_context, F1 fn1, F2 fn2) {
 }
 
 template <typename F1, typename F2>
-void RunCatchValue(F1 fn1, F2 fn2) {
+inline void RunCatchValue(F1 fn1, F2 fn2) {
 	// This function will call `fn1()` and if that fails it will convert the caught error to a v8
 	// value and pass it to fn3().
 	//
