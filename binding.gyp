@@ -33,6 +33,9 @@
 					'GCC_OPTIMIZATION_LEVEL': '3',
 					'OTHER_CFLAGS': [ '-Wno-deprecated-declarations' ],
 				},
+				'msvs_disabled_warnings': [
+					4996, # Deprecation
+				],
 			},
 			'Debug': {
 				'inherit_from': [ 'Common' ],
