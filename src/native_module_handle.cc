@@ -48,7 +48,7 @@ NativeModuleHandle::NativeModuleHandle(shared_ptr<NativeModule> module) : module
 
 Local<FunctionTemplate> NativeModuleHandle::Definition() {
 	return Inherit<TransferableHandle>(MakeClass(
-		"NativeModule", ConstructorFunction<decltype(New), New>{},
+		"NativeModule", ConstructorFunction<decltype(&New), &New>{},
 		"create", MemberFunction<decltype(&NativeModuleHandle::Create<1>), &NativeModuleHandle::Create<1>>{},
 		"createSync", MemberFunction<decltype(&NativeModuleHandle::Create<0>), &NativeModuleHandle::Create<0>>{}
 	));

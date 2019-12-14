@@ -101,7 +101,7 @@ ReferenceData::ReferenceData(
  */
 auto ReferenceHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
-		"Reference", ConstructorFunction<decltype(New), New>{},
+		"Reference", ConstructorFunction<decltype(&New), &New>{},
 		"deref", MemberFunction<decltype(&ReferenceHandle::Deref), &ReferenceHandle::Deref>{},
 		"derefInto", MemberFunction<decltype(&ReferenceHandle::DerefInto), &ReferenceHandle::DerefInto>{},
 		"release", MemberFunction<decltype(&ReferenceHandle::Release), &ReferenceHandle::Release>{},

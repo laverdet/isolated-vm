@@ -264,9 +264,12 @@ namespace detail {
 template <class Signature>
 struct ConstructorFunctionImpl;
 
+template <class Signature>
+struct ConstructorFunctionImpl<Signature*> : ConstructorFunctionImpl<Signature> {};
+
 template <class Return, class ...Args>
 struct ConstructorFunctionImpl<Return(Args...)> {
-	using Type = v8::Local<v8::Value>(v8::Local<v8::Value> This, Args... args);
+	using Type = v8::Local<v8::Value>(*)(v8::Local<v8::Value> This, Args... args);
 
 	template <Return(Function)(Args...)>
 	static inline v8::Local<v8::Value> Invoke(v8::Local<v8::Value> This, Args... args) {
@@ -294,7 +297,7 @@ struct ConstructorFunction : detail::ConstructorFunctionHolder {
 		if (!info.IsConstructCall()) {
 			throw js_type_error(detail::CalleeName(info)+ " must be called with `new`");
 		}
-		ToCallback<-1, typename Impl::Type, Impl::template Invoke<Function>>()(info);
+		ToCallback<-1, typename Impl::Type, &Impl::template Invoke<Function>>()(info);
 	}
 
 	using Impl = detail::ConstructorFunctionImpl<Signature>;

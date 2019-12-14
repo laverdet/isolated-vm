@@ -244,6 +244,22 @@ struct MemberAccessor : detail::MemberAccessorHolder {
 		using UnboundSetter = detail::unbind_member_function<SetterSignature>;
 };
 
+// gcc seems to have trouble explicitly substituting std::nullptr_t into these templates so this one
+// is partially specialized. Theoretically you could just remove this whole definition but I
+// wouldn't try it.
+template <class GetterSignature, GetterSignature Getter>
+struct MemberAccessor<GetterSignature, Getter, std::nullptr_t, nullptr> : detail::MemberAccessorHolder {
+	constexpr MemberAccessor() : MemberAccessorHolder{
+		detail::MemberGetterHolder{detail::MemberGetterHolder::ToCallback<
+			0, typename UnboundGetter::type, UnboundGetter::template invoke<Getter>
+		>()},
+		detail::MemberSetterHolder{nullptr}
+	} {}
+
+	private:
+		using UnboundGetter = detail::unbind_member_function<GetterSignature>;
+};
+
 template <
 	class GetterSignature, GetterSignature Getter,
 	class SetterSignature = std::nullptr_t, SetterSignature Setter = nullptr
