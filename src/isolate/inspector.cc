@@ -189,7 +189,7 @@ void InspectorSession::DispatchBackendProtocolMessage(std::vector<uint16_t> mess
 		};
 		agent.SendInterrupt(std::make_unique<DispatchMessage>(std::move(message), session));
 	} else {
-		throw js_generic_error("Session is dead");
+		throw RuntimeGenericError("Session is dead");
 	}
 }
 

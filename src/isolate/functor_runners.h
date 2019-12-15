@@ -1,6 +1,7 @@
 #pragma once
 #include "util.h"
 #include "../external_copy.h"
+#include "./generic/error.h"
 
 namespace ivm {
 
@@ -8,21 +9,6 @@ namespace ivm {
  * Helpers to run a function and catch the various exceptions defined above
  */
 namespace FunctorRunners {
-
-template <typename F>
-inline void RunBarrier(F fn) {
-	// Runs a function and converts C++ errors to immediate v8 errors. Pretty much the same as
-	// `RunCallback` but with no return value.
-	try {
-		fn();
-	} catch (const js_fatal_error& cc_error) {
-		// Execution is terminating
-	} catch (const js_error_ctor_base& cc_error) {
-		v8::Isolate::GetCurrent()->ThrowException(cc_error.ConstructError());
-	} catch (const js_runtime_error& cc_error) {
-		// A JS error is waiting in the isolate
-	}
-}
 
 template <typename F, typename T>
 inline void RunCallback(T& info, F fn) {
@@ -35,12 +21,12 @@ inline void RunCallback(T& info, F fn) {
 			throw std::logic_error("Callback returned empty Local<> but did not set exception");
 		}
 		info.GetReturnValue().Set(result);
-	} catch (const js_error_ctor_base& cc_error) {
+	} catch (const detail::RuntimeErrorConstructible& cc_error) {
 		v8::Local<v8::Value> error = cc_error.ConstructError();
 		if (!error.IsEmpty()) {
 			v8::Isolate::GetCurrent()->ThrowException(error);
 		}
-	} catch (const js_runtime_error& err) {
+	} catch (const RuntimeError& err) {
 	}
 }
 
@@ -52,16 +38,16 @@ inline void RunCatchExternal(v8::Local<v8::Context> default_context, F1 fn1, F2 
 	try {
 		try {
 			fn1();
-		} catch (const js_type_error& cc_error) {
+		} catch (const RuntimeTypeError& cc_error) {
 			// The following errors are just various C++ strings with an error type
-			fn2(std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::TypeError, cc_error.GetMessage(), cc_error.GetStackTrace()));
-		} catch (const js_range_error& cc_error) {
-			fn2(std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::RangeError, cc_error.GetMessage(), cc_error.GetStackTrace()));
-		} catch (const js_generic_error& cc_error) {
-			fn2(std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::Error, cc_error.GetMessage(), cc_error.GetStackTrace()));
-		} catch (const js_error_message& cc_error) {
-			fn2(std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::Error, cc_error.GetMessage()));
-		} catch (const js_runtime_error& cc_error) {
+			fn2(std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::TypeError, cc_error.GetMessage().c_str(), cc_error.GetStackTrace()));
+		} catch (const RuntimeRangeError& cc_error) {
+			fn2(std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::RangeError, cc_error.GetMessage().c_str(), cc_error.GetStackTrace()));
+		} catch (const RuntimeGenericError& cc_error) {
+			fn2(std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::Error, cc_error.GetMessage().c_str(), cc_error.GetStackTrace()));
+		} catch (const detail::RuntimeErrorWithMessage& cc_error) {
+			fn2(std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::Error, cc_error.GetMessage().c_str()));
+		} catch (const RuntimeError& cc_error) {
 			// If this is caught it means the error needs to be copied out of v8
 			assert(try_catch.HasCaught());
 			v8::Context::Scope context_scope(default_context);
@@ -93,12 +79,12 @@ inline void RunCatchValue(F1 fn1, F2 fn2) {
 	try {
 		try {
 			fn1();
-		} catch (const js_fatal_error& cc_error) {
+		} catch (const FatalRuntimeError& cc_error) {
 			return;
-		} catch (const js_error_ctor_base& cc_error) {
+		} catch (const detail::RuntimeErrorConstructible& cc_error) {
 			// A C++ error thrown and needs to be internalized into v8
 			fn2(cc_error.ConstructError());
-		} catch (const js_runtime_error& cc_error) {
+		} catch (const RuntimeError& cc_error) {
 			// A JS error is waiting in the isolate
 			assert(try_catch.HasCaught());
 			v8::Local<v8::Value> error = try_catch.Exception();

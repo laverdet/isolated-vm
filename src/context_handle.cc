@@ -46,7 +46,7 @@ auto ContextHandle::TransferOut() -> std::unique_ptr<Transferable> {
 
 auto ContextHandle::GetContext() const -> RemoteHandle<v8::Context> {
 	if (!context) {
-		throw js_generic_error("Context is released");
+		throw RuntimeGenericError("Context is released");
 	}
 	return context;
 }

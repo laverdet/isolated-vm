@@ -1,6 +1,6 @@
 #pragma once
 #include <v8.h>
-#include "../util.h" // TODO: remove
+#include "./error.h"
 
 namespace ivm {
 

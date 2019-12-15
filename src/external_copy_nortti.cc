@@ -21,7 +21,7 @@ void ExternalCopySerializerDelegate::ThrowDataCloneError(Local<String> message) 
 
 Maybe<bool> ExternalCopySerializerDelegate::WriteHostObject(Isolate* /* isolate */, Local<Object> object) {
 	Maybe<bool> result = Nothing<bool>();
-	FunctorRunners::RunBarrier([&]() {
+	detail::RunBarrier([&]() {
 		references.emplace_back(Transferable::TransferOut(object));
 		serializer->WriteUint32(references.size() - 1);
 		result = Just(true);
@@ -31,7 +31,7 @@ Maybe<bool> ExternalCopySerializerDelegate::WriteHostObject(Isolate* /* isolate 
 
 Maybe<uint32_t> ExternalCopySerializerDelegate::GetSharedArrayBufferId(Isolate* /* isolate */, Local<SharedArrayBuffer> shared_array_buffer) {
 	Maybe<uint32_t> result = Nothing<uint32_t>();
-	FunctorRunners::RunBarrier([&]() {
+	detail::RunBarrier([&]() {
 		shared_buffers.emplace_back(std::make_unique<ExternalCopySharedArrayBuffer>(shared_array_buffer));
 		result = Just<uint32_t>(shared_buffers.size() - 1);
 	});
@@ -42,7 +42,7 @@ ExternalCopyDeserializerDelegate::ExternalCopyDeserializerDelegate(transferable_
 
 MaybeLocal<Object> ExternalCopyDeserializerDelegate::ReadHostObject(Isolate* /* isolate */) {
 	MaybeLocal<Object> result;
-	FunctorRunners::RunBarrier([&]() {
+	detail::RunBarrier([&]() {
 		uint32_t ii;
 		assert(deserializer->ReadUint32(&ii));
 		result = MaybeLocal<Object>(references[ii]->TransferIn().As<Object>());

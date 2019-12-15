@@ -43,10 +43,10 @@ struct RunRunner /* lol */ : public ThreePhaseTask {
 	) : context{context_handle.GetContext()} {
 		// Sanity check
 		if (!script) {
-			throw js_generic_error("Script has been released");
+			throw RuntimeGenericError("Script has been released");
 		}
 		if (script.GetIsolateHolder() != context.GetIsolateHolder()) {
-			throw js_generic_error("Invalid context");
+			throw RuntimeGenericError("Invalid context");
 		}
 
 		// Parse options
@@ -58,7 +58,7 @@ struct RunRunner /* lol */ : public ThreePhaseTask {
 			Local<Value> timeout_handle = Unmaybe(options->Get(isolate->GetCurrentContext(), v8_string("timeout")));
 			if (!timeout_handle->IsUndefined()) {
 				if (!timeout_handle->IsUint32()) {
-					throw js_type_error("`timeout` must be integer");
+					throw RuntimeTypeError("`timeout` must be integer");
 				}
 				timeout_ms = timeout_handle.As<Uint32>()->Value();
 			}

@@ -79,7 +79,7 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool tran
 		if (!view->HasBuffer()) {
 			auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
 			if (allocator != nullptr && !allocator->Check(view->ByteLength())) {
-				throw js_range_error("Array buffer allocation failed");
+				throw RuntimeRangeError("Array buffer allocation failed");
 			}
 		}
 
@@ -120,7 +120,7 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool tran
 			if (handle->IsArrayBuffer()) {
 				serializer.TransferArrayBuffer(ii, handle.As<ArrayBuffer>());
 			} else {
-				throw js_type_error("Non-ArrayBuffer passed in `transferList`");
+				throw RuntimeTypeError("Non-ArrayBuffer passed in `transferList`");
 			}
 		}
 		// Serialize object and perform array buffer transfer
@@ -196,7 +196,7 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 			if (message->IsString()) {
 				message_copy = make_unique<ExternalCopyString>(message.As<String>());
 			}
-		} catch (const js_runtime_error& cc_err) {
+		} catch (const RuntimeError& cc_err) {
 			try_catch.Reset();
 		}
 
@@ -207,7 +207,7 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 			if (stack->IsString()) {
 				stack_copy = make_unique<ExternalCopyString>(stack.As<String>());
 			}
-		} catch (const js_runtime_error& cc_err) {
+		} catch (const RuntimeError& cc_err) {
 			try_catch.Reset();
 		}
 
@@ -389,9 +389,9 @@ Local<Value> ExternalCopySerialized::CopyInto(bool transfer_in) {
 		// ValueDeserializer throws an unhelpful message when it fails to allocate an ArrayBuffer, so
 		// detect that case here and throw an appropriate message.
 		if (allocator != nullptr && allocator->GetFailureCount() != failures) {
-			throw js_range_error("Array buffer allocation failed");
+			throw RuntimeRangeError("Array buffer allocation failed");
 		} else {
-			throw js_runtime_error();
+			throw RuntimeError();
 		}
 	}
 }
@@ -481,7 +481,7 @@ std::shared_ptr<void> ExternalCopyBytes::Acquire() const {
 	std::lock_guard<std::mutex> lock{mutex};
 	auto ret = value;
 	if (!ret) {
-		throw js_generic_error("Array buffer is invalid");
+		throw RuntimeGenericError("Array buffer is invalid");
 	}
 	return ret;
 }
@@ -559,13 +559,13 @@ unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Loca
 
 	size_t length = handle->ByteLength();
 	if (length == 0) {
-		throw js_generic_error("Array buffer is invalid");
+		throw RuntimeGenericError("Array buffer is invalid");
 	}
 	if (handle->IsExternal()) {
 		// Buffer lifespan is not handled by v8.. attempt to recover from isolated-vm
 		auto ptr = reinterpret_cast<Holder*>(handle->GetAlignedPointerFromInternalField(0));
 		if (!IsDetachable(handle) || ptr == nullptr || ptr->magic != Holder::kMagic) { // dangerous
-			throw js_generic_error("Array buffer cannot be externalized");
+			throw RuntimeGenericError("Array buffer cannot be externalized");
 		}
 		Detach(handle);
 		IsolateEnvironment::GetCurrent()->extra_allocated_memory -= length;
@@ -588,11 +588,11 @@ Local<Value> ExternalCopyArrayBuffer::CopyInto(bool transfer_in) {
 	if (transfer_in) {
 		auto tmp = Release();
 		if (!tmp) {
-			throw js_generic_error("Array buffer is invalid");
+			throw RuntimeGenericError("Array buffer is invalid");
 		}
 		if (tmp.use_count() != 1) {
 			Replace(std::move(tmp));
-			throw js_generic_error("Array buffer is in use and may not be transferred");
+			throw RuntimeGenericError("Array buffer is in use and may not be transferred");
 		}
 		UpdateSize(0);
 		Local<ArrayBuffer> array_buffer = ArrayBuffer::New(Isolate::GetCurrent(), tmp.get(), Length());
@@ -603,7 +603,7 @@ Local<Value> ExternalCopyArrayBuffer::CopyInto(bool transfer_in) {
 		if (allocator != nullptr && !allocator->Check(Length())) {
 			// ArrayBuffer::New will crash the process if there is an allocation failure, so we check
 			// here.
-			throw js_range_error("Array buffer allocation failed");
+			throw RuntimeRangeError("Array buffer allocation failed");
 		}
 		auto ptr = Acquire();
 		Local<ArrayBuffer> array_buffer = ArrayBuffer::New(Isolate::GetCurrent(), Length());
@@ -621,13 +621,13 @@ ExternalCopySharedArrayBuffer::ExternalCopySharedArrayBuffer(const v8::Local<v8:
 			// ArrayBuffer::Transfer but different enough to make it not worth abstracting out..
 			size_t length = handle->ByteLength();
 			if (length == 0) {
-				throw js_generic_error("Array buffer is invalid");
+				throw RuntimeGenericError("Array buffer is invalid");
 			}
 			if (handle->IsExternal()) {
 				// Buffer lifespan is not handled by v8.. attempt to recover from isolated-vm
 				auto ptr = reinterpret_cast<Holder*>(handle->GetAlignedPointerFromInternalField(0));
 				if (ptr == nullptr || ptr->magic != Holder::kMagic) { // dangerous pointer dereference
-					throw js_generic_error("Array buffer cannot be externalized");
+					throw RuntimeGenericError("Array buffer cannot be externalized");
 				}
 				// No race conditions here because only one thread can access `Holder`
 				return ptr->cc_ptr;

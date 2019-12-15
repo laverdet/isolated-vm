@@ -151,14 +151,14 @@ v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
 		}
 	}
 	if (isolate.DidHitMemoryLimit()) {
-		throw js_fatal_error("Isolate was disposed during execution due to memory limit");
+		throw FatalRuntimeError("Isolate was disposed during execution due to memory limit");
 	} else if (isolate.terminated) {
-		throw js_fatal_error("Isolate was disposed during execution");
+		throw FatalRuntimeError("Isolate was disposed during execution");
 	} else if (did_timeout) {
 		if (--isolate.terminate_depth == 0) {
 			isolate->CancelTerminateExecution();
 		}
-		throw js_generic_error("Script execution timed out.", std::move(stack_trace));
+		throw RuntimeGenericError("Script execution timed out.", std::move(stack_trace));
 	}
 	return Unmaybe(result);
 }

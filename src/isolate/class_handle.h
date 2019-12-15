@@ -128,7 +128,7 @@ class ClassHandle {
 		 * It just throws when you call it; used when `nullptr` is passed as constructor
 		 */
 		static void PrivateConstructor(const v8::FunctionCallbackInfo<v8::Value>& info) {
-			throw js_type_error(detail::CalleeName(info)+ " constructor is private");
+			throw RuntimeTypeError(detail::CalleeName(info)+ " constructor is private");
 		}
 
 		/**
@@ -295,7 +295,7 @@ struct ConstructorFunction : detail::ConstructorFunctionHolder {
 
 	static void Entry(const v8::FunctionCallbackInfo<v8::Value>& info) {
 		if (!info.IsConstructCall()) {
-			throw js_type_error(detail::CalleeName(info)+ " must be called with `new`");
+			throw RuntimeTypeError(detail::CalleeName(info)+ " must be called with `new`");
 		}
 		ToCallback<-1, typename Impl::Type, &Impl::template Invoke<Function>>()(info);
 	}

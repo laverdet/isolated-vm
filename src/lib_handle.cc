@@ -35,7 +35,7 @@ Local<Value> LibHandle::Hrtime(MaybeLocal<Array> maybe_diff) {
 	Local<Array> diff;
 	if (maybe_diff.ToLocal(&diff)) {
 		if (diff->Length() != 2) {
-			throw js_type_error("hrtime diff must be 2-length array");
+			throw RuntimeTypeError("hrtime diff must be 2-length array");
 		}
 		uint64_t time_diff = Unmaybe(diff->Get(context, 0)).As<Uint32>()->Value() * kNanos + Unmaybe(diff->Get(context, 1)).As<Uint32>()->Value();
 		time -= time_diff;

@@ -1,25 +1,25 @@
 #pragma once
-#include "handle_cast.h"
-#include "../util.h"
 #include <string>
 #include <v8.h>
+#include "./error.h"
+#include "./handle_cast.h"
 
 namespace ivm {
 namespace detail {
 
 // Returns the name of the current function being called, used for error messages
 inline std::string CalleeName(const v8::FunctionCallbackInfo<v8::Value>& info) {
-	v8::Isolate* isolate = v8::Isolate::GetCurrent();
+	v8::Isolate* isolate = info.GetIsolate();
 	return std::string("`")+ *v8::String::Utf8Value{isolate, Unmaybe(info.Data()->ToString(isolate->GetCurrentContext()))}+ "`";
 }
 
 inline std::string CalleeName(const v8::PropertyCallbackInfo<v8::Value>& info) {
-	v8::Isolate* isolate = v8::Isolate::GetCurrent();
+	v8::Isolate* isolate = info.GetIsolate();
 	return std::string("`")+ *v8::String::Utf8Value{isolate, Unmaybe(info.Data()->ToString(isolate->GetCurrentContext()))}+ "`";
 }
 
 inline std::string CalleeName(const v8::PropertyCallbackInfo<void>& info) {
-	v8::Isolate* isolate = v8::Isolate::GetCurrent();
+	v8::Isolate* isolate = info.GetIsolate();
 	return std::string("`")+ *v8::String::Utf8Value{isolate, Unmaybe(info.Data()->ToString(isolate->GetCurrentContext()))}+ "`";
 }
 
@@ -94,7 +94,7 @@ class ParamExtractor {
 			if (length < required) {
 				// `this` counts as a parameter so adjust this count for the error message
 				constexpr int adjusted = static_cast<int>(required) + std::max(Offset, -1);
-				throw js_type_error{CalleeName()+ " requires at least "+ std::to_string(adjusted)+ (adjusted == 1 ? " parameter" : " parameters")};
+				throw RuntimeTypeError{CalleeName()+ " requires at least "+ std::to_string(adjusted)+ (adjusted == 1 ? " parameter" : " parameters")};
 			}
 		}
 
@@ -108,9 +108,9 @@ class ParamExtractor {
 
 		[[noreturn]] void Caught(const ParamIncorrect& ex) {
 			if (ii == -1) {
-				throw js_type_error(CalleeName()+ " requires `this` to be "+ ex.type);
+				throw RuntimeTypeError{CalleeName()+ " requires `this` to be "+ ex.type};
 			} else {
-				throw js_type_error(CalleeName()+ " requires parameter "+ std::to_string(ii + 1)+ " to be "+ ex.type);
+				throw RuntimeTypeError{CalleeName()+ " requires parameter "+ std::to_string(ii + 1)+ " to be "+ ex.type};
 			}
 		}
 

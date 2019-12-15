@@ -49,7 +49,7 @@ void IsolateEnvironment::HeapCheck::Epilogue() {
 			if (heap.used_heap_size() + env.extra_allocated_memory > env.memory_limit) {
 				env.hit_memory_limit = true;
 				env.Terminate();
-				throw js_fatal_error("Isolate was disposed during execution due to memory limit");
+				throw FatalRuntimeError("Isolate was disposed during execution due to memory limit");
 			}
 		}
 	}
@@ -420,13 +420,13 @@ void IsolateEnvironment::TaskEpilogue() {
 	isolate->RunMicrotasks();
 	CheckMemoryPressure();
 	if (hit_memory_limit) {
-		throw js_fatal_error("Isolate was disposed during execution due to memory limit");
+		throw FatalRuntimeError("Isolate was disposed during execution due to memory limit");
 	}
 	if (!rejected_promise_error.IsEmpty()) {
 		Context::Scope context_scope(DefaultContext());
 		isolate->ThrowException(Local<Value>::New(isolate, rejected_promise_error));
 		rejected_promise_error.Reset();
-		throw js_runtime_error();
+		throw RuntimeError();
 	}
 }
 

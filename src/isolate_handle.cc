@@ -48,21 +48,21 @@ class ScriptOriginHolder {
 				Local<Value> filename = Unmaybe(options->Get(context, v8_string("filename")));
 				if (!filename->IsUndefined()) {
 					if (!filename->IsString()) {
-						throw js_type_error("`filename` must be a string");
+						throw RuntimeTypeError("`filename` must be a string");
 					}
 					this->filename = *String::Utf8Value{isolate, filename.As<String>()};
 				}
 				Local<Value> columnOffset = Unmaybe(options->Get(context, v8_string("columnOffset")));
 				if (!columnOffset->IsUndefined()) {
 					if (!columnOffset->IsInt32()) {
-						throw js_type_error("`columnOffset` must be an integer");
+						throw RuntimeTypeError("`columnOffset` must be an integer");
 					}
 					this->columnOffset = columnOffset.As<Int32>()->Value();
 				}
 				Local<Value> lineOffset = Unmaybe(options->Get(context, v8_string("lineOffset")));
 				if (!lineOffset->IsUndefined()) {
 					if (!lineOffset->IsInt32()) {
-						throw js_type_error("`lineOffset` must be an integer");
+						throw RuntimeTypeError("`lineOffset` must be an integer");
 					}
 					this->lineOffset = lineOffset.As<Int32>()->Value();
 				}
@@ -98,9 +98,9 @@ T RunWithAnnotatedErrors(F&& fn) {
 	TryCatch try_catch(isolate);
 	try {
 		return fn();
-	} catch (const js_error_message& cc_error) {
+	} catch (const detail::RuntimeErrorWithMessage& cc_error) {
 		throw std::logic_error("Invalid error thrown by RunWithAnnotatedErrors");
-	} catch (const js_runtime_error& cc_error) {
+	} catch (const RuntimeError& cc_error) {
 		try {
 			assert(try_catch.HasCaught());
 			Local<Context> context = isolate->GetCurrentContext();
@@ -116,10 +116,10 @@ T RunWithAnnotatedErrors(F&& fn) {
 			std::string message_str = *String::Utf8Value{isolate, Unmaybe(error.As<Object>()->Get(context, v8_symbol("message")))};
 			Unmaybe(error.As<Object>()->Set(context, v8_symbol("message"), v8_string((message_str + " [" + decorator + "]").c_str())));
 			isolate->ThrowException(error);
-			throw js_runtime_error();
-		} catch (const js_runtime_error& cc_error) {
+			throw RuntimeError();
+		} catch (const RuntimeError& cc_error) {
 			try_catch.ReThrow();
-			throw js_runtime_error();
+			throw RuntimeError();
 		}
 	}
 }
@@ -174,11 +174,11 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 		Local<Value> maybe_memory_limit = Unmaybe(options->Get(context, v8_symbol("memoryLimit")));
 		if (!maybe_memory_limit->IsUndefined()) {
 			if (!maybe_memory_limit->IsNumber()) {
-				throw js_generic_error("`memoryLimit` must be a number");
+				throw RuntimeGenericError("`memoryLimit` must be a number");
 			}
 			memory_limit = (size_t)maybe_memory_limit.As<Number>()->Value();
 			if (memory_limit < 8) {
-				throw js_generic_error("`memoryLimit` must be at least 8");
+				throw RuntimeGenericError("`memoryLimit` must be at least 8");
 			}
 		}
 
@@ -196,7 +196,7 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 				}
 			}
 			if (!snapshot_blob) {
-				throw js_type_error("`snapshot` must be an ExternalCopy to ArrayBuffer");
+				throw RuntimeTypeError("`snapshot` must be an ExternalCopy to ArrayBuffer");
 			}
 		}
 
@@ -252,7 +252,7 @@ struct CreateContextRunner : public ThreePhaseTask {
 		// Sanity check before we build the context
 		if (enable_inspector && env->GetInspectorAgent() == nullptr) {
 			Context::Scope context_scope(env->DefaultContext()); // TODO: This is needed to throw, but is stupid and sloppy
-			throw js_generic_error("Inspector is not enabled for this isolate");
+			throw RuntimeGenericError("Inspector is not enabled for this isolate");
 		}
 
 		// Make a new context and setup shared pointers
@@ -312,7 +312,7 @@ struct CompileCodeRunner : public ThreePhaseTask {
 					}
 				}
 				if (!cached_data_in) {
-					throw js_type_error("`cachedData` must be an ExternalCopy to ArrayBuffer");
+					throw RuntimeTypeError("`cachedData` must be an ExternalCopy to ArrayBuffer");
 				}
 			}
 
@@ -456,14 +456,14 @@ Local<Value> IsolateHandle::CompileModule(Local<String> code_handle, MaybeLocal<
  */
 Local<Value> IsolateHandle::CreateInspectorSession() {
 	if (IsolateEnvironment::GetCurrentHolder() == isolate) {
-		throw js_generic_error("An isolate is not debuggable from within itself");
+		throw RuntimeGenericError("An isolate is not debuggable from within itself");
 	}
 	shared_ptr<IsolateEnvironment> env = isolate->GetIsolate();
 	if (!env) {
-		throw js_generic_error("Isolate is diposed");
+		throw RuntimeGenericError("Isolate is diposed");
 	}
 	if (env->GetInspectorAgent() == nullptr) {
-		throw js_generic_error("Inspector is not enabled for this isolate");
+		throw RuntimeGenericError("Inspector is not enabled for this isolate");
 	}
 	return ClassHandle::NewInstance<SessionHandle>(*env);
 }
@@ -473,7 +473,7 @@ Local<Value> IsolateHandle::CreateInspectorSession() {
  */
 Local<Value> IsolateHandle::Dispose() {
 	if (!isolate->Dispose()) {
-		throw js_generic_error("Isolate is already disposed");
+		throw RuntimeGenericError("Isolate is already disposed");
 	}
 	return Undefined(Isolate::GetCurrent());
 }
@@ -524,7 +524,7 @@ Local<Value> IsolateHandle::GetHeapStatistics() {
 Local<Value> IsolateHandle::GetCpuTime() {
 	auto env = this->isolate->GetIsolate();
 	if (!env) {
-		throw js_generic_error("Isolated is disposed");
+		throw RuntimeGenericError("Isolated is disposed");
 	}
 	uint64_t time = env->GetCpuTime().count();
 	Isolate* isolate = Isolate::GetCurrent();
@@ -539,7 +539,7 @@ Local<Value> IsolateHandle::GetCpuTime() {
 Local<Value> IsolateHandle::GetWallTime() {
 	auto env = this->isolate->GetIsolate();
 	if (!env) {
-		throw js_generic_error("Isolated is disposed");
+		throw RuntimeGenericError("Isolated is disposed");
 	}
 	uint64_t time = env->GetWallTime().count();
 	Isolate* isolate = Isolate::GetCurrent();
@@ -557,7 +557,7 @@ Local<Value> IsolateHandle::GetWallTime() {
 Local<Value> IsolateHandle::GetReferenceCount() {
 	auto env = this->isolate->GetIsolate();
 	if (!env) {
-		throw js_generic_error("Isolated is disposed");
+		throw RuntimeGenericError("Isolated is disposed");
 	}
 	return Number::New(Isolate::GetCurrent(), env->GetRemotesCount());
 }
@@ -627,15 +627,15 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 	for (uint32_t ii = 0; ii < keys->Length(); ++ii) {
 		Local<Uint32> key = Unmaybe(Unmaybe(keys->Get(context, ii))->ToArrayIndex(context));
 		if (key->Value() != ii) {
-			throw js_type_error("Invalid `scripts` array");
+			throw RuntimeTypeError("Invalid `scripts` array");
 		}
 		Local<Value> script_handle = Unmaybe(script_handles->Get(context, key));
 		if (!script_handle->IsObject()) {
-			throw js_type_error("`scripts` should be array of objects");
+			throw RuntimeTypeError("`scripts` should be array of objects");
 		}
 		Local<Value> script = Unmaybe(script_handle.As<Object>()->Get(context, v8_string("code")));
 		if (!script->IsString()) {
-			throw js_type_error("`code` property is required");
+			throw RuntimeTypeError("`code` property is required");
 		}
 		ScriptOriginHolder script_origin(script_handle.As<Object>());
 		scripts.emplace_back(script.As<String>(), std::move(script_origin));
@@ -732,7 +732,7 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 		Isolate::GetCurrent()->ThrowException(error->CopyInto());
 		return Undefined(Isolate::GetCurrent());
 	} else if (snapshot.raw_size == 0) {
-		throw js_generic_error("Failure creating snapshot");
+		throw RuntimeGenericError("Failure creating snapshot");
 	}
 	auto buffer = std::make_shared<ExternalCopyArrayBuffer>((void*)snapshot.data, snapshot.raw_size);
 	return ClassHandle::NewInstance<ExternalCopyHandle>(buffer);

@@ -196,7 +196,7 @@ void ThreePhaseTask::Phase2RunnerIgnored::Run() {
 	try {
 		self->Phase2();
 		IsolateEnvironment::GetCurrent()->TaskEpilogue();
-	} catch (const js_runtime_error& cc_error) {}
+	} catch (const RuntimeError& cc_error) {}
 }
 
 /**
@@ -206,11 +206,11 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 	// Grab a reference to second isolate
 	auto second_isolate_ref = second_isolate.GetIsolate();
 	if (!second_isolate_ref) {
-		throw js_generic_error("Isolated is disposed");
+		throw RuntimeGenericError("Isolated is disposed");
 	}
 	if (second_isolate_ref->GetIsolate() == Isolate::GetCurrent()) {
 		if (allow_async) {
-			throw js_generic_error("This function may not be called from the default thread");
+			throw RuntimeGenericError("This function may not be called from the default thread");
 		}
 		// Shortcut when calling a sync method belonging to the currently entered isolate. This avoids
 		// the deadlock protection below
@@ -222,7 +222,7 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 		bool is_recursive = Locker::IsLocked(second_isolate_ref->GetIsolate());
 		if (Executor::IsDefaultThread() || is_recursive) {
 			if (allow_async) {
-				throw js_generic_error("This function may not be called from the default thread");
+				throw RuntimeGenericError("This function may not be called from the default thread");
 			}
 
 			// Helper function which flushes handle tasks
@@ -276,7 +276,7 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 					StackTraceHolder::ChainStack(error_copy.As<Object>(), StackTrace::CurrentStackTrace(isolate, 10));
 				}
 				isolate->ThrowException(error_copy);
-				throw js_runtime_error();
+				throw RuntimeError();
 			}
 
 		} else if (second_isolate_ref->IsDefault()) {
@@ -346,13 +346,13 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 					StackTraceHolder::ChainStack(error_copy.As<Object>(), StackTrace::CurrentStackTrace(isolate, 10));
 				}
 				isolate->ThrowException(error_copy);
-				throw js_runtime_error();
+				throw RuntimeError();
 			}
 
 		} else {
 
 			// ~ very specific error message ~
-			throw js_generic_error(
+			throw RuntimeGenericError(
 				"Calling a synchronous isolated-vm function on a non-default isolate from within an asynchronous isolated-vm function is not allowed."
 			);
 		}

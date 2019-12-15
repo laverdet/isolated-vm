@@ -75,7 +75,7 @@ Local<Value> ModuleHandle::GetDependencySpecifiers() {
 
 std::shared_ptr<ModuleInfo> ModuleHandle::GetInfo() const {
 	if (!info) {
-		throw js_generic_error("Module has been released");
+		throw RuntimeGenericError("Module has been released");
 	}
 	return info;
 }
@@ -157,7 +157,7 @@ class ModuleLinker : public ClassHandle {
 						break;
 					case ModuleInfo::LinkStatus::Linking:
 						if (info->linker != this) {
-							throw js_generic_error("Module is currently being linked by another linker");
+							throw RuntimeGenericError("Module is currently being linked by another linker");
 						}
 						return;
 					case ModuleInfo::LinkStatus::Linked:
@@ -203,7 +203,7 @@ struct InstantiateRunner : public ThreePhaseTask {
 
 	static MaybeLocal<Module> ResolveCallback(Local<Context> /* context */, Local<String> specifier, Local<Module> referrer) {
 		MaybeLocal<Module> ret;
-		FunctorRunners::RunBarrier([&]() {
+		detail::RunBarrier([&]() {
 			// Lookup ModuleInfo* instance from `referrer`
 			auto& module_map = IsolateEnvironment::GetCurrent()->module_handles;
 			auto range = module_map.equal_range(referrer->GetIdentityHash());
@@ -220,7 +220,7 @@ struct InstantiateRunner : public ThreePhaseTask {
 					ret = it->second->handle.Deref();
 				}
 			}
-			throw js_generic_error("Dependency was left unresolved. Please report this error on github.");
+			throw RuntimeGenericError("Dependency was left unresolved. Please report this error on github.");
 		});
 		return ret;
 	}
@@ -235,7 +235,7 @@ struct InstantiateRunner : public ThreePhaseTask {
 		linker(linker) {
 		// Sanity check
 		if (this->info->handle.GetIsolateHolder() != this->context.GetIsolateHolder()) {
-			throw js_generic_error("Invalid context");
+			throw RuntimeGenericError("Invalid context");
 		}
 	}
 
@@ -261,7 +261,7 @@ class ModuleLinkerSync : public ModuleLinker::Implementation {
 		void HandleCallbackReturn(ModuleHandle* module, size_t ii, Local<Value> value) final {
 			ModuleHandle* resolved = value->IsObject() ? ClassHandle::Unwrap<ModuleHandle>(value.As<Object>()) : nullptr;
 			if (resolved == nullptr) {
-				throw js_type_error("Resolved dependency was not `Module`");
+				throw RuntimeTypeError("Resolved dependency was not `Module`");
 			}
 			GetLinker().ResolveDependency(ii, *module->GetInfo(), resolved);
 		}
@@ -271,7 +271,7 @@ class ModuleLinkerSync : public ModuleLinker::Implementation {
 		Local<Value> Begin(ModuleHandle& module, RemoteHandle<Context> context) final {
 			try {
 				GetLinker().Link(&module);
-			} catch (const js_runtime_error& err) {
+			} catch (const RuntimeError& err) {
 				GetLinker().Reset();
 				throw;
 			}
@@ -289,10 +289,10 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 		uint32_t pending = 0;
 
 		static Local<Value> ModuleResolved(Local<Array> holder, Local<Value> value) {
-			FunctorRunners::RunBarrier([&]() {
+			detail::RunBarrier([&]() {
 				ModuleHandle* resolved = value->IsObject() ? ClassHandle::Unwrap<ModuleHandle>(value.As<Object>()) : nullptr;
 				if (resolved == nullptr) {
-					throw js_type_error("Resolved dependency was not `Module`");
+					throw RuntimeTypeError("Resolved dependency was not `Module`");
 				}
 				Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
 				auto linker = ClassHandle::Unwrap<ModuleLinker>(Unmaybe(holder->Get(context, 0)).As<Object>());
@@ -311,7 +311,7 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 		}
 
 		static Local<Value> ModuleRejected(ModuleLinker& linker, Local<Value> error) {
-			FunctorRunners::RunBarrier([&]() {
+			detail::RunBarrier([&]() {
 				auto& impl = linker.GetImplementation<ModuleLinkerAsync>();
 				if (!impl.rejected) {
 					impl.rejected = true;
@@ -394,7 +394,7 @@ struct EvaluateRunner : public ThreePhaseTask {
 	void Phase2() final {
 		Local<Module> mod = info->handle.Deref();
 		if (mod->GetStatus() == Module::Status::kUninstantiated) {
-			throw js_generic_error("Module is uninstantiated");
+			throw RuntimeGenericError("Module is uninstantiated");
 		}
 		Local<Context> context_local = Deref(info->context_handle);
 		Context::Scope context_scope(context_local);
@@ -422,7 +422,7 @@ Local<Value> ModuleHandle::Evaluate(MaybeLocal<Object> maybe_options) {
 		Local<Value> timeout_handle = Unmaybe(options->Get(isolate->GetCurrentContext(), v8_string("timeout")));
 		if (!timeout_handle->IsUndefined()) {
 			if (!timeout_handle->IsUint32()) {
-				throw js_type_error("`timeout` must be integer");
+				throw RuntimeTypeError("`timeout` must be integer");
 			}
 			timeout_ms = timeout_handle.As<Uint32>()->Value();
 		}
@@ -433,7 +433,7 @@ Local<Value> ModuleHandle::Evaluate(MaybeLocal<Object> maybe_options) {
 Local<Value> ModuleHandle::GetNamespace() {
 	std::lock_guard<std::mutex> lock(info->mutex);
 	if (!info->global_namespace) {
-		throw js_generic_error("Module has not been instantiated.");
+		throw RuntimeGenericError("Module has not been instantiated.");
 	}
 	return ClassHandle::NewInstance<ReferenceHandle>(info->handle.GetSharedIsolateHolder(), info->global_namespace, info->context_handle, ReferenceHandle::TypeOf::Object);
 }

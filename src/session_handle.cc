@@ -56,7 +56,7 @@ class SessionImpl : public InspectorSession {
 						argv[1] = string;
 						try {
 							Unmaybe(fn->Call(isolate->GetCurrentContext(), Undefined(isolate), 2, argv));
-						} catch (const js_runtime_error& err) {}
+						} catch (const RuntimeError& err) {}
 					}
 				}
 			};
@@ -84,7 +84,7 @@ class SessionImpl : public InspectorSession {
 						argv[0] = string;
 						try {
 							Unmaybe(fn->Call(isolate->GetCurrentContext(), Undefined(isolate), 1, argv));
-						} catch (const js_runtime_error& err) {}
+						} catch (const RuntimeError& err) {}
 					}
 				}
 			};
@@ -119,7 +119,7 @@ Local<FunctionTemplate> SessionHandle::Definition() {
 
 void SessionHandle::CheckDisposed() {
 	if (!session) {
-		throw js_generic_error("Session is dead");
+		throw RuntimeGenericError("Session is dead");
 	}
 }
 

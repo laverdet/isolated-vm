@@ -53,7 +53,7 @@ unique_ptr<ExternalCopyHandle> ExternalCopyHandle::New(Local<Value> value, Maybe
 		Local<Value> transfer_list_handle = Unmaybe(options->Get(context, v8_string("transferList")));
 		if (!transfer_list_handle->IsUndefined()) {
 			if (!transfer_list_handle->IsArray()) {
-				throw js_type_error("`transferList` must be an array");
+				throw RuntimeTypeError("`transferList` must be an array");
 			}
 			size_t length = transfer_list_handle.As<Array>()->Length();
 			transfer_list.reserve(length);
@@ -67,7 +67,7 @@ unique_ptr<ExternalCopyHandle> ExternalCopyHandle::New(Local<Value> value, Maybe
 
 void ExternalCopyHandle::CheckDisposed() {
 	if (!value) {
-		throw js_generic_error("Copy has been released");
+		throw RuntimeGenericError("Copy has been released");
 	}
 }
 
@@ -136,7 +136,7 @@ Local<FunctionTemplate> ExternalCopyIntoHandle::Definition() {
 
 unique_ptr<Transferable> ExternalCopyIntoHandle::TransferOut() {
 	if (!value) {
-		throw js_generic_error("The return value of `copyInto()` should only be used once");
+		throw RuntimeGenericError("The return value of `copyInto()` should only be used once");
 	}
 	return std::make_unique<ExternalCopyIntoTransferable>(std::move(value), transfer_in);
 }

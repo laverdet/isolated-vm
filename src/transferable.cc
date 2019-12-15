@@ -28,7 +28,7 @@ void TransferableOptions::TransferableOptions::ParseOptions(Local<Object> option
 	bool externalCopy = IsOptionSet(context, options, "externalCopy");
 	bool reference = IsOptionSet(context, options, "reference");
 	if ((copy && externalCopy) || (copy && reference) || (externalCopy && reference)) {
-		throw js_generic_error("Only one of `copy`, `externalCopy`, or `reference` may be set");
+		throw RuntimeGenericError("Only one of `copy`, `externalCopy`, or `reference` may be set");
 	}
 	if (copy) {
 		type = Type::Copy;
@@ -81,7 +81,7 @@ auto Transferable::OptionalTransferOut(Local<Value> value, Options options) -> s
 auto Transferable::TransferOut(Local<Value> value, Options options) -> std::unique_ptr<Transferable> {
 	auto copy = OptionalTransferOut(value, options);
 	if (!copy) {
-		throw js_type_error("A non-transferable value was passed");
+		throw RuntimeTypeError("A non-transferable value was passed");
 	}
 	return copy;
 }

@@ -1,7 +1,7 @@
 #pragma once
 #include <v8.h>
-#include "extract_params.h"
-#include "../functor_runners.h"
+#include "./error.h"
+#include "./extract_params.h"
 
 namespace ivm {
 namespace detail {
@@ -116,7 +116,7 @@ struct CallbackMaker {
 
 	// Passed directly to v8
 	static void Callback(Args... args) {
-		FunctorRunners::RunBarrier([&]() {
+		RunBarrier([&]() {
 			Spread(args..., extract_arguments<Signature>::index_sequence);
 		});
 	}

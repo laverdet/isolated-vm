@@ -43,7 +43,7 @@ class DereferenceHandleTransferable : public Transferable {
 			if (isolate == IsolateEnvironment::GetCurrentHolder()) {
 				return Deref(reference);
 			} else {
-				throw js_type_error("Cannot dereference this into target isolate");
+				throw RuntimeTypeError("Cannot dereference this into target isolate");
 			}
 		}
 
@@ -63,7 +63,7 @@ class DereferenceHandle : public TransferableHandle {
 
 		auto TransferOut() -> std::unique_ptr<Transferable> final {
 			if (!reference) {
-				throw js_generic_error("The return value of `derefInto()` should only be used once");
+				throw RuntimeGenericError("The return value of `derefInto()` should only be used once");
 			}
 			return std::make_unique<DereferenceHandleTransferable>(std::move(isolate), std::move(reference));
 		}
@@ -158,7 +158,7 @@ auto ReferenceHandle::TypeOfGetter() -> Local<Value> {
 auto ReferenceHandle::Deref(MaybeLocal<Object> maybe_options) -> Local<Value> {
 	CheckDisposed();
 	if (isolate.get() != IsolateEnvironment::GetCurrentHolder().get()) {
-		throw js_type_error("Cannot dereference this from current isolate");
+		throw RuntimeTypeError("Cannot dereference this from current isolate");
 	}
 	bool release = false;
 	Local<Object> options;
@@ -228,7 +228,7 @@ class ApplyRunner : public ThreePhaseTask {
 				Local<Value> timeout_handle = Unmaybe(options->Get(context, v8_string("timeout")));
 				if (!timeout_handle->IsUndefined()) {
 					if (!timeout_handle->IsUint32()) {
-						throw js_type_error("`timeout` must be integer");
+						throw RuntimeTypeError("`timeout` must be integer");
 					}
 					timeout = timeout_handle.As<Uint32>()->Value();
 				}
@@ -236,7 +236,7 @@ class ApplyRunner : public ThreePhaseTask {
 				Local<Value> arguments_transfer_handle = Unmaybe(options->Get(context, v8_string("arguments")));
 				if (!arguments_transfer_handle->IsUndefined()) {
 					if (!arguments_transfer_handle->IsObject()) {
-						throw js_type_error("`arguments` must be object");
+						throw RuntimeTypeError("`arguments` must be object");
 					}
 					arguments_transfer_options = Transferable::Options{arguments_transfer_handle.As<Object>()};
 				}
@@ -244,7 +244,7 @@ class ApplyRunner : public ThreePhaseTask {
 				Local<Value> return_transfer_handle = Unmaybe(options->Get(context, v8_string("return")));
 				if (!return_transfer_handle->IsUndefined()) {
 					if (!return_transfer_handle->IsObject()) {
-						throw js_type_error("`return` must be object");
+						throw RuntimeTypeError("`return` must be object");
 					}
 					return_transfer_options = Transferable::Options{return_transfer_handle.As<Object>(), Transferable::Options::Type::Reference};
 				}
@@ -258,7 +258,7 @@ class ApplyRunner : public ThreePhaseTask {
 				for (uint32_t ii = 0; ii < keys->Length(); ++ii) {
 					Local<Uint32> key = Unmaybe(Unmaybe(keys->Get(context, ii))->ToArrayIndex(context));
 					if (key->Value() != ii) {
-						throw js_type_error("Invalid `arguments` array");
+						throw RuntimeTypeError("Invalid `arguments` array");
 					}
 					argv.push_back(Transferable::TransferOut(Unmaybe(arguments->Get(context, key)), arguments_transfer_options));
 				}
@@ -271,7 +271,7 @@ class ApplyRunner : public ThreePhaseTask {
 			Context::Scope context_scope{context_handle};
 			Local<Value> fn = Deref(reference);
 			if (!fn->IsFunction()) {
-				throw js_type_error("Reference is not a function");
+				throw RuntimeTypeError("Reference is not a function");
 			}
 			std::vector<Local<Value>> argv_inner = TransferArguments();
 			Local<Value> recv_inner = recv->TransferIn();
@@ -286,13 +286,13 @@ class ApplyRunner : public ThreePhaseTask {
 		bool Phase2Async(Scheduler::AsyncWait& wait) final {
 			// Same as regular `Phase2()` but if it returns a promise we will wait on it
 			if (!(return_transfer_options == Transferable::Options{})) {
-				throw js_type_error("`return` options are not available for `applySyncPromise`");
+				throw RuntimeTypeError("`return` options are not available for `applySyncPromise`");
 			}
 			Local<Context> context_handle = Deref(context);
 			Context::Scope context_scope{context_handle};
 			Local<Value> fn = Deref(reference);
 			if (!fn->IsFunction()) {
-				throw js_type_error("Reference is not a function");
+				throw RuntimeTypeError("Reference is not a function");
 			}
 			Local<Value> recv_inner = recv->TransferIn();
 			std::vector<Local<Value>> argv_inner = TransferArguments();
@@ -324,10 +324,10 @@ class ApplyRunner : public ThreePhaseTask {
 		auto Phase3() -> Local<Value> final {
 			if (did_finish && !*did_finish) {
 				*did_finish = true;
-				throw js_generic_error("Script execution timed out.");
+				throw RuntimeGenericError("Script execution timed out.");
 			} else if (async_error) {
 				Isolate::GetCurrent()->ThrowException(async_error->CopyInto());
-				throw js_runtime_error();
+				throw RuntimeError();
 			} else {
 				return ret->TransferIn();
 			}
@@ -470,7 +470,7 @@ class GetRunner : public ThreePhaseTask {
 			that.CheckDisposed();
 			key = ExternalCopy::CopyIfPrimitive(key_handle);
 			if (!key) {
-				throw js_type_error("Invalid `key`");
+				throw RuntimeTypeError("Invalid `key`");
 			}
 		}
 
@@ -516,7 +516,7 @@ class SetRunner : public ThreePhaseTask {
 				reference{that.reference} {
 			that.CheckDisposed();
 			if (!key) {
-				throw js_type_error("Invalid `key`");
+				throw RuntimeTypeError("Invalid `key`");
 			}
 		}
 
@@ -549,7 +549,7 @@ auto ReferenceHandle::Set(Local<Value> key_handle, Local<Value> val_handle, Mayb
 
 void ReferenceHandle::CheckDisposed() const {
 	if (!reference) {
-		throw js_generic_error("Reference has been released");
+		throw RuntimeGenericError("Reference has been released");
 	}
 }
 
