@@ -14,11 +14,12 @@ class TransferableOptions {
 		explicit TransferableOptions(v8::MaybeLocal<v8::Object> maybe_options, Type fallback = Type::None);
 
 		bool operator==(const TransferableOptions& that) const {
-			return type == that.type && fallback == that.fallback;
+			return type == that.type && fallback == that.fallback && promise == that.promise;
 		}
 
 		Type type = Type::None;
 		Type fallback = Type::None;
+		bool promise = false;
 
 	private:
 		void ParseOptions(v8::Local<v8::Object> options);

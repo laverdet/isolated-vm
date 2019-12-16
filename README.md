@@ -333,6 +333,8 @@ all attempts to access the reference will throw an error.
 	* `copy` *[boolean]* - Automatically deep copy value
 	* `externalCopy` *[boolean]* - Automatically wrap value in `ExternalCopy` instance
   * `reference` *[boolean]* - Automatically wrap value in `Reference` instance
+	* `promise` *[boolean]* - Automatically proxy promise value between isolates. This can be used in
+		combination with the other transfer options.
 * **return** A [`Reference`](#class-reference-transferable) object.
 
 Will access a reference as if using `reference[property]` and transfer the value out.
@@ -346,6 +348,8 @@ Will access a reference as if using `reference[property]` and transfer the value
 	* `copy` *[boolean]* - Automatically deep copy value
 	* `externalCopy` *[boolean]* - Automatically wrap value in `ExternalCopy` instance
   * `reference` *[boolean]* - Automatically wrap value in `Reference` instance
+  * `promise` *[boolean]* - Automatically proxy promise value between isolates. This can be used in
+		combination with the other transfer options.
 * **return** `true` or `false`
 
 Returns a boolean indicating whether or not this operation succeeded. I'm actually not really sure
@@ -363,15 +367,21 @@ when `false` would be returned, I'm just giving you the result back straight fro
 		* `copy` *[boolean]* - Automatically deep copy arguments into function call
 		* `externalCopy` *[boolean]* - Automatically wrap arguments in `ExternalCopy` instance
 		* `reference` *[boolean]* - Automatically wrap arguments in `Reference` instance
+		* `promise` *[boolean]* - Automatically proxy promises between isolates to this function. Note
+      that the function will be called immediately and the arguments will all be promises. This can
+      be used in combination with the other transfer options.
 	* `return` *[object]*
 		* `copy` *[boolean]* - Automatically deep copy returned value
 		* `externalCopy` *[boolean]* - Automatically wrap returned value in `ExternalCopy` instance
 		* `reference` *[boolean]* - Automatically wrap returned value in `Reference` instance
+    * `promise` *[boolean]* - Automatically proxy returned promise between isolates. This can be
+      used in combination with the other transfer options.
 	run before execution is canceled. Default is no timeout.
 * **return** *[transferable]*
 
 Will attempt to invoke an object as if it were a function. If the return value is transferable it
-will be returned to the caller of `apply`, otherwise it will return an instance of `Reference`.
+will be returned to the caller of `apply`, otherwise it will return an instance of `Reference`. This
+behavior can be changed with the `return` options.
 
 `applySyncPromise` is a special version of `applySync` which may only be invoked on functions
 belonging to the default isolate AND may only be invoked from a non-default thread. Functions
