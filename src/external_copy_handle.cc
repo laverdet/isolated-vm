@@ -49,7 +49,7 @@ unique_ptr<ExternalCopyHandle> ExternalCopyHandle::New(Local<Value> value, Maybe
 	bool transfer_out = false;
 	handle_vector_t transfer_list;
 	if (maybe_options.ToLocal(&options)) {
-		transfer_out = IsOptionSet(Isolate::GetCurrent()->GetCurrentContext(), options, "transferOut");
+		transfer_out = ReadOption<bool>(options, "transferOut", false);
 		Local<Value> transfer_list_handle = Unmaybe(options->Get(context, v8_string("transferList")));
 		if (!transfer_list_handle->IsUndefined()) {
 			if (!transfer_list_handle->IsArray()) {
@@ -80,14 +80,8 @@ Local<Value> ExternalCopyHandle::TotalExternalSizeGetter() {
 
 Local<Value> ExternalCopyHandle::Copy(MaybeLocal<Object> maybe_options) {
 	CheckDisposed();
-	Local<Object> options;
-	bool release = false;
-	bool transfer_in = false;
-	if (maybe_options.ToLocal(&options)) {
-		Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
-		release = IsOptionSet(context, options, "release");
-		transfer_in = IsOptionSet(context, options, "transferIn");
-	}
+	bool release = ReadOption<bool>(maybe_options, "release", false);
+	bool transfer_in = ReadOption<bool>(maybe_options, "transferIn", false);
 	Local<Value> ret = value->CopyIntoCheckHeap(transfer_in);
 	if (release) {
 		Release();
@@ -97,14 +91,8 @@ Local<Value> ExternalCopyHandle::Copy(MaybeLocal<Object> maybe_options) {
 
 Local<Value> ExternalCopyHandle::CopyInto(MaybeLocal<Object> maybe_options) {
 	CheckDisposed();
-	Local<Object> options;
-	bool release = false;
-	bool transfer_in = false;
-	if (maybe_options.ToLocal(&options)) {
-		Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
-		release = IsOptionSet(context, options, "release");
-		transfer_in = IsOptionSet(context, options, "transferIn");
-	}
+	bool release = ReadOption<bool>(maybe_options, "release", false);
+	bool transfer_in = ReadOption<bool>(maybe_options, "transferIn", false);
 	Local<Value> ret = ClassHandle::NewInstance<ExternalCopyIntoHandle>(value, transfer_in);
 	if (release) {
 		Release();

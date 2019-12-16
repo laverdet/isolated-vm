@@ -4,7 +4,7 @@
 
 namespace ivm {
 
-// Internal handle conversion error. All these `HandleCast` functions are templated and inlined and
+// Internal handle conversion error. All these `HandleCastImpl` functions are templated and inlined and
 // throwing generates verbose asm so this is implementated as a static function to clean up the
 // typical case
 struct ParamIncorrect : std::exception {
@@ -35,82 +35,38 @@ class HandleCastArguments {
 		};
 
 	public:
+		HandleCastArguments() : HandleCastArguments{true, v8::Isolate::GetCurrent()} {}
+
 		HandleCastArguments(bool strict, v8::Isolate* isolate) :
 			isolate{isolate}, context{isolate}, strict{strict} {}
+
+		HandleCastArguments(const v8::FunctionCallbackInfo<v8::Value>& info) : // NOLINT(hicpp-explicit-conversions)
+			HandleCastArguments{true, info.GetIsolate()} {}
+
+		HandleCastArguments(const v8::PropertyCallbackInfo<v8::Value>& info) : // NOLINT(hicpp-explicit-conversions)
+			HandleCastArguments{true, info.GetIsolate()} {}
+
+		HandleCastArguments(const v8::PropertyCallbackInfo<void>& info) : // NOLINT(hicpp-explicit-conversions)
+			HandleCastArguments{true, info.GetIsolate()} {}
 
 		v8::Isolate* const isolate;
 		const ContextHolder context;
 		const bool strict;
 };
 
-// Helpers
+// Helper
 template <class Type>
 struct HandleCastTag {};
 
-template <class Value>
-struct HandleCaster {
-	explicit HandleCaster(Value value, HandleCastArguments arguments) : value{value}, arguments{std::move(arguments)} {}
-
-	template <class Type>
-	operator Type() { // NOLINT(hicpp-explicit-conversions)
-		return HandleCastImpl(value, arguments, HandleCastTag<Type>{});
-	}
-
-	Value value;
-	HandleCastArguments arguments;
-};
-
-// Explicit casts: printf("%d\n", HandleCast<int>(value));
+// Explicit casts: printf("%d\n", HandleCastImpl<int>(value));
 template <class Type, class Value>
-decltype(auto) HandleCast(Value value, HandleCastArguments arguments) {
+Type HandleCast(Value value, HandleCastArguments arguments = {}) {
 	return HandleCastImpl(value, arguments, HandleCastTag<Type>{});
 }
 
-template <class Type, class Value>
-decltype(auto) HandleCast(
-	Value value, bool strict = true,
-	v8::Isolate* isolate = v8::Isolate::GetCurrent()
-) {
-	return HandleCast<Type>(value, HandleCastArguments{strict, isolate});
-}
-
-// Implicit cast: int32_t number = HandleCast(value);
-template <class Value>
-inline decltype(auto) HandleCast(Value value, HandleCastArguments arguments) {
-	return HandleCaster<Value>{std::forward<Value>(value), arguments};
-}
-
-template <class Value>
-inline decltype(auto) HandleCast(
-	Value value, bool strict = true,
-	v8::Isolate* isolate = v8::Isolate::GetCurrent()
-) {
-	return HandleCast(std::forward<Value>(value), HandleCastArguments{strict, isolate});
-}
-
-// Provides arguments from FunctionCallback
-template <class Type, class Value>
-inline decltype(auto) HandleCast(Value value, const v8::FunctionCallbackInfo<v8::Value>& info) {
-	auto isolate = info.GetIsolate();
-	return HandleCaster<Value>{value, HandleCastArguments{true, isolate}}.operator Type();
-}
-
-// Provides arguments from GetterCallback
-template <class Type>
-inline decltype(auto) HandleCast(v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<v8::Value>& info) {
-	auto isolate = info.GetIsolate();
-	return HandleCaster<v8::Local<v8::Value>>{value, HandleCastArguments{true, isolate}}.operator Type();
-}
-
-// Provides arguments from SetterCallback
-template <class Type>
-inline decltype(auto) HandleCast(v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& info) {
-	auto isolate = info.GetIsolate();
-	return HandleCaster<v8::Local<v8::Value>>{value, HandleCastArguments{true, isolate}}.operator Type();
-}
-
 // Identity cast
-inline auto HandleCastImpl(v8::Local<v8::Value> value, const HandleCastArguments& /*arguments*/, HandleCastTag<v8::Local<v8::Value>> /*tag*/) {
+template <class Type>
+inline auto HandleCastImpl(Type value, const HandleCastArguments& /*arguments*/, HandleCastTag<Type> /*tag*/) {
 	return value;
 }
 
@@ -136,6 +92,20 @@ inline auto HandleCastImpl(v8::Local<v8::Value> value, const HandleCastArguments
 		return value.As<v8::Function>();
 	}
 	ParamIncorrect::Throw("a function");
+}
+
+inline auto HandleCastImpl(v8::Local<v8::Value> value, const HandleCastArguments& /*arguments*/, HandleCastTag<v8::Local<v8::Int32>> /*tag*/) {
+	if (value->IsInt32()) {
+		return value.As<v8::Int32>();
+	}
+	ParamIncorrect::Throw("a 32-bit number");
+}
+
+inline auto HandleCastImpl(v8::Local<v8::Value> value, const HandleCastArguments& /*arguments*/, HandleCastTag<v8::Local<v8::Number>> /*tag*/) {
+	if (value->IsNumber()) {
+		return value.As<v8::Number>();
+	}
+	ParamIncorrect::Throw("a number");
 }
 
 inline auto HandleCastImpl(v8::Local<v8::Value> value, const HandleCastArguments& /*arguments*/, HandleCastTag<v8::Local<v8::Object>> /*tag*/) {
@@ -203,16 +173,36 @@ inline auto HandleCastImpl(v8::Local<v8::Value> value, const HandleCastArguments
 
 // Local<...> -> native C++ conversions
 inline auto HandleCastImpl(v8::Local<v8::Value> value, const HandleCastArguments& arguments, HandleCastTag<bool> /*tag*/) {
-	return HandleCast(HandleCast<v8::Local<v8::Boolean>>(value, arguments), arguments);
+	return HandleCast<bool>(HandleCast<v8::Local<v8::Boolean>>(value, arguments), arguments);
 }
 
 inline auto HandleCastImpl(v8::Local<v8::Boolean> value, const HandleCastArguments& /*arguments*/, HandleCastTag<bool> /*tag*/) {
 	return value->Value();
 }
 
+inline auto HandleCastImpl(v8::Local<v8::Value> value, const HandleCastArguments& arguments, HandleCastTag<double> /*tag*/) {
+	return HandleCast<double>(HandleCast<v8::Local<v8::Number>>(value, arguments), arguments);
+}
+
+inline auto HandleCastImpl(v8::Local<v8::Number> value, const HandleCastArguments& /*arguments*/, HandleCastTag<double> /*tag*/) {
+	return value->Value();
+}
+
+inline auto HandleCastImpl(v8::Local<v8::Value> value, const HandleCastArguments& arguments, HandleCastTag<int32_t> /*tag*/) {
+	return HandleCast<int32_t>(HandleCast<v8::Local<v8::Int32>>(value, arguments), arguments);
+}
+
+inline auto HandleCastImpl(v8::Local<v8::Int32> value, const HandleCastArguments& /*arguments*/, HandleCastTag<int32_t> /*tag*/) {
+	return value->Value();
+}
+
 // native C++ -> Local<Value> conversions
 inline auto HandleCastImpl(bool value, const HandleCastArguments& arguments, HandleCastTag<v8::Local<v8::Value>> /*tag*/) {
 	return v8::Boolean::New(arguments.isolate, value).As<v8::Value>();
+}
+
+inline auto HandleCastImpl(const char* value, const HandleCastArguments& arguments, HandleCastTag<v8::Local<v8::String>> /*tag*/) {
+	return v8::String::NewFromUtf8(arguments.isolate, value);
 }
 
 } // namespace ivm

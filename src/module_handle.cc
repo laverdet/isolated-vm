@@ -415,18 +415,7 @@ struct EvaluateRunner : public ThreePhaseTask {
 template <int async>
 Local<Value> ModuleHandle::Evaluate(MaybeLocal<Object> maybe_options) {
 	auto info = GetInfo();
-	Isolate* isolate = Isolate::GetCurrent();
-	uint32_t timeout_ms = 0;
-	Local<Object> options;
-	if (maybe_options.ToLocal(&options)) {
-		Local<Value> timeout_handle = Unmaybe(options->Get(isolate->GetCurrentContext(), v8_string("timeout")));
-		if (!timeout_handle->IsUndefined()) {
-			if (!timeout_handle->IsUint32()) {
-				throw RuntimeTypeError("`timeout` must be integer");
-			}
-			timeout_ms = timeout_handle.As<Uint32>()->Value();
-		}
-	}
+	int32_t timeout_ms = ReadOption<int32_t>(maybe_options, "timeout", 0);
 	return ThreePhaseTask::Run<async, EvaluateRunner>(*info->handle.GetIsolateHolder(), info, timeout_ms);
 }
 

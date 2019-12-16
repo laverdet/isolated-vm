@@ -23,12 +23,11 @@ TransferableOptions::TransferableOptions(MaybeLocal<Object> maybe_options, Type 
 }
 
 void TransferableOptions::TransferableOptions::ParseOptions(Local<Object> options) {
-	auto context = Isolate::GetCurrent()->GetCurrentContext();
-	bool copy = IsOptionSet(context, options, "copy");
-	bool externalCopy = IsOptionSet(context, options, "externalCopy");
-	bool reference = IsOptionSet(context, options, "reference");
+	bool copy = ReadOption<bool>(options, "copy", false);
+	bool externalCopy = ReadOption<bool>(options, "externalCopy", false);
+	bool reference = ReadOption<bool>(options, "reference", false);
 	if ((copy && externalCopy) || (copy && reference) || (externalCopy && reference)) {
-		throw RuntimeGenericError("Only one of `copy`, `externalCopy`, or `reference` may be set");
+		throw RuntimeTypeError("Only one of `copy`, `externalCopy`, or `reference` may be set");
 	}
 	if (copy) {
 		type = Type::Copy;

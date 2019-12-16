@@ -7,6 +7,7 @@
 #include "generic/callbacks.h"
 #include "generic/extract_params.h"
 #include "generic/handle_cast.h"
+#include "generic/read_option.h"
 
 #include <cassert>
 #include <cstddef>

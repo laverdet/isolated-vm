@@ -160,7 +160,6 @@ Local<FunctionTemplate> IsolateHandle::Definition() {
  * Create a new Isolate. It all starts here!
  */
 unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
-	Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
 	shared_ptr<void> snapshot_blob;
 	size_t snapshot_blob_length = 0;
 	size_t memory_limit = 128;
@@ -171,28 +170,21 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 	if (maybe_options.ToLocal(&options)) {
 
 		// Check memory limits
-		Local<Value> maybe_memory_limit = Unmaybe(options->Get(context, v8_symbol("memoryLimit")));
-		if (!maybe_memory_limit->IsUndefined()) {
-			if (!maybe_memory_limit->IsNumber()) {
-				throw RuntimeGenericError("`memoryLimit` must be a number");
-			}
-			memory_limit = (size_t)maybe_memory_limit.As<Number>()->Value();
-			if (memory_limit < 8) {
-				throw RuntimeGenericError("`memoryLimit` must be at least 8");
-			}
+		memory_limit = ReadOption<double>(options, "memoryLimit", 128);
+		if (memory_limit < 8) {
+			throw RuntimeGenericError("`memoryLimit` must be at least 8");
 		}
 
 		// Set snapshot
-		Local<Value> snapshot_handle = Unmaybe(options->Get(context, v8_symbol("snapshot")));
-		if (!snapshot_handle->IsUndefined()) {
-			if (snapshot_handle->IsObject()) {
-				auto copy_handle = ClassHandle::Unwrap<ExternalCopyHandle>(snapshot_handle.As<Object>());
-				if (copy_handle != nullptr) {
-					ExternalCopyArrayBuffer* copy_ptr = dynamic_cast<ExternalCopyArrayBuffer*>(copy_handle->GetValue().get());
-					if (copy_ptr != nullptr) {
-						snapshot_blob = copy_ptr->Acquire();
-						snapshot_blob_length = copy_ptr->Length();
-					}
+		auto maybe_snapshot = ReadOption<MaybeLocal<Object>>(options, "snapshot", {});
+		Local<Object> snapshot_handle;
+		if (maybe_snapshot.ToLocal(&snapshot_handle)) {
+			auto copy_handle = ClassHandle::Unwrap<ExternalCopyHandle>(snapshot_handle.As<Object>());
+			if (copy_handle != nullptr) {
+				ExternalCopyArrayBuffer* copy_ptr = dynamic_cast<ExternalCopyArrayBuffer*>(copy_handle->GetValue().get());
+				if (copy_ptr != nullptr) {
+					snapshot_blob = copy_ptr->Acquire();
+					snapshot_blob_length = copy_ptr->Length();
 				}
 			}
 			if (!snapshot_blob) {
@@ -201,7 +193,7 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 		}
 
 		// Check inspector flag
-		inspector = IsOptionSet(context, options, "inspector");
+		inspector = ReadOption<bool>(options, "inspector", false);
 	}
 
 	// Return isolate handle
@@ -225,10 +217,7 @@ struct CreateContextRunner : public ThreePhaseTask {
 	RemoteHandle<Value> global;
 
 	explicit CreateContextRunner(MaybeLocal<Object>& maybe_options) {
-		Local<Object> options;
-		if (maybe_options.ToLocal(&options)) {
-			this->enable_inspector = IsOptionSet(Isolate::GetCurrent()->GetCurrentContext(), options, "inspector");
-		}
+		enable_inspector = ReadOption<bool>(maybe_options, "inspector", false);
 	}
 
 	void Phase2() final {
@@ -317,7 +306,7 @@ struct CompileCodeRunner : public ThreePhaseTask {
 			}
 
 			// Get cached data flag
-			produce_cached_data = IsOptionSet(context, options, "produceCachedData");
+			produce_cached_data = ReadOption<bool>(options, "produceCachedData", false);
 		}
 
 		// Copy code string

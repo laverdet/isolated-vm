@@ -50,18 +50,11 @@ struct RunRunner /* lol */ : public ThreePhaseTask {
 		}
 
 		// Parse options
-		Isolate* isolate = Isolate::GetCurrent();
 		bool release = false;
 		Local<Object> options;
 		if (maybe_options.ToLocal(&options)) {
-			release = IsOptionSet(isolate->GetCurrentContext(), options, "release");
-			Local<Value> timeout_handle = Unmaybe(options->Get(isolate->GetCurrentContext(), v8_string("timeout")));
-			if (!timeout_handle->IsUndefined()) {
-				if (!timeout_handle->IsUint32()) {
-					throw RuntimeTypeError("`timeout` must be integer");
-				}
-				timeout_ms = timeout_handle.As<Uint32>()->Value();
-			}
+			release = ReadOption<bool>(options, "release", false);
+			timeout_ms = ReadOption<int32_t>(options, "timeout", 0);
 		}
 		if (release) {
 			this->script = std::move(script);

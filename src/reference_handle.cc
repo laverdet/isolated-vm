@@ -160,11 +160,7 @@ auto ReferenceHandle::Deref(MaybeLocal<Object> maybe_options) -> Local<Value> {
 	if (isolate.get() != IsolateEnvironment::GetCurrentHolder().get()) {
 		throw RuntimeTypeError("Cannot dereference this from current isolate");
 	}
-	bool release = false;
-	Local<Object> options;
-	if (maybe_options.ToLocal(&options)) {
-		release = IsOptionSet(Isolate::GetCurrent()->GetCurrentContext(), options, "release");
-	}
+	bool release = ReadOption<bool>(maybe_options, "release", false);
 	Local<Value> ret = ivm::Deref(reference);
 	if (release) {
 		Release();
@@ -177,11 +173,7 @@ auto ReferenceHandle::Deref(MaybeLocal<Object> maybe_options) -> Local<Value> {
  */
 auto ReferenceHandle::DerefInto(MaybeLocal<Object> maybe_options) -> Local<Value> {
 	CheckDisposed();
-	bool release = false;
-	Local<Object> options;
-	if (maybe_options.ToLocal(&options)) {
-		release = IsOptionSet(Isolate::GetCurrent()->GetCurrentContext(), options, "release");
-	}
+	bool release = ReadOption<bool>(maybe_options, "release", false);
 	Local<Value> ret = ClassHandle::NewInstance<DereferenceHandle>(isolate, reference);
 	if (release) {
 		Release();
@@ -225,42 +217,21 @@ class ApplyRunner : public ThreePhaseTask {
 			Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
 			Local<Object> options;
 			if (maybe_options.ToLocal(&options)) {
-				Local<Value> timeout_handle = Unmaybe(options->Get(context, v8_string("timeout")));
-				if (!timeout_handle->IsUndefined()) {
-					if (!timeout_handle->IsUint32()) {
-						throw RuntimeTypeError("`timeout` must be integer");
-					}
-					timeout = timeout_handle.As<Uint32>()->Value();
-				}
-
-				Local<Value> arguments_transfer_handle = Unmaybe(options->Get(context, v8_string("arguments")));
-				if (!arguments_transfer_handle->IsUndefined()) {
-					if (!arguments_transfer_handle->IsObject()) {
-						throw RuntimeTypeError("`arguments` must be object");
-					}
-					arguments_transfer_options = Transferable::Options{arguments_transfer_handle.As<Object>()};
-				}
-
-				Local<Value> return_transfer_handle = Unmaybe(options->Get(context, v8_string("return")));
-				if (!return_transfer_handle->IsUndefined()) {
-					if (!return_transfer_handle->IsObject()) {
-						throw RuntimeTypeError("`return` must be object");
-					}
-					return_transfer_options = Transferable::Options{return_transfer_handle.As<Object>(), Transferable::Options::Type::Reference};
-				}
+				timeout = ReadOption<int32_t>(options, "timeout", 0);
+				arguments_transfer_options = Transferable::Options{
+					ReadOption<MaybeLocal<Object>>(options, "arguments", {})};
+				return_transfer_options = Transferable::Options{
+					ReadOption<MaybeLocal<Object>>(options, "return", {}),
+					Transferable::Options::Type::Reference};
 			}
 
 			// Externalize all arguments
-			Local<Object> arguments;
+			Local<Array> arguments;
 			if (maybe_arguments.ToLocal(&arguments)) {
-				Local<Array> keys = Unmaybe(arguments->GetOwnPropertyNames(context));
-				argv.reserve(keys->Length());
-				for (uint32_t ii = 0; ii < keys->Length(); ++ii) {
-					Local<Uint32> key = Unmaybe(Unmaybe(keys->Get(context, ii))->ToArrayIndex(context));
-					if (key->Value() != ii) {
-						throw RuntimeTypeError("Invalid `arguments` array");
-					}
-					argv.push_back(Transferable::TransferOut(Unmaybe(arguments->Get(context, key)), arguments_transfer_options));
+				uint32_t length = arguments->Length();
+				argv.reserve(length);
+				for (uint32_t ii = 0; ii < length; ++ii) {
+					argv.push_back(Transferable::TransferOut(Unmaybe(arguments->Get(context, ii)), arguments_transfer_options));
 				}
 			}
 		}
