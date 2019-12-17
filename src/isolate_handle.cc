@@ -165,95 +165,34 @@ Local<Value> IsolateHandle::CreateContext(MaybeLocal<Object> maybe_options) {
 }
 
 /**
- * Common compilation logic for modules and scripts
- */
-struct CompileCodeRunner : public ThreePhaseTask {
-	// phase 2
-	unique_ptr<ExternalCopyString> code_string;
-	unique_ptr<ScriptOriginHolder> script_origin_holder;
-	shared_ptr<void> cached_data_in;
-	size_t cached_data_in_size = 0;
-	bool produce_cached_data { false };
-	// phase 3
-	shared_ptr<ExternalCopyArrayBuffer> cached_data_out;
-	bool supplied_cached_data { false };
-	bool cached_data_rejected { false };
-
-	CompileCodeRunner(const Local<String>& code_handle, const MaybeLocal<Object>& maybe_options, bool as_module) {
-		// Read options
-		script_origin_holder = std::make_unique<ScriptOriginHolder>(maybe_options, as_module);
-		Local<Object> options;
-		if (maybe_options.ToLocal(&options)) {
-
-			// Get cached data blob
-			Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
-			Local<Value> cached_data_handle = Unmaybe(options->Get(context, v8_symbol("cachedData")));
-			if (!cached_data_handle->IsUndefined()) {
-				if (cached_data_handle->IsObject()) {
-					auto copy_handle = ClassHandle::Unwrap<ExternalCopyHandle>(cached_data_handle.As<Object>());
-					if (copy_handle != nullptr) {
-						ExternalCopyArrayBuffer* copy_ptr = dynamic_cast<ExternalCopyArrayBuffer*>(copy_handle->GetValue().get());
-						if (copy_ptr != nullptr) {
-							cached_data_in = copy_ptr->Acquire();
-							cached_data_in_size = copy_ptr->Length();
-						}
-					}
-				}
-				if (!cached_data_in) {
-					throw RuntimeTypeError("`cachedData` must be an ExternalCopy to ArrayBuffer");
-				}
-			}
-
-			// Get cached data flag
-			produce_cached_data = ReadOption<bool>(options, "produceCachedData", false);
-		}
-
-		// Copy code string
-		code_string = std::make_unique<ExternalCopyString>(code_handle);
-	}
-
-	// Return ScriptCompiler::Source information, including `cachedData` if provided
-	std::unique_ptr<ScriptCompiler::Source> GetCompilerSource() {
-		Local<String> code_inner = code_string->CopyIntoCheckHeap().As<String>();
-		ScriptOrigin script_origin = ScriptOrigin{*script_origin_holder};
-		unique_ptr<ScriptCompiler::CachedData> cached_data = nullptr;
-		if (cached_data_in) {
-			cached_data = std::make_unique<ScriptCompiler::CachedData>(reinterpret_cast<const uint8_t*>(cached_data_in.get()), cached_data_in_size);
-		}
-		return std::make_unique<ScriptCompiler::Source>(code_inner, script_origin, cached_data.release());
-	}
-};
-
-/**
  * Compiles a script in this isolate and returns a ScriptHandle
  */
-struct CompileScriptRunner : public CompileCodeRunner {
+struct CompileScriptRunner : public CodeCompilerHolder, public ThreePhaseTask {
 	RemoteHandle<UnboundScript> script;
 
 	CompileScriptRunner(const Local<String>& code_handle, const MaybeLocal<Object>& maybe_options) :
-		CompileCodeRunner(code_handle, maybe_options, false) {}
+		CodeCompilerHolder{code_handle, maybe_options, false} {}
 
 	void Phase2() final {
 		// Compile in second isolate and return UnboundScript persistent
 		auto isolate = IsolateEnvironment::GetCurrent();
 		Context::Scope context_scope(isolate->DefaultContext());
 		IsolateEnvironment::HeapCheck heap_check{*isolate, true};
-		auto source = GetCompilerSource();
+		auto source = GetSource();
 		ScriptCompiler::CompileOptions compile_options = ScriptCompiler::kNoCompileOptions;
-		if (cached_data_in) {
+		if (DidSupplyCachedData()) {
 			compile_options = ScriptCompiler::kConsumeCodeCache;
 		}
-		script = RemoteHandle<UnboundScript>(RunWithAnnotatedErrors(
+		script = RemoteHandle<UnboundScript>{RunWithAnnotatedErrors(
 			[&isolate, &source, compile_options]() { return Unmaybe(ScriptCompiler::CompileUnboundScript(*isolate, source.get(), compile_options)); }
-		));
+		)};
 
 		// Check cached data flags
-		if (cached_data_in) {
-			supplied_cached_data = true;
-			cached_data_rejected = source->GetCachedData()->rejected;
-			cached_data_in.reset();
-		} else if (produce_cached_data) {
-			const ScriptCompiler::CachedData* cached_data // continued next line
+		if (DidSupplyCachedData()) {
+			SetCachedDataRejected(source->GetCachedData()->rejected);
+		}
+		if (ShouldProduceCachedData()) {
+			ScriptCompiler::CachedData* cached_data // continued next line
 #if V8_AT_LEAST(6, 8, 11)
 			// `code` parameter removed in v8 commit a440efb27
 			= ScriptCompiler::CreateCodeCache(script.Deref());
@@ -262,21 +201,16 @@ struct CompileScriptRunner : public CompileCodeRunner {
 			= ScriptCompiler::CreateCodeCache(script.Deref(), code_string->CopyIntoCheckHeap().As<String>());
 #endif
 			assert(cached_data != nullptr);
-			cached_data_out = std::make_shared<ExternalCopyArrayBuffer>((void*)cached_data->data, cached_data->length);
+			SaveCachedData(cached_data);
 		}
+		ResetSource();
 		heap_check.Epilogue();
 	}
 
 	Local<Value> Phase3() final {
 		// Wrap UnboundScript in JS Script{} class
-		Isolate* isolate = Isolate::GetCurrent();
-		Local<Context> context = isolate->GetCurrentContext();
 		Local<Object> value = ClassHandle::NewInstance<ScriptHandle>(std::move(script));
-		if (supplied_cached_data) {
-			Unmaybe(value->Set(context, v8_symbol("cachedDataRejected"), Boolean::New(isolate, cached_data_rejected)));
-		} else if (cached_data_out) {
-			Unmaybe(value->Set(context, v8_symbol("cachedData"), ClassHandle::NewInstance<ExternalCopyHandle>(std::move(cached_data_out))));
-		}
+		WriteCompileResults(value);
 		return value;
 	}
 };
@@ -289,47 +223,40 @@ Local<Value> IsolateHandle::CompileScript(Local<String> code_handle, MaybeLocal<
 /**
 * Compiles a module in this isolate and returns a ModuleHandle
 */
-struct CompileModuleRunner : public CompileCodeRunner {
+struct CompileModuleRunner : public CodeCompilerHolder, public ThreePhaseTask {
 	shared_ptr<ModuleInfo> module_info;
 
 	CompileModuleRunner(const Local<String>& code_handle, const MaybeLocal<Object>& maybe_options) :
-		CompileCodeRunner(code_handle, maybe_options, true) {}
+		CodeCompilerHolder{code_handle, maybe_options, true} {}
 
 	void Phase2() final {
 		auto isolate = IsolateEnvironment::GetCurrent();
 		Context::Scope context_scope(isolate->DefaultContext());
 		IsolateEnvironment::HeapCheck heap_check{*isolate, true};
-		auto source = GetCompilerSource();
+		auto source = GetSource();
 		Local<Module> module_handle = Unmaybe(ScriptCompiler::CompileModule(*isolate, source.get()));
 
 		// TODO: v8 6.8.214 [8ec92f51] adds support for producing cached data for modules, but support
 		// for actually consuming the cached data wasn't added until 6.9.37 [70b5fd3b]. This hardcoded
 		// failure should be updated when support lands in nodejs.
-		if (cached_data_in) {
-			supplied_cached_data = true;
+		if (DidSupplyCachedData()) {
 			// cached_data_rejected = source->GetCachedData()->rejected;
-			cached_data_rejected = true;
-			cached_data_in.reset();
-		} else if (produce_cached_data) {
+			SetCachedDataRejected(true);
+		} else /*if (produce_cached_data)*/ {
 			/*
 			ScriptCompiler::CachedData* cached_data = ScriptCompiler::CreateCodeCache(module_handle->GetUnboundModuleScript());
 			assert(cached_data != nullptr);
 			cached_data_out = std::make_shared<ExternalCopyArrayBuffer>((void*)cached_data->data, cached_data->length);
 			*/
 		}
+		ResetSource();
 		module_info = std::make_shared<ModuleInfo>(module_handle);
 		heap_check.Epilogue();
 	}
 
 	Local<Value> Phase3() final {
-		Isolate* isolate = Isolate::GetCurrent();
-		Local<Context> context = isolate->GetCurrentContext();
 		Local<Object> value = ClassHandle::NewInstance<ModuleHandle>(std::move(module_info));
-		if (supplied_cached_data) {
-			Unmaybe(value->Set(context, v8_symbol("cachedDataRejected"), Boolean::New(isolate, cached_data_rejected)));
-		} else if (cached_data_out) {
-			Unmaybe(value->Set(context, v8_symbol("cachedData"), ClassHandle::NewInstance<ExternalCopyHandle>(std::move(cached_data_out))));
-		}
+		WriteCompileResults(value);
 		return value;
 	}
 };

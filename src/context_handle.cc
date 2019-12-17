@@ -92,17 +92,16 @@ auto ContextHandle::Release() -> Local<Value> {
 /*
  * Compiles and immediately executes a given script
  */
-class EvalRunner : public ThreePhaseTask {
+class EvalRunner : public CodeCompilerHolder, public ThreePhaseTask {
 	public:
 		explicit EvalRunner(
 			RemoteHandle<Context> context,
 			Local<String> code,
 			MaybeLocal<Object> maybe_options
 		) :
-				script_origin_holder{maybe_options},
+				CodeCompilerHolder{code, maybe_options},
 				transfer_options{maybe_options},
-				context{std::move(context)},
-				code_string{std::make_unique<ExternalCopyString>(code)} {
+				context{std::move(context)} {
 			if (!this->context) {
 				throw RuntimeGenericError("Context is released");
 			}
@@ -115,10 +114,9 @@ class EvalRunner : public ThreePhaseTask {
 			auto context = this->context.Deref();
 			Context::Scope context_scope{context};
 			IsolateEnvironment::HeapCheck heap_check{*isolate, true};
-			ScriptOrigin script_origin = ScriptOrigin{script_origin_holder};
-			ScriptCompiler::Source source{code_string->CopyIntoCheckHeap().As<String>(), script_origin};
+			auto source = GetSource();
 			auto script = RunWithAnnotatedErrors([&]() {
-				return Unmaybe(ScriptCompiler::Compile(context, &source));
+				return Unmaybe(ScriptCompiler::Compile(context, source.get()));
 			});
 			// Execute script and transfer out
 			Local<Value> script_result = RunWithTimeout(timeout_ms, [&]() {
@@ -129,18 +127,18 @@ class EvalRunner : public ThreePhaseTask {
 		}
 
 		auto Phase3() -> Local<Value> final {
-			if (result) {
-				return result->TransferIn();
-			} else {
-				return Undefined(Isolate::GetCurrent()).As<Value>();
-			}
+			auto isolate = Isolate::GetCurrent();
+			auto context = isolate->GetCurrentContext();
+			auto object = Object::New(isolate);
+			auto result_handle = result ? result->TransferIn() : Undefined(isolate).As<Value>();
+			Unmaybe(object->Set(context, HandleCast<Local<String>>("result"), result_handle));
+			WriteCompileResults(object);
+			return object;
 		}
 
 	private:
-		ScriptOriginHolder script_origin_holder;
 		Transferable::Options transfer_options;
 		RemoteHandle<Context> context;
-		std::unique_ptr<ExternalCopyString> code_string;
 		std::unique_ptr<Transferable> result;
 		int32_t timeout_ms = 0;
 };

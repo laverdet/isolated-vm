@@ -227,7 +227,8 @@ built-in objects and global space.
 	* `copy` *[boolean]* - Automatically deep copy last value
 	* `externalCopy` *[boolean]* - Automatically wrap last value in `ExternalCopy` instance
 	* `reference` *[boolean]* - Automatically wrap last value in `Reference` instance
-* **return** *[transferable]*
+* **return** *[object]*
+	* `result` *[transferable]*
 
 Compiles and executes a script within a context. This will return the last value evaluated, as long
 as that value was transferable, otherwise `undefined` will be returned.
@@ -390,7 +391,7 @@ when `false` would be returned, I'm just giving you the result back straight fro
 		* `promise` *[boolean]* - Automatically proxy promises between isolates to this function. Note
 			that the function will be called immediately and the arguments will all be promises. This can
 			be used in combination with the other transfer options.
-	* `return` *[object]*
+	* `result` *[object]*
 		* `copy` *[boolean]* - Automatically deep copy returned value
 		* `externalCopy` *[boolean]* - Automatically wrap returned value in `ExternalCopy` instance
 		* `reference` *[boolean]* - Automatically wrap returned value in `Reference` instance
@@ -400,7 +401,7 @@ when `false` would be returned, I'm just giving you the result back straight fro
 
 Will attempt to invoke an object as if it were a function. If the return value is transferable it
 will be returned to the caller of `apply`, otherwise it will return an instance of `Reference`. This
-behavior can be changed with the `return` options.
+behavior can be changed with the `result` options.
 
 `applySyncPromise` is a special version of `applySync` which may only be invoked on functions
 belonging to the default isolate AND may only be invoked from a non-default thread. Functions

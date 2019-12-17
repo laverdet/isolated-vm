@@ -221,7 +221,7 @@ class ApplyRunner : public ThreePhaseTask {
 				arguments_transfer_options = Transferable::Options{
 					ReadOption<MaybeLocal<Object>>(options, "arguments", {})};
 				return_transfer_options = Transferable::Options{
-					ReadOption<MaybeLocal<Object>>(options, "return", {}),
+					ReadOption<MaybeLocal<Object>>(options, "result", {}),
 					Transferable::Options::Type::Reference};
 			}
 

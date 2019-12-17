@@ -1,8 +1,10 @@
 #pragma once
 #include "../isolate/generic/error.h"
 #include "../isolate/generic/handle_cast.h"
-#include <string>
+#include "../external_copy.h"
 #include <v8.h>
+#include <memory>
+#include <string>
 
 namespace ivm {
 
@@ -21,6 +23,35 @@ class ScriptOriginHolder {
 		int32_t column_offset = 0;
 		int32_t line_offset = 0;
 		bool is_module;
+};
+
+/**
+ * Parser and holder for all common v8 compilation information like code string, cached data, script
+ * origin, etc.
+ */
+class CodeCompilerHolder {
+	public:
+		CodeCompilerHolder(
+			v8::Local<v8::String> code_handle, v8::MaybeLocal<v8::Object> maybe_options, bool is_module = false);
+		bool DidSupplyCachedData() const { return supplied_cached_data; }
+		auto GetSource() const -> std::unique_ptr<v8::ScriptCompiler::Source>;
+		void ResetSource();
+		void SaveCachedData(v8::ScriptCompiler::CachedData* cached_data);
+		void SetCachedDataRejected(bool rejected) { cached_data_rejected = rejected; }
+		bool ShouldProduceCachedData() const { return produce_cached_data; }
+		void WriteCompileResults(v8::Local<v8::Object> handle);
+
+	private:
+		auto GetCachedData() const -> std::unique_ptr<v8::ScriptCompiler::CachedData>;
+
+		ScriptOriginHolder script_origin_holder;
+		std::unique_ptr<ExternalCopyString> code_string;
+		std::shared_ptr<ExternalCopyArrayBuffer> cached_data_out;
+		std::shared_ptr<void> cached_data_in;
+		size_t cached_data_in_size = 0;
+		bool cached_data_rejected = false;
+		bool produce_cached_data = false;
+		bool supplied_cached_data = false;
 };
 
 /**
