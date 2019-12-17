@@ -1,7 +1,7 @@
 #pragma once
 #include "util.h"
-#include "../external_copy.h"
-#include "./generic/error.h"
+#include "module/external_copy.h"
+#include "generic/error.h"
 
 namespace ivm {
 

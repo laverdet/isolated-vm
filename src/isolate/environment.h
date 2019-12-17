@@ -6,8 +6,8 @@
 #include "holder.h"
 #include "runnable.h"
 #include "scheduler.h"
-#include "../lib/lockable.h"
-#include "../lib/thread_pool.h"
+#include "lib/lockable.h"
+#include "lib/thread_pool.h"
 
 #include <atomic>
 #include <cassert>

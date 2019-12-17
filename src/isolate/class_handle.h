@@ -1,6 +1,5 @@
 #pragma once
 #include <v8.h>
-#include "../apply_from_tuple.h"
 #include "environment.h"
 #include "functor_runners.h"
 #include "util.h"

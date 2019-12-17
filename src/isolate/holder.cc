@@ -2,7 +2,7 @@
 #include "environment.h"
 #include "scheduler.h"
 #include "util.h"
-#include "../lib/timer.h"
+#include "lib/timer.h"
 #include <utility>
 
 namespace ivm {

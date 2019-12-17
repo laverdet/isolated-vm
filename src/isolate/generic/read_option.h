@@ -1,6 +1,6 @@
 #pragma once
 #include <v8.h>
-#include "./handle_cast.h"
+#include "handle_cast.h"
 
 namespace ivm {
 namespace detail {

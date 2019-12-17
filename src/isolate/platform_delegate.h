@@ -1,5 +1,5 @@
 #pragma once
-#include "../lib/lockable.h"
+#include "lib/lockable.h"
 #include "node_wrapper.h"
 #include "v8_version.h"
 #include <v8-platform.h>

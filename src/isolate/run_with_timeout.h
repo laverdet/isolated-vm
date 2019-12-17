@@ -3,7 +3,7 @@
 #include "inspector.h"
 #include "runnable.h"
 #include "stack_trace.h"
-#include "../lib/timer.h"
+#include "lib/timer.h"
 #include <chrono>
 #include <memory>
 #include <thread>

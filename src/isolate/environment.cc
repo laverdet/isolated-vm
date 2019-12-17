@@ -3,7 +3,7 @@
 #include "inspector.h"
 #include "platform_delegate.h"
 #include "runnable.h"
-#include "../external_copy.h"
+#include "module/external_copy.h"
 #include "scheduler.h"
 #include <algorithm>
 #include <cmath>

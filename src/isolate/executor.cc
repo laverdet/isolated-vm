@@ -1,6 +1,6 @@
-#include "./executor.h"
-#include "./environment.h"
-#include "../lib/timer.h"
+#include "executor.h"
+#include "environment.h"
+#include "lib/timer.h"
 
 namespace ivm {
 

@@ -1,4 +1,4 @@
-#include "./thread_pool.h"
+#include "thread_pool.h"
 #include <functional>
 
 namespace ivm {

@@ -1,7 +1,7 @@
 #pragma once
 #include <v8.h>
-#include "./error.h"
-#include "./extract_params.h"
+#include "error.h"
+#include "extract_params.h"
 
 namespace ivm {
 namespace detail {

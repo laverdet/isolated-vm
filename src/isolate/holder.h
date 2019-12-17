@@ -2,7 +2,7 @@
 #include "platform_delegate.h"
 #include "runnable.h"
 #include "v8_version.h"
-#include "../lib/lockable.h"
+#include "lib/lockable.h"
 #include <v8-platform.h>
 #include <condition_variable>
 #include <mutex>

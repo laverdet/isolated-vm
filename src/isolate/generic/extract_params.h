@@ -1,8 +1,8 @@
 #pragma once
 #include <string>
 #include <v8.h>
-#include "./error.h"
-#include "./handle_cast.h"
+#include "error.h"
+#include "handle_cast.h"
 
 namespace ivm {
 namespace detail {

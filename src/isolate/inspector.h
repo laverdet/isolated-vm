@@ -1,8 +1,8 @@
 #pragma once
 #include <v8.h>
-#include "../lib/lockable.h"
-#include "./runnable.h"
-#include "./v8_inspector_wrapper.h"
+#include "lib/lockable.h"
+#include "runnable.h"
+#include "v8_inspector_wrapper.h"
 #include <condition_variable>
 #include <memory>
 #include <mutex>

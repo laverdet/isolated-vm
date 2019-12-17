@@ -1,7 +1,7 @@
-#include "../isolate/class_handle.h"
-#include "../isolate/generic/read_option.h"
-#include "../external_copy_handle.h"
-#include "./evaluation.h"
+#include "isolate/class_handle.h"
+#include "isolate/generic/read_option.h"
+#include "external_copy_handle.h"
+#include "evaluation.h"
 
 using namespace v8;
 namespace ivm {

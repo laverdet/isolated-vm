@@ -1,7 +1,7 @@
 #pragma once
 #include "platform_delegate.h"
 #include "runnable.h"
-#include "../lib/thread_pool.h"
+#include "lib/thread_pool.h"
 #include <uv.h>
 #include <atomic>
 #include <condition_variable>
