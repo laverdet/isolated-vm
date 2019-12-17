@@ -70,6 +70,7 @@
 				'src/isolate/three_phase_task.cc',
 				'src/lib/thread_pool.cc',
 				'src/lib/timer.cc',
+				'src/module/evaluation.cc',
 				'src/context_handle.cc',
 				'src/external_copy.cc',
 				'src/external_copy_handle.cc',

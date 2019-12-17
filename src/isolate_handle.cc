@@ -12,6 +12,7 @@
 #include "isolate/remote_handle.h"
 #include "isolate/three_phase_task.h"
 #include "isolate/v8_version.h"
+#include "module/evaluation.h"
 #include "v8-platform.h"
 #include <deque>
 #include <memory>
@@ -21,108 +22,6 @@ using std::shared_ptr;
 using std::unique_ptr;
 
 namespace ivm {
-
-/**
- * Parses script origin information from an option object and returns a non-v8 holder for the
- * information which can then be converted to a ScriptOrigin, perhaps in a different isolate from
- * the one it was read in.
- */
-class ScriptOriginHolder {
-	private:
-		std::string filename;
-		int columnOffset;
-		int lineOffset;
-		bool isModule;
-	public:
-		explicit ScriptOriginHolder(MaybeLocal<Object> maybe_options, bool is_module = false)
-			:
-				filename("<isolated-vm>"),
-				columnOffset(0),
-				lineOffset(0),
-				isModule(is_module)
-		{
-			Local<Object> options;
-			if (maybe_options.ToLocal(&options)) {
-				Isolate* isolate = Isolate::GetCurrent();
-				Local<Context> context = isolate->GetCurrentContext();
-				Local<Value> filename = Unmaybe(options->Get(context, v8_string("filename")));
-				if (!filename->IsUndefined()) {
-					if (!filename->IsString()) {
-						throw RuntimeTypeError("`filename` must be a string");
-					}
-					this->filename = *String::Utf8Value{isolate, filename.As<String>()};
-				}
-				Local<Value> columnOffset = Unmaybe(options->Get(context, v8_string("columnOffset")));
-				if (!columnOffset->IsUndefined()) {
-					if (!columnOffset->IsInt32()) {
-						throw RuntimeTypeError("`columnOffset` must be an integer");
-					}
-					this->columnOffset = columnOffset.As<Int32>()->Value();
-				}
-				Local<Value> lineOffset = Unmaybe(options->Get(context, v8_string("lineOffset")));
-				if (!lineOffset->IsUndefined()) {
-					if (!lineOffset->IsInt32()) {
-						throw RuntimeTypeError("`lineOffset` must be an integer");
-					}
-					this->lineOffset = lineOffset.As<Int32>()->Value();
-				}
-			}
-		}
-
-		ScriptOrigin ToScriptOrigin() {
-			Isolate* isolate = Isolate::GetCurrent();
-			v8::Local<v8::Integer> integer;
-			v8::Local<v8::Boolean> boolean;
-			v8::Local<v8::String> string;
-			return {
-				v8_string(filename.c_str()), // resource_name,
-				Integer::New(isolate, columnOffset), // resource_line_offset
-				Integer::New(isolate, lineOffset), // resource_column_offset
-				boolean, // resource_is_shared_cross_origin
-				integer, // script_id
-				string, // source_map_url
-				boolean, // resource_is_opaque
-				boolean, // is_wasm
-				Boolean::New(isolate, this->isModule)
-			};
-		}
-};
-
-/**
- * Run a function and annotate the exception with source / line number if it throws. Note that this
- * only handles errors that live inside v8, not C++ errors
- */
-template <typename T, typename F>
-T RunWithAnnotatedErrors(F&& fn) {
-	Isolate* isolate = Isolate::GetCurrent();
-	TryCatch try_catch(isolate);
-	try {
-		return fn();
-	} catch (const detail::RuntimeErrorWithMessage& cc_error) {
-		throw std::logic_error("Invalid error thrown by RunWithAnnotatedErrors");
-	} catch (const RuntimeError& cc_error) {
-		try {
-			assert(try_catch.HasCaught());
-			Local<Context> context = isolate->GetCurrentContext();
-			Local<Value> error = try_catch.Exception();
-			Local<Message> message = try_catch.Message();
-			assert(error->IsObject());
-			int linenum = Unmaybe(message->GetLineNumber(context));
-			int start_column = Unmaybe(message->GetStartColumn(context));
-			std::string decorator =
-				std::string{*String::Utf8Value{isolate, message->GetScriptResourceName()}} +
-				":" + std::to_string(linenum) +
-				":" + std::to_string(start_column + 1);
-			std::string message_str = *String::Utf8Value{isolate, Unmaybe(error.As<Object>()->Get(context, v8_symbol("message")))};
-			Unmaybe(error.As<Object>()->Set(context, v8_symbol("message"), v8_string((message_str + " [" + decorator + "]").c_str())));
-			isolate->ThrowException(error);
-			throw RuntimeError();
-		} catch (const RuntimeError& cc_error) {
-			try_catch.ReThrow();
-			throw RuntimeError();
-		}
-	}
-}
 
 /**
  * IsolateHandle implementation
@@ -316,7 +215,7 @@ struct CompileCodeRunner : public ThreePhaseTask {
 	// Return ScriptCompiler::Source information, including `cachedData` if provided
 	std::unique_ptr<ScriptCompiler::Source> GetCompilerSource() {
 		Local<String> code_inner = code_string->CopyIntoCheckHeap().As<String>();
-		ScriptOrigin script_origin = script_origin_holder->ToScriptOrigin();
+		ScriptOrigin script_origin = ScriptOrigin{*script_origin_holder};
 		unique_ptr<ScriptCompiler::CachedData> cached_data = nullptr;
 		if (cached_data_in) {
 			cached_data = std::make_unique<ScriptCompiler::CachedData>(reinterpret_cast<const uint8_t*>(cached_data_in.get()), cached_data_in_size);
@@ -344,7 +243,7 @@ struct CompileScriptRunner : public CompileCodeRunner {
 		if (cached_data_in) {
 			compile_options = ScriptCompiler::kConsumeCodeCache;
 		}
-		script = RemoteHandle<UnboundScript>(RunWithAnnotatedErrors<Local<UnboundScript>>(
+		script = RemoteHandle<UnboundScript>(RunWithAnnotatedErrors(
 			[&isolate, &source, compile_options]() { return Unmaybe(ScriptCompiler::CompileUnboundScript(*isolate, source.get(), compile_options)); }
 		));
 
@@ -660,12 +559,12 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 				Local<Context> context_dirty = Context::New(isolate);
 				for (auto& script : scripts) {
 					Local<String> code = script.first.CopyInto().As<String>();
-					ScriptOrigin script_origin = script.second.ToScriptOrigin();
+					ScriptOrigin script_origin = ScriptOrigin{script.second};
 					ScriptCompiler::Source source{code, script_origin};
 					Local<UnboundScript> unbound_script;
 					{
 						Context::Scope context_scope{context};
-						Local<Script> compiled_script = RunWithAnnotatedErrors<Local<Script>>(
+						Local<Script> compiled_script = RunWithAnnotatedErrors(
 							[&context, &source]() { return Unmaybe(ScriptCompiler::Compile(context, &source, ScriptCompiler::kNoCompileOptions)); }
 						);
 						Unmaybe(compiled_script->Run(context));
@@ -680,8 +579,8 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 					Context::Scope context_scope{context_dirty};
 					MaybeLocal<Object> tmp;
 					ScriptOriginHolder script_origin{tmp};
-					ScriptCompiler::Source source{warmup_script->CopyInto().As<String>(), script_origin.ToScriptOrigin()};
-					RunWithAnnotatedErrors<void>([&context_dirty, &source]() {
+					ScriptCompiler::Source source{warmup_script->CopyInto().As<String>(), ScriptOrigin{script_origin}};
+					RunWithAnnotatedErrors([&context_dirty, &source]() {
 						Unmaybe(Unmaybe(ScriptCompiler::Compile(context_dirty, &source, ScriptCompiler::kNoCompileOptions))->Run(context_dirty));
 					});
 				}

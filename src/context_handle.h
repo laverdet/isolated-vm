@@ -16,6 +16,9 @@ class ContextHandle : public TransferableHandle {
 		auto GlobalGetter() -> v8::Local<v8::Value>;
 		auto Release() -> v8::Local<v8::Value>;
 
+		template <int Async>
+		auto Eval(v8::Local<v8::String> code, v8::MaybeLocal<v8::Object> maybe_options) -> v8::Local<v8::Value>;
+
 	private:
 		RemoteHandle<v8::Context> context;
 		RemoteHandle<v8::Value> global;

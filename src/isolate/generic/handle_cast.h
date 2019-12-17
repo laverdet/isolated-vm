@@ -196,13 +196,30 @@ inline auto HandleCastImpl(v8::Local<v8::Int32> value, const HandleCastArguments
 	return value->Value();
 }
 
+inline auto HandleCastImpl(v8::Local<v8::Value> value, const HandleCastArguments& arguments, HandleCastTag<std::string> /*tag*/) {
+	return HandleCast<std::string>(HandleCast<v8::Local<v8::String>>(value, arguments), arguments);
+}
+
+inline auto HandleCastImpl(v8::Local<v8::String> value, const HandleCastArguments& arguments, HandleCastTag<std::string> /*tag*/) {
+	v8::String::Utf8Value utf8_value{arguments.isolate, value};
+	return std::string{*utf8_value, static_cast<size_t>(utf8_value.length())};
+}
+
 // native C++ -> Local<Value> conversions
-inline auto HandleCastImpl(bool value, const HandleCastArguments& arguments, HandleCastTag<v8::Local<v8::Value>> /*tag*/) {
-	return v8::Boolean::New(arguments.isolate, value).As<v8::Value>();
+inline auto HandleCastImpl(bool value, const HandleCastArguments& arguments, HandleCastTag<v8::Local<v8::Boolean>> /*tag*/) {
+	return v8::Boolean::New(arguments.isolate, value);
+}
+
+inline auto HandleCastImpl(int32_t value, const HandleCastArguments& arguments, HandleCastTag<v8::Local<v8::Integer>> /*tag*/) {
+	return v8::Integer::New(arguments.isolate, value);
 }
 
 inline auto HandleCastImpl(const char* value, const HandleCastArguments& arguments, HandleCastTag<v8::Local<v8::String>> /*tag*/) {
 	return v8::String::NewFromUtf8(arguments.isolate, value);
+}
+
+inline auto HandleCastImpl(const std::string& value, const HandleCastArguments& arguments, HandleCastTag<v8::Local<v8::String>> /*tag*/) {
+	return v8::String::NewFromUtf8(arguments.isolate, value.c_str(), v8::String::NewStringType::kNormalString, value.size());
 }
 
 } // namespace ivm

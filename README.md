@@ -214,6 +214,25 @@ built-in objects and global space.
 [`Reference`](#class-reference-transferable) to this context's global object. Note that if you call
 `context.release()` the global reference will be released as well.
 
+##### `context.eval(code, options)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `context.evalIgnored(code, options)`
+##### `context.evalSync(code, options)`
+* `code` *[string]* - The code to run
+* `options` *[object]*
+	* `timeout` *[number]* - Maximum amount of time in milliseconds this script is allowed to run
+		before execution is canceled. Default is no timeout.
+	* `filename` *[string]* - Optional filename of this script, used in stack traces
+	* `columnOffset` *[number]* - Optional column offset of this script
+	* `lineOffset` *[number]* - Optional line offset of this script
+	* `copy` *[boolean]* - Automatically deep copy last value
+	* `externalCopy` *[boolean]* - Automatically wrap last value in `ExternalCopy` instance
+	* `reference` *[boolean]* - Automatically wrap last value in `Reference` instance
+* **return** *[transferable]*
+
+Compiles and executes a script within a context. This will return the last value evaluated, as long
+as that value was transferable, otherwise `undefined` will be returned.
+
+
 ##### `context.release()`
 
 Releases this reference to the context. You can call this to free up v8 resources immediately, or
@@ -237,11 +256,11 @@ reference.
 * `context` *[`Context`](#class-context-transferable)* - The context in which this script will run.
 * `options` *[object]*
 	* `release` *[boolean]* - If true `release()` will automatically be called on this instance.
-	* `timeout` *[number]* - Maximum amount of time in milliseconds this script is allowed to
-	* `copy` *[boolean]* - Automatically deep copy last value into function call
+	* `timeout` *[number]* - Maximum amount of time in milliseconds this script is allowed to run
+		before execution is canceled. Default is no timeout.
+	* `copy` *[boolean]* - Automatically deep copy last value
 	* `externalCopy` *[boolean]* - Automatically wrap last value in `ExternalCopy` instance
 	* `reference` *[boolean]* - Automatically wrap last value in `Reference` instance
-	run before execution is canceled. Default is no timeout.
 * **return** *[transferable]*
 
 Runs a given script within a context. This will return the last value evaluated in a given script,
@@ -256,10 +275,10 @@ A JavaScript module. Note that a [`Module`](#class-module-transferable) can only
 ##### `module.dependencySpecifiers`
 A read-only array of all dependency specifiers the module has.
 
-    const code = `import something from './something';`;
-    const module = await isolate.compileModule(code);
-    const dependencySpecifiers = module.dependencySpecifiers;
-    // dependencySpecifiers => ["./something"];
+		const code = `import something from './something';`;
+		const module = await isolate.compileModule(code);
+		const dependencySpecifiers = module.dependencySpecifiers;
+		// dependencySpecifiers => ["./something"];
 
 ##### `module.namespace`
 Returns a [`Reference`](#class-reference-transferable) containing all exported values.
@@ -332,7 +351,7 @@ all attempts to access the reference will throw an error.
 * `options` *[object]*
 	* `copy` *[boolean]* - Automatically deep copy value
 	* `externalCopy` *[boolean]* - Automatically wrap value in `ExternalCopy` instance
-  * `reference` *[boolean]* - Automatically wrap value in `Reference` instance
+	* `reference` *[boolean]* - Automatically wrap value in `Reference` instance
 	* `promise` *[boolean]* - Automatically proxy promise value between isolates. This can be used in
 		combination with the other transfer options.
 * **return** A [`Reference`](#class-reference-transferable) object.
@@ -347,8 +366,8 @@ Will access a reference as if using `reference[property]` and transfer the value
 * `options` *[object]*
 	* `copy` *[boolean]* - Automatically deep copy value
 	* `externalCopy` *[boolean]* - Automatically wrap value in `ExternalCopy` instance
-  * `reference` *[boolean]* - Automatically wrap value in `Reference` instance
-  * `promise` *[boolean]* - Automatically proxy promise value between isolates. This can be used in
+	* `reference` *[boolean]* - Automatically wrap value in `Reference` instance
+	* `promise` *[boolean]* - Automatically proxy promise value between isolates. This can be used in
 		combination with the other transfer options.
 * **return** `true` or `false`
 
@@ -362,21 +381,21 @@ when `false` would be returned, I'm just giving you the result back straight fro
 * `receiver` *[transferable]* - The value which will be `this`.
 * `arguments` *[array]* - Array of transferables which will be passed to the function.
 * `options` *[object]*
-	* `timeout` *[number]* - Maximum amount of time in milliseconds this function is allowed to
+	* `timeout` *[number]* - Maximum amount of time in milliseconds this function is allowed to run
+		before execution is canceled. Default is no timeout.
 	* `arguments` *[object]*
-		* `copy` *[boolean]* - Automatically deep copy arguments into function call
+		* `copy` *[boolean]* - Automatically deep copy arguments
 		* `externalCopy` *[boolean]* - Automatically wrap arguments in `ExternalCopy` instance
 		* `reference` *[boolean]* - Automatically wrap arguments in `Reference` instance
 		* `promise` *[boolean]* - Automatically proxy promises between isolates to this function. Note
-      that the function will be called immediately and the arguments will all be promises. This can
-      be used in combination with the other transfer options.
+			that the function will be called immediately and the arguments will all be promises. This can
+			be used in combination with the other transfer options.
 	* `return` *[object]*
 		* `copy` *[boolean]* - Automatically deep copy returned value
 		* `externalCopy` *[boolean]* - Automatically wrap returned value in `ExternalCopy` instance
 		* `reference` *[boolean]* - Automatically wrap returned value in `Reference` instance
-    * `promise` *[boolean]* - Automatically proxy returned promise between isolates. This can be
-      used in combination with the other transfer options.
-	run before execution is canceled. Default is no timeout.
+		* `promise` *[boolean]* - Automatically proxy returned promise between isolates. This can be
+			used in combination with the other transfer options.
 * **return** *[transferable]*
 
 Will attempt to invoke an object as if it were a function. If the return value is transferable it

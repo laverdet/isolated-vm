@@ -16,8 +16,8 @@ assert.deepEqual(global.getSync('test', { copy: true }), value);
 assert.deepEqual(global.getSync('test', { externalCopy: true }).copy(), value);
 global.getSync('test', { copy: true, promise: true }).then(resolved => assert.deepEqual(resolved, value)).then(resolved);
 
-assert.deepEqual(isolate.compileScriptSync('test').runSync(context, { copy: true }), value);
-const fn = isolate.compileScriptSync('(function foo(arg1) { return arg1; })').runSync(context, { reference: true });
+assert.deepEqual(context.evalSync('test', { copy: true }), value);
+const fn = context.evalSync('(function foo(arg1) { return arg1; })', { reference: true });
 assert.deepEqual(fn.applySync(undefined, [ value ], { arguments: { copy: true }, return: { copy: true } }), value);
 
 const promise = isolate.compileScriptSync(
