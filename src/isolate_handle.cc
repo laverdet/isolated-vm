@@ -198,7 +198,7 @@ struct CompileScriptRunner : public CodeCompilerHolder, public ThreePhaseTask {
 			= ScriptCompiler::CreateCodeCache(script.Deref());
 #else
 			// Added in v8 commit dae20b064
-			= ScriptCompiler::CreateCodeCache(script.Deref(), code_string->CopyIntoCheckHeap().As<String>());
+			= ScriptCompiler::CreateCodeCache(script.Deref(), GetSourceString());
 #endif
 			assert(cached_data != nullptr);
 			SaveCachedData(cached_data);
@@ -236,19 +236,23 @@ struct CompileModuleRunner : public CodeCompilerHolder, public ThreePhaseTask {
 		auto source = GetSource();
 		Local<Module> module_handle = Unmaybe(ScriptCompiler::CompileModule(*isolate, source.get()));
 
-		// TODO: v8 6.8.214 [8ec92f51] adds support for producing cached data for modules, but support
-		// for actually consuming the cached data wasn't added until 6.9.37 [70b5fd3b]. This hardcoded
-		// failure should be updated when support lands in nodejs.
+#if V8_AT_LEAST(6, 9, 37)
+		// v8 6.8.214 [8ec92f51] adds support for producing cached data for modules, but support for
+		// actually consuming the cached data wasn't added until 6.9.37 [70b5fd3b].
 		if (DidSupplyCachedData()) {
-			// cached_data_rejected = source->GetCachedData()->rejected;
-			SetCachedDataRejected(true);
-		} else /*if (produce_cached_data)*/ {
-			/*
+			SetCachedDataRejected(source->GetCachedData()->rejected);
+		}
+		if (ShouldProduceCachedData()) {
 			ScriptCompiler::CachedData* cached_data = ScriptCompiler::CreateCodeCache(module_handle->GetUnboundModuleScript());
 			assert(cached_data != nullptr);
-			cached_data_out = std::make_shared<ExternalCopyArrayBuffer>((void*)cached_data->data, cached_data->length);
-			*/
+			SaveCachedData(cached_data);
 		}
+#else
+		if (DidSupplyCachedData()) {
+			SetCachedDataRejected(true);
+		}
+#endif
+
 		ResetSource();
 		module_info = std::make_shared<ModuleInfo>(module_handle);
 		heap_check.Epilogue();

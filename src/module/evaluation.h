@@ -33,12 +33,14 @@ class CodeCompilerHolder {
 	public:
 		CodeCompilerHolder(
 			v8::Local<v8::String> code_handle, v8::MaybeLocal<v8::Object> maybe_options, bool is_module = false);
-		bool DidSupplyCachedData() const { return supplied_cached_data; }
+		auto DidSupplyCachedData() const { return supplied_cached_data; }
 		auto GetSource() const -> std::unique_ptr<v8::ScriptCompiler::Source>;
+		// This should be removed after `V8_AT_LEAST(6, 8, 11)` because it's only used
+		auto GetSourceString() const -> v8::Local<v8::String>;
 		void ResetSource();
 		void SaveCachedData(v8::ScriptCompiler::CachedData* cached_data);
 		void SetCachedDataRejected(bool rejected) { cached_data_rejected = rejected; }
-		bool ShouldProduceCachedData() const { return produce_cached_data; }
+		auto ShouldProduceCachedData() const { return produce_cached_data && (!supplied_cached_data || cached_data_rejected); }
 		void WriteCompileResults(v8::Local<v8::Object> handle);
 
 	private:
@@ -48,6 +50,7 @@ class CodeCompilerHolder {
 		std::unique_ptr<ExternalCopyString> code_string;
 		std::shared_ptr<ExternalCopyArrayBuffer> cached_data_out;
 		std::shared_ptr<void> cached_data_in;
+		mutable v8::Local<v8::String> code_string_handle;
 		size_t cached_data_in_size = 0;
 		bool cached_data_rejected = false;
 		bool produce_cached_data = false;
@@ -59,7 +62,7 @@ class CodeCompilerHolder {
  * if it throws.
  */
 template <class Function>
-decltype(auto) RunWithAnnotatedErrors(Function fn) {
+auto RunWithAnnotatedErrors(Function fn) {
 	v8::Isolate* isolate = v8::Isolate::GetCurrent();
 	v8::TryCatch try_catch{isolate};
 	try {

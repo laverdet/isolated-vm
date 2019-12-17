@@ -68,10 +68,17 @@ auto CodeCompilerHolder::GetCachedData() const -> std::unique_ptr<ScriptCompiler
 
 auto CodeCompilerHolder::GetSource() const -> std::unique_ptr<ScriptCompiler::Source> {
 	return std::make_unique<ScriptCompiler::Source>(
-		code_string->CopyIntoCheckHeap().As<String>(),
+		GetSourceString(),
 		ScriptOrigin{script_origin_holder},
 		GetCachedData().release()
 	);
+}
+
+auto CodeCompilerHolder::GetSourceString() const -> v8::Local<v8::String> {
+	if (code_string_handle.IsEmpty()) {
+		code_string_handle = code_string->CopyIntoCheckHeap().As<String>();
+	}
+	return code_string_handle;
 }
 
 void CodeCompilerHolder::ResetSource() {
@@ -92,7 +99,8 @@ void CodeCompilerHolder::WriteCompileResults(Local<Object> handle) {
 	Local<Context> context = isolate->GetCurrentContext();
 	if (DidSupplyCachedData()) {
 		Unmaybe(handle->Set(context, v8_symbol("cachedDataRejected"), Boolean::New(isolate, cached_data_rejected)));
-	} else if (cached_data_out) {
+	}
+	if (cached_data_out) {
 		Unmaybe(handle->Set(context, v8_symbol("cachedData"), ClassHandle::NewInstance<ExternalCopyHandle>(std::move(cached_data_out))));
 	}
 }
