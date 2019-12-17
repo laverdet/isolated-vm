@@ -44,14 +44,14 @@ class RuntimeErrorWithConstructor : public RuntimeErrorConstructible {
 
 		auto ConstructError() const -> v8::Local<v8::Value> final {
 			v8::Isolate* isolate = v8::Isolate::GetCurrent();
-			v8::MaybeLocal<v8::String> maybe_message = v8::String::NewFromUtf8(isolate, GetMessage().c_str());
+			v8::MaybeLocal<v8::String> maybe_message = v8::String::NewFromUtf8(isolate, GetMessage().c_str(), v8::NewStringType::kNormal);
 			v8::Local<v8::String> message_handle;
 			if (maybe_message.ToLocal(&message_handle)) {
 				v8::Local<v8::Object> error = Error(message_handle).As<v8::Object>();
 				if (!stack_trace.empty() && isolate->InContext()) {
 					std::string stack_str = std::string(GetMessage()) + stack_trace;
-					v8::MaybeLocal<v8::String> maybe_stack = v8::String::NewFromUtf8(isolate, stack_str.c_str());
-					v8::MaybeLocal<v8::String> maybe_stack_symbol = v8::String::NewFromUtf8(isolate, "stack");
+					v8::MaybeLocal<v8::String> maybe_stack = v8::String::NewFromUtf8(isolate, stack_str.c_str(), v8::NewStringType::kNormal);
+					v8::MaybeLocal<v8::String> maybe_stack_symbol = v8::String::NewFromUtf8(isolate, "stack", v8::NewStringType::kNormal);
 					v8::Local<v8::String> stack;
 					v8::Local<v8::String> stack_symbol;
 					if (maybe_stack.ToLocal(&stack) && maybe_stack_symbol.ToLocal(&stack_symbol)) {

@@ -178,9 +178,7 @@ class PlatformDelegate {
 		}
 #endif
 
-		void CallIdleOnForegroundThread(v8::Isolate* isolate, v8::IdleTask* task) final {
-			node_platform->CallIdleOnForegroundThread(isolate, task);
-		}
+		void CallIdleOnForegroundThread(v8::Isolate* isolate, v8::IdleTask* task) final;
 
 		bool IdleTasksEnabled(v8::Isolate* isolate) final {
 			return GetForegroundTaskRunner(isolate)->IdleTasksEnabled();

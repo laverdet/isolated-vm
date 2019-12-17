@@ -278,18 +278,26 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void>
 
 	// Calculate resource constraints
 	ResourceConstraints rc;
-	rc.set_max_semi_space_size_in_kb((size_t)std::pow(2, std::min(sizeof(void*) >= 8 ? 4.0 : 3.0, memory_limit_in_mb / 128.0) + 10));
-	rc.set_max_old_space_size(
-#if V8_AT_LEAST(7, 0, 0)
-		memory_limit_in_mb
+	size_t young_space_in_kb = (size_t)std::pow(2, std::min(sizeof(void*) >= 8 ? 4.0 : 3.0, memory_limit_in_mb / 128.0) + 10);
+	size_t old_generation_size_in_mb =
+#if V8_AT_LEAST(7, 0, 1)
+		memory_limit_in_mb;
 #else
 		// node v10.x seems to not call NearHeapLimit dependably for smaller heap sizes. I'm not sure
 		// exactly sure when this was resolved and bisecting on v8 would be frustrating, but since
 		// nodejs v11.x it seems ok. For these earlier versions of node the gc epilogue will have to
 		// enforce the limit as best it can.
-		std::max(size_t{128}, memory_limit_in_mb)
+		std::max(size_t{128}, memory_limit_in_mb);
 #endif
-	);
+#if V8_AT_LEAST(7, 7, 25)
+	// Added in e423f004.
+	// TODO: Give `ConfigureDefaultsFromHeapSize` a try
+	rc.set_max_young_generation_size_in_bytes(young_space_in_kb * 1024);
+	rc.set_max_old_generation_size_in_bytes(old_generation_size_in_mb * 1024 * 1024);
+#else
+	rc.set_max_semi_space_size_in_kb(young_space_in_kb);
+	rc.set_max_old_space_size(old_generation_size_in_mb);
+#endif
 
 	// Build isolate from create params
 	Isolate::CreateParams create_params;

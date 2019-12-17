@@ -215,11 +215,11 @@ inline auto HandleCastImpl(int32_t value, const HandleCastArguments& arguments, 
 }
 
 inline auto HandleCastImpl(const char* value, const HandleCastArguments& arguments, HandleCastTag<v8::Local<v8::String>> /*tag*/) {
-	return v8::String::NewFromUtf8(arguments.isolate, value);
+	return Unmaybe(v8::String::NewFromUtf8(arguments.isolate, value, v8::NewStringType::kNormal));
 }
 
 inline auto HandleCastImpl(const std::string& value, const HandleCastArguments& arguments, HandleCastTag<v8::Local<v8::String>> /*tag*/) {
-	return v8::String::NewFromUtf8(arguments.isolate, value.c_str(), v8::String::NewStringType::kNormalString, value.size());
+	return Unmaybe(v8::String::NewFromUtf8(arguments.isolate, value.c_str(), v8::NewStringType::kNormal, value.size()));
 }
 
 } // namespace ivm
