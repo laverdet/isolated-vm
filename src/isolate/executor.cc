@@ -12,6 +12,20 @@ Executor::Executor(IsolateEnvironment& env) :
 	default_executor{*(current_executor == nullptr ? (current_executor = this) : current_executor)},
 	default_thread{&default_executor == this ? std::this_thread::get_id() : default_executor.default_thread} {}
 
+auto Executor::MayRunInlineTasks(IsolateEnvironment& env) -> bool {
+	if (current_executor == &env.executor) {
+		if (env.nodejs_isolate) {
+			// nodejs isolates are active by default in their owned thread even if there is no Scope up.
+			// This can cause problems when the GC runs and invokes weak callbacks because there is no
+			// v8::HandleScope set up.
+			return current_executor->depth > 0;
+		} else {
+			return true;
+		}
+	}
+	return false;
+}
+
 thread_local Executor* Executor::current_executor = nullptr;
 thread_local Executor::CpuTimer* Executor::cpu_timer_thread = nullptr;
 
@@ -107,6 +121,12 @@ auto Executor::WallTimer::Delta(const std::lock_guard<std::mutex>& /* lock */) c
  */
 Executor::Scope::Scope(IsolateEnvironment& env) : last{current_executor} {
 	current_executor = &env.executor;
+	++current_executor->depth;
+}
+
+Executor::Scope::~Scope() {
+	--current_executor->depth;
+	current_executor = last;
 }
 
 /**

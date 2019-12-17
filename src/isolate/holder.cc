@@ -34,7 +34,7 @@ auto IsolateHolder::GetIsolate() -> std::shared_ptr<IsolateEnvironment> {
 void IsolateHolder::ScheduleTask(std::unique_ptr<Runnable> task, bool run_inline, bool wake_isolate, bool handle_task) {
 	auto ref = state.read()->isolate;
 	if (ref) {
-		if (run_inline && IsolateEnvironment::GetCurrent() == ref.get()) {
+		if (run_inline && Executor::MayRunInlineTasks(*ref)) {
 			task->Run();
 			return;
 		}

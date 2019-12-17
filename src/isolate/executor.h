@@ -26,6 +26,7 @@ class Executor { // "En taro adun"
 		static auto GetCurrentEnvironment() -> IsolateEnvironment*;
 		static auto GetDefaultEnvironment() -> IsolateEnvironment&;
 		static auto IsDefaultThread() -> bool;
+		static auto MayRunInlineTasks(IsolateEnvironment& env) -> bool;
 
 	private:
 		class CpuTimer {
@@ -96,7 +97,7 @@ class Executor { // "En taro adun"
 			public:
 				explicit Scope(IsolateEnvironment& env);
 				Scope(const Scope&) = delete;
-				~Scope() { current_executor = last; }
+				~Scope();
 				auto operator= (const Scope&) = delete;
 
 			private:
@@ -141,6 +142,7 @@ class Executor { // "En taro adun"
 		Lock* current_lock = nullptr;
 		CpuTimer* cpu_timer = nullptr;
 		WallTimer* wall_timer = nullptr;
+		int depth = 0;
 		std::mutex timer_mutex;
 		std::chrono::nanoseconds cpu_time{};
 		std::chrono::nanoseconds wall_time{};
