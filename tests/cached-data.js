@@ -58,7 +58,7 @@ let cachedData;
 }
 
 // Check module cached data
-if (V8_AT_LEAST(6, 8, 11)) {
+if (V8_AT_LEAST(6, 9, 37)) {
 	const cachedData = (() => {
 		const isolate = new ivm.Isolate;
 		const module = isolate.compileModuleSync(src, { produceCachedData: true });
