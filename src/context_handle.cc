@@ -41,6 +41,9 @@ Local<FunctionTemplate> ContextHandle::Definition() {
 		"eval", MemberFunction<decltype(&ContextHandle::Eval<1>), &ContextHandle::Eval<1>>{},
 		"evalIgnored", MemberFunction<decltype(&ContextHandle::Eval<2>), &ContextHandle::Eval<2>>{},
 		"evalSync", MemberFunction<decltype(&ContextHandle::Eval<0>), &ContextHandle::Eval<0>>{},
+		"evalClosure", MemberFunction<decltype(&ContextHandle::EvalClosure<1>), &ContextHandle::EvalClosure<1>>{},
+		"evalClosureIgnored", MemberFunction<decltype(&ContextHandle::EvalClosure<2>), &ContextHandle::EvalClosure<2>>{},
+		"evalClosureSync", MemberFunction<decltype(&ContextHandle::EvalClosure<0>), &ContextHandle::EvalClosure<0>>{},
 		"global", MemberAccessor<decltype(&ContextHandle::GlobalGetter), &ContextHandle::GlobalGetter>{},
 		"release", MemberFunction<decltype(&ContextHandle::Release), &ContextHandle::Release>{}
 	));
@@ -146,6 +149,107 @@ class EvalRunner : public CodeCompilerHolder, public ThreePhaseTask {
 template <int Async>
 auto ContextHandle::Eval(Local<String> code, MaybeLocal<Object> maybe_options) -> Local<Value> {
 	return ThreePhaseTask::Run<Async, EvalRunner>(*context.GetIsolateHolder(), context, code, maybe_options);
+}
+
+/*
+ * Compiles a script as a function body and immediately invokes it
+ */
+class EvalClosureRunner : public CodeCompilerHolder, public ThreePhaseTask {
+	public:
+		explicit EvalClosureRunner(
+			RemoteHandle<Context> context,
+			Local<String> code,
+			MaybeLocal<Array> maybe_arguments,
+			MaybeLocal<Object> maybe_options
+		) :
+				CodeCompilerHolder{code, maybe_options},
+				transfer_options{ReadOption<MaybeLocal<Object>>(maybe_options, "result", {})},
+				argv{[&]() {
+					// Transfer arguments out of isolate
+					std::vector<std::unique_ptr<Transferable>> argv;
+					Transferable::Options transfer_options{ReadOption<MaybeLocal<Object>>(maybe_options, "arguments", {})};
+					Local<Array> arguments;
+					if (maybe_arguments.ToLocal(&arguments)) {
+						uint32_t length = arguments->Length();
+						argv.reserve(length);
+						for (uint32_t ii = 0; ii < length; ++ii) {
+							argv.push_back(Transferable::TransferOut(
+								Unmaybe(arguments->Get(Isolate::GetCurrent()->GetCurrentContext(), ii)),
+								transfer_options));
+						}
+					}
+					return argv;
+				}()},
+				context{std::move(context)} {
+			if (!this->context) {
+				throw RuntimeGenericError("Context is released");
+			}
+			timeout_ms = ReadOption<int32_t>(maybe_options, "timeout", timeout_ms);
+		}
+
+		void Phase2() final {
+			// Setup isolate's context
+			auto isolate = IsolateEnvironment::GetCurrent();
+			auto context = this->context.Deref();
+			Context::Scope context_scope{context};
+			IsolateEnvironment::HeapCheck heap_check{*isolate, true};
+
+			// Generate $0 ... $N argument names
+			std::vector<Local<String>> argument_names;
+			size_t argc = argv.size();
+			argument_names.reserve(argc + 1);
+			for (size_t ii = 0; ii < argc; ++ii) {
+				argument_names.emplace_back(HandleCast<Local<String>>(std::string{"$"}+ std::to_string(ii)));
+			}
+
+			// Invoke `new Function` to compile script
+			auto source = GetSource();
+			auto function = RunWithAnnotatedErrors([&]() {
+				return Unmaybe(ScriptCompiler::CompileFunctionInContext(
+					context, source.get(),
+					argument_names.size(), argument_names.empty() ? nullptr : &argument_names[0],
+					0, nullptr
+				));
+			});
+
+			// Transfer arguments into this isolate
+			std::vector<Local<Value>> argv_transferred;
+			argv_transferred.reserve(argc);
+			for (size_t ii = 0; ii < argc; ++ii) {
+				argv_transferred.emplace_back(argv[ii]->TransferIn());
+			}
+
+			// Execute script and transfer out
+			Local<Value> script_result = RunWithTimeout(timeout_ms, [&]() {
+				return function->Call(
+					context, context->Global(),
+					argv_transferred.size(), argv_transferred.empty() ? nullptr : &argv_transferred[0]);
+			});
+			result = Transferable::OptionalTransferOut(script_result, transfer_options);
+			heap_check.Epilogue();
+		}
+
+		auto Phase3() -> Local<Value> final {
+			auto isolate = Isolate::GetCurrent();
+			auto context = isolate->GetCurrentContext();
+			auto object = Object::New(isolate);
+			auto result_handle = result ? result->TransferIn() : Undefined(isolate).As<Value>();
+			Unmaybe(object->Set(context, HandleCast<Local<String>>("result"), result_handle));
+			WriteCompileResults(object);
+			return object;
+		}
+
+	private:
+		Transferable::Options transfer_options;
+		std::vector<std::unique_ptr<Transferable>> argv;
+		RemoteHandle<Context> context;
+		std::unique_ptr<Transferable> result;
+		int32_t timeout_ms = 0;
+};
+
+template <int Async>
+auto ContextHandle::EvalClosure(Local<String> code, MaybeLocal<Array> maybe_arguments, MaybeLocal<Object> maybe_options) -> Local<Value> {
+	return ThreePhaseTask::Run<Async, EvalClosureRunner>(*context.GetIsolateHolder(), context, code, maybe_arguments, maybe_options);
 }
 
 } // namespace ivm
