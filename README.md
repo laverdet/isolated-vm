@@ -109,10 +109,8 @@ contains can represent quite a large chunk of memory though you may want to expl
 
 ##### `ivm.Isolate.createSnapshot(scripts, warmup_script)`
 * `scripts` *[array]*
-	* `code` *[string]* - Script to setup this snapshot
-	* `filename` *[string]* - Optional filename of this script, used in stack traces
-	* `columnOffset` *[number]* - Optional column offset of this script
-	* `lineOffset` *[number]* - Optional line offset of this script
+	* `code` *[string]* - Source code to set up this snapshot
+	* [`{ ...ScriptOrigin }`](#scriptorigin)
 * `warmup_script` *[string]* - Optional script to "warmup" the snapshot by triggering code
 compilation
 
@@ -126,30 +124,19 @@ variables, and compiled code. Check out the examples section for tips on using t
 ##### `isolate.compileScriptSync(code)`
 * `code` *[string]* - The JavaScript code to compile.
 * `options` *[object]*
-	* `filename` *[string]* - Optional filename of this script, used in stack traces
-	* `columnOffset` *[number]* - Optional column offset of this script
-	* `lineOffset` *[number]* - Optional line offset of this script
-	* `produceCachedData` *[boolean]* - Produce V8 cache data. Similar to the
-	[VM.Script](https://nodejs.org/api/vm.html) option of the same name. If this is true then the
-	returned script object will have `cachedData` set to an ExternalCopy handle. Note that this
-	differs from the VM.Script option slightly in that `cachedDataProduced` is never set.
-	* `cachedData` *[ExternalCopy[ArrayBuffer]]* - This will consume cached compilation data from a
-	previous call to this function. Please don't use `produceCachedData` and `cachedData` options at
-	the same time. `cachedDataRejected` will be set to `true` if the supplied data was rejected by
-	V8.
+	* [`{ ...CachedDataOptions }`](#cacheddataoptions)
+	* [`{ ...ScriptOrigin }`](#scriptorigin)
 
 * **return** A [`Script`](#class-script-transferable) object.
 
 Note that a [`Script`](#class-script-transferable) can only run in the isolate which created it.
 
-
 ##### `isolate.compileModule(code)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `isolate.compileModuleSync(code)`
 * `code` *[string]* - The JavaScript code to compile.
 * `options` *[object]*
-	* `filename` *[string]* - Optional filename of this script, used in stack traces
-	* `columnOffset` *[number]* - Optional column offset of this script
-	* `lineOffset` *[number]* - Optional line offset of this script
+	* [`{ ...CachedDataOptions }`](#cacheddataoptions)
+	* [`{ ...ScriptOrigin }`](#scriptorigin)
 
 * **return** A [`Module`](#class-module-transferable) object.
 
@@ -159,7 +146,7 @@ Note that a [`Module`](#class-script-transferable) can only run in the isolate w
 ##### `isolate.createContextSync()`
 * `options` *[object]*
 	* `inspector` *[boolean]* - Enable the v8 inspector for this context. The inspector must have been
-	enabled for the isolate as well.
+		enabled for the isolate as well.
 
 * **return** A [`Context`](#class-context-transferable) object.
 
@@ -177,9 +164,6 @@ of currently allocated memory which is not included in the v8 heap but counts ag
 `memoryLimit`. ArrayBuffer instances over a certain size are externally allocated and will be
 counted here.
 
-##### `isolate.isDisposed` *[boolean]*
-Flag that indicates whether this isolate has been disposed.
-
 ##### `isolate.cpuTime` *[Array]*
 ##### `isolate.wallTime` *[Array]*
 The total CPU and wall time spent in this isolate. CPU time is the amount of time the isolate has
@@ -196,6 +180,9 @@ is lost in this conversion but for most applications it's probably not a big dea
 Note that CPU time may vary drastically if there is contention for the CPU. This could occur if
 other processes are trying to do work, or if you have more than `require('os').cpus().length`
 isolates currently doing work in the same nodejs process.
+
+##### `isolate.isDisposed` *[boolean]*
+Flag that indicates whether this isolate has been disposed.
 
 ##### `isolate.referenceCount` *[number]*
 Returns the total count of active `Reference` instances that belong to this isolate. Note that in
@@ -221,12 +208,9 @@ built-in objects and global space.
 * `options` *[object]*
 	* `timeout` *[number]* - Maximum amount of time in milliseconds this script is allowed to run
 		before execution is canceled. Default is no timeout.
-	* `filename` *[string]* - Optional filename of this script, used in stack traces
-	* `columnOffset` *[number]* - Optional column offset of this script
-	* `lineOffset` *[number]* - Optional line offset of this script
-	* `copy` *[boolean]* - Automatically deep copy last value
-	* `externalCopy` *[boolean]* - Automatically wrap last value in `ExternalCopy` instance
-	* `reference` *[boolean]* - Automatically wrap last value in `Reference` instance
+	* [`{ ...CachedDataOptions }`](#cacheddataoptions)
+	* [`{ ...ScriptOrigin }`](#scriptorigin)
+	* [`{ ...TransferOptions }`](#transferoptions)
 * **return** *[object]*
 	* `result` *[transferable]*
 
@@ -241,22 +225,12 @@ as that value was transferable, otherwise `undefined` will be returned.
 * `options` *[object]*
 	* `timeout` *[number]* - Maximum amount of time in milliseconds this script is allowed to run
 		before execution is canceled. Default is no timeout.
-	* `filename` *[string]* - Optional filename of this script, used in stack traces
-	* `columnOffset` *[number]* - Optional column offset of this script
-	* `lineOffset` *[number]* - Optional line offset of this script
+	* [`{ ...CachedDataOptions }`](#cacheddataoptions)
+	* [`{ ...ScriptOrigin }`](#scriptorigin)
 	* `arguments` *[object]*
-		* `copy` *[boolean]* - Automatically deep copy arguments
-		* `externalCopy` *[boolean]* - Automatically wrap arguments in `ExternalCopy` instance
-		* `reference` *[boolean]* - Automatically wrap arguments in `Reference` instance
-		* `promise` *[boolean]* - Automatically proxy promises between isolates to this function. Note
-			that the function will be called immediately and the arguments will all be promises. This can
-			be used in combination with the other transfer options.
+		* [`{ ...TransferOptions }`](#transferoptions)
 	* `result` *[object]*
-		* `copy` *[boolean]* - Automatically deep copy returned value
-		* `externalCopy` *[boolean]* - Automatically wrap returned value in `ExternalCopy` instance
-		* `reference` *[boolean]* - Automatically wrap returned value in `Reference` instance
-		* `promise` *[boolean]* - Automatically proxy returned promise between isolates. This can be
-			used in combination with the other transfer options.
+		* [`{ ...TransferOptions }`](#transferoptions)
 * **return** *[object]*
 	* `result` *[transferable]*
 
@@ -264,12 +238,12 @@ Compiles and runs code as if it were inside a function, similar to the seldom-us
 Function(code)` constructor. You can pass arguments to the function and they will be available as
 `$0`, `$1`, and so on. You can also use `return` from the code.
 
-
 ##### `context.release()`
 
 Releases this reference to the context. You can call this to free up v8 resources immediately, or
 you can let the garbage collector handle it when it feels like it. Note that if there are other
 references to this context it will not be disposed. This only affects this reference to the context.
+
 
 ### Class: `Script` *[transferable]*
 A script is a compiled chunk of JavaScript which can be executed in any context within a single
@@ -290,9 +264,7 @@ reference.
 	* `release` *[boolean]* - If true `release()` will automatically be called on this instance.
 	* `timeout` *[number]* - Maximum amount of time in milliseconds this script is allowed to run
 		before execution is canceled. Default is no timeout.
-	* `copy` *[boolean]* - Automatically deep copy last value
-	* `externalCopy` *[boolean]* - Automatically wrap last value in `ExternalCopy` instance
-	* `reference` *[boolean]* - Automatically wrap last value in `Reference` instance
+	* [`{ ...TransferOptions }`](#transferoptions)
 * **return** *[transferable]*
 
 Runs a given script within a context. This will return the last value evaluated in a given script,
@@ -381,11 +353,7 @@ all attempts to access the reference will throw an error.
 ##### `reference.getSync(property, options)`
 * `property` *[transferable]* - The property to access on this object.
 * `options` *[object]*
-	* `copy` *[boolean]* - Automatically deep copy value
-	* `externalCopy` *[boolean]* - Automatically wrap value in `ExternalCopy` instance
-	* `reference` *[boolean]* - Automatically wrap value in `Reference` instance
-	* `promise` *[boolean]* - Automatically proxy promise value between isolates. This can be used in
-		combination with the other transfer options.
+	* [`{ ...TransferOptions }`](#transferoptions)
 * **return** A [`Reference`](#class-reference-transferable) object.
 
 Will access a reference as if using `reference[property]` and transfer the value out.
@@ -396,11 +364,7 @@ Will access a reference as if using `reference[property]` and transfer the value
 * `property` *[transferable]* - The property to set on this object.
 * `value` *[transferable]* - The value to set on this object.
 * `options` *[object]*
-	* `copy` *[boolean]* - Automatically deep copy value
-	* `externalCopy` *[boolean]* - Automatically wrap value in `ExternalCopy` instance
-	* `reference` *[boolean]* - Automatically wrap value in `Reference` instance
-	* `promise` *[boolean]* - Automatically proxy promise value between isolates. This can be used in
-		combination with the other transfer options.
+	* [`{ ...TransferOptions }`](#transferoptions)
 * **return** `true` or `false`
 
 Returns a boolean indicating whether or not this operation succeeded. I'm actually not really sure
@@ -416,18 +380,9 @@ when `false` would be returned, I'm just giving you the result back straight fro
 	* `timeout` *[number]* - Maximum amount of time in milliseconds this function is allowed to run
 		before execution is canceled. Default is no timeout.
 	* `arguments` *[object]*
-		* `copy` *[boolean]* - Automatically deep copy arguments
-		* `externalCopy` *[boolean]* - Automatically wrap arguments in `ExternalCopy` instance
-		* `reference` *[boolean]* - Automatically wrap arguments in `Reference` instance
-		* `promise` *[boolean]* - Automatically proxy promises between isolates to this function. Note
-			that the function will be called immediately and the arguments will all be promises. This can
-			be used in combination with the other transfer options.
+		* [`{ ...TransferOptions }`](#transferoptions)
 	* `result` *[object]*
-		* `copy` *[boolean]* - Automatically deep copy returned value
-		* `externalCopy` *[boolean]* - Automatically wrap returned value in `ExternalCopy` instance
-		* `reference` *[boolean]* - Automatically wrap returned value in `Reference` instance
-		* `promise` *[boolean]* - Automatically proxy returned promise between isolates. This can be
-			used in combination with the other transfer options.
+		* [`{ ...TransferOptions }`](#transferoptions)
 * **return** *[transferable]*
 
 Will attempt to invoke an object as if it were a function. If the return value is transferable it
@@ -451,12 +406,12 @@ can then be quickly copied into any isolate without any extra thread synchroniza
 ##### `new ivm.ExternalCopy(value, options)`
 * `value` - The value to copy.
 * `options` *[object]*
-	* `transferList` *[boolean]* - An array of `ArrayBuffer` instances to transfer ownership.
-	This behaves in a similar way to
-	[`postMessage`](https://developer.mozilla.org/en-US/docs/Web/API/Worker/postMessage).
+	* `transferList` *[boolean]* - An array of `ArrayBuffer` instances to transfer ownership. This
+		behaves in a similar way to
+		[`postMessage`](https://developer.mozilla.org/en-US/docs/Web/API/Worker/postMessage).
 	* `transferOut` *[boolean]* - If true this will release ownership of the given resource from this
-	isolate. This operation completes in constant time since it doesn't have to copy an arbitrarily
-	large object. This only applies to ArrayBuffer and TypedArray instances.
+		isolate. This operation completes in constant time since it doesn't have to copy an arbitrarily
+		large object. This only applies to ArrayBuffer and TypedArray instances.
 
 Primitive values can be copied exactly as they are. Date objects will be copied as as Dates.
 ArrayBuffers, TypedArrays, and DataViews will be copied in an efficient format. SharedArrayBuffers
@@ -506,6 +461,50 @@ will still remain in memory, but this handle will no longer be active. Disposing
 instances isn't super important, v8 is a lot better at cleaning these up automatically because
 there's no inter-isolate dependencies.
 
+
+### Shared Options
+Many methods in this library accept common options between them. They are documented here instead of
+being colocated with each instance.
+
+##### `CachedDataOptions`
+* `cachedData` *[ExternalCopy[ArrayBuffer]]* - This will consume cached compilation data from a
+	previous call to this function. `cachedDataRejected` will be set to `true` if the supplied data
+	was rejected by V8.
+* `produceCachedData` *[boolean]* - Produce V8 cache data. Similar to the
+	[VM.Script](https://nodejs.org/api/vm.html) option of the same name. If this is true then the
+	returned object will have `cachedData` set to an ExternalCopy handle. Note that this differs from
+	the VM.Script option slightly in that `cachedDataProduced` is never set.
+
+Most functions which compile or run code can produce and consume cached data. You can produce cached
+data and use the data in later invocations to drastically speed up parsing of the same script. You
+can even save this data to disk and use it in a different process. You can set both `cachedData` and
+`produceCachedData`, in which case new cached data will only be produced if the data supplied was
+invalid.
+
+##### `ScriptOrigin`
+* `filename` *[string]* - Filename of this source code
+* `columnOffset` *[number]* - Column offset of this source code
+* `lineOffset` *[number]* - Line offset of this source code
+
+You may optionally specify information on compiled code's filename. This is used in various
+debugging contexts within v8, including stack traces and the inspector. It is recommended to use a
+valid URI scheme, for example: `{ filename: 'file:///test.js' }`, otherwise some devtools may
+malfunction.
+
+##### `TransferOptions`
+* `copy` *[boolean]* - Automatically deep copy value
+* `externalCopy` *[boolean]* - Automatically wrap value in `ExternalCopy` instance
+* `reference` *[boolean]* - Automatically wrap value in `Reference` instance
+* `promise` *[boolean]* - Automatically proxy any returned promises between isolates. This can be
+	used in combination with the other transfer options.
+
+Any function which moves data between isolates will accept these transfer options. By default only
+*[transferable]* values may pass between isolates. Without specifying one of these options the
+function may ignore the value, throw, or wrap it in a reference depending on the context.
+
+More advanced situations like transferring ownership of `ArrayBuffer` instances will require direct
+use of [`ExternalCopy`](#class-externalcopy-transferable) or
+[`Reference`](#class-reference-transferable).
 
 EXAMPLES
 --------
