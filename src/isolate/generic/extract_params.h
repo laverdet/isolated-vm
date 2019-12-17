@@ -101,7 +101,7 @@ class ParamExtractor {
 		template <int Index, class Type>
 		inline decltype(auto) Invoke() {
 			constexpr int AdjustedIndex = Index == 0 ? Offset : (std::max(-1, Offset) + Index);
-			ii = Index;
+			ii = AdjustedIndex;
 			v8::Local<v8::Value> value = Extract<AdjustedIndex>(seq);
 			return HandleCast<Type>(value, std::get<sizeof...(Args) - 1>(args));
 		}
