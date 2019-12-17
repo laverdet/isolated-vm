@@ -11,6 +11,7 @@
 using namespace v8;
 
 namespace ivm {
+namespace {
 
 // Shared state for `TransferablePromise` and `TransferablePromiseHolder`
 struct TransferablePromiseStateStruct {
@@ -20,6 +21,7 @@ struct TransferablePromiseStateStruct {
 	bool did_throw = false;
 	bool resolved = false;
 };
+
 using TransferablePromiseState = lockable_t<TransferablePromiseStateStruct>;
 
 // Responsible for waiting for the promise in the isolate in which it was created
@@ -171,6 +173,8 @@ class TransferablePromise : public Transferable {
 
 		std::shared_ptr<TransferablePromiseState> state;
 };
+
+} // anonymous namespace
 
 namespace detail {
 

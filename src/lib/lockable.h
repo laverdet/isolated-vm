@@ -42,19 +42,19 @@ struct condition_variable_t<std::mutex> : condition_variable_impl_t<std::conditi
 
 // Holds resource and mutex
 template <class Type, class Traits>
-class lockable_t {
+class lockable_impl_t {
 	private:
 		using Mutex = typename Traits::Mutex;
 		using Read = typename Traits::Read;
 		using Write = typename Traits::Write;
 
 	public:
-		lockable_t() : resource{} {}
+		lockable_impl_t() : resource{} {}
 		template <class... Args>
-		explicit lockable_t(Args&&... args) : resource{std::forward<Args>(args)...} {}
-		lockable_t(const lockable_t&) = delete;
-		~lockable_t() = default;
-		auto operator=(const lockable_t&) = delete;
+		explicit lockable_impl_t(Args&&... args) : resource{std::forward<Args>(args)...} {}
+		lockable_impl_t(const lockable_impl_t&) = delete;
+		~lockable_impl_t() = default;
+		auto operator=(const lockable_impl_t&) = delete;
 
 		auto read() const { return detail::lock_t<const Type, Mutex, Read>{resource, mutex}; }
 		auto write() { return detail::lock_t<Type, Mutex, Write>{resource, mutex}; }
@@ -123,6 +123,6 @@ struct lockable_traits_t : mutex_traits_t<Shared>, lock_traits_t<mutex_traits_t<
 } // namespace detail
 
 template <class Type, bool Shared = false, bool Waitable = false>
-using lockable_t = detail::lockable_t<Type, detail::lockable_traits_t<Shared, Waitable>>;
+using lockable_t = detail::lockable_impl_t<Type, detail::lockable_traits_t<Shared, Waitable>>;
 
 } // namespace ivm
