@@ -306,6 +306,9 @@ class IsolateEnvironment {
 		size_t GetExtraAllocatedMemory() const {
 			return extra_allocated_memory;
 		}
+		void AdjustExtraAllocatedMemory(int size) {
+			extra_allocated_memory += size;
+		}
 
 		/**
 		 * Returns the current number of outstanding RemoteHandles<> to this isolate.

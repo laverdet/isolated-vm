@@ -1,6 +1,6 @@
 #pragma once
 #include "util.h"
-#include "external_copy/external_copy.h"
+#include "external_copy/error.h"
 #include "generic/error.h"
 
 namespace ivm {

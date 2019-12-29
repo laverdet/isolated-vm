@@ -459,9 +459,9 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 		ScriptOriginHolder script_origin(script_handle.As<Object>());
 		scripts.emplace_back(script.As<String>(), std::move(script_origin));
 	}
-	std::unique_ptr<ExternalCopyString> warmup_script;
+	ExternalCopyString warmup_script;
 	if (!warmup_handle.IsEmpty()) {
-		warmup_script = std::make_unique<ExternalCopyString>(warmup_handle.ToLocalChecked().As<String>());
+		warmup_script = ExternalCopyString{warmup_handle.ToLocalChecked().As<String>()};
 	}
 
 	// Create the snapshot
@@ -510,7 +510,7 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 					Context::Scope context_scope{context_dirty};
 					MaybeLocal<Object> tmp;
 					ScriptOriginHolder script_origin{tmp};
-					ScriptCompiler::Source source{warmup_script->CopyInto().As<String>(), ScriptOrigin{script_origin}};
+					ScriptCompiler::Source source{warmup_script.CopyInto().As<String>(), ScriptOrigin{script_origin}};
 					RunWithAnnotatedErrors([&context_dirty, &source]() {
 						Unmaybe(Unmaybe(ScriptCompiler::Compile(context_dirty, &source, ScriptCompiler::kNoCompileOptions))->Run(context_dirty));
 					});

@@ -2,6 +2,7 @@
 #include "isolate/generic/error.h"
 #include "isolate/generic/handle_cast.h"
 #include "external_copy/external_copy.h"
+#include "external_copy/string.h"
 #include <v8.h>
 #include <memory>
 #include <string>
@@ -34,9 +35,9 @@ class CodeCompilerHolder {
 		CodeCompilerHolder(
 			v8::Local<v8::String> code_handle, v8::MaybeLocal<v8::Object> maybe_options, bool is_module = false);
 		auto DidSupplyCachedData() const { return supplied_cached_data; }
-		auto GetSource() const -> std::unique_ptr<v8::ScriptCompiler::Source>;
+		auto GetSource() -> std::unique_ptr<v8::ScriptCompiler::Source>;
 		// This should be removed after `V8_AT_LEAST(6, 8, 11)` because it's only used
-		auto GetSourceString() const -> v8::Local<v8::String>;
+		auto GetSourceString() -> v8::Local<v8::String>;
 		void ResetSource();
 		void SaveCachedData(v8::ScriptCompiler::CachedData* cached_data);
 		void SetCachedDataRejected(bool rejected) { cached_data_rejected = rejected; }
@@ -47,7 +48,7 @@ class CodeCompilerHolder {
 		auto GetCachedData() const -> std::unique_ptr<v8::ScriptCompiler::CachedData>;
 
 		ScriptOriginHolder script_origin_holder;
-		std::unique_ptr<ExternalCopyString> code_string;
+		ExternalCopyString code_string;
 		std::shared_ptr<ExternalCopyArrayBuffer> cached_data_out;
 		std::shared_ptr<void> cached_data_in;
 		mutable v8::Local<v8::String> code_string_handle;

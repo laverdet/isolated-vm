@@ -19,14 +19,12 @@ Local<Value> ExternalCopyHandle::ExternalCopyTransferable::TransferIn() {
 /**
  * ExternalCopyHandle implementation
  */
-ExternalCopyHandle::ExternalCopyHandle(shared_ptr<ExternalCopy> value) : value(std::move(value)) {
-	Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(this->value->OriginalSize());
+ExternalCopyHandle::ExternalCopyHandle(shared_ptr<ExternalCopy> value) : value(std::move(value)), size{this->value->Size()} {
+	Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(size);
 }
 
 ExternalCopyHandle::~ExternalCopyHandle() {
-	if (value) {
-		Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-static_cast<ptrdiff_t>(value->OriginalSize()));
-	}
+	Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-size);
 }
 
 Local<FunctionTemplate> ExternalCopyHandle::Definition() {
@@ -102,7 +100,7 @@ Local<Value> ExternalCopyHandle::CopyInto(MaybeLocal<Object> maybe_options) {
 
 Local<Value> ExternalCopyHandle::Release() {
 	CheckDisposed();
-	Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-(ssize_t)value->OriginalSize());
+	Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-std::exchange(size, 0));
 	value.reset();
 	return Undefined(Isolate::GetCurrent());
 }

@@ -1,4 +1,6 @@
 #include "external_copy.h"
+#include "error.h"
+#include "string.h"
 
 #include "isolate/allocator.h"
 #include "isolate/environment.h"
@@ -10,28 +12,75 @@
 #include <cstring>
 
 using namespace v8;
-using std::make_unique;
-using std::shared_ptr;
-using std::unique_ptr;
 
 namespace ivm {
+namespace {
+
+/**
+ * This is used for Number (several C++ types), or Boolean.
+ */
+template <class Type>
+struct ExternalCopyTemplateCtor {
+	template <class Native>
+	static auto New(Isolate* isolate, Native value) -> Local<Value> {
+		return Type::New(isolate, value);
+	}
+};
+
+template <>
+struct ExternalCopyTemplateCtor<Uint32> {
+	static auto New(Isolate* isolate, uint32_t value) -> Local<Value> {
+		return Uint32::NewFromUnsigned(isolate, value);
+	}
+};
+
+template <class Type, class Native>
+class ExternalCopyTemplate : public ExternalCopy {
+	public:
+		explicit ExternalCopyTemplate(Local<Value> value) : value{value.As<Type>()->Value()} {}
+
+		auto CopyInto(bool /*transfer_in*/ = false) -> Local<Value> final {
+			return ExternalCopyTemplateCtor<Type>::New(Isolate::GetCurrent(), value);
+		}
+
+	private:
+		const Native value;
+};
+
+// Global size counter
+std::atomic<size_t> total_allocated_size {0};
+
+} // anonymous namespace
 
 /**
  * ExternalCopy implementation
  */
-// Statics
-std::atomic<size_t> ExternalCopy::total_allocated_size { 0 };
+ExternalCopy::ExternalCopy(size_t size) : size{size} {
+	total_allocated_size += size;
+}
 
+ExternalCopy::ExternalCopy(ExternalCopy&& that) noexcept : size{std::exchange(that.size, 0)} {}
+
+ExternalCopy::~ExternalCopy() {
+	total_allocated_size -= size;
+}
+
+auto ExternalCopy::operator= (ExternalCopy&& that) noexcept -> ExternalCopy& {
+	size = std::exchange(that.size, 0);
+	return *this;
+}
+
+// Statics
 size_t ExternalCopy::TotalExternalSize() {
 	return total_allocated_size;
 }
 
-unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool transfer_out, const handle_vector_t& transfer_list) {
-	unique_ptr<ExternalCopy> copy = CopyIfPrimitive(value);
+std::unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool transfer_out, const handle_vector_t& transfer_list) {
+	std::unique_ptr<ExternalCopy> copy = CopyIfPrimitive(value);
 	if (copy) {
 		return copy;
 	} else if (value->IsDate()) {
-		return make_unique<ExternalCopyDate>(value);
+		return std::make_unique<ExternalCopyDate>(value);
 	} else if (value->IsArrayBuffer()) {
 		Local<ArrayBuffer> array_buffer = Local<ArrayBuffer>::Cast(value);
 		if (!transfer_out) {
@@ -40,10 +89,10 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool tran
 		if (transfer_out) {
 			return ExternalCopyArrayBuffer::Transfer(array_buffer);
 		} else {
-			return make_unique<ExternalCopyArrayBuffer>(array_buffer);
+			return std::make_unique<ExternalCopyArrayBuffer>(array_buffer);
 		}
 	} else if (value->IsSharedArrayBuffer()) {
-		return make_unique<ExternalCopySharedArrayBuffer>(value.As<SharedArrayBuffer>());
+		return std::make_unique<ExternalCopySharedArrayBuffer>(value.As<SharedArrayBuffer>());
 	} else if (value->IsArrayBufferView()) {
 		Local<ArrayBufferView> view = value.As<ArrayBufferView>();
 		using ViewType = ExternalCopyArrayBufferView::ViewType;
@@ -96,13 +145,13 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool tran
 			if (transfer_out) {
 				external_buffer = ExternalCopyArrayBuffer::Transfer(array_buffer);
 			} else {
-				external_buffer = make_unique<ExternalCopyArrayBuffer>(array_buffer);
+				external_buffer = std::make_unique<ExternalCopyArrayBuffer>(array_buffer);
 			}
-			return make_unique<ExternalCopyArrayBufferView>(std::move(external_buffer), type, byte_offset, byte_length);
+			return std::make_unique<ExternalCopyArrayBufferView>(std::move(external_buffer), type, byte_offset, byte_length);
 		} else {
 			assert(tmp->IsSharedArrayBuffer());
 			Local<SharedArrayBuffer> array_buffer = tmp.As<SharedArrayBuffer>();
-			return make_unique<ExternalCopyArrayBufferView>(make_unique<ExternalCopySharedArrayBuffer>(array_buffer), type, view->ByteOffset(), view->ByteLength());
+			return std::make_unique<ExternalCopyArrayBufferView>(std::make_unique<ExternalCopySharedArrayBuffer>(array_buffer), type, view->ByteOffset(), view->ByteLength());
 		}
 	} else if (value->IsObject()) {
 		// Initialize serializer and transferred buffer vectors
@@ -130,7 +179,7 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool tran
 			transferred_buffers.emplace_back(ExternalCopyArrayBuffer::Transfer(handle.As<ArrayBuffer>()));
 		}
 		// Create ExternalCopy instance
-		return make_unique<ExternalCopySerialized>(
+		return std::make_unique<ExternalCopySerialized>(
 			serializer.Release(),
 			std::move(references),
 			std::move(transferred_buffers),
@@ -143,30 +192,30 @@ unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool tran
 	}
 }
 
-unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitive(const Local<Value>& value) {
+std::unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitive(const Local<Value>& value) {
 	if (value->IsBoolean()) {
-		return make_unique<ExternalCopyTemplate<Boolean, bool>>(value);
+		return std::make_unique<ExternalCopyTemplate<Boolean, bool>>(value);
 	} else if (value->IsNumber()) {
 		if (value->IsUint32()) {
-			return make_unique<ExternalCopyTemplate<Uint32, uint32_t>>(value);
+			return std::make_unique<ExternalCopyTemplate<Uint32, uint32_t>>(value);
 		} else if (value->IsInt32()) {
-			return make_unique<ExternalCopyTemplate<Int32, int32_t>>(value);
+			return std::make_unique<ExternalCopyTemplate<Int32, int32_t>>(value);
 		} else {
 			// This handles Infinity, -Infinity, NaN
-			return make_unique<ExternalCopyTemplate<Number, double>>(value);
+			return std::make_unique<ExternalCopyTemplate<Number, double>>(value);
 		}
 	} else if (value->IsString()) {
-		return make_unique<ExternalCopyString>(value.As<String>());
+		return std::make_unique<ExternalCopyString>(value.As<String>());
 	} else if (value->IsNull()) {
-		return make_unique<ExternalCopyNull>();
+		return std::make_unique<ExternalCopyNull>();
 	} else if (value->IsUndefined() || value->IsSymbol()) {
-		return make_unique<ExternalCopyUndefined>();
+		return std::make_unique<ExternalCopyUndefined>();
 	} else {
 		return nullptr;
 	}
 }
 
-unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>& value) {
+std::unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>& value) {
 	if (value->IsObject()) {
 
 		// Detect which subclass of Error was thrown (no better way to do this??)
@@ -189,22 +238,22 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 		// Get `message`
 		Local<Context> context = isolate->GetCurrentContext();
 		TryCatch try_catch{isolate};
-		unique_ptr<ExternalCopyString> message_copy;
+		ExternalCopyString message_copy;
 		try {
 			Local<Value> message = Unmaybe(object->Get(context, v8_symbol("message")));
 			if (message->IsString()) {
-				message_copy = make_unique<ExternalCopyString>(message.As<String>());
+				message_copy = ExternalCopyString{message.As<String>()};
 			}
 		} catch (const RuntimeError& cc_err) {
 			try_catch.Reset();
 		}
 
 		// Get `stack`
-		unique_ptr<ExternalCopyString> stack_copy;
+		ExternalCopyString stack_copy;
 		try {
 			Local<Value> stack = Unmaybe(object->Get(context, v8_symbol("stack")));
 			if (stack->IsString()) {
-				stack_copy = make_unique<ExternalCopyString>(stack.As<String>());
+				stack_copy = ExternalCopyString{stack.As<String>()};
 			}
 		} catch (const RuntimeError& cc_err) {
 			try_catch.Reset();
@@ -212,34 +261,20 @@ unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>
 
 		// Return external error copy if this looked like an error
 		if (error_type != ExternalCopyError::ErrorType::CustomError || message_copy || stack_copy) {
-			unique_ptr<ExternalCopyString> name_copy;
+			ExternalCopyString name_copy;
 			if (error_type == ExternalCopyError::ErrorType::CustomError) {
 				Local<Value> name = Unmaybe(object->Get(context, v8_symbol("name")));
 				if (name->IsString()) {
-					name_copy = make_unique<ExternalCopyString>(name.As<String>());
+					name_copy = ExternalCopyString{name.As<String>()};
 				}
 			}
-			return make_unique<ExternalCopyError>(error_type, std::move(name_copy), std::move(message_copy), std::move(stack_copy));
+			return std::make_unique<ExternalCopyError>(error_type, std::move(name_copy), std::move(message_copy), std::move(stack_copy));
 		}
 	}
 	return CopyIfPrimitive(value);
 }
 
 // Instance methods
-ExternalCopy::ExternalCopy() = default;
-
-ExternalCopy::ExternalCopy(size_t size) : size{size}, original_size{size} {
-	total_allocated_size += size;
-}
-
-ExternalCopy::ExternalCopy(ExternalCopy&& that) : size{that.size}, original_size{that.size} {
-	that.size = 0;
-}
-
-ExternalCopy::~ExternalCopy() {
-	total_allocated_size -= size;
-}
-
 Local<Value> ExternalCopy::CopyIntoCheckHeap(bool transfer_in) {
 	IsolateEnvironment::HeapCheck heap_check{*IsolateEnvironment::GetCurrent()};
 	auto value = CopyInto(transfer_in);
@@ -251,100 +286,9 @@ Local<Value> ExternalCopy::TransferIn() {
 	return CopyIntoCheckHeap();
 }
 
-size_t ExternalCopy::OriginalSize() const {
-	return original_size;
-}
-
 void ExternalCopy::UpdateSize(size_t size) {
 	total_allocated_size -= static_cast<ptrdiff_t>(this->size) - static_cast<ptrdiff_t>(size);
 	this->size = size;
-}
-
-/**
- * ExternalCopyString implementation
- */
-
-// External two byte
-ExternalCopyString::ExternalString::ExternalString(shared_ptr<V> value) : value(std::move(value)) {
-	IsolateEnvironment::GetCurrent()->extra_allocated_memory += this->value->size();
-}
-
-ExternalCopyString::ExternalString::~ExternalString() {
-	IsolateEnvironment::GetCurrent()->extra_allocated_memory -= this->value->size();
-}
-
-const uint16_t* ExternalCopyString::ExternalString::data() const {
-	return reinterpret_cast<uint16_t*>(value->data());
-}
-
-size_t ExternalCopyString::ExternalString::length() const {
-	return value->size() >> 1;
-}
-
-// External one byte
-ExternalCopyString::ExternalStringOneByte::ExternalStringOneByte(shared_ptr<V> value) : value(std::move(value)) {
-	IsolateEnvironment::GetCurrent()->extra_allocated_memory += this->value->size();
-}
-
-ExternalCopyString::ExternalStringOneByte::~ExternalStringOneByte() {
-	IsolateEnvironment::GetCurrent()->extra_allocated_memory -= this->value->size();
-}
-
-const char* ExternalCopyString::ExternalStringOneByte::data() const {
-	return value->data();
-}
-
-size_t ExternalCopyString::ExternalStringOneByte::length() const {
-	return value->size();
-}
-
-// External copy
-ExternalCopyString::ExternalCopyString(Local<String> string) : ExternalCopy((string->Length() << (string->IsOneByte() ? 0 : 1)) + sizeof(ExternalCopyString)) {
-	if (string->IsOneByte()) {
-		one_byte = true;
-		value = std::make_shared<V>(string->Length());
-#if V8_AT_LEAST(6, 9, 408)
-		string->WriteOneByte(Isolate::GetCurrent(),
-#else
-		string->WriteOneByte(
-#endif
-			reinterpret_cast<uint8_t*>(value->data()), 0, -1, String::WriteOptions::NO_NULL_TERMINATION
-		);
-	} else {
-		one_byte = false;
-		value = std::make_shared<V>(string->Length() << 1);
-#if V8_AT_LEAST(6, 9, 408)
-		string->Write(Isolate::GetCurrent(),
-#else
-		string->Write(
-#endif
-			reinterpret_cast<uint16_t*>(value->data()), 0, -1, String::WriteOptions::NO_NULL_TERMINATION
-		);
-	}
-}
-
-ExternalCopyString::ExternalCopyString(const char* message) : one_byte(true), value(std::make_shared<V>(message, message + strlen(message))) {}
-
-ExternalCopyString::ExternalCopyString(const std::string& message) : one_byte(true), value(std::make_shared<V>(message.begin(), message.end())) {}
-
-Local<Value> ExternalCopyString::CopyInto(bool /*transfer_in*/) {
-	if (value->size() < 1024) {
-		// Strings under 1kb will be internal v8 strings. I didn't experiment with this at all, but it
-		// seems self-evident that there's some byte length under which it doesn't make sense to create
-		// an external string so I picked 1kb.
-		if (one_byte) {
-			return Unmaybe(String::NewFromOneByte(Isolate::GetCurrent(), reinterpret_cast<uint8_t*>(value->data()), NewStringType::kNormal, value->size()));
-		} else {
-			return Unmaybe(String::NewFromTwoByte(Isolate::GetCurrent(), reinterpret_cast<uint16_t*>(value->data()), NewStringType::kNormal, value->size() >> 1));
-		}
-	} else {
-		// External strings can save memory and/or copies
-		if (one_byte) {
-			return Unmaybe(String::NewExternalOneByte(Isolate::GetCurrent(), new ExternalStringOneByte(value)));
-		} else {
-			return Unmaybe(String::NewExternalTwoByte(Isolate::GetCurrent(), new ExternalString(value)));
-		}
-	}
 }
 
 /**
@@ -400,32 +344,32 @@ Local<Value> ExternalCopySerialized::CopyInto(bool transfer_in) {
  */
 ExternalCopyError::ExternalCopyError(
 	ErrorType error_type,
-	unique_ptr<ExternalCopyString> name,
-	unique_ptr<ExternalCopyString> message,
-	unique_ptr<ExternalCopyString> stack
+	ExternalCopyString name,
+	ExternalCopyString message,
+	ExternalCopyString stack
 ) :
 	error_type{error_type},
 	name{std::move(name)},
 	message{std::move(message)},
 	stack{std::move(stack)} {}
 
-ExternalCopyError::ExternalCopyError(ErrorType error_type, const char* message, std::string stack) :
+ExternalCopyError::ExternalCopyError(ErrorType error_type, const char* message, const std::string& stack) :
 	ExternalCopy{sizeof(ExternalCopyError)},
 	error_type{error_type},
-	message{make_unique<ExternalCopyString>(message)},
-	stack{stack.empty() ? unique_ptr<ExternalCopyString>() : make_unique<ExternalCopyString>(std::move(stack))} {}
+	message{ExternalCopyString{message}},
+	stack{stack.empty() ? ExternalCopyString{} : ExternalCopyString{stack}} {}
 
 Local<Value> ExternalCopyError::CopyInto(bool /*transfer_in*/) {
 
 	// First make the exception w/ correct + message
 	Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
-	Local<String> message = Local<String>::Cast(this->message->CopyInto(false));
+	Local<String> message = Local<String>::Cast(this->message.CopyInto(false));
 	Local<Value> handle;
 	switch (error_type) {
 		default:
 			handle = Exception::Error(message);
 			if (name) {
-				Unmaybe(handle.As<Object>()->DefineOwnProperty(context, v8_symbol("name"), name->CopyInto(), PropertyAttribute::DontEnum));
+				Unmaybe(handle.As<Object>()->DefineOwnProperty(context, v8_symbol("name"), name.CopyInto(), PropertyAttribute::DontEnum));
 			}
 			break;
 		case ErrorType::RangeError:
@@ -444,7 +388,7 @@ Local<Value> ExternalCopyError::CopyInto(bool /*transfer_in*/) {
 
 	// Now add stack information
 	if (this->stack) {
-		Local<String> stack = Local<String>::Cast(this->stack->CopyInto(false));
+		Local<String> stack = Local<String>::Cast(this->stack.CopyInto(false));
 		Unmaybe(Local<Object>::Cast(handle)->Set(context, v8_symbol("stack"), stack));
 	}
 	return handle;
@@ -473,7 +417,7 @@ Local<Value> ExternalCopyDate::CopyInto(bool /*transfer_in*/) {
 /**
  * ExternalCopyBytes implementation
  */
-ExternalCopyBytes::ExternalCopyBytes(size_t size, shared_ptr<void> value, size_t length) :
+ExternalCopyBytes::ExternalCopyBytes(size_t size, std::shared_ptr<void> value, size_t length) :
 		ExternalCopy{size}, value{std::move(value)}, length{length} {}
 
 std::shared_ptr<void> ExternalCopyBytes::Acquire() const {
@@ -490,12 +434,12 @@ std::shared_ptr<void> ExternalCopyBytes::Release() {
 	return std::move(value);
 }
 
-void ExternalCopyBytes::Replace(shared_ptr<void> value) {
+void ExternalCopyBytes::Replace(std::shared_ptr<void> value) {
 	std::lock_guard<std::mutex> lock{mutex};
 	this->value = std::move(value);
 }
 
-ExternalCopyBytes::Holder::Holder(const Local<Object>& buffer, shared_ptr<void> cc_ptr, size_t size) :
+ExternalCopyBytes::Holder::Holder(const Local<Object>& buffer, std::shared_ptr<void> cc_ptr, size_t size) :
 	v8_ptr(Isolate::GetCurrent(), buffer), cc_ptr(std::move(cc_ptr)), size(size)
 {
 	v8_ptr.SetWeak(reinterpret_cast<void*>(this), &WeakCallbackV8, WeakCallbackType::kParameter);
@@ -529,7 +473,7 @@ ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const void* data, size_t length
 	std::memcpy(Acquire().get(), data, length);
 }
 
-ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(shared_ptr<void> ptr, size_t length) :
+ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(std::shared_ptr<void> ptr, size_t length) :
 		ExternalCopyBytes{length + sizeof(ExternalCopyArrayBuffer), std::move(ptr), length} {}
 
 ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const Local<ArrayBuffer>& handle) :
@@ -540,7 +484,7 @@ ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const Local<ArrayBuffer>& handl
 	std::memcpy(Acquire().get(), handle->GetContents().Data(), Length());
 }
 
-unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Local<ArrayBuffer>& handle) {
+std::unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Local<ArrayBuffer>& handle) {
 	auto Detach = [](Local<ArrayBuffer> handle) {
 #if V8_AT_LEAST(7, 3, 89)
 		handle->Detach();
@@ -578,7 +522,7 @@ unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Loca
 		allocator->AdjustAllocatedSize(-static_cast<ptrdiff_t>(length));
 	}
 	assert(IsDetachable(handle));
-	auto data_ptr = shared_ptr<void>(contents.Data(), std::free);
+	auto data_ptr = std::shared_ptr<void>(contents.Data(), std::free);
 	Detach(handle);
 	return std::make_unique<ExternalCopyArrayBuffer>(std::move(data_ptr), length);
 }
@@ -615,8 +559,8 @@ Local<Value> ExternalCopyArrayBuffer::CopyInto(bool transfer_in) {
  * ExternalCopySharedArrayBuffer implementation
  */
 ExternalCopySharedArrayBuffer::ExternalCopySharedArrayBuffer(const v8::Local<v8::SharedArrayBuffer>& handle) :
-		ExternalCopyBytes{handle->ByteLength() + sizeof(ExternalCopySharedArrayBuffer), [&]() -> shared_ptr<void> {
-			// Inline lambda generates shared_ptr<void> for ExternalCopyBytes ctor. Similar to
+		ExternalCopyBytes{handle->ByteLength() + sizeof(ExternalCopySharedArrayBuffer), [&]() -> std::shared_ptr<void> {
+			// Inline lambda generates std::shared_ptr<void> for ExternalCopyBytes ctor. Similar to
 			// ArrayBuffer::Transfer but different enough to make it not worth abstracting out..
 			size_t length = handle->ByteLength();
 			if (length == 0) {
@@ -633,7 +577,7 @@ ExternalCopySharedArrayBuffer::ExternalCopySharedArrayBuffer(const v8::Local<v8:
 			}
 			// In this case the buffer is internal and should be externalized
 			SharedArrayBuffer::Contents contents = handle->Externalize();
-			auto value = shared_ptr<void>{contents.Data(), std::free};
+			auto value = std::shared_ptr<void>{contents.Data(), std::free};
 			new Holder{handle, value, length};
 			// Adjust allocator memory down, and `Holder` will adjust memory back up
 			auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());

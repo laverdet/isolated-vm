@@ -42,19 +42,11 @@ class ExternalCopyDeserializerDelegate : public v8::ValueDeserializer::Delegate 
 		v8::MaybeLocal<v8::Object> ReadHostObject(v8::Isolate* isolate) final;
 };
 
-
 class ExternalCopy : public Transferable {
-	private:
-		size_t size = 0;
-		size_t original_size = 0;
-		static std::atomic<size_t> total_allocated_size;
-
 	public:
-		ExternalCopy();
-		explicit ExternalCopy(size_t size);
+		ExternalCopy() = default;
 		ExternalCopy(const ExternalCopy&) = delete;
-		ExternalCopy& operator= (const ExternalCopy&) = delete;
-		ExternalCopy(ExternalCopy&& that);
+		auto operator= (const ExternalCopy&) = delete;
 		~ExternalCopy() override;
 
 		/**
@@ -78,89 +70,18 @@ class ExternalCopy : public Transferable {
 
 		v8::Local<v8::Value> CopyIntoCheckHeap(bool transfer_in = false);
 		virtual v8::Local<v8::Value> CopyInto(bool transfer_in = false) = 0;
+		auto Size() const -> size_t { return size; }
+		auto TransferIn() -> v8::Local<v8::Value> final;
+
+	protected:
+		explicit ExternalCopy(size_t size);
+		ExternalCopy(ExternalCopy&& that) noexcept;
+		auto operator= (ExternalCopy&& that) noexcept -> ExternalCopy&;
+
 		void UpdateSize(size_t size);
-		size_t OriginalSize() const;
-		v8::Local<v8::Value> TransferIn() final;
-};
 
-/**
- * This will make a copy of any Number (several C++ types), or Boolean. Strings are handled
- * by the specialization below.
- */
-template <typename Type>
-struct ExternalCopyTemplateCtor {
-	template <typename Value>
-	static v8::Local<v8::Value> New(v8::Isolate* isolate, Value value) {
-		return Type::New(isolate, value);
-	}
-};
-
-template <>
-struct ExternalCopyTemplateCtor<v8::Uint32> {
-	static v8::Local<v8::Value> New(v8::Isolate* isolate, uint32_t value) {
-		return v8::Uint32::NewFromUnsigned(isolate, value);
-	}
-};
-
-template <typename T, typename V>
-class ExternalCopyTemplate : public ExternalCopy {
 	private:
-		const V value;
-
-	public:
-		explicit ExternalCopyTemplate(const v8::Local<v8::Value>& value) : value(v8::Local<T>::Cast(value)->Value()) {}
-
-		v8::Local<v8::Value> CopyInto(bool /*transfer_in*/ = false) final {
-			return ExternalCopyTemplateCtor<T>::New(v8::Isolate::GetCurrent(), value);
-		}
-};
-
-/**
- * String data
- */
-class ExternalCopyString : public ExternalCopy {
-	private:
-		// shared_ptr<> to share external strings between isolates
-		using V = std::vector<char>;
-		bool one_byte;
-		std::shared_ptr<V> value;
-
-		/**
-		 * Helper class passed to v8 so we can reuse the same externally allocated memory for strings
-		 * between different isolates
-		 */
-		class ExternalString : public v8::String::ExternalStringResource {
-			private:
-				std::shared_ptr<V> value;
-
-			public:
-				explicit ExternalString(std::shared_ptr<V> value);
-				ExternalString(const ExternalString&) = delete;
-				ExternalString& operator= (const ExternalString&) = delete;
-				~ExternalString() final;
-				const uint16_t* data() const final;
-				size_t length() const final;
-		};
-
-		class ExternalStringOneByte : public v8::String::ExternalOneByteStringResource {
-			private:
-				std::shared_ptr<V> value;
-
-			public:
-				explicit ExternalStringOneByte(std::shared_ptr<V> value);
-				ExternalStringOneByte(const ExternalStringOneByte&) = delete;
-				ExternalStringOneByte& operator= (const ExternalStringOneByte&) = delete;
-				~ExternalStringOneByte() final;
-				const char* data() const final;
-				size_t length() const final;
-		};
-
-	public:
-		// gcc 5 doesn't want this to be explicit
-		ExternalCopyString(v8::Local<v8::String> string);
-		explicit ExternalCopyString(const char* message);
-		explicit ExternalCopyString(const std::string& message);
-		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
+		size_t size = 0;
 };
 
 /**
@@ -181,33 +102,6 @@ class ExternalCopySerialized : public ExternalCopy {
 			array_buffer_vector_t array_buffers,
 			shared_buffer_vector_t shared_buffers
 		);
-		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
-};
-
-/**
- * Make a special case for errors so if someone throws then a similar error will come out the other
- * side.
- */
-class ExternalCopyError : public ExternalCopy {
-	friend class ExternalCopy;
-	public:
-		enum class ErrorType { Error, RangeError, ReferenceError, SyntaxError, TypeError, CustomError };
-
-	private:
-		ErrorType error_type;
-		// these could be std::optional
-		std::unique_ptr<ExternalCopyString> name;
-		std::unique_ptr<ExternalCopyString> message;
-		std::unique_ptr<ExternalCopyString> stack;
-
-	public:
-		ExternalCopyError(
-			ErrorType error_type,
-			std::unique_ptr<ExternalCopyString> name,
-			std::unique_ptr<ExternalCopyString> message,
-			std::unique_ptr<ExternalCopyString> stack
-		);
-		ExternalCopyError(ErrorType error_type, const char* message, std::string stack = "");
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
 };
 

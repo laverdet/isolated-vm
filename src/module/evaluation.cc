@@ -38,7 +38,7 @@ ScriptOriginHolder::operator ScriptOrigin() const {
  */
 CodeCompilerHolder::CodeCompilerHolder(Local<String> code_handle, MaybeLocal<Object> maybe_options, bool is_module) :
 		script_origin_holder{maybe_options, is_module},
-		code_string{std::make_unique<ExternalCopyString>(code_handle)},
+		code_string{ExternalCopyString{code_handle}},
 		produce_cached_data{ReadOption<bool>(maybe_options, "produceCachedData", {})} {
 	// Read `cachedData`
 	auto maybe_cached_data = ReadOption<MaybeLocal<Object>>(maybe_options, "cachedData", {});
@@ -66,7 +66,7 @@ auto CodeCompilerHolder::GetCachedData() const -> std::unique_ptr<ScriptCompiler
 	return {};
 }
 
-auto CodeCompilerHolder::GetSource() const -> std::unique_ptr<ScriptCompiler::Source> {
+auto CodeCompilerHolder::GetSource() -> std::unique_ptr<ScriptCompiler::Source> {
 	return std::make_unique<ScriptCompiler::Source>(
 		GetSourceString(),
 		ScriptOrigin{script_origin_holder},
@@ -74,16 +74,16 @@ auto CodeCompilerHolder::GetSource() const -> std::unique_ptr<ScriptCompiler::So
 	);
 }
 
-auto CodeCompilerHolder::GetSourceString() const -> v8::Local<v8::String> {
+auto CodeCompilerHolder::GetSourceString() -> v8::Local<v8::String> {
 	if (code_string_handle.IsEmpty()) {
-		code_string_handle = code_string->CopyIntoCheckHeap().As<String>();
+		code_string_handle = code_string.CopyIntoCheckHeap().As<String>();
 	}
 	return code_string_handle;
 }
 
 void CodeCompilerHolder::ResetSource() {
 	cached_data_in.reset();
-	code_string.reset();
+	code_string = {};
 }
 
 void CodeCompilerHolder::SaveCachedData(ScriptCompiler::CachedData* cached_data) {

@@ -61,6 +61,7 @@
 			],
 			'sources': [
 				'src/external_copy/external_copy.cc',
+				'src/external_copy/string.cc',
 				'src/isolate/allocator.cc',
 				'src/isolate/environment.cc',
 				'src/isolate/executor.cc',
