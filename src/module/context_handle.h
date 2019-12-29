@@ -1,6 +1,6 @@
 #pragma once
 #include "isolate/remote_handle.h"
-#include "transferable_handle.h"
+#include "transferable.h"
 #include <v8.h>
 #include <memory>
 

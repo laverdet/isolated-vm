@@ -1,5 +1,5 @@
 #include "reference_handle.h"
-#include "external_copy.h"
+#include "external_copy/external_copy.h"
 #include "isolate/run_with_timeout.h"
 #include "isolate/three_phase_task.h"
 #include "transferable.h"
@@ -209,20 +209,20 @@ class ApplyRunner : public ThreePhaseTask {
 			// Get receiver, holder, this, whatever
 			Local<Value> recv_local;
 			if (recv_handle.ToLocal(&recv_local)) {
-				recv = Transferable::TransferOut(recv_local);
+				recv = TransferOut(recv_local);
 			}
 
 			// Get run options
-			Transferable::Options arguments_transfer_options;
+			TransferOptions arguments_transfer_options;
 			Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
 			Local<Object> options;
 			if (maybe_options.ToLocal(&options)) {
 				timeout = ReadOption<int32_t>(options, "timeout", 0);
-				arguments_transfer_options = Transferable::Options{
+				arguments_transfer_options = TransferOptions{
 					ReadOption<MaybeLocal<Object>>(options, "arguments", {})};
-				return_transfer_options = Transferable::Options{
+				return_transfer_options = TransferOptions{
 					ReadOption<MaybeLocal<Object>>(options, "result", {}),
-					Transferable::Options::Type::Reference};
+					TransferOptions::Type::Reference};
 			}
 
 			// Externalize all arguments
@@ -231,7 +231,7 @@ class ApplyRunner : public ThreePhaseTask {
 				uint32_t length = arguments->Length();
 				argv.reserve(length);
 				for (uint32_t ii = 0; ii < length; ++ii) {
-					argv.push_back(Transferable::TransferOut(Unmaybe(arguments->Get(context, ii)), arguments_transfer_options));
+					argv.push_back(TransferOut(Unmaybe(arguments->Get(context, ii)), arguments_transfer_options));
 				}
 			}
 		}
@@ -251,12 +251,12 @@ class ApplyRunner : public ThreePhaseTask {
 					return fn.As<Function>()->Call(context_handle, recv_inner, argv_inner.size(), argv_inner.empty() ? nullptr : &argv_inner[0]);
 				}
 			);
-			ret = Transferable::TransferOut(result, return_transfer_options);
+			ret = TransferOut(result, return_transfer_options);
 		}
 
 		bool Phase2Async(Scheduler::AsyncWait& wait) final {
 			// Same as regular `Phase2()` but if it returns a promise we will wait on it
-			if (!(return_transfer_options == Transferable::Options{})) {
+			if (!(return_transfer_options == TransferOptions{})) {
 				throw RuntimeTypeError("`return` options are not available for `applySyncPromise`");
 			}
 			Local<Context> context_handle = Deref(context);
@@ -287,7 +287,7 @@ class ApplyRunner : public ThreePhaseTask {
 				Unmaybe(callback_fn->Call(context_handle, callback_fn, 3, &argv.front()));
 				return true;
 			} else {
-				ret = Transferable::TransferOut(value, return_transfer_options);
+				ret = TransferOut(value, return_transfer_options);
 				return false;
 			}
 		}
@@ -320,7 +320,7 @@ class ApplyRunner : public ThreePhaseTask {
 			if (info.Length() == 3) {
 				// Resolved
 				FunctorRunners::RunCatchExternal(IsolateEnvironment::GetCurrent()->DefaultContext(), [&self, &info]() {
-					self.ret = Transferable::TransferOut(info[2]);
+					self.ret = TransferOut(info[2]);
 				}, [&self](unique_ptr<ExternalCopy> error) {
 					self.async_error = std::move(error);
 				});
@@ -382,7 +382,7 @@ class ApplyRunner : public ThreePhaseTask {
 		uint32_t timeout = 0;
 		// Only used in the AsyncPhase2 case
 		shared_ptr<bool> did_finish;
-		Transferable::Options return_transfer_options;
+		TransferOptions return_transfer_options;
 		unique_ptr<ExternalCopy> async_error;
 		Scheduler::AsyncWait* async_wait = nullptr;
 };
@@ -437,7 +437,7 @@ class GetRunner : public ThreePhaseTask {
 		) :
 				context{that.context},
 				reference{that.reference},
-				options{maybe_options, Transferable::Options::Type::Reference} {
+				options{maybe_options, TransferOptions::Type::Reference} {
 			that.CheckDisposed();
 			key = ExternalCopy::CopyIfPrimitive(key_handle);
 			if (!key) {
@@ -451,7 +451,7 @@ class GetRunner : public ThreePhaseTask {
 			Local<Value> key_inner = key->CopyInto();
 			Local<Object> object = Local<Object>::Cast(Deref(reference));
 			Local<Value> value = Unmaybe(object->Get(context_handle, key_inner));
-			ret = Transferable::TransferOut(value, options);
+			ret = TransferOut(value, options);
 		}
 
 		auto Phase3() -> Local<Value> final {
@@ -463,7 +463,7 @@ class GetRunner : public ThreePhaseTask {
 		RemoteHandle<Context> context;
 		RemoteHandle<Value> reference;
 		unique_ptr<Transferable> ret;
-		Transferable::Options options;
+		TransferOptions options;
 };
 template <int async>
 auto ReferenceHandle::Get(Local<Value> key_handle, MaybeLocal<Object> maybe_options) -> Local<Value> {
@@ -482,7 +482,7 @@ class SetRunner : public ThreePhaseTask {
 			MaybeLocal<Object> maybe_options
 		) :
 				key{ExternalCopy::CopyIfPrimitive(key_handle)},
-				val{Transferable::TransferOut(val_handle, Transferable::Options{maybe_options})},
+				val{TransferOut(val_handle, TransferOptions{maybe_options})},
 				context{that.context},
 				reference{that.reference} {
 			that.CheckDisposed();

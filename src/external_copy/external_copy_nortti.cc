@@ -1,5 +1,6 @@
 #include "external_copy.h"
 #include "isolate/functor_runners.h"
+#include "module/transferable.h"
 
 using namespace v8;
 
@@ -22,7 +23,7 @@ void ExternalCopySerializerDelegate::ThrowDataCloneError(Local<String> message) 
 Maybe<bool> ExternalCopySerializerDelegate::WriteHostObject(Isolate* /* isolate */, Local<Object> object) {
 	Maybe<bool> result = Nothing<bool>();
 	detail::RunBarrier([&]() {
-		references.emplace_back(Transferable::TransferOut(object));
+		references.emplace_back(TransferOut(object));
 		serializer->WriteUint32(references.size() - 1);
 		result = Just(true);
 	});

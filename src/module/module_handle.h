@@ -4,7 +4,7 @@
 #include <mutex>
 #include "isolate/holder.h"
 #include "isolate/remote_handle.h"
-#include "transferable_handle.h"
+#include "transferable.h"
 
 namespace ivm {
 

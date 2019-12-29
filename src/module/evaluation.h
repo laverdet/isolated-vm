@@ -1,7 +1,7 @@
 #pragma once
 #include "isolate/generic/error.h"
 #include "isolate/generic/handle_cast.h"
-#include "external_copy.h"
+#include "external_copy/external_copy.h"
 #include <v8.h>
 #include <memory>
 #include <string>

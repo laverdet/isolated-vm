@@ -4,7 +4,7 @@
 #include <memory>
 
 #include "transferable.h"
-#include "transferable_handle.h"
+#include "transferable.h"
 
 namespace ivm {
 

@@ -143,7 +143,7 @@ class EvalRunner : public CodeCompilerHolder, public ThreePhaseTask {
 			Local<Value> script_result = RunWithTimeout(timeout_ms, [&]() {
 				return script->Run(context);
 			});
-			result = Transferable::OptionalTransferOut(script_result, transfer_options);
+			result = OptionalTransferOut(script_result, transfer_options);
 			heap_check.Epilogue();
 		}
 
@@ -158,7 +158,7 @@ class EvalRunner : public CodeCompilerHolder, public ThreePhaseTask {
 		}
 
 	private:
-		Transferable::Options transfer_options;
+		TransferOptions transfer_options;
 		RemoteHandle<Context> context;
 		std::unique_ptr<Transferable> result;
 		int32_t timeout_ms = 0;
@@ -185,13 +185,13 @@ class EvalClosureRunner : public CodeCompilerHolder, public ThreePhaseTask {
 				argv{[&]() {
 					// Transfer arguments out of isolate
 					std::vector<std::unique_ptr<Transferable>> argv;
-					Transferable::Options transfer_options{ReadOption<MaybeLocal<Object>>(maybe_options, "arguments", {})};
+					TransferOptions transfer_options{ReadOption<MaybeLocal<Object>>(maybe_options, "arguments", {})};
 					Local<Array> arguments;
 					if (maybe_arguments.ToLocal(&arguments)) {
 						uint32_t length = arguments->Length();
 						argv.reserve(length);
 						for (uint32_t ii = 0; ii < length; ++ii) {
-							argv.push_back(Transferable::TransferOut(
+							argv.push_back(TransferOut(
 								Unmaybe(arguments->Get(Isolate::GetCurrent()->GetCurrentContext(), ii)),
 								transfer_options));
 						}
@@ -260,7 +260,7 @@ class EvalClosureRunner : public CodeCompilerHolder, public ThreePhaseTask {
 					context, context->Global(),
 					argv_transferred.size(), argv_transferred.empty() ? nullptr : &argv_transferred[0]);
 			});
-			result = Transferable::OptionalTransferOut(script_result, transfer_options);
+			result = OptionalTransferOut(script_result, transfer_options);
 			heap_check.Epilogue();
 		}
 
@@ -275,7 +275,7 @@ class EvalClosureRunner : public CodeCompilerHolder, public ThreePhaseTask {
 		}
 
 	private:
-		Transferable::Options transfer_options;
+		TransferOptions transfer_options;
 		std::vector<std::unique_ptr<Transferable>> argv;
 		RemoteHandle<Context> context;
 		std::unique_ptr<Transferable> result;

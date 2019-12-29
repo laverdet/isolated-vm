@@ -1,6 +1,5 @@
 #include "external_copy.h"
 
-#include "isolate_handle.h"
 #include "isolate/allocator.h"
 #include "isolate/environment.h"
 #include "isolate/functor_runners.h"

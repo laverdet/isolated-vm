@@ -1,10 +1,10 @@
+#include "external_copy/external_copy.h"
 #include "isolate/class_handle.h"
 #include "isolate/util.h"
 #include "lib/lockable.h"
 #include "reference_handle.h"
 #include "transferable.h"
-#include "transferable_handle.h"
-#include "external_copy.h"
+#include "transferable.h"
 #include "external_copy_handle.h"
 #include <deque>
 
@@ -29,7 +29,7 @@ class TransferablePromiseHolder : public ClassHandle {
 	public:
 		explicit TransferablePromiseHolder(
 			std::shared_ptr<TransferablePromiseState> state,
-			Transferable::Options transfer_options
+			TransferOptions transfer_options
 		) :
 			state{std::move(state)}, transfer_options{transfer_options} {}
 
@@ -72,7 +72,7 @@ class TransferablePromiseHolder : public ClassHandle {
 
 		static void Resolved(TransferablePromiseHolder& that, Local<Value> value) {
 			that.Save(false, [&]() {
-				return Transferable::TransferOut(value, that.transfer_options);
+				return TransferOut(value, that.transfer_options);
 			});
 		}
 
@@ -130,18 +130,18 @@ class TransferablePromiseHolder : public ClassHandle {
 		};
 
 		std::shared_ptr<TransferablePromiseState> state;
-		Transferable::Options transfer_options;
+		TransferOptions transfer_options;
 };
 
 // Internal ivm promise transferable
 class TransferablePromise : public Transferable {
 	public:
-		TransferablePromise(Local<Promise> promise, Transferable::Options transfer_options) :
+		TransferablePromise(Local<Promise> promise, TransferOptions transfer_options) :
 				state{std::make_shared<TransferablePromiseState>()} {
 			MakeHolder(transfer_options).Accept(promise);
 		}
 
-		TransferablePromise(Local<Value> value, Transferable::Options transfer_options) :
+		TransferablePromise(Local<Value> value, TransferOptions transfer_options) :
 				state{std::make_shared<TransferablePromiseState>()} {
 			TransferablePromiseHolder::Resolved(MakeHolder(transfer_options), value);
 		}
@@ -164,7 +164,7 @@ class TransferablePromise : public Transferable {
 		}
 
 	private:
-		TransferablePromiseHolder& MakeHolder(Transferable::Options transfer_options) {
+		TransferablePromiseHolder& MakeHolder(TransferOptions transfer_options) {
 			transfer_options.promise = false;
 			auto holder = ClassHandle::NewInstance<TransferablePromiseHolder>(state, transfer_options);
 			auto object = ClassHandle::Unwrap<TransferablePromiseHolder>(holder);
@@ -176,20 +176,18 @@ class TransferablePromise : public Transferable {
 
 } // anonymous namespace
 
-namespace detail {
-
-TransferableOptions::TransferableOptions(Local<Object> options, Type fallback) : fallback{fallback} {
+TransferOptions::TransferOptions(Local<Object> options, Type fallback) : fallback{fallback} {
 	ParseOptions(options);
 }
 
-TransferableOptions::TransferableOptions(MaybeLocal<Object> maybe_options, Type fallback) : fallback{fallback} {
+TransferOptions::TransferOptions(MaybeLocal<Object> maybe_options, Type fallback) : fallback{fallback} {
 	Local<Object> options;
 	if (maybe_options.ToLocal(&options)) {
 		ParseOptions(options);
 	}
 }
 
-void TransferableOptions::TransferableOptions::ParseOptions(Local<Object> options) {
+void TransferOptions::TransferOptions::ParseOptions(Local<Object> options) {
 	bool copy = ReadOption<bool>(options, "copy", false);
 	bool externalCopy = ReadOption<bool>(options, "externalCopy", false);
 	bool reference = ReadOption<bool>(options, "reference", false);
@@ -206,21 +204,19 @@ void TransferableOptions::TransferableOptions::ParseOptions(Local<Object> option
 	promise = ReadOption<bool>(options, "promise", false);
 }
 
-} // namespace detail
-
-auto Transferable::OptionalTransferOut(Local<Value> value, Options options) -> std::unique_ptr<Transferable> {
-	auto TransferWithType = [&](Options::Type type) -> std::unique_ptr<Transferable> {
+auto OptionalTransferOut(Local<Value> value, TransferOptions options) -> std::unique_ptr<Transferable> {
+	auto TransferWithType = [&](TransferOptions::Type type) -> std::unique_ptr<Transferable> {
 		switch (type) {
 			default:
 				return nullptr;
 
-			case Options::Type::Copy:
+			case TransferOptions::Type::Copy:
 				return ExternalCopy::Copy(value);
 
-			case Options::Type::ExternalCopy:
+			case TransferOptions::Type::ExternalCopy:
 				return std::make_unique<ExternalCopyHandle::ExternalCopyTransferable>(ExternalCopy::Copy(value));
 
-			case Options::Type::Reference:
+			case TransferOptions::Type::Reference:
 				return std::make_unique<ReferenceHandleTransferable>(value);
 		}
 	};
@@ -234,7 +230,7 @@ auto Transferable::OptionalTransferOut(Local<Value> value, Options options) -> s
 	}
 
 	switch (options.type) {
-		case Options::Type::None: {
+		case TransferOptions::Type::None: {
 			if (value->IsObject()) {
 				auto ptr = ClassHandle::Unwrap<TransferableHandle>(value.As<Object>());
 				if (ptr != nullptr) {
@@ -253,7 +249,7 @@ auto Transferable::OptionalTransferOut(Local<Value> value, Options options) -> s
 	}
 }
 
-auto Transferable::TransferOut(Local<Value> value, Options options) -> std::unique_ptr<Transferable> {
+auto TransferOut(Local<Value> value, TransferOptions options) -> std::unique_ptr<Transferable> {
 	auto copy = OptionalTransferOut(value, options);
 	if (!copy) {
 		throw RuntimeTypeError("A non-transferable value was passed");

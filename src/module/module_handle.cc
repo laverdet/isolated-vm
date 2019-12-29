@@ -398,7 +398,7 @@ struct EvaluateRunner : public ThreePhaseTask {
 		}
 		Local<Context> context_local = Deref(info->context_handle);
 		Context::Scope context_scope(context_local);
-		result = Transferable::OptionalTransferOut(RunWithTimeout(timeout, [&]() { return mod->Evaluate(context_local); }));
+		result = OptionalTransferOut(RunWithTimeout(timeout, [&]() { return mod->Evaluate(context_local); }));
 		std::lock_guard<std::mutex> lock(info->mutex);
 		info->global_namespace = RemoteHandle<Value>(mod->GetModuleNamespace());
 	}

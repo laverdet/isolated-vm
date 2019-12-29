@@ -1,6 +1,6 @@
 #pragma once
 #include <v8.h>
-#include "transferable_handle.h"
+#include "transferable.h"
 #include <memory>
 
 namespace ivm {

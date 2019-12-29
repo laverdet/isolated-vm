@@ -6,7 +6,7 @@
 
 #include "transferable.h"
 #include "context_handle.h"
-#include "transferable_handle.h"
+#include "transferable.h"
 
 namespace ivm {
 

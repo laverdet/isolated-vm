@@ -60,6 +60,7 @@
 				[ 'OS == "linux"', { 'defines': [ 'USE_CLOCK_THREAD_CPUTIME_ID' ] } ],
 			],
 			'sources': [
+				'src/external_copy/external_copy.cc',
 				'src/isolate/allocator.cc',
 				'src/isolate/environment.cc',
 				'src/isolate/executor.cc',
@@ -73,7 +74,6 @@
 				'src/lib/timer.cc',
 				'src/module/context_handle.cc',
 				'src/module/evaluation.cc',
-				'src/module/external_copy.cc',
 				'src/module/external_copy_handle.cc',
 				'src/module/isolate.cc',
 				'src/module/isolate_handle.cc',
@@ -90,7 +90,7 @@
 		{
 			'target_name': 'nortti',
 			'type': 'static_library',
-			'sources': [ 'src/module/external_copy_nortti.cc' ],
+			'sources': [ 'src/external_copy/external_copy_nortti.cc' ],
 		},
 	],
 }

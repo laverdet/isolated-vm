@@ -61,7 +61,7 @@ struct RunRunner /* lol */ : public ThreePhaseTask {
 		} else {
 			this->script = script;
 		}
-		transfer_options = Transferable::Options{maybe_options};
+		transfer_options = TransferOptions{maybe_options};
 	}
 
 	void Phase2() final {
@@ -72,7 +72,7 @@ struct RunRunner /* lol */ : public ThreePhaseTask {
 		Local<Value> script_result = RunWithTimeout(timeout_ms, [&script_handle, &context_local]() {
 			return script_handle->Run(context_local);
 		});
-		result = Transferable::OptionalTransferOut(script_result, transfer_options);
+		result = OptionalTransferOut(script_result, transfer_options);
 	}
 
 	auto Phase3() -> Local<Value> final {
@@ -85,7 +85,7 @@ struct RunRunner /* lol */ : public ThreePhaseTask {
 
 	RemoteHandle<UnboundScript> script;
 	RemoteHandle<Context> context;
-	Transferable::Options transfer_options;
+	TransferOptions transfer_options;
 	std::unique_ptr<Transferable> result;
 	uint32_t timeout_ms = 0;
 };
