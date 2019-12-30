@@ -53,7 +53,7 @@ class ExternalCopy : public Transferable {
 		 * `Copy` may throw a v8 exception if JSON.stringify(value) throws
 		 */
 		static std::unique_ptr<ExternalCopy> Copy(
-			const v8::Local<v8::Value>& value,
+			v8::Local<v8::Value> value,
 			bool transfer_out = false,
 			const handle_vector_t& transfer_list = handle_vector_t()
 		);
@@ -63,15 +63,15 @@ class ExternalCopy : public Transferable {
 		 * Otherwise it returns nullptr. This is used to automatically move simple values between
 		 * isolates where it is possible to do so perfectly.
 		 */
-		static std::unique_ptr<ExternalCopy> CopyIfPrimitive(const v8::Local<v8::Value>& value);
-		static std::unique_ptr<ExternalCopy> CopyIfPrimitiveOrError(const v8::Local<v8::Value>& value);
+		static auto CopyIfPrimitive(v8::Local<v8::Value> value) -> std::unique_ptr<ExternalCopy>;
+		static auto CopyIfPrimitiveOrError(v8::Local<v8::Value> value) -> std::unique_ptr<ExternalCopy>;
 
-		static size_t TotalExternalSize();
+		static auto TotalExternalSize() -> size_t;
 
 		v8::Local<v8::Value> CopyIntoCheckHeap(bool transfer_in = false);
 		virtual v8::Local<v8::Value> CopyInto(bool transfer_in = false) = 0;
 		auto Size() const -> size_t { return size; }
-		auto TransferIn() -> v8::Local<v8::Value> final;
+		auto TransferIn() -> v8::Local<v8::Value> final { return CopyIntoCheckHeap(); }
 
 	protected:
 		explicit ExternalCopy(size_t size);
@@ -102,31 +102,6 @@ class ExternalCopySerialized : public ExternalCopy {
 			array_buffer_vector_t array_buffers,
 			shared_buffer_vector_t shared_buffers
 		);
-		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
-};
-
-/**
- * null and undefined
- */
-class ExternalCopyNull : public ExternalCopy {
-	public:
-		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
-};
-
-class ExternalCopyUndefined : public ExternalCopy {
-	public:
-		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
-};
-
-/**
- * Identical to ExternalCopyTemplate except that Date uses `ValueOf` instead of `Value` -.-
- */
-class ExternalCopyDate : public ExternalCopy {
-	private:
-		const double value;
-
-	public:
-		explicit ExternalCopyDate(const v8::Local<v8::Value>& value);
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
 };
 

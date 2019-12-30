@@ -37,7 +37,9 @@ struct ExternalCopyTemplateCtor<Uint32> {
 template <class Type, class Native>
 class ExternalCopyTemplate : public ExternalCopy {
 	public:
-		explicit ExternalCopyTemplate(Local<Value> value) : value{value.As<Type>()->Value()} {}
+		explicit ExternalCopyTemplate(Local<Value> value) :
+			ExternalCopy{sizeof(ExternalCopyTemplate)},
+			value{value.As<Type>()->Value()} {}
 
 		auto CopyInto(bool /*transfer_in*/ = false) -> Local<Value> final {
 			return ExternalCopyTemplateCtor<Type>::New(Isolate::GetCurrent(), value);
@@ -45,6 +47,23 @@ class ExternalCopyTemplate : public ExternalCopy {
 
 	private:
 		const Native value;
+};
+
+/**
+ * null and undefined
+ */
+class ExternalCopyNull : public ExternalCopy {
+	public:
+		auto CopyInto(bool /*transfer_in*/ = false) -> Local<Value> final {
+			return Null(Isolate::GetCurrent());
+		}
+};
+
+class ExternalCopyUndefined : public ExternalCopy {
+	public:
+		auto CopyInto(bool /*transfer_in*/ = false) -> v8::Local<v8::Value> final {
+			return Undefined(Isolate::GetCurrent());
+		}
 };
 
 // Global size counter
@@ -70,17 +89,11 @@ auto ExternalCopy::operator= (ExternalCopy&& that) noexcept -> ExternalCopy& {
 	return *this;
 }
 
-// Statics
-size_t ExternalCopy::TotalExternalSize() {
-	return total_allocated_size;
-}
-
-std::unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool transfer_out, const handle_vector_t& transfer_list) {
+std::unique_ptr<ExternalCopy> ExternalCopy::Copy(
+		Local<Value> value, bool transfer_out, const handle_vector_t& transfer_list) {
 	std::unique_ptr<ExternalCopy> copy = CopyIfPrimitive(value);
 	if (copy) {
 		return copy;
-	} else if (value->IsDate()) {
-		return std::make_unique<ExternalCopyDate>(value);
 	} else if (value->IsArrayBuffer()) {
 		Local<ArrayBuffer> array_buffer = Local<ArrayBuffer>::Cast(value);
 		if (!transfer_out) {
@@ -192,30 +205,38 @@ std::unique_ptr<ExternalCopy> ExternalCopy::Copy(const Local<Value>& value, bool
 	}
 }
 
-std::unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitive(const Local<Value>& value) {
-	if (value->IsBoolean()) {
-		return std::make_unique<ExternalCopyTemplate<Boolean, bool>>(value);
-	} else if (value->IsNumber()) {
-		if (value->IsUint32()) {
-			return std::make_unique<ExternalCopyTemplate<Uint32, uint32_t>>(value);
-		} else if (value->IsInt32()) {
-			return std::make_unique<ExternalCopyTemplate<Int32, int32_t>>(value);
-		} else {
-			// This handles Infinity, -Infinity, NaN
-			return std::make_unique<ExternalCopyTemplate<Number, double>>(value);
+namespace {
+	auto CopyIfPrimitiveImpl(Local<Value> value) -> std::unique_ptr<ExternalCopy> {
+		if (value->IsString()) {
+			return std::make_unique<ExternalCopyString>(value.As<String>());
+		} else if (value->IsNumber()) {
+			if (value->IsUint32()) {
+				return std::make_unique<ExternalCopyTemplate<Uint32, uint32_t>>(value);
+			} else if (value->IsInt32()) {
+				return std::make_unique<ExternalCopyTemplate<Int32, int32_t>>(value);
+			} else {
+				// This handles Infinity, -Infinity, NaN
+				return std::make_unique<ExternalCopyTemplate<Number, double>>(value);
+			}
+		} else if (value->IsBoolean()) {
+			return std::make_unique<ExternalCopyTemplate<Boolean, bool>>(value);
+		} else if (value->IsNull()) {
+			return std::make_unique<ExternalCopyNull>();
+		} else if (value->IsUndefined()) {
+			return std::make_unique<ExternalCopyUndefined>();
 		}
-	} else if (value->IsString()) {
-		return std::make_unique<ExternalCopyString>(value.As<String>());
-	} else if (value->IsNull()) {
-		return std::make_unique<ExternalCopyNull>();
-	} else if (value->IsUndefined() || value->IsSymbol()) {
-		return std::make_unique<ExternalCopyUndefined>();
-	} else {
-		return nullptr;
+		return {};
 	}
 }
 
-std::unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<Value>& value) {
+auto ExternalCopy::CopyIfPrimitive(Local<Value> value) -> std::unique_ptr<ExternalCopy> {
+	if (!value->IsObject()) {
+		return CopyIfPrimitiveImpl(value);
+	}
+	return {};
+}
+
+auto ExternalCopy::CopyIfPrimitiveOrError(Local<Value> value) -> std::unique_ptr<ExternalCopy> {
 	if (value->IsObject()) {
 
 		// Detect which subclass of Error was thrown (no better way to do this??)
@@ -235,55 +256,44 @@ std::unique_ptr<ExternalCopy> ExternalCopy::CopyIfPrimitiveOrError(const Local<V
 			error_type = ExternalCopyError::ErrorType::TypeError;
 		}
 
-		// Get `message`
+		// Get error properties
 		Local<Context> context = isolate->GetCurrentContext();
 		TryCatch try_catch{isolate};
-		ExternalCopyString message_copy;
-		try {
-			Local<Value> message = Unmaybe(object->Get(context, v8_symbol("message")));
-			if (message->IsString()) {
-				message_copy = ExternalCopyString{message.As<String>()};
+		auto get_property = [&](Local<Object> object, const char* key) {
+			try {
+				Local<Value> value = Unmaybe(object->Get(context, v8_string(key)));
+				if (value->IsString()) {
+					return ExternalCopyString{value.As<String>()};
+				}
+			} catch (const RuntimeError& cc_err) {
+				try_catch.Reset();
 			}
-		} catch (const RuntimeError& cc_err) {
-			try_catch.Reset();
-		}
-
-		// Get `stack`
-		ExternalCopyString stack_copy;
-		try {
-			Local<Value> stack = Unmaybe(object->Get(context, v8_symbol("stack")));
-			if (stack->IsString()) {
-				stack_copy = ExternalCopyString{stack.As<String>()};
-			}
-		} catch (const RuntimeError& cc_err) {
-			try_catch.Reset();
-		}
+			return ExternalCopyString{};
+		};
+		ExternalCopyString message_copy = get_property(object, "message");
+		ExternalCopyString stack_copy = get_property(object, "stack");
 
 		// Return external error copy if this looked like an error
 		if (error_type != ExternalCopyError::ErrorType::CustomError || message_copy || stack_copy) {
 			ExternalCopyString name_copy;
 			if (error_type == ExternalCopyError::ErrorType::CustomError) {
-				Local<Value> name = Unmaybe(object->Get(context, v8_symbol("name")));
-				if (name->IsString()) {
-					name_copy = ExternalCopyString{name.As<String>()};
-				}
+				name_copy = get_property(object, "name");
 			}
 			return std::make_unique<ExternalCopyError>(error_type, std::move(name_copy), std::move(message_copy), std::move(stack_copy));
 		}
 	}
-	return CopyIfPrimitive(value);
+	return CopyIfPrimitiveImpl(value);
 }
 
-// Instance methods
-Local<Value> ExternalCopy::CopyIntoCheckHeap(bool transfer_in) {
+auto ExternalCopy::CopyIntoCheckHeap(bool transfer_in) -> Local<Value> {
 	IsolateEnvironment::HeapCheck heap_check{*IsolateEnvironment::GetCurrent()};
 	auto value = CopyInto(transfer_in);
 	heap_check.Epilogue();
 	return value;
 }
 
-Local<Value> ExternalCopy::TransferIn() {
-	return CopyIntoCheckHeap();
+auto ExternalCopy::TotalExternalSize() -> size_t {
+	return total_allocated_size;
 }
 
 void ExternalCopy::UpdateSize(size_t size) {
@@ -392,26 +402,6 @@ Local<Value> ExternalCopyError::CopyInto(bool /*transfer_in*/) {
 		Unmaybe(Local<Object>::Cast(handle)->Set(context, v8_symbol("stack"), stack));
 	}
 	return handle;
-}
-
-/**
- * ExternalCopyNull and ExternalCopyUndefined implementations
- */
-Local<Value> ExternalCopyNull::CopyInto(bool /*transfer_in*/) {
-	return Null(Isolate::GetCurrent());
-}
-
-Local<Value> ExternalCopyUndefined::CopyInto(bool /*transfer_in*/) {
-	return Undefined(Isolate::GetCurrent());
-}
-
-/**
- * ExternalCopyDate implementation
- */
-ExternalCopyDate::ExternalCopyDate(const Local<Value>& value) : ExternalCopy(sizeof(ExternalCopyDate)), value(Local<Date>::Cast(value)->ValueOf()) {}
-
-Local<Value> ExternalCopyDate::CopyInto(bool /*transfer_in*/) {
-	return Unmaybe(Date::New(Isolate::GetCurrent()->GetCurrentContext(), value));
 }
 
 /**
