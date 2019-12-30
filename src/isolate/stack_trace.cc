@@ -1,5 +1,6 @@
 #include "stack_trace.h"
 #include "functor_runners.h"
+#include "specific.h"
 #include "v8_version.h"
 #include <cstring>
 #include <sstream>
@@ -23,13 +24,10 @@ static Local<String> StringConcat(Isolate* /* isolate */, Local<String> left, Lo
  * This returns an object that's like Symbol() in JS but only C++ can see it.
  */
 Local<Private> GetPrivateStackSymbol() {
-	static IsolateEnvironment::IsolateSpecific<Private> holder;
-	Local<Private> handle;
-	if (!holder.Deref().ToLocal(&handle)) {
-		handle = Private::New(Isolate::GetCurrent());
-		holder.Set(handle);
-	}
-	return handle;
+	static IsolateSpecific<Private> holder;
+	return holder.Deref([]() {
+		return Private::New(Isolate::GetCurrent());
+	});
 }
 
 /**

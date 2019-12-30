@@ -22,6 +22,14 @@ namespace detail {
 
 	template <class Signature>
 	struct ConstructorFunctionImpl;
+
+	template <class Type>
+	struct TemplateHolder {
+		static IsolateSpecific<v8::FunctionTemplate> specific;
+	};
+
+	template <class Type>
+	IsolateSpecific<v8::FunctionTemplate> TemplateHolder<Type>::specific;
 }
 
 /**
@@ -131,15 +139,6 @@ class ClassHandle {
 			throw RuntimeTypeError(detail::CalleeName(info)+ " constructor is private");
 		}
 
-		/**
-		 * Returns a unique IsolateSpecific for each subclass
-		 */
-		template <typename T>
-		static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& TemplateSpecific() {
-			static IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate> tmpl;
-			return tmpl;
-		}
-
 	protected:
 		/**
 		 * Sets up this object's FunctionTemplate inside the current isolate
@@ -196,18 +195,11 @@ class ClassHandle {
 		/**
 		 * Returns the FunctionTemplate for this isolate, generating it if needed.
 		 */
-		template <typename T>
-		static v8::Local<v8::FunctionTemplate> GetFunctionTemplate() {
-			IsolateEnvironment::IsolateSpecific<v8::FunctionTemplate>& specific = TemplateSpecific<T>();
-			v8::MaybeLocal<v8::FunctionTemplate> maybe_tmpl = specific.Deref();
-			v8::Local<v8::FunctionTemplate> tmpl;
-			if (maybe_tmpl.ToLocal(&tmpl)) {
-				return tmpl;
-			} else {
-				tmpl = T::Definition();
-				specific.Set(tmpl);
-				return tmpl;
-			}
+		template <class Type>
+		static auto GetFunctionTemplate() -> v8::Local<v8::FunctionTemplate> {
+			return detail::TemplateHolder<Type>::specific.Deref([&]() {
+				return Type::Definition();
+			});
 		}
 
 		/**

@@ -58,8 +58,6 @@ void IsolateEnvironment::HeapCheck::Epilogue() {
 /**
  * IsolateEnvironment implementation
  */
-size_t IsolateEnvironment::specifics_count = 0;
-
 void IsolateEnvironment::OOMErrorCallback(const char* location, bool is_heap_oom) {
 	fprintf(stderr, "%s\nis_heap_oom = %d\n\n\n", location, static_cast<int>(is_heap_oom));
 	HeapStatistics heap;

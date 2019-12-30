@@ -6,6 +6,7 @@
 #include "holder.h"
 #include "runnable.h"
 #include "scheduler.h"
+#include "specific.h"
 #include "lib/lockable.h"
 #include "lib/thread_pool.h"
 
@@ -39,6 +40,8 @@ class IsolateEnvironment {
 	friend class LimitedAllocator;
 	friend class Scheduler;
 	friend class ThreePhaseTask;
+	template <class>
+	friend class IsolateSpecific;
 	template <typename F>
 	friend v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn);
 
@@ -58,49 +61,6 @@ class IsolateEnvironment {
 				void Epilogue();
 		};
 
-		/**
-		 * Like thread_local data, but specific to an Isolate instead.
-		 */
-		template <typename T>
-		class IsolateSpecific {
-			private:
-				union HandleConvert {
-					v8::Local<v8::Data> data;
-					v8::Local<T> value;
-					explicit HandleConvert(v8::Local<v8::Data> data) : data(data) {}
-				};
-				size_t key;
-
-			public:
-				IsolateSpecific() : key(IsolateEnvironment::specifics_count++) {}
-
-				v8::MaybeLocal<T> Deref() const {
-					IsolateEnvironment& env = *Executor::GetCurrentEnvironment();
-					if (env.specifics.size() > key) {
-						if (!env.specifics[key]->IsEmpty()) {
-							// This is dangerous but `Local` doesn't let you upcast from Data to
-							// `FunctionTemplate` or `Private` which is stupid.
-							HandleConvert handle(env.specifics[key]->Get(env.isolate));
-							return v8::MaybeLocal<T>(handle.value);
-						}
-					}
-					return v8::MaybeLocal<T>();
-				}
-
-				void Set(v8::Local<T> handle) {
-					IsolateEnvironment& env = *Executor::GetCurrentEnvironment();
-					if (env.specifics.size() <= key) {
-						env.specifics.reserve(key + 1);
-						while (env.specifics.size() < key) {
-							env.specifics.emplace_back(std::make_unique<v8::Eternal<v8::Data>>());
-						}
-						env.specifics.emplace_back(std::make_unique<v8::Eternal<v8::Data>>(env.isolate, handle));
-					} else {
-						env.specifics[key]->Set(env.isolate, handle);
-					}
-				}
-		};
-
 	private:
 		template <class Type>
 		struct WeakPtrCompare {
@@ -111,7 +71,6 @@ class IsolateEnvironment {
 		// Another good candidate for std::optional<> (because this is only used by the root isolate)
 		using OwnedIsolates = lockable_t<std::set<std::weak_ptr<IsolateHolder>, WeakPtrCompare<IsolateHolder>>, true>;
 		std::unique_ptr<OwnedIsolates> owned_isolates;
-		static size_t specifics_count;
 
 		v8::Isolate* isolate;
 		Scheduler scheduler;
@@ -136,7 +95,7 @@ class IsolateEnvironment {
 		v8::HeapStatistics last_heap {};
 		v8::Persistent<v8::Value> rejected_promise_error;
 
-		std::vector<std::unique_ptr<v8::Eternal<v8::Data>>> specifics;
+		std::vector<v8::Eternal<v8::Data>> specifics;
 		std::unordered_map<v8::Persistent<v8::Object>*, std::pair<void(*)(void*), void*>> weak_persistents;
 
 	public:
@@ -353,5 +312,24 @@ class IsolateEnvironment {
 		void AddWeakCallback(v8::Persistent<v8::Object>* handle, void(*fn)(void*), void* param);
 		void RemoveWeakCallback(v8::Persistent<v8::Object>* handle);
 };
+
+template <class Type>
+template <class Functor>
+auto IsolateSpecific<Type>::Deref(Functor callback) -> v8::Local<Type> {
+	auto& env = *Executor::GetCurrentEnvironment();
+	if (env.specifics.size() <= key) {
+		env.specifics.resize(IsolateSpecific<void>::size);
+	}
+	auto& eternal = env.specifics[key];
+	if (eternal.IsEmpty()) {
+		auto handle = callback();
+		// After `callback` is invoked `eternal` is no longer valid! The callback may reference
+		// new IsolateSpecifics which will end up calling `resize` on the underlying vector.
+		env.specifics[key].Set(env.isolate, handle);
+		return handle;
+	}
+	// This is dangerous but `Local` doesn't let you upcast from `Data` to `Value`
+	return HandleConvert{eternal.Get(env.isolate)}.value;
+}
 
 } // namespace ivm
