@@ -1,6 +1,7 @@
 #include "external_copy.h"
 #include "error.h"
-#include "string.h"
+#include "serializer.h"
+#include "./string.h"
 
 #include "isolate/allocator.h"
 #include "isolate/environment.h"
@@ -167,37 +168,7 @@ std::unique_ptr<ExternalCopy> ExternalCopy::Copy(
 			return std::make_unique<ExternalCopyArrayBufferView>(std::make_unique<ExternalCopySharedArrayBuffer>(array_buffer), type, view->ByteOffset(), view->ByteLength());
 		}
 	} else if (value->IsObject()) {
-		// Initialize serializer and transferred buffer vectors
-		Isolate* isolate = Isolate::GetCurrent();
-		transferable_vector_t references;
-		array_buffer_vector_t transferred_buffers;
-		transferred_buffers.reserve(std::distance(transfer_list.begin(), transfer_list.end()));
-		shared_buffer_vector_t shared_buffers;
-		ExternalCopySerializerDelegate delegate(references, shared_buffers);
-		ValueSerializer serializer(isolate, &delegate);
-		// Mark array buffers as transferred (transfer must happen *after* serialization)
-		int ii = 0;
-		for (auto handle : transfer_list) {
-			if (handle->IsArrayBuffer()) {
-				serializer.TransferArrayBuffer(ii++, handle.As<ArrayBuffer>());
-			} else {
-				throw RuntimeTypeError("Non-ArrayBuffer passed in `transferList`");
-			}
-		}
-		// Serialize object and perform array buffer transfer
-		delegate.serializer = &serializer;
-		serializer.WriteHeader();
-		Unmaybe(serializer.WriteValue(isolate->GetCurrentContext(), value));
-		for (auto handle : transfer_list) {
-			transferred_buffers.emplace_back(ExternalCopyArrayBuffer::Transfer(handle.As<ArrayBuffer>()));
-		}
-		// Create ExternalCopy instance
-		return std::make_unique<ExternalCopySerialized>(
-			serializer.Release(),
-			std::move(references),
-			std::move(transferred_buffers),
-			std::move(shared_buffers)
-		);
+		return std::make_unique<ExternalCopySerialized>(value.As<Object>(), transfer_list);
 	} else {
 		// ???
 		assert(false);
@@ -299,54 +270,6 @@ auto ExternalCopy::TotalExternalSize() -> size_t {
 void ExternalCopy::UpdateSize(size_t size) {
 	total_allocated_size -= static_cast<ptrdiff_t>(this->size) - static_cast<ptrdiff_t>(size);
 	this->size = size;
-}
-
-/**
- * ExternalCopySerialized implementation
- */
-ExternalCopySerialized::ExternalCopySerialized(
-	std::pair<uint8_t*, size_t> val,
-	transferable_vector_t references,
-	array_buffer_vector_t array_buffers,
-	shared_buffer_vector_t shared_buffers
-) :
-	ExternalCopy(val.second + sizeof(ExternalCopySerialized)),
-	buffer(val.first, std::free),
-	size(val.second),
-	references(std::move(references)),
-	array_buffers(std::move(array_buffers)),
-	shared_buffers(std::move(shared_buffers)) {}
-
-Local<Value> ExternalCopySerialized::CopyInto(bool transfer_in) {
-	// Initialize deserializer
-	Isolate* isolate = Isolate::GetCurrent();
-	Local<Context> context = isolate->GetCurrentContext();
-	auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
-	int failures = allocator == nullptr ? 0 : allocator->GetFailureCount();
-	ExternalCopyDeserializerDelegate delegate(references);
-	ValueDeserializer deserializer(isolate, buffer.get(), size, &delegate);
-	delegate.deserializer = &deserializer;
-	// Transfer array buffers into isolate
-	for (size_t ii = 0; ii < array_buffers.size(); ++ii) {
-		deserializer.TransferArrayBuffer(ii, array_buffers[ii]->CopyIntoCheckHeap(transfer_in).As<ArrayBuffer>());
-	}
-	for (size_t ii = 0; ii < shared_buffers.size(); ++ii) {
-		deserializer.TransferSharedArrayBuffer(ii, shared_buffers[ii]->CopyIntoCheckHeap(false).As<SharedArrayBuffer>());
-	}
-	// Deserialize object
-	Unmaybe(deserializer.ReadHeader(context));
-	Local<Value> value;
-	if (deserializer.ReadValue(context).ToLocal(&value)) {
-		return value;
-	} else {
-		// ValueDeserializer throws an unhelpful message when it fails to allocate an ArrayBuffer, so
-		// detect that case here and throw an appropriate message.
-		if (allocator != nullptr && allocator->GetFailureCount() != failures) {
-			throw RuntimeRangeError("Array buffer allocation failed");
-		} else {
-			throw RuntimeError();
-		}
-	}
 }
 
 /**

@@ -61,6 +61,7 @@
 			],
 			'sources': [
 				'src/external_copy/external_copy.cc',
+				'src/external_copy/serializer.cc',
 				'src/external_copy/string.cc',
 				'src/isolate/allocator.cc',
 				'src/isolate/environment.cc',
@@ -91,7 +92,7 @@
 		{
 			'target_name': 'nortti',
 			'type': 'static_library',
-			'sources': [ 'src/external_copy/external_copy_nortti.cc' ],
+			'sources': [ 'src/external_copy/serializer_nortti.cc' ],
 		},
 	],
 }
