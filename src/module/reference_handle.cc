@@ -200,7 +200,7 @@ class ApplyRunner : public ThreePhaseTask {
 		ApplyRunner(
 			ReferenceHandle& that,
 			MaybeLocal<Value> recv_handle,
-			MaybeLocal<Array> maybe_arguments,
+			Maybe<ArrayRange> maybe_arguments,
 			MaybeLocal<Object> maybe_options
 		) :	context{that.context}, reference{that.reference}
 		{
@@ -214,7 +214,6 @@ class ApplyRunner : public ThreePhaseTask {
 
 			// Get run options
 			TransferOptions arguments_transfer_options;
-			Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
 			Local<Object> options;
 			if (maybe_options.ToLocal(&options)) {
 				timeout = ReadOption<int32_t>(options, "timeout", 0);
@@ -226,12 +225,11 @@ class ApplyRunner : public ThreePhaseTask {
 			}
 
 			// Externalize all arguments
-			Local<Array> arguments;
-			if (maybe_arguments.ToLocal(&arguments)) {
-				uint32_t length = arguments->Length();
-				argv.reserve(length);
-				for (uint32_t ii = 0; ii < length; ++ii) {
-					argv.push_back(TransferOut(Unmaybe(arguments->Get(context, ii)), arguments_transfer_options));
+			ArrayRange arguments;
+			if (maybe_arguments.To(&arguments)) {
+				argv.reserve(std::distance(arguments.begin(), arguments.end()));
+				for (auto argument : arguments) {
+					argv.push_back(TransferOut(argument, arguments_transfer_options));
 				}
 			}
 		}
@@ -387,7 +385,7 @@ class ApplyRunner : public ThreePhaseTask {
 		Scheduler::AsyncWait* async_wait = nullptr;
 };
 template <int async>
-auto ReferenceHandle::Apply(MaybeLocal<Value> recv_handle, MaybeLocal<Array> maybe_arguments, MaybeLocal<Object> maybe_options) -> Local<Value> {
+auto ReferenceHandle::Apply(MaybeLocal<Value> recv_handle, Maybe<ArrayRange> maybe_arguments, MaybeLocal<Object> maybe_options) -> Local<Value> {
 	return ThreePhaseTask::Run<async, ApplyRunner>(*isolate, *this, recv_handle, maybe_arguments, maybe_options);
 }
 

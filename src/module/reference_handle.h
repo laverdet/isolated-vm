@@ -60,7 +60,7 @@ class ReferenceHandle : public TransferableHandle, public detail::ReferenceData 
 		template <int async>
 		auto Apply(
 			v8::MaybeLocal<v8::Value> recv_handle,
-			v8::MaybeLocal<v8::Array> maybe_arguments,
+			v8::Maybe<ArrayRange> maybe_arguments,
 			v8::MaybeLocal<v8::Object> maybe_options
 		) -> v8::Local<v8::Value>;
 		template <int async>

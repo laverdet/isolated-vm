@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 
+#include "isolate/generic/array.h"
 #include "isolate/transferable.h"
 #include "isolate/util.h"
 
@@ -55,7 +56,7 @@ class ExternalCopy : public Transferable {
 		static std::unique_ptr<ExternalCopy> Copy(
 			v8::Local<v8::Value> value,
 			bool transfer_out = false,
-			const handle_vector_t& transfer_list = handle_vector_t()
+			ArrayRange transfer_list = {}
 		);
 
 		/**

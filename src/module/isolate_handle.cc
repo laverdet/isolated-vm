@@ -395,7 +395,7 @@ static StartupData SerializeInternalFieldsCallback(Local<Object> /*holder*/, int
 	return {nullptr, 0};
 }
 
-Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLocal<String> warmup_handle) {
+Local<Value> IsolateHandle::CreateSnapshot(ArrayRange script_handles, MaybeLocal<String> warmup_handle) {
 
 	// Simple platform delegate and task queue
 	using TaskDeque = lockable_t<std::deque<std::unique_ptr<v8::Task>>>;
@@ -441,23 +441,14 @@ Local<Value> IsolateHandle::CreateSnapshot(Local<Array> script_handles, MaybeLoc
 	std::vector<std::pair<ExternalCopyString, ScriptOriginHolder>> scripts;
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
-	Local<Array> keys = Unmaybe(script_handles->GetOwnPropertyNames(context));
-	scripts.reserve(keys->Length());
-	for (uint32_t ii = 0; ii < keys->Length(); ++ii) {
-		Local<Uint32> key = Unmaybe(Unmaybe(keys->Get(context, ii))->ToArrayIndex(context));
-		if (key->Value() != ii) {
-			throw RuntimeTypeError("Invalid `scripts` array");
-		}
-		Local<Value> script_handle = Unmaybe(script_handles->Get(context, key));
-		if (!script_handle->IsObject()) {
-			throw RuntimeTypeError("`scripts` should be array of objects");
-		}
+	scripts.reserve(std::distance(script_handles.begin(), script_handles.end()));
+	for (auto value : script_handles) {
+		auto script_handle = HandleCast<Local<Object>>(value);
 		Local<Value> script = Unmaybe(script_handle.As<Object>()->Get(context, v8_string("code")));
 		if (!script->IsString()) {
 			throw RuntimeTypeError("`code` property is required");
 		}
-		ScriptOriginHolder script_origin(script_handle.As<Object>());
-		scripts.emplace_back(script.As<String>(), std::move(script_origin));
+		scripts.emplace_back(ExternalCopyString{script.As<String>()}, ScriptOriginHolder{script_handle});
 	}
 	ExternalCopyString warmup_script;
 	if (!warmup_handle.IsEmpty()) {

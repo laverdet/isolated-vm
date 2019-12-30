@@ -22,7 +22,7 @@ class ContextHandle : public TransferableHandle {
 		template <int Async>
 		auto EvalClosure(
 			v8::Local<v8::String> code,
-			v8::MaybeLocal<v8::Array> maybe_arguments,
+			v8::Maybe<ArrayRange> maybe_arguments,
 			v8::MaybeLocal<v8::Object> maybe_options
 		) -> v8::Local<v8::Value>;
 

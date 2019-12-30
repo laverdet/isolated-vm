@@ -90,7 +90,7 @@ auto ExternalCopy::operator= (ExternalCopy&& that) noexcept -> ExternalCopy& {
 }
 
 std::unique_ptr<ExternalCopy> ExternalCopy::Copy(
-		Local<Value> value, bool transfer_out, const handle_vector_t& transfer_list) {
+		Local<Value> value, bool transfer_out, ArrayRange transfer_list) {
 	std::unique_ptr<ExternalCopy> copy = CopyIfPrimitive(value);
 	if (copy) {
 		return copy;
@@ -171,15 +171,15 @@ std::unique_ptr<ExternalCopy> ExternalCopy::Copy(
 		Isolate* isolate = Isolate::GetCurrent();
 		transferable_vector_t references;
 		array_buffer_vector_t transferred_buffers;
-		transferred_buffers.reserve(transfer_list.size());
+		transferred_buffers.reserve(std::distance(transfer_list.begin(), transfer_list.end()));
 		shared_buffer_vector_t shared_buffers;
 		ExternalCopySerializerDelegate delegate(references, shared_buffers);
 		ValueSerializer serializer(isolate, &delegate);
 		// Mark array buffers as transferred (transfer must happen *after* serialization)
-		for (size_t ii = 0; ii < transfer_list.size(); ++ii) {
-			Local<Value> handle = transfer_list[ii];
+		int ii = 0;
+		for (auto handle : transfer_list) {
 			if (handle->IsArrayBuffer()) {
-				serializer.TransferArrayBuffer(ii, handle.As<ArrayBuffer>());
+				serializer.TransferArrayBuffer(ii++, handle.As<ArrayBuffer>());
 			} else {
 				throw RuntimeTypeError("Non-ArrayBuffer passed in `transferList`");
 			}
@@ -188,7 +188,7 @@ std::unique_ptr<ExternalCopy> ExternalCopy::Copy(
 		delegate.serializer = &serializer;
 		serializer.WriteHeader();
 		Unmaybe(serializer.WriteValue(isolate->GetCurrentContext(), value));
-		for (auto& handle : transfer_list) {
+		for (auto handle : transfer_list) {
 			transferred_buffers.emplace_back(ExternalCopyArrayBuffer::Transfer(handle.As<ArrayBuffer>()));
 		}
 		// Create ExternalCopy instance

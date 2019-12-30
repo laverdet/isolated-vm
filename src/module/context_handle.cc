@@ -177,7 +177,7 @@ class EvalClosureRunner : public CodeCompilerHolder, public ThreePhaseTask {
 		explicit EvalClosureRunner(
 			RemoteHandle<Context> context,
 			Local<String> code,
-			MaybeLocal<Array> maybe_arguments,
+			Maybe<ArrayRange> maybe_arguments,
 			MaybeLocal<Object> maybe_options
 		) :
 				CodeCompilerHolder{code, maybe_options},
@@ -186,14 +186,11 @@ class EvalClosureRunner : public CodeCompilerHolder, public ThreePhaseTask {
 					// Transfer arguments out of isolate
 					std::vector<std::unique_ptr<Transferable>> argv;
 					TransferOptions transfer_options{ReadOption<MaybeLocal<Object>>(maybe_options, "arguments", {})};
-					Local<Array> arguments;
-					if (maybe_arguments.ToLocal(&arguments)) {
-						uint32_t length = arguments->Length();
-						argv.reserve(length);
-						for (uint32_t ii = 0; ii < length; ++ii) {
-							argv.push_back(TransferOut(
-								Unmaybe(arguments->Get(Isolate::GetCurrent()->GetCurrentContext(), ii)),
-								transfer_options));
+					ArrayRange arguments;
+					if (maybe_arguments.To(&arguments)) {
+						argv.reserve(std::distance(arguments.begin(), arguments.end()));
+						for (auto value : arguments) {
+							argv.push_back(TransferOut(value, transfer_options));
 						}
 					}
 					return argv;
@@ -283,7 +280,7 @@ class EvalClosureRunner : public CodeCompilerHolder, public ThreePhaseTask {
 };
 
 template <int Async>
-auto ContextHandle::EvalClosure(Local<String> code, MaybeLocal<Array> maybe_arguments, MaybeLocal<Object> maybe_options) -> Local<Value> {
+auto ContextHandle::EvalClosure(Local<String> code, Maybe<ArrayRange> maybe_arguments, MaybeLocal<Object> maybe_options) -> Local<Value> {
 	return ThreePhaseTask::Run<Async, EvalClosureRunner>(*context.GetIsolateHolder(), context, code, maybe_arguments, maybe_options);
 }
 

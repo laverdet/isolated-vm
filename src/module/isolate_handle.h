@@ -1,6 +1,7 @@
 #pragma once
-#include <v8.h>
+#include "isolate/generic/array.h"
 #include "transferable.h"
+#include <v8.h>
 #include <memory>
 
 namespace ivm {
@@ -37,7 +38,7 @@ class IsolateHandle : public TransferableHandle {
 		v8::Local<v8::Value> GetWallTime();
 		v8::Local<v8::Value> GetReferenceCount();
 		v8::Local<v8::Value> IsDisposedGetter();
-		static v8::Local<v8::Value> CreateSnapshot(v8::Local<v8::Array> script_handles, v8::MaybeLocal<v8::String> warmup_handle);
+		static v8::Local<v8::Value> CreateSnapshot(ArrayRange script_handles, v8::MaybeLocal<v8::String> warmup_handle);
 };
 
 } // namespace ivm

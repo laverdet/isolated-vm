@@ -42,23 +42,12 @@ unique_ptr<Transferable> ExternalCopyHandle::TransferOut() {
 }
 
 unique_ptr<ExternalCopyHandle> ExternalCopyHandle::New(Local<Value> value, MaybeLocal<Object> maybe_options) {
-	Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
 	Local<Object> options;
 	bool transfer_out = false;
-	handle_vector_t transfer_list;
+	ArrayRange transfer_list;
 	if (maybe_options.ToLocal(&options)) {
 		transfer_out = ReadOption<bool>(options, "transferOut", false);
-		Local<Value> transfer_list_handle = Unmaybe(options->Get(context, v8_string("transferList")));
-		if (!transfer_list_handle->IsUndefined()) {
-			if (!transfer_list_handle->IsArray()) {
-				throw RuntimeTypeError("`transferList` must be an array");
-			}
-			size_t length = transfer_list_handle.As<Array>()->Length();
-			transfer_list.reserve(length);
-			for (size_t ii = 0; ii < length; ++ii) {
-				transfer_list.emplace_back(Unmaybe(transfer_list_handle.As<Array>()->Get(context, ii)));
-			}
-		}
+		transfer_list = ReadOption<ArrayRange>(options, "transferList", {});
 	}
 	return std::make_unique<ExternalCopyHandle>(shared_ptr<ExternalCopy>(ExternalCopy::Copy(value, transfer_out, transfer_list)));
 }
