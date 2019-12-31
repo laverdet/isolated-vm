@@ -17,7 +17,7 @@ ThreePhaseTask::CalleeInfo::CalleeInfo(
 ) : remotes(resolver, context, stack_trace) {
 	IsolateEnvironment* env = IsolateEnvironment::GetCurrent();
 	if (env->IsDefault()) {
-		async = node::EmitAsyncInit(env->GetIsolate(), resolver->GetPromise(), v8_symbol("isolated-vm"));
+		async = node::EmitAsyncInit(env->GetIsolate(), resolver->GetPromise(), StringTable::Get().isolatedVm);
 	}
 }
 
@@ -83,7 +83,7 @@ ThreePhaseTask::Phase2Runner::~Phase2Runner() {
 				auto promise_local = info.remotes.Deref<0>();
 				CallbackScope callback_scope(info.async, promise_local);
 				// Throw from promise
-				Local<Object> error = Exception::Error(v8_string("Isolate is disposed")).As<Object>();
+				Local<Object> error = Exception::Error(StringTable::Get().isolateIsDisposed).As<Object>();
 				StackTraceHolder::AttachStack(error, info.remotes.Deref<2>());
 				Unmaybe(promise_local->Reject(context_local, error));
 				isolate->RunMicrotasks();

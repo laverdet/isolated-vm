@@ -135,19 +135,19 @@ auto ReferenceHandle::TypeOfGetter() -> Local<Value> {
 	CheckDisposed();
 	switch (type_of) {
 		case TypeOf::Null:
-			return v8_string("null");
+			return StringTable::Get().null;
 		case TypeOf::Undefined:
-			return v8_string("undefined");
+			return StringTable::Get().undefined;
 		case TypeOf::Number:
-			return v8_string("number");
+			return StringTable::Get().number;
 		case TypeOf::String:
-			return v8_string("string");
+			return StringTable::Get().string;
 		case TypeOf::Boolean:
-			return v8_string("boolean");
+			return StringTable::Get().boolean;
 		case TypeOf::Object:
-			return v8_string("object");
+			return StringTable::Get().object;
 		case TypeOf::Function:
-			return v8_string("function");
+			return StringTable::Get().function;
 	}
 	std::terminate();
 }
@@ -160,7 +160,7 @@ auto ReferenceHandle::Deref(MaybeLocal<Object> maybe_options) -> Local<Value> {
 	if (isolate.get() != IsolateEnvironment::GetCurrentHolder().get()) {
 		throw RuntimeTypeError("Cannot dereference this from current isolate");
 	}
-	bool release = ReadOption<bool>(maybe_options, "release", false);
+	bool release = ReadOption<bool>(maybe_options, StringTable::Get().release, false);
 	Local<Value> ret = ivm::Deref(reference);
 	if (release) {
 		Release();
@@ -173,7 +173,7 @@ auto ReferenceHandle::Deref(MaybeLocal<Object> maybe_options) -> Local<Value> {
  */
 auto ReferenceHandle::DerefInto(MaybeLocal<Object> maybe_options) -> Local<Value> {
 	CheckDisposed();
-	bool release = ReadOption<bool>(maybe_options, "release", false);
+	bool release = ReadOption<bool>(maybe_options, StringTable::Get().release, false);
 	Local<Value> ret = ClassHandle::NewInstance<DereferenceHandle>(isolate, reference);
 	if (release) {
 		Release();
@@ -216,11 +216,11 @@ class ApplyRunner : public ThreePhaseTask {
 			TransferOptions arguments_transfer_options;
 			Local<Object> options;
 			if (maybe_options.ToLocal(&options)) {
-				timeout = ReadOption<int32_t>(options, "timeout", 0);
+				timeout = ReadOption<int32_t>(options, StringTable::Get().timeout, 0);
 				arguments_transfer_options = TransferOptions{
-					ReadOption<MaybeLocal<Object>>(options, "arguments", {})};
+					ReadOption<MaybeLocal<Object>>(options, StringTable::Get().arguments, {})};
 				return_transfer_options = TransferOptions{
-					ReadOption<MaybeLocal<Object>>(options, "result", {}),
+					ReadOption<MaybeLocal<Object>>(options, StringTable::Get().result, {}),
 					TransferOptions::Type::Reference};
 			}
 

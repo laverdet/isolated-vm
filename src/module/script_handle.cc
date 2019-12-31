@@ -53,8 +53,8 @@ struct RunRunner /* lol */ : public ThreePhaseTask {
 		bool release = false;
 		Local<Object> options;
 		if (maybe_options.ToLocal(&options)) {
-			release = ReadOption<bool>(options, "release", false);
-			timeout_ms = ReadOption<int32_t>(options, "timeout", 0);
+			release = ReadOption<bool>(options, StringTable::Get().release, false);
+			timeout_ms = ReadOption<int32_t>(options, StringTable::Get().timeout, 0);
 		}
 		if (release) {
 			this->script = std::move(script);

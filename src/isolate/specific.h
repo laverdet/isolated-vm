@@ -32,3 +32,5 @@ template <class Type>
 std::atomic<size_t> IsolateSpecific<Type>::size{0};
 
 } // namespace ivm
+
+#include "environment.h"

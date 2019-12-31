@@ -72,7 +72,7 @@ auto ContextHandle::GlobalGetter() -> Local<Value> {
 		ref = ClassHandle::NewInstance<ReferenceHandle>(global.GetSharedIsolateHolder(), global, context, ReferenceHandle::TypeOf::Object);
 		global_reference = RemoteHandle<v8::Object>(ref);
 	}
-	Unmaybe(This()->CreateDataProperty(isolate->GetCurrentContext(), v8_string("global"), ref));
+	Unmaybe(This()->CreateDataProperty(isolate->GetCurrentContext(), StringTable::Get().global, ref));
 	return ref;
 }
 
@@ -108,7 +108,7 @@ class EvalRunner : public CodeCompilerHolder, public ThreePhaseTask {
 			if (!this->context) {
 				throw RuntimeGenericError("Context is released");
 			}
-			timeout_ms = ReadOption<int32_t>(maybe_options, "timeout", timeout_ms);
+			timeout_ms = ReadOption<int32_t>(maybe_options, StringTable::Get().timeout, timeout_ms);
 		}
 
 		void Phase2() final {
@@ -181,11 +181,11 @@ class EvalClosureRunner : public CodeCompilerHolder, public ThreePhaseTask {
 			MaybeLocal<Object> maybe_options
 		) :
 				CodeCompilerHolder{code, maybe_options},
-				transfer_options{ReadOption<MaybeLocal<Object>>(maybe_options, "result", {})},
+				transfer_options{ReadOption<MaybeLocal<Object>>(maybe_options, StringTable::Get().result, {})},
 				argv{[&]() {
 					// Transfer arguments out of isolate
 					std::vector<std::unique_ptr<Transferable>> argv;
-					TransferOptions transfer_options{ReadOption<MaybeLocal<Object>>(maybe_options, "arguments", {})};
+					TransferOptions transfer_options{ReadOption<MaybeLocal<Object>>(maybe_options, StringTable::Get().arguments, {})};
 					ArrayRange arguments;
 					if (maybe_arguments.To(&arguments)) {
 						argv.reserve(std::distance(arguments.begin(), arguments.end()));
@@ -199,7 +199,7 @@ class EvalClosureRunner : public CodeCompilerHolder, public ThreePhaseTask {
 			if (!this->context) {
 				throw RuntimeGenericError("Context is released");
 			}
-			timeout_ms = ReadOption<int32_t>(maybe_options, "timeout", timeout_ms);
+			timeout_ms = ReadOption<int32_t>(maybe_options, StringTable::Get().timeout, timeout_ms);
 		}
 
 		void Phase2() final {

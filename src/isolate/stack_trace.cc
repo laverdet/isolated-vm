@@ -84,15 +84,15 @@ void ErrorStackGetter(Local<Name> /*property*/, const PropertyCallbackInfo<Value
 		Isolate* isolate = Isolate::GetCurrent();
 		Local<Context> context = isolate->GetCurrentContext();
 		Local<Object> holder = info.This();
-		Local<Value> name = Unmaybe(holder->Get(context, v8_string("name")));
+		Local<Value> name = Unmaybe(holder->Get(context, StringTable::Get().name));
 		if (!name->IsString()) {
 			name = holder->GetConstructorName();
 		}
 		return StringConcat(isolate,
-			StringConcat(isolate, name.As<String>(), v8_string(": ")),
+			StringConcat(isolate, name.As<String>(), StringTable::Get().colonSpace),
 			StringConcat(isolate,
 				Unmaybe(
-					Unmaybe(info.This()->Get(context, v8_string("message")))->ToString(context)
+					Unmaybe(info.This()->Get(context, StringTable::Get().message))->ToString(context)
 				),
 				RenderErrorStack(Unmaybe(holder->GetPrivate(context, GetPrivateStackSymbol())))
 			)
@@ -108,7 +108,7 @@ void AttachStackGetter(Local<Object> error, Local<Value> data) {
 	Unmaybe(error->SetPrivate(context, GetPrivateStackSymbol(), data));
 	Unmaybe(error->SetAccessor(
 		context,
-		v8_string("stack"),
+		StringTable::Get().stack,
 		ErrorStackGetter, nullptr,
 		Local<Value>(),
 		AccessControl::DEFAULT,
@@ -139,7 +139,7 @@ void StackTraceHolder::ChainStack(Local<Object> error, Local<StackTrace> stack) 
 		if (existing_stack.IsEmpty()) {
 			// In this case it's probably passed through ExternalCopy which flattens the `stack` property
 			// into a plain value
-			existing_data = Unmaybe(error->Get(context, v8_string("stack")));
+			existing_data = Unmaybe(error->Get(context, StringTable::Get().stack));
 			if (existing_data->IsUndefined() || !existing_data->IsString()) {
 				return AttachStack(error, stack);
 			}

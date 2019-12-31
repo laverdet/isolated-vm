@@ -7,6 +7,7 @@
 #include "runnable.h"
 #include "scheduler.h"
 #include "specific.h"
+#include "strings.h"
 #include "lib/lockable.h"
 #include "lib/thread_pool.h"
 
@@ -39,6 +40,7 @@ class IsolateEnvironment {
 	friend class IsolateHolder;
 	friend class LimitedAllocator;
 	friend class Scheduler;
+	friend StringTable;
 	friend class ThreePhaseTask;
 	template <class>
 	friend class IsolateSpecific;
@@ -94,6 +96,7 @@ class IsolateEnvironment {
 		std::atomic<unsigned int> remotes_count{0};
 		v8::HeapStatistics last_heap {};
 		v8::Persistent<v8::Value> rejected_promise_error;
+		StringTable string_table;
 
 		std::vector<v8::Eternal<v8::Data>> specifics;
 		std::unordered_map<v8::Persistent<v8::Object>*, std::pair<void(*)(void*), void*>> weak_persistents;
@@ -330,6 +333,10 @@ auto IsolateSpecific<Type>::Deref(Functor callback) -> v8::Local<Type> {
 	}
 	// This is dangerous but `Local` doesn't let you upcast from `Data` to `Value`
 	return HandleConvert{eternal.Get(env.isolate)}.value;
+}
+
+inline auto StringTable::Get() {
+	return Executor::GetCurrentEnvironment()->string_table;
 }
 
 } // namespace ivm

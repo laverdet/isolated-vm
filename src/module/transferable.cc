@@ -188,9 +188,9 @@ TransferOptions::TransferOptions(MaybeLocal<Object> maybe_options, Type fallback
 }
 
 void TransferOptions::TransferOptions::ParseOptions(Local<Object> options) {
-	bool copy = ReadOption<bool>(options, "copy", false);
-	bool externalCopy = ReadOption<bool>(options, "externalCopy", false);
-	bool reference = ReadOption<bool>(options, "reference", false);
+	bool copy = ReadOption<bool>(options, StringTable::Get().copy, false);
+	bool externalCopy = ReadOption<bool>(options, StringTable::Get().externalCopy, false);
+	bool reference = ReadOption<bool>(options, StringTable::Get().reference, false);
 	if ((copy && externalCopy) || (copy && reference) || (externalCopy && reference)) {
 		throw RuntimeTypeError("Only one of `copy`, `externalCopy`, or `reference` may be set");
 	}
@@ -201,7 +201,7 @@ void TransferOptions::TransferOptions::ParseOptions(Local<Object> options) {
 	} else if (reference) {
 		type = Type::Reference;
 	}
-	promise = ReadOption<bool>(options, "promise", false);
+	promise = ReadOption<bool>(options, StringTable::Get().promise, false);
 }
 
 auto OptionalTransferOut(Local<Value> value, TransferOptions options) -> std::unique_ptr<Transferable> {

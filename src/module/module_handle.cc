@@ -415,7 +415,7 @@ struct EvaluateRunner : public ThreePhaseTask {
 template <int async>
 Local<Value> ModuleHandle::Evaluate(MaybeLocal<Object> maybe_options) {
 	auto info = GetInfo();
-	int32_t timeout_ms = ReadOption<int32_t>(maybe_options, "timeout", 0);
+	int32_t timeout_ms = ReadOption<int32_t>(maybe_options, StringTable::Get().timeout, 0);
 	return ThreePhaseTask::Run<async, EvaluateRunner>(*info->handle.GetIsolateHolder(), info, timeout_ms);
 }
 

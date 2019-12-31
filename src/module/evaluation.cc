@@ -13,9 +13,9 @@ ScriptOriginHolder::ScriptOriginHolder(MaybeLocal<Object> maybe_options, bool is
 		is_module{is_module} {
 	Local<Object> options;
 	if (maybe_options.ToLocal(&options)) {
-		filename = ReadOption<std::string>(options, "filename", filename);
-		column_offset = ReadOption<int32_t>(options, "columnOffset", column_offset);
-		line_offset = ReadOption<int32_t>(options, "lineOffset", line_offset);
+		filename = ReadOption<std::string>(options, StringTable::Get().filename, filename);
+		column_offset = ReadOption<int32_t>(options, StringTable::Get().columnOffset, column_offset);
+		line_offset = ReadOption<int32_t>(options, StringTable::Get().lineOffset, line_offset);
 	}
 }
 
@@ -39,9 +39,9 @@ ScriptOriginHolder::operator ScriptOrigin() const {
 CodeCompilerHolder::CodeCompilerHolder(Local<String> code_handle, MaybeLocal<Object> maybe_options, bool is_module) :
 		script_origin_holder{maybe_options, is_module},
 		code_string{ExternalCopyString{code_handle}},
-		produce_cached_data{ReadOption<bool>(maybe_options, "produceCachedData", {})} {
+		produce_cached_data{ReadOption<bool>(maybe_options, StringTable::Get().produceCachedData, {})} {
 	// Read `cachedData`
-	auto maybe_cached_data = ReadOption<MaybeLocal<Object>>(maybe_options, "cachedData", {});
+	auto maybe_cached_data = ReadOption<MaybeLocal<Object>>(maybe_options, StringTable::Get().cachedData, {});
 	Local<Object> cached_data;
 	if (maybe_cached_data.ToLocal(&cached_data)) {
 		auto copy_handle = ClassHandle::Unwrap<ExternalCopyHandle>(cached_data);
@@ -98,10 +98,10 @@ void CodeCompilerHolder::WriteCompileResults(Local<Object> handle) {
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
 	if (DidSupplyCachedData()) {
-		Unmaybe(handle->Set(context, v8_symbol("cachedDataRejected"), Boolean::New(isolate, cached_data_rejected)));
+		Unmaybe(handle->Set(context, StringTable::Get().cachedDataRejected, Boolean::New(isolate, cached_data_rejected)));
 	}
 	if (cached_data_out) {
-		Unmaybe(handle->Set(context, v8_symbol("cachedData"), ClassHandle::NewInstance<ExternalCopyHandle>(std::move(cached_data_out))));
+		Unmaybe(handle->Set(context, StringTable::Get().cachedData, ClassHandle::NewInstance<ExternalCopyHandle>(std::move(cached_data_out))));
 	}
 }
 

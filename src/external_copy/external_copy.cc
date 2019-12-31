@@ -302,7 +302,7 @@ Local<Value> ExternalCopyError::CopyInto(bool /*transfer_in*/) {
 		default:
 			handle = Exception::Error(message);
 			if (name) {
-				Unmaybe(handle.As<Object>()->DefineOwnProperty(context, v8_symbol("name"), name.CopyInto(), PropertyAttribute::DontEnum));
+				Unmaybe(handle.As<Object>()->DefineOwnProperty(context, StringTable::Get().name, name.CopyInto(), PropertyAttribute::DontEnum));
 			}
 			break;
 		case ErrorType::RangeError:
@@ -322,7 +322,7 @@ Local<Value> ExternalCopyError::CopyInto(bool /*transfer_in*/) {
 	// Now add stack information
 	if (this->stack) {
 		Local<String> stack = Local<String>::Cast(this->stack.CopyInto(false));
-		Unmaybe(Local<Object>::Cast(handle)->Set(context, v8_symbol("stack"), stack));
+		Unmaybe(Local<Object>::Cast(handle)->Set(context, StringTable::Get().stack, stack));
 	}
 	return handle;
 }

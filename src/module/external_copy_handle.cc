@@ -46,8 +46,8 @@ unique_ptr<ExternalCopyHandle> ExternalCopyHandle::New(Local<Value> value, Maybe
 	bool transfer_out = false;
 	ArrayRange transfer_list;
 	if (maybe_options.ToLocal(&options)) {
-		transfer_out = ReadOption<bool>(options, "transferOut", false);
-		transfer_list = ReadOption<ArrayRange>(options, "transferList", {});
+		transfer_out = ReadOption<bool>(options, StringTable::Get().transferOut, false);
+		transfer_list = ReadOption<ArrayRange>(options, StringTable::Get().transferList, {});
 	}
 	return std::make_unique<ExternalCopyHandle>(shared_ptr<ExternalCopy>(ExternalCopy::Copy(value, transfer_out, transfer_list)));
 }
@@ -67,8 +67,8 @@ Local<Value> ExternalCopyHandle::TotalExternalSizeGetter() {
 
 Local<Value> ExternalCopyHandle::Copy(MaybeLocal<Object> maybe_options) {
 	CheckDisposed();
-	bool release = ReadOption<bool>(maybe_options, "release", false);
-	bool transfer_in = ReadOption<bool>(maybe_options, "transferIn", false);
+	bool release = ReadOption<bool>(maybe_options, StringTable::Get().release, false);
+	bool transfer_in = ReadOption<bool>(maybe_options, StringTable::Get().transferIn, false);
 	Local<Value> ret = value->CopyIntoCheckHeap(transfer_in);
 	if (release) {
 		Release();
@@ -78,8 +78,8 @@ Local<Value> ExternalCopyHandle::Copy(MaybeLocal<Object> maybe_options) {
 
 Local<Value> ExternalCopyHandle::CopyInto(MaybeLocal<Object> maybe_options) {
 	CheckDisposed();
-	bool release = ReadOption<bool>(maybe_options, "release", false);
-	bool transfer_in = ReadOption<bool>(maybe_options, "transferIn", false);
+	bool release = ReadOption<bool>(maybe_options, StringTable::Get().release, false);
+	bool transfer_in = ReadOption<bool>(maybe_options, StringTable::Get().transferIn, false);
 	Local<Value> ret = ClassHandle::NewInstance<ExternalCopyIntoHandle>(value, transfer_in);
 	if (release) {
 		Release();

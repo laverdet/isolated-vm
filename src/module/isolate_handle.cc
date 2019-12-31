@@ -75,7 +75,7 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 		}
 
 		// Set snapshot
-		auto maybe_snapshot = ReadOption<MaybeLocal<Object>>(options, "snapshot", {});
+		auto maybe_snapshot = ReadOption<MaybeLocal<Object>>(options, StringTable::Get().snapshot, {});
 		Local<Object> snapshot_handle;
 		if (maybe_snapshot.ToLocal(&snapshot_handle)) {
 			auto copy_handle = ClassHandle::Unwrap<ExternalCopyHandle>(snapshot_handle.As<Object>());
@@ -92,7 +92,7 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 		}
 
 		// Check inspector flag
-		inspector = ReadOption<bool>(options, "inspector", false);
+		inspector = ReadOption<bool>(options, StringTable::Get().inspector, false);
 	}
 
 	// Return isolate handle
@@ -116,7 +116,7 @@ struct CreateContextRunner : public ThreePhaseTask {
 	RemoteHandle<Value> global;
 
 	explicit CreateContextRunner(MaybeLocal<Object>& maybe_options) {
-		enable_inspector = ReadOption<bool>(maybe_options, "inspector", false);
+		enable_inspector = ReadOption<bool>(maybe_options, StringTable::Get().inspector, false);
 	}
 
 	void Phase2() final {
@@ -319,16 +319,17 @@ struct HeapStatRunner : public ThreePhaseTask {
 		Isolate* isolate = Isolate::GetCurrent();
 		Local<Context> context = isolate->GetCurrentContext();
 		Local<Object> ret = Object::New(isolate);
-		Unmaybe(ret->Set(context, v8_string("total_heap_size"), Number::New(isolate, heap.total_heap_size())));
-		Unmaybe(ret->Set(context, v8_string("total_heap_size_executable"), Number::New(isolate, heap.total_heap_size_executable())));
-		Unmaybe(ret->Set(context, v8_string("total_physical_size"), Number::New(isolate, heap.total_physical_size())));
-		Unmaybe(ret->Set(context, v8_string("total_available_size"), Number::New(isolate, static_cast<double>(heap.total_available_size()) - adjustment)));
-		Unmaybe(ret->Set(context, v8_string("used_heap_size"), Number::New(isolate, heap.used_heap_size())));
-		Unmaybe(ret->Set(context, v8_string("heap_size_limit"), Number::New(isolate, static_cast<double>(heap.heap_size_limit()) - adjustment)));
-		Unmaybe(ret->Set(context, v8_string("malloced_memory"), Number::New(isolate, heap.malloced_memory())));
-		Unmaybe(ret->Set(context, v8_string("peak_malloced_memory"), Number::New(isolate, heap.peak_malloced_memory())));
-		Unmaybe(ret->Set(context, v8_string("does_zap_garbage"), Number::New(isolate, heap.does_zap_garbage())));
-		Unmaybe(ret->Set(context, v8_string("externally_allocated_size"), Number::New(isolate, externally_allocated_size)));
+		auto strings = StringTable::Get();
+		Unmaybe(ret->Set(context, strings.total_heap_size, Number::New(isolate, heap.total_heap_size())));
+		Unmaybe(ret->Set(context, strings.total_heap_size_executable, Number::New(isolate, heap.total_heap_size_executable())));
+		Unmaybe(ret->Set(context, strings.total_physical_size, Number::New(isolate, heap.total_physical_size())));
+		Unmaybe(ret->Set(context, strings.total_available_size, Number::New(isolate, static_cast<double>(heap.total_available_size()) - adjustment)));
+		Unmaybe(ret->Set(context, strings.used_heap_size, Number::New(isolate, heap.used_heap_size())));
+		Unmaybe(ret->Set(context, strings.heap_size_limit, Number::New(isolate, static_cast<double>(heap.heap_size_limit()) - adjustment)));
+		Unmaybe(ret->Set(context, strings.malloced_memory, Number::New(isolate, heap.malloced_memory())));
+		Unmaybe(ret->Set(context, strings.peak_malloced_memory, Number::New(isolate, heap.peak_malloced_memory())));
+		Unmaybe(ret->Set(context, strings.does_zap_garbage, Number::New(isolate, heap.does_zap_garbage())));
+		Unmaybe(ret->Set(context, strings.externally_allocated_size, Number::New(isolate, externally_allocated_size)));
 		return ret;
 	}
 };
@@ -343,7 +344,7 @@ Local<Value> IsolateHandle::GetHeapStatistics() {
 Local<Value> IsolateHandle::GetCpuTime() {
 	auto env = this->isolate->GetIsolate();
 	if (!env) {
-		throw RuntimeGenericError("Isolated is disposed");
+		throw RuntimeGenericError("Isolate is disposed");
 	}
 	uint64_t time = env->GetCpuTime().count();
 	Isolate* isolate = Isolate::GetCurrent();
@@ -358,7 +359,7 @@ Local<Value> IsolateHandle::GetCpuTime() {
 Local<Value> IsolateHandle::GetWallTime() {
 	auto env = this->isolate->GetIsolate();
 	if (!env) {
-		throw RuntimeGenericError("Isolated is disposed");
+		throw RuntimeGenericError("Isolate is disposed");
 	}
 	uint64_t time = env->GetWallTime().count();
 	Isolate* isolate = Isolate::GetCurrent();
@@ -376,7 +377,7 @@ Local<Value> IsolateHandle::GetWallTime() {
 Local<Value> IsolateHandle::GetReferenceCount() {
 	auto env = this->isolate->GetIsolate();
 	if (!env) {
-		throw RuntimeGenericError("Isolated is disposed");
+		throw RuntimeGenericError("Isolate is disposed");
 	}
 	return Number::New(Isolate::GetCurrent(), env->GetRemotesCount());
 }
@@ -444,7 +445,7 @@ Local<Value> IsolateHandle::CreateSnapshot(ArrayRange script_handles, MaybeLocal
 	scripts.reserve(std::distance(script_handles.begin(), script_handles.end()));
 	for (auto value : script_handles) {
 		auto script_handle = HandleCast<Local<Object>>(value);
-		Local<Value> script = Unmaybe(script_handle.As<Object>()->Get(context, v8_string("code")));
+		Local<Value> script = Unmaybe(script_handle.As<Object>()->Get(context, StringTable::Get().code));
 		if (!script->IsString()) {
 			throw RuntimeTypeError("`code` property is required");
 		}
