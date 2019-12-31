@@ -14,12 +14,12 @@ ExternalCopySerialized::ExternalCopySerialized(Local<Object> value, ArrayRange t
 	ValueSerializer serializer{isolate, &delegate};
 	delegate.SetSerializer(&serializer);
 
-	// Transfer ArrayBuffers
+	// Mark ArrayBuffers as transferred, but don't actually transfer yet otherwise it will invalidate
+	// array views before they are transferred
+	int ii = 0;
 	for (auto handle : transfer_list) {
 		if (handle->IsArrayBuffer()) {
-			auto array_buffer = handle.As<ArrayBuffer>();
-			serializer.TransferArrayBuffer(transferables.size(), array_buffer);
-			array_buffers.emplace_back(ExternalCopyArrayBuffer::Transfer(array_buffer));
+			serializer.TransferArrayBuffer(ii++, handle.As<ArrayBuffer>());
 		} else {
 			throw RuntimeTypeError("Non-ArrayBuffer passed in `transferList`");
 		}
@@ -31,6 +31,11 @@ ExternalCopySerialized::ExternalCopySerialized(Local<Object> value, ArrayRange t
 	auto serialized_data = serializer.Release();
 	buffer = {serialized_data.first, std::free};
 	size = serialized_data.second;
+
+	// Transfer ArrayBuffers
+	for (auto handle : transfer_list) {
+		array_buffers.emplace_back(ExternalCopyArrayBuffer::Transfer(handle.As<ArrayBuffer>()));
+	}
 }
 
 auto ExternalCopySerialized::CopyInto(bool transfer_in) -> Local<Value> {
