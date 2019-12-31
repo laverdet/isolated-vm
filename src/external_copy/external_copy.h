@@ -41,22 +41,22 @@ class ExternalCopy : public Transferable {
 		static auto CopyIfPrimitive(v8::Local<v8::Value> value) -> std::unique_ptr<ExternalCopy>;
 		static auto CopyIfPrimitiveOrError(v8::Local<v8::Value> value) -> std::unique_ptr<ExternalCopy>;
 
-		static auto TotalExternalSize() -> size_t;
+		static auto TotalExternalSize() -> int;
 
 		v8::Local<v8::Value> CopyIntoCheckHeap(bool transfer_in = false);
 		virtual v8::Local<v8::Value> CopyInto(bool transfer_in = false) = 0;
-		auto Size() const -> size_t { return size; }
+		auto Size() const -> int { return size; }
 		auto TransferIn() -> v8::Local<v8::Value> final { return CopyIntoCheckHeap(); }
 
 	protected:
-		explicit ExternalCopy(size_t size);
+		explicit ExternalCopy(int size);
 		ExternalCopy(ExternalCopy&& that) noexcept;
 		auto operator= (ExternalCopy&& that) noexcept -> ExternalCopy&;
 
-		void UpdateSize(size_t size);
+		void UpdateSize(int size);
 
 	private:
-		size_t size = 0;
+		int size = 0;
 };
 
 /**

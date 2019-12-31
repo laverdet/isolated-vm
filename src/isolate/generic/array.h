@@ -42,19 +42,19 @@ class ArrayRange {
 					return Unmaybe(array->Get(context, index));
 				}
 
-				constexpr auto operator==(const iterator& rhs) const {
+				auto operator==(const iterator& rhs) const {
 					return index == rhs.index;
 				}
 
-				constexpr auto operator<(const iterator& rhs) const {
+				auto operator<(const iterator& rhs) const {
 					return index < rhs.index;
 				}
 
-				constexpr auto operator-(const iterator& rhs) const -> difference_type {
+				auto operator-(const iterator& rhs) const -> difference_type {
 					return index - rhs.index;
 				}
 
-				constexpr auto operator+=(int val) -> iterator& {
+				auto operator+=(int val) -> iterator& {
 					index += val;
 					return *this;
 				}
@@ -64,19 +64,19 @@ class ArrayRange {
 					return *(*this + index);
 				}
 
-				constexpr auto operator!=(const iterator& rhs) const {
+				auto operator!=(const iterator& rhs) const {
 					return !(*this == rhs);
 				}
 
-				constexpr auto operator>(const iterator& rhs) const {
+				auto operator>(const iterator& rhs) const {
 					return rhs < *this;
 				}
 
-				constexpr auto operator<=(const iterator& rhs) const {
+				auto operator<=(const iterator& rhs) const {
 					return !(*this > rhs);
 				}
 
-				constexpr auto operator>=(const iterator& rhs) const {
+				auto operator>=(const iterator& rhs) const {
 					return !(*this < rhs);
 				}
 
@@ -90,15 +90,15 @@ class ArrayRange {
 					return *this + -val;
 				}
 
-				constexpr auto operator++() -> iterator& {
+				auto operator++() -> iterator& {
 					return *this += 1;
 				}
 
-				constexpr auto operator-=(difference_type val) -> iterator& {
+				auto operator-=(difference_type val) -> iterator& {
 					return *this += -val;
 				}
 
-				constexpr auto operator--() -> iterator& {
+				auto operator--() -> iterator& {
 					return *this -= 1;
 				}
 

@@ -1,4 +1,5 @@
 #include "./string.h"
+#include <cstring>
 
 using namespace v8;
 
@@ -18,7 +19,7 @@ class ExternalString : public v8::String::ExternalStringResource {
 		ExternalString(const ExternalString&) = delete;
 
 		~ExternalString() final {
-			IsolateEnvironment::GetCurrent()->AdjustExtraAllocatedMemory(-this->value->size());
+			IsolateEnvironment::GetCurrent()->AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
 		}
 
 		auto operator= (const ExternalString&) = delete;
@@ -44,7 +45,7 @@ class ExternalStringOneByte : public v8::String::ExternalOneByteStringResource {
 		ExternalStringOneByte(const ExternalStringOneByte&) = delete;
 
 		~ExternalStringOneByte() final {
-			IsolateEnvironment::GetCurrent()->AdjustExtraAllocatedMemory(-this->value->size());
+			IsolateEnvironment::GetCurrent()->AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
 		}
 
 		auto operator= (const ExternalStringOneByte&) = delete;
@@ -67,7 +68,7 @@ class ExternalStringOneByte : public v8::String::ExternalOneByteStringResource {
  * ExternalCopyString implementation
  */
 ExternalCopyString::ExternalCopyString(Local<String> string) :
-		ExternalCopy{(string->Length() << (string->IsOneByte() ? 0 : 1)) + sizeof(ExternalCopyString)} {
+		ExternalCopy{static_cast<int>((string->Length() << (string->IsOneByte() ? 0 : 1)) + sizeof(ExternalCopyString))} {
 	if (string->IsOneByte()) {
 		one_byte = true;
 		value = std::make_shared<std::vector<char>>(string->Length());

@@ -37,7 +37,7 @@ class ExternalCopyHandle : public TransferableHandle {
 		std::shared_ptr<ExternalCopy> GetValue() const { return value; }
 
 	private:
-		size_t size = 0;
+		int size = 0;
 };
 
 class ExternalCopyIntoHandle : public TransferableHandle {

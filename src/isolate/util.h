@@ -5,9 +5,6 @@
 #include <v8.h>
 #include "generic/error.h"
 
-// TODO: Why is windows.h getting included all of a sudden????
-#undef GetObject
-
 namespace ivm {
 
 /**

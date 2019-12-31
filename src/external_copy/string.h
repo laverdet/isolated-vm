@@ -14,10 +14,10 @@ class ExternalCopyString : public ExternalCopy {
 		ExternalCopyString(const ExternalCopyString&) = delete;
 		ExternalCopyString(ExternalCopyString&& that) = default;
 		~ExternalCopyString() final = default;
-		auto operator= (const ExternalCopyString&) = delete;
+		auto operator= (const ExternalCopyString&) -> ExternalCopyString& = delete;
 		auto operator= (ExternalCopyString&& that) noexcept -> ExternalCopyString& = default;
 
-		explicit operator bool() const { return bool{value}; }
+		explicit operator bool() const { return static_cast<bool>(value); }
 		auto CopyInto(bool transfer_in = false) -> v8::Local<v8::Value> final;
 
 	private:

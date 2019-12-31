@@ -31,6 +31,8 @@ using std::unique_ptr;
 
 namespace ivm {
 
+std::atomic<size_t> detail::IsolateSpecificSize{0};
+
 /**
  * HeapCheck implementation
  */

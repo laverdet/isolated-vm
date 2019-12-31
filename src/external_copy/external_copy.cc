@@ -75,7 +75,7 @@ std::atomic<size_t> total_allocated_size {0};
 /**
  * ExternalCopy implementation
  */
-ExternalCopy::ExternalCopy(size_t size) : size{size} {
+ExternalCopy::ExternalCopy(int size) : size{size} {
 	total_allocated_size += size;
 }
 
@@ -263,12 +263,12 @@ auto ExternalCopy::CopyIntoCheckHeap(bool transfer_in) -> Local<Value> {
 	return value;
 }
 
-auto ExternalCopy::TotalExternalSize() -> size_t {
+auto ExternalCopy::TotalExternalSize() -> int {
 	return total_allocated_size;
 }
 
-void ExternalCopy::UpdateSize(size_t size) {
-	total_allocated_size -= static_cast<ptrdiff_t>(this->size) - static_cast<ptrdiff_t>(size);
+void ExternalCopy::UpdateSize(int size) {
+	total_allocated_size -= this->size - size;
 	this->size = size;
 }
 
@@ -331,7 +331,7 @@ Local<Value> ExternalCopyError::CopyInto(bool /*transfer_in*/) {
  * ExternalCopyBytes implementation
  */
 ExternalCopyBytes::ExternalCopyBytes(size_t size, std::shared_ptr<void> value, size_t length) :
-		ExternalCopy{size}, value{std::move(value)}, length{length} {}
+		ExternalCopy{static_cast<int>(size)}, value{std::move(value)}, length{length} {}
 
 std::shared_ptr<void> ExternalCopyBytes::Acquire() const {
 	std::lock_guard<std::mutex> lock{mutex};

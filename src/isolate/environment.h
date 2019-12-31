@@ -321,7 +321,7 @@ template <class Functor>
 auto IsolateSpecific<Type>::Deref(Functor callback) -> v8::Local<Type> {
 	auto& env = *Executor::GetCurrentEnvironment();
 	if (env.specifics.size() <= key) {
-		env.specifics.resize(IsolateSpecific<void>::size);
+		env.specifics.resize(detail::IsolateSpecificSize);
 	}
 	auto& eternal = env.specifics[key];
 	if (eternal.IsEmpty()) {

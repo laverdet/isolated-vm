@@ -24,7 +24,7 @@
 					4068, # Unknown pragma
 				],
 				'conditions': [
-					[ 'OS == "win"', { 'defines': [ 'NOMINMAX' ] } ],
+					[ 'OS == "win"', { 'defines': [ 'NOMSG', 'NOMINMAX', 'WIN32_LEAN_AND_MEAN' ] } ],
 				],
 			},
 			'Release': {
