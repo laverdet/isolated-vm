@@ -17,7 +17,7 @@ namespace {
 struct TransferablePromiseStateStruct {
 	std::shared_ptr<Transferable> value;
 	// This would be a good case for a unique_ptr version of RemoteHandle
-	std::deque<RemoteHandle<Promise::Resolver>> waiting;
+	std::deque<RemoteTuple<Promise::Resolver, v8::Context>> waiting;
 	bool did_throw = false;
 	bool resolved = false;
 };
@@ -80,7 +80,7 @@ class TransferablePromiseHolder : public ClassHandle {
 		template <class Function>
 		void Save(bool did_throw, Function callback) {
 			std::shared_ptr<Transferable> resolved_value;
-			auto pending_tasks = [&]() -> std::deque<RemoteHandle<Promise::Resolver>> {
+			auto pending_tasks = [&]() -> std::deque<RemoteTuple<Promise::Resolver, v8::Context>> {
 				auto lock = state->write();
 				if (!lock->resolved) {
 					lock->resolved = true;
@@ -110,13 +110,12 @@ class TransferablePromiseHolder : public ClassHandle {
 		}
 
 		struct ResolveTask : Runnable {
-			ResolveTask(RemoteHandle<Promise::Resolver> resolver, std::shared_ptr<Transferable> value, bool did_throw) :
+			ResolveTask(RemoteTuple<Promise::Resolver, v8::Context> resolver, std::shared_ptr<Transferable> value, bool did_throw) :
 				resolver{std::move(resolver)}, value{std::move(value)}, did_throw{did_throw} {}
 
 			void Run() final {
-				auto isolate = Isolate::GetCurrent();
-				auto context = isolate->GetCurrentContext();
-				auto resolver = Deref(this->resolver);
+				auto context = this->resolver.Deref<1>();
+				auto resolver = this->resolver.Deref<0>();
 				if (did_throw) {
 					Unmaybe(resolver->Reject(context, value->TransferIn()));
 				} else {
@@ -124,7 +123,7 @@ class TransferablePromiseHolder : public ClassHandle {
 				}
 			}
 
-			RemoteHandle<Promise::Resolver> resolver;
+			RemoteTuple<Promise::Resolver, v8::Context> resolver;
 			std::shared_ptr<Transferable> value;
 			bool did_throw;
 		};
@@ -158,7 +157,7 @@ class TransferablePromise : public Transferable {
 					Unmaybe(resolver->Resolve(context, lock->value->TransferIn()));
 				}
 			} else {
-				lock->waiting.emplace_back(resolver);
+				lock->waiting.emplace_back(resolver, context);
 			}
 			return resolver->GetPromise();
 		}

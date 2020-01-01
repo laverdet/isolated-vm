@@ -33,12 +33,18 @@ promise.then(resolved => assert.deepEqual(value, resolved)).then(resolved);
 
 assert.throws(() => context.evalClosureSync(`return {}`));
 
-isolate.compileScriptSync('new Promise(() => {})').runSync(context, { promise: true }).catch(resolved);
-isolate.dispose();
+const delegatedPromise = context.evalClosureSync(
+	`return $0.apply(undefined, [], { result: { promise: true }})`,
+	[ () => new Promise(resolve => process.nextTick(resolve)) ], { arguments: { reference: true }, result: { promise: true } });
+delegatedPromise.result.then(resolved);
 
 let ii = 0;
 function resolved() {
 	if (++ii === 4) {
-		console.log('pass');
+		isolate.compileScriptSync('new Promise(() => {})').runSync(context, { promise: true }).catch(() => {
+			// abandoned
+			console.log('pass');
+		});
+		isolate.dispose();
 	}
 }
