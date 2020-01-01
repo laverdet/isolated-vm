@@ -257,7 +257,7 @@ class EvalClosureRunner : public CodeCompilerHolder, public ThreePhaseTask {
 					context, context->Global(),
 					argv_transferred.size(), argv_transferred.empty() ? nullptr : &argv_transferred[0]);
 			});
-			result = OptionalTransferOut(script_result, transfer_options);
+			result = TransferOut(script_result, transfer_options);
 			heap_check.Epilogue();
 		}
 

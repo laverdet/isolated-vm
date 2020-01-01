@@ -31,6 +31,8 @@ global.getSync('promise', { copy: true, promise: true }).then(resolved => assert
 global.getSync('resolve').applySync(undefined, [ value ], { arguments: { copy: true } });
 promise.then(resolved => assert.deepEqual(value, resolved)).then(resolved);
 
+assert.throws(() => context.evalClosureSync(`return {}`));
+
 isolate.compileScriptSync('new Promise(() => {})').runSync(context, { promise: true }).catch(resolved);
 isolate.dispose();
 
