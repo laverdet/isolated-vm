@@ -254,8 +254,8 @@ class ApplyRunner : public ThreePhaseTask {
 
 		bool Phase2Async(Scheduler::AsyncWait& wait) final {
 			// Same as regular `Phase2()` but if it returns a promise we will wait on it
-			if (!(return_transfer_options == TransferOptions{})) {
-				throw RuntimeTypeError("`return` options are not available for `applySyncPromise`");
+			if (!(return_transfer_options == TransferOptions{TransferOptions::Type::Reference})) {
+				throw RuntimeTypeError("`result` options are not available for `applySyncPromise`");
 			}
 			Local<Context> context_handle = Deref(context);
 			Context::Scope context_scope{context_handle};

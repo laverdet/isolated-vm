@@ -20,6 +20,7 @@ class TransferOptions {
 		enum class Type { None, Copy, ExternalCopy, Reference };
 
 		TransferOptions() = default;
+		explicit TransferOptions(Type fallback) : fallback{fallback} {};
 		explicit TransferOptions(v8::Local<v8::Object> options, Type fallback = Type::None);
 		explicit TransferOptions(v8::MaybeLocal<v8::Object> maybe_options, Type fallback = Type::None);
 

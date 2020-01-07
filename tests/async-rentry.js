@@ -32,7 +32,7 @@ isolate.compileScriptSync(''+ function recursive() {
 let recursiveFn = global.getSync('recursive');
 
 (async function() {
-	let script = await isolate.compileScript('fnPromise.applySyncPromise(undefined, [])');
+	let script = await isolate.compileScript('fnPromise.applySyncPromise(undefined, [], {})');
 	let value = await script.run(context);
 	if (/hello123/.test(value)) {
 		try {
