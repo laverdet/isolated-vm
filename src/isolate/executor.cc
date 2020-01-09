@@ -9,7 +9,7 @@ namespace ivm {
  */
 Executor::Executor(IsolateEnvironment& env) :
 	env{env},
-	default_executor{*(current_executor == nullptr ? (current_executor = this) : current_executor)},
+	default_executor{*(current_executor == nullptr ? (current_executor = this) : &current_executor->default_executor)},
 	default_thread{&default_executor == this ? std::this_thread::get_id() : default_executor.default_thread} {}
 
 auto Executor::MayRunInlineTasks(IsolateEnvironment& env) -> bool {

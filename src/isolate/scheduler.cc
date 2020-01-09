@@ -19,7 +19,7 @@ Scheduler::Implementation::Implementation(IsolateEnvironment& env) :
 		env{env},
 		default_scheduler{[&]() -> Implementation& {
 			auto env = Executor::GetCurrentEnvironment();
-			return env == nullptr ? *this : env->scheduler.impl;
+			return env == nullptr ? *this : env->scheduler.impl.default_scheduler;
 		}()} {
 	if (this == &default_scheduler) {
 		loop = node::GetCurrentEventLoop(v8::Isolate::GetCurrent());
