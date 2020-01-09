@@ -34,9 +34,10 @@ promise.then(resolved => assert.deepEqual(value, resolved)).then(resolved);
 assert.throws(() => context.evalClosureSync(`return {}`));
 
 const delegatedPromise = context.evalClosureSync(
-	`return $0.apply(undefined, [], { result: { promise: true }})`,
-	[ () => new Promise(resolve => process.nextTick(resolve)) ], { arguments: { reference: true }, result: { promise: true } });
-delegatedPromise.result.then(resolved);
+	`return $0.apply(undefined, [], { result: { promise: true, copy: true }})`,
+	[ () => new Promise(resolve => process.nextTick(() => resolve(value))) ],
+	{ arguments: { reference: true }, result: { promise: true, copy: true } });
+delegatedPromise.result.then(resolved => assert.deepEqual(resolved, value)).then(resolved);
 
 let ii = 0;
 function resolved() {

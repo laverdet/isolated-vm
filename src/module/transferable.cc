@@ -115,6 +115,7 @@ class TransferablePromiseHolder : public ClassHandle {
 
 			void Run() final {
 				auto context = this->resolver.Deref<1>();
+				Context::Scope context_scope{context};
 				auto resolver = this->resolver.Deref<0>();
 				if (did_throw) {
 					Unmaybe(resolver->Reject(context, value->TransferIn()));
