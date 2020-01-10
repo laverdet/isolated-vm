@@ -9,7 +9,6 @@ ExternalCopySerialized::ExternalCopySerialized(Local<Object> value, ArrayRange t
 	// Initialize serializer and delegate
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
-	std::deque<std::unique_ptr<Transferable>> transferables;
 	detail::ExternalCopySerializerDelegate delegate{transferables, wasm_modules};
 	ValueSerializer serializer{isolate, &delegate};
 	delegate.SetSerializer(&serializer);
