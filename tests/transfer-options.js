@@ -39,6 +39,11 @@ const delegatedPromise = context.evalClosureSync(
 	{ arguments: { reference: true }, result: { promise: true, copy: true } });
 delegatedPromise.result.then(resolved => assert.deepEqual(resolved, value)).then(resolved);
 
+context.evalClosure(
+	'return $0.applySyncPromise()',
+	[ async() => new ivm.ExternalCopy(value).copyInto() ], { arguments: { reference: true }, result: { copy: true }}
+).then(result => assert.deepEqual(result.result, value));
+
 let ii = 0;
 function resolved() {
 	if (++ii === 4) {

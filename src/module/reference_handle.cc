@@ -380,7 +380,7 @@ class ApplyRunner : public ThreePhaseTask {
 		uint32_t timeout = 0;
 		// Only used in the AsyncPhase2 case
 		shared_ptr<bool> did_finish;
-		TransferOptions return_transfer_options;
+		TransferOptions return_transfer_options{TransferOptions::Type::Reference};
 		unique_ptr<ExternalCopy> async_error;
 		Scheduler::AsyncWait* async_wait = nullptr;
 };
