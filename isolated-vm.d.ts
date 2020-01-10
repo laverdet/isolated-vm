@@ -515,7 +515,7 @@ declare module "isolated-vm" {
 		/**
 		 * If true release() will automatically be called on this instance.
 		 */
-		release: boolean;
+		release?: boolean;
 	};
 
 	export type RunOptions = {
@@ -523,7 +523,7 @@ declare module "isolated-vm" {
 		 * Maximum amount of time in milliseconds this script is allowed to run before execution is
 		 * canceled. Default is no timeout.
 		 */
-		timeout: number;
+		timeout?: number;
 	};
 
 	/**
@@ -536,17 +536,17 @@ declare module "isolated-vm" {
 		/**
 		 * Filename of this source code
 		 */
-		filename: string;
+		filename?: string;
 
 		/**
 		 * Column offset of this source code
 		 */
-		columnOffset: number;
+		columnOffset?: number;
 
 		/**
 		 * Line offset of this source code
 		 */
-		lineOffset: number;
+		lineOffset?: number;
 	};
 
 	export type SnapshotScriptInfo = ScriptOrigin & {
@@ -570,33 +570,32 @@ declare module "isolated-vm" {
 		 * Automatically proxy any returned promises between isolates. This can be used in combination
 		 * with the other transfer options.
 		 */
-		promise: boolean;
+		promise?: boolean;
 
 		/**
 		 * Automatically deep copy value
 		 */
-		copy: boolean;
+		copy?: boolean;
 
 		/**
 		 * Automatically wrap value in `ExternalCopy` instance
 		 */
-		externalCopy: boolean;
+		externalCopy?: boolean;
 
 		/**
 		 * Automatically wrap value in `Reference` instance
 		 */
-		reference: boolean;
+		reference?: boolean;
 	};
 
 	export type TransferOptionsBidirectional = {
 		/**
 		 * `TransferOptions` for the values going *into* this isolate.
 		 */
-		arguments: TransferOptions;
-	} & {
+		arguments?: TransferOptions;
 		/**
 		 * `TransferOptions` for the values coming *out* of this isolate.
 		 */
-		result: TransferOptions;
+		result?: TransferOptions;
 	};
 }
