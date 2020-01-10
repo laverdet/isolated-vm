@@ -286,10 +286,12 @@ struct ConstructorFunction : detail::ConstructorFunctionHolder {
 		std::tuple_size<typename detail::extract_arguments<Signature>::arguments>::value} {}
 
 	static void Entry(const v8::FunctionCallbackInfo<v8::Value>& info) {
-		if (!info.IsConstructCall()) {
-			throw RuntimeTypeError(detail::CalleeName(info)+ " must be called with `new`");
-		}
-		ToCallback<-1, typename Impl::Type, &Impl::template Invoke<Function>>()(info);
+		detail::RunBarrier([&]() {
+			if (!info.IsConstructCall()) {
+				throw RuntimeTypeError(detail::CalleeName(info)+ " must be called with `new`");
+			}
+			ToCallback<-1, typename Impl::Type, &Impl::template Invoke<Function>>()(info);
+		});
 	}
 
 	using Impl = detail::ConstructorFunctionImpl<Signature>;
