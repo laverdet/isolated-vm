@@ -39,7 +39,7 @@ class ExternalCopy : public Transferable {
 		 * isolates where it is possible to do so perfectly.
 		 */
 		static auto CopyIfPrimitive(v8::Local<v8::Value> value) -> std::unique_ptr<ExternalCopy>;
-		static auto CopyIfPrimitiveOrError(v8::Local<v8::Value> value) -> std::unique_ptr<ExternalCopy>;
+		static auto CopyThrownValue(v8::Local<v8::Value> value) -> std::unique_ptr<ExternalCopy>;
 
 		static auto TotalExternalSize() -> int;
 

@@ -34,7 +34,8 @@ template <typename F1, typename F2>
 inline void RunCatchExternal(v8::Local<v8::Context> default_context, F1 fn1, F2 fn2) {
 	// This function will call `fn1()` and if that fails it will convert the caught error to an
 	// `ExternalCopy` and call `fn2(err)`
-	v8::TryCatch try_catch(v8::Isolate::GetCurrent());
+	auto isolate = v8::Isolate::GetCurrent();
+	v8::TryCatch try_catch{isolate};
 	try {
 		try {
 			fn1();
@@ -50,15 +51,8 @@ inline void RunCatchExternal(v8::Local<v8::Context> default_context, F1 fn1, F2 
 		} catch (const RuntimeError& cc_error) {
 			// If this is caught it means the error needs to be copied out of v8
 			assert(try_catch.HasCaught());
-			v8::Context::Scope context_scope(default_context);
-			std::unique_ptr<ExternalCopy> error = ExternalCopy::CopyIfPrimitiveOrError(try_catch.Exception());
-			if (error) {
-				fn2(std::move(error));
-			} else {
-				fn2((std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::Error,
-					"An object was thrown from supplied code within isolated-vm, but that object was not an instance of `Error`."
-				)));
-			}
+			v8::Context::Scope context_scope{default_context};
+			fn2(ExternalCopy::CopyThrownValue(try_catch.Exception()));
 		}
 	} catch (...) {
 		if (try_catch.HasCaught()) {

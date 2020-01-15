@@ -172,18 +172,22 @@ void ThreePhaseTask::Phase2Runner::Run() {
 	};
 
 	did_run = true;
-	FunctorRunners::RunCatchExternal(IsolateEnvironment::GetCurrent()->DefaultContext(), [ this ]() {
-		// Continue the task
-		self->Phase2();
-		IsolateEnvironment::GetCurrent()->TaskEpilogue();
-		auto holder = info.remotes.GetIsolateHolder();
-		holder->ScheduleTask(std::make_unique<Phase3Success>(std::move(self), std::move(info)), false, true);
-	}, [ this ](unique_ptr<ExternalCopy> error) {
-
+	auto schedule_error = [&](std::unique_ptr<ExternalCopy> error) {
 		// Schedule a task to enter the first isolate so we can throw the error at the promise
 		auto holder = info.remotes.GetIsolateHolder();
 		holder->ScheduleTask(std::make_unique<Phase3Failure>(std::move(self), std::move(info), std::move(error)), false, true);
-	});
+	};
+	FunctorRunners::RunCatchExternal(IsolateEnvironment::GetCurrent()->DefaultContext(), [&]() {
+		// Continue the task
+		self->Phase2();
+		auto epilogue_error = IsolateEnvironment::GetCurrent()->TaskEpilogue();
+		if (epilogue_error) {
+			schedule_error(std::move(epilogue_error));
+		} else {
+			auto holder = info.remotes.GetIsolateHolder();
+			holder->ScheduleTask(std::make_unique<Phase3Success>(std::move(self), std::move(info)), false, true);
+		}
+	}, schedule_error);
 }
 
 /**
@@ -192,7 +196,7 @@ void ThreePhaseTask::Phase2Runner::Run() {
 ThreePhaseTask::Phase2RunnerIgnored::Phase2RunnerIgnored(unique_ptr<ThreePhaseTask> self) : self(std::move(self)) {}
 
 void ThreePhaseTask::Phase2RunnerIgnored::Run() {
-	TryCatch try_catch(Isolate::GetCurrent());
+	TryCatch try_catch{Isolate::GetCurrent()};
 	try {
 		self->Phase2();
 		IsolateEnvironment::GetCurrent()->TaskEpilogue();
@@ -249,13 +253,13 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 				run_handle_tasks(*second_isolate_ref);
 
 				// Now run the actual work
-				FunctorRunners::RunCatchExternal(second_isolate_ref->DefaultContext(), [ this, is_recursive, &second_isolate_ref ]() {
+				FunctorRunners::RunCatchExternal(second_isolate_ref->DefaultContext(), [&]() {
 					// Run Phase2 and externalize errors
 					Phase2();
 					if (!is_recursive) {
-						second_isolate_ref->TaskEpilogue();
+						error = second_isolate_ref->TaskEpilogue();
 					}
-				}, [ &error ](unique_ptr<ExternalCopy> error_inner) {
+				}, [&](unique_ptr<ExternalCopy> error_inner) {
 
 					// We need to stash the error in the outer unique_ptr because the executor lock is still up
 					error = std::move(error_inner);
@@ -319,7 +323,7 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 						} else {
 							self.Phase2();
 						}
-						IsolateEnvironment::GetCurrent()->TaskEpilogue();
+						this->error = IsolateEnvironment::GetCurrent()->TaskEpilogue();
 					}, [ this ](unique_ptr<ExternalCopy> error) {
 						this->error = std::move(error);
 					});

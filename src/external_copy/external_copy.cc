@@ -207,7 +207,7 @@ auto ExternalCopy::CopyIfPrimitive(Local<Value> value) -> std::unique_ptr<Extern
 	return {};
 }
 
-auto ExternalCopy::CopyIfPrimitiveOrError(Local<Value> value) -> std::unique_ptr<ExternalCopy> {
+auto ExternalCopy::CopyThrownValue(Local<Value> value) -> std::unique_ptr<ExternalCopy> {
 	if (value->IsObject()) {
 
 		// Detect which subclass of Error was thrown (no better way to do this??)
@@ -253,7 +253,14 @@ auto ExternalCopy::CopyIfPrimitiveOrError(Local<Value> value) -> std::unique_ptr
 			return std::make_unique<ExternalCopyError>(error_type, std::move(name_copy), std::move(message_copy), std::move(stack_copy));
 		}
 	}
-	return CopyIfPrimitiveImpl(value);
+	auto primitive_value = CopyIfPrimitiveImpl(value);
+	if (primitive_value) {
+		return primitive_value;
+	}
+	return std::make_unique<ExternalCopyError>(
+		ExternalCopyError::ErrorType::Error,
+		"An object was thrown from supplied code within isolated-vm, but that object was not an instance of `Error`."
+	);
 }
 
 auto ExternalCopy::CopyIntoCheckHeap(bool transfer_in) -> Local<Value> {

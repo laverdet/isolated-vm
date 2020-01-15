@@ -224,7 +224,7 @@ class IsolateEnvironment {
 		 * This is called after user code runs. This throws a fatal error if the memory limit was hit.
 		 * If an asyncronous exception (promise) was lost, this will throw it for real.
 		 */
-		void TaskEpilogue();
+		auto TaskEpilogue() -> std::unique_ptr<class ExternalCopy>;
 
 		/**
 		 * Get allocator used by this isolate. Will return nullptr for the default isolate.

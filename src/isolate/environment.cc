@@ -424,18 +424,19 @@ Local<Context> IsolateEnvironment::NewContext() {
 #endif
 }
 
-void IsolateEnvironment::TaskEpilogue() {
+auto IsolateEnvironment::TaskEpilogue() -> std::unique_ptr<ExternalCopy> {
 	isolate->RunMicrotasks();
 	CheckMemoryPressure();
 	if (hit_memory_limit) {
 		throw FatalRuntimeError("Isolate was disposed during execution due to memory limit");
 	}
 	if (!rejected_promise_error.IsEmpty()) {
-		Context::Scope context_scope(DefaultContext());
-		isolate->ThrowException(Local<Value>::New(isolate, rejected_promise_error));
+		Context::Scope context_scope{DefaultContext()};
+		auto js_error = Local<Value>::New(isolate, rejected_promise_error);
 		rejected_promise_error.Reset();
-		throw RuntimeError();
+		return ExternalCopy::CopyThrownValue(js_error);
 	}
+	return {};
 }
 
 void IsolateEnvironment::EnableInspectorAgent() {

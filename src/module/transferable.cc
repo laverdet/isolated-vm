@@ -105,7 +105,7 @@ class TransferablePromiseHolder : public ClassHandle {
 
 		static void Rejected(TransferablePromiseHolder& that, Local<Value> value) {
 			that.Save(true, [&]() {
-				return ExternalCopy::CopyIfPrimitiveOrError(value);
+				return ExternalCopy::CopyThrownValue(value);
 			});
 		}
 
