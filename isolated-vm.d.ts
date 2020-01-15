@@ -229,7 +229,7 @@ declare module "isolated-vm" {
 		runSync(context: Context, options?: ScriptRunOptions): any;
 	}
 
-	export type ScriptRunOptions = RunOptions & ReleaseOptions;
+	export type ScriptRunOptions = RunOptions & ReleaseOptions & TransferOptions;
 
 	/**
 	 * A JavaScript module. Note that a Module can only run in the isolate which created it.
