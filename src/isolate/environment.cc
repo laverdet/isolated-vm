@@ -196,9 +196,7 @@ void IsolateEnvironment::AsyncEntry() {
 		{
 			// Grab current tasks
 			Scheduler::Lock lock{scheduler};
-			auto foo = !lock.scheduler.tasks.empty() ? &lock.scheduler.tasks.front() : nullptr;
 			tasks = ExchangeDefault(lock.scheduler.tasks);
-			assert(tasks.empty() || foo == &tasks.front());
 			handle_tasks = ExchangeDefault(lock.scheduler.handle_tasks);
 			interrupts = ExchangeDefault(lock.scheduler.interrupts);
 			if (tasks.empty() && handle_tasks.empty() && interrupts.empty()) {
