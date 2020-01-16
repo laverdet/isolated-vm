@@ -90,7 +90,13 @@ class RemoteTuple {
 		using TupleType = detail::HandleTuple<Types...>;
 
 		struct DefaultDisposer {
-			void operator()(v8::Local<Types>... /*values*/) const {}
+			template <class Type, class ...Rest>
+			void operator()(v8::Persistent<Type>& value, Rest&&... rest) const {
+				value.Reset();
+				(*this)(std::forward<Rest>(rest)...);
+			}
+
+			void operator()() const {}
 		};
 
 		template <class Disposer>
@@ -100,7 +106,7 @@ class RemoteTuple {
 					isolate{std::move(isolate)}, disposer{std::move(disposer)} {}
 
 				void operator()(TupleType* handles) {
-					isolate->ScheduleTask(std::make_unique<DisposalTask<Disposer>>(std::move(handles), std::move(disposer)), true, false, true);
+					isolate->ScheduleTask(std::make_unique<DisposalTask<Disposer>>(handles, std::move(disposer)), true, false, true);
 				}
 
 			private:
@@ -115,25 +121,14 @@ class RemoteTuple {
 					handles{handles}, disposer{std::move(disposer)} {}
 
 			private:
-				template <int> void Dispose() {}
-
-				template <int, class Type, class ...Rest>
-				void Dispose() {
-					Dispose<0, Rest...>();
-					handles->template get<sizeof...(Rest)>().Reset();
-				}
-
 				template <size_t ...Indices>
 				void Apply(std::index_sequence<Indices...> /*unused*/) {
-					disposer(v8::Local<std::tuple_element_t<Indices, typename TupleType::Types>>::New(
-						v8::Isolate::GetCurrent(), handles->template get<Indices>()
-					)...);
+					disposer(handles->template get<Indices>()...);
 				}
 
 				void Run() final {
 					Apply(std::make_index_sequence<TupleType::Size>{});
-					Dispose<0, Types...>();
-					IsolateEnvironment::GetCurrent()->AdjustRemotes(TupleType::Size);
+					IsolateEnvironment::GetCurrent()->AdjustRemotes(-static_cast<int>(TupleType::Size));
 				}
 
 				std::unique_ptr<TupleType> handles;

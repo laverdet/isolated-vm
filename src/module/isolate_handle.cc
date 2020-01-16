@@ -126,12 +126,18 @@ struct CreateContextRunner : public ThreePhaseTask {
 
 			explicit ContextDeleter(bool has_inspector) : has_inspector{has_inspector} {}
 
-			void operator() (Local<Context> context) {
-				context->DetachGlobal();
-				if (has_inspector) {
-					IsolateEnvironment::GetCurrent()->GetInspectorAgent()->ContextDestroyed(context);
+			void operator() (Persistent<Context>& context) {
+				auto& env = *IsolateEnvironment::GetCurrent();
+				{
+					HandleScope handle_scope{env.GetIsolate()};
+					auto context_local = Local<Context>::New(env.GetIsolate(), context);
+					context_local->DetachGlobal();
+					if (has_inspector) {
+						env.GetInspectorAgent()->ContextDestroyed(context_local);
+					}
+					context.Reset();
 				}
-				Isolate::GetCurrent()->ContextDisposedNotification();
+				env.GetIsolate()->ContextDisposedNotification();
 			}
 		};
 
