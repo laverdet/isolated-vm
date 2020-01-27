@@ -3,7 +3,6 @@
 		'default_configuration': 'Release',
 		'configurations': {
 			'Common': {
-				'abstract': 1,
 				'cflags_cc': [ '-std=c++14', '-g', '-Wno-unknown-pragmas' ],
 				'cflags_cc!': [ '-fno-exceptions' ],
 				'include_dirs': [ './src' ],
