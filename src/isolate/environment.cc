@@ -9,7 +9,7 @@
 #include <cmath>
 #include <mutex>
 
-#ifdef USE_CLOCK_THREAD_CPUTIME_ID
+#if USE_CLOCK_THREAD_CPUTIME_ID
 #include <time.h>
 #endif
 

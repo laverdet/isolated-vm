@@ -46,6 +46,9 @@ class Executor { // "En taro adun"
 				Executor& executor;
 				CpuTimer* last;
 				TimePoint time;
+#if USE_CLOCK_THREAD_CPUTIME_ID
+				std::chrono::time_point<std::chrono::steady_clock> steady_time;
+#endif
 		};
 
 		// WallTimer is also responsible for pausing the current CpuTimer before we attempt to

@@ -33,7 +33,11 @@ thread_local Executor::CpuTimer* Executor::cpu_timer_thread = nullptr;
  * CpuTimer implementation
  */
 Executor::CpuTimer::CpuTimer(Executor& executor) :
-		executor{executor}, last{cpu_timer_thread}, time{Now()} {
+		executor{executor}, last{cpu_timer_thread}, time{Now()}
+#if USE_CLOCK_THREAD_CPUTIME_ID
+		, steady_time{std::chrono::steady_clock::now()}
+#endif
+{
 	cpu_timer_thread = this;
 	std::lock_guard<std::mutex> lock{executor.timer_mutex};
 	assert(executor.cpu_timer == nullptr);
@@ -49,7 +53,11 @@ Executor::CpuTimer::~CpuTimer() {
 }
 
 auto Executor::CpuTimer::Delta(const std::lock_guard<std::mutex>& /* lock */) const -> std::chrono::nanoseconds {
+#if USE_CLOCK_THREAD_CPUTIME_ID
+	return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - steady_time);
+#else
 	return std::chrono::duration_cast<std::chrono::nanoseconds>(Now() - time);
+#endif
 }
 
 void Executor::CpuTimer::Pause() {
@@ -63,6 +71,9 @@ void Executor::CpuTimer::Pause() {
 void Executor::CpuTimer::Resume() {
 	std::lock_guard<std::mutex> lock{executor.timer_mutex};
 	time = Now();
+#if USE_CLOCK_THREAD_CPUTIME_ID
+	steady_time = std::chrono::steady_clock::now();
+#endif
 	assert(executor.cpu_timer == nullptr);
 	executor.cpu_timer = this;
 	timer_t::resume(executor.env.timer_holder);
@@ -77,7 +88,7 @@ auto Executor::CpuTimer::Now() -> TimePoint {
 	)};
 }
 #else
-auto Executor::CpuTimer::Now() -> TimePoint{
+auto Executor::CpuTimer::Now() -> TimePoint {
 	return std::chrono::steady_clock::now();
 }
 #endif
