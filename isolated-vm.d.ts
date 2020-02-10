@@ -1,5 +1,5 @@
 declare module "isolated-vm" {
-	type Transferable =
+	export type Transferable =
 		| null
 		| undefined
 		| string
@@ -24,6 +24,7 @@ declare module "isolated-vm" {
 	 * back immediately.
 	 */
 	export class Isolate {
+		private __ivm_isolate: undefined;
 		constructor(options?: IsolateOptions);
 
 		/**
@@ -161,6 +162,7 @@ declare module "isolated-vm" {
 	 * built-in objects and global space.
 	 */
 	export class Context {
+		private __ivm_context: undefined;
 		private constructor();
 
 		/**
@@ -173,18 +175,28 @@ declare module "isolated-vm" {
 		 * Compiles and executes a script within a context. This will return the last value evaluated,
 		 * as long as that value was transferable, otherwise `undefined` will be returned.
 		 */
-		eval(code: string, options?: ContextEvalOptions): Promise<ContextEvalResult>
+		eval<Options extends ContextEvalOptions>(
+			code: string, options?: Options
+		): Promise<ContextEvalResult<ResultTypeSync<Options>>>; // `ResultTypeSync` used intentionally
 		evalIgnored(code: string, options?: ContextEvalOptions): void
-		evalSync(code: string, options?: ContextEvalOptions): ContextEvalResult
+		evalSync<Options extends ContextEvalOptions>(
+			code: string, options?: Options
+		): ContextEvalResult<ResultTypeSync<Options>>;
 
 		/**
 		 * Compiles and runs code as if it were inside a function, similar to the seldom-used `new
 		 * Function(code)` constructor. You can pass arguments to the function and they will be
 		 * available as `$0`, `$1`, and so on. You can also use `return` from the code.
 		 */
-		evalClosure(code: string, options?: ContextEvalClosureOptions): Promise<ContextEvalResult>
-		evalClosureIgnored(code: string, options?: ContextEvalClosureOptions): void
-		evalClosureSync(code: string, options?: ContextEvalClosureOptions): ContextEvalResult
+		evalClosure<Options extends ContextEvalClosureOptions>(
+			code: string, arguments?: ArgumentsTypeBidirectional<Options>[], options?: Options
+		): Promise<ContextEvalResult<ResultTypeBidirectionalSync<Options>>>; // `ResultTypeBidirectionalSync` used intentionally
+		evalClosureIgnored<Options extends ContextEvalClosureOptions>(
+			code: string, arguments?: ArgumentsTypeBidirectional<Options>[], options?: Options
+		): void
+		evalClosureSync<Options extends ContextEvalClosureOptions>(
+			code: string, arguments?: ArgumentsTypeBidirectional<Options>[], options?: Options
+		): ContextEvalResult<ResultTypeBidirectionalSync<Options>>;
 
 		/**
 		 * Releases this reference to the context. You can call this to free up v8 resources
@@ -196,18 +208,15 @@ declare module "isolated-vm" {
 	}
 
 	export type ContextEvalOptions = CachedDataOptions & RunOptions & TransferOptions;
-
 	export type ContextEvalClosureOptions = CachedDataOptions & RunOptions & TransferOptionsBidirectional;
-
-	export type ContextEvalResult = CachedDataResult & {
-		result: any;
-	};
+	export type ContextEvalResult<Result> = CachedDataResult & { result: Result };
 
 	/**
 	 * A script is a compiled chunk of JavaScript which can be executed in any context within a single
 	 * isolate.
 	 */
 	export class Script {
+		private __ivm_script: undefined;
 		private constructor();
 
 		/**
@@ -224,9 +233,9 @@ declare module "isolated-vm" {
 		 * instance if your script was "let foo = 1; let bar = 2; bar = foo + bar" then the return value
 		 * will be 3 because that is the last expression.
 		 */
-		run(context: Context, options?: ScriptRunOptions): Promise<any>;
+		run<Options extends ScriptRunOptions>(context: Context, options?: Options): ResultTypeAsync<Options>;
 		runIgnored(context: Context, options?: ScriptRunOptions): void;
-		runSync(context: Context, options?: ScriptRunOptions): any;
+		runSync<Options extends ScriptRunOptions>(context: Context, options?: Options): ResultTypeSync<Options>;
 	}
 
 	export type ScriptRunOptions = RunOptions & ReleaseOptions & TransferOptions;
@@ -235,6 +244,9 @@ declare module "isolated-vm" {
 	 * A JavaScript module. Note that a Module can only run in the isolate which created it.
 	 */
 	export class Module {
+		private __ivm_module: undefined;
+		private constructor();
+
 		/**
 		 * A read-only array of all dependency specifiers the module has.
 		 */
@@ -279,6 +291,7 @@ declare module "isolated-vm" {
 	 * A instance of Reference is a pointer to a value stored in any isolate.
 	 */
 	export class Reference<T> {
+		private __ivm_reference: undefined;
 		constructor(value: T);
 
 		/**
@@ -326,8 +339,8 @@ declare module "isolated-vm" {
 		/**
 		 * Will access a reference as if using reference[property] and return a reference to that value.
 		 */
-		get(property: string, options?: TransferOptions): Promise<Reference<any>>;
-		getSync(property: string, options?: TransferOptions): Reference<any>;
+		get<Options extends TransferOptions>(property: string, options?: Options): ResultTypeAsync<Options>;
+		getSync<Options extends TransferOptions>(property: string, options?: Options): ResultTypeSync<Options>;
 
 		/**
 		 * Will access a reference as if using reference[property] and return a reference to that value.
@@ -336,18 +349,24 @@ declare module "isolated-vm" {
 		 * sure when false would be returned, I'm just giving you the result back straight from the v8
 		 * API.
 		 */
-		set(property: string, value: Transferable, options?: TransferOptions): Promise<boolean>;
-		setIgnored(property: string, value: Transferable, options?: TransferOptions): void;
-		setSync(property: string, value: Transferable, options?: TransferOptions): boolean;
+		set<Options extends TransferOptions>(property: string, value: ArgumentsType<Options>, options?: Options): Promise<boolean>;
+		setIgnored<Options extends TransferOptions>(property: string, value: ArgumentsType<Options>, options?: Options): void;
+		setSync<Options extends TransferOptions>(property: string, value: ArgumentsType<Options>, options?: Options): boolean;
 
 		/**
 		 * Will attempt to invoke an object as if it were a function. If the return
 		 * value is transferable it will be returned to the called of apply,
 		 * otherwise an error will be thrown.
 		 */
-		apply(receiver?: Transferable, arguments?: Transferable[], options?: ReferenceApplyOptions): Promise<any>;
-		applyIgnored(receiver?: Transferable, arguments?: Transferable[], options?: ReferenceApplyOptions): Promise<any>;
-		applySync(receiver?: Transferable, arguments?: Transferable[], options?: ReferenceApplyOptions): any;
+		apply<Options extends ReferenceApplyOptions>(
+			receiver?: Transferable, arguments?: ArgumentsTypeBidirectional<Options>[], options?: Options
+		): ResultTypeBidirectionalAsync<Options>;
+		applyIgnored<Options extends ReferenceApplyOptions>(
+			receiver?: Transferable, arguments?: ArgumentsTypeBidirectional<Options>[], options?: Options
+		): void;
+		applySync<Options extends ReferenceApplyOptions>(
+			receiver?: Transferable, arguments?: ArgumentsTypeBidirectional<Options>[], options?: Options
+		): ResultTypeBidirectionalSync<Options>;
 
 		/**
 		 * `applySyncPromise` is a special version of `applySync` which may only be invoked on functions
@@ -359,13 +378,18 @@ declare module "isolated-vm" {
 		 * functions will still function correctly. Misuse of this feature may result in deadlocked
 		 * isolates, though the default isolate will never be at risk of a deadlock.
 		 */
-		applySyncPromise(receiver?: Transferable, arguments?: Transferable[], options?: ReferenceApplyOptions): any;
+		applySyncPromise<Options extends ReferenceApplyOptions>(
+			receiver?: Transferable, arguments?: ArgumentsTypeBidirectional<Options>[], options?: Options
+		): ResultTypeBidirectionalSync<Options>;
 	}
 
 	/**
 	 * Dummy type referencing a type dereferenced into a different Isolate.
 	 */
-	export interface Dereference<T> {}
+	export class Dereference<T> {
+		private constructor();
+		private __ivm_deref: undefined;
+	}
 
 	export type ReferenceApplyOptions = RunOptions & TransferOptionsBidirectional;
 
@@ -374,6 +398,8 @@ declare module "isolated-vm" {
 	 * isolate. This value can then be quickly copied into any isolate.
 	 */
 	export class ExternalCopy<T> {
+		private __ivm_external_copy: undefined;
+
 		/**
 		 * Primitive values can be copied exactly as they are. Date objects will be copied as as Dates.
 		 * ArrayBuffers, TypedArrays, and DataViews will be copied in an efficient format.
@@ -421,7 +447,10 @@ declare module "isolated-vm" {
 	/**
 	 * Dummy type referencing a type copied into a different Isolate.
 	 */
-	export interface Copy<T> {}
+	export class Copy<T> {
+		private constructor();
+		private __ivm_copy: undefined;
+	}
 
 	export type ExternalCopyOptions = {
 		/**
@@ -449,6 +478,8 @@ declare module "isolated-vm" {
 	 * C++ native module for v8 representation.
 	 */
 	export class NativeModule {
+		private __ivm_native_module: undefined;
+
 		/**
 		 * Instantiate a native module with the full path to the compiled library.
 		 * For instance, filename would represent the path to a .node file
@@ -476,12 +507,12 @@ declare module "isolated-vm" {
 		createSync(context: Context): Reference<any>;
 	}
 
-	export interface InspectorSession {
+	export type InspectorSession = {
 		dispatchProtocolMessage(message: string): void;
 		dispose(): void;
 		onNotification: (callId: number, message: string) => void;
 		onResponse: (message: string) => void;
-	}
+	};
 
 	/**
 	 * Most functions which compile or run code can produce and consume cached data. You can produce
@@ -598,4 +629,36 @@ declare module "isolated-vm" {
 		 */
 		result?: TransferOptions;
 	};
+
+	// Discriminating types for TransferOptions
+	type WithPromise = { promise: true };
+	type AsCopy = { copy: true };
+	type AsExternal = { externalCopy: true };
+	type AsReference = { reference: true };
+	type WithTransfer = AsCopy | AsExternal | AsReference;
+
+	// Arguments type for functions that accept TransferOptions
+	type ArgumentsType<Options extends TransferOptions> =
+		Options extends WithTransfer ?
+			Options extends WithPromise ? Promise<any> : any :
+		Options extends WithPromise ? Promise<Transferable> : Transferable;
+
+	// Return type for functions that accept TransferOptions
+	type ResultTypeBase<Options extends TransferOptions> =
+		Options extends AsCopy ? any :
+		Options extends AsExternal ? ExternalCopy<any> :
+		Options extends AsReference ? Reference<any> :
+		Transferable;
+	type ResultTypeAsync<Options extends TransferOptions> = Promise<ResultTypeBase<Options>>;
+	type ResultTypeSync<Options extends TransferOptions> =
+		Options extends WithPromise ? Promise<ResultTypeBase<Options>> : ResultTypeBase<Options>;
+
+	// Arguments type for functions that accept TransferOptionsBidirectional
+	type ArgumentsTypeBidirectional<Options extends TransferOptionsBidirectional> = ArgumentsType<Options['arguments']>;
+
+	// Result type for functions that accept TransferOptionsBidirectional
+	type ResultTypeBidirectionalBase<Options extends TransferOptionsBidirectional> = ResultTypeBase<Options['result']>;
+	type ResultTypeBidirectionalAsync<Options extends TransferOptionsBidirectional> = Promise<ResultTypeBidirectionalBase<Options>>;
+	type ResultTypeBidirectionalSync<Options extends TransferOptionsBidirectional> =
+		Options['result'] extends WithPromise ? Promise<ResultTypeBidirectionalBase<Options>> : ResultTypeBidirectionalBase<Options>;
 }
