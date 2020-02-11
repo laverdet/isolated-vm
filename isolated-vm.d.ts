@@ -654,10 +654,12 @@ declare module "isolated-vm" {
 		Options extends WithPromise ? Promise<ResultTypeBase<Options>> : ResultTypeBase<Options>;
 
 	// Arguments type for functions that accept TransferOptionsBidirectional
-	type ArgumentsTypeBidirectional<Options extends TransferOptionsBidirectional> = ArgumentsType<Options['arguments']>;
+	type ArgumentsTypeBidirectional<Options extends TransferOptionsBidirectional> =
+		ArgumentsType<Options['arguments'] extends TransferOptions ? Options['arguments'] : {}>;
 
 	// Result type for functions that accept TransferOptionsBidirectional
-	type ResultTypeBidirectionalBase<Options extends TransferOptionsBidirectional> = ResultTypeBase<Options['result']>;
+	type ResultTypeBidirectionalBase<Options extends TransferOptionsBidirectional> =
+		ResultTypeBase<Options['result'] extends TransferOptions ? Options['result'] : {}>;
 	type ResultTypeBidirectionalAsync<Options extends TransferOptionsBidirectional> = Promise<ResultTypeBidirectionalBase<Options>>;
 	type ResultTypeBidirectionalSync<Options extends TransferOptionsBidirectional> =
 		Options['result'] extends WithPromise ? Promise<ResultTypeBidirectionalBase<Options>> : ResultTypeBidirectionalBase<Options>;
