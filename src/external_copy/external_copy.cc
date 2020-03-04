@@ -170,9 +170,7 @@ std::unique_ptr<ExternalCopy> ExternalCopy::Copy(
 	} else if (value->IsObject()) {
 		return std::make_unique<ExternalCopySerialized>(value.As<Object>(), transfer_list);
 	} else {
-		// ???
-		assert(false);
-		throw std::logic_error("Exotic value passed to ExternalCopy");
+		throw RuntimeTypeError("Unsupported type");
 	}
 }
 
