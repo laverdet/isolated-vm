@@ -51,6 +51,27 @@ class ExternalCopyTemplate : public ExternalCopy {
 };
 
 /**
+ * BigInt data
+ */
+struct ExternalCopyBigInt : public ExternalCopy {
+	public:
+		explicit ExternalCopyBigInt(Local<BigInt> value) {
+			int word_count = value->WordCount();
+			words.resize(word_count);
+			value->ToWordsArray(&sign_bit, &word_count, words.data());
+		}
+
+		auto CopyInto(bool /*transfer_in*/ = false) -> Local<Value> final {
+			return Unmaybe(BigInt::NewFromWords(
+				Isolate::GetCurrent()->GetCurrentContext(), sign_bit, words.size(), words.data()));
+		}
+
+	private:
+		int sign_bit = 0;
+		std::vector<uint64_t> words;
+};
+
+/**
  * null and undefined
  */
 class ExternalCopyNull : public ExternalCopy {
@@ -129,6 +150,10 @@ std::unique_ptr<ExternalCopy> ExternalCopy::Copy(
 			type = ViewType::Float32;
 		} else if (view->IsFloat64Array()) {
 			type = ViewType::Float64;
+		} else if (view->IsBigInt64Array()) {
+			type = ViewType::BigInt64Array;
+		} else if (view->IsBigUint64Array()) {
+			type = ViewType::BigUint64Array;
 		} else if (view->IsDataView()) {
 			type = ViewType::DataView;
 		} else {
@@ -187,6 +212,8 @@ namespace {
 				// This handles Infinity, -Infinity, NaN
 				return std::make_unique<ExternalCopyTemplate<Number, double>>(value);
 			}
+		} else if (value->IsBigInt()) {
+			return std::make_unique<ExternalCopyBigInt>(value.As<BigInt>());
 		} else if (value->IsBoolean()) {
 			return std::make_unique<ExternalCopyTemplate<Boolean, bool>>(value);
 		} else if (value->IsNull()) {

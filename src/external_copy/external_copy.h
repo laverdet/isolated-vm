@@ -125,7 +125,7 @@ class ExternalCopySharedArrayBuffer : public ExternalCopyBytes {
  */
 class ExternalCopyArrayBufferView : public ExternalCopy {
 	public:
-		enum class ViewType { Uint8, Uint8Clamped, Int8, Uint16, Int16, Uint32, Int32, Float32, Float64, DataView };
+		enum class ViewType { Uint8, Uint8Clamped, Int8, Uint16, Int16, Uint32, Int32, Float32, Float64, BigInt64Array, BigUint64Array, DataView };
 
 	private:
 		std::unique_ptr<ExternalCopyBytes> buffer;
