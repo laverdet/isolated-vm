@@ -53,6 +53,8 @@ class ExternalCopyTemplate : public ExternalCopy {
 /**
  * BigInt data
  */
+#if V8_AT_LEAST(6, 9, 258)
+// Added in 477df066dbb
 struct ExternalCopyBigInt : public ExternalCopy {
 	public:
 		explicit ExternalCopyBigInt(Local<BigInt> value) {
@@ -70,6 +72,7 @@ struct ExternalCopyBigInt : public ExternalCopy {
 		int sign_bit = 0;
 		std::vector<uint64_t> words;
 };
+#endif
 
 /**
  * null and undefined
@@ -212,8 +215,10 @@ namespace {
 				// This handles Infinity, -Infinity, NaN
 				return std::make_unique<ExternalCopyTemplate<Number, double>>(value);
 			}
+#if V8_AT_LEAST(6, 9, 258)
 		} else if (value->IsBigInt()) {
 			return std::make_unique<ExternalCopyBigInt>(value.As<BigInt>());
+#endif
 		} else if (value->IsBoolean()) {
 			return std::make_unique<ExternalCopyTemplate<Boolean, bool>>(value);
 		} else if (value->IsNull()) {
