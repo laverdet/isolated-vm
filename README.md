@@ -40,6 +40,7 @@ too old.
 * Ubuntu users should run: `sudo apt-get install g++ build-essential`
 * Alpine users should run: `sudo apk add python make g++`
 * Amazon Linux AMI users should run: `sudo yum install gcc72 gcc72-c++`
+* Arch Linux users should run: `sudo pacman -S make gcc python`
 
 WHO IS USING ISOLATED-VM
 ------------------------
