@@ -107,6 +107,9 @@ auto ReferenceHandle::Definition() -> Local<FunctionTemplate> {
 		"release", MemberFunction<decltype(&ReferenceHandle::Release), &ReferenceHandle::Release>{},
 		"copy", MemberFunction<decltype(&ReferenceHandle::Copy<1>), &ReferenceHandle::Copy<1>>{},
 		"copySync", MemberFunction<decltype(&ReferenceHandle::Copy<0>), &ReferenceHandle::Copy<0>>{},
+		"delete", MemberFunction<decltype(&ReferenceHandle::Delete<1>), &ReferenceHandle::Delete<1>>{},
+		"deleteIgnored", MemberFunction<decltype(&ReferenceHandle::Delete<2>), &ReferenceHandle::Delete<2>>{},
+		"deleteSync", MemberFunction<decltype(&ReferenceHandle::Delete<0>), &ReferenceHandle::Delete<0>>{},
 		"get", MemberFunction<decltype(&ReferenceHandle::Get<1>), &ReferenceHandle::Get<1>>{},
 		"getSync", MemberFunction<decltype(&ReferenceHandle::Get<0>), &ReferenceHandle::Get<0>>{},
 		"set", MemberFunction<decltype(&ReferenceHandle::Set<1>), &ReferenceHandle::Set<1>>{},
@@ -461,6 +464,43 @@ class GetRunner : public ThreePhaseTask {
 template <int async>
 auto ReferenceHandle::Get(Local<Value> key_handle, MaybeLocal<Object> maybe_options) -> Local<Value> {
 	return ThreePhaseTask::Run<async, GetRunner>(*isolate, *this, key_handle, maybe_options);
+}
+
+/**
+ * Delete a property on this reference
+ */
+class DeleteRunner : public ThreePhaseTask {
+	public:
+		DeleteRunner(ReferenceHandle& that, Local<Value> key_handle) :
+				key{ExternalCopy::CopyIfPrimitive(key_handle)},
+				context{that.context},
+				reference{that.reference} {
+			that.CheckDisposed();
+			if (!key) {
+				throw RuntimeTypeError("Invalid `key`");
+			}
+		}
+
+		void Phase2() final {
+			Local<Context> context_handle = Deref(context);
+			Context::Scope context_scope{context_handle};
+			Local<Object> object = Local<Object>::Cast(Deref(reference));
+			result = Unmaybe(object->Delete(context_handle, key->CopyInto()));
+		}
+
+		auto Phase3() -> Local<Value> final {
+			return Boolean::New(Isolate::GetCurrent(), result);
+		}
+
+	private:
+		unique_ptr<ExternalCopy> key;
+		RemoteHandle<Context> context;
+		RemoteHandle<Value> reference;
+		bool result = false;
+};
+template <int async>
+auto ReferenceHandle::Delete(Local<Value> key_handle) -> Local<Value> {
+	return ThreePhaseTask::Run<async, DeleteRunner>(*isolate, *this, key_handle);
 }
 
 /**

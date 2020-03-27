@@ -337,6 +337,13 @@ declare module "isolated-vm" {
 		release(): void;
 
 		/**
+		 * Delete a property from this reference, as if using `delete reference[property]`
+		 */
+		 delete(property: string): Promise<boolean>;
+		 deleteIgnored(property: string): void;
+		 deleteSync(property: string): boolean;
+
+		/**
 		 * Will access a reference as if using reference[property] and return a reference to that value.
 		 */
 		get<Options extends TransferOptions>(property: string, options?: Options): ResultTypeAsync<Options>;

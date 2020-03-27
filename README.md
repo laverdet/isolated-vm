@@ -350,6 +350,14 @@ release the references when you are done. Otherwise you may run into issues with
 out of memory because other isolates haven't garbage collected recently. After calling this method
 all attempts to access the reference will throw an error.
 
+##### `reference.delete(property)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
+##### `reference.deleteIgnored(property)`
+##### `reference.deleteSync(property)`
+* `property` *[transferable]* - The property to access on this object.
+* **return** `true` or `false`
+
+Delete a property from this reference, as if using `delete reference[property]`
+
 ##### `reference.get(property, options)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `reference.getSync(property, options)`
 * `property` *[transferable]* - The property to access on this object.

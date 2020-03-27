@@ -41,6 +41,7 @@ class ReferenceHandle : public TransferableHandle, public detail::ReferenceData 
 	friend class ApplyRunner;
 	friend class CopyRunner;
 	friend class GetRunner;
+	friend class DeleteRunner;
 	friend class SetRunner;
 	public:
 		using TypeOf = detail::ReferenceData::TypeOf;
@@ -63,13 +64,19 @@ class ReferenceHandle : public TransferableHandle, public detail::ReferenceData 
 			v8::Maybe<ArrayRange> maybe_arguments,
 			v8::MaybeLocal<v8::Object> maybe_options
 		) -> v8::Local<v8::Value>;
+
 		template <int async>
 		auto Copy() -> v8::Local<v8::Value>;
+
 		template <int async>
 		auto Get(
 			v8::Local<v8::Value> key_handle,
 			v8::MaybeLocal<v8::Object> maybe_options
 		) -> v8::Local<v8::Value>;
+
+		template <int async>
+		auto Delete(v8::Local<v8::Value> key_handle) -> v8::Local<v8::Value>;
+
 		template <int async>
 		auto Set(
 			v8::Local<v8::Value> key_handle,
