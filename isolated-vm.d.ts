@@ -290,7 +290,7 @@ declare module "isolated-vm" {
 	/**
 	 * A instance of Reference is a pointer to a value stored in any isolate.
 	 */
-	export class Reference<T> {
+	export class Reference<T = any> {
 		private __ivm_reference: undefined;
 		constructor(value: T);
 
@@ -397,7 +397,7 @@ declare module "isolated-vm" {
 	 * Instances of this class represent some value that is stored outside of any v8
 	 * isolate. This value can then be quickly copied into any isolate.
 	 */
-	export class ExternalCopy<T> {
+	export class ExternalCopy<T = any> {
 		private __ivm_external_copy: undefined;
 
 		/**
