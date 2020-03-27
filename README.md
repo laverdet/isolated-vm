@@ -53,6 +53,9 @@ for several days at a time.
 just static resources. They are using isolated-vm to run globally distributed applications, where
 each application may have wildly different traffic patterns.
 
+* [Algolia](https://www.algolia.com) - Algolia is a Search as a Service provider. They use
+`isolated-vm` to power their [Custom Crawler](https://www.algolia.com/products/crawler/) product,
+which allows them to safely execute user-provided code for content extraction.
 
 API DOCUMENTATION
 -----------------
