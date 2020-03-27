@@ -97,10 +97,16 @@ class ExternalCopyBytes : public ExternalCopy {
 		mutable std::mutex mutex;
 };
 
+class ExternalCopyAnyArrayBuffer {
+	public:
+		virtual ~ExternalCopyAnyArrayBuffer() = default;
+		virtual v8::Local<v8::Value> CopyInto(bool transfer_in = false) = 0;
+};
+
 /**
  * ArrayBuffer instances
  */
-class ExternalCopyArrayBuffer : public ExternalCopyBytes {
+class ExternalCopyArrayBuffer : public ExternalCopyBytes, public ExternalCopyAnyArrayBuffer {
 	public:
 		ExternalCopyArrayBuffer(const void* data, size_t length);
 		ExternalCopyArrayBuffer(std::shared_ptr<void> ptr, size_t length);
@@ -113,7 +119,13 @@ class ExternalCopyArrayBuffer : public ExternalCopyBytes {
 /**
  * SharedArrayBuffer instances
  */
-class ExternalCopySharedArrayBuffer : public ExternalCopyBytes {
+#if V8_AT_LEAST(7, 9, 69)
+class ExternalCopySharedArrayBuffer : public ExternalCopy, public ExternalCopyAnyArrayBuffer {
+	private:
+		std::shared_ptr<v8::BackingStore> backing_store;
+#else
+class ExternalCopySharedArrayBuffer : public ExternalCopyBytes, public ExternalCopyAnyArrayBuffer {
+#endif
 	public:
 		explicit ExternalCopySharedArrayBuffer(const v8::Local<v8::SharedArrayBuffer>& handle);
 
@@ -128,12 +140,12 @@ class ExternalCopyArrayBufferView : public ExternalCopy {
 		enum class ViewType { Uint8, Uint8Clamped, Int8, Uint16, Int16, Uint32, Int32, Float32, Float64, BigInt64Array, BigUint64Array, DataView };
 
 	private:
-		std::unique_ptr<ExternalCopyBytes> buffer;
+		std::unique_ptr<ExternalCopyAnyArrayBuffer> buffer;
 		ViewType type;
 		size_t byte_offset, byte_length;
 
 	public:
-		ExternalCopyArrayBufferView(std::unique_ptr<ExternalCopyBytes> buffer, ViewType type, size_t byte_offset, size_t byte_length);
+		ExternalCopyArrayBufferView(std::unique_ptr<ExternalCopyAnyArrayBuffer> buffer, ViewType type, size_t byte_offset, size_t byte_length);
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
 };
 

@@ -508,6 +508,20 @@ Local<Value> ExternalCopyArrayBuffer::CopyInto(bool transfer_in) {
 /**
  * ExternalCopySharedArrayBuffer implementation
  */
+#if V8_AT_LEAST(7, 9, 69)
+
+// This much needed feature was added in v8 55c48820
+ExternalCopySharedArrayBuffer::ExternalCopySharedArrayBuffer(const v8::Local<v8::SharedArrayBuffer>& handle) :
+		ExternalCopy{static_cast<int>(handle->ByteLength())} {
+	backing_store = handle->GetBackingStore();
+}
+
+Local<Value> ExternalCopySharedArrayBuffer::CopyInto(bool /*transfer_in*/) {
+	return SharedArrayBuffer::New(Isolate::GetCurrent(), backing_store);
+}
+
+#else
+
 ExternalCopySharedArrayBuffer::ExternalCopySharedArrayBuffer(const v8::Local<v8::SharedArrayBuffer>& handle) :
 		ExternalCopyBytes{handle->ByteLength() + sizeof(ExternalCopySharedArrayBuffer), [&]() -> std::shared_ptr<void> {
 			// Inline lambda generates std::shared_ptr<void> for ExternalCopyBytes ctor. Similar to
@@ -544,11 +558,13 @@ Local<Value> ExternalCopySharedArrayBuffer::CopyInto(bool /*transfer_in*/) {
 	return array_buffer;
 }
 
+#endif
+
 /**
  * ExternalCopyArrayBufferView implementation
  */
 ExternalCopyArrayBufferView::ExternalCopyArrayBufferView(
-	std::unique_ptr<ExternalCopyBytes> buffer,
+	std::unique_ptr<ExternalCopyAnyArrayBuffer> buffer,
 	ViewType type, size_t byte_offset, size_t byte_length
 ) :
 	ExternalCopy(sizeof(ExternalCopyArrayBufferView)),
