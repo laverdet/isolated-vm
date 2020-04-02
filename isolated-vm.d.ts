@@ -12,7 +12,8 @@ declare module "isolated-vm" {
 		| Copy<any>
 		| Reference<any>
 		| Dereference<any>
-		| Module;
+		| Module
+		| typeof import("isolated-vm");
 
 	/**
 	 * This is the main reference to an isolate. Every handle to an isolate is transferable, which
