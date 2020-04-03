@@ -170,7 +170,7 @@ declare module "isolated-vm" {
 		 * `Reference` to this context's global object. Note that if you call `context.release()` the
 		 * global reference will be released as well.
 		 */
-		readonly global: Reference<Object>;
+		readonly global: Reference<Record<number | string | symbol, any>>;
 
 		/**
 		 * Compiles and executes a script within a context. This will return the last value evaluated,
@@ -190,13 +190,13 @@ declare module "isolated-vm" {
 		 * available as `$0`, `$1`, and so on. You can also use `return` from the code.
 		 */
 		evalClosure<Options extends ContextEvalClosureOptions>(
-			code: string, arguments?: ArgumentsTypeBidirectional<Options>[], options?: Options
+			code: string, arguments?: ArgumentsTypeBidirectional<Options>, options?: Options
 		): Promise<ContextEvalResult<ResultTypeBidirectionalSync<Options>>>; // `ResultTypeBidirectionalSync` used intentionally
 		evalClosureIgnored<Options extends ContextEvalClosureOptions>(
-			code: string, arguments?: ArgumentsTypeBidirectional<Options>[], options?: Options
+			code: string, arguments?: ArgumentsTypeBidirectional<Options>, options?: Options
 		): void
 		evalClosureSync<Options extends ContextEvalClosureOptions>(
-			code: string, arguments?: ArgumentsTypeBidirectional<Options>[], options?: Options
+			code: string, arguments?: ArgumentsTypeBidirectional<Options>, options?: Options
 		): ContextEvalResult<ResultTypeBidirectionalSync<Options>>;
 
 		/**
@@ -340,15 +340,17 @@ declare module "isolated-vm" {
 		/**
 		 * Delete a property from this reference, as if using `delete reference[property]`
 		 */
-		 delete(property: string): Promise<boolean>;
-		 deleteIgnored(property: string): void;
-		 deleteSync(property: string): boolean;
+		 delete(property: keyof T): Promise<boolean>;
+		 deleteIgnored(property: keyof T): void;
+		 deleteSync(property: keyof T): boolean;
 
 		/**
 		 * Will access a reference as if using reference[property] and return a reference to that value.
 		 */
-		get<Options extends TransferOptions>(property: string, options?: Options): ResultTypeAsync<Options>;
-		getSync<Options extends TransferOptions>(property: string, options?: Options): ResultTypeSync<Options>;
+		get<Options extends TransferOptions, Key extends keyof T>(
+			property: Key, options?: Options): ResultTypeAsync<Options, T[Key]>;
+		getSync<Options extends TransferOptions, Key extends keyof T>(
+			property: Key, options?: Options): ResultTypeSync<Options, T[Key]>;
 
 		/**
 		 * Will access a reference as if using reference[property] and return a reference to that value.
@@ -357,9 +359,12 @@ declare module "isolated-vm" {
 		 * sure when false would be returned, I'm just giving you the result back straight from the v8
 		 * API.
 		 */
-		set<Options extends TransferOptions>(property: string, value: ArgumentsType<Options>, options?: Options): Promise<boolean>;
-		setIgnored<Options extends TransferOptions>(property: string, value: ArgumentsType<Options>, options?: Options): void;
-		setSync<Options extends TransferOptions>(property: string, value: ArgumentsType<Options>, options?: Options): boolean;
+		set<Options extends TransferOptions, Key extends keyof T>(
+			property: Key, value: ArgumentType<Options, T[Key]>, options?: Options): Promise<boolean>;
+		setIgnored<Options extends TransferOptions, Key extends keyof T>(
+			property: Key, value: ArgumentType<Options, T[Key]>, options?: Options): void;
+		setSync<Options extends TransferOptions, Key extends keyof T>(
+			property: Key, value: ArgumentType<Options, T[Key]>, options?: Options): boolean;
 
 		/**
 		 * Will attempt to invoke an object as if it were a function. If the return
@@ -367,14 +372,20 @@ declare module "isolated-vm" {
 		 * otherwise an error will be thrown.
 		 */
 		apply<Options extends ReferenceApplyOptions>(
-			receiver?: Transferable, arguments?: ArgumentsTypeBidirectional<Options>[], options?: Options
-		): ResultTypeBidirectionalAsync<Options>;
+			receiver?: ArgumentType<Options['arguments'], ApplyArgumentThis<T>>,
+			arguments?: ArgumentsTypeBidirectional<Options, ApplyArguments<T>>,
+			options?: Options
+		): ResultTypeBidirectionalAsync<Options, ApplyResult<T>>;
 		applyIgnored<Options extends ReferenceApplyOptions>(
-			receiver?: Transferable, arguments?: ArgumentsTypeBidirectional<Options>[], options?: Options
+			receiver?: ArgumentType<Options['arguments'], ApplyArgumentThis<T>>,
+			arguments?: ArgumentsTypeBidirectional<Options, ApplyArguments<T>>,
+			options?: Options
 		): void;
 		applySync<Options extends ReferenceApplyOptions>(
-			receiver?: Transferable, arguments?: ArgumentsTypeBidirectional<Options>[], options?: Options
-		): ResultTypeBidirectionalSync<Options>;
+			receiver?: ArgumentType<Options['arguments'], ApplyArgumentThis<T>>,
+			arguments?: ArgumentsTypeBidirectional<Options, ApplyArguments<T>>,
+			options?: Options
+		): ResultTypeBidirectionalSync<Options, ApplyResult<T>>;
 
 		/**
 		 * `applySyncPromise` is a special version of `applySync` which may only be invoked on functions
@@ -387,8 +398,10 @@ declare module "isolated-vm" {
 		 * isolates, though the default isolate will never be at risk of a deadlock.
 		 */
 		applySyncPromise<Options extends ReferenceApplyOptions>(
-			receiver?: Transferable, arguments?: ArgumentsTypeBidirectional<Options>[], options?: Options
-		): ResultTypeBidirectionalSync<Options>;
+			receiver?: ArgumentType<Options['arguments'], ApplyArgumentThis<T>>,
+			arguments?: ArgumentsTypeBidirectional<Options, ApplyArguments<T>>,
+			options?: Options
+		): ResultTypeBidirectionalSync<Options, ApplyResult<T>>;
 	}
 
 	/**
@@ -645,30 +658,41 @@ declare module "isolated-vm" {
 	type AsReference = { reference: true };
 	type WithTransfer = AsCopy | AsExternal | AsReference;
 
-	// Arguments type for functions that accept TransferOptions
-	type ArgumentsType<Options extends TransferOptions> =
-		Options extends WithTransfer ?
-			Options extends WithPromise ? Promise<any> : any :
-		Options extends WithPromise ? Promise<Transferable> : Transferable;
+	// Wraps a type in Promise<> if the options specify { promise: true }
+	type CheckPromise<Options, Result> = Options extends WithPromise ? Promise<Result> : Result;
+
+	// Type of a single argument for functions that accept TransferOptions
+	type ArgumentType<Options, Type> =
+		Options extends WithTransfer ? Type | CheckPromise<Options, Type> :
+		Type extends Transferable ? Type | CheckPromise<Options, Type> :
+		Transferable | CheckPromise<Options, Transferable>;
 
 	// Return type for functions that accept TransferOptions
-	type ResultTypeBase<Options extends TransferOptions> =
-		Options extends AsCopy ? any :
-		Options extends AsExternal ? ExternalCopy<any> :
-		Options extends AsReference ? Reference<any> :
+	type ResultTypeBase<Options, Result> =
+		Options extends AsCopy ? Result :
+		Options extends AsExternal ? ExternalCopy<Result> :
+		Options extends AsReference ? Reference<Result> :
+		Result extends Transferable ? Result :
+		Result extends void ? void :
 		Transferable;
-	type ResultTypeAsync<Options extends TransferOptions> = Promise<ResultTypeBase<Options>>;
-	type ResultTypeSync<Options extends TransferOptions> =
-		Options extends WithPromise ? Promise<ResultTypeBase<Options>> : ResultTypeBase<Options>;
+	type ResultTypeAsync<Options extends TransferOptions, Result = any> = Promise<ResultTypeBase<Options, Result>>;
+	type ResultTypeSync<Options extends TransferOptions, Result = any> = CheckPromise<Options, ResultTypeBase<Options, Result>>;
 
 	// Arguments type for functions that accept TransferOptionsBidirectional
-	type ArgumentsTypeBidirectional<Options extends TransferOptionsBidirectional> =
-		ArgumentsType<Options['arguments'] extends TransferOptions ? Options['arguments'] : {}>;
+	type ArgumentsTypeBidirectional<Options extends TransferOptionsBidirectional, Args extends any[] = any[]> = {
+		[Key in keyof Args]: ArgumentType<Options['arguments'] extends TransferOptions ? Options['arguments'] : {}, Args[Key]>
+	};
 
 	// Result type for functions that accept TransferOptionsBidirectional
-	type ResultTypeBidirectionalBase<Options extends TransferOptionsBidirectional> =
-		ResultTypeBase<Options['result'] extends TransferOptions ? Options['result'] : {}>;
-	type ResultTypeBidirectionalAsync<Options extends TransferOptionsBidirectional> = Promise<ResultTypeBidirectionalBase<Options>>;
-	type ResultTypeBidirectionalSync<Options extends TransferOptionsBidirectional> =
-		Options['result'] extends WithPromise ? Promise<ResultTypeBidirectionalBase<Options>> : ResultTypeBidirectionalBase<Options>;
+	type ResultTypeBidirectionalBase<Options extends TransferOptionsBidirectional, Result> =
+		ResultTypeBase<Options['result'] extends TransferOptions ? Options['result'] : {}, Result>;
+	type ResultTypeBidirectionalAsync<Options extends TransferOptionsBidirectional, Result = any> =
+		Promise<ResultTypeBidirectionalBase<Options, Result>>;
+	type ResultTypeBidirectionalSync<Options extends TransferOptionsBidirectional, Result = any> =
+		CheckPromise<Options['result'], ResultTypeBidirectionalBase<Options, Result>>;
+
+	// Types for `Reference.apply`
+	type ApplyArguments<Value> = Value extends (...args: infer Args) => unknown ? Args : any[];
+	type ApplyArgumentThis<Value> = Value extends (this: infer This, ...args: unknown[]) => unknown ? This : never;
+	type ApplyResult<Value> = Value extends (...args: unknown[]) => infer Result ? Result : unknown;
 }
