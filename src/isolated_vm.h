@@ -5,10 +5,10 @@
 #define ISOLATED_VM_MODULE extern "C"
 #endif
 
-#include "../isolate/environment.h"
-#include "../isolate/holder.h"
-#include "../isolate/remote_handle.h"
-#include "../isolate/runnable.h"
+#include "isolate/environment.h"
+#include "isolate/holder.h"
+#include "isolate/remote_handle.h"
+#include "isolate/runnable.h"
 #include <memory>
 
 namespace isolated_vm {
