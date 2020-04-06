@@ -348,9 +348,9 @@ declare module "isolated-vm" {
 		 * Will access a reference as if using reference[property] and return a reference to that value.
 		 */
 		get<Options extends TransferOptions, Key extends keyof T>(
-			property: Key, options?: Options): ResultTypeAsync<Options, T[Key]>;
+			property: Key, options?: Options): ResultTypeAsync<Options & AsReference, T[Key]>;
 		getSync<Options extends TransferOptions, Key extends keyof T>(
-			property: Key, options?: Options): ResultTypeSync<Options, T[Key]>;
+			property: Key, options?: Options): ResultTypeSync<Options & AsReference, T[Key]>;
 
 		/**
 		 * Will access a reference as if using reference[property] and return a reference to that value.
@@ -375,17 +375,17 @@ declare module "isolated-vm" {
 			receiver?: ArgumentType<Options['arguments'], ApplyArgumentThis<T>>,
 			arguments?: ArgumentsTypeBidirectional<Options, ApplyArguments<T>>,
 			options?: Options
-		): ResultTypeBidirectionalAsync<Options, ApplyResult<T>>;
+		): ResultTypeBidirectionalAsync<Options & ApplyAsReference, ApplyResult<T>>;
 		applyIgnored<Options extends ReferenceApplyOptions>(
 			receiver?: ArgumentType<Options['arguments'], ApplyArgumentThis<T>>,
-			arguments?: ArgumentsTypeBidirectional<Options, ApplyArguments<T>>,
+			arguments?: ArgumentsTypeBidirectional<Options & ApplyAsReference, ApplyArguments<T>>,
 			options?: Options
 		): void;
 		applySync<Options extends ReferenceApplyOptions>(
 			receiver?: ArgumentType<Options['arguments'], ApplyArgumentThis<T>>,
 			arguments?: ArgumentsTypeBidirectional<Options, ApplyArguments<T>>,
 			options?: Options
-		): ResultTypeBidirectionalSync<Options, ApplyResult<T>>;
+		): ResultTypeBidirectionalSync<Options & ApplyAsReference, ApplyResult<T>>;
 
 		/**
 		 * `applySyncPromise` is a special version of `applySync` which may only be invoked on functions
@@ -401,7 +401,7 @@ declare module "isolated-vm" {
 			receiver?: ArgumentType<Options['arguments'], ApplyArgumentThis<T>>,
 			arguments?: ArgumentsTypeBidirectional<Options, ApplyArguments<T>>,
 			options?: Options
-		): ResultTypeBidirectionalSync<Options, ApplyResult<T>>;
+		): ResultTypeBidirectionalSync<Options & ApplyAsReference, ApplyResult<T>>;
 	}
 
 	/**
@@ -656,6 +656,7 @@ declare module "isolated-vm" {
 	type AsCopy = { copy: true };
 	type AsExternal = { externalCopy: true };
 	type AsReference = { reference: true };
+	type ApplyAsReference = { result: AsReference };
 	type WithTransfer = AsCopy | AsExternal | AsReference;
 
 	// Wraps a type in Promise<> if the options specify { promise: true }
