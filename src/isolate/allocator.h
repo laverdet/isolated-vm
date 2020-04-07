@@ -1,5 +1,7 @@
 #pragma once
 #include <v8.h>
+#include <memory>
+#include "v8_version.h"
 
 namespace ivm {
 
@@ -22,6 +24,34 @@ class LimitedAllocator : public v8::ArrayBuffer::Allocator {
 		// we should no longer count it against the isolate
 		void AdjustAllocatedSize(ptrdiff_t length);
 		int GetFailureCount() const;
+		void Track(v8::Local<v8::Object> handle, size_t size);
 };
+
+#if V8_AT_LEAST(7, 9, 69)
+
+using BackingStore = v8::BackingStore;
+
+#else
+
+class BackingStore {
+	public:
+		explicit BackingStore(size_t size) : data{std::malloc(size), std::free}, size{size} {}
+		explicit BackingStore(std::unique_ptr<void, decltype(std::free)&> data, size_t size) : data{std::move(data)}, size{size} {}
+
+		static auto GetBackingStore(v8::Local<v8::ArrayBuffer> handle) -> std::shared_ptr<BackingStore>;
+		static auto GetBackingStore(v8::Local<v8::SharedArrayBuffer> handle) -> std::shared_ptr<BackingStore>;
+
+		static auto NewArrayBuffer(std::shared_ptr<BackingStore> backing_store) -> v8::Local<v8::ArrayBuffer>;
+		static auto NewSharedArrayBuffer(std::shared_ptr<BackingStore> backing_store) -> v8::Local<v8::SharedArrayBuffer>;
+
+		auto ByteLength() const { return size; }
+		auto Data() const { return data.get(); }
+
+	private:
+		std::unique_ptr<void, decltype(std::free)&> data;
+		size_t size;
+};
+
+#endif
 
 } // namespace ivm

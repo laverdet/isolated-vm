@@ -365,206 +365,129 @@ Local<Value> ExternalCopyError::CopyInto(bool /*transfer_in*/) {
 }
 
 /**
- * ExternalCopyBytes implementation
+ * ExternalCopyAnyBuffer implementation
  */
-ExternalCopyBytes::ExternalCopyBytes(size_t size, std::shared_ptr<void> value, size_t length) :
-		ExternalCopy{static_cast<int>(size)}, value{std::move(value)}, length{length} {}
+namespace {
 
-std::shared_ptr<void> ExternalCopyBytes::Acquire() const {
-	std::lock_guard<std::mutex> lock{mutex};
-	auto ret = value;
-	if (!ret) {
-		throw RuntimeGenericError("Array buffer is invalid");
+#if V8_AT_LEAST(7, 3, 89)
+	void Detach(Local<ArrayBuffer> handle) {
+		handle->Detach();
 	}
-	return ret;
-}
-
-std::shared_ptr<void> ExternalCopyBytes::Release() {
-	std::lock_guard<std::mutex> lock{mutex};
-	return std::move(value);
-}
-
-void ExternalCopyBytes::Replace(std::shared_ptr<void> value) {
-	std::lock_guard<std::mutex> lock{mutex};
-	this->value = std::move(value);
-}
-
-ExternalCopyBytes::Holder::Holder(const Local<Object>& buffer, std::shared_ptr<void> cc_ptr, size_t size) :
-	v8_ptr(Isolate::GetCurrent(), buffer), cc_ptr(std::move(cc_ptr)), size(size)
-{
-	v8_ptr.SetWeak(reinterpret_cast<void*>(this), &WeakCallbackV8, WeakCallbackType::kParameter);
-	IsolateEnvironment::GetCurrent()->AddWeakCallback(&this->v8_ptr, WeakCallback, this);
-	buffer->SetAlignedPointerInInternalField(0, this);
-	IsolateEnvironment::GetCurrent()->extra_allocated_memory += size;
-}
-
-ExternalCopyBytes::Holder::~Holder() {
-	v8_ptr.Reset();
-	if (cc_ptr) {
-		IsolateEnvironment::GetCurrent()->extra_allocated_memory -= size;
+	auto IsDetachable(Local<ArrayBuffer> handle) {
+		return handle->IsDetachable();
 	}
-}
+#else
+	void Detach(Local<ArrayBuffer> handle) {
+		handle->Neuter();
+	}
+	auto IsDetachable(Local<ArrayBuffer> handle) {
+		return handle->IsNeuterable();
+	}
+#endif
 
-void ExternalCopyBytes::Holder::WeakCallbackV8(const WeakCallbackInfo<void>& info) {
-	WeakCallback(info.GetParameter());
-}
+} // anonymous namespace
 
-void ExternalCopyBytes::Holder::WeakCallback(void* param) {
-	auto that = reinterpret_cast<Holder*>(param);
-	IsolateEnvironment::GetCurrent()->RemoveWeakCallback(&that->v8_ptr);
-	delete that;
-}
+
 
 /**
  * ExternalCopyArrayBuffer implementation
  */
 ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const void* data, size_t length) :
-		ExternalCopyBytes{length + sizeof(ExternalCopyArrayBuffer), {malloc(length), std::free}, length} {
-	std::memcpy(Acquire().get(), data, length);
+#if V8_AT_LEAST(7, 9, 69)
+		ExternalCopyAnyBuffer{ArrayBuffer::NewBackingStore(
+			std::malloc(length), length,
+			[](void* data, size_t /*length*/, void* /*param*/) { std::free(data); },
+			nullptr)}
+#else
+		ExternalCopyAnyBuffer{std::make_shared<BackingStore>(length)}
+#endif
+{
+	std::memcpy((*backing_store.read())->Data(), data, length);
 }
 
-ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(std::shared_ptr<void> ptr, size_t length) :
-		ExternalCopyBytes{length + sizeof(ExternalCopyArrayBuffer), std::move(ptr), length} {}
+ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(Local<ArrayBuffer> handle) :
+	ExternalCopyArrayBuffer{handle->GetContents().Data(), handle->ByteLength()} {}
 
-ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const Local<ArrayBuffer>& handle) :
-		ExternalCopyBytes{
-			handle->ByteLength() + sizeof(ExternalCopyArrayBuffer),
-			{malloc(handle->ByteLength()), std::free},
-			handle->ByteLength()} {
-	std::memcpy(Acquire().get(), handle->GetContents().Data(), Length());
-}
-
-std::unique_ptr<ExternalCopyArrayBuffer> ExternalCopyArrayBuffer::Transfer(const Local<ArrayBuffer>& handle) {
-	auto Detach = [](Local<ArrayBuffer> handle) {
-#if V8_AT_LEAST(7, 3, 89)
-		handle->Detach();
-#else
-		handle->Neuter();
-#endif
-	};
-	auto IsDetachable = [](Local<ArrayBuffer> handle) {
-#if V8_AT_LEAST(7, 3, 89)
-		return handle->IsDetachable();
-#else
-		return handle->IsNeuterable();
-#endif
-	};
-
-	size_t length = handle->ByteLength();
-	if (length == 0) {
+auto ExternalCopyArrayBuffer::Transfer(Local<ArrayBuffer> handle) -> std::unique_ptr<ExternalCopyArrayBuffer> {
+	if (!IsDetachable(handle)) {
 		throw RuntimeGenericError("Array buffer is invalid");
 	}
-	if (handle->IsExternal()) {
-		// Buffer lifespan is not handled by v8.. attempt to recover from isolated-vm
-		auto ptr = reinterpret_cast<Holder*>(handle->GetAlignedPointerFromInternalField(0));
-		if (!IsDetachable(handle) || ptr == nullptr || ptr->magic != Holder::kMagic) { // dangerous
-			throw RuntimeGenericError("Array buffer cannot be externalized");
-		}
-		Detach(handle);
-		IsolateEnvironment::GetCurrent()->extra_allocated_memory -= length;
-		// No race conditions here because only one thread can access `Holder`
-		return std::make_unique<ExternalCopyArrayBuffer>(std::move(ptr->cc_ptr), length);
-	}
-	// In this case the buffer is internal and can be released easily
-	ArrayBuffer::Contents contents = handle->Externalize();
-	auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
-	if (allocator != nullptr) {
-		allocator->AdjustAllocatedSize(-static_cast<ptrdiff_t>(length));
-	}
-	assert(IsDetachable(handle));
-	auto data_ptr = std::shared_ptr<void>(contents.Data(), std::free);
+#if V8_AT_LEAST(7, 9, 69)
+	auto backing_store = handle->GetBackingStore();
+	handle->Externalize(backing_store);
+#else
+	auto backing_store = BackingStore::GetBackingStore(handle);
+#endif
 	Detach(handle);
-	return std::make_unique<ExternalCopyArrayBuffer>(std::move(data_ptr), length);
+	return std::make_unique<ExternalCopyArrayBuffer>(std::move(backing_store));
 }
 
 Local<Value> ExternalCopyArrayBuffer::CopyInto(bool transfer_in) {
 	if (transfer_in) {
-		auto tmp = Release();
-		if (!tmp) {
+		auto backing_store = std::exchange(*this->backing_store.write(), {});
+		if (!backing_store) {
 			throw RuntimeGenericError("Array buffer is invalid");
 		}
-		if (tmp.use_count() != 1) {
-			Replace(std::move(tmp));
-			throw RuntimeGenericError("Array buffer is in use and may not be transferred");
-		}
 		UpdateSize(0);
-		Local<ArrayBuffer> array_buffer = ArrayBuffer::New(Isolate::GetCurrent(), tmp.get(), Length());
-		new Holder{array_buffer, std::move(tmp), Length()};
-		return array_buffer;
+		size_t size = backing_store->ByteLength();
+#if V8_AT_LEAST(7, 9, 69)
+		auto handle = ArrayBuffer::New(Isolate::GetCurrent(), std::move(backing_store));
+#else
+		auto handle = BackingStore::NewArrayBuffer(std::move(backing_store));
+#endif
+		auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+		if (allocator != nullptr) {
+			allocator->Track(handle, size);
+		}
+		return handle;
 	} else {
 		auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
-		if (allocator != nullptr && !allocator->Check(Length())) {
+		auto backing_store = *this->backing_store.read();
+		if (!backing_store) {
+			throw RuntimeGenericError("Array buffer is invalid");
+		}
+		auto size = backing_store->ByteLength();
+		if (allocator != nullptr && !allocator->Check(size)) {
 			// ArrayBuffer::New will crash the process if there is an allocation failure, so we check
 			// here.
 			throw RuntimeRangeError("Array buffer allocation failed");
 		}
-		auto ptr = Acquire();
-		Local<ArrayBuffer> array_buffer = ArrayBuffer::New(Isolate::GetCurrent(), Length());
-		std::memcpy(array_buffer->GetContents().Data(), ptr.get(), Length());
-		return array_buffer;
+		auto handle = ArrayBuffer::New(Isolate::GetCurrent(), size);
+		std::memcpy(handle->GetContents().Data(), backing_store->Data(), size);
+		return handle;
 	}
 }
 
 /**
  * ExternalCopySharedArrayBuffer implementation
  */
+ExternalCopySharedArrayBuffer::ExternalCopySharedArrayBuffer(Local<SharedArrayBuffer> handle) :
 #if V8_AT_LEAST(7, 9, 69)
-
-// This much needed feature was added in v8 55c48820
-ExternalCopySharedArrayBuffer::ExternalCopySharedArrayBuffer(const v8::Local<v8::SharedArrayBuffer>& handle) :
-		ExternalCopy{static_cast<int>(handle->ByteLength())} {
-	backing_store = handle->GetBackingStore();
-}
-
-Local<Value> ExternalCopySharedArrayBuffer::CopyInto(bool /*transfer_in*/) {
-	return SharedArrayBuffer::New(Isolate::GetCurrent(), backing_store);
-}
-
+	ExternalCopyAnyBuffer{handle->GetBackingStore()} {}
 #else
-
-ExternalCopySharedArrayBuffer::ExternalCopySharedArrayBuffer(const v8::Local<v8::SharedArrayBuffer>& handle) :
-		ExternalCopyBytes{handle->ByteLength() + sizeof(ExternalCopySharedArrayBuffer), [&]() -> std::shared_ptr<void> {
-			// Inline lambda generates std::shared_ptr<void> for ExternalCopyBytes ctor. Similar to
-			// ArrayBuffer::Transfer but different enough to make it not worth abstracting out..
-			size_t length = handle->ByteLength();
-			if (length == 0) {
-				throw RuntimeGenericError("Array buffer is invalid");
-			}
-			if (handle->IsExternal()) {
-				// Buffer lifespan is not handled by v8.. attempt to recover from isolated-vm
-				auto ptr = reinterpret_cast<Holder*>(handle->GetAlignedPointerFromInternalField(0));
-				if (ptr == nullptr || ptr->magic != Holder::kMagic) { // dangerous pointer dereference
-					throw RuntimeGenericError("Array buffer cannot be externalized");
-				}
-				// No race conditions here because only one thread can access `Holder`
-				return ptr->cc_ptr;
-			}
-			// In this case the buffer is internal and should be externalized
-			SharedArrayBuffer::Contents contents = handle->Externalize();
-			auto value = std::shared_ptr<void>{contents.Data(), std::free};
-			new Holder{handle, value, length};
-			// Adjust allocator memory down, and `Holder` will adjust memory back up
-			auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
-			if (allocator != nullptr) {
-				allocator->AdjustAllocatedSize(-static_cast<ptrdiff_t>(length));
-			}
-			return value;
-		}(), handle->ByteLength()} {}
+	ExternalCopyAnyBuffer{BackingStore::GetBackingStore(handle)} {}
+#endif
 
 Local<Value> ExternalCopySharedArrayBuffer::CopyInto(bool /*transfer_in*/) {
-	auto ptr = Acquire();
-	Local<SharedArrayBuffer> array_buffer = SharedArrayBuffer::New(Isolate::GetCurrent(), ptr.get(), Length());
-	new Holder{array_buffer, std::move(ptr), Length()};
-	return array_buffer;
-}
-
+	auto backing_store = *this->backing_store.read();
+	size_t size = backing_store->ByteLength();
+#if V8_AT_LEAST(7, 9, 69)
+	auto handle = SharedArrayBuffer::New(Isolate::GetCurrent(), std::move(backing_store));
+#else
+	auto handle = BackingStore::NewSharedArrayBuffer(std::move(backing_store));
 #endif
+	auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+	if (allocator != nullptr) {
+		allocator->Track(handle, size);
+	}
+	return handle;
+}
 
 /**
  * ExternalCopyArrayBufferView implementation
  */
 ExternalCopyArrayBufferView::ExternalCopyArrayBufferView(
-	std::unique_ptr<ExternalCopyAnyArrayBuffer> buffer,
+	std::unique_ptr<ExternalCopyAnyBuffer> buffer,
 	ViewType type, size_t byte_offset, size_t byte_length
 ) :
 	ExternalCopy(sizeof(ExternalCopyArrayBufferView)),

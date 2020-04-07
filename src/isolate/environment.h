@@ -24,15 +24,17 @@
 
 namespace ivm {
 
+#if !V8_AT_LEAST(7, 9, 69)
+class BackingStore;
+#else
+using BackingStore = v8::BackingStore;
+#endif
+
 /**
  * Wrapper around Isolate with helpers to make working with multiple isolates easier.
  */
 class IsolateEnvironment {
 	// These are here so they can adjust `extra_allocated_memory`. TODO: Make this a method
-	friend class ExternalCopyAnyArrayBuffer;
-	friend class ExternalCopyBytes;
-	friend class ExternalCopyArrayBuffer;
-	friend class ExternalCopySharedArrayBuffer;
 	friend class ExternalCopyString;
 
 	friend class Executor;
@@ -83,7 +85,7 @@ class IsolateEnvironment {
 		std::unique_ptr<class InspectorAgent> inspector_agent;
 		v8::Persistent<v8::Context> default_context;
 		std::shared_ptr<v8::ArrayBuffer::Allocator> allocator_ptr;
-		std::shared_ptr<void> snapshot_blob_ptr;
+		std::shared_ptr<BackingStore> snapshot_blob_ptr;
 		v8::StartupData startup_data;
 		void* timer_holder = nullptr;
 		size_t memory_limit = 0;
@@ -138,7 +140,7 @@ class IsolateEnvironment {
 		/**
 		 * Create a new wrapped Isolate.
 		 */
-		void IsolateCtor(size_t memory_limit_in_mb, std::shared_ptr<void> snapshot_blob, size_t snapshot_length);
+		void IsolateCtor(size_t memory_limit_in_mb, std::shared_ptr<BackingStore> snapshot_blob, size_t snapshot_length);
 
 	public:
 		/**

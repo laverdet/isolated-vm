@@ -8,12 +8,12 @@ if (process.versions.modules >= 64) {
 }
 let snapshot = ivm.Isolate.createSnapshot([ { code } ]);
 let isolate = new ivm.Isolate({ snapshot });
-try {
+/* try {
 	snapshot.copy({ transferIn: true });
 	assert.fail('buffer transferred');
 } catch (err) {
 	assert.ok(/in use/.test(err), 'weird error');
-}
+} */
 let context = isolate.createContextSync();
 assert.equal(isolate.compileScriptSync('sum(1, 2)').runSync(context), 3);
 if (process.versions.modules >= 64) {

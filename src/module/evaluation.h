@@ -50,7 +50,7 @@ class CodeCompilerHolder {
 		ScriptOriginHolder script_origin_holder;
 		ExternalCopyString code_string;
 		std::shared_ptr<ExternalCopyArrayBuffer> cached_data_out;
-		std::shared_ptr<void> cached_data_in;
+		std::shared_ptr<BackingStore> cached_data_in;
 		mutable v8::Local<v8::String> code_string_handle;
 		size_t cached_data_in_size = 0;
 		bool cached_data_rejected = false;

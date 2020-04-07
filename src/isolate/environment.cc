@@ -268,7 +268,7 @@ void IsolateEnvironment::IsolateCtor(Isolate* isolate, Local<Context> context) {
 	nodejs_isolate = true;
 }
 
-void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void> snapshot_blob, size_t snapshot_length) {
+void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<BackingStore> snapshot_blob, size_t snapshot_length) {
 	memory_limit = memory_limit_in_mb * 1024 * 1024;
 	allocator_ptr = std::make_shared<LimitedAllocator>(*this, memory_limit);
 	snapshot_blob_ptr = std::move(snapshot_blob);
@@ -308,7 +308,7 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void>
 #endif
 	if (snapshot_blob_ptr) {
 		create_params.snapshot_blob = &startup_data;
-		startup_data.data = reinterpret_cast<char*>(snapshot_blob_ptr.get());
+		startup_data.data = reinterpret_cast<char*>(snapshot_blob_ptr->Data());
 		startup_data.raw_size = snapshot_length;
 	}
 	task_runner = std::make_shared<IsolateTaskRunner>(holder.lock()->GetIsolate());

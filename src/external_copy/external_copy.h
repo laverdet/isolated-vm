@@ -7,8 +7,10 @@
 #include <vector>
 
 #include "isolate/generic/array.h"
+#include "isolate/allocator.h"
 #include "isolate/transferable.h"
 #include "isolate/util.h"
+#include "lib/lockable.h"
 
 namespace ivm {
 
@@ -62,74 +64,37 @@ class ExternalCopy : public Transferable {
 /**
  * Base class for ArrayBuffer and SharedArrayBuffer
  */
-class ExternalCopyBytes : public ExternalCopy {
+class ExternalCopyAnyBuffer : public ExternalCopy {
+	public:
+		explicit ExternalCopyAnyBuffer(std::shared_ptr<BackingStore> backing_store) :
+			backing_store{std::move(backing_store)} {}
+		auto Acquire() const -> std::shared_ptr<BackingStore> { return *backing_store.read(); }
+
 	protected:
-		/**
-		 * Holder is responsible for keeping a referenced to the shared_ptr around as long as the  JS
-		 * instance is alive.
-		 */
-		struct Holder {
-			static constexpr uint64_t kMagic = 0xa4d3c462f7fd1741;
-			uint64_t magic = kMagic;
-			v8::Persistent<v8::Object> v8_ptr;
-			std::shared_ptr<void> cc_ptr;
-			size_t size;
-
-			Holder(const v8::Local<v8::Object>& buffer, std::shared_ptr<void> cc_ptr, size_t size);
-			Holder(const Holder&) = delete;
-			Holder& operator= (const Holder&) = delete;
-			~Holder();
-			static void WeakCallbackV8(const v8::WeakCallbackInfo<void>& info);
-			static void WeakCallback(void* param);
-		};
-
-		std::shared_ptr<void> Release();
-		void Replace(std::shared_ptr<void> value);
-
-	public:
-		explicit ExternalCopyBytes(size_t size, std::shared_ptr<void> value, size_t length);
-		std::shared_ptr<void> Acquire() const;
-		size_t Length() { return length; }
-
-	private:
-		std::shared_ptr<void> value;
-		const size_t length;
-		mutable std::mutex mutex;
-};
-
-class ExternalCopyAnyArrayBuffer {
-	public:
-		virtual ~ExternalCopyAnyArrayBuffer() = default;
-		virtual v8::Local<v8::Value> CopyInto(bool transfer_in = false) = 0;
+		lockable_t<std::shared_ptr<BackingStore>> backing_store;
 };
 
 /**
  * ArrayBuffer instances
  */
-class ExternalCopyArrayBuffer : public ExternalCopyBytes, public ExternalCopyAnyArrayBuffer {
+class ExternalCopyArrayBuffer : public ExternalCopyAnyBuffer {
 	public:
+		using ExternalCopyAnyBuffer::ExternalCopyAnyBuffer;
 		ExternalCopyArrayBuffer(const void* data, size_t length);
-		ExternalCopyArrayBuffer(std::shared_ptr<void> ptr, size_t length);
-		explicit ExternalCopyArrayBuffer(const v8::Local<v8::ArrayBuffer>& handle);
+		explicit ExternalCopyArrayBuffer(v8::Local<v8::ArrayBuffer> handle);
 
-		static std::unique_ptr<ExternalCopyArrayBuffer> Transfer(const v8::Local<v8::ArrayBuffer>& handle);
-		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
+		static auto Transfer(v8::Local<v8::ArrayBuffer> handle) -> std::unique_ptr<ExternalCopyArrayBuffer>;
+		auto CopyInto(bool transfer_in = false) -> v8::Local<v8::Value> final;
 };
 
 /**
  * SharedArrayBuffer instances
  */
-#if V8_AT_LEAST(7, 9, 69)
-class ExternalCopySharedArrayBuffer : public ExternalCopy, public ExternalCopyAnyArrayBuffer {
-	private:
-		std::shared_ptr<v8::BackingStore> backing_store;
-#else
-class ExternalCopySharedArrayBuffer : public ExternalCopyBytes, public ExternalCopyAnyArrayBuffer {
-#endif
+class ExternalCopySharedArrayBuffer : public ExternalCopyAnyBuffer {
 	public:
-		explicit ExternalCopySharedArrayBuffer(const v8::Local<v8::SharedArrayBuffer>& handle);
+		explicit ExternalCopySharedArrayBuffer(v8::Local<v8::SharedArrayBuffer> handle);
 
-		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
+		auto CopyInto(bool transfer_in = false) -> v8::Local<v8::Value> final;
 };
 
 /**
@@ -140,12 +105,12 @@ class ExternalCopyArrayBufferView : public ExternalCopy {
 		enum class ViewType { Uint8, Uint8Clamped, Int8, Uint16, Int16, Uint32, Int32, Float32, Float64, BigInt64Array, BigUint64Array, DataView };
 
 	private:
-		std::unique_ptr<ExternalCopyAnyArrayBuffer> buffer;
+		std::unique_ptr<ExternalCopyAnyBuffer> buffer;
 		ViewType type;
 		size_t byte_offset, byte_length;
 
 	public:
-		ExternalCopyArrayBufferView(std::unique_ptr<ExternalCopyAnyArrayBuffer> buffer, ViewType type, size_t byte_offset, size_t byte_length);
+		ExternalCopyArrayBufferView(std::unique_ptr<ExternalCopyAnyBuffer> buffer, ViewType type, size_t byte_offset, size_t byte_length);
 		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
 };
 

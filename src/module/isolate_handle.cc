@@ -59,7 +59,7 @@ Local<FunctionTemplate> IsolateHandle::Definition() {
  * Create a new Isolate. It all starts here!
  */
 unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
-	shared_ptr<void> snapshot_blob;
+	shared_ptr<BackingStore> snapshot_blob;
 	size_t snapshot_blob_length = 0;
 	size_t memory_limit = 128;
 	bool inspector = false;
@@ -83,7 +83,7 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 				ExternalCopyArrayBuffer* copy_ptr = dynamic_cast<ExternalCopyArrayBuffer*>(copy_handle->GetValue().get());
 				if (copy_ptr != nullptr) {
 					snapshot_blob = copy_ptr->Acquire();
-					snapshot_blob_length = copy_ptr->Length();
+					snapshot_blob_length = snapshot_blob->ByteLength();
 				}
 			}
 			if (!snapshot_blob) {

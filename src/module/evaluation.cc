@@ -50,7 +50,7 @@ CodeCompilerHolder::CodeCompilerHolder(Local<String> code_handle, MaybeLocal<Obj
 			if (copy_ptr != nullptr) {
 				supplied_cached_data = true;
 				cached_data_in = copy_ptr->Acquire();
-				cached_data_in_size = copy_ptr->Length();
+				cached_data_in_size = cached_data_in->ByteLength();
 			}
 		}
 		if (!cached_data_in) {
@@ -61,7 +61,7 @@ CodeCompilerHolder::CodeCompilerHolder(Local<String> code_handle, MaybeLocal<Obj
 
 auto CodeCompilerHolder::GetCachedData() const -> std::unique_ptr<ScriptCompiler::CachedData> {
 	if (cached_data_in) {
-		return std::make_unique<ScriptCompiler::CachedData>(reinterpret_cast<const uint8_t*>(cached_data_in.get()), cached_data_in_size);
+		return std::make_unique<ScriptCompiler::CachedData>(reinterpret_cast<const uint8_t*>(cached_data_in->Data()), cached_data_in_size);
 	}
 	return {};
 }
