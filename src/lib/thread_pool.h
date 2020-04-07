@@ -26,7 +26,7 @@ class thread_pool_t {
 		void resize(size_t size);
 
 	private:
-		auto new_thread(std::lock_guard<std::mutex>& /* lock */) -> size_t;
+		auto new_thread(std::lock_guard<std::mutex>& /*lock*/) -> size_t;
 
 		struct thread_data_t {
 			std::thread thread;

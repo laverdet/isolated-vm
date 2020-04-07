@@ -35,7 +35,7 @@ class ContextHandleTransferable : public Transferable {
 ContextHandle::ContextHandle(RemoteHandle<Context> context, RemoteHandle<Value> global) :
 	context{std::move(context)}, global{std::move(global)} {}
 
-Local<FunctionTemplate> ContextHandle::Definition() {
+auto ContextHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Context", nullptr,
 		"eval", MemberFunction<decltype(&ContextHandle::Eval<1>), &ContextHandle::Eval<1>>{},
@@ -113,7 +113,7 @@ class EvalRunner : public CodeCompilerHolder, public ThreePhaseTask {
 
 		void Phase2() final {
 			// Load script in and compile
-			auto isolate = IsolateEnvironment::GetCurrent();
+			auto* isolate = IsolateEnvironment::GetCurrent();
 			auto context = this->context.Deref();
 			Context::Scope context_scope{context};
 			IsolateEnvironment::HeapCheck heap_check{*isolate, true};
@@ -148,7 +148,7 @@ class EvalRunner : public CodeCompilerHolder, public ThreePhaseTask {
 		}
 
 		auto Phase3() -> Local<Value> final {
-			auto isolate = Isolate::GetCurrent();
+			auto* isolate = Isolate::GetCurrent();
 			auto context = isolate->GetCurrentContext();
 			auto object = Object::New(isolate);
 			auto result_handle = result ? result->TransferIn() : Undefined(isolate).As<Value>();
@@ -204,7 +204,7 @@ class EvalClosureRunner : public CodeCompilerHolder, public ThreePhaseTask {
 
 		void Phase2() final {
 			// Setup isolate's context
-			auto isolate = IsolateEnvironment::GetCurrent();
+			auto* isolate = IsolateEnvironment::GetCurrent();
 			auto context = this->context.Deref();
 			Context::Scope context_scope{context};
 			IsolateEnvironment::HeapCheck heap_check{*isolate, true};
@@ -262,7 +262,7 @@ class EvalClosureRunner : public CodeCompilerHolder, public ThreePhaseTask {
 		}
 
 		auto Phase3() -> Local<Value> final {
-			auto isolate = Isolate::GetCurrent();
+			auto* isolate = Isolate::GetCurrent();
 			auto context = isolate->GetCurrentContext();
 			auto object = Object::New(isolate);
 			auto result_handle = result ? result->TransferIn() : Undefined(isolate).As<Value>();

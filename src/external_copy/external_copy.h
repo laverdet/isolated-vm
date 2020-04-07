@@ -29,11 +29,11 @@ class ExternalCopy : public Transferable {
 		/**
 		 * `Copy` may throw a v8 exception if JSON.stringify(value) throws
 		 */
-		static std::unique_ptr<ExternalCopy> Copy(
+		static auto Copy(
 			v8::Local<v8::Value> value,
 			bool transfer_out = false,
 			ArrayRange transfer_list = {}
-		);
+		) -> std::unique_ptr<ExternalCopy>;
 
 		/**
 		 * If you give this a primitive v8::Value (except Symbol) it will return a ExternalCopy for you.
@@ -45,8 +45,8 @@ class ExternalCopy : public Transferable {
 
 		static auto TotalExternalSize() -> int;
 
-		v8::Local<v8::Value> CopyIntoCheckHeap(bool transfer_in = false);
-		virtual v8::Local<v8::Value> CopyInto(bool transfer_in = false) = 0;
+		auto CopyIntoCheckHeap(bool transfer_in = false) -> v8::Local<v8::Value>;
+		virtual auto CopyInto(bool transfer_in = false) -> v8::Local<v8::Value> = 0;
 		auto Size() const -> int { return size; }
 		auto TransferIn() -> v8::Local<v8::Value> final { return CopyIntoCheckHeap(); }
 
@@ -111,7 +111,7 @@ class ExternalCopyArrayBufferView : public ExternalCopy {
 
 	public:
 		ExternalCopyArrayBufferView(std::unique_ptr<ExternalCopyAnyBuffer> buffer, ViewType type, size_t byte_offset, size_t byte_length);
-		v8::Local<v8::Value> CopyInto(bool transfer_in = false) final;
+		auto CopyInto(bool transfer_in = false) -> v8::Local<v8::Value> final;
 };
 
 } // namespace ivm

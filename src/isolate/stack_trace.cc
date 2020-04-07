@@ -11,11 +11,11 @@ using namespace v8;
 namespace ivm {
 
 #if V8_AT_LEAST(6, 9, 408)
-static Local<String> StringConcat(Isolate* isolate, Local<String> left, Local<String> right) {
+static auto StringConcat(Isolate* isolate, Local<String> left, Local<String> right) -> Local<String> {
 	return String::Concat(isolate, left, right);
 }
 #else
-static Local<String> StringConcat(Isolate* /* isolate */, Local<String> left, Local<String> right) {
+static Local<String> StringConcat(Isolate* /*isolate*/, Local<String> left, Local<String> right) {
 	return String::Concat(left, right);
 }
 #endif
@@ -23,7 +23,7 @@ static Local<String> StringConcat(Isolate* /* isolate */, Local<String> left, Lo
 /**
  * This returns an object that's like Symbol() in JS but only C++ can see it.
  */
-Local<Private> GetPrivateStackSymbol() {
+auto GetPrivateStackSymbol() -> Local<Private> {
 	static IsolateSpecific<Private> holder;
 	return holder.Deref([]() {
 		return Private::New(Isolate::GetCurrent());
@@ -34,7 +34,7 @@ Local<Private> GetPrivateStackSymbol() {
  * Helper which renders to string either a String (pass-through), StackTrace (render), or Array
  * (recursion pair)
  */
-Local<String> RenderErrorStack(Local<Value> data) {
+auto RenderErrorStack(Local<Value> data) -> Local<String> {
 	Isolate* isolate = Isolate::GetCurrent();
 	if (data->IsString()) {
 		// Plain string. We need to remove the first line of `stack` to avoid repeating the error
@@ -121,7 +121,7 @@ void AttachStackGetter(Local<Object> error, Local<Value> data) {
  */
 StackTraceHolder::StackTraceHolder(Local<StackTrace> stack_handle) : stack_trace(Isolate::GetCurrent(), stack_handle) {}
 
-Local<FunctionTemplate> StackTraceHolder::Definition() {
+auto StackTraceHolder::Definition() -> Local<FunctionTemplate> {
 	return MakeClass("StackTraceHolder", nullptr);
 }
 
@@ -153,7 +153,7 @@ void StackTraceHolder::ChainStack(Local<Object> error, Local<StackTrace> stack) 
 	AttachStackGetter(error, pair);
 }
 
-std::string StackTraceHolder::RenderSingleStack(Local<StackTrace> stack_trace) {
+auto StackTraceHolder::RenderSingleStack(Local<StackTrace> stack_trace) -> std::string {
 	Isolate* isolate = Isolate::GetCurrent();
 	std::stringstream ss;
 	int size = stack_trace->GetFrameCount();
@@ -205,7 +205,7 @@ std::string StackTraceHolder::RenderSingleStack(Local<StackTrace> stack_trace) {
 	return ss.str();
 }
 
-void StackTraceHolder::AppendFileLocation(Isolate* /* isolate */, Local<StackFrame> frame, std::stringstream& ss) {
+void StackTraceHolder::AppendFileLocation(Isolate* /*isolate*/, Local<StackFrame> frame, std::stringstream& ss) {
 	String::Utf8Value script_name{Isolate::GetCurrent(), frame->GetScriptNameOrSourceURL()};
 	if (script_name.length() == 0) {
 		if (frame->IsEval()) {

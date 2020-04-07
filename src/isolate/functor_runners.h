@@ -34,7 +34,7 @@ template <typename F1, typename F2>
 inline void RunCatchExternal(v8::Local<v8::Context> default_context, F1 fn1, F2 fn2) {
 	// This function will call `fn1()` and if that fails it will convert the caught error to an
 	// `ExternalCopy` and call `fn2(err)`
-	auto isolate = v8::Isolate::GetCurrent();
+	auto* isolate = v8::Isolate::GetCurrent();
 	v8::TryCatch try_catch{isolate};
 	try {
 		try {

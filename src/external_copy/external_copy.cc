@@ -114,8 +114,8 @@ auto ExternalCopy::operator= (ExternalCopy&& that) noexcept -> ExternalCopy& {
 	return *this;
 }
 
-std::unique_ptr<ExternalCopy> ExternalCopy::Copy(
-		Local<Value> value, bool transfer_out, ArrayRange transfer_list) {
+auto ExternalCopy::Copy(Local<Value> value, bool transfer_out, ArrayRange transfer_list)
+-> std::unique_ptr<ExternalCopy> {
 	std::unique_ptr<ExternalCopy> copy = CopyIfPrimitive(value);
 	if (copy) {
 		return copy;
@@ -167,7 +167,7 @@ std::unique_ptr<ExternalCopy> ExternalCopy::Copy(
 		// `Buffer()` below will force v8 to attempt to create a buffer if it doesn't exist, and if
 		// there is an allocation failure it will crash the process.
 		if (!view->HasBuffer()) {
-			auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+			auto* allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
 			if (allocator != nullptr && !allocator->Check(view->ByteLength())) {
 				throw RuntimeRangeError("Array buffer allocation failed");
 			}
@@ -329,7 +329,7 @@ ExternalCopyError::ExternalCopyError(ErrorType error_type, const char* message, 
 	message{ExternalCopyString{message}},
 	stack{stack.empty() ? ExternalCopyString{} : ExternalCopyString{stack}} {}
 
-Local<Value> ExternalCopyError::CopyInto(bool /*transfer_in*/) {
+auto ExternalCopyError::CopyInto(bool /*transfer_in*/) -> Local<Value> {
 
 	// First make the exception w/ correct + message
 	Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
@@ -422,7 +422,7 @@ auto ExternalCopyArrayBuffer::Transfer(Local<ArrayBuffer> handle) -> std::unique
 	return std::make_unique<ExternalCopyArrayBuffer>(std::move(backing_store));
 }
 
-Local<Value> ExternalCopyArrayBuffer::CopyInto(bool transfer_in) {
+auto ExternalCopyArrayBuffer::CopyInto(bool transfer_in) -> Local<Value> {
 	if (transfer_in) {
 		auto backing_store = std::exchange(*this->backing_store.write(), {});
 		if (!backing_store) {
@@ -435,13 +435,13 @@ Local<Value> ExternalCopyArrayBuffer::CopyInto(bool transfer_in) {
 #else
 		auto handle = BackingStore::NewArrayBuffer(std::move(backing_store));
 #endif
-		auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+		auto* allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
 		if (allocator != nullptr) {
 			allocator->Track(handle, size);
 		}
 		return handle;
 	} else {
-		auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+		auto* allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
 		auto backing_store = *this->backing_store.read();
 		if (!backing_store) {
 			throw RuntimeGenericError("Array buffer is invalid");
@@ -468,7 +468,7 @@ ExternalCopySharedArrayBuffer::ExternalCopySharedArrayBuffer(Local<SharedArrayBu
 	ExternalCopyAnyBuffer{BackingStore::GetBackingStore(handle)} {}
 #endif
 
-Local<Value> ExternalCopySharedArrayBuffer::CopyInto(bool /*transfer_in*/) {
+auto ExternalCopySharedArrayBuffer::CopyInto(bool /*transfer_in*/) -> Local<Value> {
 	auto backing_store = *this->backing_store.read();
 	size_t size = backing_store->ByteLength();
 #if V8_AT_LEAST(7, 9, 69)
@@ -476,7 +476,7 @@ Local<Value> ExternalCopySharedArrayBuffer::CopyInto(bool /*transfer_in*/) {
 #else
 	auto handle = BackingStore::NewSharedArrayBuffer(std::move(backing_store));
 #endif
-	auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+	auto* allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
 	if (allocator != nullptr) {
 		allocator->Track(handle, size);
 	}
@@ -496,7 +496,7 @@ ExternalCopyArrayBufferView::ExternalCopyArrayBufferView(
 	byte_offset(byte_offset), byte_length(byte_length) {}
 
 template <typename T>
-Local<Value> NewTypedArrayView(Local<T> buffer, ExternalCopyArrayBufferView::ViewType type, size_t byte_offset, size_t byte_length) {
+auto NewTypedArrayView(Local<T> buffer, ExternalCopyArrayBufferView::ViewType type, size_t byte_offset, size_t byte_length) -> Local<Value> {
 	switch (type) {
 		case ExternalCopyArrayBufferView::ViewType::Uint8:
 			return Uint8Array::New(buffer, byte_offset, byte_length >> 0);
@@ -523,7 +523,7 @@ Local<Value> NewTypedArrayView(Local<T> buffer, ExternalCopyArrayBufferView::Vie
 	}
 }
 
-Local<Value> ExternalCopyArrayBufferView::CopyInto(bool transfer_in) {
+auto ExternalCopyArrayBufferView::CopyInto(bool transfer_in) -> Local<Value> {
 	Local<Value> buffer = this->buffer->CopyInto(transfer_in);
 	if (buffer->IsArrayBuffer()) {
 		return NewTypedArrayView(buffer.As<ArrayBuffer>(), type, byte_offset, byte_length);

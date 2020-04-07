@@ -10,7 +10,7 @@ namespace {
  * Helper classes passed to v8 so we can reuse the same externally allocated memory for strings
  * between different isolates
  */
-class ExternalString : public v8::String::ExternalStringResource {
+class ExternalString final : public v8::String::ExternalStringResource {
 	public:
 		explicit ExternalString(std::shared_ptr<std::vector<char>> value) : value{std::move(value)} {
 			IsolateEnvironment::GetCurrent()->AdjustExtraAllocatedMemory(this->value->size());
@@ -36,7 +36,7 @@ class ExternalString : public v8::String::ExternalStringResource {
 		std::shared_ptr<std::vector<char>> value;
 };
 
-class ExternalStringOneByte : public v8::String::ExternalOneByteStringResource {
+class ExternalStringOneByte final : public v8::String::ExternalOneByteStringResource {
 	public:
 		explicit ExternalStringOneByte(std::shared_ptr<std::vector<char>> value) : value{std::move(value)} {
 			IsolateEnvironment::GetCurrent()->AdjustExtraAllocatedMemory(this->value->size());
@@ -98,7 +98,7 @@ ExternalCopyString::ExternalCopyString(const char* string) :
 ExternalCopyString::ExternalCopyString(const std::string& string) :
 	value{std::make_shared<std::vector<char>>(string.begin(), string.end())}, one_byte{true} {}
 
-Local<Value> ExternalCopyString::CopyInto(bool /*transfer_in*/) {
+auto ExternalCopyString::CopyInto(bool /*transfer_in*/) -> Local<Value> {
 	if (value->size() < 1024) {
 		// Strings under 1kb will be internal v8 strings. I didn't experiment with this at all, but it
 		// seems self-evident that there's some byte length under which it doesn't make sense to create

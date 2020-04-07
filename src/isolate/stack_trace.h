@@ -15,10 +15,10 @@ class StackTraceHolder : public ClassHandle {
 	public:
 		v8::Persistent<v8::StackTrace, v8::CopyablePersistentTraits<v8::StackTrace>> stack_trace;
 		explicit StackTraceHolder(v8::Local<v8::StackTrace> stack_handle);
-		static v8::Local<v8::FunctionTemplate> Definition();
+		static auto Definition() -> v8::Local<v8::FunctionTemplate>;
 		static void AttachStack(v8::Local<v8::Object> error, v8::Local<v8::StackTrace> stack);
 		static void ChainStack(v8::Local<v8::Object> error, v8::Local<v8::StackTrace> stack);
-		static std::string RenderSingleStack(v8::Local<v8::StackTrace> stack_trace);
+		static auto RenderSingleStack(v8::Local<v8::StackTrace> stack_trace) -> std::string;
 };
 
 } // namespace ivm

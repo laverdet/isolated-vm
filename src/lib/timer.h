@@ -15,14 +15,14 @@ class timer_t {
 		using callback_t = std::function<void(void*)>;
 
 		// Runs a callback unless the `timer_t` destructor is called.
-		timer_t(uint32_t ms, void** holder, callback_t callback);
-		timer_t(uint32_t ms, callback_t callback) : timer_t{ms, nullptr, std::move(callback)} {}
+		timer_t(uint32_t ms, void** holder, const callback_t& callback);
+		timer_t(uint32_t ms, const callback_t& callback) : timer_t{ms, nullptr, callback} {}
 		timer_t(const timer_t&) = delete;
 		~timer_t();
 		auto operator= (const timer_t&) = delete;
 
 		// Runs a callback in `ms` with no `timer_t` object.
-		static void wait_detached(uint32_t ms, callback_t callback);
+		static void wait_detached(uint32_t ms, const callback_t& callback);
 		// Invoked from callbacks when they are done scheduling and may need to wait
 		static void chain(void* ptr);
 		// Pause/unpause timer callbacks

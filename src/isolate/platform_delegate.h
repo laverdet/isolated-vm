@@ -15,7 +15,7 @@ namespace v8 {
 namespace internal {
 class V8 {
 	public:
-		static v8::Platform* GetCurrentPlatform(); // naughty
+		static auto GetCurrentPlatform() -> v8::Platform*; // naughty
 };
 } // namespace internal
 } // namespace v8
@@ -26,8 +26,8 @@ namespace ivm {
 #if NODE_MODULE_VERSION < 81
 class IsolatePlatformDelegate {
 	public:
-		virtual std::shared_ptr<v8::TaskRunner> GetForegroundTaskRunner() = 0;
-		virtual bool IdleTasksEnabled() = 0;
+		virtual auto GetForegroundTaskRunner() -> std::shared_ptr<v8::TaskRunner> = 0;
+		virtual auto IdleTasksEnabled() -> bool = 0;
 };
 #else
 using IsolatePlatformDelegate = node::IsolatePlatformDelegate;
@@ -41,18 +41,18 @@ class TaskRunner : public v8::TaskRunner {
 		void PostDelayedTask(std::unique_ptr<v8::Task> task, double delay_in_seconds) override = 0;
 		void PostIdleTask(std::unique_ptr<v8::IdleTask> /*task*/) final { std::terminate(); }
 		// Can't be final because symbol is also used in IsolatePlatformDelegate
-		bool IdleTasksEnabled() override { return false; };
+		auto IdleTasksEnabled() -> bool override { return false; };
 
 #if V8_AT_LEAST(7, 1, 316)
 		// Added in e8faae72
-		void PostNonNestableTask(std::unique_ptr<v8::Task> task) final { std::terminate(); };
-		bool NonNestableTasksEnabled() const final { return false; }
+		void PostNonNestableTask(std::unique_ptr<v8::Task>  /*task*/) final { std::terminate(); };
+		auto NonNestableTasksEnabled() const -> bool final { return false; }
 #endif
 
 #if V8_AT_LEAST(7, 4, 197)
 		// Added in d342122f
 		void PostNonNestableDelayedTask(std::unique_ptr<v8::Task> /*task*/, double /*delay_in_seconds*/) final { std::terminate(); }
-		bool NonNestableDelayedTasksEnabled() const final { return false; }
+		auto NonNestableDelayedTasksEnabled() const -> bool final { return false; }
 #endif
 };
 
@@ -130,7 +130,7 @@ class PlatformDelegate {
 		 * - Updates v8 to 7.0.276.38
 		 *
 		 */
-		int NumberOfWorkerThreads() final {
+		auto NumberOfWorkerThreads() -> int final {
 			return node_platform->NumberOfWorkerThreads();
 		}
 
@@ -139,7 +139,7 @@ class PlatformDelegate {
 			node_platform->CallOnWorkerThread(std::move(task));
 		}
 #else
-		void CallOnBackgroundThread(v8::Task* task, ExpectedRuntime /* expected_runtime */) final {
+		void CallOnBackgroundThread(v8::Task* task, ExpectedRuntime /*expected_runtime*/) final {
 			node_platform->CallOnWorkerThread(std::unique_ptr<v8::Task>(task));
 		}
 #endif
@@ -150,7 +150,7 @@ class PlatformDelegate {
 		}
 #endif
 
-		std::shared_ptr<v8::TaskRunner> GetForegroundTaskRunner(v8::Isolate* isolate) final {
+		auto GetForegroundTaskRunner(v8::Isolate* isolate) -> std::shared_ptr<v8::TaskRunner> final {
 			auto lock = isolate_map.read();
 			auto ii = lock->find(isolate);
 			if (ii == lock->end()) {
@@ -180,20 +180,20 @@ class PlatformDelegate {
 
 		void CallIdleOnForegroundThread(v8::Isolate* isolate, v8::IdleTask* task) final;
 
-		bool IdleTasksEnabled(v8::Isolate* isolate) final {
+		auto IdleTasksEnabled(v8::Isolate* isolate) -> bool final {
 			return GetForegroundTaskRunner(isolate)->IdleTasksEnabled();
 		}
 
 		// 11ba497c made this implementation required, 837b8016 added `SystemClockTimeMillis()`
-		double CurrentClockTimeMillis() final {
+		auto CurrentClockTimeMillis() -> double final {
 			return node_platform->CurrentClockTimeMillis();
 		}
 
-		double MonotonicallyIncreasingTime() final {
+		auto MonotonicallyIncreasingTime() -> double final {
 			return node_platform->MonotonicallyIncreasingTime();
 		}
 
-		v8::TracingController* GetTracingController() final {
+		auto GetTracingController() -> v8::TracingController* final {
 			return node_platform->GetTracingController();
 		}
 
@@ -201,7 +201,7 @@ class PlatformDelegate {
 		lockable_t<std::unordered_map<v8::Isolate*, IsolatePlatformDelegate*>> isolate_map;
 #endif
 
-	private:
+
 		node::MultiIsolatePlatform* node_platform = nullptr;
 };
 

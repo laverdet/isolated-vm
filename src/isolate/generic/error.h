@@ -90,7 +90,7 @@ using RuntimeRangeError = detail::RuntimeErrorWithConstructor<v8::Exception::Ran
  * the v8 exception.
  */
 template <class Type>
-Type Unmaybe(v8::Maybe<Type> handle) {
+auto Unmaybe(v8::Maybe<Type> handle) -> Type {
 	Type just;
 	if (handle.To(&just)) {
 		return just;
@@ -100,7 +100,7 @@ Type Unmaybe(v8::Maybe<Type> handle) {
 }
 
 template <class Type>
-v8::Local<Type> Unmaybe(v8::MaybeLocal<Type> handle) {
+auto Unmaybe(v8::MaybeLocal<Type> handle) -> v8::Local<Type> {
 	v8::Local<Type> local;
 	if (handle.ToLocal(&local)) {
 		return local;

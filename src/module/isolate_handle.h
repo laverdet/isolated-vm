@@ -18,27 +18,27 @@ class IsolateHandle : public TransferableHandle {
 				std::shared_ptr<IsolateHolder> isolate;
 			public:
 				explicit IsolateHandleTransferable(std::shared_ptr<IsolateHolder> isolate);
-				v8::Local<v8::Value> TransferIn() final;
+				auto TransferIn() -> v8::Local<v8::Value> final;
 		};
 
 	public:
 		explicit IsolateHandle(std::shared_ptr<IsolateHolder> isolate);
-		static v8::Local<v8::FunctionTemplate> Definition();
-		static std::unique_ptr<ClassHandle> New(v8::MaybeLocal<v8::Object> maybe_options);
-		std::unique_ptr<Transferable> TransferOut() final;
+		static auto Definition() -> v8::Local<v8::FunctionTemplate>;
+		static auto New(v8::MaybeLocal<v8::Object> maybe_options) -> std::unique_ptr<ClassHandle>;
+		auto TransferOut() -> std::unique_ptr<Transferable> final;
 
-		template <int async> v8::Local<v8::Value> CreateContext(v8::MaybeLocal<v8::Object> maybe_options);
-		template <int async> v8::Local<v8::Value> CompileScript(v8::Local<v8::String> code_handle, v8::MaybeLocal<v8::Object> maybe_options);
-		template <int async> v8::Local<v8::Value> CompileModule(v8::Local<v8::String> code_handle, v8::MaybeLocal<v8::Object> maybe_options);
+		template <int async> auto CreateContext(v8::MaybeLocal<v8::Object> maybe_options) -> v8::Local<v8::Value>;
+		template <int async> auto CompileScript(v8::Local<v8::String> code_handle, v8::MaybeLocal<v8::Object> maybe_options) -> v8::Local<v8::Value>;
+		template <int async> auto CompileModule(v8::Local<v8::String> code_handle, v8::MaybeLocal<v8::Object> maybe_options) -> v8::Local<v8::Value>;
 
-		v8::Local<v8::Value> CreateInspectorSession();
-		v8::Local<v8::Value> Dispose();
-		template <int async> v8::Local<v8::Value> GetHeapStatistics();
-		v8::Local<v8::Value> GetCpuTime();
-		v8::Local<v8::Value> GetWallTime();
-		v8::Local<v8::Value> GetReferenceCount();
-		v8::Local<v8::Value> IsDisposedGetter();
-		static v8::Local<v8::Value> CreateSnapshot(ArrayRange script_handles, v8::MaybeLocal<v8::String> warmup_handle);
+		auto CreateInspectorSession() -> v8::Local<v8::Value>;
+		auto Dispose() -> v8::Local<v8::Value>;
+		template <int async> auto GetHeapStatistics() -> v8::Local<v8::Value>;
+		auto GetCpuTime() -> v8::Local<v8::Value>;
+		auto GetWallTime() -> v8::Local<v8::Value>;
+		auto GetReferenceCount() -> v8::Local<v8::Value>;
+		auto IsDisposedGetter() -> v8::Local<v8::Value>;
+		static auto CreateSnapshot(ArrayRange script_handles, v8::MaybeLocal<v8::String> warmup_handle) -> v8::Local<v8::Value>;
 };
 
 } // namespace ivm

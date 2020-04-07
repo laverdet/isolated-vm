@@ -26,13 +26,13 @@ class LibraryHandle : public TransferableHandle {
 	private:
 		class LibraryHandleTransferable : public Transferable {
 			public:
-				Local<Value> TransferIn() final {
+				auto TransferIn() -> Local<Value> final {
 					return LibraryHandle::Get();
 				}
 		};
 
 	public:
-		static Local<FunctionTemplate> Definition() {
+		static auto Definition() -> Local<FunctionTemplate> {
 			return Inherit<TransferableHandle>(MakeClass(
 				"isolated_vm", nullptr,
 				"Context", ClassHandle::GetFunctionTemplate<ContextHandle>(),
@@ -44,11 +44,11 @@ class LibraryHandle : public TransferableHandle {
 			));
 		}
 
-		std::unique_ptr<Transferable> TransferOut() final {
+		auto TransferOut() -> std::unique_ptr<Transferable> final {
 			return std::make_unique<LibraryHandleTransferable>();
 		}
 
-		static Local<Object> Get() {
+		static auto Get() -> Local<Object> {
 			Local<Object> library = ClassHandle::NewInstance<LibraryHandle>().As<Object>();
 			Unmaybe(library->Set(Isolate::GetCurrent()->GetCurrentContext(), v8_symbol("lib"), ClassHandle::NewInstance<LibHandle>()));
 			return library;
@@ -79,7 +79,7 @@ void init(Local<Object> target) {
 	Unmaybe(target->Set(context, v8_symbol("ivm"), LibraryHandle::Get()));
 
 	node::AddEnvironmentCleanupHook(isolate, [](void* param) {
-		auto isolate = static_cast<v8::Isolate*>(param);
+		auto* isolate = static_cast<v8::Isolate*>(param);
 		auto it = default_isolates->read()->find(isolate);
 		it->second->ReleaseAndJoin();
 		default_isolates->write()->erase(isolate); // `it` might have changed, don't use it

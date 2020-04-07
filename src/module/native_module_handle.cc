@@ -37,7 +37,7 @@ void NativeModule::InitForContext(Isolate* isolate, Local<Context> context, Loca
  */
 NativeModuleHandle::NativeModuleTransferable::NativeModuleTransferable(shared_ptr<NativeModule> module) : module(std::move(module)) {}
 
-Local<Value> NativeModuleHandle::NativeModuleTransferable::TransferIn() {
+auto NativeModuleHandle::NativeModuleTransferable::TransferIn() -> Local<Value> {
 	return ClassHandle::NewInstance<NativeModuleHandle>(module);
 }
 
@@ -46,7 +46,7 @@ Local<Value> NativeModuleHandle::NativeModuleTransferable::TransferIn() {
  */
 NativeModuleHandle::NativeModuleHandle(shared_ptr<NativeModule> module) : module(std::move(module)) {}
 
-Local<FunctionTemplate> NativeModuleHandle::Definition() {
+auto NativeModuleHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
 		"NativeModule", ConstructorFunction<decltype(&New), &New>{},
 		"create", MemberFunction<decltype(&NativeModuleHandle::Create<1>), &NativeModuleHandle::Create<1>>{},
@@ -54,13 +54,13 @@ Local<FunctionTemplate> NativeModuleHandle::Definition() {
 	));
 }
 
-unique_ptr<NativeModuleHandle> NativeModuleHandle::New(Local<String> value) {
+auto NativeModuleHandle::New(Local<String> value) -> unique_ptr<NativeModuleHandle> {
 	return std::make_unique<NativeModuleHandle>(
 		std::make_shared<NativeModule>(*String::Utf8Value{Isolate::GetCurrent(), value})
 	);
 }
 
-unique_ptr<Transferable> NativeModuleHandle::TransferOut() {
+auto NativeModuleHandle::TransferOut() -> unique_ptr<Transferable> {
 	return std::make_unique<NativeModuleTransferable>(module);
 }
 
@@ -81,17 +81,17 @@ class CreateRunner : public ThreePhaseTask {
 			Local<Object> exports = Object::New(isolate);
 			module->InitForContext(isolate, context_handle, exports);
 			// Once a native module is imported into an isolate, that isolate holds a reference to the module forever
-			auto ptr = module.get();
+			auto* ptr = module.get();
 			Executor::GetCurrentEnvironment()->native_modules.emplace(ptr, std::move(module));
 			result = std::make_unique<ReferenceHandleTransferable>(exports);
 		}
 
-		Local<Value> Phase3() final {
+		auto Phase3() -> Local<Value> final {
 			return result->TransferIn();
 		}
 };
 template <int async>
-Local<Value> NativeModuleHandle::Create(class ContextHandle& context_handle) {
+auto NativeModuleHandle::Create(class ContextHandle& context_handle) -> Local<Value> {
 	// TODO: This should probably throw from the promise, but ThreePhaseTask can't handle invalid
 	// isolate references for now.
 	auto context = context_handle.GetContext();

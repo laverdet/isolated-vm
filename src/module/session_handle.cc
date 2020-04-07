@@ -22,7 +22,7 @@ class SessionImpl : public InspectorSession {
 
 	private:
 		// Helper
-		static MaybeLocal<String> bufferToString(StringBuffer& buffer) {
+		static auto bufferToString(StringBuffer& buffer) -> MaybeLocal<String> {
 			const StringView& view = buffer.string();
 			if (view.is8Bit()) {
 				return String::NewFromOneByte(Isolate::GetCurrent(), view.characters8(), NewStringType::kNormal, view.length());
@@ -101,7 +101,7 @@ SessionHandle::SessionHandle(IsolateEnvironment& isolate) : session(std::make_sh
 	session->isolate = IsolateEnvironment::GetCurrentHolder();
 }
 
-Local<FunctionTemplate> SessionHandle::Definition() {
+auto SessionHandle::Definition() -> Local<FunctionTemplate> {
 	return MakeClass(
 		"Session", nullptr,
 		"dispatchProtocolMessage", MemberFunction<decltype(&SessionHandle::DispatchProtocolMessage), &SessionHandle::DispatchProtocolMessage>{},
@@ -126,7 +126,7 @@ void SessionHandle::CheckDisposed() {
 /**
  * JS API methods
  */
-Local<Value> SessionHandle::DispatchProtocolMessage(Local<String> message) {
+auto SessionHandle::DispatchProtocolMessage(Local<String> message) -> Local<Value> {
 	Isolate* isolate = Isolate::GetCurrent();
 	CheckDisposed();
 	String::Value v8_str{isolate, message};
@@ -134,14 +134,14 @@ Local<Value> SessionHandle::DispatchProtocolMessage(Local<String> message) {
 	return Undefined(isolate);
 }
 
-Local<Value> SessionHandle::Dispose() {
+auto SessionHandle::Dispose() -> Local<Value> {
 	CheckDisposed();
 	session.reset();
 	return Undefined(Isolate::GetCurrent());
 }
 
 // .onNotification
-Local<Value> SessionHandle::OnNotificationGetter() {
+auto SessionHandle::OnNotificationGetter() -> Local<Value> {
 	CheckDisposed();
 	if (session->onNotification) {
 		return Deref(session->onNotification);
@@ -156,7 +156,7 @@ void SessionHandle::OnNotificationSetter(Local<Function> value) {
 }
 
 // .onResponse
-Local<Value> SessionHandle::OnResponseGetter() {
+auto SessionHandle::OnResponseGetter() -> Local<Value> {
 	CheckDisposed();
 	if (session->onResponse) {
 		return Deref(session->onResponse);

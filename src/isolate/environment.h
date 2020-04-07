@@ -48,7 +48,7 @@ class IsolateEnvironment {
 	template <class>
 	friend class IsolateSpecific;
 	template <typename F>
-	friend v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn);
+	friend auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value>;
 
 	public:
 		/**
@@ -62,14 +62,14 @@ class IsolateEnvironment {
 			public:
 				explicit HeapCheck(IsolateEnvironment& env, bool force = false);
 				HeapCheck(const HeapCheck&) = delete;
-				HeapCheck& operator= (const HeapCheck&) = delete;
+				auto operator= (const HeapCheck&) -> HeapCheck& = delete;
 				void Epilogue();
 		};
 
 	private:
 		template <class Type>
 		struct WeakPtrCompare {
-			bool operator()(const std::weak_ptr<Type>& left, const std::weak_ptr<Type>& right) const {
+			auto operator()(const std::weak_ptr<Type>& left, const std::weak_ptr<Type>& right) const -> bool {
 				return left.owner_before(right);
 			}
 		};
@@ -77,7 +77,7 @@ class IsolateEnvironment {
 		using OwnedIsolates = lockable_t<std::set<std::weak_ptr<IsolateHolder>, WeakPtrCompare<IsolateHolder>>, true>;
 		std::unique_ptr<OwnedIsolates> owned_isolates;
 
-		v8::Isolate* isolate;
+		v8::Isolate* isolate{};
 		Scheduler scheduler;
 		Executor executor;
 		std::weak_ptr<IsolateHolder> holder;
@@ -86,7 +86,7 @@ class IsolateEnvironment {
 		v8::Persistent<v8::Context> default_context;
 		std::shared_ptr<v8::ArrayBuffer::Allocator> allocator_ptr;
 		std::shared_ptr<BackingStore> snapshot_blob_ptr;
-		v8::StartupData startup_data;
+		v8::StartupData startup_data{};
 		void* timer_holder = nullptr;
 		size_t memory_limit = 0;
 		size_t initial_heap_size_limit = 0;
@@ -127,7 +127,7 @@ class IsolateEnvironment {
 		 * GC hooks to kill this isolate before it runs out of memory
 		 */
 		static void MarkSweepCompactEpilogue(v8::Isolate* isolate, v8::GCType gc_type, v8::GCCallbackFlags gc_flags, void* data);
-		static size_t NearHeapLimitCallback(void* data, size_t current_heap_limit, size_t initial_heap_limit);
+		static auto NearHeapLimitCallback(void* data, size_t current_heap_limit, size_t initial_heap_limit) -> size_t;
 		void RequestMemoryPressureNotification(v8::MemoryPressureLevel memory_pressure, bool is_reentrant_gc = false, bool as_interrupt = false);
 		static void MemoryPressureInterrupt(v8::Isolate* isolate, void* data);
 		void CheckMemoryPressure();
@@ -148,14 +148,14 @@ class IsolateEnvironment {
 		 */
 		IsolateEnvironment();
 		IsolateEnvironment(const IsolateEnvironment&) = delete;
-		IsolateEnvironment operator= (const IsolateEnvironment&) = delete;
+		auto operator= (const IsolateEnvironment&) -> IsolateEnvironment = delete;
 		~IsolateEnvironment();
 
 		/**
 		 * Factory method which generates an IsolateHolder.
 		 */
 		template <typename ...Args>
-		static std::shared_ptr<IsolateHolder> New(Args&&... args) {
+		static auto New(Args&&... args) -> std::shared_ptr<IsolateHolder> {
 			auto isolate = std::make_shared<IsolateEnvironment>();
 			auto holder = std::make_shared<IsolateHolder>(isolate);
 			isolate->holder = holder;
@@ -166,14 +166,14 @@ class IsolateEnvironment {
 		/**
 		 * Return pointer the currently running IsolateEnvironment
 		 */
-		static IsolateEnvironment* GetCurrent() {
+		static auto GetCurrent() -> IsolateEnvironment* {
 			return Executor::GetCurrentEnvironment();
 		}
 
 		/**
 		 * Return shared_ptr to current IsolateHolder
 		 */
-		static std::shared_ptr<IsolateHolder> GetCurrentHolder() {
+		static auto GetCurrentHolder() -> std::shared_ptr<IsolateHolder> {
 			return Executor::GetCurrentEnvironment()->holder.lock();
 		}
 
@@ -192,25 +192,25 @@ class IsolateEnvironment {
 			return isolate;
 		}
 
-		v8::Isolate* operator->() const { // Should probably remove this one..
+		auto operator->() const -> v8::Isolate* { // Should probably remove this one..
 			return isolate;
 		}
 
-		v8::Isolate* GetIsolate() const {
+		auto GetIsolate() const -> v8::Isolate* {
 			return isolate;
 		}
 
 		/**
 		 * Default context, useful for generating certain objects when we aren't in a context.
 		 */
-		v8::Local<v8::Context> DefaultContext() const {
+		auto DefaultContext() const -> v8::Local<v8::Context> {
 			return v8::Local<v8::Context>::New(isolate, default_context);
 		}
 
 		/**
 		 * Creates a new context. Must be used instead of Context::New() because of snapshot deserialization
 		 */
-		v8::Local<v8::Context> NewContext();
+		auto NewContext() -> v8::Local<v8::Context>;
 
 		/**
 		 * Called by Scheduler when there is work to be done in this isolate.
@@ -232,14 +232,14 @@ class IsolateEnvironment {
 		/**
 		 * Get allocator used by this isolate. Will return nullptr for the default isolate.
 		 */
-		v8::ArrayBuffer::Allocator* GetAllocator() const {
+		auto GetAllocator() const -> v8::ArrayBuffer::Allocator* {
 			return allocator_ptr.get();
 		}
 
 		/**
 		 * Get the initial v8 heap_size_limit when the isolate was created.
 		 */
-		size_t GetInitialHeapSizeLimit() const {
+		auto GetInitialHeapSizeLimit() const -> size_t {
 			return initial_heap_size_limit;
 		}
 
@@ -251,7 +251,7 @@ class IsolateEnvironment {
 		/**
 		 * Returns the InspectorAgent for this Isolate.
 		 */
-		InspectorAgent* GetInspectorAgent() const;
+		auto GetInspectorAgent() const -> InspectorAgent*;
 
 		// Return IsolateHolder
 		auto GetHolder() { return holder; }
@@ -259,7 +259,7 @@ class IsolateEnvironment {
 		/**
 		 * Check memory limit flag
 		 */
-		bool DidHitMemoryLimit() const {
+		auto DidHitMemoryLimit() const -> bool {
 			return hit_memory_limit;
 		}
 
@@ -268,7 +268,7 @@ class IsolateEnvironment {
 		 * isolate is holding onto outside of v8's heap, even if that memory is shared amongst other
 		 * isolates.
 		 */
-		size_t GetExtraAllocatedMemory() const {
+		auto GetExtraAllocatedMemory() const -> size_t {
 			return extra_allocated_memory;
 		}
 		void AdjustExtraAllocatedMemory(int size) {
@@ -278,7 +278,7 @@ class IsolateEnvironment {
 		/**
 		 * Returns the current number of outstanding RemoteHandles<> to this isolate.
 		 */
-		unsigned int GetRemotesCount() const {
+		auto GetRemotesCount() const -> unsigned int {
 			return remotes_count.load();
 		}
 		void AdjustRemotes(int delta) {
@@ -288,15 +288,15 @@ class IsolateEnvironment {
 		/**
 		 * Is this the default nodejs isolate?
 		 */
-		bool IsDefault() const {
+		auto IsDefault() const -> bool {
 			return nodejs_isolate;
 		}
 
 		/**
 		 * Timer getters
 		 */
-		std::chrono::nanoseconds GetCpuTime();
-		std::chrono::nanoseconds GetWallTime();
+		auto GetCpuTime() -> std::chrono::nanoseconds;
+		auto GetWallTime() -> std::chrono::nanoseconds;
 
 		/**
 		 * Ask this isolate to finish everything it's doing.

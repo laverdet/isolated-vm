@@ -13,8 +13,8 @@ class lock_t {
 	public:
 		lock_t(Type& resource, Mutex& mutex) : resource{resource}, lock{mutex} {}
 
-		auto& operator*() { return resource; }
-		auto& operator*() const { return resource; }
+		auto operator*() -> auto& { return resource; }
+		auto operator*() const -> auto& { return resource; }
 		auto operator->() { return &resource; }
 		auto operator->() const { return &resource; }
 
@@ -49,7 +49,7 @@ class lockable_impl_t {
 		using Write = typename Traits::Write;
 
 	public:
-		lockable_impl_t() : resource{} {}
+		lockable_impl_t() = default;
 		template <class... Args>
 		explicit lockable_impl_t(Args&&... args) : resource{std::forward<Args>(args)...} {}
 		lockable_impl_t(const lockable_impl_t&) = delete;
@@ -62,7 +62,7 @@ class lockable_impl_t {
 		using condition_variable_t = detail::condition_variable_t<Mutex>;
 
 	private:
-		Type resource;
+		Type resource{};
 		mutable Mutex mutex;
 };
 

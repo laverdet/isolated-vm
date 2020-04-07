@@ -46,7 +46,7 @@ InspectorAgent::~InspectorAgent() {
  * inspector messages until the inspector is done. This happens in the isolate's currently running
  * thread so we know that an Executor::Lock is up.
  */
-void InspectorAgent::runMessageLoopOnPause(int /* context_group_id */) {
+void InspectorAgent::runMessageLoopOnPause(int /*context_group_id*/) {
 	if (terminated) {
 		return;
 	}
@@ -77,7 +77,7 @@ void InspectorAgent::quitMessageLoopOnPause() {
 /**
  * Connects a V8Inspector::Channel to a V8Inspector which returns an instance of V8InspectorSession.
  */
-unique_ptr<V8InspectorSession> InspectorAgent::ConnectSession(InspectorSession& session) {
+auto InspectorAgent::ConnectSession(InspectorSession& session) -> unique_ptr<V8InspectorSession> {
 	active_sessions.write()->insert(&session);
 	return inspector->connect(1, &session, StringView());
 }

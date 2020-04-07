@@ -29,7 +29,7 @@ class InspectorAgent : public v8_inspector::V8InspectorClient {
 		bool running = false;
 		bool terminated = false;
 
-		std::unique_ptr<v8_inspector::V8InspectorSession> ConnectSession(InspectorSession& session);
+		auto ConnectSession(InspectorSession& session) -> std::unique_ptr<v8_inspector::V8InspectorSession>;
 		void SessionDisconnected(InspectorSession& session);
 		void SendInterrupt(std::unique_ptr<Runnable> task);
 
@@ -37,7 +37,7 @@ class InspectorAgent : public v8_inspector::V8InspectorClient {
 		explicit InspectorAgent(IsolateEnvironment& isolate);
 		~InspectorAgent() override;
 		InspectorAgent(const InspectorAgent&) = delete;
-		InspectorAgent& operator= (const InspectorAgent&) = delete;
+		auto operator= (const InspectorAgent&) -> InspectorAgent& = delete;
 		void runMessageLoopOnPause(int context_group_id) final;
 		void quitMessageLoopOnPause() final;
 		void ContextCreated(v8::Local<v8::Context> context, const std::string& name);
@@ -62,7 +62,7 @@ class InspectorSession : public v8_inspector::V8Inspector::Channel {
 		explicit InspectorSession(IsolateEnvironment& isolate);
 		~InspectorSession() override;
 		InspectorSession(const InspectorSession&) = delete;
-		InspectorSession& operator= (const InspectorSession&) = delete;
+		auto operator= (const InspectorSession&) -> InspectorSession& = delete;
 		void Disconnect();
 		void DispatchBackendProtocolMessage(std::vector<uint16_t> message);
 };

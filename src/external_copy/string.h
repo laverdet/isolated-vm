@@ -5,7 +5,7 @@
 
 namespace ivm {
 
-class ExternalCopyString : public ExternalCopy {
+class ExternalCopyString final : public ExternalCopy {
 	public:
 		ExternalCopyString() = default;
 		explicit ExternalCopyString(v8::Local<v8::String> string);

@@ -34,7 +34,7 @@ class ModuleHandle : public TransferableHandle {
 				std::shared_ptr<ModuleInfo> info;
 			public:
 				explicit ModuleHandleTransferable(std::shared_ptr<ModuleInfo> info);
-				v8::Local<v8::Value> TransferIn() final;
+				auto TransferIn() -> v8::Local<v8::Value> final;
 		};
 
 		std::shared_ptr<ModuleInfo> info;
@@ -42,19 +42,19 @@ class ModuleHandle : public TransferableHandle {
 	public:
 		explicit ModuleHandle(std::shared_ptr<ModuleInfo> info);
 
-		static v8::Local<v8::FunctionTemplate> Definition();
-		std::unique_ptr<Transferable> TransferOut() final;
+		static auto Definition() -> v8::Local<v8::FunctionTemplate>;
+		auto TransferOut() -> std::unique_ptr<Transferable> final;
 
-		v8::Local<v8::Value> GetDependencySpecifiers();
-		std::shared_ptr<ModuleInfo> GetInfo() const;
+		auto GetDependencySpecifiers() -> v8::Local<v8::Value>;
+		auto GetInfo() const -> std::shared_ptr<ModuleInfo>;
 
-		v8::Local<v8::Value> Instantiate(class ContextHandle& context_handle, v8::Local<v8::Function> callback);
-		v8::Local<v8::Value> InstantiateSync(class ContextHandle& context_handle, v8::Local<v8::Function> callback);
+		auto Instantiate(class ContextHandle& context_handle, v8::Local<v8::Function> callback) -> v8::Local<v8::Value>;
+		auto InstantiateSync(class ContextHandle& context_handle, v8::Local<v8::Function> callback) -> v8::Local<v8::Value>;
 
 		template <int async>
-		v8::Local<v8::Value> Evaluate(v8::MaybeLocal<v8::Object> maybe_options);
+		auto Evaluate(v8::MaybeLocal<v8::Object> maybe_options) -> v8::Local<v8::Value>;
 
-		v8::Local<v8::Value> GetNamespace();
+		auto GetNamespace() -> v8::Local<v8::Value>;
 };
 
 } // namespace ivm

@@ -73,7 +73,7 @@ void thread_pool_t::resize(size_t size) {
 	}
 }
 
-auto thread_pool_t::new_thread(std::lock_guard<std::mutex>& /* lock */) -> size_t {
+auto thread_pool_t::new_thread(std::lock_guard<std::mutex>& /*lock*/) -> size_t {
   thread_data.emplace_back();
 	auto& data = thread_data.back();
   data.thread = std::thread{[this, &data]() {

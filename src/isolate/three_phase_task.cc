@@ -90,7 +90,7 @@ ThreePhaseTask::Phase2Runner::~Phase2Runner() {
 			}
 		};
 		// Schedule a throw task back in first isolate
-		auto holder = info.remotes.GetIsolateHolder();
+		auto* holder = info.remotes.GetIsolateHolder();
 		holder->ScheduleTask(
 			std::make_unique<Phase3Orphan>(
 				std::move(self),
@@ -174,7 +174,7 @@ void ThreePhaseTask::Phase2Runner::Run() {
 	did_run = true;
 	auto schedule_error = [&](std::unique_ptr<ExternalCopy> error) {
 		// Schedule a task to enter the first isolate so we can throw the error at the promise
-		auto holder = info.remotes.GetIsolateHolder();
+		auto* holder = info.remotes.GetIsolateHolder();
 		holder->ScheduleTask(std::make_unique<Phase3Failure>(std::move(self), std::move(info), std::move(error)), false, true);
 	};
 	FunctorRunners::RunCatchExternal(IsolateEnvironment::GetCurrent()->DefaultContext(), [&]() {
@@ -184,7 +184,7 @@ void ThreePhaseTask::Phase2Runner::Run() {
 		if (epilogue_error) {
 			schedule_error(std::move(epilogue_error));
 		} else {
-			auto holder = info.remotes.GetIsolateHolder();
+			auto* holder = info.remotes.GetIsolateHolder();
 			holder->ScheduleTask(std::make_unique<Phase3Success>(std::move(self), std::move(info)), false, true);
 		}
 	}, schedule_error);
@@ -206,7 +206,7 @@ void ThreePhaseTask::Phase2RunnerIgnored::Run() {
 /**
  * RunSync implementation
  */
-Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_async) {
+auto ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_async) -> Local<Value> {
 	// Grab a reference to second isolate
 	auto second_isolate_ref = second_isolate.GetIsolate();
 	if (!second_isolate_ref) {
@@ -286,7 +286,7 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 		} else if (second_isolate_ref->IsDefault()) {
 
 			// In this case we asyncronously call the default thread and suspend this thread
-			struct AsyncRunner : public Runnable {
+			struct AsyncRunner final : public Runnable {
 				bool allow_async = false;
 				bool did_run = false;
 				bool is_async = false;
@@ -302,7 +302,7 @@ Local<Value> ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_a
 				) : allow_async(allow_async), self(self), wait(wait), error(error) {}
 
 				AsyncRunner(const AsyncRunner&) = delete;
-				AsyncRunner& operator=(const AsyncRunner&) = delete;
+				auto operator=(const AsyncRunner&) -> AsyncRunner& = delete;
 
 				~AsyncRunner() final {
 					if (!did_run) {

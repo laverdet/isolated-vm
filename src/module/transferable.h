@@ -24,7 +24,7 @@ class TransferOptions {
 		explicit TransferOptions(v8::Local<v8::Object> options, Type fallback = Type::None);
 		explicit TransferOptions(v8::MaybeLocal<v8::Object> maybe_options, Type fallback = Type::None);
 
-		bool operator==(const TransferOptions& that) const {
+		auto operator==(const TransferOptions& that) const -> bool {
 			return type == that.type && fallback == that.fallback && promise == that.promise;
 		}
 

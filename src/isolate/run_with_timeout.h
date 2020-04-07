@@ -16,12 +16,12 @@ namespace ivm {
  */
 class ThreadWait {
 	private:
-		static std::mutex& global_mutex() {
+		static auto global_mutex() -> std::mutex& {
 			static std::mutex mutex;
 			return mutex;
 		}
 
-		static std::condition_variable& global_cv() {
+		static auto global_cv() -> std::condition_variable& {
 			static std::condition_variable cv;
 			return cv;
 		}
@@ -31,7 +31,7 @@ class ThreadWait {
 	public:
 		ThreadWait() = default;
 		ThreadWait(const ThreadWait&) = delete;
-		ThreadWait& operator=(const ThreadWait&) = delete;
+		auto operator=(const ThreadWait&) -> ThreadWait& = delete;
 		~ThreadWait() {
 			std::unique_lock<std::mutex> lock(global_mutex());
 			while (!finished) {
@@ -49,7 +49,7 @@ class ThreadWait {
 /**
  * Grabs a stack trace of the runaway script
  */
-struct TimeoutRunner : public Runnable {
+struct TimeoutRunner final : public Runnable {
 	// TODO: This should return a StackStaceHolder instead which would avoid rendering the stack when
 	// it is not observed.
 	std::string& stack_trace;
@@ -57,7 +57,7 @@ struct TimeoutRunner : public Runnable {
 
 	TimeoutRunner(std::string& stack_trace, ThreadWait& wait) : stack_trace(stack_trace), wait(wait) {}
 	TimeoutRunner(const TimeoutRunner&) = delete;
-	TimeoutRunner& operator=(const TimeoutRunner&) = delete;
+	auto operator=(const TimeoutRunner&) -> TimeoutRunner& = delete;
 
 	~TimeoutRunner() final {
 		wait.Done();
@@ -74,9 +74,10 @@ struct TimeoutRunner : public Runnable {
  * Run some v8 thing with a timeout. Also throws error if memory limit is hit.
  */
 template <typename F>
-v8::Local<v8::Value> RunWithTimeout(uint32_t timeout_ms, F&& fn) {
+auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
 	IsolateEnvironment& isolate = *IsolateEnvironment::GetCurrent();
-	bool did_timeout = false, did_finish = false;
+	bool did_timeout = false;
+	bool did_finish = false;
 	bool is_default_thread = Executor::IsDefaultThread();
 	v8::MaybeLocal<v8::Value> result;
 	std::string stack_trace;

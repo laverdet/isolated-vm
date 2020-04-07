@@ -44,7 +44,7 @@ CodeCompilerHolder::CodeCompilerHolder(Local<String> code_handle, MaybeLocal<Obj
 	auto maybe_cached_data = ReadOption<MaybeLocal<Object>>(maybe_options, StringTable::Get().cachedData, {});
 	Local<Object> cached_data;
 	if (maybe_cached_data.ToLocal(&cached_data)) {
-		auto copy_handle = ClassHandle::Unwrap<ExternalCopyHandle>(cached_data);
+		auto* copy_handle = ClassHandle::Unwrap<ExternalCopyHandle>(cached_data);
 		if (copy_handle != nullptr) {
 			ExternalCopyArrayBuffer* copy_ptr = dynamic_cast<ExternalCopyArrayBuffer*>(copy_handle->GetValue().get());
 			if (copy_ptr != nullptr) {

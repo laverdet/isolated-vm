@@ -15,15 +15,15 @@ class LimitedAllocator : public v8::ArrayBuffer::Allocator {
 
 
 	public:
-		bool Check(size_t length);
+		auto Check(size_t length) -> bool;
 		explicit LimitedAllocator(class IsolateEnvironment& env, size_t limit);
-		void* Allocate(size_t length) final;
-		void* AllocateUninitialized(size_t length) final;
+		auto Allocate(size_t length) -> void* final;
+		auto AllocateUninitialized(size_t length) -> void* final;
 		void Free(void* data, size_t length) final;
 		// This is used by ExternalCopy when an ArrayBuffer is transferred. The memory is not freed but
 		// we should no longer count it against the isolate
 		void AdjustAllocatedSize(ptrdiff_t length);
-		int GetFailureCount() const;
+		auto GetFailureCount() const -> int;
 		void Track(v8::Local<v8::Object> handle, size_t size);
 };
 

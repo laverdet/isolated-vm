@@ -16,13 +16,13 @@ class IsolateSpecific {
 	friend class IsolateSpecific;
 
 	public:
-		IsolateSpecific() : key{detail::IsolateSpecificSize++} {}
+		IsolateSpecific() {}
 
 		template <class Functor>
 		auto Deref(Functor callback) -> v8::Local<Type>;
 
 	private:
-		size_t key;
+		size_t key{detail::IsolateSpecificSize++};
 		union HandleConvert {
 			explicit HandleConvert(v8::Local<v8::Data> data) : data{data} {}
 			v8::Local<v8::Data> data;

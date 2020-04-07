@@ -255,7 +255,7 @@ class ApplyRunner : public ThreePhaseTask {
 			ret = TransferOut(result, return_transfer_options);
 		}
 
-		bool Phase2Async(Scheduler::AsyncWait& wait) final {
+		auto Phase2Async(Scheduler::AsyncWait& wait) -> bool final {
 			// Same as regular `Phase2()` but if it returns a promise we will wait on it
 			if (!(return_transfer_options == TransferOptions{TransferOptions::Type::Reference})) {
 				throw RuntimeTypeError("`result` options are not available for `applySyncPromise`");

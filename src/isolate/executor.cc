@@ -52,7 +52,7 @@ Executor::CpuTimer::~CpuTimer() {
 	executor.cpu_timer = nullptr;
 }
 
-auto Executor::CpuTimer::Delta(const std::lock_guard<std::mutex>& /* lock */) const -> std::chrono::nanoseconds {
+auto Executor::CpuTimer::Delta(const std::lock_guard<std::mutex>& /*lock*/) const -> std::chrono::nanoseconds {
 #if USE_CLOCK_THREAD_CPUTIME_ID
 	return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - steady_time);
 #else
@@ -123,7 +123,7 @@ Executor::WallTimer::~WallTimer() {
 	}
 }
 
-auto Executor::WallTimer::Delta(const std::lock_guard<std::mutex>& /* lock */) const -> std::chrono::nanoseconds {
+auto Executor::WallTimer::Delta(const std::lock_guard<std::mutex>& /*lock*/) const -> std::chrono::nanoseconds {
 	return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - time);
 }
 

@@ -12,7 +12,7 @@ namespace ivm {
  */
 ExternalCopyHandle::ExternalCopyTransferable::ExternalCopyTransferable(std::shared_ptr<ExternalCopy> value) : value(std::move(value)) {}
 
-Local<Value> ExternalCopyHandle::ExternalCopyTransferable::TransferIn() {
+auto ExternalCopyHandle::ExternalCopyTransferable::TransferIn() -> Local<Value> {
 	return ClassHandle::NewInstance<ExternalCopyHandle>(value);
 }
 
@@ -27,7 +27,7 @@ ExternalCopyHandle::~ExternalCopyHandle() {
 	Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-size);
 }
 
-Local<FunctionTemplate> ExternalCopyHandle::Definition() {
+auto ExternalCopyHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
 		"ExternalCopy", ConstructorFunction<decltype(&New), &New>{},
 		"totalExternalSize", StaticAccessor<decltype(&ExternalCopyHandle::TotalExternalSizeGetter), &ExternalCopyHandle::TotalExternalSizeGetter>{},
@@ -37,11 +37,11 @@ Local<FunctionTemplate> ExternalCopyHandle::Definition() {
 	));
 }
 
-unique_ptr<Transferable> ExternalCopyHandle::TransferOut() {
+auto ExternalCopyHandle::TransferOut() -> unique_ptr<Transferable> {
 	return std::make_unique<ExternalCopyTransferable>(value);
 }
 
-unique_ptr<ExternalCopyHandle> ExternalCopyHandle::New(Local<Value> value, MaybeLocal<Object> maybe_options) {
+auto ExternalCopyHandle::New(Local<Value> value, MaybeLocal<Object> maybe_options) -> unique_ptr<ExternalCopyHandle> {
 	Local<Object> options;
 	bool transfer_out = false;
 	ArrayRange transfer_list;
@@ -52,7 +52,7 @@ unique_ptr<ExternalCopyHandle> ExternalCopyHandle::New(Local<Value> value, Maybe
 	return std::make_unique<ExternalCopyHandle>(shared_ptr<ExternalCopy>(ExternalCopy::Copy(value, transfer_out, transfer_list)));
 }
 
-void ExternalCopyHandle::CheckDisposed() {
+void ExternalCopyHandle::CheckDisposed() const {
 	if (!value) {
 		throw RuntimeGenericError("Copy has been released");
 	}
@@ -61,11 +61,11 @@ void ExternalCopyHandle::CheckDisposed() {
 /**
  * JS API functions
  */
-Local<Value> ExternalCopyHandle::TotalExternalSizeGetter() {
+auto ExternalCopyHandle::TotalExternalSizeGetter() -> Local<Value> {
 	return Number::New(Isolate::GetCurrent(), ExternalCopy::TotalExternalSize());
 }
 
-Local<Value> ExternalCopyHandle::Copy(MaybeLocal<Object> maybe_options) {
+auto ExternalCopyHandle::Copy(MaybeLocal<Object> maybe_options) -> Local<Value> {
 	CheckDisposed();
 	bool release = ReadOption<bool>(maybe_options, StringTable::Get().release, false);
 	bool transfer_in = ReadOption<bool>(maybe_options, StringTable::Get().transferIn, false);
@@ -76,7 +76,7 @@ Local<Value> ExternalCopyHandle::Copy(MaybeLocal<Object> maybe_options) {
 	return ret;
 }
 
-Local<Value> ExternalCopyHandle::CopyInto(MaybeLocal<Object> maybe_options) {
+auto ExternalCopyHandle::CopyInto(MaybeLocal<Object> maybe_options) -> Local<Value> {
 	CheckDisposed();
 	bool release = ReadOption<bool>(maybe_options, StringTable::Get().release, false);
 	bool transfer_in = ReadOption<bool>(maybe_options, StringTable::Get().transferIn, false);
@@ -87,7 +87,7 @@ Local<Value> ExternalCopyHandle::CopyInto(MaybeLocal<Object> maybe_options) {
 	return ret;
 }
 
-Local<Value> ExternalCopyHandle::Release() {
+auto ExternalCopyHandle::Release() -> Local<Value> {
 	CheckDisposed();
 	Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-std::exchange(size, 0));
 	value.reset();
@@ -99,17 +99,17 @@ Local<Value> ExternalCopyHandle::Release() {
  */
 ExternalCopyIntoHandle::ExternalCopyIntoTransferable::ExternalCopyIntoTransferable(shared_ptr<ExternalCopy> value, bool transfer_in) : value(std::move(value)), transfer_in(transfer_in) {}
 
-Local<Value> ExternalCopyIntoHandle::ExternalCopyIntoTransferable::TransferIn() {
+auto ExternalCopyIntoHandle::ExternalCopyIntoTransferable::TransferIn() -> Local<Value> {
 	return value->CopyIntoCheckHeap(transfer_in);
 }
 
 ExternalCopyIntoHandle::ExternalCopyIntoHandle(shared_ptr<ExternalCopy> value, bool transfer_in) : value(std::move(value)), transfer_in(transfer_in) {}
 
-Local<FunctionTemplate> ExternalCopyIntoHandle::Definition() {
+auto ExternalCopyIntoHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass("ExternalCopyInto", nullptr));
 }
 
-unique_ptr<Transferable> ExternalCopyIntoHandle::TransferOut() {
+auto ExternalCopyIntoHandle::TransferOut() -> unique_ptr<Transferable> {
 	if (!value) {
 		throw RuntimeGenericError("The return value of `copyInto()` should only be used once");
 	}

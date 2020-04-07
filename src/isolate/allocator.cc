@@ -19,7 +19,7 @@ class ExternalMemoryHandle {
 		auto operator=(const ExternalMemoryHandle&) = delete;
 
 		~ExternalMemoryHandle() {
-			auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+			auto* allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
 			if (allocator != nullptr) {
 				allocator->AdjustAllocatedSize(-size);
 			}
@@ -31,7 +31,7 @@ class ExternalMemoryHandle {
 		}
 
 		static void WeakCallback(void* param) {
-			auto that = reinterpret_cast<ExternalMemoryHandle*>(param);
+			auto* that = reinterpret_cast<ExternalMemoryHandle*>(param);
 			IsolateEnvironment::GetCurrent()->RemoveWeakCallback(&that->handle);
 			delete that;
 		}
@@ -47,7 +47,7 @@ class ExternalMemoryHandle {
  * that it's unsafe to call back into v8 from this class but I took a look at
  * GetHeapStatistics() and I think it'll be ok.
  */
-bool LimitedAllocator::Check(const size_t length) {
+auto LimitedAllocator::Check(const size_t length) -> bool {
 	if (v8_heap + env.extra_allocated_memory + length > next_check) {
 		HeapStatistics heap_statistics;
 		Isolate* isolate = Isolate::GetCurrent();
@@ -69,7 +69,7 @@ bool LimitedAllocator::Check(const size_t length) {
 
 LimitedAllocator::LimitedAllocator(IsolateEnvironment& env, size_t limit) : env(env), limit(limit), v8_heap(1024 * 1024 * 4), next_check(1024 * 1024) {}
 
-void* LimitedAllocator::Allocate(size_t length) {
+auto LimitedAllocator::Allocate(size_t length) -> void* {
 	if (Check(length)) {
 		env.extra_allocated_memory += length;
 		return std::calloc(length, 1);
@@ -92,7 +92,7 @@ void* LimitedAllocator::Allocate(size_t length) {
 	}
 }
 
-void* LimitedAllocator::AllocateUninitialized(size_t length) {
+auto LimitedAllocator::AllocateUninitialized(size_t length) -> void* {
 	if (Check(length)) {
 		env.extra_allocated_memory += length;
 		return std::malloc(length);
@@ -118,7 +118,7 @@ void LimitedAllocator::AdjustAllocatedSize(ptrdiff_t length) {
 	env.extra_allocated_memory += length;
 }
 
-int LimitedAllocator::GetFailureCount() const {
+auto LimitedAllocator::GetFailureCount() const -> int {
 	return failures;
 }
 

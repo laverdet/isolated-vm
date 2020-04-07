@@ -37,7 +37,7 @@ class Executor { // "En taro adun"
 				auto operator= (const CpuTimer&) = delete;
 
 				using TimePoint = std::chrono::time_point<std::chrono::steady_clock, std::chrono::nanoseconds>;
-				auto Delta(const std::lock_guard<std::mutex>& /* lock */) const -> std::chrono::nanoseconds;
+				auto Delta(const std::lock_guard<std::mutex>& /*lock*/) const -> std::chrono::nanoseconds;
 				void Pause();
 				void Resume();
 				static auto Now() -> TimePoint;
@@ -60,7 +60,7 @@ class Executor { // "En taro adun"
 				~WallTimer();
 				auto operator= (const WallTimer&) = delete;
 
-				auto Delta(const std::lock_guard<std::mutex>& /* lock */) const -> std::chrono::nanoseconds;
+				auto Delta(const std::lock_guard<std::mutex>& /*lock*/) const -> std::chrono::nanoseconds;
 
 			private:
 				Executor& executor;
@@ -91,7 +91,6 @@ class Executor { // "En taro adun"
 				~UnpauseScope() { timer->Pause(); }
 				auto operator=(const UnpauseScope&) = delete;
 
-			public:
 				CpuTimer* timer;
 		};
 

@@ -15,7 +15,7 @@
 
 #ifdef __APPLE__
 #include <pthread.h>
-static void* GetStackBase() {
+static auto GetStackBase() -> void* {
 	pthread_t self = pthread_self();
 	return (void*)((char*)pthread_get_stackaddr_np(self) - pthread_get_stacksize_np(self));
 }
@@ -89,13 +89,13 @@ void IsolateEnvironment::OOMErrorCallback(const char* location, bool is_heap_oom
 }
 
 void IsolateEnvironment::PromiseRejectCallback(PromiseRejectMessage rejection) {
-	auto that = IsolateEnvironment::GetCurrent();
+	auto* that = IsolateEnvironment::GetCurrent();
 	assert(that->isolate == Isolate::GetCurrent());
 	that->rejected_promise_error.Reset(that->isolate, rejection.GetValue());
 }
 
-void IsolateEnvironment::MarkSweepCompactEpilogue(Isolate* isolate, GCType gc_type, GCCallbackFlags gc_flags, void* data) {
-	auto that = static_cast<IsolateEnvironment*>(data);
+void IsolateEnvironment::MarkSweepCompactEpilogue(Isolate* isolate, GCType /*gc_type*/, GCCallbackFlags gc_flags, void* data) {
+	auto* that = static_cast<IsolateEnvironment*>(data);
 	HeapStatistics heap;
 	that->isolate->GetHeapStatistics(&heap);
 	size_t total_memory = heap.used_heap_size() + that->extra_allocated_memory;
@@ -127,10 +127,10 @@ void IsolateEnvironment::MarkSweepCompactEpilogue(Isolate* isolate, GCType gc_ty
 	}
 }
 
-size_t IsolateEnvironment::NearHeapLimitCallback(void* data, size_t current_heap_limit, size_t /* initial_heap_limit */) {
+auto IsolateEnvironment::NearHeapLimitCallback(void* data, size_t current_heap_limit, size_t /*initial_heap_limit*/) -> size_t {
 	// This callback will temporarily give the v8 vm up to an extra 1 GB of memory to prevent the
 	// application from crashing.
-	auto that = static_cast<IsolateEnvironment*>(data);
+	auto* that = static_cast<IsolateEnvironment*>(data);
 	that->did_adjust_heap_limit = true;
 	HeapStatistics heap;
 	that->isolate->GetHeapStatistics(&heap);
@@ -163,7 +163,7 @@ void IsolateEnvironment::RequestMemoryPressureNotification(MemoryPressureLevel m
 	}
 }
 
-void IsolateEnvironment::MemoryPressureInterrupt(Isolate* /* isolate */, void* data) {
+void IsolateEnvironment::MemoryPressureInterrupt(Isolate* /*isolate*/, void* data) {
 	static_cast<IsolateEnvironment*>(data)->CheckMemoryPressure();
 }
 
@@ -369,7 +369,7 @@ IsolateEnvironment::~IsolateEnvironment() {
 				ii = isolates.erase(ii);
 			}
 		}
-		for (auto& holder : isolates) {
+		for (const auto & holder : isolates) {
 			auto ref = holder.lock();
 			if (ref) {
 				ref->ReleaseAndJoin();
@@ -424,7 +424,7 @@ IsolateEnvironment::~IsolateEnvironment() {
 static void DeserializeInternalFieldsCallback(Local<Object> /*holder*/, int /*index*/, StartupData /*payload*/, void* /*data*/) {
 }
 
-Local<Context> IsolateEnvironment::NewContext() {
+auto IsolateEnvironment::NewContext() -> Local<Context> {
 #if NODE_MODULE_OR_V8_AT_LEAST(64, 6, 2, 193)
 	return Context::New(isolate, nullptr, {}, {}, &DeserializeInternalFieldsCallback);
 #else
@@ -451,11 +451,11 @@ void IsolateEnvironment::EnableInspectorAgent() {
 	inspector_agent = std::make_unique<InspectorAgent>(*this);
 }
 
-InspectorAgent* IsolateEnvironment::GetInspectorAgent() const {
+auto IsolateEnvironment::GetInspectorAgent() const -> InspectorAgent* {
 	return inspector_agent.get();
 }
 
-std::chrono::nanoseconds IsolateEnvironment::GetCpuTime() {
+auto IsolateEnvironment::GetCpuTime() -> std::chrono::nanoseconds {
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
 	std::chrono::nanoseconds time = executor.cpu_time;
 	if (executor.cpu_timer != nullptr) {
@@ -464,7 +464,7 @@ std::chrono::nanoseconds IsolateEnvironment::GetCpuTime() {
 	return time;
 }
 
-std::chrono::nanoseconds IsolateEnvironment::GetWallTime() {
+auto IsolateEnvironment::GetWallTime() -> std::chrono::nanoseconds {
 	std::lock_guard<std::mutex> lock(executor.timer_mutex);
 	std::chrono::nanoseconds time = executor.wall_time;
 	if (executor.wall_timer != nullptr) {

@@ -15,14 +15,14 @@ class SessionHandle : public ClassHandle {
 
 	public:
 		explicit SessionHandle(IsolateEnvironment& isolate);
-		static v8::Local<v8::FunctionTemplate> Definition();
+		static auto Definition() -> v8::Local<v8::FunctionTemplate>;
 
 		void CheckDisposed();
-		v8::Local<v8::Value> DispatchProtocolMessage(v8::Local<v8::String> message);
-		v8::Local<v8::Value> Dispose();
-		v8::Local<v8::Value> OnNotificationGetter();
+		auto DispatchProtocolMessage(v8::Local<v8::String> message) -> v8::Local<v8::Value>;
+		auto Dispose() -> v8::Local<v8::Value>;
+		auto OnNotificationGetter() -> v8::Local<v8::Value>;
 		void OnNotificationSetter(v8::Local<v8::Function> value);
-		v8::Local<v8::Value> OnResponseGetter();
+		auto OnResponseGetter() -> v8::Local<v8::Value>;
 		void OnResponseSetter(v8::Local<v8::Function> value);
 };
 

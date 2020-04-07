@@ -40,7 +40,7 @@ template<class Class, class Return, class ...Args>
 struct unbind_member_function<Return(Class::*)(Args...)> {
 	using type = Return(*)(Class&, Args...);
 	template <Return(Class::*Function)(Args...)>
-	static inline Return invoke(Class& instance, Args... args) {
+	static inline auto invoke(Class& instance, Args... args) -> Return {
 		return (instance.*Function)(args...);
 	}
 };

@@ -10,11 +10,11 @@ namespace ivm {
 /**
  * Easy strings
  */
-inline v8::Local<v8::String> v8_string(const char* string) {
+inline auto v8_string(const char* string) -> v8::Local<v8::String> {
 	return Unmaybe(v8::String::NewFromOneByte(v8::Isolate::GetCurrent(), (const uint8_t*)string, v8::NewStringType::kNormal)); // NOLINT
 }
 
-inline v8::Local<v8::String> v8_symbol(const char* string) {
+inline auto v8_symbol(const char* string) -> v8::Local<v8::String> {
 	return Unmaybe(v8::String::NewFromOneByte(v8::Isolate::GetCurrent(), (const uint8_t*)string, v8::NewStringType::kInternalized)); // NOLINT
 }
 
@@ -22,12 +22,12 @@ inline v8::Local<v8::String> v8_symbol(const char* string) {
  * Shorthand dereference of Persistent to Local
  */
 template <typename T>
-v8::Local<T> Deref(const v8::Persistent<T>& handle) {
+auto Deref(const v8::Persistent<T>& handle) -> v8::Local<T> {
 	return v8::Local<T>::New(v8::Isolate::GetCurrent(), handle);
 }
 
 template <typename T>
-v8::Local<T> Deref(const v8::Persistent<T, v8::CopyablePersistentTraits<T>>& handle) {
+auto Deref(const v8::Persistent<T, v8::CopyablePersistentTraits<T>>& handle) -> v8::Local<T> {
 	return v8::Local<T>::New(v8::Isolate::GetCurrent(), handle);
 }
 
@@ -38,7 +38,7 @@ v8::Local<T> Deref(const v8::Persistent<T, v8::CopyablePersistentTraits<T>>& han
 namespace ivm {
 
 template <typename T>
-v8::Local<T> Deref(const RemoteHandle<T>& handle) {
+auto Deref(const RemoteHandle<T>& handle) -> v8::Local<T> {
 	return handle.Deref();
 }
 

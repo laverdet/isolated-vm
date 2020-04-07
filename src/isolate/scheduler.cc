@@ -18,7 +18,7 @@ namespace {
 Scheduler::Implementation::Implementation(IsolateEnvironment& env) :
 		env{env},
 		default_scheduler{[&]() -> Implementation& {
-			auto env = Executor::GetCurrentEnvironment();
+			auto* env = Executor::GetCurrentEnvironment();
 			return env == nullptr ? *this : env->scheduler.impl.default_scheduler;
 		}()} {
 	if (this == &default_scheduler) {
@@ -71,13 +71,13 @@ void Scheduler::Implementation::DoneRunning() {
 void Scheduler::Implementation::InterruptIsolate() {
 	assert(status == Status::Running);
 	// Since this callback will be called by v8 we can be certain the pointer to `isolate` is still valid
-	env->RequestInterrupt([](Isolate* /* isolate_ptr */, void* env_ptr) {
+	env->RequestInterrupt([](Isolate* /*isolate_ptr*/, void* env_ptr) {
 		static_cast<IsolateEnvironment*>(env_ptr)->InterruptEntryAsync();
 	}, &env);
 }
 
 void Scheduler::Implementation::InterruptSyncIsolate() {
-	env->RequestInterrupt([](Isolate* /* isolate_ptr */, void* env_ptr) {
+	env->RequestInterrupt([](Isolate* /*isolate_ptr*/, void* env_ptr) {
 		static_cast<IsolateEnvironment*>(env_ptr)->InterruptEntrySync();
 	}, &env);
 }

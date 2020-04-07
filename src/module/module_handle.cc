@@ -41,13 +41,13 @@ ModuleInfo::~ModuleInfo() {
 
 ModuleHandle::ModuleHandleTransferable::ModuleHandleTransferable(shared_ptr<ModuleInfo> info) : info(std::move(info)) {}
 
-Local<Value> ModuleHandle::ModuleHandleTransferable::TransferIn() {
+auto ModuleHandle::ModuleHandleTransferable::TransferIn() -> Local<Value> {
 	return ClassHandle::NewInstance<ModuleHandle>(info);
 };
 
 ModuleHandle::ModuleHandle(shared_ptr<ModuleInfo> info) : info(std::move(info)) {}
 
-Local<FunctionTemplate> ModuleHandle::Definition() {
+auto ModuleHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Module", nullptr,
 		"dependencySpecifiers", MemberAccessor<decltype(&ModuleHandle::GetDependencySpecifiers), &ModuleHandle::GetDependencySpecifiers>{},
@@ -59,11 +59,11 @@ Local<FunctionTemplate> ModuleHandle::Definition() {
 	));
 }
 
-std::unique_ptr<Transferable> ModuleHandle::TransferOut() {
+auto ModuleHandle::TransferOut() -> std::unique_ptr<Transferable> {
 	return std::make_unique<ModuleHandleTransferable>(info);
 }
 
-Local<Value> ModuleHandle::GetDependencySpecifiers() {
+auto ModuleHandle::GetDependencySpecifiers() -> Local<Value> {
 	Isolate* isolate = Isolate::GetCurrent();
 	size_t length = info->dependency_specifiers.size();
 	Local<Array> deps = Array::New(isolate, length);
@@ -73,7 +73,7 @@ Local<Value> ModuleHandle::GetDependencySpecifiers() {
 	return deps;
 }
 
-std::shared_ptr<ModuleInfo> ModuleHandle::GetInfo() const {
+auto ModuleHandle::GetInfo() const -> std::shared_ptr<ModuleInfo> {
 	if (!info) {
 		throw RuntimeGenericError("Module has been released");
 	}
@@ -96,9 +96,9 @@ class ModuleLinker : public ClassHandle {
 			explicit Implementation(Local<Object> linker) : linker(linker) {}
 			virtual ~Implementation() = default;
 			virtual void HandleCallbackReturn(ModuleHandle* module, size_t ii, Local<Value> value) = 0;
-			virtual Local<Value> Begin(ModuleHandle& module, RemoteHandle<Context> context) = 0;
-			ModuleLinker& GetLinker() {
-				auto ptr = ClassHandle::Unwrap<ModuleLinker>(linker.Deref());
+			virtual auto Begin(ModuleHandle& module, RemoteHandle<Context> context) -> Local<Value> = 0;
+			auto GetLinker() const -> ModuleLinker& {
+				auto* ptr = ClassHandle::Unwrap<ModuleLinker>(linker.Deref());
 				assert(ptr);
 				return *ptr;
 			}
@@ -110,7 +110,7 @@ class ModuleLinker : public ClassHandle {
 		std::vector<std::shared_ptr<ModuleInfo>> modules;
 
 	public:
-		static v8::Local<v8::FunctionTemplate> Definition() {
+		static auto Definition() -> v8::Local<v8::FunctionTemplate> {
 			return MakeClass("Linker", nullptr);
 		}
 
@@ -126,11 +126,11 @@ class ModuleLinker : public ClassHandle {
 		}
 
 		template <typename T>
-		T& GetImplementation() {
+		auto GetImplementation() -> T& {
 			return *dynamic_cast<T*>(impl.get());
 		}
 
-		Local<Value> Begin(ModuleHandle& module, RemoteHandle<Context> context) {
+		auto Begin(ModuleHandle& module, RemoteHandle<Context> context) -> Local<Value> {
 			return impl->Begin(module, std::move(context));
 		}
 
@@ -201,7 +201,7 @@ struct InstantiateRunner : public ThreePhaseTask {
 	shared_ptr<ModuleInfo> info;
 	RemoteHandle<Object> linker;
 
-	static MaybeLocal<Module> ResolveCallback(Local<Context> /* context */, Local<String> specifier, Local<Module> referrer) {
+	static auto ResolveCallback(Local<Context> /*context*/, Local<String> specifier, Local<Module> referrer) -> MaybeLocal<Module> {
 		MaybeLocal<Module> ret;
 		detail::RunBarrier([&]() {
 			// Lookup ModuleInfo* instance from `referrer`
@@ -247,7 +247,7 @@ struct InstantiateRunner : public ThreePhaseTask {
 		Unmaybe(mod->InstantiateModule(context_local, ResolveCallback));
 	}
 
-	Local<Value> Phase3() final {
+	auto Phase3() -> Local<Value> final {
 		ClassHandle::Unwrap<ModuleLinker>(linker.Deref())->Reset(ModuleInfo::LinkStatus::Linked);
 		return Undefined(Isolate::GetCurrent());
 	}
@@ -268,7 +268,7 @@ class ModuleLinkerSync : public ModuleLinker::Implementation {
 
 	public:
 		using ModuleLinker::Implementation::Implementation;
-		Local<Value> Begin(ModuleHandle& module, RemoteHandle<Context> context) final {
+		auto Begin(ModuleHandle& module, RemoteHandle<Context> context) -> Local<Value> final {
 			try {
 				GetLinker().Link(&module);
 			} catch (const RuntimeError& err) {
@@ -288,19 +288,19 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 		bool rejected = false;
 		uint32_t pending = 0;
 
-		static Local<Value> ModuleResolved(Local<Array> holder, Local<Value> value) {
+		static auto ModuleResolved(Local<Array> holder, Local<Value> value) -> Local<Value> {
 			detail::RunBarrier([&]() {
 				ModuleHandle* resolved = value->IsObject() ? ClassHandle::Unwrap<ModuleHandle>(value.As<Object>()) : nullptr;
 				if (resolved == nullptr) {
 					throw RuntimeTypeError("Resolved dependency was not `Module`");
 				}
 				Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
-				auto linker = ClassHandle::Unwrap<ModuleLinker>(Unmaybe(holder->Get(context, 0)).As<Object>());
+				auto* linker = ClassHandle::Unwrap<ModuleLinker>(Unmaybe(holder->Get(context, 0)).As<Object>());
 				auto& impl = linker->GetImplementation<ModuleLinkerAsync>();
 				if (impl.rejected) {
 					return;
 				}
-				auto module = ClassHandle::Unwrap<ModuleHandle>(Unmaybe(holder->Get(context, 1)).As<Object>());
+				auto* module = ClassHandle::Unwrap<ModuleHandle>(Unmaybe(holder->Get(context, 1)).As<Object>());
 				auto ii = Unmaybe(holder->Get(context, 2)).As<Uint32>()->Value();
 				linker->ResolveDependency(ii, *module->GetInfo(), resolved);
 				if (--impl.pending == 0) {
@@ -310,7 +310,7 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 			return Undefined(Isolate::GetCurrent());
 		}
 
-		static Local<Value> ModuleRejected(ModuleLinker& linker, Local<Value> error) {
+		static auto ModuleRejected(ModuleLinker& linker, Local<Value> error) -> Local<Value> {
 			detail::RunBarrier([&]() {
 				auto& impl = linker.GetImplementation<ModuleLinkerAsync>();
 				if (!impl.rejected) {
@@ -357,7 +357,7 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 		 ) {}
 
 		using ModuleLinker::Implementation::Implementation;
-		Local<Value> Begin(ModuleHandle& module, RemoteHandle<Context> context) final {
+		auto Begin(ModuleHandle& module, RemoteHandle<Context> context) -> Local<Value> final {
 			GetLinker().Link(&module);
 			info = module.GetInfo();
 			this->context = std::move(context);
@@ -368,18 +368,18 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 		}
 };
 
-Local<Value> ModuleHandle::Instantiate(ContextHandle& context_handle, Local<Function> callback) {
+auto ModuleHandle::Instantiate(ContextHandle& context_handle, Local<Function> callback) -> Local<Value> {
 	auto context = context_handle.GetContext();
 	Local<Object> linker_handle = ClassHandle::NewInstance<ModuleLinker>(callback);
-	auto linker = ClassHandle::Unwrap<ModuleLinker>(linker_handle);
+	auto* linker = ClassHandle::Unwrap<ModuleLinker>(linker_handle);
 	linker->SetImplementation<ModuleLinkerAsync>();
 	return linker->Begin(*this, context);
 }
 
-Local<Value> ModuleHandle::InstantiateSync(ContextHandle& context_handle, Local<Function> callback) {
+auto ModuleHandle::InstantiateSync(ContextHandle& context_handle, Local<Function> callback) -> Local<Value> {
 	auto context = context_handle.GetContext();
 	Local<Object> linker_handle = ClassHandle::NewInstance<ModuleLinker>(callback);
-	auto linker = ClassHandle::Unwrap<ModuleLinker>(linker_handle);
+	auto* linker = ClassHandle::Unwrap<ModuleLinker>(linker_handle);
 	linker->SetImplementation<ModuleLinkerSync>();
 	return linker->Begin(*this, context);
 }
@@ -403,7 +403,7 @@ struct EvaluateRunner : public ThreePhaseTask {
 		info->global_namespace = RemoteHandle<Value>(mod->GetModuleNamespace());
 	}
 
-	Local<Value> Phase3() final {
+	auto Phase3() -> Local<Value> final {
 		if (result) {
 			return result->TransferIn();
 		} else {
@@ -413,13 +413,13 @@ struct EvaluateRunner : public ThreePhaseTask {
 };
 
 template <int async>
-Local<Value> ModuleHandle::Evaluate(MaybeLocal<Object> maybe_options) {
+auto ModuleHandle::Evaluate(MaybeLocal<Object> maybe_options) -> Local<Value> {
 	auto info = GetInfo();
 	int32_t timeout_ms = ReadOption<int32_t>(maybe_options, StringTable::Get().timeout, 0);
 	return ThreePhaseTask::Run<async, EvaluateRunner>(*info->handle.GetIsolateHolder(), info, timeout_ms);
 }
 
-Local<Value> ModuleHandle::GetNamespace() {
+auto ModuleHandle::GetNamespace() -> Local<Value> {
 	std::lock_guard<std::mutex> lock(info->mutex);
 	if (!info->global_namespace) {
 		throw RuntimeGenericError("Module has not been instantiated.");

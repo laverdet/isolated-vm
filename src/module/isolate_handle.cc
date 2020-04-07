@@ -28,13 +28,13 @@ namespace ivm {
  */
 IsolateHandle::IsolateHandleTransferable::IsolateHandleTransferable(shared_ptr<IsolateHolder> isolate) : isolate(std::move(isolate)) {}
 
-Local<Value> IsolateHandle::IsolateHandleTransferable::TransferIn() {
+auto IsolateHandle::IsolateHandleTransferable::TransferIn() -> Local<Value> {
 	return ClassHandle::NewInstance<IsolateHandle>(isolate);
 }
 
 IsolateHandle::IsolateHandle(shared_ptr<IsolateHolder> isolate) : isolate(std::move(isolate)) {}
 
-Local<FunctionTemplate> IsolateHandle::Definition() {
+auto IsolateHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
 	 "Isolate", ConstructorFunction<decltype(&New), &New>{},
 		"createSnapshot", FreeFunction<decltype(&CreateSnapshot), &CreateSnapshot>{},
@@ -58,7 +58,7 @@ Local<FunctionTemplate> IsolateHandle::Definition() {
 /**
  * Create a new Isolate. It all starts here!
  */
-unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
+auto IsolateHandle::New(MaybeLocal<Object> maybe_options) -> unique_ptr<ClassHandle> {
 	shared_ptr<BackingStore> snapshot_blob;
 	size_t snapshot_blob_length = 0;
 	size_t memory_limit = 128;
@@ -78,7 +78,7 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 		auto maybe_snapshot = ReadOption<MaybeLocal<Object>>(options, StringTable::Get().snapshot, {});
 		Local<Object> snapshot_handle;
 		if (maybe_snapshot.ToLocal(&snapshot_handle)) {
-			auto copy_handle = ClassHandle::Unwrap<ExternalCopyHandle>(snapshot_handle.As<Object>());
+			auto* copy_handle = ClassHandle::Unwrap<ExternalCopyHandle>(snapshot_handle.As<Object>());
 			if (copy_handle != nullptr) {
 				ExternalCopyArrayBuffer* copy_ptr = dynamic_cast<ExternalCopyArrayBuffer*>(copy_handle->GetValue().get());
 				if (copy_ptr != nullptr) {
@@ -103,7 +103,7 @@ unique_ptr<ClassHandle> IsolateHandle::New(MaybeLocal<Object> maybe_options) {
 	return std::make_unique<IsolateHandle>(isolate);
 }
 
-unique_ptr<Transferable> IsolateHandle::TransferOut() {
+auto IsolateHandle::TransferOut() -> unique_ptr<Transferable> {
 	return std::make_unique<IsolateHandleTransferable>(isolate);
 }
 
@@ -126,7 +126,7 @@ struct CreateContextRunner : public ThreePhaseTask {
 
 			explicit ContextDeleter(bool has_inspector) : has_inspector{has_inspector} {}
 
-			void operator() (Persistent<Context>& context) {
+			void operator() (Persistent<Context>& context) const {
 				auto& env = *IsolateEnvironment::GetCurrent();
 				{
 					HandleScope handle_scope{env.GetIsolate()};
@@ -141,7 +141,7 @@ struct CreateContextRunner : public ThreePhaseTask {
 			}
 		};
 
-		auto env = IsolateEnvironment::GetCurrent();
+		auto* env = IsolateEnvironment::GetCurrent();
 
 		// Sanity check before we build the context
 		if (enable_inspector && env->GetInspectorAgent() == nullptr) {
@@ -160,13 +160,13 @@ struct CreateContextRunner : public ThreePhaseTask {
 		heap_check.Epilogue();
 	}
 
-	Local<Value> Phase3() final {
+	auto Phase3() -> Local<Value> final {
 		// Make a new Context{} JS class
 		return ClassHandle::NewInstance<ContextHandle>(std::move(context), std::move(global));
 	}
 };
 template <int async>
-Local<Value> IsolateHandle::CreateContext(MaybeLocal<Object> maybe_options) {
+auto IsolateHandle::CreateContext(MaybeLocal<Object> maybe_options) -> Local<Value> {
 	return ThreePhaseTask::Run<async, CreateContextRunner>(*isolate, maybe_options);
 }
 
@@ -181,7 +181,7 @@ struct CompileScriptRunner : public CodeCompilerHolder, public ThreePhaseTask {
 
 	void Phase2() final {
 		// Compile in second isolate and return UnboundScript persistent
-		auto isolate = IsolateEnvironment::GetCurrent();
+		auto* isolate = IsolateEnvironment::GetCurrent();
 		Context::Scope context_scope(isolate->DefaultContext());
 		IsolateEnvironment::HeapCheck heap_check{*isolate, true};
 		auto source = GetSource();
@@ -213,7 +213,7 @@ struct CompileScriptRunner : public CodeCompilerHolder, public ThreePhaseTask {
 		heap_check.Epilogue();
 	}
 
-	Local<Value> Phase3() final {
+	auto Phase3() -> Local<Value> final {
 		// Wrap UnboundScript in JS Script{} class
 		Local<Object> value = ClassHandle::NewInstance<ScriptHandle>(std::move(script));
 		WriteCompileResults(value);
@@ -222,7 +222,7 @@ struct CompileScriptRunner : public CodeCompilerHolder, public ThreePhaseTask {
 };
 
 template <int async>
-Local<Value> IsolateHandle::CompileScript(Local<String> code_handle, MaybeLocal<Object> maybe_options) {
+auto IsolateHandle::CompileScript(Local<String> code_handle, MaybeLocal<Object> maybe_options) -> Local<Value> {
 	return ThreePhaseTask::Run<async, CompileScriptRunner>(*this->isolate, code_handle, maybe_options);
 }
 
@@ -236,7 +236,7 @@ struct CompileModuleRunner : public CodeCompilerHolder, public ThreePhaseTask {
 		CodeCompilerHolder{code_handle, maybe_options, true} {}
 
 	void Phase2() final {
-		auto isolate = IsolateEnvironment::GetCurrent();
+		auto* isolate = IsolateEnvironment::GetCurrent();
 		Context::Scope context_scope(isolate->DefaultContext());
 		IsolateEnvironment::HeapCheck heap_check{*isolate, true};
 		auto source = GetSource();
@@ -264,7 +264,7 @@ struct CompileModuleRunner : public CodeCompilerHolder, public ThreePhaseTask {
 		heap_check.Epilogue();
 	}
 
-	Local<Value> Phase3() final {
+	auto Phase3() -> Local<Value> final {
 		Local<Object> value = ClassHandle::NewInstance<ModuleHandle>(std::move(module_info));
 		WriteCompileResults(value);
 		return value;
@@ -272,14 +272,14 @@ struct CompileModuleRunner : public CodeCompilerHolder, public ThreePhaseTask {
 };
 
 template <int async>
-Local<Value> IsolateHandle::CompileModule(Local<String> code_handle, MaybeLocal<Object> maybe_options) {
+auto IsolateHandle::CompileModule(Local<String> code_handle, MaybeLocal<Object> maybe_options) -> Local<Value> {
 	return ThreePhaseTask::Run<async, CompileModuleRunner>(*this->isolate, code_handle, maybe_options);
 }
 
 /**
  * Create a new channel for debugging on the inspector
  */
-Local<Value> IsolateHandle::CreateInspectorSession() {
+auto IsolateHandle::CreateInspectorSession() -> Local<Value> {
 	if (IsolateEnvironment::GetCurrentHolder() == isolate) {
 		throw RuntimeGenericError("An isolate is not debuggable from within itself");
 	}
@@ -296,7 +296,7 @@ Local<Value> IsolateHandle::CreateInspectorSession() {
 /**
  * Dispose an isolate
  */
-Local<Value> IsolateHandle::Dispose() {
+auto IsolateHandle::Dispose() -> Local<Value> {
 	if (!isolate->Dispose()) {
 		throw RuntimeGenericError("Isolate is already disposed");
 	}
@@ -312,7 +312,7 @@ struct HeapStatRunner : public ThreePhaseTask {
 	size_t adjustment = 0;
 
 	// Dummy constructor to workaround gcc bug
-	explicit HeapStatRunner(int /* unused */) {}
+	explicit HeapStatRunner(int /*unused*/) {}
 
 	void Phase2() final {
 		IsolateEnvironment& isolate = *IsolateEnvironment::GetCurrent();
@@ -321,7 +321,7 @@ struct HeapStatRunner : public ThreePhaseTask {
 		externally_allocated_size = isolate.GetExtraAllocatedMemory();
 	}
 
-	Local<Value> Phase3() final {
+	auto Phase3() -> Local<Value> final {
 		Isolate* isolate = Isolate::GetCurrent();
 		Local<Context> context = isolate->GetCurrentContext();
 		Local<Object> ret = Object::New(isolate);
@@ -340,14 +340,14 @@ struct HeapStatRunner : public ThreePhaseTask {
 	}
 };
 template <int async>
-Local<Value> IsolateHandle::GetHeapStatistics() {
+auto IsolateHandle::GetHeapStatistics() -> Local<Value> {
 	return ThreePhaseTask::Run<async, HeapStatRunner>(*isolate, 0);
 }
 
 /**
  * Timers
  */
-Local<Value> IsolateHandle::GetCpuTime() {
+auto IsolateHandle::GetCpuTime() -> Local<Value> {
 	auto env = this->isolate->GetIsolate();
 	if (!env) {
 		throw RuntimeGenericError("Isolate is disposed");
@@ -362,7 +362,7 @@ Local<Value> IsolateHandle::GetCpuTime() {
 	return ret;
 }
 
-Local<Value> IsolateHandle::GetWallTime() {
+auto IsolateHandle::GetWallTime() -> Local<Value> {
 	auto env = this->isolate->GetIsolate();
 	if (!env) {
 		throw RuntimeGenericError("Isolate is disposed");
@@ -380,7 +380,7 @@ Local<Value> IsolateHandle::GetWallTime() {
 /**
  * Reference count
  */
-Local<Value> IsolateHandle::GetReferenceCount() {
+auto IsolateHandle::GetReferenceCount() -> Local<Value> {
 	auto env = this->isolate->GetIsolate();
 	if (!env) {
 		throw RuntimeGenericError("Isolate is disposed");
@@ -391,18 +391,18 @@ Local<Value> IsolateHandle::GetReferenceCount() {
 /**
  * Simple disposal checker
  */
-Local<Value> IsolateHandle::IsDisposedGetter() {
+auto IsolateHandle::IsDisposedGetter() -> Local<Value> {
 	return Boolean::New(Isolate::GetCurrent(), !isolate->GetIsolate());
 }
 
 /**
 * Create a snapshot from some code and return it as an external ArrayBuffer
 */
-static StartupData SerializeInternalFieldsCallback(Local<Object> /*holder*/, int /*index*/, void* /*data*/) {
+static auto SerializeInternalFieldsCallback(Local<Object> /*holder*/, int /*index*/, void* /*data*/) -> StartupData {
 	return {nullptr, 0};
 }
 
-Local<Value> IsolateHandle::CreateSnapshot(ArrayRange script_handles, MaybeLocal<String> warmup_handle) {
+auto IsolateHandle::CreateSnapshot(ArrayRange script_handles, MaybeLocal<String> warmup_handle) -> Local<Value> {
 
 	// Simple platform delegate and task queue
 	using TaskDeque = lockable_t<std::deque<std::unique_ptr<v8::Task>>>;
@@ -422,7 +422,7 @@ Local<Value> IsolateHandle::CreateSnapshot(ArrayRange script_handles, MaybeLocal
 			auto GetForegroundTaskRunner() -> std::shared_ptr<v8::TaskRunner> final {
 			 return shared_from_this();
 			}
-			bool IdleTasksEnabled() final {
+			auto IdleTasksEnabled() -> bool final {
 				return false;
 			}
 

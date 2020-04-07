@@ -104,7 +104,7 @@ class ClassHandle {
 		 */
 		template <typename P, void (*F)(P*)>
 		void SetWeak(P* param) {
-			auto isolate = IsolateEnvironment::GetCurrent();
+			auto* isolate = IsolateEnvironment::GetCurrent();
 			isolate->AddWeakCallback(&this->handle, (void(*)(void*))F, param);
 			handle.SetWeak(param, WeakCallback<P, F>, v8::WeakCallbackType::kParameter);
 		}
@@ -117,7 +117,7 @@ class ClassHandle {
 		 * Invoked once JS loses all references to this object
 		 */
 		static void WeakCallback(ClassHandle* that) {
-			auto isolate = IsolateEnvironment::GetCurrent();
+			auto* isolate = IsolateEnvironment::GetCurrent();
 			isolate->RemoveWeakCallback(&that->handle);
 			delete that; // NOLINT
 		}
@@ -144,7 +144,7 @@ class ClassHandle {
 		 * Sets up this object's FunctionTemplate inside the current isolate
 		 */
 		template <typename... Args>
-		static v8::Local<v8::FunctionTemplate> MakeClass(const char* class_name, detail::ConstructorFunctionHolder New, Args... args) {
+		static auto MakeClass(const char* class_name, detail::ConstructorFunctionHolder New, Args... args) -> v8::Local<v8::FunctionTemplate> {
 			v8::Isolate* isolate = v8::Isolate::GetCurrent();
 			v8::Local<v8::String> name_handle = v8_symbol(class_name);
 			v8::Local<v8::FunctionTemplate> tmpl = v8::FunctionTemplate::New(
@@ -167,7 +167,7 @@ class ClassHandle {
 		 * Inherit from another class's FunctionTemplate
 		 */
 		template <typename T>
-		static v8::Local<v8::FunctionTemplate> Inherit(v8::Local<v8::FunctionTemplate> definition) {
+		static auto Inherit(v8::Local<v8::FunctionTemplate> definition) -> v8::Local<v8::FunctionTemplate> {
 			v8::Local<v8::FunctionTemplate> parent = GetFunctionTemplate<T>();
 			definition->Inherit(parent);
 			return definition;
@@ -176,7 +176,7 @@ class ClassHandle {
 	public:
 		ClassHandle() = default;
 		ClassHandle(const ClassHandle&) = delete;
-		ClassHandle& operator= (const ClassHandle&) = delete;
+		auto operator= (const ClassHandle&) -> ClassHandle& = delete;
 		virtual ~ClassHandle() {
 			if (!handle.IsEmpty()) {
 				handle.ClearWeak();
@@ -188,7 +188,7 @@ class ClassHandle {
 		 * Returns instance of this class for this context.
 		 */
 		template <typename T>
-		static v8::Local<v8::Function> Init() {
+		static auto Init() -> v8::Local<v8::Function> {
 			return GetFunctionTemplate<T>()->GetFunction();
 		}
 
@@ -206,7 +206,7 @@ class ClassHandle {
 		 * Builds a new instance of T from scratch, used in factory functions.
 		 */
 		template <typename T, typename ...Args>
-		static v8::Local<v8::Object> NewInstance(Args&&... args) {
+		static auto NewInstance(Args&&... args) -> v8::Local<v8::Object> {
 			v8::Local<v8::Object> instance = Unmaybe(GetFunctionTemplate<T>()->InstanceTemplate()->NewInstance(v8::Isolate::GetCurrent()->GetCurrentContext()));
 			Wrap(std::make_unique<T>(std::forward<Args>(args)...), instance);
 			return instance;
@@ -216,7 +216,7 @@ class ClassHandle {
 		 * Pull out native pointer from v8 handle
 		 */
 		template <typename T>
-		static T* Unwrap(v8::Local<v8::Object> handle) {
+		static auto Unwrap(v8::Local<v8::Object> handle) -> T* {
 			assert(!handle.IsEmpty());
 			if (!ClassHandle::GetFunctionTemplate<T>()->HasInstance(handle)) {
 				return nullptr;
@@ -228,7 +228,7 @@ class ClassHandle {
 		/**
 		 * Returns the JS value that this ClassHandle points to
 		 */
-		v8::Local<v8::Object> This() {
+		auto This() -> v8::Local<v8::Object> {
 			return Deref(handle);
 		}
 };
@@ -243,7 +243,7 @@ inline auto HandleCastImpl(v8::Local<v8::Value> value, const HandleCastArguments
 	if (handle->InternalFieldCount() != 1) {
 		throw ParamIncorrect("something else");
 	}
-	auto ptr = ClassHandle::Unwrap<Type>(handle);
+	auto* ptr = ClassHandle::Unwrap<Type>(handle);
 	if (ptr == nullptr) {
 		throw ParamIncorrect("something else");
 	} else {
@@ -264,7 +264,7 @@ struct ConstructorFunctionImpl<Return(Args...)> {
 	using Type = v8::Local<v8::Value>(*)(v8::Local<v8::Value> This, Args... args);
 
 	template <Return(*Function)(Args...)>
-	static inline v8::Local<v8::Value> Invoke(v8::Local<v8::Value> This, Args... args) {
+	static inline auto Invoke(v8::Local<v8::Value> This, Args... args) -> v8::Local<v8::Value> {
 		auto instance = Function(args...);
 		if (instance) {
 			v8::Local<v8::Object> handle = This.As<v8::Object>();

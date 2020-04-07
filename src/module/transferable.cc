@@ -25,7 +25,7 @@ struct TransferablePromiseStateStruct {
 using TransferablePromiseState = lockable_t<TransferablePromiseStateStruct>;
 
 // Responsible for waiting for the promise in the isolate in which it was created
-class TransferablePromiseHolder : public ClassHandle {
+class TransferablePromiseHolder final : public ClassHandle {
 	public:
 		explicit TransferablePromiseHolder(
 			std::shared_ptr<TransferablePromiseState> state,
@@ -50,7 +50,7 @@ class TransferablePromiseHolder : public ClassHandle {
 		void Accept(Local<Promise> promise) {
 			auto state = promise->State();
 			if (state == Promise::PromiseState::kPending) {
-				auto isolate = Isolate::GetCurrent();
+				auto* isolate = Isolate::GetCurrent();
 				auto context = isolate->GetCurrentContext();
 				auto handle = This();
 				promise = Unmaybe(promise->Then(context, Unmaybe(
@@ -147,7 +147,7 @@ class TransferablePromise : public Transferable {
 		}
 
 		auto TransferIn() -> Local<Value> final {
-			auto isolate = Isolate::GetCurrent();
+			auto* isolate = Isolate::GetCurrent();
 			auto context = isolate->GetCurrentContext();
 			auto resolver = Unmaybe(Promise::Resolver::New(context));
 			auto lock = state->write();
@@ -164,10 +164,10 @@ class TransferablePromise : public Transferable {
 		}
 
 	private:
-		TransferablePromiseHolder& MakeHolder(TransferOptions transfer_options) {
+		auto MakeHolder(TransferOptions transfer_options) -> TransferablePromiseHolder& {
 			transfer_options.promise = false;
 			auto holder = ClassHandle::NewInstance<TransferablePromiseHolder>(state, transfer_options);
-			auto object = ClassHandle::Unwrap<TransferablePromiseHolder>(holder);
+			auto* object = ClassHandle::Unwrap<TransferablePromiseHolder>(holder);
 			return *object;
 		}
 
@@ -232,7 +232,7 @@ auto OptionalTransferOut(Local<Value> value, TransferOptions options) -> std::un
 	switch (options.type) {
 		case TransferOptions::Type::None: {
 			if (value->IsObject()) {
-				auto ptr = ClassHandle::Unwrap<TransferableHandle>(value.As<Object>());
+				auto* ptr = ClassHandle::Unwrap<TransferableHandle>(value.As<Object>());
 				if (ptr != nullptr) {
 					return ptr->TransferOut();
 				}

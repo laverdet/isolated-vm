@@ -43,7 +43,7 @@ class ThreePhaseTask {
 				v8::Local<v8::StackTrace> stack_trace
 			);
 			CalleeInfo(const CalleeInfo&) = delete;
-			CalleeInfo(CalleeInfo&&) noexcept;
+			CalleeInfo(CalleeInfo&& /*that*/) noexcept;
 			auto operator= (const CalleeInfo&) = delete;
 			auto operator= (CalleeInfo&&) = delete;
 			~CalleeInfo();
@@ -52,7 +52,7 @@ class ThreePhaseTask {
 		/**
 		 * Class which manages running async phase 2, then phase 3
 		 */
-		struct Phase2Runner : public Runnable {
+		struct Phase2Runner final : public Runnable {
 			std::unique_ptr<ThreePhaseTask> self;
 			CalleeInfo info;
 			bool did_run = false;
@@ -62,7 +62,7 @@ class ThreePhaseTask {
 				CalleeInfo info
 			);
 			Phase2Runner(const Phase2Runner&) = delete;
-			Phase2Runner& operator= (const Phase2Runner&) = delete;
+			auto operator= (const Phase2Runner&) -> Phase2Runner& = delete;
 			~Phase2Runner() final;
 			void Run() final;
 		};
@@ -76,24 +76,24 @@ class ThreePhaseTask {
 			void Run() final;
 		};
 
-		v8::Local<v8::Value> RunSync(IsolateHolder& second_isolate, bool allow_async);
+		auto RunSync(IsolateHolder& second_isolate, bool allow_async) -> v8::Local<v8::Value>;
 
 	public:
 		ThreePhaseTask() = default;
 		ThreePhaseTask(const ThreePhaseTask&) = delete;
-		ThreePhaseTask& operator= (const ThreePhaseTask&) = delete;
+		auto operator= (const ThreePhaseTask&) -> ThreePhaseTask& = delete;
 		virtual ~ThreePhaseTask() = default;
 
 		virtual void Phase2() = 0;
-		virtual bool Phase2Async(Scheduler::AsyncWait& /*wait*/) {
+		virtual auto Phase2Async(Scheduler::AsyncWait& /*wait*/) -> bool {
 			Phase2();
 			return false;
 		}
 
-		virtual v8::Local<v8::Value> Phase3() = 0;
+		virtual auto Phase3() -> v8::Local<v8::Value> = 0;
 
 		template <int async, typename T, typename ...Args>
-		static v8::Local<v8::Value> Run(IsolateHolder& second_isolate, Args&&... args) {
+		static auto Run(IsolateHolder& second_isolate, Args&&... args) -> v8::Local<v8::Value> {
 
 			if (async == 1) { // Full async, promise returned
 				// Build a promise for outer isolate

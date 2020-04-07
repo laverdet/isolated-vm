@@ -60,7 +60,7 @@ struct HandleCastTag {};
 
 // Explicit casts: printf("%d\n", HandleCastImpl<int>(value));
 template <class Type, class Value>
-Type HandleCast(Value value, HandleCastArguments arguments = {}) {
+auto HandleCast(Value value, HandleCastArguments arguments = {}) -> Type {
 	return HandleCastImpl(value, arguments, HandleCastTag<Type>{});
 }
 

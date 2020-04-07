@@ -9,25 +9,26 @@ namespace ivm {
 /**
  * Stateless transferable interface
  */
-Local<Value> LibHandle::LibTransferable::TransferIn() {
+auto LibHandle::LibTransferable::TransferIn() -> Local<Value> {
 	return ClassHandle::NewInstance<LibHandle>();
 }
 
 /**
  * ivm.lib API container
  */
-Local<FunctionTemplate> LibHandle::Definition() {
+auto LibHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Lib", nullptr,
 		"hrtime", MemberFunction<decltype(&LibHandle::Hrtime), &LibHandle::Hrtime>{}
 	));
 }
 
-unique_ptr<Transferable> LibHandle::TransferOut() {
+auto LibHandle::TransferOut() -> unique_ptr<Transferable> {
 	return std::make_unique<LibTransferable>();
 }
 
-Local<Value> LibHandle::Hrtime(MaybeLocal<Array> maybe_diff) {
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto LibHandle::Hrtime(MaybeLocal<Array> maybe_diff) -> Local<Value> {
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
 	uint64_t time = uv_hrtime();

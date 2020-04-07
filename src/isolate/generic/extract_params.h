@@ -8,17 +8,17 @@ namespace ivm {
 namespace detail {
 
 // Returns the name of the current function being called, used for error messages
-inline std::string CalleeName(const v8::FunctionCallbackInfo<v8::Value>& info) {
+inline auto CalleeName(const v8::FunctionCallbackInfo<v8::Value>& info) -> std::string {
 	v8::Isolate* isolate = info.GetIsolate();
 	return std::string("`")+ *v8::String::Utf8Value{isolate, Unmaybe(info.Data()->ToString(isolate->GetCurrentContext()))}+ "`";
 }
 
-inline std::string CalleeName(const v8::PropertyCallbackInfo<v8::Value>& info) {
+inline auto CalleeName(const v8::PropertyCallbackInfo<v8::Value>& info) -> std::string {
 	v8::Isolate* isolate = info.GetIsolate();
 	return std::string("`")+ *v8::String::Utf8Value{isolate, Unmaybe(info.Data()->ToString(isolate->GetCurrentContext()))}+ "`";
 }
 
-inline std::string CalleeName(const v8::PropertyCallbackInfo<void>& info) {
+inline auto CalleeName(const v8::PropertyCallbackInfo<void>& info) -> std::string {
 	v8::Isolate* isolate = info.GetIsolate();
 	return std::string("`")+ *v8::String::Utf8Value{isolate, Unmaybe(info.Data()->ToString(isolate->GetCurrentContext()))}+ "`";
 }
@@ -124,15 +124,15 @@ class ParamExtractor {
 			return ExtractParamImpl<Index>(std::get<Indices>(args)...);
 		}
 
-		static inline size_t CalculateLength(const v8::FunctionCallbackInfo<v8::Value>& info) {
+		static inline auto CalculateLength(const v8::FunctionCallbackInfo<v8::Value>& info) -> size_t {
 			return info.Length() + (Offset == 0 ? 0 : 1);
 		}
 
-		static inline size_t CalculateLength(const v8::PropertyCallbackInfo<v8::Value>& /*info*/) {
+		static inline auto CalculateLength(const v8::PropertyCallbackInfo<v8::Value>& /*info*/) -> size_t {
 			return 1; // `this`
 		}
 
-		static inline size_t CalculateLength(const v8::PropertyCallbackInfo<void>& /*info*/) {
+		static inline auto CalculateLength(const v8::PropertyCallbackInfo<void>& /*info*/) -> size_t {
 			return 2; // `this`, `value`
 		}
 

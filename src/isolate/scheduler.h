@@ -85,7 +85,7 @@ class Scheduler : IsolatePlatformDelegate {
 
 		// IsolatePlatformDelegate overrides
 		auto GetForegroundTaskRunner() -> std::shared_ptr<v8::TaskRunner> final;
-		bool IdleTasksEnabled() final { return false; }
+		auto IdleTasksEnabled() -> bool final { return false; }
 
 		// Used to ref/unref the uv handle from C++ API
 		static void IncrementUvRef(const std::shared_ptr<IsolateHolder>& holder);

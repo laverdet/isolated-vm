@@ -12,14 +12,14 @@ class LibHandle : public TransferableHandle {
 	private:
 		class LibTransferable : public Transferable {
 			public:
-				v8::Local<v8::Value> TransferIn() final;
+				auto TransferIn() -> v8::Local<v8::Value> final;
 		};
 
-		v8::Local<v8::Value> Hrtime(v8::MaybeLocal<v8::Array> maybe_diff);
+		auto Hrtime(v8::MaybeLocal<v8::Array> maybe_diff) -> v8::Local<v8::Value>;
 
 	public:
-		static v8::Local<v8::FunctionTemplate> Definition();
-		std::unique_ptr<Transferable> TransferOut() final;
+		static auto Definition() -> v8::Local<v8::FunctionTemplate>;
+		auto TransferOut() -> std::unique_ptr<Transferable> final;
 };
 
 } // namespace ivm

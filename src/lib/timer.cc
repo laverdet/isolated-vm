@@ -18,7 +18,7 @@ struct timer_data_t {
 		std::chrono::steady_clock::time_point timeout,
 		void** holder,
 		timer_t::callback_t callback,
-		const std::lock_guard<std::mutex>& /* lock */
+		const std::lock_guard<std::mutex>& /*lock*/
 	) : callback{std::move(callback)}, holder{holder}, timeout{timeout} {
 		if (holder != nullptr) {
 			last_holder_value = std::exchange(*holder, static_cast<void*>(this));
@@ -35,7 +35,7 @@ struct timer_data_t {
 		}
 	}
 
-	auto is_paused() -> bool {
+	auto is_paused() const -> bool {
 		return paused_at != std::chrono::steady_clock::time_point{};
 	}
 
@@ -86,7 +86,7 @@ struct timer_thread_t {
 	explicit timer_thread_t(std::shared_ptr<timer_data_t> first_timer) :
 			next_timeout{first_timer->timeout}, shared_state{global_shared_state} {
 		queue.emplace(std::move(first_timer));
-		std::thread thread{std::bind(&timer_thread_t::entry, this)};
+		std::thread thread{[this] { entry(); }};
 		thread.detach();
 	}
 
@@ -145,9 +145,9 @@ struct timer_thread_t {
 
 	// Requires lock
 	template <template<class> class Lock>
-	static void start_or_join_timer(std::shared_ptr<timer_data_t> data, const Lock<std::mutex>& /* lock */) {
+	static void start_or_join_timer(std::shared_ptr<timer_data_t> data, const Lock<std::mutex>& /*lock*/) {
 		// Try to find a thread to put this timer into
-		for (auto& thread : global_shared_state->threads) {
+		for (const auto& thread : global_shared_state->threads) {
 			if (thread->next_timeout < data->timeout) {
 				thread->queue.push(std::move(data));
 				return;
@@ -172,11 +172,11 @@ struct timer_thread_t {
 /**
  * timer_t implementation
  */
-timer_t::timer_t(uint32_t ms, void** holder, callback_t callback) {
+timer_t::timer_t(uint32_t ms, void** holder, const callback_t& callback) {
 	std::lock_guard<std::mutex> lock{global_shared_state->mutex};
 	data = std::make_shared<timer_data_t>(
 		std::chrono::steady_clock::now() + std::chrono::milliseconds{ms},
-		holder, std::move(callback),
+		holder, callback,
 		lock
 	);
 	timer_thread_t::start_or_join_timer(data, lock);
@@ -221,11 +221,11 @@ void timer_t::resume(void*& holder) {
 	}
 }
 
-void timer_t::wait_detached(uint32_t ms, callback_t callback) {
+void timer_t::wait_detached(uint32_t ms, const callback_t& callback) {
 	std::lock_guard<std::mutex> lock{global_shared_state->mutex};
 	timer_thread_t::start_or_join_timer(std::make_shared<timer_data_t>(
 		std::chrono::steady_clock::now() + std::chrono::milliseconds{ms},
-		nullptr, std::move(callback), lock
+		nullptr, callback, lock
 	), lock);
 }
 

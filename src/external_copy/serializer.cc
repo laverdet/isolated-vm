@@ -42,7 +42,7 @@ auto ExternalCopySerialized::CopyInto(bool transfer_in) -> Local<Value> {
 	// Initialize deserializer and delegate
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
-	auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+	auto* allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
 	int failures = allocator == nullptr ? 0 : allocator->GetFailureCount();
 	detail::ExternalCopyDeserializerDelegate delegate{transferables, wasm_modules};
 	ValueDeserializer deserializer{isolate, buffer.get(), size, &delegate};

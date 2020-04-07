@@ -30,7 +30,7 @@ struct HandleTupleImpl<std::index_sequence<Indices...>, Types_...> : HandleTuple
 	}
 
 	template <size_t Index>
-	auto& get() {
+	auto get() -> auto& {
 		return HandleTupleElement<Index, std::tuple_element_t<Index, std::tuple<Types_...>>>::persistent;
 	}
 

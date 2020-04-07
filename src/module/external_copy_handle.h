@@ -7,7 +7,7 @@ namespace ivm {
 
 class ExternalCopy;
 
-class ExternalCopyHandle : public TransferableHandle {
+class ExternalCopyHandle final : public TransferableHandle {
 	public:
 		class ExternalCopyTransferable : public Transferable {
 			private:
@@ -15,26 +15,26 @@ class ExternalCopyHandle : public TransferableHandle {
 
 			public:
 				explicit ExternalCopyTransferable(std::shared_ptr<ExternalCopy> value);
-				v8::Local<v8::Value> TransferIn() final;
+				auto TransferIn() -> v8::Local<v8::Value> final;
 		};
 
 		std::shared_ptr<ExternalCopy> value;
 
-		void CheckDisposed();
+		void CheckDisposed() const;
 
 		explicit ExternalCopyHandle(std::shared_ptr<ExternalCopy> value);
 		ExternalCopyHandle(const ExternalCopyHandle&) = delete;
-		ExternalCopyHandle& operator= (const ExternalCopyHandle&) = delete;
+		auto operator= (const ExternalCopyHandle&) -> ExternalCopyHandle& = delete;
 		~ExternalCopyHandle() final;
-		static v8::Local<v8::FunctionTemplate> Definition();
-		std::unique_ptr<Transferable> TransferOut() final;
+		static auto Definition() -> v8::Local<v8::FunctionTemplate>;
+		auto TransferOut() -> std::unique_ptr<Transferable> final;
 
-		static std::unique_ptr<ExternalCopyHandle> New(v8::Local<v8::Value> value, v8::MaybeLocal<v8::Object> maybe_options);
-		static v8::Local<v8::Value> TotalExternalSizeGetter();
-		v8::Local<v8::Value> Copy(v8::MaybeLocal<v8::Object> maybe_options);
-		v8::Local<v8::Value> CopyInto(v8::MaybeLocal<v8::Object> maybe_options);
-		v8::Local<v8::Value> Release();
-		std::shared_ptr<ExternalCopy> GetValue() const { return value; }
+		static auto New(v8::Local<v8::Value> value, v8::MaybeLocal<v8::Object> maybe_options) -> std::unique_ptr<ExternalCopyHandle>;
+		static auto TotalExternalSizeGetter() -> v8::Local<v8::Value>;
+		auto Copy(v8::MaybeLocal<v8::Object> maybe_options) -> v8::Local<v8::Value>;
+		auto CopyInto(v8::MaybeLocal<v8::Object> maybe_options) -> v8::Local<v8::Value>;
+		auto Release() -> v8::Local<v8::Value>;
+		auto GetValue() const -> std::shared_ptr<ExternalCopy> { return value; }
 
 	private:
 		int size = 0;
@@ -49,7 +49,7 @@ class ExternalCopyIntoHandle : public TransferableHandle {
 
 			public:
 				explicit ExternalCopyIntoTransferable(std::shared_ptr<ExternalCopy> value, bool transfer_in);
-				v8::Local<v8::Value> TransferIn() final;
+				auto TransferIn() -> v8::Local<v8::Value> final;
 		};
 
 		std::shared_ptr<ExternalCopy> value;
@@ -57,8 +57,8 @@ class ExternalCopyIntoHandle : public TransferableHandle {
 
 	public:
 		explicit ExternalCopyIntoHandle(std::shared_ptr<ExternalCopy> value, bool transfer_in);
-		static v8::Local<v8::FunctionTemplate> Definition();
-		std::unique_ptr<Transferable> TransferOut() final;
+		static auto Definition() -> v8::Local<v8::FunctionTemplate>;
+		auto TransferOut() -> std::unique_ptr<Transferable> final;
 };
 
 } // namespace ivm
