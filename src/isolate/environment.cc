@@ -270,7 +270,7 @@ void IsolateEnvironment::IsolateCtor(Isolate* isolate, Local<Context> context) {
 
 void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void> snapshot_blob, size_t snapshot_length) {
 	memory_limit = memory_limit_in_mb * 1024 * 1024;
-	allocator_ptr = std::make_unique<LimitedAllocator>(*this, memory_limit);
+	allocator_ptr = std::make_shared<LimitedAllocator>(*this, memory_limit);
 	snapshot_blob_ptr = std::move(snapshot_blob);
 	nodejs_isolate = false;
 
@@ -300,7 +300,12 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void>
 	// Build isolate from create params
 	Isolate::CreateParams create_params;
 	create_params.constraints = rc;
+#if V8_AT_LEAST(8, 0, 60)
+	// 6b0a9535
+	create_params.array_buffer_allocator_shared = allocator_ptr;
+#else
 	create_params.array_buffer_allocator = allocator_ptr.get();
+#endif
 	if (snapshot_blob_ptr) {
 		create_params.snapshot_blob = &startup_data;
 		startup_data.data = reinterpret_cast<char*>(snapshot_blob_ptr.get());
@@ -315,6 +320,11 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<void>
 	isolate = Isolate::New(create_params);
 	PlatformDelegate::RegisterIsolate(isolate, &scheduler);
 #endif
+
+#if NODE_MODULE_VERSION >= 79 && !V8_AT_LEAST(8, 0, 60)
+	isolate->SetArrayBufferAllocatorShared(allocator_ptr);
+#endif
+
 	// Workaround for bug in snapshot deserializer in v8 in nodejs v10.x
 	isolate->SetHostImportModuleDynamicallyCallback(nullptr);
 	isolate->SetOOMErrorHandler(OOMErrorCallback);

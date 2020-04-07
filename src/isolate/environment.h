@@ -29,6 +29,7 @@ namespace ivm {
  */
 class IsolateEnvironment {
 	// These are here so they can adjust `extra_allocated_memory`. TODO: Make this a method
+	friend class ExternalCopyAnyArrayBuffer;
 	friend class ExternalCopyBytes;
 	friend class ExternalCopyArrayBuffer;
 	friend class ExternalCopySharedArrayBuffer;
@@ -81,7 +82,7 @@ class IsolateEnvironment {
 		std::shared_ptr<IsolateTaskRunner> task_runner;
 		std::unique_ptr<class InspectorAgent> inspector_agent;
 		v8::Persistent<v8::Context> default_context;
-		std::unique_ptr<v8::ArrayBuffer::Allocator> allocator_ptr;
+		std::shared_ptr<v8::ArrayBuffer::Allocator> allocator_ptr;
 		std::shared_ptr<void> snapshot_blob_ptr;
 		v8::StartupData startup_data;
 		void* timer_holder = nullptr;
