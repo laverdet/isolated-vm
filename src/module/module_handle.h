@@ -24,6 +24,8 @@ struct ModuleInfo {
 	RemoteHandle<v8::Context> context_handle;
 	RemoteHandle<v8::Value> global_namespace;
 	explicit ModuleInfo(v8::Local<v8::Module> handle);
+	ModuleInfo(const ModuleInfo&) = delete;
+	auto operator=(const ModuleInfo&) = delete;
 	~ModuleInfo();
 };
 

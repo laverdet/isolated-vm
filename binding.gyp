@@ -5,7 +5,7 @@
 			'Common': {
 				'cflags_cc': [ '-std=c++14', '-g', '-Wno-unknown-pragmas' ],
 				'cflags_cc!': [ '-fno-exceptions' ],
-				'include_dirs': [ './src' ],
+				'include_dirs': [ './src', './vendor' ],
 				'xcode_settings': {
 					'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
 					'GCC_GENERATE_DEBUGGING_SYMBOLS': 'YES',

@@ -63,6 +63,7 @@ class IsolateEnvironment {
 				explicit HeapCheck(IsolateEnvironment& env, bool force = false);
 				HeapCheck(const HeapCheck&) = delete;
 				auto operator= (const HeapCheck&) -> HeapCheck& = delete;
+				~HeapCheck() = default;
 				void Epilogue();
 		};
 

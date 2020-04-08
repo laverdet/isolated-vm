@@ -16,7 +16,7 @@ class IsolateSpecific {
 	friend class IsolateSpecific;
 
 	public:
-		IsolateSpecific() {}
+		IsolateSpecific() = default;
 
 		template <class Functor>
 		auto Deref(Functor callback) -> v8::Local<Type>;

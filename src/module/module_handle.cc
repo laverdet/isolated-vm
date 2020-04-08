@@ -116,6 +116,9 @@ class ModuleLinker : public ClassHandle {
 
 		explicit ModuleLinker(Local<Function> callback) : callback(callback) {}
 
+		ModuleLinker(const ModuleLinker&) = delete;
+		auto operator=(const ModuleLinker&) = delete;
+
 		~ModuleLinker() override {
 			Reset();
 		}

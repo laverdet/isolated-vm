@@ -101,14 +101,14 @@ void IsolateEnvironment::MarkSweepCompactEpilogue(Isolate* isolate, GCType /*gc_
 	size_t total_memory = heap.used_heap_size() + that->extra_allocated_memory;
 	size_t memory_limit = that->memory_limit + that->misc_memory_size;
 	if (total_memory > memory_limit) {
-		if (gc_flags & (GCCallbackFlags::kGCCallbackFlagCollectAllAvailableGarbage | GCCallbackFlags::kGCCallbackFlagForced)) {
-			that->Terminate();
-			that->hit_memory_limit = true;
-		} else {
+		if ((gc_flags & (GCCallbackFlags::kGCCallbackFlagCollectAllAvailableGarbage | GCCallbackFlags::kGCCallbackFlagForced)) == 0) {
 			// Force full garbage collection
 			that->RequestMemoryPressureNotification(MemoryPressureLevel::kCritical, true);
+		} else {
+			that->Terminate();
+			that->hit_memory_limit = true;
 		}
-	} else if (!(gc_flags & GCCallbackFlags::kGCCallbackFlagCollectAllAvailableGarbage)) {
+	} else if ((gc_flags & GCCallbackFlags::kGCCallbackFlagCollectAllAvailableGarbage) == 0) {
 		if (that->did_adjust_heap_limit) {
 			// There is also `AutomaticallyRestoreInitialHeapLimit` introduced in v8 7.3.411 / 93283bf04
 			// but it seems less effective than this ratcheting strategy.
