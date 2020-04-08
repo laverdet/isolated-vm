@@ -45,7 +45,7 @@ void thread_pool_t::exec(affinity_t& affinity, entry_t* entry, void* param) {
 
 			if (thread == std::numeric_limits<unsigned>::max()) {
 				// All threads are busy and pool is full, just run this in a new thread
-				std::thread tmp_thread{[&]() { entry(false, param); }};
+				std::thread tmp_thread{[=]() { entry(false, param); }};
 				tmp_thread.detach();
 				return;
 			}
