@@ -33,6 +33,7 @@ class ExternalMemoryHandle {
 		static void WeakCallback(void* param) {
 			auto* that = reinterpret_cast<ExternalMemoryHandle*>(param);
 			IsolateEnvironment::GetCurrent()->RemoveWeakCallback(&that->handle);
+			that->handle.Reset();
 			delete that;
 		}
 
@@ -164,6 +165,7 @@ class ArrayHolder {
 
 		static void WeakCallback(void* param) {
 			auto that = reinterpret_cast<ArrayHolder*>(param);
+			that->handle.Reset();
 			IsolateEnvironment::GetCurrent()->RemoveWeakCallback(&that->handle);
 			delete that;
 		}
