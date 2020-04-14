@@ -4,9 +4,9 @@
 #include <memory>
 #include <vector>
 
-#if !V8_AT_LEAST(7, 5, 20)
+#if !NODE_MODULE_OR_V8_AT_LEAST(72, 7, 5, 20)
 namespace v8 {
-	// Removed in 6b09d21c
+	// Removed in 6b09d21c (v8), 963061bc (node)
 	using WasmModuleObject = WasmCompiledModule;
 }
 #endif
