@@ -57,6 +57,9 @@ each application may have wildly different traffic patterns.
 `isolated-vm` to power their [Custom Crawler](https://www.algolia.com/products/crawler/) product,
 which allows them to safely execute user-provided code for content extraction.
 
+* [Tripadvisor](https://www.tripadvisor.com) - Tripadvisor is the world’s largest travel platform. 
+They use `isolated-vm` to server-side render thousands of React pages per second.
+
 API DOCUMENTATION
 -----------------
 
