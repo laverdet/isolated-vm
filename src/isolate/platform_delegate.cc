@@ -40,8 +40,4 @@ void PlatformDelegate::UnregisterIsolate(v8::Isolate* isolate) {
 
 #endif
 
-void PlatformDelegate::CallIdleOnForegroundThread(v8::Isolate* isolate, v8::IdleTask* task) {
-	node_platform->CallIdleOnForegroundThread(isolate, task);
-}
-
 } // namespace ivm

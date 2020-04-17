@@ -45,8 +45,9 @@ class TaskRunner : public v8::TaskRunner {
 
 #if V8_AT_LEAST(7, 1, 316)
 		// Added in e8faae72
-		void PostNonNestableTask(std::unique_ptr<v8::Task>  /*task*/) final { std::terminate(); };
-		auto NonNestableTasksEnabled() const -> bool final { return false; }
+		auto NonNestableTasksEnabled() const -> bool final { return true; }
+#else
+		void PostNonNestableTask(std::unique_ptr<v8::Task> task) = 0;
 #endif
 
 #if V8_AT_LEAST(7, 4, 197)
@@ -178,7 +179,9 @@ class PlatformDelegate {
 		}
 #endif
 
-		void CallIdleOnForegroundThread(v8::Isolate* isolate, v8::IdleTask* task) final;
+		void CallIdleOnForegroundThread(v8::Isolate* isolate, v8::IdleTask* task) final {
+			node_platform->CallIdleOnForegroundThread(isolate, task);
+		}
 
 		auto IdleTasksEnabled(v8::Isolate* isolate) -> bool final {
 			return GetForegroundTaskRunner(isolate)->IdleTasksEnabled();

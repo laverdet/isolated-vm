@@ -48,6 +48,7 @@ class IsolateTaskRunner final : public TaskRunner {
 		// Methods for v8::TaskRunner
 		void PostTask(std::unique_ptr<v8::Task> task) final;
 		void PostDelayedTask(std::unique_ptr<v8::Task> task, double delay_in_seconds) final;
+		void PostNonNestableTask(std::unique_ptr<v8::Task> task) final { PostTask(std::move(task)); }
 
 	private:
 		std::weak_ptr<IsolateEnvironment> weak_env;
