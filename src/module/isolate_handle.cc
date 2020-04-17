@@ -435,6 +435,9 @@ auto IsolateHandle::CreateSnapshot(ArrayRange script_handles, MaybeLocal<String>
 					PostTask(std::move(task));
 				}
 			}
+			void PostNonNestableTask(std::unique_ptr<v8::Task> task) final {
+				PostTask(std::move(task));
+			}
 
 		private:
 			lockable_t<std::deque<std::unique_ptr<v8::Task>>>& tasks;

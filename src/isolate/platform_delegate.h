@@ -47,7 +47,7 @@ class TaskRunner : public v8::TaskRunner {
 		// Added in e8faae72
 		auto NonNestableTasksEnabled() const -> bool final { return true; }
 #else
-		void PostNonNestableTask(std::unique_ptr<v8::Task> task) = 0;
+		virtual void PostNonNestableTask(std::unique_ptr<v8::Task> task) = 0;
 #endif
 
 #if V8_AT_LEAST(7, 4, 197)
