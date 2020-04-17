@@ -1,16 +1,21 @@
 sudo: false
 
 language: node_js
+os: linux
 
-node_js:
-  - "10.4.0"
-  - "10.9.0"
-  - "10"
-  - "12"
-
-os:
-  - linux
-  - windows
+jobs:
+  - node_js: "10.4.0"
+  - node_js: "10.9.0"
+  - node_js: "10"
+  - node_js: "12.0.0"
+  - node_js: "12.5.0"
+  - node_js: "12.9.0"
+  - node_js: "12.11.0"
+  - node_js: "12.16.0"
+  - node_js: "12"
+  - node_js: "13"
+  - node_js: "12"
+    os: windows
 
 dist: xenial
 
