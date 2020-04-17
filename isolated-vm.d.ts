@@ -531,8 +531,8 @@ declare module "isolated-vm" {
 	export type InspectorSession = {
 		dispatchProtocolMessage(message: string): void;
 		dispose(): void;
-		onNotification: (callId: number, message: string) => void;
-		onResponse: (message: string) => void;
+		onNotification: (message: string) => void;
+		onResponse: (callId: number, message: string) => void;
 	};
 
 	/**
