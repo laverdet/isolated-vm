@@ -37,7 +37,7 @@ running `npm install isolated-vm` it is likely you don't have a compiler set up,
 too old.
 
 * Windows + OS X users should follow the instuctions here: [node-gyp](https://github.com/nodejs/node-gyp)
-* Ubuntu users should run: `sudo apt-get install g++ build-essential`
+* Ubuntu users should run: `sudo apt-get install python g++ build-essential`
 * Alpine users should run: `sudo apk add python make g++`
 * Amazon Linux AMI users should run: `sudo yum install gcc72 gcc72-c++`
 * Arch Linux users should run: `sudo pacman -S make gcc python`

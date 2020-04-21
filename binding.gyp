@@ -61,7 +61,9 @@
 			'sources': [
 				'src/external_copy/external_copy.cc',
 				'src/external_copy/serializer.cc',
+				'src/external_copy/serializer_nortti.cc',
 				'src/external_copy/string.cc',
+				'src/isolate/allocator_nortti.cc',
 				'src/isolate/environment.cc',
 				'src/isolate/executor.cc',
 				'src/isolate/holder.cc',
@@ -85,14 +87,19 @@
 				'src/module/session_handle.cc',
 				'src/module/transferable.cc',
 			],
-			'dependencies': [ 'nortti' ],
+			'conditions': [
+				[ 'OS != "win"', {
+					'dependencies': [ 'nortti' ],
+					'sources/': [ [ 'exclude', '_nortti\\.cc$'] ],
+				} ],
+			],
 		},
 		{
 			'target_name': 'nortti',
 			'type': 'static_library',
 			'sources': [
 				'src/external_copy/serializer_nortti.cc',
-				'src/isolate/allocator.cc',
+				'src/isolate/allocator_nortti.cc',
 			],
 		},
 	],
