@@ -447,6 +447,14 @@ auto IsolateEnvironment::TaskEpilogue() -> std::unique_ptr<ExternalCopy> {
 	return {};
 }
 
+auto IsolateEnvironment::GetLimitedAllocator() const -> LimitedAllocator* {
+	if (nodejs_isolate) {
+		return nullptr;
+	} else {
+		return static_cast<LimitedAllocator*>(allocator_ptr.get());
+	}
+}
+
 void IsolateEnvironment::EnableInspectorAgent() {
 	inspector_agent = std::make_unique<InspectorAgent>(*this);
 }

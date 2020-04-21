@@ -19,7 +19,7 @@ class ExternalMemoryHandle {
 		auto operator=(const ExternalMemoryHandle&) = delete;
 
 		~ExternalMemoryHandle() {
-			auto* allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+			auto* allocator = IsolateEnvironment::GetCurrent()->GetLimitedAllocator();
 			if (allocator != nullptr) {
 				allocator->AdjustAllocatedSize(-size);
 			}
@@ -115,6 +115,19 @@ void LimitedAllocator::Free(void* data, size_t length) {
 	std::free(data);
 }
 
+#ifdef USE_ALLOCATOR_REALLOCATE
+auto LimitedAllocator::Reallocate(void* data, size_t old_length, size_t new_length) -> void* {
+	auto delta = static_cast<ssize_t>(new_length) - static_cast<ssize_t>(old_length);
+	if (delta > 0) {
+		if (!Check(delta)) {
+			return nullptr;
+		}
+	}
+	env.extra_allocated_memory += delta;
+	return ArrayBuffer::Allocator::Reallocate(data, old_length, new_length);
+}
+#endif
+
 void LimitedAllocator::AdjustAllocatedSize(ptrdiff_t length) {
 	env.extra_allocated_memory += length;
 }
@@ -192,7 +205,7 @@ auto GetBackingStoreImpl(Type handle) -> std::shared_ptr<BackingStore> {
 	auto data = std::unique_ptr<void, decltype(std::free)&>{contents.Data(), std::free};
 	auto backing_store = std::make_shared<BackingStore>(std::move(data), length);
 	new ArrayHolder{handle, backing_store};
-	auto allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+	auto* allocator = IsolateEnvironment::GetCurrent()->GetLimitedAllocator();
 	if (allocator != nullptr) {
 		// Track this memory usage in the allocator
 		new ExternalMemoryHandle{handle, length};

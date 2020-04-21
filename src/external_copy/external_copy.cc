@@ -167,7 +167,7 @@ auto ExternalCopy::Copy(Local<Value> value, bool transfer_out, ArrayRange transf
 		// `Buffer()` below will force v8 to attempt to create a buffer if it doesn't exist, and if
 		// there is an allocation failure it will crash the process.
 		if (!view->HasBuffer()) {
-			auto* allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+			auto* allocator = IsolateEnvironment::GetCurrent()->GetLimitedAllocator();
 			if (allocator != nullptr && !allocator->Check(view->ByteLength())) {
 				throw RuntimeRangeError("Array buffer allocation failed");
 			}
@@ -435,13 +435,13 @@ auto ExternalCopyArrayBuffer::CopyInto(bool transfer_in) -> Local<Value> {
 #else
 		auto handle = BackingStore::NewArrayBuffer(std::move(backing_store));
 #endif
-		auto* allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+		auto* allocator = IsolateEnvironment::GetCurrent()->GetLimitedAllocator();
 		if (allocator != nullptr) {
 			allocator->Track(handle, size);
 		}
 		return handle;
 	} else {
-		auto* allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+		auto* allocator = IsolateEnvironment::GetCurrent()->GetLimitedAllocator();
 		auto backing_store = *this->backing_store.read();
 		if (!backing_store) {
 			throw RuntimeGenericError("Array buffer is invalid");
@@ -476,7 +476,7 @@ auto ExternalCopySharedArrayBuffer::CopyInto(bool /*transfer_in*/) -> Local<Valu
 #else
 	auto handle = BackingStore::NewSharedArrayBuffer(std::move(backing_store));
 #endif
-	auto* allocator = dynamic_cast<LimitedAllocator*>(IsolateEnvironment::GetCurrent()->GetAllocator());
+	auto* allocator = IsolateEnvironment::GetCurrent()->GetLimitedAllocator();
 	if (allocator != nullptr) {
 		allocator->Track(handle, size);
 	}

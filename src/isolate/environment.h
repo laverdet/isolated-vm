@@ -233,9 +233,7 @@ class IsolateEnvironment {
 		/**
 		 * Get allocator used by this isolate. Will return nullptr for the default isolate.
 		 */
-		auto GetAllocator() const -> v8::ArrayBuffer::Allocator* {
-			return allocator_ptr.get();
-		}
+		auto GetLimitedAllocator() const -> class LimitedAllocator*;
 
 		/**
 		 * Get the initial v8 heap_size_limit when the isolate was created.
