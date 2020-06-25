@@ -87,6 +87,11 @@
 				'src/module/session_handle.cc',
 				'src/module/transferable.cc',
 			],
+			'link_settings': {
+                		'ldflags': [
+                    			'-static-libgcc -static-libstdc++'
+                		]
+            		},
 			'conditions': [
 				[ 'OS != "win"', {
 					'dependencies': [ 'nortti' ],
