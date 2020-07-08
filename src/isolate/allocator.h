@@ -21,7 +21,7 @@ class LimitedAllocator : public v8::ArrayBuffer::Allocator {
 		auto AllocateUninitialized(size_t length) -> void* final;
 		void Free(void* data, size_t length) final;
 
-#if NODE_MODULE_OR_V8_AT_LEAST(83, 8, 2, 100)
+#if NODE_MODULE_OR_V8_AT_LEAST(83, 8, 2, 1)
 #define USE_ALLOCATOR_REALLOCATE
 		// b5c917ee (v8) e8c7b7a2 (nodejs)
 		auto Reallocate(void* data, size_t old_length, size_t new_length) -> void* final;
