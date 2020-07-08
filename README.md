@@ -57,7 +57,7 @@ each application may have wildly different traffic patterns.
 `isolated-vm` to power their [Custom Crawler](https://www.algolia.com/products/crawler/) product,
 which allows them to safely execute user-provided code for content extraction.
 
-* [Tripadvisor](https://www.tripadvisor.com) - Tripadvisor is the world’s largest travel platform. 
+* [Tripadvisor](https://www.tripadvisor.com) - Tripadvisor is the world’s largest travel platform.
 They use `isolated-vm` to server-side render thousands of React pages per second.
 
 API DOCUMENTATION
@@ -124,6 +124,12 @@ compilation
 Isolate snapshots are a very useful feature if you intend to create several isolates running common
 libraries between them. A snapshot serializes the entire v8 heap including parsed code, global
 variables, and compiled code. Check out the examples section for tips on using this.
+
+**Note**: `createSnapshot` does not provide the same isolate protection like the rest of
+isolated-vm. If the script passed to `createSnapshot` uses too much memory the process will crash,
+and if it has an infinite loop it will stall the process. Furthermore newer v8 features may simply
+fail when attempting to take a snapshot that uses them. It is best to snapshot code that only
+defines functions, class, and simple data structures.
 
 **Please note that versions of nodejs 10.4.0 - 10.9.0 may crash while using the snapshot feature.
 
