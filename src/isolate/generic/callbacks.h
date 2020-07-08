@@ -86,10 +86,8 @@ inline void Returner(
 	VoidReturn /*return_value*/,
 	v8::Local<v8::String> /*name*/,
 	v8::Local<v8::Value> /*value*/,
-	const v8::PropertyCallbackInfo<void>& info
-) {
-	info.GetReturnValue().Set(true);
-}
+	const v8::PropertyCallbackInfo<void>& /*info*/
+) {}
 
 // This the main entry point for all parameterized v8 callbacks
 template <class Signature, Signature Function, int Offset, class ...Args>
