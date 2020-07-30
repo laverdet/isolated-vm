@@ -266,10 +266,12 @@ auto ExternalCopy::CopyThrownValue(Local<Value> value) -> std::unique_ptr<Extern
 				if (value->IsString()) {
 					return ExternalCopyString{value.As<String>()};
 				}
+				Local<String> message_string = Unmaybe(value->ToString(context));
+				return ExternalCopyString{message_string};
 			} catch (const RuntimeError& cc_err) {
 				try_catch.Reset();
 			}
-			return ExternalCopyString{};
+			return ExternalCopyString{v8_string("")};
 		};
 		ExternalCopyString message_copy = get_property(object, "message");
 		ExternalCopyString stack_copy = get_property(object, "stack");
