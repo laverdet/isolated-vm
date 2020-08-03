@@ -263,15 +263,13 @@ auto ExternalCopy::CopyThrownValue(Local<Value> value) -> std::unique_ptr<Extern
 		auto get_property = [&](Local<Object> object, const char* key) {
 			try {
 				Local<Value> value = Unmaybe(object->Get(context, v8_string(key)));
-				if (value->IsString()) {
-					return ExternalCopyString{value.As<String>()};
+				if (!value->IsUndefined()) {
+					return ExternalCopyString{Unmaybe(value->ToString(context))};
 				}
-				Local<String> message_string = Unmaybe(value->ToString(context));
-				return ExternalCopyString{message_string};
 			} catch (const RuntimeError& cc_err) {
 				try_catch.Reset();
 			}
-			return ExternalCopyString{v8_string("")};
+			return ExternalCopyString{};
 		};
 		ExternalCopyString message_copy = get_property(object, "message");
 		ExternalCopyString stack_copy = get_property(object, "stack");
@@ -279,6 +277,9 @@ auto ExternalCopy::CopyThrownValue(Local<Value> value) -> std::unique_ptr<Extern
 		// Return external error copy if this looked like an error
 		if (error_type != ExternalCopyError::ErrorType::CustomError || message_copy || stack_copy) {
 			ExternalCopyString name_copy;
+			if (!message_copy) {
+				message_copy = ExternalCopyString{""};
+			}
 			if (error_type == ExternalCopyError::ErrorType::CustomError) {
 				name_copy = get_property(object, "name");
 			}
