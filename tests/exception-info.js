@@ -122,3 +122,37 @@ env[0].script.run(env[0].context).then(() => console.log('no stack')).catch(chec
 		assert.equal(err.stack.match(/WORLD/g).length, 1);
 	}
 }
+
+// Try throwing objects that aren't an instance of Error
+{
+	let isolate = new ivm.Isolate();
+	let context = isolate.createContextSync();
+	let script = isolate.compileScriptSync(`throw {};`);
+	try {
+		script.runSync(context);
+		assert.fail("Did not throw");
+	} catch (err) {
+		assert.equal(
+		err.message,
+		"An object was thrown from supplied code within isolated-vm, but that object was not an instance of `Error`."
+		);
+	}
+}
+
+// Try throwing Error objects with non-standard properties
+// isolated-vm will convert any non-string primitives into their string representation
+{
+	let isolate = new ivm.Isolate();
+	let context = isolate.createContextSync();
+	let script = isolate.compileScriptSync(`
+		let e = new Error();
+		e.message = 1234;
+		throw e;
+	`);
+	try {
+		script.runSync(context);
+		assert.fail("Did not throw");
+	} catch (err) {
+		assert.equal(err.message, "1234");
+	}
+}
