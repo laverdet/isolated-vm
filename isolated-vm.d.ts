@@ -292,7 +292,7 @@ declare module "isolated-vm" {
 	 * A instance of Reference is a pointer to a value stored in any isolate.
 	 */
 	export class Reference<T = any> {
-		private __ivm_reference: undefined;
+		private __ivm_reference: T;
 		constructor(value: T);
 
 		/**
@@ -409,7 +409,7 @@ declare module "isolated-vm" {
 	 */
 	export class Dereference<T> {
 		private constructor();
-		private __ivm_deref: undefined;
+		private __ivm_deref: T;
 	}
 
 	export type ReferenceApplyOptions = RunOptions & TransferOptionsBidirectional;
@@ -419,7 +419,7 @@ declare module "isolated-vm" {
 	 * isolate. This value can then be quickly copied into any isolate.
 	 */
 	export class ExternalCopy<T = any> {
-		private __ivm_external_copy: undefined;
+		private __ivm_external_copy: T;
 
 		/**
 		 * Primitive values can be copied exactly as they are. Date objects will be copied as as Dates.
@@ -470,7 +470,7 @@ declare module "isolated-vm" {
 	 */
 	export class Copy<T> {
 		private constructor();
-		private __ivm_copy: undefined;
+		private __ivm_copy: T;
 	}
 
 	export type ExternalCopyOptions = {
@@ -664,9 +664,10 @@ declare module "isolated-vm" {
 
 	// Type of a single argument for functions that accept TransferOptions
 	type ArgumentType<Options, Type> =
-		Options extends WithTransfer ? Type | CheckPromise<Options, Type> :
+		(Options extends WithTransfer ? Type | CheckPromise<Options, Type> :
 		Type extends Transferable ? Type | CheckPromise<Options, Type> :
-		Transferable | CheckPromise<Options, Transferable>;
+		Transferable | CheckPromise<Options, Transferable>) |
+		Copy<Type> | Dereference<Type>;
 
 	// Return type for functions that accept TransferOptions
 	type ResultTypeBase<Options, Result> =
@@ -694,6 +695,6 @@ declare module "isolated-vm" {
 
 	// Types for `Reference.apply`
 	type ApplyArguments<Value> = Value extends (...args: infer Args) => unknown ? Args : any[];
-	type ApplyArgumentThis<Value> = Value extends (this: infer This, ...args: unknown[]) => unknown ? This : never;
+	type ApplyArgumentThis<Value> = Value extends (this: infer This, ...args: unknown[]) => unknown ? This : undefined | null;
 	type ApplyResult<Value> = Value extends (...args: unknown[]) => infer Result ? Result : unknown;
 }
