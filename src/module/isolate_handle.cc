@@ -120,23 +120,11 @@ struct CreateContextRunner : public ThreePhaseTask {
 	}
 
 	void Phase2() final {
-		// Use custom deleter on the shared_ptr which will notify the isolate when the context is gone
+		// Use custom deleter on the shared_ptr which will notify the isolate when we're probably done with this context
 		struct ContextDeleter {
-			bool has_inspector;
-
-			explicit ContextDeleter(bool has_inspector) : has_inspector{has_inspector} {}
-
 			void operator() (Persistent<Context>& context) const {
 				auto& env = *IsolateEnvironment::GetCurrent();
-				{
-					HandleScope handle_scope{env.GetIsolate()};
-					auto context_local = Local<Context>::New(env.GetIsolate(), context);
-					context_local->DetachGlobal();
-					if (has_inspector) {
-						env.GetInspectorAgent()->ContextDestroyed(context_local);
-					}
-					context.Reset();
-				}
+				context.Reset();
 				env.GetIsolate()->ContextDisposedNotification();
 			}
 		};
@@ -145,7 +133,7 @@ struct CreateContextRunner : public ThreePhaseTask {
 
 		// Sanity check before we build the context
 		if (enable_inspector && env->GetInspectorAgent() == nullptr) {
-			Context::Scope context_scope(env->DefaultContext()); // TODO: This is needed to throw, but is stupid and sloppy
+			Context::Scope context_scope{env->DefaultContext()}; // TODO: This is needed to throw, but is stupid and sloppy
 			throw RuntimeGenericError("Inspector is not enabled for this isolate");
 		}
 
@@ -155,7 +143,7 @@ struct CreateContextRunner : public ThreePhaseTask {
 		if (enable_inspector) {
 			env->GetInspectorAgent()->ContextCreated(context_handle, "<isolated-vm>");
 		}
-		context = RemoteHandle<Context>{context_handle, ContextDeleter{enable_inspector}};
+		context = RemoteHandle<Context>{context_handle, ContextDeleter{}};
 		global = RemoteHandle<Value>{context_handle->Global()};
 		heap_check.Epilogue();
 	}
