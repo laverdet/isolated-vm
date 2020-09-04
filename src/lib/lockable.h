@@ -89,9 +89,9 @@ struct mutex_traits_t<true> {
 #if __cpp_lib_shared_mutex
 	using Mutex = std::shared_mutex;
 	static constexpr bool shared = true;
-#elif __cpp_lib_shared_timed_mutex
+/* #elif __cpp_lib_shared_timed_mutex
 	using Mutex = std::shared_timed_mutex;
-	static constexpr bool shared = true;
+	static constexpr bool shared = true; */
 #else
 	using Mutex = std::mutex;
 	static constexpr bool shared = false;
