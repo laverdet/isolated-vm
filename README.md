@@ -322,6 +322,9 @@ Evaluate the module and return the last expression (same as script.run). If `eva
 more than once on the same module the return value from the first invocation will be returned (or
 thrown).
 
+**Note:** nodejs v14.8.0 enabled top-level await by default which has the effect of breaking the
+return value of this function.
+
 
 ### Class: `Reference` *[transferable]*
 A instance of [`Reference`](#class-reference-transferable) is a pointer to a value stored in any isolate.
