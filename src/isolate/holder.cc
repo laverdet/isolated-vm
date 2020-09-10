@@ -7,8 +7,20 @@
 
 namespace ivm {
 
+void IsolateDisposeWait::IsolateDidDispose() {
+	*is_disposed.write() = true;
+	is_disposed.notify_all();
+}
+
+void IsolateDisposeWait::Join() {
+	auto lock = is_disposed.read<true>();
+	while (!*lock) {
+		lock.wait();
+	}
+}
+
 auto IsolateHolder::Dispose() -> bool {
-	auto ref = std::exchange(state.write()->isolate, {});
+	auto ref = std::exchange(*isolate.write(), {});
 	if (ref) {
 		ref->Terminate();
 		ref.reset();
@@ -18,21 +30,17 @@ auto IsolateHolder::Dispose() -> bool {
 	}
 }
 
-void IsolateHolder::ReleaseAndJoin() {
-	auto ref = std::exchange(state.write()->isolate, {});
+void IsolateHolder::Release() {
+	auto ref = std::exchange(*isolate.write(), {});
 	ref.reset();
-	auto lock = state.read<true>();
-	while (!lock->is_disposed) {
-		lock.wait();
-	}
 }
 
 auto IsolateHolder::GetIsolate() -> std::shared_ptr<IsolateEnvironment> {
-	return state.read()->isolate;
+	return *isolate.read();
 }
 
 void IsolateHolder::ScheduleTask(std::unique_ptr<Runnable> task, bool run_inline, bool wake_isolate, bool handle_task) {
-	auto ref = state.read()->isolate;
+	auto ref = *isolate.read();
 	if (ref) {
 		if (run_inline && Executor::MayRunInlineTasks(*ref)) {
 			task->Run();

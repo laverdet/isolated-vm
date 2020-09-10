@@ -353,27 +353,21 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<Backi
 	isolate->DiscardThreadSpecificMetadata();
 
 	// Save reference to this isolate in the default isolate
-	Executor::GetDefaultEnvironment().owned_isolates->write()->insert(holder);
+	Executor::GetDefaultEnvironment().owned_isolates->write()->insert({ dispose_wait, holder });
 }
 
 IsolateEnvironment::~IsolateEnvironment() {
 	if (nodejs_isolate) {
 		// Throw away all owned isolates when the root one dies
 		auto isolates = *owned_isolates->read(); // copy
-		for (auto ii = isolates.begin(); ii != isolates.end(); ) {
-			auto ref = ii->lock();
+		for (const auto& handle : isolates) {
+			auto ref = handle.holder.lock();
 			if (ref) {
 				ref->Dispose();
-				++ii;
-			} else {
-				ii = isolates.erase(ii);
 			}
 		}
-		for (const auto & holder : isolates) {
-			auto ref = holder.lock();
-			if (ref) {
-				ref->ReleaseAndJoin();
-			}
+		for (const auto& handle : isolates) {
+			handle.dispose_wait->Join();
 		}
 	} else {
 		{
@@ -409,16 +403,10 @@ IsolateEnvironment::~IsolateEnvironment() {
 		// Unregister from Platform
 		PlatformDelegate::UnregisterIsolate(isolate);
 		// Unreference from default isolate
-		executor.default_executor.env.owned_isolates->write()->erase(holder);
+		executor.default_executor.env.owned_isolates->write()->erase({ dispose_wait, holder });
 	}
 	// Send notification that this isolate is totally disposed
-	{
-		auto ref = holder.lock();
-		if (ref) {
-			ref->state.write()->is_disposed = true;
-			ref->state.notify_all();
-		}
-	}
+	dispose_wait->IsolateDidDispose();
 }
 
 static void DeserializeInternalFieldsCallback(Local<Object> /*holder*/, int /*index*/, StartupData /*payload*/, void* /*data*/) {
@@ -485,7 +473,7 @@ void IsolateEnvironment::Terminate() {
 	assert(!nodejs_isolate);
 	terminated = true;
 	{
-		Scheduler::Lock lock(scheduler);
+		Scheduler::Lock lock{scheduler};
 		if (inspector_agent) {
 			inspector_agent->Terminate();
 		}
@@ -493,7 +481,7 @@ void IsolateEnvironment::Terminate() {
 	isolate->TerminateExecution();
 	auto ref = holder.lock();
 	if (ref) {
-		ref->state.write()->isolate.reset();
+		ref->isolate.write()->reset();
 	}
 }
 

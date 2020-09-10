@@ -11,27 +11,33 @@
 namespace ivm {
 
 class IsolateEnvironment;
+
+class IsolateDisposeWait {
+	public:
+		void IsolateDidDispose();
+		void Join();
+
+	private:
+		lockable_t<bool, false, true> is_disposed{false};
+};
+
 class IsolateHolder {
 	friend IsolateEnvironment;
 
 	public:
-		explicit IsolateHolder(std::shared_ptr<IsolateEnvironment> isolate) : state{std::move(isolate)} {}
+		explicit IsolateHolder(std::shared_ptr<IsolateEnvironment> isolate) :
+			isolate{std::move(isolate)} {}
 		IsolateHolder(const IsolateHolder&) = delete;
 		~IsolateHolder() = default;
 		auto operator=(const IsolateHolder&) = delete;
 
 		auto Dispose() -> bool;
-		void ReleaseAndJoin();
+		void Release();
 		auto GetIsolate() -> std::shared_ptr<IsolateEnvironment>;
 		void ScheduleTask(std::unique_ptr<Runnable> task, bool run_inline, bool wake_isolate, bool handle_task = false);
 
 	private:
-		struct State {
-			explicit State(std::shared_ptr<IsolateEnvironment> isolate) : isolate{std::move(isolate)} {}
-			std::shared_ptr<IsolateEnvironment> isolate;
-			bool is_disposed = false;
-		};
-		lockable_t<State, false, true> state;
+		lockable_t<std::shared_ptr<IsolateEnvironment>> isolate;
 };
 
 // This needs to be separate from IsolateHolder because v8 holds references to this indefinitely and

@@ -59,7 +59,11 @@ class LibraryHandle : public TransferableHandle {
 std::atomic<bool> did_global_init{false};
 // TODO: This is here so that these dtors don't get called when the module is being torn down. They
 // end up invoking a bunch of v8 functions which fail because nodejs already shut down the platform.
-auto default_isolates = new lockable_t<std::unordered_map<v8::Isolate*, std::shared_ptr<IsolateHolder>>>;
+struct IsolateHolderAndJoin {
+	std::shared_ptr<IsolateHolder> holder;
+	std::shared_ptr<IsolateDisposeWait> dispose_wait;
+};
+auto default_isolates = new lockable_t<std::unordered_map<v8::Isolate*, IsolateHolderAndJoin>>;
 extern "C"
 void init(Local<Object> target) {
 	// Create default isolate env
@@ -74,14 +78,19 @@ void init(Local<Object> target) {
 	{
 		auto isolates = default_isolates->write();
 		assert(isolates->find(isolate) == isolates->end());
-		isolates->insert(std::make_pair(isolate, IsolateEnvironment::New(isolate, context)));
+		auto holder = IsolateEnvironment::New(isolate, context);
+		isolates->insert(std::make_pair(
+			isolate,
+			IsolateHolderAndJoin{holder, holder->GetIsolate()->GetDisposeWaitHandle()}
+		));
 	}
 	Unmaybe(target->Set(context, v8_symbol("ivm"), LibraryHandle::Get()));
 
 	node::AddEnvironmentCleanupHook(isolate, [](void* param) {
 		auto* isolate = static_cast<v8::Isolate*>(param);
 		auto it = default_isolates->read()->find(isolate);
-		it->second->ReleaseAndJoin();
+		it->second.holder->Release();
+		it->second.dispose_wait->Join();
 		default_isolates->write()->erase(isolate); // `it` might have changed, don't use it
 	}, isolate);
 

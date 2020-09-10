@@ -68,19 +68,24 @@ class IsolateEnvironment {
 		};
 
 	private:
-		template <class Type>
-		struct WeakPtrCompare {
-			auto operator()(const std::weak_ptr<Type>& left, const std::weak_ptr<Type>& right) const -> bool {
-				return left.owner_before(right);
+
+		struct ReleaseAndJoinHandle {
+			std::shared_ptr<IsolateDisposeWait> dispose_wait;
+			std::weak_ptr<IsolateHolder> holder;
+
+			auto operator<(const ReleaseAndJoinHandle& right) const -> bool {
+				return dispose_wait.owner_before(right.dispose_wait);
 			}
 		};
+
 		// Another good candidate for std::optional<> (because this is only used by the root isolate)
-		using OwnedIsolates = lockable_t<std::set<std::weak_ptr<IsolateHolder>, WeakPtrCompare<IsolateHolder>>, true>;
+		using OwnedIsolates = lockable_t<std::set<ReleaseAndJoinHandle>, true>;
 		std::unique_ptr<OwnedIsolates> owned_isolates;
 
 		v8::Isolate* isolate{};
 		Scheduler scheduler;
 		Executor executor;
+		std::shared_ptr<IsolateDisposeWait> dispose_wait{std::make_shared<IsolateDisposeWait>()};
 		std::weak_ptr<IsolateHolder> holder;
 		std::shared_ptr<IsolateTaskRunner> task_runner;
 		std::unique_ptr<class InspectorAgent> inspector_agent;
@@ -254,6 +259,10 @@ class IsolateEnvironment {
 
 		// Return IsolateHolder
 		auto GetHolder() { return holder; }
+
+		auto GetDisposeWaitHandle() {
+			return dispose_wait;
+		}
 
 		/**
 		 * Check memory limit flag
