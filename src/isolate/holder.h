@@ -31,9 +31,7 @@ class IsolateHolder {
 			std::shared_ptr<IsolateEnvironment> isolate;
 			bool is_disposed = false;
 		};
-		using LockableState = lockable_t<State>;
-		LockableState state;
-		LockableState::condition_variable_t cv;
+		lockable_t<State, false, true> state;
 };
 
 // This needs to be separate from IsolateHolder because v8 holds references to this indefinitely and

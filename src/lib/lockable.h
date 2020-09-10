@@ -6,47 +6,137 @@
 namespace ivm {
 namespace detail {
 
-// Holds the lock and provides pointer semantics
-template <class Type, class Mutex, class Lock>
-class lock_t {
-	template <class> friend class condition_variable_impl_t;
-	public:
-		lock_t(Type& resource, Mutex& mutex) : resource{resource}, lock{mutex} {}
+// C++17 adds mandatory return value optimization which enables returning a scoped_lock
+#if __cplusplus >= 201700 && __cpp_lib_scoped_lock
+	template <class Mutex>
+	using scoped_lock = std::scoped_lock<Mutex>;
+#else
+	template <class Mutex>
+	using scoped_lock = std::unique_lock<Mutex>;
+#endif
 
-		auto operator*() -> auto& { return resource; }
-		auto operator*() const -> auto& { return resource; }
-		auto operator->() { return &resource; }
-		auto operator->() const { return &resource; }
+// Detect shared mutex implementation (if any)
+template <bool Shared>
+struct mutex_traits_t {
+	using mutex_t = std::mutex;
+	static constexpr bool shared = false;
+};
+
+template <>
+struct mutex_traits_t<true> {
+#if __cpp_lib_shared_mutex
+	using mutex_t = std::shared_mutex;
+	static constexpr bool shared = true;
+#elif __cpp_lib_shared_timed_mutex && !__APPLE__
+	using mutex_t = std::shared_timed_mutex;
+	static constexpr bool shared = true;
+#else
+	using mutex_t = std::mutex;
+	static constexpr bool shared = false;
+#endif
+};
+
+// Detect lock needed for mutex + wait
+template <class Traits, bool Waitable>
+struct lock_traits_t;
+
+template <class Traits>
+struct lock_traits_t<Traits, false> {
+	using read_t = typename std::conditional<Traits::shared,
+		std::shared_lock<typename Traits::mutex_t>,
+		scoped_lock<typename Traits::mutex_t>>::type;
+	using write_t = scoped_lock<typename Traits::mutex_t>;
+};
+
+template <class Traits>
+struct lock_traits_t<Traits, true> {
+	static_assert(Traits::waitable, "Mutex is not waitable");
+	using read_t = typename std::conditional<Traits::shared,
+		std::shared_lock<typename Traits::mutex_t>,
+		std::unique_lock<typename Traits::mutex_t>>::type;
+	using write_t = std::unique_lock<typename Traits::mutex_t>;
+};
+
+// std::condition_variable is only good for std::unique_lock<std::mutex>
+template <class Mutex>
+struct condition_variable_t {
+	using type_t = std::condition_variable_any;
+};
+
+template <>
+struct condition_variable_t<std::mutex> {
+	using type_t = std::condition_variable;
+};
+
+// Holds the lock and provides pointer semantics
+template <class Lockable, class Lock>
+class lock_holder_t {
+	template <bool, class> friend struct wait_impl_t;
+
+	public:
+		explicit lock_holder_t(Lockable& lockable) : lockable{lockable}, lock{lockable.mutex} {}
+
+		auto operator*() -> auto& { return lockable.resource; }
+		auto operator*() const -> auto& { return lockable.resource; }
+		auto operator->() { return &lockable.resource; }
+		auto operator->() const { return &lockable.resource; }
 
 	private:
-		Type& resource;
+		Lockable& lockable;
 		Lock lock;
 };
 
-// Detects which condition variable is needed
-template <class ConditionVariable>
-class condition_variable_impl_t : public ConditionVariable {
-	public:
-		template <class Type, class Mutex, class Lock, class... Args>
-		auto wait(lock_t<Type, Mutex, Lock>& lock, Args&&... args) {
-			return ConditionVariable::wait(lock.lock, std::forward<Args>(args)...);
-		}
-		using impl = condition_variable_impl_t;
+// `wait` implementation
+template <bool Waitable, class Type>
+struct wait_impl_t;
+
+template <class Type>
+struct wait_impl_t<false, Type> {
+	using lock_t = Type;
 };
 
-template <class Mutex>
-struct condition_variable_t : condition_variable_impl_t<std::condition_variable_any> {};
+template <class Type>
+struct wait_impl_t<true, Type> {
+	class lock_t : public Type {
+		public:
+			using Type::Type;
+			void wait() {
+				wait_impl(*this);
+			}
+	};
 
-template <>
-struct condition_variable_t<std::mutex> : condition_variable_impl_t<std::condition_variable> {};
+	private:
+		template <class Lock>
+		static void wait_impl(Lock& lock) {
+			lock.lockable.cv.wait(lock.lock);
+		}
+};
+
+// Internal `condition_variable` storage
+template <bool Waitable, class Mutex>
+class condition_variable_holder_t {};
+
+template <class Mutex>
+class condition_variable_holder_t<true, Mutex> {
+	template <bool, class> friend struct wait_impl_t;
+
+	public:
+		void notify_one() {
+			cv.notify_one();
+		}
+
+		void notify_all() {
+			cv.notify_all();
+		}
+
+	private:
+		mutable typename condition_variable_t<Mutex>::type_t cv;
+};
 
 // Holds resource and mutex
 template <class Type, class Traits>
-class lockable_impl_t {
-	private:
-		using Mutex = typename Traits::Mutex;
-		using Read = typename Traits::Read;
-		using Write = typename Traits::Write;
+class lockable_impl_t : public condition_variable_holder_t<Traits::waitable, typename Traits::mutex_t> {
+	template <class, class> friend class lock_holder_t;
 
 	public:
 		lockable_impl_t() = default;
@@ -56,69 +146,29 @@ class lockable_impl_t {
 		~lockable_impl_t() = default;
 		auto operator=(const lockable_impl_t&) = delete;
 
-		auto read() const { return detail::lock_t<const Type, Mutex, Read>{resource, mutex}; }
-		auto write() { return detail::lock_t<Type, Mutex, Write>{resource, mutex}; }
+		template <bool Waitable = false>
+		auto read() const {
+			return typename wait_impl_t<Waitable, lock_holder_t<const lockable_impl_t, typename lock_traits_t<Traits, Waitable>::read_t>>::lock_t{*this};
+		}
 
-		using condition_variable_t = detail::condition_variable_t<Mutex>;
+		template <bool Waitable = false>
+		auto write() {
+			return typename wait_impl_t<Waitable, lock_holder_t<lockable_impl_t, typename lock_traits_t<Traits, Waitable>::write_t>>::lock_t{*this};
+		}
 
 	private:
 		Type resource{};
-		mutable Mutex mutex;
+		mutable typename Traits::mutex_t mutex;
 };
 
-// C++17 adds mandatory return value optimization which enables this
-#if __cplusplus > 201700 && __cpp_lib_scoped_lock
-	template <class Mutex>
-	using scoped_lock = std::scoped_lock<Mutex>;
-#else
-	template <class Mutex>
-	using scoped_lock = std::unique_lock<Mutex>;
-#endif
-
-// Detect best capable mutex
-template <bool Shared>
-struct mutex_traits_t;
-
-template <>
-struct mutex_traits_t<false> {
-	using Mutex = std::mutex;
+// Combine mutex traits and waitable traits
+template <bool Waitable>
+struct waitable_traits_t {
+	static constexpr bool waitable = Waitable;
 };
 
-template <>
-struct mutex_traits_t<true> {
-#if __cpp_lib_shared_mutex
-	using Mutex = std::shared_mutex;
-	static constexpr bool shared = true;
-/* #elif __cpp_lib_shared_timed_mutex
-	using Mutex = std::shared_timed_mutex;
-	static constexpr bool shared = true; */
-#else
-	using Mutex = std::mutex;
-	static constexpr bool shared = false;
-#endif
-};
-
-// Detect best capable lock
-template <class MutexTraits, bool Waitable = false>
-struct lock_traits_t;
-
-template <class MutexTraits>
-struct lock_traits_t<MutexTraits, false> {
-	using Read = scoped_lock<typename MutexTraits::Mutex>;
-	using Write = scoped_lock<typename MutexTraits::Mutex>;
-};
-
-template <class MutexTraits>
-struct lock_traits_t<MutexTraits, true> {
-	template <class Mutex> using Read = typename std::conditional<MutexTraits::shared,
-		std::shared_lock<typename MutexTraits::Mutex>,
-		std::unique_lock<typename MutexTraits::Mutex>>::type;
-	template <class Mutex> using Write = std::unique_lock<typename MutexTraits::Mutexutex>;
-};
-
-// Combines mutex_traits_t and lockable_traits_t
 template <bool Shared, bool Waitable>
-struct lockable_traits_t : mutex_traits_t<Shared>, lock_traits_t<mutex_traits_t<Shared>, Waitable> {};
+struct lockable_traits_t : mutex_traits_t<Shared>, waitable_traits_t<Waitable> {};
 
 } // namespace detail
 

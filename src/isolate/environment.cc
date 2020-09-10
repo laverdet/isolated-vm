@@ -416,7 +416,7 @@ IsolateEnvironment::~IsolateEnvironment() {
 		auto ref = holder.lock();
 		if (ref) {
 			ref->state.write()->is_disposed = true;
-			ref->cv.notify_all();
+			ref->state.notify_all();
 		}
 	}
 }

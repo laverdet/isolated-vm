@@ -21,9 +21,9 @@ auto IsolateHolder::Dispose() -> bool {
 void IsolateHolder::ReleaseAndJoin() {
 	auto ref = std::exchange(state.write()->isolate, {});
 	ref.reset();
-	auto lock = state.read();
+	auto lock = state.read<true>();
 	while (!lock->is_disposed) {
-		cv.wait(lock);
+		lock.wait();
 	}
 }
 
