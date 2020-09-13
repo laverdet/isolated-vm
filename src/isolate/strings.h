@@ -1,5 +1,4 @@
 #pragma once
-#include "specific.h"
 #include "isolate/generic/error.h"
 #include "isolate/generic/handle_cast.h"
 #include <v8.h>
@@ -21,15 +20,20 @@ class StringTable {
 				}
 
 				operator v8::Local<v8::String>() { // NOLINT(hicpp-explicit-conversions)
-					return handle.Deref([&]() {
-						return Unmaybe(v8::String::NewFromOneByte(
-							v8::Isolate::GetCurrent(), (const uint8_t*)value, v8::NewStringType::kInternalized));
-					});
+					auto* isolate = v8::Isolate::GetCurrent();
+					if (handle.IsEmpty()) {
+						auto local = Unmaybe(v8::String::NewFromOneByte(
+							isolate, (const uint8_t*)value, v8::NewStringType::kInternalized));
+						handle.Set(isolate, local);
+						return local;
+					} else {
+						return handle.Get(isolate);
+					}
 				}
 
 			private:
 				const char* value;
-				IsolateSpecific<v8::String> handle;
+				v8::Eternal<v8::String> handle;
 		};
 
 		static auto Get();
