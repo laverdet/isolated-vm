@@ -129,6 +129,12 @@ class IsolateEnvironment {
 		 */
 		static void PromiseRejectCallback(v8::PromiseRejectMessage rejection);
 
+#if V8_AT_LEAST(8, 0, 160)
+		// v8 commit 6c0825aa
+#define USE_CODE_GEN_CALLBACK
+		static auto CodeGenCallback(v8::Local<v8::Context> context, v8::Local<v8::Value> source) -> v8::ModifyCodeGenerationFromStringsResult;
+#endif
+
 		/**
 		 * GC hooks to kill this isolate before it runs out of memory
 		 */

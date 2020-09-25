@@ -94,6 +94,18 @@ void IsolateEnvironment::PromiseRejectCallback(PromiseRejectMessage rejection) {
 	that->rejected_promise_error.Reset(that->isolate, rejection.GetValue());
 }
 
+#ifdef USE_CODE_GEN_CALLBACK
+auto IsolateEnvironment::CodeGenCallback(Local<Context> /*context*/, Local<Value> source) -> ModifyCodeGenerationFromStringsResult {
+	auto* that = IsolateEnvironment::GetCurrent();
+	// This heuristic could be improved by looking up how much `timeout` this isolate has left and
+	// returning early in some cases
+	if (source->IsString() && source.As<String>()->Length() > static_cast<int>(that->memory_limit / 8)) {
+		return { .codegen_allowed = false };
+	}
+	return { .codegen_allowed = true };
+}
+#endif
+
 void IsolateEnvironment::MarkSweepCompactEpilogue(Isolate* isolate, GCType /*gc_type*/, GCCallbackFlags gc_flags, void* data) {
 	auto* that = static_cast<IsolateEnvironment*>(data);
 	HeapStatistics heap;
@@ -327,8 +339,13 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<Backi
 
 	// Workaround for bug in snapshot deserializer in v8 in nodejs v10.x
 	isolate->SetHostImportModuleDynamicallyCallback(nullptr);
+
+	// Various callbacks
 	isolate->SetOOMErrorHandler(OOMErrorCallback);
 	isolate->SetPromiseRejectCallback(PromiseRejectCallback);
+#ifdef USE_CODE_GEN_CALLBACK
+	isolate->SetModifyCodeGenerationFromStringsCallback(CodeGenCallback);
+#endif
 
 	// Add GC callbacks
 	isolate->AddGCEpilogueCallback(MarkSweepCompactEpilogue, static_cast<void*>(this), GCType::kGCTypeMarkSweepCompact);
@@ -413,11 +430,16 @@ static void DeserializeInternalFieldsCallback(Local<Object> /*holder*/, int /*in
 }
 
 auto IsolateEnvironment::NewContext() -> Local<Context> {
+	auto context =
 #if NODE_MODULE_OR_V8_AT_LEAST(64, 6, 2, 193)
-	return Context::New(isolate, nullptr, {}, {}, &DeserializeInternalFieldsCallback);
+	Context::New(isolate, nullptr, {}, {}, &DeserializeInternalFieldsCallback);
 #else
-	return Context::New(isolate);
+	Context::New(isolate);
 #endif
+#ifdef USE_CODE_GEN_CALLBACK
+	context->AllowCodeGenerationFromStrings(false);
+#endif
+	return context;
 }
 
 auto IsolateEnvironment::TaskEpilogue() -> std::unique_ptr<ExternalCopy> {
