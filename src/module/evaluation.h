@@ -79,8 +79,10 @@ auto RunWithAnnotatedErrors(Function fn) {
 			assert(error->IsObject());
 			int linenum = Unmaybe(message->GetLineNumber(context));
 			int start_column = Unmaybe(message->GetStartColumn(context));
+			auto name = message->GetScriptResourceName();
 			std::string decorator =
-				HandleCast<std::string>(message->GetScriptResourceName())+
+				(name->IsString() ?
+					HandleCast<std::string>(message->GetScriptResourceName()) : "<isolated-vm>") +
 				":" + std::to_string(linenum) +
 				":" + std::to_string(start_column + 1);
 			auto message_key = HandleCast<v8::Local<v8::String>>("message");
