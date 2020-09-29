@@ -117,23 +117,7 @@ auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
 						}
 					}
 				}
-				// FIXME(?): It seems that one call to TerminateExecution() doesn't kill the script if
-				// there is a promise handler scheduled. This is unexpected behavior but I can't
-				// reproduce it in vanilla v8 so the issue seems more complex. I'm punting on this for
-				// now with a hack but will look again when nodejs pulls in a newer version of v8 with
-				// more mature microtask support.
-				//
-				// This loop always terminates for me in 1 iteration but it goes up to 100 because the
-				// only other option is terminating the application if an isolate has gone out of
-				// control.
-				for (int ii = 0; ii < 100; ++ii) {
-					std::this_thread::sleep_for(std::chrono::duration<int, std::milli>(2));
-					if (did_finish) {
-						return;
-					}
-					isolate->TerminateExecution();
-				}
-				assert(false);
+				isolate->TerminateExecution();
 			});
 		}
 		result = fn();
