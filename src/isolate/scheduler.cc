@@ -100,6 +100,7 @@ auto Scheduler::Implementation::WakeIsolate(std::shared_ptr<IsolateEnvironment> 
 				if (!pool_thread) {
 					ref->GetIsolate()->DiscardThreadSpecificMetadata();
 				}
+				ref = {};
 				if (--scheduler.default_scheduler.uv_ref_count == 0) {
 					// Wake up the libuv loop so we can unref the async handle from the default thread.
 					uv_async_send(scheduler.default_scheduler.uv_async);
