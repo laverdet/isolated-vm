@@ -235,7 +235,7 @@ void IsolateEnvironment::AsyncEntry() {
 		while (!tasks.empty()) {
 			tasks.front()->Run();
 			tasks.pop();
-			if (hit_memory_limit) {
+			if (terminated) {
 				return;
 			}
 			CheckMemoryPressure();
