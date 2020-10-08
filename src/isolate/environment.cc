@@ -117,7 +117,7 @@ void IsolateEnvironment::MarkSweepCompactEpilogue(Isolate* isolate, GCType /*gc_
 	if (total_memory > memory_limit) {
 		if ((gc_flags & (GCCallbackFlags::kGCCallbackFlagCollectAllAvailableGarbage | GCCallbackFlags::kGCCallbackFlagForced)) == 0) {
 			// Force full garbage collection
-			that->RequestMemoryPressureNotification(MemoryPressureLevel::kCritical, true);
+			that->RequestMemoryPressureNotification(MemoryPressureLevel::kCritical);
 		} else {
 			that->Terminate();
 			that->hit_memory_limit = true;
@@ -136,8 +136,11 @@ void IsolateEnvironment::MarkSweepCompactEpilogue(Isolate* isolate, GCType /*gc_
 		}
 		if (total_memory + total_memory / 4 > memory_limit) {
 			// Send "moderate" pressure at 80%
-			that->RequestMemoryPressureNotification(MemoryPressureLevel::kModerate, true);
+			that->RequestMemoryPressureNotification(MemoryPressureLevel::kModerate);
+		} else {
+			that->RequestMemoryPressureNotification(MemoryPressureLevel::kNone);
 		}
+		return;
 	}
 }
 
@@ -149,28 +152,29 @@ auto IsolateEnvironment::NearHeapLimitCallback(void* data, size_t current_heap_l
 	HeapStatistics heap;
 	that->isolate->GetHeapStatistics(&heap);
 	if (heap.used_heap_size() + that->extra_allocated_memory > that->memory_limit + that->misc_memory_size) {
-		that->RequestMemoryPressureNotification(MemoryPressureLevel::kCritical, true, true);
+		that->RequestMemoryPressureNotification(MemoryPressureLevel::kCritical, true);
 	} else {
-		that->RequestMemoryPressureNotification(MemoryPressureLevel::kModerate, true, true);
+		that->RequestMemoryPressureNotification(MemoryPressureLevel::kModerate, true);
 	}
 	return current_heap_limit + 1024 * 1024 * 1024;
 }
 
-void IsolateEnvironment::RequestMemoryPressureNotification(MemoryPressureLevel memory_pressure, bool is_reentrant_gc, bool as_interrupt) {
+void IsolateEnvironment::RequestMemoryPressureNotification(MemoryPressureLevel memory_pressure, bool as_interrupt) {
+	this->memory_pressure = memory_pressure;
 	// Before commit v8 6.9.406 / 0fb4f6a2a triggering the GC from within a GC callback would output
 	// some GC tracing diagnostics. After the commit it is properly gated behind a v8 debug flag.
 	if (
 #if !V8_AT_LEAST(6, 9, 406)
-		is_reentrant_gc ||
+		true ||
 #endif
 		as_interrupt
 	) {
-		this->memory_pressure = memory_pressure;
-		isolate->RequestInterrupt(MemoryPressureInterrupt, static_cast<void*>(this));
+		if (memory_pressure > last_memory_pressure) {
+			isolate->RequestInterrupt(MemoryPressureInterrupt, static_cast<void*>(this));
+		}
 	} else {
-		this->memory_pressure = MemoryPressureLevel::kNone;
-		isolate->MemoryPressureNotification(memory_pressure);
-		if (is_reentrant_gc && memory_pressure == MemoryPressureLevel::kCritical) {
+		CheckMemoryPressure();
+		if (memory_pressure == MemoryPressureLevel::kCritical) {
 			// Reentrant GC doesn't trigger callbacks
 			MarkSweepCompactEpilogue(isolate, GCType::kGCTypeMarkSweepCompact, GCCallbackFlags::kGCCallbackFlagForced, reinterpret_cast<void*>(this));
 		}
@@ -182,10 +186,11 @@ void IsolateEnvironment::MemoryPressureInterrupt(Isolate* /*isolate*/, void* dat
 }
 
 void IsolateEnvironment::CheckMemoryPressure() {
-	MemoryPressureLevel pressure = memory_pressure;
-	if (pressure != MemoryPressureLevel::kNone) {
-		memory_pressure = MemoryPressureLevel::kNone;
-		isolate->MemoryPressureNotification(pressure);
+	if (memory_pressure != last_memory_pressure) {
+		if (memory_pressure > last_memory_pressure) {
+			isolate->MemoryPressureNotification(memory_pressure);
+		}
+		last_memory_pressure = memory_pressure;
 	}
 }
 

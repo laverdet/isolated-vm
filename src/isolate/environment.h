@@ -99,6 +99,7 @@ class IsolateEnvironment {
 		size_t misc_memory_size = 0;
 		size_t extra_allocated_memory = 0;
 		v8::MemoryPressureLevel memory_pressure = v8::MemoryPressureLevel::kNone;
+		v8::MemoryPressureLevel last_memory_pressure = v8::MemoryPressureLevel::kNone;
 		bool hit_memory_limit = false;
 		bool did_adjust_heap_limit = false;
 		bool nodejs_isolate;
@@ -140,7 +141,7 @@ class IsolateEnvironment {
 		 */
 		static void MarkSweepCompactEpilogue(v8::Isolate* isolate, v8::GCType gc_type, v8::GCCallbackFlags gc_flags, void* data);
 		static auto NearHeapLimitCallback(void* data, size_t current_heap_limit, size_t initial_heap_limit) -> size_t;
-		void RequestMemoryPressureNotification(v8::MemoryPressureLevel memory_pressure, bool is_reentrant_gc = false, bool as_interrupt = false);
+		void RequestMemoryPressureNotification(v8::MemoryPressureLevel memory_pressure, bool as_interrupt = false);
 		static void MemoryPressureInterrupt(v8::Isolate* isolate, void* data);
 		void CheckMemoryPressure();
 
