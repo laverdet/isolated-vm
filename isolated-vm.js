@@ -1,1 +1,1 @@
-module.exports = require('./build/Release/isolated_vm').ivm;
+module.exports = require('./out/isolated_vm').ivm;

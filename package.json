@@ -9,6 +9,7 @@
   },
   "scripts": {
     "install": "node-gyp rebuild --release -j 4",
+    "postinstall": "node-gyp clean",
     "lint": "find src -name '*.cc' | xargs -n1 clang-tidy",
     "test": "node test.js || nodejs test.js"
   },
