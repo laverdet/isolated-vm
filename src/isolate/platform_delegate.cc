@@ -26,7 +26,8 @@ void PlatformDelegate::UnregisterIsolate(v8::Isolate* isolate) {
 #else
 
 void PlatformDelegate::InitializeDelegate() {
-	auto node_platform = node::GetMainThreadMultiIsolatePlatform();
+	auto context = v8::Isolate::GetCurrent()->GetCurrentContext();
+	auto* node_platform = node::GetMultiIsolatePlatform(node::GetCurrentEnvironment(context));
 	delegate = PlatformDelegate{node_platform};
 }
 
