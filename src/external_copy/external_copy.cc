@@ -409,7 +409,14 @@ ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const void* data, size_t length
 }
 
 ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(Local<ArrayBuffer> handle) :
-	ExternalCopyArrayBuffer{handle->GetContents().Data(), handle->ByteLength()} {}
+	ExternalCopyArrayBuffer{
+#if V8_AT_LEAST(7, 9, 69)
+		handle->GetBackingStore()->Data(),
+#else
+		handle->GetContents().Data(),
+#endif
+		handle->ByteLength()
+	} {}
 
 auto ExternalCopyArrayBuffer::Transfer(Local<ArrayBuffer> handle) -> std::unique_ptr<ExternalCopyArrayBuffer> {
 	if (!IsDetachable(handle)) {
@@ -417,7 +424,6 @@ auto ExternalCopyArrayBuffer::Transfer(Local<ArrayBuffer> handle) -> std::unique
 	}
 #if V8_AT_LEAST(7, 9, 69)
 	auto backing_store = handle->GetBackingStore();
-	handle->Externalize(backing_store);
 #else
 	auto backing_store = BackingStore::GetBackingStore(handle);
 #endif
@@ -456,7 +462,12 @@ auto ExternalCopyArrayBuffer::CopyInto(bool transfer_in) -> Local<Value> {
 			throw RuntimeRangeError("Array buffer allocation failed");
 		}
 		auto handle = ArrayBuffer::New(Isolate::GetCurrent(), size);
-		std::memcpy(handle->GetContents().Data(), backing_store->Data(), size);
+#if V8_AT_LEAST(7, 9, 69)
+		auto* data = handle->GetBackingStore()->Data();
+#else
+		auto* data = handle->GetContents().Data();
+#endif
+		std::memcpy(data, backing_store->Data(), size);
 		return handle;
 	}
 }
