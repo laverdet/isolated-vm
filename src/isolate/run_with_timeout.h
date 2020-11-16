@@ -94,14 +94,14 @@ auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
 					auto timeout_runner = std::make_unique<TimeoutRunner>(stack_trace, wait);
 					if (is_default_thread) {
 						// In this case this is a pure sync function. We should not cancel any async waits.
-						Scheduler::Lock lock{isolate.scheduler};
-						lock.scheduler.sync_interrupts.push(std::move(timeout_runner));
-						lock.scheduler.InterruptSyncIsolate();
+						auto lock = isolate.scheduler->Lock();
+						lock->sync_interrupts.push(std::move(timeout_runner));
+						lock->InterruptSyncIsolate();
 					} else {
 						{
-							Scheduler::Lock lock(isolate.scheduler);
-							lock.scheduler.interrupts.push(std::move(timeout_runner));
-							lock.scheduler.InterruptIsolate();
+							auto lock = isolate.scheduler->Lock();
+							lock->interrupts.push(std::move(timeout_runner));
+							lock->InterruptIsolate();
 						}
 						isolate.CancelAsync();
 					}
@@ -109,11 +109,11 @@ auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
 					if (did_finish) {
 						// fn() could have finished and threw away the interrupts below before we got a chance
 						// to set them up. In this case we throw away the interrupts ourselves.
-						Scheduler::Lock lock{isolate.scheduler};
+						auto lock = isolate.scheduler->Lock();
 						if (is_default_thread) {
-							ExchangeDefault(lock.scheduler.sync_interrupts);
+							ExchangeDefault(lock->sync_interrupts);
 						} else {
-							ExchangeDefault(lock.scheduler.interrupts);
+							ExchangeDefault(lock->interrupts);
 						}
 					}
 				}
@@ -127,11 +127,11 @@ auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
 			// away existing interrupts to let the ThreadWait finish and also avoid interrupting an
 			// unrelated function call.
 			// TODO: This probably breaks the inspector in some cases
-			Scheduler::Lock lock{isolate.scheduler};
+			auto lock = isolate.scheduler->Lock();
 			if (is_default_thread) {
-				ExchangeDefault(lock.scheduler.sync_interrupts);
+				ExchangeDefault(lock->sync_interrupts);
 			} else {
-				ExchangeDefault(lock.scheduler.interrupts);
+				ExchangeDefault(lock->interrupts);
 			}
 		}
 	}

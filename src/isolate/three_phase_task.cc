@@ -232,8 +232,7 @@ auto ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_async) ->
 			// Helper function which flushes handle tasks
 			auto run_handle_tasks = [](IsolateEnvironment& env) {
 				auto handle_tasks = [&]() {
-					Scheduler::Lock scheduler_lock{env.scheduler};
-					return ExchangeDefault(scheduler_lock.scheduler.handle_tasks);
+					return ExchangeDefault(env.scheduler->Lock()->handle_tasks);
 				}();
 				if (handle_tasks.empty()) {
 					return;
@@ -335,7 +334,7 @@ auto ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_async) ->
 			{
 				// Setup condition variable to sleep this thread
 				IsolateEnvironment& env = *IsolateEnvironment::GetCurrent();
-				Scheduler::AsyncWait wait(env.scheduler);
+				Scheduler::AsyncWait wait(*env.scheduler);
 				// Scope to unlock v8 in this thread and set up the wait
 				Executor::Unlock unlocker(env);
 				// Run it and sleep

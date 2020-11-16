@@ -8,6 +8,7 @@
 #include "scheduler.h"
 #include "specific.h"
 #include "strings.h"
+#include "lib/covariant.h"
 #include "lib/lockable.h"
 #include "lib/thread_pool.h"
 
@@ -19,8 +20,8 @@
 #include <memory>
 #include <mutex>
 #include <queue>
-#include <unordered_map>
 #include <set>
+#include <unordered_map>
 #include <vector>
 
 namespace ivm {
@@ -43,7 +44,7 @@ class IsolateEnvironment {
 	friend class InspectorSession;
 	friend class IsolateHolder;
 	friend class LimitedAllocator;
-	friend class Scheduler;
+	friend class LockedScheduler;
 	friend StringTable;
 	friend class ThreePhaseTask;
 	template <class>
@@ -84,7 +85,7 @@ class IsolateEnvironment {
 		std::unique_ptr<OwnedIsolates> owned_isolates;
 
 		v8::Isolate* isolate{};
-		Scheduler scheduler;
+		covariant_t<LockedScheduler, IsolatedScheduler, UvScheduler> scheduler;
 		Executor executor;
 		std::shared_ptr<IsolateDisposeWait> dispose_wait{std::make_shared<IsolateDisposeWait>()};
 		std::weak_ptr<IsolateHolder> holder;
@@ -102,7 +103,7 @@ class IsolateEnvironment {
 		v8::MemoryPressureLevel memory_pressure = v8::MemoryPressureLevel::kNone;
 		bool hit_memory_limit = false;
 		bool did_adjust_heap_limit = false;
-		bool nodejs_isolate;
+		bool nodejs_isolate = false;
 		std::atomic<unsigned int> remotes_count{0};
 		v8::HeapStatistics last_heap {};
 		std::deque<v8::Persistent<v8::Promise>> unhandled_promise_rejections;
@@ -164,6 +165,7 @@ class IsolateEnvironment {
 		 * The constructor should be called through the factory.
 		 */
 		IsolateEnvironment();
+		explicit IsolateEnvironment(UvScheduler& default_scheduler);
 		IsolateEnvironment(const IsolateEnvironment&) = delete;
 		auto operator= (const IsolateEnvironment&) -> IsolateEnvironment = delete;
 		~IsolateEnvironment();
@@ -171,12 +173,19 @@ class IsolateEnvironment {
 		/**
 		 * Factory method which generates an IsolateHolder.
 		 */
-		template <typename ...Args>
-		static auto New(Args&&... args) -> std::shared_ptr<IsolateHolder> {
-			auto isolate = std::make_shared<IsolateEnvironment>();
-			auto holder = std::make_shared<IsolateHolder>(isolate);
-			isolate->holder = holder;
-			isolate->IsolateCtor(std::forward<Args>(args)...);
+		static auto New(v8::Isolate* isolate, v8::Local<v8::Context> context) -> std::shared_ptr<IsolateHolder> {
+			auto env = std::make_shared<IsolateEnvironment>();
+			auto holder = std::make_shared<IsolateHolder>(env);
+			env->holder = holder;
+			env->IsolateCtor(isolate, context);
+			return holder;
+		}
+
+		static auto New(size_t memory_limit_in_mb, std::shared_ptr<BackingStore> snapshot_blob, size_t snapshot_length) -> std::shared_ptr<IsolateHolder> {
+			auto env = std::make_shared<IsolateEnvironment>(static_cast<UvScheduler&>(*Executor::GetDefaultEnvironment().scheduler));
+			auto holder = std::make_shared<IsolateHolder>(env);
+			env->holder = holder;
+			env->IsolateCtor(memory_limit_in_mb, std::move(snapshot_blob), snapshot_length);
 			return holder;
 		}
 
@@ -194,8 +203,8 @@ class IsolateEnvironment {
 			return Executor::GetCurrentEnvironment()->holder.lock();
 		}
 
-		auto GetScheduler() -> Scheduler& {
-			return scheduler;
+		auto GetScheduler() -> LockedScheduler& {
+			return *scheduler;
 		}
 
 		auto GetTaskRunner() -> const std::shared_ptr<IsolateTaskRunner>& {
@@ -234,7 +243,7 @@ class IsolateEnvironment {
 		 */
 		void AsyncEntry();
 	private:
-		template <std::queue<std::unique_ptr<Runnable>> Scheduler::Implementation::*Tasks>
+		template <std::queue<std::unique_ptr<Runnable>> Scheduler::*Tasks>
 		void InterruptEntryImplementation();
 	public:
 		void InterruptEntryAsync();
@@ -326,8 +335,7 @@ class IsolateEnvironment {
 		 * Cancels an async three_phase_runner if one exists, i.e. applySyncPromise
 		 */
 		void CancelAsync() {
-			Scheduler::Lock lock{scheduler};
-			lock.scheduler.CancelAsync();
+			scheduler->Lock()->CancelAsync();
 		}
 
 		/**

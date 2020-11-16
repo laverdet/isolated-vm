@@ -46,14 +46,14 @@ void IsolateHolder::ScheduleTask(std::unique_ptr<Runnable> task, bool run_inline
 			task->Run();
 			return;
 		}
-		Scheduler::Lock lock{ref->scheduler};
+		auto lock = ref->scheduler->Lock();
 		if (handle_task) {
-			lock.scheduler.handle_tasks.push(std::move(task));
+			lock->handle_tasks.push(std::move(task));
 		} else {
-			lock.scheduler.tasks.push(std::move(task));
+			lock->tasks.push(std::move(task));
 		}
 		if (wake_isolate) {
-			lock.scheduler.WakeIsolate(std::move(ref));
+			lock->WakeIsolate(std::move(ref));
 		}
 	}
 }
@@ -62,8 +62,7 @@ void IsolateHolder::ScheduleTask(std::unique_ptr<Runnable> task, bool run_inline
 void IsolateTaskRunner::PostTask(std::unique_ptr<v8::Task> task) {
 	auto env = weak_env.lock();
 	if (env) {
-		Scheduler::Lock lock{env->GetScheduler()};
-		lock.scheduler.tasks.push(std::move(task));
+		env->GetScheduler().Lock()->tasks.push(std::move(task));
 	}
 }
 
@@ -76,8 +75,7 @@ void IsolateTaskRunner::PostDelayedTask(std::unique_ptr<v8::Task> task, double d
 		auto env = weak_env.lock();
 		if (env) {
 			// Don't wake the isolate, this will just run the next time the isolate is doing something
-			Scheduler::Lock lock{env->GetScheduler()};
-			lock.scheduler.tasks.push(std::move(*shared_task));
+			env->GetScheduler().Lock()->tasks.push(std::move(*shared_task));
 		}
 		timer_t::chain(next);
 	});

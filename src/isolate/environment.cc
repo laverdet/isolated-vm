@@ -223,12 +223,12 @@ void IsolateEnvironment::AsyncEntry() {
 		std::queue<unique_ptr<Runnable>> interrupts;
 		{
 			// Grab current tasks
-			Scheduler::Lock lock{scheduler};
-			tasks = ExchangeDefault(lock.scheduler.tasks);
-			handle_tasks = ExchangeDefault(lock.scheduler.handle_tasks);
-			interrupts = ExchangeDefault(lock.scheduler.interrupts);
+			auto lock = scheduler->Lock();
+			tasks = ExchangeDefault(lock->tasks);
+			handle_tasks = ExchangeDefault(lock->handle_tasks);
+			interrupts = ExchangeDefault(lock->interrupts);
 			if (tasks.empty() && handle_tasks.empty() && interrupts.empty()) {
-				lock.scheduler.DoneRunning();
+				lock->DoneRunning();
 				return;
 			}
 		}
@@ -257,13 +257,12 @@ void IsolateEnvironment::AsyncEntry() {
 	}
 }
 
-template <std::queue<std::unique_ptr<Runnable>> Scheduler::Implementation::*Tasks>
+template <std::queue<std::unique_ptr<Runnable>> Scheduler::*Tasks>
 void IsolateEnvironment::InterruptEntryImplementation() {
 	// Executor::Lock is already acquired
 	while (true) {
 		auto interrupts = [&]() {
-			Scheduler::Lock lock{scheduler};
-			return ExchangeDefault(lock.scheduler.*Tasks);
+			return ExchangeDefault((*scheduler->Lock()).*Tasks);
 		}();
 		if (interrupts.empty()) {
 			return;
@@ -276,31 +275,32 @@ void IsolateEnvironment::InterruptEntryImplementation() {
 }
 
 void IsolateEnvironment::InterruptEntryAsync() {
-	return InterruptEntryImplementation<&Scheduler::Implementation::interrupts>();
+	return InterruptEntryImplementation<&Scheduler::interrupts>();
 }
 
 void IsolateEnvironment::InterruptEntrySync() {
-	return InterruptEntryImplementation<&Scheduler::Implementation::sync_interrupts>();
+	return InterruptEntryImplementation<&Scheduler::sync_interrupts>();
 }
 
 IsolateEnvironment::IsolateEnvironment() :
 	owned_isolates{std::make_unique<OwnedIsolates>()},
-	scheduler{*this},
-	executor{*this} {
+	scheduler{in_place<UvScheduler>{}, *this},
+	executor{*this},
+	nodejs_isolate{true} {}
 
-}
+IsolateEnvironment::IsolateEnvironment(UvScheduler& default_scheduler) :
+	scheduler{in_place<IsolatedScheduler>{}, *this, default_scheduler},
+	executor{*this} {}
 
 void IsolateEnvironment::IsolateCtor(Isolate* isolate, Local<Context> context) {
 	this->isolate = isolate;
 	default_context.Reset(isolate, context);
-	nodejs_isolate = true;
 }
 
 void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<BackingStore> snapshot_blob, size_t snapshot_length) {
 	memory_limit = memory_limit_in_mb * 1024 * 1024;
 	allocator_ptr = std::make_shared<LimitedAllocator>(*this, memory_limit);
 	snapshot_blob_ptr = std::move(snapshot_blob);
-	nodejs_isolate = false;
 
 	// Calculate resource constraints
 	ResourceConstraints rc;
@@ -342,11 +342,11 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<Backi
 	task_runner = std::make_shared<IsolateTaskRunner>(holder.lock()->GetIsolate());
 #if V8_AT_LEAST(6, 8, 57)
 	isolate = Isolate::Allocate();
-	PlatformDelegate::RegisterIsolate(isolate, &scheduler);
+	PlatformDelegate::RegisterIsolate(isolate, &*scheduler);
 	Isolate::Initialize(isolate, create_params);
 #else
 	isolate = Isolate::New(create_params);
-	PlatformDelegate::RegisterIsolate(isolate, &scheduler);
+	PlatformDelegate::RegisterIsolate(isolate, &*scheduler);
 #endif
 
 #if NODE_MODULE_VERSION >= 79 && !V8_AT_LEAST(8, 0, 60)
@@ -406,7 +406,7 @@ IsolateEnvironment::~IsolateEnvironment() {
 		{
 			// Grab local pointer to inspector agent with scheduler lock active
 			auto agent_ptr = [&]() {
-				Scheduler::Lock lock{scheduler};
+				auto lock = scheduler->Lock();
 				return std::move(inspector_agent);
 			}();
 			// Now activate executor lock and invoke inspector agent's dtor
@@ -422,11 +422,11 @@ IsolateEnvironment::~IsolateEnvironment() {
 			assert(weak_persistents.empty());
 			unhandled_promise_rejections.clear();
 			// Destroy outstanding tasks. Do this here while the executor lock is up.
-			Scheduler::Lock scheduler_lock{scheduler};
-			ExchangeDefault(scheduler_lock.scheduler.interrupts);
-			ExchangeDefault(scheduler_lock.scheduler.sync_interrupts);
-			ExchangeDefault(scheduler_lock.scheduler.handle_tasks);
-			ExchangeDefault(scheduler_lock.scheduler.tasks);
+			auto scheduler_lock = scheduler->Lock();
+			ExchangeDefault(scheduler_lock->interrupts);
+			ExchangeDefault(scheduler_lock->sync_interrupts);
+			ExchangeDefault(scheduler_lock->handle_tasks);
+			ExchangeDefault(scheduler_lock->tasks);
 		}
 		{
 			// Dispose() will call destructors for external strings and array buffers, so this lock sets the
@@ -513,7 +513,7 @@ void IsolateEnvironment::Terminate() {
 	assert(!nodejs_isolate);
 	terminated = true;
 	{
-		Scheduler::Lock lock{scheduler};
+		auto lock = scheduler->Lock();
 		if (inspector_agent) {
 			inspector_agent->Terminate();
 		}

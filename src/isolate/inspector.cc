@@ -105,10 +105,10 @@ void InspectorAgent::SendInterrupt(unique_ptr<Runnable> task) {
 	auto ptr = holder->GetIsolate();
 	assert(ptr);
 	// Push interrupt onto queue
-	Scheduler::Lock scheduler_lock{isolate.scheduler};
-	scheduler_lock.scheduler.interrupts.push(std::move(task));
+	auto scheduler_lock = isolate.scheduler->Lock();
+	scheduler_lock->interrupts.push(std::move(task));
 	// Wake up the isolate
-	if (!scheduler_lock.scheduler.WakeIsolate(ptr)) { // `true` if isolate is inactive
+	if (!scheduler_lock->WakeIsolate(ptr)) { // `true` if isolate is inactive
 		// Isolate is currently running
 		std::lock_guard<std::mutex> lock{mutex};
 		if (running) {
@@ -116,7 +116,7 @@ void InspectorAgent::SendInterrupt(unique_ptr<Runnable> task) {
 			cv.notify_all();
 		} else {
 			// Isolate is busy running JS code
-			scheduler_lock.scheduler.InterruptIsolate();
+			scheduler_lock->InterruptIsolate();
 		}
 	}
 }

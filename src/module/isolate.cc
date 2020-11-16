@@ -1,8 +1,8 @@
-#include "isolate/node_wrapper.h"
-#include "isolate/util.h"
 #include "isolate/environment.h"
 #include "isolate/node_wrapper.h"
 #include "isolate/platform_delegate.h"
+#include "isolate/scheduler.h"
+#include "isolate/util.h"
 #include "lib/lockable.h"
 #include "callback.h"
 #include "context_handle.h"
@@ -81,13 +81,14 @@ class LibraryHandle : public TransferableHandle {
 
 // Module entry point
 std::atomic<bool> did_global_init{false};
-// TODO: This is here so that these dtors don't get called when the module is being torn down. They
-// end up invoking a bunch of v8 functions which fail because nodejs already shut down the platform.
+// TODO(?): This is pointer / new is here so that these dtors don't get called when the module is
+// being torn down. They end up invoking a bunch of v8 functions which fail because nodejs already
+// shut down the platform.
 struct IsolateHolderAndJoin {
 	std::shared_ptr<IsolateHolder> holder;
 	std::shared_ptr<IsolateDisposeWait> dispose_wait;
 };
-auto default_isolates = new lockable_t<std::unordered_map<v8::Isolate*, IsolateHolderAndJoin>>;
+auto* default_isolates = new lockable_t<std::unordered_map<v8::Isolate*, IsolateHolderAndJoin>>;
 extern "C"
 void init(Local<Object> target) {
 	// Create default isolate env
