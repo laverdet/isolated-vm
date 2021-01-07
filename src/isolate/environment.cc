@@ -91,7 +91,18 @@ void IsolateEnvironment::OOMErrorCallback(const char* location, bool is_heap_oom
 void IsolateEnvironment::PromiseRejectCallback(PromiseRejectMessage rejection) {
 	auto* that = IsolateEnvironment::GetCurrent();
 	assert(that->isolate == Isolate::GetCurrent());
-	that->rejected_promise_error.Reset(that->isolate, rejection.GetValue());
+	// TODO: Revisit this in version 4.x?
+	auto event = rejection.GetEvent();
+	if (event == kPromiseRejectWithNoHandler) {
+		that->unhandled_promise_rejections.emplace_back(that->isolate, rejection.GetValue());
+	} else if (event == kPromiseHandlerAddedAfterReject) {
+		auto value = rejection.GetValue();
+		for (auto& handle : that->unhandled_promise_rejections) {
+			if (handle == value) {
+				handle.Reset();
+			}
+		}
+	}
 }
 
 #ifdef USE_CODE_GEN_CALLBACK
@@ -406,6 +417,7 @@ IsolateEnvironment::~IsolateEnvironment() {
 				fn(param);
 			}
 			assert(weak_persistents.empty());
+			unhandled_promise_rejections.clear();
 			// Destroy outstanding tasks. Do this here while the executor lock is up.
 			Scheduler::Lock scheduler_lock{scheduler};
 			ExchangeDefault(scheduler_lock.scheduler.interrupts);
@@ -450,11 +462,12 @@ auto IsolateEnvironment::TaskEpilogue() -> std::unique_ptr<ExternalCopy> {
 	if (hit_memory_limit) {
 		throw FatalRuntimeError("Isolate was disposed during execution due to memory limit");
 	}
-	if (!rejected_promise_error.IsEmpty()) {
-		Context::Scope context_scope{DefaultContext()};
-		auto js_error = Local<Value>::New(isolate, rejected_promise_error);
-		rejected_promise_error.Reset();
-		return ExternalCopy::CopyThrownValue(js_error);
+	auto rejected_promises = std::exchange(unhandled_promise_rejections, {});
+	for (auto& handle : rejected_promises) {
+		if (!handle.IsEmpty()) {
+			Context::Scope context_scope{DefaultContext()};
+			return ExternalCopy::CopyThrownValue(Deref(handle));
+		}
 	}
 	return {};
 }

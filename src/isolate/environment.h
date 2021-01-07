@@ -14,6 +14,7 @@
 #include <atomic>
 #include <cassert>
 #include <chrono>
+#include <deque>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -104,7 +105,7 @@ class IsolateEnvironment {
 		bool nodejs_isolate;
 		std::atomic<unsigned int> remotes_count{0};
 		v8::HeapStatistics last_heap {};
-		v8::Persistent<v8::Value> rejected_promise_error;
+		std::deque<v8::Persistent<v8::Value>> unhandled_promise_rejections;
 		StringTable string_table;
 
 		std::vector<v8::Eternal<v8::Data>> specifics;
