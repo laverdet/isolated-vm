@@ -1,6 +1,6 @@
 [![npm version](https://badgen.now.sh/npm/v/isolated-vm)](https://www.npmjs.com/package/isolated-vm)
-[![isc license](https://badgen.now.sh/npm/license/isolated-vm)](https://github.com/laverdet/isolated-vm/blob/master/LICENSE)
-[![travis build](https://badgen.now.sh/travis/laverdet/isolated-vm/master)](https://travis-ci.org/laverdet/isolated-vm)
+[![isc license](https://badgen.now.sh/npm/license/isolated-vm)](https://github.com/laverdet/isolated-vm/blob/main/LICENSE)
+[![travis build](https://badgen.now.sh/travis/laverdet/isolated-vm/main)](https://travis-ci.org/laverdet/isolated-vm)
 [![npm downloads](https://badgen.now.sh/npm/dm/isolated-vm)](https://www.npmjs.com/package/isolated-vm)
 
 isolated-vm -- Access to multiple isolates in nodejs
@@ -641,7 +641,7 @@ Promise.all(promises).then(function(sums) {
 ```
 
 Included in the repository is an example of how you can write quicksort using a SharedArrayBuffer to
-sort over multiple threads. See: [parallel-sort-example.js](https://github.com/laverdet/isolated-vm/blob/master/parallel-sort-example.js).
+sort over multiple threads. See: [parallel-sort-example.js](https://github.com/laverdet/isolated-vm/blob/main/parallel-sort-example.js).
 
 ALTERNATIVES
 ------------
