@@ -19,7 +19,7 @@ namespace isolated_vm {
 		private:
 			std::shared_ptr<ivm::IsolateHolder> holder;
 			explicit IsolateHolder(std::shared_ptr<ivm::IsolateHolder> holder) : holder{std::move(holder)} {
-				ivm::Scheduler::IncrementUvRef(holder);
+				ivm::Scheduler::IncrementUvRef(this->holder);
 			}
 
 		public:
