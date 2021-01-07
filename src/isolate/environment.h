@@ -105,7 +105,7 @@ class IsolateEnvironment {
 		bool nodejs_isolate;
 		std::atomic<unsigned int> remotes_count{0};
 		v8::HeapStatistics last_heap {};
-		std::deque<v8::Persistent<v8::Value>> unhandled_promise_rejections;
+		std::deque<v8::Persistent<v8::Promise>> unhandled_promise_rejections;
 		StringTable string_table;
 
 		std::vector<v8::Eternal<v8::Data>> specifics;
@@ -129,6 +129,10 @@ class IsolateEnvironment {
 		 * contexts so we have to handle that ourselves.
 		 */
 		static void PromiseRejectCallback(v8::PromiseRejectMessage rejection);
+	public:
+		void PromiseWasHandled(v8::Local<v8::Promise> promise);
+
+	private:
 
 #if V8_AT_LEAST(8, 0, 160)
 		// v8 commit 6c0825aa

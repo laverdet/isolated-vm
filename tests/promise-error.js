@@ -14,9 +14,23 @@ const context = isolate.createContextSync();
 	await assert.doesNotReject(
 		context.eval('Promise.race([ 1, 2 ])', { promise: true }));
 
-	assert.throws(() =>
-		context.evalSync(`Promise.race([ 1, Promise.reject(new Error('hello')) ])`, { promise: true }),
+
+	await assert.rejects(() =>
+		context.evalSync(`Promise.reject(new Error('hello'))`, { promise: true }).result,
 		/hello/);
+
+	assert.doesNotThrow(() =>
+		context.evalSync('Promise.reject(new Error(1)).catch(() => {})'));
+
+	assert.doesNotThrow(() => context.evalSync(`
+		(async () => {
+			try {
+				await new Promise((_, reject) => reject(new Error('abc')));
+			} catch (err) {
+				// ignore
+			}
+		})();
+	`));
 
 	try {
 		context.evalSync(`

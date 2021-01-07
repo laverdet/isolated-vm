@@ -94,13 +94,16 @@ void IsolateEnvironment::PromiseRejectCallback(PromiseRejectMessage rejection) {
 	// TODO: Revisit this in version 4.x?
 	auto event = rejection.GetEvent();
 	if (event == kPromiseRejectWithNoHandler) {
-		that->unhandled_promise_rejections.emplace_back(that->isolate, rejection.GetValue());
+		that->unhandled_promise_rejections.emplace_back(that->isolate, rejection.GetPromise());
 	} else if (event == kPromiseHandlerAddedAfterReject) {
-		auto value = rejection.GetValue();
-		for (auto& handle : that->unhandled_promise_rejections) {
-			if (handle == value) {
-				handle.Reset();
-			}
+		that->PromiseWasHandled(rejection.GetPromise());
+	}
+}
+
+void IsolateEnvironment::PromiseWasHandled(v8::Local<v8::Promise> promise) {
+	for (auto& handle : unhandled_promise_rejections) {
+		if (handle == promise) {
+			handle.Reset();
 		}
 	}
 }
@@ -466,7 +469,7 @@ auto IsolateEnvironment::TaskEpilogue() -> std::unique_ptr<ExternalCopy> {
 	for (auto& handle : rejected_promises) {
 		if (!handle.IsEmpty()) {
 			Context::Scope context_scope{DefaultContext()};
-			return ExternalCopy::CopyThrownValue(Deref(handle));
+			return ExternalCopy::CopyThrownValue(Deref(handle)->Result());
 		}
 	}
 	return {};

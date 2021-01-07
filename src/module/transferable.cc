@@ -65,6 +65,7 @@ class TransferablePromiseHolder final : public ClassHandle {
 				if (state == Promise::PromiseState::kFulfilled) {
 					Resolved(*this, promise->Result());
 				} else {
+					IsolateEnvironment::GetCurrent()->PromiseWasHandled(promise);
 					Rejected(*this, promise->Result());
 				}
 			}
