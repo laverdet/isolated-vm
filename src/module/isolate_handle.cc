@@ -313,7 +313,7 @@ struct HeapStatRunner : public ThreePhaseTask {
 		Isolate* isolate = Isolate::GetCurrent();
 		Local<Context> context = isolate->GetCurrentContext();
 		Local<Object> ret = Object::New(isolate);
-		auto strings = StringTable::Get();
+		auto& strings = StringTable::Get();
 		Unmaybe(ret->Set(context, strings.total_heap_size, Number::New(isolate, heap.total_heap_size())));
 		Unmaybe(ret->Set(context, strings.total_heap_size_executable, Number::New(isolate, heap.total_heap_size_executable())));
 		Unmaybe(ret->Set(context, strings.total_physical_size, Number::New(isolate, heap.total_physical_size())));

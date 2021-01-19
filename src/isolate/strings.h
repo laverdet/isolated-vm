@@ -10,6 +10,11 @@ class StringTable {
 		class String {
 			public:
 				String(const char* value) : value{value} {} // NOLINT(hicpp-explicit-conversions)
+				String(const String&) = delete;
+				String(String&&) = delete;
+				~String() = default;
+				auto operator=(const String&) = delete;
+				auto operator=(String&&) = delete;
 
 				operator v8::Local<v8::Name>() { // NOLINT(hicpp-explicit-conversions)
 					return v8::Local<v8::String>{*this}.As<v8::Name>();
@@ -36,54 +41,54 @@ class StringTable {
 				v8::Eternal<v8::String> handle;
 		};
 
-		static auto Get();
+		static auto Get() -> auto&;
 
 		// StringTable::Get().
-		String arguments = "arguments";
-		String boolean = "boolean";
-		String cachedData = "cachedData";
-		String cachedDataRejected = "cachedDataRejected";
-		String code = "code";
-		String colonSpace = ": ";
-		String columnOffset = "columnOffset";
-		String copy = "copy";
-		String externalCopy = "externalCopy";
-		String filename = "filename";
-		String function = "function";
-		String global = "global";
-		String inspector = "inspector";
-		String isolateIsDisposed = "Isolate is disposed";
-		String isolatedVm = "isolated-vm";
-		String lineOffset = "lineOffset";
-		String message = "message";
-		String name = "name";
-		String null = "null";
-		String number = "number";
-		String object = "object";
-		String produceCachedData = "produceCachedData";
-		String promise = "promise";
-		String reference = "reference";
-		String release = "release";
-		String result = "result";
-		String snapshot = "snapshot";
-		String stack = "stack";
-		String string = "string";
-		String timeout = "timeout";
-		String transferIn = "transferIn";
-		String transferList = "transferList";
-		String transferOut = "transferOut";
-		String undefined = "undefined";
+		String arguments{"arguments"};
+		String boolean{"boolean"};
+		String cachedData{"cachedData"};
+		String cachedDataRejected{"cachedDataRejected"};
+		String code{"code"};
+		String colonSpace{": "};
+		String columnOffset{"columnOffset"};
+		String copy{"copy"};
+		String externalCopy{"externalCopy"};
+		String filename{"filename"};
+		String function{"function"};
+		String global{"global"};
+		String inspector{"inspector"};
+		String isolateIsDisposed{"Isolate is disposed"};
+		String isolatedVm{"isolated-vm"};
+		String lineOffset{"lineOffset"};
+		String message{"message"};
+		String name{"name"};
+		String null{"null"};
+		String number{"number"};
+		String object{"object"};
+		String produceCachedData{"produceCachedData"};
+		String promise{"promise"};
+		String reference{"reference"};
+		String release{"release"};
+		String result{"result"};
+		String snapshot{"snapshot"};
+		String stack{"stack"};
+		String string{"string"};
+		String timeout{"timeout"};
+		String transferIn{"transferIn"};
+		String transferList{"transferList"};
+		String transferOut{"transferOut"};
+		String undefined{"undefined"};
 
-		String does_zap_garbage = "does_zap_garbage";
-		String externally_allocated_size = "externally_allocated_size";
-		String heap_size_limit = "heap_size_limit";
-		String malloced_memory = "malloced_memory";
-		String peak_malloced_memory = "peak_malloced_memory";
-		String total_available_size = "total_available_size";
-		String total_heap_size = "total_heap_size";
-		String total_heap_size_executable = "total_heap_size_executable";
-		String total_physical_size = "total_physical_size";
-		String used_heap_size = "used_heap_size";
+		String does_zap_garbage{"does_zap_garbage"};
+		String externally_allocated_size{"externally_allocated_size"};
+		String heap_size_limit{"heap_size_limit"};
+		String malloced_memory{"malloced_memory"};
+		String peak_malloced_memory{"peak_malloced_memory"};
+		String total_available_size{"total_available_size"};
+		String total_heap_size{"total_heap_size"};
+		String total_heap_size_executable{"total_heap_size_executable"};
+		String total_physical_size{"total_physical_size"};
+		String used_heap_size{"used_heap_size"};
 };
 
 inline auto HandleCastImpl(
@@ -92,5 +97,3 @@ inline auto HandleCastImpl(
 }
 
 } // namespace ivm
-
-#include "environment.h"

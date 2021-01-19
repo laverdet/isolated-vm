@@ -358,7 +358,7 @@ auto IsolateSpecific<Type>::Deref(Functor callback) -> v8::Local<Type> {
 	return HandleConvert{eternal.Get(env.isolate)}.value;
 }
 
-inline auto StringTable::Get() {
+inline auto StringTable::Get() -> auto& {
 	return Executor::GetCurrentEnvironment()->string_table;
 }
 

@@ -60,8 +60,8 @@ struct HandleCastTag {};
 
 // Explicit casts: printf("%d\n", HandleCastImpl<int>(value));
 template <class Type, class Value>
-auto HandleCast(Value value, HandleCastArguments arguments = {}) -> Type {
-	return HandleCastImpl(value, arguments, HandleCastTag<Type>{});
+auto HandleCast(Value&& value, HandleCastArguments arguments = {}) -> Type {
+	return HandleCastImpl(std::forward<Value>(value), arguments, HandleCastTag<Type>{});
 }
 
 // Identity cast
