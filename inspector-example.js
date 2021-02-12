@@ -3,9 +3,8 @@ let WebSocket = require('ws');
 let ivm = require('./isolated-vm');
 
 /**
- * Note that allowing untrusted users to access the v8 inspector may result in security issues.
- * Maybe it won't though, I don't know. I haven't really looked into everything the inspector can
- * do.
+ * IMPORTANT: Allowing untrusted users to access the v8 inspector will almost certainly result in a
+ * security vulnerability. Access to these endpoints should be restricted.
  */
 
 // Launch an infinite loop in another thread

@@ -530,6 +530,40 @@ More advanced situations like transferring ownership of `ArrayBuffer` instances 
 use of [`ExternalCopy`](#class-externalcopy-transferable) or
 [`Reference`](#class-reference-transferable).
 
+
+SECURITY
+--------
+
+Use of `isolated-vm` to run untrusted code does not automatically make your application safe.
+Through carelessness or misuse of the library it can be possible to leak sensitive data or grant
+undesired privileges to an isolate.
+
+At a minimum you should take care not to leak any instances of `isolated-vm` objects (`Reference`,
+`ExternalCopy`, etc) to untrusted code. It is usually trivial for an attacker to use these instances
+as a springboard back into the nodejs isolate which will yield complete control over a process.
+Simply wrapping these instances in closures is usually enough to keep the internal objects safe. An
+example of a safe logging function follows:
+
+```js
+context.evalClosureSync(
+	`globalThis.log = (...args) =>
+		$0.applyIgnored(undefined, args, { arguments: { copy: true } });`,
+	[ (...args) => console.log(...args) ],
+	{ arguments: { reference: true } });
+```
+
+Against potentially hostile code you should also consider turning on [v8 untrusted code
+mitigations](https://v8.dev/docs/untrusted-code-mitigations), which addresses the class of
+speculative execution attacks known as Spectre and Meltdown. You can enable this feature by running
+`node` with the `--untrusted-code-mitigations` flag. This feature comes with a slight performance
+cost and must be enabled per-process, therefore nodejs disables it by default.
+
+v8 is a relatively robust runtime, but there are always new and exciting ways to crash, hang, or
+otherwise disrupt a process with plain old JavaScript. Your application must be resilient to these
+kinds of issues. It's a good idea to keep instances of `isolated-vm` in a different nodejs process
+than other critical infrastructure.
+
+
 EXAMPLES
 --------
 
@@ -648,8 +682,8 @@ ALTERNATIVES
 
 The primary goal of isolated-vm is to create a powerful and secure environment for running untrusted
 JavaScript code. isolated-vm is also a good way to build single-process multithreaded JavaScript
-applications, though if parallelism is your only goal then there are probably better options out
-there.
+applications, though if parallelism of trusted code is your only goal then there are probably better
+options out there.
 
 Below is a quick summary of some other options available on nodejs and how they differ from
 isolated-vm. The table headers are defined as follows:
@@ -664,9 +698,7 @@ isolated-vm. The table headers are defined as follows:
 | Module                                                                       | Secure | Memory Limits | Isolated | Multithreaded | Module Support | Inspector Support |
 | ---------------------------------------------------------------------------- | :----: | :-----------: | :------: | :-----------: | :------------: | :---------------: |
 | [vm](https://nodejs.org/api/vm.html)                                         |        |               |          |               |       ✅       |        ✅         |
-| [worker_threads](https://nodejs.org/api/worker_threads.html)                 |        |               |    ✅    |      ✅       |       ✅       |                   |
+| [worker_threads](https://nodejs.org/api/worker_threads.html)                 |        |               |    ✅    |      ✅       |       ✅       |        ✅         |
 | [vm2](https://github.com/patriksimek/vm2)                                    |   ✅   |               |          |               |       ✅       |        ✅         |
-| [napajs](https://github.com/Microsoft/napajs)                                |        |               |    ✅    |      ✅       |     Partial    |                   |
-| [webworker-threads](https://github.com/audreyt/node-webworker-threads)       |        |               |    ✅    |      ✅       |                |                   |
 | [tiny-worker](https://github.com/avoidwork/tiny-worker)                      |        |               |    ✅    |               |       ✅       |                   |
 | isolated-vm                                                                  |   ✅   |       ✅      |    ✅    |      ✅       |                |        ✅         |
