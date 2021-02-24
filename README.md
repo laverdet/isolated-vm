@@ -153,7 +153,7 @@ Note that a [`Script`](#class-script-transferable) can only run in the isolate w
 
 * **return** A [`Module`](#class-module-transferable) object.
 
-Note that a [`Module`](#class-script-transferable) can only run in the isolate which created it.
+Note that a [`Module`](#class-module-transferable) can only run in the isolate which created it.
 
 ##### `isolate.createContext()` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `isolate.createContextSync()`
