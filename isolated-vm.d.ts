@@ -695,6 +695,6 @@ declare module "isolated-vm" {
 
 	// Types for `Reference.apply`
 	type ApplyArguments<Value> = Value extends (...args: infer Args) => unknown ? Args : any[];
-	type ApplyArgumentThis<Value> = Value extends (this: infer This, ...args: unknown[]) => unknown ? This : undefined | null;
-	type ApplyResult<Value> = Value extends (...args: unknown[]) => infer Result ? Result : unknown;
+	type ApplyArgumentThis<Value> = Value extends (this: infer This, ...args: any) => unknown ? This : undefined | null;
+	type ApplyResult<Value> = Value extends (...args: any) => infer Result ? Result : unknown;
 }
