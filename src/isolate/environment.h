@@ -109,7 +109,7 @@ class IsolateEnvironment {
 		StringTable string_table;
 
 		std::vector<v8::Eternal<v8::Data>> specifics;
-		std::unordered_map<v8::Persistent<v8::Object>*, std::pair<void(*)(void*), void*>> weak_persistents;
+		std::unordered_map<v8::Persistent<v8::Value>*, std::pair<void(*)(void*), void*>> weak_persistents;
 
 	public:
 		std::unordered_multimap<int, struct ModuleInfo*> module_handles;
@@ -334,8 +334,8 @@ class IsolateEnvironment {
 		 * Since a created Isolate can be disposed of at any time we need to keep track of weak
 		 * persistents to call those destructors on isolate disposal.
 		 */
-		void AddWeakCallback(v8::Persistent<v8::Object>* handle, void(*fn)(void*), void* param);
-		void RemoveWeakCallback(v8::Persistent<v8::Object>* handle);
+		void AddWeakCallback(v8::Persistent<v8::Value>* handle, void(*fn)(void*), void* param);
+		void RemoveWeakCallback(v8::Persistent<v8::Value>* handle);
 };
 
 template <class Type>

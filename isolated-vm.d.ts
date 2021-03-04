@@ -496,6 +496,52 @@ declare module "isolated-vm" {
 	};
 
 	/**
+   * Callbacks can be used to create cross-isolate references to simple functions. This can be
+	 * easier and safer than dealing with the more flexible
+	 * [`Reference`](#class-reference-transferable) class. Arguments passed to and returned from
+	 * callbacks are always copied using the same method as
+	 * [`ExternalCopy`](#class-externalcopy-transferable). When transferred to another isolate,
+	 * instances of `Callback` will turn into a plain old function. Callbacks are created
+	 * automatically when passing functions to most isolated-vm functions.
+	 */
+	 export class Callback<T extends (...args: any[]) => any = any> {
+		private __ivm_callback: T;
+
+		constructor(value: T, options?: CallbackOptions);
+	}
+
+	export type CallbackOptions = {
+		/**
+		 * Callback will be invoked asynchronously and will return a promise.
+		 */
+		async?: boolean;
+
+		/**
+		 * Callback will be invoked asynchronously and will return a value (default).
+		 */
+		sync?: boolean;
+
+		/**
+		 * Callback will be invoked asynchronously and will ignore the result (including exceptions).
+		 */
+		ignored?: boolean;
+
+		// The following ensures only 1 invocation option is given.
+	} & ({
+		async?: true;
+		sync?: never;
+		ignored?: never;
+	} | {
+		async?: never;
+		sync?: true;
+		ignored?: never;
+	} | {
+		async?: never;
+		sync?: never;
+		ignored?: true;
+	});
+
+	/**
 	 * C++ native module for v8 representation.
 	 */
 	export class NativeModule {
@@ -638,7 +684,21 @@ declare module "isolated-vm" {
 		 * Automatically wrap value in `Reference` instance
 		 */
 		reference?: boolean;
-	};
+
+		// The following ensures only 1 transfer option is given.
+	} & ({
+		 copy?: true;
+		 externalCopy?: never;
+		 reference?: never;
+	} | {
+		copy?: never;
+		externalCopy?: true;
+		reference?: never;
+	} | {
+		copy?: never;
+		externalCopy?: never;
+		reference?: true;
+	 });
 
 	export type TransferOptionsBidirectional = {
 		/**

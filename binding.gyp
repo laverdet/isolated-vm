@@ -74,6 +74,7 @@
 				'src/isolate/three_phase_task.cc',
 				'src/lib/thread_pool.cc',
 				'src/lib/timer.cc',
+				'src/module/callback.cc',
 				'src/module/context_handle.cc',
 				'src/module/evaluation.cc',
 				'src/module/external_copy_handle.cc',

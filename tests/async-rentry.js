@@ -26,9 +26,9 @@ try {
 	}
 }
 
-isolate.compileScriptSync(''+ function recursive() {
+isolate.compileScriptSync(`function recursive() {
 	throw new Error('passed the test');
-}).runSync(context);
+}`).runSync(context);
 let recursiveFn = global.getSync('recursive');
 
 (async function() {
@@ -36,7 +36,7 @@ let recursiveFn = global.getSync('recursive');
 	let value = await script.run(context);
 	if (/hello123/.test(value)) {
 		try {
-			console.log(recursiveFn.applySync(undefined, []));
+			console.log(recursiveFn());
 		} catch (err) {
 			if (/passed the test/.test(err)) {
 				console.log('pass');

@@ -326,6 +326,24 @@ thrown).
 return value of this function.
 
 
+### Class: `Callback` *[transferable]*
+Callbacks can be used to create cross-isolate references to simple functions. This can be easier and
+safer than dealing with the more flexible [`Reference`](#class-reference-transferable) class.
+Arguments passed to and returned from callbacks are always copied using the same method as
+[`ExternalCopy`](#class-externalcopy-transferable). When transferred to another isolate, instances
+of `Callback` will turn into a plain old function. Callbacks are created automatically when passing
+functions to most isolated-vm functions.
+
+##### `new ivm.Callback(fn, options)`
+* `options` *[object]*
+	* `async` *[boolean]* - Function will invoke the callback in "async" mode, which immediately
+		returns a promise.
+	* `ignored` *[boolean]* - Function will invoke the callback in "ignored" mode, which immediately
+		returns `undefined` and ignores the result of the function (including thrown exceptions)
+	* `sync` *[boolean]* - Function will invoke the callback in "sync" mode, blocking for a response
+		(default).
+
+
 ### Class: `Reference` *[transferable]*
 A instance of [`Reference`](#class-reference-transferable) is a pointer to a value stored in any isolate.
 
@@ -582,17 +600,14 @@ const context = isolate.createContextSync();
 // Get a Reference{} to the global object within the context.
 const jail = context.global;
 
-// This make the global object available in the context as `global`. We use `derefInto()` here
+// This makes the global object available in the context as `global`. We use `derefInto()` here
 // because otherwise `global` would actually be a Reference{} object in the new isolate.
 jail.setSync('global', jail.derefInto());
 
 // We will create a basic `log` function for the new isolate to use.
-const logCallback = function(...args) {
+jail.setSync('log', function(...args) {
 	console.log(...args);
-};
-context.evalClosureSync(`global.log = function(...args) {
-	$0.applyIgnored(undefined, args, { arguments: { copy: true } });
-}`, [ logCallback ], { arguments: { reference: true } });
+});
 
 // And let's test it out:
 context.evalSync('log("hello world")');

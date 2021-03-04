@@ -45,6 +45,7 @@ class StringTable {
 
 		// StringTable::Get().
 		String arguments{"arguments"};
+		String async{"async"};
 		String boolean{"boolean"};
 		String cachedData{"cachedData"};
 		String cachedDataRejected{"cachedDataRejected"};
@@ -56,9 +57,11 @@ class StringTable {
 		String filename{"filename"};
 		String function{"function"};
 		String global{"global"};
+		String ignored{"ignored"};
 		String inspector{"inspector"};
 		String isolateIsDisposed{"Isolate is disposed"};
 		String isolatedVm{"isolated-vm"};
+		String length{"length"};
 		String lineOffset{"lineOffset"};
 		String message{"message"};
 		String name{"name"};

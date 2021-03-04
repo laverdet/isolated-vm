@@ -2,6 +2,7 @@
 #include "isolate/class_handle.h"
 #include "isolate/util.h"
 #include "lib/lockable.h"
+#include "callback.h"
 #include "reference_handle.h"
 #include "transferable.h"
 #include "transferable.h"
@@ -236,6 +237,9 @@ auto OptionalTransferOut(Local<Value> value, TransferOptions options) -> std::un
 				auto* ptr = ClassHandle::Unwrap<TransferableHandle>(value.As<Object>());
 				if (ptr != nullptr) {
 					return ptr->TransferOut();
+				}
+				if (value->IsFunction()) {
+					return std::make_unique<CallbackTransferable>(value.As<Function>());
 				}
 			}
 			auto result = ExternalCopy::CopyIfPrimitive(value);

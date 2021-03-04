@@ -35,7 +35,7 @@ function rejects(fn) {
 		// strictEqual('This is awesome!', evaluateResult);
 		const reference = module.namespace;
 		strictEqual(reference.typeof, 'object');
-		const defaultExport = reference.getSync('default');
+		const defaultExport = reference.getSync('default', { reference: true });
 		strictEqual(typeof defaultExport, 'object');
 		strictEqual(defaultExport.typeof, 'function');
 		const result = defaultExport.applySync(null, [ 2, 4 ]);
@@ -98,12 +98,12 @@ function rejects(fn) {
 		// lets try to use add through our "math" library
 		const reference = module.namespace;
 		strictEqual(reference.typeof, 'object');
-		const add = reference.getSync('add');
+		const add = reference.getSync('add', { reference: true });
 		strictEqual(typeof add, 'object');
 		strictEqual(add.typeof, 'function');
 		strictEqual(add.applySync(null, [ 2, 4 ]), 6);
 
-		const sub = reference.getSync('sub');
+		const sub = reference.getSync('sub', { reference: true });
 		strictEqual(typeof sub, 'object');
 		strictEqual(sub.typeof, 'function');
 		strictEqual(sub.applySync(null, [ 2, 4 ]), -2);
@@ -126,7 +126,7 @@ function rejects(fn) {
 		const value = reference.getSync('value');
 		const countUp = reference.getSync('countUp');
 		strictEqual(reference.getSync('value'), 0);
-		countUp.applySync(null, [ ]);
+		countUp();
 		strictEqual(reference.getSync('value'), 1);
 	}
 

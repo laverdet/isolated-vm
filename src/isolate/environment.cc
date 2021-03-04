@@ -525,7 +525,7 @@ void IsolateEnvironment::Terminate() {
 	}
 }
 
-void IsolateEnvironment::AddWeakCallback(Persistent<Object>* handle, void(*fn)(void*), void* param) {
+void IsolateEnvironment::AddWeakCallback(Persistent<Value>* handle, void(*fn)(void*), void* param) {
 	if (nodejs_isolate) {
 		return;
 	}
@@ -536,7 +536,7 @@ void IsolateEnvironment::AddWeakCallback(Persistent<Object>* handle, void(*fn)(v
 	weak_persistents.insert(std::make_pair(handle, std::make_pair(fn, param)));
 }
 
-void IsolateEnvironment::RemoveWeakCallback(Persistent<Object>* handle) {
+void IsolateEnvironment::RemoveWeakCallback(Persistent<Value>* handle) {
 	if (nodejs_isolate) {
 		return;
 	}

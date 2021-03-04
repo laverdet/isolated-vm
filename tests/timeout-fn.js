@@ -7,7 +7,7 @@ let ivm = require('isolated-vm');
 	let global = context.global;
 	global.setSync('global', global.derefInto());
 	isolate.compileScriptSync('global.run = () => { function the_stack() { for(;;); }; the_stack(); }').runSync(context);
-	let run = global.getSync('run');
+	let run = global.getSync('run', { reference: true });
 	let uhoh = false;
 	let timeout = setTimeout(function() {
 		uhoh = true;

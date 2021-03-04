@@ -37,7 +37,7 @@ class ExternalMemoryHandle {
 			delete that;
 		}
 
-		v8::Persistent<v8::Object> handle;
+		v8::Persistent<v8::Value> handle;
 		size_t size;
 };
 

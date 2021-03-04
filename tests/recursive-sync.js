@@ -4,7 +4,7 @@ let context = isolate.createContextSync();
 let global = context.global;
 
 function recur1() {
-	return global.getSync('recur2').applySync(undefined, []);
+	return global.getSync('recur2')();
 }
 
 global.setSync('recur1', new ivm.Reference(recur1));

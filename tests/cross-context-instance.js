@@ -22,14 +22,14 @@ function makeContext() {
 let context1 = makeContext();
 let context2 = makeContext();
 [ context1, context2 ].forEach(context => {
-	if (!context.isReference.applySync(null, [ new ivm.Reference({}) ])) {
+	if (!context.isReference(new ivm.Reference({}))) {
 		console.log('fail1');
 	}
-	if (!context.isReference.applySync(null, [ context.makeReference.applySync(null, [ 1 ]) ])) {
+	if (!context.isReference(context.makeReference(1))) {
 		console.log('fail2');
 	}
 });
-if (context1.isReference.applySync(null, [ context2.makeReference.applySync(null, [ 1 ]).derefInto() ])) {
+if (context1.isReference(context2.makeReference(1).derefInto())) {
 	console.log('fail3');
 }
 console.log('pass');

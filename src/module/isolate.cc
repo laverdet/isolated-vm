@@ -4,6 +4,7 @@
 #include "isolate/node_wrapper.h"
 #include "isolate/platform_delegate.h"
 #include "lib/lockable.h"
+#include "callback.h"
 #include "context_handle.h"
 #include "external_copy_handle.h"
 #include "isolate_handle.h"
@@ -35,6 +36,7 @@ class LibraryHandle : public TransferableHandle {
 		static auto Definition() -> Local<FunctionTemplate> {
 			return Inherit<TransferableHandle>(MakeClass(
 				"isolated_vm", nullptr,
+				"Callback", ClassHandle::GetFunctionTemplate<CallbackHandle>(),
 				"Context", ClassHandle::GetFunctionTemplate<ContextHandle>(),
 				"ExternalCopy", ClassHandle::GetFunctionTemplate<ExternalCopyHandle>(),
 				"Isolate", ClassHandle::GetFunctionTemplate<IsolateHandle>(),

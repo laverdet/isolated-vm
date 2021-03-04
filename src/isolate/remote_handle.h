@@ -135,7 +135,6 @@ class RemoteTuple {
 				Disposer disposer;
 		};
 
-public:
 		std::shared_ptr<IsolateHolder> isolate;
 		std::shared_ptr<TupleType> handles;
 };
@@ -158,7 +157,6 @@ class RemoteHandle {
 		auto GetSharedIsolateHolder() { return handle.GetSharedIsolateHolder(); }
 
 	private:
-public:
 		RemoteTuple<Type> handle;
 };
 

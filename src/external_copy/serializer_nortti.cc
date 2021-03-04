@@ -12,11 +12,11 @@ using namespace v8;
 namespace ivm {
 namespace detail {
 
-void ExternalCopySerializerDelegate::ThrowDataCloneError(Local<String> message) {
+void SerializerDelegate::ThrowDataCloneError(Local<String> message) {
 	Isolate::GetCurrent()->ThrowException(Exception::TypeError(message));
 }
 
-auto ExternalCopySerializerDelegate::GetSharedArrayBufferId(
+auto SerializerDelegate::GetSharedArrayBufferId(
 		Isolate* /*isolate*/, Local<SharedArrayBuffer> shared_array_buffer) -> Maybe<uint32_t> {
 	auto result = Nothing<uint32_t>();
 	detail::RunBarrier([&]() {
@@ -26,7 +26,7 @@ auto ExternalCopySerializerDelegate::GetSharedArrayBufferId(
 	return result;
 }
 
-auto ExternalCopySerializerDelegate::GetWasmModuleTransferId(
+auto SerializerDelegate::GetWasmModuleTransferId(
 		Isolate* /*isolate*/, Local<WasmModuleObject> module) -> Maybe<uint32_t> {
 	auto result = Just<uint32_t>(wasm_modules.size());
 #if USE_NEW_WASM
@@ -37,7 +37,7 @@ auto ExternalCopySerializerDelegate::GetWasmModuleTransferId(
 	return result;
 }
 
-auto ExternalCopySerializerDelegate::WriteHostObject(Isolate* /*isolate*/, Local<Object> object) -> Maybe<bool> {
+auto SerializerDelegate::WriteHostObject(Isolate* /*isolate*/, Local<Object> object) -> Maybe<bool> {
 	auto result = Nothing<bool>();
 	detail::RunBarrier([&]() {
 		serializer->WriteUint32(transferables.size());
@@ -47,7 +47,7 @@ auto ExternalCopySerializerDelegate::WriteHostObject(Isolate* /*isolate*/, Local
 	return result;
 }
 
-auto ExternalCopyDeserializerDelegate::ReadHostObject(Isolate* /*isolate*/) -> MaybeLocal<Object> {
+auto DeserializerDelegate::ReadHostObject(Isolate* /*isolate*/) -> MaybeLocal<Object> {
 	MaybeLocal<Object> result;
 	detail::RunBarrier([&]() {
 		uint32_t ii;
@@ -57,7 +57,7 @@ auto ExternalCopyDeserializerDelegate::ReadHostObject(Isolate* /*isolate*/) -> M
 	return result;
 }
 
-auto ExternalCopyDeserializerDelegate::GetSharedArrayBufferFromId(
+auto DeserializerDelegate::GetSharedArrayBufferFromId(
 		Isolate* /*isolate*/, uint32_t clone_id) -> MaybeLocal<SharedArrayBuffer> {
 	MaybeLocal<SharedArrayBuffer> result;
 	detail::RunBarrier([&]() {
@@ -66,7 +66,7 @@ auto ExternalCopyDeserializerDelegate::GetSharedArrayBufferFromId(
 	return result;
 }
 
-auto ExternalCopyDeserializerDelegate::GetWasmModuleFromId(
+auto DeserializerDelegate::GetWasmModuleFromId(
 		Isolate* isolate, uint32_t transfer_id) -> MaybeLocal<WasmModuleObject> {
 	MaybeLocal<WasmModuleObject> result;
 	detail::RunBarrier([&]() {

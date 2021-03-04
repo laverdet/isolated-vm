@@ -40,7 +40,7 @@ function makeIsolate() {
 				}
 			}
 			let ref = context.global.getSync('sabotage');
-			ref.applySync(undefined, []);
+			ref();
 		});
 		await script.run(env.context);
 		console.log('fail2');

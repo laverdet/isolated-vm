@@ -39,7 +39,7 @@ class ClassHandle {
 	template <class Signature>
 	friend struct detail::ConstructorFunctionImpl;
 	private:
-		v8::Persistent<v8::Object> handle;
+		v8::Persistent<v8::Value> handle;
 
 		/**
 		 * Utility methods to set up object prototype
@@ -229,7 +229,7 @@ class ClassHandle {
 		 * Returns the JS value that this ClassHandle points to
 		 */
 		auto This() -> v8::Local<v8::Object> {
-			return Deref(handle);
+			return Deref(handle).As<v8::Object>();
 		}
 };
 
