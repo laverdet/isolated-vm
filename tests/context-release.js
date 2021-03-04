@@ -23,6 +23,6 @@ const ivm = require('isolated-vm');
 		`, { promise: true },
 	);
 	context.release();
-	await job.result;
+	await job;
 	console.log(result);
 })().catch(console.error);

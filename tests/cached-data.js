@@ -72,34 +72,4 @@ if (V8_AT_LEAST(6, 9, 37)) {
 	assert.ok(!module.cachedDataRejected);
 }
 
-// Check eval cached data
-{
-	const cachedData = (() => {
-		const isolate = new ivm.Isolate;
-		const result = isolate.createContextSync().evalSync(src, { produceCachedData: true });
-		assert.ok(result.cachedData);
-		assert.strictEqual(result.cachedDataRejected, undefined);
-		return result.cachedData;
-	})();
-	const isolate = new ivm.Isolate;
-	const result = isolate.createContextSync().evalSync(src, { cachedData });
-	assert.strictEqual(result.cachedData, undefined);
-	assert.ok(!result.cachedDataRejected);
-}
-
-// Check evalClosure cached data
-{
-	const cachedData = (() => {
-		const isolate = new ivm.Isolate;
-		const result = isolate.createContextSync().evalClosureSync(src, [], { produceCachedData: true });
-		assert.ok(result.cachedData);
-		assert.strictEqual(result.cachedDataRejected, undefined);
-		return result.cachedData;
-	})();
-	const isolate = new ivm.Isolate;
-	const result = isolate.createContextSync().evalClosureSync(src, [], { cachedData });
-	assert.strictEqual(result.cachedData, undefined);
-	assert.ok(!result.cachedDataRejected);
-}
-
 console.log('pass');

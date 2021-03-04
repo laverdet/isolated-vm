@@ -178,11 +178,11 @@ declare module "isolated-vm" {
 		 */
 		eval<Options extends ContextEvalOptions>(
 			code: string, options?: Options
-		): Promise<ContextEvalResult<ResultTypeSync<Options>>>; // `ResultTypeSync` used intentionally
+		): Promise<ResultTypeSync<Options>>; // `ResultTypeSync` used intentionally
 		evalIgnored(code: string, options?: ContextEvalOptions): void
 		evalSync<Options extends ContextEvalOptions>(
 			code: string, options?: Options
-		): ContextEvalResult<ResultTypeSync<Options>>;
+		): ResultTypeSync<Options>;
 
 		/**
 		 * Compiles and runs code as if it were inside a function, similar to the seldom-used `new
@@ -191,13 +191,13 @@ declare module "isolated-vm" {
 		 */
 		evalClosure<Options extends ContextEvalClosureOptions>(
 			code: string, arguments?: ArgumentsTypeBidirectional<Options>, options?: Options
-		): Promise<ContextEvalResult<ResultTypeBidirectionalSync<Options>>>; // `ResultTypeBidirectionalSync` used intentionally
+		): Promise<ResultTypeBidirectionalSync<Options>>; // `ResultTypeBidirectionalSync` used intentionally
 		evalClosureIgnored<Options extends ContextEvalClosureOptions>(
 			code: string, arguments?: ArgumentsTypeBidirectional<Options>, options?: Options
 		): void
 		evalClosureSync<Options extends ContextEvalClosureOptions>(
 			code: string, arguments?: ArgumentsTypeBidirectional<Options>, options?: Options
-		): ContextEvalResult<ResultTypeBidirectionalSync<Options>>;
+		): ResultTypeBidirectionalSync<Options>;
 
 		/**
 		 * Releases this reference to the context. You can call this to free up v8 resources
@@ -208,9 +208,8 @@ declare module "isolated-vm" {
 		release(): void;
 	}
 
-	export type ContextEvalOptions = CachedDataOptions & RunOptions & TransferOptions;
-	export type ContextEvalClosureOptions = CachedDataOptions & RunOptions & TransferOptionsBidirectional;
-	export type ContextEvalResult<Result> = CachedDataResult & { result: Result };
+	export type ContextEvalOptions = RunOptions & TransferOptions;
+	export type ContextEvalClosureOptions = RunOptions & TransferOptionsBidirectional;
 
 	/**
 	 * A script is a compiled chunk of JavaScript which can be executed in any context within a single

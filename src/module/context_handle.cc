@@ -122,23 +122,6 @@ class EvalRunner : public CodeCompilerHolder, public ThreePhaseTask {
 				return Unmaybe(ScriptCompiler::Compile(context, source.get()));
 			});
 
-			// Save cached data
-			if (DidSupplyCachedData()) {
-				SetCachedDataRejected(source->GetCachedData()->rejected);
-			} else if (ShouldProduceCachedData()) {
-				ScriptCompiler::CachedData* cached_data // continued next line
-#if V8_AT_LEAST(6, 8, 11)
-				// `code` parameter removed in v8 commit a440efb27
-				= ScriptCompiler::CreateCodeCache(script->GetUnboundScript());
-#else
-				// Added in v8 commit dae20b064
-				= ScriptCompiler::CreateCodeCache(script->GetUnboundScript(), GetSourceString());
-#endif
-				assert(cached_data != nullptr);
-				SaveCachedData(cached_data);
-			}
-			ResetSource();
-
 			// Execute script and transfer out
 			Local<Value> script_result = RunWithTimeout(timeout_ms, [&]() {
 				return script->Run(context);
@@ -148,13 +131,7 @@ class EvalRunner : public CodeCompilerHolder, public ThreePhaseTask {
 		}
 
 		auto Phase3() -> Local<Value> final {
-			auto* isolate = Isolate::GetCurrent();
-			auto context = isolate->GetCurrentContext();
-			auto object = Object::New(isolate);
-			auto result_handle = result ? result->TransferIn() : Undefined(isolate).As<Value>();
-			Unmaybe(object->Set(context, HandleCast<Local<String>>("result"), result_handle));
-			WriteCompileResults(object);
-			return object;
+			return result ? result->TransferIn() : Undefined(Isolate::GetCurrent()).As<Value>();
 		}
 
 	private:
@@ -227,23 +204,6 @@ class EvalClosureRunner : public CodeCompilerHolder, public ThreePhaseTask {
 				));
 			});
 
-			// Save cached data
-			if (DidSupplyCachedData()) {
-				SetCachedDataRejected(source->GetCachedData()->rejected);
-			} else if (ShouldProduceCachedData()) {
-				ScriptCompiler::CachedData* cached_data // continued next line
-#if V8_AT_LEAST(6, 8, 11)
-				// `code` parameter removed in v8 commit a440efb27
-				= ScriptCompiler::CreateCodeCacheForFunction(function);
-#else
-				// Added in v8 commit dae20b064
-				= ScriptCompiler::CreateCodeCacheForFunction(function, GetSourceString());
-#endif
-				assert(cached_data != nullptr);
-				SaveCachedData(cached_data);
-			}
-			ResetSource();
-
 			// Transfer arguments into this isolate
 			std::vector<Local<Value>> argv_transferred;
 			argv_transferred.reserve(argc);
@@ -262,13 +222,7 @@ class EvalClosureRunner : public CodeCompilerHolder, public ThreePhaseTask {
 		}
 
 		auto Phase3() -> Local<Value> final {
-			auto* isolate = Isolate::GetCurrent();
-			auto context = isolate->GetCurrentContext();
-			auto object = Object::New(isolate);
-			auto result_handle = result ? result->TransferIn() : Undefined(isolate).As<Value>();
-			Unmaybe(object->Set(context, HandleCast<Local<String>>("result"), result_handle));
-			WriteCompileResults(object);
-			return object;
+			return result ? result->TransferIn() : Undefined(Isolate::GetCurrent()).As<Value>();
 		}
 
 	private:

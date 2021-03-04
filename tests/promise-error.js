@@ -16,7 +16,7 @@ const context = isolate.createContextSync();
 
 
 	await assert.rejects(() =>
-		context.evalSync(`Promise.reject(new Error('hello'))`, { promise: true }).result,
+		context.evalSync(`Promise.reject(new Error('hello'))`, { promise: true }),
 		/hello/);
 
 	assert.doesNotThrow(() =>

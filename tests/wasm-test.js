@@ -12,7 +12,7 @@ const result = context.evalSync(`
 	const memory = new WebAssembly.Memory({ initial: 256, maximum: 256 });
 	const wasmExports = (new WebAssembly.Instance(wasm, { env: { memory } })).exports;
 	wasmExports.foo();
-`).result;
+`);
 if (result === 123) {
 	console.log('pass');
 }

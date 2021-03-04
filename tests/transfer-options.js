@@ -15,12 +15,12 @@ global.setSync('test', value, { copy: true });
 assert.deepEqual(global.getSync('test', { copy: true }), value);
 assert.deepEqual(global.getSync('test', { externalCopy: true }).copy(), value);
 global.getSync('test', { copy: true, promise: true }).then(resolved => assert.deepEqual(resolved, value)).then(resolved);
-assert.deepEqual(context.evalSync('test', { copy: true }).result, value);
+assert.deepEqual(context.evalSync('test', { copy: true }), value);
 
-const fn = context.evalSync('(function foo(arg1) { return arg1; })', { reference: true }).result;
+const fn = context.evalSync('(function foo(arg1) { return arg1; })', { reference: true });
 assert.deepEqual(fn.applySync(undefined, [ value ], { arguments: { copy: true }, result: { copy: true } }), value);
 
-const closureResult = context.evalClosureSync('return [ $0, $1 ];', [ value, value ], { arguments: { copy: true }, result: { copy: true } }).result;
+const closureResult = context.evalClosureSync('return [ $0, $1 ];', [ value, value ], { arguments: { copy: true }, result: { copy: true } });
 assert.deepEqual(closureResult[0], closureResult[1]);
 assert.deepEqual(closureResult[0], value);
 
@@ -37,12 +37,12 @@ const delegatedPromise = context.evalClosureSync(
 	`return $0.apply(undefined, [], { result: { promise: true, copy: true }})`,
 	[ () => new Promise(resolve => process.nextTick(() => resolve(value))) ],
 	{ arguments: { reference: true }, result: { promise: true, copy: true } });
-delegatedPromise.result.then(resolved => assert.deepEqual(resolved, value)).then(resolved);
+delegatedPromise.then(resolved => assert.deepEqual(resolved, value)).then(resolved);
 
 context.evalClosure(
 	'return $0.applySyncPromise()',
 	[ async() => new ivm.ExternalCopy(value).copyInto() ], { arguments: { reference: true }, result: { copy: true }}
-).then(result => assert.deepEqual(result.result, value));
+).then(result => assert.deepEqual(result, value));
 
 let ii = 0;
 function resolved() {

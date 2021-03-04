@@ -221,11 +221,9 @@ built-in objects and global space.
 * `options` *[object]*
 	* `timeout` *[number]* - Maximum amount of time in milliseconds this script is allowed to run
 		before execution is canceled. Default is no timeout.
-	* [`{ ...CachedDataOptions }`](#cacheddataoptions)
 	* [`{ ...ScriptOrigin }`](#scriptorigin)
 	* [`{ ...TransferOptions }`](#transferoptions)
-* **return** *[object]*
-	* `result` *[transferable]*
+* **return** *[transferable]*
 
 Compiles and executes a script within a context. This will return the last value evaluated, as long
 as that value was transferable, otherwise `undefined` will be returned.
@@ -238,14 +236,12 @@ as that value was transferable, otherwise `undefined` will be returned.
 * `options` *[object]*
 	* `timeout` *[number]* - Maximum amount of time in milliseconds this script is allowed to run
 		before execution is canceled. Default is no timeout.
-	* [`{ ...CachedDataOptions }`](#cacheddataoptions)
 	* [`{ ...ScriptOrigin }`](#scriptorigin)
 	* `arguments` *[object]*
 		* [`{ ...TransferOptions }`](#transferoptions)
 	* `result` *[object]*
 		* [`{ ...TransferOptions }`](#transferoptions)
-* **return** *[object]*
-	* `result` *[transferable]*
+* **return** `*[transferable]*
 
 Compiles and runs code as if it were inside a function, similar to the seldom-used `new
 Function(code)` constructor. You can pass arguments to the function and they will be available as
