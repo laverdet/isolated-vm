@@ -11,6 +11,8 @@ class ContextHandle;
 
 class ScriptHandle : public TransferableHandle {
 	public:
+		using DontFreezeInstance = void;
+
 		explicit ScriptHandle(RemoteHandle<v8::UnboundScript> script);
 		static auto Definition() -> v8::Local<v8::FunctionTemplate>;
 

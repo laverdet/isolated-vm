@@ -42,6 +42,8 @@ class ModuleHandle : public TransferableHandle {
 		std::shared_ptr<ModuleInfo> info;
 
 	public:
+		using DontFreezeInstance = void;
+
 		explicit ModuleHandle(std::shared_ptr<ModuleInfo> info);
 
 		static auto Definition() -> v8::Local<v8::FunctionTemplate>;

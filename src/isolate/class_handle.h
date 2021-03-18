@@ -30,6 +30,12 @@ namespace detail {
 
 	template <class Type>
 	IsolateSpecific<v8::FunctionTemplate> TemplateHolder<Type>::specific;
+
+	template<class Type, class = void>
+	struct DontFreezeInstance:std::false_type{};
+
+	template<class Type>
+	struct DontFreezeInstance<Type, typename Type::DontFreezeInstance>: std::true_type {};
 }
 
 /**
@@ -152,9 +158,13 @@ class ClassHandle {
 				name_handle, {}, New.length
 			);
 			tmpl->SetClassName(name_handle);
-			tmpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-			v8::Local<v8::ObjectTemplate> proto = tmpl->PrototypeTemplate();
+			auto instance_tmpl = tmpl->InstanceTemplate();
+			instance_tmpl->SetImmutableProto();
+			instance_tmpl->SetInternalFieldCount(1);
+
+			auto proto = tmpl->PrototypeTemplate();
+			proto->SetImmutableProto();
 			v8::Local<v8::Signature> sig = v8::Signature::New(isolate, tmpl);
 			v8::Local<v8::AccessorSignature> asig = v8::AccessorSignature::New(isolate, tmpl);
 			TemplateDefinition def{isolate, tmpl, proto, sig, asig};
@@ -203,11 +213,25 @@ class ClassHandle {
 		}
 
 		/**
+		 * Freeze the handle and prototype unless `DontFreezeInstance` is set on the class handle
+		 */
+		template <class Type>
+		static auto MaybeFreeze(v8::Local<v8::Object> handle) {
+			auto context = handle->GetIsolate()->GetCurrentContext();
+			handle->GetPrototype().As<v8::Object>()->SetIntegrityLevel(context, v8::IntegrityLevel::kFrozen);
+			if (!detail::DontFreezeInstance<Type>::value) {
+				handle->SetIntegrityLevel(context, v8::IntegrityLevel::kFrozen);
+			}
+		}
+
+		/**
 		 * Builds a new instance of T from scratch, used in factory functions.
 		 */
 		template <typename T, typename ...Args>
 		static auto NewInstance(Args&&... args) -> v8::Local<v8::Object> {
-			v8::Local<v8::Object> instance = Unmaybe(GetFunctionTemplate<T>()->InstanceTemplate()->NewInstance(v8::Isolate::GetCurrent()->GetCurrentContext()));
+			auto context = v8::Isolate::GetCurrent()->GetCurrentContext();
+			v8::Local<v8::Object> instance = Unmaybe(GetFunctionTemplate<T>()->InstanceTemplate()->NewInstance(context));
+			MaybeFreeze<T>(instance);
 			Wrap(std::make_unique<T>(std::forward<Args>(args)...), instance);
 			return instance;
 		}
@@ -268,6 +292,7 @@ struct ConstructorFunctionImpl<Return(Args...)> {
 		auto instance = Function(args...);
 		if (instance) {
 			v8::Local<v8::Object> handle = This.As<v8::Object>();
+			ClassHandle::MaybeFreeze<typename decltype(instance)::element_type>(handle);
 			ClassHandle::Wrap(std::move(instance), handle);
 			return handle;
 		} else {

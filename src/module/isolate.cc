@@ -33,6 +33,8 @@ class LibraryHandle : public TransferableHandle {
 		};
 
 	public:
+		using DontFreezeInstance = void;
+
 		static auto Definition() -> Local<FunctionTemplate> {
 			return Inherit<TransferableHandle>(MakeClass(
 				"isolated_vm", nullptr,
@@ -52,7 +54,27 @@ class LibraryHandle : public TransferableHandle {
 
 		static auto Get() -> Local<Object> {
 			Local<Object> library = ClassHandle::NewInstance<LibraryHandle>().As<Object>();
-			Unmaybe(library->Set(Isolate::GetCurrent()->GetCurrentContext(), v8_symbol("lib"), ClassHandle::NewInstance<LibHandle>()));
+			auto context = Isolate::GetCurrent()->GetCurrentContext();
+			Unmaybe(library->Set(context, v8_symbol("lib"), ClassHandle::NewInstance<LibHandle>()));
+
+			// Freeze prototypes of all classes
+			auto prototype = HandleCast<Local<String>>("prototype");
+			auto freeze = [&](const char* name) {
+				auto fn = Unmaybe(library->Get(context, HandleCast<Local<String>>(name))).As<Function>();
+				auto proto = Unmaybe(fn->Get(context, prototype)).As<Object>();
+				proto->SetIntegrityLevel(context, IntegrityLevel::kFrozen);
+			};
+			freeze("Callback");
+			freeze("Context");
+			freeze("ExternalCopy");
+			freeze("Isolate");
+			freeze("NativeModule");
+			freeze("Reference");
+			freeze("Script");
+
+			// Also freeze this prototype
+			library->SetIntegrityLevel(context, IntegrityLevel::kFrozen);
+			library->GetPrototype().As<Object>()->SetIntegrityLevel(context, IntegrityLevel::kFrozen);
 			return library;
 		}
 };
