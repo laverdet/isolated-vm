@@ -185,7 +185,7 @@ class ArrayHolder {
 
 		static constexpr uint64_t kMagic = 0xa4d3c462f7fd1741;
 		uint64_t magic = kMagic;
-		v8::Persistent<v8::Object> handle;
+		v8::Persistent<v8::Value> handle;
 		std::shared_ptr<BackingStore> backing_store;
 };
 
