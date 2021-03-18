@@ -292,7 +292,7 @@ declare module "isolated-vm" {
 	 */
 	export class Reference<T = any> {
 		private __ivm_reference: T;
-		constructor(value: T);
+		constructor(value: T, options?: { inheritUnsafe?: boolean });
 
 		/**
 		 * This is the typeof the referenced value, and is available at any time

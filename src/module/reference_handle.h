@@ -16,12 +16,13 @@ class ReferenceData {
 	public:
 		enum class TypeOf { Null, Undefined, Number, String, Boolean, Object, Function };
 
-		explicit ReferenceData(v8::Local<v8::Value> value);
+		explicit ReferenceData(v8::Local<v8::Value> value, bool inherit = false);
 		ReferenceData(
 			std::shared_ptr<IsolateHolder> isolate,
 			RemoteHandle<v8::Value> reference,
 			RemoteHandle<v8::Context> context,
-			TypeOf type_of
+			TypeOf type_of,
+			bool inherit = false
 		);
 
 	protected:
@@ -29,6 +30,7 @@ class ReferenceData {
 		RemoteHandle<v8::Value> reference;
 		RemoteHandle<v8::Context> context;
 		TypeOf type_of;
+		bool inherit;
 };
 
 } // namespace detail
@@ -49,7 +51,8 @@ class ReferenceHandle : public TransferableHandle, public detail::ReferenceData 
 		explicit ReferenceHandle(Args&&... args) : ReferenceData{std::forward<Args>(args)...} {}
 
 		static auto Definition() -> v8::Local<v8::FunctionTemplate>;
-		static auto New(v8::Local<v8::Value> value) -> std::unique_ptr<ReferenceHandle>;
+		static auto New(v8::Local<v8::Value> value, v8::MaybeLocal<v8::Object> options)
+			-> std::unique_ptr<ReferenceHandle>;
 		auto TransferOut() -> std::unique_ptr<Transferable> final;
 
 		auto Deref(v8::MaybeLocal<v8::Object> maybe_options) -> v8::Local<v8::Value>;

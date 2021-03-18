@@ -77,22 +77,25 @@ class DereferenceHandle : public TransferableHandle {
 
 namespace detail {
 
-ReferenceData::ReferenceData(Local<Value> value) :
-	isolate{IsolateEnvironment::GetCurrentHolder()},
-	reference{RemoteHandle<Value>(value)},
-	context{RemoteHandle<Context>(Isolate::GetCurrent()->GetCurrentContext())},
-	type_of{InferTypeOf(value)} {}
+ReferenceData::ReferenceData(Local<Value> value, bool inherit) : ReferenceData{
+		IsolateEnvironment::GetCurrentHolder(),
+		RemoteHandle<Value>(value),
+		RemoteHandle<Context>(Isolate::GetCurrent()->GetCurrentContext()),
+		InferTypeOf(value),
+		inherit} {}
 
 ReferenceData::ReferenceData(
 	shared_ptr<IsolateHolder> isolate,
 	RemoteHandle<Value> reference,
 	RemoteHandle<Context> context,
-	TypeOf type_of
+	TypeOf type_of,
+	bool inherit
 ) :
 	isolate{std::move(isolate)},
 	reference{std::move(reference)},
 	context{std::move(context)},
-	type_of{type_of} {}
+	type_of{type_of},
+	inherit{inherit} {}
 
 } // namespace detail
 
@@ -123,8 +126,9 @@ auto ReferenceHandle::Definition() -> Local<FunctionTemplate> {
 	));
 }
 
-auto ReferenceHandle::New(Local<Value> value) -> unique_ptr<ReferenceHandle> {
-	return std::make_unique<ReferenceHandle>(value);
+auto ReferenceHandle::New(Local<Value> value, MaybeLocal<Object> options) -> unique_ptr<ReferenceHandle> {
+	auto inherit = ReadOption<bool>(options, StringTable::Get().inheritUnsafe, false);
+	return std::make_unique<ReferenceHandle>(value, inherit);
 }
 
 auto ReferenceHandle::TransferOut() -> unique_ptr<Transferable> {
@@ -429,11 +433,14 @@ class GetRunner : public ThreePhaseTask {
 		GetRunner(
 			const ReferenceHandle& that,
 			Local<Value> key_handle,
-			MaybeLocal<Object> maybe_options
+			MaybeLocal<Object> maybe_options,
+			bool inherit
 		) :
 				context{that.context},
 				reference{that.reference},
-				options{maybe_options, TransferOptions::Type::Reference} {
+				options{maybe_options, inherit ?
+					TransferOptions::Type::DeepReference : TransferOptions::Type::Reference},
+				inherit{inherit} {
 			that.CheckDisposed();
 			key = ExternalCopy::CopyIfPrimitive(key_handle);
 			if (!key) {
@@ -446,7 +453,21 @@ class GetRunner : public ThreePhaseTask {
 			Context::Scope context_scope{context_handle};
 			Local<Value> key_inner = key->CopyInto();
 			Local<Object> object = Local<Object>::Cast(Deref(reference));
-			Local<Value> value = Unmaybe(object->Get(context_handle, key_inner));
+			bool allow = [&]() {
+				if (!inherit) {
+					if (key_inner->IsName()) {
+						return Unmaybe(object->HasRealNamedProperty(context_handle, key_inner.As<Name>()));
+					} else if (key_inner->IsNumber()) {
+						return Unmaybe(object->HasRealIndexedProperty(context_handle, HandleCast<uint32_t>(key_inner)));
+					} else {
+						return false;
+					}
+				}
+				return true;
+			}();
+			Local<Value> value = allow ?
+				Unmaybe(object->Get(context_handle, key_inner)) :
+				Undefined(Isolate::GetCurrent()).As<Value>();
 			ret = TransferOut(value, options);
 		}
 
@@ -460,10 +481,11 @@ class GetRunner : public ThreePhaseTask {
 		RemoteHandle<Value> reference;
 		unique_ptr<Transferable> ret;
 		TransferOptions options;
+		bool inherit;
 };
 template <int async>
 auto ReferenceHandle::Get(Local<Value> key_handle, MaybeLocal<Object> maybe_options) -> Local<Value> {
-	return ThreePhaseTask::Run<async, GetRunner>(*isolate, *this, key_handle, maybe_options);
+	return ThreePhaseTask::Run<async, GetRunner>(*isolate, *this, key_handle, maybe_options, inherit);
 }
 
 /**

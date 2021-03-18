@@ -218,6 +218,9 @@ auto OptionalTransferOut(Local<Value> value, TransferOptions options) -> std::un
 			case TransferOptions::Type::ExternalCopy:
 				return std::make_unique<ExternalCopyHandle::ExternalCopyTransferable>(ExternalCopy::Copy(value));
 
+			case TransferOptions::Type::DeepReference:
+				return std::make_unique<ReferenceHandleTransferable>(value, true);
+
 			case TransferOptions::Type::Reference:
 				return std::make_unique<ReferenceHandleTransferable>(value);
 		}

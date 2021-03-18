@@ -343,6 +343,13 @@ functions to most isolated-vm functions.
 ### Class: `Reference` *[transferable]*
 A instance of [`Reference`](#class-reference-transferable) is a pointer to a value stored in any isolate.
 
+##### `new ivm.Reference(value, options)`
+* `value` - The value to create a reference to.
+* `options` *[object]*
+  * `inheritUnsafe` *[boolean]* - If enabled then the `get` family of functions will follow the
+    object's prototype chain. References created with this option should never be given to untrusted
+    code.
+
 ##### `reference.typeof` *[string]*
 
 This is the typeof the referenced value, and is available at any time from any isolate. Note that

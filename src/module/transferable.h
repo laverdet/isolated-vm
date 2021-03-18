@@ -17,7 +17,7 @@ class TransferableHandle : public ClassHandle {
 
 class TransferOptions {
 	public:
-		enum class Type { None, Copy, ExternalCopy, Reference };
+		enum class Type { None, Copy, ExternalCopy, Reference, DeepReference };
 
 		TransferOptions() = default;
 		explicit TransferOptions(Type fallback) : fallback{fallback} {};

@@ -101,6 +101,13 @@ inline auto HandleCastImpl(v8::Local<v8::Value> value, const HandleCastArguments
 	ParamIncorrect::Throw("a 32-bit number");
 }
 
+inline auto HandleCastImpl(v8::Local<v8::Value> value, const HandleCastArguments& /*arguments*/, HandleCastTag<v8::Local<v8::Uint32>> /*tag*/) {
+	if (value->IsUint32()) {
+		return value.As<v8::Uint32>();
+	}
+	ParamIncorrect::Throw("a 32-bit number");
+}
+
 inline auto HandleCastImpl(v8::Local<v8::Value> value, const HandleCastArguments& /*arguments*/, HandleCastTag<v8::Local<v8::Number>> /*tag*/) {
 	if (value->IsNumber()) {
 		return value.As<v8::Number>();
@@ -196,6 +203,14 @@ inline auto HandleCastImpl(v8::Local<v8::Int32> value, const HandleCastArguments
 	return value->Value();
 }
 
+inline auto HandleCastImpl(v8::Local<v8::Value> value, const HandleCastArguments& arguments, HandleCastTag<uint32_t> /*tag*/) {
+	return HandleCast<uint32_t>(HandleCast<v8::Local<v8::Uint32>>(value, arguments), arguments);
+}
+
+inline auto HandleCastImpl(v8::Local<v8::Uint32> value, const HandleCastArguments& /*arguments*/, HandleCastTag<uint32_t> /*tag*/) {
+	return value->Value();
+}
+
 inline auto HandleCastImpl(v8::Local<v8::Value> value, const HandleCastArguments& arguments, HandleCastTag<std::string> /*tag*/) {
 	return HandleCast<std::string>(HandleCast<v8::Local<v8::String>>(value, arguments), arguments);
 }
@@ -212,6 +227,10 @@ inline auto HandleCastImpl(bool value, const HandleCastArguments& arguments, Han
 
 inline auto HandleCastImpl(int32_t value, const HandleCastArguments& arguments, HandleCastTag<v8::Local<v8::Integer>> /*tag*/) {
 	return v8::Integer::New(arguments.isolate, value);
+}
+
+inline auto HandleCastImpl(uint32_t value, const HandleCastArguments& arguments, HandleCastTag<v8::Local<v8::Integer>> /*tag*/) {
+	return v8::Integer::NewFromUnsigned(arguments.isolate, value);
 }
 
 inline auto HandleCastImpl(const char* value, const HandleCastArguments& arguments, HandleCastTag<v8::Local<v8::String>> /*tag*/) {
