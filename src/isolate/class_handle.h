@@ -122,8 +122,9 @@ class ClassHandle {
 		/**
 		 * Invoked once JS loses all references to this object
 		 */
-		static void WeakCallback(ClassHandle* that) {
+		static void WeakCallback(void* param) {
 			auto* isolate = IsolateEnvironment::GetCurrent();
+			auto* that = reinterpret_cast<ClassHandle*>(param);
 			isolate->RemoveWeakCallback(&that->handle);
 			delete that; // NOLINT
 		}
@@ -135,7 +136,7 @@ class ClassHandle {
 			handle->SetAlignedPointerInInternalField(0, ptr.get());
 			ptr->handle.Reset(v8::Isolate::GetCurrent(), handle);
 			ClassHandle* ptr_raw = ptr.release();
-			ptr_raw->SetWeak<ClassHandle, WeakCallback>(ptr_raw);
+			ptr_raw->SetWeak<void, WeakCallback>(ptr_raw);
 		}
 
 		/**

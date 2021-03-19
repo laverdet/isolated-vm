@@ -24,7 +24,7 @@ class ExternalHolder {
 			// Construct the holder in-place
 			new(that) ExternalHolder(external, std::forward<Args>(args)...);
 			// Setup weak callbacks (technically could throw)
-			that->handle.SetWeak(that, WeakCallbackV8, v8::WeakCallbackType::kParameter);
+			that->handle.SetWeak(reinterpret_cast<void*>(that), WeakCallbackV8, v8::WeakCallbackType::kParameter);
 			IsolateEnvironment::GetCurrent()->AddWeakCallback(&that->handle, WeakCallback, that);
 			// Return local external handle
 			return external;
@@ -43,7 +43,7 @@ class ExternalHolder {
 			delete that;
 		}
 
-		static void WeakCallbackV8(const v8::WeakCallbackInfo<ExternalHolder>& info) {
+		static void WeakCallbackV8(const v8::WeakCallbackInfo<void>& info) {
 			WeakCallback(info.GetParameter());
 		}
 
