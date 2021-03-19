@@ -32,7 +32,7 @@ function getWall(isolate) {
 		await run();
 	}
 	const time2 = getWall(isolate) - wallTime2;
-	if (time1 * 4 > time2) {
+	if (time1 * 6 > time2) {
 		console.log('pass');
 	} else {
 		console.log('fail');
