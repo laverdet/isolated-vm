@@ -36,7 +36,7 @@ declare module "isolated-vm" {
 		 * if other processes are trying to do work, or if you have more than
 		 * require('os').cpus().length isolates currently doing work in the same nodejs process.
 		 */
-		readonly cpuTime: [number, number];
+		readonly cpuTime: bigint;
 
 		/**
 		 * Flag that indicates whether this isolate has been disposed.
@@ -49,7 +49,7 @@ declare module "isolated-vm" {
 		 * For instance, if an isolate makes a call into another isolate, wall time will continue
 		 * increasing while CPU time will remain the same.
 		 */
-		readonly wallTime: Hrtime;
+		readonly wallTime: bigint;
 
 		/**
 		 * Returns the total count of active `Reference` instances that belong to this isolate. Note
@@ -149,14 +149,6 @@ declare module "isolated-vm" {
 		 */
 		externally_allocated_size: number;
 	};
-
-	/**
-	 * Format is [ seconds, nanoseconds ], which is the same as the nodejs method
-	 * [process.hrtime](https://nodejs.org/api/process.html#process_process_hrtime_time). To convert
-	 * this value to milliseconds you could do something like: (ret[0] + ret[1] / 1e9) * 1000. Some
-	 * precision is lost in this conversion but for most applications it's probably not a big deal.
-	 */
-	export type Hrtime = [ number, number ];
 
 	/**
 	 * A context is a sandboxed execution environment within an isolate. Each context contains its own

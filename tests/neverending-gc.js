@@ -1,7 +1,6 @@
 const ivm = require('isolated-vm');
 function getWall(isolate) {
-	const { wallTime } = isolate;
-	return (wallTime[0] + wallTime[1] / 1e9) * 1000;
+	return Number(isolate.wallTime) / 1e6;
 }
 
 (async function() {

@@ -12,11 +12,7 @@ function spin(timeout) {
 }
 
 function hrToFloat(hr) {
-	let time = (hr[0] + hr[1] / 1e9) * 1000;
-	if (time > 1000) {
-		console.log('time is too high');
-	}
-	return time;
+	return Number(hr) / 1e6;
 }
 
 function checkRange(val, min, max) {

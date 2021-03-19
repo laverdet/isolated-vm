@@ -341,13 +341,11 @@ auto IsolateHandle::GetCpuTime() -> Local<Value> {
 		throw RuntimeGenericError("Isolate is disposed");
 	}
 	uint64_t time = env->GetCpuTime().count();
-	Isolate* isolate = Isolate::GetCurrent();
-	Local<Context> context = isolate->GetCurrentContext();
-	constexpr auto kNanos = (uint64_t)1e9;
-	Local<Array> ret = Array::New(isolate, 2);
-	Unmaybe(ret->Set(context, 0, Uint32::New(isolate, (uint32_t)(time / kNanos))));
-	Unmaybe(ret->Set(context, 1, Uint32::New(isolate, (uint32_t)(time - (time / kNanos) * kNanos))));
-	return ret;
+#if V8_AT_LEAST(6, 9, 258)
+	return HandleCast<Local<BigInt>>(time);
+#else
+	return HandleCast<Local<Number>>(static_cast<double>(time));
+#endif
 }
 
 auto IsolateHandle::GetWallTime() -> Local<Value> {
@@ -356,13 +354,11 @@ auto IsolateHandle::GetWallTime() -> Local<Value> {
 		throw RuntimeGenericError("Isolate is disposed");
 	}
 	uint64_t time = env->GetWallTime().count();
-	Isolate* isolate = Isolate::GetCurrent();
-	Local<Context> context = isolate->GetCurrentContext();
-	constexpr auto kNanos = (uint64_t)1e9;
-	Local<Array> ret = Array::New(isolate, 2);
-	Unmaybe(ret->Set(context, 0, Uint32::New(isolate, (uint32_t)(time / kNanos))));
-	Unmaybe(ret->Set(context, 1, Uint32::New(isolate, (uint32_t)(time - (time / kNanos) * kNanos))));
-	return ret;
+#if V8_AT_LEAST(6, 9, 258)
+	return HandleCast<Local<BigInt>>(time);
+#else
+	return HandleCast<Local<Number>>(static_cast<double>(time));
+#endif
 }
 
 /**

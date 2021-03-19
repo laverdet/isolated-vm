@@ -177,20 +177,18 @@ of currently allocated memory which is not included in the v8 heap but counts ag
 `memoryLimit`. ArrayBuffer instances over a certain size are externally allocated and will be
 counted here.
 
-##### `isolate.cpuTime` *[Array]*
-##### `isolate.wallTime` *[Array]*
-The total CPU and wall time spent in this isolate. CPU time is the amount of time the isolate has
-spent actively doing work on the CPU. Wall time is the amount of time the isolate has been running,
-including passive time spent waiting (think "wall" like a clock on the wall). For instance, if an
-isolate makes a call into another isolate, wall time will continue increasing while CPU time will
-remain the same.
+##### `isolate.cpuTime` *bigint*
+##### `isolate.wallTime` *bigint*
+The total CPU and wall time spent in this isolate, in nanoseconds. CPU time is the amount of time
+the isolate has spent actively doing work on the CPU. Wall time is the amount of time the isolate
+has been running, including passive time spent waiting (think "wall" like a clock on the wall). For
+instance, if an isolate makes a call into another isolate, wall time will continue increasing while
+CPU time will remain the same.
 
-The return format is `[ seconds, nanoseconds ]`, which is the same as the nodejs method
-[`process.hrtime`](https://nodejs.org/api/process.html#process_process_hrtime_time). To convert this
-value to milliseconds you could do something like: `(ret[0] + ret[1] / 1e9) * 1000`. Some precision
-is lost in this conversion but for most applications it's probably not a big deal.
+Note that in nodejs v10.x the return value is a regular number, since bigint isn't supported on
+earlier versions.
 
-Note that CPU time may vary drastically if there is contention for the CPU. This could occur if
+Also note that CPU time may vary drastically if there is contention for the CPU. This could occur if
 other processes are trying to do work, or if you have more than `require('os').cpus().length`
 isolates currently doing work in the same nodejs process.
 
