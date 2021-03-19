@@ -13,6 +13,9 @@
     "lint": "find src -name '*.cc' | xargs -n1 clang-tidy",
     "test": "node test.js || nodejs test.js"
   },
+  "devDependencies": {
+    "isolated-vm": "."
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/laverdet/isolated-vm.git"
