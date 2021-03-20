@@ -127,7 +127,7 @@ auto ReferenceHandle::Definition() -> Local<FunctionTemplate> {
 }
 
 auto ReferenceHandle::New(Local<Value> value, MaybeLocal<Object> options) -> unique_ptr<ReferenceHandle> {
-	auto inherit = ReadOption<bool>(options, StringTable::Get().inheritUnsafe, false);
+	auto inherit = ReadOption<bool>(options, StringTable::Get().unsafeInherit, false);
 	return std::make_unique<ReferenceHandle>(value, inherit);
 }
 
@@ -426,49 +426,102 @@ auto ReferenceHandle::Copy() -> Local<Value> {
 }
 
 /**
- * Get a property from this reference, returned as another reference
+ * Base class for get, set, and delete runners
  */
-class GetRunner : public ThreePhaseTask {
+class AccessorRunner : public ThreePhaseTask {
 	public:
-		GetRunner(
-			const ReferenceHandle& that,
-			Local<Value> key_handle,
-			MaybeLocal<Object> maybe_options,
-			bool inherit
-		) :
-				context{that.context},
-				reference{that.reference},
-				options{maybe_options, inherit ?
-					TransferOptions::Type::DeepReference : TransferOptions::Type::Reference},
-				inherit{inherit} {
-			that.CheckDisposed();
-			key = ExternalCopy::CopyIfPrimitive(key_handle);
-			if (!key) {
+		AccessorRunner(ReferenceHandle& target, Local<Value> key_handle) :
+		context{target.context},
+		target{target.reference},
+		key{ExternalCopy::CopyIfPrimitive(key_handle)} {
+			target.CheckDisposed();
+			if (!key || (!key_handle->IsName() && !key_handle->IsUint32())) {
 				throw RuntimeTypeError("Invalid `key`");
+			} else if (target.type_of != decltype(target.type_of)::Object) {
+				throw RuntimeTypeError("Reference is not an object");
 			}
 		}
 
-		void Phase2() final {
-			Local<Context> context_handle = Deref(context);
-			Context::Scope context_scope{context_handle};
-			Local<Value> key_inner = key->CopyInto();
-			Local<Object> object = Local<Object>::Cast(Deref(reference));
-			bool allow = [&]() {
-				if (!inherit) {
-					if (key_inner->IsName()) {
-						return Unmaybe(object->HasRealNamedProperty(context_handle, key_inner.As<Name>()));
-					} else if (key_inner->IsNumber()) {
-						return Unmaybe(object->HasRealIndexedProperty(context_handle, HandleCast<uint32_t>(key_inner)));
-					} else {
-						return false;
-					}
-				}
+	protected:
+		auto GetTargetAndAlsoCheckForProxy() -> Local<Object> {
+			auto object = Local<Object>::Cast(Deref(target));
+			if (HasProxy(object)) {
+				throw RuntimeTypeError("Object is or has proxy");
+			}
+			return object;
+		}
+
+		auto GetKey(Local<Context> context) -> Local<Name> {
+			auto key_inner = key->CopyInto();
+			return (key_inner->IsString() || key_inner->IsSymbol()) ?
+				key_inner.As<Name>() : Unmaybe(key_inner->ToString(context)).As<Name>();
+		}
+
+		RemoteHandle<Context> context;
+
+	private:
+		static auto HasProxy(Local<Object> object) -> bool {
+			if (object->IsProxy()) {
 				return true;
-			}();
-			Local<Value> value = allow ?
-				Unmaybe(object->Get(context_handle, key_inner)) :
-				Undefined(Isolate::GetCurrent()).As<Value>();
-			ret = TransferOut(value, options);
+			} else {
+				auto proto = object->GetPrototype();
+				if (proto->IsNullOrUndefined()) {
+					return false;
+				} else {
+					return HasProxy(proto.As<Object>());
+				}
+			}
+		}
+
+		RemoteHandle<Value> target;
+		unique_ptr<ExternalCopy> key;
+};
+
+/**
+ * Get a property from this reference, returned as another reference
+ */
+class GetRunner final : public AccessorRunner {
+	public:
+		GetRunner(ReferenceHandle& target, Local<Value> key_handle, MaybeLocal<Object> maybe_options) :
+		AccessorRunner{target, key_handle},
+		options{maybe_options, target.inherit ?
+			TransferOptions::Type::DeepReference : TransferOptions::Type::Reference},
+		inherit{target.inherit} {}
+
+		void Phase2() final {
+			// Setup
+			auto* isolate = Isolate::GetCurrent();
+			auto context = Deref(this->context);
+			Context::Scope context_scope{context};
+			auto name = GetKey(context);
+			auto object = GetTargetAndAlsoCheckForProxy();
+
+			// Get property
+			ret = TransferOut([&]() {
+				if (inherit) {
+					// To avoid accessors I guess we have to walk the prototype chain ourselves
+					auto target = object;
+					do {
+						if (Unmaybe(target->HasOwnProperty(context, name))) {
+							if (Unmaybe(target->HasRealNamedCallbackProperty(context, name))) {
+								throw RuntimeTypeError("Property is getter");
+							}
+							return Unmaybe(target->GetRealNamedProperty(context, name));
+						}
+						auto next = target->GetPrototype();
+						if (next->IsNullOrUndefined()) {
+							return Undefined(isolate).As<Value>();
+						}
+						target = next.As<Object>();
+					} while (true);
+				} else if (!Unmaybe(object->HasOwnProperty(context, name))) {
+					return Undefined(isolate).As<Value>();
+				} else if (Unmaybe(object->HasRealNamedCallbackProperty(context, name))) {
+					throw RuntimeTypeError("Property is getter");
+				} else {
+					return Unmaybe(object->Get(context, name));
+				}
+			}(), options);
 		}
 
 		auto Phase3() -> Local<Value> final {
@@ -476,49 +529,35 @@ class GetRunner : public ThreePhaseTask {
 		}
 
 	private:
-		unique_ptr<ExternalCopy> key;
-		RemoteHandle<Context> context;
-		RemoteHandle<Value> reference;
 		unique_ptr<Transferable> ret;
 		TransferOptions options;
 		bool inherit;
 };
 template <int async>
 auto ReferenceHandle::Get(Local<Value> key_handle, MaybeLocal<Object> maybe_options) -> Local<Value> {
-	return ThreePhaseTask::Run<async, GetRunner>(*isolate, *this, key_handle, maybe_options, inherit);
+	return ThreePhaseTask::Run<async, GetRunner>(*isolate, *this, key_handle, maybe_options);
 }
 
 /**
  * Delete a property on this reference
  */
-class DeleteRunner : public ThreePhaseTask {
+class DeleteRunner final : public AccessorRunner {
 	public:
 		DeleteRunner(ReferenceHandle& that, Local<Value> key_handle) :
-				key{ExternalCopy::CopyIfPrimitive(key_handle)},
-				context{that.context},
-				reference{that.reference} {
-			that.CheckDisposed();
-			if (!key) {
-				throw RuntimeTypeError("Invalid `key`");
+		AccessorRunner{that, key_handle} {}
+
+		void Phase2() final {
+			auto context = Deref(this->context);
+			Context::Scope context_scope{context};
+			auto object = GetTargetAndAlsoCheckForProxy();
+			if (!Unmaybe(object->Delete(context, GetKey(context)))) {
+				throw RuntimeTypeError("Delete failed");
 			}
 		}
 
-		void Phase2() final {
-			Local<Context> context_handle = Deref(context);
-			Context::Scope context_scope{context_handle};
-			Local<Object> object = Local<Object>::Cast(Deref(reference));
-			result = Unmaybe(object->Delete(context_handle, key->CopyInto()));
-		}
-
 		auto Phase3() -> Local<Value> final {
-			return Boolean::New(Isolate::GetCurrent(), result);
+			return Undefined(Isolate::GetCurrent());
 		}
-
-	private:
-		unique_ptr<ExternalCopy> key;
-		RemoteHandle<Context> context;
-		RemoteHandle<Value> reference;
-		bool result = false;
 };
 template <int async>
 auto ReferenceHandle::Delete(Local<Value> key_handle) -> Local<Value> {
@@ -528,7 +567,7 @@ auto ReferenceHandle::Delete(Local<Value> key_handle) -> Local<Value> {
 /**
  * Attempt to set a property on this reference
  */
-class SetRunner : public ThreePhaseTask {
+class SetRunner final : public AccessorRunner {
 	public:
 		SetRunner(
 			ReferenceHandle& that,
@@ -536,37 +575,28 @@ class SetRunner : public ThreePhaseTask {
 			Local<Value> val_handle,
 			MaybeLocal<Object> maybe_options
 		) :
-				key{ExternalCopy::CopyIfPrimitive(key_handle)},
-				val{TransferOut(val_handle, TransferOptions{maybe_options})},
-				context{that.context},
-				reference{that.reference} {
-			that.CheckDisposed();
-			if (!key) {
-				throw RuntimeTypeError("Invalid `key`");
+		AccessorRunner{that, key_handle},
+		val{TransferOut(val_handle, TransferOptions{maybe_options})} {}
+
+		void Phase2() final {
+			auto context = Deref(this->context);
+			Context::Scope context_scope{context};
+			auto name = GetKey(context);
+			auto object = GetTargetAndAlsoCheckForProxy();
+			// Delete key before transferring in, potentially freeing up some v8 heap
+			Unmaybe(object->Delete(context, name));
+			auto val_inner = val->TransferIn();
+			if (!Unmaybe(object->CreateDataProperty(context, GetKey(context), val_inner))) {
+				throw RuntimeTypeError("Set failed");
 			}
 		}
 
-		void Phase2() final {
-			Local<Context> context_handle = Deref(context);
-			Context::Scope context_scope{context_handle};
-			Local<Value> key_inner = key->CopyInto();
-			Local<Object> object = Local<Object>::Cast(Deref(reference));
-			// Delete key before transferring in, potentially freeing up some v8 heap
-			Unmaybe(object->Delete(context_handle, key_inner));
-			Local<Value> val_inner = val->TransferIn();
-			did_set = Unmaybe(object->Set(context_handle, key_inner, val_inner));
-		}
-
 		auto Phase3() -> Local<Value> final {
-			return Boolean::New(Isolate::GetCurrent(), did_set);
+			return Undefined(Isolate::GetCurrent());
 		}
 
 	private:
-		unique_ptr<ExternalCopy> key;
 		unique_ptr<Transferable> val;
-		RemoteHandle<Context> context;
-		RemoteHandle<Value> reference;
-		bool did_set = false;
 };
 template <int async>
 auto ReferenceHandle::Set(Local<Value> key_handle, Local<Value> val_handle, MaybeLocal<Object> maybe_options) -> Local<Value> {

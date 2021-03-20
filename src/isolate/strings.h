@@ -58,7 +58,6 @@ class StringTable {
 		String function{"function"};
 		String global{"global"};
 		String ignored{"ignored"};
-		String inheritUnsafe{"inheritUnsafe"};
 		String inspector{"inspector"};
 		String isolateIsDisposed{"Isolate is disposed"};
 		String isolatedVm{"isolated-vm"};
@@ -82,6 +81,7 @@ class StringTable {
 		String transferList{"transferList"};
 		String transferOut{"transferOut"};
 		String undefined{"undefined"};
+		String unsafeInherit{"unsafeInherit"};
 
 		String does_zap_garbage{"does_zap_garbage"};
 		String externally_allocated_size{"externally_allocated_size"};

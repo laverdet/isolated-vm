@@ -13,6 +13,7 @@ namespace detail {
  * Holds common data for ReferenceHandle and ReferenceHandleTransferable
  */
 class ReferenceData {
+	friend class AccessorRunner;
 	public:
 		enum class TypeOf { Null, Undefined, Number, String, Boolean, Object, Function };
 
@@ -41,9 +42,8 @@ class ReferenceData {
 class ReferenceHandle : public TransferableHandle, public detail::ReferenceData {
 	friend class ApplyRunner;
 	friend class CopyRunner;
+	friend class AccessorRunner;
 	friend class GetRunner;
-	friend class DeleteRunner;
-	friend class SetRunner;
 	public:
 		using TypeOf = detail::ReferenceData::TypeOf;
 

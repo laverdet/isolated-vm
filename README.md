@@ -344,7 +344,7 @@ A instance of [`Reference`](#class-reference-transferable) is a pointer to a val
 ##### `new ivm.Reference(value, options)`
 * `value` - The value to create a reference to.
 * `options` *[object]*
-  * `inheritUnsafe` *[boolean]* - If enabled then the `get` family of functions will follow the
+  * `unsafeInherit` *[boolean]* - If enabled then the `get` family of functions will follow the
     object's prototype chain. References created with this option should never be given to untrusted
     code.
 
@@ -388,7 +388,6 @@ all attempts to access the reference will throw an error.
 ##### `reference.deleteIgnored(property)`
 ##### `reference.deleteSync(property)`
 * `property` *[transferable]* - The property to access on this object.
-* **return** `true` or `false`
 
 Delete a property from this reference, as if using `delete reference[property]`
 
@@ -401,6 +400,8 @@ Delete a property from this reference, as if using `delete reference[property]`
 
 Will access a reference as if using `reference[property]` and transfer the value out.
 
+If the object is a proxy, or if the property is a getter, this method will throw.
+
 ##### `reference.set(property, value, options)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `reference.setIgnored(property, value, options)`
 ##### `reference.setSync(property, value, options)`
@@ -408,10 +409,6 @@ Will access a reference as if using `reference[property]` and transfer the value
 * `value` *[transferable]* - The value to set on this object.
 * `options` *[object]*
 	* [`{ ...TransferOptions }`](#transferoptions)
-* **return** `true` or `false`
-
-Returns a boolean indicating whether or not this operation succeeded. I'm actually not really sure
-when `false` would be returned, I'm just giving you the result back straight from the v8 API.
 
 ##### `reference.apply(receiver, arguments, options)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `reference.applyIgnored(receiver, arguments, options)`

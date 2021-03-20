@@ -9,10 +9,12 @@ declare module "isolated-vm" {
 		| Context
 		| Script
 		| ExternalCopy<any>
+		| Callback<any>
 		| Copy<any>
 		| Reference<any>
 		| Dereference<any>
 		| Module
+		| ((...args: any[]) => any)
 		| typeof import("isolated-vm");
 
 	/**
@@ -284,7 +286,7 @@ declare module "isolated-vm" {
 	 */
 	export class Reference<T = any> {
 		private __ivm_reference: T;
-		constructor(value: T, options?: { inheritUnsafe?: boolean });
+		constructor(value: T, options?: { unsafeInherit?: boolean });
 
 		/**
 		 * This is the typeof the referenced value, and is available at any time
@@ -331,31 +333,29 @@ declare module "isolated-vm" {
 		/**
 		 * Delete a property from this reference, as if using `delete reference[property]`
 		 */
-		 delete(property: keyof T): Promise<boolean>;
+		 delete(property: keyof T): Promise<void>;
 		 deleteIgnored(property: keyof T): void;
-		 deleteSync(property: keyof T): boolean;
-
-		/**
-		 * Will access a reference as if using reference[property] and return a reference to that value.
-		 */
-		get<Options extends TransferOptions, Key extends keyof T>(
-			property: Key, options?: Options): ResultTypeAsync<Options & AsReference, T[Key]>;
-		getSync<Options extends TransferOptions, Key extends keyof T>(
-			property: Key, options?: Options): ResultTypeSync<Options & AsReference, T[Key]>;
+		 deleteSync(property: keyof T): void;
 
 		/**
 		 * Will access a reference as if using reference[property] and return a reference to that value.
 		 *
-		 * @return {boolean} Indicating whether or not this operation succeeded. I'm actually not really
-		 * sure when false would be returned, I'm just giving you the result back straight from the v8
-		 * API.
+		 * If the object is a proxy, or if the property is a getter, this method will throw.
+		 */
+		get<Options extends TransferOptions, Key extends keyof T>(
+			property: Key, options?: Options): ResultTypeAsync<Options & FallbackReference, T[Key]>;
+		getSync<Options extends TransferOptions, Key extends keyof T>(
+			property: Key, options?: Options): ResultTypeSync<Options & FallbackReference, T[Key]>;
+
+		/**
+		 * Will access a reference as if using reference[property] and return a reference to that value.
 		 */
 		set<Options extends TransferOptions, Key extends keyof T>(
-			property: Key, value: ArgumentType<Options, T[Key]>, options?: Options): Promise<boolean>;
+			property: Key, value: ArgumentType<Options, T[Key]>, options?: Options): Promise<void>;
 		setIgnored<Options extends TransferOptions, Key extends keyof T>(
 			property: Key, value: ArgumentType<Options, T[Key]>, options?: Options): void;
 		setSync<Options extends TransferOptions, Key extends keyof T>(
-			property: Key, value: ArgumentType<Options, T[Key]>, options?: Options): boolean;
+			property: Key, value: ArgumentType<Options, T[Key]>, options?: Options): void;
 
 		/**
 		 * Will attempt to invoke an object as if it were a function. If the return
@@ -366,17 +366,17 @@ declare module "isolated-vm" {
 			receiver?: ArgumentType<Options['arguments'], ApplyArgumentThis<T>>,
 			arguments?: ArgumentsTypeBidirectional<Options, ApplyArguments<T>>,
 			options?: Options
-		): ResultTypeBidirectionalAsync<Options & ApplyAsReference, ApplyResult<T>>;
+		): ResultTypeBidirectionalAsync<Options & FallbackReference, ApplyResult<T>>;
 		applyIgnored<Options extends ReferenceApplyOptions>(
 			receiver?: ArgumentType<Options['arguments'], ApplyArgumentThis<T>>,
-			arguments?: ArgumentsTypeBidirectional<Options & ApplyAsReference, ApplyArguments<T>>,
+			arguments?: ArgumentsTypeBidirectional<Options & FallbackReference, ApplyArguments<T>>,
 			options?: Options
 		): void;
 		applySync<Options extends ReferenceApplyOptions>(
 			receiver?: ArgumentType<Options['arguments'], ApplyArgumentThis<T>>,
 			arguments?: ArgumentsTypeBidirectional<Options, ApplyArguments<T>>,
 			options?: Options
-		): ResultTypeBidirectionalSync<Options & ApplyAsReference, ApplyResult<T>>;
+		): ResultTypeBidirectionalSync<Options & FallbackReference, ApplyResult<T>>;
 
 		/**
 		 * `applySyncPromise` is a special version of `applySync` which may only be invoked on functions
@@ -392,7 +392,7 @@ declare module "isolated-vm" {
 			receiver?: ArgumentType<Options['arguments'], ApplyArgumentThis<T>>,
 			arguments?: ArgumentsTypeBidirectional<Options, ApplyArguments<T>>,
 			options?: Options
-		): ResultTypeBidirectionalSync<Options & ApplyAsReference, ApplyResult<T>>;
+		): ResultTypeBidirectionalSync<Options & FallbackReference, ApplyResult<T>>;
 	}
 
 	/**
@@ -707,6 +707,7 @@ declare module "isolated-vm" {
 	type AsCopy = { copy: true };
 	type AsExternal = { externalCopy: true };
 	type AsReference = { reference: true };
+	type FallbackReference = { _reference: true };
 	type ApplyAsReference = { result: AsReference };
 	type WithTransfer = AsCopy | AsExternal | AsReference;
 
@@ -727,6 +728,7 @@ declare module "isolated-vm" {
 		Options extends AsReference ? Reference<Result> :
 		Result extends Transferable ? Result :
 		Result extends void ? void :
+		Options extends FallbackReference ? Reference<Result> :
 		Transferable;
 	type ResultTypeAsync<Options extends TransferOptions, Result = any> = Promise<ResultTypeBase<Options, Result>>;
 	type ResultTypeSync<Options extends TransferOptions, Result = any> = CheckPromise<Options, ResultTypeBase<Options, Result>>;
