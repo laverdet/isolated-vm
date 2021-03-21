@@ -23,7 +23,8 @@ class ReferenceData {
 			RemoteHandle<v8::Value> reference,
 			RemoteHandle<v8::Context> context,
 			TypeOf type_of,
-			bool inherit = false
+			bool accessors,
+			bool inherit
 		);
 
 	protected:
@@ -31,6 +32,7 @@ class ReferenceData {
 		RemoteHandle<v8::Value> reference;
 		RemoteHandle<v8::Context> context;
 		TypeOf type_of;
+		bool accessors;
 		bool inherit;
 };
 

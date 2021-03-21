@@ -82,6 +82,7 @@ ReferenceData::ReferenceData(Local<Value> value, bool inherit) : ReferenceData{
 		RemoteHandle<Value>(value),
 		RemoteHandle<Context>(Isolate::GetCurrent()->GetCurrentContext()),
 		InferTypeOf(value),
+		false,
 		inherit} {}
 
 ReferenceData::ReferenceData(
@@ -89,12 +90,14 @@ ReferenceData::ReferenceData(
 	RemoteHandle<Value> reference,
 	RemoteHandle<Context> context,
 	TypeOf type_of,
+	bool accessors,
 	bool inherit
 ) :
 	isolate{std::move(isolate)},
 	reference{std::move(reference)},
 	context{std::move(context)},
 	type_of{type_of},
+	accessors{accessors},
 	inherit{inherit} {}
 
 } // namespace detail
@@ -486,6 +489,7 @@ class GetRunner final : public AccessorRunner {
 		AccessorRunner{target, key_handle},
 		options{maybe_options, target.inherit ?
 			TransferOptions::Type::DeepReference : TransferOptions::Type::Reference},
+		accessors{target.accessors},
 		inherit{target.inherit} {}
 
 		void Phase2() final {
@@ -501,26 +505,27 @@ class GetRunner final : public AccessorRunner {
 				if (inherit) {
 					// To avoid accessors I guess we have to walk the prototype chain ourselves
 					auto target = object;
-					do {
-						if (Unmaybe(target->HasOwnProperty(context, name))) {
-							if (Unmaybe(target->HasRealNamedCallbackProperty(context, name))) {
-								throw RuntimeTypeError("Property is getter");
+					if (!accessors) {
+						do {
+							if (Unmaybe(target->HasOwnProperty(context, name))) {
+								if (Unmaybe(target->HasRealNamedCallbackProperty(context, name))) {
+									throw RuntimeTypeError("Property is getter");
+								}
+								return Unmaybe(target->GetRealNamedProperty(context, name));
 							}
-							return Unmaybe(target->GetRealNamedProperty(context, name));
-						}
-						auto next = target->GetPrototype();
-						if (next->IsNullOrUndefined()) {
-							return Undefined(isolate).As<Value>();
-						}
-						target = next.As<Object>();
-					} while (true);
+							auto next = target->GetPrototype();
+							if (next->IsNullOrUndefined()) {
+								return Undefined(isolate).As<Value>();
+							}
+							target = next.As<Object>();
+						} while (true);
+					}
 				} else if (!Unmaybe(object->HasOwnProperty(context, name))) {
 					return Undefined(isolate).As<Value>();
-				} else if (Unmaybe(object->HasRealNamedCallbackProperty(context, name))) {
+				} else if (!accessors && Unmaybe(object->HasRealNamedCallbackProperty(context, name))) {
 					throw RuntimeTypeError("Property is getter");
-				} else {
-					return Unmaybe(object->Get(context, name));
 				}
+				return Unmaybe(object->Get(context, name));
 			}(), options);
 		}
 
@@ -531,6 +536,7 @@ class GetRunner final : public AccessorRunner {
 	private:
 		unique_ptr<Transferable> ret;
 		TransferOptions options;
+		bool accessors;
 		bool inherit;
 };
 template <int async>

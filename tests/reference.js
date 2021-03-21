@@ -71,11 +71,11 @@ let trap = false;
 	const val = { prop: 1 };
 	const prox = new Proxy(val, {
 		get() { trap = true },
-    set() { trap = true },
-    getOwnPropertyDescriptor() { trap = true },
-    getPrototypeOf() { trap = true },
-    has() { trap = true },
-    ownKeys() { trap = true },
+		set() { trap = true },
+		getOwnPropertyDescriptor() { trap = true },
+		getPrototypeOf() { trap = true },
+		has() { trap = true },
+		ownKeys() { trap = true },
 	});
 	const inherited = Object.create(prox);
 

@@ -69,7 +69,7 @@ auto ContextHandle::GlobalGetter() -> Local<Value> {
 	if (global_reference) {
 		ref = Deref(global_reference);
 	} else {
-		ref = ClassHandle::NewInstance<ReferenceHandle>(global.GetSharedIsolateHolder(), global, context, ReferenceHandle::TypeOf::Object);
+		ref = ClassHandle::NewInstance<ReferenceHandle>(global.GetSharedIsolateHolder(), global, context, ReferenceHandle::TypeOf::Object, false, false);
 		global_reference = RemoteHandle<v8::Object>(ref);
 	}
 	Unmaybe(This()->CreateDataProperty(isolate->GetCurrentContext(), StringTable::Get().global, ref));

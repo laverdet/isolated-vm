@@ -427,7 +427,7 @@ auto ModuleHandle::GetNamespace() -> Local<Value> {
 	if (!info->global_namespace) {
 		throw RuntimeGenericError("Module has not been instantiated.");
 	}
-	return ClassHandle::NewInstance<ReferenceHandle>(info->handle.GetSharedIsolateHolder(), info->global_namespace, info->context_handle, ReferenceHandle::TypeOf::Object);
+	return ClassHandle::NewInstance<ReferenceHandle>(info->handle.GetSharedIsolateHolder(), info->global_namespace, info->context_handle, ReferenceHandle::TypeOf::Object, true, false);
 }
 
 } // namespace ivm
