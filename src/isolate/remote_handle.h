@@ -1,12 +1,13 @@
 #pragma once
-#include <v8.h>
-#include "environment.h"
 #include "holder.h"
+#include <v8.h>
 #include <memory>
 #include <tuple>
 #include <utility>
 
 namespace ivm {
+void AdjustRemotes(int delta);
+
 namespace detail {
 
 /**
@@ -57,12 +58,12 @@ class RemoteTuple {
 
 		template <class Disposer>
 		explicit RemoteTuple(v8::Local<Types>... handles, Disposer disposer) :
-			isolate{IsolateEnvironment::GetCurrentHolder()},
+			isolate{IsolateHolder::GetCurrent()},
 			handles{
 				new TupleType{v8::Isolate::GetCurrent(), handles...},
-				RemoteHandleFree<Disposer>{IsolateEnvironment::GetCurrentHolder(), std::move(disposer)}
+				RemoteHandleFree<Disposer>{IsolateHolder::GetCurrent(), std::move(disposer)}
 			} {
-			IsolateEnvironment::GetCurrent()->AdjustRemotes(sizeof...(Types));
+			AdjustRemotes(sizeof...(Types));
 			static_assert(!v8::NonCopyablePersistentTraits<v8::Value>::kResetInDestructor, "Do not reset in destructor");
 		}
 
@@ -128,7 +129,7 @@ class RemoteTuple {
 
 				void Run() final {
 					Apply(std::make_index_sequence<TupleType::Size>{});
-					IsolateEnvironment::GetCurrent()->AdjustRemotes(-static_cast<int>(TupleType::Size));
+					AdjustRemotes(-static_cast<int>(TupleType::Size));
 				}
 
 				std::unique_ptr<TupleType> handles;

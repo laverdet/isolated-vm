@@ -128,6 +128,14 @@ declare module "isolated-vm" {
 		 * the heap of this isolate.
 		 */
 		snapshot?: ExternalCopy<ArrayBuffer>;
+
+		/**
+		 * Callback to be invoked when a *very bad* error occurs. If this is invoked it means that v8
+		 * has lost all control over the isolate, and all resources in use are totally unrecoverable. If
+		 * you receive this error you should log the error, stop serving requests, finish outstanding
+		 * work, and end the process by calling `process.abort()`.
+		 */
+		onCatastrophicError?: (message: string) => void;
 	};
 
 	export type ContextOptions = {

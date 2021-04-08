@@ -19,6 +19,10 @@ void IsolateDisposeWait::Join() {
 	}
 }
 
+auto IsolateHolder::GetCurrent() -> std::shared_ptr<IsolateHolder> {
+	return IsolateEnvironment::GetCurrentHolder();
+}
+
 auto IsolateHolder::Dispose() -> bool {
 	auto ref = std::exchange(*isolate.write(), {});
 	if (ref) {

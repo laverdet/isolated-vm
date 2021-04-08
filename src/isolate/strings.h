@@ -68,6 +68,7 @@ class StringTable {
 		String null{"null"};
 		String number{"number"};
 		String object{"object"};
+		String onCatastrophicError{"onCatastrophicError"};
 		String produceCachedData{"produceCachedData"};
 		String promise{"promise"};
 		String reference{"reference"};

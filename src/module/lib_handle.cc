@@ -19,7 +19,9 @@ auto LibHandle::LibTransferable::TransferIn() -> Local<Value> {
 auto LibHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Lib", nullptr,
-		"hrtime", MemberFunction<decltype(&LibHandle::Hrtime), &LibHandle::Hrtime>{}
+		"hrtime", MemberFunction<decltype(&LibHandle::Hrtime), &LibHandle::Hrtime>{},
+		"testHang", MemberFunction<decltype(&LibHandle::TestHang), &LibHandle::TestHang>{},
+		"testOOM", MemberFunction<decltype(&LibHandle::TestOOM), &LibHandle::TestOOM>{}
 	));
 }
 
@@ -45,6 +47,22 @@ auto LibHandle::Hrtime(MaybeLocal<Array> maybe_diff) -> Local<Value> {
 	Unmaybe(ret->Set(context, 0, Uint32::New(isolate, (uint32_t)(time / kNanos))));
 	Unmaybe(ret->Set(context, 1, Uint32::New(isolate, (uint32_t)(time - (time / kNanos) * kNanos))));
 	return ret;
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto LibHandle::TestHang() -> Local<Value> {
+	auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+	while (std::chrono::steady_clock::now() < deadline) {}
+	return Undefined(Isolate::GetCurrent());
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto LibHandle::TestOOM() -> Local<Value> {
+	Isolate* isolate = Isolate::GetCurrent();
+	for (int ii = 0; ; ++ii) {
+		Array::New(isolate, 128);
+	}
+	return {};
 }
 
 } // namespace ivm

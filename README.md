@@ -113,6 +113,10 @@ contains can represent quite a large chunk of memory though you may want to expl
 	`inspector-example.js` in this repository for an example of how to use this.
 	* `snapshot` *[ExternalCopy[ArrayBuffer]]* - This is an optional snapshot created from
 	`createSnapshot` which will be used to initialize the heap of this isolate.
+  * `onCatastrophicError` *[function]* - Callback to be invoked when a *very bad* error occurs. If
+    this is invoked it means that v8 has lost all control over the isolate, and all resources in use
+    are totally unrecoverable. If you receive this error you should log the error, stop serving
+    requests, finish outstanding work, and end the process by calling `process.abort()`.
 
 ##### `ivm.Isolate.createSnapshot(scripts, warmup_script)`
 * `scripts` *[array]*

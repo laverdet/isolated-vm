@@ -60,6 +60,7 @@ auto IsolateHandle::Definition() -> Local<FunctionTemplate> {
  */
 auto IsolateHandle::New(MaybeLocal<Object> maybe_options) -> unique_ptr<ClassHandle> {
 	shared_ptr<BackingStore> snapshot_blob;
+	RemoteHandle<Function> error_handler;
 	size_t snapshot_blob_length = 0;
 	size_t memory_limit = 128;
 	bool inspector = false;
@@ -93,14 +94,22 @@ auto IsolateHandle::New(MaybeLocal<Object> maybe_options) -> unique_ptr<ClassHan
 
 		// Check inspector flag
 		inspector = ReadOption<bool>(options, StringTable::Get().inspector, false);
+
+		auto maybe_handler = ReadOption<MaybeLocal<Function>>(options, StringTable::Get().onCatastrophicError, {});
+		Local<Function> error_handler_local;
+		if (maybe_handler.ToLocal(&error_handler_local)) {
+			error_handler = RemoteHandle<Function>{error_handler_local};
+		}
 	}
 
 	// Return isolate handle
-	auto isolate = IsolateEnvironment::New(memory_limit, std::move(snapshot_blob), snapshot_blob_length);
+	auto holder = IsolateEnvironment::New(memory_limit, std::move(snapshot_blob), snapshot_blob_length);
+	auto env = holder->GetIsolate();
+	env->error_handler = error_handler;
 	if (inspector) {
-		isolate->GetIsolate()->EnableInspectorAgent();
+		env->EnableInspectorAgent();
 	}
-	return std::make_unique<IsolateHandle>(isolate);
+	return std::make_unique<IsolateHandle>(holder);
 }
 
 auto IsolateHandle::TransferOut() -> unique_ptr<Transferable> {

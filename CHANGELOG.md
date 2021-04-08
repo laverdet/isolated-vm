@@ -1,3 +1,6 @@
+## v4.1.0
+- `onCatastrophicError` added
+
 ## v4.0.0
 - `Callback` class addeed.
 - When possible, `reference.get()` will return a function delegate instead of a `Reference`.

@@ -5,6 +5,7 @@
 #include "runnable.h"
 #include "external_copy/external_copy.h"
 #include "scheduler.h"
+#include "lib/suspend.h"
 #include <algorithm>
 #include <cmath>
 #include <mutex>
@@ -32,6 +33,7 @@ using std::unique_ptr;
 namespace ivm {
 
 std::atomic<size_t> detail::IsolateSpecificSize{0};
+thread_suspend_handle::initialize suspend_init{};
 
 /**
  * HeapCheck implementation
@@ -61,6 +63,12 @@ void IsolateEnvironment::HeapCheck::Epilogue() {
  * IsolateEnvironment implementation
  */
 void IsolateEnvironment::OOMErrorCallback(const char* location, bool is_heap_oom) {
+	if (RaiseCatastrophicError(IsolateEnvironment::GetCurrent()->error_handler, "Catastrophic out-of-memory error")) {
+		while (true) {
+			using namespace std::chrono_literals;
+			std::this_thread::sleep_for(100s);
+		}
+	}
 	fprintf(stderr, "%s\nis_heap_oom = %d\n\n\n", location, static_cast<int>(is_heap_oom));
 	HeapStatistics heap;
 	Isolate::GetCurrent()->GetHeapStatistics(&heap);
@@ -550,6 +558,36 @@ void IsolateEnvironment::RemoveWeakCallback(Persistent<Value>* handle) {
 		throw std::logic_error("Weak callback doesn't exist");
 	}
 	weak_persistents.erase(it);
+}
+
+void AdjustRemotes(int delta) {
+	IsolateEnvironment::GetCurrent()->AdjustRemotes(delta);
+}
+
+auto RaiseCatastrophicError(RemoteHandle<Function>& handler, const char* message) -> bool {
+	if (!handler) {
+		return false;
+	}
+
+	class ErrorTask : public Task {
+		public:
+			explicit ErrorTask(const char* message, RemoteHandle<Function> handler) :
+				message{message}, handler{std::move(handler)} {}
+
+			void Run() final {
+				auto* isolate = Isolate::GetCurrent();
+				auto context = isolate->GetCurrentContext();
+				auto fn = handler.Deref();
+				Local<Value> argv[] = { HandleCast<Local<String>>(message) };
+				Unmaybe(fn->Call(context, Undefined(isolate), 1, argv));
+			}
+
+		private:
+			const char* message;
+			RemoteHandle<Function> handler;
+	};
+	handler.GetIsolateHolder()->ScheduleTask(std::make_unique<ErrorTask>(message, handler), false, true);
+	return true;
 }
 
 } // namespace ivm

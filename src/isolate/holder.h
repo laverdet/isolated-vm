@@ -31,6 +31,8 @@ class IsolateHolder {
 		~IsolateHolder() = default;
 		auto operator=(const IsolateHolder&) = delete;
 
+		static auto GetCurrent() -> std::shared_ptr<IsolateHolder>;
+
 		auto Dispose() -> bool;
 		void Release();
 		auto GetIsolate() -> std::shared_ptr<IsolateEnvironment>;

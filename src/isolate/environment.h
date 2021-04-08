@@ -4,6 +4,7 @@
 
 #include "executor.h"
 #include "holder.h"
+#include "remote_handle.h"
 #include "runnable.h"
 #include "scheduler.h"
 #include "specific.h"
@@ -114,6 +115,7 @@ class IsolateEnvironment {
 		std::unordered_map<v8::Persistent<v8::Value>*, std::pair<void(*)(void*), void*>> weak_persistents;
 
 	public:
+		RemoteHandle<v8::Function> error_handler;
 		std::unordered_multimap<int, struct ModuleInfo*> module_handles;
 		std::unordered_map<class NativeModule*, std::shared_ptr<NativeModule>> native_modules;
 		std::atomic<int> terminate_depth { 0 };
@@ -370,5 +372,7 @@ auto IsolateSpecific<Type>::Deref(Functor callback) -> v8::Local<Type> {
 inline auto StringTable::Get() -> auto& {
 	return Executor::GetCurrentEnvironment()->string_table;
 }
+
+auto RaiseCatastrophicError(RemoteHandle<v8::Function>& handler, const char* message) -> bool;
 
 } // namespace ivm

@@ -1,5 +1,6 @@
 #pragma once
 #include "external_copy.h"
+#include "isolate/environment.h"
 #include <deque>
 #include <memory>
 #include <vector>
