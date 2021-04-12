@@ -62,13 +62,20 @@ class InvokeRunner : public ThreePhaseTask {
 		void Phase2() final {
 			// Setup context
 			auto* isolate = Isolate::GetCurrent();
+			auto& env = *IsolateEnvironment::GetCurrent();
 			auto context = Deref(data.context);
 			Context::Scope context_scope{context};
 			auto fn = Deref(data.callback);
 			// Copy arguments into isolate
 			auto argv_inner = argv->CopyIntoAsVector();
 			// Run function and transfer out
-			auto value = Unmaybe(fn->Call(context, Undefined(isolate), argv_inner.size(), argv_inner.empty() ? nullptr : &argv_inner[0]));
+			auto maybe_value = fn->Call(context, Undefined(isolate), argv_inner.size(), argv_inner.empty() ? nullptr : &argv_inner[0]);
+			if (env.DidHitMemoryLimit()) {
+				throw FatalRuntimeError("Isolate was disposed during execution due to memory limit");
+			} else if (env.terminated) {
+				throw FatalRuntimeError("Isolate was disposed during execution");
+			}
+			auto value = Unmaybe(maybe_value);
 			if (data.apply != CallbackHandle::Data::Apply::Ignored) {
 				result = TransferOut(value, TransferOptions{TransferOptions::Type::Copy});
 			}

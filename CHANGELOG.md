@@ -1,5 +1,6 @@
 ## v4.1.0
 - `onCatastrophicError` added
+- Fix for `null` error thrown from callback
 
 ## v4.0.0
 - `Callback` class addeed.

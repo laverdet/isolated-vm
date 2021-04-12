@@ -156,3 +156,22 @@ env[0].script.run(env[0].context).then(() => console.log('no stack')).catch(chec
 		assert.equal(err.message, "1234");
 	}
 }
+
+// Check exception from Callback
+{
+	let isolate = new ivm.Isolate();
+	let context = isolate.createContextSync();
+	let script = isolate.compileScriptSync(`
+		const array = [];
+		while (true) {
+			array.push(Math.random().toString());
+		}`);
+	try {
+		script.runSync(context);
+		let ref = context.global.getSync('top');
+		ref();
+		assert.fail("Did not throw");
+	} catch (err) {
+		assert.match(err.message, /memory limit/);
+	}
+}
