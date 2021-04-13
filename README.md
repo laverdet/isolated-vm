@@ -30,7 +30,7 @@ may find this project *very* useful if you need to do both at the same time!
 REQUIREMENTS
 ------------
 
-This project requires nodejs LTS version 10.4.0 (or later).
+This project requires nodejs version 10.4.0 (or later).
 
 Furthermore, to install this module you will need a compiler installed. If you run into errors while
 running `npm install isolated-vm` it is likely you don't have a compiler set up, or your compiler is

@@ -142,6 +142,7 @@ class IsolateEnvironment {
 		// v8 commit 6c0825aa
 #define USE_CODE_GEN_CALLBACK
 		static auto CodeGenCallback(v8::Local<v8::Context> context, v8::Local<v8::Value> source) -> v8::ModifyCodeGenerationFromStringsResult;
+		static auto CodeGenCallback2(v8::Local<v8::Context> context, v8::Local<v8::Value> source, bool) -> v8::ModifyCodeGenerationFromStringsResult;
 #endif
 
 		/**

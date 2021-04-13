@@ -128,6 +128,10 @@ auto IsolateEnvironment::CodeGenCallback(Local<Context> /*context*/, Local<Value
 	result.codegen_allowed = true;
 	return result;
 }
+
+auto IsolateEnvironment::CodeGenCallback2(Local<Context> context, Local<Value> source, bool) -> ModifyCodeGenerationFromStringsResult {
+	return CodeGenCallback(context, source);
+}
 #endif
 
 void IsolateEnvironment::MarkSweepCompactEpilogue(Isolate* isolate, GCType /*gc_type*/, GCCallbackFlags gc_flags, void* data) {
@@ -367,13 +371,21 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<Backi
 #endif
 
 	// Workaround for bug in snapshot deserializer in v8 in nodejs v10.x
+#if !V8_AT_LEAST(7, 4, 288)
+	// Unknown when this was fixed. 7.4.288 -> node v12 where I don't think this bug was observed.
 	isolate->SetHostImportModuleDynamicallyCallback(nullptr);
+#endif
 
 	// Various callbacks
 	isolate->SetOOMErrorHandler(OOMErrorCallback);
 	isolate->SetPromiseRejectCallback(PromiseRejectCallback);
 #ifdef USE_CODE_GEN_CALLBACK
+#if V8_AT_LEAST(8, 8, 204)
+	// Added in v8 commit aabe6406 and the type is actually called `ModifyCodeGenerationFromStringsCallback2`
+	isolate->SetModifyCodeGenerationFromStringsCallback(CodeGenCallback2);
+#else
 	isolate->SetModifyCodeGenerationFromStringsCallback(CodeGenCallback);
+#endif
 #endif
 
 	// Add GC callbacks
@@ -473,7 +485,11 @@ auto IsolateEnvironment::NewContext() -> Local<Context> {
 }
 
 auto IsolateEnvironment::TaskEpilogue() -> std::unique_ptr<ExternalCopy> {
+#if V8_AT_LEAST(8, 2, 117)
+	isolate->PerformMicrotaskCheckpoint();
+#else
 	isolate->RunMicrotasks();
+#endif
 	CheckMemoryPressure();
 	if (hit_memory_limit) {
 		throw FatalRuntimeError("Isolate was disposed during execution due to memory limit");

@@ -86,7 +86,11 @@ ThreePhaseTask::Phase2Runner::~Phase2Runner() {
 				Local<Object> error = Exception::Error(StringTable::Get().isolateIsDisposed).As<Object>();
 				StackTraceHolder::AttachStack(error, info.remotes.Deref<2>());
 				Unmaybe(promise_local->Reject(context_local, error));
+#if V8_AT_LEAST(8, 2, 117)
+				isolate->PerformMicrotaskCheckpoint();
+#else
 				isolate->RunMicrotasks();
+#endif
 			}
 		};
 		// Schedule a throw task back in first isolate
@@ -135,7 +139,11 @@ void ThreePhaseTask::Phase2Runner::Run() {
 			}
 			// If Reject fails then I think that's bad..
 			Unmaybe(promise_local->Reject(context_local, rejection));
-			isolate->RunMicrotasks();
+#if V8_AT_LEAST(8, 2, 117)
+				isolate->PerformMicrotaskCheckpoint();
+#else
+				isolate->RunMicrotasks();
+#endif
 		}
 	};
 
@@ -167,7 +175,11 @@ void ThreePhaseTask::Phase2Runner::Run() {
 				}
 				Unmaybe(promise_local->Reject(context_local, error));
 			});
+#if V8_AT_LEAST(8, 2, 117)
+			isolate->PerformMicrotaskCheckpoint();
+#else
 			isolate->RunMicrotasks();
+#endif
 		}
 	};
 

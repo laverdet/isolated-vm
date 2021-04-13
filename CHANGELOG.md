@@ -1,4 +1,5 @@
 ## v4.1.0
+- Support for nodejs v16.x
 - `onCatastrophicError` added
 - Fix for `null` error thrown from callback
 

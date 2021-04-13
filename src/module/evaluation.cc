@@ -20,7 +20,7 @@ ScriptOriginHolder::ScriptOriginHolder(MaybeLocal<Object> maybe_options, bool is
 }
 
 ScriptOriginHolder::operator ScriptOrigin() const {
-	return {
+	return ScriptOrigin{
 		HandleCast<Local<String>>(filename), // resource_name,
 		HandleCast<Local<Integer>>(line_offset), // resource_line_offset
 		HandleCast<Local<Integer>>(column_offset), // resource_column_offset
