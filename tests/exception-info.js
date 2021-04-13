@@ -172,6 +172,6 @@ env[0].script.run(env[0].context).then(() => console.log('no stack')).catch(chec
 		ref();
 		assert.fail("Did not throw");
 	} catch (err) {
-		assert.match(err.message, /memory limit/);
+		assert.ok(err.message.match(/memory limit/));
 	}
 }
