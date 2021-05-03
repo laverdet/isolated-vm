@@ -237,7 +237,9 @@ struct CompileModuleRunner : public CodeCompilerHolder, public ThreePhaseTask {
 		Context::Scope context_scope(isolate->DefaultContext());
 		IsolateEnvironment::HeapCheck heap_check{*isolate, true};
 		auto source = GetSource();
-		Local<Module> module_handle = Unmaybe(ScriptCompiler::CompileModule(*isolate, source.get()));
+		auto module_handle = RunWithAnnotatedErrors(
+			[&]() { return Unmaybe(ScriptCompiler::CompileModule(*isolate, source.get())); }
+		);
 
 #if V8_AT_LEAST(6, 9, 37)
 		// v8 6.8.214 [8ec92f51] adds support for producing cached data for modules, but support for
