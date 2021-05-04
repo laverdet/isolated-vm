@@ -93,10 +93,16 @@ void IsolatedScheduler::SendWake() {
 		if (!pool_thread) {
 			ref->GetIsolate()->DiscardThreadSpecificMetadata();
 		}
+		// Grab reference to default scheduler, since resetting `ref` may deallocate `scheduler` and
+		// invalidate the instance. Resetting `ref` must take place here because the destructor might
+		// invoke cleanup tasks on the default isolate which will increment `uv_ref_count`.
+		// `uv_ref_count` needs to be incremented before it's decremented otherwise `UvScheduler` will
+		// try to invoke `uv_ref` from a non-default thread.
+		auto& default_scheduler = scheduler.default_scheduler;
 		ref = {};
-		if (--scheduler.default_scheduler.uv_ref_count == 0) {
+		if (--default_scheduler.uv_ref_count == 0) {
 			// Wake up the libuv loop so we can unref the async handle from the default thread.
-			uv_async_send(scheduler.default_scheduler.uv_async);
+			uv_async_send(default_scheduler.uv_async);
 		}
 	}, this);
 }
