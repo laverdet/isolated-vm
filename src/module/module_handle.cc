@@ -129,8 +129,8 @@ class ModuleLinker : public ClassHandle {
 		}
 
 		template <typename T>
-		auto GetImplementation() -> T& {
-			return *dynamic_cast<T*>(impl.get());
+		auto GetImplementation() -> T* {
+			return dynamic_cast<T*>(impl.get());
 		}
 
 		auto Begin(ModuleHandle& module, RemoteHandle<Context> context) -> Local<Value> {
@@ -192,6 +192,7 @@ class ModuleLinker : public ClassHandle {
 				module->resolutions.clear();
 			}
 			modules.clear();
+			impl.reset();
 		}
 };
 
@@ -288,7 +289,6 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 		RemoteTuple<Promise::Resolver, Function> async_handles;
 		RemoteHandle<Context> context;
 		shared_ptr<ModuleInfo> info;
-		bool rejected = false;
 		uint32_t pending = 0;
 
 		static auto ModuleResolved(Local<Array> holder, Local<Value> value) -> Local<Value> {
@@ -299,15 +299,15 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 				}
 				Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
 				auto* linker = ClassHandle::Unwrap<ModuleLinker>(Unmaybe(holder->Get(context, 0)).As<Object>());
-				auto& impl = linker->GetImplementation<ModuleLinkerAsync>();
-				if (impl.rejected) {
+				auto* impl = linker->GetImplementation<ModuleLinkerAsync>();
+				if (impl == nullptr) {
 					return;
 				}
 				auto* module = ClassHandle::Unwrap<ModuleHandle>(Unmaybe(holder->Get(context, 1)).As<Object>());
 				auto ii = Unmaybe(holder->Get(context, 2)).As<Uint32>()->Value();
 				linker->ResolveDependency(ii, *module->GetInfo(), resolved);
-				if (--impl.pending == 0) {
-					impl.Instantiate();
+				if (--impl->pending == 0) {
+					impl->Instantiate();
 				}
 			});
 			return Undefined(Isolate::GetCurrent());
@@ -315,11 +315,10 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 
 		static auto ModuleRejected(ModuleLinker& linker, Local<Value> error) -> Local<Value> {
 			detail::RunBarrier([&]() {
-				auto& impl = linker.GetImplementation<ModuleLinkerAsync>();
-				if (!impl.rejected) {
-					impl.rejected = true;
+				auto* impl = linker.GetImplementation<ModuleLinkerAsync>();
+				if (impl != nullptr) {
 					linker.Reset();
-					Unmaybe(impl.async_handles.Deref<0>()->Reject(Isolate::GetCurrent()->GetCurrentContext(), error));
+					Unmaybe(impl->async_handles.Deref<0>()->Reject(Isolate::GetCurrent()->GetCurrentContext(), error));
 				}
 			});
 			return Undefined(Isolate::GetCurrent());
