@@ -25,11 +25,11 @@ let context2 = makeContext();
 	if (!context.isReference(new ivm.Reference({}))) {
 		console.log('fail1');
 	}
-	if (!context.isReference(context.makeReference(1))) {
+	if (!context.isReference(context.makeReference({}))) {
 		console.log('fail2');
 	}
 });
-if (context1.isReference(context2.makeReference(1).derefInto())) {
+if (context1.isReference(context2.makeReference({}).derefInto())) {
 	console.log('fail3');
 }
 console.log('pass');
