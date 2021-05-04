@@ -18,6 +18,9 @@ jobs:
   - node_js: "16"
     os: windows
 
+cache:
+  npm: false
+
 dist: xenial
 
 install:
