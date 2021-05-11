@@ -94,6 +94,9 @@
 					'sources/': [ [ 'exclude', '_nortti\\.cc$'] ],
 				} ],
 			],
+			'libraries': [
+				'<!@(node -e "process.config.target_defaults.libraries.map(flag=>console.log(flag))")'
+			],
 		},
 		{
 			'target_name': 'nortti',
