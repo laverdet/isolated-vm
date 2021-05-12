@@ -20,6 +20,7 @@ auto LibHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
 		"Lib", nullptr,
 		"hrtime", MemberFunction<decltype(&LibHandle::Hrtime), &LibHandle::Hrtime>{},
+		"privateSymbol", MemberFunction<decltype(&LibHandle::PrivateSymbol), &LibHandle::PrivateSymbol>{},
 		"testHang", MemberFunction<decltype(&LibHandle::TestHang), &LibHandle::TestHang>{},
 		"testOOM", MemberFunction<decltype(&LibHandle::TestOOM), &LibHandle::TestOOM>{}
 	));
@@ -47,6 +48,14 @@ auto LibHandle::Hrtime(MaybeLocal<Array> maybe_diff) -> Local<Value> {
 	Unmaybe(ret->Set(context, 0, Uint32::New(isolate, (uint32_t)(time / kNanos))));
 	Unmaybe(ret->Set(context, 1, Uint32::New(isolate, (uint32_t)(time - (time / kNanos) * kNanos))));
 	return ret;
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto LibHandle::PrivateSymbol(MaybeLocal<String> maybe_name) -> Local<Value> {
+	Local<String> name{};
+	if (maybe_name.ToLocal(&name)) { /* nothing */ }
+	auto symbol = Private::New(Isolate::GetCurrent(), name);
+	return *reinterpret_cast<Local<Value>*>(&symbol);
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)

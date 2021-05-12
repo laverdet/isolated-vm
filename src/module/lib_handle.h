@@ -16,6 +16,7 @@ class LibHandle : public TransferableHandle {
 		};
 
 		auto Hrtime(v8::MaybeLocal<v8::Array> maybe_diff) -> v8::Local<v8::Value>;
+		auto PrivateSymbol(v8::MaybeLocal<v8::String> maybe_name) -> v8::Local<v8::Value>;
 		auto TestHang() -> v8::Local<v8::Value>;
 		auto TestOOM() -> v8::Local<v8::Value>;
 
