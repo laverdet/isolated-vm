@@ -489,7 +489,7 @@ class GetRunner final : public AccessorRunner {
 		AccessorRunner{target, key_handle},
 		options{maybe_options, target.inherit ?
 			TransferOptions::Type::DeepReference : TransferOptions::Type::Reference},
-		accessors{target.accessors},
+		accessors{target.accessors || ReadOption(maybe_options, StringTable::Get().accessors, false)},
 		inherit{target.inherit} {}
 
 		void Phase2() final {

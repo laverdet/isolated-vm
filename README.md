@@ -399,12 +399,16 @@ Delete a property from this reference, as if using `delete reference[property]`
 ##### `reference.getSync(property, options)`
 * `property` *[transferable]* - The property to access on this object.
 * `options` *[object]*
+	* `accessors` *[boolean]* - Whether or not to invoke accessors and proxies on the underlying
+		object. Note that there is no way to supply a timeout to this function so only use this option in
+		trusted code.
 	* [`{ ...TransferOptions }`](#transferoptions)
 * **return** A [`Reference`](#class-reference-transferable) object.
 
 Will access a reference as if using `reference[property]` and transfer the value out.
 
-If the object is a proxy, or if the property is a getter, this method will throw.
+If the object is a proxy, or if the property is a getter, this method will throw unless the
+`accessors` option is true.
 
 ##### `reference.set(property, value, options)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `reference.setIgnored(property, value, options)`

@@ -44,6 +44,7 @@ class StringTable {
 		static auto Get() -> auto&;
 
 		// StringTable::Get().
+		String accessors{"accessors"};
 		String arguments{"arguments"};
 		String async{"async"};
 		String boolean{"boolean"};
