@@ -1,3 +1,6 @@
+## v4.2.0
+- `accessors` option added to `reference.get()`
+
 ## v4.1.0
 - Support for nodejs v16.x
 - `onCatastrophicError` added
