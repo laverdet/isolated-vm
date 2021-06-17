@@ -51,6 +51,7 @@ class ModuleHandle : public TransferableHandle {
 
 		auto GetDependencySpecifiers() -> v8::Local<v8::Value>;
 		auto GetInfo() const -> std::shared_ptr<ModuleInfo>;
+		auto Release() -> v8::Local<v8::Value>;
 
 		auto Instantiate(class ContextHandle& context_handle, v8::Local<v8::Function> callback) -> v8::Local<v8::Value>;
 		auto InstantiateSync(class ContextHandle& context_handle, v8::Local<v8::Function> callback) -> v8::Local<v8::Value>;

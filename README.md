@@ -323,6 +323,9 @@ thrown).
 **Note:** nodejs v14.8.0 enabled top-level await by default which has the effect of breaking the
 return value of this function.
 
+##### `module.release()`
+
+Releases this module. This behaves the same as other `.release()` methods.
 
 ### Class: `Callback` *[transferable]*
 Callbacks can be used to create cross-isolate references to simple functions. This can be easier and

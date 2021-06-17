@@ -55,7 +55,8 @@ auto ModuleHandle::Definition() -> Local<FunctionTemplate> {
 		"instantiateSync", MemberFunction<decltype(&ModuleHandle::InstantiateSync), &ModuleHandle::InstantiateSync>{},
 		"evaluate", MemberFunction<decltype(&ModuleHandle::Evaluate<1>), &ModuleHandle::Evaluate<1>>{},
 		"evaluateSync", MemberFunction<decltype(&ModuleHandle::Evaluate<0>), &ModuleHandle::Evaluate<0>>{},
-		"namespace", MemberAccessor<decltype(&ModuleHandle::GetNamespace), &ModuleHandle::GetNamespace>{}
+		"namespace", MemberAccessor<decltype(&ModuleHandle::GetNamespace), &ModuleHandle::GetNamespace>{},
+		"release", MemberFunction<decltype(&ModuleHandle::Release), &ModuleHandle::Release>{}
 	));
 }
 
@@ -78,6 +79,11 @@ auto ModuleHandle::GetInfo() const -> std::shared_ptr<ModuleInfo> {
 		throw RuntimeGenericError("Module has been released");
 	}
 	return info;
+}
+
+auto ModuleHandle::Release() -> Local<Value> {
+	info.reset();
+	return Undefined(Isolate::GetCurrent());
 }
 
 /**

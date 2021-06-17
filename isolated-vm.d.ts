@@ -287,6 +287,11 @@ declare module "isolated-vm" {
 		 */
 		evaluate(options?: ScriptRunOptions): Promise<Transferable>;
 		evaluateSync(options?: ScriptRunOptions): Transferable;
+
+		/**
+		 * Releases this module. This behaves the same as other `.release()` methods.
+		 */
+		release(): void;
 	}
 
 	/**
