@@ -1,3 +1,7 @@
+## v4.3.0
+- v8 inspector API fixed in nodejs v16.x
+- `release` method added to `Module`
+
 ## v4.2.0
 - `accessors` option added to `reference.get()`
 
