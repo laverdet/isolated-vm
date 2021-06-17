@@ -14,6 +14,8 @@ class SessionHandle : public ClassHandle {
 		std::shared_ptr<class SessionImpl> session;
 
 	public:
+		using DontFreezePrototype = void;
+		using DontFreezeInstance = void;
 		explicit SessionHandle(IsolateEnvironment& isolate);
 		static auto Definition() -> v8::Local<v8::FunctionTemplate>;
 

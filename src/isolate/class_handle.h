@@ -31,11 +31,18 @@ namespace detail {
 	template <class Type>
 	IsolateSpecific<v8::FunctionTemplate> TemplateHolder<Type>::specific;
 
-	template<class Type, class = void>
-	struct DontFreezeInstance:std::false_type{};
+	template <class Type, class = void>
+	struct DontFreezePrototype : std::false_type{};
 
-	template<class Type>
-	struct DontFreezeInstance<Type, typename Type::DontFreezeInstance>: std::true_type {};
+	template <class Type>
+	struct DontFreezePrototype<Type, typename Type::DontFreezePrototype> : std::true_type {};
+
+	template <class Type, class = void>
+	struct DontFreezeInstance : std::false_type{};
+
+	template <class Type>
+	struct DontFreezeInstance<Type, typename Type::DontFreezeInstance> : std::true_type {};
+
 }
 
 /**
@@ -219,7 +226,9 @@ class ClassHandle {
 		template <class Type>
 		static auto MaybeFreeze(v8::Local<v8::Object> handle) {
 			auto context = handle->GetIsolate()->GetCurrentContext();
-			handle->GetPrototype().As<v8::Object>()->SetIntegrityLevel(context, v8::IntegrityLevel::kFrozen);
+			if (!detail::DontFreezePrototype<Type>::value) {
+				handle->GetPrototype().As<v8::Object>()->SetIntegrityLevel(context, v8::IntegrityLevel::kFrozen);
+			}
 			if (!detail::DontFreezeInstance<Type>::value) {
 				handle->SetIntegrityLevel(context, v8::IntegrityLevel::kFrozen);
 			}
