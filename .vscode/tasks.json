@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [ {
+		"label": "node-gyp: build",
+		"type": "shell",
+		"command": "node-gyp",
+		"args": [ "build" ],
+		"group": {
+			"kind": "build",
+			"isDefault": true
+		}
+	} ]
+}
