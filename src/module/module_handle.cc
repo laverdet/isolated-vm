@@ -228,6 +228,7 @@ struct InstantiateRunner : public ThreePhaseTask {
 				auto it = resolutions.find(*String::Utf8Value{Isolate::GetCurrent(), specifier});
 				if (it != resolutions.end()) {
 					ret = it->second->handle.Deref();
+					return;
 				}
 			}
 			throw RuntimeGenericError("Dependency was left unresolved. Please report this error on github.");
@@ -253,8 +254,20 @@ struct InstantiateRunner : public ThreePhaseTask {
 		Local<Module> mod = info->handle.Deref();
 		Local<Context> context_local = context.Deref();
 		info->context_handle = std::move(context);
-		std::lock_guard<std::mutex> lock(info->mutex);
-		Unmaybe(mod->InstantiateModule(context_local, ResolveCallback));
+		std::lock_guard<std::mutex> lock{info->mutex};
+		TryCatch try_catch{Isolate::GetCurrent()};
+		try {
+			Unmaybe(mod->InstantiateModule(context_local, ResolveCallback));
+		} catch (...) {
+			throw;
+		}
+		// `InstantiateModule` will return Maybe<bool>{true} even when there are exceptions pending.
+		// This condition is checked here and a C++ is thrown which will propagate out as a JS
+		// exception.
+		if (try_catch.HasCaught()) {
+			try_catch.ReThrow();
+			throw RuntimeError();
+		}
 	}
 
 	auto Phase3() -> Local<Value> final {
