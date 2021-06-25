@@ -83,13 +83,15 @@ auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
 
 				std::unique_lock<std::mutex> lock{state.mutex};
 				if (state.did_finish) {
+					// The timer itself is `Runnable`, so it must be unlocked before trashing these tasks.
+					lock.unlock();
 					// fn() could have finished and threw away the interrupts before we got a chance to set
 					// them up. In this case we throw away the interrupts ourselves.
-					auto lock = isolate.scheduler->Lock();
+					auto scheduler_lock = isolate.scheduler->Lock();
 					if (is_default_thread) {
-						ExchangeDefault(lock->sync_interrupts);
+						ExchangeDefault(scheduler_lock->sync_interrupts);
 					} else {
-						ExchangeDefault(lock->interrupts);
+						ExchangeDefault(scheduler_lock->interrupts);
 					}
 				} else {
 					state.did_terminate = true;
