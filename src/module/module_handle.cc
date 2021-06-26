@@ -259,6 +259,7 @@ struct InstantiateRunner : public ThreePhaseTask {
 		try {
 			Unmaybe(mod->InstantiateModule(context_local, ResolveCallback));
 		} catch (...) {
+			try_catch.ReThrow();
 			throw;
 		}
 		// `InstantiateModule` will return Maybe<bool>{true} even when there are exceptions pending.
