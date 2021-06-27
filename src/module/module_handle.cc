@@ -358,8 +358,8 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 			detail::RunBarrier([&]() {
 				auto* impl = linker.GetImplementation<ModuleLinkerAsync>();
 				if (impl != nullptr) {
-					linker.Reset();
 					Unmaybe(impl->async_handles.Deref<0>()->Reject(Isolate::GetCurrent()->GetCurrentContext(), error));
+					linker.Reset();
 				}
 			});
 			return Undefined(Isolate::GetCurrent());

@@ -1,0 +1,16 @@
+{
+	"version": "0.2.0",
+	"configurations": [ {
+		"name": "Launch",
+		"type": "lldb",
+		"request": "launch",
+		"program": "node_g",
+		"args": [ "${input:entry}" ],
+	} ],
+	"inputs": [ {
+		"id": "entry",
+		"type": "promptString",
+		"default": ".js",
+		"description": "File name",
+	} ],
+}
