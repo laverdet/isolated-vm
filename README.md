@@ -152,6 +152,9 @@ Note that a [`Script`](#class-script-transferable) can only run in the isolate w
 ##### `isolate.compileModuleSync(code)`
 * `code` *[string]* - The JavaScript code to compile.
 * `options` *[object]*
+  * `meta` *[function]* - Callback which will be invoked the first time this module accesses
+    `import.meta`. The `meta` object will be passed as the first argument. This option may only be
+    used when invoking `compileModule` from within the same isolate.
 	* [`{ ...CachedDataOptions }`](#cacheddataoptions)
 	* [`{ ...ScriptOrigin }`](#scriptorigin)
 

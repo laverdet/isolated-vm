@@ -1,6 +1,7 @@
 #include "isolate_handle.h"
 #include "context_handle.h"
 #include "external_copy_handle.h"
+#include "isolate/holder.h"
 #include "script_handle.h"
 #include "module_handle.h"
 #include "session_handle.h"
@@ -105,6 +106,7 @@ auto IsolateHandle::New(MaybeLocal<Object> maybe_options) -> unique_ptr<ClassHan
 	// Return isolate handle
 	auto holder = IsolateEnvironment::New(memory_limit, std::move(snapshot_blob), snapshot_blob_length);
 	auto env = holder->GetIsolate();
+	env->GetIsolate()->SetHostInitializeImportMetaObjectCallback(ModuleHandle::InitializeImportMeta);
 	env->error_handler = error_handler;
 	if (inspector) {
 		env->EnableInspectorAgent();
@@ -228,9 +230,17 @@ auto IsolateHandle::CompileScript(Local<String> code_handle, MaybeLocal<Object> 
 */
 struct CompileModuleRunner : public CodeCompilerHolder, public ThreePhaseTask {
 	shared_ptr<ModuleInfo> module_info;
+	RemoteHandle<Function> meta_callback;
 
 	CompileModuleRunner(const Local<String>& code_handle, const MaybeLocal<Object>& maybe_options) :
-		CodeCompilerHolder{code_handle, maybe_options, true} {}
+		CodeCompilerHolder{code_handle, maybe_options, true} {
+
+		auto maybe_meta_callback = ReadOption<MaybeLocal<Function>>(maybe_options, StringTable::Get().meta, {});
+		Local<Function> meta_callback;
+		if (maybe_meta_callback.ToLocal(&meta_callback)) {
+			this->meta_callback = RemoteHandle<Function>{meta_callback};
+		}
+	}
 
 	void Phase2() final {
 		auto* isolate = IsolateEnvironment::GetCurrent();
@@ -260,6 +270,12 @@ struct CompileModuleRunner : public CodeCompilerHolder, public ThreePhaseTask {
 
 		ResetSource();
 		module_info = std::make_shared<ModuleInfo>(module_handle);
+		if (meta_callback) {
+			if (meta_callback.GetSharedIsolateHolder() != IsolateEnvironment::GetCurrentHolder()) {
+				throw RuntimeGenericError("`meta` callback must belong to entered isolate");
+			}
+			module_info->meta_callback = meta_callback;
+		}
 		heap_check.Epilogue();
 	}
 

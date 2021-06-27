@@ -78,8 +78,8 @@ declare module "isolated-vm" {
 		compileScript(code: string, scriptInfo?: ScriptInfo): Promise<Script>;
 		compileScriptSync(code: string, scriptInfo?: ScriptInfo): Script;
 
-		compileModule(code: string, scriptInfo?: ScriptInfo): Promise<Module>;
-		compileModuleSync(code: string, scriptInfo?: ScriptInfo): Module;
+		compileModule(code: string, options?: CompileModuleOptions): Promise<Module>;
+		compileModuleSync(code: string, options?: CompileModuleOptions): Module;
 
 		createContext(options?: ContextOptions): Promise<Context>;
 		createContextSync(options?: ContextOptions): Context;
@@ -159,6 +159,15 @@ declare module "isolated-vm" {
 		 */
 		externally_allocated_size: number;
 	};
+
+	export type CompileModuleOptions = ScriptInfo & {
+		/**
+		 * Callback which will be invoked the first time this module accesses `import.meta`. The `meta`
+		 * object will be passed as the first argument. This option may only be used when invoking
+		 * `compileModule` from within the same isolate.
+		 */
+		meta?: (meta: any) => void;
+	}
 
 	/**
 	 * A context is a sandboxed execution environment within an isolate. Each context contains its own

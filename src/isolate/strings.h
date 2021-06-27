@@ -65,6 +65,7 @@ class StringTable {
 		String length{"length"};
 		String lineOffset{"lineOffset"};
 		String message{"message"};
+		String meta{"meta"};
 		String name{"name"};
 		String null{"null"};
 		String number{"number"};

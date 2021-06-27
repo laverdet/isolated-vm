@@ -13,6 +13,20 @@ using std::shared_ptr;
 
 namespace ivm {
 
+
+namespace {
+
+auto LookupModuleInfo(Local<Module> module) {
+	auto& module_map = IsolateEnvironment::GetCurrent()->module_handles;
+	auto range = module_map.equal_range(module->GetIdentityHash());
+	auto it = std::find_if(range.first, range.second, [&](decltype(*module_map.begin()) data) {
+		return data.second->handle.Deref() == module;
+	});
+	return it == range.second ? nullptr : it->second;
+}
+
+} // anonymous namespace
+
 ModuleInfo::ModuleInfo(Local<Module> handle) : identity_hash{handle->GetIdentityHash()}, handle{handle} {
 	// Add to isolate's list of modules
 	IsolateEnvironment::GetCurrent()->module_handles.emplace(identity_hash, this);
@@ -84,6 +98,19 @@ auto ModuleHandle::GetInfo() const -> std::shared_ptr<ModuleInfo> {
 auto ModuleHandle::Release() -> Local<Value> {
 	info.reset();
 	return Undefined(Isolate::GetCurrent());
+}
+
+void ModuleHandle::InitializeImportMeta(Local<Context> context, Local<Module> module, Local<Object> meta) {
+	ModuleInfo* found = LookupModuleInfo(module);
+	if (found != nullptr) {
+		if (found->meta_callback) {
+			detail::RunBarrier([&]() {
+				Local<Value> argv[1];
+				argv[0] = meta;
+				Unmaybe(found->meta_callback.Deref()->Call(context, Undefined(context->GetIsolate()), 1, argv));
+			});
+		}
+	}
 }
 
 /**
@@ -215,13 +242,7 @@ struct InstantiateRunner : public ThreePhaseTask {
 		MaybeLocal<Module> ret;
 		detail::RunBarrier([&]() {
 			// Lookup ModuleInfo* instance from `referrer`
-			auto& module_map = IsolateEnvironment::GetCurrent()->module_handles;
-			auto range = module_map.equal_range(referrer->GetIdentityHash());
-			auto it = std::find_if(range.first, range.second, [&](decltype(*module_map.begin()) data) {
-				return data.second->handle.Deref() == referrer;
-			});
-			ModuleInfo* found = it == range.second ? nullptr : it->second;
-
+			ModuleInfo* found = LookupModuleInfo(referrer);
 			if (found != nullptr) {
 				// nb: lock is already acquired in `Instantiate`
 				auto& resolutions = found->resolutions;

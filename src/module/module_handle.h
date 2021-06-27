@@ -23,6 +23,7 @@ struct ModuleInfo {
 	RemoteHandle<v8::Module> handle;
 	RemoteHandle<v8::Context> context_handle;
 	RemoteHandle<v8::Value> global_namespace;
+	RemoteHandle<v8::Function> meta_callback;
 	explicit ModuleInfo(v8::Local<v8::Module> handle);
 	ModuleInfo(const ModuleInfo&) = delete;
 	auto operator=(const ModuleInfo&) = delete;
@@ -60,6 +61,8 @@ class ModuleHandle : public TransferableHandle {
 		auto Evaluate(v8::MaybeLocal<v8::Object> maybe_options) -> v8::Local<v8::Value>;
 
 		auto GetNamespace() -> v8::Local<v8::Value>;
+
+		static void InitializeImportMeta(v8::Local<v8::Context> context, v8::Local<v8::Module> module, v8::Local<v8::Object> meta);
 };
 
 } // namespace ivm
