@@ -480,6 +480,7 @@ auto IsolateEnvironment::NewContext() -> Local<Context> {
 #endif
 #ifdef USE_CODE_GEN_CALLBACK
 	context->AllowCodeGenerationFromStrings(false);
+	context->SetErrorMessageForCodeGenerationFromStrings(StringTable::Get().codeGenerationError);
 #endif
 	return context;
 }

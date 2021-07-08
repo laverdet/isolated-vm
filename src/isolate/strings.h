@@ -51,6 +51,7 @@ class StringTable {
 		String cachedData{"cachedData"};
 		String cachedDataRejected{"cachedDataRejected"};
 		String code{"code"};
+		String codeGenerationError{"Code generation from large string was denied"};
 		String colonSpace{": "};
 		String columnOffset{"columnOffset"};
 		String copy{"copy"};
