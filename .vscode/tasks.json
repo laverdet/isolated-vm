@@ -4,7 +4,7 @@
 		"label": "node-gyp: build",
 		"type": "shell",
 		"command": "node-gyp",
-		"args": [ "build" ],
+		"args": [ "build", "-j", "8" ],
 		"group": {
 			"kind": "build",
 			"isDefault": true
