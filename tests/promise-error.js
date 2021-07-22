@@ -1,3 +1,5 @@
+// node-args: --expose-gc
+
 const ivm = require('isolated-vm');
 const assert = require('assert');
 const isolate = new ivm.Isolate;
@@ -31,6 +33,16 @@ const context = isolate.createContextSync();
 			}
 		})();
 	`));
+
+	await assert.doesNotReject(async () => {
+		const isolate = new ivm.Isolate;
+		for (let i = 0; i < 20; i++) {
+			const context = await isolate.createContext();
+			await context.eval('const value = new Uint8Array(1024 * 1024 * 16); Promise.reject();').catch(() => {});
+			context.release();
+			global.gc();
+		}
+	});
 
 	try {
 		context.evalSync(`

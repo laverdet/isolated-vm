@@ -103,6 +103,7 @@ void IsolateEnvironment::PromiseRejectCallback(PromiseRejectMessage rejection) {
 	auto event = rejection.GetEvent();
 	if (event == kPromiseRejectWithNoHandler) {
 		that->unhandled_promise_rejections.emplace_back(that->isolate, rejection.GetPromise());
+		that->unhandled_promise_rejections.back().SetWeak();
 	} else if (event == kPromiseHandlerAddedAfterReject) {
 		that->PromiseWasHandled(rejection.GetPromise());
 	}

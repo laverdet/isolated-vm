@@ -108,7 +108,8 @@ class IsolateEnvironment {
 		bool nodejs_isolate = false;
 		std::atomic<unsigned int> remotes_count{0};
 		v8::HeapStatistics last_heap {};
-		std::deque<v8::Persistent<v8::Promise>> unhandled_promise_rejections;
+		// Copyable traits used to opt into destructor handle reset
+		std::deque<v8::Persistent<v8::Promise, v8::CopyablePersistentTraits<v8::Promise>>> unhandled_promise_rejections;
 		StringTable string_table;
 
 		std::vector<v8::Eternal<v8::Data>> specifics;
