@@ -480,7 +480,9 @@ auto IsolateEnvironment::NewContext() -> Local<Context> {
 #endif
 #ifdef USE_CODE_GEN_CALLBACK
 	context->AllowCodeGenerationFromStrings(false);
-	context->SetErrorMessageForCodeGenerationFromStrings(StringTable::Get().codeGenerationError);
+	// TODO (but I'm not going to do it): This causes a DCHECK failure in debug builds. Tested nodejs
+	// v14.17.3 & v16.5.1.
+	// context->SetErrorMessageForCodeGenerationFromStrings(StringTable::Get().codeGenerationError);
 #endif
 	return context;
 }
