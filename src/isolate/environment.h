@@ -119,7 +119,7 @@ class IsolateEnvironment {
 		RemoteHandle<v8::Function> error_handler;
 		std::unordered_multimap<int, struct ModuleInfo*> module_handles;
 		std::unordered_map<class NativeModule*, std::shared_ptr<NativeModule>> native_modules;
-		std::atomic<int> terminate_depth { 0 };
+		int terminate_depth = 0;
 		std::atomic<bool> terminated { false };
 
 	private:

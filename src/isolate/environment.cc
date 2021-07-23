@@ -8,6 +8,7 @@
 #include "lib/suspend.h"
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <mutex>
 
 #if USE_CLOCK_THREAD_CPUTIME_ID
@@ -545,13 +546,25 @@ auto IsolateEnvironment::GetWallTime() -> std::chrono::nanoseconds {
 void IsolateEnvironment::Terminate() {
 	assert(!nodejs_isolate);
 	terminated = true;
+
+	// Destroy inspector session
 	{
 		auto lock = scheduler->Lock();
 		if (inspector_agent) {
 			inspector_agent->Terminate();
 		}
 	}
-	isolate->TerminateExecution();
+
+	// Request interrupt to ensure execution is interrupted in race conditions
+	isolate->RequestInterrupt([](Isolate* isolate, void* /* param */) {
+		isolate->AddBeforeCallEnteredCallback([](Isolate* isolate) {
+			isolate->TerminateExecution();
+		});
+		isolate->TerminateExecution();
+	}, nullptr);
+	CancelAsync();
+
+	// Throw away Holder reference
 	auto ref = holder.lock();
 	if (ref) {
 		ref->isolate.write()->reset();
