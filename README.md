@@ -23,6 +23,7 @@ may find this project *very* useful if you need to do both at the same time!
 	* [Module](#class-module-transferable)
 	* [Reference](#class-reference-transferable)
 	* [ExternalCopy](#class-externalcopy-transferable)
+* [Security](#security)
 * [Examples](#examples)
 * [Alternatives](#alternatives)
 
