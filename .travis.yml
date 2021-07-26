@@ -2,6 +2,7 @@ sudo: false
 
 language: node_js
 os: linux
+dist: focus
 
 jobs:
   - node_js: "10.4.0"
@@ -20,8 +21,6 @@ jobs:
 
 cache:
   npm: false
-
-dist: xenial
 
 install:
   - npm install
