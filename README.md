@@ -9,13 +9,13 @@ isolated-vm -- Access to multiple isolates in nodejs
 [![NPM](https://nodei.co/npm/isolated-vm.png)](https://www.npmjs.com/package/isolated-vm)
 
 `isolated-vm` is a library for nodejs which gives you access to v8's `Isolate` interface. This
-allows you to create JavaScript environments which are completely *isolated* from each other. You
-might find this module useful if you need to run some untrusted code in a secure way. You may also
-find this module useful if you need to run some JavaScript simultaneously in multiple threads. You
-may find this project *very* useful if you need to do both at the same time!
+allows you to create JavaScript environments which are completely *isolated* from each other. This
+can be a powerful tool to run code in a fresh JavaScript environment completely free of extraneous
+capabilities provided by the nodejs runtime.
 
 * [Requirements](#requirements)
 * [Who Is Using isolated-vm](#who-is-using-isolated-vm)
+* [Security](#security)
 * [API Documentation](#api-documentation)
 	* [Isolate](#class-isolate-transferable)
 	* [Context](#class-context-transferable)
@@ -23,7 +23,6 @@ may find this project *very* useful if you need to do both at the same time!
 	* [Module](#class-module-transferable)
 	* [Reference](#class-reference-transferable)
 	* [ExternalCopy](#class-externalcopy-transferable)
-* [Security](#security)
 * [Examples](#examples)
 * [Alternatives](#alternatives)
 
@@ -37,17 +36,18 @@ Furthermore, to install this module you will need a compiler installed. If you r
 running `npm install isolated-vm` it is likely you don't have a compiler set up, or your compiler is
 too old.
 
-* Windows + OS X users should follow the instuctions here: [node-gyp](https://github.com/nodejs/node-gyp)
+* Windows + OS X users should follow the instructions here: [node-gyp](https://github.com/nodejs/node-gyp)
 * Ubuntu users should run: `sudo apt-get install python g++ build-essential`
 * Alpine users should run: `sudo apk add python make g++`
 * Amazon Linux AMI users should run: `sudo yum install gcc72 gcc72-c++`
 * Arch Linux users should run: `sudo pacman -S make gcc python`
 
+
 WHO IS USING ISOLATED-VM
 ------------------------
 
 * [Screeps](https://screeps.com/) - Screeps is an online JavaScript-based MMO+RPG game. They are
-using isolated-vm to run arbitrary player-supplied code in secure enviroments which can persistent
+using isolated-vm to run arbitrary player-supplied code in secure environments which can persistent
 for several days at a time.
 
 * [Fly](https://fly.io/) - Fly is a programmable CDN which hosts dynamic endpoints as opposed to
@@ -60,6 +60,47 @@ which allows them to safely execute user-provided code for content extraction.
 
 * [Tripadvisor](https://www.tripadvisor.com) - Tripadvisor is the world’s largest travel platform.
 They use `isolated-vm` to server-side render thousands of React pages per second.
+
+
+SECURITY
+--------
+
+Running untrusted code is an extraordinarily difficult problem which must be approached with great
+care. Use of `isolated-vm` to run untrusted code does not automatically make your application safe.
+Through carelessness or misuse of the library it can be possible to leak sensitive data or grant
+undesired privileges to an isolate.
+
+At a minimum you should take care not to leak any instances of `isolated-vm` objects (`Reference`,
+`ExternalCopy`, etc) to untrusted code. It is usually trivial for an attacker to use these instances
+as a springboard back into the nodejs isolate which will yield complete control over a process.
+
+Additionally, it is wise to keep nodejs up to date through point releases which affect v8. You can
+find these on the [nodejs changelog](https://github.com/nodejs/node/blob/master/CHANGELOG.md) by
+looking for entries such as "update V8 to 9.1.269.36 (Michaël Zasso) #38273". Historically there
+have usually been 3-5 of these updates within a single nodejs LTS release cycle. It is *not*
+recommended to use odd-numbered nodejs releases since these frequently break ABI and API
+compatibility and isolated-vm doesn't aim to be compatible with bleeding edge v8.
+
+Against potentially hostile code you should also consider turning on [v8 untrusted code
+mitigations](https://v8.dev/docs/untrusted-code-mitigations), which helps address the class of
+speculative execution attacks known as Spectre and Meltdown. You can enable this feature by running
+`node` with the `--untrusted-code-mitigations` flag. This feature comes with a slight performance
+cost and must be enabled per-process, therefore nodejs disables it by default.
+
+v8 is a relatively robust runtime, but there are always new and exciting ways to crash, hang,
+exploit, or otherwise disrupt a process with plain old JavaScript. Your application must be
+resilient to these kinds of issues and attacks. It's a good idea to keep instances of `isolated-vm`
+in a different nodejs process than other critical infrastructure.
+
+If [advanced persistent threats](https://en.wikipedia.org/wiki/Advanced_persistent_threat) are
+within your threat model it's a very good idea to architect your application using a foundation
+similar to Chromium's [site
+isolation](https://www.chromium.org/Home/chromium-security/site-isolation). You'll also need to make
+sure to keep your system kernel up to date against [local privilege
+escalation](https://en.wikipedia.org/wiki/Privilege_escalation) attacks. Running your service in a
+container such as a Docker may be a good idea but it is important to research container escape
+attacks as well.
+
 
 API DOCUMENTATION
 -----------------
@@ -562,39 +603,6 @@ use of [`ExternalCopy`](#class-externalcopy-transferable) or
 [`Reference`](#class-reference-transferable).
 
 
-SECURITY
---------
-
-Use of `isolated-vm` to run untrusted code does not automatically make your application safe.
-Through carelessness or misuse of the library it can be possible to leak sensitive data or grant
-undesired privileges to an isolate.
-
-At a minimum you should take care not to leak any instances of `isolated-vm` objects (`Reference`,
-`ExternalCopy`, etc) to untrusted code. It is usually trivial for an attacker to use these instances
-as a springboard back into the nodejs isolate which will yield complete control over a process.
-Simply wrapping these instances in closures is usually enough to keep the internal objects safe. An
-example of a safe logging function follows:
-
-```js
-context.evalClosureSync(
-	`globalThis.log = (...args) =>
-		$0.applyIgnored(undefined, args, { arguments: { copy: true } });`,
-	[ (...args) => console.log(...args) ],
-	{ arguments: { reference: true } });
-```
-
-Against potentially hostile code you should also consider turning on [v8 untrusted code
-mitigations](https://v8.dev/docs/untrusted-code-mitigations), which addresses the class of
-speculative execution attacks known as Spectre and Meltdown. You can enable this feature by running
-`node` with the `--untrusted-code-mitigations` flag. This feature comes with a slight performance
-cost and must be enabled per-process, therefore nodejs disables it by default.
-
-v8 is a relatively robust runtime, but there are always new and exciting ways to crash, hang, or
-otherwise disrupt a process with plain old JavaScript. Your application must be resilient to these
-kinds of issues. It's a good idea to keep instances of `isolated-vm` in a different nodejs process
-than other critical infrastructure.
-
-
 EXAMPLES
 --------
 
@@ -650,73 +658,13 @@ hostile.run(context).catch(err => console.error(err));
 // RangeError: Array buffer allocation failed
 ```
 
-Another example which shows how calls to the asynchronous methods will execute in separate threads
-providing you with parallelism. Note that each isolate only "owns" a thread while it is executing.
-So you could have hundreds of isolates sitting idle and they would not be using a thread.
-```js
-// A simple function to sum a range of numbers. This can also be expressed as:
-// (max * (max - 1) - min * (min - 1)) / 2
-// But this is an easy way to show off the async features of the module.
-function sum(min, max) {
-	let sum = 0;
-	for (let ii = min; ii < max; ++ii) {
-		sum += ii;
-	}
-	return sum;
-}
-
-// I chose this number because it's big but also small enough that we don't go past JS's integer
-// limit.
-let num = Math.pow(2, 27);
-
-// First we execute a single thread run
-let start1 = new Date;
-let result = sum(0, num);
-console.log('Calculated '+ result+ ' in '+ (Date.now() - start1)+ 'ms');
-
-// Now we do the same thing over 4 threads
-let start2 = new Date;
-let ivm = require('isolated-vm');
-let numThreads = 4;
-let promises = Array(numThreads).fill().map(async function(_, ii) {
-
-	// Set up 4 isolates with the `sum` function from above
-	let isolate = new ivm.Isolate();
-	let context = await isolate.createContext();
-	let script = await isolate.compileScript(sum+ '');
-	await script.run(context);
-	let fnReference = await context.global.get('sum');
-
-	// Run one slice of the sum loop
-	let min = Math.floor(num / numThreads * ii);
-	let max = Math.floor(num / numThreads * (ii + 1));
-	return await fnReference.apply(undefined, [ min, max ]);
-});
-Promise.all(promises).then(function(sums) {
-	let result = sums.reduce((a, b) => a + b, 0);
-	console.log('Calculated '+ result+ ' in '+ (Date.now() - start2)+ 'ms');
-});
-// They get the same answer but the async version can do it much faster! Even
-// with the overhead of building 4 isolates
-// > Calculated 9007199187632128 in 1485ms
-// > Calculated 9007199187632128 in 439ms
-```
-
-Included in the repository is an example of how you can write quicksort using a SharedArrayBuffer to
-sort over multiple threads. See: [parallel-sort-example.js](https://github.com/laverdet/isolated-vm/blob/main/parallel-sort-example.js).
-
 ALTERNATIVES
 ------------
-
-The primary goal of isolated-vm is to create a powerful and secure environment for running untrusted
-JavaScript code. isolated-vm is also a good way to build single-process multithreaded JavaScript
-applications, though if parallelism of trusted code is your only goal then there are probably better
-options out there.
 
 Below is a quick summary of some other options available on nodejs and how they differ from
 isolated-vm. The table headers are defined as follows:
 
-* **Secure**: Safely run untrusted code
+* **Secure**: Obstructs access to unsafe nodejs capabilities
 * **Memory Limits**: Possible to set memory limits / safe against heap overflow DoS attacks
 * **Isolated**: Is garbage collection, heap, etc isolated from application
 * **Multithreaded**: Run code on many threads from a single process
