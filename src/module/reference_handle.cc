@@ -286,10 +286,10 @@ class ApplyRunner : public ThreePhaseTask {
 				// This is only called from the default isolate, so we don't need an IsolateSpecific
 				static Persistent<Function> callback_persistent{isolate, CompileAsyncWrapper()};
 				Local<Function> callback_fn = Deref(callback_persistent);
-				did_finish = std::make_shared<bool>(false);
+				did_finish = std::make_shared<char>(0);
 				std::array<Local<Value>, 3> argv;
 				argv[0] = External::New(isolate, reinterpret_cast<void*>(this));
-				argv[1] = External::New(isolate, reinterpret_cast<void*>(new shared_ptr<bool>(did_finish)));
+				argv[1] = External::New(isolate, new shared_ptr<char>(did_finish));
 				argv[2] = value;
 				async_wait = &wait;
 				Unmaybe(callback_fn->Call(context_handle, callback_fn, 3, &argv.front()));
@@ -301,8 +301,8 @@ class ApplyRunner : public ThreePhaseTask {
 		}
 
 		auto Phase3() -> Local<Value> final {
-			if (did_finish && !*did_finish) {
-				*did_finish = true;
+			if (did_finish && *did_finish == 0) {
+				*did_finish = 1;
 				throw RuntimeGenericError("Script execution timed out.");
 			} else if (async_error) {
 				Isolate::GetCurrent()->ThrowException(async_error->CopyInto());
@@ -320,8 +320,10 @@ class ApplyRunner : public ThreePhaseTask {
 		static void AsyncCallback(const v8::FunctionCallbackInfo<v8::Value>& info) {
 			// It's possible the invocation timed out, in which case the ApplyRunner will be dead. The
 			// shared_ptr<bool> here will be marked as true and we can exit early.
-			unique_ptr<shared_ptr<bool>> did_finish{reinterpret_cast<shared_ptr<bool>*>(info[1].As<External>()->Value())};
-			if (**did_finish) {
+			auto* did_finish_ptr = reinterpret_cast<shared_ptr<bool>*>(info[1].As<External>()->Value());
+			auto did_finish = std::move(*did_finish_ptr);
+			delete did_finish_ptr;
+			if (*did_finish) {
 				return;
 			}
 			ApplyRunner& self = *reinterpret_cast<ApplyRunner*>(info[0].As<External>()->Value());
@@ -336,7 +338,7 @@ class ApplyRunner : public ThreePhaseTask {
 				// Rejected
 				self.async_error = ExternalCopy::CopyThrownValue(info[3]);
 			}
-			*self.did_finish = true;
+			*self.did_finish = 1;
 			self.async_wait->Wake();
 		}
 
@@ -384,7 +386,7 @@ class ApplyRunner : public ThreePhaseTask {
 		unique_ptr<Transferable> ret;
 		uint32_t timeout = 0;
 		// Only used in the AsyncPhase2 case
-		shared_ptr<bool> did_finish;
+		shared_ptr<char> did_finish; // GCC 5.4.0 `std::make_shared<bool>(...)` is broken(?)
 		TransferOptions return_transfer_options{TransferOptions::Type::Reference};
 		unique_ptr<ExternalCopy> async_error;
 		Scheduler::AsyncWait* async_wait = nullptr;
