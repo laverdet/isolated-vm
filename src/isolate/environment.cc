@@ -231,8 +231,8 @@ void IsolateEnvironment::AsyncEntry() {
 		// segfaults.
 		thread_local void* stack_base = GetStackBase();
 		if (stack_base != nullptr) {
-			// Add 6kb of padding for native code to run
-			isolate->SetStackLimit(reinterpret_cast<uintptr_t>(reinterpret_cast<char*>(stack_base) + 1024 * 6));
+			// Add 24kb of padding for native code to run
+			isolate->SetStackLimit(reinterpret_cast<uintptr_t>(reinterpret_cast<char*>(stack_base) + 1024 * 24));
 		}
 	}
 
