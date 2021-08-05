@@ -124,7 +124,7 @@ auto IsolateEnvironment::CodeGenCallback(Local<Context> /*context*/, Local<Value
 	// This heuristic could be improved by looking up how much `timeout` this isolate has left and
 	// returning early in some cases
 	ModifyCodeGenerationFromStringsResult result;
-	if (source->IsString() && source.As<String>()->Length() > static_cast<int>(that->memory_limit / 8)) {
+	if (source->IsString() && static_cast<size_t>(source.As<String>()->Length()) > static_cast<size_t>(that->memory_limit / 8)) {
 		return result;
 	}
 	result.codegen_allowed = true;
