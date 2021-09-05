@@ -23,6 +23,7 @@ class TimeoutRunner final : public Runnable {
 			bool did_finish = false;
 			bool did_release = false;
 			bool did_terminate = false;
+			bool did_timeout = false;
 		};
 
 		explicit TimeoutRunner(State& state) : state{state} {}
@@ -83,6 +84,7 @@ auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
 						return;
 					}
 					// Set up interrupt
+					state.did_timeout = true;
 					auto timeout_runner = std::make_unique<TimeoutRunner>(state);
 					if (is_default_thread) {
 						// In this case this is a pure sync function. We should not cancel any async waits.
@@ -104,13 +106,16 @@ auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
 				{
 					std::unique_lock<std::mutex> lock{state.mutex};
 					if (isolate.error_handler) {
-						if (!state.cv.wait_until(lock, deadline, [&] { return state.did_release; })) {
+						if (!state.cv.wait_until(lock, deadline, [&] { return state.did_release || state.did_finish; })) {
 							assert(RaiseCatastrophicError(isolate.error_handler, "Script failed to terminate"));
 							thread_suspend.suspend();
 							return;
 						}
 					} else {
-						state.cv.wait(lock, [&] { return state.did_release; });
+						state.cv.wait(lock, [&] { return state.did_release || state.did_finish; });
+					}
+					if (state.did_finish) {
+						return;
 					}
 				}
 
@@ -118,12 +123,13 @@ auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
 				while (true) {
 					std::lock_guard<std::mutex> lock{state.mutex};
 					if (state.did_finish) {
-						break;
+						return;
 					} else if (isolate.error_handler && deadline > std::chrono::steady_clock::now()) {
 						assert(RaiseCatastrophicError(isolate.error_handler, "Script failed to terminate"));
 						thread_suspend.suspend();
 						return;
 					}
+					// Aggressively terminate the isolate because sometimes v8 just doesn't get the hint
 					isolate->TerminateExecution();
 				}
 			});
@@ -132,10 +138,21 @@ auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
 		if (!isolate.terminated) {
 			result = fn();
 		}
+		bool will_flush_tasks = false;
 		{
 			std::lock_guard<std::mutex> lock{state.mutex};
 			did_terminate = state.did_terminate;
+			will_flush_tasks = state.did_timeout && !state.did_release;
 			state.did_finish = true;
+		}
+		if (will_flush_tasks) {
+			// TimeoutRunner was added to interupts after v8 yielded control. In this case we flush
+			// interrupt tasks manually
+			if (is_default_thread) {
+				isolate.InterruptEntrySync();
+			} else {
+				isolate.InterruptEntryAsync();
+			}
 		}
 	}
 	if (isolate.DidHitMemoryLimit()) {
