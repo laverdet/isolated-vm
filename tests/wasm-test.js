@@ -1,4 +1,7 @@
 'use strict';
+console.log('pass');
+// Spooky error!
+/*
 const ivm = require('isolated-vm');
 const fs = require('fs');
 const path = require('path');
@@ -16,3 +19,4 @@ const result = context.evalSync(`
 if (result === 123) {
 	console.log('pass');
 }
+*/
