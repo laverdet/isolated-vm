@@ -15,11 +15,22 @@
 #include <time.h>
 #endif
 
-#ifdef __APPLE__
+#if defined __APPLE__
 #include <pthread.h>
 static auto GetStackBase() -> void* {
 	pthread_t self = pthread_self();
 	return (void*)((char*)pthread_get_stackaddr_np(self) - pthread_get_stacksize_np(self));
+}
+#elif defined __unix__
+#define _GNU_SOURCE
+static auto GetStackBase() -> void* {
+	pthread_t self = pthread_self();
+	pthread_attr_t attrs;
+	pthread_getattr_np(self, &attrs);
+	void* base;
+	size_t size;
+	pthread_attr_getstack(&attrs, &base, &size);
+	return base;
 }
 #else
 static void* GetStackBase() {
