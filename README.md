@@ -1,6 +1,6 @@
 [![npm version](https://badgen.now.sh/npm/v/isolated-vm)](https://www.npmjs.com/package/isolated-vm)
 [![isc license](https://badgen.now.sh/npm/license/isolated-vm)](https://github.com/laverdet/isolated-vm/blob/main/LICENSE)
-[![travis build](https://badgen.now.sh/travis/laverdet/isolated-vm/main)](https://travis-ci.com/laverdet/isolated-vm)
+[![travis build](https://badgen.now.sh/travis/laverdet/isolated-vm/main)](https://app.travis-ci.com/github/laverdet/isolated-vm)
 [![npm downloads](https://badgen.now.sh/npm/dm/isolated-vm)](https://www.npmjs.com/package/isolated-vm)
 
 isolated-vm -- Access to multiple isolates in nodejs

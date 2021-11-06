@@ -5,6 +5,7 @@ let ivm = require('isolated-vm');
 	let isolate = new ivm.Isolate;
 	let context = isolate.createContextSync();
 	let global = context.global;
+	let time = Date.now();
 	global.setSync('global', global.derefInto());
 	isolate.compileScriptSync('global.run = () => { function the_stack() { for(;;); }; the_stack(); }').runSync(context);
 	let run = global.getSync('run', { reference: true });
@@ -27,7 +28,7 @@ let ivm = require('isolated-vm');
 		if (!/the_stack/.test(err.stack)) {
 			console.log('missing stack');
 		}
-		console.log(uhoh ? 'uhoh' : 'pass');
+		console.log(uhoh ? 'uhoh ' + (Date.now() - time) : 'pass');
 		clearTimeout(timeout);
 	}
 })().catch(console.error);
