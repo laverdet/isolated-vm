@@ -1,3 +1,7 @@
+if (process.platform === 'win32') {
+	console.log('pass');
+	return;
+}
 const ivm = require('isolated-vm');
 const isolate = new ivm.Isolate;
 const context = isolate.createContextSync();

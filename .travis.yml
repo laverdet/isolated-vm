@@ -4,12 +4,7 @@ language: node_js
 os: linux
 
 jobs:
-  - node_js: "10.4.0"
   - node_js: "10"
-  - node_js: "12.0.0"
-  - node_js: "12.5.0"
-  - node_js: "12.9.0"
-  - node_js: "12.11.0"
   - node_js: "12"
   - node_js: "14.0.0"
   - node_js: "14"
@@ -21,11 +16,15 @@ jobs:
 cache:
   npm: false
 
-dist: xenial
+dist: focal
 
 before_install:
-  - sudo apt-get update
-  - sudo apt-get install python3
+- |-
+    case $TRAVIS_OS_NAME in
+      windows)
+        choco install -y python3
+        ;;
+    esac
 
 install:
   - npm install
