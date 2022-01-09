@@ -21,6 +21,7 @@ capabilities provided by the nodejs runtime.
 	* [Context](#class-context-transferable)
 	* [Script](#class-script-transferable)
 	* [Module](#class-module-transferable)
+	* [Callback](#class-callback-transferable)
 	* [Reference](#class-reference-transferable)
 	* [ExternalCopy](#class-externalcopy-transferable)
 * [Examples](#examples)
