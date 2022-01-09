@@ -219,8 +219,8 @@ declare module "isolated-vm" {
 		release(): void;
 	}
 
-	export type ContextEvalOptions = RunOptions & TransferOptions;
-	export type ContextEvalClosureOptions = RunOptions & TransferOptionsBidirectional;
+	export type ContextEvalOptions = RunOptions & ScriptOrigin & TransferOptions;
+	export type ContextEvalClosureOptions = RunOptions & ScriptOrigin & TransferOptionsBidirectional;
 
 	/**
 	 * A script is a compiled chunk of JavaScript which can be executed in any context within a single
