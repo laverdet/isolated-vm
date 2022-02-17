@@ -578,6 +578,9 @@ can even save this data to disk and use it in a different process. You can set b
 `produceCachedData`, in which case new cached data will only be produced if the data supplied was
 invalid.
 
+*NOTE*: CachedData contains compiled machine code. That means you should not accept `cachedData`
+payloads from a user, otherwise they may be able to run arbitrary code.
+
 ##### `ScriptOrigin`
 * `filename` *[string]* - Filename of this source code
 * `columnOffset` *[number]* - Column offset of this source code
