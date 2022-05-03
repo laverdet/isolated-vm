@@ -68,9 +68,17 @@ class Scheduler {
 				void Wake();
 
 			private:
+				struct state_t {
+					bool ready = false;
+					bool done = false;
+
+					bool did_initialize() const {
+						return ready || done;
+					}
+				};
+
 				class LockedScheduler& scheduler;
-				bool done = false;
-				bool ready = false;
+				lockable_t<state_t> state;
 		};
 
 		// Task queues

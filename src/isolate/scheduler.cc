@@ -171,24 +171,24 @@ Scheduler::AsyncWait::~AsyncWait() {
 }
 
 void Scheduler::AsyncWait::Ready() {
-	auto lock = scheduler.Lock();
-	ready = true;
-	if (done) {
+	auto lock = state.write();
+	lock->ready = true;
+	if (lock->done) {
 		scheduler.cv.notify_one();
 	}
 }
 
 void Scheduler::AsyncWait::Wait() {
 	std::unique_lock<std::mutex> lock{scheduler.mutex};
-	while (!ready || !done) {
+	while (!state.read()->did_initialize()) {
 		scheduler.cv.wait(lock);
 	}
 }
 
 void Scheduler::AsyncWait::Wake() {
-	auto lock = scheduler.Lock();
-	done = true;
-	if (ready) {
+	auto lock = state.write();
+	lock->done = true;
+	if (lock->ready) {
 		scheduler.cv.notify_one();
 	}
 }
