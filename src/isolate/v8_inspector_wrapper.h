@@ -1,7 +1,9 @@
 #pragma once
 #include "node_wrapper.h"
 #include "./v8_version.h"
-#if NODE_MODULE_VERSION >= 93
+#if V8_AT_LEAST(10, 1, 124)
+#include "v8_inspector/nodejs_v18.0.0.h"
+#elif NODE_MODULE_VERSION >= 93
 #if V8_AT_LEAST(9, 4, 146)
 #include "v8_inspector/nodejs_v16.11.0.h"
 #else
