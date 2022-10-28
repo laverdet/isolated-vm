@@ -17,7 +17,7 @@ namespace {
  */
 void Scheduler::CancelAsync() {
 	if (async_wait != nullptr) {
-		async_wait->Wake();
+		async_wait->Cancel();
 	}
 }
 
@@ -170,27 +170,22 @@ Scheduler::AsyncWait::~AsyncWait() {
 	scheduler.Lock()->async_wait = nullptr;
 }
 
-void Scheduler::AsyncWait::Ready() {
-	auto lock = state.write();
-	lock->ready = true;
-	if (lock->done) {
-		scheduler.cv.notify_one();
-	}
+void Scheduler::AsyncWait::Cancel() {
+	*state.write() = canceled;
+	state.notify_one();
 }
 
-void Scheduler::AsyncWait::Wait() {
-	std::unique_lock<std::mutex> lock{scheduler.mutex};
-	while (!state.read()->did_initialize()) {
-		scheduler.cv.wait(lock);
-	}
+void Scheduler::AsyncWait::Done() {
+	*state.write() = finished;
+	state.notify_one();
 }
 
-void Scheduler::AsyncWait::Wake() {
-	auto lock = state.write();
-	lock->done = true;
-	if (lock->ready) {
-		scheduler.cv.notify_one();
+auto Scheduler::AsyncWait::Wait() const -> Scheduler::AsyncWait::State {
+	auto lock = state.read<true>();
+	while (*lock == pending) {
+		lock.wait();
 	}
+	return *lock;
 }
 
 } // namespace ivm

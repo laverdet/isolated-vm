@@ -94,10 +94,10 @@ auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
 					} else {
 						{
 							auto lock = isolate.scheduler->Lock();
+							lock->CancelAsync();
 							lock->interrupts.push(std::move(timeout_runner));
 							lock->InterruptIsolate();
 						}
-						isolate.CancelAsync();
 					}
 				}
 				timer_t::chain(next);

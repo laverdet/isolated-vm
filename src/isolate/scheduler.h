@@ -52,33 +52,27 @@ class Scheduler {
 		// Scheduler::AsyncWait will pause the current thread until woken up by another thread
 		class AsyncWait {
 			public:
+				enum State { pending, finished, canceled };
+
 				// This is templated so we can cast to the protected base class here instead of at the call
 				// site
 				template <class Type>
 				explicit AsyncWait(Type& scheduler) :
 						scheduler{scheduler} {
-					scheduler.Lock()->async_wait = this;
+					auto lock = scheduler.Lock();
+					assert(lock->async_wait == nullptr);
+					lock->async_wait = this;
 				}
 				AsyncWait(const AsyncWait&) = delete;
 				~AsyncWait();
 				auto operator=(const AsyncWait&) = delete;
 
-				void Ready();
-				void Wait();
-				void Wake();
-
-			private:
-				struct state_t {
-					bool ready = false;
-					bool done = false;
-
-					bool did_initialize() const {
-						return ready || done;
-					}
-				};
+				void Cancel();
+				void Done();
+				auto Wait() const -> State;
 
 				class LockedScheduler& scheduler;
-				lockable_t<state_t> state;
+				lockable_t<State, false, true> state{pending};
 		};
 
 		// Task queues

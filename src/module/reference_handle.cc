@@ -339,7 +339,7 @@ class ApplyRunner : public ThreePhaseTask {
 				self.async_error = ExternalCopy::CopyThrownValue(info[3]);
 			}
 			*self.did_finish = 1;
-			self.async_wait->Wake();
+			self.async_wait->Done();
 		}
 
 		/**

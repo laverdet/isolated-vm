@@ -300,17 +300,18 @@ auto ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_async) ->
 			struct AsyncRunner final : public Runnable {
 				bool allow_async = false;
 				bool did_run = false;
-				bool is_async = false;
 				ThreePhaseTask& self;
 				Scheduler::AsyncWait& wait;
+				lockable_t<bool, false, true>& done;
 				unique_ptr<ExternalCopy>& error;
 
 				AsyncRunner(
 					ThreePhaseTask& self,
 					Scheduler::AsyncWait& wait,
+					lockable_t<bool, false, true>& done,
 					bool allow_async,
 					unique_ptr<ExternalCopy>& error
-				) : allow_async(allow_async), self(self), wait(wait), error(error) {}
+				) : allow_async{allow_async}, self{self}, wait{wait}, done{done}, error{error} {}
 
 				AsyncRunner(const AsyncRunner&) = delete;
 				auto operator=(const AsyncRunner&) -> AsyncRunner& = delete;
@@ -319,20 +320,27 @@ auto ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_async) ->
 					if (!did_run) {
 						error = std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::Error, "Isolate is disposed");
 					}
-					if (!is_async) {
-						wait.Wake();
-					}
-					wait.Ready();
+					// nb: The lock must be held while invoking `notify_one` since the condition variable will
+					// be destroyed immediately following the wake.
+					auto lock = done.write();
+					*lock = true;
+					done.notify_one();
 				}
 
 				void Run() final {
 					did_run = true;
 					FunctorRunners::RunCatchExternal(IsolateEnvironment::GetCurrent()->DefaultContext(), [ this ]() {
 						// Now in the default thread
-						if (allow_async) {
-							is_async = self.Phase2Async(wait);
-						} else {
-							self.Phase2();
+						const auto is_async = [&]() {
+							if (allow_async) {
+								return self.Phase2Async(wait);
+							} else {
+								self.Phase2();
+								return false;
+							}
+						}();
+						if (!is_async) {
+							wait.Done();
 						}
 						this->error = IsolateEnvironment::GetCurrent()->TaskEpilogue();
 					}, [ this ](unique_ptr<ExternalCopy> error) {
@@ -347,11 +355,20 @@ auto ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_async) ->
 				// Setup condition variable to sleep this thread
 				IsolateEnvironment& env = *IsolateEnvironment::GetCurrent();
 				Scheduler::AsyncWait wait(*env.scheduler);
+				lockable_t<bool, false, true> done{false};
 				// Scope to unlock v8 in this thread and set up the wait
 				Executor::Unlock unlocker(env);
 				// Run it and sleep
-				second_isolate.ScheduleTask(std::make_unique<AsyncRunner>(*this, wait, allow_async, error), false, true);
-				wait.Wait();
+				second_isolate.ScheduleTask(std::make_unique<AsyncRunner>(*this, wait, done, allow_async, error), false, true);
+				// Wait for AsyncRunner to finish
+				auto lock = done.read<true>();
+				while (!*lock) {
+					lock.wait();
+				}
+				// Wait for `applySyncPromise` to finish
+				if (wait.Wait() == Scheduler::AsyncWait::canceled) {
+					throw RuntimeGenericError("Isolate is disposed");
+				}
 			}
 
 			// At this point thread synchronization is done and Phase2() has finished

@@ -337,13 +337,6 @@ class IsolateEnvironment {
 		void Terminate();
 
 		/**
-		 * Cancels an async three_phase_runner if one exists, i.e. applySyncPromise
-		 */
-		void CancelAsync() {
-			scheduler->Lock()->CancelAsync();
-		}
-
-		/**
 		 * Since a created Isolate can be disposed of at any time we need to keep track of weak
 		 * persistents to call those destructors on isolate disposal.
 		 */

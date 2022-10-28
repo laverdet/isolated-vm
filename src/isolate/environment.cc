@@ -561,6 +561,7 @@ void IsolateEnvironment::Terminate() {
 	// Destroy inspector session
 	{
 		auto lock = scheduler->Lock();
+		lock->CancelAsync();
 		if (inspector_agent) {
 			inspector_agent->Terminate();
 		}
@@ -573,7 +574,6 @@ void IsolateEnvironment::Terminate() {
 		});
 		isolate->TerminateExecution();
 	}, nullptr);
-	CancelAsync();
 
 	// Throw away Holder reference
 	auto ref = holder.lock();
