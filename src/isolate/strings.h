@@ -97,6 +97,24 @@ class StringTable {
 		String total_heap_size_executable{"total_heap_size_executable"};
 		String total_physical_size{"total_physical_size"};
 		String used_heap_size{"used_heap_size"};
+
+		// CPU Profiler specific keys
+		String startTime{"startTime"};
+		String endTime{"endTime"};
+		String samples{"samples"};
+		String timeDeltas{"timeDeltas"};
+		String nodes{"nodes"};
+		String id{"id"};
+		String callFrame{"callFrame"};
+		String functionName{"functionName"};
+		String scriptId{"scriptId"};
+		String url{"url"};
+		String lineNumber{"lineNumber"};
+		String columnNumber{"columnNumber"};
+		String hitCount{"hitCount"};
+		String children{"children"};
+		String title{"title"};
+		String bailoutReason{"bailoutReason"};
 };
 
 inline auto HandleCastImpl(

@@ -3,6 +3,7 @@
 #include "transferable.h"
 #include <v8.h>
 #include <memory>
+#include "cpu_profiler_handle.h"
 
 namespace ivm {
 
@@ -30,12 +31,14 @@ class IsolateHandle : public TransferableHandle {
 		template <int async> auto CreateContext(v8::MaybeLocal<v8::Object> maybe_options) -> v8::Local<v8::Value>;
 		template <int async> auto CompileScript(v8::Local<v8::String> code_handle, v8::MaybeLocal<v8::Object> maybe_options) -> v8::Local<v8::Value>;
 		template <int async> auto CompileModule(v8::Local<v8::String> code_handle, v8::MaybeLocal<v8::Object> maybe_options) -> v8::Local<v8::Value>;
+		template <int async> auto CreateCpuProfiler() -> v8::Local<v8::Value>;
 
 		auto CreateInspectorSession() -> v8::Local<v8::Value>;
 		auto Dispose() -> v8::Local<v8::Value>;
 		template <int async> auto GetHeapStatistics() -> v8::Local<v8::Value>;
 		auto GetCpuTime() -> v8::Local<v8::Value>;
 		auto GetWallTime() -> v8::Local<v8::Value>;
+		
 		auto GetReferenceCount() -> v8::Local<v8::Value>;
 		auto IsDisposedGetter() -> v8::Local<v8::Value>;
 		static auto CreateSnapshot(ArrayRange script_handles, v8::MaybeLocal<v8::String> warmup_handle) -> v8::Local<v8::Value>;

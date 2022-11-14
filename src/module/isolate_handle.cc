@@ -15,10 +15,13 @@
 #include "isolate/v8_version.h"
 #include "module/evaluation.h"
 #include "v8-platform.h"
+#include "v8-profiler.h"
 #include <deque>
 #include <memory>
+#include <iostream>
 
 using namespace v8;
+using v8::CpuProfile;
 using std::shared_ptr;
 using std::unique_ptr;
 
@@ -52,7 +55,8 @@ auto IsolateHandle::Definition() -> Local<FunctionTemplate> {
 		"getHeapStatisticsSync", MemberFunction<decltype(&IsolateHandle::GetHeapStatistics<0>), &IsolateHandle::GetHeapStatistics<0>>{},
 		"isDisposed", MemberAccessor<decltype(&IsolateHandle::IsDisposedGetter), &IsolateHandle::IsDisposedGetter>{},
 		"referenceCount", MemberAccessor<decltype(&IsolateHandle::GetReferenceCount), &IsolateHandle::GetReferenceCount>{},
-		"wallTime", MemberAccessor<decltype(&IsolateHandle::GetWallTime), &IsolateHandle::GetWallTime>{}
+		"wallTime", MemberAccessor<decltype(&IsolateHandle::GetWallTime), &IsolateHandle::GetWallTime>{},
+		"createCpuProfiler", MemberFunction<decltype(&IsolateHandle::CreateCpuProfiler<0>), &IsolateHandle::CreateCpuProfiler<0>>{}
 	));
 }
 
@@ -386,6 +390,19 @@ auto IsolateHandle::GetWallTime() -> Local<Value> {
 #else
 	return HandleCast<Local<Number>>(static_cast<double>(time));
 #endif
+}
+
+template <int async>
+auto IsolateHandle::CreateCpuProfiler() -> Local<Value> {
+	auto env = this->isolate->GetIsolate();
+
+	if (!env) {
+		throw RuntimeGenericError("Isolate is disposed");
+	}
+
+	v8::CpuProfiler* profiler = v8::CpuProfiler::New(env->GetIsolate());
+
+	return ClassHandle::NewInstance<CpuProfilerHandle>(profiler);
 }
 
 /**

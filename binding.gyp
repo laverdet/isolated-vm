@@ -87,6 +87,7 @@
 				'src/module/script_handle.cc',
 				'src/module/session_handle.cc',
 				'src/module/transferable.cc',
+				"src/module/cpu_profiler_handle.cc"
 			],
 			'conditions': [
 				[ 'OS != "win"', {
