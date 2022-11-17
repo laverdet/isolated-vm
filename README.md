@@ -90,7 +90,7 @@ cost and must be enabled per-process, therefore nodejs disables it by default.
 
 Unlike nodejs, `isolated-vm` intentionally does not include a runtime with the v8 engine to avoid
 the security implications. For instance, untrusted code run with `isolated-vm` won't be able to 
-perform network requests or any other potentially dangerous interactions with the outside world.
+perform network requests or other potentially dangerous interactions with the outside world.
 Nevertheless, there are always new and exciting ways to crash, hang, exploit, or otherwise disrupt
 a v8 engine process with plain old JavaScript. Your application must be resilient to these kinds 
 of issues and attacks. It's therefore a good idea to keep instances of `isolated-vm` in a different
