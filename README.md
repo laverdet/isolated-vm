@@ -88,10 +88,13 @@ speculative execution attacks known as Spectre and Meltdown. You can enable this
 `node` with the `--untrusted-code-mitigations` flag. This feature comes with a slight performance
 cost and must be enabled per-process, therefore nodejs disables it by default.
 
-v8 is a relatively robust runtime, but there are always new and exciting ways to crash, hang,
-exploit, or otherwise disrupt a process with plain old JavaScript. Your application must be
-resilient to these kinds of issues and attacks. It's a good idea to keep instances of `isolated-vm`
-in a different nodejs process than other critical infrastructure.
+Unlike nodejs, `isolated-vm` intentionally does not include a runtime with the v8 engine to avoid
+the security implications. For instance, untrusted code run with `isolated-vm` won't be able to 
+perform network requests or any other potentially dangerous interactions with the outside world.
+Nevertheless, there are always new and exciting ways to crash, hang, exploit, or otherwise disrupt
+a v8 engine process with plain old JavaScript. Your application must be resilient to these kinds 
+of issues and attacks. It's a good idea to keep instances of `isolated-vm` in a different nodejs
+process than other critical infrastructure.
 
 If [advanced persistent threats](https://en.wikipedia.org/wiki/Advanced_persistent_threat) are
 within your threat model it's a very good idea to architect your application using a foundation
