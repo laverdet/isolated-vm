@@ -93,8 +93,8 @@ the security implications. For instance, untrusted code run with `isolated-vm` w
 perform network requests or any other potentially dangerous interactions with the outside world.
 Nevertheless, there are always new and exciting ways to crash, hang, exploit, or otherwise disrupt
 a v8 engine process with plain old JavaScript. Your application must be resilient to these kinds 
-of issues and attacks. It's a good idea to keep instances of `isolated-vm` in a different nodejs
-process than other critical infrastructure.
+of issues and attacks. It's therefore a good idea to keep instances of `isolated-vm` in a different
+nodejs process than other critical infrastructure.
 
 If [advanced persistent threats](https://en.wikipedia.org/wiki/Advanced_persistent_threat) are
 within your threat model it's a very good idea to architect your application using a foundation
