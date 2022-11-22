@@ -37,7 +37,7 @@ context.evalSync(`
 });
 
 const profile = profiler.stopProfiling('foo');
-
+profiler.dispose();
 assert.equal(profile.title, 'foo', 'profile should have title `foo`');
 assert.ok(profile.nodes.length > 0, 'profile should have node length > 0');
 assert.ok(typeof profile.startTime === 'number', 'startTime should be a number');

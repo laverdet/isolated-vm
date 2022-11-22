@@ -1,4 +1,5 @@
 #include "cpu_profiler_handle.h"
+#include "v8-profiler.h"
 
 #include <exception>
 #include <typeinfo>
@@ -15,57 +16,70 @@ auto CpuProfilerHandle::Definition() -> Local<FunctionTemplate> {
         "startProfiling", MemberFunction<decltype(&CpuProfilerHandle::StartProfiling), &CpuProfilerHandle::StartProfiling>{},
 		"stopProfiling", MemberFunction<decltype(&CpuProfilerHandle::StopProfiling<1>), &CpuProfilerHandle::StopProfiling<1>>{},
         "setSamplingInterval", MemberFunction<decltype(&CpuProfilerHandle::SetSamplingInterval), &CpuProfilerHandle::SetSamplingInterval>{},
-        "setUsePreciseSampling", MemberFunction<decltype(&CpuProfilerHandle::SetUsePreciseSampling), &CpuProfilerHandle::SetUsePreciseSampling>{}
+        "setUsePreciseSampling", MemberFunction<decltype(&CpuProfilerHandle::SetUsePreciseSampling), &CpuProfilerHandle::SetUsePreciseSampling>{},
+        "dispose", MemberFunction<decltype(&CpuProfilerHandle::Dispose), &CpuProfilerHandle::Dispose>{}
 	);
 }
 
 CpuProfilerHandle::CpuProfilerHandle(v8::CpuProfiler* profiler) : profiler(profiler) {} 
 
-void CpuProfilerHandle::FlatNodes(const v8::CpuProfileNode* node, std::vector<const v8::CpuProfileNode*>* nodes) {
+void CpuProfilerHandle::FlatNodes(const v8::CpuProfileNode* node, std::vector<const v8::CpuProfileNode*>* nodes) { // NOLINT(misc-no-recursion)
     nodes->push_back(node);
-    uint32_t childrenCount = node->GetChildrenCount();
+    const int childrenCount = node->GetChildrenCount();
 
-    for (uint32_t index = 0; index < childrenCount; ++index) {
+    for (int index = 0; index < childrenCount; ++index) {
         FlatNodes(node->GetChild(index), nodes);
     }
 }
 
 void CpuProfilerHandle::StartProfiling(Local<String> title, Local<Boolean> recordSamples) {
-    if (!profiler) {
+    if (profiler == nullptr) {
         throw RuntimeGenericError("`profiler` is disposed");
     }
 
     profiler->StartProfiling(title, recordSamples->Value());
 }
 
+void CpuProfilerHandle::Dispose() {
+    if (profiler == nullptr) {
+        return;
+    }
+
+    profiler->Dispose();
+    profiler = nullptr;
+}
+
 template <int async> 
 auto CpuProfilerHandle::StopProfiling(v8::Local<v8::String> title) -> Local<Value> {
-    if (!profiler) {
+    if (profiler == nullptr) {
         throw RuntimeGenericError("`profiler` is disposed");
     }
-    v8::CpuProfile* profile;
 
-    profile = profiler->StopProfiling(title);
+    auto DeleterLambda =[](v8::CpuProfile *profile){
+        profile->Delete();
+    };
+    std::unique_ptr<v8::CpuProfile, decltype(DeleterLambda)> profile{profiler->StopProfiling(title),DeleterLambda};
 
     Isolate* iso = Isolate::GetCurrent();
-    Local<Context> context = iso->GetCurrentContext();
+    const Local<Context> context = iso->GetCurrentContext();
 
     v8::EscapableHandleScope handle_scope(iso);
-    Local<Object> profileObject = Object::New(iso);
+    const Local<Object> profileObject = Object::New(iso);
     auto& strings = StringTable::Get();
 
-    Unmaybe(profileObject->Set(context, strings.startTime, Number::New(iso, profile->GetStartTime())));
-    Unmaybe(profileObject->Set(context, strings.endTime, Number::New(iso, profile->GetEndTime())));
+    Unmaybe(profileObject->Set(context, strings.startTime, Number::New(iso, static_cast<double>(profile->GetStartTime()))));
+    Unmaybe(profileObject->Set(context, strings.endTime, Number::New(iso, static_cast<double>(profile->GetEndTime()))));
     Unmaybe(profileObject->Set(context, strings.title, title));
 
-    uint64_t sampleCount = profile->GetSamplesCount();
-    Local<Array> samples = Array::New(iso, sampleCount);
-    Local<Array> timeDeltas = Array::New(iso, sampleCount);
+    const uint64_t sampleCount = profile->GetSamplesCount();
+    const Local<Array> samples = Array::New(iso);
+    const Local<Array> timeDeltas = Array::New(iso);
 
-    uint64_t startTs = profile->GetStartTime();    
+    const uint64_t startTs = profile->GetStartTime();    
     for (uint64_t i = 0; i < sampleCount; i++) {
-        Unmaybe(samples->Set(context, i, Number::New(iso, profile->GetSample(i)->GetNodeId())));
-        Unmaybe(timeDeltas->Set(context, i, Number::New(iso, profile->GetSampleTimestamp(i) - startTs)));
+        const int idx = static_cast<int>(i);
+        Unmaybe(samples->Set(context, i, Number::New(iso, static_cast<double>(profile->GetSample(idx)->GetNodeId()))));
+        Unmaybe(timeDeltas->Set(context, i, Number::New(iso, static_cast<double>(profile->GetSampleTimestamp(idx) - startTs))));
     }
     Unmaybe(profileObject->Set(context, strings.samples, samples));
     Unmaybe(profileObject->Set(context, strings.timeDeltas, timeDeltas));
@@ -74,17 +88,15 @@ auto CpuProfilerHandle::StopProfiling(v8::Local<v8::String> title) -> Local<Valu
     std::vector<const v8::CpuProfileNode*> nodes;
     FlatNodes(profile->GetTopDownRoot(), &nodes);
     
-    size_t count = nodes.size();
-    Local<Array> nodeArr = Array::New(iso, count);
+    
+    const Local<Array> nodeArr = Array::New(iso);
     Unmaybe(profileObject->Set(context, strings.nodes, nodeArr));
 
+    const size_t count = nodes.size();
     for (size_t i = 0; i < count; i++) {
-        Local<Object> nodeObj = CreateNode(iso, nodes.at(i));
+        const Local<Object> nodeObj = CpuProfilerHandle::CreateNode(iso, nodes.at(i));
         Unmaybe(nodeArr->Set(context, i, nodeObj));
     }
-
-    profiler->Dispose();
-    profiler = NULL;
 
     return handle_scope.Escape(profileObject);
 }
@@ -103,7 +115,7 @@ void CpuProfilerHandle::SetUsePreciseSampling(Local<Boolean> isOn) {
 auto CpuProfilerHandle::CreateNode(Isolate *isolate, const v8::CpuProfileNode* node) -> Local<Object> {
     auto& strings = StringTable::Get();
     Local<Object> nodeObj = Object::New(isolate);
-    Local<Context> context = isolate->GetCurrentContext();      
+    const Local<Context> context = isolate->GetCurrentContext();      
 
     Unmaybe(nodeObj->Set(context, strings.hitCount, Number::New(isolate, node->GetHitCount())));
     Unmaybe(nodeObj->Set(context, strings.id, Number::New(isolate, node->GetNodeId())));
@@ -118,17 +130,16 @@ auto CpuProfilerHandle::CreateNode(Isolate *isolate, const v8::CpuProfileNode* n
         #endif
     }
     
-    size_t childrenCount = node->GetChildrenCount();
-    Local<Array> children = Array::New(isolate, childrenCount);
+    const int childrenCount = node->GetChildrenCount();
+    const Local<Array> children = Array::New(isolate, childrenCount);
     Unmaybe(nodeObj->Set(context, strings.children, children));
 
-    for (size_t j = 0; j < childrenCount; j++) {
+    for (int j = 0; j < childrenCount; j++) {
         Unmaybe(children->Set(context, j, Number::New(isolate, node->GetChild(j)->GetNodeId())));
     }
 
-    Local<Object> callFrame = CreateCallFrame(isolate, node);
+    const Local<Object> callFrame = CpuProfilerHandle::CreateCallFrame(isolate, node);
     Unmaybe(nodeObj->Set(context, strings.callFrame, callFrame));
-    
 
     return nodeObj;
 }
@@ -136,7 +147,7 @@ auto CpuProfilerHandle::CreateNode(Isolate *isolate, const v8::CpuProfileNode* n
 auto CpuProfilerHandle::CreateCallFrame(Isolate *isolate, const v8::CpuProfileNode* node) -> Local<Object> {
     auto& strings = StringTable::Get();
     Local<Object> callFrame = Object::New(isolate);
-    Local<Context> context = isolate->GetCurrentContext();  
+    const Local<Context> context = isolate->GetCurrentContext();  
     #if NODE_MODULE_VERSION < 83
         Unmaybe(callFrame->Set(context, strings.functionName, String::NewFromUtf8(isolate, node->GetFunctionNameStr())));
         Unmaybe(callFrame->Set(context, strings.url, String::NewFromUtf8(isolate, node->GetScriptResourceNameStr())));

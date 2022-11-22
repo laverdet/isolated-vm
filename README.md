@@ -254,7 +254,7 @@ will also include underlying reference handles created by isolated-vm like `Scri
 objects.
 
 ##### `isolate.createCpuProfiler()` *[CpuProfiler]*
-Create a one-time use CPU profiler, for performance profiling
+Create a CPU profiler, for performance profiling
 
 * **return** A [`CpuProfiler`](#class-cpu-profiler) object.
 
@@ -563,8 +563,8 @@ instances isn't super important, v8 is a lot better at cleaning these up automat
 there's no inter-isolate dependencies.
 
 ### Class: `CpuProfiler`
-A CpuProfiler is a one time use cpu profiler allows you to run cpu profiling against the application
-running inside a specific `isolate`.
+A CpuProfiler is a cpu profiler allows you to run cpu profiling against the application
+running inside a specific `isolate`. Which works similar to `console.profile` & `console.profileEnd`.
 
 ##### `profiler.startProfiling(title, recordSamples)` *[v8 CPUProfiler::StartProfiling](https://v8docs.nodesource.com/node-16.0/d2/d34/classv8_1_1_cpu_profiler.html#adc48f6de278c03fde38e74e6f1bd63a6)*
 
@@ -578,6 +578,9 @@ again, you will need to call `isolate.createCpuProfiler()` again for a new CPU P
 
 * `title` *[string]* should be the same string as `startProfiling`
 * **return** *[CpuProfile]*
+
+#### `profiler.dispose()`
+Cleanup the cpu profiler from `v8` to release the resources occupied by the CPU profiler.
 
 ### Shared Options
 Many methods in this library accept common options between them. They are documented here instead of

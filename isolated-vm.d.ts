@@ -612,6 +612,11 @@ declare module "isolated-vm" {
 		 * @param title The title of cpu profile
 		 */
 		stopProfiling(title: string): CpuProfile;
+
+		/**
+		 * Dispose the CpuProfiler
+		 */
+		dispose(): void;
 	}
 
 	export type CpuProfile = {
