@@ -106,6 +106,17 @@ declare module "isolated-vm" {
 		 */
 		getHeapStatistics(): Promise<HeapStatistics>;
 		getHeapStatisticsSync(): HeapStatistics;
+
+		/**
+		 * Returns a Cpu Profiler from v8 for this specific isolate.
+		 * 
+		 * This function only returns a `single-use` CpuProfiler, once the
+		 * `stopProfiling` is called, it will automatically dispose the
+		 * `CpuProfiler`. 
+		 * 
+		 * Any new CPU profiling require to call this function again. 
+		 */
+		createCpuProfiler(): CpuProfiler;
 	}
 
 	export type IsolateOptions = {
@@ -585,6 +596,48 @@ declare module "isolated-vm" {
 		 * @param context Context to initialize the module with.
 		 */
 		createSync(context: Context): Reference<any>;
+	}
+
+	export class CpuProfiler {
+
+		/**
+		 * Similar to `console.profile(title)`
+		 * @param title The title of the cpu profile
+		 * @param recordSample Should record sample or not, `true` to genereate data.
+		 */
+		startProfiling(title: string, recordSample: boolean);
+
+		/**
+		 * Similar to `console.profileEnd(title)`
+		 * @param title The title of cpu profile
+		 */
+		stopProfiling(title: string): CpuProfile;
+
+		/**
+		 * Dispose the CpuProfiler
+		 */
+		dispose(): void;
+	}
+
+	export type CpuProfile = {
+		title: string;
+		startTime: number;
+		endTime: number;
+		samples: number[];
+		timeDeltas: number[];
+		nodes: Array<{
+			id: number;
+			hitCount: number;
+			children: number[];
+			callFrame: {
+				functionName: string;
+				url: string;
+				scriptId: number;
+				lineNubmer: number;
+				columnNumber: number;
+				bailoutReason?: string;
+			};
+		}>;
 	}
 
 	export type InspectorSession = {

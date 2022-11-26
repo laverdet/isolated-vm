@@ -253,6 +253,10 @@ when you transfer a `Reference` instance via some method which accepts transfera
 will also include underlying reference handles created by isolated-vm like `Script` or `Context`
 objects.
 
+##### `isolate.createCpuProfiler()` *[CpuProfiler]*
+Create a CPU profiler, for performance profiling
+
+* **return** A [`CpuProfiler`](#class-cpu-profiler) object.
 
 ### Class: `Context` *[transferable]*
 A context is a sandboxed execution environment within an isolate. Each context contains its own
@@ -558,6 +562,25 @@ will still remain in memory, but this handle will no longer be active. Disposing
 instances isn't super important, v8 is a lot better at cleaning these up automatically because
 there's no inter-isolate dependencies.
 
+### Class: `CpuProfiler`
+A CpuProfiler is a cpu profiler allows you to run cpu profiling against the application
+running inside a specific `isolate`. Which works similar to `console.profile` & `console.profileEnd`.
+
+##### `profiler.startProfiling(title, recordSamples)` *[v8 CPUProfiler::StartProfiling](https://v8docs.nodesource.com/node-16.0/d2/d34/classv8_1_1_cpu_profiler.html#adc48f6de278c03fde38e74e6f1bd63a6)*
+
+* `title` *[string]*
+* `recordSamples` *[boolean]* 
+
+#### `profiler.stopProfiling(title)`
+Stop the CPU profiling, the title should be the same as the one used in `startProfiling`.
+After calling this API, the profiler will be disposed. If you want to run cpu profiling
+again, you will need to call `isolate.createCpuProfiler()` again for a new CPU Profiler.
+
+* `title` *[string]* should be the same string as `startProfiling`
+* **return** *[CpuProfile]*
+
+#### `profiler.dispose()`
+Cleanup the cpu profiler from `v8` to release the resources occupied by the CPU profiler.
 
 ### Shared Options
 Many methods in this library accept common options between them. They are documented here instead of
@@ -605,6 +628,28 @@ function may ignore the value, throw, or wrap it in a reference depending on the
 More advanced situations like transferring ownership of `ArrayBuffer` instances will require direct
 use of [`ExternalCopy`](#class-externalcopy-transferable) or
 [`Reference`](#class-reference-transferable).
+
+##### `CpuProfile`
+The CpuProfile Object that can be `JSON.stringify(cpuProfile)`, and save to any external file system
+for later reloaded into chrome dev tool or any other js performance tool to review.
+
+* `title` *[string]* - The profile title.
+* `startTime` *[number]* - The start timestamp when calling `.startProfiling`.
+* `endTime` *[number]* - The end timestamp when calling `.stopProfiling`,
+* `samples` *[Array<number>]* - All sample node id has been collected.
+* `timeDeltas` *[Array<number>]* - All the time deltas related to the `samples`.
+* `nodes` *[Array<Node>]*
+	* `hitCount` *[number]*
+	* `id` *[id]*
+	* `children` *[Array<number>]*
+	* `callFrame` *[CallFrame]*
+		* `functionName` *[string]*
+		* `url` *[string]* - The `filename` used in [`ScriptOrigin`](#scriptorigin)
+		* `scriptId` *[number]*
+		* `lineNumber` *[number]*
+		* `columnNumber` *[number]*
+		* `bailoutReason` *[string?]* - When the JavaScript function bailed out from v8 optimization,
+			this field will present.
 
 
 EXAMPLES
