@@ -12,7 +12,7 @@ profiler.setSamplingInterval(10);
 profiler.setUsePreciseSampling(false);
 
 context.evalSync(`
-    function loopFn(${new Array(1024).fill(0).map((_, idx) => 'arg' + idx).join(',')}) {
+    function loopFn(${new Array(2048).fill(0).map((_, idx) => 'arg' + idx).join(',')}) {
         let i = 0;
         let result = 0;
         for (i = 0; i < arguments.length; i++) {
@@ -23,7 +23,7 @@ context.evalSync(`
 
     const foo = {};
 
-    for (let i = 1024; i > 0; i--) {
+    for (let i = 2048; i > 0; i--) {
         loopFn.bind(foo).call(new Array(i).fill(0).map((_, idx) => { 
             if (i % 2 === 0) {
                 return idx + Math.random(i);
