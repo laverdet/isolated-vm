@@ -244,6 +244,15 @@ class ApplyRunner : public ThreePhaseTask {
 			}
 		}
 
+		ApplyRunner(const ApplyRunner&) = delete;
+		auto operator=(const ApplyRunner&) = delete;
+
+		~ApplyRunner() final {
+			if (did_finish) {
+				*did_finish = 1;
+			}
+		}
+
 		void Phase2() final {
 			// Invoke in the isolate
 			Local<Context> context_handle = Deref(context);
@@ -320,10 +329,10 @@ class ApplyRunner : public ThreePhaseTask {
 		static void AsyncCallback(const v8::FunctionCallbackInfo<v8::Value>& info) {
 			// It's possible the invocation timed out, in which case the ApplyRunner will be dead. The
 			// shared_ptr<bool> here will be marked as true and we can exit early.
-			auto* did_finish_ptr = reinterpret_cast<shared_ptr<bool>*>(info[1].As<External>()->Value());
+			auto* did_finish_ptr = reinterpret_cast<shared_ptr<char>*>(info[1].As<External>()->Value());
 			auto did_finish = std::move(*did_finish_ptr);
 			delete did_finish_ptr;
-			if (*did_finish) {
+			if (*did_finish == 1) {
 				return;
 			}
 			ApplyRunner& self = *reinterpret_cast<ApplyRunner*>(info[0].As<External>()->Value());
