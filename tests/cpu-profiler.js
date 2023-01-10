@@ -116,4 +116,6 @@ Promise.all([
     testEmpty(),
     testSync(),
     testAsync(),
-]);
+]).then(() => {
+    console.log('pass');
+});
