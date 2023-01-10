@@ -61,13 +61,13 @@ class IVMCpuProfile {
 		int64_t samples_count;
 		std::vector<unsigned int> samples;
 		std::vector<int64_t> timestamps;
-		std::vector<const ProfileNode> profileNodes;
+		std::vector<ProfileNode> profileNodes;
 
 		auto GetTidValue(v8::Isolate *iso) -> v8::Local<v8::Value>;
 
 		auto BuildCpuProfile(v8::Isolate *iso) -> v8::Local<v8::Value>;
 		
-		void FlatNodes(const v8::CpuProfileNode* node, std::vector<const ProfileNode>* nodes) { // NOLINT(misc-no-recursion)
+		void FlatNodes(const v8::CpuProfileNode* node, std::vector<ProfileNode>* nodes) { // NOLINT(misc-no-recursion)
             nodes->emplace_back(node);
 			const int childrenCount = node->GetChildrenCount();
 
