@@ -1,4 +1,6 @@
 #pragma once
+#include <ratio>
+#include <string>
 #include <v8.h>
 #include <uv.h>
 
@@ -9,9 +11,11 @@
 #include "scheduler.h"
 #include "specific.h"
 #include "strings.h"
+#include "cpu_profile_manager.h"
 #include "lib/covariant.h"
 #include "lib/lockable.h"
 #include "lib/thread_pool.h"
+#include "v8-profiler.h"
 
 #include <atomic>
 #include <cassert>
@@ -24,6 +28,7 @@
 #include <set>
 #include <unordered_map>
 #include <vector>
+#include <list>
 
 namespace ivm {
 
@@ -114,6 +119,7 @@ class IsolateEnvironment {
 
 		std::vector<v8::Eternal<v8::Data>> specifics;
 		std::unordered_map<v8::Persistent<v8::Value>*, std::pair<void(*)(void*), void*>> weak_persistents;
+		CpuProfileManager cpuProfileManager{};
 
 	public:
 		RemoteHandle<v8::Function> error_handler;
@@ -330,6 +336,13 @@ class IsolateEnvironment {
 		 */
 		auto GetCpuTime() -> std::chrono::nanoseconds;
 		auto GetWallTime() -> std::chrono::nanoseconds;
+
+		/**
+	     * CPU Profiler
+		 */
+		auto GetCpuProfileManager() -> CpuProfileManager* {
+			return &cpuProfileManager;
+		}
 
 		/**
 		 * Ask this isolate to finish everything it's doing.
