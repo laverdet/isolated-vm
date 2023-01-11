@@ -119,7 +119,7 @@ class IsolateEnvironment {
 
 		std::vector<v8::Eternal<v8::Data>> specifics;
 		std::unordered_map<v8::Persistent<v8::Value>*, std::pair<void(*)(void*), void*>> weak_persistents;
-		CpuProfileManager cpuProfileManager{};
+		std::shared_ptr<CpuProfileManager> cpu_profile_manager;
 
 	public:
 		RemoteHandle<v8::Function> error_handler;
@@ -340,9 +340,7 @@ class IsolateEnvironment {
 		/**
 	     * CPU Profiler
 		 */
-		auto GetCpuProfileManager() -> CpuProfileManager* {
-			return &cpuProfileManager;
-		}
+		auto GetCpuProfileManager() -> CpuProfileManager*;
 
 		/**
 		 * Ask this isolate to finish everything it's doing.

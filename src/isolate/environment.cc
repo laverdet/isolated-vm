@@ -1,6 +1,7 @@
 #include "environment.h"
 #include "allocator.h"
 #include "inspector.h"
+#include "isolate/cpu_profile_manager.h"
 #include "isolate/generic/error.h"
 #include "platform_delegate.h"
 #include "runnable.h"
@@ -543,6 +544,13 @@ void IsolateEnvironment::EnableInspectorAgent() {
 
 auto IsolateEnvironment::GetInspectorAgent() const -> InspectorAgent* {
 	return inspector_agent.get();
+}
+
+auto IsolateEnvironment::GetCpuProfileManager() -> CpuProfileManager* {
+	if (!cpu_profile_manager) {
+		cpu_profile_manager = std::make_shared<CpuProfileManager>();
+	}
+	return cpu_profile_manager.get();
 }
 
 auto IsolateEnvironment::GetCpuTime() -> std::chrono::nanoseconds {
