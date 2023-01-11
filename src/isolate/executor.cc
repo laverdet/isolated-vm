@@ -152,7 +152,11 @@ Executor::Profiler::Profiler(IsolateEnvironment& env) {
 	profiler = nullptr;
 
 	if (env.GetCpuProfileManager()->IsProfiling()) {
-		profiler = v8::CpuProfiler::New(isolate, v8::kDebugNaming, v8::kEagerLogging);
+		#if NODE_MODULE_VERSION < 72
+			profiler = v8::CpuProfiler::New(isolate);
+		#else
+			profiler = v8::CpuProfiler::New(isolate, v8::kDebugNaming, v8::kEagerLogging);
+		#endif
 		#if NODE_MODULE_VERSION < 83
 			const v8::Local<v8::String> title = v8::String::NewFromUtf8(isolate, "isolated-vm");
 		#else

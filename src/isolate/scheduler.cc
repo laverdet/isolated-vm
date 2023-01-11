@@ -2,7 +2,6 @@
 #include "executor.h"
 #include "node_wrapper.h"
 #include "scheduler.h"
-#include <cstdio>
 #include <memory>
 #include <v8.h>
 #include <utility>

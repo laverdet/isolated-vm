@@ -4,6 +4,7 @@
 #include <climits>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <memory>
 #include <mutex>
 #include <thread>
