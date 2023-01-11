@@ -84,15 +84,30 @@ auto IVMCpuProfile::ToJSObject(Isolate *iso) -> Local<Value> {
 	return result;
 }
 
+#if NODE_MODULE_VERSION < 72
+IVMCpuProfile::CallFrame::CallFrame(const v8::CpuProfileNode* node):
+	script_id(node->GetScriptId()),
+	line_number(node->GetLineNumber()),
+	column_number(node->GetColumnNumber()) {
 
+	auto url_len = strlen(node->GetScriptResourceNameStr());
+	url = new char[url_len];
+	strcpy(url, node->GetScriptResourceNameStr());
+
+	auto fn_len = strlen(node->GetFunctionNameStr());
+	function_name = new char[fn_len];
+	strcpy(function_name, node->GetFunctionNameStr());
+}
+#else
 IVMCpuProfile::CallFrame::CallFrame(const v8::CpuProfileNode* node):
 	function_name(node->GetFunctionNameStr()),
 	url(node->GetScriptResourceNameStr()),
 	script_id(node->GetScriptId()),
 	line_number(node->GetLineNumber()),
 	column_number(node->GetColumnNumber()) {}
+#endif
 
-// TODO
+
 auto IVMCpuProfile::CallFrame::ToJSObject(v8::Isolate *iso) -> Local<Value> {
     auto& strings = StringTable::Get();
     Local<Object> callFrame = Object::New(iso);

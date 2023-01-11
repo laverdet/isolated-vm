@@ -28,8 +28,8 @@ class IVMCpuProfile {
 
 				auto ToJSObject(v8::Isolate *iso) -> v8::Local<v8::Value>;
 			private:
-				const char* function_name;
-				const char* url;
+				char* function_name;
+				char* url;
 				int script_id;
 				int line_number;
 				int column_number;

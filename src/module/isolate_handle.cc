@@ -16,6 +16,7 @@
 #include "module/evaluation.h"
 #include "v8-platform.h"
 #include "v8-profiler.h"
+#include <cstring>
 #include <deque>
 #include <memory>
 #include <iostream>
