@@ -6,12 +6,8 @@
 #include "v8.h"
 #include <cstddef>
 #include <cstdio>
-#include <pthread.h>
-#include <iostream>
 
 namespace ivm {
-
-	using namespace std;
 
 /**
  * Executor implementation
@@ -108,7 +104,6 @@ auto Executor::CpuTimer::Now() -> TimePoint {
 Executor::WallTimer::WallTimer(Executor& executor) :
 		executor{executor}, cpu_timer{cpu_timer_thread} {
 	// Pause current CPU timer which may not belong to this isolate
-
 	if (cpu_timer != nullptr) {
 		cpu_timer->Pause();
 	}
