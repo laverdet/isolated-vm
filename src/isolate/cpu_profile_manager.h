@@ -28,8 +28,13 @@ class IVMCpuProfile {
 
 				auto ToJSObject(v8::Isolate *iso) -> v8::Local<v8::Value>;
 			private:
-				char* function_name;
-				char* url;
+				#if NODE_MODULE_VERSION < 72
+					char* function_name;
+					char* url;
+				#else
+					const char* function_name;
+					const char* url;
+				#endif
 				int script_id;
 				int line_number;
 				int column_number;
