@@ -153,7 +153,11 @@ Executor::Profiler::Profiler(IsolateEnvironment& env) {
 
 	if (env.GetCpuProfileManager()->IsProfiling()) {
 		profiler = v8::CpuProfiler::New(isolate, v8::kDebugNaming, v8::kEagerLogging);
-		const v8::Local<v8::String> title = v8::String::NewFromUtf8(isolate, "isolated-vm").ToLocalChecked();
+		#if NODE_MODULE_VERSION < 83
+			const v8::Local<v8::String> title = v8::String::NewFromUtf8(isolate, "isolated-vm");
+		#else
+			const v8::Local<v8::String> title = v8::String::NewFromUtf8(isolate, "isolated-vm").ToLocalChecked();
+		#endif
 		profiler->StartProfiling(title, true);
 	}
 }
@@ -166,7 +170,11 @@ Executor::Profiler::~Profiler() {
 	auto DeleterLambda =[](v8::CpuProfile *profile){
 		profile->Delete();
 	};
-	const v8::Local<v8::String> title = v8::String::NewFromUtf8(isolate, "isolated-vm").ToLocalChecked();
+	#if NODE_MODULE_VERSION < 83
+		const v8::Local<v8::String> title = v8::String::NewFromUtf8(isolate, "isolated-vm");
+	#else
+		const v8::Local<v8::String> title = v8::String::NewFromUtf8(isolate, "isolated-vm").ToLocalChecked();
+	#endif
 	const std::shared_ptr<v8::CpuProfile> profile{profiler->StopProfiling(title),DeleterLambda};
 	environment->GetCpuProfileManager()->InjestCpuProfile(profile);
 }

@@ -98,7 +98,7 @@ auto IVMCpuProfile::CallFrame::ToJSObject(v8::Isolate *iso) -> Local<Value> {
     const Local<Context> context = iso->GetCurrentContext();  
     #if NODE_MODULE_VERSION < 83
         Unmaybe(callFrame->Set(context, strings.functionName, String::NewFromUtf8(iso, function_name)));
-        Unmaybe(callFrame->Set(context, strings.url, String::NewFromUtf8(iso, node->GetScriptResourceNameStr())));
+        Unmaybe(callFrame->Set(context, strings.url, String::NewFromUtf8(iso, url)));
     #else
         Unmaybe(callFrame->Set(context, strings.functionName, String::NewFromUtf8(iso, function_name).ToLocalChecked()));
         Unmaybe(callFrame->Set(context, strings.url, String::NewFromUtf8(iso, url).ToLocalChecked()));
