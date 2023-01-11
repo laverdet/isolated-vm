@@ -44,37 +44,37 @@ auto IVMCpuProfile::GetTidValue(Isolate *iso) -> Local<Value>{
 }
 
 auto IVMCpuProfile::BuildCpuProfile(Isolate *iso) -> Local<Value> {
-    auto& strings = StringTable::Get();
+	auto& strings = StringTable::Get();
 	auto context = iso->GetCurrentContext();
 	auto profileObject = Object::New(iso);
 
-    Unmaybe(profileObject->Set(context, strings.startTime, Number::New(iso, static_cast<double>(start_time))));
-    Unmaybe(profileObject->Set(context, strings.endTime, Number::New(iso, static_cast<double>(end_time))));
+	Unmaybe(profileObject->Set(context, strings.startTime, Number::New(iso, static_cast<double>(start_time))));
+	Unmaybe(profileObject->Set(context, strings.endTime, Number::New(iso, static_cast<double>(end_time))));
 
-    const Local<Array> samplesArr = Array::New(iso);
-    const Local<Array> timeDeltasArr = Array::New(iso);
+	const Local<Array> samplesArr = Array::New(iso);
+	const Local<Array> timeDeltasArr = Array::New(iso);
 
-    for (int64_t i = 0; i < samples_count; i++) {
-        Unmaybe(samplesArr->Set(context, i, Number::New(iso, static_cast<double>(samples[i]))));
-        Unmaybe(timeDeltasArr->Set(context, i, Number::New(iso, static_cast<double>(timestamps[i] - start_time))));
-    }
-    Unmaybe(profileObject->Set(context, strings.samples, samplesArr));
-    Unmaybe(profileObject->Set(context, strings.timeDeltas, timeDeltasArr));
-    
-    const Local<Array> nodeArr = Array::New(iso, static_cast<int>(profileNodes.size()));
-    Unmaybe(profileObject->Set(context, strings.nodes, nodeArr));
+	for (int64_t i = 0; i < samples_count; i++) {
+		Unmaybe(samplesArr->Set(context, i, Number::New(iso, static_cast<double>(samples[i]))));
+		Unmaybe(timeDeltasArr->Set(context, i, Number::New(iso, static_cast<double>(timestamps[i] - start_time))));
+	}
+	Unmaybe(profileObject->Set(context, strings.samples, samplesArr));
+	Unmaybe(profileObject->Set(context, strings.timeDeltas, timeDeltasArr));
+	
+	const Local<Array> nodeArr = Array::New(iso, static_cast<int>(profileNodes.size()));
+	Unmaybe(profileObject->Set(context, strings.nodes, nodeArr));
 
-    const size_t count = profileNodes.size();
-    for (size_t i = 0; i < count; i++) {
+	const size_t count = profileNodes.size();
+	for (size_t i = 0; i < count; i++) {
 		ProfileNode node = profileNodes[i];
-        Unmaybe(nodeArr->Set(context, i, node.ToJSObject(iso)));
-    }
+		Unmaybe(nodeArr->Set(context, i, node.ToJSObject(iso)));
+	}
 
 	return profileObject;
 }
 
 auto IVMCpuProfile::ToJSObject(Isolate *iso) -> Local<Value> {
-    auto& strings = StringTable::Get();
+	auto& strings = StringTable::Get();
 	auto context = iso->GetCurrentContext();
 	auto result = Object::New(iso);
 
@@ -109,20 +109,20 @@ IVMCpuProfile::CallFrame::CallFrame(const v8::CpuProfileNode* node):
 
 
 auto IVMCpuProfile::CallFrame::ToJSObject(v8::Isolate *iso) -> Local<Value> {
-    auto& strings = StringTable::Get();
-    Local<Object> callFrame = Object::New(iso);
-    const Local<Context> context = iso->GetCurrentContext();  
-    #if NODE_MODULE_VERSION < 83
-        Unmaybe(callFrame->Set(context, strings.functionName, String::NewFromUtf8(iso, function_name)));
-        Unmaybe(callFrame->Set(context, strings.url, String::NewFromUtf8(iso, url)));
-    #else
-        Unmaybe(callFrame->Set(context, strings.functionName, String::NewFromUtf8(iso, function_name).ToLocalChecked()));
-        Unmaybe(callFrame->Set(context, strings.url, String::NewFromUtf8(iso, url).ToLocalChecked()));
-    #endif
-    Unmaybe(callFrame->Set(context, strings.scriptId, Number::New(iso, script_id)));
-    Unmaybe(callFrame->Set(context, strings.lineNumber, Number::New(iso, line_number)));
-    Unmaybe(callFrame->Set(context, strings.columnNumber, Number::New(iso, column_number)));
-    return callFrame;
+	auto& strings = StringTable::Get();
+	Local<Object> callFrame = Object::New(iso);
+	const Local<Context> context = iso->GetCurrentContext();  
+	#if NODE_MODULE_VERSION < 83
+		Unmaybe(callFrame->Set(context, strings.functionName, String::NewFromUtf8(iso, function_name)));
+		Unmaybe(callFrame->Set(context, strings.url, String::NewFromUtf8(iso, url)));
+	#else
+		Unmaybe(callFrame->Set(context, strings.functionName, String::NewFromUtf8(iso, function_name).ToLocalChecked()));
+		Unmaybe(callFrame->Set(context, strings.url, String::NewFromUtf8(iso, url).ToLocalChecked()));
+	#endif
+	Unmaybe(callFrame->Set(context, strings.scriptId, Number::New(iso, script_id)));
+	Unmaybe(callFrame->Set(context, strings.lineNumber, Number::New(iso, line_number)));
+	Unmaybe(callFrame->Set(context, strings.columnNumber, Number::New(iso, column_number)));
+	return callFrame;
 }
 
 IVMCpuProfile::ProfileNode::ProfileNode(const v8::CpuProfileNode* node):
@@ -138,41 +138,41 @@ IVMCpuProfile::ProfileNode::ProfileNode(const v8::CpuProfileNode* node):
 	}
 
 auto IVMCpuProfile::ProfileNode::ToJSObject(Isolate *iso) -> Local<Value> {
-    auto& strings = StringTable::Get();
+	auto& strings = StringTable::Get();
 	auto context = iso->GetCurrentContext();
 
-    Local<Object> nodeObj = Object::New(iso);
+	Local<Object> nodeObj = Object::New(iso);
 
-    Unmaybe(nodeObj->Set(context, strings.hitCount, Number::New(iso, hit_count)));
-    Unmaybe(nodeObj->Set(context, strings.id, Number::New(iso, node_id)));
+	Unmaybe(nodeObj->Set(context, strings.hitCount, Number::New(iso, hit_count)));
+	Unmaybe(nodeObj->Set(context, strings.id, Number::New(iso, node_id)));
 
-    if (strlen(bailout_reason) > 0) {
-        #if NODE_MODULE_VERSION < 83
-            Unmaybe(nodeObj->Set(context, strings.bailoutReason, String::NewFromUtf8(iso, bailout_reason)));
-        #else
-            Unmaybe(nodeObj->Set(context, strings.bailoutReason, String::NewFromUtf8(iso, bailout_reason).ToLocalChecked()));
-        #endif
-    }
-    
-    const int children_count = static_cast<int>(children.size());
-    const Local<Array> childrenArr = Array::New(iso, children_count);
-    Unmaybe(nodeObj->Set(context, strings.children, childrenArr));
+	if (strlen(bailout_reason) > 0) {
+		#if NODE_MODULE_VERSION < 83
+			Unmaybe(nodeObj->Set(context, strings.bailoutReason, String::NewFromUtf8(iso, bailout_reason)));
+		#else
+			Unmaybe(nodeObj->Set(context, strings.bailoutReason, String::NewFromUtf8(iso, bailout_reason).ToLocalChecked()));
+		#endif
+	}
+	
+	const int children_count = static_cast<int>(children.size());
+	const Local<Array> childrenArr = Array::New(iso, children_count);
+	Unmaybe(nodeObj->Set(context, strings.children, childrenArr));
 
-    for (int j = 0; j < children_count; j++) {
-        Unmaybe(childrenArr->Set(context, j, Number::New(iso, static_cast<double>(children[j]))));
-    }
+	for (int j = 0; j < children_count; j++) {
+		Unmaybe(childrenArr->Set(context, j, Number::New(iso, static_cast<double>(children[j]))));
+	}
 
-    const Local<Value> callFrame = call_frame.ToJSObject(iso);
-    Unmaybe(nodeObj->Set(context, strings.callFrame, callFrame));
+	const Local<Value> callFrame = call_frame.ToJSObject(iso);
+	Unmaybe(nodeObj->Set(context, strings.callFrame, callFrame));
 
-    return nodeObj;
+	return nodeObj;
 }
 
 CpuProfileManager::CpuProfileManager() = default;
 
 void CpuProfileManager::StartProfiling(const char* title) {
 	const std::lock_guard<std::mutex> lock(mutex);
-    std::string str(title);
+	std::string str(title);
 	profile_titles.insert(str);
 }
 
@@ -194,12 +194,12 @@ auto CpuProfileManager::StopProfiling(const char* title) -> std::vector<IVMCpuPr
 	}
 
 	// remove the titles
-    profile_titles.erase(str_title);
+	profile_titles.erase(str_title);
 	// remove the profile ptr from map
 	profile_begin_ptrs.erase(str_title);
 
 	// TODO clean up old profiles, extract private method
-    CleanProfiles();
+	CleanProfiles();
 
 	return currently_collected;
 }
@@ -220,10 +220,10 @@ auto CpuProfileManager::InjestCpuProfile(const std::shared_ptr<v8::CpuProfile>& 
 }
 
 void CpuProfileManager::CleanProfiles() {
-    if (profile_titles.empty()) {
-        profile_items.clear();
-        profile_begin_ptrs.clear();
-    } 
+	if (profile_titles.empty()) {
+		profile_items.clear();
+		profile_begin_ptrs.clear();
+	} 
 
 	int64_t min_start_time = INT_MAX;
 

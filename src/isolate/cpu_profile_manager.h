@@ -15,16 +15,16 @@
 #include <list>
 
 namespace ivm {
-    
+	
 class IVMCpuProfile {
 	public:
 		explicit IVMCpuProfile(const std::shared_ptr<v8::CpuProfile>& cpuProfile);
-        ~IVMCpuProfile() = default;
+		~IVMCpuProfile() = default;
 
 		class CallFrame {
 			public:
 				explicit CallFrame(const v8::CpuProfileNode* node);
-                ~CallFrame() = default;
+				~CallFrame() = default;
 
 				auto ToJSObject(v8::Isolate *iso) -> v8::Local<v8::Value>;
 			private:
@@ -43,7 +43,7 @@ class IVMCpuProfile {
 		class ProfileNode {
 			public:
 				explicit ProfileNode(const v8::CpuProfileNode* node);
-                ~ProfileNode() = default;
+				~ProfileNode() = default;
 
 				auto ToJSObject(v8::Isolate *iso) -> v8::Local<v8::Value>;
 			private:
@@ -73,7 +73,7 @@ class IVMCpuProfile {
 		auto BuildCpuProfile(v8::Isolate *iso) -> v8::Local<v8::Value>;
 		
 		void FlatNodes(const v8::CpuProfileNode* node, std::vector<ProfileNode>* nodes) { // NOLINT(misc-no-recursion)
-            nodes->emplace_back(node);
+			nodes->emplace_back(node);
 			const int childrenCount = node->GetChildrenCount();
 
 			for (int index = 0; index < childrenCount; ++index) {
@@ -95,7 +95,7 @@ class CpuProfileManager {
 		auto operator= (const CpuProfileManager) = delete;
 		~CpuProfileManager() = default;
 	private:
-        void CleanProfiles();
+		void CleanProfiles();
 
 		std::set<std::string> profile_titles{};
 		std::list<IVMCpuProfile> profile_items{};
