@@ -32,7 +32,7 @@ wss.on('connection', function(ws) {
 	// Relay messages from frontend to backend
 	ws.on('message', function(message) {
 		try {
-			channel.dispatchProtocolMessage(message);
+			channel.dispatchProtocolMessage(message.toString());
 		} catch (err) {
 			// This happens if inspector session was closed unexpectedly
 			ws.close();
