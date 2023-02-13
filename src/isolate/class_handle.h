@@ -62,7 +62,6 @@ class ClassHandle {
 			v8::Local<v8::FunctionTemplate>& tmpl;
 			v8::Local<v8::ObjectTemplate>& proto;
 			v8::Local<v8::Signature>& sig;
-			v8::Local<v8::AccessorSignature>& asig;
 
 			// This add regular methods
 			template <typename... Args>
@@ -92,7 +91,7 @@ class ClassHandle {
 			template <typename... Args>
 			void Add(const char* name, detail::MemberAccessorHolder impl, Args... args) {
 				v8::Local<v8::String> name_handle = v8_symbol(name);
-				proto->SetAccessor(name_handle, impl.getter.callback, impl.setter.callback, name_handle, v8::AccessControl::DEFAULT, v8::PropertyAttribute::None, asig);
+				proto->SetAccessor(name_handle, impl.getter.callback, impl.setter.callback, name_handle, v8::AccessControl::DEFAULT, v8::PropertyAttribute::None);
 				Add(args...);
 			}
 
@@ -174,8 +173,7 @@ class ClassHandle {
 			auto proto = tmpl->PrototypeTemplate();
 			proto->SetImmutableProto();
 			v8::Local<v8::Signature> sig = v8::Signature::New(isolate, tmpl);
-			v8::Local<v8::AccessorSignature> asig = v8::AccessorSignature::New(isolate, tmpl);
-			TemplateDefinition def{isolate, tmpl, proto, sig, asig};
+			TemplateDefinition def{isolate, tmpl, proto, sig};
 			def.Add(args...);
 
 			return tmpl;

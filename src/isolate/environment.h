@@ -134,6 +134,11 @@ class IsolateEnvironment {
 		 * If this function is called then I have failed you.
 		 */
 		static void OOMErrorCallback(const char* location, bool is_heap_oom);
+#if V8_AT_LEAST(10, 4, 9)
+		static void OOMErrorCallback(const char* location, const v8::OOMDetails& details) {
+			OOMErrorCallback(location, details.is_heap_oom);
+		}
+#endif
 
 		/**
 		 * Called when an isolate has an uncaught error in a promise. This makes no distinction between
