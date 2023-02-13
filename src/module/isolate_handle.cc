@@ -16,6 +16,7 @@
 #include "module/evaluation.h"
 #include "v8-platform.h"
 #include "v8-profiler.h"
+#include <cstring>
 #include <deque>
 #include <memory>
 #include <iostream>
@@ -56,7 +57,8 @@ auto IsolateHandle::Definition() -> Local<FunctionTemplate> {
 		"isDisposed", MemberAccessor<decltype(&IsolateHandle::IsDisposedGetter), &IsolateHandle::IsDisposedGetter>{},
 		"referenceCount", MemberAccessor<decltype(&IsolateHandle::GetReferenceCount), &IsolateHandle::GetReferenceCount>{},
 		"wallTime", MemberAccessor<decltype(&IsolateHandle::GetWallTime), &IsolateHandle::GetWallTime>{},
-		"createCpuProfiler", MemberFunction<decltype(&IsolateHandle::CreateCpuProfiler<0>), &IsolateHandle::CreateCpuProfiler<0>>{}
+		"startCpuProfiler", MemberFunction<decltype(&IsolateHandle::StartCpuProfiler), &IsolateHandle::StartCpuProfiler>{},
+		"stopCpuProfiler", MemberFunction<decltype(&IsolateHandle::StopCpuProfiler<1>), &IsolateHandle::StopCpuProfiler<1>>{}
 	));
 }
 
@@ -221,6 +223,33 @@ struct CompileScriptRunner : public CodeCompilerHolder, public ThreePhaseTask {
 		Local<Object> value = ClassHandle::NewInstance<ScriptHandle>(std::move(script));
 		WriteCompileResults(value);
 		return value;
+	}
+};
+
+struct StopCpuProfileRunner: public ThreePhaseTask {
+	const char* title_;
+	std::vector<IVMCpuProfile> profiles;
+	
+	explicit StopCpuProfileRunner(const char* title): title_(title) {}
+
+	void Phase2() final {
+		auto* isolate = IsolateEnvironment::GetCurrent();
+		profiles = isolate->GetCpuProfileManager()->StopProfiling(title_);
+	}
+
+	auto Phase3() -> Local<Value> final {
+		auto* isolate = Isolate::GetCurrent();
+		auto ctx = isolate->GetCurrentContext();
+
+		const int arr_size = static_cast<int>(profiles.size());
+		auto arr = Array::New(isolate, arr_size);
+
+		for (int i = 0; i < arr_size; i++) {
+			IVMCpuProfile profile = profiles.at(i);
+			Unmaybe(arr->Set(ctx, i, profile.ToJSObject(isolate)));
+		}
+
+		return arr;
 	}
 };
 
@@ -392,17 +421,39 @@ auto IsolateHandle::GetWallTime() -> Local<Value> {
 #endif
 }
 
-template <int async>
-auto IsolateHandle::CreateCpuProfiler() -> Local<Value> {
+auto IsolateHandle::StartCpuProfiler(v8::Local<v8::String> title) -> Local<Value> {
 	auto env = this->isolate->GetIsolate();
 
 	if (!env) {
 		throw RuntimeGenericError("Isolate is disposed");
 	}
 
-	v8::CpuProfiler* profiler = v8::CpuProfiler::New(env->GetIsolate());
+    Isolate* iso = Isolate::GetCurrent();
+	v8::String::Utf8Value str(iso, title);
+	const char* title_ = *str;
 
-	return ClassHandle::NewInstance<CpuProfilerHandle>(profiler);
+	env->GetCpuProfileManager()->StartProfiling(title_);
+
+	return HandleCast<Local<Boolean>>(true);
+}
+
+template <int async>
+auto IsolateHandle::StopCpuProfiler(v8::Local<v8::String> title) -> Local<Value> {
+	auto env = this->isolate->GetIsolate();
+
+	if (!env) {
+		throw RuntimeGenericError("Isolate is disposed");
+	}
+
+    Isolate* iso = Isolate::GetCurrent();
+	v8::String::Utf8Value str(iso, title);
+	const size_t len = strlen(*str);
+
+	char* dest = (char*)std::malloc(len + 1);
+
+	strcpy(dest, *str);
+
+	return ThreePhaseTask::Run<async, StopCpuProfileRunner>(*isolate, dest);
 }
 
 /**

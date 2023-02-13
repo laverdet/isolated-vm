@@ -5,7 +5,7 @@ const ivm = require('isolated-vm');
 		const context = await isolate.createContext();
 
 		await context.evalClosure(
-			'globalThis.run = () => $0.applySyncPromise(null, [])',
+			'run = () => $0.applySyncPromise(null, [])',
 			[
 				async () => {
 					isolate.dispose();

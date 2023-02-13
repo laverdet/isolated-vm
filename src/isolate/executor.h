@@ -4,6 +4,7 @@
 #include <mutex>
 #include <thread>
 #include "holder.h"
+#include "v8-profiler.h"
 
 namespace ivm {
 class InspectorAgent;
@@ -106,6 +107,19 @@ class Executor { // "En taro adun"
 				Executor* last;
 		};
 
+		class Profiler {
+			public:
+				explicit Profiler(IsolateEnvironment& env);
+				Profiler(const Profiler&) = delete;
+				~Profiler();
+				auto operator= (const Profiler&) = delete;
+			private:
+				IsolateEnvironment* environment;
+				Executor* executor;
+				v8::CpuProfiler* profiler;
+				v8::Isolate* isolate;
+		};
+
 		// Locks this environment for execution. Implies `Scope` as well.
 		class Lock {
 			public:
@@ -123,6 +137,7 @@ class Executor { // "En taro adun"
 				CpuTimer cpu_timer;
 				v8::Isolate::Scope isolate_scope;
 				v8::HandleScope handle_scope;
+				Profiler profiler;
 		};
 
 		class Unlock {

@@ -1,15 +1,24 @@
 #include "environment.h"
 #include "allocator.h"
 #include "inspector.h"
+#include "isolate/cpu_profile_manager.h"
+#include "isolate/generic/error.h"
 #include "platform_delegate.h"
 #include "runnable.h"
 #include "external_copy/external_copy.h"
 #include "scheduler.h"
 #include "lib/suspend.h"
 #include <algorithm>
+#include <chrono>
+#include <climits>
 #include <cmath>
+#include <cstdio>
 #include <memory>
 #include <mutex>
+#include <thread>
+#include <vector>
+#include "v8-platform.h"
+#include "v8.h"
 
 #if USE_CLOCK_THREAD_CPUTIME_ID
 #include <time.h>
@@ -317,6 +326,7 @@ IsolateEnvironment::IsolateEnvironment() :
 	scheduler{in_place<UvScheduler>{}, *this},
 	executor{*this},
 	nodejs_isolate{true} {}
+	
 
 IsolateEnvironment::IsolateEnvironment(UvScheduler& default_scheduler) :
 	scheduler{in_place<IsolatedScheduler>{}, *this, default_scheduler},
@@ -534,6 +544,13 @@ void IsolateEnvironment::EnableInspectorAgent() {
 
 auto IsolateEnvironment::GetInspectorAgent() const -> InspectorAgent* {
 	return inspector_agent.get();
+}
+
+auto IsolateEnvironment::GetCpuProfileManager() -> CpuProfileManager* {
+	if (!cpu_profile_manager) {
+		cpu_profile_manager = std::make_shared<CpuProfileManager>();
+	}
+	return cpu_profile_manager.get();
 }
 
 auto IsolateEnvironment::GetCpuTime() -> std::chrono::nanoseconds {

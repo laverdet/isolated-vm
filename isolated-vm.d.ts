@@ -108,15 +108,23 @@ declare module "isolated-vm" {
 		getHeapStatisticsSync(): HeapStatistics;
 
 		/**
-		 * Returns a Cpu Profiler from v8 for this specific isolate.
+		 * Start profiling against the isolate with a specific title
 		 * 
-		 * This function only returns a `single-use` CpuProfiler, once the
-		 * `stopProfiling` is called, it will automatically dispose the
-		 * `CpuProfiler`. 
-		 * 
-		 * Any new CPU profiling require to call this function again. 
+		 * @param title the profile title
 		 */
-		createCpuProfiler(): CpuProfiler;
+		startCpuProfiler(title: string): void;
+
+		/**
+		 * Stop profiling against the isolate with a specific title
+		 * that started via `startCpuProfiler`. It will return more
+		 * than one cpu profiles because isolate can be run in different
+		 * threads. The `ThreadCpuProfile` contains the `thread_id` that
+		 * the isolate was running in.
+		 * 
+		 * @param title 
+		 */
+		stopCpuProfiler(title: string): Promise<ThreadCpuProfile[]>;
+
 	}
 
 	export type IsolateOptions = {
@@ -598,29 +606,12 @@ declare module "isolated-vm" {
 		createSync(context: Context): Reference<any>;
 	}
 
-	export class CpuProfiler {
-
-		/**
-		 * Similar to `console.profile(title)`
-		 * @param title The title of the cpu profile
-		 * @param recordSample Should record sample or not, `true` to genereate data.
-		 */
-		startProfiling(title: string, recordSample: boolean);
-
-		/**
-		 * Similar to `console.profileEnd(title)`
-		 * @param title The title of cpu profile
-		 */
-		stopProfiling(title: string): CpuProfile;
-
-		/**
-		 * Dispose the CpuProfiler
-		 */
-		dispose(): void;
+	export type ThreadCpuProfile = {
+		threadId: number;
+		profile: CpuProfile;
 	}
 
 	export type CpuProfile = {
-		title: string;
 		startTime: number;
 		endTime: number;
 		samples: number[];

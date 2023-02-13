@@ -65,6 +65,7 @@
 				'src/external_copy/string.cc',
 				'src/isolate/allocator_nortti.cc',
 				'src/isolate/environment.cc',
+				"src/isolate/cpu_profile_manager.cc",
 				'src/isolate/executor.cc',
 				'src/isolate/holder.cc',
 				'src/isolate/inspector.cc',
@@ -86,8 +87,7 @@
 				'src/module/reference_handle.cc',
 				'src/module/script_handle.cc',
 				'src/module/session_handle.cc',
-				'src/module/transferable.cc',
-				"src/module/cpu_profiler_handle.cc"
+				'src/module/transferable.cc'
 			],
 			'conditions': [
 				[ 'OS != "win"', {

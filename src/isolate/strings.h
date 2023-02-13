@@ -99,6 +99,8 @@ class StringTable {
 		String used_heap_size{"used_heap_size"};
 
 		// CPU Profiler specific keys
+		String threadId{"threadId"};
+		String profile{"profile"};
 		String startTime{"startTime"};
 		String endTime{"endTime"};
 		String samples{"samples"};
