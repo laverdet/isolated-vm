@@ -36,7 +36,6 @@ class CodeCompilerHolder {
 			v8::Local<v8::String> code_handle, v8::MaybeLocal<v8::Object> maybe_options, bool is_module = false);
 		auto DidSupplyCachedData() const { return supplied_cached_data; }
 		auto GetSource() -> std::unique_ptr<v8::ScriptCompiler::Source>;
-		// This should be removed after `V8_AT_LEAST(6, 8, 11)` because it's only used
 		auto GetSourceString() -> v8::Local<v8::String>;
 		void ResetSource();
 		void SaveCachedData(v8::ScriptCompiler::CachedData* cached_data);
@@ -50,7 +49,7 @@ class CodeCompilerHolder {
 		ScriptOriginHolder script_origin_holder;
 		ExternalCopyString code_string;
 		std::shared_ptr<ExternalCopyArrayBuffer> cached_data_out;
-		std::shared_ptr<BackingStore> cached_data_in;
+		std::shared_ptr<v8::BackingStore> cached_data_in;
 		mutable v8::Local<v8::String> code_string_handle;
 		size_t cached_data_in_size = 0;
 		bool cached_data_rejected = false;

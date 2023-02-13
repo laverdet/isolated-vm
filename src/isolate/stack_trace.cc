@@ -10,15 +10,9 @@ using namespace v8;
 
 namespace ivm {
 
-#if V8_AT_LEAST(6, 9, 408)
 static auto StringConcat(Isolate* isolate, Local<String> left, Local<String> right) -> Local<String> {
 	return String::Concat(isolate, left, right);
 }
-#else
-static Local<String> StringConcat(Isolate* /*isolate*/, Local<String> left, Local<String> right) {
-	return String::Concat(left, right);
-}
-#endif
 
 /**
  * This returns an object that's like Symbol() in JS but only C++ can see it.
@@ -158,11 +152,7 @@ auto StackTraceHolder::RenderSingleStack(Local<StackTrace> stack_trace) -> std::
 	std::stringstream ss;
 	int size = stack_trace->GetFrameCount();
 	for (int ii = 0; ii < size; ++ii) {
-#if V8_AT_LEAST(6, 9, 408)
 		Local<StackFrame> frame = stack_trace->GetFrame(isolate, ii);
-#else
-		Local<StackFrame> frame = stack_trace->GetFrame(ii);
-#endif
 		ss <<"\n    at ";
 		String::Utf8Value fn_name{isolate, frame->GetFunctionName()};
 		if (frame->IsWasm()) {

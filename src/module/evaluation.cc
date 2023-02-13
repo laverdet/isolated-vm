@@ -20,7 +20,6 @@ ScriptOriginHolder::ScriptOriginHolder(MaybeLocal<Object> maybe_options, bool is
 }
 
 ScriptOriginHolder::operator ScriptOrigin() const {
-#if V8_AT_LEAST(8, 9, 45)
 	return ScriptOrigin{
 			Isolate::GetCurrent(),
 			HandleCast<Local<String>>(filename),
@@ -33,19 +32,6 @@ ScriptOriginHolder::operator ScriptOrigin() const {
 			false, // is_wasm
 			is_module
 	};
-#else
-	return ScriptOrigin{
-		HandleCast<Local<String>>(filename), // resource_name,
-		HandleCast<Local<Integer>>(line_offset), // resource_line_offset
-		HandleCast<Local<Integer>>(column_offset), // resource_column_offset
-		{}, // resource_is_shared_cross_origin
-		{}, // script_id
-		{}, // source_map_url
-		{}, // resource_is_opaque
-		{}, // is_wasm
-		HandleCast<Local<Boolean>>(is_module)
-	};
-#endif
 }
 
 /**

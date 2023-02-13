@@ -15,7 +15,7 @@
 #include <list>
 
 namespace ivm {
-	
+
 class IVMCpuProfile {
 	public:
 		explicit IVMCpuProfile(const std::shared_ptr<v8::CpuProfile>& cpuProfile);
@@ -28,13 +28,8 @@ class IVMCpuProfile {
 
 				auto ToJSObject(v8::Isolate *iso) -> v8::Local<v8::Value>;
 			private:
-				#if NODE_MODULE_VERSION < 72
-					char* function_name;
-					char* url;
-				#else
-					const char* function_name;
-					const char* url;
-				#endif
+				const char* function_name;
+				const char* url;
 				int script_id;
 				int line_number;
 				int column_number;
@@ -71,7 +66,7 @@ class IVMCpuProfile {
 		auto GetTidValue(v8::Isolate *iso) -> v8::Local<v8::Value>;
 
 		auto BuildCpuProfile(v8::Isolate *iso) -> v8::Local<v8::Value>;
-		
+
 		void FlatNodes(const v8::CpuProfileNode* node, std::vector<ProfileNode>* nodes) { // NOLINT(misc-no-recursion)
 			nodes->emplace_back(node);
 			const int childrenCount = node->GetChildrenCount();

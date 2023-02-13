@@ -115,7 +115,6 @@ void LimitedAllocator::Free(void* data, size_t length) {
 	std::free(data);
 }
 
-#ifdef USE_ALLOCATOR_REALLOCATE
 auto LimitedAllocator::Reallocate(void* data, size_t old_length, size_t new_length) -> void* {
 	auto delta = static_cast<ssize_t>(new_length) - static_cast<ssize_t>(old_length);
 	if (delta > 0) {
@@ -126,7 +125,6 @@ auto LimitedAllocator::Reallocate(void* data, size_t old_length, size_t new_leng
 	env.extra_allocated_memory += delta;
 	return ArrayBuffer::Allocator::Reallocate(data, old_length, new_length);
 }
-#endif
 
 void LimitedAllocator::AdjustAllocatedSize(ptrdiff_t length) {
 	env.extra_allocated_memory += length;
@@ -140,99 +138,5 @@ void LimitedAllocator::Track(Local<Object> handle, size_t size) {
 	new ExternalMemoryHandle{handle, size};
 	AdjustAllocatedSize(size);
 }
-
-#if !V8_AT_LEAST(7, 9, 69)
-
-// This attaches the life of a std::shared_ptr<BackingStore> to a v8 object so that the memory isn't
-// freed while the object is still using it
-class ArrayHolder {
-	public:
-		ArrayHolder(
-			Local<Object> buffer,
-			std::shared_ptr<BackingStore> backing_store) :
-				handle{Isolate::GetCurrent(), buffer},
-				backing_store{std::move(backing_store)} {
-
-			handle.SetWeak(reinterpret_cast<void*>(this), &WeakCallbackV8, WeakCallbackType::kParameter);
-			IsolateEnvironment::GetCurrent()->AddWeakCallback(&handle, WeakCallback, this);
-			buffer->SetAlignedPointerInInternalField(0, this);
-		}
-
-		ArrayHolder(const ArrayHolder&) = delete;
-		auto operator=(const ArrayHolder&) = delete;
-		~ArrayHolder() = default;
-
-		template <class Type>
-		static auto Unwrap(Local<Type> handle) {
-			auto ptr = reinterpret_cast<ArrayHolder*>(handle->GetAlignedPointerFromInternalField(0));
-			if (ptr == nullptr || ptr->magic != ArrayHolder::kMagic) { // dangerous
-				throw RuntimeGenericError("Array buffer is already externalized");
-			}
-			return ptr->backing_store;
-		}
-
-	private:
-		static void WeakCallbackV8(const WeakCallbackInfo<void>& info) {
-			WeakCallback(info.GetParameter());
-		}
-
-		static void WeakCallback(void* param) {
-			auto that = reinterpret_cast<ArrayHolder*>(param);
-			that->handle.Reset();
-			IsolateEnvironment::GetCurrent()->RemoveWeakCallback(&that->handle);
-			delete that;
-		}
-
-		static constexpr uint64_t kMagic = 0xa4d3c462f7fd1741;
-		uint64_t magic = kMagic;
-		v8::Persistent<v8::Value> handle;
-		std::shared_ptr<BackingStore> backing_store;
-};
-
-template <class Type>
-auto GetBackingStoreImpl(Type handle) -> std::shared_ptr<BackingStore> {
-	size_t length = handle->ByteLength();
-	if (length == 0) {
-		throw RuntimeGenericError("Array buffer is invalid");
-	}
-	if (handle->IsExternal()) {
-		// Buffer lifespan is not handled by v8.. attempt to recover from isolated-vm
-		return ArrayHolder::Unwrap(handle);
-	}
-
-	// In this case the buffer is internal and can be released easily
-	auto contents = handle->Externalize();
-	auto data = std::unique_ptr<void, decltype(std::free)&>{contents.Data(), std::free};
-	auto backing_store = std::make_shared<BackingStore>(std::move(data), length);
-	new ArrayHolder{handle, backing_store};
-	auto* allocator = IsolateEnvironment::GetCurrent()->GetLimitedAllocator();
-	if (allocator != nullptr) {
-		// Track this memory usage in the allocator
-		new ExternalMemoryHandle{handle, length};
-	}
-	return backing_store;
-}
-
-auto BackingStore::GetBackingStore(v8::Local<v8::ArrayBuffer> handle) -> std::shared_ptr<BackingStore> {
-	return GetBackingStoreImpl(handle);
-}
-
-auto BackingStore::GetBackingStore(v8::Local<v8::SharedArrayBuffer> handle) -> std::shared_ptr<BackingStore> {
-	return GetBackingStoreImpl(handle);
-}
-
-auto BackingStore::NewArrayBuffer(std::shared_ptr<BackingStore> backing_store) -> v8::Local<v8::ArrayBuffer> {
-	auto handle = ArrayBuffer::New(Isolate::GetCurrent(), backing_store->Data(), backing_store->ByteLength());
-	new ArrayHolder{handle, std::move(backing_store)};
-	return handle;
-}
-
-auto BackingStore::NewSharedArrayBuffer(std::shared_ptr<BackingStore> backing_store) -> v8::Local<v8::SharedArrayBuffer> {
-	auto handle = SharedArrayBuffer::New(Isolate::GetCurrent(), backing_store->Data(), backing_store->ByteLength());
-	new ArrayHolder{handle, std::move(backing_store)};
-	return handle;
-}
-
-#endif
 
 } // namespace ivm

@@ -53,8 +53,6 @@ class ExternalCopyTemplate : public ExternalCopy {
 /**
  * BigInt data
  */
-#if V8_AT_LEAST(6, 9, 258)
-// Added in 477df066dbb
 struct ExternalCopyBigInt : public ExternalCopy {
 	public:
 		explicit ExternalCopyBigInt(Local<BigInt> value) {
@@ -72,7 +70,6 @@ struct ExternalCopyBigInt : public ExternalCopy {
 		int sign_bit = 0;
 		std::vector<uint64_t> words;
 };
-#endif
 
 /**
  * null and undefined
@@ -215,10 +212,8 @@ namespace {
 				// This handles Infinity, -Infinity, NaN
 				return std::make_unique<ExternalCopyTemplate<Number, double>>(value);
 			}
-#if V8_AT_LEAST(6, 9, 258)
 		} else if (value->IsBigInt()) {
 			return std::make_unique<ExternalCopyBigInt>(value.As<BigInt>());
-#endif
 		} else if (value->IsBoolean()) {
 			return std::make_unique<ExternalCopyTemplate<Boolean, bool>>(value);
 		} else if (value->IsNull()) {
@@ -371,23 +366,12 @@ auto ExternalCopyError::CopyInto(bool /*transfer_in*/) -> Local<Value> {
  * ExternalCopyAnyBuffer implementation
  */
 namespace {
-
-#if V8_AT_LEAST(7, 3, 89)
 	void Detach(Local<ArrayBuffer> handle) {
 		handle->Detach();
 	}
 	auto IsDetachable(Local<ArrayBuffer> handle) {
 		return handle->IsDetachable();
 	}
-#else
-	void Detach(Local<ArrayBuffer> handle) {
-		handle->Neuter();
-	}
-	auto IsDetachable(Local<ArrayBuffer> handle) {
-		return handle->IsNeuterable();
-	}
-#endif
-
 } // anonymous namespace
 
 
@@ -396,25 +380,17 @@ namespace {
  * ExternalCopyArrayBuffer implementation
  */
 ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(const void* data, size_t length) :
-#if V8_AT_LEAST(7, 9, 69)
 		ExternalCopyAnyBuffer{ArrayBuffer::NewBackingStore(
 			std::malloc(length), length,
 			[](void* data, size_t /*length*/, void* /*param*/) { std::free(data); },
 			nullptr)}
-#else
-		ExternalCopyAnyBuffer{std::make_shared<BackingStore>(length)}
-#endif
 {
 	std::memcpy((*backing_store.read())->Data(), data, length);
 }
 
 ExternalCopyArrayBuffer::ExternalCopyArrayBuffer(Local<ArrayBuffer> handle) :
 	ExternalCopyArrayBuffer{
-#if V8_AT_LEAST(7, 9, 69)
 		handle->GetBackingStore()->Data(),
-#else
-		handle->GetContents().Data(),
-#endif
 		handle->ByteLength()
 	} {}
 
@@ -422,11 +398,7 @@ auto ExternalCopyArrayBuffer::Transfer(Local<ArrayBuffer> handle) -> std::unique
 	if (!IsDetachable(handle)) {
 		throw RuntimeGenericError("Array buffer is invalid");
 	}
-#if V8_AT_LEAST(7, 9, 69)
 	auto backing_store = handle->GetBackingStore();
-#else
-	auto backing_store = BackingStore::GetBackingStore(handle);
-#endif
 	Detach(handle);
 	return std::make_unique<ExternalCopyArrayBuffer>(std::move(backing_store));
 }
@@ -439,11 +411,7 @@ auto ExternalCopyArrayBuffer::CopyInto(bool transfer_in) -> Local<Value> {
 		}
 		UpdateSize(0);
 		size_t size = backing_store->ByteLength();
-#if V8_AT_LEAST(7, 9, 69)
 		auto handle = ArrayBuffer::New(Isolate::GetCurrent(), std::move(backing_store));
-#else
-		auto handle = BackingStore::NewArrayBuffer(std::move(backing_store));
-#endif
 		auto* allocator = IsolateEnvironment::GetCurrent()->GetLimitedAllocator();
 		if (allocator != nullptr) {
 			allocator->Track(handle, size);
@@ -462,11 +430,7 @@ auto ExternalCopyArrayBuffer::CopyInto(bool transfer_in) -> Local<Value> {
 			throw RuntimeRangeError("Array buffer allocation failed");
 		}
 		auto handle = ArrayBuffer::New(Isolate::GetCurrent(), size);
-#if V8_AT_LEAST(7, 9, 69)
 		auto* data = handle->GetBackingStore()->Data();
-#else
-		auto* data = handle->GetContents().Data();
-#endif
 		std::memcpy(data, backing_store->Data(), size);
 		return handle;
 	}
@@ -476,20 +440,12 @@ auto ExternalCopyArrayBuffer::CopyInto(bool transfer_in) -> Local<Value> {
  * ExternalCopySharedArrayBuffer implementation
  */
 ExternalCopySharedArrayBuffer::ExternalCopySharedArrayBuffer(Local<SharedArrayBuffer> handle) :
-#if V8_AT_LEAST(7, 9, 69)
 	ExternalCopyAnyBuffer{handle->GetBackingStore()} {}
-#else
-	ExternalCopyAnyBuffer{BackingStore::GetBackingStore(handle)} {}
-#endif
 
 auto ExternalCopySharedArrayBuffer::CopyInto(bool /*transfer_in*/) -> Local<Value> {
 	auto backing_store = *this->backing_store.read();
 	size_t size = backing_store->ByteLength();
-#if V8_AT_LEAST(7, 9, 69)
 	auto handle = SharedArrayBuffer::New(Isolate::GetCurrent(), std::move(backing_store));
-#else
-	auto handle = BackingStore::NewSharedArrayBuffer(std::move(backing_store));
-#endif
 	auto* allocator = IsolateEnvironment::GetCurrent()->GetLimitedAllocator();
 	if (allocator != nullptr) {
 		allocator->Track(handle, size);

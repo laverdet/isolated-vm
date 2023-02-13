@@ -29,11 +29,7 @@ auto SerializerDelegate::GetSharedArrayBufferId(
 auto SerializerDelegate::GetWasmModuleTransferId(
 		Isolate* /*isolate*/, Local<WasmModuleObject> module) -> Maybe<uint32_t> {
 	auto result = Just<uint32_t>(wasm_modules.size());
-#if USE_NEW_WASM
 	wasm_modules.emplace_back(module->GetCompiledModule());
-#else
-	wasm_modules.emplace_back(module->GetTransferrableModule());
-#endif
 	return result;
 }
 
@@ -70,11 +66,7 @@ auto DeserializerDelegate::GetWasmModuleFromId(
 		Isolate* isolate, uint32_t transfer_id) -> MaybeLocal<WasmModuleObject> {
 	MaybeLocal<WasmModuleObject> result;
 	detail::RunBarrier([&]() {
-#if USE_NEW_WASM
 		result = WasmModuleObject::FromCompiledModule(isolate, wasm_modules[transfer_id]);
-#else
-		result = WasmModuleObject::FromTransferrableModule(isolate, wasm_modules[transfer_id]);
-#endif
 	});
 	return result;
 }

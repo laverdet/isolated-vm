@@ -32,7 +32,6 @@ ModuleInfo::ModuleInfo(Local<Module> handle) : identity_hash{handle->GetIdentity
 	IsolateEnvironment::GetCurrent()->module_handles.emplace(identity_hash, this);
 	// Grab all dependency specifiers
 	Isolate* isolate = Isolate::GetCurrent();
-#if V8_AT_LEAST(8, 9, 45)
 	auto context = isolate->GetCurrentContext();
 	auto& requests = **handle->GetModuleRequests();
 	dependency_specifiers.reserve(requests.Length());
@@ -40,13 +39,6 @@ ModuleInfo::ModuleInfo(Local<Module> handle) : identity_hash{handle->GetIdentity
 		auto request = requests.Get(context, ii).As<ModuleRequest>();
 		dependency_specifiers.emplace_back(*String::Utf8Value{isolate, request->GetSpecifier()});
 	}
-#else
-	size_t length = handle->GetModuleRequestsLength();
-	dependency_specifiers.reserve(length);
-	for (size_t ii = 0; ii < length; ++ii) {
-		dependency_specifiers.emplace_back(*String::Utf8Value{isolate, handle->GetModuleRequest(ii)});
-	}
-#endif
 }
 
 ModuleInfo::~ModuleInfo() {
@@ -248,11 +240,7 @@ struct InstantiateRunner : public ThreePhaseTask {
 	shared_ptr<ModuleInfo> info;
 	RemoteHandle<Object> linker;
 
-#if V8_AT_LEAST(8, 9, 72)
 	static auto ResolveCallback(Local<Context> /*context*/, Local<String> specifier, Local<FixedArray> /*import_assertions*/, Local<Module> referrer) -> MaybeLocal<Module> {
-#else
-	static auto ResolveCallback(Local<Context> /*context*/, Local<String> specifier, Local<Module> referrer) -> MaybeLocal<Module> {
-#endif
 		MaybeLocal<Module> ret;
 		detail::RunBarrier([&]() {
 			// Lookup ModuleInfo* instance from `referrer`

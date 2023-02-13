@@ -5,38 +5,19 @@
 #include <memory>
 #include <vector>
 
-#if !NODE_MODULE_OR_V8_AT_LEAST(72, 7, 5, 20)
-namespace v8 {
-	// Removed in 6b09d21c (v8), 963061bc (node)
-	using WasmModuleObject = WasmCompiledModule;
-}
-#endif
-
 namespace ivm {
-
-#if NODE_MODULE_OR_V8_AT_LEAST(83, 7, 9, 264)
-#define USE_NEW_WASM 1
-using CompiledWasmModuleHandle = v8::CompiledWasmModule;
-#else
-// deprecated: 6f838195, removed: 3bbadd00
-// nodejs is also up to their usual hijinks of lying about v8 versions so nodejs v13.x which is
-// supposedly on v8 7.9.317 doesn't support the new API
-#define USE_NEW_WASM 0
-using CompiledWasmModuleHandle = v8::WasmModuleObject::TransferrableModule;
-#endif
-
 namespace detail {
 
 class SerializationDelegateBase {
 	public:
 		SerializationDelegateBase(
 			std::deque<std::unique_ptr<Transferable>>& transferables,
-			std::deque<CompiledWasmModuleHandle>& wasm_modules
+			std::deque<v8::CompiledWasmModule>& wasm_modules
 		) : transferables{transferables}, wasm_modules{wasm_modules} {}
 
 	protected:
 		std::deque<std::unique_ptr<Transferable>>& transferables;
-		std::deque<CompiledWasmModuleHandle>& wasm_modules;
+		std::deque<v8::CompiledWasmModule>& wasm_modules;
 };
 
 class SerializerDelegate : public SerializationDelegateBase, public v8::ValueSerializer::Delegate {
@@ -127,7 +108,7 @@ class BaseSerializer {
 	private:
 		std::unique_ptr<uint8_t, decltype(std::free)*> buffer = {nullptr, std::free};
 		std::deque<std::unique_ptr<Transferable>> transferables;
-		std::deque<CompiledWasmModuleHandle> wasm_modules;
+		std::deque<v8::CompiledWasmModule> wasm_modules;
 		size_t size;
 };
 

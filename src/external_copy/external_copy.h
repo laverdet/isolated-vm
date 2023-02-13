@@ -66,12 +66,12 @@ class ExternalCopy : public Transferable {
  */
 class ExternalCopyAnyBuffer : public ExternalCopy {
 	public:
-		explicit ExternalCopyAnyBuffer(std::shared_ptr<BackingStore> backing_store) :
+		explicit ExternalCopyAnyBuffer(std::shared_ptr<v8::BackingStore> backing_store) :
 			backing_store{std::move(backing_store)} {}
-		auto Acquire() const -> std::shared_ptr<BackingStore> { return *backing_store.read(); }
+		auto Acquire() const -> std::shared_ptr<v8::BackingStore> { return *backing_store.read(); }
 
 	protected:
-		lockable_t<std::shared_ptr<BackingStore>> backing_store;
+		lockable_t<std::shared_ptr<v8::BackingStore>> backing_store;
 };
 
 /**

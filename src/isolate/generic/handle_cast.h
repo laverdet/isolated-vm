@@ -234,7 +234,6 @@ inline auto HandleCastImpl(uint32_t value, const HandleCastArguments& arguments,
 	return v8::Integer::NewFromUnsigned(arguments.isolate, value);
 }
 
-#if V8_AT_LEAST(6, 9, 258)
 inline auto HandleCastImpl(int64_t value, const HandleCastArguments& arguments, HandleCastTag<v8::Local<v8::BigInt>> /*tag*/) {
 	return v8::BigInt::New(arguments.isolate, value);
 }
@@ -242,7 +241,6 @@ inline auto HandleCastImpl(int64_t value, const HandleCastArguments& arguments, 
 inline auto HandleCastImpl(uint64_t value, const HandleCastArguments& arguments, HandleCastTag<v8::Local<v8::BigInt>> /*tag*/) {
 	return v8::BigInt::NewFromUnsigned(arguments.isolate, value);
 }
-#endif
 
 inline auto HandleCastImpl(double value, const HandleCastArguments& arguments, HandleCastTag<v8::Local<v8::Number>> /*tag*/) {
 	return v8::Number::New(arguments.isolate, value);

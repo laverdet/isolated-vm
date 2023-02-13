@@ -138,7 +138,6 @@ void IsolateEnvironment::PromiseWasHandled(v8::Local<v8::Promise> promise) {
 	}
 }
 
-#ifdef USE_CODE_GEN_CALLBACK
 auto IsolateEnvironment::CodeGenCallback(Local<Context> /*context*/, Local<Value> source) -> ModifyCodeGenerationFromStringsResult {
 	auto* that = IsolateEnvironment::GetCurrent();
 	// This heuristic could be improved by looking up how much `timeout` this isolate has left and
@@ -154,7 +153,6 @@ auto IsolateEnvironment::CodeGenCallback(Local<Context> /*context*/, Local<Value
 auto IsolateEnvironment::CodeGenCallback2(Local<Context> context, Local<Value> source, bool) -> ModifyCodeGenerationFromStringsResult {
 	return CodeGenCallback(context, source);
 }
-#endif
 
 void IsolateEnvironment::MarkSweepCompactEpilogue(Isolate* isolate, GCType /*gc_type*/, GCCallbackFlags gc_flags, void* data) {
 	auto* that = static_cast<IsolateEnvironment*>(data);
@@ -209,14 +207,7 @@ auto IsolateEnvironment::NearHeapLimitCallback(void* data, size_t current_heap_l
 
 void IsolateEnvironment::RequestMemoryPressureNotification(MemoryPressureLevel memory_pressure, bool as_interrupt) {
 	this->memory_pressure = memory_pressure;
-	// Before commit v8 6.9.406 / 0fb4f6a2a triggering the GC from within a GC callback would output
-	// some GC tracing diagnostics. After the commit it is properly gated behind a v8 debug flag.
-	if (
-#if !V8_AT_LEAST(6, 9, 406)
-		true ||
-#endif
-		as_interrupt
-	) {
+	if (as_interrupt) {
 		if (memory_pressure > last_memory_pressure) {
 			isolate->RequestInterrupt(MemoryPressureInterrupt, static_cast<void*>(this));
 		}
@@ -337,7 +328,7 @@ void IsolateEnvironment::IsolateCtor(Isolate* isolate, Local<Context> context) {
 	default_context.Reset(isolate, context);
 }
 
-void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<BackingStore> snapshot_blob, size_t snapshot_length) {
+void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<v8::BackingStore> snapshot_blob, size_t snapshot_length) {
 	memory_limit = memory_limit_in_mb * 1024 * 1024;
 	allocator_ptr = std::make_shared<LimitedAllocator>(*this, memory_limit);
 	snapshot_blob_ptr = std::move(snapshot_blob);
@@ -345,71 +336,29 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<Backi
 	// Calculate resource constraints
 	ResourceConstraints rc;
 	size_t young_space_in_kb = (size_t)std::pow(2, std::min(sizeof(void*) >= 8 ? 4.0 : 3.0, memory_limit_in_mb / 128.0) + 10);
-	size_t old_generation_size_in_mb =
-#if V8_AT_LEAST(7, 0, 1)
-		memory_limit_in_mb;
-#else
-		// node v10.x seems to not call NearHeapLimit dependably for smaller heap sizes. I'm not sure
-		// exactly sure when this was resolved and bisecting on v8 would be frustrating, but since
-		// nodejs v11.x it seems ok. For these earlier versions of node the gc epilogue will have to
-		// enforce the limit as best it can.
-		std::max(size_t{128}, memory_limit_in_mb);
-#endif
-#if V8_AT_LEAST(7, 7, 25)
-	// Added in e423f004.
+	size_t old_generation_size_in_mb = memory_limit_in_mb;
 	// TODO: Give `ConfigureDefaultsFromHeapSize` a try
 	rc.set_max_young_generation_size_in_bytes(young_space_in_kb * 1024);
 	rc.set_max_old_generation_size_in_bytes(old_generation_size_in_mb * 1024 * 1024);
-#else
-	rc.set_max_semi_space_size_in_kb(young_space_in_kb);
-	rc.set_max_old_space_size(old_generation_size_in_mb);
-#endif
 
 	// Build isolate from create params
 	Isolate::CreateParams create_params;
 	create_params.constraints = rc;
-#if V8_AT_LEAST(8, 0, 60)
-	// 6b0a9535
 	create_params.array_buffer_allocator_shared = allocator_ptr;
-#else
-	create_params.array_buffer_allocator = allocator_ptr.get();
-#endif
 	if (snapshot_blob_ptr) {
 		create_params.snapshot_blob = &startup_data;
 		startup_data.data = reinterpret_cast<char*>(snapshot_blob_ptr->Data());
 		startup_data.raw_size = snapshot_length;
 	}
 	task_runner = std::make_shared<IsolateTaskRunner>(holder.lock()->GetIsolate());
-#if V8_AT_LEAST(6, 8, 57)
 	isolate = Isolate::Allocate();
 	PlatformDelegate::RegisterIsolate(isolate, &*scheduler);
 	Isolate::Initialize(isolate, create_params);
-#else
-	isolate = Isolate::New(create_params);
-	PlatformDelegate::RegisterIsolate(isolate, &*scheduler);
-#endif
-
-#if NODE_MODULE_VERSION >= 79 && !V8_AT_LEAST(8, 0, 60)
-	isolate->SetArrayBufferAllocatorShared(allocator_ptr);
-#endif
-
-	// Workaround for bug in snapshot deserializer in v8 in nodejs v10.x
-#if !V8_AT_LEAST(7, 4, 288)
-	// Unknown when this was fixed. 7.4.288 -> node v12 where I don't think this bug was observed.
-	isolate->SetHostImportModuleDynamicallyCallback(nullptr);
-#endif
 
 	// Various callbacks
 	isolate->SetOOMErrorHandler(OOMErrorCallback);
 	isolate->SetPromiseRejectCallback(PromiseRejectCallback);
-#ifdef USE_CODE_GEN_CALLBACK
-#if V8_AT_LEAST(8, 8, 204)
-	// Added in v8 commit aabe6406 and the type is actually called `ModifyCodeGenerationFromStringsCallback2`
 	isolate->SetModifyCodeGenerationFromStringsCallback(CodeGenCallback2);
-#else
-	isolate->SetModifyCodeGenerationFromStringsCallback(CodeGenCallback);
-#endif
-#endif
 
 	// Add GC callbacks
 	isolate->AddGCEpilogueCallback(MarkSweepCompactEpilogue, static_cast<void*>(this), GCType::kGCTypeMarkSweepCompact);
@@ -496,26 +445,16 @@ static void DeserializeInternalFieldsCallback(Local<Object> /*holder*/, int /*in
 
 auto IsolateEnvironment::NewContext() -> Local<Context> {
 	auto context =
-#if NODE_MODULE_OR_V8_AT_LEAST(64, 6, 2, 193)
 	Context::New(isolate, nullptr, {}, {}, &DeserializeInternalFieldsCallback);
-#else
-	Context::New(isolate);
-#endif
-#ifdef USE_CODE_GEN_CALLBACK
 	context->AllowCodeGenerationFromStrings(false);
 	// TODO (but I'm not going to do it): This causes a DCHECK failure in debug builds. Tested nodejs
 	// v14.17.3 & v16.5.1.
 	// context->SetErrorMessageForCodeGenerationFromStrings(StringTable::Get().codeGenerationError);
-#endif
 	return context;
 }
 
 auto IsolateEnvironment::TaskEpilogue() -> std::unique_ptr<ExternalCopy> {
-#if V8_AT_LEAST(8, 2, 117)
 	isolate->PerformMicrotaskCheckpoint();
-#else
-	isolate->RunMicrotasks();
-#endif
 	CheckMemoryPressure();
 	if (hit_memory_limit) {
 		throw FatalRuntimeError("Isolate was disposed during execution due to memory limit");

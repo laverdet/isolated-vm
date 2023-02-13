@@ -66,7 +66,7 @@ auto IsolateHandle::Definition() -> Local<FunctionTemplate> {
  * Create a new Isolate. It all starts here!
  */
 auto IsolateHandle::New(MaybeLocal<Object> maybe_options) -> unique_ptr<ClassHandle> {
-	shared_ptr<BackingStore> snapshot_blob;
+	shared_ptr<v8::BackingStore> snapshot_blob;
 	RemoteHandle<Function> error_handler;
 	size_t snapshot_blob_length = 0;
 	size_t memory_limit = 128;
@@ -203,14 +203,7 @@ struct CompileScriptRunner : public CodeCompilerHolder, public ThreePhaseTask {
 			SetCachedDataRejected(source->GetCachedData()->rejected);
 		}
 		if (ShouldProduceCachedData()) {
-			ScriptCompiler::CachedData* cached_data // continued next line
-#if V8_AT_LEAST(6, 8, 11)
-			// `code` parameter removed in v8 commit a440efb27
-			= ScriptCompiler::CreateCodeCache(script.Deref());
-#else
-			// Added in v8 commit dae20b064
-			= ScriptCompiler::CreateCodeCache(script.Deref(), GetSourceString());
-#endif
+			ScriptCompiler::CachedData* cached_data = ScriptCompiler::CreateCodeCache(script.Deref());
 			assert(cached_data != nullptr);
 			SaveCachedData(cached_data);
 		}
@@ -284,9 +277,6 @@ struct CompileModuleRunner : public CodeCompilerHolder, public ThreePhaseTask {
 			[&]() { return Unmaybe(ScriptCompiler::CompileModule(*isolate, source.get())); }
 		);
 
-#if V8_AT_LEAST(6, 9, 37)
-		// v8 6.8.214 [8ec92f51] adds support for producing cached data for modules, but support for
-		// actually consuming the cached data wasn't added until 6.9.37 [70b5fd3b].
 		if (DidSupplyCachedData()) {
 			SetCachedDataRejected(source->GetCachedData()->rejected);
 		}
@@ -295,11 +285,6 @@ struct CompileModuleRunner : public CodeCompilerHolder, public ThreePhaseTask {
 			assert(cached_data != nullptr);
 			SaveCachedData(cached_data);
 		}
-#else
-		if (DidSupplyCachedData()) {
-			SetCachedDataRejected(true);
-		}
-#endif
 
 		ResetSource();
 		module_info = std::make_shared<ModuleInfo>(module_handle);
@@ -401,11 +386,7 @@ auto IsolateHandle::GetCpuTime() -> Local<Value> {
 		throw RuntimeGenericError("Isolate is disposed");
 	}
 	uint64_t time = env->GetCpuTime().count();
-#if V8_AT_LEAST(6, 9, 258)
 	return HandleCast<Local<BigInt>>(time);
-#else
-	return HandleCast<Local<Number>>(static_cast<double>(time));
-#endif
 }
 
 auto IsolateHandle::GetWallTime() -> Local<Value> {
@@ -414,11 +395,7 @@ auto IsolateHandle::GetWallTime() -> Local<Value> {
 		throw RuntimeGenericError("Isolate is disposed");
 	}
 	uint64_t time = env->GetWallTime().count();
-#if V8_AT_LEAST(6, 9, 258)
 	return HandleCast<Local<BigInt>>(time);
-#else
-	return HandleCast<Local<Number>>(static_cast<double>(time));
-#endif
 }
 
 auto IsolateHandle::StartCpuProfiler(v8::Local<v8::String> title) -> Local<Value> {
@@ -486,7 +463,7 @@ auto IsolateHandle::CreateSnapshot(ArrayRange script_handles, MaybeLocal<String>
 	// Simple platform delegate and task queue
 	using TaskDeque = lockable_t<std::deque<std::unique_ptr<v8::Task>>>;
 	class SnapshotPlatformDelegate :
-			public IsolatePlatformDelegate, public TaskRunner,
+			public node::IsolatePlatformDelegate, public TaskRunner,
 			public std::enable_shared_from_this<SnapshotPlatformDelegate> {
 
 		public:
@@ -550,15 +527,9 @@ auto IsolateHandle::CreateSnapshot(ArrayRange script_handles, MaybeLocal<String>
 	shared_ptr<ExternalCopy> error;
 	{
 		Isolate* isolate;
-#if V8_AT_LEAST(6, 8, 57)
 		isolate = Isolate::Allocate();
 		PlatformDelegate::RegisterIsolate(isolate, delegate.get());
 		SnapshotCreator snapshot_creator{isolate};
-#else
-		SnapshotCreator snapshot_creator;
-		isolate = snapshot_creator.GetIsolate();
-		PlatformDelegate::RegisterIsolate(isolate, delegate.get());
-#endif
 		{
 			Locker locker(isolate);
 			Isolate::Scope isolate_scope(isolate);

@@ -60,7 +60,7 @@ auto IVMCpuProfile::BuildCpuProfile(Isolate *iso) -> Local<Value> {
 	}
 	Unmaybe(profileObject->Set(context, strings.samples, samplesArr));
 	Unmaybe(profileObject->Set(context, strings.timeDeltas, timeDeltasArr));
-	
+
 	const Local<Array> nodeArr = Array::New(iso, static_cast<int>(profileNodes.size()));
 	Unmaybe(profileObject->Set(context, strings.nodes, nodeArr));
 
@@ -84,41 +84,20 @@ auto IVMCpuProfile::ToJSObject(Isolate *iso) -> Local<Value> {
 	return result;
 }
 
-#if NODE_MODULE_VERSION < 72
-IVMCpuProfile::CallFrame::CallFrame(const v8::CpuProfileNode* node):
-	script_id(node->GetScriptId()),
-	line_number(node->GetLineNumber()),
-	column_number(node->GetColumnNumber()) {
-
-	auto url_len = strlen(node->GetScriptResourceNameStr());
-	url = new char[url_len];
-	strcpy(url, node->GetScriptResourceNameStr());
-
-	auto fn_len = strlen(node->GetFunctionNameStr());
-	function_name = new char[fn_len];
-	strcpy(function_name, node->GetFunctionNameStr());
-}
-#else
 IVMCpuProfile::CallFrame::CallFrame(const v8::CpuProfileNode* node):
 	function_name(node->GetFunctionNameStr()),
 	url(node->GetScriptResourceNameStr()),
 	script_id(node->GetScriptId()),
 	line_number(node->GetLineNumber()),
 	column_number(node->GetColumnNumber()) {}
-#endif
 
 
 auto IVMCpuProfile::CallFrame::ToJSObject(v8::Isolate *iso) -> Local<Value> {
 	auto& strings = StringTable::Get();
 	Local<Object> callFrame = Object::New(iso);
-	const Local<Context> context = iso->GetCurrentContext();  
-	#if NODE_MODULE_VERSION < 83
-		Unmaybe(callFrame->Set(context, strings.functionName, String::NewFromUtf8(iso, function_name)));
-		Unmaybe(callFrame->Set(context, strings.url, String::NewFromUtf8(iso, url)));
-	#else
-		Unmaybe(callFrame->Set(context, strings.functionName, String::NewFromUtf8(iso, function_name).ToLocalChecked()));
-		Unmaybe(callFrame->Set(context, strings.url, String::NewFromUtf8(iso, url).ToLocalChecked()));
-	#endif
+	const Local<Context> context = iso->GetCurrentContext();
+	Unmaybe(callFrame->Set(context, strings.functionName, String::NewFromUtf8(iso, function_name).ToLocalChecked()));
+	Unmaybe(callFrame->Set(context, strings.url, String::NewFromUtf8(iso, url).ToLocalChecked()));
 	Unmaybe(callFrame->Set(context, strings.scriptId, Number::New(iso, script_id)));
 	Unmaybe(callFrame->Set(context, strings.lineNumber, Number::New(iso, line_number)));
 	Unmaybe(callFrame->Set(context, strings.columnNumber, Number::New(iso, column_number)));
@@ -147,13 +126,9 @@ auto IVMCpuProfile::ProfileNode::ToJSObject(Isolate *iso) -> Local<Value> {
 	Unmaybe(nodeObj->Set(context, strings.id, Number::New(iso, node_id)));
 
 	if (strlen(bailout_reason) > 0) {
-		#if NODE_MODULE_VERSION < 83
-			Unmaybe(nodeObj->Set(context, strings.bailoutReason, String::NewFromUtf8(iso, bailout_reason)));
-		#else
-			Unmaybe(nodeObj->Set(context, strings.bailoutReason, String::NewFromUtf8(iso, bailout_reason).ToLocalChecked()));
-		#endif
+		Unmaybe(nodeObj->Set(context, strings.bailoutReason, String::NewFromUtf8(iso, bailout_reason).ToLocalChecked()));
 	}
-	
+
 	const int children_count = static_cast<int>(children.size());
 	const Local<Array> childrenArr = Array::New(iso, children_count);
 	Unmaybe(nodeObj->Set(context, strings.children, childrenArr));
@@ -223,7 +198,7 @@ void CpuProfileManager::CleanProfiles() {
 	if (profile_titles.empty()) {
 		profile_items.clear();
 		profile_begin_ptrs.clear();
-	} 
+	}
 
 	int64_t min_start_time = INT_MAX;
 

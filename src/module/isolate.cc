@@ -94,11 +94,6 @@ void init(Local<Object> target) {
 	// Create default isolate env
 	Isolate* isolate = Isolate::GetCurrent();
 	Local<Context> context = isolate->GetCurrentContext();
-#if NODE_MODULE_VERSION < 72
-	if (node::GetCurrentEventLoop(isolate) != uv_default_loop()) {
-		isolate->ThrowException(v8_string("nodejs 12.0.0 or higher is required to use `isolated-vm` from within `worker_threads`"));
-	}
-#endif
 	// Maybe this would happen if you include the module from `vm`?
 	{
 		auto isolates = default_isolates->write();
