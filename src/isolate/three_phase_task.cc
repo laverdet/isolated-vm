@@ -333,6 +333,7 @@ auto ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_async) ->
 						this->error = IsolateEnvironment::GetCurrent()->TaskEpilogue();
 					}, [ this ](unique_ptr<ExternalCopy> error) {
 						this->error = std::move(error);
+						wait.Done();
 					});
 				}
 			};
