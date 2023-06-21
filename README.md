@@ -39,7 +39,7 @@ too old.
 
 * Windows + OS X users should follow the instructions here: [node-gyp](https://github.com/nodejs/node-gyp)
 * Ubuntu users should run: `sudo apt-get install python g++ build-essential`
-* Alpine users should run: `sudo apk add python make g++`
+* Alpine users should run: `sudo apk add python3 make g++`
 * Amazon Linux AMI users should run: `sudo yum install gcc72 gcc72-c++`
 * Arch Linux users should run: `sudo pacman -S make gcc python`
 
