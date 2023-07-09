@@ -719,6 +719,6 @@ isolated-vm. The table headers are defined as follows:
 | ---------------------------------------------------------------------------- | :----: | :-----------: | :------: | :-----------: | :------------: | :---------------: |
 | [vm](https://nodejs.org/api/vm.html)                                         |        |               |          |               |       ✅       |        ✅         |
 | [worker_threads](https://nodejs.org/api/worker_threads.html)                 |        |               |    ✅    |      ✅       |       ✅       |        ✅         |
-| [vm2](https://github.com/patriksimek/vm2)                                    |   ✅   |               |          |               |       ✅       |        ✅         |
+| [vm2](https://github.com/patriksimek/vm2)                                    |   ⛔️   |               |          |               |       ✅       |        ✅         |
 | [tiny-worker](https://github.com/avoidwork/tiny-worker)                      |        |               |    ✅    |               |       ✅       |                   |
 | isolated-vm                                                                  |   ✅   |       ✅      |    ✅    |      ✅       |                |        ✅         |
