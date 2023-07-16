@@ -4,3 +4,4 @@ package-lock.json
 out/
 .cache/
 compile_commands.json
+/prebuilds/
