@@ -1,0 +1,55 @@
+name: Build and test on supported platforms
+
+on: [push, pull_request]
+
+jobs:
+  build-and-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Add msbuild to PATH
+        if: matrix.os == 'windows-latest'
+        uses: microsoft/setup-msbuild@v1.3
+      - name: Install node-gyp
+        if: matrix.os == 'windows-latest'
+        run: |
+          npm install --global node-gyp@latest
+      - name: Build
+        run: |
+          npm install --build-from-source
+      - name: Test
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 3
+          retry_on: error
+          timeout_seconds: 240
+          command: |
+            npm test
+
+  build-and-test-alpine:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [16, 18]
+    container: node:${{ matrix.node-version }}-alpine3.18
+    steps:
+      - uses: actions/checkout@v3
+      - name: install build deps
+        run: |
+          apk add g++ make python3
+      - name: Build
+        run: |
+          npm install --build-from-source
+      - name: Test
+        run: |
+          npm test
+        timeout-minutes: 4
