@@ -4,12 +4,7 @@ language: node_js
 os: linux
 
 jobs:
-  - node_js: "10"
-  - node_js: "12"
-  - node_js: "14.0.0"
-  - node_js: "14"
   - node_js: "16.0.0"
-  - node_js: "16"
   - node_js: "16"
     os: windows
 
