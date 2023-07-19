@@ -1,4 +1,4 @@
-#include "environment.h"
+#include 0"environment.h"
 #include "allocator.h"
 #include "inspector.h"
 #include "isolate/cpu_profile_manager.h"
@@ -29,6 +29,17 @@
 static auto GetStackBase() -> void* {
 	pthread_t self = pthread_self();
 	return (void*)((char*)pthread_get_stackaddr_np(self) - pthread_get_stacksize_np(self));
+}
+#elif defined __OpenBSD__
+#include <pthread_np.h>
+static auto GetStackBase() -> void* {
+        pthread_t self = pthread_self();
+        stack_t ss;
+        void* base = nullptr;
+        if (pthread_stackseg_np(self, &ss) == 0) {
+                base = (void*)((char*)ss.ss_sp - ss.ss_size);
+        }
+	return base;
 }
 #elif defined __unix__
 #define _GNU_SOURCE
