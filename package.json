@@ -8,13 +8,25 @@
     "node": ">=16.0.0"
   },
   "scripts": {
-    "install": "node-gyp rebuild --release -j 4",
-    "postinstall": "node-gyp clean",
+    "install": "prebuild-install || (node-gyp rebuild --release -j 4 && node-gyp clean)",
+    "rebuild": "node-gyp rebuild --release -j 4",
+    "prebuild": "prebuild",
+    "upload": "prebuild --upload ${GITHUB_TOKEN}",
     "lint": "find src -name '*.cc' | xargs -n1 clang-tidy",
     "test": "node test.js"
   },
+  "dependencies": {
+    "prebuild-install": "^7.1.1"
+  },
   "devDependencies": {
-    "isolated-vm": "."
+    "isolated-vm": ".",
+    "prebuild": "^11.0.4"
+  },
+  "overrides": {
+    "node-gyp": "^9.4.0"
+  },
+  "binary": {
+    "module_path": "out"
   },
   "repository": {
     "type": "git",
