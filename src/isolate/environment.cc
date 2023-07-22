@@ -40,6 +40,19 @@ static auto GetStackBase() -> void* {
                 base = (void*)((char*)ss.ss_sp - ss.ss_size);
         }
 	return base;
+#elif defined __FreeBSD__
+#include <pthread_np.h>
+static auto GetStackBase() -> void* {
+  pthread_t self = pthread_self();
+  pthread_attr_t attrs;
+  void* base = nullptr;
+  if (pthread_attr_init(&attrs) == 0) {
+    pthread_attr_get_np(self, &attrs);
+    size_t size;
+    pthread_attr_getstack(&attrs, &base, &size);
+    pthread_attr_destroy(&attrs);
+  }
+  return base;
 }
 #elif defined __unix__
 #define _GNU_SOURCE
@@ -328,7 +341,7 @@ IsolateEnvironment::IsolateEnvironment() :
 	scheduler{in_place<UvScheduler>{}, *this},
 	executor{*this},
 	nodejs_isolate{true} {}
-	
+
 
 IsolateEnvironment::IsolateEnvironment(UvScheduler& default_scheduler) :
 	scheduler{in_place<IsolatedScheduler>{}, *this, default_scheduler},

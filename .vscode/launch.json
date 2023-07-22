@@ -5,7 +5,7 @@
 		"type": "lldb",
 		"request": "launch",
 		"program": "node_g",
-		"args": [ "${input:entry}" ],
+		"args": [ "--no-node-snapshot", "${input:entry}" ],
 	} ],
 	"inputs": [ {
 		"id": "entry",

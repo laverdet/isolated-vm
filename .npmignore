@@ -1,0 +1,10 @@
+test.js
+tests
+out/
+build/
+prebuild/
+.github/
+.prebuildrc
+.travis.yml
+.vscode/
+*.md

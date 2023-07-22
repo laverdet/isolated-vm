@@ -1,4 +1,4 @@
-declare module "isolated-vm" {
+declare namespace IsolatedVM {
 	export type Transferable =
 		| null
 		| undefined
@@ -15,7 +15,7 @@ declare module "isolated-vm" {
 		| Dereference<any>
 		| Module
 		| ((...args: any[]) => any)
-		| typeof import("isolated-vm");
+		| typeof IsolatedVM;
 
 	/**
 	 * This is the main reference to an isolate. Every handle to an isolate is transferable, which
@@ -817,3 +817,4 @@ declare module "isolated-vm" {
 	type ApplyArgumentThis<Value> = Value extends (this: infer This, ...args: any) => unknown ? This : undefined | null;
 	type ApplyResult<Value> = Value extends (...args: any) => infer Result ? Result : unknown;
 }
+export = IsolatedVM;

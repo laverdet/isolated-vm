@@ -13,6 +13,32 @@ allows you to create JavaScript environments which are completely *isolated* fro
 can be a powerful tool to run code in a fresh JavaScript environment completely free of extraneous
 capabilities provided by the nodejs runtime.
 
+
+PROJECT STATUS
+--------------
+
+`isolated-vm` is currently in *maintenance mode*. New features are not actively being added but
+existing features and new versions of nodejs are supported as possible. There are some major
+architectural changes which need to be added to improve the stability and security of the project. I
+don't have as much spare time as I did when I started this project, so there is not currently any
+plan for these improvements.
+
+#### Wishlist
+
+1) Multi-process architecture. v8 is *not* resilient to out of memory conditions and is unable to
+gracefully unwind from these errors. Therefore it is possible, and even common, to crash a process
+with poorly-written or hostile software. I implemented a band-aid for this with the
+`onCatastrophicError` callback which quarantines a corrupted isolate, but it is not reliable.
+
+2) Bundled v8 version. nodejs uses a patched version of v8 which makes development of this module
+more difficult than it needs to be. For some reason they're also allowed to change the v8 ABI in
+semver minor releases as well, which causes issues for users while upgrading nodejs. Also, some
+Linux distributions strip "internal" symbols from their nodejs binaries which makes usage of this
+module impossible. I think the way to go is to compile and link against our own version of v8.
+
+CONTENTS
+--------
+
 * [Requirements](#requirements)
 * [Who Is Using isolated-vm](#who-is-using-isolated-vm)
 * [Security](#security)
@@ -31,7 +57,9 @@ capabilities provided by the nodejs runtime.
 REQUIREMENTS
 ------------
 
-This project requires nodejs version 10.4.0 (or later).
+This project requires nodejs version 16.x (or later).
+
+🚨 If you are using a version of nodejs 20.x or later, you must pass `--no-node-snapshot` to `node`.
 
 Furthermore, to install this module you will need a compiler installed. If you run into errors while
 running `npm install isolated-vm` it is likely you don't have a compiler set up, or your compiler is
@@ -168,17 +196,14 @@ contains can represent quite a large chunk of memory though you may want to expl
 * `warmup_script` *[string]* - Optional script to "warmup" the snapshot by triggering code
 compilation
 
-Isolate snapshots are a very useful feature if you intend to create several isolates running common
-libraries between them. A snapshot serializes the entire v8 heap including parsed code, global
-variables, and compiled code. Check out the examples section for tips on using this.
+🚨 You should not use this feature. It was never all that stable to begin with and has grown
+increasingly unstable due to changes in v8.
 
 **Note**: `createSnapshot` does not provide the same isolate protection like the rest of
 isolated-vm. If the script passed to `createSnapshot` uses too much memory the process will crash,
 and if it has an infinite loop it will stall the process. Furthermore newer v8 features may simply
 fail when attempting to take a snapshot that uses them. It is best to snapshot code that only
 defines functions, class, and simple data structures.
-
-**Please note that versions of nodejs 10.4.0 - 10.9.0 may crash while using the snapshot feature.
 
 ##### `isolate.compileScript(code)` *[Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise)*
 ##### `isolate.compileScriptSync(code)`
@@ -719,6 +744,6 @@ isolated-vm. The table headers are defined as follows:
 | ---------------------------------------------------------------------------- | :----: | :-----------: | :------: | :-----------: | :------------: | :---------------: |
 | [vm](https://nodejs.org/api/vm.html)                                         |        |               |          |               |       ✅       |        ✅         |
 | [worker_threads](https://nodejs.org/api/worker_threads.html)                 |        |               |    ✅    |      ✅       |       ✅       |        ✅         |
-| [vm2](https://github.com/patriksimek/vm2)                                    |   ✅   |               |          |               |       ✅       |        ✅         |
+| [vm2](https://github.com/patriksimek/vm2)                                    |       |               |          |               |       ✅       |        ✅         |
 | [tiny-worker](https://github.com/avoidwork/tiny-worker)                      |        |               |    ✅    |               |       ✅       |                   |
 | isolated-vm                                                                  |   ✅   |       ✅      |    ✅    |      ✅       |                |        ✅         |
