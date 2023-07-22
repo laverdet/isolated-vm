@@ -55,7 +55,7 @@ function runTest(test, cb) {
 			console.error(`fail (${code})`);
 		} else {
 			++passCount;
-			console.log(`pass`);
+			console.error(`pass`);
 		}
 		cb();
 	});
