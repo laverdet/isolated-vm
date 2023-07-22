@@ -1,5 +1,6 @@
 #pragma once
 #include "transferable.h"
+#include <optional>
 #include <v8.h>
 #include <tuple>
 #include <utility>
