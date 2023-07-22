@@ -14,12 +14,12 @@ function runTest(test, cb) {
 	env.NODE_PATH = __dirname;
 
 	// Get extra args
-	let args = [];
+	let args = [ '--no-node-snapshot' ];
 	let testPath = path.join('tests', test);
 	let content = fs.readFileSync(testPath, 'utf8');
 	let match = /node-args: *(.+)/.exec(content);
 	if (match) {
-		args = match[1].split(/ /g);
+		args.push(...match[1].split(/ /g));
 	}
 	args.push(testPath);
 
