@@ -179,7 +179,7 @@ contains can represent quite a large chunk of memory though you may want to expl
 	* `memoryLimit` *[number]* - Memory limit that this isolate may use, in MB. Note that this is more
 	of a guideline instead of a strict limit. A determined attacker could use 2-3 times this limit
 	before their script is terminated. Against non-hostile code this limit should be pretty close. The
-	default is 128MB and the mimium is 8MB.
+	default is 128MB and the minimum is 8MB.
 	* `inspector` *[boolean]* - Enable v8 inspector support in this isolate. See
 	`inspector-example.js` in this repository for an example of how to use this.
 	* `snapshot` *[ExternalCopy[ArrayBuffer]]* - This is an optional snapshot created from
