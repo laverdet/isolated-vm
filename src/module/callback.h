@@ -32,11 +32,11 @@ class CallbackHandle : public TransferableHandle {
 			Data() = default;
 
 			template <class ...Args>
-			Data(std::string name, int length, Args&&... args) :
+			Data(std::optional<std::string> name, int length, Args&&... args) :
 				InvokeData{std::forward<Args>(args)...},
 				name{std::move(name)}, length{length} {}
 
-			std::string name;
+			std::optional<std::string> name;
 			int length = 0;
 		};
 
