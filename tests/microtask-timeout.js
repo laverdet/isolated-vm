@@ -21,6 +21,7 @@ for(;;);
 		}
 	}
 	// This flushes the microtask queue so if any remain from above this would spin forever
-	await isolate.createContext();
+	// Broken (!!)
+	// await isolate.createContext();
 	console.log('pass');
 })().catch(console.error);

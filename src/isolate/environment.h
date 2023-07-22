@@ -99,7 +99,7 @@ class IsolateEnvironment {
 		size_t memory_limit = 0;
 		size_t initial_heap_size_limit = 0;
 		size_t misc_memory_size = 0;
-		size_t extra_allocated_memory = 0;
+		std::atomic<size_t> extra_allocated_memory = 0;
 		v8::MemoryPressureLevel memory_pressure = v8::MemoryPressureLevel::kNone;
 		v8::MemoryPressureLevel last_memory_pressure = v8::MemoryPressureLevel::kNone;
 		bool hit_memory_limit = false;

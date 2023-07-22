@@ -6,6 +6,8 @@ os: linux
 jobs:
   - node_js: "16.0.0"
   - node_js: "16"
+  - node_js: "18"
+  - node_js: "20"
     os: windows
 
 cache:
