@@ -8,6 +8,7 @@
 #include "isolate/functor_runners.h"
 #include "isolate/util.h"
 #include "isolate/v8_version.h"
+#include "isolate/generic/object.h"
 
 #include <algorithm>
 #include <cstring>
@@ -128,71 +129,33 @@ auto ExternalCopy::Copy(Local<Value> value, bool transfer_out, ArrayRange transf
 		}
 	} else if (value->IsSharedArrayBuffer()) {
 		return std::make_unique<ExternalCopySharedArrayBuffer>(value.As<SharedArrayBuffer>());
-	} else if (value->IsArrayBufferView()) {
-		Local<ArrayBufferView> view = value.As<ArrayBufferView>();
-		using ViewType = ExternalCopyArrayBufferView::ViewType;
-		ViewType type;
-		if (view->IsUint8Array()) {
-			type = ViewType::Uint8;
-		} else if (view->IsUint8ClampedArray()) {
-			type = ViewType::Uint8Clamped;
-		} else if (view->IsInt8Array()) {
-			type = ViewType::Int8;
-		} else if (view->IsUint16Array()) {
-			type = ViewType::Uint16;
-		} else if (view->IsInt16Array()) {
-			type = ViewType::Int16;
-		} else if (view->IsUint32Array()) {
-			type = ViewType::Uint32;
-		} else if (view->IsInt32Array()) {
-			type = ViewType::Int32;
-		} else if (view->IsFloat32Array()) {
-			type = ViewType::Float32;
-		} else if (view->IsFloat64Array()) {
-			type = ViewType::Float64;
-		} else if (view->IsBigInt64Array()) {
-			type = ViewType::BigInt64;
-		} else if (view->IsBigUint64Array()) {
-			type = ViewType::BigUint64;
-		} else if (view->IsDataView()) {
-			type = ViewType::DataView;
-		} else {
-			assert(false);
-		}
-
-		// Sometimes TypedArrays don't actually have a real buffer allocated for them. The call to
-		// `Buffer()` below will force v8 to attempt to create a buffer if it doesn't exist, and if
-		// there is an allocation failure it will crash the process.
-		if (!view->HasBuffer()) {
-			auto* allocator = IsolateEnvironment::GetCurrent().GetLimitedAllocator();
-			if (allocator != nullptr && !allocator->Check(view->ByteLength())) {
-				throw RuntimeRangeError("Array buffer allocation failed");
-			}
-		}
-
-		// `Buffer()` returns a Local<ArrayBuffer> but it may be a Local<SharedArrayBuffer>
-		Local<Object> tmp = view->Buffer();
-		if (tmp->IsArrayBuffer()) {
-			Local<ArrayBuffer> array_buffer = tmp.As<ArrayBuffer>();
-			if (!transfer_out) {
-				transfer_out = std::find(transfer_list.begin(), transfer_list.end(), array_buffer) != transfer_list.end();
-			}
-			// Grab byte_offset and byte_length before the transfer because "neutering" the array buffer will null these out
-			size_t byte_length = view->ByteLength();
-			size_t byte_offset = byte_length == 0 ? 0 : view->ByteOffset();
-			std::unique_ptr<ExternalCopyArrayBuffer> external_buffer;
-			if (transfer_out) {
-				external_buffer = ExternalCopyArrayBuffer::Transfer(array_buffer);
-			} else {
-				external_buffer = std::make_unique<ExternalCopyArrayBuffer>(array_buffer);
-			}
-			return std::make_unique<ExternalCopyArrayBufferView>(std::move(external_buffer), type, byte_offset, byte_length);
-		} else {
-			assert(tmp->IsSharedArrayBuffer());
-			Local<SharedArrayBuffer> array_buffer = tmp.As<SharedArrayBuffer>();
-			return std::make_unique<ExternalCopyArrayBufferView>(std::make_unique<ExternalCopySharedArrayBuffer>(array_buffer), type, view->ByteOffset(), view->ByteLength());
-		}
 	} else if (value->IsObject()) {
+		if (value->IsArrayBufferView()) {
+			Local<ArrayBufferView> view = value.As<ArrayBufferView>();
+
+            // Sometimes TypedArrays don't actually have a real buffer allocated for them. The call to
+            // `Buffer()` below will force v8 to attempt to create a buffer if it doesn't exist, and if
+            // there is an allocation failure it will crash the process.
+            if (!view->HasBuffer()) {
+                auto* allocator = IsolateEnvironment::GetCurrent().GetLimitedAllocator();
+                if (allocator != nullptr && !allocator->Check(view->ByteLength())) {
+                    throw RuntimeRangeError("Array buffer allocation failed");
+                }
+            }
+
+			auto buffer = view->Buffer();
+
+			if (buffer->IsArrayBuffer()) {
+				// If we are supposed to transfer the buffer out, and it's not in the list of buffers to transfer,
+				// we simply create a new list
+				if (transfer_out && std::find(transfer_list.begin(), transfer_list.end(), buffer) == transfer_list.end()) {
+					auto *isolate = IsolateEnvironment::GetCurrent().GetIsolate();
+					auto buffer_value = buffer.As<Value>();
+					transfer_list = {Array::New(isolate, &buffer_value, 1), isolate->GetCurrentContext()};
+				}
+			}
+		}
+
 		return std::make_unique<ExternalCopySerialized>(value.As<Object>(), transfer_list);
 	} else {
 		throw RuntimeTypeError("Unsupported type");
@@ -457,16 +420,17 @@ auto ExternalCopySharedArrayBuffer::CopyInto(bool /*transfer_in*/) -> Local<Valu
  * ExternalCopyArrayBufferView implementation
  */
 ExternalCopyArrayBufferView::ExternalCopyArrayBufferView(
-	std::unique_ptr<ExternalCopyAnyBuffer> buffer,
-	ViewType type, size_t byte_offset, size_t byte_length
+	ViewType type, size_t byte_offset, size_t byte_length,
+    bool is_node_buffer
 ) :
 	ExternalCopy(sizeof(ExternalCopyArrayBufferView)),
-	buffer(std::move(buffer)),
-	type(type),
-	byte_offset(byte_offset), byte_length(byte_length) {}
+    is_node_buffer(is_node_buffer),
+    type(type),
+	byte_offset(byte_offset),
+    byte_length(byte_length) {}
 
 template <typename T>
-auto NewTypedArrayView(Local<T> buffer, ExternalCopyArrayBufferView::ViewType type, size_t byte_offset, size_t byte_length) -> Local<Value> {
+auto NewTypedArrayView(Local<T> buffer, ExternalCopyArrayBufferView::ViewType type, size_t byte_offset, size_t byte_length) -> Local<Object> {
 	switch (type) {
 		case ExternalCopyArrayBufferView::ViewType::Uint8:
 			return Uint8Array::New(buffer, byte_offset, byte_length >> 0);
@@ -497,13 +461,84 @@ auto NewTypedArrayView(Local<T> buffer, ExternalCopyArrayBufferView::ViewType ty
 	}
 }
 
-auto ExternalCopyArrayBufferView::CopyInto(bool transfer_in) -> Local<Value> {
-	Local<Value> buffer = this->buffer->CopyInto(transfer_in);
-	if (buffer->IsArrayBuffer()) {
-		return NewTypedArrayView(buffer.As<ArrayBuffer>(), type, byte_offset, byte_length);
+auto ExternalCopyArrayBufferView::CopyInto(bool /*transfer_in*/) -> Local<Value> {
+	assert(!underlying_buffer.IsEmpty());
+    Local<Object> view;
+	if (underlying_buffer->IsArrayBuffer()) {
+		view = NewTypedArrayView(underlying_buffer.As<ArrayBuffer>(), type, byte_offset, byte_length);
 	} else {
-		return NewTypedArrayView(buffer.As<SharedArrayBuffer>(), type, byte_offset, byte_length);
+        view = NewTypedArrayView(underlying_buffer.As<SharedArrayBuffer>(), type, byte_offset, byte_length);
 	}
+
+    if (is_node_buffer && type == ViewType::Uint8) {
+        auto& environment = IsolateEnvironment::GetCurrent();
+        auto buffer_prototype = environment.GetBufferPrototype();
+        if (!buffer_prototype.IsEmpty() && buffer_prototype->IsObject()) {
+            view->SetPrototype(Isolate::GetCurrent()->GetCurrentContext(), buffer_prototype).Check();
+        }
+    }
+
+    if (!own_properties.IsEmpty()) {
+        Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
+        CopyObjectProperties(context, view, own_properties);
+    }
+
+    return view;
+}
+
+auto ExternalCopyArrayBufferView::Copy(v8::Local<v8::ArrayBufferView> view) -> std::unique_ptr<ExternalCopyArrayBufferView> {
+	ViewType type;
+	if (view->IsUint8Array()) {
+		type = ViewType::Uint8;
+	} else if (view->IsUint8ClampedArray()) {
+		type = ViewType::Uint8Clamped;
+	} else if (view->IsInt8Array()) {
+		type = ViewType::Int8;
+	} else if (view->IsUint16Array()) {
+		type = ViewType::Uint16;
+	} else if (view->IsInt16Array()) {
+		type = ViewType::Int16;
+	} else if (view->IsUint32Array()) {
+		type = ViewType::Uint32;
+	} else if (view->IsInt32Array()) {
+		type = ViewType::Int32;
+	} else if (view->IsFloat32Array()) {
+		type = ViewType::Float32;
+	} else if (view->IsFloat64Array()) {
+		type = ViewType::Float64;
+	} else if (view->IsBigInt64Array()) {
+		type = ViewType::BigInt64;
+	} else if (view->IsBigUint64Array()) {
+		type = ViewType::BigUint64;
+	} else if (view->IsDataView()) {
+		type = ViewType::DataView;
+	} else {
+		assert(false);
+	}
+
+	auto& environment = IsolateEnvironment::GetCurrent();
+	auto *isolate = Isolate::GetCurrent();
+	Local<Context> context = isolate->GetCurrentContext();
+
+	auto buffer_prototype = environment.GetBufferPrototype();
+	bool is_node_buffer = !buffer_prototype.IsEmpty() && view->GetPrototype()->Equals(context, buffer_prototype).ToChecked();
+	size_t byte_offset = view->ByteOffset();
+	size_t byte_length = view->ByteLength();
+
+	return std::make_unique<ExternalCopyArrayBufferView>(type, byte_offset, byte_length, is_node_buffer);
+}
+
+auto ExternalCopyArrayBufferView::CopyOwnProperties(v8::Isolate* isolate, v8::Local<v8::ArrayBufferView> view) -> v8::Local<v8::Object> {
+	Local<Context> context = isolate->GetCurrentContext();
+	Local<Object> properties = Object::New(isolate);
+
+	auto property_names = GetObjectOwnProperties(context, view);
+	if (property_names->Length() > 0) {
+		CopyObjectProperties(context, properties, view, property_names);
+		return properties;
+	}
+
+	return properties;
 }
 
 } // namespace ivm

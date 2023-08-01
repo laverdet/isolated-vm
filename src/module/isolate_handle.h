@@ -38,6 +38,8 @@ class IsolateHandle : public TransferableHandle {
 		auto GetWallTime() -> v8::Local<v8::Value>;
 		auto StartCpuProfiler(v8::Local<v8::String> title) -> v8::Local<v8::Value>;
 		template <int async> auto StopCpuProfiler(v8::Local<v8::String> title) -> v8::Local<v8::Value>;
+
+        auto SetBufferPrototype(v8::Local<v8::Object> prototype) -> v8::Local<v8::Value>;
 		
 		auto GetReferenceCount() -> v8::Local<v8::Value>;
 		auto IsDisposedGetter() -> v8::Local<v8::Value>;

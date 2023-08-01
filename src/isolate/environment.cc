@@ -456,6 +456,8 @@ IsolateEnvironment::~IsolateEnvironment() {
 			ExchangeDefault(scheduler_lock->sync_interrupts);
 			ExchangeDefault(scheduler_lock->handle_tasks);
 			ExchangeDefault(scheduler_lock->tasks);
+
+            buffer_prototype.Reset();
 		}
 		{
 			std::lock_guard allocator_lock{isolate_allocator_mutex};

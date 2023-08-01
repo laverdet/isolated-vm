@@ -103,6 +103,9 @@ void init(Local<Object> target) {
 		auto isolates = default_isolates->write();
 		assert(isolates->find(isolate) == isolates->end());
 		auto holder = IsolateEnvironment::New(isolate, context);
+        auto dummy_buffer = node::Buffer::New(isolate, 0).ToLocalChecked();
+        assert(dummy_buffer->GetPrototype()->IsObject());
+        holder->GetIsolate()->SetBufferPrototype(dummy_buffer->GetPrototype().As<Object>());
 		isolates->insert(std::make_pair(
 			isolate,
 			IsolateHolderAndJoin{holder, holder->GetIsolate()->GetDisposeWaitHandle()}

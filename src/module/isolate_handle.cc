@@ -62,7 +62,8 @@ auto IsolateHandle::Definition() -> Local<FunctionTemplate> {
 		"referenceCount", MemberAccessor<decltype(&IsolateHandle::GetReferenceCount), &IsolateHandle::GetReferenceCount>{},
 		"wallTime", MemberAccessor<decltype(&IsolateHandle::GetWallTime), &IsolateHandle::GetWallTime>{},
 		"startCpuProfiler", MemberFunction<decltype(&IsolateHandle::StartCpuProfiler), &IsolateHandle::StartCpuProfiler>{},
-		"stopCpuProfiler", MemberFunction<decltype(&IsolateHandle::StopCpuProfiler<1>), &IsolateHandle::StopCpuProfiler<1>>{}
+		"stopCpuProfiler", MemberFunction<decltype(&IsolateHandle::StopCpuProfiler<1>), &IsolateHandle::StopCpuProfiler<1>>{},
+		"setBufferPrototype", MemberFunction<decltype(&IsolateHandle::SetBufferPrototype), &IsolateHandle::SetBufferPrototype>{}
 	));
 }
 
@@ -435,6 +436,19 @@ auto IsolateHandle::StopCpuProfiler(v8::Local<v8::String> title) -> Local<Value>
 	strcpy(dest, *str);
 
 	return ThreePhaseTask::Run<async, StopCpuProfileRunner>(*isolate, dest);
+}
+
+/**
+ * Reference count
+ */
+auto IsolateHandle::SetBufferPrototype(Local<Object> prototype) -> Local<Value> {
+	auto env = this->isolate->GetIsolate();
+	if (!env) {
+		throw RuntimeGenericError("Isolate is disposed");
+	}
+	env->SetBufferPrototype(prototype);
+
+	return Undefined(Isolate::GetCurrent());
 }
 
 /**

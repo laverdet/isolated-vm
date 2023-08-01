@@ -105,13 +105,22 @@ class ExternalCopyArrayBufferView : public ExternalCopy {
 		enum class ViewType { Uint8, Uint8Clamped, Int8, Uint16, Int16, Uint32, Int32, Float32, Float64, BigInt64, BigUint64, DataView };
 
 	private:
-		std::unique_ptr<ExternalCopyAnyBuffer> buffer;
+        bool is_node_buffer;
 		ViewType type;
 		size_t byte_offset, byte_length;
+		v8::Local<v8::Object> underlying_buffer;
+		v8::Local<v8::Object> own_properties;
+
 
 	public:
-		ExternalCopyArrayBufferView(std::unique_ptr<ExternalCopyAnyBuffer> buffer, ViewType type, size_t byte_offset, size_t byte_length);
-		auto CopyInto(bool transfer_in = false) -> v8::Local<v8::Value> final;
+		ExternalCopyArrayBufferView(ViewType type, size_t byte_offset, size_t byte_length, bool is_node_buffer = false);
+		auto CopyInto(bool transfer_in) -> v8::Local<v8::Value> final;
+
+		auto SetUnderlyingBuffer(v8::Local<v8::Object> buffer) -> void { underlying_buffer = buffer; }
+		auto SetOwnProperties(v8::Local<v8::Object> properties) -> void { own_properties = properties; }
+
+		static auto Copy(v8::Local<v8::ArrayBufferView> view) -> std::unique_ptr<ExternalCopyArrayBufferView>;
+		static auto CopyOwnProperties(v8::Isolate* isolate, v8::Local<v8::ArrayBufferView> view) -> v8::Local<v8::Object>;
 };
 
 } // namespace ivm

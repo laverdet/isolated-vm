@@ -12,12 +12,14 @@ class SerializationDelegateBase {
 	public:
 		SerializationDelegateBase(
 			std::deque<std::unique_ptr<Transferable>>& transferables,
+            std::deque<uint32_t>& array_buffer_view_indexes,
 			std::deque<v8::CompiledWasmModule>& wasm_modules
-		) : transferables{transferables}, wasm_modules{wasm_modules} {}
+		) : transferables{transferables}, array_buffer_view_indexes{array_buffer_view_indexes}, wasm_modules{wasm_modules} {}
 
 	protected:
-		std::deque<std::unique_ptr<Transferable>>& transferables;
-		std::deque<v8::CompiledWasmModule>& wasm_modules;
+        std::deque<std::unique_ptr<Transferable>>& transferables;
+        std::deque<uint32_t>& array_buffer_view_indexes;
+        std::deque<v8::CompiledWasmModule>& wasm_modules;
 };
 
 class SerializerDelegate : public SerializationDelegateBase, public v8::ValueSerializer::Delegate {
@@ -32,6 +34,8 @@ class SerializerDelegate : public SerializationDelegateBase, public v8::ValueSer
 		auto GetWasmModuleTransferId(
 			v8::Isolate* isolate, v8::Local<v8::WasmModuleObject> module) -> v8::Maybe<uint32_t> final;
 		auto WriteHostObject(v8::Isolate* isolate, v8::Local<v8::Object> object) -> v8::Maybe<bool> final;
+
+		auto WriteArrayBufferView(v8::Isolate* isolate, v8::Local<v8::ArrayBufferView> view) -> v8::Maybe<bool>;
 
 	private:
 		v8::ValueSerializer* serializer = nullptr;
@@ -49,6 +53,8 @@ class DeserializerDelegate : public SerializationDelegateBase, public v8::ValueD
 			v8::Isolate* isolate, uint32_t transfer_id) -> v8::MaybeLocal<v8::WasmModuleObject> final;
 		auto ReadHostObject(v8::Isolate* isolate) -> v8::MaybeLocal<v8::Object> final;
 
+		auto ReadArrayBufferView(v8::Isolate* isolate, uint32_t transferable_id) -> void;
+
 	private:
 		v8::ValueDeserializer* deserializer = nullptr;
 };
@@ -65,8 +71,9 @@ class BaseSerializer {
 			// Initialize serializer and delegate
 			auto* isolate = v8::Isolate::GetCurrent();
 			auto context = isolate->GetCurrentContext();
-			detail::SerializerDelegate delegate{transferables, wasm_modules};
+			detail::SerializerDelegate delegate{transferables, array_buffer_view_indexes, wasm_modules};
 			v8::ValueSerializer serializer{isolate, &delegate};
+            serializer.SetTreatArrayBufferViewsAsHostObjects(true);
 			delegate.SetSerializer(&serializer);
 
 			// Run serialization
@@ -84,7 +91,7 @@ class BaseSerializer {
 			// Initialize deserializer and delegate
 			auto* isolate = v8::Isolate::GetCurrent();
 			auto context = isolate->GetCurrentContext();
-			detail::DeserializerDelegate delegate{transferables, wasm_modules};
+			detail::DeserializerDelegate delegate{transferables, array_buffer_view_indexes, wasm_modules};
 			v8::ValueDeserializer deserializer{isolate, buffer.get(), size, &delegate};
 			delegate.SetDeserializer(&deserializer);
 
@@ -109,6 +116,7 @@ class BaseSerializer {
 		std::unique_ptr<uint8_t, decltype(std::free)*> buffer = {nullptr, std::free};
 		std::deque<std::unique_ptr<Transferable>> transferables;
 		std::deque<v8::CompiledWasmModule> wasm_modules;
+		std::deque<uint32_t> array_buffer_view_indexes;
 		size_t size;
 };
 

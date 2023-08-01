@@ -1,6 +1,7 @@
 #include "serializer.h"
 #include "isolate/functor_runners.h"
 #include "module/transferable.h"
+#include "isolate/generic/object.h"
 
 /**
  * This file is compiled *without* runtime type information, which matches the nodejs binary and
@@ -32,21 +33,46 @@ auto SerializerDelegate::GetWasmModuleTransferId(
 	return result;
 }
 
-auto SerializerDelegate::WriteHostObject(Isolate* /*isolate*/, Local<Object> object) -> Maybe<bool> {
+auto SerializerDelegate::WriteHostObject(Isolate* isolate, Local<Object> object) -> Maybe<bool> {
 	auto result = Nothing<bool>();
 	detail::RunBarrier([&]() {
-		serializer->WriteUint32(transferables.size());
-		transferables.emplace_back(TransferOut(object));
-		result = Just(true);
+		auto host_object_id = transferables.size();
+		serializer->WriteUint32(host_object_id);
+
+		if (object->IsArrayBufferView()) {
+			auto view = object.As<ArrayBufferView>();
+			transferables.emplace_back(ExternalCopyArrayBufferView::Copy(view));
+			array_buffer_view_indexes.emplace_back(host_object_id);
+			result = WriteArrayBufferView(isolate, view);
+		} else {
+			transferables.emplace_back(TransferOut(object));
+			result = Just(true);
+		}
 	});
 	return result;
 }
 
-auto DeserializerDelegate::ReadHostObject(Isolate* /*isolate*/) -> MaybeLocal<Object> {
+auto SerializerDelegate::WriteArrayBufferView(v8::Isolate* isolate, v8::Local<v8::ArrayBufferView> view) -> v8::Maybe<bool> {
+	Local<Context> context = isolate->GetCurrentContext();
+	auto result = serializer->WriteValue(context, view->Buffer());
+
+	if (result.IsJust()) {
+		auto properties = ExternalCopyArrayBufferView::CopyOwnProperties(isolate, view);
+		return serializer->WriteValue(context, properties);
+	}
+
+	return result;
+}
+
+auto DeserializerDelegate::ReadHostObject(Isolate* isolate) -> MaybeLocal<Object> {
 	MaybeLocal<Object> result;
 	detail::RunBarrier([&]() {
 		uint32_t ii;
 		assert(deserializer->ReadUint32(&ii));
+		if (std::find(array_buffer_view_indexes.begin(), array_buffer_view_indexes.end(), ii) != array_buffer_view_indexes.end()) {
+			ReadArrayBufferView(isolate, ii);
+		}
+
 		result = transferables[ii]->TransferIn().As<Object>();
 	});
 	return result;
@@ -68,6 +94,16 @@ auto DeserializerDelegate::GetWasmModuleFromId(
 		result = WasmModuleObject::FromCompiledModule(isolate, wasm_modules[transfer_id]);
 	});
 	return result;
+}
+
+auto DeserializerDelegate::ReadArrayBufferView(Isolate* isolate, uint32_t transferable_id) -> void {
+	auto *view_copy = reinterpret_cast<std::unique_ptr<ExternalCopyArrayBufferView>*>(&transferables[transferable_id])->get();
+	Local<Context> context = isolate->GetCurrentContext();
+    auto underlying_buffer = deserializer->ReadValue(context).ToLocalChecked().As<Object>();
+	auto properties = deserializer->ReadValue(context).ToLocalChecked().As<Object>();
+
+	view_copy->SetUnderlyingBuffer(underlying_buffer);
+	view_copy->SetOwnProperties(properties);
 }
 
 } // namespace ivm::detail
