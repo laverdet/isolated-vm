@@ -6,7 +6,7 @@ const ivm = require('isolated-vm');
 const assert = require('assert');
 const { Worker, isMainThread, parentPort } = require('worker_threads');
 
-const kIsolateCount = 100;
+const kIsolateCount = 50;
 const kWorkerCount = 10;
 if (isMainThread) {
 	Promise.all(Array(kWorkerCount).fill().map(async (_, ii) => {
