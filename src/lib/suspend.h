@@ -27,6 +27,7 @@ class thread_suspend_handle {
 			initialize() {
 				// Set process-wide signal handler
 				struct sigaction handler;
+				memset(&handler, '\0', sizeof(handler));
 				handler.sa_handler = callback;
 				sigemptyset(&handler.sa_mask);
 				assert(sigaction(SIGRTMIN, &handler, nullptr) == 0);
