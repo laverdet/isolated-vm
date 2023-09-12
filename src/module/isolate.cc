@@ -131,4 +131,6 @@ void init(Local<Object> target) {
 
 } // namespace ivm
 
-NODE_MODULE_CONTEXT_AWARE(isolated_vm, ivm::init) // NOLINT
+NODE_MODULE_INIT(/* exports, module, context */) {
+	ivm::init(exports);
+}
