@@ -114,6 +114,12 @@ auto ExternalCopy::operator= (ExternalCopy&& that) noexcept -> ExternalCopy& {
 
 auto ExternalCopy::Copy(Local<Value> value, bool transfer_out, ArrayRange transfer_list)
 -> std::unique_ptr<ExternalCopy> {
+    if (value->IsProxy()) {
+        // We just unwrap target from the proxy object. This will allow us to transfer Proxies that act as a wrapper
+        // for more sophisticated proxies this will be incorrect.
+        value = value.As<Proxy>()->GetTarget();
+    }
+
 	std::unique_ptr<ExternalCopy> copy = CopyIfPrimitive(value);
 	if (copy) {
 		return copy;
