@@ -51,6 +51,7 @@ CONTENTS
 	* [Reference](#class-reference-transferable)
 	* [ExternalCopy](#class-externalcopy-transferable)
 * [Examples](#examples)
+* [🚨 Frequently Asked Question 🚨](#frequently-asked-question)
 * [Alternatives](#alternatives)
 
 
@@ -727,6 +728,36 @@ hostile.run(context).catch(err => console.error(err));
 // I've wasted 132MB
 // RangeError: Array buffer allocation failed
 ```
+
+
+FREQUENTLY ASKED QUESTION
+-------------------------
+
+There is only 1 frequently asked question:
+
+"How do I pass a [module, function, object, library] into an isolate?"
+
+You don't! Isolates are `isolated`. An *isolate* is its own environment with its own heap which is
+*isolated* from all other **isolates**. It may help to think of the question in the context of a
+web browser. How would you pass a function from nodejs into Firefox? You can't, it is nonsense.
+
+Depending on the function you could just pass the code for the function directly into the isolate
+and execute it there. That's how a `<script />` tag works in our browser metaphor. This works for
+functions that don't need to do anything such as file access or network requests. Check out Webpack,
+Rollup, esbuild, etc for bundling solutions.
+
+If you want to perform operations on files, network, native modules, etc then you will need to set
+up some kind of shim delegate which can perform the operation within nodejs and pass the result back
+to your isolate. In the browser metaphor this would be like a REST call back to your service.
+
+Finally, and I'm not trying to be mean here, if this explanation doesn't make sense then you really
+should not be using this module. This is a low-level module which is just one piece of a very
+complicated problem. If your goal is to run code from untrusted sources then you *must* have a very
+comprehensive understanding of JavaScript. You should know where the ECMAScript specification ends
+and where the HTML, DOM, and other web specifications begin. You should be a security-focused
+hacker, otherwise you will almost certain make a company-ending mistake. This is not a module for
+the faint of heart. Turn back now!
+
 
 ALTERNATIVES
 ------------
