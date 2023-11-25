@@ -8,7 +8,7 @@
     "node": ">=16.0.0"
   },
   "scripts": {
-    "install": "prebuild-install || (node-gyp rebuild --release -j 4 && node-gyp clean)",
+    "install": "prebuild-install || (node-gyp rebuild --release -j max && node-gyp clean)",
     "rebuild": "node-gyp rebuild --release -j 4",
     "prebuild": "prebuild",
     "upload": "prebuild --upload ${GITHUB_TOKEN}",
