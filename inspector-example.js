@@ -50,4 +50,4 @@ wss.on('connection', function(ws) {
 	channel.onResponse = (callId, message) => send(message);
 	channel.onNotification = send;
 });
-console.log('Inspector: chrome-devtools://devtools/bundled/inspector.html?experiments=true&v8only=true&ws=127.0.0.1:10000');
+console.log('Inspector: devtools://devtools/bundled/inspector.html?experiments=true&v8only=true&ws=127.0.0.1:10000');

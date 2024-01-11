@@ -79,7 +79,11 @@ void InspectorAgent::quitMessageLoopOnPause() {
  */
 auto InspectorAgent::ConnectSession(InspectorSession& session) -> unique_ptr<V8InspectorSession> {
 	active_sessions.write()->insert(&session);
+#if V8_AT_LEAST(10, 3, 118)
+	return inspector->connect(1, &session, StringView(), v8_inspector::V8Inspector::ClientTrustLevel::kFullyTrusted);
+#elif
 	return inspector->connect(1, &session, StringView());
+#endif
 }
 
 /**
