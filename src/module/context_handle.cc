@@ -7,6 +7,10 @@
 
 using namespace v8;
 
+#if !V8_AT_LEAST(10, 1, 1)
+#define CompileFunction CompileFunctionInContext
+#endif
+
 namespace ivm {
 namespace {
 
@@ -197,7 +201,7 @@ class EvalClosureRunner : public CodeCompilerHolder, public ThreePhaseTask {
 			// Invoke `new Function` to compile script
 			auto source = GetSource();
 			auto function = RunWithAnnotatedErrors([&]() {
-				return Unmaybe(ScriptCompiler::CompileFunctionInContext(
+				return Unmaybe(ScriptCompiler::CompileFunction(
 					context, source.get(),
 					argument_names.size(), argument_names.empty() ? nullptr : &argument_names[0],
 					0, nullptr
