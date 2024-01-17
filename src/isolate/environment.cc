@@ -55,7 +55,6 @@ static auto GetStackBase() -> void* {
   return base;
 }
 #elif defined __unix__
-#define _GNU_SOURCE
 static auto GetStackBase() -> void* {
 	pthread_t self = pthread_self();
 	pthread_attr_t attrs;
