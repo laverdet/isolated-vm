@@ -20,7 +20,8 @@ class ExternalString final : public v8::String::ExternalStringResource {
 		ExternalString(const ExternalString&) = delete;
 
 		~ExternalString() final {
-			IsolateEnvironment::GetCurrent()->AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
+			if (auto *env = IsolateEnvironment::GetCurrent())
+				env->AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
 		}
 
 		auto operator= (const ExternalString&) = delete;
@@ -46,7 +47,8 @@ class ExternalStringOneByte final : public v8::String::ExternalOneByteStringReso
 		ExternalStringOneByte(const ExternalStringOneByte&) = delete;
 
 		~ExternalStringOneByte() final {
-			IsolateEnvironment::GetCurrent()->AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
+			if (auto *env = IsolateEnvironment::GetCurrent())
+				env->AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
 		}
 
 		auto operator= (const ExternalStringOneByte&) = delete;

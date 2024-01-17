@@ -21,7 +21,7 @@ class Executor { // "En taro adun"
 	public:
 		explicit Executor(IsolateEnvironment& env);
 		Executor(const Executor&) = delete;
-		~Executor() = default;
+		~Executor();
 		auto operator= (const Executor&) = delete;
 
 		static auto GetCurrentEnvironment() -> IsolateEnvironment*;
