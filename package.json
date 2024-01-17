@@ -9,7 +9,7 @@
   },
   "scripts": {
     "install": "prebuild-install || (node-gyp rebuild --release -j max && node-gyp clean)",
-    "rebuild": "node-gyp rebuild --release -j 4",
+    "rebuild": "node-gyp rebuild --release -j max",
     "prebuild": "prebuild",
     "upload": "prebuild --upload ${GITHUB_TOKEN}",
     "lint": "find src -name '*.cc' | xargs -n1 clang-tidy",
