@@ -20,10 +20,7 @@
   },
   "devDependencies": {
     "isolated-vm": ".",
-    "prebuild": "^11.0.4"
-  },
-  "overrides": {
-    "node-gyp": "^9.4.0"
+    "prebuild": "^12.1.0"
   },
   "binary": {
     "module_path": "out"
