@@ -547,7 +547,7 @@ can then be quickly copied into any isolate without any extra thread synchroniza
 		isolate. This operation completes in constant time since it doesn't have to copy an arbitrarily
 		large object. This only applies to ArrayBuffer and TypedArray instances.
 
-Primitive values can be copied exactly as they are. Date objects will be copied as as Dates.
+Primitive values can be copied exactly as they are. Date objects will be copied as Dates.
 ArrayBuffers, TypedArrays, and DataViews will be copied in an efficient format. SharedArrayBuffers
 will simply copy a reference to the existing memory and when copied into another isolate the new
 SharedArrayBuffer will point to the same underlying data. After passing a SharedArrayBuffer to
