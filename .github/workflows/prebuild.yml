@@ -13,9 +13,11 @@ jobs:
         os: [ubuntu-20.04, macos-latest, windows-latest]
       fail-fast: false
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      # https://github.com/nodejs/node-gyp/issues/2869
+      - run: python3 -m pip install setuptools
       - name: Use Node.js 18.x
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18.x
       - name: Add msbuild to PATH
@@ -39,9 +41,9 @@ jobs:
 
   prebuild-alpine:
     runs-on: ubuntu-latest
-    container: node:18-alpine3.18
+    container: node:18-alpine3.19
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: install build deps
         run: |
           apk add g++ make python3

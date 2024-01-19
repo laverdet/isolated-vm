@@ -15,7 +15,7 @@ jobs:
       # https://github.com/nodejs/node-gyp/issues/2869
       - run: python3 -m pip install setuptools
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
       - name: Add msbuild to PATH
@@ -33,7 +33,7 @@ jobs:
         with:
           max_attempts: 3
           retry_on: error
-          timeout_seconds: 240
+          timeout_minutes: 6
           command: |
             npm test
 
@@ -44,7 +44,7 @@ jobs:
         node-version: [ 16, 18, 20 ]
     container: node:${{ matrix.node-version }}-alpine
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: install build deps
         run: |
           apk add g++ make python3
