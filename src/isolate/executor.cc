@@ -17,6 +17,13 @@ Executor::Executor(IsolateEnvironment& env) :
 	default_executor{*(current_executor == nullptr ? (current_executor = this) : &current_executor->default_executor)},
 	default_thread{&default_executor == this ? std::this_thread::get_id() : default_executor.default_thread} {}
 
+Executor::~Executor() {
+	if (this == &default_executor) {
+		assert(current_executor == &default_executor);
+		current_executor = nullptr;
+	}
+}
+
 auto Executor::MayRunInlineTasks(IsolateEnvironment& env) -> bool {
 	if (current_executor == &env.executor) {
 		if (env.nodejs_isolate) {
