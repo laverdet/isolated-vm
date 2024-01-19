@@ -89,7 +89,7 @@ class BaseSerializer {
 			delegate.SetDeserializer(&deserializer);
 
 			// Watch for allocation errors
-			auto* allocator = IsolateEnvironment::GetCurrent()->GetLimitedAllocator();
+			auto* allocator = IsolateEnvironment::GetCurrent().GetLimitedAllocator();
 			int failures = allocator == nullptr ? 0 : allocator->GetFailureCount();
 			Unmaybe(deserializer.ReadHeader(context));
 

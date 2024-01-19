@@ -197,8 +197,11 @@ class IsolateEnvironment {
 		/**
 		 * Return pointer the currently running IsolateEnvironment
 		 */
-		static auto GetCurrent() -> IsolateEnvironment* {
-			return Executor::GetCurrentEnvironment();
+		static auto GetCurrent() -> IsolateEnvironment& {
+			auto* environment = Executor::GetCurrentEnvironment();
+			assert(environment != nullptr);
+			return *environment;
+
 		}
 
 		/**

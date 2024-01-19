@@ -164,7 +164,7 @@ auto ExternalCopy::Copy(Local<Value> value, bool transfer_out, ArrayRange transf
 		// `Buffer()` below will force v8 to attempt to create a buffer if it doesn't exist, and if
 		// there is an allocation failure it will crash the process.
 		if (!view->HasBuffer()) {
-			auto* allocator = IsolateEnvironment::GetCurrent()->GetLimitedAllocator();
+			auto* allocator = IsolateEnvironment::GetCurrent().GetLimitedAllocator();
 			if (allocator != nullptr && !allocator->Check(view->ByteLength())) {
 				throw RuntimeRangeError("Array buffer allocation failed");
 			}
@@ -292,7 +292,7 @@ auto ExternalCopy::CopyThrownValue(Local<Value> value) -> std::unique_ptr<Extern
 }
 
 auto ExternalCopy::CopyIntoCheckHeap(bool transfer_in) -> Local<Value> {
-	IsolateEnvironment::HeapCheck heap_check{*IsolateEnvironment::GetCurrent()};
+	IsolateEnvironment::HeapCheck heap_check{IsolateEnvironment::GetCurrent()};
 	auto value = CopyInto(transfer_in);
 	heap_check.Epilogue();
 	return value;
@@ -412,13 +412,13 @@ auto ExternalCopyArrayBuffer::CopyInto(bool transfer_in) -> Local<Value> {
 		UpdateSize(0);
 		size_t size = backing_store->ByteLength();
 		auto handle = ArrayBuffer::New(Isolate::GetCurrent(), std::move(backing_store));
-		auto* allocator = IsolateEnvironment::GetCurrent()->GetLimitedAllocator();
+		auto* allocator = IsolateEnvironment::GetCurrent().GetLimitedAllocator();
 		if (allocator != nullptr) {
 			allocator->Track(handle, size);
 		}
 		return handle;
 	} else {
-		auto* allocator = IsolateEnvironment::GetCurrent()->GetLimitedAllocator();
+		auto* allocator = IsolateEnvironment::GetCurrent().GetLimitedAllocator();
 		auto backing_store = *this->backing_store.read();
 		if (!backing_store) {
 			throw RuntimeGenericError("Array buffer is invalid");
@@ -446,7 +446,7 @@ auto ExternalCopySharedArrayBuffer::CopyInto(bool /*transfer_in*/) -> Local<Valu
 	auto backing_store = *this->backing_store.read();
 	size_t size = backing_store->ByteLength();
 	auto handle = SharedArrayBuffer::New(Isolate::GetCurrent(), std::move(backing_store));
-	auto* allocator = IsolateEnvironment::GetCurrent()->GetLimitedAllocator();
+	auto* allocator = IsolateEnvironment::GetCurrent().GetLimitedAllocator();
 	if (allocator != nullptr) {
 		allocator->Track(handle, size);
 	}

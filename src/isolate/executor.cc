@@ -18,8 +18,10 @@ Executor::Executor(IsolateEnvironment& env) :
 	default_thread{&default_executor == this ? std::this_thread::get_id() : default_executor.default_thread} {}
 
 Executor::~Executor() {
-	if (current_executor == this)
+	if (this == &default_executor) {
+		assert(current_executor == &default_executor);
 		current_executor = nullptr;
+	}
 }
 
 auto Executor::MayRunInlineTasks(IsolateEnvironment& env) -> bool {

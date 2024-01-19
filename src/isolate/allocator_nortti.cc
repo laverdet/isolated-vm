@@ -12,14 +12,14 @@ class ExternalMemoryHandle {
 		ExternalMemoryHandle(Local<Object> local_handle, size_t size) :
 				handle{Isolate::GetCurrent(), local_handle}, size{size} {
 			handle.SetWeak(reinterpret_cast<void*>(this), &WeakCallbackV8, WeakCallbackType::kParameter);
-			IsolateEnvironment::GetCurrent()->AddWeakCallback(&handle, WeakCallback, this);
+			IsolateEnvironment::GetCurrent().AddWeakCallback(&handle, WeakCallback, this);
 		}
 
 		ExternalMemoryHandle(const ExternalMemoryHandle&) = delete;
 		auto operator=(const ExternalMemoryHandle&) = delete;
 
 		~ExternalMemoryHandle() {
-			auto* allocator = IsolateEnvironment::GetCurrent()->GetLimitedAllocator();
+			auto* allocator = IsolateEnvironment::GetCurrent().GetLimitedAllocator();
 			if (allocator != nullptr) {
 				allocator->AdjustAllocatedSize(-size);
 			}
@@ -32,7 +32,7 @@ class ExternalMemoryHandle {
 
 		static void WeakCallback(void* param) {
 			auto* that = reinterpret_cast<ExternalMemoryHandle*>(param);
-			IsolateEnvironment::GetCurrent()->RemoveWeakCallback(&that->handle);
+			IsolateEnvironment::GetCurrent().RemoveWeakCallback(&that->handle);
 			that->handle.Reset();
 			delete that;
 		}
