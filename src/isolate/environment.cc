@@ -80,6 +80,10 @@ namespace ivm {
 std::atomic<size_t> detail::IsolateSpecificSize{0};
 thread_suspend_handle::initialize suspend_init{};
 
+namespace {
+	std::mutex isolate_allocator_mutex{};
+} // anonymous namespace
+
 /**
  * HeapCheck implementation
  */
@@ -375,8 +379,11 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<v8::B
 		startup_data.raw_size = snapshot_length;
 	}
 	task_runner = std::make_shared<IsolateTaskRunner>(holder.lock()->GetIsolate());
-	isolate = Isolate::Allocate();
-	PlatformDelegate::RegisterIsolate(isolate, &*scheduler);
+	{
+		std::lock_guard allocator_lock{isolate_allocator_mutex};
+		isolate = Isolate::Allocate();
+		PlatformDelegate::RegisterIsolate(isolate, &*scheduler);
+	}
 	Isolate::Initialize(isolate, create_params);
 
 	// Various callbacks
@@ -450,13 +457,16 @@ IsolateEnvironment::~IsolateEnvironment() {
 			ExchangeDefault(scheduler_lock->tasks);
 		}
 		{
-			// Dispose() will call destructors for external strings and array buffers, so this lock sets the
-			// "current" isolate for those C++ dtors to function correctly without locking v8
-			Executor::Scope lock{*this};
-			isolate->Dispose();
+			std::lock_guard allocator_lock{isolate_allocator_mutex};
+			{
+				// Dispose() will call destructors for external strings and array buffers, so this lock sets the
+				// "current" isolate for those C++ dtors to function correctly without locking v8
+				Executor::Scope lock{*this};
+				isolate->Dispose();
+			}
+			// Unregister from Platform
+			PlatformDelegate::UnregisterIsolate(isolate);
 		}
-		// Unregister from Platform
-		PlatformDelegate::UnregisterIsolate(isolate);
 		// Unreference from default isolate
 		executor.default_executor.env.owned_isolates->write()->erase({ dispose_wait, holder });
 	}
