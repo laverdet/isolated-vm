@@ -338,7 +338,7 @@ class ApplyRunner : public ThreePhaseTask {
 			ApplyRunner& self = *reinterpret_cast<ApplyRunner*>(info[0].As<External>()->Value());
 			if (info.Length() == 3) {
 				// Resolved
-				FunctorRunners::RunCatchExternal(IsolateEnvironment::GetCurrent()->DefaultContext(), [&self, &info]() {
+				FunctorRunners::RunCatchExternal(IsolateEnvironment::GetCurrent().DefaultContext(), [&self, &info]() {
 					self.ret = TransferOut(info[2]);
 				}, [&self](unique_ptr<ExternalCopy> error) {
 					self.async_error = std::move(error);
@@ -357,7 +357,7 @@ class ApplyRunner : public ThreePhaseTask {
 		 */
 		static auto CompileAsyncWrapper() -> Local<Function> {
 			Isolate* isolate = Isolate::GetCurrent();
-			Local<Context> context = IsolateEnvironment::GetCurrent()->DefaultContext();
+			Local<Context> context = IsolateEnvironment::GetCurrent().DefaultContext();
 			Local<Script> script = Unmaybe(Script::Compile(context, v8_string(
 				"'use strict';"
 				"(function(AsyncCallback) {"

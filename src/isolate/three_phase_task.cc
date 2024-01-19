@@ -15,21 +15,20 @@ ThreePhaseTask::CalleeInfo::CalleeInfo(
 	Local<Context> context,
 	Local<StackTrace> stack_trace
 ) : remotes(resolver, context, stack_trace) {
-	IsolateEnvironment* env = IsolateEnvironment::GetCurrent();
-	if (env->IsDefault()) {
-		async = node::EmitAsyncInit(env->GetIsolate(), resolver->GetPromise(), StringTable::Get().isolatedVm);
+	auto& env = IsolateEnvironment::GetCurrent();
+	if (env.IsDefault()) {
+		async = node::EmitAsyncInit(env.GetIsolate(), resolver->GetPromise(), StringTable::Get().isolatedVm);
 	}
 }
 
 ThreePhaseTask::CalleeInfo::CalleeInfo(CalleeInfo&& that) noexcept :
 		remotes{std::move(that.remotes)}, async{std::exchange(that.async, {0, 0})} {}
-	IsolateEnvironment* env = IsolateEnvironment::GetCurrent();
 
 ThreePhaseTask::CalleeInfo::~CalleeInfo() {
-	IsolateEnvironment* env = IsolateEnvironment::GetCurrent();
+	auto& env = IsolateEnvironment::GetCurrent();
 	node::async_context tmp{0, 0};
-	if (env->IsDefault() && std::memcmp(&async, &tmp, sizeof(node::async_context)) != 0) {
-		node::EmitAsyncDestroy(env->GetIsolate(), async);
+	if (env.IsDefault() && std::memcmp(&async, &tmp, sizeof(node::async_context)) != 0) {
+		node::EmitAsyncDestroy(env.GetIsolate(), async);
 	}
 }
 
@@ -44,9 +43,9 @@ struct CallbackScope {
 	unique_ptr<node::CallbackScope> scope;
 
 	CallbackScope(node::async_context async, Local<Object> resource) {
-		IsolateEnvironment* env = IsolateEnvironment::GetCurrent();
-		if (env->IsDefault()) {
-			scope = std::make_unique<node::CallbackScope>(env->GetIsolate(), resource, async);
+		auto& env = IsolateEnvironment::GetCurrent();
+		if (env.IsDefault()) {
+			scope = std::make_unique<node::CallbackScope>(env.GetIsolate(), resource, async);
 		}
 	}
 };
@@ -177,10 +176,10 @@ void ThreePhaseTask::Phase2Runner::Run() {
 		auto* holder = info.remotes.GetIsolateHolder();
 		holder->ScheduleTask(std::make_unique<Phase3Failure>(std::move(self), std::move(info), std::move(error)), false, true);
 	};
-	FunctorRunners::RunCatchExternal(IsolateEnvironment::GetCurrent()->DefaultContext(), [&]() {
+	FunctorRunners::RunCatchExternal(IsolateEnvironment::GetCurrent().DefaultContext(), [&]() {
 		// Continue the task
 		self->Phase2();
-		auto epilogue_error = IsolateEnvironment::GetCurrent()->TaskEpilogue();
+		auto epilogue_error = IsolateEnvironment::GetCurrent().TaskEpilogue();
 		if (epilogue_error) {
 			schedule_error(std::move(epilogue_error));
 		} else {
@@ -199,7 +198,7 @@ void ThreePhaseTask::Phase2RunnerIgnored::Run() {
 	TryCatch try_catch{Isolate::GetCurrent()};
 	try {
 		self->Phase2();
-		IsolateEnvironment::GetCurrent()->TaskEpilogue();
+		IsolateEnvironment::GetCurrent().TaskEpilogue();
 	} catch (const RuntimeError& cc_error) {}
 }
 
@@ -266,7 +265,7 @@ auto ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_async) ->
 			}
 
 			// Run handle tasks for default isolate now
-			IsolateEnvironment& current_env = *IsolateEnvironment::GetCurrent();
+			auto& current_env = IsolateEnvironment::GetCurrent();
 			if (current_env.IsDefault()) {
 				run_handle_tasks(current_env);
 			}
@@ -317,7 +316,7 @@ auto ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_async) ->
 
 				void Run() final {
 					did_run = true;
-					FunctorRunners::RunCatchExternal(IsolateEnvironment::GetCurrent()->DefaultContext(), [ this ]() {
+					FunctorRunners::RunCatchExternal(IsolateEnvironment::GetCurrent().DefaultContext(), [ this ]() {
 						// Now in the default thread
 						const auto is_async = [&]() {
 							if (allow_async) {
@@ -330,7 +329,7 @@ auto ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_async) ->
 						if (!is_async) {
 							wait.Done();
 						}
-						this->error = IsolateEnvironment::GetCurrent()->TaskEpilogue();
+						this->error = IsolateEnvironment::GetCurrent().TaskEpilogue();
 					}, [ this ](unique_ptr<ExternalCopy> error) {
 						this->error = std::move(error);
 						wait.Done();
@@ -342,7 +341,7 @@ auto ThreePhaseTask::RunSync(IsolateHolder& second_isolate, bool allow_async) ->
 			unique_ptr<ExternalCopy> error;
 			{
 				// Setup condition variable to sleep this thread
-				IsolateEnvironment& env = *IsolateEnvironment::GetCurrent();
+				IsolateEnvironment& env = IsolateEnvironment::GetCurrent();
 				Scheduler::AsyncWait wait(*env.scheduler);
 				lockable_t<bool, false, true> done{false};
 				// Scope to unlock v8 in this thread and set up the wait

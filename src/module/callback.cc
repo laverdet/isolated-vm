@@ -62,7 +62,7 @@ class InvokeRunner : public ThreePhaseTask {
 		void Phase2() final {
 			// Setup context
 			auto* isolate = Isolate::GetCurrent();
-			auto& env = *IsolateEnvironment::GetCurrent();
+			auto& env = IsolateEnvironment::GetCurrent();
 			auto context = Deref(data.context);
 			Context::Scope context_scope{context};
 			auto fn = Deref(data.callback);

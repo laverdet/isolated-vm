@@ -140,25 +140,25 @@ struct CreateContextRunner : public ThreePhaseTask {
 		// Use custom deleter on the shared_ptr which will notify the isolate when we're probably done with this context
 		struct ContextDeleter {
 			void operator() (Persistent<Context>& context) const {
-				auto& env = *IsolateEnvironment::GetCurrent();
+				auto& env = IsolateEnvironment::GetCurrent();
 				context.Reset();
 				env.GetIsolate()->ContextDisposedNotification();
 			}
 		};
 
-		auto* env = IsolateEnvironment::GetCurrent();
+		auto& env = IsolateEnvironment::GetCurrent();
 
 		// Sanity check before we build the context
-		if (enable_inspector && env->GetInspectorAgent() == nullptr) {
-			Context::Scope context_scope{env->DefaultContext()}; // TODO: This is needed to throw, but is stupid and sloppy
+		if (enable_inspector && env.GetInspectorAgent() == nullptr) {
+			Context::Scope context_scope{env.DefaultContext()}; // TODO: This is needed to throw, but is stupid and sloppy
 			throw RuntimeGenericError("Inspector is not enabled for this isolate");
 		}
 
 		// Make a new context and setup shared pointers
-		IsolateEnvironment::HeapCheck heap_check{*env, true};
-		Local<Context> context_handle = env->NewContext();
+		IsolateEnvironment::HeapCheck heap_check{env, true};
+		Local<Context> context_handle = env.NewContext();
 		if (enable_inspector) {
-			env->GetInspectorAgent()->ContextCreated(context_handle, "<isolated-vm>");
+			env.GetInspectorAgent()->ContextCreated(context_handle, "<isolated-vm>");
 		}
 		context = RemoteHandle<Context>{context_handle, ContextDeleter{}};
 		global = RemoteHandle<Value>{context_handle->Global()};
@@ -186,16 +186,16 @@ struct CompileScriptRunner : public CodeCompilerHolder, public ThreePhaseTask {
 
 	void Phase2() final {
 		// Compile in second isolate and return UnboundScript persistent
-		auto* isolate = IsolateEnvironment::GetCurrent();
-		Context::Scope context_scope(isolate->DefaultContext());
-		IsolateEnvironment::HeapCheck heap_check{*isolate, true};
+		auto& isolate = IsolateEnvironment::GetCurrent();
+		Context::Scope context_scope(isolate.DefaultContext());
+		IsolateEnvironment::HeapCheck heap_check{isolate, true};
 		auto source = GetSource();
 		ScriptCompiler::CompileOptions compile_options = ScriptCompiler::kNoCompileOptions;
 		if (DidSupplyCachedData()) {
 			compile_options = ScriptCompiler::kConsumeCodeCache;
 		}
 		script = RemoteHandle<UnboundScript>{RunWithAnnotatedErrors(
-			[&isolate, &source, compile_options]() { return Unmaybe(ScriptCompiler::CompileUnboundScript(*isolate, source.get(), compile_options)); }
+			[&isolate, &source, compile_options]() { return Unmaybe(ScriptCompiler::CompileUnboundScript(isolate, source.get(), compile_options)); }
 		)};
 
 		// Check cached data flags
@@ -222,12 +222,12 @@ struct CompileScriptRunner : public CodeCompilerHolder, public ThreePhaseTask {
 struct StopCpuProfileRunner: public ThreePhaseTask {
 	const char* title_;
 	std::vector<IVMCpuProfile> profiles;
-	
+
 	explicit StopCpuProfileRunner(const char* title): title_(title) {}
 
 	void Phase2() final {
-		auto* isolate = IsolateEnvironment::GetCurrent();
-		profiles = isolate->GetCpuProfileManager()->StopProfiling(title_);
+		auto& isolate = IsolateEnvironment::GetCurrent();
+		profiles = isolate.GetCpuProfileManager()->StopProfiling(title_);
 	}
 
 	auto Phase3() -> Local<Value> final {
@@ -269,12 +269,12 @@ struct CompileModuleRunner : public CodeCompilerHolder, public ThreePhaseTask {
 	}
 
 	void Phase2() final {
-		auto* isolate = IsolateEnvironment::GetCurrent();
-		Context::Scope context_scope(isolate->DefaultContext());
-		IsolateEnvironment::HeapCheck heap_check{*isolate, true};
+		auto& isolate = IsolateEnvironment::GetCurrent();
+		Context::Scope context_scope(isolate.DefaultContext());
+		IsolateEnvironment::HeapCheck heap_check{isolate, true};
 		auto source = GetSource();
 		auto module_handle = RunWithAnnotatedErrors(
-			[&]() { return Unmaybe(ScriptCompiler::CompileModule(*isolate, source.get())); }
+			[&]() { return Unmaybe(ScriptCompiler::CompileModule(isolate, source.get())); }
 		);
 
 		if (DidSupplyCachedData()) {
@@ -348,7 +348,7 @@ struct HeapStatRunner : public ThreePhaseTask {
 	explicit HeapStatRunner(int /*unused*/) {}
 
 	void Phase2() final {
-		IsolateEnvironment& isolate = *IsolateEnvironment::GetCurrent();
+		IsolateEnvironment& isolate = IsolateEnvironment::GetCurrent();
 		isolate->GetHeapStatistics(&heap);
 		adjustment = heap.heap_size_limit() - isolate.GetInitialHeapSizeLimit();
 		externally_allocated_size = isolate.GetExtraAllocatedMemory();

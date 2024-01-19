@@ -47,7 +47,7 @@ class TimeoutRunner final : public Runnable {
 				}
 			}();
 			if (will_terminate) {
-				auto& env = *IsolateEnvironment::GetCurrent();
+				auto& env = IsolateEnvironment::GetCurrent();
 				auto* isolate = env.GetIsolate();
 				state.stack_trace = StackTraceHolder::RenderSingleStack(v8::StackTrace::CurrentStackTrace(isolate, 10));
 				isolate->TerminateExecution();
@@ -64,7 +64,7 @@ class TimeoutRunner final : public Runnable {
  */
 template <typename F>
 auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
-	IsolateEnvironment& isolate = *IsolateEnvironment::GetCurrent();
+	IsolateEnvironment& isolate = IsolateEnvironment::GetCurrent();
 	thread_suspend_handle thread_suspend{};
 	bool is_default_thread = Executor::IsDefaultThread();
 	bool did_terminate = false;

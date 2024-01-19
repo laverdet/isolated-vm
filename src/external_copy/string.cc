@@ -14,13 +14,13 @@ namespace {
 class ExternalString final : public v8::String::ExternalStringResource {
 	public:
 		explicit ExternalString(std::shared_ptr<std::vector<char>> value) : value{std::move(value)} {
-			IsolateEnvironment::GetCurrent()->AdjustExtraAllocatedMemory(this->value->size());
+			IsolateEnvironment::GetCurrent().AdjustExtraAllocatedMemory(this->value->size());
 		}
 
 		ExternalString(const ExternalString&) = delete;
 
 		~ExternalString() final {
-			IsolateEnvironment::GetCurrent()->AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
+			IsolateEnvironment::GetCurrent().AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
 		}
 
 		auto operator= (const ExternalString&) = delete;
@@ -40,13 +40,13 @@ class ExternalString final : public v8::String::ExternalStringResource {
 class ExternalStringOneByte final : public v8::String::ExternalOneByteStringResource {
 	public:
 		explicit ExternalStringOneByte(std::shared_ptr<std::vector<char>> value) : value{std::move(value)} {
-			IsolateEnvironment::GetCurrent()->AdjustExtraAllocatedMemory(this->value->size());
+			IsolateEnvironment::GetCurrent().AdjustExtraAllocatedMemory(this->value->size());
 		}
 
 		ExternalStringOneByte(const ExternalStringOneByte&) = delete;
 
 		~ExternalStringOneByte() final {
-			IsolateEnvironment::GetCurrent()->AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
+			IsolateEnvironment::GetCurrent().AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
 		}
 
 		auto operator= (const ExternalStringOneByte&) = delete;

@@ -116,8 +116,8 @@ class ClassHandle {
 		 */
 		template <typename P, void (*F)(P*)>
 		void SetWeak(P* param) {
-			auto* isolate = IsolateEnvironment::GetCurrent();
-			isolate->AddWeakCallback(&this->handle, (void(*)(void*))F, param);
+			auto& isolate = IsolateEnvironment::GetCurrent();
+			isolate.AddWeakCallback(&this->handle, (void(*)(void*))F, param);
 			handle.SetWeak(param, WeakCallback<P, F>, v8::WeakCallbackType::kParameter);
 		}
 		template <typename P, void (*F)(P*)>
@@ -129,9 +129,9 @@ class ClassHandle {
 		 * Invoked once JS loses all references to this object
 		 */
 		static void WeakCallback(void* param) {
-			auto* isolate = IsolateEnvironment::GetCurrent();
+			auto& isolate = IsolateEnvironment::GetCurrent();
 			auto* that = reinterpret_cast<ClassHandle*>(param);
-			isolate->RemoveWeakCallback(&that->handle);
+			isolate.RemoveWeakCallback(&that->handle);
 			delete that; // NOLINT
 		}
 

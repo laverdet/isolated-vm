@@ -108,7 +108,7 @@ void IsolateEnvironment::HeapCheck::Epilogue() {
  * IsolateEnvironment implementation
  */
 void IsolateEnvironment::OOMErrorCallback(const char* location, bool is_heap_oom) {
-	if (RaiseCatastrophicError(IsolateEnvironment::GetCurrent()->error_handler, "Catastrophic out-of-memory error")) {
+	if (RaiseCatastrophicError(IsolateEnvironment::GetCurrent().error_handler, "Catastrophic out-of-memory error")) {
 		while (true) {
 			using namespace std::chrono_literals;
 			std::this_thread::sleep_for(100s);
@@ -142,15 +142,15 @@ void IsolateEnvironment::OOMErrorCallback(const char* location, bool is_heap_oom
 }
 
 void IsolateEnvironment::PromiseRejectCallback(PromiseRejectMessage rejection) {
-	auto* that = IsolateEnvironment::GetCurrent();
-	assert(that->isolate == Isolate::GetCurrent());
+	auto& that = IsolateEnvironment::GetCurrent();
+	assert(that.isolate == Isolate::GetCurrent());
 	// TODO: Revisit this in version 4.x?
 	auto event = rejection.GetEvent();
 	if (event == kPromiseRejectWithNoHandler) {
-		that->unhandled_promise_rejections.emplace_back(that->isolate, rejection.GetPromise());
-		that->unhandled_promise_rejections.back().SetWeak();
+		that.unhandled_promise_rejections.emplace_back(that.isolate, rejection.GetPromise());
+		that.unhandled_promise_rejections.back().SetWeak();
 	} else if (event == kPromiseHandlerAddedAfterReject) {
-		that->PromiseWasHandled(rejection.GetPromise());
+		that.PromiseWasHandled(rejection.GetPromise());
 	}
 }
 
@@ -163,11 +163,11 @@ void IsolateEnvironment::PromiseWasHandled(v8::Local<v8::Promise> promise) {
 }
 
 auto IsolateEnvironment::CodeGenCallback(Local<Context> /*context*/, Local<Value> source) -> ModifyCodeGenerationFromStringsResult {
-	auto* that = IsolateEnvironment::GetCurrent();
+	auto& that = IsolateEnvironment::GetCurrent();
 	// This heuristic could be improved by looking up how much `timeout` this isolate has left and
 	// returning early in some cases
 	ModifyCodeGenerationFromStringsResult result;
-	if (source->IsString() && static_cast<size_t>(source.As<String>()->Length()) > static_cast<size_t>(that->memory_limit / 8)) {
+	if (source->IsString() && static_cast<size_t>(source.As<String>()->Length()) > static_cast<size_t>(that.memory_limit / 8)) {
 		return result;
 	}
 	result.codegen_allowed = true;
@@ -585,7 +585,7 @@ void IsolateEnvironment::RemoveWeakCallback(Persistent<Value>* handle) {
 }
 
 void AdjustRemotes(int delta) {
-	IsolateEnvironment::GetCurrent()->AdjustRemotes(delta);
+	IsolateEnvironment::GetCurrent().AdjustRemotes(delta);
 }
 
 auto RaiseCatastrophicError(RemoteHandle<Function>& handler, const char* message) -> bool {

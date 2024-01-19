@@ -15,7 +15,7 @@ namespace ivm {
  * RAII wrapper around libuv dlopen
  */
 NativeModule::NativeModule(const std::string& filename) : init(nullptr) {
-	if (!IsolateEnvironment::GetCurrent()->IsDefault()) {
+	if (!IsolateEnvironment::GetCurrent().IsDefault()) {
 		throw RuntimeGenericError("NativeModule may only be instantiated from default nodejs isolate");
 	}
 	if (uv_dlopen(filename.c_str(), &lib) != 0) {

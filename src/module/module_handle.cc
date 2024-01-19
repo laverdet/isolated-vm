@@ -17,7 +17,7 @@ namespace ivm {
 namespace {
 
 auto LookupModuleInfo(Local<Module> module) {
-	auto& module_map = IsolateEnvironment::GetCurrent()->module_handles;
+	auto& module_map = IsolateEnvironment::GetCurrent().module_handles;
 	auto range = module_map.equal_range(module->GetIdentityHash());
 	auto it = std::find_if(range.first, range.second, [&](decltype(*module_map.begin()) data) {
 		return data.second->handle.Deref() == module;
@@ -29,7 +29,7 @@ auto LookupModuleInfo(Local<Module> module) {
 
 ModuleInfo::ModuleInfo(Local<Module> handle) : identity_hash{handle->GetIdentityHash()}, handle{handle} {
 	// Add to isolate's list of modules
-	IsolateEnvironment::GetCurrent()->module_handles.emplace(identity_hash, this);
+	IsolateEnvironment::GetCurrent().module_handles.emplace(identity_hash, this);
 	// Grab all dependency specifiers
 	Isolate* isolate = Isolate::GetCurrent();
 	auto context = isolate->GetCurrentContext();
