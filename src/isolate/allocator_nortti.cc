@@ -21,7 +21,7 @@ class ExternalMemoryHandle {
 		~ExternalMemoryHandle() {
 			auto* allocator = IsolateEnvironment::GetCurrent().GetLimitedAllocator();
 			if (allocator != nullptr) {
-				allocator->AdjustAllocatedSize(-size);
+				allocator->AdjustAllocatedSize(-static_cast<ptrdiff_t>(size));
 			}
 		};
 
