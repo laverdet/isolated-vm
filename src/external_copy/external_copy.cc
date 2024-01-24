@@ -151,9 +151,9 @@ auto ExternalCopy::Copy(Local<Value> value, bool transfer_out, ArrayRange transf
 		} else if (view->IsFloat64Array()) {
 			type = ViewType::Float64;
 		} else if (view->IsBigInt64Array()) {
-			type = ViewType::BigInt64Array;
+			type = ViewType::BigInt64;
 		} else if (view->IsBigUint64Array()) {
-			type = ViewType::BigUint64Array;
+			type = ViewType::BigUint64;
 		} else if (view->IsDataView()) {
 			type = ViewType::DataView;
 		} else {
@@ -486,6 +486,10 @@ auto NewTypedArrayView(Local<T> buffer, ExternalCopyArrayBufferView::ViewType ty
 			return Float32Array::New(buffer, byte_offset, byte_length >> 2);
 		case ExternalCopyArrayBufferView::ViewType::Float64:
 			return Float64Array::New(buffer, byte_offset, byte_length >> 3);
+		case ExternalCopyArrayBufferView::ViewType::BigInt64:
+			return BigInt64Array::New(buffer, byte_offset, byte_length >> 3);
+		case ExternalCopyArrayBufferView::ViewType::BigUint64:
+			return BigUint64Array::New(buffer, byte_offset, byte_length >> 3);
 		case ExternalCopyArrayBufferView::ViewType::DataView:
 			return DataView::New(buffer, byte_offset, byte_length);
 		default:
