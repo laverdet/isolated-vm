@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "isolated-vm": ".",
-    "prebuild": "^12.1.0"
+    "prebuild": "^13.0.0"
   },
   "binary": {
     "module_path": "out"
