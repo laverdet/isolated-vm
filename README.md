@@ -112,12 +112,6 @@ have usually been 3-5 of these updates within a single nodejs LTS release cycle.
 recommended to use odd-numbered nodejs releases since these frequently break ABI and API
 compatibility and isolated-vm doesn't aim to be compatible with bleeding edge v8.
 
-Against potentially hostile code you should also consider turning on [v8 untrusted code
-mitigations](https://v8.dev/docs/untrusted-code-mitigations), which helps address the class of
-speculative execution attacks known as Spectre and Meltdown. You can enable this feature by running
-`node` with the `--untrusted-code-mitigations` flag. This feature comes with a slight performance
-cost and must be enabled per-process, therefore nodejs disables it by default.
-
 v8 is a relatively robust runtime, but there are always new and exciting ways to crash, hang,
 exploit, or otherwise disrupt a process with plain old JavaScript. Your application must be
 resilient to these kinds of issues and attacks. It's a good idea to keep instances of `isolated-vm`
