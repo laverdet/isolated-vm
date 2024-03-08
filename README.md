@@ -71,7 +71,7 @@ too old.
 * Alpine users should run: `sudo apk add python3 make g++`
 * Amazon Linux AMI users should run: `sudo yum install gcc72 gcc72-c++`
 * Arch Linux users should run: `sudo pacman -S make gcc python`
-* Red Hat users should run: `sudo dnf install python3 make gcc gcc-c++ openssl-devel libuv-devel`
+* Red Hat users should run: `sudo dnf install python3 make gcc gcc-c++ zlib-devel brotli-devel openssl-devel`
 
 
 WHO IS USING ISOLATED-VM
