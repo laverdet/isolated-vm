@@ -137,7 +137,7 @@ UvScheduler::UvScheduler(IsolateEnvironment& env) :
 
 UvScheduler::~UvScheduler() {
 	uv_close(reinterpret_cast<uv_handle_t*>(uv_async), [](uv_handle_t* handle) {
-		delete handle;
+		delete reinterpret_cast<uv_async_t*>(handle);
 	});
 }
 

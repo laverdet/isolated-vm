@@ -523,7 +523,7 @@ auto IsolateHandle::CreateSnapshot(ArrayRange script_handles, MaybeLocal<String>
 
 	// Create the snapshot
 	StartupData snapshot {};
-	unique_ptr<const char> snapshot_data_ptr;
+	unique_ptr<const char[]> snapshot_data_ptr;
 	shared_ptr<ExternalCopy> error;
 	{
 		Isolate* isolate;
