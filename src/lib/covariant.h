@@ -25,8 +25,8 @@ template <class Base, class ...Storage>
 class covariant_t {
 	public:
 		template <class Ctor, class ...Args>
-		explicit covariant_t(in_place<Ctor> /*tag*/, Args&&... args) : dtor{&detail::destructor_wrapper<Base, Ctor>} {
-			static_assert(detail::contains_type<Ctor, Storage...>::value, "Instantiated constructor must inherit from `Base`");
+		explicit covariant_t(in_place<Ctor> /*tag*/, Args&&... args) : dtor{&::detail::destructor_wrapper<Base, Ctor>} {
+			static_assert(::detail::contains_type<Ctor, Storage...>::value, "Instantiated constructor must inherit from `Base`");
 			new(&storage) Ctor(std::forward<Args>(args)...);
 		}
 
