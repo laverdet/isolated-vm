@@ -1,5 +1,4 @@
 'use strict';
-// node-args: --harmony_sharedarraybuffer
 let ivm = require('isolated-vm');
 
 let buffer = new SharedArrayBuffer(1024 * 1024);

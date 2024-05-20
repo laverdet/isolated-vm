@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <string>
 #include <v8.h>
+#include "isolate/v8_version.h"
 
 namespace ivm {
 
@@ -35,7 +36,11 @@ class RuntimeErrorConstructible : public RuntimeErrorWithMessage {
 };
 
 // `RuntimeErrorWithConstructor` can be used to construct any of the `v8::Exception` errors
+#if V8_AT_LEAST(11, 9, 154)
+template <v8::Local<v8::Value> (*Error)(v8::Local<v8::String>, v8::Local<v8::Value>)>
+#else
 template <v8::Local<v8::Value> (*Error)(v8::Local<v8::String>)>
+#endif
 class RuntimeErrorWithConstructor : public RuntimeErrorConstructible {
 	using RuntimeErrorConstructible::RuntimeErrorConstructible;
 	public:
@@ -47,7 +52,12 @@ class RuntimeErrorWithConstructor : public RuntimeErrorConstructible {
 			v8::MaybeLocal<v8::String> maybe_message = v8::String::NewFromUtf8(isolate, GetMessage().c_str(), v8::NewStringType::kNormal);
 			v8::Local<v8::String> message_handle;
 			if (maybe_message.ToLocal(&message_handle)) {
-				v8::Local<v8::Object> error = Error(message_handle).As<v8::Object>();
+				v8::Local<v8::Object> error =
+#if V8_AT_LEAST(11, 9, 154)
+					Error(message_handle, {}).As<v8::Object>();
+#else
+					Error(message_handle).As<v8::Object>();
+#endif
 				if (!stack_trace.empty() && isolate->InContext()) {
 					std::string stack_str = std::string(GetMessage()) + stack_trace;
 					v8::MaybeLocal<v8::String> maybe_stack = v8::String::NewFromUtf8(isolate, stack_str.c_str(), v8::NewStringType::kNormal);

@@ -7,6 +7,7 @@
 #include "generic/extract_params.h"
 #include "generic/handle_cast.h"
 #include "generic/read_option.h"
+#include "v8-object.h"
 
 #include <cassert>
 #include <cstddef>
@@ -91,7 +92,7 @@ class ClassHandle {
 			template <typename... Args>
 			void Add(const char* name, detail::MemberAccessorHolder impl, Args... args) {
 				v8::Local<v8::String> name_handle = v8_symbol(name);
-				proto->SetAccessor(name_handle, impl.getter.callback, impl.setter.callback, name_handle, v8::AccessControl::DEFAULT, v8::PropertyAttribute::None);
+				proto->SetNativeDataProperty(name_handle, impl.getter.callback, impl.setter.callback, name_handle, v8::PropertyAttribute::None, v8::AccessControl::DEFAULT);
 				Add(args...);
 			}
 
