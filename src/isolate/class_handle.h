@@ -7,7 +7,6 @@
 #include "generic/extract_params.h"
 #include "generic/handle_cast.h"
 #include "generic/read_option.h"
-#include "v8-object.h"
 
 #include <cassert>
 #include <cstddef>

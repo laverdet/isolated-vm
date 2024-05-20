@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       # https://github.com/nodejs/node-gyp/issues/2869
-      - run: PIP_BREAK_SYSTEM_PACKAGES=1 python3 -m pip install setuptools
+      - run: python3 -m pip install -- --break-system-packages setuptools
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
