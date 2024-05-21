@@ -9,8 +9,7 @@
 
 using namespace v8;
 
-namespace ivm {
-namespace detail {
+namespace ivm::detail {
 
 void SerializerDelegate::ThrowDataCloneError(Local<String> message) {
 	Isolate::GetCurrent()->ThrowException(Exception::TypeError(message));
@@ -71,5 +70,4 @@ auto DeserializerDelegate::GetWasmModuleFromId(
 	return result;
 }
 
-} // namespace detail
-} // namespace ivm
+} // namespace ivm::detail
