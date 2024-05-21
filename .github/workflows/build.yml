@@ -7,13 +7,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        node-version: [ 16.x, 18.x, 20.x ]
+        node-version: [ 18.x, 20.x, 22.x ]
         os: [ ubuntu-latest, macos-latest, windows-latest ]
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
-      # https://github.com/nodejs/node-gyp/issues/2869
-      - run: python3 -m pip install setuptools
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
@@ -41,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [ 16, 18, 20 ]
+        node-version: [ 18, 20, 22 ]
     container: node:${{ matrix.node-version }}-alpine
     steps:
       - uses: actions/checkout@v4
