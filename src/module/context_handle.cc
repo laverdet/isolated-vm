@@ -7,10 +7,6 @@
 
 using namespace v8;
 
-#if !V8_AT_LEAST(10, 1, 1)
-#define CompileFunction CompileFunctionInContext
-#endif
-
 namespace ivm {
 namespace {
 
