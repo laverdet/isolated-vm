@@ -78,13 +78,13 @@ inline void Returner(Type return_value, const v8::FunctionCallbackInfo<v8::Value
 }
 
 template <class Type>
-inline void Returner(Type return_value, v8::Local<v8::String> /*name*/, const v8::PropertyCallbackInfo<v8::Value>& info) {
+inline void Returner(Type return_value, v8::Local<v8::Name> /*name*/, const v8::PropertyCallbackInfo<v8::Value>& info) {
 	info.GetReturnValue().Set(HandleCast<v8::Local<v8::Value>>(return_value, info));
 }
 
 inline void Returner(
 	VoidReturn /*return_value*/,
-	v8::Local<v8::String> /*name*/,
+	v8::Local<v8::Name> /*name*/,
 	v8::Local<v8::Value> /*value*/,
 	const v8::PropertyCallbackInfo<void>& /*info*/
 ) {}
@@ -157,13 +157,13 @@ struct MemberFunctionHolder : FunctionCallbackImpl {
 };
 
 // Member getters and setters
-struct MemberGetterHolder : GenericCallback<v8::AccessorGetterCallback,
-		v8::Local<v8::String>, const v8::PropertyCallbackInfo<v8::Value>&> {
+struct MemberGetterHolder : GenericCallback<v8::AccessorNameGetterCallback,
+		v8::Local<v8::Name>, const v8::PropertyCallbackInfo<v8::Value>&> {
 	using GenericCallback::GenericCallback;
 };
 
-struct MemberSetterHolder : GenericCallback<v8::AccessorSetterCallback,
-		v8::Local<v8::String>, v8::Local<v8::Value>, const v8::PropertyCallbackInfo<void>&> {
+struct MemberSetterHolder : GenericCallback<v8::AccessorNameSetterCallback,
+		v8::Local<v8::Name>, v8::Local<v8::Value>, const v8::PropertyCallbackInfo<void>&> {
 	using GenericCallback::GenericCallback;
 };
 

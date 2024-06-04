@@ -66,13 +66,13 @@ inline auto ExtractParamImpl(const v8::FunctionCallbackInfo<v8::Value>& info) ->
 }
 
 template <int Index>
-inline auto ExtractParamImpl(v8::Local<v8::String> /*name*/, const v8::PropertyCallbackInfo<v8::Value>& info) -> v8::Local<v8::Value> {
+inline auto ExtractParamImpl(v8::Local<v8::Name> /*name*/, const v8::PropertyCallbackInfo<v8::Value>& info) -> v8::Local<v8::Value> {
 	static_assert(Index == 0, "Getter callback should have no parameters");
 	return info.This();
 }
 
 template <int Index>
-inline auto ExtractParamImpl(v8::Local<v8::String> /*name*/, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& info) -> v8::Local<v8::Value> {
+inline auto ExtractParamImpl(v8::Local<v8::Name> /*name*/, v8::Local<v8::Value> value, const v8::PropertyCallbackInfo<void>& info) -> v8::Local<v8::Value> {
 	static_assert(Index < 2, "Setter callback should have exactly 1 parameter");
 	if (Index == 0) {
 		return info.This();

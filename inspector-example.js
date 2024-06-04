@@ -11,7 +11,11 @@ let ivm = require('./isolated-vm');
 let isolate = new ivm.Isolate({ inspector: true });
 (async function() {
 	let context = await isolate.createContext({ inspector: true });
-	let script = await isolate.compileScript('for(;;)debugger;', { filename: 'example.js' });
+	const inspector = isolate.createInspectorSession();
+	inspector.dispatchProtocolMessage('{"id":1,"method":"Debugger.enable"}');
+	await context.eval('/* break on script start */debugger;');
+	inspector.dispose();
+	let script = await isolate.compileScript('console.log("hello world")', { filename: 'example.js' });
 	await script.run(context);
 }()).catch(console.error);
 
@@ -31,6 +35,7 @@ wss.on('connection', function(ws) {
 
 	// Relay messages from frontend to backend
 	ws.on('message', function(message) {
+		console.log('<', message.toString())
 		try {
 			channel.dispatchProtocolMessage(String(message));
 		} catch (err) {
@@ -41,6 +46,7 @@ wss.on('connection', function(ws) {
 
 	// Relay messages from backend to frontend
 	function send(message) {
+		console.log('>', message.toString())
 		try {
 			ws.send(message);
 		} catch (err) {

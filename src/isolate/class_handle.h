@@ -7,6 +7,7 @@
 #include "generic/extract_params.h"
 #include "generic/handle_cast.h"
 #include "generic/read_option.h"
+#include "v8-function-callback.h"
 
 #include <cassert>
 #include <cstddef>
@@ -67,7 +68,7 @@ class ClassHandle {
 			template <typename... Args>
 			void Add(const char* name, detail::MemberFunctionHolder impl, Args... args) {
 				v8::Local<v8::String> name_handle = v8_symbol(name);
-				proto->Set(name_handle, v8::FunctionTemplate::New(isolate, impl.callback, name_handle, sig, impl.length));
+				proto->Set(name_handle, v8::FunctionTemplate::New(isolate, impl.callback, {}, sig, impl.length));
 				Add(args...);
 			}
 
@@ -83,7 +84,7 @@ class ClassHandle {
 			template <typename... Args>
 			void Add(const char* name, detail::FreeFunctionHolder impl, Args... args) {
 				v8::Local<v8::String> name_handle = v8_symbol(name);
-				tmpl->Set(name_handle, v8::FunctionTemplate::New(isolate, impl.callback, name_handle, v8::Local<v8::Signature>(), impl.length));
+				tmpl->Set(name_handle, v8::FunctionTemplate::New(isolate, impl.callback, {}, v8::Local<v8::Signature>(), impl.length));
 				Add(args...);
 			}
 
@@ -91,7 +92,7 @@ class ClassHandle {
 			template <typename... Args>
 			void Add(const char* name, detail::MemberAccessorHolder impl, Args... args) {
 				v8::Local<v8::String> name_handle = v8_symbol(name);
-				proto->SetNativeDataProperty(name_handle, impl.getter.callback, impl.setter.callback, name_handle, v8::PropertyAttribute::None, v8::AccessControl::DEFAULT);
+				proto->SetAccessor(name_handle, impl.getter.callback, impl.setter.callback);
 				Add(args...);
 			}
 
@@ -103,7 +104,7 @@ class ClassHandle {
 				if (impl.setter.callback != nullptr) {
 					setter = v8::FunctionTemplate::New(isolate, impl.setter.callback, name_handle);
 				}
-				tmpl->SetAccessorProperty(name_handle, v8::FunctionTemplate::New(isolate, impl.getter.callback, name_handle), setter);
+				tmpl->SetAccessorProperty(name_handle, v8::FunctionTemplate::New(isolate, impl.getter.callback, {}), setter);
 				Add(args...);
 			}
 
