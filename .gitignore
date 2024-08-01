@@ -1,7 +1,2 @@
-build/
-node_modules/
-package-lock.json
-out/
-.cache/
 compile_commands.json
-/prebuilds/
+node_modules

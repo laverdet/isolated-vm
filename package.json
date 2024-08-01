@@ -1,37 +1,12 @@
 {
   "name": "isolated-vm",
-  "version": "5.0.1",
-  "description": "Access to multiple isolates",
-  "main": "isolated-vm.js",
-  "types": "isolated-vm.d.ts",
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "scripts": {
-    "install": "prebuild-install || (node-gyp rebuild --release -j max && node-gyp clean)",
-    "rebuild": "node-gyp rebuild --release -j max",
-    "lint": "find src -name '*.cc' | xargs -n1 clang-tidy",
-    "test": "node test.js"
-  },
-  "dependencies": {
-    "prebuild-install": "^7.1.1"
-  },
-  "devDependencies": {
-    "isolated-vm": ".",
-    "prebuild": "^13.0.0"
-  },
-  "binary": {
-    "module_path": "out"
-  },
+  "version": "0.0.0",
+  "description": "JavaScript sandbox",
+  "author": "https://github.com/laverdet/",
+  "homepage": "https://github.com/laverdet/isolated-vm#readme",
+  "license": "ISC",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/laverdet/isolated-vm.git"
-  },
-  "author": "https://github.com/laverdet/",
-  "license": "ISC",
-  "gypfile": true,
-  "bugs": {
-    "url": "https://github.com/laverdet/isolated-vm/issues"
-  },
-  "homepage": "https://github.com/laverdet/isolated-vm#readme"
+  }
 }
