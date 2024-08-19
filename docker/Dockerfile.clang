@@ -1,0 +1,40 @@
+# Make v8's preferred llvm version
+FROM isolated-vm/depot_tools AS clang
+RUN <<DONE
+	set -eux
+	apt-get update
+	apt-get install -y \
+		build-essential \
+		cmake \
+		lld \
+	;
+DONE
+COPY --from=sources v8 v8
+COPY --from=scripts clang_wrap /
+RUN <<DONE
+	set -eux
+	# nb: ML inliner doesn't work on linux/arm64?
+	# CIPD is missing numpy linux/arm64_cp38_cp38
+	# Maybe consider: --tf-path=/usr/local/lib/python3.12/dist-packages/tensorflow
+	sed -i 's#if args.with_ml_inliner_model:#if False:#g' v8/tools/clang/scripts/build.py
+	v8/tools/clang/scripts/build.py \
+		--disable-asserts \
+		--host-cc=gcc \
+		--host-cxx=g++ \
+		--install-dir=/clang \
+		--no-tools \
+		--use-system-cmake \
+		--without-android \
+		--without-fuchsia \
+	; \
+	rm -rf v8/third_party
+	mv /clang/bin/clang /clang/bin/.clang
+	cp /clang_wrap /clang/bin/clang
+	mv /clang_wrap /clang/bin/clang++
+	# nb: clang installation contains symlinks, so must be copied as a tar
+	tar c clang | gzip -1 > clang.tar.gz
+DONE
+
+# Only export the build result. The previous stage is quite large and may not be able to be cached.
+FROM scratch
+COPY --from=clang clang.tar.gz /

@@ -1,0 +1,94 @@
+# Layer caching for large layers is unreliable so a multistage build tends to just rebuild most of
+# everything at once.
+
+# TARGET=arm64.debug NODE_VERSION=22.5.1 V8_VERSION=12.8.99 docker compose --parallel=1 --progress=plain build
+
+# Docs:
+# https://v8.dev/docs/build-gn
+# https://v8.dev/docs/compile-arm64
+
+# Tips:
+# https://containers.dev/implementors/spec/#devcontainerjson
+# https://ddanilov.me/dockerized-cpp-build-with-vscode
+
+services:
+  depot_tools:
+    image: isolated-vm/depot_tools
+    build:
+      additional_contexts:
+        - debian=docker-image://debian:experimental-20240701
+      dockerfile: Dockerfile.depot_tools
+
+  v8_git:
+    image: isolated-vm/v8_git
+    build:
+      additional_contexts:
+        - debian=docker-image://debian:experimental-20240701
+      dockerfile: Dockerfile.v8_git
+
+  v8_sources_for_clang:
+    image: isolated-vm/v8_sources:${V8_VERSION_FOR_CLANG:-${V8_VERSION}}
+    build:
+      args:
+        V8_VERSION: ${V8_VERSION_FOR_CLANG:-${V8_VERSION}}
+      dockerfile: Dockerfile.v8_sources
+
+  clang:
+    image: isolated-vm/clang:${V8_VERSION_FOR_CLANG:-${V8_VERSION}}
+    build:
+      additional_contexts:
+        - scripts=../scripts
+        - sources=docker-image://isolated-vm/v8_sources:${V8_VERSION_FOR_CLANG:-${V8_VERSION}}
+      dockerfile: Dockerfile.clang
+
+  v8_sources:
+    image: isolated-vm/v8_sources:${V8_VERSION}
+    build:
+      args:
+        V8_VERSION: ${V8_VERSION}
+      dockerfile: Dockerfile.v8_sources
+
+  v8:
+    image: isolated-vm/v8:${TARGET}-${V8_VERSION}
+    build:
+      additional_contexts:
+        - clang=docker-image://isolated-vm/clang:${V8_VERSION_FOR_CLANG:-${V8_VERSION}}
+        - patches=../patches
+        - scripts=../scripts
+        - sources=docker-image://isolated-vm/v8_sources:${V8_VERSION}
+      args:
+        TARGET: ${TARGET}
+      dockerfile: Dockerfile.v8
+
+  node_git:
+    image: isolated-vm/node_git
+    build:
+      additional_contexts:
+        - debian=docker-image://debian:experimental-20240701
+      dockerfile: Dockerfile.node_git
+
+  node_sources:
+    image: isolated-vm/node_sources:${NODE_VERSION}
+    build:
+      additional_contexts:
+        - debian=docker-image://debian:experimental-20240701
+      args:
+        NODE_VERSION: ${NODE_VERSION}
+      dockerfile: Dockerfile.node_sources
+
+  node:
+    image: isolated-vm/node:${NODE_VERSION}
+    build:
+      additional_contexts:
+        - debian=docker-image://debian:experimental-20240701
+        - scripts=../scripts
+        - sources=docker-image://isolated-vm/node_sources:${NODE_VERSION}
+      dockerfile: Dockerfile.node
+
+  development:
+    image: isolated-vm/development
+    build:
+      additional_contexts:
+        - clang=docker-image://isolated-vm/clang:${V8_VERSION_FOR_CLANG:-${V8_VERSION}}
+        - node=docker-image://isolated-vm/node:${NODE_VERSION}
+      dockerfile: Dockerfile.development

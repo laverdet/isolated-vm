@@ -1,0 +1,57 @@
+{
+	"C_Cpp.intelliSenseEngine": "disabled",
+	"[cpp]": {
+		"editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+	},
+	"editor.rulers": [
+		// Comments wrap to 100
+		{ "column": 100, "color": "#0000" },
+		// Visual indicator at 120 columns
+		{ "column": 120 },
+	],
+	"editor.insertSpaces": false,
+	"editor.trimAutoWhitespace": true,
+	"eslint.codeActionsOnSave.rules": [
+		// This can change the semantic meaning of a condition without consulting the developer
+		// first.
+		"!@typescript-eslint/no-unnecessary-condition",
+		"!@typescript-eslint/no-unnecessary-type-assertion",
+		"!@typescript-eslint/prefer-readonly",
+		"!prefer-const",
+		"*",
+	],
+	"eslint.format.enable": true,
+	"eslint.rules.customizations": [
+		// Annoying whitespace rules which fire all the time and are fixed on save anyway
+		{ "rule": "@stylistic/eol-last", "severity": "off" },
+		{ "rule": "@stylistic/no-trailing-spaces", "severity": "off" },
+	],
+	"eslint.validate": [
+		"javascript",
+		"typescript",
+	],
+	"files.associations": {
+		".clang-format": "yaml",
+		".clang-tidy": "yaml",
+	},
+	"files.exclude": {
+		".cache": true,
+		"build": true,
+		"compile_commands.json": true,
+		"dist": true,
+		"node_modules": true,
+	},
+	"files.insertFinalNewline": true,
+	"files.trimTrailingWhitespace": true,
+	"terminal.integrated.defaultProfile.linux": "bash",
+  "terminal.integrated.profiles.linux": {
+    "bash": {
+      "path": "bash",
+      "args": [ "-l" ],
+      "icon": "terminal-bash",
+    },
+	},
+	"clangd.arguments": [
+		// "--experimental-modules-support"
+	],
+}

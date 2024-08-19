@@ -1,0 +1,54 @@
+FROM isolated-vm/depot_tools
+COPY --from=clang clang.tar.gz /
+RUN tar fxz clang.tar.gz && rm clang.tar.gz
+COPY --from=node node.tar.gz /
+RUN tar fxz node.tar.gz && rm node.tar.gz
+ENV PATH="/opt/bin:${PATH}"
+COPY --from=isolated-vm/v8_git v8 v8
+RUN <<DONE
+	set -eux
+	gclient config --unmanaged https://chromium.googlesource.com/v8/v8.git
+	apt-get update
+	apt-get install -y \
+		build-essential \
+		clang-19 \
+		clang-format-19 \
+		clang-tidy-19 \
+		clangd-19 \
+		cmake \
+		jq \
+		libboost-all-dev \
+		lldb-19 \
+		man \
+		ninja-build \
+		pkg-config \
+		vim \
+	;
+
+	# Link clang-19 binraries and libraries to system paths
+	for ii in $(find /usr/bin -name 'clang*-19*' -or -name 'll*-19*'); do
+		ln "$ii" $(echo "$ii" | sed 's/-19//')
+	done
+	ln /usr/lib/llvm-19/lib/clang/19/lib/linux/* /lib/aarch64-linux-gnu/
+
+	# Preload asan for `node`
+	mv /opt/bin/node /opt/bin/node-
+	ln -s /workspace/scripts/node_asan /usr/bin/node
+
+	# `clang_wrapper` for better lldb paths in v8
+	# mv /usr/bin/clang /usr/bin/.clang
+	# ln -s /workspace/scripts/clang_wrap /usr/bin/clang
+	# ln -fs /workspace/scripts/clang_wrap /usr/bin/clang++
+
+	# Allow local directory `.lldbinit`
+	echo 'settings set target.load-cwd-lldbinit true' > ~/.lldbinit
+
+	# Colors in bash
+	cat <<-'RC' >> ~/.profile
+		PS1='\[\033[1;32m\]\u\[\033[0m\]\[\033[1;34m\][\t]\[\033[0m\] \[\033[2;37m\][\w]\[\033[0m\] $ '
+		export LS_OPTIONS='--color=auto'
+		eval "$(dircolors)"
+	RC
+DONE
+ENV SHELL=/bin/bash
+CMD [ "bash", "-l" ]

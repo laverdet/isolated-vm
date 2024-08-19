@@ -1,0 +1,41 @@
+{
+	"compilerOptions": {
+		"composite": true,
+
+		// Sources
+		"rootDir": "${configDir}/packages/isolated-vm",
+		"outDir": "${configDir}/dist",
+		// If you don't set this then `tsc` will put the build info file in some upwards parent
+		// directory
+		// https://www.typescriptlang.org/tsconfig/#tsBuildInfoFile
+		"tsBuildInfoFile": "${configDir}/dist/tsconfig.tsbuildinfo",
+
+		// Language & emit settings
+		"declarationMap": true,
+		"isolatedDeclarations": true,
+		"isolatedModules": true,
+		"noEmitOnError": false,
+		"sourceMap": true,
+		"stripInternal": true,
+		"target": "esnext",
+		"verbatimModuleSyntax": true,
+
+		// Module resolution settings
+		"allowArbitraryExtensions": true,
+		"esModuleInterop": false,
+		"lib": [ "dom", "esnext" ],
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"types": [ "node" ],
+
+		// Types / strictness
+		"exactOptionalPropertyTypes": true,
+		"noImplicitOverride": true,
+		"noUncheckedIndexedAccess": true,
+		"skipLibCheck": true,
+		"strict": true,
+	},
+	"include": [ "${configDir}/packages/isolated-vm" ],
+	"exclude": [],
+	"references": [],
+}

@@ -1,0 +1,22 @@
+diff --git a/BUILD.gn b/BUILD.gn
+index a7e9c6af6fa..fa15805ad3d 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -1291,7 +1291,7 @@ config("toolchain") {
+   # Only targets in this file and its subdirs can depend on this.
+   visibility = [ "./*" ]
+ 
+-  defines = []
++  defines = [ "v8=z8", "v8_inspector=z8_inspector", "v8_crdtp=z8_crdtp", "V8_Dcheck=Z8_Dcheck", "V8_Fatal=Z8_Fatal" ]
+   cflags = []
+   ldflags = []
+ 
+@@ -6475,6 +6475,8 @@ v8_component("v8_libbase") {
+     defines = [ "BUILDING_V8_BASE_SHARED" ]
+   }
+ 
++  defines += [ "v8=z8", "v8_inspector=z8_inspector", "v8_crdtp=z8_crdtp", "V8_Dcheck=Z8_Dcheck", "V8_Fatal=Z8_Fatal" ]
++
+   if (is_posix || is_fuchsia) {
+     sources += [
+       "src/base/platform/platform-posix.cc",

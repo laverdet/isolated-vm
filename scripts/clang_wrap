@@ -1,0 +1,14 @@
+#!/bin/bash
+# This script "burns in" absolute paths for -I and -c arguments to clang. This improves debugging
+# and I don't know a better way.
+set -eu
+ARGS=("$@")
+for II in "${!ARGS[@]}"; do
+	ARG="${ARGS[$II]}"
+	if [[ "$ARG" = -I* ]]; then
+		ARGS[II]="-I$(realpath -ms "${ARG:2}")"
+	elif [[ "$ARG" = *.c || "$ARG" = *.cc ]]; then
+		ARGS[II]=$(realpath -ms "${ARGS[II]}")
+	fi
+done
+exec -a "$0" "$(dirname "$0")/.clang" "${ARGS[@]}"

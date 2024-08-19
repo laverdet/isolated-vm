@@ -1,0 +1,24 @@
+{
+	"image": "isolated-vm/development",
+	"runArgs": [
+		"--cap-add=SYS_PTRACE",
+		"--platform=linux/arm64",
+		"--security-opt",
+		"seccomp=unconfined"
+	],
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"llvm-vs-code-extensions.vscode-clangd",
+				"ms-vscode.cpptools",
+				"twxs.cmake",
+				"vadimcn.vscode-lldb"
+			]
+		}
+	},
+	"mounts": [
+    "source=/etc/localtime,target=/etc/localtime,type=bind,readonly"
+	],
+	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+	"workspaceFolder": "/workspace"
+}

@@ -1,0 +1,17 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Launch",
+			"type": "lldb",
+			"request": "launch",
+			"program": "node-",
+			"env": {
+				"LD_PRELOAD": "libclang_rt.asan-aarch64.so"
+			},
+			"args": [
+				"debug.mjs"
+			],
+		}
+	],
+}

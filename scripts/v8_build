@@ -1,0 +1,89 @@
+#!/bin/bash
+set -eu
+OUTDIR=$(dirname "$1")
+TARGET=$(basename "$1")
+
+# shellcheck disable=SC2206
+PAIR=(${TARGET//./ })
+ARCH=${PAIR[0]}
+CONFIG=${PAIR[1]}
+
+GN_ARGS=(
+	clang_base_path='"/clang"'
+	clang_use_chrome_plugins=false
+	target_cpu='"'"$ARCH"'"'
+	use_custom_libcxx=false
+	v8_enable_backtrace=true
+	v8_enable_sandbox=true
+	v8_target_cpu='"'"$ARCH"'"'
+	v8_use_external_startup_data=false
+);
+
+case "$CONFIG" in
+	debug|optdebug)
+		GN_ARGS+=(
+			is_debug=true
+			v8_enable_fast_mksnapshot=true
+		)
+		V8_LIBRARY=shared
+		;;
+	release)
+		GN_ARGS+=(
+			dcheck_always_on=false
+			is_component_build=false
+			is_debug=false
+			v8_enable_disassembler=true
+			v8_enable_object_print=true
+			v8_enable_verify_heap=true
+			v8_monolithic=true
+		)
+		V8_LIBRARY=static
+		;;
+esac
+case "$CONFIG" in
+	debug)
+		GN_ARGS+=(
+			symbol_level=2
+			v8_enable_slow_dchecks=true
+			v8_optimized_debug=false
+		)
+		;;
+	optdebug)
+		GN_ARGS+=(
+			symbol_level=1
+			v8_enable_verify_heap=true
+			v8_optimized_debug=true
+		)
+		;;
+esac
+
+# Configure gn / ninja
+gn gen "$OUTDIR/$TARGET" --args="${GN_ARGS[*]}"
+
+# Make v8-gn.h
+mkdir -p "$OUTDIR/$TARGET/include"
+echo > "$OUTDIR/$TARGET/include/v8-gn.h" "#pragma once"
+DEFINES=$(grep 'defines = ' "$OUTDIR/$TARGET/obj/v8_compiler.ninja" | grep -Eoi  -- '-D[A-Z0-9_=]+\b' | cut -c3-)
+USED_DEFINES=$(grep -REoh -- "$(echo -n "${DEFINES}" | sed -r 's/\\b([A-Z0-9_]+)=?.+\\b/\1/g' | tr '\n' '|')" include | sort | uniq)
+echo "$DEFINES" | while read -r LINE; do
+	# shellcheck disable=SC2206
+	PAIR=(${LINE//=/ })
+	FLAG=${PAIR[0]}
+	VALUE=${PAIR[1]:-}
+	if [[ "$USED_DEFINES" == *"$FLAG"* ]]; then
+		if [[ "$VALUE" == '' ]]; then
+			VALUE=1
+		fi
+		echo "#define $FLAG $VALUE" >> "$OUTDIR/$TARGET/include/v8-gn.h"
+	fi
+done
+
+# Make `env`
+cat <<EOF > "$OUTDIR/$TARGET/env"
+V8_INCLUDE="$OUTDIR/include"
+V8_LIBRARY="$V8_LIBRARY"
+V8_TARGET="$OUTDIR/$TARGET"
+EOF
+
+# Build the monolith
+ninja -C "$OUTDIR/$TARGET" v8

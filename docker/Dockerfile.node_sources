@@ -1,0 +1,7 @@
+# Checkout nodejs sources at the given version
+FROM isolated-vm/node_git AS sources
+ARG NODE_VERSION
+RUN git clone file:///node --branch v$NODE_VERSION --depth 1 --single-branch head
+
+FROM scratch
+COPY --from=sources head node

@@ -1,0 +1,141 @@
+{
+	"version": "2.0.0",
+	"options": {
+		"env": {
+			"ENV_FILE": "${workspaceFolder}/.env",
+			"PATH": "${workspaceFolder}/scripts:${env:PATH}",
+		},
+	},
+	"inputs": [
+    {
+      "type": "pickString",
+      "id": "ivm_target",
+      "description": "Which ivm target configuration?",
+      "options": [
+        "Debug",
+        "Release",
+      ],
+      "default": "Debug",
+    },
+    {
+      "type": "pickString",
+      "id": "v8_target",
+      "description": "Which v8 target to build?",
+      "options": [
+        "arm64.debug",
+        "arm64.optdebug",
+        "arm64.release",
+      ],
+      "default": "arm64.optdebug",
+    },
+    {
+      "type": "pickString",
+      "id": "v8_version",
+      "description": "Which v8 revision to checkout?",
+      "options": [
+        "12.8.20",
+      ],
+      "default": "component"
+    },
+	],
+	"tasks": [
+		{
+			"label": "isolated-vm: build",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"runOptions": {
+				"runOn": "folderOpen",
+			},
+			"dependsOn": [ "tsc: watch", "ninja: build" ],
+			"icon": { "id": "plug" },
+		},
+		{
+			"label": "tsc: watch",
+			"type": "shell",
+			"command": "npx tsc --build --watch",
+			"problemMatcher": "$tsc-watch",
+			"isBackground": true,
+			"presentation": {
+				"panel": "dedicated",
+				"reveal": "never",
+			},
+			"group": "build",
+			"icon": { "id": "zap" },
+		},
+		{
+			"label": "cmake: clean",
+			"type": "shell",
+			"command": "rm -rf build",
+			"problemMatcher": [],
+			"presentation": {
+				"close": true,
+				"reveal": "never",
+			},
+			"icon": { "id": "jersey" },
+		},
+		{
+			"label": "cmake: configure",
+			"type": "shell",
+			"command": "set -eu -a; source $ENV_FILE; source $V8_TARGET/env; CXX=clang cmake -DNAPI_INCLUDE_DIR=$(node -p 'require(\"node-addon-api\").include_dir') -DCMAKE_BUILD_TYPE=${input:ivm_target} -G Ninja -B build",
+			"dependsOn": [ "cmake: clean" ],
+			"problemMatcher": [],
+			"presentation": {
+				"clear": true,
+				"revealProblems": "onProblem",
+				"showReuseMessage": false,
+			},
+			"icon": { "id": "wrench" },
+		},
+		{
+			"label": "ninja: build",
+			"type": "shell",
+			"command": "ninja -C build ivm_backend_v8",
+			"problemMatcher": "$gcc",
+			"presentation": {
+				"clear": true,
+				"panel": "dedicated",
+				"reveal": "never",
+				"showReuseMessage": false,
+			},
+			"group": "build",
+			"icon": { "id": "flame" },
+		},
+		{
+			"label": "ninja: compile_commands.json",
+			"type": "shell",
+			"command": "set -eu; ninja -C build -t compdb | jq '[ .[] | select(.command | contains(\" -o \") and (contains(\"clang-scan-deps\") | not)) ]' > compile_commands.json",
+			"problemMatcher": [],
+			"presentation": {
+				"close": true,
+				"reveal": "always",
+			},
+			"icon": { "id": "magnet" },
+		},
+		{
+			"label": "v8: select",
+			"type": "shell",
+			"command": "set -eu; export V8_REF=$(PATCH_DIR=${workspaceFolder}/patches v8_select ${input:v8_version}); ivm_write_env V8_REF",
+			"options": { "cwd": "/v8" },
+			"problemMatcher": [],
+			"presentation": {
+				"close": true,
+				"reveal": "always",
+			},
+			"icon": { "id": "versions" },
+		},
+		{
+			"label": "v8: build",
+			"type": "shell",
+			"command": "set -eu; source $ENV_FILE; export V8_TARGET=$(pwd)/out/$V8_REF/${input:v8_target}; v8_build $V8_TARGET; ivm_write_env V8_TARGET",
+			"options": { "cwd": "/v8" },
+			"problemMatcher": [],
+			"presentation": {
+				"close": true,
+				"reveal": "always",
+			},
+			"icon": { "id": "library" },
+		},
+	],
+}

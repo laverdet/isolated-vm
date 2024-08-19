@@ -1,0 +1,27 @@
+# Build nodejs debug (for local development)
+FROM debian AS build
+RUN <<DONE
+	set -eux
+	apt-get update
+	apt-get install -y \
+		build-essential \
+		python3 \
+	;
+DONE
+COPY --from=sources node node
+RUN \
+	set -eux; \
+	cd node; \
+	./configure --debug; \
+	make -C out -j$(nproc) BUILDTYPE=Debug; \
+	./tools/install.py install --build-dir out/Debug --dest-dir '' --prefix /opt; \
+	cp -af out/Debug/node /opt/bin/node; \
+	cp --recursive --parents \
+		$(find src deps/v8/src -name '*.h' -o -name '*.cc') \
+		/opt; \
+	rm -rf out; \
+	cd /; \
+	tar c node opt | gzip -1 > node.tar.gz;
+
+FROM scratch
+COPY --from=build node.tar.gz /

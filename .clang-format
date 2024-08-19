@@ -1,0 +1,52 @@
+# https://clang.llvm.org/docs/ClangFormatStyleOptions.html
+ColumnLimit: 0
+
+AlignAfterOpenBracket: BlockIndent
+AlignOperands: DontAlign
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortCaseLabelsOnASingleLine: true
+# nb: Causes unconditional break on short initializers
+AllowShortFunctionsOnASingleLine: Inline
+BinPackArguments: false
+BinPackParameters: false
+# nb: Causes unconditional break on short initializers
+BreakConstructorInitializers: AfterColon
+# nb: `template <> struct {}` tends to break with `MultiLine`?
+BreakTemplateDeclarations: MultiLine
+ContinuationIndentWidth: 2
+IncludeBlocks: Merge
+# LambdaBodyIndentation: OuterScope
+IncludeCategories:
+  - Regex: '^<[^.]+>$'
+    Priority: 2
+  - Regex: '^<'
+    Priority: 1
+  - Regex: '.'
+    Priority: 0
+IndentAccessModifiers: true
+IndentCaseBlocks: true
+IndentCaseLabels: true
+IntegerLiteralSeparator:
+  Binary: 8
+  Decimal: 3
+  Hex: 4
+PointerAlignment: Left
+# Notably this doesn't apply to `consteval auto fn() -> auto` functions..
+QualifierAlignment: Custom
+QualifierOrder:
+  - const
+  - constexpr
+  - volatile
+  - restrict
+  - inline
+  - static
+  - friend
+  - type
+RequiresClausePosition: WithFollowing
+SpacesInSquareBrackets: true
+
+# It uses spaces internally and then converts back to tabs. So these must be set.
+# https://stackoverflow.com/questions/69135590/how-make-clang-format-indent-using-tabs-instead-of-spaces
+TabWidth: 2
+UseTab: Always

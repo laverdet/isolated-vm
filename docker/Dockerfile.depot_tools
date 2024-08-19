@@ -1,0 +1,14 @@
+# Image w/ depot_tools & other prerequisites installed
+FROM debian
+RUN <<DONE
+	set -eux
+	apt-get update
+	apt-get install -y \
+		curl \
+		git \
+		python3 \
+	;
+DONE
+RUN git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+ENV PATH="${PATH}:/depot_tools"
+RUN update_depot_tools

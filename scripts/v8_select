@@ -1,0 +1,27 @@
+#!/bin/sh
+set -eu
+PATCHES=$(find "$PATCH_DIR" -type f | sort -n)
+V8_REF="$1"
+
+# Checkout revision, sync dependencies
+git checkout "$V8_REF"
+if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+	gclient sync --no-history --shallow --with_branch_heads 1>&2
+else
+	gclient sync --with_branch_heads 1>&2
+fi
+
+# Copy headers so building the module works even if we switch v8 checkout
+mkdir -p "out/$V8_REF"
+# shellcheck disable=SC2046
+cp --parents --recursive $(find include -name '*.h') "out/$V8_REF";
+
+# Output revision
+git describe --exact-match --tags || git rev-parse --short HEAD
+
+# Apply patches
+for PATCH in $PATCHES; do
+	patch -p1 < "$PATCH" 1>&2
+	git commit --all --allow-empty --message="$PATCH" 1>&2
+	git diff HEAD~1 HEAD > "$PATCH"
+done

@@ -1,0 +1,76 @@
+# https://clang.llvm.org/extra/clang-tidy/
+# https://clang.llvm.org/extra/clang-tidy/checks/list.html
+
+# Note: The big block of ignored rules are aliases for other rules.
+Checks: >
+  bugprone-*,
+  clang-*,
+  clang-analyzer-*,
+  clang-diagnostic-*,
+  concurrency-*,
+  cppcoreguidelines-*,
+  hicpp-*,
+  google-*,
+  misc-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+
+  -cppcoreguidelines-avoid-non-const-global-variables,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -google-build-using-namespace,
+  -google-readability-todo,
+  -misc-include-cleaner,
+  -misc-use-internal-linkage,
+  -readability-else-after-return,
+  -readability-magic-numbers,
+
+  -bugprone-narrowing-conversions,
+  -cppcoreguidelines-avoid-c-arrays,
+  -cppcoreguidelines-avoid-do-while,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-c-copy-assignment-signature,
+  -cppcoreguidelines-explicit-virtual-functions,
+  -cppcoreguidelines-macro-to-enum,
+  -cppcoreguidelines-noexcept-destructor,
+  -cppcoreguidelines-noexcept-move-operations,
+  -cppcoreguidelines-noexcept-swap,
+  -cppcoreguidelines-non-private-member-variables-in-classes,
+  -cppcoreguidelines-use-default-member-init,
+  -hicpp-avoid-c-arrays,
+  -hicpp-avoid-goto,
+  -hicpp-braces-around-statements,
+  -hicpp-deprecated-headers,
+  -hicpp-explicit-conversions,
+  -hicpp-function-size,
+  -hicpp-invalid-access-moved,
+  -hicpp-member-init,
+  -hicpp-move-const-arg,
+  -hicpp-named-parameter,
+  -hicpp-new-delete-operators,
+  -hicpp-no-array-decay,
+  -hicpp-no-malloc,
+  -hicpp-noexcept-move,
+  -hicpp-special-member-functions,
+  -hicpp-static-assert,
+  -hicpp-undelegated-constructor,
+  -hicpp-uppercase-literal-suffix,
+  -hicpp-use-auto,
+  -hicpp-use-emplace,
+  -hicpp-use-equals-default,
+  -hicpp-use-equals-delete,
+  -hicpp-use-noexcept,
+  -hicpp-use-nullptr,
+  -hicpp-use-override,
+  -hicpp-vararg
+
+HeaderFilterRegex: 'packages/*'
+CheckOptions:
+  bugprone-unused-return-value.AllowCastToVoid: true
+  cppcoreguidelines-avoid-non-const-global-variables.AllowInternalLinkage: true
+  cppcoreguidelines-special-member-functions.AllowImplicitlyDeletedCopyOrMove: true
+  cppcoreguidelines-special-member-functions.AllowMissingMoveFunctionsWhenCopyIsDeleted: true
+  misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: true
+  readability-identifier-length.MinimumParameterNameLength: 2
+  readability-identifier-length.MinimumVariableNameLength: 2

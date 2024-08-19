@@ -1,2 +1,7 @@
-compile_commands.json
-node_modules
+# clangd cache
+/.cache
+/.env
+/build
+/compile_commands.json
+/dist
+/node_modules

@@ -1,0 +1,3 @@
+# Use c++26 even for files not in `compile_commands.json`
+CompileFlags:
+  Add: -std=c++2c

@@ -1,0 +1,23 @@
+#!/bin/bash
+set -eu
+
+# Clear given variables
+if [ -z "${ENV_FILE:-}" ]; then
+	echo "ENV_FILE not set" >&2
+	exit
+elif [ -e "$ENV_FILE" ]; then
+	CONTENT=$(cat "$ENV_FILE")
+	for VAR in "$@"; do
+		CONTENT=$(echo "$CONTENT" | grep -v "^$VAR=" || true)
+	done
+else
+	CONTENT=""
+fi
+echo "$CONTENT" > "$ENV_FILE"
+
+# Write new variables
+for VAR in "$@"; do
+	if [ -n "${!VAR-}" ]; then
+		echo "$VAR=${!VAR}" >> "$ENV_FILE"
+	fi
+done
