@@ -4,6 +4,17 @@ export module ivm.value:tag;
 
 export namespace ivm::value {
 
+// Should be defined unless `accept` and/or `visit` are specialized depending on whether this type
+// sends or receives or both.
+template <class Type>
+struct tag_for;
+
+// Specialized for automatic visitors which can return castable values.
+template <class Tag>
+struct con_tag_for {
+		using type = Tag;
+};
+
 struct value_tag {};
 struct primitive_tag : value_tag {};
 struct external_tag : value_tag {};
@@ -14,8 +25,22 @@ struct undefined_tag : primitive_tag {};
 struct boolean_tag : primitive_tag {};
 
 struct key_tag : primitive_tag {};
+
 struct numeric_tag : key_tag {};
+template <class Type>
+struct numeric_tag_of : numeric_tag {};
+template <class Tag>
+struct con_tag_for<numeric_tag_of<Tag>> {
+		using type = numeric_tag;
+};
+
 struct string_tag : key_tag {};
+template <class Type>
+struct string_tag_of : string_tag {};
+template <class Tag>
+struct con_tag_for<string_tag_of<Tag>> {
+		using type = string_tag;
+};
 
 struct object_tag : value_tag {};
 struct dictionary_tag : object_tag {};
@@ -47,14 +72,12 @@ struct uint8_clamped_array_tag : typed_array_tag {};
 template <class Type>
 concept auto_tag = std::convertible_to<Type, value_tag>;
 
-// Should be defined unless `accept` and/or `visit` are specialized depending on whether this type
-// sends or receives or both.
-template <class Type>
-struct tag_for {
-		using type = value_tag;
-};
-
+// Get the covariant (most specific) tag for a given type
 template <class Type>
 using tag_for_t = tag_for<Type>::type;
+
+// Get the contravariant (least specific) tag for a given type
+template <class Type>
+using tag_con_for_t = con_tag_for<tag_for_t<Type>>::type;
 
 } // namespace ivm::value

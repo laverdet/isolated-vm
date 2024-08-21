@@ -20,10 +20,6 @@ constexpr inline bool is_convertible_without_narrowing_v<From, To> =
 export template <class From, class To>
 concept convertible_without_narrowing = is_convertible_without_narrowing_v<From, To>;
 
-// `std::same_as` but with cv-ref removed
-export template <class Type, class PlainType>
-concept same_as_cvref = std::is_same_v<std::remove_cvref_t<Type>, PlainType>;
-
 // `boost::noncopyable` actually prevents moving too
 export class non_copyable {
 	public:

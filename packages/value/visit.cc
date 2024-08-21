@@ -12,27 +12,28 @@ namespace ivm::value {
 // a value which follows some sort of casting interface corresponding to the tag.
 export template <class Type>
 struct visit {
-		constexpr auto operator()(const Type& value, auto accept) -> decltype(auto) {
+		constexpr auto operator()(const Type& value, const auto& accept) const -> decltype(auto) {
 			return accept(tag_for_t<Type>{}, value);
 		}
 
-		constexpr auto operator()(Type&& value, auto accept) -> decltype(auto) {
+		constexpr auto operator()(Type&& value, const auto& accept) const -> decltype(auto) {
 			return accept(tag_for_t<Type>{}, value);
 		}
 };
 
 // `visit` delegation which invokes the visitor for the underlying type of a given value.
 export template <class Type>
-constexpr auto invoke_visit(Type&& value, auto&& accept, auto&&... visit_args) -> decltype(auto) {
-	return visit<std::decay_t<Type>>{
-		std::forward<decltype(visit_args)>(visit_args)...
-	}(value, accept);
+constexpr auto invoke_visit(Type&& value, auto&& accept) -> decltype(auto) {
+	return visit<std::decay_t<Type>>{}(
+		std::forward<decltype(value)>(value),
+		std::forward<decltype(accept)>(accept)
+	);
 }
 
 // Visiting a `boost::variant` visits the underlying member
 template <class... Types>
 struct visit<boost::variant<Types...>> {
-		constexpr auto operator()(auto&& value, auto&& accept) -> decltype(auto) {
+		constexpr auto operator()(auto&& value, auto&& accept) const -> decltype(auto) {
 			return boost::apply_visitor(
 				[ &accept ](auto&& value) constexpr {
 					return invoke_visit(
@@ -50,7 +51,7 @@ struct visit<boost::variant<Types...>> {
 // can't delegate to this one either because it handles recursive variants.
 template <class... Types>
 struct visit<std::variant<Types...>> {
-		constexpr auto operator()(auto&& value, auto&& accept) -> decltype(auto) {
+		constexpr auto operator()(auto&& value, auto&& accept) const -> decltype(auto) {
 			return std::visit(
 				[ &accept ](auto&& value) constexpr {
 					return invoke_visit(
@@ -60,6 +61,14 @@ struct visit<std::variant<Types...>> {
 				},
 				std::forward<decltype(value)>(value)
 			);
+		}
+};
+
+// Array of pairs is a dictionary for testing
+template <class Key, class Value, size_t Size>
+struct visit<std::array<std::pair<Key, Value>, Size>> {
+		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
+			return accept(dictionary_tag{}, value);
 		}
 };
 

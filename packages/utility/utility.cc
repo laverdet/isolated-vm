@@ -1,4 +1,5 @@
 module;
+#include <bits/functional_hash.h>
 #include <utility>
 export module ivm.utility:utility;
 

@@ -33,7 +33,7 @@ static_assert(std::random_access_iterator<dictionary_value<void, int, int>::cons
 
 template <class Meta, class Tag, class Key, class Value>
 struct accept<Meta, dictionary_value<Tag, Key, Value>> {
-		auto operator()(Tag /*tag*/, auto&& dictionary) -> dictionary_value<Tag, Key, Value> {
+		auto operator()(Tag /*tag*/, auto&& dictionary) const -> dictionary_value<Tag, Key, Value> {
 			auto accept_key = make_accept<Key>(*this);
 			auto accept_value = make_accept<Value>(*this);
 			return dictionary_value<Tag, Key, Value>{
@@ -51,7 +51,7 @@ struct accept<Meta, dictionary_value<Tag, Key, Value>> {
 
 template <class Tag, class Key, class Value>
 struct visit<dictionary_value<Tag, Key, Value>> {
-		constexpr auto operator()(auto&& value, auto accept) -> decltype(auto) {
+		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			return accept(Tag{}, std::forward<decltype(value)>(value));
 		}
 };

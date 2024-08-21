@@ -12,15 +12,13 @@ import v8;
 
 namespace ivm {
 
-export auto create_agent(Napi::Env env) -> Napi::Value {
-	auto& ienv = environment::get(env);
+export auto create_agent(Napi::Env env, environment& ienv) -> Napi::Value {
 	auto& cluster = environment::get(env).cluster();
 	auto [ dispatch, promise ] = make_promise<ivm::agent>(
 		env,
 		[ &ienv ](Napi::Env env, std::unique_ptr<ivm::agent> agent) -> expected_value {
-			return (value::accept<value::accept_pass, Napi::Value>{env})(
-				iv8::make_collected_external(ienv.collection(), ienv.isolate(), std::move(*agent))
-			);
+			auto agent_handle = iv8::make_collected_external(ienv.collection(), ienv.isolate(), std::move(*agent));
+			return value::direct_cast<Napi::Value>(agent_handle, env, ienv);
 		}
 	);
 	cluster.make_agent(
@@ -35,14 +33,12 @@ export auto create_agent(Napi::Env env) -> Napi::Value {
 	return promise;
 }
 
-export auto create_realm(Napi::Env env, iv8::collected_external<agent>& agent) -> Napi::Value {
-	auto& ienv = environment::get(env);
+export auto create_realm(Napi::Env env, environment& ienv, iv8::collected_external<agent>& agent) -> Napi::Value {
 	auto [ dispatch, promise ] = make_promise<ivm::realm>(
 		env,
 		[ &ienv ](Napi::Env env, std::unique_ptr<ivm::realm> realm) -> expected_value {
-			return (value::accept<value::accept_pass, Napi::Value>{env})(
-				iv8::make_collected_external(ienv.collection(), ienv.isolate(), std::move(*realm))
-			);
+			auto realm_handle = iv8::make_collected_external(ienv.collection(), ienv.isolate(), std::move(*realm));
+			return value::direct_cast<Napi::Value>(realm_handle, env, ienv);
 		}
 	);
 	agent->schedule_task(

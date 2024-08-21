@@ -54,9 +54,10 @@ target_sources(ivm_utility
 			packages/utility/byte_literals.cc
 			packages/utility/call_once_or_else.cc
 			packages/utility/collection_group.cc
+			packages/utility/comparator.cc
 			packages/utility/lockable.cc
 			packages/utility/mutable_value.cc
-			packages/utility/only_cast.cc
+			packages/utility/prehashed_string_map.cc
 			packages/utility/type_traits.cc
 			packages/utility/utility.cc
 )
@@ -64,10 +65,14 @@ target_sources(ivm_utility
 # JavaScript adjacent code which is not specific to v8 or nodejs
 add_library(ivm_base EXCLUDE_FROM_ALL OBJECT)
 target_sources(ivm_base
+	PRIVATE
+		packages/value/assertions.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		packages/value/_module.cc
 		packages/value/accept.cc
 		packages/value/dictionary.cc
+		packages/value/enum.cc
+		packages/value/object.cc
 		packages/value/primitive.cc
 		packages/value/tag.cc
 		packages/value/transfer.cc

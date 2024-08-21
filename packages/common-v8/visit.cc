@@ -20,12 +20,12 @@ namespace ivm::value {
 // Specialized v8 number visitor
 template <>
 struct visit<v8::Local<v8::Number>> {
-		auto operator()(v8::Local<v8::Number> value, auto accept) -> decltype(auto) {
+		auto operator()(v8::Local<v8::Number> value, const auto& accept) const -> decltype(auto) {
 			auto number = iv8::handle_cast{value.As<iv8::number>()};
 			if (value->IsInt32()) {
-				return accept(numeric_tag{}, make_only_cast<int32_t>(number));
+				return accept(numeric_tag_of<int32_t>{}, number);
 			} else {
-				return accept(numeric_tag{}, make_only_cast<double>(number));
+				return accept(numeric_tag_of<double>{}, number);
 			}
 		}
 };
@@ -33,11 +33,11 @@ struct visit<v8::Local<v8::Number>> {
 // Specialized v8 string visitor
 template <>
 struct visit<iv8::handle<iv8::string>> {
-		auto operator()(iv8::handle<iv8::string> value, auto accept) -> decltype(auto) {
+		auto operator()(iv8::handle<iv8::string> value, const auto& accept) const -> decltype(auto) {
 			if (value->IsOneByte()) {
-				return accept(string_tag{}, make_only_cast<std::string>(value));
+				return accept(string_tag_of<std::string>{}, value);
 			} else {
-				return accept(string_tag{}, make_only_cast<std::u16string>(value));
+				return accept(string_tag_of<std::u16string>{}, value);
 			}
 		}
 };
@@ -45,7 +45,7 @@ struct visit<iv8::handle<iv8::string>> {
 // Specialized v8 object visitor
 template <>
 struct visit<iv8::object_handle> {
-		auto operator()(iv8::object_handle value, auto&& accept) -> decltype(auto) {
+		auto operator()(iv8::object_handle value, auto&& accept) const -> decltype(auto) {
 			if (value->IsArray()) {
 				return accept(list_tag{}, value);
 			} else if (value->IsExternal()) {
@@ -62,7 +62,7 @@ struct visit<iv8::object_handle> {
 // Specialized v8 external visitor
 template <>
 struct visit<v8::Local<v8::External>> {
-		auto operator()(v8::Local<v8::External> value, auto accept) -> decltype(auto) {
+		auto operator()(v8::Local<v8::External> value, const auto& accept) const -> decltype(auto) {
 			return accept(external_tag{}, iv8::handle_cast{value.As<iv8::external>()});
 		}
 };
@@ -70,7 +70,7 @@ struct visit<v8::Local<v8::External>> {
 // Visitor for any v8 value, `v8::Value`
 template <>
 struct visit<iv8::handle<v8::Value>> {
-		auto operator()(iv8::handle<v8::Value> value, auto&& accept) -> decltype(auto) {
+		auto operator()(iv8::handle<v8::Value> value, auto&& accept) const -> decltype(auto) {
 			if (value->IsObject()) {
 				return invoke_visit(iv8::object_handle{value.to<iv8::object>()}, std::forward<decltype(accept)>(accept));
 			} else if (value->IsNullOrUndefined()) {

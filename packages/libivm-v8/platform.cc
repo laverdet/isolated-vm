@@ -9,7 +9,7 @@ namespace ivm {
 
 // Once per process, performs initialization of v8. Process-wide shared state is managed in this
 // class.
-export class platform : non_moveable, public v8::Platform {
+export class platform : non_moveable {
 	public:
 		platform();
 		~platform();

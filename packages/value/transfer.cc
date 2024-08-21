@@ -10,6 +10,7 @@ import ivm.utility;
 
 namespace ivm::value {
 
+// TODO make it private again
 // Default `accept` passthrough `Meta`
 export struct accept_pass {
 		template <class Type>
@@ -31,10 +32,21 @@ struct accept<Meta, accept_with_throw::accept_throw<Type>>
 			accept_with_throw::accept_throw<std::decay_t<Type>> {
 		using accept<Meta, std::decay_t<Type>>::accept;
 		using accept<Meta, std::decay_t<Type>>::operator();
-		constexpr auto operator()(value_tag /*tag*/, auto&& /*value*/) -> Type {
+		constexpr auto operator()(value_tag /*tag*/, auto&& /*value*/) const -> Type {
 			throw std::logic_error("Type error");
 		}
 };
+
+// Directly invoke an acceptor, skipping the visit stage
+export template <class Type>
+constexpr auto direct_cast(auto&& value, auto&&... accept_args) -> decltype(auto) {
+	return accept<accept_pass, Type>{
+		std::forward<decltype(accept_args)>(accept_args)...
+	}(
+		value_tag{},
+		std::forward<decltype(value)>(value)
+	);
+}
 
 // Transfer a JavaScript value from one domain to another
 template <class Type, class Meta>

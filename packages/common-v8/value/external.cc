@@ -66,7 +66,7 @@ namespace ivm::value {
 
 template <class Meta, class Type>
 struct accept<Meta, iv8::collected_external<Type>> {
-		auto operator()(external_tag /*tag*/, auto value) -> iv8::collected_external<Type>& {
+		auto operator()(external_tag /*tag*/, auto value) const -> iv8::collected_external<Type>& {
 			auto* void_ptr = static_cast<void*>(value);
 			return *static_cast<iv8::collected_external<Type>*>(void_ptr);
 		}

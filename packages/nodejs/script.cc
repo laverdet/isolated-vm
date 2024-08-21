@@ -14,16 +14,15 @@ namespace ivm {
 
 export auto compile_script(
 	Napi::Env env,
+	environment& ienv,
 	iv8::collected_external<agent>& agent,
 	ivm::value::string_t code_string
 ) -> Napi::Value {
-	auto& ienv = environment::get(env);
 	auto [ dispatch, promise ] = make_promise<ivm::script>(
 		env,
 		[ &ienv ](Napi::Env env, std::unique_ptr<ivm::script> script) -> expected_value {
-			return (value::accept<value::accept_pass, Napi::Value>{env})(
-				iv8::make_collected_external(ienv.collection(), ienv.isolate(), std::move(*script))
-			);
+			auto script_handle = iv8::make_collected_external(ienv.collection(), ienv.isolate(), std::move(*script));
+			return value::direct_cast<Napi::Value>(script_handle, env, ienv);
 		}
 	);
 	agent->schedule_task(
@@ -39,14 +38,15 @@ export auto compile_script(
 
 export auto run_script(
 	Napi::Env env,
+	environment& ienv,
 	iv8::collected_external<agent>& agent,
 	iv8::collected_external<script>& script,
 	iv8::collected_external<realm>& realm
 ) -> Napi::Value {
 	auto [ dispatch, promise ] = make_promise<value::value_t>(
 		env,
-		[](Napi::Env env, std::unique_ptr<value::value_t> result) -> expected_value {
-			return value::transfer_strict<Napi::Value>(std::move(*result), env);
+		[ &ienv ](Napi::Env env, std::unique_ptr<value::value_t> result) -> expected_value {
+			return value::transfer_strict<Napi::Value>(std::move(*result), env, ienv);
 		}
 	);
 	agent->schedule_task(
