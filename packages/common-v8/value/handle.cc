@@ -64,14 +64,21 @@ class handle : public v8::Local<Type> {
 			return apply_handle(&Type::end);
 		}
 
-		auto into_range() const -> decltype(auto)
-			requires std::invocable<decltype(&Type::into_range), const Type&, handle_env, const Extra&...> {
-			return apply_handle(&Type::into_range);
+		auto get(auto&&... args) -> decltype(auto)
+			requires std::invocable<decltype(&Type::get), Type&, handle_env, Extra&..., decltype(args)...> {
+			return apply_handle(&Type::get, std::forward<decltype(args)>(args)...);
 		}
 
-		auto size() const
+		auto size() const -> decltype(auto)
 			requires std::invocable<decltype(&Type::size), const Type&, handle_env, const Extra&...> {
 			return apply_handle(&Type::size);
+		}
+
+		// `operator*` is already taken
+		auto operator~() const -> decltype(auto)
+			requires std::invocable<decltype(&Type::deref), Type&, handle_env, Extra&...> {
+			auto* non_const = const_cast<handle*>(this); // NOLINT(cppcoreguidelines-pro-type-const-cast)
+			return non_const->apply_handle(&Type::deref);
 		}
 
 	private:

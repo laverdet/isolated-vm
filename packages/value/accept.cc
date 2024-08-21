@@ -88,6 +88,25 @@ struct accept<Meta, std::tuple<Types...>> {
 		}
 };
 
+// `std::optional` allows `undefined` in addition to the next acceptor
+template <class Meta, class Type>
+struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
+		using accept_type = accept<Meta, Type>;
+		constexpr auto operator()(auto_tag auto tag, auto&& value) const -> std::optional<Type>
+			requires std::invocable<accept_type, decltype(tag), decltype(value)> {
+			return {accept_type::operator()(tag, std::forward<decltype(value)>(value))};
+		}
+		constexpr auto operator()(undefined_tag /*tag*/, auto&& /*value*/) const -> std::optional<Type> {
+			return std::nullopt;
+		}
+};
+
+// Specialize to override the acceptor for `std::variant`
+export template <class Meta, class Value, class Type>
+struct discriminated_union {
+		constexpr static bool is_discriminated_union = false;
+};
+
 // Covariant helper for variant-like types
 template <class Type, class Result>
 struct covariant {};
@@ -114,18 +133,10 @@ struct accept<Meta, covariant<Type, Result>> : accept<Meta, Type> {
 		}
 };
 
-// Allows `undefined` in addition to the next acceptor
-template <class Meta, class Type>
-struct accept<Meta, std::optional<Type>> : accept<Meta, covariant<Type, std::optional<Type>>> {
-		using accept<Meta, covariant<Type, std::optional<Type>>>::operator();
-		constexpr auto operator()(undefined_tag /*tag*/, auto&& /*value*/) const -> std::optional<Type> {
-			return std::nullopt;
-		}
-};
-
 // Accepting a `std::variant` will delegate to each underlying type's acceptor and box the result
 // into the variant.
 template <class Meta, class... Types>
+	requires(!discriminated_union<Meta, std::nullopt_t, std::variant<Types...>>::is_discriminated_union)
 struct accept<Meta, std::variant<Types...>> : accept<Meta, covariant<Types, std::variant<Types...>>>... {
 		using accept<Meta, covariant<Types, std::variant<Types...>>>::operator()...;
 };
@@ -141,8 +152,8 @@ template <class Variant, class... Types>
 struct variant_helper {};
 
 // Helper which extracts recursive variant alternative types
-template <class Type, class... Types>
-using recursive_variant = boost::variant<boost::detail::variant::recursive_flag<Type>, Types...>;
+template <class First, class... Rest>
+using recursive_variant = boost::variant<boost::detail::variant::recursive_flag<First>, Rest...>;
 
 // Helper which substitutes recursive variant alternative types
 template <class Variant, class Type>
@@ -156,10 +167,10 @@ struct accept<Meta, variant_helper<Variant, Types...>>
 };
 
 // Entry for `boost::make_recursive_variant`
-template <class Meta, class First, class... Types>
-struct accept<Meta, recursive_variant<First, Types...>>
-		: accept<Meta, variant_helper<recursive_variant<First, Types...>, First, Types...>> {
-		using accept<Meta, variant_helper<recursive_variant<First, Types...>, First, Types...>>::operator();
+template <class Meta, class First, class... Rest>
+struct accept<Meta, recursive_variant<First, Rest...>>
+		: accept<Meta, variant_helper<recursive_variant<First, Rest...>, First, Rest...>> {
+		using accept<Meta, variant_helper<recursive_variant<First, Rest...>, First, Rest...>>::operator();
 };
 
 } // namespace ivm::value

@@ -4,6 +4,7 @@ module;
 export module ivm.value:dictionary;
 import :accept;
 import :visit;
+import ivm.utility;
 
 namespace ivm::value {
 
@@ -37,7 +38,7 @@ struct accept<Meta, dictionary_value<Tag, Key, Value>> {
 			auto accept_key = make_accept<Key>(*this);
 			auto accept_value = make_accept<Value>(*this);
 			return dictionary_value<Tag, Key, Value>{
-				dictionary.into_range() |
+				into_range(dictionary) |
 				std::views::transform([ &accept_key, &accept_value ](auto entry) {
 					auto&& [ key, value ] = entry;
 					return std::make_pair(

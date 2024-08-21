@@ -1,6 +1,7 @@
 export module ivm.value;
 export import :accept;
 export import :dictionary;
+export import :discriminated_union;
 export import :enumeration;
 export import :object;
 export import :primitive;

@@ -5,7 +5,7 @@ export module ivm.utility:comparator;
 export template <class Operation, class Fn>
 class mapped_comparator {
 	public:
-		explicit constexpr mapped_comparator(Operation&& operation, Fn&& fn) :
+		constexpr explicit mapped_comparator(Operation&& operation, Fn&& fn) :
 				operation{std::forward<decltype(operation)>(operation)},
 				fn{std::forward<decltype(fn)>(fn)} {}
 

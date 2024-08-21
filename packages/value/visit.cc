@@ -1,5 +1,6 @@
 module;
 #include <boost/variant.hpp>
+#include <ranges>
 #include <variant>
 export module ivm.value:visit;
 import :primitive;
@@ -65,10 +66,37 @@ struct visit<std::variant<Types...>> {
 };
 
 // Array of pairs is a dictionary for testing
-template <class Key, class Value, size_t Size>
-struct visit<std::array<std::pair<Key, Value>, Size>> {
+template <class Type, size_t Size>
+struct array_to_object_helper {
+		using container_type = std::array<std::pair<std::string, Type>, Size>;
+		constexpr explicit array_to_object_helper(container_type values) :
+				values{std::move(values)} {}
+
+		constexpr auto begin() const { return values.begin(); }
+		constexpr auto end() const { return values.end(); }
+		constexpr auto get(std::string_view string) {
+			auto it = std::ranges::find_if(values, [ string ](auto&& pair) constexpr {
+				return pair.first == string;
+			});
+			if (it == values.end()) {
+				throw std::logic_error("Key not found");
+			}
+			return it->second;
+		}
+		std::array<std::pair<std::string, Type>, Size> values;
+};
+
+template <class Type, size_t Size>
+struct visit<array_to_object_helper<Type, Size>> {
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
-			return accept(dictionary_tag{}, value);
+			return accept(dictionary_tag{}, std::forward<decltype(value)>(value));
+		}
+};
+
+template <class Value, size_t Size>
+struct visit<std::array<std::pair<std::string, Value>, Size>> {
+		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
+			return accept(dictionary_tag{}, array_to_object_helper{std::forward<decltype(value)>(value)});
 		}
 };
 

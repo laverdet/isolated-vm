@@ -12,6 +12,7 @@ namespace ivm::value {
 // string and the acceptor wants a string_view, that should be fine. Or if v8 gives us a uint32_t
 // and we want an int32_t then that is probably fine.
 static_assert(transfer_strict<int>(1.0) == 1);
+static_assert(transfer_strict<double>(1) == 1.0);
 static_assert(transfer_strict<std::string>("hello"sv) == "hello"s);
 
 // Variants
@@ -30,6 +31,7 @@ constexpr auto optional_value = transfer<std::optional<int>>(std::monostate{});
 static_assert(optional_value == std::nullopt);
 constexpr auto just_optional_value = transfer<std::optional<int>>(1);
 static_assert(just_optional_value == 1);
+static_assert(transfer<std::optional<double>>(1) == 1.0);
 
 // Enumerations
 enum class enum_test {
@@ -79,7 +81,7 @@ struct object_map<Meta, Value, object_literal> : object_properties<Meta, Value, 
 		constexpr static auto properties = std::array{
 			std::tuple{false, "integer", property<&object_literal::integer>::accept},
 			std::tuple{false, "number", property<&object_literal::number>::accept},
-			std::tuple{false, "string", property<&object_literal::string>::accept},
+			std::tuple{true, "string", property<&object_literal::string>::accept},
 		};
 };
 
@@ -88,12 +90,6 @@ constexpr auto object_numeric = transfer_strict<object_literal_one>(std::array{
 	std::pair{"integer"s, 1}
 });
 static_assert(object_numeric.integer == 1);
-
-// Throwable keys
-constexpr auto object_keys_test = transfer<object_literal_one>(std::array{
-	std::pair{std::variant<std::string, int>{"integer"s}, 1},
-});
-static_assert(object_keys_test.integer == 1);
 
 // Throwable values
 using object_test_variant = std::variant<int, double, std::string>;
@@ -125,5 +121,63 @@ struct visit<specialized> {
 
 static_assert(transfer<specialized>(specialized{}) == specialized{});
 static_assert(variant_is_equal_to(transfer<std::variant<specialized>>(specialized{}), specialized{}));
+
+// Discriminated unions
+struct discriminated_one {
+		std::string one;
+		constexpr auto operator==(const discriminated_one& /*right*/) const -> bool { return true; };
+};
+
+struct discriminated_two {
+		std::string two;
+		constexpr auto operator==(const discriminated_two& /*right*/) const -> bool { return true; };
+};
+
+template <class Meta, class Value>
+struct object_map<Meta, Value, discriminated_one> : object_properties<Meta, Value, discriminated_one> {
+		template <auto Member>
+		using property = object_properties<Meta, Value, discriminated_one>::template property<Member>;
+
+		constexpr static auto properties = std::array{
+			std::tuple{false, "one", property<&discriminated_one::one>::accept},
+		};
+};
+
+template <class Meta, class Value>
+struct object_map<Meta, Value, discriminated_two> : object_properties<Meta, Value, discriminated_two> {
+		template <auto Member>
+		using property = object_properties<Meta, Value, discriminated_two>::template property<Member>;
+
+		constexpr static auto properties = std::array{
+			std::tuple{false, "two", property<&discriminated_two::two>::accept},
+		};
+};
+
+using discriminated_object = std::variant<discriminated_one, discriminated_two>;
+
+template <class Meta, class Value>
+struct discriminated_union<Meta, Value, discriminated_object> : discriminated_alternatives<Meta, Value, discriminated_object> {
+		template <class Type>
+		constexpr static auto alternative = &discriminated_alternatives<Meta, Value, discriminated_object>::template accept<Type>;
+
+		constexpr static auto discriminant = "type";
+		constexpr static auto alternatives = std::array{
+			std::pair{"one", alternative<discriminated_one>},
+			std::pair{"two", alternative<discriminated_two>},
+		};
+};
+
+constexpr auto discriminated_with_one = std::array{
+	std::pair{"type"s, "one"s},
+	std::pair{"one"s, "left"s},
+};
+
+constexpr auto discriminated_with_two = std::array{
+	std::pair{"type"s, "two"s},
+	std::pair{"two"s, "right"s},
+};
+
+static_assert(variant_is_equal_to(transfer<discriminated_object>(discriminated_with_one), discriminated_one{.one = "left"s}));
+static_assert(variant_is_equal_to(transfer<discriminated_object>(discriminated_with_two), discriminated_two{.two = "right"s}));
 
 } // namespace ivm::value

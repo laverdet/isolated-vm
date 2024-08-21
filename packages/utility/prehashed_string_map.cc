@@ -29,6 +29,8 @@ class prehashed_string_map {
 		using mapped_type = Type;
 		using value_type = std::pair<hash_type, mapped_type>;
 		using container_type = std::array<value_type, Size>;
+		using iterator = container_type::const_iterator;
+		using const_iterator = container_type::const_iterator;
 
 		consteval explicit prehashed_string_map(const std::ranges::range auto& range) :
 				hashed_values_{std::invoke([ & ]() {
@@ -64,9 +66,8 @@ class prehashed_string_map {
 			std::copy(std::begin(prehashed_values), std::end(prehashed_values), std::begin(hashed_values_));
 		}
 
-		consteval auto into_range() const -> const container_type& {
-			return hashed_values_;
-		}
+		constexpr auto begin() const -> const_iterator { return hashed_values_.begin(); }
+		constexpr auto end() const -> const_iterator { return hashed_values_.end(); }
 
 		constexpr auto get(std::ranges::range auto&& string_view) const -> const mapped_type* {
 			// Lookup property by key

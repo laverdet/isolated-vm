@@ -4,6 +4,7 @@ export module ivm.v8:object;
 import v8;
 import :array;
 import :handle;
+import :string;
 import :utility;
 import ivm.utility;
 
@@ -18,7 +19,6 @@ export class object : public v8::Object {
 		// an entry pair.
 		class iterator_transform {
 			public:
-				iterator_transform() = delete;
 				iterator_transform(handle_env env, v8::Object* object);
 				auto operator()(handle<v8::Value> key) const -> value_type;
 
@@ -31,14 +31,9 @@ export class object : public v8::Object {
 		using range_type = std::ranges::transform_view<std::views::all_t<array_handle&>, iterator_transform>;
 		using iterator = std::ranges::iterator_t<range_type>;
 
-		// Some good thoughts here. It's strange that there isn't an easier way to transform an
-		// underlying range.
-		// https://brevzin.github.io/c++/2024/05/18/range-customization/
-		[[nodiscard]] auto into_range(handle_env env, array_handle& keys) const -> range_type;
+		[[nodiscard]] auto deref(handle_env env, array_handle& keys) -> range_type;
+		[[nodiscard]] auto get(handle_env env, array_handle& keys, std::string_view key) -> handle<v8::Value>;
 		static auto Cast(v8::Value* data) -> object*;
-
-	private:
-		[[nodiscard]] auto transform(handle_env env, array_handle& keys) const -> range_type;
 };
 
 export using object_handle = handle<object, mutable_value<array_handle>>;
@@ -49,10 +44,9 @@ auto object::Cast(v8::Value* data) -> object* {
 	return reinterpret_cast<object*>(v8::Object::Cast(data));
 }
 
-auto object::into_range(handle_env env, array_handle& keys) const -> range_type {
-	auto* non_const = const_cast<object*>(this); // NOLINT(cppcoreguidelines-pro-type-const-cast)
+auto object::deref(handle_env env, array_handle& keys) -> range_type {
 	if (keys == array_handle{}) {
-		auto property_names = unmaybe(non_const->GetPropertyNames(
+		auto property_names = unmaybe(this->GetPropertyNames(
 			env.context,
 			v8::KeyCollectionMode::kOwnOnly,
 			v8::PropertyFilter::ONLY_ENUMERABLE,
@@ -61,7 +55,12 @@ auto object::into_range(handle_env env, array_handle& keys) const -> range_type 
 		));
 		keys = array_handle{property_names.As<iv8::array>(), env, 0};
 	}
-	return keys | std::views::transform(iterator_transform{env, non_const});
+	return keys | std::views::transform(iterator_transform{env, this});
+}
+
+auto object::get(handle_env env, array_handle& /*keys*/, std::string_view key) -> handle<v8::Value> {
+	auto key_string = string::make(env.isolate, key);
+	return {unmaybe(this->GetRealNamedProperty(env.context, key_string.As<v8::Name>())), env};
 }
 
 object::iterator_transform::iterator_transform(handle_env env, v8::Object* object) :

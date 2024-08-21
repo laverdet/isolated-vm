@@ -71,6 +71,7 @@ target_sources(ivm_base
 		packages/value/_module.cc
 		packages/value/accept.cc
 		packages/value/dictionary.cc
+		packages/value/discriminated_union.cc
 		packages/value/enum.cc
 		packages/value/object.cc
 		packages/value/primitive.cc
