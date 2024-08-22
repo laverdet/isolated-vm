@@ -14,7 +14,7 @@ export class Script {
 		this.#script = script;
 	}
 
-	run(realm: Realm): Promise<ivm.Script> {
+	run(realm: Realm): Promise<unknown> {
 		return runScript(this.#agent, this.#script, extractRealmInternal(realm));
 	}
 }

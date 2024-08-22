@@ -3,6 +3,7 @@ module;
 #include <string>
 #include <variant>
 export module ivm.value:variant;
+import :date;
 import :dictionary;
 import :primitive;
 
@@ -17,7 +18,7 @@ using value_t = boost::make_recursive_variant<
 	double,
 	std::string,
 	std::u16string,
-	date_t,
+	js_clock::time_point,
 	value::dictionary_value<list_tag, key_t, boost::recursive_variant_>,
 	value::dictionary_value<dictionary_tag, key_t, boost::recursive_variant_>>::type;
 

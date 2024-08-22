@@ -11,6 +11,7 @@ export class agent : non_copyable {
 		class host;
 		class lock;
 		class storage;
+		struct clock;
 		using task_type = std::move_only_function<void(lock& lock)>;
 
 		explicit agent(const std::shared_ptr<host>& host);

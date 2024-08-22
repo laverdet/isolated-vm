@@ -3,7 +3,6 @@ module;
 #include <ranges>
 #include <variant>
 export module ivm.value:visit;
-import :primitive;
 import :tag;
 import ivm.utility;
 

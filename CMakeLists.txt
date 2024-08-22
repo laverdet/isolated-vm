@@ -70,6 +70,7 @@ target_sources(ivm_base
 	PUBLIC FILE_SET CXX_MODULES FILES
 		packages/value/_module.cc
 		packages/value/accept.cc
+		packages/value/date.cc
 		packages/value/dictionary.cc
 		packages/value/discriminated_union.cc
 		packages/value/enum.cc
@@ -155,15 +156,20 @@ target_link_libraries(ivm_v8_nodejs PUBLIC ivm_base ivm_utility)
 # isolated v8 backend
 add_library(ivm_isolated_v8 EXCLUDE_FROM_ALL STATIC)
 target_sources(ivm_isolated_v8
+	PRIVATE
+		packages/libivm-v8/platform/platform_.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		packages/libivm-v8/_module.cc
 		packages/libivm-v8/agent/agent.cc
+		packages/libivm-v8/agent/clock.cc
 		packages/libivm-v8/agent/host.cc
 		packages/libivm-v8/agent/lock.cc
 		packages/libivm-v8/agent/storage.cc
 		packages/libivm-v8/cluster.cc
-		packages/libivm-v8/platform.cc
 		packages/libivm-v8/platform_handle.cc
+		packages/libivm-v8/platform/job_handle.cc
+		packages/libivm-v8/platform/platform.cc
+		packages/libivm-v8/platform/task_runner.cc
 		packages/libivm-v8/realm.cc
 		packages/libivm-v8/scheduler.cc
 		packages/libivm-v8/script.cc

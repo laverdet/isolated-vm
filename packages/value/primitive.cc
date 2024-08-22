@@ -1,5 +1,4 @@
 module;
-#include <chrono>
 #include <cstdint>
 #include <string>
 #include <variant>
@@ -64,13 +63,5 @@ struct tag_for<std::u16string> {
 
 // Any (cloneable) object key
 export using key_t = std::variant<int32_t, std::string, std::u16string>;
-
-// `Date` (obviously not a primitive, but still very simple)
-export using date_t = std::chrono::duration<double, std::milli>;
-
-template <>
-struct tag_for<date_t> {
-		using type = date_tag;
-};
 
 } // namespace ivm::value

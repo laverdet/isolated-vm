@@ -238,6 +238,8 @@ const typeScriptRules = acceptTypeScriptRules({
 	"react/prop-types": "off",
 	// This shouldn't trigger in `.d.ts` files
 	"no-unused-private-class-members": "off",
+	// Handle for grouping types (and only types!!)
+	"@typescript-eslint/no-namespace": "off",
 
 	// TypeScript rules which supersede an eslint rule
 	"@typescript-eslint/naming-convention": [ "warn", {

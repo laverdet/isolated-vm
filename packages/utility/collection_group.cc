@@ -43,7 +43,7 @@ class collection_group::holder : non_copyable {
 				ptr{ptr} {};
 
 		holder(holder&& that) noexcept :
-				ptr{std::exchange(that.ptr, nullptr)},
+				ptr{that.ptr},
 				dtor{std::exchange(that.dtor, nullptr)} {}
 
 		~holder() {
@@ -53,7 +53,12 @@ class collection_group::holder : non_copyable {
 		}
 
 		auto operator=(holder&& that) noexcept -> holder& {
-			ptr = std::exchange(that.ptr, nullptr);
+			if (this == &that) {
+				return *this;
+			} else if (dtor != nullptr) {
+				(this->*dtor)();
+			}
+			ptr = that.ptr;
 			dtor = std::exchange(that.dtor, nullptr);
 			return *this;
 		};
@@ -64,6 +69,13 @@ class collection_group::holder : non_copyable {
 			dtor = &holder::destroy_and_deallocate<Type>;
 		}
 
+		template <class Type>
+		[[nodiscard]] auto get() const -> Type* { return static_cast<Type*>(ptr); }
+
+		auto operator<=>(const holder& other) const { return ptr <=> other.ptr; };
+		auto operator==(const holder& other) const { return ptr == other.ptr; };
+
+	private:
 		template <class Type>
 		auto deallocate() -> void {
 			dtor = nullptr;
@@ -76,13 +88,6 @@ class collection_group::holder : non_copyable {
 			std::destroy_at(static_cast<Type*>(ptr));
 		}
 
-		template <class Type>
-		[[nodiscard]] auto get() const -> Type* { return static_cast<Type*>(ptr); }
-
-		auto operator<=>(const holder& other) const { return ptr <=> other.ptr; };
-		auto operator==(const holder& other) const { return ptr == other.ptr; };
-
-	private:
 		template <class Type>
 		auto destroy_and_deallocate() -> void {
 			destroy<Type>();

@@ -1,3 +1,5 @@
+module;
+#include <cstdio>
 export module ivm.isolated_v8:realm;
 import :agent;
 import v8;
@@ -36,6 +38,7 @@ realm::realm(v8::Isolate* isolate, v8::Local<v8::Context> context) :
 
 auto realm::make(agent::lock& lock) -> realm {
 	auto* isolate = lock->isolate();
+	auto latch = lock->random_seed_latch();
 	return realm{isolate, v8::Context::New(isolate)};
 }
 
