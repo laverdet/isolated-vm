@@ -1,9 +1,14 @@
 module;
 #include <expected>
 #include <memory>
-export module ivm.node:make_promise;
-import napi;
+#include <tuple>
+#include <utility>
+export module ivm.node:utility;
+import :environment;
+import :visit;
 import ivm.utility;
+import ivm.value;
+import napi;
 
 namespace ivm {
 
@@ -64,6 +69,39 @@ auto make_promise(Napi::Env env, auto accept)
 
 	// `[ dispatch, promise ]`
 	return std::make_tuple(std::move(dispatch), promise);
+}
+
+template <class Function>
+class node_function;
+
+template <class Result, class... Args>
+class node_function<Result (*)(Napi::Env, ivm::environment&, Args...)> : non_copyable {
+	public:
+		using function_type = Result (*)(Napi::Env, ivm::environment&, Args...);
+
+		node_function() = delete;
+		explicit node_function(ivm::environment& ienv, function_type fn) :
+				ienv{&ienv},
+				fn{std::move(fn)} {}
+
+		auto operator()(const Napi::CallbackInfo& info) -> Napi::Value {
+			ivm::napi::napi_callback_info_memo callback_info{info, *ienv};
+			return std::apply(
+				fn,
+				std::tuple_cat(
+					std::forward_as_tuple(info.Env(), *ienv),
+					ivm::value::transfer<std::tuple<Args...>>(callback_info)
+				)
+			);
+		}
+
+	private:
+		ivm::environment* ienv;
+		function_type fn;
+};
+
+export auto make_node_function(Napi::Env env, ivm::environment& ienv, auto fn) {
+	return Napi::Function::New(env, node_function<decltype(fn)>{ienv, fn});
 }
 
 } // namespace ivm

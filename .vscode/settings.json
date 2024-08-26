@@ -43,6 +43,9 @@
 	},
 	"files.insertFinalNewline": true,
 	"files.trimTrailingWhitespace": true,
+	"search.exclude": {
+		"packages/third_party": true,
+	},
 	"terminal.integrated.defaultProfile.linux": "bash",
   "terminal.integrated.profiles.linux": {
     "bash": {

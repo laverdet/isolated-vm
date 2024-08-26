@@ -1,9 +1,9 @@
 module;
 #include <memory>
 #include <utility>
-export module ivm.node:script;
+module ivm.node;
 import :environment;
-import :make_promise;
+import :utility;
 import :visit;
 import ivm.isolated_v8;
 import ivm.v8;
@@ -12,7 +12,7 @@ import napi;
 
 namespace ivm {
 
-export auto compile_script(
+auto compile_script(
 	Napi::Env env,
 	environment& ienv,
 	iv8::collected_external<agent>& agent,
@@ -36,7 +36,7 @@ export auto compile_script(
 	return promise;
 }
 
-export auto run_script(
+auto run_script(
 	Napi::Env env,
 	environment& ienv,
 	iv8::collected_external<agent>& agent,
@@ -61,6 +61,14 @@ export auto run_script(
 		}
 	);
 	return promise;
+}
+
+auto make_compile_script(Napi::Env env, ivm::environment& ienv) -> Napi::Function {
+	return make_node_function(env, ienv, ivm::compile_script);
+}
+
+auto make_run_script(Napi::Env env, ivm::environment& ienv) -> Napi::Function {
+	return make_node_function(env, ienv, ivm::run_script);
 }
 
 } // namespace ivm

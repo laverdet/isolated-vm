@@ -5,50 +5,31 @@ module;
 #include <mutex>
 #include <stop_token>
 #include <utility>
-export module ivm.isolated_v8:agent;
-import :agent.fwd;
-import :agent.clock;
-import :agent.lock;
+module ivm.isolated_v8;
+import :agent;
+import :scheduler;
 import v8;
 import ivm.utility;
 
 namespace ivm {
 
-struct isolate_destructor {
-		auto operator()(v8::Isolate* isolate) -> void;
-};
+// agent
+agent::agent(const std::shared_ptr<host>& host) :
+		host_{host} {}
 
-class agent::host : non_moveable {
-	public:
-		friend agent;
-		explicit host(
-			std::shared_ptr<storage> agent_storage,
-			agent::clock::any_clock clock,
-			std::optional<double> random_seed
-		);
+// lock
+agent::lock::lock(host& agent_host) :
+		agent_host{agent_host} {}
 
-		auto clock_time_ms() -> int64_t;
-		auto execute(const std::stop_token& stop_token) -> void;
-		auto isolate() -> v8::Isolate*;
-		auto random_seed_latch();
-		auto scratch_context() -> v8::Local<v8::Context>;
-		auto take_random_seed() -> std::optional<double>;
+// storage
+agent::storage::storage(scheduler& scheduler) :
+		scheduler_handle_{scheduler} {}
 
-		static auto get_current() -> host*;
-		static auto get_current(v8::Isolate* isolate) -> host&;
+auto agent::storage::scheduler_handle() -> scheduler::handle& {
+	return scheduler_handle_;
+}
 
-	private:
-		std::shared_ptr<storage> agent_storage;
-		std::unique_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator;
-		std::unique_ptr<v8::Isolate, isolate_destructor> isolate_;
-		v8::Global<v8::Context> scratch_context_;
-		lockable<std::vector<task_type>, std::mutex, std::condition_variable_any> pending_tasks_;
-
-		bool should_give_seed_{false};
-		std::optional<double> random_seed_;
-		clock::any_clock clock_;
-};
-
+// host
 agent::host::host(
 	std::shared_ptr<storage> agent_storage,
 	agent::clock::any_clock clock,
@@ -102,11 +83,9 @@ auto agent::host::isolate() -> v8::Isolate* {
 // v8 uses the same entropy source for `Math.random()` and also memory page randomization. We want
 // to control the `Math.random()` seed without giving up memory randomness. Anyway it seems like the
 // generator is initialized on context creation, so we just control the randomness in that one case.
-auto agent::host::random_seed_latch() {
+auto agent::host::random_seed_latch() -> std::experimental::scope_exit<random_seed_unlatch> {
 	should_give_seed_ = true;
-	return std::experimental::scope_exit([ this ] {
-		should_give_seed_ = false;
-	});
+	return std::experimental::scope_exit{random_seed_unlatch{should_give_seed_}};
 }
 
 auto agent::host::scratch_context() -> v8::Local<v8::Context> {
@@ -155,8 +134,17 @@ auto agent::host::take_random_seed() -> std::optional<double> {
 	}
 }
 
-auto isolate_destructor::operator()(v8::Isolate* isolate) -> void {
+// isolate_destructor
+auto agent::host::isolate_destructor::operator()(v8::Isolate* isolate) -> void {
 	isolate->Dispose();
+}
+
+// random_seed_unlatch
+agent::host::random_seed_unlatch::random_seed_unlatch(bool& latch) :
+		latch{&latch} {};
+
+auto agent::host::random_seed_unlatch::operator()() const -> void {
+	*latch = false;
 }
 
 } // namespace ivm

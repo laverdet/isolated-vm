@@ -1,9 +1,11 @@
 module;
-#include <chrono>
+#include <concepts>
 #include <memory>
-export module ivm.node:agent;
+#include <optional>
+#include <variant>
+module ivm.node;
 import :environment;
-import :make_promise;
+import :utility;
 import :visit;
 import ivm.isolated_v8;
 import ivm.v8;
@@ -17,7 +19,7 @@ namespace ivm {
 struct make_agent_options {
 		struct clock_deterministic {
 				value::js_clock::time_point epoch;
-				double interval;
+				double interval{};
 		};
 		struct clock_microtask {
 				std::optional<value::js_clock::time_point> epoch;
@@ -32,7 +34,7 @@ struct make_agent_options {
 		std::optional<double> random_seed;
 };
 
-export auto create_agent(Napi::Env env, environment& ienv, make_agent_options options) -> Napi::Value {
+auto create_agent(Napi::Env env, environment& ienv, make_agent_options options) -> Napi::Value {
 	auto& cluster = ienv.cluster();
 	auto [ dispatch, promise ] = make_promise<ivm::agent>(
 		env,
@@ -72,7 +74,7 @@ export auto create_agent(Napi::Env env, environment& ienv, make_agent_options op
 	return promise;
 }
 
-export auto create_realm(Napi::Env env, environment& ienv, iv8::collected_external<agent>& agent) -> Napi::Value {
+auto create_realm(Napi::Env env, environment& ienv, iv8::collected_external<agent>& agent) -> Napi::Value {
 	auto [ dispatch, promise ] = make_promise<ivm::realm>(
 		env,
 		[ &ienv ](Napi::Env env, std::unique_ptr<ivm::realm> realm) -> expected_value {
@@ -92,8 +94,17 @@ export auto create_realm(Napi::Env env, environment& ienv, iv8::collected_extern
 	return promise;
 }
 
+auto make_create_agent(Napi::Env env, ivm::environment& ienv) -> Napi::Function {
+	return make_node_function(env, ienv, ivm::create_agent);
+}
+
+auto make_create_realm(Napi::Env env, ivm::environment& ienv) -> Napi::Function {
+	return make_node_function(env, ienv, ivm::create_realm);
+}
+
 } // namespace ivm
 
+// Options visitors & acceptors
 namespace ivm::value {
 
 template <class Meta, class Value>

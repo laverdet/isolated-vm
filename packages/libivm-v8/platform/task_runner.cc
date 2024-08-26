@@ -1,33 +1,40 @@
 module;
 #include <memory>
 #include <thread>
-export module ivm.isolated_v8:platform.task_runner;
+module ivm.isolated_v8;
+import :platform;
 import v8;
 
 namespace ivm {
 
-export class task_runner : public v8::TaskRunner {
-	public:
-		virtual bool IdleTasksEnabled() { return false; }
-		virtual bool NonNestableTasksEnabled() const { return true; }
-		virtual bool NonNestableDelayedTasksEnabled() const { return false; }
+auto task_runner::IdleTasksEnabled() -> bool {
+	return false;
+}
 
-		virtual ~task_runner() = default;
+auto task_runner::NonNestableTasksEnabled() const -> bool {
+	return true;
+}
 
-	protected:
-		auto PostTaskImpl(std::unique_ptr<v8::Task> task, const v8::SourceLocation& location) -> void final {
-			task->Run();
-		}
-		auto PostNonNestableTaskImpl(std::unique_ptr<v8::Task> task, const v8::SourceLocation& location) -> void final {
-		}
-		auto PostDelayedTaskImpl(std::unique_ptr<v8::Task> task, double delay_in_seconds, const v8::SourceLocation& location) -> void final {
-			task->Run();
-		}
-		auto PostNonNestableDelayedTaskImpl(std::unique_ptr<v8::Task> task, double delay_in_seconds, const v8::SourceLocation& location) -> void final {
-		}
-		auto PostIdleTaskImpl(std::unique_ptr<v8::IdleTask> task, const v8::SourceLocation& location) -> void final {
-			task->Run(0);
-		}
-};
+auto task_runner::NonNestableDelayedTasksEnabled() const -> bool {
+	return false;
+}
+
+auto task_runner::PostTaskImpl(std::unique_ptr<v8::Task> task, const v8::SourceLocation& location) -> void {
+	task->Run();
+}
+
+auto task_runner::PostNonNestableTaskImpl(std::unique_ptr<v8::Task> task, const v8::SourceLocation& location) -> void {
+}
+
+auto task_runner::PostDelayedTaskImpl(std::unique_ptr<v8::Task> task, double delay_in_seconds, const v8::SourceLocation& location) -> void {
+	task->Run();
+}
+
+auto task_runner::PostNonNestableDelayedTaskImpl(std::unique_ptr<v8::Task> task, double delay_in_seconds, const v8::SourceLocation& location) -> void {
+}
+
+auto task_runner::PostIdleTaskImpl(std::unique_ptr<v8::IdleTask> task, const v8::SourceLocation& location) -> void {
+	task->Run(0);
+}
 
 } // namespace ivm

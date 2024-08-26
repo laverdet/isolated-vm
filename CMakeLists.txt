@@ -86,18 +86,23 @@ target_link_libraries(ivm_base PRIVATE ivm_utility)
 # v8 common packages. These source files are built twice, once which links against nodejs, and
 # another which links against internal v8/z8.
 set(IVM_V8_COMMON_SOURCES
-	PUBLIC FILE_SET CXX_MODULES FILES
-		packages/common-v8/_module.cc
-		packages/common-v8/accept.cc
-		packages/common-v8/utility.cc
+	PRIVATE
 		packages/common-v8/value/array.cc
-		packages/common-v8/value/boolean.cc
-		packages/common-v8/value/date.cc
-		packages/common-v8/value/external.cc
-		packages/common-v8/value/handle.cc
-		packages/common-v8/value/number.cc
 		packages/common-v8/value/object.cc
 		packages/common-v8/value/string.cc
+	PUBLIC FILE_SET CXX_MODULES FILES
+		packages/common-v8/accept.cc
+		packages/common-v8/utility.cc
+		packages/common-v8/include/_module.cc
+		packages/common-v8/include/array.cc
+		packages/common-v8/include/boolean.cc
+		packages/common-v8/include/collected_external.cc
+		packages/common-v8/include/date.cc
+		packages/common-v8/include/external.cc
+		packages/common-v8/include/handle.cc
+		packages/common-v8/include/number.cc
+		packages/common-v8/include/object.cc
+		packages/common-v8/include/string.cc
 		packages/common-v8/visit.cc
 		packages/third_party/v8/array_buffer.cc
 		packages/third_party/v8/container.cc
@@ -157,22 +162,24 @@ target_link_libraries(ivm_v8_nodejs PUBLIC ivm_base ivm_utility)
 add_library(ivm_isolated_v8 EXCLUDE_FROM_ALL STATIC)
 target_sources(ivm_isolated_v8
 	PRIVATE
-		packages/libivm-v8/platform/platform_.cc
-	PUBLIC FILE_SET CXX_MODULES FILES
-		packages/libivm-v8/_module.cc
-		packages/libivm-v8/agent/agent.cc
 		packages/libivm-v8/agent/clock.cc
 		packages/libivm-v8/agent/host.cc
-		packages/libivm-v8/agent/lock.cc
-		packages/libivm-v8/agent/storage.cc
 		packages/libivm-v8/cluster.cc
-		packages/libivm-v8/platform_handle.cc
+		packages/libivm-v8/platform/handle.cc
 		packages/libivm-v8/platform/job_handle.cc
 		packages/libivm-v8/platform/platform.cc
 		packages/libivm-v8/platform/task_runner.cc
 		packages/libivm-v8/realm.cc
 		packages/libivm-v8/scheduler.cc
 		packages/libivm-v8/script.cc
+	PUBLIC FILE_SET CXX_MODULES FILES
+		packages/libivm-v8/include/_module.cc
+		packages/libivm-v8/include/agent.cc
+		packages/libivm-v8/include/cluster.cc
+		packages/libivm-v8/include/platform.cc
+		packages/libivm-v8/include/realm.cc
+		packages/libivm-v8/include/scheduler.cc
+		packages/libivm-v8/include/script.cc
 )
 target_compile_definitions(ivm_isolated_v8 PRIVATE ${IVM_TRICKSHOT_DEFINES})
 target_link_libraries(ivm_isolated_v8 PUBLIC ivm_base ivm_utility ivm_v8_embedded)
@@ -180,16 +187,18 @@ target_link_libraries(ivm_isolated_v8 PUBLIC ivm_base ivm_utility ivm_v8_embedde
 # nodejs require-able module
 add_library(ivm_backend_v8 EXCLUDE_FROM_ALL SHARED)
 target_sources(ivm_backend_v8
-	PUBLIC
-		packages/nodejs/main.cc
-	PUBLIC FILE_SET CXX_MODULES FILES
-		packages/nodejs/_module.cc
+	PRIVATE
 		packages/nodejs/agent.cc
-		packages/nodejs/arguments.cc
 		packages/nodejs/environment.cc
-		packages/nodejs/make_promise.cc
+		packages/nodejs/main.cc
 		packages/nodejs/script.cc
-		packages/nodejs/visit.cc
+		packages/nodejs/value/arguments.cc
+	PUBLIC FILE_SET CXX_MODULES FILES
+		packages/nodejs/include/_module.cc
+		packages/nodejs/include/arguments.cc
+		packages/nodejs/include/environment.cc
+		packages/nodejs/utility.cc
+		packages/nodejs/value/visit.cc
 		packages/third_party/napi.cc
 )
 target_compile_definitions(ivm_backend_v8 PRIVATE

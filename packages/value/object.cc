@@ -18,7 +18,9 @@ struct object_map;
 
 // Each object property descriptor should inherit from this
 export template <class Meta, class Value, class Type>
-	requires std::is_default_constructible_v<Type>
+	// nb: `std::is_default_constructible_v` doesn't work due to some forward declaration caching
+	// issue idk
+	requires std::constructible_from<Type>
 struct object_properties {
 		using subject_accept = accept<Meta, Type>;
 		using acceptor_type = void (*)(const subject_accept&, Type&, const Value&);
