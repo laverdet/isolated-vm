@@ -34,39 +34,6 @@ export class job_handle : public v8::JobHandle, public v8::JobDelegate {
 		std::thread thread;
 };
 
-export class task_runner : public v8::TaskRunner {
-	public:
-		virtual ~task_runner() = default;
-
-		virtual auto IdleTasksEnabled() -> bool;
-		virtual auto NonNestableTasksEnabled() const -> bool;
-		virtual auto NonNestableDelayedTasksEnabled() const -> bool;
-
-	protected:
-		auto PostTaskImpl(
-			std::unique_ptr<v8::Task> task,
-			const v8::SourceLocation& location
-		) -> void final;
-		auto PostNonNestableTaskImpl(
-			std::unique_ptr<v8::Task> task,
-			const v8::SourceLocation& location
-		) -> void final;
-		auto PostDelayedTaskImpl(
-			std::unique_ptr<v8::Task> task,
-			double delay_in_seconds,
-			const v8::SourceLocation& location
-		) -> void final;
-		auto PostNonNestableDelayedTaskImpl(
-			std::unique_ptr<v8::Task> task,
-			double delay_in_seconds,
-			const v8::SourceLocation& location
-		) -> void final;
-		auto PostIdleTaskImpl(
-			std::unique_ptr<v8::IdleTask> task,
-			const v8::SourceLocation& location
-		) -> void final;
-};
-
 // Once per process, performs initialization of v8. Process-wide shared state is managed in this
 // class.
 export class platform : non_moveable, public v8::Platform {

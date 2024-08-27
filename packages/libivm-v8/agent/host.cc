@@ -1,8 +1,7 @@
 module;
-#include <condition_variable>
 #include <experimental/scope>
+#include <functional>
 #include <memory>
-#include <mutex>
 #include <stop_token>
 #include <utility>
 module ivm.isolated_v8;
@@ -13,13 +12,28 @@ import ivm.utility;
 
 namespace ivm {
 
-// agent
-agent::agent(const std::shared_ptr<host>& host) :
-		host_{host} {}
-
 // lock
-agent::lock::lock(host& agent_host) :
-		agent_host{agent_host} {}
+thread_local agent::lock* current_lock{};
+
+agent::lock::lock(agent::host& host) :
+		host_{host},
+		prev_{std::exchange(current_lock, this)} {}
+
+agent::lock::~lock() {
+	current_lock = prev_;
+}
+
+auto agent::lock::expect() -> lock& {
+	return *current_lock;
+}
+
+// handle
+agent::agent(
+	const std::shared_ptr<host>& host,
+	const std::shared_ptr<foreground_runner>& task_runner
+) :
+		host_{host},
+		task_runner_{task_runner} {}
 
 // storage
 agent::storage::storage(scheduler& scheduler) :
@@ -32,17 +46,19 @@ auto agent::storage::scheduler_handle() -> scheduler::handle& {
 // host
 agent::host::host(
 	std::shared_ptr<storage> agent_storage,
-	agent::clock::any_clock clock,
+	std::shared_ptr<foreground_runner> task_runner,
+	clock::any_clock clock,
 	std::optional<double> random_seed
 ) :
-		agent_storage{std::move(agent_storage)},
-		array_buffer_allocator{v8::ArrayBuffer::Allocator::NewDefaultAllocator()},
+		agent_storage_{std::move(agent_storage)},
+		task_runner_{std::move(task_runner)},
+		array_buffer_allocator_{v8::ArrayBuffer::Allocator::NewDefaultAllocator()},
 		isolate_{v8::Isolate::Allocate()},
 		random_seed_{random_seed},
 		clock_{clock} {
 	isolate_->SetData(0, this);
 	auto create_params = v8::Isolate::CreateParams{};
-	create_params.array_buffer_allocator = array_buffer_allocator.get();
+	create_params.array_buffer_allocator = array_buffer_allocator_.get();
 	v8::Isolate::Initialize(isolate_.get(), create_params);
 }
 
@@ -54,26 +70,24 @@ auto agent::host::execute(const std::stop_token& stop_token) -> void {
 	// Enter isolate on this thread
 	const auto locker = v8::Locker{isolate_.get()};
 	const auto isolate_scope = v8::Isolate::Scope{isolate_.get()};
-	// Exclusive lock on tasks
-	auto lock = pending_tasks_.write_waitable([](const std::vector<task_type>& tasks) {
-		return !tasks.empty();
+	agent::lock agent_lock{*this};
+	// Enter task runner scope
+	task_runner_->scope([ & ](auto lock) {
+		do {
+			auto task = lock->acquire();
+			if (task) {
+				lock.unlock();
+				const auto handle_scope = v8::HandleScope{isolate_.get()};
+				std::visit([](auto& clock) { clock.begin_tick(); }, clock_);
+				task->Run();
+				lock.lock();
+			}
+		} while (std::invoke([ & ]() {
+			// Unlock v8 isolate before suspending
+			const auto unlocker = v8::Unlocker{isolate_.get()};
+			return lock.wait(stop_token);
+		}));
 	});
-	do {
-		// Accept task list locally, then unlock
-		auto tasks = std::move(*lock);
-		lock.unlock();
-		// Dispatch all tasks
-		auto agent_lock = agent::lock{*this};
-		for (auto& task : tasks) {
-			const auto handle_scope = v8::HandleScope{isolate_.get()};
-			std::visit([](auto& clock) { clock.begin_tick(); }, clock_);
-			take(std::move(task))(agent_lock);
-		}
-		// Unlock v8 isolate before suspendiconst ng
-		const auto unlocker = v8::Unlocker{isolate_.get()};
-		// Wait for more tasks
-		lock.lock();
-	} while (lock.wait(stop_token));
 }
 
 auto agent::host::isolate() -> v8::Isolate* {
@@ -100,19 +114,6 @@ auto agent::host::scratch_context() -> v8::Local<v8::Context> {
 	}
 }
 
-auto agent::agent::schedule_task(task_type task) -> void {
-	// auto agent_host::schedule_tasks(const std::shared_ptr<agent_host>& host, std::ranges::range auto tasks) -> void {
-	// 	auto locked = pending_tasks.write_notify();
-	// 	locked->tasks.reserve(locked->tasks.size() + std::ranges::size(tasks));
-	// 	std::ranges::move(tasks, std::back_inserter(locked->tasks));
-	// 	locked->host = host;
-	// }
-	auto host = this->host_.lock();
-	if (host) {
-		host->pending_tasks_.write_notify()->push_back(std::move(task));
-	}
-}
-
 auto agent::host::get_current() -> host* {
 	auto* isolate = v8::Isolate::TryGetCurrent();
 	if (isolate == nullptr) {
@@ -132,6 +133,10 @@ auto agent::host::take_random_seed() -> std::optional<double> {
 	} else {
 		return std::nullopt;
 	}
+}
+
+auto agent::host::task_runner(v8::TaskPriority /*priority*/) -> std::shared_ptr<v8::TaskRunner> {
+	return task_runner_;
 }
 
 // isolate_destructor

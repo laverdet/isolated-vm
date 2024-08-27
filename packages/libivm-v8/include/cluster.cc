@@ -31,19 +31,19 @@ auto cluster::make_agent(std::invocable<agent, agent::lock&> auto fn, agent::clo
 	auto agent_storage = std::make_shared<agent::storage>(scheduler_);
 	auto* storage_ptr = agent_storage.get();
 	scheduler_.run(
-		[ clock, random_seed ](
-			const std::stop_token& stop_token,
-			std::shared_ptr<agent::storage> agent_storage,
-			auto fn
-		) {
-			auto agent_host = std::make_shared<agent::host>(std::move(agent_storage), clock, random_seed);
+		[ clock,
+			random_seed,
+			agent_storage = std::move(agent_storage),
+			fn = std::move(fn) ](
+			const std::stop_token& stop_token
+		) mutable {
+			auto task_runner = std::make_shared<agent::foreground_runner>();
+			auto agent_host = std::make_shared<agent::host>(agent_storage, task_runner, clock, random_seed);
 			agent::lock agent_lock{*agent_host};
-			take(std::move(fn))(agent{agent_host}, agent_lock);
+			take(std::move(fn))(agent{agent_host, task_runner}, agent_lock);
 			agent_host->execute(stop_token);
 		},
-		storage_ptr->scheduler_handle(),
-		std::move(agent_storage),
-		std::move(fn)
+		storage_ptr->scheduler_handle()
 	);
 };
 

@@ -82,7 +82,7 @@ auto create_realm(Napi::Env env, environment& ienv, iv8::collected_external<agen
 			return value::direct_cast<Napi::Value>(realm_handle, env, ienv);
 		}
 	);
-	agent->schedule_task(
+	agent->schedule(
 		[ dispatch = std::move(dispatch) ](
 			ivm::agent::lock& lock
 		) mutable {

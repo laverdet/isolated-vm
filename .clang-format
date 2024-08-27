@@ -3,9 +3,10 @@ ColumnLimit: 0
 
 AlignAfterOpenBracket: BlockIndent
 AlignOperands: DontAlign
-AllowAllArgumentsOnNextLine: false
+AllowAllArgumentsOnNextLine: true
 AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortCaseLabelsOnASingleLine: true
+AllowShortEnumsOnASingleLine: true
 # nb: Causes unconditional break on short initializers
 AllowShortFunctionsOnASingleLine: Inline
 BinPackArguments: false
@@ -13,7 +14,7 @@ BinPackParameters: false
 # nb: Causes unconditional break on short initializers
 BreakConstructorInitializers: AfterColon
 # nb: `template <> struct {}` tends to break with `MultiLine`?
-BreakTemplateDeclarations: MultiLine
+BreakTemplateDeclarations: Leave
 ContinuationIndentWidth: 2
 IncludeBlocks: Merge
 # LambdaBodyIndentation: OuterScope

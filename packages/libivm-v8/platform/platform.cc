@@ -1,7 +1,7 @@
 module;
+#include <chrono>
 #include <cstring>
 #include <memory>
-#include <mutex>
 #include <random>
 #include <ranges>
 module ivm.isolated_v8;
@@ -50,17 +50,15 @@ auto platform::NumberOfWorkerThreads() -> int {
 	return 0;
 }
 
-auto platform::GetForegroundTaskRunner(
-	v8::Isolate* isolate
-) -> std::shared_ptr<v8::TaskRunner> {
-	return default_platform_->GetForegroundTaskRunner(isolate);
+auto platform::GetForegroundTaskRunner(v8::Isolate* isolate) -> std::shared_ptr<v8::TaskRunner> {
+	return GetForegroundTaskRunner(isolate, v8::TaskPriority::kUserBlocking);
 }
 
 auto platform::GetForegroundTaskRunner(
 	v8::Isolate* isolate,
 	v8::TaskPriority priority
 ) -> std::shared_ptr<v8::TaskRunner> {
-	return default_platform_->GetForegroundTaskRunner(isolate, priority);
+	return agent::host::get_current(isolate).task_runner(priority);
 }
 
 auto platform::CreateJobImpl(
@@ -72,7 +70,7 @@ auto platform::CreateJobImpl(
 };
 
 auto platform::PostTaskOnWorkerThreadImpl(
-	v8::TaskPriority priority,
+	v8::TaskPriority /*priority*/,
 	std::unique_ptr<v8::Task> task,
 	const v8::SourceLocation& location
 ) -> void {
@@ -80,7 +78,7 @@ auto platform::PostTaskOnWorkerThreadImpl(
 };
 
 auto platform::PostDelayedTaskOnWorkerThreadImpl(
-	v8::TaskPriority priority,
+	v8::TaskPriority /*priority*/,
 	std::unique_ptr<v8::Task> task,
 	double delay_in_seconds,
 	const v8::SourceLocation& location

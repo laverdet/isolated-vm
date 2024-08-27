@@ -40,7 +40,7 @@ auto job_handle::Join() -> void {
 
 auto job_handle::NotifyConcurrencyIncrease() -> void {}
 
-auto job_handle::UpdatePriority(v8::TaskPriority new_priority) -> void {
+auto job_handle::UpdatePriority(v8::TaskPriority /*new_priority*/) -> void {
 }
 
 auto job_handle::UpdatePriorityEnabled() const -> bool {

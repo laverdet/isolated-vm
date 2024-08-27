@@ -25,7 +25,7 @@ auto compile_script(
 			return value::direct_cast<Napi::Value>(script_handle, env, ienv);
 		}
 	);
-	agent->schedule_task(
+	agent->schedule(
 		[ code_string = std::move(code_string),
 			dispatch = std::move(dispatch) ](
 			ivm::agent::lock& lock
@@ -49,7 +49,7 @@ auto run_script(
 			return value::transfer_strict<Napi::Value>(std::move(*result), env, ienv);
 		}
 	);
-	agent->schedule_task(
+	agent->schedule(
 		[ &realm,
 			&script,
 			dispatch = std::move(dispatch) ](

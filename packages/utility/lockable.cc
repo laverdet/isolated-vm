@@ -1,4 +1,5 @@
 module;
+#include <condition_variable>
 #include <functional>
 #include <mutex>
 #include <shared_mutex>
@@ -36,16 +37,20 @@ concept waitable = requires(Type cv, Lock lock) {
 // This is the return value of `read`, `write`, etc
 template <class Resource, class Lock>
 class locked : public Lock {
+	private:
+		using pointer = std::add_pointer_t<Resource>;
+		using reference = Resource;
+
 	public:
-		explicit locked(Resource& resource, auto&&... lock_args) :
+		explicit locked(reference resource, auto&&... lock_args) :
 				Lock{std::forward<decltype(lock_args)>(lock_args)...},
 				resource{&resource} {}
 
-		auto operator*() -> Resource& { return *resource; }
-		auto operator->() -> Resource* { return resource; }
+		auto operator*() -> reference { return *resource; }
+		auto operator->() -> pointer { return resource; }
 
 	private:
-		Resource* resource;
+		pointer resource;
 };
 
 // Holds a lock and on destruction notifies the given condition variable
@@ -102,7 +107,8 @@ class lock_waitable {
 			cv->wait(lock_, predicate);
 		}
 
-		auto wait(std::stop_token stop_token) -> bool {
+		auto wait(std::stop_token stop_token) -> bool
+			requires std::same_as<Waitable, std::condition_variable_any> {
 			return cv->wait(lock_, stop_token, predicate);
 		}
 
@@ -116,27 +122,50 @@ export template <class Resource, basic_lockable Mutex = std::mutex, class Condit
 class lockable {
 	public:
 		using mutex_type = Mutex;
+		using reference = Resource&;
+		using const_reference = const Resource&;
+
+	private:
+		using read_scope =
+			std::conditional_t<shared_lockable<mutex_type>, std::shared_lock<mutex_type>, std::scoped_lock<mutex_type>>;
+		using read_lock =
+			std::conditional_t<shared_lockable<mutex_type>, std::shared_lock<mutex_type>, std::unique_lock<mutex_type>>;
+
+		// Internal bound predicate type
+		template <class Predicate>
+		using predicate_type = decltype(std::bind(std::declval<Predicate>(), std::cref(std::declval<reference>())));
+
+	public:
+		using read_type = locked<const_reference, read_scope>;
+		using write_type = locked<reference, std::scoped_lock<mutex_type>>;
+
+		template <class Predicate>
+		using read_waitable_type =
+			locked<const_reference, lock_waitable<read_lock, ConditionVariable, predicate_type<Predicate>>>;
+		template <class Predicate>
+		using write_notify_type =
+			locked<reference, lock_notify<std::unique_lock<mutex_type>, ConditionVariable, predicate_type<Predicate>>>;
+		template <class Predicate>
+		using write_waitable_type =
+			locked<reference, lock_waitable<std::unique_lock<mutex_type>, ConditionVariable, predicate_type<Predicate>>>;
 
 		explicit lockable(auto&&... args) :
-				resource{std::forward<decltype(args)>(args)...} {}
+				resource_{std::forward<decltype(args)>(args)...} {}
 
-		auto read() {
-			using lock_type = std::conditional_t<shared_lockable<Mutex>, std::shared_lock<Mutex>, std::scoped_lock<Mutex>>;
-			using readable = locked<const Resource, lock_type>;
-			return readable{resource, mutex};
+		auto read() -> read_type {
+			return {resource_, mutex_};
 		}
 
-		auto read_waitable(std::predicate<const Resource&> auto predicate)
+		auto read_waitable(std::predicate<const_reference> auto predicate) -> read_waitable_type<decltype(predicate)>
 			requires notifiable<ConditionVariable> {
-			auto bound_predicate = std::bind(std::move(predicate), std::cref(resource));
-			using lock_type = std::conditional_t<shared_lockable<Mutex>, std::shared_lock<Mutex>, std::unique_lock<Mutex>>;
-			using readable = locked<const Resource, lock_waitable<lock_type, ConditionVariable, decltype(bound_predicate)>>;
-			return readable{resource, condition_variable, std::move(bound_predicate), mutex};
+			auto bound_predicate = std::bind(std::move(predicate), std::cref(resource_));
+			return read_waitable_type<decltype(predicate)>{
+				resource_, condition_variable_, std::move(bound_predicate), mutex_
+			};
 		}
 
-		auto write() {
-			using writable = locked<Resource, std::scoped_lock<Mutex>>;
-			return writable{resource, mutex};
+		auto write() -> write_type {
+			return write_type{resource_, mutex_};
 		}
 
 		auto write_notify()
@@ -144,22 +173,24 @@ class lockable {
 			return write_notify([](auto&) { return true; });
 		}
 
-		auto write_notify(std::predicate<const Resource&> auto predicate)
+		auto write_notify(std::predicate<const_reference> auto predicate) -> write_notify_type<decltype(predicate)>
 			requires notifiable<ConditionVariable> {
-			auto bound_predicate = std::bind(std::move(predicate), std::cref(resource));
-			using writable = locked<Resource, lock_notify<std::scoped_lock<Mutex>, ConditionVariable, decltype(bound_predicate)>>;
-			return writable{resource, condition_variable, std::move(bound_predicate), mutex};
+			auto bound_predicate = std::bind(std::move(predicate), std::cref(resource_));
+			return write_notify_type<decltype(predicate)>{
+				resource_, condition_variable_, std::move(bound_predicate), mutex_
+			};
 		}
 
-		auto write_waitable(std::predicate<const Resource&> auto predicate)
-			requires waitable<ConditionVariable, std::unique_lock<Mutex>> {
-			auto bound_predicate = std::bind(std::move(predicate), std::cref(resource));
-			using writable = locked<Resource, lock_waitable<std::unique_lock<Mutex>, ConditionVariable, decltype(bound_predicate)>>;
-			return writable{resource, condition_variable, std::move(bound_predicate), mutex};
+		auto write_waitable(std::predicate<const_reference> auto predicate) -> write_waitable_type<decltype(predicate)>
+			requires waitable<ConditionVariable, std::unique_lock<mutex_type>> {
+			auto bound_predicate = std::bind(std::move(predicate), std::cref(resource_));
+			return write_waitable_type<decltype(predicate)>{
+				resource_, condition_variable_, std::move(bound_predicate), mutex_
+			};
 		}
 
 	private:
-		Mutex mutex;
-		Resource resource;
-		[[no_unique_address]] ConditionVariable condition_variable;
+		mutex_type mutex_;
+		Resource resource_;
+		[[no_unique_address]] ConditionVariable condition_variable_;
 };
