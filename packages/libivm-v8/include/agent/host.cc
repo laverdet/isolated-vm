@@ -1,5 +1,4 @@
 module;
-#include <experimental/scope>
 #include <memory>
 #include <optional>
 #include <stop_token>
@@ -52,7 +51,7 @@ class agent::host : non_moveable {
 		auto clock_time_ms() -> int64_t;
 		auto execute(const std::stop_token& stop_token) -> void;
 		auto isolate() -> v8::Isolate*;
-		auto random_seed_latch() -> std::experimental::scope_exit<random_seed_unlatch>;
+		auto random_seed_latch() -> scope_exit<random_seed_unlatch>;
 		auto scratch_context() -> v8::Local<v8::Context>;
 		auto take_random_seed() -> std::optional<double>;
 		auto task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner>;

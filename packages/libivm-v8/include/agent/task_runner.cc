@@ -1,7 +1,6 @@
 module;
 #include <chrono>
 #include <condition_variable>
-#include <experimental/scope>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -71,7 +70,7 @@ auto agent::foreground_runner::schedule_non_nestable(std::invocable<lock&> auto 
 
 auto agent::foreground_runner::scope(std::invocable<write_waitable_type> auto body) -> decltype(auto) {
 	++nesting_depth_;
-	auto scope = std::experimental::scope_exit{[ this ] { --nesting_depth_; }};
+	auto scope = scope_exit{[ this ] { --nesting_depth_; }};
 	return body(storage_.write_waitable(&storage::should_resume));
 }
 

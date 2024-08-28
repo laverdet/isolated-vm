@@ -1,4 +1,8 @@
 module;
+#ifdef _LIBCPP_VERSION
+// nb: Symbol visibility hack
+#include <__iterator/wrap_iter.h>
+#endif
 #include <utility>
 export module ivm.v8:accept;
 import :date;

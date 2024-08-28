@@ -19,24 +19,3 @@ constexpr inline bool is_convertible_without_narrowing_v<From, To> =
 
 export template <class From, class To>
 concept convertible_without_narrowing = is_convertible_without_narrowing_v<From, To>;
-
-// `boost::noncopyable` actually prevents moving too
-export class non_copyable {
-	public:
-		non_copyable() = default;
-		non_copyable(const non_copyable&) = delete;
-		non_copyable(non_copyable&&) = default;
-		~non_copyable() = default;
-		auto operator=(const non_copyable&) -> non_copyable& = delete;
-		auto operator=(non_copyable&&) -> non_copyable& = default;
-};
-
-export class non_moveable {
-	public:
-		non_moveable() = default;
-		non_moveable(const non_moveable&) = delete;
-		non_moveable(non_moveable&&) = delete;
-		~non_moveable() = default;
-		auto operator=(const non_moveable&) -> non_moveable& = delete;
-		auto operator=(non_moveable&&) -> non_moveable& = delete;
-};

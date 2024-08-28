@@ -1,6 +1,5 @@
 module;
 #include <chrono>
-#include <experimental/scope>
 #include <optional>
 #include <variant>
 export module ivm.isolated_v8:agent.clock;
@@ -9,6 +8,11 @@ import ivm.value;
 
 using namespace std::chrono;
 using ivm::value::js_clock;
+#ifdef _LIBCPP_VERSION
+namespace std::chrono {
+using utc_clock = system_clock;
+}
+#endif
 
 namespace ivm {
 

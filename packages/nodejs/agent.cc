@@ -12,7 +12,6 @@ import ivm.v8;
 import ivm.value;
 import napi;
 import v8;
-using namespace std::literals;
 
 namespace ivm {
 

@@ -1,4 +1,5 @@
 module;
+#include <algorithm>
 #include <cstdint>
 #include <expected>
 #include <format>

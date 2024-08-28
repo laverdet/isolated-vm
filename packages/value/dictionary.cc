@@ -13,8 +13,8 @@ class dictionary_value {
 	public:
 		using value_type = std::pair<Key, Value>;
 		using container_type = std::vector<value_type>;
-		using const_iterator = typename container_type::const_iterator;
-		using iterator = typename container_type::iterator;
+		using const_iterator = container_type::const_iterator;
+		using iterator = container_type::iterator;
 
 		dictionary_value() = default;
 		explicit dictionary_value(std::ranges::range auto&& range) :

@@ -1,7 +1,6 @@
 module;
 #include <algorithm>
 #include <chrono>
-#include <experimental/scope>
 #include <memory>
 #include <queue>
 #include <utility>

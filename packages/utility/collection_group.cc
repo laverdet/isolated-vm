@@ -3,7 +3,7 @@ module;
 #include <memory>
 #include <utility>
 export module ivm.utility:collection_group;
-import :type_traits;
+import :utility;
 
 // v8 may not invoke destructors on `External` objects, but we still want to give it owning
 // references to resources. This provides an allocator-like interface to manage those resources. If

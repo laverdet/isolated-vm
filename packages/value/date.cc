@@ -2,6 +2,11 @@ module;
 #include <chrono>
 export module ivm.value:date;
 import :tag;
+#ifdef _LIBCPP_VERSION
+namespace std::chrono {
+using utc_clock = system_clock;
+}
+#endif
 
 namespace ivm::value {
 
@@ -26,30 +31,11 @@ struct tag_for<js_clock::time_point> {
 
 } // namespace ivm::value
 
-namespace std::chrono {
-
-using namespace ivm;
-
-template <>
-struct clock_time_conversion<utc_clock, value::js_clock> {
-		auto operator()(value::js_clock::time_point time) const -> utc_clock::time_point {
-			return utc_clock::time_point{duration_cast<utc_clock::duration>(time.time_since_epoch())};
-		}
-};
-
-template <>
-struct clock_time_conversion<value::js_clock, utc_clock> {
-		auto operator()(utc_clock::time_point time) const -> value::js_clock::time_point {
-			return value::js_clock::time_point{duration_cast<value::js_clock::duration>(time.time_since_epoch())};
-		}
-};
-
-} // namespace std::chrono
-
 namespace ivm::value {
 
 auto js_clock::now() noexcept -> time_point {
-	return clock_cast<js_clock>(std::chrono::utc_clock::now());
+	auto time_ms = duration_cast<js_clock::duration>(std::chrono::utc_clock::now().time_since_epoch());
+	return time_point{time_ms};
 };
 
 } // namespace ivm::value

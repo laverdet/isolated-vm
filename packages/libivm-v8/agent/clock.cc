@@ -8,6 +8,11 @@ import ivm.value;
 
 using namespace std::chrono;
 using ivm::value::js_clock;
+#ifdef _LIBCPP_VERSION
+namespace std::chrono {
+using utc_clock = system_clock;
+}
+#endif
 
 namespace ivm {
 
@@ -25,7 +30,7 @@ clock::deterministic::deterministic(
 	js_clock::time_point epoch,
 	js_clock::duration increment
 ) :
-		epoch_{clock_cast<utc_clock>(epoch)},
+		epoch_{duration_cast<utc_clock::duration>(epoch.time_since_epoch())},
 		increment_{duration_cast<utc_clock::duration>(increment)} {}
 
 auto clock::deterministic::clock_time() -> utc_clock::time_point {
