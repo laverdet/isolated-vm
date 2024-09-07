@@ -20,8 +20,9 @@ auto compile_script(
 ) -> Napi::Value {
 	auto [ dispatch, promise ] = make_promise<ivm::script>(
 		env,
-		[ &ienv ](Napi::Env env, std::unique_ptr<ivm::script> script) -> expected_value {
-			auto script_handle = iv8::make_collected_external(ienv.collection(), ienv.isolate(), std::move(*script));
+		ienv.collection(),
+		[ &ienv ](Napi::Env env, ivm::script script) -> expected_value {
+			auto script_handle = iv8::make_collected_external(ienv.collection(), ienv.isolate(), std::move(script));
 			return value::direct_cast<Napi::Value>(script_handle, env, ienv);
 		}
 	);
@@ -45,8 +46,9 @@ auto run_script(
 ) -> Napi::Value {
 	auto [ dispatch, promise ] = make_promise<value::value_t>(
 		env,
-		[ &ienv ](Napi::Env env, std::unique_ptr<value::value_t> result) -> expected_value {
-			return value::transfer_strict<Napi::Value>(std::move(*result), env, ienv);
+		ienv.collection(),
+		[ &ienv ](Napi::Env env, value::value_t result) -> expected_value {
+			return value::transfer_strict<Napi::Value>(std::move(result), env, ienv);
 		}
 	);
 	agent->schedule(

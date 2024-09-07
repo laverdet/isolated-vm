@@ -18,6 +18,10 @@ export class collection_group {
 	public:
 		auto collect(auto* ptr) -> void;
 
+		// Rewraps a previously-released unique_ptr which was returned from `make_ptr`
+		template <class Type>
+		auto accept_ptr(Type* ptr);
+
 		template <class Type>
 		auto make_ptr(auto&&... args)
 			requires std::constructible_from<Type, decltype(args)...>;
@@ -105,6 +109,12 @@ auto collection_group::collect(auto* ptr) -> void {
 template <class Type>
 auto collection_group::insert() -> holder& {
 	return *objects.emplace(std::type_identity<Type>{}).first;
+}
+
+template <class Type>
+auto collection_group::accept_ptr(Type* ptr) {
+	auto destructor = [ this ](Type* ptr) { collect(ptr); };
+	return std::unique_ptr<Type, decltype(destructor)>{ptr, destructor};
 }
 
 template <class Type>
