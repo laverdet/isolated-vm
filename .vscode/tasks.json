@@ -37,6 +37,17 @@
       ],
       "default": "component"
     },
+    {
+      "type": "pickString",
+      "id": "nodejs_version",
+      "description": "Which nodejs version to link against? For debug builds of isolated-vm the headers must match the nodejs version.",
+      "options": [
+        "18.0.0",
+        "20.0.0",
+        "22.0.0",
+      ],
+      "default": "22.0.0",
+    },
 	],
 	"tasks": [
 		{
@@ -78,12 +89,13 @@
 		{
 			"label": "cmake: configure",
 			"type": "shell",
-			"command": "set -eu -a; source $ENV_FILE; source $V8_TARGET/env; CXX=clang cmake -DNAPI_INCLUDE_DIR=$(node -p 'require(\"node-addon-api\").include_dir') -DCMAKE_BUILD_TYPE=${input:ivm_target} -G Ninja -B build",
-			"dependsOn": [ "cmake: clean" ],
+			"command": "set -eu; set -a; . $ENV_FILE; . $V8_OUT_PATH/env; cmake -DCMAKE_BUILD_TYPE=${input:ivm_target} -DIVM_HOST_PLATFORM=linux-gnu -DIVM_HOST_ARCH=\"$(uname -m)\" -DV8_INCLUDE_DIR=\"$V8_INCLUDE_DIR\" -DV8_INCLUDE_GN_FILE=\"$V8_INCLUDE_GN_FILE\" -DV8_OUT_PATH=\"$V8_OUT_PATH\" -DV8_LIBRARY_TYPE=\"$V8_LIBRARY_TYPE\" -DCMAKE_CXX_COMPILER=\"$(realpath \"$(which clang)\")\" -DNAPI_INCLUDE_DIR=$(node -p 'require(\"node-addon-api\").include_dir') -DNODE_INCLUDE_DIR=\"$NODE_INCLUDE_PATH\" -DCMAKE_BUILD_TYPE=${input:ivm_target} -G Ninja -B build",
+			"dependsOn": [ "cmake: clean", "ninja: compile_commands.json" ],
 			"problemMatcher": [],
 			"presentation": {
 				"clear": true,
-				"revealProblems": "onProblem",
+				"panel": "dedicated",
+				"reveal": "silent",
 				"showReuseMessage": false,
 			},
 			"icon": { "id": "wrench" },
@@ -108,8 +120,7 @@
 			"command": "set -eu; ninja -C build -t compdb | jq '[ .[] | select(.command | contains(\" -o \") and (contains(\"clang-scan-deps\") | not)) ]' > compile_commands.json",
 			"problemMatcher": [],
 			"presentation": {
-				"close": true,
-				"reveal": "always",
+				"reveal": "silent",
 			},
 			"icon": { "id": "magnet" },
 		},
@@ -120,22 +131,31 @@
 			"options": { "cwd": "/v8" },
 			"problemMatcher": [],
 			"presentation": {
-				"close": true,
-				"reveal": "always",
+				"reveal": "silent",
 			},
 			"icon": { "id": "versions" },
 		},
 		{
 			"label": "v8: build",
 			"type": "shell",
-			"command": "set -eu; source $ENV_FILE; export V8_TARGET=$(pwd)/out/$V8_REF/${input:v8_target}; v8_build $V8_TARGET; ivm_write_env V8_TARGET",
+			"command": "set -eu; set -a; . $ENV_FILE; export V8_OUT_PATH=$(pwd)/out/$V8_REF/${input:v8_target}; v8_build $V8_OUT_PATH; ivm_write_env V8_OUT_PATH",
 			"options": { "cwd": "/v8" },
 			"problemMatcher": [],
 			"presentation": {
-				"close": true,
 				"reveal": "always",
 			},
 			"icon": { "id": "library" },
+		},
+		{
+			"label": "nodejs: select",
+			"type": "shell",
+			"command": "set -eu; export NODE_INCLUDE_PATH=$(nodejs_select ~/local/nodejs/${input:nodejs_version}); ivm_write_env NODE_INCLUDE_PATH",
+			"options": { "cwd": "${userHome}" },
+			"problemMatcher": [],
+			"presentation": {
+				"reveal": "silent",
+			},
+			"icon": { "id": "versions" },
 		},
 	],
 }

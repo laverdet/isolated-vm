@@ -1,0 +1,11 @@
+description: |
+  Runs `gclient sync` for the v8 source tree. Extra indirection here because on the gclient side
+  they don't support musl, but on the Github side they don't support Docker except for Linux.
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/v8/gclient-sync/docker
+      if: runner.os == 'Linux'
+    - uses: ./.github/actions/v8/gclient-sync/composite
+      if: runner.os != 'Linux'

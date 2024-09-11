@@ -1,4 +1,4 @@
-declare module "*.backend_v8.node" {
+declare module "backend_v8.node" {
 	class Agent { readonly #private; }
 	export namespace Agent {
 		type Clock = Clock.Deterministic | Clock.Microtask | Clock.Realtime | Clock.System;

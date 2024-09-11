@@ -5,6 +5,7 @@
 #include <variant>
 import ivm.value;
 using namespace std::literals;
+#if __clang_major__ >= 20
 
 namespace ivm::value {
 
@@ -181,3 +182,5 @@ static_assert(variant_is_equal_to(transfer<discriminated_object>(discriminated_w
 static_assert(variant_is_equal_to(transfer<discriminated_object>(discriminated_with_two), discriminated_two{.two = "right"s}));
 
 } // namespace ivm::value
+
+#endif

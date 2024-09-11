@@ -6,8 +6,10 @@ module;
 #include <utility>
 export module ivm.isolated_v8:cluster;
 import :agent;
+import :agent.lock;
 import :platform;
 import :scheduler;
+import ivm.utility;
 
 namespace ivm {
 

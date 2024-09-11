@@ -5,6 +5,7 @@ module;
 export module ivm.value:enumeration;
 import ivm.utility;
 import :accept;
+import :tag;
 
 namespace ivm::value {
 

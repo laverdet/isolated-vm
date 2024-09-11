@@ -7,7 +7,6 @@
     "#backend-v8": "./backend_v8.cjs"
   },
   "scripts": {
-    "preinstall": "echo",
     "clang-format": "find packages -name '*.cc' -exec clang-format -i {} \\;",
     "clang-tidy": "find packages -name '*.cc' -print0 | xargs -0 clang-tidy --fix",
     "eslint": "eslint --fix packages",

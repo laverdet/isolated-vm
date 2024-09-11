@@ -1,17 +1,33 @@
 cmake_minimum_required(VERSION 3.30.0 FATAL_ERROR)
 
 # Variables
-set(ARCH "arm64")
-set(PLATFORM "linux")
-set(V8_INCLUDE_DIR "$ENV{V8_INCLUDE}")
-set(V8_LIBRARY_TYPE "$ENV{V8_LIBRARY}")
-set(V8_TARGET_DIR "$ENV{V8_TARGET}")
+if (NOT DEFINED IVM_HOST_PLATFORM)
+	message(FATAL_ERROR "IVM_HOST_PLATFORM is not set")
+endif()
+if (NOT DEFINED IVM_HOST_ARCH)
+	message(FATAL_ERROR "IVM_HOST_ARCH is not set")
+elseif(IVM_HOST_ARCH STREQUAL "aarch64")
+	set(IVM_HOST_ARCH "arm64")
+endif()
+
+if (NOT DEFINED V8_INCLUDE_DIR)
+	message(FATAL_ERROR "V8_INCLUDE_DIR is not set")
+endif()
+if (NOT DEFINED V8_INCLUDE_GN_FILE)
+	message(FATAL_ERROR "V8_INCLUDE_GN_FILE is not set")
+endif()
+if (NOT DEFINED V8_LIBRARY_TYPE)
+	message(FATAL_ERROR "V8_LIBRARY_TYPE is not set")
+endif()
+if (NOT DEFINED V8_OUT_PATH)
+	message(FATAL_ERROR "V8_OUT_PATH is not set")
+endif()
 
 # Project config
 project(isolated_vm LANGUAGES CXX)
 
 # Boost requirement
-find_package(Boost 1.83 CONFIG COMPONENTS thread)
+find_package(Boost 1.83)
 
 # C++26 environment w/ `import std`
 set(CMAKE_CXX_STANDARD 26)
@@ -26,8 +42,14 @@ add_compile_options(
 	-Wpedantic
 )
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+	# `std::stop_token` and maybe others
+	add_compile_definitions(_LIBCPP_ENABLE_EXPERIMENTAL)
 	# Required for clangd w/ modules
 	add_compile_options(-fretain-comments-from-system-headers)
+	# This enables `#include <expected>` somehow
+	if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 20)
+		add_compile_options(-D__cpp_concepts=202002L -Wno-builtin-macro-redefined)
+	endif()
 endif()
 
 # Release type compiler flags
@@ -141,21 +163,22 @@ set(IVM_TRICKSHOT_DEFINES
 add_library(ivm_v8_embedded EXCLUDE_FROM_ALL OBJECT)
 target_sources(ivm_v8_embedded ${IVM_V8_COMMON_SOURCES})
 target_compile_definitions(ivm_v8_embedded PRIVATE ${IVM_TRICKSHOT_DEFINES})
-target_compile_options(ivm_v8_embedded PRIVATE -include ${V8_TARGET_DIR}/include/v8-gn.h)
+target_compile_options(ivm_v8_embedded PRIVATE -include ${V8_INCLUDE_GN_FILE})
 target_include_directories(ivm_v8_embedded SYSTEM PRIVATE ${V8_INCLUDE_DIR})
 target_link_libraries(ivm_v8_embedded PUBLIC ivm_base ivm_utility)
 if (V8_LIBRARY_TYPE STREQUAL "static")
-	link_directories(${V8_TARGET_DIR}/obj)
+	link_directories(${V8_OUT_PATH}/obj)
 	target_link_libraries(ivm_v8_embedded PUBLIC v8_monolith)
 else()
-	link_directories(${V8_TARGET_DIR})
+	link_directories(${V8_OUT_PATH})
 	target_link_libraries(ivm_v8_embedded PUBLIC v8 v8_libbase v8_libplatform)
 endif()
 
 # Linked nodejs v8 interface
 add_library(ivm_v8_nodejs EXCLUDE_FROM_ALL OBJECT)
+target_compile_definitions(ivm_v8_nodejs PRIVATE IVM_V8_VIA_NODEJS)
 target_sources(ivm_v8_nodejs ${IVM_V8_COMMON_SOURCES})
-target_include_directories(ivm_v8_nodejs SYSTEM PRIVATE /opt/include/node)
+target_include_directories(ivm_v8_nodejs SYSTEM PRIVATE ${NODE_INCLUDE_DIR})
 target_link_libraries(ivm_v8_nodejs PUBLIC ivm_base ivm_utility)
 
 # isolated v8 backend
@@ -208,16 +231,10 @@ target_sources(ivm_backend_v8
 target_compile_definitions(ivm_backend_v8 PRIVATE
 	NODE_ADDON_API_DISABLE_DEPRECATED
 )
-target_include_directories(ivm_backend_v8 SYSTEM PRIVATE /opt/include/node ${NAPI_INCLUDE_DIR})
+target_include_directories(ivm_backend_v8 SYSTEM PRIVATE ${NAPI_INCLUDE_DIR} ${NODE_INCLUDE_DIR})
 target_link_libraries(ivm_backend_v8 PUBLIC ivm_base ivm_isolated_v8 ivm_utility ivm_v8_nodejs)
 
 # Copy out to ./dist
 add_custom_command(TARGET ivm_backend_v8 POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_SONAME_FILE:ivm_backend_v8> ${CMAKE_CURRENT_SOURCE_DIR}/dist/libivm.backend_v8.node
+	COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_SONAME_FILE:ivm_backend_v8> ${CMAKE_CURRENT_SOURCE_DIR}/dist/backend_v8/${IVM_HOST_PLATFORM}-${IVM_HOST_ARCH}/backend_v8.node
 )
-
-# Development testing of the library
-add_executable(ivm_test EXCLUDE_FROM_ALL)
-target_sources(ivm_test PUBLIC test.cc)
-target_link_libraries(ivm_test PUBLIC ivm_base ivm_utility)
-set_target_properties(ivm_test PROPERTIES LINK_FLAGS "-lstdc++")

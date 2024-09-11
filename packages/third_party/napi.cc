@@ -1,9 +1,9 @@
 module;
 #include <napi.h>
 export module napi;
-export using napi_env = ::napi_env;
-export using napi_status = ::napi_status;
-export using napi_value = ::napi_value;
+export using napi_env = napi_env;
+export using napi_status = napi_status;
+export using napi_value = napi_value;
 namespace Napi {
 export using Napi::Array;
 export using Napi::CallbackInfo;

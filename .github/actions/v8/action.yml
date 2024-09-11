@@ -1,0 +1,84 @@
+description: Build v8
+
+inputs:
+  # linux-gnu, linux-musl, windows, darwin
+  platform:
+    required: true
+  # x64, arm64
+  arch:
+    required: true
+  # debug, optdebug, release
+  configuration:
+    required: true
+    default: release
+  # v8 ref
+  ref:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # Install dependencies
+    - uses: laverdet/install@v0
+      with:
+        packages: |
+          bash
+          build-essential
+          coreutils
+          curl
+          git
+          ninja-build
+          patch
+          pkgconf
+          python3
+          ssh
+          xz-utils
+          debian#ca-certificates
+          debian#libglib2.0-dev
+
+    # Install `gn`
+    - uses: ./.github/actions/v8/gn
+      with:
+        platform: ${{ inputs.platform }}
+
+    # Checkout and sync v8
+    - uses: actions/checkout@v4
+      with:
+        path: ./deps/v8
+        ref: ${{ inputs.ref }}
+        repository: v8/v8
+    - uses: ./.github/actions/v8/gclient-sync
+    - shell: sh
+      working-directory: deps/v8
+      env:
+        REF: ${{ inputs.ref }}
+      run: |
+        SKIP_SYNC=thanks PATCH_DIR="$GITHUB_WORKSPACE/patches" \
+          v8_select "$REF"
+
+    # Linux builds require sysroot for libc version compatibility
+    - shell: sh
+      if: inputs.platform == 'linux-gnu'
+      env:
+        ARCH: ${{ inputs.arch }}
+      run: |
+        set -u
+        echo ::group::Linux sysroot
+        # https://github.com/frida/v8-build/blob/1a249a81b0979f9495ddfca55b1f7846a5247890/detect_host_arch.py
+        deps/v8/build/linux/sysroot_scripts/install-sysroot.py --arch "$ARCH"
+        echo ::endgroup::
+
+    # Finally, perform the v8 build
+    - shell: sh
+      working-directory: deps/v8
+      env:
+        REF: ${{ inputs.ref }}
+        TARGET: ${{ inputs.platform }}.${{ inputs.arch }}.${{ inputs.configuration }}
+      run: |
+        set -u
+        echo ::group::Build v8
+        v8_build "out/$REF/$TARGET"
+        rm -rf "out/$REF/$TARGET/gen"
+        find out -type f ! -name '*.so' ! -name '*.a' ! -name '*.h' -delete
+        find out -type d -empty -delete
+        echo ::endgroup::

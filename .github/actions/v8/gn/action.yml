@@ -1,0 +1,60 @@
+description: Setup `gn` tool on this runner
+
+inputs:
+  platform:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # Just install depot_tools if not musl
+    - shell: sh
+      if: inputs.platform != 'linux-musl'
+      run: |
+        DEPOT_TOOLS=$RUNNER_TOOL_CACHE/depot_tools
+        mkdir -p ~/.config/depot_tools
+        echo '{"is-googler":false,"countdown":10,"opt-in":null,"version":3}' > ~/.config/depot_tools/metrics.cfg
+        git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git --depth 1 "$DEPOT_TOOLS"
+        PATH=$PATH:$DEPOT_TOOLS
+        update_depot_tools
+        echo "$DEPOT_TOOLS" >> "$GITHUB_PATH"
+
+    # GNU `tar` & `zstd` is needed for `actions/cache`
+    - uses: laverdet/install@v0
+      if: inputs.platform == 'linux-musl'
+      with:
+        packages: tar zstd
+
+    # Restore musl cache
+    - uses: actions/cache/restore@v4
+      id: cache
+      if: inputs.platform == 'linux-musl'
+      with:
+        key: gn/${{ runner.arch }}.${{ inputs.platform }}
+        path: ./deps/gn
+
+    # Build musl gn on cache miss
+    - shell: sh
+      if: |
+        steps.cache.outcome == 'success' &&
+        steps.cache.outputs.cache-hit != 'true'
+      run: |
+        git clone https://gn.googlesource.com/gn deps/gn
+        cd deps/gn
+        CFLAGS=-D_LARGEFILE64_SOURCE build/gen.py
+        ninja -C out
+
+    # Save musl cache
+    - uses: actions/cache/save@v4
+      if: |
+        steps.cache.outcome == 'success' &&
+        steps.cache.outputs.cache-hit != 'true'
+      with:
+        key: ${{ steps.cache.outputs.cache-primary-key }}
+        path: ./deps/gn
+
+    # Add musl gn to PATH
+    - shell: sh
+      if: steps.cache.outcome == 'success'
+      run: |
+        echo "$PWD/deps/gn/out" >> "$GITHUB_PATH"

@@ -1,10 +1,27 @@
+import * as fs from "node:fs";
 import { createRequire } from "node:module";
+import { platform } from "node:process";
 
+export type * from "backend_v8.node";
+
+// Detect libc version
+const backendPlatform = function() {
+	if (platform === "linux") {
+		try {
+			if (fs.readFileSync("/usr/bin/ldd", "latin1").includes("ld-musl-")) {
+				return "linux-musl";
+			}
+		} catch {}
+		return "linux-gnu";
+	} else {
+		return platform;
+	}
+}();
+
+// Import compiled module
 const require = createRequire(import.meta.url);
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-const backend: typeof import("./libivm.backend_v8.node")["default"] = require("./libivm.backend_v8.node");
-
-export type * from "./libivm.backend_v8.node";
+const backend: typeof import("backend_v8.node")["default"] = require(`./backend_v8/${backendPlatform}-${process.arch}/backend_v8.node`);
 
 // Exports must be enumerated because this imports from the native module which cannot declare ESM
 // exports.

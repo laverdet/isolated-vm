@@ -6,6 +6,7 @@ module;
 #include <variant>
 export module ivm.value:discriminated_union;
 import :accept;
+import :tag;
 import ivm.utility;
 
 namespace ivm::value {

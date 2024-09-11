@@ -6,6 +6,7 @@ export module ivm.value:variant;
 import :date;
 import :dictionary;
 import :primitive;
+import :tag;
 
 export namespace ivm::value {
 

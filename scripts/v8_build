@@ -3,21 +3,40 @@ set -eu
 OUTDIR=$(dirname "$1")
 TARGET=$(basename "$1")
 
+# Docs:
+# https://v8.dev/docs/build-gn
+# https://v8.dev/docs/compile-arm64#system_clang_gcc
+
 # shellcheck disable=SC2206
-PAIR=(${TARGET//./ })
-ARCH=${PAIR[0]}
-CONFIG=${PAIR[1]}
+TUPLE=(${TARGET//./ })
+PLATFORM=${TUPLE[${#TUPLE[@]} - 3]:-} # linux-gnu, linux-musl, windows, darwin
+ARCH=${TUPLE[${#TUPLE[@]} - 2]} # x64, arm64
+CONFIG=${TUPLE[${#TUPLE[@]} - 1]} # release, debug, optdebug
 
 GN_ARGS=(
-	clang_base_path='"/clang"'
 	clang_use_chrome_plugins=false
-	target_cpu='"'"$ARCH"'"'
+	target_cpu="\"$ARCH\""
+	treat_warnings_as_errors=false
 	use_custom_libcxx=false
 	v8_enable_backtrace=true
 	v8_enable_sandbox=true
-	v8_target_cpu='"'"$ARCH"'"'
+	v8_target_cpu="\"$ARCH\""
 	v8_use_external_startup_data=false
 );
+if [ -z ${CLANG_BASE_PATH+-} ]; then
+	# v8 drops support for gcc wow
+	# https://groups.google.com/a/chromium.org/g/chromium-dev/c/5haWEDpUK6Y/m/LkM8f4CrDAAJ
+	# https://groups.google.com/g/v8-users/c/-vbS2agi1Kw
+
+	# nb: This doesn't really mean "is not clang" more like "is not v8's clang". Also their build
+	# script does not support root-installed clang_base_path.
+	GN_ARGS+=(
+		is_clang=false
+		use_custom_libcxx=false
+	)
+else
+	GN_ARGS+=(clang_base_path="\"$CLANG_BASE_PATH\"")
+fi
 
 case "$CONFIG" in
 	debug|optdebug)
@@ -25,7 +44,8 @@ case "$CONFIG" in
 			is_debug=true
 			v8_enable_fast_mksnapshot=true
 		)
-		V8_LIBRARY=shared
+		V8_LIBRARY_TYPE=shared
+		V8_TARGETS=(v8 v8_libbase v8_libplatform)
 		;;
 	release)
 		GN_ARGS+=(
@@ -37,7 +57,8 @@ case "$CONFIG" in
 			v8_enable_verify_heap=true
 			v8_monolithic=true
 		)
-		V8_LIBRARY=static
+		V8_LIBRARY_TYPE=static
+		V8_TARGETS=(v8_monolith)
 		;;
 esac
 case "$CONFIG" in
@@ -58,12 +79,13 @@ case "$CONFIG" in
 esac
 
 # Configure gn / ninja
+echo gn gen "$OUTDIR/$TARGET" --args=\'"${GN_ARGS[*]}"\'
 gn gen "$OUTDIR/$TARGET" --args="${GN_ARGS[*]}"
 
 # Make v8-gn.h
 mkdir -p "$OUTDIR/$TARGET/include"
 echo > "$OUTDIR/$TARGET/include/v8-gn.h" "#pragma once"
-DEFINES=$(grep 'defines = ' "$OUTDIR/$TARGET/obj/v8_compiler.ninja" | grep -Eoi  -- '-D[A-Z0-9_=]+\b' | cut -c3-)
+DEFINES=$(grep 'defines = ' "$OUTDIR/$TARGET/obj/v8_compiler.ninja" | grep -Eoi -- '-D[A-Z0-9_=]+\b' | cut -c3-)
 USED_DEFINES=$(grep -REoh -- "$(echo -n "${DEFINES}" | sed -r 's/\\b([A-Z0-9_]+)=?.+\\b/\1/g' | tr '\n' '|')" include | sort | uniq)
 echo "$DEFINES" | while read -r LINE; do
 	# shellcheck disable=SC2206
@@ -80,10 +102,11 @@ done
 
 # Make `env`
 cat <<EOF > "$OUTDIR/$TARGET/env"
-V8_INCLUDE="$OUTDIR/include"
-V8_LIBRARY="$V8_LIBRARY"
-V8_TARGET="$OUTDIR/$TARGET"
+V8_INCLUDE_GN_FILE=$(realpath -ms "$OUTDIR/$TARGET/include/v8-gn.h")
+V8_INCLUDE_DIR=$(realpath -ms "$OUTDIR/include")
+V8_LIBRARY_TYPE=$V8_LIBRARY_TYPE
+V8_OUT_PATH=$(realpath -ms "$OUTDIR/$TARGET")
 EOF
 
 # Build the monolith
-ninja -C "$OUTDIR/$TARGET" v8
+ninja -C "$OUTDIR/$TARGET" v8 "${V8_TARGETS[@]}"

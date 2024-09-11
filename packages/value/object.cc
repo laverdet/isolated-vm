@@ -9,6 +9,7 @@ module;
 export module ivm.value:object;
 import ivm.utility;
 import :accept;
+import :tag;
 
 namespace ivm::value {
 
@@ -18,8 +19,8 @@ struct object_map;
 
 // Each object property descriptor should inherit from this
 export template <class Meta, class Value, class Type>
-	// nb: `std::is_default_constructible_v` doesn't work due to some forward declaration caching
-	// issue idk
+// nb: `std::is_default_constructible_v` doesn't work due to some forward declaration caching
+// issue idk
 	requires std::constructible_from<Type>
 struct object_properties {
 		using subject_accept = accept<Meta, Type>;

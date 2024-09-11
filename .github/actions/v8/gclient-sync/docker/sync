@@ -1,0 +1,6 @@
+#!/bin/sh
+# nb: This is also used by the `composite` action but the file has to live here
+set -eu
+cd deps
+gclient config --unmanaged "$(git -C v8 config --get remote.origin.url)"
+gclient sync --no-history --shallow --with_branch_heads

@@ -1,0 +1,231 @@
+name: Build
+on: [ push ]
+
+env:
+  NODE_HEADERS: 22.0.0
+  V8_CONFIGURATION: release
+  V8_REF: 12.8.20
+
+jobs:
+  # First, check to see if v8 has been built for each target. If not, then a more powerful `runs-on`
+  # builder is used on EC2.
+  configure:
+    strategy:
+      matrix:
+        host:
+          - platform: linux-gnu
+            arch: x64
+    name: configure / ${{ matrix.host.platform }} ${{ matrix.host.arch }}
+    runs-on: ubuntu-latest
+    outputs:
+      linux-gnu-x64: ${{ steps.output.outputs.linux-gnu-x64 }}
+    steps:
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          key: v8/${{ env.V8_REF }}/${{ matrix.host.platform }}.${{ matrix.host.arch }}.${{ env.V8_CONFIGURATION }}
+          lookup-only: true
+          path: ./deps/v8/out
+      - shell: sh
+        id: output
+        env:
+          CACHE_HIT: ${{ steps.cache.outputs.cache-hit }}
+          HOST: ${{ matrix.host.platform }}-${{ matrix.host.arch }}
+        run: |
+          if [ "$CACHE_HIT" = true ]; then
+            echo "$HOST=ubuntu-latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "$HOST=runs-on,runner=32cpu-linux-x64,run-id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Build isolated-vm
+  build:
+    needs: configure
+    strategy:
+      fail-fast: false
+      matrix:
+        host:
+          - runs-on: ${{ needs.configure.outputs.linux-gnu-x64 }}
+            container: debian:trixie
+            platform: linux-gnu
+            arch: x64
+    name: build / ${{ matrix.host.platform }} ${{ matrix.host.arch }}
+    runs-on: ${{ matrix.host.runs-on }}
+    container: ${{ matrix.host.container }}
+    concurrency: ${{ matrix.host.platform }} ${{ matrix.host.arch }}
+    steps:
+      # GitHub checkout
+      - uses: actions/checkout@v4
+      - name: Scripts
+        shell: sh
+        run: echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
+
+      # GNU `tar` & `zstd` is needed for `actions/cache`
+      - uses: laverdet/install@v0
+        with:
+          packages: tar zstd
+
+      # Restore previously built v8
+      - uses: actions/cache/restore@v4
+        id: v8-cache
+        with:
+          key: v8/${{ env.V8_REF }}/${{ matrix.host.platform }}.${{ matrix.host.arch }}.${{ env.V8_CONFIGURATION }}
+          path: ./deps/v8/out
+
+      # Build v8 on cache miss
+      - uses: ./.github/actions/v8
+        name: Build v8
+        if: steps.v8-cache.outputs.cache-hit != 'true'
+        with:
+          arch: ${{ matrix.host.arch }}
+          platform: ${{ matrix.host.platform }}
+          ref: ${{ env.V8_REF }}
+
+      # Cache v8
+      - uses: actions/cache/save@v4
+        if: steps.v8-cache.outputs.cache-hit != 'true'
+        with:
+          key: ${{ steps.v8-cache.outputs.cache-primary-key }}
+          path: ./deps/v8/out
+
+      # Install toolchain
+      - uses: laverdet/install@v0
+        with:
+          packages: |
+            build-essential
+            clang-18
+            clang-tools-18
+            cmake
+            curl
+            libboost-all-dev
+            lld
+            ninja-build
+            nodejs
+            npm
+
+      # Download nodejs headers
+      - name: nodejs dependencies
+        id: nodejs
+        env:
+          NODE_HEADERS: ${{ env.NODE_HEADERS }}
+        run: |
+          set -u
+          npm install --no-audit --no-fund
+          echo "napi-include-dir=$(node -p 'require("node-addon-api").include_dir')" >> "$GITHUB_OUTPUT"
+          echo "node-include-dir=$(nodejs_select $RUNNER_TOOL_CACHE/nodejs-headers/$NODE_HEADERS)" >> "$GITHUB_OUTPUT"
+
+      # Build isolated-vm
+      - name: Configure
+        env:
+          IVM_HOST_ARCH: ${{ matrix.host.arch }}
+          IVM_HOST_PLATFORM: ${{ matrix.host.platform }}
+          NAPI_INCLUDE_DIR: ${{ steps.nodejs.outputs.napi-include-dir }}
+          NODE_INCLUDE_DIR: ${{ steps.nodejs.outputs.node-include-dir }}
+          V8_REF: ${{ env.V8_REF }}
+          V8_TARGET: ${{ matrix.host.platform }}.${{ matrix.host.arch }}.${{ env.V8_CONFIGURATION }}
+        run: |
+          set -u
+          V8_REF_PATH=$PWD/deps/v8/out/$V8_REF
+          cmake \
+            -DCMAKE_CXX_COMPILER="$(realpath "$(which clang-18)")" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DIVM_HOST_ARCH="$IVM_HOST_ARCH"\
+            -DIVM_HOST_PLATFORM="$IVM_HOST_PLATFORM" \
+            -DNAPI_INCLUDE_DIR="$NAPI_INCLUDE_DIR" \
+            -DNODE_INCLUDE_DIR="$NODE_INCLUDE_DIR" \
+            -DV8_INCLUDE_DIR="$V8_REF_PATH/include" \
+            -DV8_INCLUDE_GN_FILE="$V8_REF_PATH/$V8_TARGET/include/v8-gn.h" \
+            -DV8_LIBRARY_TYPE=static \
+            -DV8_OUT_PATH="$V8_REF_PATH/$V8_TARGET" \
+            -B build \
+            -G Ninja \
+          ;
+      - name: Build
+        run: ninja -C build ivm_backend_v8
+
+      # Upload build artifacts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.host.platform }}-${{ matrix.host.arch }}
+          path: ./dist/backend_v8
+          if-no-files-found: error
+
+  # Run tests
+  test:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        host:
+          - runs-on: ubuntu-latest
+            container: debian:trixie
+            platform: linux-gnu
+            arch: x64
+        node:
+          - 22
+    name: test / ${{ matrix.host.platform }} ${{ matrix.host.arch }} nodejs ${{ matrix.node }}
+    runs-on: ${{ matrix.host.runs-on }}
+    container: ${{ matrix.host.container }}
+    steps:
+      # GitHub checkout
+      - uses: actions/checkout@v4
+
+      # Receive artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.host.platform }}-${{ matrix.host.arch }}
+          path: ./dist/backend_v8
+
+      # Install nodejs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # Install npm dependencies and build TypeScript
+      - name: npm
+        run: |
+          npm install --no-audit --no-fund
+          npx tsc -b
+
+      # Run tests
+      - name: Test
+        run: |
+          npm run -S test
+
+  release:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/')
+    strategy:
+      matrix:
+        host:
+          - runs-on: ubuntu-latest
+            platform: linux-gnu
+            arch: x64
+    name: release / ${{ matrix.host.platform }} ${{ matrix.host.arch }}
+    runs-on: ${{ matrix.host.runs-on }}
+    permissions:
+      contents: write
+    steps:
+      # Receive artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.host.platform }}-${{ matrix.host.arch }}
+          path: ./dist/backend_v8
+
+      # Save tar
+      - name: tar
+        id: tar
+        shell: sh
+        env:
+          PLATFORM_NAME: ${{ matrix.host.platform }}-${{ matrix.host.arch }}
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          TAR_FILE="isolated-vm-node-$TAG-$PLATFORM_NAME.tar.gz"
+          tar czf "$TAR_FILE" dist/backend_v8
+          echo "tar=$PWD/$TAR_FILE" >> "$GITHUB_OUTPUT"
+
+      # Release
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ steps.tar.outputs.tar }}

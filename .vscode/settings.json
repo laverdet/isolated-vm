@@ -44,6 +44,7 @@
 	"files.insertFinalNewline": true,
 	"files.trimTrailingWhitespace": true,
 	"search.exclude": {
+		"package-lock.json": true,
 		"packages/third_party": true,
 	},
 	"terminal.integrated.defaultProfile.linux": "bash",

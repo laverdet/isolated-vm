@@ -4,6 +4,7 @@ module;
 #include <utility>
 module ivm.isolated_v8;
 import :platform;
+import ivm.utility;
 
 namespace ivm {
 
