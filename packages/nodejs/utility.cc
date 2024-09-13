@@ -48,7 +48,7 @@ auto make_promise(environment& ienv, auto accept)
 	auto trampoline = [](Napi::Env env, Napi::Function /*unused*/, decltype(settle)* settle, Type* payload_raw_ptr) {
 		(*settle)(env, payload_raw_ptr);
 	};
-	auto finalizer = [](Napi::Env /*env*/, collection_group* collection, decltype(settle)* settle) {
+	auto finalizer = [](Napi::Env /*env*/, util::collection_group* collection, decltype(settle)* settle) {
 		collection->collect(settle);
 	};
 
@@ -67,7 +67,7 @@ auto make_promise(environment& ienv, auto accept)
 		dispatcher.BlockingCall(nullptr);
 		dispatcher.Release();
 	};
-	auto dispatch = call_once_or_else(std::move(invoked), std::move(abandoned), std::move(dispatcher));
+	auto dispatch = util::call_once_or_else(std::move(invoked), std::move(abandoned), std::move(dispatcher));
 
 	// `[ dispatch, promise ]`
 	return std::make_tuple(std::move(dispatch), promise);
@@ -77,7 +77,7 @@ template <class Function>
 class node_function;
 
 template <class Result, class... Args>
-class node_function<Result (*)(environment&, Args...)> : non_copyable {
+class node_function<Result (*)(environment&, Args...)> : util::non_copyable {
 	public:
 		using function_type = Result (*)(environment&, Args...);
 

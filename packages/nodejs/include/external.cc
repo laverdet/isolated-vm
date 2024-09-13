@@ -20,7 +20,7 @@ import napi;
 namespace ivm {
 
 auto collection_group_finalizer(napi_env /*env*/, void* finalize_data, void* finalize_hint) {
-	static_cast<collection_group*>(finalize_hint)->collect(finalize_data);
+	static_cast<util::collection_group*>(finalize_hint)->collect(finalize_data);
 }
 
 export template <class Type>

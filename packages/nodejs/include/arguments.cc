@@ -23,7 +23,7 @@ export class arguments {
 		const Napi::CallbackInfo* info;
 };
 
-class arguments::iterator : public arithmetic_facade<iterator, ssize_t> {
+class arguments::iterator : public util::arithmetic_facade<iterator, ssize_t> {
 	public:
 		friend arithmetic_facade;
 		using arithmetic_facade::operator+;

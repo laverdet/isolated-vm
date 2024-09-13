@@ -22,7 +22,7 @@ export class array : public v8::Array {
 		static auto Cast(v8::Value* data) -> array*;
 };
 
-class array::iterator : public arithmetic_facade<iterator, int32_t, int64_t> {
+class array::iterator : public util::arithmetic_facade<iterator, int32_t, int64_t> {
 	public:
 		friend arithmetic_facade;
 		using arithmetic_facade::operator+;
@@ -53,7 +53,7 @@ class array::iterator : public arithmetic_facade<iterator, int32_t, int64_t> {
 		uint32_t index{};
 };
 
-export using array_handle = handle<array, mutable_value<uint32_t>>;
+export using array_handle = handle<array, util::mutable_value<uint32_t>>;
 static_assert(std::ranges::range<array_handle>);
 static_assert(std::random_access_iterator<array::iterator>);
 

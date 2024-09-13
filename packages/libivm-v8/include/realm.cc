@@ -6,7 +6,7 @@ import v8;
 
 namespace ivm {
 
-export class realm : non_copyable {
+export class realm : util::non_copyable {
 	public:
 		class scope;
 
@@ -18,7 +18,7 @@ export class realm : non_copyable {
 		v8::Global<v8::Context> context;
 };
 
-class realm::scope : non_copyable {
+class realm::scope : util::non_copyable {
 	public:
 		scope() = delete;
 		explicit scope(agent::lock& lock, realm& realm);

@@ -16,7 +16,7 @@ environment::environment(Napi::Env env) :
 		isolate_{v8::Isolate::GetCurrent()} {
 }
 
-auto environment::collection() -> collection_group& {
+auto environment::collection() -> util::collection_group& {
 	return collection_group_;
 }
 
@@ -43,8 +43,8 @@ auto environment::get(Napi::Env env) -> environment& {
 	return *env.GetInstanceData<environment>();
 }
 
-auto environment::with_context_local() -> scope_exit<defaulter_finalizer<v8::Local<v8::Context>>> {
-	return scope_exit{defaulter_finalizer<v8::Local<v8::Context>>{context_}};
+auto environment::with_context_local() -> util::scope_exit<util::defaulter_finalizer<v8::Local<v8::Context>>> {
+	return util::scope_exit{util::defaulter_finalizer<v8::Local<v8::Context>>{context_}};
 }
 
 } // namespace ivm

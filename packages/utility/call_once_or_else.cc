@@ -6,6 +6,8 @@ module;
 export module ivm.utility:call_once_or_else;
 import :utility;
 
+namespace ivm::util {
+
 // Returns an invocable which invokes a given destructor if it is destructed without being invoked.
 // It also will throw if you invoke it twice.
 export template <class Fn, class OrElse, std::move_constructible... Args>
@@ -61,3 +63,5 @@ struct call_once_or_else {
 		[[no_unique_address]] std::tuple<Args...> args;
 		bool did_run = false;
 };
+
+} // namespace ivm::util

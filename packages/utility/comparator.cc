@@ -2,6 +2,8 @@ module;
 #include <utility>
 export module ivm.utility:comparator;
 
+namespace ivm::util {
+
 export template <class Operation, class Fn>
 class mapped_comparator {
 	public:
@@ -20,3 +22,5 @@ class mapped_comparator {
 
 template <class Operation, class Fn>
 mapped_comparator(Operation&&, Fn&&) -> mapped_comparator<Operation, Fn>;
+
+} // namespace ivm::util

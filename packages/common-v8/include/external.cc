@@ -23,7 +23,7 @@ auto external::materialize(std::type_identity<void*> /*tag*/) const -> void* {
 }
 
 export template <class Type>
-class external_reference : non_moveable {
+class external_reference : util::non_moveable {
 	public:
 		explicit external_reference(auto&&... args) :
 				value{std::forward<decltype(args)>(args)...} {}

@@ -41,7 +41,7 @@ auto create_agent(environment& env, make_agent_options options) -> Napi::Value {
 		return make_collected_external<ivm::agent>(env, std::move(agent));
 	});
 	auto clock = std::visit(
-		overloaded{
+		util::overloaded{
 			[](const make_agent_options::clock_deterministic& options) -> agent::clock::any_clock {
 				return agent::clock::deterministic{options.epoch, value::js_clock::duration{options.interval}};
 			},

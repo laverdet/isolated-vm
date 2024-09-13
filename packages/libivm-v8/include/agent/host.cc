@@ -14,7 +14,7 @@ import v8;
 namespace ivm {
 
 // This is constructed before (and may outlive) an agent
-class agent::storage : non_moveable {
+class agent::storage : util::non_moveable {
 	public:
 		explicit storage(scheduler& scheduler);
 
@@ -26,13 +26,13 @@ class agent::storage : non_moveable {
 
 // Directly handles the actual isolate. If someone has a reference to this then it probably means
 // the isolate is locked and entered.
-class agent::host : non_moveable {
+class agent::host : util::non_moveable {
 	private:
 		struct isolate_destructor {
 				auto operator()(v8::Isolate* isolate) -> void;
 		};
 
-		struct random_seed_unlatch : non_copyable {
+		struct random_seed_unlatch : util::non_copyable {
 				explicit random_seed_unlatch(bool& latch);
 				auto operator()() const -> void;
 				bool* latch;
@@ -51,7 +51,7 @@ class agent::host : non_moveable {
 		auto clock_time_ms() -> int64_t;
 		auto execute(const std::stop_token& stop_token) -> void;
 		auto isolate() -> v8::Isolate*;
-		auto random_seed_latch() -> scope_exit<random_seed_unlatch>;
+		auto random_seed_latch() -> util::scope_exit<random_seed_unlatch>;
 		auto scratch_context() -> v8::Local<v8::Context>;
 		auto take_random_seed() -> std::optional<double>;
 		auto task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner>;

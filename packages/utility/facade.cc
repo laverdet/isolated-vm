@@ -1,5 +1,7 @@
 export module ivm.utility:facade;
 
+namespace ivm::util {
+
 export template <class Type, class difference_type_, class wide_size_type = difference_type_>
 class arithmetic_facade {
 	public:
@@ -44,3 +46,5 @@ class arithmetic_facade {
 			return static_cast<difference_type>(wide_size_type{+self} - wide_size_type{+right});
 		}
 };
+
+} // namespace ivm::util

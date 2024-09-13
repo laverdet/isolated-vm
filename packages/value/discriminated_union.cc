@@ -57,7 +57,7 @@ struct accept<Meta, std::variant<Types...>> {
 			using descriptor_type = discriminated_union<Meta, Value, accept_type>;
 			using acceptor_type = descriptor_type::acceptor_type;
 			auto alternatives = descriptor_type::alternatives;
-			return prehashed_string_map<acceptor_type, alternatives.size()>{alternatives};
+			return util::prehashed_string_map<acceptor_type, alternatives.size()>{alternatives};
 		}
 };
 

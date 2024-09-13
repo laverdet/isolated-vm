@@ -37,7 +37,7 @@ auto napi_to_iv8(Napi::Value value) {
 namespace ivm::napi {
 
 // Memoize `environment&` to avoid calling back into napi for each value
-export class napi_callback_info_memo : non_copyable {
+export class napi_callback_info_memo : util::non_copyable {
 	public:
 		napi_callback_info_memo(napi_callback_info_memo&&) = delete;
 		~napi_callback_info_memo() = default;

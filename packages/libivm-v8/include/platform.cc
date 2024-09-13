@@ -36,7 +36,7 @@ export class job_handle : public v8::JobHandle, public v8::JobDelegate {
 
 // Once per process, performs initialization of v8. Process-wide shared state is managed in this
 // class.
-export class platform : non_moveable, public v8::Platform {
+export class platform : util::non_moveable, public v8::Platform {
 	public:
 		class handle;
 

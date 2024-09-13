@@ -9,7 +9,7 @@ import v8;
 
 namespace ivm {
 
-export class script : non_copyable {
+export class script : util::non_copyable {
 	public:
 		script() = delete;
 		script(v8::Isolate* isolate, v8::Local<v8::UnboundScript> script);

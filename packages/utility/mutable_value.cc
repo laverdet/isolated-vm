@@ -2,6 +2,8 @@ module;
 #include <utility>
 export module ivm.utility:mutable_value;
 
+namespace ivm::util {
+
 export template <class Type>
 class mutable_value {
 	public:
@@ -16,3 +18,5 @@ class mutable_value {
 	private:
 		mutable Type value_{};
 };
+
+} // namespace ivm::util

@@ -10,13 +10,13 @@ import ivm.utility;
 
 namespace ivm {
 
-export class scheduler : non_moveable {
+export class scheduler : util::non_moveable {
 	private:
 		using handle_list_mode = boost::intrusive::link_mode<boost::intrusive::auto_unlink>;
 		using handle_list_hook = boost::intrusive::list_member_hook<handle_list_mode>;
 
 	public:
-		class handle : non_moveable {
+		class handle : util::non_moveable {
 			public:
 				friend scheduler;
 
@@ -26,7 +26,7 @@ export class scheduler : non_moveable {
 			private:
 				scheduler& scheduler_;
 				handle_list_hook scheduler_hook;
-				mutable lockable<std::jthread> thread;
+				mutable util::lockable<std::jthread> thread;
 		};
 
 		~scheduler();
@@ -39,7 +39,7 @@ export class scheduler : non_moveable {
 		using handle_list_member = boost::intrusive::member_hook<handle, handle_list_hook, &handle::scheduler_hook>;
 		using handle_list = boost::intrusive::list<handle, handle_list_csize, handle_list_member>;
 
-		lockable<handle_list, std::mutex, std::condition_variable> handles;
+		util::lockable<handle_list, std::mutex, std::condition_variable> handles;
 };
 
 auto scheduler::run(auto fn, handle& handle, auto&&... args) -> void

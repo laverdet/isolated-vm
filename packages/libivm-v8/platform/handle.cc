@@ -8,7 +8,7 @@ import ivm.utility;
 
 namespace ivm {
 
-lockable<std::weak_ptr<platform>, std::mutex> shared_platform{};
+util::lockable<std::weak_ptr<platform>, std::mutex> shared_platform{};
 
 platform::handle::handle(std::shared_ptr<platform> platform) :
 		platform_{std::move(platform)} {}

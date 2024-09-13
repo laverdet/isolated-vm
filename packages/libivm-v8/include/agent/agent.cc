@@ -8,7 +8,7 @@ namespace ivm {
 
 // The base `agent` class holds a weak reference to a `agent::host`. libivm directly controls the
 // lifetime of a `host` and can sever the `weak_ptr` in this class if needed.
-export class agent : non_copyable {
+export class agent : util::non_copyable {
 	public:
 		class host;
 		class lock;
@@ -30,7 +30,7 @@ export class agent : non_copyable {
 
 // A `lock` is a simple holder for an `agent::host` which proves that we are executing in
 // the isolate context.
-class agent::lock : non_moveable {
+class agent::lock : util::non_moveable {
 	public:
 		explicit lock(host& host);
 		~lock();

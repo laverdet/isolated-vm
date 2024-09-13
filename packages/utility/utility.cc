@@ -3,6 +3,8 @@ module;
 #include <utility>
 export module ivm.utility:utility;
 
+namespace ivm::util {
+
 // https://en.cppreference.com/w/cpp/utility/variant/visit
 export template <class... Visitors>
 struct overloaded : Visitors... {
@@ -76,3 +78,5 @@ class defaulter_finalizer : non_copyable {
 	private:
 		Type* value;
 };
+
+} // namespace ivm::util

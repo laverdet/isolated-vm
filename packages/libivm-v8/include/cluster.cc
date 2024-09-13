@@ -15,7 +15,7 @@ namespace ivm {
 
 // Owns a group of `agent` instances. There's one cluster per nodejs context (worker_thread).
 // `cluster` is ultimately the owner of all agents it creates.
-export class cluster : non_moveable {
+export class cluster : util::non_moveable {
 	public:
 		cluster();
 		auto make_agent(
@@ -42,7 +42,7 @@ auto cluster::make_agent(std::invocable<agent, agent::lock&> auto fn, agent::clo
 			auto task_runner = std::make_shared<agent::foreground_runner>();
 			auto agent_host = std::make_shared<agent::host>(agent_storage, task_runner, clock, random_seed);
 			agent::lock agent_lock{*agent_host};
-			take(std::move(fn))(agent{agent_host, task_runner}, agent_lock);
+			util::take(std::move(fn))(agent{agent_host, task_runner}, agent_lock);
 			agent_host->execute(stop_token);
 		},
 		storage_ptr->scheduler_handle()

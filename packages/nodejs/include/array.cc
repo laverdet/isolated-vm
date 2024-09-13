@@ -30,7 +30,7 @@ export class array {
 		Napi::Array array_;
 };
 
-class array::iterator : public arithmetic_facade<iterator, int32_t, int64_t> {
+class array::iterator : public util::arithmetic_facade<iterator, int32_t, int64_t> {
 	public:
 		friend arithmetic_facade;
 		using arithmetic_facade::operator+;

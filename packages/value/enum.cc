@@ -31,7 +31,7 @@ struct accept<Meta, Enum> {
 
 		consteval static auto enum_map() {
 			auto values = enum_values<Enum>::values;
-			return prehashed_string_map<Enum, values.size()>{values};
+			return util::prehashed_string_map<Enum, values.size()>{values};
 		}
 };
 

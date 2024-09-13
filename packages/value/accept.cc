@@ -52,7 +52,7 @@ constexpr auto delegate_accept(
 template <class Meta, class Type>
 struct accept {
 		constexpr auto operator()(tag_con_for_t<Type> /*tag*/, auto&& value) const {
-			if constexpr (is_convertible_without_narrowing_v<decltype(value), Type>) {
+			if constexpr (util::is_convertible_without_narrowing_v<decltype(value), Type>) {
 				return Type{std::forward<decltype(value)>(value)};
 			} else {
 				return static_cast<Type>(std::forward<decltype(value)>(value));

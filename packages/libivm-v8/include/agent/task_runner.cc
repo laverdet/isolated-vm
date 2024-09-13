@@ -30,7 +30,7 @@ struct task_of : v8::Task {
 
 class agent::foreground_runner : public task_runner::task_runner_of<foreground_runner> {
 	private:
-		class storage : non_copyable {
+		class storage : util::non_copyable {
 			public:
 				friend foreground_runner;
 				explicit storage(int& nesting_depth);
@@ -45,7 +45,7 @@ class agent::foreground_runner : public task_runner::task_runner_of<foreground_r
 				int* nesting_depth_;
 				bool should_resume_{};
 		};
-		using lockable_storage = lockable<storage, std::mutex, std::condition_variable_any>;
+		using lockable_storage = util::lockable<storage, std::mutex, std::condition_variable_any>;
 		using write_waitable_type = lockable_storage::write_waitable_type<bool (storage::*)() const>;
 
 	public:
@@ -70,7 +70,7 @@ auto agent::foreground_runner::schedule_non_nestable(std::invocable<lock&> auto 
 
 auto agent::foreground_runner::scope(std::invocable<write_waitable_type> auto body) -> decltype(auto) {
 	++nesting_depth_;
-	auto scope = scope_exit{[ this ] { --nesting_depth_; }};
+	auto scope = util::scope_exit{[ this ] { --nesting_depth_; }};
 	return body(storage_.write_waitable(&storage::should_resume));
 }
 

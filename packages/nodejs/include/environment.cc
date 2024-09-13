@@ -14,11 +14,11 @@ export class environment {
 		explicit environment(Napi::Env env);
 
 		auto cluster() -> ivm::cluster&;
-		auto collection() -> collection_group&;
+		auto collection() -> util::collection_group&;
 		auto context() -> v8::Local<v8::Context>;
 		auto napi_env() -> Napi::Env;
 		auto isolate() -> v8::Isolate*;
-		auto with_context_local() -> scope_exit<defaulter_finalizer<v8::Local<v8::Context>>>;
+		auto with_context_local() -> util::scope_exit<util::defaulter_finalizer<v8::Local<v8::Context>>>;
 
 		static auto get(Napi::Env env) -> environment&;
 
@@ -27,7 +27,7 @@ export class environment {
 		ivm::cluster cluster_;
 		v8::Isolate* isolate_;
 		v8::Local<v8::Context> context_;
-		collection_group collection_group_;
+		util::collection_group collection_group_;
 };
 
 // Module forward declarations

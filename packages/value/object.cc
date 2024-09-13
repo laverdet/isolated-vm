@@ -63,13 +63,13 @@ struct accept<Meta, Type> {
 		using hash_type = uint32_t;
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary) const -> Type {
-			using range_type = decltype(into_range(dictionary));
+			using range_type = decltype(util::into_range(dictionary));
 			using value_type = std::ranges::range_value_t<range_type>::second_type;
 			hash_type checksum{};
 			Type subject;
 			auto accept_key = make_accept<std::string>(*this);
 			auto [ expected_checksum, property_map ] = make_property_map<value_type>();
-			for (auto&& [ key, value ] : into_range(dictionary)) {
+			for (auto&& [ key, value ] : util::into_range(dictionary)) {
 				auto descriptor = property_map.get(invoke_visit(std::forward<decltype(key)>(key), accept_key));
 				if (descriptor != nullptr) {
 					checksum ^= descriptor->first;
@@ -91,7 +91,7 @@ struct accept<Meta, Type> {
 			// Initial map calculates hash values
 			auto properties = descriptor_type::properties;
 			using initial_mapped_type = std::pair<bool, acceptor_type>;
-			auto initial_property_map = prehashed_string_map<initial_mapped_type, properties.size()>{
+			auto initial_property_map = util::prehashed_string_map<initial_mapped_type, properties.size()>{
 				properties |
 				std::views::transform([](const auto& entry) {
 					auto is_required = std::get<0>(entry);
@@ -114,7 +114,7 @@ struct accept<Meta, Type> {
 
 			// Calculate expected object hash
 			auto non_optional_hashes =
-				into_range(property_map) |
+				util::into_range(property_map) |
 				std::views::transform([](const auto& entry) constexpr { return entry.second.first; });
 			auto checksum = std::ranges::fold_left(non_optional_hashes, 0, std::bit_xor{});
 			return std::pair{checksum, property_map};

@@ -97,9 +97,9 @@ auto agent::host::isolate() -> v8::Isolate* {
 // v8 uses the same entropy source for `Math.random()` and also memory page randomization. We want
 // to control the `Math.random()` seed without giving up memory randomness. Anyway it seems like the
 // generator is initialized on context creation, so we just control the randomness in that one case.
-auto agent::host::random_seed_latch() -> scope_exit<random_seed_unlatch> {
+auto agent::host::random_seed_latch() -> util::scope_exit<random_seed_unlatch> {
 	should_give_seed_ = true;
-	return scope_exit{random_seed_unlatch{should_give_seed_}};
+	return util::scope_exit{random_seed_unlatch{should_give_seed_}};
 }
 
 auto agent::host::scratch_context() -> v8::Local<v8::Context> {

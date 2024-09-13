@@ -3,6 +3,8 @@ module;
 #include <utility>
 export module ivm.utility:type_traits;
 
+namespace ivm::util {
+
 // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0870r4.html
 export template <class From, class To>
 constexpr inline bool is_convertible_without_narrowing_v = false;
@@ -19,3 +21,5 @@ constexpr inline bool is_convertible_without_narrowing_v<From, To> =
 
 export template <class From, class To>
 concept convertible_without_narrowing = is_convertible_without_narrowing_v<From, To>;
+
+} // namespace ivm::util

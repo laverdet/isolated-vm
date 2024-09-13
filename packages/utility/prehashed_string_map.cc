@@ -13,6 +13,8 @@ import :comparator;
 import :type_traits;
 import :utility;
 
+namespace ivm::util {
+
 // `constexpr` hash for property lookup
 constexpr auto djb2_hash(std::ranges::range auto&& view) -> uint32_t {
 	uint32_t hash = 5'381;
@@ -109,3 +111,5 @@ class prehashed_string_map {
 	private:
 		container_type hashed_values_;
 };
+
+} // namespace ivm::util
