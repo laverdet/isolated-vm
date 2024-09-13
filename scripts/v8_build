@@ -7,6 +7,25 @@ TARGET=$(basename "$1")
 # https://v8.dev/docs/build-gn
 # https://v8.dev/docs/compile-arm64#system_clang_gcc
 
+# Note: libc++ is (basically) required to build v8 on clang. On clang `libstdc++` can't inline
+# unaligned 64-bit atomic struct operations. So you'd need to link against libatomic which I don't
+# want to do because you don't need to.
+# ---
+# #include <atomic>
+# struct foo_t { uint32_t left, right; };
+# int main() {
+#   std::atomic<foo_t> foo;
+#   foo_t one, two;
+#   foo.compare_exchange_strong(one, two);
+# }
+# ---
+# g++ a.cc
+# clang++ -stdlib=libc++ a.cc
+# clang++ -stdlib=libstdc++ a.cc
+# /usr/bin/ld: /tmp/a-f7f4f4.o: in function `std::atomic<foo_t>::compare_exchange_strong(foo_t&, foo_t, std::memory_order, std::memory_order)':
+# a.cc:(.text._ZNSt6atomicI5foo_tE23compare_exchange_strongERS0_S0_St12memory_orderS3_[_ZNSt6atomicI5foo_tE23compare_exchange_strongERS0_S0_St12memory_orderS3_]+0x6a): undefined reference to `__atomic_compare_exchange'
+# clang++: error: linker command failed with exit code 1 (use -v to see invocation)
+
 # shellcheck disable=SC2206
 TUPLE=(${TARGET//./ })
 PLATFORM=${TUPLE[${#TUPLE[@]} - 3]:-} # linux-gnu, linux-musl, windows, darwin
@@ -15,27 +34,29 @@ CONFIG=${TUPLE[${#TUPLE[@]} - 1]} # release, debug, optdebug
 
 GN_ARGS=(
 	clang_use_chrome_plugins=false
-	target_cpu="\"$ARCH\""
 	treat_warnings_as_errors=false
 	use_custom_libcxx=false
 	v8_enable_backtrace=true
 	v8_enable_sandbox=true
-	v8_target_cpu="\"$ARCH\""
 	v8_use_external_startup_data=false
 );
 if [ -z ${CLANG_BASE_PATH+-} ]; then
 	# v8 drops support for gcc wow
 	# https://groups.google.com/a/chromium.org/g/chromium-dev/c/5haWEDpUK6Y/m/LkM8f4CrDAAJ
 	# https://groups.google.com/g/v8-users/c/-vbS2agi1Kw
-
-	# nb: This doesn't really mean "is not clang" more like "is not v8's clang". Also their build
-	# script does not support root-installed clang_base_path.
 	GN_ARGS+=(
 		is_clang=false
-		use_custom_libcxx=false
 	)
 else
 	GN_ARGS+=(clang_base_path="\"$CLANG_BASE_PATH\"")
+fi
+
+if [ "$PLATFORM" = linux-musl ]; then
+	GN_ARGS+=(
+		use_glib=false
+		use_lld=false
+		use_sysroot=false
+	)
 fi
 
 case "$CONFIG" in

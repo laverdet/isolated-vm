@@ -15,10 +15,13 @@ jobs:
         host:
           - platform: linux-gnu
             arch: x64
+          - platform: linux-musl
+            arch: x64
     name: configure / ${{ matrix.host.platform }} ${{ matrix.host.arch }}
     runs-on: ubuntu-latest
     outputs:
       linux-gnu-x64: ${{ steps.output.outputs.linux-gnu-x64 }}
+      linux-musl-x64: ${{ steps.output.outputs.linux-musl-x64 }}
     steps:
       - uses: actions/cache/restore@v4
         id: cache
@@ -48,6 +51,10 @@ jobs:
           - runs-on: ${{ needs.configure.outputs.linux-gnu-x64 }}
             container: debian:trixie
             platform: linux-gnu
+            arch: x64
+          - runs-on: ${{ needs.configure.outputs.linux-musl-x64 }}
+            container: alpine:edge
+            platform: linux-musl
             arch: x64
     name: build / ${{ matrix.host.platform }} ${{ matrix.host.arch }}
     runs-on: ${{ matrix.host.runs-on }}
@@ -161,6 +168,10 @@ jobs:
             container: debian:trixie
             platform: linux-gnu
             arch: x64
+          - runs-on: ubuntu-latest
+            container: alpine:edge
+            platform: linux-musl
+            arch: x64
         node:
           - 18
           - 20
@@ -179,7 +190,30 @@ jobs:
           path: ./dist/backend_v8
 
       # Install nodejs
+      - shell: sh
+        id: configure-musl
+        if: matrix.host.platform == 'linux-musl'
+        env:
+          NODE_VERSION: ${{ matrix.node }}
+        run: |
+          echo https://dl-cdn.alpinelinux.org/alpine/edge/community/ >> /etc/apk/repositories
+          echo https://dl-cdn.alpinelinux.org/alpine/edge/testing/ >> /etc/apk/repositories
+          case "$NODE_VERSION" in
+            22) echo "package=nodejs-current" >> "$GITHUB_OUTPUT" ;;
+            20) echo "package=nodejs" >> "$GITHUB_OUTPUT" ;;
+            18) echo "package=nodejs18" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "Unknown node version: $NODE_VERSION" 1>&2
+              exit 1
+              ;;
+          esac
+      - uses: laverdet/install@v0
+        if: steps.configure-musl.outcome == 'success'
+        with:
+          packages: alpine#${{ steps.configure-musl.outputs.package }} npm
+
       - uses: actions/setup-node@v4
+        if: matrix.host.platform != 'linux-musl'
         with:
           node-version: ${{ matrix.node }}
 
@@ -202,6 +236,9 @@ jobs:
         host:
           - runs-on: ubuntu-latest
             platform: linux-gnu
+            arch: x64
+          - runs-on: ubuntu-latest
+            platform: linux-musl
             arch: x64
     name: release / ${{ matrix.host.platform }} ${{ matrix.host.arch }}
     runs-on: ${{ matrix.host.runs-on }}

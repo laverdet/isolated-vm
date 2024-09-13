@@ -1,0 +1,65 @@
+diff --git a/config/BUILDCONFIG.gn b/config/BUILDCONFIG.gn
+index 29625fa..4043f62 100644
+--- a/config/BUILDCONFIG.gn
++++ b/config/BUILDCONFIG.gn
+@@ -69,6 +69,12 @@ if (current_os == "") {
+   current_os = target_os
+ }
+ 
++# laverdet: This flag disables the gcc prefix and clang target flags in the
++# various toolchains. There is no point in using cross-compilation flags while
++# compiling for the current platform. Otherwise you can't compile against
++# "unsupported" platforms like musl.
++is_cross_compile = target_cpu != current_cpu || target_os != current_os
++
+ # =============================================================================
+ # BUILD FLAGS
+ # =============================================================================
+diff --git a/config/compiler/BUILD.gn b/config/compiler/BUILD.gn
+index 371eb5c..5460495 100644
+--- a/config/compiler/BUILD.gn
++++ b/config/compiler/BUILD.gn
+@@ -1165,7 +1165,7 @@ config("compiler_cpu_abi") {
+     configs += [ "//build/config/chromeos:compiler_cpu_abi" ]
+   }
+ 
+-  if ((is_posix && !is_apple) || is_fuchsia) {
++  if (is_cross_compile && ((is_posix && !is_apple) || is_fuchsia)) {
+     # CPU architecture. We may or may not be doing a cross compile now, so for
+     # simplicity we always explicitly set the architecture.
+     if (current_cpu == "x64") {
+@@ -1500,7 +1500,9 @@ config("compiler_codegen") {
+     # This can be removed once https://bugs.llvm.org/show_bug.cgi?id=40348
+     # has been resolved, and -mno-outline is obeyed by the linker during
+     # ThinLTO.
+-    ldflags += [ "-Wl,-mllvm,-enable-machine-outliner=never" ]
++    # ^ That comment is from 2019. I think we're good:
++    # https://github.com/llvm/llvm-project/commit/55d495475c955384fdc0c4a18b5670ed8b1dedcf
++    # ldflags += [ "-Wl,-mllvm,-enable-machine-outliner=never" ]
+   }
+ 
+   asmflags = cflags
+diff --git a/toolchain/linux/BUILD.gn b/toolchain/linux/BUILD.gn
+index 00e8668..f73e5ae 100644
+--- a/toolchain/linux/BUILD.gn
++++ b/toolchain/linux/BUILD.gn
+@@ -32,6 +32,9 @@ clang_toolchain("clang_arm64") {
+ 
+ gcc_toolchain("arm64") {
+   toolprefix = "aarch64-linux-gnu-"
++  if (!is_cross_compile) {
++    toolprefix = ""
++  }
+ 
+   cc = "${toolprefix}gcc"
+   cxx = "${toolprefix}g++"
+@@ -53,6 +56,9 @@ gcc_toolchain("arm64") {
+ 
+ gcc_toolchain("arm") {
+   toolprefix = "arm-linux-gnueabihf-"
++  if (!is_cross_compile) {
++    toolprefix = ""
++  }
+ 
+   cc = "${toolprefix}gcc"
+   cxx = "${toolprefix}g++"

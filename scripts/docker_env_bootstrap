@@ -1,0 +1,4 @@
+#!/bin/sh
+rm .env
+echo NODE_INCLUDE_PATH=/opt/include/node >> .env
+echo V8_OUT_PATH="$(dirname "$(find /v8/out -name env)")" >> .env

@@ -8,20 +8,20 @@ RUN <<DONE
 		python3 \
 	;
 DONE
-COPY --from=sources node node
-RUN \
-	set -eux; \
-	cd node; \
-	./configure --debug; \
-	make -C out -j$(nproc) BUILDTYPE=Debug; \
-	./tools/install.py install --build-dir out/Debug --dest-dir '' --prefix /opt; \
-	cp -af out/Debug/node /opt/bin/node; \
-	cp --recursive --parents \
-		$(find src deps/v8/src -name '*.h' -o -name '*.cc') \
-		/opt; \
-	rm -rf out; \
-	cd /; \
-	tar c node opt | gzip -1 > node.tar.gz;
+COPY --from=isolated-vm/node_sources node node
+RUN <<DONE
+	set -eux
+	cd node
+	./configure --debug
+	# The BUILDTYPE trick means we don't have to build twice. This is mentioned, in the docs, but no
+	# solution is actually given.
+	# https://github.com/nodejs/node/blob/main/BUILDING.md#building-a-debug-build
+	# nb: Runs out of memory with -j during `ld`
+	make -C out -j$(nproc) BUILDTYPE=Debug || \
+		make -C out BUILDTYPE=Debug
+	# `make install` equivalent
+	./tools/install.py install --build-dir out/Debug --dest-dir '' --prefix /opt
+DONE
 
 FROM scratch
-COPY --from=build node.tar.gz /
+COPY --from=build opt opt

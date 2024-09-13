@@ -16,7 +16,7 @@ auto boolean::Cast(v8::Data* data) -> boolean* {
 }
 
 auto boolean::materialize(std::type_identity<bool> /*tag*/) const -> bool {
-	return IsTrue();
+	return Value();
 }
 
 } // namespace ivm::iv8

@@ -1,43 +1,37 @@
-FROM isolated-vm/depot_tools
-COPY --from=clang clang.tar.gz /
-RUN tar fxz clang.tar.gz && rm clang.tar.gz
-COPY --from=node node.tar.gz /
-RUN tar fxz node.tar.gz && rm node.tar.gz
+FROM debian
+COPY --from=isolated-vm/node_sources node node
+COPY --from=isolated-vm/node opt opt
+COPY --from=isolated-vm/v8_sources v8 v8
+COPY --from=isolated-vm/v8 v8/out v8/out
 ENV PATH="/opt/bin:${PATH}"
-COPY --from=isolated-vm/v8_git v8 v8
+ARG LLVM_VERSION
 RUN <<DONE
 	set -eux
-	gclient config --unmanaged https://chromium.googlesource.com/v8/v8.git
+	gclient config --unmanaged $(git -C v8 config --get remote.origin.url)
 	apt-get update
 	apt-get install -y \
 		build-essential \
-		clang-19 \
-		clang-format-19 \
-		clang-tidy-19 \
-		clangd-19 \
+		clang-$LLVM_VERSION \
+		clang-format-$LLVM_VERSION \
+		clang-tidy-$LLVM_VERSION \
+		clangd-$LLVM_VERSION \
 		cmake \
 		jq \
 		libboost-all-dev \
-		lldb-19 \
+		lld-$LLVM_VERSION \
+		lldb-$LLVM_VERSION \
 		man \
 		ninja-build \
 		pkg-config \
 		vim \
 	;
 
-	# Link clang-19 binraries and libraries to system paths
-	for ii in $(find /usr/bin -name 'clang*-19*' -or -name 'll*-19*'); do
-		ln "$ii" $(echo "$ii" | sed 's/-19//')
-	done
-	ln /usr/lib/llvm-19/lib/clang/19/lib/linux/* /lib/aarch64-linux-gnu/
+	# Link clang-N binaries and libraries to system paths
+	ln -fs /lib/"llvm-$LLVM_VERSION"/bin/* /usr/bin/
+	ln -fs /usr/lib/"llvm-$LLVM_VERSION"/lib/clang/"$LLVM_VERSION"/lib/linux/* /lib/aarch64-linux-gnu/
 
 	# Preload asan for `node`
 	ln /workspace/scripts/node_asan /usr/bin/
-
-	# `clang_wrapper` for better lldb paths in v8
-	# mv /usr/bin/clang /usr/bin/.clang
-	# ln -s /workspace/scripts/clang_wrap /usr/bin/clang
-	# ln -fs /workspace/scripts/clang_wrap /usr/bin/clang++
 
 	# Allow local directory `.lldbinit`
 	echo 'settings set target.load-cwd-lldbinit true' > ~/.lldbinit
@@ -49,5 +43,3 @@ RUN <<DONE
 		eval "$(dircolors)"
 	RC
 DONE
-ENV SHELL=/bin/bash
-CMD [ "bash", "-l" ]

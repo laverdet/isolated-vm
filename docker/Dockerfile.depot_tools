@@ -8,7 +8,9 @@ RUN <<DONE
 		git \
 		python3 \
 	;
+	mkdir -p ~/.config/depot_tools
+	echo '{"is-googler":false,"countdown":10,"opt-in":null,"version":3}' > ~/.config/depot_tools/metrics.cfg
+	git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git --depth 1
+	PATH=$PATH:/depot_tools update_depot_tools
 DONE
-RUN git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-ENV PATH="${PATH}:/depot_tools"
-RUN update_depot_tools
+ENV PATH=$PATH:/depot_tools

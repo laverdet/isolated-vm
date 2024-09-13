@@ -1,31 +1,35 @@
-# Build v8_monolith
-FROM isolated-vm/depot_tools AS build
-ARG TARGET
+# Build v8 objects for the given target
+FROM debian
+ARG LLVM_VERSION
 RUN <<DONE
 	set -eux
 	apt-get update
 	apt-get install -y \
+		build-essential \
+		clang-$LLVM_VERSION \
+		cmake \
 		git \
+		lld-$LLVM_VERSION \
+		ninja-build \
 		pkg-config \
 	;
 DONE
-COPY --from=clang clang.tar.gz /
-RUN tar xfz clang.tar.gz && rm clang.tar.gz
-COPY --from=sources v8 v8
+ENV LD_LIBRARY_PATH=/usr/lib/llvm-$LLVM_VERSION/lib/clang/$LLVM_VERSION/lib/linux:$LD_LIBRARY_PATH
+ENV PATH=/lib/llvm-$LLVM_VERSION/bin:$PATH
+COPY --from=isolated-vm/v8_sources v8 v8
 COPY --from=patches . patches
-COPY --from=scripts v8_build .
+COPY --from=scripts v8_build v8_select .
+ARG REF TARGET
 RUN <<DONE
 	set -eux
-	mkdir out
-	find /patches -type f -exec cat {} + | patch -p1 -d v8
+	gclient config --unmanaged $(git -C v8 config --get remote.origin.url)
 	cd v8
-	cp --recursive --parents \
-		$(find include -name '*.h') \
-		$(find src -name '*.cc') \
-		/out
-	/v8_build out/$TARGET
-	cp --recursive --parent $(find out -name libv8_monolith.a -or -name v8-gn.h) /
-	rm -rf out
+	PATCH_DIR=/patches /v8_select "$REF"
+	CLANG_BASE_PATH=$(echo /lib/llvm-* | head -n1) /v8_build "out/$REF/$TARGET"
+	rm -rf "out/$REF/$TARGET/gen"
+	find out -type f ! -name env ! -name '*.so' ! -name '*.a' ! -name '*.h' -delete
+	find out -type d -empty -delete
 DONE
+
 FROM scratch
-COPY --from=build out .
+COPY --from=build v8/out v8/out

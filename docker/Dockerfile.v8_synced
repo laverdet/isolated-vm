@@ -1,0 +1,16 @@
+FROM isolated-vm/depot_tools AS sync
+COPY --from=isolated-vm/v8_sources v8 sources/v8
+RUN <<DONE
+	set -eux
+	cd sources
+	gclient config --unmanaged $(git -C v8 config --get remote.origin.url)
+	gclient sync --no-history --shallow --with_branch_heads 1>&2
+DONE
+COPY --from=patches . patches
+COPY --from=scripts v8_build v8_select .
+ARG REF
+RUN <<DONE
+	set -eux
+	cd sources/v8
+	PATCH_DIR=/patches SKIP_SYNC=thanks /v8_select "$REF"
+DONE

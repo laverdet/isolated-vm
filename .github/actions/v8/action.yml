@@ -33,6 +33,7 @@ runs:
           python3
           ssh
           xz-utils
+          alpine#linux-headers
           debian#ca-certificates
           debian#libglib2.0-dev
 

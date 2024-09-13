@@ -1,8 +1,8 @@
 diff --git a/config/compiler/BUILD.gn b/config/compiler/BUILD.gn
-index f598fd1..6400433 100644
+index f598fd1..371eb5c 100644
 --- a/config/compiler/BUILD.gn
 +++ b/config/compiler/BUILD.gn
-@@ -1820,6 +1820,14 @@ config("default_warnings") {
+@@ -1820,6 +1820,15 @@ config("default_warnings") {
          cflags_cc += [ "-Wno-class-memaccess" ]
        }
  
@@ -12,12 +12,13 @@ index f598fd1..6400433 100644
 +        "-Wno-stringop-overflow",
 +        "-Wno-template-id-cdtor",
 +        "-Wno-uninitialized",
++        "-Wno-unused-function",
 +      ]
 +
        # -Wunused-local-typedefs is broken in gcc,
        # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=63872
        cflags += [ "-Wno-unused-local-typedefs" ]
-@@ -1838,6 +1846,12 @@ config("default_warnings") {
+@@ -1838,6 +1847,12 @@ config("default_warnings") {
        # -Wpacked-not-aligned complains all generated mojom-shared-internal.h
        # files.
        cflags += [ "-Wno-packed-not-aligned" ]

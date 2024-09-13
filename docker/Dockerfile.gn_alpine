@@ -1,0 +1,14 @@
+FROM alpine
+RUN <<DONE
+	set -eux
+	apk add \
+		clang \
+		git \
+		python3 \
+		ninja-is-really-ninja \
+	;
+	git clone https://gn.googlesource.com/gn
+	cd gn
+	CFLAGS=-D_LARGEFILE64_SOURCE build/gen.py
+	ninja -C out
+DONE
