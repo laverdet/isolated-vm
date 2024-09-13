@@ -25,6 +25,7 @@ struct undefined_tag : primitive_tag {};
 struct boolean_tag : primitive_tag {};
 
 struct key_tag : primitive_tag {};
+struct symbol_tag : key_tag {};
 
 struct numeric_tag : key_tag {};
 template <class Type>

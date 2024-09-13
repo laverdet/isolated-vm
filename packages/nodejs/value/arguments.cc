@@ -31,25 +31,4 @@ auto arguments::iterator::operator*() const -> value_type {
 	return (*info)[ index ];
 }
 
-auto arguments::iterator::operator+=(difference_type offset) -> iterator& {
-	index += offset;
-	return *this;
-}
-
-auto arguments::iterator::operator++(int) -> iterator {
-	auto result = *this;
-	++*this;
-	return result;
-}
-
-auto arguments::iterator::operator--(int) -> iterator {
-	auto result = *this;
-	--*this;
-	return result;
-}
-
-auto arguments::iterator::operator-(const iterator& right) const -> difference_type {
-	return static_cast<difference_type>(index) - static_cast<difference_type>(right.index);
-}
-
 } // namespace ivm::napi

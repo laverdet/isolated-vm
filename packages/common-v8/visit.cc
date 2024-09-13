@@ -16,9 +16,20 @@ import ivm.utility;
 import ivm.value;
 import v8;
 
+// nb: These visitors are split out to share implementations with the napi visitors in the case
+// where it is kind of safe to do so. For numbers, strings, most primitives, etc the ABI has been
+// pretty stable for a long because v8 seems to have those figured out by now.
 namespace ivm::value {
 
-// Specialized v8 number visitor
+// boolean
+template <>
+struct visit<v8::Local<v8::Boolean>> {
+		auto operator()(v8::Local<v8::Boolean> value, const auto& accept) const -> decltype(auto) {
+			return accept(boolean_tag{}, iv8::handle_cast{value.As<iv8::boolean>()});
+		}
+};
+
+// number
 template <>
 struct visit<v8::Local<v8::Number>> {
 		auto operator()(v8::Local<v8::Number> value, const auto& accept) const -> decltype(auto) {
@@ -31,7 +42,15 @@ struct visit<v8::Local<v8::Number>> {
 		}
 };
 
-// Specialized v8 string visitor
+// date
+template <>
+struct visit<v8::Local<v8::Date>> {
+		auto operator()(v8::Local<v8::Date> value, const auto& accept) const -> decltype(auto) {
+			return accept(date_tag{}, iv8::handle_cast{value.As<iv8::date>()});
+		}
+};
+
+// string
 template <>
 struct visit<iv8::handle<iv8::string>> {
 		auto operator()(iv8::handle<iv8::string> value, const auto& accept) const -> decltype(auto) {
@@ -43,24 +62,7 @@ struct visit<iv8::handle<iv8::string>> {
 		}
 };
 
-// Specialized v8 object visitor
-template <>
-struct visit<iv8::object_handle> {
-		auto operator()(iv8::object_handle value, auto&& accept) const -> decltype(auto) {
-			if (value->IsArray()) {
-				return accept(list_tag{}, value);
-			} else if (value->IsExternal()) {
-				return invoke_visit(value.As<v8::External>(), std::forward<decltype(accept)>(accept));
-			} else if (value->IsDate()) {
-				return accept(date_tag{}, iv8::handle_cast{value.As<iv8::date>()});
-			} else if (value->IsPromise()) {
-				return accept(promise_tag{}, value);
-			}
-			return accept(dictionary_tag{}, value);
-		}
-};
-
-// Specialized v8 external visitor
+// external
 template <>
 struct visit<v8::Local<v8::External>> {
 		auto operator()(v8::Local<v8::External> value, const auto& accept) const -> decltype(auto) {
@@ -68,12 +70,21 @@ struct visit<v8::Local<v8::External>> {
 		}
 };
 
-// Visitor for any v8 value, `v8::Value`
+// Primary visitor
 template <>
 struct visit<iv8::handle<v8::Value>> {
 		auto operator()(iv8::handle<v8::Value> value, auto&& accept) const -> decltype(auto) {
 			if (value->IsObject()) {
-				return invoke_visit(iv8::object_handle{value.to<iv8::object>()}, std::forward<decltype(accept)>(accept));
+				if (value->IsArray()) {
+					return accept(list_tag{}, iv8::object_handle{value.to<iv8::object>()});
+				} else if (value->IsExternal()) {
+					return invoke_visit(value.As<v8::External>(), std::forward<decltype(accept)>(accept));
+				} else if (value->IsDate()) {
+					return invoke_visit(value.As<v8::Date>(), std::forward<decltype(accept)>(accept));
+				} else if (value->IsPromise()) {
+					return accept(promise_tag{}, value);
+				}
+				return accept(dictionary_tag{}, iv8::object_handle{value.to<iv8::object>()});
 			} else if (value->IsNullOrUndefined()) {
 				if (value->IsNull()) {
 					return accept(null_tag{}, std::nullptr_t{});
@@ -85,7 +96,7 @@ struct visit<iv8::handle<v8::Value>> {
 			} else if (value->IsString()) {
 				return invoke_visit(value.to<iv8::string>(), std::forward<decltype(accept)>(accept));
 			} else if (value->IsBoolean()) {
-				return accept(boolean_tag{}, iv8::handle_cast{value.As<iv8::boolean>()});
+				return invoke_visit(value.As<v8::Boolean>(), std::forward<decltype(accept)>(accept));
 			} else {
 				return accept(value_tag{}, std::type_identity<void>{});
 			}

@@ -11,7 +11,7 @@ module;
 module ivm.node:external;
 import :environment;
 import :utility;
-import :visit;
+import :accept;
 import ivm.utility;
 import ivm.value;
 import ivm.v8;

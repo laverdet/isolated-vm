@@ -74,8 +74,8 @@ struct array_to_object_helper {
 		constexpr auto begin() const { return values.begin(); }
 		constexpr auto end() const { return values.end(); }
 		constexpr auto get(std::string_view string) {
-			auto it = std::ranges::find_if(values, [ string ](auto&& pair) constexpr {
-				return pair.first == string;
+			auto it = std::ranges::find_if(values, [ string ](auto&& entry) constexpr {
+				return entry.first == string;
 			});
 			if (it == values.end()) {
 				throw std::logic_error("Key not found");

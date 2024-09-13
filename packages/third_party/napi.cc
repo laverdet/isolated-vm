@@ -6,7 +6,9 @@ export using napi_status = napi_status;
 export using napi_value = napi_value;
 namespace Napi {
 export using Napi::Array;
+export using Napi::Boolean;
 export using Napi::CallbackInfo;
+export using Napi::Date;
 export using Napi::Env;
 export using Napi::Error;
 export using Napi::Function;

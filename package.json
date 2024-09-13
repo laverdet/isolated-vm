@@ -10,7 +10,7 @@
     "clang-format": "find packages -name '*.cc' -exec clang-format -i {} \\;",
     "clang-tidy": "find packages -name '*.cc' -print0 | xargs -0 clang-tidy --fix",
     "eslint": "eslint --fix packages",
-    "test": "node --test-reporter=spec --test 'dist/test/*.js'"
+    "test": "node --test-reporter=spec --test dist/test/*.js"
   },
   "description": "JavaScript sandbox",
   "author": "https://github.com/laverdet/",

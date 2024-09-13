@@ -15,7 +15,12 @@ auto object::Cast(v8::Value* data) -> object* {
 	return reinterpret_cast<object*>(v8::Object::Cast(data));
 }
 
-auto object::deref(handle_env env, array_handle& keys) -> range_type {
+auto object::get(handle_env env, array_handle& /*keys*/, std::string_view key) -> handle<v8::Value> {
+	auto key_string = string::make(env.isolate, key);
+	return {unmaybe(this->GetRealNamedProperty(env.context, key_string.As<v8::Name>())), env};
+}
+
+auto object::into_range(handle_env env, array_handle& keys) -> range_type {
 	if (keys == array_handle{}) {
 		auto property_names = unmaybe(this->GetPropertyNames(
 			env.context,
@@ -29,17 +34,12 @@ auto object::deref(handle_env env, array_handle& keys) -> range_type {
 	return keys | std::views::transform(iterator_transform{env, this});
 }
 
-auto object::get(handle_env env, array_handle& /*keys*/, std::string_view key) -> handle<v8::Value> {
-	auto key_string = string::make(env.isolate, key);
-	return {unmaybe(this->GetRealNamedProperty(env.context, key_string.As<v8::Name>())), env};
-}
-
 object::iterator_transform::iterator_transform(handle_env env, v8::Object* object) :
 		env{env}, object{object} {}
 
 auto object::iterator_transform::operator()(handle<v8::Value> key) const -> value_type {
 	auto value = unmaybe(object->GetRealNamedProperty(env.context, key.As<v8::Name>()));
-	return std::make_pair(key, handle{value, env});
+	return std::pair{key, handle{value, env}};
 }
 
 } // namespace ivm::iv8

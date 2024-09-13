@@ -32,8 +32,7 @@ RUN <<DONE
 	ln /usr/lib/llvm-19/lib/clang/19/lib/linux/* /lib/aarch64-linux-gnu/
 
 	# Preload asan for `node`
-	mv /opt/bin/node /opt/bin/node-
-	ln -s /workspace/scripts/node_asan /usr/bin/node
+	ln /workspace/scripts/node_asan /usr/bin/
 
 	# `clang_wrapper` for better lldb paths in v8
 	# mv /usr/bin/clang /usr/bin/.clang

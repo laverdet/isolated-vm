@@ -2,7 +2,7 @@ name: Build
 on: [ push ]
 
 env:
-  NODE_HEADERS: 22.0.0
+  NODE_HEADERS: 18.0.0
   V8_CONFIGURATION: release
   V8_REF: 12.8.20
 
@@ -162,6 +162,8 @@ jobs:
             platform: linux-gnu
             arch: x64
         node:
+          - 18
+          - 20
           - 22
     name: test / ${{ matrix.host.platform }} ${{ matrix.host.arch }} nodejs ${{ matrix.node }}
     runs-on: ${{ matrix.host.runs-on }}

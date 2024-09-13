@@ -41,10 +41,10 @@ struct accept<Meta, dictionary_value<Tag, Key, Value>> {
 				into_range(dictionary) |
 				std::views::transform([ &accept_key, &accept_value ](auto entry) {
 					auto&& [ key, value ] = entry;
-					return std::make_pair(
+					return std::pair{
 						invoke_visit(std::forward<decltype(key)>(key), accept_key),
 						invoke_visit(std::forward<decltype(value)>(value), accept_value)
-					);
+					};
 				})
 			};
 		}

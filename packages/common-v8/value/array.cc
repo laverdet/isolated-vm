@@ -37,25 +37,4 @@ auto array::iterator::operator*() const -> value_type {
 	return iv8::handle{unmaybe(handle->Get(env.context, index)), env};
 }
 
-auto array::iterator::operator+=(difference_type offset) -> iterator& {
-	index += offset;
-	return *this;
-}
-
-auto array::iterator::operator++(int) -> iterator {
-	auto result = *this;
-	++*this;
-	return result;
-}
-
-auto array::iterator::operator--(int) -> iterator {
-	auto result = *this;
-	--*this;
-	return result;
-}
-
-auto array::iterator::operator-(const iterator& right) const -> difference_type {
-	return static_cast<int32_t>(int64_t{index} - int64_t{right.index});
-}
-
 } // namespace ivm::iv8

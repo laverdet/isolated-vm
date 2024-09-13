@@ -24,12 +24,12 @@ class handle : public v8::Local<Type> {
 	public:
 		using v8::Local<Type>::Local;
 
-		handle(v8::Local<Type> local, handle_env env, auto&&... extra) :
+		handle(const v8::Local<Type>& local, handle_env env, auto&&... extra) :
 				v8::Local<Type>{local},
 				env_{env},
 				extra_{std::forward<decltype(extra)>(extra)...} {}
 
-		explicit handle(handle<Type> local, auto&&... extra) :
+		explicit handle(const handle<Type>& local, auto&&... extra) :
 				v8::Local<Type>{local},
 				env_{local.env()},
 				extra_{std::forward<decltype(extra)>(extra)...} {}
@@ -76,9 +76,9 @@ class handle : public v8::Local<Type> {
 
 		// `operator*` is already taken
 		auto operator~() const -> decltype(auto)
-			requires std::invocable<decltype(&Type::deref), Type&, handle_env, Extra&...> {
+			requires std::invocable<decltype(&Type::into_range), Type&, handle_env, Extra&...> {
 			auto* non_const = const_cast<handle*>(this); // NOLINT(cppcoreguidelines-pro-type-const-cast)
-			return non_const->apply_handle(&Type::deref);
+			return non_const->apply_handle(&Type::into_range);
 		}
 
 	private:
@@ -113,11 +113,7 @@ class handle : public v8::Local<Type> {
 template <class Type>
 class handle_cast : public v8::Local<Type> {
 	public:
-		explicit handle_cast(v8::Local<Type> local) :
-				v8::Local<Type>{local} {}
-		// nb: This overload is not strictly necessary but prevents `cppcoreguidelines-slicing` lint
-		// warnings
-		explicit handle_cast(iv8::handle<Type> local) :
+		explicit handle_cast(const v8::Local<Type>& local) :
 				v8::Local<Type>{local} {}
 
 		template <class To>

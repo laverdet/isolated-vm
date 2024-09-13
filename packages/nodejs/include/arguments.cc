@@ -4,6 +4,7 @@ module;
 #include <iterator>
 export module ivm.node:arguments;
 import napi;
+import ivm.utility;
 
 namespace ivm::napi {
 
@@ -14,43 +15,42 @@ export class arguments {
 
 		explicit arguments(const Napi::CallbackInfo& info);
 
-		auto begin() const -> iterator;
-		auto end() const -> iterator;
-		auto size() const -> size_t;
+		[[nodiscard]] auto begin() const -> iterator;
+		[[nodiscard]] auto end() const -> iterator;
+		[[nodiscard]] auto size() const -> size_t;
 
 	private:
 		const Napi::CallbackInfo* info;
 };
 
-class arguments::iterator {
+class arguments::iterator : public arithmetic_facade<iterator, ssize_t> {
 	public:
+		friend arithmetic_facade;
+		using arithmetic_facade::operator+;
+		using difference_type = arithmetic_facade::difference_type;
+		using size_type = size_t;
 		using value_type = arguments::value_type;
-		using difference_type = ssize_t;
 
 		iterator() = default;
-		iterator(const Napi::CallbackInfo& info, size_t index);
+		iterator(const Napi::CallbackInfo& info, size_type index);
 
 		auto operator*() const -> value_type;
 		auto operator->() const -> value_type { return **this; }
 		auto operator[](difference_type offset) const -> value_type { return *(*this + offset); }
 
-		auto operator+=(difference_type offset) -> iterator&;
-		auto operator++() -> iterator& { return *this += 1; }
-		auto operator++(int) -> iterator;
-		auto operator--() -> iterator& { return *this -= 1; }
-		auto operator--(int) -> iterator;
-		auto operator-=(difference_type offset) -> iterator& { return *this += -offset; }
-		auto operator+(difference_type offset) const -> iterator { return iterator{*this} += offset; }
-		auto operator-(difference_type offset) const -> iterator { return iterator{*this} -= offset; }
-		auto operator-(const iterator& right) const -> difference_type;
-		friend auto operator+(difference_type left, const iterator& right) -> iterator { return right + left; }
+		auto operator+=(difference_type offset) -> iterator& {
+			index += offset;
+			return *this;
+		}
 
 		auto operator==(const iterator& right) const -> bool { return index == right.index; }
 		auto operator<=>(const iterator& right) const -> std::strong_ordering { return index <=> right.index; };
 
 	private:
+		auto operator+() const -> ssize_t { return static_cast<ssize_t>(index); }
+
 		const Napi::CallbackInfo* info{};
-		size_t index{};
+		size_type index{};
 };
 
 static_assert(std::ranges::range<arguments>);

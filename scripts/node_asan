@@ -2,4 +2,4 @@
 SUPPRESSIONS=$(dirname "$(realpath "$0")")/.lsan-supressions
 LD_PRELOAD=libclang_rt.asan-aarch64.so \
 LSAN_OPTIONS=suppressions=$SUPPRESSIONS \
-exec node- "$@"
+exec node "$@"

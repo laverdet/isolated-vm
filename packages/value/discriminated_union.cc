@@ -26,7 +26,7 @@ struct discriminated_alternatives {
 				// `Type` may not be default constructible
 				throw std::domain_error("Nothing");
 			} else {
-				return invoke_visit(value, make_accept<Alternative>(accept));
+				return make_accept<Alternative>(accept)(dictionary_tag{}, value);
 			}
 		}
 };

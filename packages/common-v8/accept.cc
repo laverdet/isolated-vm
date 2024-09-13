@@ -82,8 +82,8 @@ struct accept<Meta, v8::Local<v8::Value>> : iv8::accept_primitive_base {
 			return delegate_accept<v8::Local<v8::String>>(*this, tag, std::forward<decltype(value)>(value), isolate);
 		}
 
-		auto operator()(date_tag /*tag*/, auto value) const -> v8::Local<v8::Value> {
-			return iv8::date::make(context, value);
+		auto operator()(date_tag /*tag*/, auto&& value) const -> v8::Local<v8::Value> {
+			return iv8::date::make(context, std::forward<decltype(value)>(value));
 		}
 
 		auto operator()(list_tag /*tag*/, auto&& list) const -> v8::Local<v8::Value> {

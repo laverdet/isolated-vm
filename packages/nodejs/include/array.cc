@@ -1,25 +1,33 @@
 module;
 #include <compare>
 #include <cstdint>
-#include <ranges>
-export module ivm.v8:array;
-import v8;
-import :handle;
-import :utility;
+// Fix visibility bug on llvm 18
+// /__w/ivm/ivm/packages/nodejs/value/array.cc:9:20: error: declaration of 'Array' must be imported from module 'napi' before it is required
+//     9 | array::array(Napi::Array array) :
+// /__w/ivm/ivm/packages/third_party/napi.cc:8:20: note: declaration here is not visible
+//     8 | export using Napi::Array;
+#include <napi.h>
+export module ivm.node:array;
 import ivm.utility;
+import napi;
 
-namespace ivm::iv8 {
+namespace ivm::napi {
 
-export class array : public v8::Array {
+export class array {
 	public:
 		class iterator;
-		struct handle_data;
-		using value_type = handle<v8::Value>;
+		using value_type = Napi::Value;
 
-		[[nodiscard]] auto begin(handle_env env, uint32_t& length) const -> iterator;
-		[[nodiscard]] auto end(handle_env env, uint32_t& length) const -> iterator;
-		[[nodiscard]] auto size(handle_env env, uint32_t& length) const -> uint32_t;
-		static auto Cast(v8::Value* data) -> array*;
+		array() = default;
+		explicit array(Napi::Array array);
+
+		[[nodiscard]] auto begin() const -> iterator;
+		[[nodiscard]] auto end() const -> iterator;
+		[[nodiscard]] auto size() const -> uint32_t;
+		auto value() -> Napi::Value&;
+
+	private:
+		Napi::Array array_;
 };
 
 class array::iterator : public arithmetic_facade<iterator, int32_t, int64_t> {
@@ -31,7 +39,7 @@ class array::iterator : public arithmetic_facade<iterator, int32_t, int64_t> {
 		using value_type = array::value_type;
 
 		iterator() = default;
-		iterator(array* handle, handle_env env, uint32_t index);
+		iterator(Napi::Array array, size_type index);
 
 		auto operator*() const -> value_type;
 		auto operator->() const -> value_type { return **this; }
@@ -48,13 +56,8 @@ class array::iterator : public arithmetic_facade<iterator, int32_t, int64_t> {
 	private:
 		auto operator+() const -> size_type { return index; }
 
-		handle_env env;
-		array* handle{};
-		uint32_t index{};
+		Napi::Array array;
+		size_type index{};
 };
 
-export using array_handle = handle<array, mutable_value<uint32_t>>;
-static_assert(std::ranges::range<array_handle>);
-static_assert(std::random_access_iterator<array::iterator>);
-
-} // namespace ivm::iv8
+} // namespace ivm::napi

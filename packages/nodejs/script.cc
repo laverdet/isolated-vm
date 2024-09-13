@@ -38,7 +38,7 @@ auto run_script(
 	iv8::external_reference<realm>& realm
 ) -> Napi::Value {
 	auto [ dispatch, promise ] = make_promise<value::value_t>(env, [](environment& env, value::value_t result) -> expected_value {
-		return value::transfer_strict<Napi::Value>(std::move(result), env);
+		return value::transfer_strict<Napi::Value>(std::move(result), env.napi_env());
 	});
 	agent->schedule(
 		[ &realm,

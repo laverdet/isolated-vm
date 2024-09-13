@@ -82,6 +82,7 @@ target_sources(ivm_utility
 			packages/utility/call_once_or_else.cc
 			packages/utility/collection_group.cc
 			packages/utility/comparator.cc
+			packages/utility/facade.cc
 			packages/utility/lockable.cc
 			packages/utility/mutable_value.cc
 			packages/utility/prehashed_string_map.cc
@@ -225,12 +226,17 @@ target_sources(ivm_backend_v8
 		packages/nodejs/main.cc
 		packages/nodejs/script.cc
 		packages/nodejs/value/arguments.cc
+		packages/nodejs/value/array.cc
+		packages/nodejs/value/object.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		packages/nodejs/include/_module.cc
 		packages/nodejs/include/arguments.cc
+		packages/nodejs/include/array.cc
 		packages/nodejs/include/environment.cc
 		packages/nodejs/include/external.cc
+		packages/nodejs/include/object.cc
 		packages/nodejs/utility.cc
+		packages/nodejs/value/accept.cc
 		packages/nodejs/value/visit.cc
 		packages/third_party/napi.cc
 )

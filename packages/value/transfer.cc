@@ -37,17 +37,6 @@ struct accept<Meta, accept_with_throw::accept_throw<Type>>
 		}
 };
 
-// Directly invoke an acceptor, skipping the visit stage
-export template <class Type>
-constexpr auto direct_cast(auto&& value, auto&&... accept_args) -> decltype(auto) {
-	return accept<accept_pass, Type>{
-		std::forward<decltype(accept_args)>(accept_args)...
-	}(
-		value_tag{},
-		std::forward<decltype(value)>(value)
-	);
-}
-
 // Transfer a JavaScript value from one domain to another
 template <class Type, class Meta>
 constexpr auto transfer_with(

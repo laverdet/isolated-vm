@@ -1,10 +1,12 @@
 module;
 #include <cstring>
-#include <stdexcept>
 #include <utility>
+#include <variant>
 export module ivm.node:visit;
+import :accept;
 import :arguments;
 import :environment;
+import :object;
 import ivm.v8;
 import ivm.value;
 import ivm.utility;
@@ -12,25 +14,6 @@ import napi;
 import v8;
 
 namespace ivm {
-
-thread_local napi_env delegated_env{};
-
-// Return the given `napi_env` which corresponds to the `v8::Value` that is currently being visited.
-export auto get_delegated_visit_napi_env() -> napi_env {
-	if (delegated_env == napi_env{}) {
-		throw std::runtime_error{"No delegated napi_env"};
-	}
-	return delegated_env;
-}
-
-// Marks an env belong to the current visit
-auto delegated_visit_scope(napi_env env) {
-	if (delegated_env != napi_env{}) {
-		throw std::runtime_error{"Delegated env already set"};
-	}
-	delegated_env = env;
-	return scope_exit{defaulter_finalizer{delegated_env}};
-}
 
 export template <class Type>
 auto napi_to_v8(napi_value value) -> v8::Local<Type> {
@@ -41,13 +24,12 @@ auto napi_to_v8(napi_value value) -> v8::Local<Type> {
 	return local;
 }
 
-export template <class Type>
-auto v8_to_napi(v8::Local<Type> local) -> napi_value {
-	napi_value value{};
-	static_assert(std::is_pointer_v<napi_value>);
-	static_assert(sizeof(void*) == sizeof(local));
-	std::memcpy(&value, &local, sizeof(local));
-	return value;
+template <class Type>
+auto napi_to_iv8(Napi::Value value) {
+	auto& ienv = environment::get(value.Env());
+	auto* isolate = ienv.isolate();
+	auto context = ienv.context();
+	return iv8::handle{napi_to_v8<Type>(value), {isolate, context}};
 }
 
 } // namespace ivm
@@ -81,40 +63,6 @@ export class napi_callback_info_memo : non_copyable {
 
 namespace ivm::value {
 
-// Delegate Napi::Value to iv8 common acceptor
-template <class Meta>
-struct accept<Meta, Napi::Value> : non_copyable {
-		accept() = delete;
-		accept(const accept&) = delete;
-		accept(accept&&) = delete;
-		~accept() = default;
-		auto operator=(const accept&) -> accept& = delete;
-		auto operator=(accept&&) -> accept& = delete;
-
-		explicit accept(environment& env) :
-				env_{&env} {}
-
-		// nb: This handles `direct_cast` from a v8 handle to napi handle
-		template <class Type>
-		auto operator()(value_tag /*tag*/, v8::Local<Type> value) const -> Napi::Value {
-			return {env_->napi_env(), v8_to_napi(value)};
-		}
-
-		auto operator()(auto_tag auto tag, auto&& value) const -> Napi::Value {
-			auto local = delegate_accept<v8::Local<v8::Value>>(
-				*this,
-				tag,
-				std::forward<decltype(value)>(value),
-				env_->isolate(),
-				env_->context()
-			);
-			return (*this)(value_tag{}, local);
-		}
-
-	private:
-		environment* env_;
-};
-
 // Napi function arguments to list
 template <>
 struct visit<ivm::napi::napi_callback_info_memo> {
@@ -123,19 +71,41 @@ struct visit<ivm::napi::napi_callback_info_memo> {
 		}
 };
 
-// Delegate Napi::Value to iv8 common visitor
+// Delegate Napi::Value to various visitors
 template <>
 struct visit<Napi::Value> {
 		auto operator()(Napi::Value value, auto&& accept) const -> decltype(auto) {
-			auto visit_scope = delegated_visit_scope(value.Env());
-			auto local = napi_to_v8<v8::Value>(value);
-			auto& ienv = environment::get(value.Env());
-			auto* isolate = ienv.isolate();
-			auto context = ienv.context();
-			return invoke_visit(
-				iv8::handle{local, {isolate, context}},
-				std::forward<decltype(accept)>(accept)
-			);
+			auto v8_common_delegate = [ & ]<class Type>(std::type_identity<Type> /*tag*/, Napi::Value value) -> decltype(auto) {
+				return invoke_visit(napi_to_v8<Type>(value), std::forward<decltype(accept)>(accept));
+			};
+			switch (value.Type()) {
+				case napi_boolean:
+					return v8_common_delegate(std::type_identity<v8::Boolean>{}, value);
+				case napi_number:
+					return v8_common_delegate(std::type_identity<v8::Number>{}, value);
+				case napi_string:
+					return invoke_visit(napi_to_iv8<iv8::string>(value), std::forward<decltype(accept)>(accept));
+				case napi_object:
+					if (value.IsArray()) {
+						return accept(list_tag{}, ivm::napi::object{value.As<Napi::Object>()});
+					} else if (value.IsDate()) {
+						return v8_common_delegate(std::type_identity<v8::Date>{}, value);
+					} else if (value.IsPromise()) {
+						return accept(promise_tag{}, value);
+					}
+					return accept(dictionary_tag{}, ivm::napi::object{value.As<Napi::Object>()});
+				case napi_external:
+					return v8_common_delegate(std::type_identity<v8::External>{}, value);
+				case napi_symbol:
+					return accept(symbol_tag{}, value);
+				case napi_null:
+					return accept(null_tag{}, std::nullptr_t{});
+				case napi_undefined:
+					return accept(undefined_tag{}, std::monostate{});
+				case napi_bigint:
+				case napi_function:
+					return accept(value_tag{}, std::type_identity<void>{});
+			}
 		}
 };
 

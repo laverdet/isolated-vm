@@ -1,10 +1,11 @@
 module;
-#include <v8-platform.h>
 #ifndef IVM_V8_VIA_NODEJS
 #include <libplatform/v8-tracing.h>
-#endif
+#include <v8-platform.h>
 #include <v8-source-location.h>
+#endif
 export module v8:platform;
+#ifndef IVM_V8_VIA_NODEJS
 namespace v8 {
 export using v8::IdleTask;
 export using v8::JobDelegate;
@@ -15,13 +16,10 @@ export using v8::Platform;
 export using v8::Task;
 export using v8::TaskPriority;
 export using v8::TaskRunner;
-#ifndef IVM_V8_VIA_NODEJS
 export using v8::TracingController;
-#endif
 export using v8::SourceLocation;
-#ifndef IVM_V8_VIA_NODEJS
 namespace platform::tracing {
 export using v8::platform::tracing::TracingController;
 }
-#endif
 } // namespace v8
+#endif

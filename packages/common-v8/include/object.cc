@@ -31,8 +31,8 @@ export class object : public v8::Object {
 		using range_type = std::ranges::transform_view<std::views::all_t<array_handle&>, iterator_transform>;
 		using iterator = std::ranges::iterator_t<range_type>;
 
-		[[nodiscard]] auto deref(handle_env env, array_handle& keys) -> range_type;
 		[[nodiscard]] auto get(handle_env env, array_handle& keys, std::string_view key) -> handle<v8::Value>;
+		[[nodiscard]] auto into_range(handle_env env, array_handle& keys) -> range_type;
 		static auto Cast(v8::Value* data) -> object*;
 };
 
