@@ -1,11 +1,12 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import { unsafeEvalAsString, withAgent } from "./fixtures.js";
+import * as ivm from "isolated-vm";
+import { unsafeEvalAsString } from "./fixtures.js";
 
-const makeAgentRandom =
-	async (randomSeed?: number) =>
-		withAgent({ randomSeed }, async agent =>
-			unsafeEvalAsString(agent, () => Math.random()));
+const makeAgentRandom =	async (randomSeed?: number) => {
+	await using agent = await ivm.Agent.create({ randomSeed });
+	return await unsafeEvalAsString(agent, () => Math.random());
+};
 
 await test("random", async () => {
 	const result1 = await makeAgentRandom();

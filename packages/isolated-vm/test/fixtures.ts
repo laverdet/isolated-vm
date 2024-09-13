@@ -1,19 +1,6 @@
 import { Agent, Realm } from "isolated-vm";
 
 /** @internal */
-export async function withAgent<Type>(
-	options: Agent.CreateOptions | null,
-	fn: (agent: Agent) => Promise<Type>,
-): Promise<Type> {
-	const agent = await Agent.create(options ?? undefined);
-	try {
-		return await fn(agent);
-	} finally {
-		await agent.dispose();
-	}
-}
-
-/** @internal */
 export async function unsafeEvalAsString<Type, Args extends unknown[]>(
 	agent: Agent,
 	code: (...args: Args) => Type,

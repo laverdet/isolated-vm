@@ -12,12 +12,13 @@
 
 		// Language & emit settings
 		"declarationMap": true,
+		"importHelpers": true,
 		"isolatedDeclarations": true,
 		"isolatedModules": true,
 		"noEmitOnError": false,
 		"sourceMap": true,
 		"stripInternal": true,
-		"target": "esnext",
+		"target": "es2022",
 		"verbatimModuleSyntax": true,
 
 		// Module resolution settings

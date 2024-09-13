@@ -35,4 +35,8 @@ export class Agent {
 		// :)
 		return true;
 	}
+
+	async [Symbol.asyncDispose](): Promise<void> {
+		await this.dispose();
+	}
 }

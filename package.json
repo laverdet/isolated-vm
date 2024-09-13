@@ -31,5 +31,8 @@
     "isolated-vm": ".",
     "node-addon-api": "^8.1.0",
     "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "tslib": "^2.7.0"
   }
 }
