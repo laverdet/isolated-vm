@@ -1,7 +1,6 @@
 export module ivm.v8;
 export import :accept;
 export import :array;
-export import :collected_external;
 export import :external;
 export import :handle;
 export import :object;

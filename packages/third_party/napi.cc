@@ -12,8 +12,11 @@ export using Napi::Error;
 export using Napi::Function;
 export using Napi::Number;
 export using Napi::Object;
+export using Napi::ObjectReference;
 export using Napi::Promise;
+export using Napi::Reference;
 export using Napi::String;
 export using Napi::TypedThreadSafeFunction;
 export using Napi::Value;
+export using Napi::Weak;
 } // namespace Napi

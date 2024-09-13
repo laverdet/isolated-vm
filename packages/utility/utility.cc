@@ -65,3 +65,14 @@ class scope_exit : non_copyable {
 	private:
 		Invoke invoke_;
 };
+
+export template <class Type>
+class defaulter_finalizer : non_copyable {
+	public:
+		explicit defaulter_finalizer(Type& value) :
+				value{&value} {};
+		auto operator()() -> void { *value = Type{}; }
+
+	private:
+		Type* value;
+};

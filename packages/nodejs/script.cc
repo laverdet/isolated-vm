@@ -1,8 +1,8 @@
 module;
-#include <memory>
 #include <utility>
 module ivm.node;
 import :environment;
+import :external;
 import :utility;
 import :visit;
 import ivm.isolated_v8;
@@ -13,19 +13,13 @@ import napi;
 namespace ivm {
 
 auto compile_script(
-	Napi::Env env,
-	environment& ienv,
-	iv8::collected_external<agent>& agent,
-	ivm::value::string_t code_string
+	environment& env,
+	iv8::external_reference<agent>& agent,
+	value::string_t code_string
 ) -> Napi::Value {
-	auto [ dispatch, promise ] = make_promise<ivm::script>(
-		env,
-		ienv.collection(),
-		[ &ienv ](Napi::Env env, ivm::script script) -> expected_value {
-			auto script_handle = iv8::make_collected_external(ienv.collection(), ienv.isolate(), std::move(script));
-			return value::direct_cast<Napi::Value>(script_handle, env, ienv);
-		}
-	);
+	auto [ dispatch, promise ] = make_promise<ivm::script>(env, [](environment& env, ivm::script script) -> expected_value {
+		return make_collected_external<ivm::script>(env, std::move(script));
+	});
 	agent->schedule(
 		[ code_string = std::move(code_string),
 			dispatch = std::move(dispatch) ](
@@ -38,19 +32,14 @@ auto compile_script(
 }
 
 auto run_script(
-	Napi::Env env,
-	environment& ienv,
-	iv8::collected_external<agent>& agent,
-	iv8::collected_external<script>& script,
-	iv8::collected_external<realm>& realm
+	environment& env,
+	iv8::external_reference<agent>& agent,
+	iv8::external_reference<script>& script,
+	iv8::external_reference<realm>& realm
 ) -> Napi::Value {
-	auto [ dispatch, promise ] = make_promise<value::value_t>(
-		env,
-		ienv.collection(),
-		[ &ienv ](Napi::Env env, value::value_t result) -> expected_value {
-			return value::transfer_strict<Napi::Value>(std::move(result), env, ienv);
-		}
-	);
+	auto [ dispatch, promise ] = make_promise<value::value_t>(env, [](environment& env, value::value_t result) -> expected_value {
+		return value::transfer_strict<Napi::Value>(std::move(result), env);
+	});
 	agent->schedule(
 		[ &realm,
 			&script,
@@ -65,12 +54,12 @@ auto run_script(
 	return promise;
 }
 
-auto make_compile_script(Napi::Env env, ivm::environment& ienv) -> Napi::Function {
-	return make_node_function(env, ienv, ivm::compile_script);
+auto make_compile_script(environment& env) -> Napi::Function {
+	return make_node_function(env, compile_script);
 }
 
-auto make_run_script(Napi::Env env, ivm::environment& ienv) -> Napi::Function {
-	return make_node_function(env, ienv, ivm::run_script);
+auto make_run_script(environment& env) -> Napi::Function {
+	return make_node_function(env, run_script);
 }
 
 } // namespace ivm

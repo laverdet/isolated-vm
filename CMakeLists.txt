@@ -64,6 +64,11 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 		-shared-libasan
 	)
 else()
+	# clang-18 complains about `std::aligned_storage` within `std::shared_ptr` compiling against
+	# libstdc++
+	add_compile_options(
+		-Wno-deprecated-declarations
+	)
 	set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 endif()
 
@@ -118,7 +123,6 @@ set(IVM_V8_COMMON_SOURCES
 		packages/common-v8/include/_module.cc
 		packages/common-v8/include/array.cc
 		packages/common-v8/include/boolean.cc
-		packages/common-v8/include/collected_external.cc
 		packages/common-v8/include/date.cc
 		packages/common-v8/include/external.cc
 		packages/common-v8/include/handle.cc
@@ -183,6 +187,7 @@ target_link_libraries(ivm_v8_nodejs PUBLIC ivm_base ivm_utility)
 
 # isolated v8 backend
 add_library(ivm_isolated_v8 EXCLUDE_FROM_ALL STATIC)
+target_compile_definitions(ivm_isolated_v8 PRIVATE NAPI_EXPERIMENTAL)
 target_sources(ivm_isolated_v8
 	PRIVATE
 		packages/libivm-v8/agent/clock.cc
@@ -224,6 +229,7 @@ target_sources(ivm_backend_v8
 		packages/nodejs/include/_module.cc
 		packages/nodejs/include/arguments.cc
 		packages/nodejs/include/environment.cc
+		packages/nodejs/include/external.cc
 		packages/nodejs/utility.cc
 		packages/nodejs/value/visit.cc
 		packages/third_party/napi.cc

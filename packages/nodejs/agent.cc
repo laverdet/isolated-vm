@@ -1,10 +1,11 @@
 module;
-#include <concepts>
-#include <memory>
+#include <array>
 #include <optional>
+#include <tuple>
 #include <variant>
 module ivm.node;
 import :environment;
+import :external;
 import :utility;
 import :visit;
 import ivm.isolated_v8;
@@ -34,16 +35,11 @@ struct make_agent_options {
 		std::optional<double> random_seed;
 };
 
-auto create_agent(Napi::Env env, environment& ienv, make_agent_options options) -> Napi::Value {
-	auto& cluster = ienv.cluster();
-	auto [ dispatch, promise ] = make_promise<ivm::agent>(
-		env,
-		ienv.collection(),
-		[ &ienv ](Napi::Env env, ivm::agent agent) -> expected_value {
-			auto agent_handle = iv8::make_collected_external(ienv.collection(), ienv.isolate(), std::move(agent));
-			return value::direct_cast<Napi::Value>(agent_handle, env, ienv);
-		}
-	);
+auto create_agent(environment& env, make_agent_options options) -> Napi::Value {
+	auto& cluster = env.cluster();
+	auto [ dispatch, promise ] = make_promise<ivm::agent>(env, [](environment& env, ivm::agent agent) -> expected_value {
+		return make_collected_external<ivm::agent>(env, std::move(agent));
+	});
 	auto clock = std::visit(
 		overloaded{
 			[](const make_agent_options::clock_deterministic& options) -> agent::clock::any_clock {
@@ -75,15 +71,10 @@ auto create_agent(Napi::Env env, environment& ienv, make_agent_options options) 
 	return promise;
 }
 
-auto create_realm(Napi::Env env, environment& ienv, iv8::collected_external<agent>& agent) -> Napi::Value {
-	auto [ dispatch, promise ] = make_promise<ivm::realm>(
-		env,
-		ienv.collection(),
-		[ &ienv ](Napi::Env env, ivm::realm realm) -> expected_value {
-			auto realm_handle = iv8::make_collected_external(ienv.collection(), ienv.isolate(), std::move(realm));
-			return value::direct_cast<Napi::Value>(realm_handle, env, ienv);
-		}
-	);
+auto create_realm(environment& env, iv8::external_reference<agent>& agent) -> Napi::Value {
+	auto [ dispatch, promise ] = make_promise<ivm::realm>(env, [](environment& env, ivm::realm realm) -> expected_value {
+		return make_collected_external<ivm::realm>(env, std::move(realm));
+	});
 	agent->schedule(
 		[ dispatch = std::move(dispatch) ](
 			ivm::agent::lock& lock
@@ -96,12 +87,12 @@ auto create_realm(Napi::Env env, environment& ienv, iv8::collected_external<agen
 	return promise;
 }
 
-auto make_create_agent(Napi::Env env, ivm::environment& ienv) -> Napi::Function {
-	return make_node_function(env, ienv, ivm::create_agent);
+auto make_create_agent(environment& env) -> Napi::Function {
+	return make_node_function(env, create_agent);
 }
 
-auto make_create_realm(Napi::Env env, ivm::environment& ienv) -> Napi::Function {
-	return make_node_function(env, ienv, ivm::create_realm);
+auto make_create_realm(environment& env) -> Napi::Function {
+	return make_node_function(env, create_realm);
 }
 
 } // namespace ivm

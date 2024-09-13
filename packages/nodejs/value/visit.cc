@@ -1,5 +1,6 @@
 module;
 #include <cstring>
+#include <stdexcept>
 #include <utility>
 export module ivm.node:visit;
 import :arguments;
@@ -9,6 +10,47 @@ import ivm.value;
 import ivm.utility;
 import napi;
 import v8;
+
+namespace ivm {
+
+thread_local napi_env delegated_env{};
+
+// Return the given `napi_env` which corresponds to the `v8::Value` that is currently being visited.
+export auto get_delegated_visit_napi_env() -> napi_env {
+	if (delegated_env == napi_env{}) {
+		throw std::runtime_error{"No delegated napi_env"};
+	}
+	return delegated_env;
+}
+
+// Marks an env belong to the current visit
+auto delegated_visit_scope(napi_env env) {
+	if (delegated_env != napi_env{}) {
+		throw std::runtime_error{"Delegated env already set"};
+	}
+	delegated_env = env;
+	return scope_exit{defaulter_finalizer{delegated_env}};
+}
+
+export template <class Type>
+auto napi_to_v8(napi_value value) -> v8::Local<Type> {
+	v8::Local<Type> local{};
+	static_assert(std::is_pointer_v<napi_value>);
+	static_assert(sizeof(void*) == sizeof(local));
+	std::memcpy(&local, &value, sizeof(local));
+	return local;
+}
+
+export template <class Type>
+auto v8_to_napi(v8::Local<Type> local) -> napi_value {
+	napi_value value{};
+	static_assert(std::is_pointer_v<napi_value>);
+	static_assert(sizeof(void*) == sizeof(local));
+	std::memcpy(&value, &local, sizeof(local));
+	return value;
+}
+
+} // namespace ivm
 
 namespace ivm::napi {
 
@@ -49,16 +91,13 @@ struct accept<Meta, Napi::Value> : non_copyable {
 		auto operator=(const accept&) -> accept& = delete;
 		auto operator=(accept&&) -> accept& = delete;
 
-		explicit accept(Napi::Env env, environment& ienv) :
-				env_{env},
-				ienv_{&ienv} {}
+		explicit accept(environment& env) :
+				env_{&env} {}
 
 		// nb: This handles `direct_cast` from a v8 handle to napi handle
 		template <class Type>
-		auto operator()(value_tag /*tag*/, v8::Local<Type> local) const -> Napi::Value {
-			napi_value holder{};
-			std::memcpy(&holder, &local, sizeof(local));
-			return {env_, holder};
+		auto operator()(value_tag /*tag*/, v8::Local<Type> value) const -> Napi::Value {
+			return {env_->napi_env(), v8_to_napi(value)};
 		}
 
 		auto operator()(auto_tag auto tag, auto&& value) const -> Napi::Value {
@@ -66,15 +105,14 @@ struct accept<Meta, Napi::Value> : non_copyable {
 				*this,
 				tag,
 				std::forward<decltype(value)>(value),
-				ienv_->isolate(),
-				ienv_->context()
+				env_->isolate(),
+				env_->context()
 			);
 			return (*this)(value_tag{}, local);
 		}
 
 	private:
-		Napi::Env env_;
-		environment* ienv_;
+		environment* env_;
 };
 
 // Napi function arguments to list
@@ -89,9 +127,8 @@ struct visit<ivm::napi::napi_callback_info_memo> {
 template <>
 struct visit<Napi::Value> {
 		auto operator()(Napi::Value value, auto&& accept) const -> decltype(auto) {
-			v8::Local<v8::Value> local{};
-			napi_value holder{value};
-			std::memcpy(&local, &holder, sizeof(local));
+			auto visit_scope = delegated_visit_scope(value.Env());
+			auto local = napi_to_v8<v8::Value>(value);
 			auto& ienv = environment::get(value.Env());
 			auto* isolate = ienv.isolate();
 			auto context = ienv.context();

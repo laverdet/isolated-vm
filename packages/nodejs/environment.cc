@@ -1,3 +1,6 @@
+module;
+#include <cstring>
+#include <functional>
 module ivm.node;
 import :environment;
 import ivm.isolated_v8;
@@ -8,10 +11,9 @@ import v8;
 
 namespace ivm {
 
-environment::environment() :
-		isolate_{v8::Isolate::GetCurrent()},
-		context_{isolate_, isolate_->GetCurrentContext()} {
-	context_.SetWeak();
+environment::environment(Napi::Env env) :
+		env_{env},
+		isolate_{v8::Isolate::GetCurrent()} {
 }
 
 auto environment::collection() -> collection_group& {
@@ -23,7 +25,14 @@ auto environment::cluster() -> ivm::cluster& {
 }
 
 auto environment::context() -> v8::Local<v8::Context> {
-	return context_.Get(isolate_);
+	if (context_ == v8::Local<v8::Context>{}) {
+		context_ = isolate_->GetCurrentContext();
+	}
+	return context_;
+}
+
+auto environment::napi_env() -> Napi::Env {
+	return env_;
 }
 
 auto environment::isolate() -> v8::Isolate* {
@@ -32,6 +41,10 @@ auto environment::isolate() -> v8::Isolate* {
 
 auto environment::get(Napi::Env env) -> environment& {
 	return *env.GetInstanceData<environment>();
+}
+
+auto environment::with_context_local() -> scope_exit<defaulter_finalizer<v8::Local<v8::Context>>> {
+	return scope_exit{defaulter_finalizer<v8::Local<v8::Context>>{context_}};
 }
 
 } // namespace ivm
