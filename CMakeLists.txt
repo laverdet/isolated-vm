@@ -27,7 +27,7 @@ endif()
 project(isolated_vm LANGUAGES CXX)
 
 # Boost requirement
-find_package(Boost 1.83)
+find_package(Boost 1.83 REQUIRED)
 
 # C++26 environment w/ `import std`
 set(CMAKE_CXX_STANDARD 26)
@@ -50,6 +50,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 	if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 20)
 		add_compile_options(-D__cpp_concepts=202002L -Wno-builtin-macro-redefined)
 	endif()
+endif()
+if (APPLE)
+	set(CMAKE_SHARED_LINKER_FLAGS "-dynamiclib -undefined dynamic_lookup")
+	set(CMAKE_OSX_DEPLOYMENT_TARGET "10.12")
 endif()
 
 # Release type compiler flags
@@ -89,6 +93,7 @@ target_sources(ivm_utility
 			packages/utility/type_traits.cc
 			packages/utility/utility.cc
 )
+target_link_libraries(ivm_utility PRIVATE Boost::boost)
 
 # JavaScript adjacent code which is not specific to v8 or nodejs
 add_library(ivm_base EXCLUDE_FROM_ALL OBJECT)
@@ -109,7 +114,7 @@ target_sources(ivm_base
 		packages/value/variant.cc
 		packages/value/visit.cc
 )
-target_link_libraries(ivm_base PRIVATE ivm_utility)
+target_link_libraries(ivm_base PRIVATE Boost::boost ivm_utility)
 
 # v8 common packages. These source files are built twice, once which links against nodejs, and
 # another which links against internal v8/z8.
@@ -215,7 +220,7 @@ target_sources(ivm_isolated_v8
 		packages/libivm-v8/include/script.cc
 )
 target_compile_definitions(ivm_isolated_v8 PRIVATE ${IVM_TRICKSHOT_DEFINES})
-target_link_libraries(ivm_isolated_v8 PUBLIC ivm_base ivm_utility ivm_v8_embedded)
+target_link_libraries(ivm_isolated_v8 PRIVATE Boost::boost PUBLIC ivm_base ivm_utility ivm_v8_embedded)
 
 # nodejs require-able module
 add_library(ivm_backend_v8 EXCLUDE_FROM_ALL SHARED)

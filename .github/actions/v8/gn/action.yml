@@ -20,7 +20,7 @@ runs:
         echo "$DEPOT_TOOLS" >> "$GITHUB_PATH"
 
     # GNU `tar` & `zstd` is needed for `actions/cache`
-    - uses: laverdet/install@v0
+    - uses: laverdet/install@v0.0.6
       if: inputs.platform == 'linux-musl'
       with:
         packages: tar zstd

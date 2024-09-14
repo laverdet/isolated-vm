@@ -19,7 +19,8 @@ runs:
   using: composite
   steps:
     # Install dependencies
-    - uses: laverdet/install@v0
+    - uses: laverdet/install@v0.0.6
+      if: startsWith(matrix.host.platform, 'linux-')
       with:
         packages: |
           bash
@@ -36,6 +37,9 @@ runs:
           alpine#linux-headers
           debian#ca-certificates
           debian#libglib2.0-dev
+    - shell: sh
+      if: matrix.host.platform == 'darwin'
+      run: brew install llvm
 
     # Install `gn`
     - uses: ./.github/actions/v8/gn
@@ -73,11 +77,15 @@ runs:
     - shell: sh
       working-directory: deps/v8
       env:
+        DARWIN: ${{ inputs.platform == 'darwin' }}
         REF: ${{ inputs.ref }}
         TARGET: ${{ inputs.platform }}.${{ inputs.arch }}.${{ inputs.configuration }}
       run: |
         set -u
         echo ::group::Build v8
+        if [ "$DARWIN" = true ]; then
+          export CLANG_BASE_PATH=$(brew --cellar llvm)/$(brew list --versions llvm | cut -d' ' -f2 | sort -V | head -n1)
+        fi
         v8_build "out/$REF/$TARGET"
         rm -rf "out/$REF/$TARGET/gen"
         find out -type f ! -name '*.so' ! -name '*.a' ! -name '*.h' -delete

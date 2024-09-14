@@ -1,5 +1,6 @@
 #!/bin/sh
 set -eu
+PATCH_DIR=$(realpath "$PATCH_DIR")
 PATCHES=$(find "$PATCH_DIR" -type f | sort -n)
 V8_REF="$1"
 
@@ -15,14 +16,18 @@ fi
 
 # Copy headers so building the module works even if we switch v8 checkout
 mkdir -p "out/$V8_REF"
-find include -name '*.h' -exec cp --parents --recursive {} "out/$V8_REF" \;
+if [ "$(uname)" = Darwin ]; then
+	rsync -am --include='*.h' --include='*/' --exclude='*' include "out/$V8_REF"
+else
+	find include -name '*.h' -exec cp --parents --recursive {} "out/$V8_REF" \;
+fi
 
 # Output revision
 git describe --exact-match --tags || git rev-parse --short HEAD
 
 # Apply patches
 for PATCH in $PATCHES; do
-	PATH_TO="$(dirname "$(realpath -s --relative-to="$PATCH_DIR" "$PATCH")")"
+	PATH_TO=./$(dirname "$PATCH" | cut -c$((${#PATCH_DIR} + 2))-)
 	patch -p1 -d"$PATH_TO" --batch < "$PATCH" 1>&2
 	git -C "$PATH_TO" -c user.name=patches -c user.email='<>' commit --all --allow-empty --message="$PATCH" 1>&2
 	git -C "$PATH_TO" diff HEAD~1 HEAD > "$PATCH"

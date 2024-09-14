@@ -123,10 +123,10 @@ done
 
 # Make `env`
 cat <<EOF > "$OUTDIR/$TARGET/env"
-V8_INCLUDE_GN_FILE=$(realpath -ms "$OUTDIR/$TARGET/include/v8-gn.h")
-V8_INCLUDE_DIR=$(realpath -ms "$OUTDIR/include")
+V8_INCLUDE_GN_FILE=$(realpath "$OUTDIR/$TARGET/include/v8-gn.h")
+V8_INCLUDE_DIR=$(realpath "$OUTDIR/include")
 V8_LIBRARY_TYPE=$V8_LIBRARY_TYPE
-V8_OUT_PATH=$(realpath -ms "$OUTDIR/$TARGET")
+V8_OUT_PATH=$(realpath "$OUTDIR/$TARGET")
 EOF
 
 # Build the monolith

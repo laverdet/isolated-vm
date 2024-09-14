@@ -9,6 +9,8 @@ env:
 jobs:
   # First, check to see if v8 has been built for each target. If not, then a more powerful `runs-on`
   # builder is used on EC2.
+  # https://runs-on.com
+  # https://github.com/runs-on/runs-on
   configure:
     strategy:
       matrix:
@@ -56,6 +58,12 @@ jobs:
             container: alpine:edge
             platform: linux-musl
             arch: x64
+          - runs-on: macos-latest
+            platform: darwin
+            arch: arm64
+          - runs-on: macos-13
+            platform: darwin
+            arch: x64
     name: build / ${{ matrix.host.platform }} ${{ matrix.host.arch }}
     runs-on: ${{ matrix.host.runs-on }}
     container: ${{ matrix.host.container }}
@@ -68,7 +76,8 @@ jobs:
         run: echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
 
       # GNU `tar` & `zstd` is needed for `actions/cache`
-      - uses: laverdet/install@v0
+      - uses: laverdet/install@v0.0.6
+        if: startsWith(matrix.host.platform, 'linux-')
         with:
           packages: tar zstd
 
@@ -96,7 +105,8 @@ jobs:
           path: ./deps/v8/out
 
       # Install toolchain
-      - uses: laverdet/install@v0
+      - uses: laverdet/install@v0.0.6
+        if: startsWith(matrix.host.platform, 'linux-')
         with:
           packages: |
             build-essential
@@ -109,6 +119,9 @@ jobs:
             ninja-build
             nodejs
             npm
+      - shell: sh
+        if: matrix.host.platform == 'darwin'
+        run: brew install boost cmake llvm ninja node
 
       # Download nodejs headers
       - name: nodejs dependencies
@@ -133,8 +146,16 @@ jobs:
         run: |
           set -u
           V8_REF_PATH=$PWD/deps/v8/out/$V8_REF
+          case "$IVM_HOST_PLATFORM" in
+            darwin)
+              CMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++
+              ;;
+            linux-*)
+              CMAKE_CXX_COMPILER=$(realpath "$(which clang-18)")
+              ;;
+          esac
           cmake \
-            -DCMAKE_CXX_COMPILER="$(realpath "$(which clang-18)")" \
+            -DCMAKE_CXX_COMPILER="$CMAKE_CXX_COMPILER" \
             -DCMAKE_BUILD_TYPE=Release \
             -DIVM_HOST_ARCH="$IVM_HOST_ARCH"\
             -DIVM_HOST_PLATFORM="$IVM_HOST_PLATFORM" \
@@ -172,6 +193,12 @@ jobs:
             container: alpine:edge
             platform: linux-musl
             arch: x64
+          - runs-on: macos-latest
+            platform: darwin
+            arch: arm64
+          - runs-on: macos-13
+            platform: darwin
+            arch: x64
         node:
           - 18
           - 20
@@ -189,7 +216,7 @@ jobs:
           name: ${{ matrix.host.platform }}-${{ matrix.host.arch }}
           path: ./dist/backend_v8
 
-      # Install nodejs
+      # Install nodejs [musl]
       - shell: sh
         id: configure-musl
         if: matrix.host.platform == 'linux-musl'
@@ -207,11 +234,12 @@ jobs:
               exit 1
               ;;
           esac
-      - uses: laverdet/install@v0
+      - uses: laverdet/install@v0.0.6
         if: steps.configure-musl.outcome == 'success'
         with:
           packages: alpine#${{ steps.configure-musl.outputs.package }} npm
 
+      # Install nodejs [others]
       - uses: actions/setup-node@v4
         if: matrix.host.platform != 'linux-musl'
         with:
@@ -239,6 +267,12 @@ jobs:
             arch: x64
           - runs-on: ubuntu-latest
             platform: linux-musl
+            arch: x64
+          - runs-on: macos-latest
+            platform: darwin
+            arch: arm64
+          - runs-on: macos-13
+            platform: darwin
             arch: x64
     name: release / ${{ matrix.host.platform }} ${{ matrix.host.arch }}
     runs-on: ${{ matrix.host.runs-on }}
