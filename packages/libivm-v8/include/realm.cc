@@ -1,6 +1,5 @@
 export module ivm.isolated_v8:realm;
 import :agent;
-import :agent.lock;
 import ivm.utility;
 import v8;
 

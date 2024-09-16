@@ -6,6 +6,7 @@ module;
 #include <variant>
 module ivm.isolated_v8;
 import :agent;
+import :platform.foreground_runner;
 import :scheduler;
 import v8;
 import ivm.utility;

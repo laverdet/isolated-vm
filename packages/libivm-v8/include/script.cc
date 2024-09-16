@@ -1,6 +1,5 @@
 export module ivm.isolated_v8:script;
 import :agent;
-import :agent.lock;
 import :realm;
 import ivm.utility;
 import ivm.v8;
