@@ -1,16 +1,9 @@
 module;
-#include <version>
-#ifdef __GLIBCXX__
-// nb: Symbol visibility hack
-#include <bits/stl_iterator.h>
-#endif
-#ifdef _LIBCPP_VERSION
-// nb: Symbol visibility hack
-#include <__iterator/wrap_iter.h>
-#endif
 #include <cstring>
+#include <iterator>
 #include <type_traits>
 #include <utility>
+#include <version>
 export module ivm.node:accept;
 import :environment;
 import ivm.value;

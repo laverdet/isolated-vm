@@ -1,5 +1,6 @@
 module;
 #include <ranges>
+#include <string>
 export module ivm.v8:object;
 import v8;
 import :array;

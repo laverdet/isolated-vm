@@ -1,5 +1,6 @@
 module;
 #include <ranges>
+#include <string>
 export module ivm.node:object;
 import napi;
 import :array;

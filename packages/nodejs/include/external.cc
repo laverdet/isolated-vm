@@ -2,12 +2,6 @@ module;
 #include <js_native_api.h>
 #include <stdexcept>
 #include <utility>
-// Fix visibility bug on llvm 18
-// /__w/ivm/ivm/packages/nodejs/include/external.cc:24:22: error: declaration of 'External' must be imported from module 'v8' before it is required
-//   24 |         auto external = v8::External::New(env.isolate(), collected.get());
-// /__w/ivm/ivm/packages/third_party/v8/external.cc:5:18: note: declaration here is not visible
-//     5 | export using v8::External;
-#include <v8-external.h>
 module ivm.node:external;
 import :environment;
 import :utility;
@@ -16,6 +10,7 @@ import ivm.utility;
 import ivm.value;
 import ivm.v8;
 import napi;
+import v8;
 
 namespace ivm {
 

@@ -1,6 +1,7 @@
 module;
 #include <functional>
 #include <memory>
+#include <optional>
 #include <stop_token>
 #include <utility>
 #include <variant>

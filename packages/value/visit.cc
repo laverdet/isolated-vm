@@ -1,6 +1,7 @@
 module;
 #include <boost/variant.hpp>
 #include <ranges>
+#include <string>
 #include <variant>
 export module ivm.value:visit;
 import :tag;

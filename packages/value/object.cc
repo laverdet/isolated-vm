@@ -2,9 +2,11 @@ module;
 #include <algorithm>
 #include <cstdint>
 #include <format>
+#include <functional>
 #include <optional>
 #include <ranges>
 #include <stdexcept>
+#include <string>
 #include <type_traits>
 export module ivm.value:object;
 import ivm.utility;

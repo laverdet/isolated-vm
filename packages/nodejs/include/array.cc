@@ -1,12 +1,6 @@
 module;
 #include <compare>
 #include <cstdint>
-// Fix visibility bug on llvm 18
-// /__w/ivm/ivm/packages/nodejs/value/array.cc:9:20: error: declaration of 'Array' must be imported from module 'napi' before it is required
-//     9 | array::array(Napi::Array array) :
-// /__w/ivm/ivm/packages/third_party/napi.cc:8:20: note: declaration here is not visible
-//     8 | export using Napi::Array;
-#include <napi.h>
 export module ivm.node:array;
 import ivm.utility;
 import napi;

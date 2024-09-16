@@ -1,5 +1,6 @@
 module;
 #include <ranges>
+#include <string>
 module ivm.node;
 import :array;
 import :object;

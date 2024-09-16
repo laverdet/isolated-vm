@@ -2,6 +2,7 @@ module;
 #include <format>
 #include <optional>
 #include <stdexcept>
+#include <string>
 #include <type_traits>
 #include <variant>
 export module ivm.value:discriminated_union;

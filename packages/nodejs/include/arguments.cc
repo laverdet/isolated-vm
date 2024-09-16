@@ -3,8 +3,8 @@ module;
 #include <compare>
 #include <iterator>
 export module ivm.node:arguments;
-import napi;
 import ivm.utility;
+import napi;
 
 namespace ivm::napi {
 
