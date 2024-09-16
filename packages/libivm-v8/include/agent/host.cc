@@ -4,8 +4,8 @@ module;
 #include <stop_token>
 export module ivm.isolated_v8:agent;
 import :agent.lock;
-import :agent.task_runner;
 import :platform.clock;
+import :platform.foreground_runner;
 import :scheduler;
 import ivm.utility;
 import ivm.value;

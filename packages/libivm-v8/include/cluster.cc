@@ -40,7 +40,7 @@ auto cluster::make_agent(std::invocable<agent, agent::lock&> auto fn, clock::any
 			fn = std::move(fn) ](
 			const std::stop_token& stop_token
 		) mutable {
-			auto task_runner = std::make_shared<agent::foreground_runner>();
+			auto task_runner = std::make_shared<foreground_runner>();
 			auto agent_host = std::make_shared<agent::host>(agent_storage, task_runner, clock, random_seed);
 			agent::lock agent_lock{*agent_host};
 			util::take(std::move(fn))(agent{agent_host, task_runner}, agent_lock);

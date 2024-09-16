@@ -197,9 +197,9 @@ target_compile_definitions(ivm_isolated_v8 PRIVATE NAPI_EXPERIMENTAL)
 target_sources(ivm_isolated_v8
 	PRIVATE
 		packages/libivm-v8/agent/host.cc
-		packages/libivm-v8/agent/task_runner.cc
 		packages/libivm-v8/cluster.cc
 		packages/libivm-v8/platform/clock.cc
+		packages/libivm-v8/platform/foreground_runner.cc
 		packages/libivm-v8/platform/handle.cc
 		packages/libivm-v8/platform/job_handle.cc
 		packages/libivm-v8/platform/platform.cc
@@ -210,10 +210,10 @@ target_sources(ivm_isolated_v8
 		packages/libivm-v8/include/_module.cc
 		packages/libivm-v8/include/agent/agent.cc
 		packages/libivm-v8/include/agent/host.cc
-		packages/libivm-v8/include/agent/task_runner.cc
 		packages/libivm-v8/include/cluster.cc
 		packages/libivm-v8/include/platform.cc
 		packages/libivm-v8/include/platform/clock.cc
+		packages/libivm-v8/include/platform/foreground_runner.cc
 		packages/libivm-v8/include/platform/task_runner.cc
 		packages/libivm-v8/include/realm.cc
 		packages/libivm-v8/include/scheduler.cc

@@ -42,7 +42,7 @@ auto task_runner::post_non_nestable_delayed(task_type /*task*/, steady_clock::ti
 };
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto task_runner::post_non_nestable(std::unique_ptr<v8::Task> /*task*/) -> void {
+auto task_runner::post_non_nestable(task_type /*task*/) -> void {
 	std::unreachable();
 }
 

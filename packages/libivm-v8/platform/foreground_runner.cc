@@ -5,7 +5,7 @@ module;
 #include <queue>
 #include <utility>
 module ivm.isolated_v8;
-import :agent.task_runner;
+import :platform.foreground_runner;
 import :platform.task_runner;
 import v8;
 
@@ -15,30 +15,35 @@ auto task_is_nestable(const std::pair<task_runner::nestability, task_runner::tas
 	return task.first == task_runner::nestability::nestable;
 }
 
-// foreground_runner
-agent::foreground_runner::foreground_runner() :
+foreground_runner::foreground_runner() :
 		storage_{nesting_depth_} {}
 
-auto agent::foreground_runner::post_delayed(std::unique_ptr<v8::Task> task, steady_clock::time_point timeout) -> void {
+auto foreground_runner::post_delayed(task_type task, steady_clock::time_point timeout) -> void {
 	storage_.write()->delayed_tasks_.emplace(nestability::nestable, timeout, std::move(task));
 }
 
-auto agent::foreground_runner::post_non_nestable_delayed(task_type task, steady_clock::time_point timeout) -> void {
+auto foreground_runner::post_non_nestable_delayed(task_type task, steady_clock::time_point timeout) -> void {
 	storage_.write()->delayed_tasks_.emplace(nestability::non_nestable, timeout, std::move(task));
 };
 
-auto agent::foreground_runner::post_non_nestable(std::unique_ptr<v8::Task> task) -> void {
+auto foreground_runner::post_non_nestable(task_type task) -> void {
 	storage_.write()->tasks_.emplace_back(nestability::non_nestable, std::move(task));
 }
 
-auto agent::foreground_runner::post(std::unique_ptr<v8::Task> task) -> void {
+auto foreground_runner::post(task_type task) -> void {
 	storage_.write()->tasks_.emplace_back(nestability::nestable, std::move(task));
 }
 
-agent::foreground_runner::storage::storage(int& nesting_depth) :
+auto foreground_runner::schedule_non_nestable(task_type task) -> void {
+	auto lock = storage_.write_notify();
+	lock->tasks_.emplace_back(task_runner::nestability::non_nestable, std::move(task));
+	lock->should_resume_ = true;
+}
+
+foreground_runner::storage::storage(int& nesting_depth) :
 		nesting_depth_{&nesting_depth} {}
 
-auto agent::foreground_runner::storage::acquire() -> task_type {
+auto foreground_runner::storage::acquire() -> task_type {
 	flush_delayed();
 	if (*nesting_depth_ < 1) {
 		std::unreachable();
@@ -59,7 +64,7 @@ auto agent::foreground_runner::storage::acquire() -> task_type {
 	return {};
 }
 
-auto agent::foreground_runner::storage::flush_delayed() -> void {
+auto foreground_runner::storage::flush_delayed() -> void {
 	if (!delayed_tasks_.empty()) {
 		auto predicate = delayed_task::timeout_predicate();
 		do {
@@ -72,7 +77,7 @@ auto agent::foreground_runner::storage::flush_delayed() -> void {
 	}
 }
 
-auto agent::foreground_runner::storage::should_resume() const -> bool {
+auto foreground_runner::storage::should_resume() const -> bool {
 	// Check current tasks
 	if (*nesting_depth_ < 1) {
 		std::unreachable();
