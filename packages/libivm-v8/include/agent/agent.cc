@@ -14,7 +14,6 @@ export class agent : util::non_copyable {
 		class lock;
 		class foreground_runner;
 		class storage;
-		struct clock;
 
 		explicit agent(
 			const std::shared_ptr<host>& host,

@@ -6,8 +6,9 @@ module;
 #include <utility>
 export module ivm.isolated_v8:cluster;
 import :agent;
-import :agent.lock;
 import :platform;
+import :platform.clock;
+import :platform.foreground_runner;
 import :scheduler;
 import ivm.utility;
 
@@ -20,7 +21,7 @@ export class cluster : util::non_moveable {
 		cluster();
 		auto make_agent(
 			std::invocable<agent, agent::lock&> auto fn,
-			agent::clock::any_clock clock,
+			clock::any_clock clock,
 			std::optional<double> random_seed
 		) -> void;
 
@@ -29,7 +30,7 @@ export class cluster : util::non_moveable {
 		scheduler scheduler_;
 };
 
-auto cluster::make_agent(std::invocable<agent, agent::lock&> auto fn, agent::clock::any_clock clock, std::optional<double> random_seed) -> void {
+auto cluster::make_agent(std::invocable<agent, agent::lock&> auto fn, clock::any_clock clock, std::optional<double> random_seed) -> void {
 	auto agent_storage = std::make_shared<agent::storage>(scheduler_);
 	auto* storage_ptr = agent_storage.get();
 	scheduler_.run(

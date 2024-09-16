@@ -3,9 +3,9 @@ module;
 #include <optional>
 #include <stop_token>
 export module ivm.isolated_v8:agent;
-import :agent.clock;
 import :agent.lock;
 import :agent.task_runner;
+import :platform.clock;
 import :scheduler;
 import ivm.utility;
 import ivm.value;
@@ -44,7 +44,7 @@ class agent::host : util::non_moveable {
 		explicit host(
 			std::shared_ptr<storage> agent_storage,
 			std::shared_ptr<foreground_runner> task_runner,
-			agent::clock::any_clock clock,
+			clock::any_clock clock,
 			std::optional<double> random_seed
 		);
 

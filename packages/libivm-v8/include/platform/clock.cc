@@ -2,8 +2,7 @@ module;
 #include <chrono>
 #include <optional>
 #include <variant>
-export module ivm.isolated_v8:agent.clock;
-import :agent.lock;
+export module ivm.isolated_v8:platform.clock;
 import ivm.value;
 
 using namespace std::chrono;
@@ -14,24 +13,9 @@ using utc_clock = system_clock;
 }
 #endif
 
-namespace ivm {
+namespace ivm::clock {
 
-struct agent::clock {
-	private:
-		class base_clock;
-		template <class Self>
-		class base_clock_of;
-
-	public:
-		class deterministic;
-		class microtask;
-		class realtime;
-		class system;
-
-		using any_clock = std::variant<deterministic, microtask, realtime, system>;
-};
-
-class agent::clock::base_clock {
+class base_clock {
 	public:
 		auto begin_tick() -> void;
 
@@ -40,13 +24,13 @@ class agent::clock::base_clock {
 };
 
 template <class Self>
-class agent::clock::base_clock_of : public base_clock {
+class base_clock_of : public base_clock {
 	public:
 		auto clock_time_ms() -> int64_t;
 };
 
 template <class Self>
-auto agent::clock::base_clock_of<Self>::clock_time_ms() -> int64_t {
+auto base_clock_of<Self>::clock_time_ms() -> int64_t {
 	auto some_time_point = static_cast<Self*>(this)->clock_time();
 	// You can't `clock_cast` from `steady_clock` but internally we redefine that epoch to be UTC via
 	// `steady_clock_offset`, so casting the `duration` directly is correct for clocks that use that
@@ -57,7 +41,7 @@ auto agent::clock::base_clock_of<Self>::clock_time_ms() -> int64_t {
 
 // Starts at a specified epoch and each query for the time will increment the clock by a constant
 // amount.
-class agent::clock::deterministic : public base_clock_of<deterministic> {
+export class deterministic : public base_clock_of<deterministic> {
 	public:
 		deterministic(js_clock::time_point epoch, js_clock::duration increment);
 
@@ -70,7 +54,7 @@ class agent::clock::deterministic : public base_clock_of<deterministic> {
 
 // During a microtask the clock will stay the same. It will update to the current time at the start
 // of the next tick. Optionally you can specify a start epoch.
-class agent::clock::microtask : public base_clock_of<microtask> {
+export class microtask : public base_clock_of<microtask> {
 	public:
 		explicit microtask(std::optional<js_clock::time_point> maybe_epoch);
 
@@ -83,7 +67,7 @@ class agent::clock::microtask : public base_clock_of<microtask> {
 };
 
 // Realtime clock starting from the given epoch.
-class agent::clock::realtime : public base_clock_of<realtime> {
+export class realtime : public base_clock_of<realtime> {
 	public:
 		explicit realtime(js_clock::time_point epoch);
 
@@ -94,9 +78,11 @@ class agent::clock::realtime : public base_clock_of<realtime> {
 };
 
 // Pass through system time
-class agent::clock::system : public base_clock_of<system> {
+export class system : public base_clock_of<system> {
 	public:
 		auto clock_time() -> system_clock::time_point;
 };
 
-}; // namespace ivm
+export using any_clock = std::variant<deterministic, microtask, realtime, system>;
+
+}; // namespace ivm::clock

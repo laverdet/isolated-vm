@@ -42,17 +42,17 @@ auto create_agent(environment& env, make_agent_options options) -> Napi::Value {
 	});
 	auto clock = std::visit(
 		util::overloaded{
-			[](const make_agent_options::clock_deterministic& options) -> agent::clock::any_clock {
-				return agent::clock::deterministic{options.epoch, value::js_clock::duration{options.interval}};
+			[](const make_agent_options::clock_deterministic& options) -> clock::any_clock {
+				return clock::deterministic{options.epoch, value::js_clock::duration{options.interval}};
 			},
-			[](const make_agent_options::clock_microtask& options) -> agent::clock::any_clock {
-				return agent::clock::microtask{options.epoch};
+			[](const make_agent_options::clock_microtask& options) -> clock::any_clock {
+				return clock::microtask{options.epoch};
 			},
-			[](const make_agent_options::clock_realtime& options) -> agent::clock::any_clock {
-				return agent::clock::realtime{options.epoch};
+			[](const make_agent_options::clock_realtime& options) -> clock::any_clock {
+				return clock::realtime{options.epoch};
 			},
-			[](const make_agent_options::clock_system& /*clock*/) -> agent::clock::any_clock {
-				return agent::clock::system{};
+			[](const make_agent_options::clock_system& /*clock*/) -> clock::any_clock {
+				return clock::system{};
 			},
 		},
 		options.clock.value_or(make_agent_options::clock_system{})
