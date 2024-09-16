@@ -1,2 +1,3 @@
 # `napi_create_external` leaks on context shut down
 leak:v8impl::ExternalWrapper::New
+leak:napi_module_register
