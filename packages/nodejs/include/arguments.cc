@@ -1,6 +1,6 @@
 module;
-#include <sys/types.h>
 #include <compare>
+#include <cstddef>
 #include <iterator>
 export module ivm.node:arguments;
 import ivm.utility;
@@ -23,7 +23,7 @@ export class arguments {
 		const Napi::CallbackInfo* info;
 };
 
-class arguments::iterator : public util::arithmetic_facade<iterator, ssize_t> {
+class arguments::iterator : public util::arithmetic_facade<iterator, ptrdiff_t> {
 	public:
 		friend arithmetic_facade;
 		using arithmetic_facade::operator+;
@@ -47,7 +47,7 @@ class arguments::iterator : public util::arithmetic_facade<iterator, ssize_t> {
 		auto operator<=>(const iterator& right) const -> std::strong_ordering { return index <=> right.index; };
 
 	private:
-		auto operator+() const -> ssize_t { return static_cast<ssize_t>(index); }
+		auto operator+() const -> ptrdiff_t { return static_cast<ptrdiff_t>(index); }
 
 		const Napi::CallbackInfo* info{};
 		size_type index{};
