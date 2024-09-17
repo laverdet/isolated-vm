@@ -45,7 +45,7 @@ struct accept<Meta, Napi::Value> {
 		}
 
 		template <class Numeric>
-		auto operator()(numeric_tag_of<Numeric> /*tag*/, auto&& value) const -> Napi::Value {
+		auto operator()(number_tag_of<Numeric> /*tag*/, auto&& value) const -> Napi::Value {
 			return Napi::Number::New(env, std::forward<decltype(value)>(value));
 		}
 

@@ -6,7 +6,6 @@ import v8;
 import :array;
 import :handle;
 import :string;
-import :utility;
 import ivm.utility;
 
 namespace ivm::iv8 {

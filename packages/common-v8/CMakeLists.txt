@@ -15,7 +15,6 @@ target_sources(${IV8_PREFIX}_common_v8
 		include/number.cc
 		include/object.cc
 		include/string.cc
-		utility.cc
 		visit.cc
 )
 target_link_libraries(${IV8_PREFIX}_common_v8 PUBLIC

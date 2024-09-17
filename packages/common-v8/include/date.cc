@@ -1,7 +1,6 @@
 module;
 #include <type_traits>
 export module ivm.v8:date;
-import :utility;
 import ivm.value;
 import v8;
 
@@ -21,7 +20,7 @@ auto date::Cast(v8::Value* data) -> date* {
 }
 
 auto date::make(v8::Local<v8::Context> context, js_clock::time_point date) -> v8::Local<v8::Date> {
-	return unmaybe(v8::Date::New(context, date.time_since_epoch().count())).As<v8::Date>();
+	return v8::Date::New(context, date.time_since_epoch().count()).ToLocalChecked().As<v8::Date>();
 }
 
 auto date::materialize(std::type_identity<js_clock::time_point> /*tag*/) const -> js_clock::time_point {

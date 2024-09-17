@@ -6,7 +6,6 @@ import :array;
 import :handle;
 import :object;
 import :string;
-import :utility;
 import ivm.utility;
 import v8;
 
@@ -18,19 +17,19 @@ auto object::Cast(v8::Value* data) -> object* {
 
 auto object::get(handle_env env, array_handle& /*keys*/, std::string_view key) -> handle<v8::Value> {
 	auto key_string = string::make(env.isolate, key);
-	return {unmaybe(this->GetRealNamedProperty(env.context, key_string.As<v8::Name>())), env};
+	return {this->GetRealNamedProperty(env.context, key_string.As<v8::Name>()).ToLocalChecked(), env};
 }
 
 auto object::into_range(handle_env env, array_handle& keys) -> range_type {
 	if (keys == array_handle{}) {
-		auto property_names = unmaybe(this->GetPropertyNames(
+		auto property_names = this->GetPropertyNames(
 			env.context,
 			v8::KeyCollectionMode::kOwnOnly,
 			v8::PropertyFilter::ONLY_ENUMERABLE,
 			v8::IndexFilter::kIncludeIndices,
 			v8::KeyConversionMode::kConvertToString
-		));
-		keys = array_handle{property_names.As<iv8::array>(), env, 0};
+		);
+		keys = array_handle{property_names.ToLocalChecked().As<iv8::array>(), env, 0};
 	}
 	return keys | std::views::transform(iterator_transform{env, this});
 }
@@ -39,7 +38,7 @@ object::iterator_transform::iterator_transform(handle_env env, v8::Object* objec
 		env{env}, object{object} {}
 
 auto object::iterator_transform::operator()(handle<v8::Value> key) const -> value_type {
-	auto value = unmaybe(object->GetRealNamedProperty(env.context, key.As<v8::Name>()));
+	auto value = object->GetRealNamedProperty(env.context, key.As<v8::Name>()).ToLocalChecked();
 	return std::pair{key, handle{value, env}};
 }
 

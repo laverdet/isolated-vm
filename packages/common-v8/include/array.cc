@@ -5,7 +5,6 @@ module;
 export module ivm.v8:array;
 import v8;
 import :handle;
-import :utility;
 import ivm.utility;
 
 namespace ivm::iv8 {

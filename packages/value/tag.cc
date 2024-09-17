@@ -27,12 +27,12 @@ struct boolean_tag : primitive_tag {};
 struct key_tag : primitive_tag {};
 struct symbol_tag : key_tag {};
 
-struct numeric_tag : key_tag {};
+struct number_tag : key_tag {};
 template <class Type>
-struct numeric_tag_of : numeric_tag {};
+struct number_tag_of : number_tag {};
 template <class Tag>
-struct con_tag_for<numeric_tag_of<Tag>> {
-		using type = numeric_tag;
+struct con_tag_for<number_tag_of<Tag>> {
+		using type = number_tag;
 };
 
 struct string_tag : key_tag {};
@@ -42,6 +42,10 @@ template <class Tag>
 struct con_tag_for<string_tag_of<Tag>> {
 		using type = string_tag;
 };
+
+struct bigint_tag : value_tag {};
+template <class Type>
+struct bigint_tag_of : bigint_tag {};
 
 struct object_tag : value_tag {};
 struct dictionary_tag : object_tag {};

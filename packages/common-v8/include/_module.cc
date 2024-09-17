@@ -8,5 +8,4 @@ export import :handle;
 export import :number;
 export import :object;
 export import :string;
-export import :utility;
 export import :visit;

@@ -5,7 +5,6 @@ module;
 module ivm.v8;
 import :handle;
 import :string;
-import :utility;
 import v8;
 
 namespace ivm::iv8 {
@@ -23,21 +22,23 @@ auto string::make(v8::Isolate* isolate, const std::u16string& string) -> v8::Loc
 }
 
 auto string::make(v8::Isolate* isolate, std::string_view view) -> v8::Local<v8::String> {
-	return unmaybe(v8::String::NewFromOneByte(
+	auto string = v8::String::NewFromOneByte(
 		isolate,
 		reinterpret_cast<const uint8_t*>(view.data()),
 		v8::NewStringType::kNormal,
 		static_cast<int>(view.size())
-	));
+	);
+	return string.ToLocalChecked();
 }
 
 auto string::make(v8::Isolate* isolate, std::u16string_view view) -> v8::Local<v8::String> {
-	return unmaybe(v8::String::NewFromTwoByte(
+	auto string = v8::String::NewFromTwoByte(
 		isolate,
 		reinterpret_cast<const uint16_t*>(view.data()),
 		v8::NewStringType::kNormal,
 		static_cast<int>(view.size())
-	));
+	);
+	return string.ToLocalChecked();
 }
 
 auto string::materialize(std::type_identity<std::string> /*tag*/, handle_env env) const -> std::string {

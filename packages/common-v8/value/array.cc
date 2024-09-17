@@ -34,7 +34,7 @@ array::iterator::iterator(array* handle, handle_env env, uint32_t index) :
 		index{index} {}
 
 auto array::iterator::operator*() const -> value_type {
-	return iv8::handle{unmaybe(handle->Get(env.context, index)), env};
+	return iv8::handle{handle->Get(env.context, index).ToLocalChecked(), env};
 }
 
 } // namespace ivm::iv8

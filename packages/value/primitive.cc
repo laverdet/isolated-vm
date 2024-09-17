@@ -30,17 +30,30 @@ export using number_t = std::variant<int32_t, uint32_t, double>;
 
 template <>
 struct tag_for<int32_t> {
-		using type = numeric_tag_of<int32_t>;
+		using type = number_tag_of<int32_t>;
 };
 
 template <>
 struct tag_for<uint32_t> {
-		using type = numeric_tag_of<uint32_t>;
+		using type = number_tag_of<uint32_t>;
 };
 
 template <>
 struct tag_for<double> {
-		using type = numeric_tag_of<double>;
+		using type = number_tag_of<double>;
+};
+
+// `bigint`
+export using bigint_t = std::variant<int64_t, uint64_t>;
+
+template <>
+struct tag_for<int64_t> {
+		using type = number_tag_of<int64_t>;
+};
+
+template <>
+struct tag_for<uint64_t> {
+		using type = number_tag_of<uint64_t>;
 };
 
 // `string`

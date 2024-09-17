@@ -1,5 +1,6 @@
 module;
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <variant>
@@ -35,9 +36,9 @@ struct visit<v8::Local<v8::Number>> {
 		auto operator()(v8::Local<v8::Number> value, const auto& accept) const -> decltype(auto) {
 			auto number = iv8::handle_cast{value.As<iv8::number>()};
 			if (value->IsInt32()) {
-				return accept(numeric_tag_of<int32_t>{}, number);
+				return accept(number_tag_of<int32_t>{}, number);
 			} else {
-				return accept(numeric_tag_of<double>{}, number);
+				return accept(number_tag_of<double>{}, number);
 			}
 		}
 };
@@ -59,6 +60,25 @@ struct visit<iv8::handle<iv8::string>> {
 			} else {
 				return accept(string_tag_of<std::u16string>{}, value);
 			}
+		}
+};
+
+// bigint
+template <>
+struct visit<v8::Local<v8::BigInt>> {
+		auto operator()(v8::Local<v8::BigInt> value, const auto& accept) const -> decltype(auto) {
+			// We actually have to convert the bigint in order to see how big it is. So the acceptor is
+			// invoked directly the underlying value, instead of a `handle_cast`.
+			bool lossless{};
+			auto i64 = value->Int64Value(&lossless);
+			if (lossless) {
+				return accept(bigint_tag_of<int64_t>{}, i64);
+			}
+			auto u64 = value->Uint64Value(&lossless);
+			if (lossless) {
+				return accept(bigint_tag_of<uint64_t>{}, u64);
+			}
+			throw std::logic_error("Bigint is too big");
 		}
 };
 

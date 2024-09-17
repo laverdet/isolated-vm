@@ -7,7 +7,6 @@ module;
 export module ivm.v8:accept;
 import :date;
 import :string;
-import :utility;
 import ivm.value;
 import v8;
 
@@ -40,7 +39,7 @@ template <class Meta>
 struct accept<Meta, v8::Local<v8::Number>> : iv8::accept_primitive_base {
 		using accept_primitive_base::accept_primitive_base;
 		template <class Numeric>
-		auto operator()(numeric_tag_of<Numeric> /*tag*/, auto&& value) const {
+		auto operator()(number_tag_of<Numeric> /*tag*/, auto&& value) const {
 			return v8::Number::New(isolate, Numeric{value});
 		}
 };
@@ -74,7 +73,7 @@ struct accept<Meta, v8::Local<v8::Value>> : iv8::accept_primitive_base {
 		}
 
 		template <class Numeric>
-		auto operator()(numeric_tag_of<Numeric> tag, auto&& value) const -> v8::Local<v8::Value> {
+		auto operator()(number_tag_of<Numeric> tag, auto&& value) const -> v8::Local<v8::Value> {
 			return delegate_accept<v8::Local<v8::Number>>(*this, tag, std::forward<decltype(value)>(value), isolate);
 		}
 
@@ -89,11 +88,12 @@ struct accept<Meta, v8::Local<v8::Value>> : iv8::accept_primitive_base {
 		auto operator()(list_tag /*tag*/, auto&& list) const -> v8::Local<v8::Value> {
 			auto array = v8::Array::New(isolate);
 			for (auto&& [ key, value ] : list) {
-				iv8::unmaybe(array->Set(
+				auto result = array->Set(
 					context,
 					invoke_visit(std::forward<decltype(key)>(key), *this),
 					invoke_visit(std::forward<decltype(value)>(value), *this)
-				));
+				);
+				result.Check();
 			}
 			return array;
 		}
@@ -101,11 +101,12 @@ struct accept<Meta, v8::Local<v8::Value>> : iv8::accept_primitive_base {
 		auto operator()(dictionary_tag /*tag*/, auto&& dictionary) const -> v8::Local<v8::Value> {
 			auto object = v8::Object::New(isolate);
 			for (auto&& [ key, value ] : dictionary) {
-				iv8::unmaybe(object->Set(
+				auto result = object->Set(
 					context,
 					invoke_visit(std::forward<decltype(key)>(key), *this),
 					invoke_visit(std::forward<decltype(value)>(value), *this)
-				));
+				);
+				result.Check();
 			}
 			return object;
 		}
