@@ -77,9 +77,9 @@ auto create_realm(environment& env, iv8::external_reference<agent>& agent) -> Na
 	});
 	agent->schedule(
 		[ dispatch = std::move(dispatch) ](
-			ivm::agent::lock& lock
+			ivm::agent::lock& agent
 		) mutable {
-			auto realm = ivm::realm::make(lock);
+			auto realm = ivm::realm::make(agent);
 			dispatch(std::move(realm));
 		}
 	);

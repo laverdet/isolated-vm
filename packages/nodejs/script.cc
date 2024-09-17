@@ -23,9 +23,9 @@ auto compile_script(
 	agent->schedule(
 		[ code_string = std::move(code_string),
 			dispatch = std::move(dispatch) ](
-			ivm::agent::lock& lock
+			ivm::agent::lock& agent
 		) mutable {
-			dispatch(ivm::script::compile(lock, std::move(code_string)));
+			dispatch(ivm::script::compile(agent, std::move(code_string)));
 		}
 	);
 	return promise;
@@ -44,9 +44,9 @@ auto run_script(
 		[ &realm,
 			&script,
 			dispatch = std::move(dispatch) ](
-			ivm::agent::lock& lock
+			ivm::agent::lock& agent
 		) mutable {
-			ivm::realm::scope realm_scope{lock, *realm};
+			ivm::realm::managed_scope realm_scope{agent, *realm};
 			auto result = script->run(realm_scope);
 			dispatch(std::move(result));
 		}

@@ -2,8 +2,10 @@ module;
 #include <concepts>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <stop_token>
 export module ivm.isolated_v8:agent;
+export import :agent_fwd;
 import :platform.clock;
 import :platform.foreground_runner;
 import :scheduler;
@@ -12,43 +14,29 @@ import v8;
 
 namespace ivm {
 
-// The base `agent` class holds a weak reference to a `agent::host`. libivm directly controls the
-// lifetime of a `host` and can sever the `weak_ptr` in this class if needed.
-export class agent : util::non_copyable {
-	public:
-		class host;
-		class lock;
-		class storage;
-
-		explicit agent(
-			const std::shared_ptr<host>& host,
-			const std::shared_ptr<foreground_runner>& task_runner
-		);
-
-		auto schedule(std::invocable<lock&> auto task) -> void;
-
-	private:
-		std::weak_ptr<host> host_;
-		std::shared_ptr<foreground_runner> task_runner_;
-};
-
 // A `lock` is a simple holder for an `agent::host` which proves that we are executing in
 // the isolate context.
 class agent::lock : util::non_moveable {
 	public:
 		explicit lock(host& host);
-		~lock();
 
 		auto operator*() -> host& { return host_; }
 		auto operator*() const -> const host& { return host_; }
 		auto operator->() -> host* { return &host_; }
 		auto operator->() const -> const host* { return &host_; }
 
-		static auto expect() -> lock&;
-
 	private:
 		host& host_;
-		lock* prev_;
+};
+
+// A lock explicitly created on this stack
+class agent::managed_lock : public agent::lock {
+	public:
+		explicit managed_lock(host& host);
+
+	private:
+		v8::Locker locker_;
+		v8::Isolate::Scope scope_;
 };
 
 // This is constructed before (and may outlive) an agent
@@ -87,7 +75,7 @@ class agent::host : util::non_moveable {
 		);
 
 		auto clock_time_ms() -> int64_t;
-		auto execute(const std::stop_token& stop_token) -> void;
+		auto execute(const std::stop_token& stop_token, agent::lock& agent) -> void;
 		auto isolate() -> v8::Isolate*;
 		auto random_seed_latch() -> util::scope_exit<random_seed_unlatch>;
 		auto scratch_context() -> v8::Local<v8::Context>;
@@ -116,7 +104,12 @@ struct task_of : v8::Task {
 				task_{std::forward<Invocable>(task)} {}
 
 		auto Run() -> void final {
-			task_(agent::lock::expect());
+			auto* host = agent::host::get_current();
+			if (host == nullptr) {
+				throw std::logic_error("Task invoked outside of agent context");
+			}
+			agent::lock lock{*host};
+			task_(lock);
 		}
 
 	private:

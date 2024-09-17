@@ -2,7 +2,6 @@ module;
 #include <chrono>
 #include <optional>
 module ivm.isolated_v8;
-import :agent;
 import ivm.utility;
 import ivm.value;
 

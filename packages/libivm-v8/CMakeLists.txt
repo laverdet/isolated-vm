@@ -13,6 +13,7 @@ target_sources(ivm_isolated_v8
 		script.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		include/_module.cc
+		include/agent_fwd.cc
 		include/agent.cc
 		include/cluster.cc
 		include/platform.cc

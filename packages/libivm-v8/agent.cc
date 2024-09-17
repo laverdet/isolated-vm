@@ -18,16 +18,13 @@ namespace ivm {
 thread_local agent::lock* current_lock{};
 
 agent::lock::lock(agent::host& host) :
-		host_{host},
-		prev_{std::exchange(current_lock, this)} {}
+		host_{host} {}
 
-agent::lock::~lock() {
-	current_lock = prev_;
-}
-
-auto agent::lock::expect() -> lock& {
-	return *current_lock;
-}
+// managed_lock
+agent::managed_lock::managed_lock(host& host) :
+		lock{host},
+		locker_{host.isolate()},
+		scope_{host.isolate()} {}
 
 // handle
 agent::agent(
@@ -68,11 +65,7 @@ auto agent::host::clock_time_ms() -> int64_t {
 	return std::visit([](auto&& clock) { return clock.clock_time_ms(); }, clock_);
 }
 
-auto agent::host::execute(const std::stop_token& stop_token) -> void {
-	// Enter isolate on this thread
-	const auto locker = v8::Locker{isolate_.get()};
-	const auto isolate_scope = v8::Isolate::Scope{isolate_.get()};
-	agent::lock agent_lock{*this};
+auto agent::host::execute(const std::stop_token& stop_token, agent::lock& /*lock*/) -> void {
 	// Enter task runner scope
 	task_runner_->scope([ & ](auto lock) {
 		do {

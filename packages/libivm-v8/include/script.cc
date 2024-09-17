@@ -14,17 +14,17 @@ export class script : util::non_copyable {
 		script(v8::Isolate* isolate, v8::Local<v8::UnboundScript> script);
 
 		auto run(realm::scope& realm_scope) -> value::value_t;
-		static auto compile(agent::lock& lock, auto&& code_string) -> script;
+		static auto compile(agent::lock& agent, auto&& code_string) -> script;
 
 	private:
-		static auto compile(agent::lock& lock, v8::Local<v8::String> code_string) -> script;
+		static auto compile(agent::lock& agent, v8::Local<v8::String> code_string) -> script;
 
 		v8::Global<v8::UnboundScript> unbound_script_;
 };
 
-auto script::compile(agent::lock& lock, auto&& code_string) -> script {
-	auto local_string = value::transfer_strict<v8::Local<v8::String>>(code_string, lock->isolate());
-	return script::compile(lock, local_string);
+auto script::compile(agent::lock& agent, auto&& code_string) -> script {
+	auto local_string = value::transfer_strict<v8::Local<v8::String>>(code_string, agent->isolate());
+	return script::compile(agent, local_string);
 }
 
 } // namespace ivm

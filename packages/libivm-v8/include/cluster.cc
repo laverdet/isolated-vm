@@ -11,6 +11,7 @@ import :platform.clock;
 import :platform.foreground_runner;
 import :scheduler;
 import ivm.utility;
+import v8;
 
 namespace ivm {
 
@@ -42,9 +43,9 @@ auto cluster::make_agent(std::invocable<agent, agent::lock&> auto fn, clock::any
 		) mutable {
 			auto task_runner = std::make_shared<foreground_runner>();
 			auto agent_host = std::make_shared<agent::host>(agent_storage, task_runner, clock, random_seed);
-			agent::lock agent_lock{*agent_host};
+			agent::managed_lock agent_lock{*agent_host.get()};
 			util::take(std::move(fn))(agent{agent_host, task_runner}, agent_lock);
-			agent_host->execute(stop_token);
+			agent_host->execute(stop_token, agent_lock);
 		},
 		storage_ptr->scheduler_handle()
 	);
