@@ -10,6 +10,13 @@ elseif(IVM_HOST_ARCH STREQUAL aarch64)
 	set(IVM_HOST_ARCH arm64)
 endif()
 
+if (NOT DEFINED NAPI_INCLUDE_DIR)
+	message(FATAL_ERROR "NAPI_INCLUDE_DIR is not set")
+endif()
+if (NOT DEFINED NODE_DIST_DIR)
+	message(FATAL_ERROR "NODE_DIST_DIR is not set")
+endif()
+
 if (NOT DEFINED V8_INCLUDE_DIR)
 	message(FATAL_ERROR "V8_INCLUDE_DIR is not set")
 endif()
@@ -88,7 +95,7 @@ add_subdirectory(packages/value)
 # linked to the final target.
 # https://gitlab.kitware.com/cmake/cmake/-/issues/18090
 set(IV8_PREFIX ivm_nodejs)
-set(IV8_INCLUDE_DIR ${NODE_INCLUDE_DIR})
+set(IV8_INCLUDE_DIR ${NODE_DIST_DIR}/include)
 add_subdirectory(packages/common-v8 ivm_nodejs_common_v8)
 add_subdirectory(packages/third_party/v8 ivm_nodejs_v8)
 

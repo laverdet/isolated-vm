@@ -24,7 +24,7 @@ target_compile_definitions(ivm_backend_v8 PRIVATE
 )
 target_include_directories(ivm_backend_v8 SYSTEM PRIVATE
 	${NAPI_INCLUDE_DIR}
-	${NODE_INCLUDE_DIR}
+	${NODE_DIST_DIR}/include
 )
 target_link_libraries(ivm_backend_v8 PUBLIC
 	ivm_isolated_v8

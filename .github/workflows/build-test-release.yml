@@ -132,7 +132,7 @@ jobs:
           set -u
           npm install --no-audit --no-fund
           echo "napi-include-dir=$(node -p 'require("node-addon-api").include_dir')" >> "$GITHUB_OUTPUT"
-          echo "node-include-dir=$(nodejs_select $RUNNER_TOOL_CACHE/nodejs-headers/$NODE_HEADERS)" >> "$GITHUB_OUTPUT"
+          echo "node-dist-dir=$(nodejs_select $RUNNER_TOOL_CACHE/nodejs-headers/$NODE_HEADERS)" >> "$GITHUB_OUTPUT"
 
       # Build isolated-vm
       - name: Configure
@@ -140,7 +140,7 @@ jobs:
           IVM_HOST_ARCH: ${{ matrix.host.arch }}
           IVM_HOST_PLATFORM: ${{ matrix.host.platform }}
           NAPI_INCLUDE_DIR: ${{ steps.nodejs.outputs.napi-include-dir }}
-          NODE_INCLUDE_DIR: ${{ steps.nodejs.outputs.node-include-dir }}
+          NODE_DIST_DIR: ${{ steps.nodejs.outputs.node-include-dir }}
           V8_REF: ${{ env.V8_REF }}
           V8_TARGET: ${{ matrix.host.platform }}.${{ matrix.host.arch }}.${{ env.V8_CONFIGURATION }}
         run: |
@@ -160,7 +160,7 @@ jobs:
             -DIVM_HOST_ARCH="$IVM_HOST_ARCH"\
             -DIVM_HOST_PLATFORM="$IVM_HOST_PLATFORM" \
             -DNAPI_INCLUDE_DIR="$NAPI_INCLUDE_DIR" \
-            -DNODE_INCLUDE_DIR="$NODE_INCLUDE_DIR" \
+            -DNODE_DIST_DIR="$NODE_DIST_DIR" \
             -DV8_INCLUDE_DIR="$V8_REF_PATH/include" \
             -DV8_INCLUDE_GN_FILE="$V8_REF_PATH/$V8_TARGET/include/v8-gn.h" \
             -DV8_LIBRARY_TYPE=static \
