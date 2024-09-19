@@ -13,7 +13,6 @@ import ivm.utility;
 import ivm.v8;
 import ivm.value;
 import napi;
-import v8;
 
 namespace ivm {
 

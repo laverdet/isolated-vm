@@ -75,13 +75,15 @@ await test("realtime clock", async () => {
 });
 
 await test("system clock", async () => {
+	// `std::system_clock` on Windows returns jittering results across different CPU cores.
+	const threshold = process.platform === "win32" ? 10 : 0;
 	await using agent = await ivm.Agent.create();
 	const realm = await agent.createRealm();
 	for (let ii = 0; ii < 5; ++ii) {
 		const then = new Date();
 		const result = await unsafeEvalAsStringInRealm(agent, realm, () => new Date());
-		assert.ok(+result >= +then);
-		assert.ok(+result <= Date.now());
+		assert.ok(+result >= +then - threshold);
+		assert.ok(+result <= Date.now() + threshold);
 		await setTimeout(1);
 	}
 });

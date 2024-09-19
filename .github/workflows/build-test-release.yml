@@ -9,18 +9,21 @@ env:
 jobs:
   # First, check to see if v8 has been built for each target. If not, then a more powerful `runs-on`
   # builder is used on EC2.
+  # nb: Windows support w/ runs-on is beta and doesn't include the same tooling as GitHub.
   # https://runs-on.com
   # https://github.com/runs-on/runs-on
   configure:
     strategy:
       matrix:
         host:
-          - platform: linux-gnu
+          - runs-on: ubuntu-latest
+            platform: linux-gnu
             arch: x64
-          - platform: linux-musl
+          - runs-on: ubuntu-latest
+            platform: linux-musl
             arch: x64
     name: configure / ${{ matrix.host.platform }} ${{ matrix.host.arch }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.host.runs-on }}
     outputs:
       linux-gnu-x64: ${{ steps.output.outputs.linux-gnu-x64 }}
       linux-musl-x64: ${{ steps.output.outputs.linux-musl-x64 }}
@@ -36,11 +39,19 @@ jobs:
         env:
           CACHE_HIT: ${{ steps.cache.outputs.cache-hit }}
           HOST: ${{ matrix.host.platform }}-${{ matrix.host.arch }}
+          RUNS_ON: ${{ matrix.host.runs-on }}
         run: |
           if [ "$CACHE_HIT" = true ]; then
-            echo "$HOST=ubuntu-latest" >> "$GITHUB_OUTPUT"
+            echo "$HOST=$RUNS_ON" >> "$GITHUB_OUTPUT"
           else
-            echo "$HOST=runs-on,runner=32cpu-linux-x64,run-id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+            case "$RUNS_ON" in
+              ubuntu-latest)
+                echo "$HOST=runs-on,runner=32cpu-linux-x64,run-id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+                ;;
+              windows-latest)
+                echo "$HOST=runs-on,image=windows22-base-x64,family=m7i,run-id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+                ;;
+            esac
           fi
 
   # Build isolated-vm
@@ -63,6 +74,9 @@ jobs:
             arch: arm64
           - runs-on: macos-13
             platform: darwin
+            arch: x64
+          - runs-on: windows-latest
+            platform: win32
             arch: x64
     name: build / ${{ matrix.host.platform }} ${{ matrix.host.arch }}
     runs-on: ${{ matrix.host.runs-on }}
@@ -105,7 +119,8 @@ jobs:
           path: ./deps/v8/out
 
       # Install toolchain
-      - uses: laverdet/install@v0.0.6
+      - name: Toolchain [Linux]
+        uses: laverdet/install@v0.0.6
         if: startsWith(matrix.host.platform, 'linux-')
         with:
           packages: |
@@ -119,33 +134,85 @@ jobs:
             ninja-build
             nodejs
             npm
-      - shell: sh
+      - name: Toolchain [macOS]
         if: matrix.host.platform == 'darwin'
         run: brew install boost cmake llvm ninja node
+      # On Windows, the POSIX shell in GitHub actions is Git Bash. This runs in an isolated MSYS2
+      # installation under `C:/Program Files/Git`. The runner comes with another MSYS2 installation
+      # in `C:/msys64`. This action adds the root MSYS2 installation higher up in $PATH so we can
+      # use `pacman`, and consume binaries installed by `pacman`.
+      # nb: Do not be confused by the `/msys64` directory which exists in the default GitHub shell!
+      # It is not the same as `C:/msys64`.
+      - name: Toolchain [Windows]
+        if: matrix.host.platform == 'win32'
+        shell: sh
+        run: |
+          echo ::group::Toolchain
+          # You want the mingw version of ninja, not the msys version. The msys version uses
+          # `CMD.EXE` and does not work with the cmake Ninja generator.
+          /c/msys64/usr/bin/pacman -S --noconfirm \
+            mingw-w64-x86_64-boost \
+            mingw64/mingw-w64-x86_64-ninja \
+          ;
+          echo "/c/msys64/mingw64/bin" >> "$GITHUB_PATH"
+          echo "/c/msys64/usr/bin" >> "$GITHUB_PATH"
+          echo ::endgroup::
+          echo ::group::Dependency Walker
+          mkdir -p "$RUNNER_TOOL_CACHE/depwalker"
+          cd "$RUNNER_TOOL_CACHE/depwalker"
+          # `--ssl-no-revoke`: curl: (35) schannel: next InitializeSecurityContext failed:
+          # CRYPT_E_REVOCATION_OFFLINE (0x80092013) - The revocation function was unable to check
+          # revocation because the revocation server was offline.
+          curl -fsSL --ssl-no-revoke -o depwalker.zip https://github.com/lucasg/Dependencies/releases/download/v1.11.1/Dependencies_x64_Release.zip
+          unzip depwalker.zip
+          rm depwalker.zip
+          echo "$PWD" >> "$GITHUB_PATH"
+          echo ::endgroup::
+
+      # Install npm dependencies
+      - uses: bahmutov/npm-install@v1
+        with:
+          install-command: npm install --no-audit --no-fund
+      - name: node-addon-api include path
+        shell: sh
+        id: node-addon-api
+        run: echo "include-dir=$(node -p 'require("node-addon-api").include_dir')" >> "$GITHUB_OUTPUT"
 
       # Download nodejs headers
-      - name: nodejs dependencies
-        id: nodejs
+      - uses: actions/cache/restore@v4
+        id: nodejs-headers-cache
+        with:
+          enableCrossOsArchive: true
+          key: nodejs-headers-${{ env.NODE_HEADERS }}
+          path: deps/nodejs
+      - name: node headers
+        id: nodejs-headers
+        if: steps.nodejs-headers-cache.outputs.cache-hit != 'true'
         env:
           NODE_HEADERS: ${{ env.NODE_HEADERS }}
-        run: |
-          set -u
-          npm install --no-audit --no-fund
-          echo "napi-include-dir=$(node -p 'require("node-addon-api").include_dir')" >> "$GITHUB_OUTPUT"
-          echo "node-dist-dir=$(nodejs_select $RUNNER_TOOL_CACHE/nodejs-headers/$NODE_HEADERS)" >> "$GITHUB_OUTPUT"
+        run: nodejs_select "deps/nodejs/$NODE_HEADERS"
+      - uses: actions/cache/save@v4
+        if: steps.nodejs-headers.outcome == 'success'
+        with:
+          enableCrossOsArchive: true
+          key: ${{ steps.nodejs-headers-cache.outputs.cache-primary-key }}
+          path: deps/nodejs
 
       # Build isolated-vm
       - name: Configure
+        shell: sh
         env:
           IVM_HOST_ARCH: ${{ matrix.host.arch }}
           IVM_HOST_PLATFORM: ${{ matrix.host.platform }}
-          NAPI_INCLUDE_DIR: ${{ steps.nodejs.outputs.napi-include-dir }}
-          NODE_DIST_DIR: ${{ steps.nodejs.outputs.node-include-dir }}
+          NAPI_INCLUDE_DIR: ${{ steps.node-addon-api.outputs.include-dir }}
+          NODE_DIST_DIR: deps/nodejs/${{ env.NODE_HEADERS }}
           V8_REF: ${{ env.V8_REF }}
           V8_TARGET: ${{ matrix.host.platform }}.${{ matrix.host.arch }}.${{ env.V8_CONFIGURATION }}
         run: |
           set -u
           V8_REF_PATH=$PWD/deps/v8/out/$V8_REF
+          CMAKE_MAKE_PROGRAM=ninja
+          CMAKE_PREFIX_PATH=
           case "$IVM_HOST_PLATFORM" in
             darwin)
               CMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++
@@ -153,10 +220,18 @@ jobs:
             linux-*)
               CMAKE_CXX_COMPILER=$(realpath "$(which clang-18)")
               ;;
+            win32)
+              CMAKE_CXX_COMPILER="C:/Program Files/LLVM/bin/clang++.exe"
+              # I do not know why cmake cannot find ninja without explicitly being told where it is.
+              CMAKE_MAKE_PROGRAM=$(which ninja)
+              CMAKE_PREFIX_PATH=C:/msys64/mingw64/lib/cmake
+              ;;
           esac
           cmake \
-            -DCMAKE_CXX_COMPILER="$CMAKE_CXX_COMPILER" \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER="$CMAKE_CXX_COMPILER" \
+            -DCMAKE_MAKE_PROGRAM="$CMAKE_MAKE_PROGRAM" \
+            -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
             -DIVM_HOST_ARCH="$IVM_HOST_ARCH"\
             -DIVM_HOST_PLATFORM="$IVM_HOST_PLATFORM" \
             -DNAPI_INCLUDE_DIR="$NAPI_INCLUDE_DIR" \
@@ -169,7 +244,28 @@ jobs:
             -G Ninja \
           ;
       - name: Build
+        shell: sh
         run: ninja -C build ivm_backend_v8
+      - name: Sanity Check
+        shell: sh
+        env:
+          ARCH: ${{ matrix.host.arch }}
+          PLATFORM: ${{ matrix.host.platform }}
+        run: node -e 'require("./dist/backend_v8/${{ matrix.host.platform }}-${{ matrix.host.arch }}/backend_v8.node")'
+
+      # Diagnostics
+      - name: Symbols [Linux]
+        if: startsWith(matrix.host.platform, 'linux-')
+        run: |
+          set +x
+          ldd "dist/backend_v8/${{ matrix.host.platform }}-${{ matrix.host.arch }}/backend_v8.node" 2>&1 | grep -v 'Error relocating'
+          nm -guC "dist/backend_v8/${{ matrix.host.platform }}-${{ matrix.host.arch }}/backend_v8.node"
+      - name: Symbols [Windows]
+        shell: sh
+        if: matrix.host.platform == 'win32'
+        run: |
+          set +x
+          dependencies.exe -imports "dist/backend_v8/${{ matrix.host.platform }}-${{ matrix.host.arch }}/backend_v8.node"
 
       # Upload build artifacts
       - uses: actions/upload-artifact@v4
@@ -199,10 +295,20 @@ jobs:
           - runs-on: macos-13
             platform: darwin
             arch: x64
+          - runs-on: windows-latest
+            platform: win32
+            arch: x64
         node:
           - 18
           - 20
           - 22
+        exclude:
+          - host:
+              platform: win32
+            node: 20
+          - host:
+              platform: win32
+            node: 22
     name: test / ${{ matrix.host.platform }} ${{ matrix.host.arch }} nodejs ${{ matrix.node }}
     runs-on: ${{ matrix.host.runs-on }}
     container: ${{ matrix.host.container }}
@@ -245,16 +351,27 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
+      # Check linked binary sanity
+      - name: Sanity Check
+        shell: sh
+        env:
+          ARCH: ${{ matrix.host.arch }}
+          PLATFORM: ${{ matrix.host.platform }}
+        run: node -e 'require("./dist/backend_v8/${{ matrix.host.platform }}-${{ matrix.host.arch }}/backend_v8.node")'
+
       # Install npm dependencies and build TypeScript
+      - uses: bahmutov/npm-install@v1
+        with:
+          install-command: npm install --no-audit --no-fund
       - name: npm
+        shell: sh
         run: |
-          npm install --no-audit --no-fund
           npx tsc -b
+          npm config set script-shell "$SHELL"
 
       # Run tests
       - name: Test
-        run: |
-          npm run -S test
+        run: npm run -S test
 
   release:
     needs: test
@@ -273,6 +390,9 @@ jobs:
             arch: arm64
           - runs-on: macos-13
             platform: darwin
+            arch: x64
+          - runs-on: windows-latest
+            platform: win32
             arch: x64
     name: release / ${{ matrix.host.platform }} ${{ matrix.host.arch }}
     runs-on: ${{ matrix.host.runs-on }}

@@ -30,6 +30,13 @@ if (NOT DEFINED V8_OUT_PATH)
 	message(FATAL_ERROR "V8_OUT_PATH is not set")
 endif()
 
+# Ensure absolute path for variables used in subdirectories
+cmake_path(ABSOLUTE_PATH NAPI_INCLUDE_DIR BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
+cmake_path(ABSOLUTE_PATH NODE_DIST_DIR BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
+cmake_path(ABSOLUTE_PATH V8_INCLUDE_DIR BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
+cmake_path(ABSOLUTE_PATH V8_INCLUDE_GN_FILE BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
+cmake_path(ABSOLUTE_PATH V8_OUT_PATH BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
+
 # Project config
 project(isolated_vm LANGUAGES CXX)
 
@@ -42,45 +49,79 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Global compiler flags
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-add_compile_options(
-	-fdiagnostics-color
-	-Wall
-	-Wextra
-	-Wpedantic
-)
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+
+# No warnings allowed in release
+if (NOT CMAKE_BUILD_TYPE STREQUAL Debug)
+	set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+endif()
+
+# Apple dylib flags
+if (APPLE)
+	set(CMAKE_SHARED_LINKER_FLAGS "-dynamiclib -undefined dynamic_lookup")
+	set(CMAKE_OSX_DEPLOYMENT_TARGET 10.12)
+endif()
+
+# Microsoft Visual C++. It can't actually compile the templates in `ivm::value`, but this would be
+# required if it could.
+if (MSVC)
+	# Lmfao: "After 20+ years, we’re finally able to set the value for “__cplusplus” macro forward in
+	# the MSVC compiler."
+	# https://developercommunity.visualstudio.com/t/msvc-incorrectly-defines-cplusplus/139261#T-N223868
+	# https://learn.microsoft.com/en-us/cpp/build/reference/zc-cplusplus?view=msvc-170
+	add_compile_options(/Zc:__cplusplus)
+endif()
+
+# Windows flags. You want /MT and not /MD
+if (WIN32 AND NOT CMAKE_BUILD_TYPE STREQUAL Debug)
+	set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreaded)
+endif()
+
+# Windows Clang flags
+if (WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL Clang)
+	# error: unknown attribute 'no_unique_address' ignored [-Werror,-Wunknown-attributes]
+	# [[no_unique_address]] Predicate predicate;
+	add_compile_options(-Wno-unknown-attributes)
+endif()
+
+# Clang & GCC diagnostic flags. GCC can't compile this project right now but I am hopeful.
+if (CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+	add_compile_options(
+		-fdiagnostics-color
+		-Wall
+		-Wextra
+		-Wpedantic
+	)
+	if (NOT CMAKE_BUILD_TYPE STREQUAL Debug)
+		# Soften common development warnings
+		add_compile_options(
+			-Wno-unused-but-set-variable
+			-Wno-unused-result
+		)
+	endif()
+endif()
+
+# Clang feature flags
+if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
 	# `std::stop_token` and maybe others
 	add_compile_definitions(_LIBCPP_ENABLE_EXPERIMENTAL)
-	# Required for clangd w/ modules
-	add_compile_options(-fretain-comments-from-system-headers)
-	# This enables `#include <expected>` somehow
+	# This enables `#include <expected>` somehow. This can be removed in Clang 19.1.0.
 	if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 20)
 		add_compile_options(-D__cpp_concepts=202002L -Wno-builtin-macro-redefined)
 	endif()
-endif()
-if (APPLE)
-	set(CMAKE_SHARED_LINKER_FLAGS "-dynamiclib -undefined dynamic_lookup")
-	set(CMAKE_OSX_DEPLOYMENT_TARGET "10.12")
-endif()
 
-# Release type compiler flags
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-	add_compile_options(
-		-fsanitize=address
-		-Wno-unused-but-set-variable
-		-Wno-unused-result
-	)
-	add_link_options(
-		-fsanitize=address
-		-shared-libasan
-	)
-else()
-	# clang-18 complains about `std::aligned_storage` within `std::shared_ptr` compiling against
-	# libstdc++
-	add_compile_options(
-		-Wno-deprecated-declarations
-	)
-	set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+	# Debug / Release configuration flags
+	if (CMAKE_BUILD_TYPE STREQUAL Debug)
+		# Required for clangd w/ modules
+		add_compile_options(-fretain-comments-from-system-headers)
+
+		# Enable ASAN / LSAN
+		add_compile_options(-fsanitize=address)
+		add_link_options(-fsanitize=address -shared-libasan)
+	else()
+		# clang-18 complains about `std::aligned_storage` within `std::shared_ptr` compiling against
+		# libstdc++
+		add_compile_options(-Wno-deprecated-declarations)
+	endif()
 endif()
 
 # Generic abstract C++ utilities
@@ -111,7 +152,6 @@ add_subdirectory(packages/third_party/v8 ivm_embedded_v8)
 add_subdirectory(packages/libivm-v8)
 
 # Napi shim
-cmake_path(ABSOLUTE_PATH NAPI_INCLUDE_DIR BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
 add_subdirectory(packages/third_party/napi)
 
 # nodejs require-able module

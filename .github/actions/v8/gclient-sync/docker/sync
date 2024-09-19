@@ -3,4 +3,5 @@
 set -eu
 cd deps
 gclient config --unmanaged "$(git -C v8 config --get remote.origin.url)"
+DEPOT_TOOLS_WIN_TOOLCHAIN=0 \
 gclient sync --no-history --shallow --with_branch_heads

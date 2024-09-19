@@ -79,15 +79,21 @@ runs:
       env:
         DARWIN: ${{ inputs.platform == 'darwin' }}
         REF: ${{ inputs.ref }}
+        PLATFORM: ${{ inputs.platform }}
         TARGET: ${{ inputs.platform }}.${{ inputs.arch }}.${{ inputs.configuration }}
       run: |
         set -u
         echo ::group::Build v8
-        if [ "$DARWIN" = true ]; then
-          export CLANG_BASE_PATH=$(brew --cellar llvm)/$(brew list --versions llvm | cut -d' ' -f2 | sort -V | head -n1)
-        fi
+        case "$PLATFORM" in
+          darwin)
+            export CLANG_BASE_PATH=$(brew --cellar llvm)/$(brew list --versions llvm | cut -d' ' -f2 | sort -V | head -n1)
+            ;;
+          win32)
+            export DEPOT_TOOLS_WIN_TOOLCHAIN=0
+            ;;
+        esac
         v8_build "out/$REF/$TARGET"
         rm -rf "out/$REF/$TARGET/gen"
-        find out -type f ! -name '*.so' ! -name '*.a' ! -name '*.h' -delete
+        find out -type f ! -name '*.a' ! -name '*.h' ! -name '*.lib' -delete
         find out -type d -empty -delete
         echo ::endgroup::

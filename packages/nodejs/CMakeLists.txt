@@ -35,9 +35,15 @@ target_link_libraries(ivm_backend_v8 PUBLIC
 	ivm_value
 )
 
+# Windows linking
+if (WIN32)
+	target_link_directories(ivm_backend_v8 PUBLIC ${NODE_DIST_DIR}/windows/${IVM_HOST_ARCH})
+	target_link_libraries(ivm_backend_v8 PUBLIC node dbghelp winmm)
+endif()
+
 # Copy out to ./dist
 add_custom_command(TARGET ivm_backend_v8 POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy
-		$<TARGET_SONAME_FILE:ivm_backend_v8>
+		$<TARGET_FILE:ivm_backend_v8>
 		${CMAKE_SOURCE_DIR}/dist/backend_v8/${IVM_HOST_PLATFORM}-${IVM_HOST_ARCH}/backend_v8.node
 )

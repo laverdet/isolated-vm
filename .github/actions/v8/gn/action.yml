@@ -7,9 +7,10 @@ inputs:
 runs:
   using: composite
   steps:
-    # Just install depot_tools if not musl
+    # Just install depot_tools if not musl. The rest is skipped on non-container non-linux platforms
+    # because `newkdev/setup-depot-tools` is invoked in the v8 action.
     - shell: sh
-      if: inputs.platform != 'linux-musl'
+      if: inputs.platform == 'linux-gnu'
       run: |
         DEPOT_TOOLS=$RUNNER_TOOL_CACHE/depot_tools
         mkdir -p ~/.config/depot_tools

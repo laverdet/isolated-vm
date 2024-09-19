@@ -29,7 +29,9 @@ target_include_directories(${IV8_PREFIX}_v8 SYSTEM PRIVATE ${IV8_INCLUDE_DIR})
 # Preprocessor macros which enable dual v8 in the same process
 if (IVM_IV8_TRICKSHOT)
 	target_compile_definitions(${IV8_PREFIX}_v8 PUBLIC
+		cppgc=zppgc
 		iv8=iz8
+		unibrow=znibrow
 		v8_crdtp=z8_crdtp
 		V8_Dcheck=Z8_Dcheck
 		V8_Fatal=Z8_Fatal
@@ -44,11 +46,11 @@ if (IVM_IV8_EMBEDDED)
 
 	# Link against v8, which is built elsewhere
 	if (V8_LIBRARY_TYPE STREQUAL "static")
-		target_link_directories(${IV8_PREFIX}_v8 INTERFACE ${V8_OUT_PATH}/obj)
-		target_link_libraries(${IV8_PREFIX}_v8 INTERFACE v8_monolith)
+		target_link_directories(${IV8_PREFIX}_v8 PUBLIC ${V8_OUT_PATH}/obj)
+		target_link_libraries(${IV8_PREFIX}_v8 PUBLIC v8_monolith)
 	else()
-		target_link_directories(${IV8_PREFIX}_v8 INTERFACE ${V8_OUT_PATH})
-		target_link_libraries(${IV8_PREFIX}_v8 INTERFACE v8 v8_libbase v8_libplatform)
+		target_link_directories(${IV8_PREFIX}_v8 PUBLIC ${V8_OUT_PATH})
+		target_link_libraries(${IV8_PREFIX}_v8 PUBLIC v8 v8_libbase v8_libplatform)
 	endif()
 else()
 	# Prevents deeper v8 headers from being included from nodejs

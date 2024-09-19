@@ -3,7 +3,6 @@ module;
 module ivm.node;
 import :array;
 import napi;
-import v8;
 
 namespace ivm::napi {
 
