@@ -16,8 +16,20 @@ auto realm::make(agent::lock& agent) -> realm {
 }
 
 realm::scope::scope(agent::lock& agent, v8::Local<v8::Context> context) :
-		isolate_{agent->isolate()},
+		agent_lock_{&agent},
 		context_{context} {
+}
+
+auto realm::scope::agent() const -> agent::lock& {
+	return *agent_lock_;
+}
+
+auto realm::scope::context() const -> v8::Local<v8::Context> {
+	return context_;
+}
+
+auto realm::scope::isolate() const -> v8::Isolate* {
+	return (*agent_lock_)->isolate();
 }
 
 realm::managed_scope::managed_scope(agent::lock& agent, realm& realm) :

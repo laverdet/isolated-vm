@@ -1,3 +1,5 @@
+module;
+#include <utility>
 export module ivm.isolated_v8:script;
 import :agent;
 import :realm;
@@ -11,7 +13,7 @@ namespace ivm {
 export class script : util::non_copyable {
 	public:
 		script() = delete;
-		script(v8::Isolate* isolate, v8::Local<v8::UnboundScript> script);
+		script(agent::lock& agent, v8::Local<v8::UnboundScript> script);
 
 		auto run(realm::scope& realm_scope) -> value::value_t;
 		static auto compile(agent::lock& agent, auto&& code_string) -> script;
@@ -23,8 +25,8 @@ export class script : util::non_copyable {
 };
 
 auto script::compile(agent::lock& agent, auto&& code_string) -> script {
-	auto local_string = value::transfer_strict<v8::Local<v8::String>>(code_string, agent->isolate());
-	return script::compile(agent, local_string);
+	auto local_code_string = value::transfer_strict<v8::Local<v8::String>>(std::forward<decltype(code_string)>(code_string), agent->isolate());
+	return script::compile(agent, local_code_string);
 }
 
 } // namespace ivm

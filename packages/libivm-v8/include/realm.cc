@@ -24,11 +24,12 @@ class realm::scope : util::non_copyable {
 		scope() = delete;
 		scope(agent::lock& agent, v8::Local<v8::Context> context);
 
-		[[nodiscard]] auto context() const -> v8::Local<v8::Context> { return context_; }
-		[[nodiscard]] auto isolate() const -> v8::Isolate* { return isolate_; }
+		[[nodiscard]] auto agent() const -> agent::lock&;
+		[[nodiscard]] auto context() const -> v8::Local<v8::Context>;
+		[[nodiscard]] auto isolate() const -> v8::Isolate*;
 
 	private:
-		v8::Isolate* isolate_;
+		agent::lock* agent_lock_;
 		v8::Local<v8::Context> context_;
 };
 

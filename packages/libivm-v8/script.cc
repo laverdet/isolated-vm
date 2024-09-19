@@ -8,8 +8,8 @@ import v8;
 
 namespace ivm {
 
-script::script(v8::Isolate* isolate, v8::Local<v8::UnboundScript> script) :
-		unbound_script_{isolate, script} {
+script::script(agent::lock& agent, v8::Local<v8::UnboundScript> script) :
+		unbound_script_{agent->isolate(), script} {
 }
 
 auto script::run(realm::scope& realm_scope) -> value::value_t {
@@ -26,7 +26,7 @@ auto script::compile(agent::lock& agent, v8::Local<v8::String> code_string) -> s
 	v8::ScriptCompiler::Source source{code_string};
 	auto* isolate = agent->isolate();
 	auto script_handle = v8::ScriptCompiler::CompileUnboundScript(isolate, &source).ToLocalChecked();
-	return script{isolate, script_handle};
+	return script{agent, script_handle};
 }
 
 } // namespace ivm
