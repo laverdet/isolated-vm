@@ -9,7 +9,7 @@ services:
     image: isolated-vm/depot_tools
     build:
       additional_contexts:
-        - debian=docker-image://debian:experimental-20240812
+        - debian=docker-image://debian:sid
       dockerfile: Dockerfile.depot_tools
 
   gn_alpine:
@@ -50,6 +50,7 @@ services:
       args:
         REF: ${V8_VERSION}
         TARGET: ${V8_TARGET}
+        LLVM_VERSION: ${LLVM_VERSION}
       dockerfile: Dockerfile.v8
 
   v8_alpine:
@@ -74,7 +75,7 @@ services:
     image: isolated-vm/node:${NODE_VERSION}
     build:
       additional_contexts:
-        - debian=docker-image://debian:experimental-20240812
+        - debian=docker-image://debian:sid
         - isolated-vm/node_sources=docker-image://isolated-vm/node_sources:${NODE_VERSION}
         - scripts=../scripts
       dockerfile: Dockerfile.node

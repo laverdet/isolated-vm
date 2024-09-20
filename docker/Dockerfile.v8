@@ -1,5 +1,5 @@
 # Build v8 objects for the given target
-FROM debian
+FROM debian AS build
 ARG LLVM_VERSION
 RUN <<DONE
 	set -eux

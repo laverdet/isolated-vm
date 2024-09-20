@@ -31,7 +31,7 @@ RUN <<DONE
 	ln -fs /usr/lib/"llvm-$LLVM_VERSION"/lib/clang/"$LLVM_VERSION"/lib/linux/* /lib/aarch64-linux-gnu/
 
 	# Preload asan for `node`
-	ln /workspace/scripts/node_asan /usr/bin/
+	ln -s /workspace/scripts/node_asan /usr/bin/
 
 	# Allow local directory `.lldbinit`
 	echo 'settings set target.load-cwd-lldbinit true' > ~/.lldbinit
