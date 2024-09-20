@@ -281,7 +281,7 @@ const typeScriptRules = acceptTypeScriptRules({
 	"@typescript-eslint/method-signature-style": "warn",
 	"@typescript-eslint/no-confusing-non-null-assertion": "warn",
 	"@typescript-eslint/no-empty-function": "off",
-	"@typescript-eslint/no-explicit-any": "warn",
+	"@typescript-eslint/no-explicit-any": "off",
 	"@typescript-eslint/no-extraneous-class": "warn",
 	"@typescript-eslint/no-invalid-void-type": [ "warn", { allowAsThisParameter: true } ],
 	"@typescript-eslint/no-non-null-asserted-nullish-coalescing": "warn",

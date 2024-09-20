@@ -2,6 +2,7 @@ module;
 #include <boost/variant.hpp>
 #include <ranges>
 #include <string>
+#include <optional>
 #include <variant>
 export module ivm.value:visit;
 import :tag;
@@ -30,6 +31,21 @@ constexpr auto invoke_visit(Type&& value, auto&& accept) -> decltype(auto) {
 		std::forward<decltype(accept)>(accept)
 	);
 }
+
+// `std::optional` visitor may yield `undefined`
+template <class Type>
+struct visit<std::optional<Type>> {
+		constexpr auto operator()(auto&& value, auto&& accept) const -> decltype(auto) {
+			if (value) {
+				return invoke_visit(
+					*std::forward<decltype(value)>(value),
+					std::forward<decltype(accept)>(accept)
+				);
+			} else {
+				return accept(undefined_tag{}, std::monostate{});
+			}
+		}
+};
 
 // Visiting a `boost::variant` visits the underlying member
 template <class... Types>

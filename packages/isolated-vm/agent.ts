@@ -1,10 +1,43 @@
+import type { SourceOrigin } from "./script.js";
 import * as ivm from "./backend.js";
 import { compileScript, createAgent, createRealm } from "./backend.js";
 import { Realm } from "./realm.js";
 import { Script } from "./script.js";
 
 export namespace Agent {
-	export type CreateOptions = ivm.Agent.CreateOptions;
+	export namespace CreateOptions {
+		export type Clock = Clock.Deterministic | Clock.Microtask | Clock.Realtime | Clock.System;
+		export namespace Clock {
+			export interface Deterministic {
+				type: "deterministic";
+				epoch: Date;
+				interval: number;
+			}
+
+			export interface Microtask {
+				type: "microtask";
+				epoch?: Date | undefined;
+			}
+
+			export interface Realtime {
+				type: "realtime";
+				epoch: Date;
+			}
+
+			export interface System {
+				type: "system";
+			}
+		}
+	}
+
+	export interface CreateOptions {
+		clock?: CreateOptions.Clock | undefined;
+		randomSeed?: number | undefined;
+	}
+
+	export interface CompileScriptOptions {
+		origin?: SourceOrigin;
+	}
 }
 
 export class Agent {
@@ -15,7 +48,7 @@ export class Agent {
 		this.#agent = agent;
 	}
 
-	static async create(options: ivm.Agent.CreateOptions = {}): Promise<Agent> {
+	static async create(options?: Agent.CreateOptions): Promise<Agent> {
 		const agent = await createAgent(options);
 		return new Agent(agent);
 	}
@@ -25,8 +58,8 @@ export class Agent {
 		return new Realm(realm);
 	}
 
-	async compileScript(code: string): Promise<Script> {
-		const script = await compileScript(this.#agent, code);
+	async compileScript(code: string, options?: Agent.CompileScriptOptions): Promise<Script> {
+		const script = await compileScript(this.#agent, code, options);
 		return new Script(this.#agent, script);
 	}
 

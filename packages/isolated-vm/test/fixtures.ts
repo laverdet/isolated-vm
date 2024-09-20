@@ -1,6 +1,13 @@
 import { Agent, Realm } from "isolated-vm";
 
 /** @internal */
+export function unsafeIIFEAsString(
+	code: () => unknown,
+) {
+	return `(${String(code)})()`;
+}
+
+/** @internal */
 export async function unsafeEvalAsString<Type, Args extends unknown[]>(
 	agent: Agent,
 	code: (...args: Args) => Type,

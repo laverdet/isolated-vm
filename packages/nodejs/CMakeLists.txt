@@ -15,6 +15,7 @@ target_sources(ivm_backend_v8
 		include/environment.cc
 		include/external.cc
 		include/object.cc
+		include/script.cc
 		utility.cc
 		value/accept.cc
 		value/visit.cc

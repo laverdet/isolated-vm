@@ -13,6 +13,7 @@ target_sources(${IV8_PREFIX}_v8
 		local_handle.cc
 		locker.cc
 		maybe.cc
+		message.cc
 		object.cc
 		persistent_handle.cc
 		platform.cc

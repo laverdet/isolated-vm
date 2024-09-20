@@ -34,7 +34,8 @@ struct make_agent_options {
 		std::optional<double> random_seed;
 };
 
-auto create_agent(environment& env, make_agent_options options) -> Napi::Value {
+auto create_agent(environment& env, std::optional<make_agent_options> options_optional) -> Napi::Value {
+	auto options = std::move(options_optional).value_or(make_agent_options{});
 	auto& cluster = env.cluster();
 	auto [ dispatch, promise ] = make_promise<ivm::agent>(env, [](environment& env, ivm::agent agent) -> expected_value {
 		return make_collected_external<ivm::agent>(env, std::move(agent));

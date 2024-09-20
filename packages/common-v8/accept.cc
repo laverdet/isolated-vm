@@ -114,4 +114,20 @@ struct accept<Meta, v8::Local<v8::Value>> : iv8::accept_primitive_base {
 		v8::Local<v8::Context> context;
 };
 
+// A `MaybeLocal` also accepts `undefined`, similar to `std::optional`.
+template <class Meta, class Type>
+struct accept<Meta, v8::MaybeLocal<Type>> : accept<Meta, v8::Local<Type>> {
+		using accept<Meta, v8::Local<Type>>::accept;
+		using accept_type = accept<Meta, v8::Local<Type>>;
+
+		constexpr auto operator()(auto_tag auto tag, auto&& value) const -> v8::MaybeLocal<Type>
+			requires std::invocable<accept_type, decltype(tag), decltype(value)> {
+			return {accept_type::operator()(tag, std::forward<decltype(value)>(value))};
+		}
+
+		auto operator()(undefined_tag /*tag*/, auto&& /*undefined*/) const -> v8::MaybeLocal<Type> {
+			return v8::MaybeLocal<Type>{};
+		}
+};
+
 }; // namespace ivm::value

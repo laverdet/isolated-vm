@@ -4,6 +4,26 @@ import { Realm } from "./realm.js";
 
 const { extractRealmInternal } = Realm;
 
+export interface SourceOrigin {
+	/**
+	 * The name of this source. This is displayed in stack traces, and also guides module resolution
+	 * of `import` statements and expressions. This does not *need* to be a URL, but it really should
+	 * be.
+	 */
+	name?: string;
+
+	/**
+	 * The location of this source within its document. You would use this to reproduce a `<script />`
+	 * tag in an HTML file. The script is actually located at an offset within another document.
+	 */
+	location?: Location;
+}
+
+export interface Location {
+	line: number;
+	column: number;
+}
+
 export class Script {
 	readonly #agent;
 	readonly #script;

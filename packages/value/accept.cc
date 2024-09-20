@@ -80,11 +80,16 @@ struct accept<Meta, std::nullptr_t> {
 template <class Meta, class... Types>
 struct accept<Meta, std::tuple<Types...>> {
 		constexpr auto operator()(vector_tag /*tag*/, auto&& value) const -> std::tuple<Types...> {
-			if (std::size(value) < sizeof...(Types)) {
-				throw std::logic_error("Too small");
-			}
 			auto it = std::begin(value);
-			return {invoke_visit(*it++, make_accept<Types>(*this))...};
+			auto end = std::end(value);
+			auto next = [&](auto accept) -> decltype(auto) {
+				if (it == end) {
+					return accept(undefined_tag{}, std::monostate{});
+				} else {
+					return invoke_visit(*it++, std::move(accept));
+				}
+			};
+			return {next(make_accept<Types>(*this))...};
 		}
 };
 
@@ -92,10 +97,12 @@ struct accept<Meta, std::tuple<Types...>> {
 template <class Meta, class Type>
 struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
 		using accept_type = accept<Meta, Type>;
+
 		constexpr auto operator()(auto_tag auto tag, auto&& value) const -> std::optional<Type>
 			requires std::invocable<accept_type, decltype(tag), decltype(value)> {
 			return {accept_type::operator()(tag, std::forward<decltype(value)>(value))};
 		}
+
 		constexpr auto operator()(undefined_tag /*tag*/, auto&& /*value*/) const -> std::optional<Type> {
 			return std::nullopt;
 		}
