@@ -20,11 +20,11 @@ runs:
         update_depot_tools
         echo "$DEPOT_TOOLS" >> "$GITHUB_PATH"
 
-    # GNU `tar` & `zstd` is needed for `actions/cache`
+    # GNU `tar` & `zstd` is needed for `actions/cache`. Also, clang, for building.
     - uses: laverdet/install@v0.0.6
       if: inputs.platform == 'linux-musl'
       with:
-        packages: tar zstd
+        packages: clang tar zstd
 
     # Restore musl cache
     - uses: actions/cache/restore@v4
