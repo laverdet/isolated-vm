@@ -2,7 +2,7 @@ module;
 #include <concepts>
 #include <tuple>
 #include <type_traits>
-export module ivm.v8:handle;
+export module ivm.iv8:handle;
 import v8;
 
 export namespace ivm::iv8 {

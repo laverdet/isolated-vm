@@ -2,7 +2,7 @@ module;
 #include <compare>
 #include <cstdint>
 #include <ranges>
-export module ivm.v8:array;
+export module ivm.iv8:array;
 import v8;
 import :handle;
 import ivm.utility;

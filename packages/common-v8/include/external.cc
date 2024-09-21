@@ -1,7 +1,7 @@
 module;
 #include <type_traits>
 #include <utility>
-export module ivm.v8:external;
+export module ivm.iv8:external;
 import ivm.utility;
 import ivm.value;
 import v8;

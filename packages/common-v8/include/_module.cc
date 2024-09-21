@@ -1,4 +1,4 @@
-export module ivm.v8;
+export module ivm.iv8;
 export import :accept;
 export import :array;
 export import :boolean;

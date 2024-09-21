@@ -1,6 +1,6 @@
 module;
 #include <type_traits>
-export module ivm.v8:boolean;
+export module ivm.iv8:boolean;
 import v8;
 
 namespace ivm::iv8 {

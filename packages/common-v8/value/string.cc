@@ -2,7 +2,7 @@ module;
 #include <cstdint>
 #include <string>
 #include <type_traits>
-module ivm.v8;
+module ivm.iv8;
 import :handle;
 import :string;
 import v8;

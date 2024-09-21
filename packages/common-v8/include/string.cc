@@ -1,7 +1,7 @@
 module;
 #include <string>
 #include <type_traits>
-export module ivm.v8:string;
+export module ivm.iv8:string;
 import :handle;
 import v8;
 

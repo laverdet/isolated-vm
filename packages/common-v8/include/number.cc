@@ -1,7 +1,7 @@
 module;
 #include <cstdint>
 #include <type_traits>
-export module ivm.v8:number;
+export module ivm.iv8:number;
 import v8;
 
 namespace ivm::iv8 {

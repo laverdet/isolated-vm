@@ -1,6 +1,6 @@
 module;
 #include <cstdint>
-module ivm.v8;
+module ivm.iv8;
 import :array;
 import v8;
 

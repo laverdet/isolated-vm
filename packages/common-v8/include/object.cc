@@ -1,7 +1,7 @@
 module;
 #include <ranges>
 #include <string>
-export module ivm.v8:object;
+export module ivm.iv8:object;
 import v8;
 import :array;
 import :handle;

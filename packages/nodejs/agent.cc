@@ -10,7 +10,7 @@ import :utility;
 import :visit;
 import ivm.isolated_v8;
 import ivm.utility;
-import ivm.v8;
+import ivm.iv8;
 import ivm.value;
 import napi;
 

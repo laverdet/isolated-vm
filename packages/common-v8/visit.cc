@@ -4,7 +4,7 @@ module;
 #include <string>
 #include <type_traits>
 #include <variant>
-export module ivm.v8:visit;
+export module ivm.iv8:visit;
 import :array;
 import :boolean;
 import :date;

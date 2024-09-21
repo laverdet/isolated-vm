@@ -4,7 +4,7 @@ module;
 #include <__iterator/wrap_iter.h>
 #endif
 #include <utility>
-export module ivm.v8:accept;
+export module ivm.iv8:accept;
 import :date;
 import :string;
 import ivm.value;

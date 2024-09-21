@@ -2,7 +2,7 @@ module ivm.isolated_v8;
 import :agent;
 import :realm;
 import :script;
-import ivm.v8;
+import ivm.iv8;
 import ivm.value;
 import v8;
 

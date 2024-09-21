@@ -1,6 +1,6 @@
 module;
 #include <type_traits>
-export module ivm.v8:date;
+export module ivm.iv8:date;
 import ivm.value;
 import v8;
 
