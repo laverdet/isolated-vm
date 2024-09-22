@@ -21,11 +21,11 @@ export class array : public v8::Array {
 		static auto Cast(v8::Value* data) -> array*;
 };
 
-class array::iterator : public util::arithmetic_facade<iterator, int32_t, int64_t> {
+class array::iterator : public util::random_access_iterator_facade<iterator, int32_t, int64_t> {
 	public:
 		friend arithmetic_facade;
 		using arithmetic_facade::operator+;
-		using difference_type = arithmetic_facade::difference_type;
+		using difference_type = random_access_iterator_facade::difference_type;
 		using size_type = uint32_t;
 		using value_type = array::value_type;
 
@@ -33,14 +33,7 @@ class array::iterator : public util::arithmetic_facade<iterator, int32_t, int64_
 		iterator(array* handle, handle_env env, uint32_t index);
 
 		auto operator*() const -> value_type;
-		auto operator->() const -> value_type { return **this; }
-		auto operator[](difference_type offset) const -> value_type { return *(*this + offset); }
-
-		auto operator+=(difference_type offset) -> iterator& {
-			index += offset;
-			return *this;
-		}
-
+		auto operator+=(difference_type offset) -> iterator&;
 		auto operator==(const iterator& right) const -> bool { return index == right.index; }
 		auto operator<=>(const iterator& right) const -> std::strong_ordering { return index <=> right.index; }
 

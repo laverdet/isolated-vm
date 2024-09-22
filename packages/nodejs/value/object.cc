@@ -12,7 +12,7 @@ namespace ivm::napi {
 object::object(Napi::Object object) :
 		object_{object} {}
 
-auto object::operator~() const -> range_type {
+auto object::into_range() const -> range_type {
 	if (keys_.value().IsEmpty()) {
 		keys_ = array{object_.GetPropertyNames()};
 	}

@@ -23,7 +23,7 @@ export class arguments {
 		const Napi::CallbackInfo* info;
 };
 
-class arguments::iterator : public util::arithmetic_facade<iterator, ptrdiff_t> {
+class arguments::iterator : public util::random_access_iterator_facade<iterator, ptrdiff_t> {
 	public:
 		friend arithmetic_facade;
 		using arithmetic_facade::operator+;
@@ -35,14 +35,7 @@ class arguments::iterator : public util::arithmetic_facade<iterator, ptrdiff_t> 
 		iterator(const Napi::CallbackInfo& info, size_type index);
 
 		auto operator*() const -> value_type;
-		auto operator->() const -> value_type { return **this; }
-		auto operator[](difference_type offset) const -> value_type { return *(*this + offset); }
-
-		auto operator+=(difference_type offset) -> iterator& {
-			index += offset;
-			return *this;
-		}
-
+		auto operator+=(difference_type offset) -> iterator&;
 		auto operator==(const iterator& right) const -> bool { return index == right.index; }
 		auto operator<=>(const iterator& right) const -> std::strong_ordering { return index <=> right.index; };
 

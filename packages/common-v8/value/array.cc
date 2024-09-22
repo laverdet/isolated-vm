@@ -37,4 +37,9 @@ auto array::iterator::operator*() const -> value_type {
 	return iv8::handle{handle->Get(env.context, index).ToLocalChecked(), env};
 }
 
+auto array::iterator::operator+=(difference_type offset) -> iterator& {
+	index += offset;
+	return *this;
+}
+
 } // namespace ivm::iv8

@@ -16,14 +16,10 @@ namespace ivm {
 
 // A `lock` is a simple holder for an `agent::host` which proves that we are executing in
 // the isolate context.
-class agent::lock : util::non_moveable {
+class agent::lock : util::non_moveable, public util::pointer_facade<agent::lock> {
 	public:
 		explicit lock(host& host);
-
-		auto operator*() -> host& { return host_; }
-		auto operator*() const -> const host& { return host_; }
-		auto operator->() -> host* { return &host_; }
-		auto operator->() const -> const host* { return &host_; }
+		auto operator*(this auto& self) -> decltype(auto) { return self.host_; }
 
 	private:
 		host& host_;

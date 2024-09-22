@@ -30,4 +30,9 @@ auto arguments::iterator::operator*() const -> value_type {
 	return (*info)[ index ];
 }
 
+auto arguments::iterator::operator+=(difference_type offset) -> iterator& {
+	index += offset;
+	return *this;
+}
+
 } // namespace ivm::napi

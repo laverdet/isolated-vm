@@ -24,7 +24,7 @@ export class array {
 		Napi::Array array_;
 };
 
-class array::iterator : public util::arithmetic_facade<iterator, int32_t, int64_t> {
+class array::iterator : public util::random_access_iterator_facade<iterator, int32_t, int64_t> {
 	public:
 		friend arithmetic_facade;
 		using arithmetic_facade::operator+;
@@ -36,8 +36,6 @@ class array::iterator : public util::arithmetic_facade<iterator, int32_t, int64_
 		iterator(Napi::Array array, size_type index);
 
 		auto operator*() const -> value_type;
-		auto operator->() const -> value_type { return **this; }
-		auto operator[](difference_type offset) const -> value_type { return *(*this + offset); }
 
 		auto operator+=(difference_type offset) -> iterator& {
 			index += offset;

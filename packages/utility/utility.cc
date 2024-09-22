@@ -20,10 +20,10 @@ export constexpr auto into_range(std::ranges::range auto&& range) -> decltype(au
 
 export constexpr auto into_range(auto&& range) -> decltype(auto)
 	requires requires() {
-		{ ~range };
+		{ range.into_range() };
 	}
 {
-	return ~range;
+	return range.into_range();
 }
 
 // Explicitly move-constructs a new object from an existing rvalue reference. Used to immediately

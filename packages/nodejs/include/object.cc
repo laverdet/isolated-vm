@@ -27,8 +27,8 @@ export class object {
 		using iterator = std::ranges::iterator_t<range_type>;
 
 		explicit object(Napi::Object object);
-		[[nodiscard]] auto operator~() const -> range_type;
 		[[nodiscard]] auto get(std::string_view key) -> Napi::Value;
+		[[nodiscard]] auto into_range() const -> range_type;
 
 	private:
 		mutable array keys_;
