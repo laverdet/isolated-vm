@@ -59,7 +59,11 @@ export class script : util::non_copyable {
 source_origin::source_origin(agent::lock& agent, auto&& resource_name, source_location location) :
 		source_origin{
 			std::invoke([ & ]() {
-				auto maybe_local = value::transfer_strict<v8::MaybeLocal<v8::String>>(std::forward<decltype(resource_name)>(resource_name), agent->isolate());
+				auto maybe_local = value::transfer_strict<v8::MaybeLocal<v8::String>>(
+					std::forward<decltype(resource_name)>(resource_name),
+					std::tuple{},
+					std::tuple{agent->isolate()}
+				);
 				v8::Local<v8::String> local{};
 				std::ignore = maybe_local.ToLocal(&local);
 				return local;
@@ -69,7 +73,11 @@ source_origin::source_origin(agent::lock& agent, auto&& resource_name, source_lo
 }
 
 auto script::compile(agent::lock& agent, auto&& code_string, const source_origin& source_origin) -> script {
-	auto local_code_string = value::transfer_strict<v8::Local<v8::String>>(std::forward<decltype(code_string)>(code_string), agent->isolate());
+	auto local_code_string = value::transfer_strict<v8::Local<v8::String>>(
+		std::forward<decltype(code_string)>(code_string),
+		std::tuple{},
+		std::tuple{agent->isolate()}
+	);
 	return script::compile(agent, local_code_string, source_origin);
 }
 

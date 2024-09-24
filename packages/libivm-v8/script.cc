@@ -1,3 +1,5 @@
+module;
+#include <tuple>
 module ivm.isolated_v8;
 import :agent;
 import :realm;
@@ -41,8 +43,7 @@ auto script::run(realm::scope& realm_scope) -> value::value_t {
 	auto script = v8::Local<v8::UnboundScript>::New(isolate, unbound_script_);
 	auto context = realm_scope.context();
 	auto result = script->BindToCurrentContext()->Run(context).ToLocalChecked();
-	iv8::handle<v8::Value> handle{result, iv8::handle_env{isolate, context}};
-	return value::transfer<value::value_t>(handle);
+	return value::transfer<value::value_t>(result, std::tuple{isolate, context}, std::tuple{});
 }
 
 auto script::compile(agent::lock& agent, v8::Local<v8::String> code_string, const source_origin& source_origin) -> script {

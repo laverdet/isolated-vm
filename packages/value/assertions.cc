@@ -114,7 +114,8 @@ struct accept<Meta, specialized> {
 };
 
 template <>
-struct visit<specialized> {
+struct visit<specialized> : visit<void> {
+		using visit<void>::visit;
 		constexpr auto operator()(specialized value, const auto& accept) const -> decltype(auto) {
 			return accept(object_tag{}, value);
 		}

@@ -24,13 +24,6 @@ auto environment::cluster() -> ivm::cluster& {
 	return cluster_;
 }
 
-auto environment::context() -> v8::Local<v8::Context> {
-	if (context_ == v8::Local<v8::Context>{}) {
-		context_ = isolate_->GetCurrentContext();
-	}
-	return context_;
-}
-
 auto environment::napi_env() -> Napi::Env {
 	return env_;
 }
@@ -41,10 +34,6 @@ auto environment::isolate() -> v8::Isolate* {
 
 auto environment::get(Napi::Env env) -> environment& {
 	return *env.GetInstanceData<environment>();
-}
-
-auto environment::with_context_local() -> util::scope_exit<util::defaulter_finalizer<v8::Local<v8::Context>>> {
-	return util::scope_exit{util::defaulter_finalizer<v8::Local<v8::Context>>{context_}};
 }
 
 } // namespace ivm

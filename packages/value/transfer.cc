@@ -1,4 +1,5 @@
 module;
+#include <functional>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -10,9 +11,8 @@ import ivm.utility;
 
 namespace ivm::value {
 
-// TODO make it private again
 // Default `accept` passthrough `Meta`
-export struct accept_pass {
+struct accept_pass {
 		template <class Type>
 		using wrap = std::decay_t<Type>;
 };
@@ -41,26 +41,42 @@ struct accept<Meta, accept_with_throw::accept_throw<Type>>
 template <class Type, class Meta>
 constexpr auto transfer_with(
 	auto&& value,
-	auto&&... accept_args
+	auto&& visit_args,
+	auto&& accept_args
 ) -> decltype(auto) {
-	return invoke_visit(
-		std::forward<decltype(value)>(value),
-		accept<Meta, typename Meta::template wrap<Type>>{
-			std::forward<decltype(accept_args)>(accept_args)...
-		}
-	);
+	auto visitor = std::make_from_tuple<visit<std::decay_t<decltype(value)>>>(std::forward<decltype(visit_args)>(visit_args));
+	auto acceptor = std::make_from_tuple<accept<Meta, typename Meta::template wrap<Type>>>(std::forward<decltype(accept_args)>(accept_args));
+	return visitor(std::forward<decltype(value)>(value), acceptor);
 }
 
 // Transfer from unknown types, throws at runtime on unknown type
 export template <class Type>
-constexpr auto transfer(auto&&... value_and_accept_args) -> decltype(auto) {
-	return transfer_with<Type, accept_with_throw>(std::forward<decltype(value_and_accept_args)>(value_and_accept_args)...);
+constexpr auto transfer(auto&& value, auto&& visit_args, auto&& accept_args) -> decltype(auto) {
+	return transfer_with<Type, accept_with_throw>(
+		std::forward<decltype(value)>(value),
+		std::forward<decltype(visit_args)>(visit_args),
+		std::forward<decltype(accept_args)>(accept_args)
+	);
+}
+
+export template <class Type>
+constexpr auto transfer(auto&& value) -> decltype(auto) {
+	return transfer<Type>(std::forward<decltype(value)>(value), std::tuple{}, std::tuple{});
 }
 
 // Transfer from known types, won't compile if all paths aren't known
 export template <class Type>
-constexpr auto transfer_strict(auto&&... value_and_accept_args) -> decltype(auto) {
-	return transfer_with<Type, accept_pass>(std::forward<decltype(value_and_accept_args)>(value_and_accept_args)...);
+constexpr auto transfer_strict(auto&& value, auto&& visit_args, auto&& accept_args) -> decltype(auto) {
+	return transfer_with<Type, accept_pass>(
+		std::forward<decltype(value)>(value),
+		std::forward<decltype(visit_args)>(visit_args),
+		std::forward<decltype(accept_args)>(accept_args)
+	);
+}
+
+export template <class Type>
+constexpr auto transfer_strict(auto&& value) -> decltype(auto) {
+	return transfer_strict<Type>(std::forward<decltype(value)>(value), std::tuple{}, std::tuple{});
 }
 
 } // namespace ivm::value

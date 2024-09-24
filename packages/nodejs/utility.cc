@@ -82,24 +82,22 @@ class node_function<Result (*)(environment&, Args...)> : util::non_copyable {
 		using function_type = Result (*)(environment&, Args...);
 
 		node_function() = delete;
-		explicit node_function(environment& ienv, function_type fn) :
-				ienv{&ienv},
+		explicit node_function(environment& env, function_type fn) :
+				env{&env},
 				fn{std::move(fn)} {}
 
 		auto operator()(const Napi::CallbackInfo& info) -> Napi::Value {
-			ivm::napi::napi_callback_info_memo callback_info{info, *ienv};
-			auto scope = ienv->with_context_local();
 			return std::apply(
 				fn,
 				std::tuple_cat(
-					std::forward_as_tuple(*ienv),
-					value::transfer<std::tuple<Args...>>(callback_info)
+					std::forward_as_tuple(*env),
+					value::transfer<std::tuple<Args...>>(info, std::tuple{env->isolate()}, std::tuple{})
 				)
 			);
 		}
 
 	private:
-		environment* ienv;
+		environment* env;
 		function_type fn;
 };
 

@@ -15,18 +15,14 @@ export class environment {
 
 		auto cluster() -> ivm::cluster&;
 		auto collection() -> util::collection_group&;
-		auto context() -> v8::Local<v8::Context>;
 		auto napi_env() -> Napi::Env;
 		auto isolate() -> v8::Isolate*;
-		auto with_context_local() -> util::scope_exit<util::defaulter_finalizer<v8::Local<v8::Context>>>;
-
 		static auto get(Napi::Env env) -> environment&;
 
 	private:
 		Napi::Env env_;
 		ivm::cluster cluster_;
 		v8::Isolate* isolate_;
-		v8::Local<v8::Context> context_;
 		util::collection_group collection_group_;
 };
 
