@@ -100,10 +100,10 @@ auto make_create_realm(environment& env) -> Napi::Function {
 // Options visitors & acceptors
 namespace ivm::value {
 
-template <class Meta, class Value>
-struct object_map<Meta, Value, make_agent_options::clock_deterministic> : object_properties<Meta, Value, make_agent_options::clock_deterministic> {
+template <class Meta>
+struct object_map<Meta, make_agent_options::clock_deterministic> : object_properties<Meta, make_agent_options::clock_deterministic> {
 		template <auto Member>
-		using property = object_properties<Meta, Value, make_agent_options::clock_deterministic>::template property<Member>;
+		using property = object_properties<Meta, make_agent_options::clock_deterministic>::template property<Member>;
 
 		constexpr static auto properties = std::array{
 			std::tuple{true, "epoch", property<&make_agent_options::clock_deterministic::epoch>::accept},
@@ -111,33 +111,33 @@ struct object_map<Meta, Value, make_agent_options::clock_deterministic> : object
 		};
 };
 
-template <class Meta, class Value>
-struct object_map<Meta, Value, make_agent_options::clock_microtask> : object_properties<Meta, Value, make_agent_options::clock_microtask> {
+template <class Meta>
+struct object_map<Meta, make_agent_options::clock_microtask> : object_properties<Meta, make_agent_options::clock_microtask> {
 		template <auto Member>
-		using property = object_properties<Meta, Value, make_agent_options::clock_microtask>::template property<Member>;
+		using property = object_properties<Meta, make_agent_options::clock_microtask>::template property<Member>;
 
 		constexpr static auto properties = std::array{
 			std::tuple{true, "epoch", property<&make_agent_options::clock_microtask::epoch>::accept},
 		};
 };
 
-template <class Meta, class Value>
-struct object_map<Meta, Value, make_agent_options::clock_realtime> : object_properties<Meta, Value, make_agent_options::clock_realtime> {
+template <class Meta>
+struct object_map<Meta, make_agent_options::clock_realtime> : object_properties<Meta, make_agent_options::clock_realtime> {
 		template <auto Member>
-		using property = object_properties<Meta, Value, make_agent_options::clock_realtime>::template property<Member>;
+		using property = object_properties<Meta, make_agent_options::clock_realtime>::template property<Member>;
 
 		constexpr static auto properties = std::array{
 			std::tuple{true, "epoch", property<&make_agent_options::clock_realtime::epoch>::accept},
 		};
 };
 
-template <class Meta, class Value>
-struct object_map<Meta, Value, make_agent_options::clock_system> : object_no_properties<Meta, Value, make_agent_options::clock_system> {};
+template <class Meta>
+struct object_map<Meta, make_agent_options::clock_system> : object_no_properties<Meta, make_agent_options::clock_system> {};
 
-template <class Meta, class Value>
-struct discriminated_union<Meta, Value, make_agent_options::clock_type> : discriminated_alternatives<Meta, Value, make_agent_options::clock_type> {
+template <class Meta>
+struct discriminated_union<Meta, make_agent_options::clock_type> : discriminated_alternatives<Meta, make_agent_options::clock_type> {
 		template <class Type>
-		constexpr static auto alternative = &discriminated_alternatives<Meta, Value, make_agent_options::clock_type>::template accept<Type>;
+		constexpr static auto alternative = &discriminated_alternatives<Meta, make_agent_options::clock_type>::template alternative<Type>;
 
 		constexpr static auto discriminant = "type";
 		constexpr static auto alternatives = std::array{
@@ -148,10 +148,10 @@ struct discriminated_union<Meta, Value, make_agent_options::clock_type> : discri
 		};
 };
 
-template <class Meta, class Value>
-struct object_map<Meta, Value, make_agent_options> : object_properties<Meta, Value, make_agent_options> {
+template <class Meta>
+struct object_map<Meta, make_agent_options> : object_properties<Meta, make_agent_options> {
 		template <auto Member>
-		using property = object_properties<Meta, Value, make_agent_options>::template property<Member>;
+		using property = object_properties<Meta, make_agent_options>::template property<Member>;
 
 		constexpr static auto properties = std::array{
 			std::tuple{false, "clock", property<&make_agent_options::clock>::accept},

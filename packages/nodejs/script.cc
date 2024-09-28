@@ -86,10 +86,10 @@ auto make_run_script(environment& env) -> Napi::Function {
 
 namespace ivm::value {
 
-template <class Meta, class Value>
-struct object_map<Meta, Value, compile_script_options> : object_properties<Meta, Value, compile_script_options> {
+template <class Meta>
+struct object_map<Meta, compile_script_options> : object_properties<Meta, compile_script_options> {
 		template <auto Member>
-		using property = object_properties<Meta, Value, compile_script_options>::template property<Member>;
+		using property = object_properties<Meta, compile_script_options>::template property<Member>;
 
 		constexpr static auto properties = std::array{
 			std::tuple{false, "origin", property<&compile_script_options::origin>::accept},

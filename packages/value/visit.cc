@@ -10,6 +10,12 @@ import ivm.utility;
 
 namespace ivm::value {
 
+// Specialize in order to disable `std::variant` visitor
+export template <class... Types>
+struct is_variant {
+		constexpr static bool value = true;
+};
+
 // `visit` accepts a value and acceptor and then invokes the acceptor with a JavaScript type tag and
 // a value which follows some sort of casting interface corresponding to the tag.
 export template <class Type>
@@ -85,6 +91,7 @@ struct visit<boost::variant<Types...>> : visit<void> {
 // `boost::apply_visitor` isn't constexpr, so we can't use it to test statically. `boost::variant`
 // can't delegate to this one either because it handles recursive variants.
 template <class... Types>
+	requires is_variant<Types...>::value
 struct visit<std::variant<Types...>> : visit<void> {
 		using visit<void>::visit;
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {

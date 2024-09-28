@@ -25,10 +25,10 @@ export auto make_source_origin(agent::lock& agent, const std::optional<source_or
 
 namespace ivm::value {
 
-template <class Meta, class Value>
-struct object_map<Meta, Value, source_location_options> : object_properties<Meta, Value, source_location_options> {
+template <class Meta>
+struct object_map<Meta, source_location_options> : object_properties<Meta, source_location_options> {
 		template <auto Member>
-		using property = object_properties<Meta, Value, source_location_options>::template property<Member>;
+		using property = object_properties<Meta, source_location_options>::template property<Member>;
 
 		constexpr static auto properties = std::array{
 			std::tuple{true, "line", property<&source_location_options::line>::accept},
@@ -36,10 +36,10 @@ struct object_map<Meta, Value, source_location_options> : object_properties<Meta
 		};
 };
 
-template <class Meta, class Value>
-struct object_map<Meta, Value, source_origin_options> : object_properties<Meta, Value, source_origin_options> {
+template <class Meta>
+struct object_map<Meta, source_origin_options> : object_properties<Meta, source_origin_options> {
 		template <auto Member>
-		using property = object_properties<Meta, Value, source_origin_options>::template property<Member>;
+		using property = object_properties<Meta, source_origin_options>::template property<Member>;
 
 		constexpr static auto properties = std::array{
 			std::tuple{false, "name", property<&source_origin_options::name>::accept},

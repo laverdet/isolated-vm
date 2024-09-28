@@ -82,7 +82,7 @@ struct accept<Meta, std::tuple<Types...>> {
 		constexpr auto operator()(vector_tag /*tag*/, auto&& value) const -> std::tuple<Types...> {
 			auto it = std::begin(value);
 			auto end = std::end(value);
-			auto next = [&](auto accept) -> decltype(auto) {
+			auto next = [ & ](auto accept) -> decltype(auto) {
 				if (it == end) {
 					return accept(undefined_tag{}, std::monostate{});
 				} else {
@@ -106,12 +106,6 @@ struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
 		constexpr auto operator()(undefined_tag /*tag*/, auto&& /*value*/) const -> std::optional<Type> {
 			return std::nullopt;
 		}
-};
-
-// Specialize to override the acceptor for `std::variant`
-export template <class Meta, class Value, class Type>
-struct discriminated_union {
-		constexpr static bool is_discriminated_union = false;
 };
 
 // Covariant helper for variant-like types
@@ -143,7 +137,7 @@ struct accept<Meta, covariant<Type, Result>> : accept<Meta, Type> {
 // Accepting a `std::variant` will delegate to each underlying type's acceptor and box the result
 // into the variant.
 template <class Meta, class... Types>
-	requires(!discriminated_union<Meta, std::nullopt_t, std::variant<Types...>>::is_discriminated_union)
+	requires is_variant<Types...>::value
 struct accept<Meta, std::variant<Types...>> : accept<Meta, covariant<Types, std::variant<Types...>>>... {
 		using accept<Meta, covariant<Types, std::variant<Types...>>>::operator()...;
 };

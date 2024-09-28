@@ -64,20 +64,20 @@ struct object_literal {
 		std::string string;
 };
 
-template <class Meta, class Value>
-struct object_map<Meta, Value, object_literal_one> : object_properties<Meta, Value, object_literal_one> {
+template <class Meta>
+struct object_map<Meta, object_literal_one> : object_properties<Meta, object_literal_one> {
 		template <auto Member>
-		using property = object_properties<Meta, Value, object_literal_one>::template property<Member>;
+		using property = object_properties<Meta, object_literal_one>::template property<Member>;
 
 		constexpr static auto properties = std::array{
 			std::tuple{false, "integer", property<&object_literal_one::integer>::accept},
 		};
 };
 
-template <class Meta, class Value>
-struct object_map<Meta, Value, object_literal> : object_properties<Meta, Value, object_literal> {
+template <class Meta>
+struct object_map<Meta, object_literal> : object_properties<Meta, object_literal> {
 		template <auto Member>
-		using property = object_properties<Meta, Value, object_literal>::template property<Member>;
+		using property = object_properties<Meta, object_literal>::template property<Member>;
 
 		constexpr static auto properties = std::array{
 			std::tuple{false, "integer", property<&object_literal::integer>::accept},
@@ -135,20 +135,20 @@ struct discriminated_two {
 		constexpr auto operator==(const discriminated_two& /*right*/) const -> bool { return true; };
 };
 
-template <class Meta, class Value>
-struct object_map<Meta, Value, discriminated_one> : object_properties<Meta, Value, discriminated_one> {
+template <class Meta>
+struct object_map<Meta, discriminated_one> : object_properties<Meta, discriminated_one> {
 		template <auto Member>
-		using property = object_properties<Meta, Value, discriminated_one>::template property<Member>;
+		using property = object_properties<Meta, discriminated_one>::template property<Member>;
 
 		constexpr static auto properties = std::array{
 			std::tuple{false, "one", property<&discriminated_one::one>::accept},
 		};
 };
 
-template <class Meta, class Value>
-struct object_map<Meta, Value, discriminated_two> : object_properties<Meta, Value, discriminated_two> {
+template <class Meta>
+struct object_map<Meta, discriminated_two> : object_properties<Meta, discriminated_two> {
 		template <auto Member>
-		using property = object_properties<Meta, Value, discriminated_two>::template property<Member>;
+		using property = object_properties<Meta, discriminated_two>::template property<Member>;
 
 		constexpr static auto properties = std::array{
 			std::tuple{false, "two", property<&discriminated_two::two>::accept},
@@ -157,10 +157,10 @@ struct object_map<Meta, Value, discriminated_two> : object_properties<Meta, Valu
 
 using discriminated_object = std::variant<discriminated_one, discriminated_two>;
 
-template <class Meta, class Value>
-struct discriminated_union<Meta, Value, discriminated_object> : discriminated_alternatives<Meta, Value, discriminated_object> {
+template <class Meta>
+struct discriminated_union<Meta, discriminated_object> : discriminated_alternatives<Meta, discriminated_object> {
 		template <class Type>
-		constexpr static auto alternative = &discriminated_alternatives<Meta, Value, discriminated_object>::template accept<Type>;
+		constexpr static auto alternative = &discriminated_alternatives<Meta, discriminated_object>::template alternative<Type>;
 
 		constexpr static auto discriminant = "type";
 		constexpr static auto alternatives = std::array{
