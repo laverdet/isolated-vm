@@ -28,13 +28,13 @@ auto array::size(handle_env /*env*/, uint32_t& length) const -> uint32_t {
 	return length - 1;
 }
 
-array::iterator::iterator(array* handle, handle_env env, uint32_t index) :
+array::iterator::iterator(array* array, handle_env env, uint32_t index) :
 		env{env},
-		handle{handle},
+		array_{array},
 		index{index} {}
 
 auto array::iterator::operator*() const -> value_type {
-	return iv8::handle{handle->Get(env.context, index).ToLocalChecked(), env};
+	return array_->Get(env.context, index).ToLocalChecked();
 }
 
 auto array::iterator::operator+=(difference_type offset) -> iterator& {

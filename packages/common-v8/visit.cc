@@ -26,12 +26,11 @@ namespace ivm::value {
 template <>
 struct visit<v8::Local<v8::Value>> : visit<void> {
 	public:
-		using visit<void>::visit;
+		visit(v8::Isolate* isolate, v8::Local<v8::Context> context);
 		// TODO: Remove this ASAP
 		visit(int /*ignore*/, const visit<void>& /*ignore*/) :
 				isolate_{v8::Isolate::GetCurrent()},
 				context_{isolate_->GetCurrentContext()} {}
-		visit(v8::Isolate* isolate, v8::Local<v8::Context> context);
 		auto operator()(v8::Local<v8::Value> value, const auto& accept) const -> decltype(auto);
 
 	protected:
@@ -150,15 +149,5 @@ auto visit<v8::Local<v8::Value>>::operator()(v8::Local<v8::Value> value, const a
 		return accept(value_tag{}, std::type_identity<void>{});
 	}
 }
-
-// Legacy visitor (TODO remove)
-template <>
-struct visit<iv8::handle<v8::Value>> : visit<void> {
-		using visit<void>::visit;
-		auto operator()(iv8::handle<v8::Value> value, const auto& accept) const -> decltype(auto) {
-			auto env = value.env();
-			return visit<v8::Local<v8::Value>>{env.isolate, env.context}(v8::Local<v8::Value>{value}, accept);
-		}
-};
 
 } // namespace ivm::value

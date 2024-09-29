@@ -15,9 +15,9 @@ auto object::Cast(v8::Value* data) -> object* {
 	return reinterpret_cast<object*>(v8::Object::Cast(data));
 }
 
-auto object::get(handle_env env, array_handle& /*keys*/, std::string_view key) -> handle<v8::Value> {
+auto object::get(handle_env env, array_handle& /*keys*/, std::string_view key) -> v8::Local<v8::Value> {
 	auto key_string = string::make(env.isolate, key);
-	return {this->GetRealNamedProperty(env.context, key_string.As<v8::Name>()).ToLocalChecked(), env};
+	return this->GetRealNamedProperty(env.context, key_string.As<v8::Name>()).ToLocalChecked();
 }
 
 auto object::into_range(handle_env env, array_handle& keys) -> range_type {
@@ -37,9 +37,9 @@ auto object::into_range(handle_env env, array_handle& keys) -> range_type {
 object::iterator_transform::iterator_transform(handle_env env, v8::Object* object) :
 		env{env}, object{object} {}
 
-auto object::iterator_transform::operator()(handle<v8::Value> key) const -> value_type {
+auto object::iterator_transform::operator()(v8::Local<v8::Value> key) const -> value_type {
 	auto value = object->GetRealNamedProperty(env.context, key.As<v8::Name>()).ToLocalChecked();
-	return std::pair{key, handle{value, env}};
+	return std::pair{key, value};
 }
 
 } // namespace ivm::iv8

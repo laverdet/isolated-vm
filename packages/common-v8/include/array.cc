@@ -13,7 +13,7 @@ export class array : public v8::Array {
 	public:
 		class iterator;
 		struct handle_data;
-		using value_type = handle<v8::Value>;
+		using value_type = v8::Local<v8::Value>;
 
 		[[nodiscard]] auto begin(handle_env env, uint32_t& length) const -> iterator;
 		[[nodiscard]] auto end(handle_env env, uint32_t& length) const -> iterator;
@@ -30,7 +30,7 @@ class array::iterator : public util::random_access_iterator_facade<iterator, int
 		using value_type = array::value_type;
 
 		iterator() = default;
-		iterator(array* handle, handle_env env, uint32_t index);
+		iterator(array* array_, handle_env env, uint32_t index);
 
 		auto operator*() const -> value_type;
 		auto operator+=(difference_type offset) -> iterator&;
@@ -41,7 +41,7 @@ class array::iterator : public util::random_access_iterator_facade<iterator, int
 		auto operator+() const -> size_type { return index; }
 
 		handle_env env;
-		array* handle{};
+		array* array_{};
 		uint32_t index{};
 };
 
