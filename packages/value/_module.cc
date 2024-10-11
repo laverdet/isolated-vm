@@ -1,6 +1,6 @@
 export module ivm.value;
-export import :accept;
 export import :date;
+export import :dictionary_visit;
 export import :dictionary;
 export import :discriminated_union;
 export import :enumeration;
@@ -8,5 +8,7 @@ export import :object;
 export import :primitive;
 export import :tag;
 export import :transfer;
+export import :tuple;
+export import :value;
 export import :variant;
 export import :visit;

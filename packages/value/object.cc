@@ -10,8 +10,8 @@ module;
 #include <type_traits>
 export module ivm.value:object;
 import ivm.utility;
-import :accept;
 import :tag;
+import :visit;
 
 namespace ivm::value {
 

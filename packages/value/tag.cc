@@ -83,6 +83,6 @@ using tag_for_t = tag_for<Type>::type;
 
 // Get the contravariant (least specific) tag for a given type
 template <class Type>
-using tag_con_for_t = con_tag_for<tag_for_t<Type>>::type;
+using con_tag_for_t = con_tag_for<tag_for_t<Type>>::type;
 
 } // namespace ivm::value

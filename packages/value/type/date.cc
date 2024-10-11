@@ -1,7 +1,6 @@
 module;
 #include <chrono>
 export module ivm.value:date;
-import :tag;
 #ifdef _LIBCPP_VERSION
 namespace std::chrono {
 using utc_clock = system_clock;
@@ -23,15 +22,6 @@ export class js_clock {
 
 		static auto now() noexcept -> time_point;
 };
-
-template <>
-struct tag_for<js_clock::time_point> {
-		using type = date_tag;
-};
-
-} // namespace ivm::value
-
-namespace ivm::value {
 
 auto js_clock::now() noexcept -> time_point {
 	auto time_ms = duration_cast<js_clock::duration>(std::chrono::utc_clock::now().time_since_epoch());

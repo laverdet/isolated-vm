@@ -7,9 +7,9 @@ module;
 #include <utility>
 #include <variant>
 export module ivm.value:discriminated_union;
-import :accept;
-import :visit;
 import :tag;
+import :variant;
+import :visit;
 import ivm.utility;
 
 namespace ivm::value {

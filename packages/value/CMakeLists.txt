@@ -4,8 +4,6 @@ target_sources(ivm_value
 		assertions.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
-		accept.cc
-		date.cc
 		dictionary.cc
 		discriminated_union.cc
 		enum.cc
@@ -13,6 +11,10 @@ target_sources(ivm_value
 		primitive.cc
 		tag.cc
 		transfer.cc
+		tuple.cc
+		type/date.cc
+		type/dictionary.cc
+		type/value.cc
 		variant.cc
 		visit.cc
 )

@@ -4,7 +4,6 @@ module;
 #include <type_traits>
 #include <utility>
 export module ivm.value:transfer;
-import :accept;
 import :tag;
 import :visit;
 import ivm.utility;

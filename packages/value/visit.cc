@@ -1,20 +1,13 @@
 module;
 #include <boost/variant.hpp>
-#include <optional>
-#include <ranges>
-#include <string>
-#include <variant>
+#include <concepts>
+#include <type_traits>
+#include <utility>
 export module ivm.value:visit;
 import :tag;
 import ivm.utility;
 
 namespace ivm::value {
-
-// Specialize in order to disable `std::variant` visitor
-export template <class... Types>
-struct is_variant {
-		constexpr static bool value = true;
-};
 
 // `visit` accepts a value and acceptor and then invokes the acceptor with a JavaScript type tag and
 // a value which follows some sort of casting interface corresponding to the tag.
@@ -50,87 +43,38 @@ constexpr auto invoke_visit(Type&& value, const auto& accept) -> decltype(auto) 
 	return beget_visit<Type>(visit<void>{})(std::forward<decltype(value)>(value), accept);
 }
 
-// Tagged primitive types
-template <class Type>
-	requires std::negation_v<std::is_same<tag_for_t<Type>, void>>
-struct visit<Type> : visit<void> {
-		using visit<void>::visit;
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
-			return accept(tag_for_t<Type>{}, std::forward<decltype(value)>(value));
-		}
-};
+// `accept` is the target of `visit`
+export template <class Meta, class Type>
+struct accept;
 
-// `std::optional` visitor may yield `undefined`
-template <class Type>
-struct visit<std::optional<Type>> : visit<void> {
-		using visit<void>::visit;
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
-			if (value) {
-				return invoke_visit(*this, *std::forward<decltype(value)>(value), accept);
-			} else {
-				return accept(undefined_tag{}, std::monostate{});
-			}
-		}
-};
+// Convert an existing acceptor into a new one which accepts a different type
+export template <class Next, class Meta, class Type>
+constexpr auto make_accept(const accept<Meta, Type>& accept_from) {
+	using accept_type = accept<Meta, typename Meta::template wrap<Next>>;
+	if constexpr (std::constructible_from<accept_type, const accept<Meta, Type>&>) {
+		return accept_type{accept_from};
+	} else {
+		static_assert(std::is_default_constructible_v<accept_type>);
+		return accept_type{};
+	}
+}
 
-// Visiting a `boost::variant` visits the underlying member
-template <class... Types>
-struct visit<boost::variant<Types...>> : visit<void> {
-		using visit<void>::visit;
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
-			return boost::apply_visitor(
-				[ & ](auto&& value) constexpr {
-					return invoke_visit(*this, std::forward<decltype(value)>(value), accept);
-				},
-				std::forward<decltype(value)>(value)
-			);
-		}
-};
-
-// `std::variant` visitor. This used to delegate to the `boost::variant` visitor above, but
-// `boost::apply_visitor` isn't constexpr, so we can't use it to test statically. `boost::variant`
-// can't delegate to this one either because it handles recursive variants.
-template <class... Types>
-	requires is_variant<Types...>::value
-struct visit<std::variant<Types...>> : visit<void> {
-		using visit<void>::visit;
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
-			return std::visit(
-				[ & ](auto&& value) constexpr {
-					return invoke_visit(*this, std::forward<decltype(value)>(value), accept);
-				},
-				std::forward<decltype(value)>(value)
-			);
-		}
-};
-
-// Array of pairs is a dictionary for testing
-template <class Type, size_t Size>
-struct array_to_object_helper {
-		using container_type = std::array<std::pair<std::string, Type>, Size>;
-		constexpr explicit array_to_object_helper(container_type values) :
-				values{std::move(values)} {}
-
-		constexpr auto begin() const { return values.begin(); }
-		constexpr auto end() const { return values.end(); }
-		constexpr auto get(std::string_view string) {
-			auto it = std::ranges::find_if(values, [ string ](auto&& entry) constexpr {
-				return entry.first == string;
-			});
-			if (it == values.end()) {
-				throw std::logic_error("Key not found");
-			}
-			return it->second;
-		}
-		std::array<std::pair<std::string, Type>, Size> values;
-};
-
-template <class Value, size_t Size>
-struct visit<std::array<std::pair<std::string, Value>, Size>> : visit<void> {
-		using visit<void>::visit;
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
-			return accept(dictionary_tag{}, array_to_object_helper{std::forward<decltype(value)>(value)});
-		}
-};
+// Delegate to another acceptor by a different type. Does not wrap in the same way `make_accept`
+// does.
+export template <class Next, class Meta, class Type>
+constexpr auto delegate_accept(
+	const accept<Meta, Type>& /*accept_from*/,
+	auto tag,
+	auto&& value,
+	auto&&... accept_args
+) -> decltype(auto) {
+	using accept_type = accept<Meta, Next>;
+	return accept_type{
+		std::forward<decltype(accept_args)>(accept_args)...
+	}(
+		tag,
+		std::forward<decltype(value)>(value)
+	);
+}
 
 } // namespace ivm::value
