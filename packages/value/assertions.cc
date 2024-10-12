@@ -1,8 +1,10 @@
+#include <algorithm>
 #include <array>
+#include <initializer_list>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <variant>
 import ivm.value;
 using namespace std::literals;
@@ -11,37 +13,24 @@ using namespace std::literals;
 namespace ivm::value {
 
 // Array of pairs is a dictionary for testing
-template <class Type, size_t Size>
-class static_dictionary {
-	public:
-		using value_type = std::pair<std::string, Type>;
-		using container_type = std::array<value_type, Size>;
-		constexpr explicit static_dictionary(const container_type& values) :
-				values{values} {}
+template <class Type>
+struct static_dictionary : dictionary<dictionary_tag, std::string, Type> {
+		constexpr static_dictionary(std::initializer_list<std::pair<std::string, Type>> list) :
+				dictionary<dictionary_tag, std::string, Type>{list} {}
 
-		constexpr auto begin() const { return values.begin(); }
-		constexpr auto end() const { return values.end(); }
-		constexpr auto get(std::string_view string) {
-			auto it = std::ranges::find_if(values, [ string ](auto&& entry) constexpr {
+		constexpr auto get(std::string_view string) const {
+			auto it = std::find_if(this->begin(), this->end(), [ string ](auto&& entry) constexpr {
 				return entry.first == string;
 			});
-			if (it == values.end()) {
-				throw std::logic_error("Key not found");
+			if (it == this->end()) {
+				std::unreachable();
 			}
 			return it->second;
 		}
-
-	private:
-		container_type values;
 };
 
-template <class Value, size_t Size>
-struct visit<std::array<std::pair<std::string, Value>, Size>> : visit<void> {
-		using visit<void>::visit;
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
-			return accept(dictionary_tag{}, static_dictionary{std::forward<decltype(value)>(value)});
-		}
-};
+template <class Type>
+struct visit<static_dictionary<Type>> : visit<dictionary<dictionary_tag, std::string, Type>> {};
 
 // Narrowing sanity check. We want to narrow in non-variant cases because if the visitor has a
 // string and the acceptor wants a string_view, that should be fine. Or if v8 gives us a uint32_t
@@ -121,18 +110,18 @@ struct object_map<Meta, object_literal> : object_properties<Meta, object_literal
 };
 
 // Non-variant strict version
-constexpr auto object_numeric = transfer_strict<object_literal_one>(std::array{
-	std::pair{"integer"s, 1}
-});
+constexpr auto object_numeric = transfer_strict<object_literal_one>(
+	static_dictionary{{std::pair{"integer"s, 1}}}
+);
 static_assert(object_numeric.integer == 1);
 
 // Throwable values
 using object_test_variant = std::variant<int, double, std::string>;
-constexpr auto object_values_test = transfer<object_literal>(std::array{
+constexpr auto object_values_test = transfer<object_literal>(static_dictionary{{
 	std::pair{"integer"s, object_test_variant{1}},
 	std::pair{"number"s, object_test_variant{2.0}},
 	std::pair{"string"s, object_test_variant{"hello"}},
-});
+}});
 static_assert(object_values_test.integer == 1);
 static_assert(object_values_test.number == 2.0);
 static_assert(object_values_test.string == "hello");
@@ -148,8 +137,7 @@ struct accept<Meta, specialized> {
 };
 
 template <>
-struct visit<specialized> : visit<void> {
-		using visit<void>::visit;
+struct visit<specialized> {
 		constexpr auto operator()(specialized value, const auto& accept) const -> decltype(auto) {
 			return accept(object_tag{}, value);
 		}
@@ -203,18 +191,18 @@ struct discriminated_union<Meta, discriminated_object> : discriminated_alternati
 		};
 };
 
-constexpr auto discriminated_with_one = std::array{
+constexpr auto discriminated_with_one = transfer<discriminated_object>(static_dictionary{{
 	std::pair{"type"s, "one"s},
 	std::pair{"one"s, "left"s},
-};
+}});
 
-constexpr auto discriminated_with_two = std::array{
+constexpr auto discriminated_with_two = transfer<discriminated_object>(static_dictionary{{
 	std::pair{"type"s, "two"s},
 	std::pair{"two"s, "right"s},
-};
+}});
 
-static_assert(variant_is_equal_to(transfer<discriminated_object>(discriminated_with_one), discriminated_one{.one = "left"s}));
-static_assert(variant_is_equal_to(transfer<discriminated_object>(discriminated_with_two), discriminated_two{.two = "right"s}));
+static_assert(variant_is_equal_to(discriminated_with_one, discriminated_one{.one = "left"s}));
+static_assert(variant_is_equal_to(discriminated_with_two, discriminated_two{.two = "right"s}));
 
 } // namespace ivm::value
 

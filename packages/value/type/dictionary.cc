@@ -15,13 +15,11 @@ class dictionary {
 		using iterator = container_type::iterator;
 
 		dictionary() = default;
-		explicit dictionary(std::ranges::range auto&& range) :
+		constexpr explicit dictionary(std::ranges::range auto&& range) :
 				values{std::ranges::begin(range), std::ranges::end(range)} {}
 
-		[[nodiscard]] auto begin() -> iterator { return values.begin(); }
-		[[nodiscard]] auto begin() const -> const_iterator { return values.begin(); }
-		[[nodiscard]] auto end() -> iterator { return values.end(); }
-		[[nodiscard]] auto end() const -> const_iterator { return values.end(); }
+		[[nodiscard]] constexpr auto begin(this auto&& self) { return self.values.begin(); }
+		[[nodiscard]] constexpr auto end(this auto&& self) { return self.values.end(); }
 
 	private:
 		container_type values;
