@@ -138,11 +138,12 @@ struct visit<Type> : visit<void> {
 
 // `std::optional` visitor may yield `undefined`
 template <class Type>
-struct visit<std::optional<Type>> : visit<void> {
-		using visit<void>::visit;
+struct visit<std::optional<Type>> : visit<Type> {
+		using visit<Type>::visit;
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			if (value) {
-				return invoke_visit(*this, *std::forward<decltype(value)>(value), accept);
+				const visit<Type>& visit = *this;
+				return visit(*std::forward<decltype(value)>(value), accept);
 			} else {
 				return accept(undefined_tag{}, std::monostate{});
 			}

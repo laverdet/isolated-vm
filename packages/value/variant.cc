@@ -17,13 +17,26 @@ struct is_variant {
 		constexpr static bool value = true;
 };
 
-export template <class... Types>
+template <class... Types>
 constexpr bool is_variant_v = is_variant<Types...>::value;
 
-// Covariant helper for variant-like types
+// Helper which holds a recursive `boost::variant` followed by its alternatives
+template <class Variant, class... Types>
+struct variant_helper {};
+
+// Helper which extracts recursive variant alternative types
+template <class First, class... Rest>
+using recursive_variant = boost::variant<boost::detail::variant::recursive_flag<First>, Rest...>;
+
+// Helper which substitutes recursive variant alternative types
+template <class Variant, class Type>
+using substitute_recursive = typename boost::detail::variant::substitute<Type, Variant, boost::recursive_variant_>::type;
+
+// Covariant `accept` helper for variant-like types
 template <class Type, class Result>
 struct covariant {};
 
+// Common covariance-aware `accept` for `std::variant` and `boost::variant`
 template <class Meta, class Type, class Result>
 struct accept<Meta, covariant<Type, Result>> : accept<Meta, Type> {
 		using accept<Meta, Type>::accept;
@@ -50,56 +63,23 @@ struct accept<Meta, covariant<Type, Result>> : accept<Meta, Type> {
 // into the variant.
 template <class Meta, class... Types>
 	requires is_variant_v<Types...>
-struct accept<Meta, std::variant<Types...>> : accept<Meta, covariant<Types, std::variant<Types...>>>... {
+struct accept<Meta, std::variant<Types...>>
+		: accept<Meta, covariant<Types, std::variant<Types...>>>... {
 		using accept<Meta, covariant<Types, std::variant<Types...>>>::operator()...;
 };
 
-// Non-recursive `boost::variant` has the same behavior as `std::variant`
-template <class Meta, class... Types>
-struct accept<Meta, boost::variant<Types...>> : accept<Meta, covariant<Types, boost::variant<Types...>>>... {
-		using accept<Meta, covariant<Types, boost::variant<Types...>>>::operator()...;
-};
-
-// Helper which holds a recursive variant followed by its alternatives
-template <class Variant, class... Types>
-struct variant_helper {};
-
-// Helper which extracts recursive variant alternative types
-template <class First, class... Rest>
-using recursive_variant = boost::variant<boost::detail::variant::recursive_flag<First>, Rest...>;
-
-// Helper which substitutes recursive variant alternative types
-template <class Variant, class Type>
-using substitute_recursive = typename boost::detail::variant::substitute<Type, Variant, boost::recursive_variant_>::type;
-
-// Recursive variant acceptor
+// Recursive `boost::variant` acceptor
 template <class Meta, class Variant, class... Types>
 struct accept<Meta, variant_helper<Variant, Types...>>
 		: accept<Meta, covariant<substitute_recursive<Variant, Types>, Variant>>... {
 		using accept<Meta, covariant<substitute_recursive<Variant, Types>, Variant>>::operator()...;
 };
 
-// Entry for `boost::make_recursive_variant`
+// `accept` entry for `boost::make_recursive_variant`
 template <class Meta, class First, class... Rest>
-	requires is_variant_v<First, Rest...>
 struct accept<Meta, recursive_variant<First, Rest...>>
 		: accept<Meta, variant_helper<recursive_variant<First, Rest...>, First, Rest...>> {
-		using accept<Meta, variant_helper<recursive_variant<First, Rest...>, First, Rest...>>::operator();
-};
-
-// Visiting a `boost::variant` visits the underlying member
-template <class... Types>
-	requires is_variant_v<Types...>
-struct visit<boost::variant<Types...>> : visit<void> {
-		using visit<void>::visit;
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
-			return boost::apply_visitor(
-				[ & ](auto&& value) constexpr {
-					return invoke_visit(*this, std::forward<decltype(value)>(value), accept);
-				},
-				std::forward<decltype(value)>(value)
-			);
-		}
+		using accept<Meta, variant_helper<recursive_variant<First, Rest...>, First, Rest...>>::accept;
 };
 
 // `std::variant` visitor. This used to delegate to the `boost::variant` visitor above, but
@@ -107,16 +87,44 @@ struct visit<boost::variant<Types...>> : visit<void> {
 // can't delegate to this one either because it handles recursive variants.
 template <class... Types>
 	requires is_variant_v<Types...>
-struct visit<std::variant<Types...>> : visit<void> {
-		using visit<void>::visit;
+struct visit<std::variant<Types...>> : visit<Types>... {
+		visit() = default;
+		constexpr visit(int ignore, const auto& that) :
+				visit<Types>{ignore, that}... {}
+
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			return std::visit(
-				[ & ](auto&& value) constexpr {
-					return invoke_visit(*this, std::forward<decltype(value)>(value), accept);
+				[ & ]<class Value>(Value&& value) constexpr {
+					const visit<std::decay_t<Value>>& visit = *this;
+					return visit(std::forward<Value>(value), accept);
 				},
 				std::forward<decltype(value)>(value)
 			);
 		}
+};
+
+// Visiting a `boost::variant` visits the underlying members
+template <class Variant, class... Types>
+struct visit<variant_helper<Variant, Types...>> : visit<substitute_recursive<Variant, Types>>... {
+		visit() = default;
+		constexpr visit(int ignore, const auto& that) :
+				visit<substitute_recursive<Variant, Types>>{ignore, that}... {}
+		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
+			return boost::apply_visitor(
+				[ & ]<class Value>(Value&& value) constexpr {
+					const visit<std::decay_t<Value>>& visit = *this;
+					return visit(std::forward<decltype(value)>(value), accept);
+				},
+				std::forward<decltype(value)>(value)
+			);
+		}
+};
+
+// `visit` entry for `boost::make_recursive_variant`
+template <class First, class... Rest>
+struct visit<recursive_variant<First, Rest...>>
+		: visit<variant_helper<recursive_variant<First, Rest...>, First, Rest...>> {
+		using visit<variant_helper<recursive_variant<First, Rest...>, First, Rest...>>::visit;
 };
 
 } // namespace ivm::value
