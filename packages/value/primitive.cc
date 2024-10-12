@@ -129,8 +129,7 @@ struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
 // Tagged primitive types
 template <class Type>
 	requires std::negation_v<std::is_same<tag_for_t<Type>, void>>
-struct visit<Type> : visit<void> {
-		using visit<void>::visit;
+struct visit<Type> {
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			return accept(tag_for_t<Type>{}, std::forward<decltype(value)>(value));
 		}

@@ -26,8 +26,7 @@ struct accept<Meta, dictionary<Tag, Key, Value>> {
 };
 
 template <class Tag, class Key, class Value>
-struct visit<dictionary<Tag, Key, Value>> : visit<void> {
-		using visit<void>::visit;
+struct visit<dictionary<Tag, Key, Value>> {
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			return accept(Tag{}, std::forward<decltype(value)>(value));
 		}

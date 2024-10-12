@@ -88,10 +88,6 @@ struct accept<Meta, recursive_variant<First, Rest...>>
 template <class... Types>
 	requires is_variant_v<Types...>
 struct visit<std::variant<Types...>> : visit<Types>... {
-		visit() = default;
-		constexpr visit(int ignore, const auto& that) :
-				visit<Types>{ignore, that}... {}
-
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			return std::visit(
 				[ & ]<class Value>(Value&& value) constexpr {
@@ -106,9 +102,6 @@ struct visit<std::variant<Types...>> : visit<Types>... {
 // Visiting a `boost::variant` visits the underlying members
 template <class Variant, class... Types>
 struct visit<variant_helper<Variant, Types...>> : visit<substitute_recursive<Variant, Types>>... {
-		visit() = default;
-		constexpr visit(int ignore, const auto& that) :
-				visit<substitute_recursive<Variant, Types>>{ignore, that}... {}
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			return boost::apply_visitor(
 				[ & ]<class Value>(Value&& value) constexpr {

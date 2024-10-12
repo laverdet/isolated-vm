@@ -29,69 +29,58 @@ namespace ivm::value {
 
 // Delegate Napi::Value to various visitors
 template <>
-struct visit<Napi::Value> : visit<void> {
-	public:
+struct visit<Napi::Value> : visit<v8::Local<v8::Value>> {
+		using visit<v8::Local<v8::Value>>::operator();
+
+		visit(v8::Isolate* isolate, v8::Local<v8::Context> context) :
+				visit<v8::Local<v8::Value>>{isolate, context} {}
 		visit(v8::Isolate* isolate) :
-				isolate_{isolate} {}
+				visit{isolate, isolate->GetCurrentContext()} {}
 		// TODO: remove ASAP!
-		visit(int /*ignore*/, const visit<void>& /*ignore*/) :
+		visit() :
 				visit{v8::Isolate::GetCurrent()} {}
-		auto operator()(Napi::Value value, const auto& accept) const -> decltype(auto);
 
-	protected:
-		[[nodiscard]] auto context() const {
-			if (context_ == v8::Local<v8::Context>{}) {
-				context_ = isolate_->GetCurrentContext();
+		auto operator()(Napi::Value value, const auto& accept) const -> decltype(auto) {
+			switch (value.Type()) {
+				case napi_boolean:
+					return (*this)(napi_to_v8(value).As<v8::Boolean>(), accept);
+				case napi_number:
+					return (*this)(napi_to_v8(value).As<v8::Number>(), accept);
+				case napi_bigint:
+					return (*this)(napi_to_v8(value).As<v8::BigInt>(), accept);
+				case napi_string:
+					return (*this)(napi_to_v8(value).As<v8::String>(), accept);
+				case napi_object:
+					if (value.IsArray()) {
+						return accept(list_tag{}, ivm::napi::object{value.As<Napi::Object>()});
+					} else if (value.IsDate()) {
+						return (*this)(napi_to_v8(value).As<v8::Date>(), accept);
+					} else if (value.IsPromise()) {
+						return accept(promise_tag{}, value);
+					}
+					return accept(dictionary_tag{}, ivm::napi::object{value.As<Napi::Object>()});
+				case napi_external:
+					return (*this)(napi_to_v8(value).As<v8::External>(), accept);
+				case napi_symbol:
+					return accept(symbol_tag{}, value);
+				case napi_null:
+					return accept(null_tag{}, std::nullptr_t{});
+				case napi_undefined:
+					return accept(undefined_tag{}, std::monostate{});
+				case napi_function:
+					return accept(value_tag{}, std::type_identity<void>{});
 			}
-			return context_;
 		}
-		[[nodiscard]] auto isolate() const { return isolate_; }
-
-	private:
-		v8::Isolate* isolate_;
-		mutable v8::Local<v8::Context> context_;
-};
-
-// Napi function arguments to list
-template <>
-struct visit<Napi::CallbackInfo> : visit<Napi::Value> {
-		using visit<Napi::Value>::visit;
 
 		auto operator()(const Napi::CallbackInfo& info, const auto& accept) const -> decltype(auto) {
 			return accept(vector_tag{}, ivm::napi::arguments{info});
 		}
 };
 
-auto visit<Napi::Value>::operator()(Napi::Value value, const auto& accept) const -> decltype(auto) {
-	switch (value.Type()) {
-		case napi_boolean:
-			return invoke_visit(*this, napi_to_v8(value).As<v8::Boolean>(), accept);
-		case napi_number:
-			return invoke_visit(*this, napi_to_v8(value).As<v8::Number>(), accept);
-		case napi_bigint:
-			return invoke_visit(*this, napi_to_v8(value).As<v8::BigInt>(), accept);
-		case napi_string:
-			return visit<v8::Local<v8::String>>{isolate(), context()}(napi_to_v8(value).As<v8::String>(), accept);
-		case napi_object:
-			if (value.IsArray()) {
-				return accept(list_tag{}, ivm::napi::object{value.As<Napi::Object>()});
-			} else if (value.IsDate()) {
-				return invoke_visit(*this, napi_to_v8(value).As<v8::Date>(), accept);
-			} else if (value.IsPromise()) {
-				return accept(promise_tag{}, value);
-			}
-			return accept(dictionary_tag{}, ivm::napi::object{value.As<Napi::Object>()});
-		case napi_external:
-			return invoke_visit(*this, napi_to_v8(value).As<v8::External>(), accept);
-		case napi_symbol:
-			return accept(symbol_tag{}, value);
-		case napi_null:
-			return accept(null_tag{}, std::nullptr_t{});
-		case napi_undefined:
-			return accept(undefined_tag{}, std::monostate{});
-		case napi_function:
-			return accept(value_tag{}, std::type_identity<void>{});
-	}
-}
+// Napi function arguments to list
+template <>
+struct visit<Napi::CallbackInfo> : visit<Napi::Value> {
+		using visit<Napi::Value>::visit;
+};
 
 } // namespace ivm::value
