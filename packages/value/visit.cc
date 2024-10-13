@@ -36,22 +36,4 @@ constexpr auto make_accept(const accept<Meta, Type>& accept_from) {
 	}
 }
 
-// Delegate to another acceptor by a different type. Does not wrap in the same way `make_accept`
-// does.
-export template <class Next, class Meta, class Type>
-constexpr auto delegate_accept(
-	const accept<Meta, Type>& /*accept_from*/,
-	auto tag,
-	auto&& value,
-	auto&&... accept_args
-) -> decltype(auto) {
-	using accept_type = accept<Meta, Next>;
-	return accept_type{
-		std::forward<decltype(accept_args)>(accept_args)...
-	}(
-		tag,
-		std::forward<decltype(value)>(value)
-	);
-}
-
 } // namespace ivm::value

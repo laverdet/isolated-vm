@@ -10,86 +10,102 @@ import :string;
 import ivm.value;
 import v8;
 
-namespace ivm::iv8 {
-
-// Base class for primitive acceptors.
-struct accept_primitive_base {
-		accept_primitive_base() = delete;
-		explicit accept_primitive_base(v8::Isolate* isolate) :
-				isolate{isolate} {}
-
-		v8::Isolate* isolate;
-};
-
-} // namespace ivm::iv8
-
 namespace ivm::value {
+
+// Base class for primitive acceptors. Not really an acceptor.
+template <>
+struct accept<void, v8::Local<v8::Data>> {
+		accept() = delete;
+		explicit accept(v8::Isolate* isolate) :
+				isolate_{isolate} {}
+
+		auto operator()(boolean_tag /*tag*/, auto&& value) const -> v8::Local<v8::Boolean> {
+			return v8::Boolean::New(isolate_, std::forward<decltype(value)>(value));
+		}
+
+		template <class Numeric>
+		auto operator()(number_tag_of<Numeric> /*tag*/, auto&& value) const -> v8::Local<v8::Number> {
+			return v8::Number::New(isolate_, Numeric{std::forward<decltype(value)>(value)});
+		}
+
+		auto operator()(string_tag /*tag*/, auto&& value) const -> v8::Local<v8::String> {
+			return iv8::string::make(isolate_, std::forward<decltype(value)>(value));
+		}
+
+		v8::Isolate* isolate_;
+};
 
 // Explicit boolean acceptor
 template <class Meta>
-struct accept<Meta, v8::Local<v8::Boolean>> : iv8::accept_primitive_base {
-		using accept_primitive_base::accept_primitive_base;
-		auto operator()(boolean_tag /*tag*/, auto&& value) const {
-			return v8::Boolean::New(isolate, std::forward<decltype(value)>(value));
+struct accept<Meta, v8::Local<v8::Boolean>> : accept<void, v8::Local<v8::Data>> {
+		using accept<void, v8::Local<v8::Data>>::accept;
+		auto operator()(boolean_tag tag, auto&& value) const -> v8::Local<v8::Boolean> {
+			const accept<void, v8::Local<v8::Data>>& accept = *this;
+			return accept(tag, std::forward<decltype(value)>(value));
 		}
 };
 
 // Explicit numeric acceptor
 template <class Meta>
-struct accept<Meta, v8::Local<v8::Number>> : iv8::accept_primitive_base {
-		using accept_primitive_base::accept_primitive_base;
+struct accept<Meta, v8::Local<v8::Number>> : accept<void, v8::Local<v8::Data>> {
+		using accept<void, v8::Local<v8::Data>>::accept;
 		template <class Numeric>
-		auto operator()(number_tag_of<Numeric> /*tag*/, auto&& value) const {
-			return v8::Number::New(isolate, Numeric{value});
+		auto operator()(number_tag_of<Numeric> tag, auto&& value) const -> v8::Local<v8::Number> {
+			const accept<void, v8::Local<v8::Data>>& accept = *this;
+			return accept(tag, std::forward<decltype(value)>(value));
 		}
 };
 
 // Explicit string acceptor
 template <class Meta>
-struct accept<Meta, v8::Local<v8::String>> : iv8::accept_primitive_base {
-		using accept_primitive_base::accept_primitive_base;
-		auto operator()(string_tag /*tag*/, auto&& value) const {
-			return iv8::string::make(isolate, std::forward<decltype(value)>(value));
+struct accept<Meta, v8::Local<v8::String>> : accept<void, v8::Local<v8::Data>> {
+		using accept<void, v8::Local<v8::Data>>::accept;
+		auto operator()(string_tag tag, auto&& value) const -> v8::Local<v8::String> {
+			const accept<void, v8::Local<v8::Data>>& accept = *this;
+			return accept(tag, std::forward<decltype(value)>(value));
 		}
 };
 
 // Generic acceptor for most values
 template <class Meta>
-struct accept<Meta, v8::Local<v8::Value>> : iv8::accept_primitive_base {
+struct accept<Meta, v8::Local<v8::Value>> : accept<void, v8::Local<v8::Data>> {
 		explicit accept(v8::Isolate* isolate, v8::Local<v8::Context> context) :
-				accept_primitive_base{isolate},
-				context{context} {}
+				accept<void, v8::Local<v8::Data>>{isolate},
+				context_{context} {}
 
 		auto operator()(undefined_tag /*tag*/, auto&& /*undefined*/) const -> v8::Local<v8::Value> {
-			return v8::Undefined(isolate);
+			return v8::Undefined(isolate_);
 		}
 
 		auto operator()(null_tag /*tag*/, auto&& /*null*/) const -> v8::Local<v8::Value> {
-			return v8::Null(isolate);
+			return v8::Null(isolate_);
 		}
 
 		auto operator()(boolean_tag tag, auto&& value) const -> v8::Local<v8::Value> {
-			return delegate_accept<v8::Local<v8::Boolean>>(*this, tag, std::forward<decltype(value)>(value), isolate);
+			const accept<void, v8::Local<v8::Data>>& accept = *this;
+			return accept(tag, std::forward<decltype(value)>(value));
 		}
 
 		template <class Numeric>
 		auto operator()(number_tag_of<Numeric> tag, auto&& value) const -> v8::Local<v8::Value> {
-			return delegate_accept<v8::Local<v8::Number>>(*this, tag, std::forward<decltype(value)>(value), isolate);
+			const accept<void, v8::Local<v8::Data>>& accept = *this;
+			return accept(tag, std::forward<decltype(value)>(value));
 		}
 
 		auto operator()(string_tag tag, auto&& value) const -> v8::Local<v8::Value> {
-			return delegate_accept<v8::Local<v8::String>>(*this, tag, std::forward<decltype(value)>(value), isolate);
+			const accept<void, v8::Local<v8::Data>>& accept = *this;
+			return accept(tag, std::forward<decltype(value)>(value));
 		}
 
 		auto operator()(date_tag /*tag*/, auto&& value) const -> v8::Local<v8::Value> {
-			return iv8::date::make(context, std::forward<decltype(value)>(value));
+			return iv8::date::make(context_, std::forward<decltype(value)>(value));
 		}
 
 		auto operator()(list_tag /*tag*/, auto&& list) const -> v8::Local<v8::Value> {
-			auto array = v8::Array::New(isolate);
+			auto array = v8::Array::New(isolate_);
 			for (auto&& [ key, value ] : list) {
 				auto result = array->Set(
-					context,
+					context_,
 					invoke_visit(std::forward<decltype(key)>(key), *this),
 					invoke_visit(std::forward<decltype(value)>(value), *this)
 				);
@@ -99,10 +115,10 @@ struct accept<Meta, v8::Local<v8::Value>> : iv8::accept_primitive_base {
 		}
 
 		auto operator()(dictionary_tag /*tag*/, auto&& dictionary) const -> v8::Local<v8::Value> {
-			auto object = v8::Object::New(isolate);
+			auto object = v8::Object::New(isolate_);
 			for (auto&& [ key, value ] : dictionary) {
 				auto result = object->Set(
-					context,
+					context_,
 					invoke_visit(std::forward<decltype(key)>(key), *this),
 					invoke_visit(std::forward<decltype(value)>(value), *this)
 				);
@@ -111,7 +127,7 @@ struct accept<Meta, v8::Local<v8::Value>> : iv8::accept_primitive_base {
 			return object;
 		}
 
-		v8::Local<v8::Context> context;
+		v8::Local<v8::Context> context_;
 };
 
 // A `MaybeLocal` also accepts `undefined`, similar to `std::optional`.
