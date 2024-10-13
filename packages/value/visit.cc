@@ -24,6 +24,10 @@ constexpr auto invoke_visit(Type&& value, const auto& accept) -> decltype(auto) 
 export template <class Meta, class Type>
 struct accept;
 
+// `accept` with transfer wrapping
+export template <class Meta, class Type>
+using accept_next = accept<Meta, typename Meta::template wrap<Type>>;
+
 // Convert an existing acceptor into a new one which accepts a different type
 export template <class Next, class Meta, class Type>
 constexpr auto make_accept(const accept<Meta, Type>& accept_from) {
