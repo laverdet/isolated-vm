@@ -43,10 +43,7 @@ struct accept<Meta, std::variant<Types...>> {
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary) const -> accepted_type {
 			auto alternatives = make_discriminant_map<decltype(dictionary)>();
-			auto discriminant_value = invoke_visit(
-				dictionary.get(descriptor_type::discriminant),
-				make_accept<std::string>(*this)
-			);
+			auto discriminant_value = invoke_visit(dictionary.get(descriptor_type::discriminant), accept_key_);
 			auto accept_alternative = alternatives.get(discriminant_value);
 			if (accept_alternative == nullptr) {
 				throw std::logic_error(std::format("Unknown discriminant: {}", discriminant_value));
@@ -75,6 +72,7 @@ struct accept<Meta, std::variant<Types...>> {
 		}
 
 	private:
+		accept_next<Meta, std::string> accept_key_;
 		std::tuple<accept_next<Meta, Types>...> acceptors_;
 };
 

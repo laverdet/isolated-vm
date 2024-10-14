@@ -5,7 +5,6 @@ target_sources(ivm_value
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		dictionary.cc
-		discriminated_union.cc
 		enum.cc
 		object.cc
 		primitive.cc
@@ -15,6 +14,7 @@ target_sources(ivm_value
 		type/date.cc
 		type/dictionary.cc
 		type/value.cc
+		union.cc
 		variant.cc
 		visit.cc
 )
