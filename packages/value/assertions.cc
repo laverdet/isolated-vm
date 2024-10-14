@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <utility>
 #include <variant>
 import ivm.value;
@@ -147,62 +148,59 @@ static_assert(transfer<specialized>(specialized{}) == specialized{});
 static_assert(variant_is_equal_to(transfer<std::variant<specialized>>(specialized{}), specialized{}));
 
 // Discriminated unions
-struct discriminated_one {
+struct union_alternative_one {
 		std::string one;
-		constexpr auto operator==(const discriminated_one& /*right*/) const -> bool { return true; };
+		constexpr auto operator==(const union_alternative_one& /*right*/) const -> bool { return true; };
 };
 
-struct discriminated_two {
+struct union_alternative_two {
 		std::string two;
-		constexpr auto operator==(const discriminated_two& /*right*/) const -> bool { return true; };
+		constexpr auto operator==(const union_alternative_two& /*right*/) const -> bool { return true; };
 };
 
 template <class Meta>
-struct object_map<Meta, discriminated_one> : object_properties<Meta, discriminated_one> {
+struct object_map<Meta, union_alternative_one> : object_properties<Meta, union_alternative_one> {
 		template <auto Member>
-		using property = object_properties<Meta, discriminated_one>::template property<Member>;
+		using property = object_properties<Meta, union_alternative_one>::template property<Member>;
 
 		constexpr static auto properties = std::array{
-			std::tuple{false, "one", property<&discriminated_one::one>::accept},
+			std::tuple{false, "one", property<&union_alternative_one::one>::accept},
 		};
 };
 
 template <class Meta>
-struct object_map<Meta, discriminated_two> : object_properties<Meta, discriminated_two> {
+struct object_map<Meta, union_alternative_two> : object_properties<Meta, union_alternative_two> {
 		template <auto Member>
-		using property = object_properties<Meta, discriminated_two>::template property<Member>;
+		using property = object_properties<Meta, union_alternative_two>::template property<Member>;
 
 		constexpr static auto properties = std::array{
-			std::tuple{false, "two", property<&discriminated_two::two>::accept},
+			std::tuple{false, "two", property<&union_alternative_two::two>::accept},
 		};
 };
 
-using discriminated_object = std::variant<discriminated_one, discriminated_two>;
+using union_object = std::variant<union_alternative_one, union_alternative_two>;
 
-template <class Meta>
-struct discriminated_union<Meta, discriminated_object> : discriminated_alternatives<Meta, discriminated_object> {
-		template <class Type>
-		constexpr static auto alternative = &discriminated_alternatives<Meta, discriminated_object>::template alternative<Type>;
-
+template <>
+struct union_of<union_object> {
 		constexpr static auto discriminant = "type";
-		constexpr static auto alternatives = std::array{
-			std::pair{"one", alternative<discriminated_one>},
-			std::pair{"two", alternative<discriminated_two>},
+		constexpr static auto alternatives = std::tuple{
+			alternative<union_alternative_one>{"one"},
+			alternative<union_alternative_two>{"two"},
 		};
 };
 
-constexpr auto discriminated_with_one = transfer<discriminated_object>(static_dictionary{{
+constexpr auto discriminated_with_one = transfer<union_object>(static_dictionary{{
 	std::pair{"type"s, "one"s},
 	std::pair{"one"s, "left"s},
 }});
 
-constexpr auto discriminated_with_two = transfer<discriminated_object>(static_dictionary{{
+constexpr auto discriminated_with_two = transfer<union_object>(static_dictionary{{
 	std::pair{"type"s, "two"s},
 	std::pair{"two"s, "right"s},
 }});
 
-static_assert(variant_is_equal_to(discriminated_with_one, discriminated_one{.one = "left"s}));
-static_assert(variant_is_equal_to(discriminated_with_two, discriminated_two{.two = "right"s}));
+static_assert(variant_is_equal_to(discriminated_with_one, union_alternative_one{.one = "left"s}));
+static_assert(variant_is_equal_to(discriminated_with_two, union_alternative_two{.two = "right"s}));
 
 } // namespace ivm::value
 

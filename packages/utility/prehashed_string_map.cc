@@ -113,4 +113,7 @@ class prehashed_string_map {
 		container_type hashed_values_;
 };
 
+template <class Key, class Type, size_t Size>
+prehashed_string_map(const std::array<std::pair<Key, Type>, Size>&) -> prehashed_string_map<Type, Size>;
+
 } // namespace ivm::util

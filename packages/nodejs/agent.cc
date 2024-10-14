@@ -134,17 +134,14 @@ struct object_map<Meta, make_agent_options::clock_realtime> : object_properties<
 template <class Meta>
 struct object_map<Meta, make_agent_options::clock_system> : object_no_properties<Meta, make_agent_options::clock_system> {};
 
-template <class Meta>
-struct discriminated_union<Meta, make_agent_options::clock_type> : discriminated_alternatives<Meta, make_agent_options::clock_type> {
-		template <class Type>
-		constexpr static auto alternative = &discriminated_alternatives<Meta, make_agent_options::clock_type>::template alternative<Type>;
-
+template <>
+struct union_of<make_agent_options::clock_type> {
 		constexpr static auto discriminant = "type";
-		constexpr static auto alternatives = std::array{
-			std::pair{"deterministic", alternative<make_agent_options::clock_deterministic>},
-			std::pair{"microtask", alternative<make_agent_options::clock_microtask>},
-			std::pair{"realtime", alternative<make_agent_options::clock_realtime>},
-			std::pair{"system", alternative<make_agent_options::clock_system>},
+		constexpr static auto alternatives = std::tuple{
+			alternative<make_agent_options::clock_deterministic>{"deterministic"},
+			alternative<make_agent_options::clock_microtask>{"microtask"},
+			alternative<make_agent_options::clock_realtime>{"realtime"},
+			alternative<make_agent_options::clock_system>{"system"},
 		};
 };
 
