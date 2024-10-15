@@ -88,25 +88,19 @@ struct object_literal {
 		std::string string;
 };
 
-template <class Meta>
-struct object_map<Meta, object_literal_one> : object_properties<Meta, object_literal_one> {
-		template <auto Member>
-		using property = object_properties<Meta, object_literal_one>::template property<Member>;
-
-		constexpr static auto properties = std::array{
-			std::tuple{false, "integer", property<&object_literal_one::integer>::accept},
+template <>
+struct object_properties<object_literal_one> {
+		constexpr static auto properties = std::tuple{
+			property<&object_literal_one::integer>{"integer", false},
 		};
 };
 
-template <class Meta>
-struct object_map<Meta, object_literal> : object_properties<Meta, object_literal> {
-		template <auto Member>
-		using property = object_properties<Meta, object_literal>::template property<Member>;
-
-		constexpr static auto properties = std::array{
-			std::tuple{false, "integer", property<&object_literal::integer>::accept},
-			std::tuple{false, "number", property<&object_literal::number>::accept},
-			std::tuple{true, "string", property<&object_literal::string>::accept},
+template <>
+struct object_properties<object_literal> {
+		constexpr static auto properties = std::tuple{
+			property<&object_literal::integer>{"integer", false},
+			property<&object_literal::number>{"number", false},
+			property<&object_literal::string>{"string"},
 		};
 };
 
@@ -158,23 +152,17 @@ struct union_alternative_two {
 		constexpr auto operator==(const union_alternative_two& /*right*/) const -> bool { return true; };
 };
 
-template <class Meta>
-struct object_map<Meta, union_alternative_one> : object_properties<Meta, union_alternative_one> {
-		template <auto Member>
-		using property = object_properties<Meta, union_alternative_one>::template property<Member>;
-
-		constexpr static auto properties = std::array{
-			std::tuple{false, "one", property<&union_alternative_one::one>::accept},
+template <>
+struct object_properties<union_alternative_one> {
+		constexpr static auto properties = std::tuple{
+			property<&union_alternative_one::one>{"one", false},
 		};
 };
 
-template <class Meta>
-struct object_map<Meta, union_alternative_two> : object_properties<Meta, union_alternative_two> {
-		template <auto Member>
-		using property = object_properties<Meta, union_alternative_two>::template property<Member>;
-
-		constexpr static auto properties = std::array{
-			std::tuple{false, "two", property<&union_alternative_two::two>::accept},
+template <>
+struct object_properties<union_alternative_two> {
+		constexpr static auto properties = std::tuple{
+			property<&union_alternative_two::two>{"two", false},
 		};
 };
 

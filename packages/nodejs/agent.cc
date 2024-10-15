@@ -100,39 +100,32 @@ auto make_create_realm(environment& env) -> Napi::Function {
 // Options visitors & acceptors
 namespace ivm::value {
 
-template <class Meta>
-struct object_map<Meta, make_agent_options::clock_deterministic> : object_properties<Meta, make_agent_options::clock_deterministic> {
-		template <auto Member>
-		using property = object_properties<Meta, make_agent_options::clock_deterministic>::template property<Member>;
-
-		constexpr static auto properties = std::array{
-			std::tuple{true, "epoch", property<&make_agent_options::clock_deterministic::epoch>::accept},
-			std::tuple{true, "interval", property<&make_agent_options::clock_deterministic::interval>::accept},
+template <>
+struct object_properties<make_agent_options::clock_deterministic> {
+		constexpr static auto properties = std::tuple{
+			property<&make_agent_options::clock_deterministic::epoch>{"epoch"},
+			property<&make_agent_options::clock_deterministic::interval>{"interval"},
 		};
 };
 
-template <class Meta>
-struct object_map<Meta, make_agent_options::clock_microtask> : object_properties<Meta, make_agent_options::clock_microtask> {
-		template <auto Member>
-		using property = object_properties<Meta, make_agent_options::clock_microtask>::template property<Member>;
-
-		constexpr static auto properties = std::array{
-			std::tuple{true, "epoch", property<&make_agent_options::clock_microtask::epoch>::accept},
+template <>
+struct object_properties<make_agent_options::clock_microtask> {
+		constexpr static auto properties = std::tuple{
+			property<&make_agent_options::clock_microtask::epoch>{"epoch"},
 		};
 };
 
-template <class Meta>
-struct object_map<Meta, make_agent_options::clock_realtime> : object_properties<Meta, make_agent_options::clock_realtime> {
-		template <auto Member>
-		using property = object_properties<Meta, make_agent_options::clock_realtime>::template property<Member>;
-
-		constexpr static auto properties = std::array{
-			std::tuple{true, "epoch", property<&make_agent_options::clock_realtime::epoch>::accept},
+template <>
+struct object_properties<make_agent_options::clock_realtime> {
+		constexpr static auto properties = std::tuple{
+			property<&make_agent_options::clock_realtime::epoch>{"epoch"},
 		};
 };
 
-template <class Meta>
-struct object_map<Meta, make_agent_options::clock_system> : object_no_properties<Meta, make_agent_options::clock_system> {};
+template <>
+struct object_properties<make_agent_options::clock_system> {
+		constexpr static auto properties = std::tuple{};
+};
 
 template <>
 struct union_of<make_agent_options::clock_type> {
@@ -145,14 +138,11 @@ struct union_of<make_agent_options::clock_type> {
 		};
 };
 
-template <class Meta>
-struct object_map<Meta, make_agent_options> : object_properties<Meta, make_agent_options> {
-		template <auto Member>
-		using property = object_properties<Meta, make_agent_options>::template property<Member>;
-
-		constexpr static auto properties = std::array{
-			std::tuple{false, "clock", property<&make_agent_options::clock>::accept},
-			std::tuple{false, "randomSeed", property<&make_agent_options::random_seed>::accept},
+template <>
+struct object_properties<make_agent_options> {
+		constexpr static auto properties = std::tuple{
+			property<&make_agent_options::clock>{"clock", false},
+			property<&make_agent_options::random_seed>{"randomSeed", false},
 		};
 };
 

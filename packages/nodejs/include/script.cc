@@ -1,5 +1,4 @@
 module;
-#include <array>
 #include <cstdint>
 #include <optional>
 #include <tuple>
@@ -25,25 +24,19 @@ export auto make_source_origin(agent::lock& agent, const std::optional<source_or
 
 namespace ivm::value {
 
-template <class Meta>
-struct object_map<Meta, source_location_options> : object_properties<Meta, source_location_options> {
-		template <auto Member>
-		using property = object_properties<Meta, source_location_options>::template property<Member>;
-
-		constexpr static auto properties = std::array{
-			std::tuple{true, "line", property<&source_location_options::line>::accept},
-			std::tuple{true, "column", property<&source_location_options::column>::accept},
+template <>
+struct object_properties<source_location_options> {
+		constexpr static auto properties = std::tuple{
+			property<&source_location_options::line>{"line"},
+			property<&source_location_options::column>{"column"},
 		};
 };
 
-template <class Meta>
-struct object_map<Meta, source_origin_options> : object_properties<Meta, source_origin_options> {
-		template <auto Member>
-		using property = object_properties<Meta, source_origin_options>::template property<Member>;
-
-		constexpr static auto properties = std::array{
-			std::tuple{false, "name", property<&source_origin_options::name>::accept},
-			std::tuple{false, "location", property<&source_origin_options::location>::accept},
+template <>
+struct object_properties<source_origin_options> {
+		constexpr static auto properties = std::tuple{
+			property<&source_origin_options::name>{"name"},
+			property<&source_origin_options::location>{"location"},
 		};
 };
 

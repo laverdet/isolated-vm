@@ -55,9 +55,9 @@ struct accept<Meta, std::variant<Types...>> {
 		consteval static auto make_discriminant_map() {
 			using acceptor_type = accepted_type (*)(Value, const accept&);
 			return util::prehashed_string_map{std::invoke(
-				[ & ]<size_t... Index>(std::index_sequence<Index...> /*indices*/) consteval {
+				[]<size_t... Index>(std::index_sequence<Index...> /*indices*/) consteval {
 					return std::array{std::invoke(
-						[ & ](const auto& alternative) {
+						[](const auto& alternative) {
 							acceptor_type acceptor = [](Value value, const accept& self) -> accepted_type {
 								const auto& accept = std::get<Index>(self.acceptors_);
 								return accept(dictionary_tag{}, std::forward<Value>(value));
