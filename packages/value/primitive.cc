@@ -85,7 +85,8 @@ struct tag_for<std::u16string> {
 
 // Default acceptor just forwards the given value directly to the underlying type's constructor
 template <class Meta, class Type>
-struct accept {
+	requires std::negation_v<std::is_same<tag_for_t<Type>, void>>
+struct accept<Meta, Type> {
 		constexpr auto operator()(con_tag_for_t<Type> /*tag*/, auto&& value) const {
 			if constexpr (util::is_convertible_without_narrowing_v<decltype(value), Type>) {
 				return Type{std::forward<decltype(value)>(value)};
@@ -96,16 +97,16 @@ struct accept {
 };
 
 // `undefined` -> `std::monostate`
-template <class Meta>
-struct accept<Meta, std::monostate> {
+template <>
+struct accept<void, std::monostate> {
 		constexpr auto operator()(undefined_tag /*tag*/, auto&& /*undefined*/) const {
 			return std::monostate{};
 		}
 };
 
 // `null` -> `std::nullptr_t`
-template <class Meta>
-struct accept<Meta, std::nullptr_t> {
+template <>
+struct accept<void, std::nullptr_t> {
 		constexpr auto operator()(null_tag /*tag*/, auto&& /*null*/) const {
 			return std::nullptr_t{};
 		}

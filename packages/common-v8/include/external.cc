@@ -39,8 +39,8 @@ class external_reference : util::non_moveable {
 
 namespace ivm::value {
 
-template <class Meta, class Type>
-struct accept<Meta, iv8::external_reference<Type>> {
+template <class Type>
+struct accept<void, iv8::external_reference<Type>> {
 		auto operator()(external_tag /*tag*/, auto value) const -> iv8::external_reference<Type>& {
 			auto* void_ptr = static_cast<void*>(value);
 			return *static_cast<iv8::external_reference<Type>*>(void_ptr);

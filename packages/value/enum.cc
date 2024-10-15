@@ -14,9 +14,9 @@ export template <class Enum>
 struct enum_values;
 
 // Matches an enumerated string to an underlying enum value.
-template <class Meta, class Enum>
+template <class Enum>
 	requires std::is_enum_v<Enum>
-struct accept<Meta, Enum> {
+struct accept<void, Enum> {
 		using hash_type = uint32_t;
 
 		template <class String>

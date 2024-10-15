@@ -22,7 +22,9 @@ constexpr auto invoke_visit(Type&& value, const auto& accept) -> decltype(auto) 
 
 // `accept` is the target of `visit`
 export template <class Meta, class Type>
-struct accept;
+struct accept : accept<void, Type> {
+		using accept<void, Type>::accept;
+};
 
 // `accept` with transfer wrapping
 export template <class Meta, class Type>

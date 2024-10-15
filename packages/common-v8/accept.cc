@@ -36,8 +36,8 @@ struct accept<void, v8::Local<v8::Data>> {
 };
 
 // Explicit boolean acceptor
-template <class Meta>
-struct accept<Meta, v8::Local<v8::Boolean>> : accept<void, v8::Local<v8::Data>> {
+template <>
+struct accept<void, v8::Local<v8::Boolean>> : accept<void, v8::Local<v8::Data>> {
 		using accept<void, v8::Local<v8::Data>>::accept;
 		auto operator()(boolean_tag tag, auto&& value) const -> v8::Local<v8::Boolean> {
 			const accept<void, v8::Local<v8::Data>>& accept = *this;
@@ -46,8 +46,8 @@ struct accept<Meta, v8::Local<v8::Boolean>> : accept<void, v8::Local<v8::Data>> 
 };
 
 // Explicit numeric acceptor
-template <class Meta>
-struct accept<Meta, v8::Local<v8::Number>> : accept<void, v8::Local<v8::Data>> {
+template <>
+struct accept<void, v8::Local<v8::Number>> : accept<void, v8::Local<v8::Data>> {
 		using accept<void, v8::Local<v8::Data>>::accept;
 		template <class Numeric>
 		auto operator()(number_tag_of<Numeric> tag, auto&& value) const -> v8::Local<v8::Number> {
@@ -57,8 +57,8 @@ struct accept<Meta, v8::Local<v8::Number>> : accept<void, v8::Local<v8::Data>> {
 };
 
 // Explicit string acceptor
-template <class Meta>
-struct accept<Meta, v8::Local<v8::String>> : accept<void, v8::Local<v8::Data>> {
+template <>
+struct accept<void, v8::Local<v8::String>> : accept<void, v8::Local<v8::Data>> {
 		using accept<void, v8::Local<v8::Data>>::accept;
 		auto operator()(string_tag tag, auto&& value) const -> v8::Local<v8::String> {
 			const accept<void, v8::Local<v8::Data>>& accept = *this;
@@ -67,8 +67,8 @@ struct accept<Meta, v8::Local<v8::String>> : accept<void, v8::Local<v8::Data>> {
 };
 
 // Generic acceptor for most values
-template <class Meta>
-struct accept<Meta, v8::Local<v8::Value>> : accept<void, v8::Local<v8::Data>> {
+template <>
+struct accept<void, v8::Local<v8::Value>> : accept<void, v8::Local<v8::Data>> {
 		explicit accept(v8::Isolate* isolate, v8::Local<v8::Context> context) :
 				accept<void, v8::Local<v8::Data>>{isolate},
 				context_{context} {}

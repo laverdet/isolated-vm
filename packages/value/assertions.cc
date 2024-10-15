@@ -126,8 +126,8 @@ struct specialized {
 		constexpr auto operator==(const specialized& /*right*/) const -> bool { return true; };
 };
 
-template <class Meta>
-struct accept<Meta, specialized> {
+template <>
+struct accept<void, specialized> {
 		constexpr auto operator()(object_tag /*tag*/, auto value) const -> specialized { return value; }
 };
 

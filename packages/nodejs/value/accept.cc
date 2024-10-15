@@ -26,8 +26,8 @@ auto v8_to_napi(const v8::Local<Type>& local) -> napi_value {
 
 namespace ivm::value {
 
-template <class Meta>
-struct accept<Meta, Napi::Value> {
+template <>
+struct accept<void, Napi::Value> {
 		accept() = delete;
 		explicit accept(Napi::Env env) :
 				env{env} {}
