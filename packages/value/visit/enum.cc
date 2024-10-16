@@ -16,8 +16,9 @@ struct enum_values;
 // Matches an enumerated string to an underlying enum value.
 template <class Enum>
 	requires std::is_enum_v<Enum>
-struct accept<void, Enum> {
+struct accept<void, Enum> : accept<void, void> {
 		using hash_type = uint32_t;
+		using accept<void, void>::accept;
 
 		template <class String>
 		constexpr auto operator()(string_tag_of<String> /*tag*/, auto&& value) const -> Enum {

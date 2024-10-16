@@ -40,7 +40,8 @@ class external_reference : util::non_moveable {
 namespace ivm::value {
 
 template <class Type>
-struct accept<void, iv8::external_reference<Type>> {
+struct accept<void, iv8::external_reference<Type>> : accept<void, void> {
+		using accept<void, void>::accept;
 		auto operator()(external_tag /*tag*/, auto value) const -> iv8::external_reference<Type>& {
 			auto* void_ptr = static_cast<void*>(value);
 			return *static_cast<iv8::external_reference<Type>*>(void_ptr);

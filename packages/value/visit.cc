@@ -26,6 +26,15 @@ struct accept : accept<void, Type> {
 		using accept<void, Type>::accept;
 };
 
+// Base specialization for stateless acceptors. This just gets you the `dummy` constructor used by
+// recursive acceptors.
+template <>
+struct accept<void, void> {
+		accept() = default;
+		// Recursive acceptor constructor
+		constexpr accept(int /*dummy*/, const auto& /*accept*/) {}
+};
+
 // `accept` with transfer wrapping
 export template <class Meta, class Type>
 using accept_next = accept<Meta, typename Meta::template wrap<Type>>;

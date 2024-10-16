@@ -6,16 +6,16 @@ import ivm.utility;
 
 namespace ivm::value {
 
-export template <class Tag, class Key, class Value>
-class dictionary {
+export template <class Tag, class Value>
+class vector_of {
 	public:
-		using value_type = std::pair<Key, Value>;
+		using value_type = Value;
 		using container_type = std::vector<value_type>;
 		using const_iterator = container_type::const_iterator;
 		using iterator = container_type::iterator;
 
-		dictionary() = default;
-		constexpr explicit dictionary(std::ranges::range auto&& range) :
+		vector_of() = default;
+		constexpr explicit vector_of(std::ranges::range auto&& range) :
 				values{std::ranges::begin(range), std::ranges::end(range)} {}
 
 		[[nodiscard]] constexpr auto begin(this auto&& self) { return self.values.begin(); }
@@ -25,7 +25,10 @@ class dictionary {
 		container_type values;
 };
 
-static_assert(std::ranges::range<dictionary<void, int, int>>);
-static_assert(std::random_access_iterator<dictionary<void, int, int>::const_iterator>);
+static_assert(std::ranges::range<vector_of<void, int>>);
+static_assert(std::random_access_iterator<vector_of<void, int>::const_iterator>);
+
+export template <class Tag, class Key, class Value>
+using dictionary = vector_of<Tag, std::pair<Key, Value>>;
 
 } // namespace ivm::value

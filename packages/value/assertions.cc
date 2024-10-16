@@ -127,7 +127,8 @@ struct specialized {
 };
 
 template <>
-struct accept<void, specialized> {
+struct accept<void, specialized> : accept<void, void> {
+		using accept<void, void>::accept;
 		constexpr auto operator()(object_tag /*tag*/, auto value) const -> specialized { return value; }
 };
 

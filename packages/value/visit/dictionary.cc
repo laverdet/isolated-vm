@@ -9,7 +9,7 @@ import :visit;
 
 namespace ivm::value {
 
-// Look for `boost::recursive_variant_` to determine if this dictionary is recursive
+// Look for `boost::recursive_variant_` to determine if this container is recursive
 template <class Type>
 struct is_recursive : std::bool_constant<false> {};
 
@@ -23,7 +23,7 @@ template <template <class...> class Type, class... Types>
 struct is_recursive<Type<Types...>>
 		: std::bool_constant<std::disjunction_v<is_recursive<Types>...>> {};
 
-// If the dictionary is not recursive then it will own its own entry acceptor. Otherwise it accepts
+// If the container is not recursive then it will own its own entry acceptor. Otherwise it accepts
 // a reference to an existing one.
 template <class Type>
 struct recursive;
@@ -55,18 +55,11 @@ struct accept<Meta, recursive<Type>> {
 // Dictionary's acceptor manages the recursive acceptor for the entry key/value types
 template <class Meta, class Tag, class Key, class Value>
 struct accept<Meta, dictionary<Tag, Key, Value>> {
-	private:
-		using accept_key_type = accept<Meta, recursive<Key>>;
-		using accept_value_type = accept<Meta, recursive<Value>>;
-
 	public:
-		accept()
-			requires std::is_default_constructible_v<accept_key_type> &&
-			std::is_default_constructible_v<accept_value_type> {}
-
-		accept(int dummy, const auto& accept) :
-				accept_key_{dummy, accept},
-				accept_value_{dummy, accept} {}
+		accept() = default;
+		constexpr accept(int dummy, const auto& accept) :
+				first{dummy, accept},
+				second{dummy, accept} {}
 
 		auto operator()(Tag /*tag*/, auto&& value) const -> dictionary<Tag, Key, Value> {
 			return dictionary<Tag, Key, Value>{
@@ -74,16 +67,16 @@ struct accept<Meta, dictionary<Tag, Key, Value>> {
 				std::views::transform([ & ](auto entry) {
 					auto&& [ key, value ] = entry;
 					return std::pair{
-						invoke_visit(std::forward<decltype(key)>(key), accept_key_),
-						invoke_visit(std::forward<decltype(value)>(value), accept_value_)
+						invoke_visit(std::forward<decltype(key)>(key), first),
+						invoke_visit(std::forward<decltype(value)>(value), second)
 					};
 				})
 			};
 		}
 
 	private:
-		accept_key_type accept_key_;
-		accept_value_type accept_value_;
+		accept<Meta, recursive<Key>> first;
+		accept<Meta, recursive<Value>> second;
 };
 
 template <class Tag, class Key, class Value>

@@ -86,7 +86,8 @@ struct tag_for<std::u16string> {
 // Default acceptor just forwards the given value directly to the underlying type's constructor
 template <class Meta, class Type>
 	requires std::negation_v<std::is_same<tag_for_t<Type>, void>>
-struct accept<Meta, Type> {
+struct accept<Meta, Type> : accept<Meta, void> {
+		using accept<Meta, void>::accept;
 		constexpr auto operator()(con_tag_for_t<Type> /*tag*/, auto&& value) const {
 			if constexpr (util::is_convertible_without_narrowing_v<decltype(value), Type>) {
 				return Type{std::forward<decltype(value)>(value)};
@@ -98,7 +99,8 @@ struct accept<Meta, Type> {
 
 // `undefined` -> `std::monostate`
 template <>
-struct accept<void, std::monostate> {
+struct accept<void, std::monostate> : accept<void, void> {
+		using accept<void, void>::accept;
 		constexpr auto operator()(undefined_tag /*tag*/, auto&& /*undefined*/) const {
 			return std::monostate{};
 		}
@@ -106,7 +108,8 @@ struct accept<void, std::monostate> {
 
 // `null` -> `std::nullptr_t`
 template <>
-struct accept<void, std::nullptr_t> {
+struct accept<void, std::nullptr_t> : accept<void, void> {
+		using accept<void, void>::accept;
 		constexpr auto operator()(null_tag /*tag*/, auto&& /*null*/) const {
 			return std::nullptr_t{};
 		}
@@ -116,6 +119,7 @@ struct accept<void, std::nullptr_t> {
 template <class Meta, class Type>
 struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
 		using accept_type = accept<Meta, Type>;
+		using accept_type::accept;
 
 		constexpr auto operator()(auto_tag auto tag, auto&& value) const -> std::optional<Type>
 			requires std::invocable<accept_type, decltype(tag), decltype(value)> {

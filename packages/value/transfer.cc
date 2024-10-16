@@ -33,13 +33,7 @@ struct accept<Meta, accept_with_throw::accept_throw<Type>>
 
 	public:
 		constexpr accept() :
-				accept_type{std::invoke([ & ]() {
-					if constexpr (std::is_constructible_v<accept_type, int, accept>) {
-						return accept_type{0, *this};
-					} else {
-						return accept_type{};
-					}
-				})} {}
+				accept_type{0, *this} {}
 
 		using accept<Meta, std::decay_t<Type>>::operator();
 		constexpr auto operator()(value_tag /*tag*/, auto&& /*value*/) const -> Type {

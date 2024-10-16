@@ -11,8 +11,10 @@ namespace ivm::value {
 
 // Accepting a `std::tuple` unfolds from a visited vector
 template <class Meta, class... Types>
-struct accept<Meta, std::tuple<Types...>> {
+struct accept<Meta, std::tuple<Types...>> : accept<Meta, void> {
 	public:
+		using accept<Meta, void>::accept;
+
 		constexpr auto operator()(vector_tag /*tag*/, auto&& value) const -> std::tuple<Types...> {
 			auto it = std::begin(value);
 			auto end = std::end(value);

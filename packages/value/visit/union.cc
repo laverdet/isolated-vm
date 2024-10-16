@@ -35,29 +35,30 @@ struct is_variant<Types...> : std::bool_constant<false> {};
 // Acceptor for discriminated union/variant types
 template <class Meta, class... Types>
 	requires std::negation_v<is_variant<Types...>>
-struct accept<Meta, std::variant<Types...>> {
+struct accept<Meta, std::variant<Types...>> : accept<Meta, void> {
 		using accepted_type = std::variant<Types...>;
 		using descriptor_type = union_of<accepted_type>;
+		using accept<Meta, void>::accept;
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary) const -> accepted_type {
 			auto alternatives = make_discriminant_map<decltype(dictionary)>();
-			auto discriminant_value = invoke_visit(dictionary.get(descriptor_type::discriminant), accept_key_);
+			auto discriminant_value = invoke_visit(dictionary.get(descriptor_type::discriminant), first);
 			auto accept_alternative = alternatives.get(discriminant_value);
 			if (accept_alternative == nullptr) {
 				throw std::logic_error(std::format("Unknown discriminant: {}", discriminant_value));
 			}
-			return (*accept_alternative)(std::forward<decltype(dictionary)>(dictionary), *this);
+			return (*accept_alternative)(*this, std::forward<decltype(dictionary)>(dictionary));
 		}
 
 		template <class Value>
 		consteval static auto make_discriminant_map() {
-			using acceptor_type = accepted_type (*)(Value, const accept&);
+			using acceptor_type = accepted_type (*)(const accept&, Value);
 			return util::prehashed_string_map{std::invoke(
 				[]<size_t... Index>(std::index_sequence<Index...> /*indices*/) consteval {
 					return std::array{std::invoke(
 						[](const auto& alternative) {
-							acceptor_type acceptor = [](Value value, const accept& self) -> accepted_type {
-								const auto& accept = std::get<Index>(self.acceptors_);
+							acceptor_type acceptor = [](const accept& self, Value value) -> accepted_type {
+								const auto& accept = std::get<Index>(self.second);
 								return accept(dictionary_tag{}, std::forward<Value>(value));
 							};
 							return std::pair{alternative.discriminant, acceptor};
@@ -70,8 +71,8 @@ struct accept<Meta, std::variant<Types...>> {
 		}
 
 	private:
-		accept_next<Meta, std::string> accept_key_;
-		std::tuple<accept_next<Meta, Types>...> acceptors_;
+		accept_next<Meta, std::string> first;
+		std::tuple<accept_next<Meta, Types>...> second;
 };
 
 } // namespace ivm::value

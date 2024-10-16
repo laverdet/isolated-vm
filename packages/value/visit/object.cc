@@ -184,10 +184,11 @@ using property_acceptors_t = property_acceptors<Meta, Type>::type;
 // Acceptor function for C++ object types
 template <class Meta, class Type>
 	requires std::destructible<object_properties<Type>>
-struct accept<Meta, Type> {
+struct accept<Meta, Type> : accept<Meta, void> {
 	public:
 		using hash_type = uint32_t;
 		using descriptor_type = object_properties<Type>;
+		using accept<Meta, void>::accept;
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary) const -> Type {
 			using range_type = decltype(util::into_range(dictionary));
@@ -197,10 +198,10 @@ struct accept<Meta, Type> {
 			if constexpr (std::tuple_size_v<decltype(descriptor_type::properties)> != 0) {
 				auto [ expected_checksum, property_map ] = make_property_map<value_type>();
 				for (auto&& [ key, value ] : util::into_range(dictionary)) {
-					auto descriptor = property_map.get(invoke_visit(std::forward<decltype(key)>(key), accept_key_));
+					auto descriptor = property_map.get(invoke_visit(std::forward<decltype(key)>(key), first));
 					if (descriptor != nullptr) {
 						checksum ^= descriptor->first;
-						(descriptor->second)(subject, std::forward<decltype(value)>(value), *this);
+						(descriptor->second)(*this, subject, std::forward<decltype(value)>(value));
 					}
 				}
 				if (checksum != expected_checksum) {
@@ -213,17 +214,17 @@ struct accept<Meta, Type> {
 		// Returns: `std::pair{checksum, std::tuple{optional_hash, property_hash, acceptor}}`
 		template <class Value>
 		consteval static auto make_property_map() {
-			using acceptor_type = void (*)(Type&, const Value&, const accept&);
+			using acceptor_type = void (*)(const accept&, Type&, const Value&);
 
 			// Make acceptor map w/ property information
 			auto initial_property_map = util::prehashed_string_map{std::invoke(
 				[]<size_t... Index>(std::index_sequence<Index...> /*indices*/) consteval {
 					return std::array{std::invoke(
 						[](const auto& property) {
-							acceptor_type acceptor = [](Type& subject, const Value& value, const accept& self) -> void {
+							acceptor_type acceptor = [](const accept& self, Type& subject, const Value& value) -> void {
 								using delegate_type = member_t<std::decay_t<decltype(property)>>;
 								delegate_type delegate{};
-								const auto& accept = std::get<Index>(self.acceptors_);
+								const auto& accept = std::get<Index>(self.second);
 								delegate.set(subject, invoke_visit(std::move(value), accept));
 							};
 							return std::pair{property.name, std::pair{static_cast<const property_name&>(property), acceptor}};
@@ -253,8 +254,8 @@ struct accept<Meta, Type> {
 		}
 
 	private:
-		accept_next<Meta, std::string> accept_key_;
-		property_acceptors_t<Meta, Type> acceptors_;
+		accept_next<Meta, std::string> first;
+		property_acceptors_t<Meta, Type> second;
 };
 
 } // namespace ivm::value
