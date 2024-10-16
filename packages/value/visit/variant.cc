@@ -14,16 +14,14 @@ namespace ivm::value {
 
 // Specialize in order to disable `std::variant` visitor
 export template <class... Types>
-struct is_variant {
-		constexpr static bool value = true;
-};
+struct is_variant : std::bool_constant<true> {};
 
 template <class... Types>
 constexpr bool is_variant_v = is_variant<Types...>::value;
 
 // Helper which holds a recursive `boost::variant` followed by its alternatives
 template <class Variant, class... Types>
-struct variant_helper {};
+struct variant_of;
 
 // Helper which extracts recursive variant alternative types
 template <class First, class... Rest>
@@ -35,9 +33,9 @@ using substitute_recursive = typename boost::detail::variant::substitute<Type, V
 
 // Covariant `accept` helper for variant-like types
 template <class Type, class Result>
-struct covariant {};
+struct covariant;
 
-// Common covariance-aware `accept` for `std::variant` and `boost::variant`
+// Boxes the result of the underlying acceptor into the variant
 template <class Meta, class Type, class Result>
 struct accept<Meta, covariant<Type, Result>> : accept<Meta, Type> {
 		using accept<Meta, Type>::accept;
@@ -49,6 +47,7 @@ struct accept<Meta, covariant<Type, Result>> : accept<Meta, Type> {
 		}
 };
 
+// Tagged primitives only accept their covariant type
 template <class Meta, class Type, class Result>
 	requires std::negation_v<std::is_same<tag_for_t<Type>, void>>
 struct accept<Meta, covariant<Type, Result>> : accept<Meta, Type> {
@@ -60,8 +59,8 @@ struct accept<Meta, covariant<Type, Result>> : accept<Meta, Type> {
 		}
 };
 
-// Accepting a `std::variant` will delegate to each underlying type's acceptor and box the result
-// into the variant.
+// Accepting a `std::variant` will delegate to each underlying type's acceptor via the `covariant`
+// helper `accept` specialization.
 template <class Meta, class... Types>
 	requires is_variant_v<Types...>
 struct accept<Meta, std::variant<Types...>>
@@ -71,7 +70,7 @@ struct accept<Meta, std::variant<Types...>>
 
 // Recursive `boost::variant` acceptor
 template <class Meta, class Variant, class... Types>
-struct accept<Meta, variant_helper<Variant, Types...>>
+struct accept<Meta, variant_of<Variant, Types...>>
 		: accept<Meta, covariant<substitute_recursive<Variant, Types>, Variant>>... {
 		constexpr accept()
 			requires std::conjunction_v<
@@ -93,8 +92,8 @@ struct accept<Meta, variant_helper<Variant, Types...>>
 // `accept` entry for `boost::make_recursive_variant`
 template <class Meta, class First, class... Rest>
 struct accept<Meta, recursive_variant<First, Rest...>>
-		: accept<Meta, variant_helper<recursive_variant<First, Rest...>, First, Rest...>> {
-		using accept<Meta, variant_helper<recursive_variant<First, Rest...>, First, Rest...>>::accept;
+		: accept<Meta, variant_of<recursive_variant<First, Rest...>, First, Rest...>> {
+		using accept<Meta, variant_of<recursive_variant<First, Rest...>, First, Rest...>>::accept;
 };
 
 // `std::variant` visitor. This used to delegate to the `boost::variant` visitor above, but
@@ -116,10 +115,10 @@ struct visit<std::variant<Types...>> : visit<Types>... {
 
 // Visiting a `boost::variant` visits the underlying members
 template <class Variant, class... Types>
-struct visit<variant_helper<Variant, Types...>> : visit<substitute_recursive<Variant, Types>>... {
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
+struct visit<variant_of<Variant, Types...>> : visit<substitute_recursive<Variant, Types>>... {
+		auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			return boost::apply_visitor(
-				[ & ]<class Value>(Value&& value) constexpr {
+				[ & ]<class Value>(Value&& value) {
 					const visit<std::decay_t<Value>>& visit = *this;
 					return visit(std::forward<decltype(value)>(value), accept);
 				},
@@ -131,8 +130,8 @@ struct visit<variant_helper<Variant, Types...>> : visit<substitute_recursive<Var
 // `visit` entry for `boost::make_recursive_variant`
 template <class First, class... Rest>
 struct visit<recursive_variant<First, Rest...>>
-		: visit<variant_helper<recursive_variant<First, Rest...>, First, Rest...>> {
-		using visit<variant_helper<recursive_variant<First, Rest...>, First, Rest...>>::visit;
+		: visit<variant_of<recursive_variant<First, Rest...>, First, Rest...>> {
+		using visit<variant_of<recursive_variant<First, Rest...>, First, Rest...>>::visit;
 };
 
 } // namespace ivm::value

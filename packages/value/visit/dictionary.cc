@@ -11,27 +11,22 @@ namespace ivm::value {
 
 // Look for `boost::recursive_variant_` to determine if this dictionary is recursive
 template <class Type>
-struct is_recursive {
-		constexpr static auto value = false;
-};
+struct is_recursive : std::bool_constant<false> {};
 
 template <class Type>
 constexpr auto is_recursive_v = is_recursive<Type>::value;
 
 template <>
-struct is_recursive<boost::recursive_variant_> {
-		constexpr static auto value = true;
-};
+struct is_recursive<boost::recursive_variant_> : std::bool_constant<true> {};
 
 template <template <class...> class Type, class... Types>
-struct is_recursive<Type<Types...>> {
-		constexpr static auto value = std::disjunction_v<is_recursive<Types>...>;
-};
+struct is_recursive<Type<Types...>>
+		: std::bool_constant<std::disjunction_v<is_recursive<Types>...>> {};
 
 // If the dictionary is not recursive then it will own its own entry acceptor. Otherwise it accepts
 // a reference to an existing one.
 template <class Type>
-struct recursive {};
+struct recursive;
 
 template <class Meta, class Type>
 struct accept<Meta, recursive<Type>> : accept_next<Meta, Type> {

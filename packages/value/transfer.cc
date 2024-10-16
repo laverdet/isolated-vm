@@ -19,7 +19,7 @@ struct accept_pass {
 // `Meta` for `accept` which throws on unknown values
 struct accept_with_throw {
 		template <class Type>
-		struct accept_throw {};
+		struct accept_throw;
 		template <class Type>
 		using wrap = accept_throw<Type>;
 };
@@ -27,8 +27,7 @@ struct accept_with_throw {
 // Adds fallback acceptor which throws on unknown values
 template <class Meta, class Type>
 struct accept<Meta, accept_with_throw::accept_throw<Type>>
-		: accept<Meta, std::decay_t<Type>>,
-			accept_with_throw::accept_throw<std::decay_t<Type>> {
+		: accept<Meta, std::decay_t<Type>> {
 	private:
 		using accept_type = accept<Meta, std::decay_t<Type>>;
 

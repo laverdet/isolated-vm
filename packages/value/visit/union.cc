@@ -30,9 +30,7 @@ struct alternative {
 // Suppress `std::variant` visitor
 template <class... Types>
 	requires std::destructible<union_of<std::variant<Types...>>>
-struct is_variant<Types...> {
-		constexpr static bool value = false;
-};
+struct is_variant<Types...> : std::bool_constant<false> {};
 
 // Acceptor for discriminated union/variant types
 template <class Meta, class... Types>

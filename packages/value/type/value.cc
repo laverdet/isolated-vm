@@ -1,5 +1,6 @@
 module;
 #include <boost/variant.hpp>
+#include <cstdint>
 #include <string>
 #include <variant>
 export module ivm.value:value;
