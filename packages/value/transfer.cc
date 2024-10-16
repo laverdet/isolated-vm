@@ -29,7 +29,19 @@ template <class Meta, class Type>
 struct accept<Meta, accept_with_throw::accept_throw<Type>>
 		: accept<Meta, std::decay_t<Type>>,
 			accept_with_throw::accept_throw<std::decay_t<Type>> {
-		using accept<Meta, std::decay_t<Type>>::accept;
+	private:
+		using accept_type = accept<Meta, std::decay_t<Type>>;
+
+	public:
+		constexpr accept() :
+				accept_type{std::invoke([ & ]() {
+					if constexpr (std::is_constructible_v<accept_type, int, accept>) {
+						return accept_type{0, *this};
+					} else {
+						return accept_type{};
+					}
+				})} {}
+
 		using accept<Meta, std::decay_t<Type>>::operator();
 		constexpr auto operator()(value_tag /*tag*/, auto&& /*value*/) const -> Type {
 			throw std::logic_error("Type error");

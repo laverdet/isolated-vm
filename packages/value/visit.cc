@@ -30,16 +30,4 @@ struct accept : accept<void, Type> {
 export template <class Meta, class Type>
 using accept_next = accept<Meta, typename Meta::template wrap<Type>>;
 
-// Convert an existing acceptor into a new one which accepts a different type
-export template <class Next, class Meta, class Type>
-constexpr auto make_accept(const accept<Meta, Type>& accept_from) {
-	using accept_type = accept<Meta, typename Meta::template wrap<Next>>;
-	if constexpr (std::constructible_from<accept_type, const accept<Meta, Type>&>) {
-		return accept_type{accept_from};
-	} else {
-		static_assert(std::is_default_constructible_v<accept_type>);
-		return accept_type{};
-	}
-}
-
 } // namespace ivm::value

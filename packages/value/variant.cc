@@ -1,6 +1,7 @@
 module;
 #include <boost/variant.hpp>
 #include <string>
+#include <type_traits>
 #include <variant>
 export module ivm.value:variant;
 import :date;
@@ -72,6 +73,20 @@ struct accept<Meta, std::variant<Types...>>
 template <class Meta, class Variant, class... Types>
 struct accept<Meta, variant_helper<Variant, Types...>>
 		: accept<Meta, covariant<substitute_recursive<Variant, Types>, Variant>>... {
+		constexpr accept()
+			requires std::conjunction_v<
+				std::is_default_constructible<
+					accept<Meta, covariant<substitute_recursive<Variant, Types>, Variant>>...>> {}
+		constexpr accept(int dummy, const auto& acceptor) :
+				// Pass reference forward for recursive acceptors
+				accept<Meta, covariant<substitute_recursive<Variant, Types>, Variant>>{std::invoke([ & ]() {
+					using accept_type = accept<Meta, covariant<substitute_recursive<Variant, Types>, Variant>>;
+					if constexpr (std::is_default_constructible_v<accept_type>) {
+						return accept_type{};
+					} else {
+						return accept_type{dummy, acceptor};
+					}
+				})}... {}
 		using accept<Meta, covariant<substitute_recursive<Variant, Types>, Variant>>::operator()...;
 };
 
