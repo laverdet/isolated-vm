@@ -4,19 +4,19 @@ target_sources(ivm_value
 		assertions.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
-		dictionary.cc
-		enum.cc
-		object.cc
-		primitive.cc
 		tag.cc
 		transfer.cc
-		tuple.cc
 		type/date.cc
 		type/dictionary.cc
 		type/value.cc
-		union.cc
-		variant.cc
 		visit.cc
+		visit/dictionary.cc
+		visit/enum.cc
+		visit/object.cc
+		visit/primitive.cc
+		visit/tuple.cc
+		visit/union.cc
+		visit/variant.cc
 )
 target_link_libraries(ivm_value PRIVATE
 	Boost::boost
