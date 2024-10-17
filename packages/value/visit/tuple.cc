@@ -15,14 +15,14 @@ struct accept<Meta, std::tuple<Types...>> : accept<Meta, void> {
 	public:
 		using accept<Meta, void>::accept;
 
-		constexpr auto operator()(vector_tag /*tag*/, auto&& value) const -> std::tuple<Types...> {
+		constexpr auto operator()(vector_tag /*tag*/, auto&& value, const auto& visit) const -> std::tuple<Types...> {
 			auto it = std::begin(value);
 			auto end = std::end(value);
 			auto next = [ & ](const auto& accept) constexpr -> decltype(auto) {
 				if (it == end) {
 					return accept(undefined_tag{}, std::monostate{});
 				} else {
-					return invoke_visit(*it++, accept);
+					return visit(*it++, accept);
 				}
 			};
 			return std::invoke(

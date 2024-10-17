@@ -40,10 +40,10 @@ template <class Meta, class Type, class Result>
 struct accept<Meta, covariant<Type, Result>> : accept<Meta, Type> {
 		using accept<Meta, Type>::accept;
 
-		constexpr auto operator()(auto_tag auto tag, auto&& value) const -> Result
-			requires std::is_invocable_v<accept<Meta, Type>, decltype(tag), decltype(value)> {
+		constexpr auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> Result
+			requires std::is_invocable_v<accept<Meta, Type>, decltype(tag), decltype(value), decltype(rest)...> {
 			const accept<Meta, Type>& parent = *this;
-			return parent(tag, std::forward<decltype(value)>(value));
+			return parent(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
 		}
 };
 
@@ -94,6 +94,9 @@ struct accept<Meta, recursive_variant<First, Rest...>>
 template <class... Types>
 	requires is_variant_v<Types...>
 struct visit<std::variant<Types...>> : visit<Types>... {
+		constexpr visit() :
+				visit<Types>{0, *this}... {}
+
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			return std::visit(
 				[ & ]<class Value>(Value&& value) constexpr {
@@ -108,6 +111,9 @@ struct visit<std::variant<Types...>> : visit<Types>... {
 // Visiting a `boost::variant` visits the underlying members
 template <class Variant, class... Types>
 struct visit<variant_of<Variant, Types...>> : visit<substitute_recursive<Variant, Types>>... {
+		constexpr visit(int dummy, const auto& visit_) :
+				visit<substitute_recursive<Variant, Types>>{dummy, visit_}... {}
+
 		auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			return boost::apply_visitor(
 				[ & ]<class Value>(Value&& value) {
@@ -124,6 +130,8 @@ template <class First, class... Rest>
 struct visit<recursive_variant<First, Rest...>>
 		: visit<variant_of<recursive_variant<First, Rest...>, First, Rest...>> {
 		using visit<variant_of<recursive_variant<First, Rest...>, First, Rest...>>::visit;
+		constexpr visit() :
+				visit<variant_of<recursive_variant<First, Rest...>, First, Rest...>>{0, *this} {}
 };
 
 } // namespace ivm::value

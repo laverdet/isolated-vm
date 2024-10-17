@@ -96,10 +96,6 @@ struct visit<v8::Local<v8::Value>>
 		visit(v8::Isolate* isolate, v8::Local<v8::Context> context) :
 				isolate_{isolate},
 				context_{context} {}
-		// TODO: Remove this ASAP
-		visit() :
-				isolate_{v8::Isolate::GetCurrent()},
-				context_{isolate_->GetCurrentContext()} {}
 
 		auto operator()(v8::Local<v8::String> value, const auto& accept) const -> decltype(auto) {
 			auto string = iv8::handle{value.As<iv8::string>(), {isolate_, context_}};
@@ -112,8 +108,9 @@ struct visit<v8::Local<v8::Value>>
 
 		auto operator()(v8::Local<v8::Value> value, const auto& accept) const -> decltype(auto) {
 			if (value->IsObject()) {
+				auto visit_entry = std::pair<const visit&, const visit&>{*this, *this};
 				if (value->IsArray()) {
-					return accept(list_tag{}, iv8::object_handle{value.As<iv8::object>(), {isolate_, context_}});
+					return accept(list_tag{}, iv8::object_handle{value.As<iv8::object>(), {isolate_, context_}}, visit_entry);
 				} else if (value->IsExternal()) {
 					return (*this)(value.As<v8::External>(), accept);
 				} else if (value->IsDate()) {
@@ -121,7 +118,7 @@ struct visit<v8::Local<v8::Value>>
 				} else if (value->IsPromise()) {
 					return accept(promise_tag{}, value);
 				}
-				return accept(dictionary_tag{}, iv8::object_handle{value.As<iv8::object>(), {isolate_, context_}});
+				return accept(dictionary_tag{}, iv8::object_handle{value.As<iv8::object>(), {isolate_, context_}}, visit_entry);
 			} else if (value->IsNullOrUndefined()) {
 				if (value->IsNull()) {
 					return accept(null_tag{}, std::nullptr_t{});

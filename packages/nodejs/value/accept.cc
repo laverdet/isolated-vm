@@ -57,23 +57,23 @@ struct accept<void, Napi::Value> {
 			return Napi::Date::New(env, value.time_since_epoch().count());
 		}
 
-		auto operator()(list_tag /*tag*/, auto&& list) const -> Napi::Value {
+		auto operator()(list_tag /*tag*/, auto&& list, const auto& visit) const -> Napi::Value {
 			auto array = Napi::Array::New(env);
 			for (auto&& [ key, value ] : list) {
 				array.Set(
-					invoke_visit(std::forward<decltype(key)>(key), *this),
-					invoke_visit(std::forward<decltype(value)>(value), *this)
+					visit.first(std::forward<decltype(key)>(key), *this),
+					visit.second(std::forward<decltype(value)>(value), *this)
 				);
 			}
 			return array;
 		}
 
-		auto operator()(dictionary_tag /*tag*/, auto&& dictionary) const -> Napi::Value {
+		auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> Napi::Value {
 			auto object = Napi::Object::New(env);
 			for (auto&& [ key, value ] : dictionary) {
 				object.Set(
-					invoke_visit(std::forward<decltype(key)>(key), *this),
-					invoke_visit(std::forward<decltype(value)>(value), *this)
+					visit.first(std::forward<decltype(key)>(key), *this),
+					visit.second(std::forward<decltype(value)>(value), *this)
 				);
 			}
 			return object;

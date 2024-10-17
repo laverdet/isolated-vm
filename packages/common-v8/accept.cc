@@ -101,26 +101,26 @@ struct accept<void, v8::Local<v8::Value>> : accept<void, v8::Local<v8::Data>> {
 			return iv8::date::make(context_, std::forward<decltype(value)>(value));
 		}
 
-		auto operator()(list_tag /*tag*/, auto&& list) const -> v8::Local<v8::Value> {
+		auto operator()(list_tag /*tag*/, auto&& list, const auto& visit) const -> v8::Local<v8::Value> {
 			auto array = v8::Array::New(isolate_);
 			for (auto&& [ key, value ] : list) {
 				auto result = array->Set(
 					context_,
-					invoke_visit(std::forward<decltype(key)>(key), *this),
-					invoke_visit(std::forward<decltype(value)>(value), *this)
+					visit.first(std::forward<decltype(key)>(key), *this),
+					visit.second(std::forward<decltype(value)>(value), *this)
 				);
 				result.Check();
 			}
 			return array;
 		}
 
-		auto operator()(dictionary_tag /*tag*/, auto&& dictionary) const -> v8::Local<v8::Value> {
+		auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> v8::Local<v8::Value> {
 			auto object = v8::Object::New(isolate_);
 			for (auto&& [ key, value ] : dictionary) {
 				auto result = object->Set(
 					context_,
-					invoke_visit(std::forward<decltype(key)>(key), *this),
-					invoke_visit(std::forward<decltype(value)>(value), *this)
+					visit.first(std::forward<decltype(key)>(key), *this),
+					visit.second(std::forward<decltype(value)>(value), *this)
 				);
 				result.Check();
 			}
@@ -136,9 +136,9 @@ struct accept<Meta, v8::MaybeLocal<Type>> : accept<Meta, v8::Local<Type>> {
 		using accept<Meta, v8::Local<Type>>::accept;
 		using accept_type = accept<Meta, v8::Local<Type>>;
 
-		constexpr auto operator()(auto_tag auto tag, auto&& value) const -> v8::MaybeLocal<Type>
-			requires std::invocable<accept_type, decltype(tag), decltype(value)> {
-			return {accept_type::operator()(tag, std::forward<decltype(value)>(value))};
+		auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> v8::MaybeLocal<Type>
+			requires std::invocable<accept_type, decltype(tag), decltype(value), decltype(rest)...> {
+			return {accept_type::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...)};
 		}
 
 		auto operator()(undefined_tag /*tag*/, auto&& /*undefined*/) const -> v8::MaybeLocal<Type> {

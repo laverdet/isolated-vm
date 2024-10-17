@@ -14,11 +14,13 @@ namespace ivm::value {
 export template <class Type>
 struct visit;
 
-// TODO: remove
-export template <class Type>
-constexpr auto invoke_visit(Type&& value, const auto& accept) -> decltype(auto) {
-	return visit<std::decay_t<Type>>{}(std::forward<decltype(value)>(value), accept);
-}
+// Base specialization for stateless visitors.
+template <>
+struct visit<void> {
+		visit() = default;
+		// Recursive visitor constructor
+		constexpr visit(int /*dummy*/, const auto& /*visit*/) {}
+};
 
 // `accept` is the target of `visit`
 export template <class Meta, class Type>

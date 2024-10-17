@@ -190,18 +190,19 @@ struct accept<Meta, Type> : accept<Meta, void> {
 		using descriptor_type = object_properties<Type>;
 		using accept<Meta, void>::accept;
 
-		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary) const -> Type {
+		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> Type {
 			using range_type = decltype(util::into_range(dictionary));
 			using value_type = std::ranges::range_value_t<range_type>::second_type;
+			using visit_type = std::decay_t<decltype(visit)>;
 			hash_type checksum{};
 			Type subject;
 			if constexpr (std::tuple_size_v<decltype(descriptor_type::properties)> != 0) {
-				auto [ expected_checksum, property_map ] = make_property_map<value_type>();
+				auto [ expected_checksum, property_map ] = make_property_map<value_type, visit_type>();
 				for (auto&& [ key, value ] : util::into_range(dictionary)) {
-					auto descriptor = property_map.get(invoke_visit(std::forward<decltype(key)>(key), first));
+					auto descriptor = property_map.get(visit.first(std::forward<decltype(key)>(key), first));
 					if (descriptor != nullptr) {
 						checksum ^= descriptor->first;
-						(descriptor->second)(*this, subject, std::forward<decltype(value)>(value));
+						(descriptor->second)(*this, subject, std::forward<decltype(value)>(value), visit);
 					}
 				}
 				if (checksum != expected_checksum) {
@@ -212,20 +213,20 @@ struct accept<Meta, Type> : accept<Meta, void> {
 		}
 
 		// Returns: `std::pair{checksum, std::tuple{optional_hash, property_hash, acceptor}}`
-		template <class Value>
+		template <class Value, class Visit>
 		consteval static auto make_property_map() {
-			using acceptor_type = void (*)(const accept&, Type&, const Value&);
+			using acceptor_type = void (*)(const accept&, Type&, const Value&, const Visit&);
 
 			// Make acceptor map w/ property information
 			auto initial_property_map = util::prehashed_string_map{std::invoke(
 				[]<size_t... Index>(std::index_sequence<Index...> /*indices*/) consteval {
 					return std::array{std::invoke(
 						[](const auto& property) {
-							acceptor_type acceptor = [](const accept& self, Type& subject, const Value& value) -> void {
+							acceptor_type acceptor = [](const accept& self, Type& subject, const Value& value, const Visit& visit) -> void {
 								using delegate_type = member_t<std::decay_t<decltype(property)>>;
 								delegate_type delegate{};
 								const auto& accept = std::get<Index>(self.second);
-								delegate.set(subject, invoke_visit(std::move(value), accept));
+								delegate.set(subject, visit.second(std::move(value), accept));
 							};
 							return std::pair{property.name, std::pair{static_cast<const property_name&>(property), acceptor}};
 						},

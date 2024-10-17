@@ -36,9 +36,6 @@ struct visit<Napi::Value> : visit<v8::Local<v8::Value>> {
 				visit<v8::Local<v8::Value>>{isolate, context} {}
 		visit(v8::Isolate* isolate) :
 				visit{isolate, isolate->GetCurrentContext()} {}
-		// TODO: remove ASAP!
-		visit() :
-				visit{v8::Isolate::GetCurrent()} {}
 
 		auto operator()(Napi::Value value, const auto& accept) const -> decltype(auto) {
 			switch (value.Type()) {
@@ -51,14 +48,17 @@ struct visit<Napi::Value> : visit<v8::Local<v8::Value>> {
 				case napi_string:
 					return (*this)(napi_to_v8(value).As<v8::String>(), accept);
 				case napi_object:
-					if (value.IsArray()) {
-						return accept(list_tag{}, ivm::napi::object{value.As<Napi::Object>()});
-					} else if (value.IsDate()) {
-						return (*this)(napi_to_v8(value).As<v8::Date>(), accept);
-					} else if (value.IsPromise()) {
-						return accept(promise_tag{}, value);
+					{
+						auto visit_entry = std::pair<const visit&, const visit&>{*this, *this};
+						if (value.IsArray()) {
+							return accept(list_tag{}, ivm::napi::object{value.As<Napi::Object>()}, visit_entry);
+						} else if (value.IsDate()) {
+							return (*this)(napi_to_v8(value).As<v8::Date>(), accept);
+						} else if (value.IsPromise()) {
+							return accept(promise_tag{}, value);
+						}
+						return accept(dictionary_tag{}, ivm::napi::object{value.As<Napi::Object>()}, visit_entry);
 					}
-					return accept(dictionary_tag{}, ivm::napi::object{value.As<Napi::Object>()});
 				case napi_external:
 					return (*this)(napi_to_v8(value).As<v8::External>(), accept);
 				case napi_symbol:
@@ -73,7 +73,7 @@ struct visit<Napi::Value> : visit<v8::Local<v8::Value>> {
 		}
 
 		auto operator()(const Napi::CallbackInfo& info, const auto& accept) const -> decltype(auto) {
-			return accept(vector_tag{}, ivm::napi::arguments{info});
+			return accept(vector_tag{}, ivm::napi::arguments{info}, *this);
 		}
 };
 

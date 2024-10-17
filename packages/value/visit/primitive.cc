@@ -121,9 +121,9 @@ struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
 		using accept_type = accept<Meta, Type>;
 		using accept_type::accept;
 
-		constexpr auto operator()(auto_tag auto tag, auto&& value) const -> std::optional<Type>
-			requires std::invocable<accept_type, decltype(tag), decltype(value)> {
-			return {accept_type::operator()(tag, std::forward<decltype(value)>(value))};
+		constexpr auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> std::optional<Type>
+			requires std::invocable<accept_type, decltype(tag), decltype(value), decltype(rest)...> {
+			return {accept_type::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...)};
 		}
 
 		constexpr auto operator()(undefined_tag /*tag*/, auto&& /*value*/) const -> std::optional<Type> {
@@ -134,7 +134,8 @@ struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
 // Tagged primitive types
 template <class Type>
 	requires std::negation_v<std::is_same<tag_for_t<Type>, void>>
-struct visit<Type> {
+struct visit<Type> : visit<void> {
+		using visit<void>::visit;
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			return accept(tag_for_t<Type>{}, std::forward<decltype(value)>(value));
 		}
