@@ -2,6 +2,7 @@ module;
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <type_traits>
 #include <variant>
 export module ivm.value:primitive;
 import :date;
@@ -12,76 +13,52 @@ namespace ivm::value {
 
 // `undefined`
 template <>
-struct tag_for<std::monostate> {
-		using type = undefined_tag;
-};
+struct tag_for<std::monostate> : std::type_identity<undefined_tag> {};
 
 // `null`
 template <>
-struct tag_for<std::nullptr_t> {
-		using type = null_tag;
-};
+struct tag_for<std::nullptr_t> : std::type_identity<null_tag> {};
 
 // `boolean`
 template <>
-struct tag_for<bool> {
-		using type = boolean_tag;
-};
+struct tag_for<bool> : std::type_identity<boolean_tag> {};
 
 // `number`
 export using number_t = std::variant<int32_t, uint32_t, double>;
 
 template <>
-struct tag_for<int32_t> {
-		using type = number_tag_of<int32_t>;
-};
+struct tag_for<int32_t> : std::type_identity<number_tag_of<int32_t>> {};
 
 template <>
-struct tag_for<uint32_t> {
-		using type = number_tag_of<uint32_t>;
-};
+struct tag_for<uint32_t> : std::type_identity<number_tag_of<uint32_t>> {};
 
 template <>
-struct tag_for<double> {
-		using type = number_tag_of<double>;
-};
+struct tag_for<double> : std::type_identity<number_tag_of<double>> {};
 
 // `bigint`
 export using bigint_t = std::variant<int64_t, uint64_t>;
 
 template <>
-struct tag_for<int64_t> {
-		using type = number_tag_of<int64_t>;
-};
+struct tag_for<int64_t> : std::type_identity<number_tag_of<int64_t>> {};
 
 template <>
-struct tag_for<uint64_t> {
-		using type = number_tag_of<uint64_t>;
-};
+struct tag_for<uint64_t> : std::type_identity<number_tag_of<uint64_t>> {};
 
 // `date`
 template <>
-struct tag_for<js_clock::time_point> {
-		using type = date_tag;
-};
+struct tag_for<js_clock::time_point> : std::type_identity<date_tag> {};
 
 // `string`
 export using string_t = std::variant<std::string, std::u16string>;
 
 template <>
-struct tag_for<std::string> {
-		using type = string_tag_of<std::string>;
-};
+struct tag_for<std::string> : std::type_identity<string_tag_of<std::string>> {};
 
 template <>
-struct tag_for<std::string_view> {
-		using type = string_tag_of<std::string_view>;
-};
+struct tag_for<std::string_view> : std::type_identity<string_tag_of<std::string_view>> {};
 
 template <>
-struct tag_for<std::u16string> {
-		using type = string_tag_of<std::u16string>;
-};
+struct tag_for<std::u16string> : std::type_identity<string_tag_of<std::u16string>> {};
 
 // Default acceptor just forwards the given value directly to the underlying type's constructor
 template <class Meta, class Type>

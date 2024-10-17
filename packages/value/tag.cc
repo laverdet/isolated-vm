@@ -1,5 +1,6 @@
 module;
 #include <concepts>
+#include <type_traits>
 export module ivm.value:tag;
 
 export namespace ivm::value {
@@ -11,9 +12,7 @@ struct tag_for;
 
 // Specialized for automatic visitors which can return castable values.
 template <class Tag>
-struct con_tag_for {
-		using type = Tag;
-};
+struct con_tag_for : std::type_identity<Tag> {};
 
 struct value_tag {};
 struct primitive_tag : value_tag {};
@@ -31,17 +30,13 @@ struct number_tag : key_tag {};
 template <class Type>
 struct number_tag_of : number_tag {};
 template <class Tag>
-struct con_tag_for<number_tag_of<Tag>> {
-		using type = number_tag;
-};
+struct con_tag_for<number_tag_of<Tag>> : std::type_identity<number_tag> {};
 
 struct string_tag : key_tag {};
 template <class Type>
 struct string_tag_of : string_tag {};
 template <class Tag>
-struct con_tag_for<string_tag_of<Tag>> {
-		using type = string_tag;
-};
+struct con_tag_for<string_tag_of<Tag>> : std::type_identity<string_tag> {};
 
 struct bigint_tag : value_tag {};
 template <class Type>
