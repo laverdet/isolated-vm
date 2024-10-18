@@ -3,6 +3,7 @@ module;
 // nb: Symbol visibility hack
 #include <__iterator/wrap_iter.h>
 #endif
+#include <cstddef>
 #include <utility>
 export module ivm.iv8:accept;
 import :date;
@@ -12,12 +13,34 @@ import v8;
 
 namespace ivm::value {
 
+// Object key lookup for v8 values
+template <class Meta, auto Key>
+struct visit_key<Meta, Key, v8::Local<v8::Value>> {
+	public:
+		auto operator()(const auto& object, const auto& visit, const auto& accept) const -> decltype(auto) {
+			return visit.second(object.get(Key), accept);
+		}
+};
+
 // Base class for primitive acceptors. Not really an acceptor.
 template <>
 struct accept<void, v8::Local<v8::Data>> {
+	public:
 		accept() = delete;
 		explicit accept(v8::Isolate* isolate) :
 				isolate_{isolate} {}
+
+		auto isolate() const {
+			return isolate_;
+		}
+
+		auto operator()(undefined_tag /*tag*/, auto&& /*undefined*/) const -> v8::Local<v8::Value> {
+			return v8::Undefined(isolate());
+		}
+
+		auto operator()(null_tag /*tag*/, auto&& /*null*/) const -> v8::Local<v8::Value> {
+			return v8::Null(isolate());
+		}
 
 		auto operator()(boolean_tag /*tag*/, auto&& value) const -> v8::Local<v8::Boolean> {
 			return v8::Boolean::New(isolate_, std::forward<decltype(value)>(value));
@@ -32,6 +55,7 @@ struct accept<void, v8::Local<v8::Data>> {
 			return iv8::string::make(isolate_, std::forward<decltype(value)>(value));
 		}
 
+	private:
 		v8::Isolate* isolate_;
 };
 
@@ -69,30 +93,18 @@ struct accept<void, v8::Local<v8::String>> : accept<void, v8::Local<v8::Data>> {
 // Generic acceptor for most values
 template <>
 struct accept<void, v8::Local<v8::Value>> : accept<void, v8::Local<v8::Data>> {
+	public:
 		explicit accept(v8::Isolate* isolate, v8::Local<v8::Context> context) :
 				accept<void, v8::Local<v8::Data>>{isolate},
 				context_{context} {}
 
-		auto operator()(undefined_tag /*tag*/, auto&& /*undefined*/) const -> v8::Local<v8::Value> {
-			return v8::Undefined(isolate_);
+		auto context() const {
+			return context_;
 		}
 
-		auto operator()(null_tag /*tag*/, auto&& /*null*/) const -> v8::Local<v8::Value> {
-			return v8::Null(isolate_);
-		}
-
-		auto operator()(boolean_tag tag, auto&& value) const -> v8::Local<v8::Value> {
-			const accept<void, v8::Local<v8::Data>>& accept = *this;
-			return accept(tag, std::forward<decltype(value)>(value));
-		}
-
-		template <class Numeric>
-		auto operator()(number_tag_of<Numeric> tag, auto&& value) const -> v8::Local<v8::Value> {
-			const accept<void, v8::Local<v8::Data>>& accept = *this;
-			return accept(tag, std::forward<decltype(value)>(value));
-		}
-
-		auto operator()(string_tag tag, auto&& value) const -> v8::Local<v8::Value> {
+		auto operator()(auto_tag auto tag, auto&& value) const -> v8::Local<v8::Value>
+			requires std::invocable<accept<void, v8::Local<v8::Data>>, decltype(tag), decltype(value)>
+		{
 			const accept<void, v8::Local<v8::Data>>& accept = *this;
 			return accept(tag, std::forward<decltype(value)>(value));
 		}
@@ -102,7 +114,7 @@ struct accept<void, v8::Local<v8::Value>> : accept<void, v8::Local<v8::Data>> {
 		}
 
 		auto operator()(list_tag /*tag*/, auto&& list, const auto& visit) const -> v8::Local<v8::Value> {
-			auto array = v8::Array::New(isolate_);
+			auto array = v8::Array::New(isolate());
 			for (auto&& [ key, value ] : list) {
 				auto result = array->Set(
 					context_,
@@ -115,7 +127,7 @@ struct accept<void, v8::Local<v8::Value>> : accept<void, v8::Local<v8::Data>> {
 		}
 
 		auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> v8::Local<v8::Value> {
-			auto object = v8::Object::New(isolate_);
+			auto object = v8::Object::New(isolate());
 			for (auto&& [ key, value ] : dictionary) {
 				auto result = object->Set(
 					context_,
@@ -127,6 +139,7 @@ struct accept<void, v8::Local<v8::Value>> : accept<void, v8::Local<v8::Data>> {
 			return object;
 		}
 
+	private:
 		v8::Local<v8::Context> context_;
 };
 

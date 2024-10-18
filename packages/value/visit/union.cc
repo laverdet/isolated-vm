@@ -36,13 +36,14 @@ struct is_variant<Types...> : std::bool_constant<false> {};
 template <class Meta, class... Types>
 	requires std::negation_v<is_variant<Types...>>
 struct accept<Meta, std::variant<Types...>> : accept<Meta, void> {
+	public:
 		using accepted_type = std::variant<Types...>;
 		using descriptor_type = union_of<accepted_type>;
 		using accept<Meta, void>::accept;
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> accepted_type {
 			auto alternatives = make_discriminant_map<decltype(dictionary), decltype(visit)>();
-			auto discriminant_value = visit.first(dictionary.get(descriptor_type::discriminant), first);
+			auto discriminant_value = visit_discriminant(dictionary, visit, accept_string);
 			auto accept_alternative = alternatives.get(discriminant_value);
 			if (accept_alternative == nullptr) {
 				throw std::logic_error(std::format("Unknown discriminant: {}", discriminant_value));
@@ -71,8 +72,9 @@ struct accept<Meta, std::variant<Types...>> : accept<Meta, void> {
 		}
 
 	private:
-		accept_next<Meta, std::string> first;
+		accept_next<Meta, std::string> accept_string;
 		std::tuple<accept_next<Meta, Types>...> second;
+		visit_key<Meta, util::string_literal{descriptor_type::discriminant}> visit_discriminant;
 };
 
 } // namespace ivm::value

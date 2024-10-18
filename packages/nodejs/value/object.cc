@@ -19,7 +19,7 @@ auto object::into_range() const -> range_type {
 	return keys_ | std::views::transform(iterator_transform{object_});
 }
 
-auto object::get(std::string_view key) -> Napi::Value {
+auto object::get(std::string_view key) const -> Napi::Value {
 	return object_.Get(std::string{key});
 }
 

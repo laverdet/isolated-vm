@@ -129,7 +129,7 @@ struct object_properties<make_agent_options::clock_system> {
 
 template <>
 struct union_of<make_agent_options::clock_type> {
-		constexpr static auto discriminant = "type";
+		constexpr static auto& discriminant = "type";
 		constexpr static auto alternatives = std::tuple{
 			alternative<make_agent_options::clock_deterministic>{"deterministic"},
 			alternative<make_agent_options::clock_microtask>{"microtask"},

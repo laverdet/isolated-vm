@@ -3,6 +3,7 @@ module;
 #include <vector>
 export module ivm.value:dictionary;
 import ivm.utility;
+import :tag;
 
 namespace ivm::value {
 
@@ -15,6 +16,8 @@ class vector_of {
 		using iterator = container_type::iterator;
 
 		vector_of() = default;
+		consteval explicit vector_of(std::initializer_list<Value> list) :
+				values{list.begin(), list.end()} {}
 		constexpr explicit vector_of(std::ranges::range auto&& range) :
 				values{std::ranges::begin(range), std::ranges::end(range)} {}
 
@@ -24,6 +27,9 @@ class vector_of {
 	private:
 		container_type values;
 };
+
+template <class Key, class Value>
+vector_of(std::initializer_list<std::pair<Key, Value>>) -> vector_of<dictionary_tag, std::pair<Key, Value>>;
 
 static_assert(std::ranges::range<vector_of<void, int>>);
 static_assert(std::random_access_iterator<vector_of<void, int>::const_iterator>);

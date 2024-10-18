@@ -9,6 +9,25 @@ import :visit;
 
 namespace ivm::value {
 
+// Object key lookup for primitive dictionary variants. This should generally only be used for
+// testing, since the subject is basically a C++ heap JSON payload.
+template <class Meta, auto Key>
+struct visit_key<Meta, Key, void> {
+	public:
+		constexpr auto operator()(const auto& dictionary, const auto& visit, const auto& accept) const -> decltype(auto) {
+			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) {
+				return visit.first(entry.first, first) == Key;
+			});
+			if (it == dictionary.end()) {
+				return accept(undefined_tag{}, std::monostate{});
+			}
+			return visit.second(it->second, accept);
+		}
+
+	private:
+		accept_next<Meta, std::string> first;
+};
+
 // Look for `boost::recursive_variant_` to determine if this container is recursive
 template <class Type>
 struct is_recursive : std::bool_constant<false> {};

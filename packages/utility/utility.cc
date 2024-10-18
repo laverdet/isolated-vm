@@ -26,6 +26,19 @@ export constexpr auto into_range(auto&& range) -> decltype(auto)
 	return range.into_range();
 }
 
+// Structural string literal which may be used as a template parameter
+export template <size_t Length>
+struct string_literal {
+		explicit consteval string_literal(const char (&value_)[ Length ]) {
+			std::copy_n(static_cast<const char*>(value_), Length, static_cast<char*>(value));
+		}
+
+		constexpr operator std::string_view() const { return value; } // NOLINT(google-explicit-constructor)
+		constexpr auto operator==(std::string_view string) const -> bool { return value == string; }
+
+		char value[ Length ]{};
+};
+
 // Explicitly move-constructs a new object from an existing rvalue reference. Used to immediately
 // destroy a resource-consuming object after the result scope exists.
 // Similar to `std::exchange` but for objects which are not move-assignable

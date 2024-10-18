@@ -42,14 +42,16 @@ struct accept<Meta, accept_with_throw::accept_throw<Type>>
 };
 
 // Transfer a JavaScript value from one domain to another
-template <class Type, class Meta>
+template <class Type, class Wrap>
 constexpr auto transfer_with(
 	auto&& value,
 	auto&& visit_args,
 	auto&& accept_args
 ) -> decltype(auto) {
+	using from_type = std::decay_t<decltype(value)>;
+	using accept_meta = std::tuple<Wrap, from_type, Type>;
 	auto visitor = std::make_from_tuple<visit<std::decay_t<decltype(value)>>>(std::forward<decltype(visit_args)>(visit_args));
-	auto acceptor = std::make_from_tuple<accept<Meta, typename Meta::template wrap<Type>>>(std::forward<decltype(accept_args)>(accept_args));
+	auto acceptor = std::make_from_tuple<accept<accept_meta, typename Wrap::template wrap<Type>>>(std::forward<decltype(accept_args)>(accept_args));
 	return visitor(std::forward<decltype(value)>(value), acceptor);
 }
 

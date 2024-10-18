@@ -27,6 +27,13 @@ auto napi_to_v8(napi_value value) -> v8::Local<v8::Value> {
 
 namespace ivm::value {
 
+// Enable transferee context
+template <>
+struct transferee_subject<Napi::Value> : std::type_identity<Napi::Value> {};
+
+template <>
+struct transferee_subject<Napi::CallbackInfo> : std::type_identity<Napi::Value> {};
+
 // Delegate Napi::Value to various visitors
 template <>
 struct visit<Napi::Value> : visit<v8::Local<v8::Value>> {

@@ -13,26 +13,6 @@ using namespace std::literals;
 
 namespace ivm::value {
 
-// Array of pairs is a dictionary for testing
-template <class Type>
-struct static_dictionary : dictionary<dictionary_tag, std::string, Type> {
-		constexpr static_dictionary(std::initializer_list<std::pair<std::string, Type>> list) :
-				dictionary<dictionary_tag, std::string, Type>{list} {}
-
-		constexpr auto get(std::string_view string) const {
-			auto it = std::find_if(this->begin(), this->end(), [ string ](auto&& entry) constexpr {
-				return entry.first == string;
-			});
-			if (it == this->end()) {
-				std::unreachable();
-			}
-			return it->second;
-		}
-};
-
-template <class Type>
-struct visit<static_dictionary<Type>> : visit<dictionary<dictionary_tag, std::string, Type>> {};
-
 // Narrowing sanity check. We want to narrow in non-variant cases because if the visitor has a
 // string and the acceptor wants a string_view, that should be fine. Or if v8 gives us a uint32_t
 // and we want an int32_t then that is probably fine.
@@ -105,14 +85,14 @@ struct object_properties<object_literal> {
 };
 
 // Non-variant strict version
-constexpr auto object_numeric = transfer_strict<object_literal_one>(
-	static_dictionary{{std::pair{"integer"s, 1}}}
-);
+constexpr auto object_numeric = transfer_strict<object_literal_one>(dictionary{
+	{std::pair{"integer"s, 1}}
+});
 static_assert(object_numeric.integer == 1);
 
 // Throwable values
 using object_test_variant = std::variant<int, double, std::string>;
-constexpr auto object_values_test = transfer<object_literal>(static_dictionary{{
+constexpr auto object_values_test = transfer<object_literal>(dictionary{{
 	std::pair{"integer"s, object_test_variant{1}},
 	std::pair{"number"s, object_test_variant{2.0}},
 	std::pair{"string"s, object_test_variant{"hello"}},
@@ -172,19 +152,19 @@ using union_object = std::variant<union_alternative_one, union_alternative_two>;
 
 template <>
 struct union_of<union_object> {
-		constexpr static auto discriminant = "type";
+		constexpr static auto& discriminant = "type";
 		constexpr static auto alternatives = std::tuple{
 			alternative<union_alternative_one>{"one"},
 			alternative<union_alternative_two>{"two"},
 		};
 };
 
-constexpr auto discriminated_with_one = transfer<union_object>(static_dictionary{{
+constexpr auto discriminated_with_one = transfer<union_object>(dictionary{{
 	std::pair{"type"s, "one"s},
 	std::pair{"one"s, "left"s},
 }});
 
-constexpr auto discriminated_with_two = transfer<union_object>(static_dictionary{{
+constexpr auto discriminated_with_two = transfer<union_object>(dictionary{{
 	std::pair{"type"s, "two"s},
 	std::pair{"two"s, "right"s},
 }});
