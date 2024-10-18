@@ -21,6 +21,19 @@ using transferee_subject_t = transferee_subject<Type>::type;
 export template <class Type>
 struct visit;
 
+// Concept for any `visit`
+template <class Type>
+struct is_visit : std::bool_constant<false> {};
+
+template <class Type>
+struct is_visit<visit<Type>> : std::bool_constant<true> {};
+
+template <class Type>
+constexpr bool is_visit_v = is_visit<Type>::value;
+
+export template <class Type>
+concept auto_visit = is_visit_v<Type>;
+
 // Base specialization for stateless visitors.
 template <>
 struct visit<void> {
@@ -31,6 +44,23 @@ struct visit<void> {
 
 // `accept` is the target of `visit`
 export template <class Meta, class Type>
+struct accept;
+
+// Concept for any `accept`
+template <class Type>
+struct is_accept : std::bool_constant<false> {};
+
+template <class Meta, class Type>
+struct is_accept<accept<Meta, Type>> : std::bool_constant<true> {};
+
+template <class Type>
+constexpr bool is_accept_v = is_accept<Type>::value;
+
+export template <class Type>
+concept auto_accept = is_accept_v<Type>;
+
+// Default `accept` swallows `Meta`
+template <class Meta, class Type>
 struct accept : accept<void, Type> {
 		using accept<void, Type>::accept;
 };
@@ -41,7 +71,7 @@ template <>
 struct accept<void, void> {
 		accept() = default;
 		// Recursive acceptor constructor
-		constexpr accept(int /*dummy*/, const auto& /*accept*/) {}
+		constexpr accept(int /*dummy*/, const auto_accept auto& /*accept*/) {}
 };
 
 // `accept` with transfer wrapping

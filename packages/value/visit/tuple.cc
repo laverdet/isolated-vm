@@ -18,7 +18,7 @@ struct accept<Meta, std::tuple<Types...>> : accept<Meta, void> {
 		constexpr auto operator()(vector_tag /*tag*/, auto&& value, const auto& visit) const -> std::tuple<Types...> {
 			auto it = std::begin(value);
 			auto end = std::end(value);
-			auto next = [ & ](const auto& accept) constexpr -> decltype(auto) {
+			auto next = [ & ](const auto_accept auto& accept) constexpr -> decltype(auto) {
 				if (it == end) {
 					return accept(undefined_tag{}, std::monostate{});
 				} else {

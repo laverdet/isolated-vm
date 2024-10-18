@@ -30,7 +30,7 @@ namespace ivm::value {
 // Object key lookup via Napi
 template <class Meta, auto Key>
 struct visit_key<Meta, Key, Napi::Value> {
-		auto operator()(auto&& object, const auto& visit, const auto& accept) const -> decltype(auto) {
+		auto operator()(auto&& object, const auto& visit, const auto_accept auto& accept) const -> decltype(auto) {
 			return visit.second(object.get(Key), accept);
 		}
 };
@@ -89,17 +89,21 @@ struct accept<void, Napi::String> : accept<void, Napi::Env> {
 
 // Generic acceptor for most values
 template <class Meta>
-struct accept<Meta, Napi::Value> : accept<void, Napi::Env> {
-		using accept<void, Napi::Env>::accept;
+struct accept<Meta, Napi::Value> : accept<Meta, Napi::Env> {
+	private:
+		using accept_type = accept<Meta, Napi::Env>;
+
+	public:
+		using accept<Meta, Napi::Env>::accept;
 
 		auto operator()(auto_tag auto tag, auto&& value) const -> Napi::Value
-			requires std::invocable<accept<void, Napi::Env>, decltype(tag), decltype(value)> {
-			const accept<void, Napi::Env>& accept = *this;
+			requires std::invocable<accept_type, decltype(tag), decltype(value)> {
+			const accept_type& accept = *this;
 			return accept(tag, std::forward<decltype(value)>(value));
 		}
 
 		auto operator()(list_tag /*tag*/, auto&& list, const auto& visit) const -> Napi::Value {
-			auto array = Napi::Array::New(env());
+			auto array = Napi::Array::New(this->env());
 			for (auto&& [ key, value ] : list) {
 				array.Set(
 					visit.first(std::forward<decltype(key)>(key), *this),
@@ -110,7 +114,7 @@ struct accept<Meta, Napi::Value> : accept<void, Napi::Env> {
 		}
 
 		auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> Napi::Value {
-			auto object = Napi::Object::New(env());
+			auto object = Napi::Object::New(this->env());
 			for (auto&& [ key, value ] : dictionary) {
 				object.Set(
 					visit.first(std::forward<decltype(key)>(key), *this),

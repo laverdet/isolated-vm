@@ -44,7 +44,7 @@ struct visit<Napi::Value> : visit<v8::Local<v8::Value>> {
 		visit(v8::Isolate* isolate) :
 				visit{isolate, isolate->GetCurrentContext()} {}
 
-		auto operator()(Napi::Value value, const auto& accept) const -> decltype(auto) {
+		auto operator()(Napi::Value value, const auto_accept auto& accept) const -> decltype(auto) {
 			switch (value.Type()) {
 				case napi_boolean:
 					return (*this)(napi_to_v8(value).As<v8::Boolean>(), accept);
@@ -79,7 +79,7 @@ struct visit<Napi::Value> : visit<v8::Local<v8::Value>> {
 			}
 		}
 
-		auto operator()(const Napi::CallbackInfo& info, const auto& accept) const -> decltype(auto) {
+		auto operator()(const Napi::CallbackInfo& info, const auto_accept auto& accept) const -> decltype(auto) {
 			return accept(vector_tag{}, ivm::napi::arguments{info}, *this);
 		}
 };

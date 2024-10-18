@@ -29,7 +29,7 @@ struct transferee_subject<v8::Local<v8::Value>> : std::type_identity<v8::Local<v
 // boolean
 template <>
 struct visit<v8::Local<v8::Boolean>> {
-		auto operator()(v8::Local<v8::Boolean> value, const auto& accept) const -> decltype(auto) {
+		auto operator()(v8::Local<v8::Boolean> value, const auto_accept auto& accept) const -> decltype(auto) {
 			return accept(boolean_tag{}, iv8::handle_cast{value.As<iv8::boolean>()});
 		}
 };
@@ -37,7 +37,7 @@ struct visit<v8::Local<v8::Boolean>> {
 // number
 template <>
 struct visit<v8::Local<v8::Number>> {
-		auto operator()(v8::Local<v8::Number> value, const auto& accept) const -> decltype(auto) {
+		auto operator()(v8::Local<v8::Number> value, const auto_accept auto& accept) const -> decltype(auto) {
 			auto number = iv8::handle_cast{value.As<iv8::number>()};
 			if (value->IsInt32()) {
 				return accept(number_tag_of<int32_t>{}, number);
@@ -50,7 +50,7 @@ struct visit<v8::Local<v8::Number>> {
 // date
 template <>
 struct visit<v8::Local<v8::Date>> {
-		auto operator()(v8::Local<v8::Date> value, const auto& accept) const -> decltype(auto) {
+		auto operator()(v8::Local<v8::Date> value, const auto_accept auto& accept) const -> decltype(auto) {
 			return accept(date_tag{}, iv8::handle_cast{value.As<iv8::date>()});
 		}
 };
@@ -58,7 +58,7 @@ struct visit<v8::Local<v8::Date>> {
 // external
 template <>
 struct visit<v8::Local<v8::External>> {
-		auto operator()(v8::Local<v8::External> value, const auto& accept) const -> decltype(auto) {
+		auto operator()(v8::Local<v8::External> value, const auto_accept auto& accept) const -> decltype(auto) {
 			return accept(external_tag{}, iv8::handle_cast{value.As<iv8::external>()});
 		}
 };
@@ -66,7 +66,7 @@ struct visit<v8::Local<v8::External>> {
 // bigint
 template <>
 struct visit<v8::Local<v8::BigInt>> {
-		auto operator()(v8::Local<v8::BigInt> value, const auto& accept) const -> decltype(auto) {
+		auto operator()(v8::Local<v8::BigInt> value, const auto_accept auto& accept) const -> decltype(auto) {
 			// We actually have to convert the bigint in order to see how big it is. So the acceptor is
 			// invoked directly the underlying value, instead of a `handle_cast`.
 			bool lossless{};
@@ -101,7 +101,7 @@ struct visit<v8::Local<v8::Value>>
 				isolate_{isolate},
 				context_{context} {}
 
-		auto operator()(v8::Local<v8::String> value, const auto& accept) const -> decltype(auto) {
+		auto operator()(v8::Local<v8::String> value, const auto_accept auto& accept) const -> decltype(auto) {
 			auto string = iv8::handle{value.As<iv8::string>(), {isolate_, context_}};
 			if (value->IsOneByte()) {
 				return accept(string_tag_of<std::string>{}, string);
@@ -110,7 +110,7 @@ struct visit<v8::Local<v8::Value>>
 			}
 		}
 
-		auto operator()(v8::Local<v8::Value> value, const auto& accept) const -> decltype(auto) {
+		auto operator()(v8::Local<v8::Value> value, const auto_accept auto& accept) const -> decltype(auto) {
 			if (value->IsObject()) {
 				auto visit_entry = std::pair<const visit&, const visit&>{*this, *this};
 				if (value->IsArray()) {

@@ -66,7 +66,7 @@ template <class Meta, class... Types>
 struct accept<Meta, std::variant<Types...>>
 		: accept<Meta, covariant<Types, std::variant<Types...>>>... {
 		accept() = default;
-		constexpr accept(int dummy, const auto& acceptor) :
+		constexpr accept(int dummy, const auto_accept auto& acceptor) :
 				accept<Meta, covariant<Types, std::variant<Types...>>>{dummy, acceptor}... {}
 		using accept<Meta, covariant<Types, std::variant<Types...>>>::operator()...;
 };
@@ -76,7 +76,7 @@ template <class Meta, class Variant, class... Types>
 struct accept<Meta, variant_of<Variant, Types...>>
 		: accept<Meta, covariant<substitute_recursive<Variant, Types>, Variant>>... {
 		accept() = default;
-		constexpr accept(int dummy, const auto& acceptor) :
+		constexpr accept(int dummy, const auto_accept auto& acceptor) :
 				accept<Meta, covariant<substitute_recursive<Variant, Types>, Variant>>{dummy, acceptor}... {}
 		using accept<Meta, covariant<substitute_recursive<Variant, Types>, Variant>>::operator()...;
 };
@@ -97,7 +97,7 @@ struct visit<std::variant<Types...>> : visit<Types>... {
 		constexpr visit() :
 				visit<Types>{0, *this}... {}
 
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return std::visit(
 				[ & ]<class Value>(Value&& value) constexpr {
 					const visit<std::decay_t<Value>>& visit = *this;
@@ -111,10 +111,10 @@ struct visit<std::variant<Types...>> : visit<Types>... {
 // Visiting a `boost::variant` visits the underlying members
 template <class Variant, class... Types>
 struct visit<variant_of<Variant, Types...>> : visit<substitute_recursive<Variant, Types>>... {
-		constexpr visit(int dummy, const auto& visit_) :
+		constexpr visit(int dummy, const auto_visit auto& visit_) :
 				visit<substitute_recursive<Variant, Types>>{dummy, visit_}... {}
 
-		auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
+		auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return boost::apply_visitor(
 				[ & ]<class Value>(Value&& value) {
 					const visit<std::decay_t<Value>>& visit = *this;

@@ -14,7 +14,7 @@ namespace ivm::value {
 template <class Meta, auto Key>
 struct visit_key<Meta, Key, void> {
 	public:
-		constexpr auto operator()(const auto& dictionary, const auto& visit, const auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(const auto& dictionary, const auto& visit, const auto_accept auto& accept) const -> decltype(auto) {
 			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) {
 				return visit.first(entry.first, first) == Key;
 			});
@@ -51,7 +51,7 @@ struct recursive;
 template <class Meta, class Type>
 struct accept<Meta, recursive<Type>> : accept_next<Meta, Type> {
 		accept() = default;
-		constexpr accept(int /*dummy*/, const auto& /*accept*/) {}
+		constexpr accept(int /*dummy*/, const auto_accept auto& /*accept*/) {}
 };
 
 template <class Meta, class Type>
@@ -62,7 +62,7 @@ struct accept<Meta, recursive<Type>> {
 
 	public:
 		accept() = delete;
-		constexpr accept(int /*dummy*/, const auto& accept) :
+		constexpr accept(int /*dummy*/, const auto_accept auto& accept) :
 				accept_{&accept} {}
 
 		constexpr auto operator()(auto_tag auto tag, auto&&... args) const -> decltype(auto)
@@ -79,7 +79,7 @@ template <class Meta, class Tag, class Key, class Value>
 struct accept<Meta, dictionary<Tag, Key, Value>> {
 	public:
 		accept() = default;
-		constexpr accept(int dummy, const auto& accept) :
+		constexpr accept(int dummy, const auto_accept auto& accept) :
 				first{dummy, accept},
 				second{dummy, accept} {}
 
@@ -114,10 +114,10 @@ template <class Type>
 struct visit<recursive<Type>> {
 	public:
 		visit() = delete;
-		constexpr visit(int /*dummy*/, const auto& visit) :
+		constexpr visit(int /*dummy*/, const auto_visit auto& visit) :
 				visit_{&visit} {}
 
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return (*visit_)(std::forward<decltype(value)>(value), accept);
 		}
 
@@ -129,11 +129,11 @@ struct visit<recursive<Type>> {
 template <class Tag, class Key, class Value>
 struct visit<dictionary<Tag, Key, Value>> {
 		visit() = default;
-		constexpr visit(int dummy, const auto& visit) :
+		constexpr visit(int dummy, const auto_visit auto& visit) :
 				first{dummy, visit},
 				second{dummy, visit} {}
 
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return accept(Tag{}, std::forward<decltype(value)>(value), *this);
 		}
 

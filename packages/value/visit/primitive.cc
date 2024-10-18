@@ -113,7 +113,7 @@ template <class Type>
 	requires std::negation_v<std::is_same<tag_for_t<Type>, void>>
 struct visit<Type> : visit<void> {
 		using visit<void>::visit;
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return accept(tag_for_t<Type>{}, std::forward<decltype(value)>(value));
 		}
 };
@@ -122,7 +122,7 @@ struct visit<Type> : visit<void> {
 template <class Type>
 struct visit<std::optional<Type>> : visit<Type> {
 		using visit<Type>::visit;
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			if (value) {
 				const visit<Type>& visit = *this;
 				return visit(*std::forward<decltype(value)>(value), accept);

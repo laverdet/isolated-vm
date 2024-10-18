@@ -49,9 +49,11 @@ constexpr auto transfer_with(
 	auto&& accept_args
 ) -> decltype(auto) {
 	using from_type = std::decay_t<decltype(value)>;
-	using accept_meta = std::tuple<Wrap, from_type, Type>;
-	auto visitor = std::make_from_tuple<visit<std::decay_t<decltype(value)>>>(std::forward<decltype(visit_args)>(visit_args));
-	auto acceptor = std::make_from_tuple<accept<accept_meta, typename Wrap::template wrap<Type>>>(std::forward<decltype(accept_args)>(accept_args));
+	using accept_meta = std::tuple<Wrap, from_type, std::decay_t<Type>>;
+	using visit_type = visit<from_type>;
+	using accept_type = accept<accept_meta, typename Wrap::template wrap<Type>>;
+	auto visitor = std::make_from_tuple<visit_type>(std::forward<decltype(visit_args)>(visit_args));
+	auto acceptor = std::make_from_tuple<accept_type>(std::forward<decltype(accept_args)>(accept_args));
 	return visitor(std::forward<decltype(value)>(value), acceptor);
 }
 

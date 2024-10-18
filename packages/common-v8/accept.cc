@@ -17,7 +17,7 @@ namespace ivm::value {
 template <class Meta, auto Key>
 struct visit_key<Meta, Key, v8::Local<v8::Value>> {
 	public:
-		auto operator()(const auto& object, const auto& visit, const auto& accept) const -> decltype(auto) {
+		auto operator()(const auto& object, const auto& visit, const auto_accept auto& accept) const -> decltype(auto) {
 			return visit.second(object.get(Key), accept);
 		}
 };
@@ -94,7 +94,8 @@ struct accept<void, v8::Local<v8::String>> : accept<void, v8::Local<v8::Data>> {
 template <>
 struct accept<void, v8::Local<v8::Value>> : accept<void, v8::Local<v8::Data>> {
 	public:
-		explicit accept(v8::Isolate* isolate, v8::Local<v8::Context> context) :
+		accept() = delete;
+		accept(v8::Isolate* isolate, v8::Local<v8::Context> context) :
 				accept<void, v8::Local<v8::Data>>{isolate},
 				context_{context} {}
 
