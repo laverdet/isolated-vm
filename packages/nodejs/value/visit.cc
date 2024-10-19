@@ -37,12 +37,18 @@ struct transferee_subject<Napi::CallbackInfo> : std::type_identity<Napi::Value> 
 // Delegate Napi::Value to various visitors
 template <>
 struct visit<Napi::Value> : visit<v8::Local<v8::Value>> {
+	public:
 		using visit<v8::Local<v8::Value>>::operator();
 
-		visit(v8::Isolate* isolate, v8::Local<v8::Context> context) :
-				visit<v8::Local<v8::Value>>{isolate, context} {}
-		visit(v8::Isolate* isolate) :
-				visit{isolate, isolate->GetCurrentContext()} {}
+		visit(Napi::Env env, v8::Isolate* isolate, v8::Local<v8::Context> context) :
+				visit<v8::Local<v8::Value>>{isolate, context},
+				env_{env} {}
+		visit(Napi::Env env, v8::Isolate* isolate) :
+				visit{env, isolate, isolate->GetCurrentContext()} {}
+
+		auto env() const -> Napi::Env {
+			return env_;
+		}
 
 		auto operator()(Napi::Value value, const auto_accept auto& accept) const -> decltype(auto) {
 			switch (value.Type()) {
@@ -82,6 +88,9 @@ struct visit<Napi::Value> : visit<v8::Local<v8::Value>> {
 		auto operator()(const Napi::CallbackInfo& info, const auto_accept auto& accept) const -> decltype(auto) {
 			return accept(vector_tag{}, ivm::napi::arguments{info}, *this);
 		}
+
+	private:
+		Napi::Env env_;
 };
 
 // Napi function arguments to list

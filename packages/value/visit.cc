@@ -9,7 +9,7 @@ import ivm.utility;
 
 namespace ivm::value {
 
-// Maps `From` or `To` into the type which will be used to specialize visit / accept context.
+// Maps `Subject` or `Target` into the type which will be used to specialize visit / accept context.
 export template <class Type>
 struct transferee_subject : std::type_identity<void> {};
 
@@ -41,6 +41,16 @@ struct visit<void> {
 		// Recursive visitor constructor
 		constexpr visit(int /*dummy*/, const auto& /*visit*/) {}
 };
+
+// Used by acceptors w/ context to store reference to the root visitor
+template <class Meta>
+struct visit_subject;
+
+template <class Wrap, class Subject, class Target>
+struct visit_subject<std::tuple<Wrap, Subject, Target>> : std::type_identity<visit<Subject>> {};
+
+export template <class Meta>
+using visit_subject_t = visit_subject<Meta>::type;
 
 // `accept` is the target of `visit`
 export template <class Meta, class Type>
@@ -84,8 +94,8 @@ struct wrap_next;
 template <class Meta, class Type>
 using wrap_next_t = wrap_next<Meta, Type>::type;
 
-template <class Wrap, class From, class To, class Type>
-struct wrap_next<std::tuple<Wrap, From, To>, Type>
+template <class Wrap, class Subject, class Target, class Type>
+struct wrap_next<std::tuple<Wrap, Subject, Target>, Type>
 		: std::type_identity<typename Wrap::template wrap<Type>> {};
 
 export template <class Meta, class Type>
@@ -102,12 +112,12 @@ struct visit_key : visit_key<void, Key, Type> {
 		constexpr visit_key(const auto_visit auto& /*visit*/) {}
 };
 
-// Unwrap `From` from `Meta`. `Type` defaults to `Meta` which means we want to unwrap the *visit*
+// Unwrap `Subject` from `Meta`. `Type` defaults to `Meta` which means we want to unwrap the *visit*
 // subject.
-template <class Wrap, class From, class To, auto Key>
-struct visit_key<std::tuple<Wrap, From, To>, Key, std::tuple<Wrap, From, To>>
-		: visit_key<std::tuple<Wrap, From, To>, Key, transferee_subject_t<From>> {
-		using visit_key<std::tuple<Wrap, From, To>, Key, transferee_subject_t<From>>::visit_key;
+template <class Wrap, class Subject, class Target, auto Key>
+struct visit_key<std::tuple<Wrap, Subject, Target>, Key, std::tuple<Wrap, Subject, Target>>
+		: visit_key<std::tuple<Wrap, Subject, Target>, Key, transferee_subject_t<Subject>> {
+		using visit_key<std::tuple<Wrap, Subject, Target>, Key, transferee_subject_t<Subject>>::visit_key;
 };
 
 } // namespace ivm::value

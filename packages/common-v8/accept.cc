@@ -14,14 +14,26 @@ import v8;
 namespace ivm::value {
 
 // Object key lookup for v8 values
-template <auto Key>
-struct visit_key<void, Key, v8::Local<v8::Value>> {
+template <class Meta, auto Key>
+struct visit_key<Meta, Key, v8::Local<v8::Value>> {
 	public:
-		constexpr visit_key(const auto_visit auto& /*visit*/) {}
+		constexpr visit_key(const auto_visit auto& visit) :
+				root{visit} {}
 
 		auto operator()(const auto& object, const auto& visit, const auto_accept auto& accept) const -> decltype(auto) {
-			return visit.second(object.get(Key), accept);
+			return visit.second(object.get(get_local()), accept);
 		}
+
+	private:
+		auto get_local() const -> v8::Local<v8::Value> {
+			if (local_key == v8::Local<v8::String>{}) {
+				local_key = v8::String::NewFromUtf8Literal(root.isolate(), Key);
+			}
+			return local_key;
+		}
+
+		const visit_subject_t<Meta>& root;
+		v8::Local<v8::String> local_key;
 };
 
 // Base class for primitive acceptors. Not really an acceptor.

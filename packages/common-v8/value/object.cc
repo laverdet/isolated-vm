@@ -15,9 +15,8 @@ auto object::Cast(v8::Value* data) -> object* {
 	return reinterpret_cast<object*>(v8::Object::Cast(data));
 }
 
-auto object::get(handle_env env, array_handle& /*keys*/, std::string_view key) -> v8::Local<v8::Value> {
-	auto key_string = string::make(env.isolate, key);
-	return this->GetRealNamedProperty(env.context, key_string.As<v8::Name>()).ToLocalChecked();
+auto object::get(handle_env env, array_handle& /*keys*/, v8::Local<v8::Value> key) -> v8::Local<v8::Value> {
+	return this->GetRealNamedProperty(env.context, key.As<v8::Name>()).ToLocalChecked();
 }
 
 auto object::into_range(handle_env env, array_handle& keys) -> range_type {

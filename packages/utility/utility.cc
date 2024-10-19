@@ -33,8 +33,9 @@ struct string_literal {
 			std::copy_n(static_cast<const char*>(value_), Length, static_cast<char*>(value));
 		}
 
-		constexpr operator std::string_view() const { return value; } // NOLINT(google-explicit-constructor)
+		consteval operator std::string_view() const { return {value, length()}; } // NOLINT(google-explicit-constructor)
 		constexpr auto operator==(std::string_view string) const -> bool { return value == string; }
+		[[nodiscard]] consteval auto length() const -> size_t { return Length - 1; }
 
 		char value[ Length ]{};
 };

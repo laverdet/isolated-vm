@@ -91,7 +91,7 @@ class node_function<Result (*)(environment&, Args...)> : util::non_copyable {
 				fn,
 				std::tuple_cat(
 					std::forward_as_tuple(*env),
-					value::transfer<std::tuple<Args...>>(info, std::tuple{env->isolate()}, std::tuple{})
+					value::transfer<std::tuple<Args...>>(info, std::tuple{env->napi_env(), env->isolate()}, std::tuple{})
 				)
 			);
 		}

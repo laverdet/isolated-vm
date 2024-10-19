@@ -30,11 +30,24 @@ namespace ivm::value {
 // Object key lookup via Napi
 template <class Meta, auto Key>
 struct visit_key<Meta, Key, Napi::Value> {
-		constexpr visit_key(const auto_visit auto& /*visit*/) {}
+	public:
+		constexpr visit_key(const auto_visit auto& visit) :
+				root{visit} {}
 
 		auto operator()(auto&& object, const auto& visit, const auto_accept auto& accept) const -> decltype(auto) {
-			return visit.second(object.get(Key), accept);
+			return visit.second(object.get(get_local()), accept);
 		}
+
+	private:
+		auto get_local() const -> Napi::Value {
+			if (local_key.IsEmpty()) {
+				local_key = Napi::String::New(root.env(), std::string_view{Key}.data(), Key.length());
+			}
+			return local_key;
+		}
+
+		const visit_subject_t<Meta>& root;
+		mutable Napi::String local_key;
 };
 
 // Fake acceptor for primitive values
