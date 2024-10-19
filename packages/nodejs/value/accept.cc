@@ -30,6 +30,8 @@ namespace ivm::value {
 // Object key lookup via Napi
 template <class Meta, auto Key>
 struct visit_key<Meta, Key, Napi::Value> {
+		constexpr visit_key(const auto_visit auto& /*visit*/) {}
+
 		auto operator()(auto&& object, const auto& visit, const auto_accept auto& accept) const -> decltype(auto) {
 			return visit.second(object.get(Key), accept);
 		}

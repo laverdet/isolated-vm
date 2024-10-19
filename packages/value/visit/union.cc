@@ -39,7 +39,15 @@ struct accept<Meta, std::variant<Types...>> : accept<Meta, void> {
 	public:
 		using accepted_type = std::variant<Types...>;
 		using descriptor_type = union_of<accepted_type>;
-		using accept<Meta, void>::accept;
+
+		constexpr accept(const auto_visit auto& visit) :
+				accept_string{visit},
+				second{accept_next<Meta, Types>{visit}...},
+				visit_discriminant{visit} {}
+		constexpr accept(int /*dummy*/, const auto_visit auto& visit, const auto_accept auto& /*accept*/) :
+				accept_string{visit},
+				second{accept_next<Meta, Types>{visit}...},
+				visit_discriminant{visit} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> accepted_type {
 			auto alternatives = make_discriminant_map<decltype(dictionary), decltype(visit)>();

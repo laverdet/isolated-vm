@@ -65,9 +65,10 @@ template <class Meta, class... Types>
 	requires is_variant_v<Types...>
 struct accept<Meta, std::variant<Types...>>
 		: accept<Meta, covariant<Types, std::variant<Types...>>>... {
-		accept() = default;
-		constexpr accept(int dummy, const auto_accept auto& acceptor) :
-				accept<Meta, covariant<Types, std::variant<Types...>>>{dummy, acceptor}... {}
+		constexpr accept(const auto_visit auto& visit) :
+				accept<Meta, covariant<Types, std::variant<Types...>>>{visit}... {}
+		constexpr accept(int dummy, const auto_visit auto& visit, const auto_accept auto& acceptor) :
+				accept<Meta, covariant<Types, std::variant<Types...>>>{dummy, visit, acceptor}... {}
 		using accept<Meta, covariant<Types, std::variant<Types...>>>::operator()...;
 };
 
@@ -75,9 +76,10 @@ struct accept<Meta, std::variant<Types...>>
 template <class Meta, class Variant, class... Types>
 struct accept<Meta, variant_of<Variant, Types...>>
 		: accept<Meta, covariant<substitute_recursive<Variant, Types>, Variant>>... {
-		accept() = default;
-		constexpr accept(int dummy, const auto_accept auto& acceptor) :
-				accept<Meta, covariant<substitute_recursive<Variant, Types>, Variant>>{dummy, acceptor}... {}
+		constexpr accept(const auto_visit auto& visit) :
+				accept<Meta, covariant<substitute_recursive<Variant, Types>, Variant>>{visit}... {}
+		constexpr accept(int dummy, const auto_visit auto& visit, const auto_accept auto& acceptor) :
+				accept<Meta, covariant<substitute_recursive<Variant, Types>, Variant>>{dummy, visit, acceptor}... {}
 		using accept<Meta, covariant<substitute_recursive<Variant, Types>, Variant>>::operator()...;
 };
 

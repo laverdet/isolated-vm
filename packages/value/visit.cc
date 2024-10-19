@@ -63,6 +63,9 @@ concept auto_accept = is_accept_v<Type>;
 template <class Meta, class Type>
 struct accept : accept<void, Type> {
 		using accept<void, Type>::accept;
+		// Swallow `visit` argument on behalf of non-meta acceptors
+		constexpr accept(const auto_visit auto& /*visit*/, auto&&... args) :
+				accept<void, Type>{std::forward<decltype(args)>(args)...} {}
 };
 
 // Base specialization for stateless acceptors. This just gets you the `dummy` constructor used by
@@ -71,7 +74,7 @@ template <>
 struct accept<void, void> {
 		accept() = default;
 		// Recursive acceptor constructor
-		constexpr accept(int /*dummy*/, const auto_accept auto& /*accept*/) {}
+		constexpr accept(int /*dummy*/, const auto_visit auto& /*visit*/, const auto_accept auto& /*accept*/) {}
 };
 
 // `accept` with transfer wrapping
@@ -91,6 +94,13 @@ using accept_next = accept<Meta, wrap_next_t<Meta, Type>>;
 // Context for dictionary lookup operations
 export template <class Meta, auto Key, class Type = Meta>
 struct visit_key;
+
+// Default `visit_key` swallows `Meta`
+template <class Meta, auto Key, class Type>
+struct visit_key : visit_key<void, Key, Type> {
+		// Swallow `visit` argument on behalf of non-meta visitors
+		constexpr visit_key(const auto_visit auto& /*visit*/) {}
+};
 
 // Unwrap `From` from `Meta`. `Type` defaults to `Meta` which means we want to unwrap the *visit*
 // subject.

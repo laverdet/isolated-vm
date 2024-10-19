@@ -14,9 +14,11 @@ import v8;
 namespace ivm::value {
 
 // Object key lookup for v8 values
-template <class Meta, auto Key>
-struct visit_key<Meta, Key, v8::Local<v8::Value>> {
+template <auto Key>
+struct visit_key<void, Key, v8::Local<v8::Value>> {
 	public:
+		constexpr visit_key(const auto_visit auto& /*visit*/) {}
+
 		auto operator()(const auto& object, const auto& visit, const auto_accept auto& accept) const -> decltype(auto) {
 			return visit.second(object.get(Key), accept);
 		}

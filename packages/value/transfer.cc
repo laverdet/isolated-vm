@@ -32,8 +32,8 @@ struct accept<Meta, accept_with_throw::accept_throw<Type>>
 		using accept_type = accept<Meta, std::decay_t<Type>>;
 
 	public:
-		constexpr accept() :
-				accept_type{0, *this} {}
+		constexpr accept(const auto_visit auto& visit) :
+				accept_type{0, visit, *this} {}
 
 		using accept<Meta, std::decay_t<Type>>::operator();
 		constexpr auto operator()(value_tag /*tag*/, auto&& /*value*/, auto&&... /*rest*/) const -> Type {
@@ -53,7 +53,10 @@ constexpr auto transfer_with(
 	using visit_type = visit<from_type>;
 	using accept_type = accept<accept_meta, typename Wrap::template wrap<Type>>;
 	auto visitor = std::make_from_tuple<visit_type>(std::forward<decltype(visit_args)>(visit_args));
-	auto acceptor = std::make_from_tuple<accept_type>(std::forward<decltype(accept_args)>(accept_args));
+	auto acceptor = std::make_from_tuple<accept_type>(std::tuple_cat(
+		std::forward_as_tuple(visitor),
+		std::forward<decltype(accept_args)>(accept_args)
+	));
 	return visitor(std::forward<decltype(value)>(value), acceptor);
 }
 

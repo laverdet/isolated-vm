@@ -13,7 +13,10 @@ namespace ivm::value {
 template <class Meta, class... Types>
 struct accept<Meta, std::tuple<Types...>> : accept<Meta, void> {
 	public:
-		using accept<Meta, void>::accept;
+		constexpr accept(const auto_visit auto& visit) :
+				acceptors_{accept_next<Meta, Types>{visit}...} {}
+		constexpr accept(int /*dummy*/, const auto_visit auto& visit, const auto_accept auto& /*accept*/) :
+				acceptors_{accept_next<Meta, Types>{visit}...} {}
 
 		constexpr auto operator()(vector_tag /*tag*/, auto&& value, const auto& visit) const -> std::tuple<Types...> {
 			auto it = std::begin(value);

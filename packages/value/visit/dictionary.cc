@@ -14,6 +14,9 @@ namespace ivm::value {
 template <class Meta, auto Key>
 struct visit_key<Meta, Key, void> {
 	public:
+		constexpr visit_key(const auto_visit auto& visit) :
+				first{visit} {}
+
 		constexpr auto operator()(const auto& dictionary, const auto& visit, const auto_accept auto& accept) const -> decltype(auto) {
 			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) {
 				return visit.first(entry.first, first) == Key;
@@ -50,8 +53,10 @@ struct recursive;
 // a reference to an existing one.
 template <class Meta, class Type>
 struct accept<Meta, recursive<Type>> : accept_next<Meta, Type> {
-		accept() = default;
-		constexpr accept(int /*dummy*/, const auto_accept auto& /*accept*/) {}
+		constexpr accept(const auto_visit auto& visit) :
+				accept_next<Meta, Type>{visit} {}
+		constexpr accept(int /*dummy*/, const auto_visit auto& visit, const auto_accept auto& /*accept*/) :
+				accept{visit} {}
 };
 
 template <class Meta, class Type>
@@ -61,8 +66,8 @@ struct accept<Meta, recursive<Type>> {
 		using accept_type = accept_next<Meta, Type>;
 
 	public:
-		accept() = delete;
-		constexpr accept(int /*dummy*/, const auto_accept auto& accept) :
+		// nb: No `auto_visit` constructor because this is the recursive case and we require a reference
+		constexpr accept(int /*dummy*/, const auto_visit auto& /*visit*/, const auto_accept auto& accept) :
 				accept_{&accept} {}
 
 		constexpr auto operator()(auto_tag auto tag, auto&&... args) const -> decltype(auto)
@@ -78,10 +83,12 @@ struct accept<Meta, recursive<Type>> {
 template <class Meta, class Tag, class Key, class Value>
 struct accept<Meta, dictionary<Tag, Key, Value>> {
 	public:
-		accept() = default;
-		constexpr accept(int dummy, const auto_accept auto& accept) :
-				first{dummy, accept},
-				second{dummy, accept} {}
+		constexpr accept(const auto_visit auto& visit) :
+				first{visit},
+				second{visit} {}
+		constexpr accept(int dummy, const auto_visit auto& visit, const auto_accept auto& accept) :
+				first{dummy, visit, accept},
+				second{dummy, visit, accept} {}
 
 		auto operator()(Tag /*tag*/, auto&& value, const auto& visit) const -> dictionary<Tag, Key, Value> {
 			return dictionary<Tag, Key, Value>{

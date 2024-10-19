@@ -182,6 +182,15 @@ struct accept<Meta, object_type<Type, std::tuple<Properties...>>> : accept<Meta,
 		using descriptor_type = object_properties<Type>;
 		using accept<Meta, void>::accept;
 
+		constexpr accept(const auto_visit auto& visit) :
+				accept<Meta, void>{visit},
+				first{visit},
+				second{accept_next<Meta, property_type_t<Properties>>{visit}...} {}
+		constexpr accept(int /*dummy*/, const auto_visit auto& visit, const auto_accept auto& /*acceptor*/) :
+				accept<Meta, void>{visit},
+				first{visit},
+				second{accept_next<Meta, property_type_t<Properties>>{visit}...} {}
+
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> Type {
 			using range_type = decltype(util::into_range(dictionary));
 			using value_type = std::ranges::range_value_t<range_type>::second_type;
