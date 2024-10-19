@@ -154,37 +154,29 @@ struct property<Member> : property_name {
 
 // Unwrap type from `accessor` or `property`
 template <class Type>
-struct member;
+struct property_delegate;
 
 template <auto Getter, auto Setter>
-struct member<accessor<Getter, Setter>> {
-		using type = accessor_delegate<Getter, Setter>;
-};
+struct property_delegate<accessor<Getter, Setter>>
+		: std::type_identity<accessor_delegate<Getter, Setter>> {};
 
 template <auto Member>
-struct member<property<Member>> {
-		using type = member_delegate<Member>;
-};
+struct property_delegate<property<Member>>
+		: std::type_identity<member_delegate<Member>> {};
 
 template <class Type>
-using member_t = member<Type>::type;
+using property_delegate_t = property_delegate<Type>::type;
 
-// Acceptor types for each member of an object
-template <class Meta, class Type>
-struct property_acceptors : property_acceptors<Meta, std::decay_t<decltype(object_properties<Type>::properties)>> {};
+template <class Type>
+using property_type_t = property_delegate_t<Type>::type;
 
-template <class Meta, class... Types>
-struct property_acceptors<Meta, std::tuple<Types...>> {
-		using type = std::tuple<accept_next<Meta, typename member_t<Types>::type>...>;
-};
-
-template <class Meta, class Type>
-using property_acceptors_t = property_acceptors<Meta, Type>::type;
+// Helper for object accept
+template <class Type, class Properties>
+struct object_type;
 
 // Acceptor function for C++ object types
-template <class Meta, class Type>
-	requires std::destructible<object_properties<Type>>
-struct accept<Meta, Type> : accept<Meta, void> {
+template <class Meta, class Type, class... Properties>
+struct accept<Meta, object_type<Type, std::tuple<Properties...>>> : accept<Meta, void> {
 	public:
 		using hash_type = uint32_t;
 		using descriptor_type = object_properties<Type>;
@@ -223,7 +215,7 @@ struct accept<Meta, Type> : accept<Meta, void> {
 					return std::array{std::invoke(
 						[](const auto& property) {
 							acceptor_type acceptor = [](const accept& self, Type& subject, const Value& value, const Visit& visit) -> void {
-								using delegate_type = member_t<std::decay_t<decltype(property)>>;
+								using delegate_type = property_delegate_t<std::decay_t<decltype(property)>>;
 								delegate_type delegate{};
 								const auto& accept = std::get<Index>(self.second);
 								delegate.set(subject, visit.second(std::move(value), accept));
@@ -256,7 +248,14 @@ struct accept<Meta, Type> : accept<Meta, void> {
 
 	private:
 		accept_next<Meta, std::string> first;
-		property_acceptors_t<Meta, Type> second;
+		std::tuple<accept_next<Meta, property_type_t<Properties>>...> second;
+};
+
+// Unpack object properties from `object_properties` specialization
+template <class Meta, class Type>
+	requires std::destructible<object_properties<Type>>
+struct accept<Meta, Type> : accept<Meta, object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>> {
+		using accept<Meta, object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>>::accept;
 };
 
 } // namespace ivm::value
