@@ -28,7 +28,7 @@ auto v8_to_napi(const v8::Local<Type>& local) -> napi_value {
 namespace ivm::value {
 
 // Object key lookup via Napi
-template <class Meta, auto Key>
+template <class Meta, util::string_literal Key>
 struct visit_key<Meta, Key, Napi::Value> {
 	public:
 		constexpr visit_key(const auto_visit auto& visit) :

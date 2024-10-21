@@ -6,12 +6,13 @@ module;
 export module ivm.value:dictionary_visit;
 import :dictionary;
 import :visit;
+import ivm.utility;
 
 namespace ivm::value {
 
 // Object key lookup for primitive dictionary variants. This should generally only be used for
 // testing, since the subject is basically a C++ heap JSON payload.
-template <class Meta, auto Key>
+template <class Meta, util::string_literal Key>
 struct visit_key<Meta, Key, void> {
 	public:
 		constexpr visit_key(const auto_visit auto& visit) :
@@ -90,7 +91,7 @@ struct accept<Meta, dictionary<Tag, Key, Value>> {
 				first{dummy, visit, accept},
 				second{dummy, visit, accept} {}
 
-		auto operator()(Tag /*tag*/, auto&& value, const auto& visit) const -> dictionary<Tag, Key, Value> {
+		constexpr auto operator()(Tag /*tag*/, auto&& value, const auto& visit) const -> dictionary<Tag, Key, Value> {
 			return dictionary<Tag, Key, Value>{
 				util::into_range(value) |
 				std::views::transform([ & ](auto entry) {

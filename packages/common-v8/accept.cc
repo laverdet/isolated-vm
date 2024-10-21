@@ -8,13 +8,14 @@ module;
 export module ivm.iv8:accept;
 import :date;
 import :string;
+import ivm.utility;
 import ivm.value;
 import v8;
 
 namespace ivm::value {
 
 // Object key lookup for v8 values
-template <class Meta, auto Key>
+template <class Meta, util::string_literal Key>
 struct visit_key<Meta, Key, v8::Local<v8::Value>> {
 	public:
 		constexpr visit_key(const auto_visit auto& visit) :

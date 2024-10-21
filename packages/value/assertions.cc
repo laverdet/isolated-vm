@@ -71,16 +71,16 @@ struct object_literal {
 template <>
 struct object_properties<object_literal_one> {
 		constexpr static auto properties = std::tuple{
-			property<&object_literal_one::integer>{"integer", false},
+			member<"integer", &object_literal_one::integer, false>{},
 		};
 };
 
 template <>
 struct object_properties<object_literal> {
 		constexpr static auto properties = std::tuple{
-			property<&object_literal::integer>{"integer", false},
-			property<&object_literal::number>{"number", false},
-			property<&object_literal::string>{"string"},
+			member<"integer", &object_literal::integer, false>{},
+			member<"number", &object_literal::number, false>{},
+			member<"string", &object_literal::string>{},
 		};
 };
 
@@ -126,25 +126,25 @@ static_assert(variant_is_equal_to(transfer<std::variant<specialized>>(specialize
 // Discriminated unions
 struct union_alternative_one {
 		std::string one;
-		constexpr auto operator==(const union_alternative_one& /*right*/) const -> bool { return true; };
+		constexpr auto operator==(const union_alternative_one& right) const -> bool { return one == right.one; };
 };
 
 struct union_alternative_two {
 		std::string two;
-		constexpr auto operator==(const union_alternative_two& /*right*/) const -> bool { return true; };
+		constexpr auto operator==(const union_alternative_two& right) const -> bool { return two == right.two; };
 };
 
 template <>
 struct object_properties<union_alternative_one> {
 		constexpr static auto properties = std::tuple{
-			property<&union_alternative_one::one>{"one", false},
+			member<"one", &union_alternative_one::one, false>{},
 		};
 };
 
 template <>
 struct object_properties<union_alternative_two> {
 		constexpr static auto properties = std::tuple{
-			property<&union_alternative_two::two>{"two", false},
+			member<"two", &union_alternative_two::two, false>{},
 		};
 };
 

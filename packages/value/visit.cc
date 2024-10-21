@@ -102,11 +102,11 @@ export template <class Meta, class Type>
 using accept_next = accept<Meta, wrap_next_t<Meta, Type>>;
 
 // Context for dictionary lookup operations
-export template <class Meta, auto Key, class Type = Meta>
+export template <class Meta, util::string_literal Key, class Type = Meta>
 struct visit_key;
 
 // Default `visit_key` swallows `Meta`
-template <class Meta, auto Key, class Type>
+template <class Meta, util::string_literal Key, class Type>
 struct visit_key : visit_key<void, Key, Type> {
 		// Swallow `visit` argument on behalf of non-meta visitors
 		constexpr visit_key(const auto_visit auto& /*visit*/) {}

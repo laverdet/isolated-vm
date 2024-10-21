@@ -90,7 +90,7 @@ namespace ivm::value {
 template <>
 struct object_properties<compile_script_options> {
 		constexpr static auto properties = std::tuple{
-			property<&compile_script_options::origin>{"origin", false},
+			member<"origin", &compile_script_options::origin, false>{},
 		};
 };
 

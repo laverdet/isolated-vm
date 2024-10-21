@@ -26,18 +26,22 @@ export constexpr auto into_range(auto&& range) -> decltype(auto)
 	return range.into_range();
 }
 
-// Structural string literal which may be used as a template parameter
-export template <size_t Length>
+// Structural string literal which may be used as a template parameter. The string is
+// null-terminated, which is required by v8's `String::NewFromUtf8Literal`.
+export template <size_t Size>
 struct string_literal {
-		explicit consteval string_literal(const char (&value_)[ Length ]) {
-			std::copy_n(static_cast<const char*>(value_), Length, static_cast<char*>(value));
+		consteval string_literal(const char (&string)[ Size ]) { // NOLINT(google-explicit-constructor)
+			std::copy_n(static_cast<const char*>(string), Size, payload.data());
 		}
 
-		consteval operator std::string_view() const { return {value, length()}; } // NOLINT(google-explicit-constructor)
-		constexpr auto operator==(std::string_view string) const -> bool { return value == string; }
-		[[nodiscard]] consteval auto length() const -> size_t { return Length - 1; }
+		consteval operator std::string_view() const { return {payload.data(), length()}; } // NOLINT(google-explicit-constructor)
+		consteval auto operator<=>(const string_literal& right) const -> std::strong_ordering { return std::string_view{*this} <=> right.payload; }
+		consteval auto operator==(const string_literal& right) const -> bool { return payload == right.payload; }
+		constexpr auto operator==(std::string_view string) const -> bool { return std::string_view{*this} == string; }
+		[[nodiscard]] consteval auto data() const -> const char* { return payload.data(); }
+		[[nodiscard]] consteval auto length() const -> size_t { return Size - 1; }
 
-		char value[ Length ]{};
+		std::array<char, Size> payload{};
 };
 
 // Explicitly move-constructs a new object from an existing rvalue reference. Used to immediately

@@ -3,13 +3,16 @@ module;
 #include <cstdint>
 #include <format>
 #include <functional>
+#include <iterator>
 #include <optional>
 #include <ranges>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
+#include <utility>
 export module ivm.value:object;
 import ivm.utility;
+import :primitive;
 import :tag;
 import :visit;
 
@@ -19,177 +22,77 @@ namespace ivm::value {
 export template <class Type>
 struct object_properties;
 
-// Key & `required` flag for object property
-struct property_name {
-		// TODO: default constructor should be removed after `prehashed_string_map` no longer requires
-		// temporary defaults for initialization
-		property_name() = default;
-		constexpr property_name(const std::string& name, bool required = true) :
-				name{name},
-				required{required} {}
-
-		std::string name;
-		bool required;
-};
-
-// Used to extract the type of complementary getter / setter functions, ensuring that they are the
-// same and at least one is non-void.
-template <class Left, class Right>
-struct symmetric_parameter {
-		using type = std::conditional_t<std::is_same_v<Left, void>, Right, Left>;
-		static_assert(!std::is_same_v<type, void>);
-		static_assert(std::is_same_v<type, Right> || std::is_same_v<void, Right>);
-};
-
-template <class Left, class Right>
-using symmetric_parameter_t = symmetric_parameter<Left, Right>::type;
-
-// Getter helper, which extracts the type of a getter
-template <auto Getter>
-struct getter;
-
-template <auto Getter>
-using getter_t = getter<Getter>::type;
-
-template <>
-struct getter<nullptr> {
-		using subject = void;
-		using type = void;
-};
-
-template <class Type, class Subject, const Type& (Subject::* Getter)()>
-struct getter<Getter> {
-		using subject = Subject;
-		using type = Type;
-};
-
-template <class Type, class Subject, Type (Subject::* Getter)()>
-struct getter<Getter> {
-		static_assert(std::is_same_v<Type, std::remove_cvref_t<Type>>);
-		static_assert(!std::is_same_v<Type, void>);
-		using subject = Subject;
-		using type = Type;
-};
-
-// Setter helper, which extracts the type of a setter
-template <auto Setter>
-struct setter;
-
-template <auto Setter>
-using setter_t = setter<Setter>::type;
-
-template <>
-struct setter<nullptr> {
-		using subject = void;
-		using type = void;
-};
-
-template <class Type, class Subject, void (Subject::* Setter)(const Type&)>
-struct setter<Setter> {
-		using subject = Subject;
-		using type = Type;
-};
-
-template <class Type, class Subject, void (Subject::* Setter)(Type&&)>
-struct setter<Setter> {
-		using subject = Subject;
-		using type = Type;
-};
-
-template <class Type, class Subject, void (Subject::* Setter)(Type)>
-struct setter<Setter> {
-		static_assert(std::is_same_v<Type, std::remove_cvref_t<Type>>);
-		using subject = Subject;
-		using type = Type;
-};
-
-// Helper which delegates to a getter & setter. Ensures same usage as a plain property access.
-template <auto Getter, auto Setter>
-struct accessor_delegate {
-	private:
-		using subject = symmetric_parameter_t<typename getter<Getter>::subject, typename setter<Setter>::subject>;
-
-	public:
-		using type = symmetric_parameter_t<getter_t<Getter>, setter_t<Setter>>;
-
-		constexpr auto get(const subject& subject) const -> decltype(auto)
-			requires std::negation_v<std::is_same<getter_t<Getter>, void>> {
-			return (&subject->*Getter)();
-		}
-
-		constexpr auto set(subject& subject, auto&& value) const -> void
-			requires std::negation_v<std::is_same<setter_t<Setter>, void>> {
-			(&subject->*Setter)(std::forward<decltype(value)>(value));
-		}
-};
-
-// Helper which passes through plain object property access
-template <auto Member>
-struct member_delegate;
-
-template <class Subject, class Type, Type Subject::* Member>
-struct member_delegate<Member> {
-		using type = Type;
-		static_assert(std::is_same_v<Type, std::remove_cvref_t<Type>>);
-		constexpr auto get(const Subject& subject) const -> const Type& { return subject.*Member; }
-		constexpr auto set(Subject& subject, const Type& value) const -> void { subject.*Member = std::move(value); }
-};
-
 // Descriptor for object getter and/or setter
-export template <auto Getter, auto Setter>
-struct accessor : property_name {
-		using property_name::property_name;
-		using type = symmetric_parameter_t<getter_t<Getter>, setter_t<Setter>>;
+export template <util::string_literal Name, auto Getter, auto Setter, bool Required = true>
+struct accessor {};
+
+// Descriptor for object property through direct member access
+export template <util::string_literal Name, auto Member, bool Required = true>
+struct member {};
+
+// Remove `void` type identities from tuple
+template <class Left, class>
+struct remove_void_helper : std::type_identity<Left> {};
+
+template <class Type, class... Left, class... Right>
+struct remove_void_helper<std::tuple<Left...>, std::tuple<Type, Right...>>
+		: remove_void_helper<
+				std::conditional_t<std::is_void_v<typename Type::type>, std::tuple<Left...>, std::tuple<Left..., Type>>,
+				std::tuple<Right...>> {};
+
+template <class Type>
+using remove_void_t = remove_void_helper<std::tuple<>, Type>::type;
+
+// Property name & required flag
+template <util::string_literal Name, bool Required>
+struct property_info {
+		constexpr static auto name = std::string_view{Name};
+		constexpr static auto required = Required;
 };
 
-// Descriptor for object member
-export template <auto Member>
-struct property;
+// Setter delegate for object property
+template <class Property>
+struct setter_delegate;
 
-template <class Type, class Subject, Type Subject::* Member>
-struct property<Member> : property_name {
-		using property_name::property_name;
-		using type = Type;
+template <class Property>
+using setter_delegate_t = setter_delegate<Property>::type;
+
+template <util::string_literal Name, bool Required, auto Getter, class Type, class Subject, void (Subject::* Setter)(Type)>
+struct setter_delegate<accessor<Name, Getter, Setter, Required>>
+		: std::type_identity<std::decay_t<Type>>,
+			property_info<Name, Required> {
+		constexpr auto operator()(Subject& subject, Type value) const -> void { (&subject->*Setter)(std::forward<Type>(value)); }
 };
 
-// Unwrap type from `accessor` or `property`
-template <class Type>
-struct property_delegate;
+template <util::string_literal Name, auto Getter>
+struct setter_delegate<accessor<Name, Getter, nullptr, false>> : std::type_identity<void> {};
 
-template <auto Getter, auto Setter>
-struct property_delegate<accessor<Getter, Setter>>
-		: std::type_identity<accessor_delegate<Getter, Setter>> {};
+template <util::string_literal Name, bool Required, class Subject, class Type, Type Subject::* Member>
+struct setter_delegate<member<Name, Member, Required>>
+		: std::type_identity<std::decay_t<Type>>,
+			property_info<Name, Required> {
+		constexpr auto operator()(Subject& subject, const Type& value) const -> void { subject.*Member = std::move(value); }
+};
 
-template <auto Member>
-struct property_delegate<property<Member>>
-		: std::type_identity<member_delegate<Member>> {};
-
-template <class Type>
-using property_delegate_t = property_delegate<Type>::type;
-
-template <class Type>
-using property_type_t = property_delegate_t<Type>::type;
-
-// Helper for object accept
+// Helper for object accept & visit
 template <class Type, class Properties>
 struct object_type;
 
-// Acceptor function for C++ object types
-template <class Meta, class Type, class... Properties>
-struct accept<Meta, object_type<Type, std::tuple<Properties...>>> : accept<Meta, void> {
+template <class Type, class Properties>
+struct mapped_object_type;
+
+// Acceptor function for C++ object types.
+template <class Meta, class Type, class... Setters>
+struct accept<Meta, object_type<Type, std::tuple<Setters...>>> : accept<Meta, void> {
 	public:
 		using hash_type = uint32_t;
-		using descriptor_type = object_properties<Type>;
-		using accept<Meta, void>::accept;
 
 		constexpr accept(const auto_visit auto& visit) :
 				accept<Meta, void>{visit},
 				first{visit},
-				second{accept_next<Meta, property_type_t<Properties>>{visit}...} {}
+				second{accept_next<Meta, typename Setters::type>{visit}...} {}
 		constexpr accept(int /*dummy*/, const auto_visit auto& visit, const auto_accept auto& /*acceptor*/) :
-				accept<Meta, void>{visit},
-				first{visit},
-				second{accept_next<Meta, property_type_t<Properties>>{visit}...} {}
+				accept{visit} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> Type {
 			using range_type = decltype(util::into_range(dictionary));
@@ -197,13 +100,14 @@ struct accept<Meta, object_type<Type, std::tuple<Properties...>>> : accept<Meta,
 			using visit_type = std::decay_t<decltype(visit)>;
 			hash_type checksum{};
 			Type subject;
-			if constexpr (std::tuple_size_v<decltype(descriptor_type::properties)> != 0) {
+			if constexpr (sizeof...(Setters) != 0) {
 				auto [ expected_checksum, property_map ] = make_property_map<value_type, visit_type>();
 				for (auto&& [ key, value ] : util::into_range(dictionary)) {
 					auto descriptor = property_map.get(visit.first(std::forward<decltype(key)>(key), first));
 					if (descriptor != nullptr) {
-						checksum ^= descriptor->first;
-						(descriptor->second)(*this, subject, std::forward<decltype(value)>(value), visit);
+						const auto& [ optional_hash, acceptor ] = *descriptor;
+						checksum ^= optional_hash;
+						acceptor(*this, subject, std::forward<decltype(value)>(value), visit);
 					}
 				}
 				if (checksum != expected_checksum) {
@@ -213,36 +117,38 @@ struct accept<Meta, object_type<Type, std::tuple<Properties...>>> : accept<Meta,
 			return subject;
 		}
 
-		// Returns: `std::pair{checksum, std::tuple{optional_hash, property_hash, acceptor}}`
+	private:
+		// Returns: `std::pair{checksum, std::pair{optional_hash, acceptor}}`
 		template <class Value, class Visit>
 		consteval static auto make_property_map() {
 			using acceptor_type = void (*)(const accept&, Type&, const Value&, const Visit&);
 
 			// Make acceptor map w/ property information
 			auto initial_property_map = util::prehashed_string_map{std::invoke(
-				[]<size_t... Index>(std::index_sequence<Index...> /*indices*/) consteval {
+				[]<size_t... Indices>(std::index_sequence<Indices...> /*indices*/) consteval {
 					return std::array{std::invoke(
-						[](const auto& property) {
-							acceptor_type acceptor = [](const accept& self, Type& subject, const Value& value, const Visit& visit) -> void {
-								using delegate_type = property_delegate_t<std::decay_t<decltype(property)>>;
-								delegate_type delegate{};
+						[]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) consteval {
+							using setter_type = std::tuple_element_t<Index, std::tuple<Setters...>>;
+							setter_type property{};
+							acceptor_type acceptor = [](const accept& self, Type& subject, const Value& value, const Visit& visit) {
+								setter_type delegate{};
 								const auto& accept = std::get<Index>(self.second);
-								delegate.set(subject, visit.second(std::move(value), accept));
+								delegate(subject, visit.second(std::move(value), accept));
 							};
-							return std::pair{property.name, std::pair{static_cast<const property_name&>(property), acceptor}};
+							return std::pair{property.name, std::pair{property.required, acceptor}};
 						},
-						std::get<Index>(descriptor_type::properties)
+						std::integral_constant<size_t, Indices>{}
 					)...};
 				},
-				std::make_index_sequence<std::tuple_size_v<decltype(descriptor_type::properties)>>{}
+				std::make_index_sequence<sizeof...(Setters)>{}
 			)};
 
 			// Extract acceptors from initial property map
 			// value_type -> `std::pair{hash, std::pair{optional_hash, acceptor}}`
 			auto property_map = initial_property_map.transform([](const auto& entry) {
-				auto [ key, value ] = entry;
-				auto [ property, acceptor ] = value;
-				auto optional_hash = property.required ? key : 0;
+				auto [ hash, value ] = entry;
+				auto [ required, acceptor ] = value;
+				auto optional_hash = required ? hash : 0;
 				return std::pair{optional_hash, acceptor};
 			});
 
@@ -257,14 +163,21 @@ struct accept<Meta, object_type<Type, std::tuple<Properties...>>> : accept<Meta,
 
 	private:
 		accept_next<Meta, std::string> first;
-		std::tuple<accept_next<Meta, property_type_t<Properties>>...> second;
+		std::tuple<accept_next<Meta, typename Setters::type>...> second;
+};
+
+// Apply `setter_delegate` to each property, filtering properties which do not have a setter.
+template <class Meta, class Type, class... Properties>
+struct accept<Meta, mapped_object_type<Type, std::tuple<Properties...>>>
+		: accept<Meta, object_type<Type, remove_void_t<std::tuple<setter_delegate<Properties>...>>>> {
+		using accept<Meta, object_type<Type, remove_void_t<std::tuple<setter_delegate<Properties>...>>>>::accept;
 };
 
 // Unpack object properties from `object_properties` specialization
 template <class Meta, class Type>
 	requires std::destructible<object_properties<Type>>
-struct accept<Meta, Type> : accept<Meta, object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>> {
-		using accept<Meta, object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>>::accept;
+struct accept<Meta, Type> : accept<Meta, mapped_object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>> {
+		using accept<Meta, mapped_object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>>::accept;
 };
 
 } // namespace ivm::value

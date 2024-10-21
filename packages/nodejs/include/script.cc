@@ -27,16 +27,16 @@ namespace ivm::value {
 template <>
 struct object_properties<source_location_options> {
 		constexpr static auto properties = std::tuple{
-			property<&source_location_options::line>{"line"},
-			property<&source_location_options::column>{"column"},
+			member<"line", &source_location_options::line>{},
+			member<"column", &source_location_options::column>{},
 		};
 };
 
 template <>
 struct object_properties<source_origin_options> {
 		constexpr static auto properties = std::tuple{
-			property<&source_origin_options::name>{"name"},
-			property<&source_origin_options::location>{"location"},
+			member<"name", &source_origin_options::name>{},
+			member<"location", &source_origin_options::location>{},
 		};
 };
 

@@ -103,22 +103,22 @@ namespace ivm::value {
 template <>
 struct object_properties<make_agent_options::clock_deterministic> {
 		constexpr static auto properties = std::tuple{
-			property<&make_agent_options::clock_deterministic::epoch>{"epoch"},
-			property<&make_agent_options::clock_deterministic::interval>{"interval"},
+			member<"epoch", &make_agent_options::clock_deterministic::epoch>{},
+			member<"interval", &make_agent_options::clock_deterministic::interval>{},
 		};
 };
 
 template <>
 struct object_properties<make_agent_options::clock_microtask> {
 		constexpr static auto properties = std::tuple{
-			property<&make_agent_options::clock_microtask::epoch>{"epoch"},
+			member<"epoch", &make_agent_options::clock_microtask::epoch>{},
 		};
 };
 
 template <>
 struct object_properties<make_agent_options::clock_realtime> {
 		constexpr static auto properties = std::tuple{
-			property<&make_agent_options::clock_realtime::epoch>{"epoch"},
+			member<"epoch", &make_agent_options::clock_realtime::epoch>{},
 		};
 };
 
@@ -141,8 +141,8 @@ struct union_of<make_agent_options::clock_type> {
 template <>
 struct object_properties<make_agent_options> {
 		constexpr static auto properties = std::tuple{
-			property<&make_agent_options::clock>{"clock", false},
-			property<&make_agent_options::random_seed>{"randomSeed", false},
+			member<"clock", &make_agent_options::clock, false>{},
+			member<"randomSeed", &make_agent_options::random_seed, false>{},
 		};
 };
 

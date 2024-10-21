@@ -82,7 +82,7 @@ struct accept<Meta, std::variant<Types...>> : accept<Meta, void> {
 	private:
 		accept_next<Meta, std::string> accept_string;
 		std::tuple<accept_next<Meta, Types>...> second;
-		visit_key<Meta, util::string_literal{descriptor_type::discriminant}> visit_discriminant;
+		visit_key<Meta, descriptor_type::discriminant> visit_discriminant;
 };
 
 } // namespace ivm::value
