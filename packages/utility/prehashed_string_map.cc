@@ -36,6 +36,10 @@ class prehashed_string_map {
 		using iterator = container_type::const_iterator;
 		using const_iterator = container_type::const_iterator;
 
+		template <class Key>
+		consteval explicit prehashed_string_map(std::initializer_list<std::pair<Key, Type>> range) :
+				prehashed_string_map{std::views::all(range)} {}
+
 		consteval explicit prehashed_string_map(const std::ranges::range auto& range) :
 				hashed_values_{std::invoke([ & ]() {
 					// Calculate hash values
@@ -113,7 +117,7 @@ class prehashed_string_map {
 		container_type hashed_values_;
 };
 
-template <class Key, class Type, size_t Size>
-prehashed_string_map(const std::array<std::pair<Key, Type>, Size>&) -> prehashed_string_map<Type, Size>;
+template <class Key, class Type, class... Rest>
+prehashed_string_map(std::pair<Key, Type>, Rest...) -> prehashed_string_map<Type, sizeof...(Rest) + 1>;
 
 } // namespace ivm::util

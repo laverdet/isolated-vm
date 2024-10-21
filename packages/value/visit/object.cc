@@ -124,9 +124,9 @@ struct accept<Meta, object_type<Type, std::tuple<Setters...>>> : accept<Meta, vo
 			using acceptor_type = void (*)(const accept&, Type&, const Value&, const Visit&);
 
 			// Make acceptor map w/ property information
-			auto initial_property_map = util::prehashed_string_map{std::invoke(
+			auto initial_property_map = std::invoke(
 				[]<size_t... Indices>(std::index_sequence<Indices...> /*indices*/) consteval {
-					return std::array{std::invoke(
+					return util::prehashed_string_map{std::invoke(
 						[]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) consteval {
 							using setter_type = std::tuple_element_t<Index, std::tuple<Setters...>>;
 							setter_type property{};
@@ -141,7 +141,7 @@ struct accept<Meta, object_type<Type, std::tuple<Setters...>>> : accept<Meta, vo
 					)...};
 				},
 				std::make_index_sequence<sizeof...(Setters)>{}
-			)};
+			);
 
 			// Extract acceptors from initial property map
 			// value_type -> `std::pair{hash, std::pair{optional_hash, acceptor}}`

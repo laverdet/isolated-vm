@@ -62,9 +62,9 @@ struct accept<Meta, std::variant<Types...>> : accept<Meta, void> {
 		template <class Value, class Visit>
 		consteval static auto make_discriminant_map() {
 			using acceptor_type = accepted_type (*)(const accept&, Value, Visit);
-			return util::prehashed_string_map{std::invoke(
+			return std::invoke(
 				[]<size_t... Index>(std::index_sequence<Index...> /*indices*/) consteval {
-					return std::array{std::invoke(
+					return util::prehashed_string_map{std::invoke(
 						[](const auto& alternative) {
 							acceptor_type acceptor = [](const accept& self, Value value, Visit visit) -> accepted_type {
 								const auto& accept = std::get<Index>(self.second);
@@ -76,7 +76,7 @@ struct accept<Meta, std::variant<Types...>> : accept<Meta, void> {
 					)...};
 				},
 				std::index_sequence_for<Types...>{}
-			)};
+			);
 		}
 
 	private:
