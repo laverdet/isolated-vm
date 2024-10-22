@@ -75,6 +75,11 @@ class handle : public v8::Local<Type> {
 			return apply_handle(&Type::get, std::forward<decltype(args)>(args)...);
 		}
 
+		auto has(auto&&... args) -> decltype(auto)
+			requires std::invocable<decltype(&Type::has), Type&, handle_env, Extra&..., decltype(args)...> {
+			return apply_handle(&Type::has, std::forward<decltype(args)>(args)...);
+		}
+
 		auto size() const -> decltype(auto)
 			requires std::invocable<decltype(&Type::size), const Type&, handle_env, const Extra&...> {
 			return apply_handle(&Type::size);

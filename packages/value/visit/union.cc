@@ -52,9 +52,12 @@ struct accept<Meta, std::variant<Types...>> : accept<Meta, void> {
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> accepted_type {
 			auto alternatives = make_discriminant_map<decltype(dictionary), decltype(visit)>();
 			auto discriminant_value = visit_discriminant(dictionary, visit, accept_string);
-			auto accept_alternative = alternatives.get(discriminant_value);
+			if (!discriminant_value) {
+				throw std::logic_error("Missing discriminant");
+			}
+			auto accept_alternative = alternatives.get(*discriminant_value);
 			if (accept_alternative == nullptr) {
-				throw std::logic_error(std::format("Unknown discriminant: {}", discriminant_value));
+				throw std::logic_error(std::format("Unknown discriminant: {}", *discriminant_value));
 			}
 			return (*accept_alternative)(*this, std::forward<decltype(dictionary)>(dictionary), visit);
 		}
@@ -65,7 +68,7 @@ struct accept<Meta, std::variant<Types...>> : accept<Meta, void> {
 			return std::invoke(
 				[]<size_t... Index>(std::index_sequence<Index...> /*indices*/) consteval {
 					return util::prehashed_string_map{std::invoke(
-						[](const auto& alternative) {
+						[](const auto& alternative) constexpr {
 							acceptor_type acceptor = [](const accept& self, Value value, Visit visit) -> accepted_type {
 								const auto& accept = std::get<Index>(self.second);
 								return accept(dictionary_tag{}, std::forward<Value>(value), visit);

@@ -2,6 +2,7 @@ module;
 #include <concepts>
 #include <cstring>
 #include <iterator>
+#include <optional>
 #include <type_traits>
 #include <utility>
 #include <version>
@@ -34,8 +35,13 @@ struct visit_key<Meta, Key, Napi::Value> {
 		constexpr visit_key(const auto_visit auto& visit) :
 				root{visit} {}
 
-		auto operator()(auto&& object, const auto& visit, const auto_accept auto& accept) const -> decltype(auto) {
-			return visit.second(object.get(get_local()), accept);
+		auto operator()(auto&& object, const auto& visit, const auto_accept auto& accept) const {
+			auto local = get_local();
+			if (object.has(local)) {
+				return std::optional{visit.second(object.get(local), accept)};
+			} else {
+				return std::optional<std::decay_t<decltype(visit.second(object.get(local), accept))>>{};
+			}
 		}
 
 	private:

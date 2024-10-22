@@ -23,6 +23,10 @@ auto object::get(Napi::Value key) const -> Napi::Value {
 	return object_.Get(key);
 }
 
+auto object::has(Napi::Value key) const -> bool {
+	return object_.HasOwnProperty(key);
+}
+
 object::iterator_transform::iterator_transform(Napi::Object object) :
 		object_{object} {}
 

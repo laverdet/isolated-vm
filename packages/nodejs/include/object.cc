@@ -28,6 +28,7 @@ export class object {
 
 		explicit object(Napi::Object object);
 		[[nodiscard]] auto get(Napi::Value key) const -> Napi::Value;
+		[[nodiscard]] auto has(Napi::Value key) const -> bool;
 		[[nodiscard]] auto into_range() const -> range_type;
 
 	private:

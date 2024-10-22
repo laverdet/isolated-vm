@@ -32,6 +32,7 @@ export class object : public v8::Object {
 		using iterator = std::ranges::iterator_t<range_type>;
 
 		[[nodiscard]] auto get(handle_env env, array_handle& keys, v8::Local<v8::Value> key) -> v8::Local<v8::Value>;
+		[[nodiscard]] auto has(handle_env env, array_handle& keys, v8::Local<v8::Value> key) -> bool;
 		[[nodiscard]] auto into_range(handle_env env, array_handle& keys) -> range_type;
 		static auto Cast(v8::Value* data) -> object*;
 };

@@ -4,6 +4,7 @@ module;
 #include <__iterator/wrap_iter.h>
 #endif
 #include <cstddef>
+#include <optional>
 #include <utility>
 export module ivm.iv8:accept;
 import :date;
@@ -21,8 +22,13 @@ struct visit_key<Meta, Key, v8::Local<v8::Value>> {
 		constexpr visit_key(const auto_visit auto& visit) :
 				root{visit} {}
 
-		auto operator()(const auto& object, const auto& visit, const auto_accept auto& accept) const -> decltype(auto) {
-			return visit.second(object.get(get_local()), accept);
+		auto operator()(const auto& object, const auto& visit, const auto_accept auto& accept) const {
+			auto local = get_local();
+			if (object.has(local)) {
+				return std::optional{visit.second(object.get(get_local()), accept)};
+			} else {
+				return std::optional<std::decay_t<decltype(visit.second(object.get(get_local()), accept))>>{};
+			}
 		}
 
 	private:

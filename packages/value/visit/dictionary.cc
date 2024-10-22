@@ -1,5 +1,6 @@
 module;
 #include <boost/variant.hpp>
+#include <optional>
 #include <ranges>
 #include <type_traits>
 #include <utility>
@@ -18,14 +19,15 @@ struct visit_key<Meta, Key, void> {
 		constexpr visit_key(const auto_visit auto& visit) :
 				first{visit} {}
 
-		constexpr auto operator()(const auto& dictionary, const auto& visit, const auto_accept auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(const auto& dictionary, const auto& visit, const auto_accept auto& accept) const {
 			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) {
 				return visit.first(entry.first, first) == Key;
 			});
-			if (it == dictionary.end()) {
-				return accept(undefined_tag{}, std::monostate{});
+			if (it != dictionary.end()) {
+				return std::optional{visit.second(it->second, accept)};
+			} else {
+				return std::optional<std::decay_t<decltype(visit.second(it->second, accept))>>{};
 			}
-			return visit.second(it->second, accept);
 		}
 
 	private:
