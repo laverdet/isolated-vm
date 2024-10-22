@@ -1,6 +1,8 @@
 module;
+#include <functional>
 #include <ranges>
 #include <utility>
+#include <variant>
 export module ivm.utility:utility;
 
 namespace ivm::util {
@@ -43,6 +45,26 @@ struct string_literal {
 
 		std::array<char, Size> payload{};
 };
+
+// Like `std::visit` but it visits with a `std::integral_constant` of the variant index. That way
+// you can use the index for other structures.
+export template <class... Types>
+constexpr auto visit_by_index(auto visitor, const std::variant<Types...>& variant) -> decltype(auto) {
+	using result_type = std::invoke_result_t<decltype(visitor), std::integral_constant<size_t, 0>>;
+	using function_type = result_type (*)(decltype(visitor));
+	const auto visitors = std::invoke(
+		[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
+			return std::array{invoke(std::integral_constant<size_t, Index>{})...};
+		},
+		[]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr -> function_type {
+			return [](decltype(visitor) visitor_) -> result_type {
+				return visitor_(std::integral_constant<size_t, Index>{});
+			};
+		},
+		std::make_index_sequence<sizeof...(Types)>{}
+	);
+	return visitors[ variant.index() ](std::forward<decltype(visitor)>(visitor));
+}
 
 // Explicitly move-constructs a new object from an existing rvalue reference. Used to immediately
 // destroy a resource-consuming object after the result scope exists.

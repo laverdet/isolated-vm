@@ -95,19 +95,23 @@ struct accept<Meta, recursive_variant<First, Rest...>>
 // can't delegate to this one either because it handles recursive variants.
 template <class... Types>
 	requires is_variant_v<Types...>
-struct visit<std::variant<Types...>> : visit<Types>... {
+struct visit<std::variant<Types...>> {
+	public:
 		constexpr visit() :
-				visit<Types>{0, *this}... {}
+				visitors{visit<Types>{0, *this}...} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
-			return std::visit(
-				[ & ]<class Value>(Value&& value) constexpr {
-					const visit<std::decay_t<Value>>& visit = *this;
-					return visit(std::forward<Value>(value), accept);
+			return util::visit_by_index(
+				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
+					const auto& visit = std::get<Index>(visitors);
+					return visit(std::get<Index>(std::forward<decltype(value)>(value)), accept);
 				},
-				std::forward<decltype(value)>(value)
+				value
 			);
 		}
+
+	private:
+		std::tuple<visit<Types>...> visitors;
 };
 
 // Visiting a `boost::variant` visits the underlying members
