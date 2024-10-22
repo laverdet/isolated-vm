@@ -37,10 +37,11 @@ struct visit_key<Meta, Key, Napi::Value> {
 
 		auto operator()(auto&& object, const auto& visit, const auto_accept auto& accept) const {
 			auto local = get_local();
+			using accepted_type = std::decay_t<decltype(visit.second(object.get(local), accept))>;
 			if (object.has(local)) {
-				return std::optional{visit.second(object.get(local), accept)};
+				return std::optional<accepted_type>{visit.second(object.get(local), accept)};
 			} else {
-				return std::optional<std::decay_t<decltype(visit.second(object.get(local), accept))>>{};
+				return std::optional<accepted_type>{};
 			}
 		}
 

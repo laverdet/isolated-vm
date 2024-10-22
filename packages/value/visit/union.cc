@@ -66,17 +66,16 @@ struct accept<Meta, std::variant<Types...>> : accept<Meta, void> {
 		consteval static auto make_discriminant_map() {
 			using acceptor_type = accepted_type (*)(const accept&, Value, Visit);
 			return std::invoke(
-				[]<size_t... Index>(std::index_sequence<Index...> /*indices*/) consteval {
-					return util::prehashed_string_map{std::invoke(
-						[](const auto& alternative) constexpr {
-							acceptor_type acceptor = [](const accept& self, Value value, Visit visit) -> accepted_type {
-								const auto& accept = std::get<Index>(self.second);
-								return accept(dictionary_tag{}, std::forward<Value>(value), visit);
-							};
-							return std::pair{alternative.discriminant, acceptor};
-						},
-						std::get<Index>(descriptor_type::alternatives)
-					)...};
+				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) consteval {
+					return util::prehashed_string_map{invoke(std::integral_constant<size_t, Index>{})...};
+				},
+				[]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
+					const auto& alternative = std::get<Index>(descriptor_type::alternatives);
+					acceptor_type acceptor = [](const accept& self, Value value, Visit visit) -> accepted_type {
+						const auto& accept = std::get<Index>(self.second);
+						return accept(dictionary_tag{}, std::forward<Value>(value), visit);
+					};
+					return std::pair{alternative.discriminant, acceptor};
 				},
 				std::index_sequence_for<Types...>{}
 			);

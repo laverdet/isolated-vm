@@ -23,10 +23,11 @@ struct visit_key<Meta, Key, void> {
 			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) {
 				return visit.first(entry.first, first) == Key;
 			});
+			using accepted_typed = std::decay_t<decltype(visit.second(it->second, accept))>;
 			if (it != dictionary.end()) {
-				return std::optional{visit.second(it->second, accept)};
+				return std::optional<accepted_typed>{visit.second(it->second, accept)};
 			} else {
-				return std::optional<std::decay_t<decltype(visit.second(it->second, accept))>>{};
+				return std::optional<accepted_typed>{};
 			}
 		}
 

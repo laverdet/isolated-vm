@@ -74,6 +74,26 @@ struct setter_delegate<member<Name, Member, Required>>
 		constexpr auto operator()(Subject& subject, const Type& value) const -> void { subject.*Member = std::move(value); }
 };
 
+// Extract property name from property type
+template <class Property>
+struct property_name;
+
+template <class Property>
+constexpr auto property_name_v = property_name<Property>::value;
+
+template <class Type>
+struct property_name<setter_delegate<Type>> : property_name<Type> {};
+
+template <util::string_literal Name, auto Getter, auto Setter, bool Required>
+struct property_name<accessor<Name, Getter, Setter, Required>> {
+		constexpr static auto value = Name;
+};
+
+template <util::string_literal Name, auto Member, bool Required>
+struct property_name<member<Name, Member, Required>> {
+		constexpr static auto value = Name;
+};
+
 // Helper for object accept & visit
 template <class Type, class Properties>
 struct object_type;
@@ -90,80 +110,38 @@ struct accept<Meta, object_type<Type, std::tuple<Setters...>>> : accept<Meta, vo
 		constexpr accept(const auto_visit auto& visit) :
 				accept<Meta, void>{visit},
 				first{visit},
-				second{accept_next<Meta, typename Setters::type>{visit}...} {}
+				second{accept_next<Meta, typename Setters::type>{visit}...},
+				visit_properties{visit_key<Meta, property_name_v<Setters>>{visit}...} {}
 		constexpr accept(int /*dummy*/, const auto_visit auto& visit, const auto_accept auto& /*acceptor*/) :
 				accept{visit} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> Type {
-			using range_type = decltype(util::into_range(dictionary));
-			using value_type = std::ranges::range_value_t<range_type>::second_type;
-			using visit_type = std::decay_t<decltype(visit)>;
-			hash_type checksum{};
 			Type subject;
-			if constexpr (sizeof...(Setters) != 0) {
-				auto [ expected_checksum, property_map ] = make_property_map<value_type, visit_type>();
-				for (auto&& [ key, value ] : util::into_range(dictionary)) {
-					auto descriptor = property_map.get(visit.first(std::forward<decltype(key)>(key), first));
-					if (descriptor != nullptr) {
-						const auto& [ optional_hash, acceptor ] = *descriptor;
-						checksum ^= optional_hash;
-						acceptor(*this, subject, std::forward<decltype(value)>(value), visit);
+			std::invoke(
+				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
+					(invoke(std::integral_constant<size_t, Index>{}), ...);
+				},
+				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
+					using setter_type = std::tuple_element_t<Index, std::tuple<Setters...>>;
+					setter_type setter{};
+					const auto& accept = std::get<Index>(second);
+					const auto& visit_property = std::get<Index>(visit_properties);
+					auto value = visit_property(dictionary, visit, accept);
+					if (value) {
+						setter(subject, *std::move(value));
+					} else if (setter.required) {
+						throw std::logic_error(std::format("Missing required property: {}", setter.name));
 					}
-				}
-				if (checksum != expected_checksum) {
-					throw std::logic_error(std::format("Checksum mismatch: {} != {}", checksum, expected_checksum));
-				}
-			}
-			return subject;
-		}
-
-	private:
-		// Returns: `std::pair{checksum, std::pair{optional_hash, acceptor}}`
-		template <class Value, class Visit>
-		consteval static auto make_property_map() {
-			using acceptor_type = void (*)(const accept&, Type&, const Value&, const Visit&);
-
-			// Make acceptor map w/ property information
-			auto initial_property_map = std::invoke(
-				[]<size_t... Indices>(std::index_sequence<Indices...> /*indices*/) consteval {
-					return util::prehashed_string_map{std::invoke(
-						[]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) consteval {
-							using setter_type = std::tuple_element_t<Index, std::tuple<Setters...>>;
-							setter_type property{};
-							acceptor_type acceptor = [](const accept& self, Type& subject, const Value& value, const Visit& visit) {
-								setter_type delegate{};
-								const auto& accept = std::get<Index>(self.second);
-								delegate(subject, visit.second(std::move(value), accept));
-							};
-							return std::pair{property.name, std::pair{property.required, acceptor}};
-						},
-						std::integral_constant<size_t, Indices>{}
-					)...};
 				},
 				std::make_index_sequence<sizeof...(Setters)>{}
 			);
-
-			// Extract acceptors from initial property map
-			// value_type -> `std::pair{hash, std::pair{optional_hash, acceptor}}`
-			auto property_map = initial_property_map.transform([](const auto& entry) {
-				auto [ hash, value ] = entry;
-				auto [ required, acceptor ] = value;
-				auto optional_hash = required ? hash : 0;
-				return std::pair{optional_hash, acceptor};
-			});
-
-			// Calculate expected object hash
-			auto non_optional_hashes =
-				property_map |
-				std::views::transform([](const auto& entry) constexpr { return entry.second.first; });
-			auto checksum = std::ranges::fold_left(non_optional_hashes, 0, std::bit_xor{});
-
-			return std::pair{checksum, property_map};
+			return subject;
 		}
 
 	private:
 		accept_next<Meta, std::string> first;
 		std::tuple<accept_next<Meta, typename Setters::type>...> second;
+		std::tuple<visit_key<Meta, property_name_v<Setters>>...> visit_properties;
 };
 
 // Apply `setter_delegate` to each property, filtering properties which do not have a setter.
