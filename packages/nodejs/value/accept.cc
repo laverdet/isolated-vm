@@ -137,7 +137,7 @@ struct accept<Meta, Napi::Value> : accept<Meta, Napi::Env> {
 
 		auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> Napi::Value {
 			auto object = Napi::Object::New(this->env());
-			for (auto&& [ key, value ] : dictionary) {
+			for (auto&& [ key, value ] : util::into_range(dictionary)) {
 				object.Set(
 					visit.first(std::forward<decltype(key)>(key), *this),
 					visit.second(std::forward<decltype(value)>(value), *this)

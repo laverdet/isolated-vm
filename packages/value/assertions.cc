@@ -100,6 +100,14 @@ constexpr auto object_values_test = transfer<object_literal>(dictionary{{
 static_assert(object_values_test.integer == 1);
 static_assert(object_values_test.number == 2.0);
 static_assert(object_values_test.string == "hello");
+static_assert(
+	transfer<dictionary<dictionary_tag, std::string, object_test_variant>>(object_values_test) ==
+	dictionary{{
+		std::pair{"integer"s, object_test_variant{1}},
+		std::pair{"number"s, object_test_variant{2.0}},
+		std::pair{"string"s, object_test_variant{"hello"}},
+	}}
+);
 
 // Ensure custom acceptors work
 struct specialized {

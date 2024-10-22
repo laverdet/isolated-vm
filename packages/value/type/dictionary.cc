@@ -23,6 +23,8 @@ class vector_of {
 
 		[[nodiscard]] constexpr auto begin(this auto&& self) { return self.values.begin(); }
 		[[nodiscard]] constexpr auto end(this auto&& self) { return self.values.end(); }
+		// For testing / assertions
+		[[nodiscard]] consteval auto operator==(const vector_of& right) const -> bool { return values == right.values; }
 
 	private:
 		container_type values;

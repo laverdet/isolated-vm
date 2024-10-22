@@ -99,6 +99,8 @@ struct visit<std::variant<Types...>> {
 	public:
 		constexpr visit() :
 				visitors{visit<Types>{0, *this}...} {}
+		constexpr visit(int /*dummy*/, const auto_visit auto& /*visit*/) :
+				visit{} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return util::visit_by_index(

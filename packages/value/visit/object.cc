@@ -50,6 +50,27 @@ struct property_info {
 		constexpr static auto required = Required;
 };
 
+// Getter delegate for object property
+template <class Property>
+struct getter_delegate;
+
+template <util::string_literal Name, bool Required, auto Setter, class Type, class Subject, Type (Subject::* Getter)()>
+struct getter_delegate<accessor<Name, Getter, Setter, Required>>
+		: std::type_identity<std::decay_t<Type>>,
+			property_info<Name, Required> {
+		constexpr auto operator()(Subject& subject) const -> Type { return (&subject->*Getter)(); }
+};
+
+template <util::string_literal Name, auto Setter>
+struct getter_delegate<accessor<Name, nullptr, Setter, false>> : std::type_identity<void> {};
+
+template <util::string_literal Name, bool Required, class Subject, class Type, Type Subject::* Member>
+struct getter_delegate<member<Name, Member, Required>>
+		: std::type_identity<std::decay_t<Type>>,
+			property_info<Name, Required> {
+		constexpr auto operator()(const Subject& subject) const -> const Type& { return subject.*Member; }
+};
+
 // Setter delegate for object property
 template <class Property>
 struct setter_delegate;
@@ -82,6 +103,9 @@ template <class Property>
 constexpr auto property_name_v = property_name<Property>::value;
 
 template <class Type>
+struct property_name<getter_delegate<Type>> : property_name<Type> {};
+
+template <class Type>
 struct property_name<setter_delegate<Type>> : property_name<Type> {};
 
 template <util::string_literal Name, auto Getter, auto Setter, bool Required>
@@ -92,6 +116,48 @@ struct property_name<accessor<Name, Getter, Setter, Required>> {
 template <util::string_literal Name, auto Member, bool Required>
 struct property_name<member<Name, Member, Required>> {
 		constexpr static auto value = Name;
+};
+
+// Wrapper for visit result of a struct object
+template <class Subject, class... Getters>
+struct struct_dictionary {
+	private:
+		using key_type = std::string;
+		using mapped_type = std::variant<typename Getters::type...>;
+		using value_type = std::pair<key_type, mapped_type>;
+
+	public:
+		constexpr struct_dictionary(const Subject& subject) :
+				subject{&subject} {}
+
+		// Iterating over a struct_dictionary (as the target of dictionary_tag) yields a std::variant
+		// of all possible property types.
+		constexpr auto into_range() {
+			auto result =
+				make_getters() |
+				std::views::transform([ & ](auto getter) -> decltype(auto) { return getter(*subject); });
+			return result;
+		}
+
+	private:
+		consteval static auto make_getters() {
+			using variant_getter_type = value_type (*)(const Subject&);
+			return std::invoke(
+				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) consteval {
+					return std::array{invoke(std::integral_constant<size_t, Index>{})...};
+				},
+				[]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr -> variant_getter_type {
+					return [](const Subject& subject) constexpr -> value_type {
+						using getter_type = std::tuple_element_t<Index, std::tuple<Getters...>>;
+						getter_type getter{};
+						return std::pair{std::string{getter.name}, mapped_type{std::in_place_index_t<Index>{}, getter(subject)}};
+					};
+				},
+				std::make_index_sequence<sizeof...(Getters)>{}
+			);
+		}
+
+		const Subject* subject;
 };
 
 // Helper for object accept & visit
@@ -156,6 +222,34 @@ template <class Meta, class Type>
 	requires std::destructible<object_properties<Type>>
 struct accept<Meta, Type> : accept<Meta, mapped_object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>> {
 		using accept<Meta, mapped_object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>>::accept;
+};
+
+// Visitor function for C++ object types
+template <class Type, class... Getters>
+struct visit<object_type<Type, std::tuple<Getters...>>> : visit<void> {
+		using visit<void>::visit;
+
+		constexpr auto operator()(const auto& value, const auto_accept auto& accept) const -> decltype(auto) {
+			return accept(dictionary_tag{}, struct_dictionary<Type, Getters...>{value}, *this);
+		}
+
+		visit<std::string> first;
+		visit<std::variant<typename Getters::type...>> second;
+};
+
+// Apply `getter_delegate` to each property, filtering properties which do not have a getter.
+template <class Type, class... Properties>
+struct visit<mapped_object_type<Type, std::tuple<Properties...>>>
+		: visit<object_type<Type, remove_void_t<std::tuple<getter_delegate<Properties>...>>>> {
+		using visit<object_type<Type, remove_void_t<std::tuple<getter_delegate<Properties>...>>>>::visit;
+};
+
+// Unpack object properties from `object_properties` specialization
+template <class Type>
+	requires std::destructible<object_properties<Type>>
+struct visit<Type>
+		: visit<mapped_object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>> {
+		using visit<mapped_object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>>::visit;
 };
 
 } // namespace ivm::value
