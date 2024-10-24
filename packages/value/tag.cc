@@ -43,6 +43,9 @@ template <class Type>
 struct bigint_tag_of : bigint_tag {};
 
 struct object_tag : value_tag {};
+// An object whose property keys are known at compile time.
+template <std::size_t Properties>
+struct struct_tag : object_tag {};
 struct dictionary_tag : object_tag {};
 struct list_tag : object_tag {};
 struct date_tag : object_tag {};

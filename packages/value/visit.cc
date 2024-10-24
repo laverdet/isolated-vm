@@ -9,6 +9,10 @@ import ivm.utility;
 
 namespace ivm::value {
 
+// Holder for `Meta` template
+export template <class Wrap, class Subject, class Target>
+struct transferee_meta;
+
 // Maps `Subject` or `Target` into the type which will be used to specialize visit / accept context.
 export template <class Type>
 struct transferee_subject : std::type_identity<void> {};
@@ -53,8 +57,8 @@ template <class Meta>
 struct visit_subject;
 
 template <class Wrap, class Subject, class Target>
-struct visit_subject<std::tuple<Wrap, Subject, Target>>
-		: std::type_identity<visit<std::tuple<Wrap, Subject, Target>, Subject>> {};
+struct visit_subject<transferee_meta<Wrap, Subject, Target>>
+		: std::type_identity<visit<transferee_meta<Wrap, Subject, Target>, Subject>> {};
 
 export template <class Meta>
 using visit_subject_t = visit_subject<Meta>::type;
@@ -102,19 +106,33 @@ template <class Meta, class Type>
 using wrap_next_t = wrap_next<Meta, Type>::type;
 
 template <class Wrap, class Subject, class Target, class Type>
-struct wrap_next<std::tuple<Wrap, Subject, Target>, Type>
+struct wrap_next<transferee_meta<Wrap, Subject, Target>, Type>
 		: std::type_identity<typename Wrap::template wrap<Type>> {};
 
 export template <class Meta, class Type>
 using accept_next = accept<Meta, wrap_next_t<Meta, Type>>;
+
+// Context for dictionary placement operations
+export template <class Subject, util::string_literal Key>
+struct accept_key {
+		constexpr auto operator()(const auto& /*visit*/) const {
+			return Key;
+		}
+};
+
+// Unwrap `Target` from `Meta`.
+template <class Wrap, class Subject, class Target, util::string_literal Key>
+struct accept_key<transferee_meta<Wrap, Subject, Target>, Key> : accept_key<Target, Key> {
+		using accept_key<Target, Key>::accept_key;
+};
 
 // Context for dictionary lookup operations
 export template <class Meta, util::string_literal Key, class Type = Meta>
 struct visit_key;
 
 // Default `visit_key` swallows `Meta`
-template <class Meta, util::string_literal Key, class Type>
-struct visit_key : visit_key<void, Key, Type> {
+template <class Meta, util::string_literal Key, class Subject>
+struct visit_key : visit_key<void, Key, Subject> {
 		// Swallow `visit` argument on behalf of non-meta visitors
 		constexpr visit_key(const auto_visit auto& /*visit*/) {}
 };
@@ -122,9 +140,9 @@ struct visit_key : visit_key<void, Key, Type> {
 // Unwrap `Subject` from `Meta`. `Type` defaults to `Meta` which means we want to unwrap the *visit*
 // subject.
 template <class Wrap, class Subject, class Target, auto Key>
-struct visit_key<std::tuple<Wrap, Subject, Target>, Key, std::tuple<Wrap, Subject, Target>>
-		: visit_key<std::tuple<Wrap, Subject, Target>, Key, transferee_subject_t<Subject>> {
-		using visit_key<std::tuple<Wrap, Subject, Target>, Key, transferee_subject_t<Subject>>::visit_key;
+struct visit_key<transferee_meta<Wrap, Subject, Target>, Key, transferee_meta<Wrap, Subject, Target>>
+		: visit_key<transferee_meta<Wrap, Subject, Target>, Key, transferee_subject_t<Subject>> {
+		using visit_key<transferee_meta<Wrap, Subject, Target>, Key, transferee_subject_t<Subject>>::visit_key;
 };
 
 } // namespace ivm::value

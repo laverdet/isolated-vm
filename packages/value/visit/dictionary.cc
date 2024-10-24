@@ -107,6 +107,23 @@ struct accept<Meta, dictionary<Tag, Key, Value>> {
 			};
 		}
 
+		template <std::size_t Size>
+			requires std::is_same_v<dictionary_tag, Tag>
+		constexpr auto operator()(struct_tag<Size> /*tag*/, const auto& value, const auto& visit) const -> dictionary<Tag, Key, Value> {
+			return std::invoke(
+				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
+					dictionary<Tag, Key, Value>{invoke(std::integral_constant<size_t, Index>{})...};
+				},
+				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> index) constexpr {
+					return std::pair{
+						visit.first(index, *this),
+						visit.second(index, value, *this),
+					};
+				},
+				std::make_index_sequence<Size>{}
+			);
+		}
+
 	private:
 		accept<Meta, recursive<Key>> first;
 		accept<Meta, recursive<Value>> second;

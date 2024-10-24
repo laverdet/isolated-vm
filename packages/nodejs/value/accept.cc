@@ -1,6 +1,7 @@
 module;
 #include <concepts>
 #include <cstring>
+#include <functional>
 #include <iterator>
 #include <optional>
 #include <type_traits>
@@ -28,15 +29,29 @@ auto v8_to_napi(const v8::Local<Type>& local) -> napi_value {
 
 namespace ivm::value {
 
+template <util::string_literal Key>
+struct napi_key_holder {
+	public:
+		auto get_local(Napi::Env env) const -> Napi::Value {
+			if (local_key.IsEmpty()) {
+				local_key = Napi::String::New(env, std::string_view{Key}.data(), Key.length());
+			}
+			return local_key;
+		}
+
+	private:
+		mutable Napi::String local_key;
+};
+
 // Object key lookup via Napi
 template <class Meta, util::string_literal Key>
-struct visit_key<Meta, Key, Napi::Value> {
+struct visit_key<Meta, Key, Napi::Value> : napi_key_holder<Key> {
 	public:
 		constexpr visit_key(const auto_visit auto& visit) :
 				root{visit} {}
 
 		auto operator()(auto&& object, const auto& visit, const auto_accept auto& accept) const {
-			auto local = get_local();
+			auto local = this->get_local(root.env());
 			using accepted_type = std::decay_t<decltype(visit.second(object.get(local), accept))>;
 			if (object.has(local)) {
 				return std::optional<accepted_type>{visit.second(object.get(local), accept)};
@@ -46,15 +61,15 @@ struct visit_key<Meta, Key, Napi::Value> {
 		}
 
 	private:
-		auto get_local() const -> Napi::Value {
-			if (local_key.IsEmpty()) {
-				local_key = Napi::String::New(root.env(), std::string_view{Key}.data(), Key.length());
-			}
-			return local_key;
-		}
-
 		const visit_subject_t<Meta>& root;
-		mutable Napi::String local_key;
+};
+
+// Object key maker via Napi
+template <util::string_literal Key>
+struct accept_key<Napi::Value, Key> : napi_key_holder<Key> {
+		auto operator()(const auto& visit) const {
+			return this->get_local(visit.env());
+		}
 };
 
 // Fake acceptor for primitive values
@@ -143,6 +158,24 @@ struct accept<Meta, Napi::Value> : accept<Meta, Napi::Env> {
 					visit.second(std::forward<decltype(value)>(value), *this)
 				);
 			}
+			return object;
+		}
+
+		template <std::size_t Size>
+		auto operator()(struct_tag<Size> /*tag*/, const auto& dictionary, const auto& visit) const -> Napi::Value {
+			auto object = Napi::Object::New(this->env());
+			std::invoke(
+				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
+					(invoke(std::integral_constant<size_t, Index>{}), ...);
+				},
+				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> index) {
+					object.Set(
+						visit.first(index, *this),
+						visit.second(index, dictionary, *this)
+					);
+				},
+				std::make_index_sequence<Size>{}
+			);
 			return object;
 		}
 };
