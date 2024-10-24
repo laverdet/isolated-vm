@@ -17,6 +17,7 @@ target_sources(ivm_value
 		visit/tuple.cc
 		visit/union.cc
 		visit/variant.cc
+		visit/vector.cc
 )
 target_link_libraries(ivm_value PRIVATE
 	Boost::boost

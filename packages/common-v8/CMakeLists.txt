@@ -2,6 +2,7 @@ add_library(${IV8_PREFIX}_common_v8 OBJECT)
 target_sources(${IV8_PREFIX}_common_v8
 	PRIVATE
 		value/array.cc
+		value/fixed_array.cc
 		value/object.cc
 		value/string.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
@@ -11,6 +12,7 @@ target_sources(${IV8_PREFIX}_common_v8
 		include/boolean.cc
 		include/date.cc
 		include/external.cc
+		include/fixed_array.cc
 		include/handle.cc
 		include/number.cc
 		include/object.cc

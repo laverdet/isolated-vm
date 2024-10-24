@@ -1,8 +1,11 @@
 import type { SourceOrigin } from "./script.js";
 import * as ivm from "./backend.js";
-import { compileScript, createAgent, createRealm } from "./backend.js";
+import { compileModule, compileScript, createAgent, createRealm } from "./backend.js";
+import { Module } from "./module.js";
 import { Realm } from "./realm.js";
 import { Script } from "./script.js";
+
+const { extractRealmInternal } = Realm;
 
 export namespace Agent {
 	export namespace CreateOptions {
@@ -56,6 +59,12 @@ export class Agent {
 	async createRealm(): Promise<Realm> {
 		const realm = await createRealm(this.#agent);
 		return new Realm(realm);
+	}
+
+	async compileModule(realm: Realm, code: string): Promise<unknown> {
+		const module = await compileModule(this.#agent, extractRealmInternal(realm), code);
+		return module;
+		// return new Module(this.#agent, module);
 	}
 
 	async compileScript(code: string, options?: Agent.CompileScriptOptions): Promise<Script> {

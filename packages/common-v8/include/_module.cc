@@ -4,6 +4,7 @@ export import :array;
 export import :boolean;
 export import :date;
 export import :external;
+export import :fixed_array;
 export import :handle;
 export import :number;
 export import :object;

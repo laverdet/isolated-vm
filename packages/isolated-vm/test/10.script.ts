@@ -26,3 +26,10 @@ await test("script source origin", async () => {
 	assert.ok(typeof result === "string");
 	assert.ok(result.includes("file:///test-script:103"));
 });
+
+await test("placeholder module test", async () => {
+	await using agent = await ivm.Agent.create();
+	const realm = await agent.createRealm();
+	const module = await agent.compileModule(realm, "import { foo } from 'bar'");
+	assert.deepEqual(module, [ { specifier: "bar" } ]);
+});

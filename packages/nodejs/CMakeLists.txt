@@ -4,6 +4,7 @@ target_sources(ivm_backend_v8
 		agent.cc
 		environment.cc
 		main.cc
+		module.cc
 		script.cc
 		value/arguments.cc
 		value/array.cc

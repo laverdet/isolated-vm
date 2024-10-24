@@ -3,4 +3,5 @@ module;
 export module v8:data;
 namespace v8 {
 export using v8::Data;
+export using v8::FixedArray;
 } // namespace v8

@@ -139,6 +139,15 @@ struct accept<Meta, Napi::Value> : accept<Meta, Napi::Env> {
 			return accept(tag, std::forward<decltype(value)>(value));
 		}
 
+		auto operator()(vector_tag /*tag*/, auto&& list, const auto& visit) const -> Napi::Value {
+			auto array = Napi::Array::New(this->env());
+			int ii = 0;
+			for (auto&& value : list) {
+				array.Set(Napi::Number::New(this->env(), ii++), visit(value, *this));
+			}
+			return array;
+		}
+
 		auto operator()(list_tag /*tag*/, auto&& list, const auto& visit) const -> Napi::Value {
 			auto array = Napi::Array::New(this->env());
 			for (auto&& [ key, value ] : list) {

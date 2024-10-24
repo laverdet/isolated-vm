@@ -1,3 +1,5 @@
+module;
+#include <utility>
 export module ivm.utility:facade;
 
 namespace ivm::util {
@@ -57,7 +59,9 @@ class arithmetic_facade {
 export template <class Type, class difference_type>
 class array_facade {
 	public:
-		auto operator[](this auto& self, difference_type offset) -> decltype(auto) { return *(self + offset); }
+		auto operator[](this auto&& self, difference_type offset) -> decltype(auto) {
+			return *(std::forward<decltype(self)>(self) + offset);
+		}
 };
 
 /**

@@ -11,4 +11,5 @@ export import :tuple;
 export import :union_of;
 export import :value;
 export import :variant;
+export import :vector.visit;
 export import :visit;

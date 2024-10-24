@@ -3,6 +3,7 @@ target_sources(ivm_isolated_v8
 	PRIVATE
 		agent.cc
 		cluster.cc
+		module.cc
 		platform/clock.cc
 		platform/foreground_runner.cc
 		platform/handle.cc
@@ -16,6 +17,7 @@ target_sources(ivm_isolated_v8
 		include/agent_fwd.cc
 		include/agent.cc
 		include/cluster.cc
+		include/module.cc
 		include/platform.cc
 		include/platform/clock.cc
 		include/platform/foreground_runner.cc

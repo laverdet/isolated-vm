@@ -27,6 +27,7 @@ export class environment {
 };
 
 // Module forward declarations
+export auto make_compile_module(environment& env) -> Napi::Function;
 export auto make_compile_script(environment& env) -> Napi::Function;
 export auto make_create_agent(environment& env) -> Napi::Function;
 export auto make_create_realm(environment& env) -> Napi::Function;

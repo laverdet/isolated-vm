@@ -25,6 +25,7 @@ const backend: typeof import("backend_v8.node")["default"] = require(`./backend_
 
 // Exports must be enumerated because this imports from the native module which cannot declare ESM
 // exports.
+export const compileModule: typeof backend.compileModule = backend.compileModule;
 export const compileScript: typeof backend.compileScript = backend.compileScript;
 export const createAgent: typeof backend.createAgent = backend.createAgent;
 export const createRealm: typeof backend.createRealm = backend.createRealm;
