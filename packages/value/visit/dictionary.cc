@@ -113,16 +113,16 @@ struct accept<Meta, dictionary<Tag, Key, Value>> {
 };
 
 // Non-recursive visitor
-template <class Type>
-struct visit<recursive<Type>> : visit<Type> {
+template <class Meta, class Type>
+struct visit<Meta, recursive<Type>> : visit<Meta, Type> {
 		visit() = default;
 		constexpr visit(int /*dummy*/, const auto& /*visit*/) {}
 };
 
 // Recursive visitor
-template <class Type>
+template <class Meta, class Type>
 	requires is_recursive_v<Type>
-struct visit<recursive<Type>> {
+struct visit<Meta, recursive<Type>> {
 	public:
 		visit() = delete;
 		constexpr visit(int /*dummy*/, const auto_visit auto& visit) :
@@ -133,12 +133,12 @@ struct visit<recursive<Type>> {
 		}
 
 	private:
-		const visit<Type>* visit_;
+		const visit<Meta, Type>* visit_;
 };
 
 // Entrypoint for `dictionary`
-template <class Tag, class Key, class Value>
-struct visit<dictionary<Tag, Key, Value>> {
+template <class Meta, class Tag, class Key, class Value>
+struct visit<Meta, dictionary<Tag, Key, Value>> {
 		visit() = default;
 		constexpr visit(int dummy, const auto_visit auto& visit) :
 				first{dummy, visit},
@@ -148,8 +148,8 @@ struct visit<dictionary<Tag, Key, Value>> {
 			return accept(Tag{}, std::forward<decltype(value)>(value), *this);
 		}
 
-		visit<recursive<Key>> first;
-		visit<recursive<Value>> second;
+		visit<Meta, recursive<Key>> first;
+		visit<Meta, recursive<Value>> second;
 };
 
 } // namespace ivm::value

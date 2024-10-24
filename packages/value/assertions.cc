@@ -121,8 +121,8 @@ struct accept<void, specialized> : accept<void, void> {
 };
 
 template <>
-struct visit<specialized> : visit<void> {
-		using visit<void>::visit;
+struct visit<void, specialized> : visit<void, void> {
+		using visit<void, void>::visit;
 		constexpr auto operator()(specialized value, const auto_accept auto& accept) const -> decltype(auto) {
 			return accept(object_tag{}, value);
 		}

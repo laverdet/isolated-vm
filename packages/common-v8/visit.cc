@@ -28,7 +28,7 @@ struct transferee_subject<v8::Local<v8::Value>> : std::type_identity<v8::Local<v
 
 // boolean
 template <>
-struct visit<v8::Local<v8::Boolean>> {
+struct visit<void, v8::Local<v8::Boolean>> {
 		auto operator()(v8::Local<v8::Boolean> value, const auto_accept auto& accept) const -> decltype(auto) {
 			return accept(boolean_tag{}, iv8::handle_cast{value.As<iv8::boolean>()});
 		}
@@ -36,7 +36,7 @@ struct visit<v8::Local<v8::Boolean>> {
 
 // number
 template <>
-struct visit<v8::Local<v8::Number>> {
+struct visit<void, v8::Local<v8::Number>> {
 		auto operator()(v8::Local<v8::Number> value, const auto_accept auto& accept) const -> decltype(auto) {
 			auto number = iv8::handle_cast{value.As<iv8::number>()};
 			if (value->IsInt32()) {
@@ -49,7 +49,7 @@ struct visit<v8::Local<v8::Number>> {
 
 // date
 template <>
-struct visit<v8::Local<v8::Date>> {
+struct visit<void, v8::Local<v8::Date>> {
 		auto operator()(v8::Local<v8::Date> value, const auto_accept auto& accept) const -> decltype(auto) {
 			return accept(date_tag{}, iv8::handle_cast{value.As<iv8::date>()});
 		}
@@ -57,7 +57,7 @@ struct visit<v8::Local<v8::Date>> {
 
 // external
 template <>
-struct visit<v8::Local<v8::External>> {
+struct visit<void, v8::Local<v8::External>> {
 		auto operator()(v8::Local<v8::External> value, const auto_accept auto& accept) const -> decltype(auto) {
 			return accept(external_tag{}, iv8::handle_cast{value.As<iv8::external>()});
 		}
@@ -65,7 +65,7 @@ struct visit<v8::Local<v8::External>> {
 
 // bigint
 template <>
-struct visit<v8::Local<v8::BigInt>> {
+struct visit<void, v8::Local<v8::BigInt>> {
 		auto operator()(v8::Local<v8::BigInt> value, const auto_accept auto& accept) const -> decltype(auto) {
 			// We actually have to convert the bigint in order to see how big it is. So the acceptor is
 			// invoked directly the underlying value, instead of a `handle_cast`.
@@ -84,18 +84,18 @@ struct visit<v8::Local<v8::BigInt>> {
 
 // Primary visitor
 template <>
-struct visit<v8::Local<v8::Value>>
-		: visit<v8::Local<v8::Boolean>>,
-			visit<v8::Local<v8::Number>>,
-			visit<v8::Local<v8::Date>>,
-			visit<v8::Local<v8::External>>,
-			visit<v8::Local<v8::BigInt>> {
+struct visit<void, v8::Local<v8::Value>>
+		: visit<void, v8::Local<v8::Boolean>>,
+			visit<void, v8::Local<v8::Number>>,
+			visit<void, v8::Local<v8::Date>>,
+			visit<void, v8::Local<v8::External>>,
+			visit<void, v8::Local<v8::BigInt>> {
 	public:
-		using visit<v8::Local<v8::Boolean>>::operator();
-		using visit<v8::Local<v8::Number>>::operator();
-		using visit<v8::Local<v8::Date>>::operator();
-		using visit<v8::Local<v8::External>>::operator();
-		using visit<v8::Local<v8::BigInt>>::operator();
+		using visit<void, v8::Local<v8::Boolean>>::operator();
+		using visit<void, v8::Local<v8::Number>>::operator();
+		using visit<void, v8::Local<v8::Date>>::operator();
+		using visit<void, v8::Local<v8::External>>::operator();
+		using visit<void, v8::Local<v8::BigInt>>::operator();
 
 		visit(v8::Isolate* isolate, v8::Local<v8::Context> context) :
 				isolate_{isolate},
@@ -147,8 +147,8 @@ struct visit<v8::Local<v8::Value>>
 
 // string
 template <>
-struct visit<v8::Local<v8::String>> : visit<v8::Local<v8::Value>> {
-		using visit<v8::Local<v8::Value>>::visit;
+struct visit<void, v8::Local<v8::String>> : visit<void, v8::Local<v8::Value>> {
+		using visit<void, v8::Local<v8::Value>>::visit;
 };
 
 } // namespace ivm::value

@@ -225,31 +225,31 @@ struct accept<Meta, Type> : accept<Meta, mapped_object_type<Type, std::decay_t<d
 };
 
 // Visitor function for C++ object types
-template <class Type, class... Getters>
-struct visit<object_type<Type, std::tuple<Getters...>>> : visit<void> {
-		using visit<void>::visit;
+template <class Meta, class Type, class... Getters>
+struct visit<Meta, object_type<Type, std::tuple<Getters...>>> : visit<Meta, void> {
+		using visit<Meta, void>::visit;
 
 		constexpr auto operator()(const auto& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return accept(dictionary_tag{}, struct_dictionary<Type, Getters...>{value}, *this);
 		}
 
-		visit<std::string> first;
-		visit<std::variant<typename Getters::type...>> second;
+		visit<Meta, std::string> first;
+		visit<Meta, std::variant<typename Getters::type...>> second;
 };
 
 // Apply `getter_delegate` to each property, filtering properties which do not have a getter.
-template <class Type, class... Properties>
-struct visit<mapped_object_type<Type, std::tuple<Properties...>>>
-		: visit<object_type<Type, remove_void_t<std::tuple<getter_delegate<Properties>...>>>> {
-		using visit<object_type<Type, remove_void_t<std::tuple<getter_delegate<Properties>...>>>>::visit;
+template <class Meta, class Type, class... Properties>
+struct visit<Meta, mapped_object_type<Type, std::tuple<Properties...>>>
+		: visit<Meta, object_type<Type, remove_void_t<std::tuple<getter_delegate<Properties>...>>>> {
+		using visit<Meta, object_type<Type, remove_void_t<std::tuple<getter_delegate<Properties>...>>>>::visit;
 };
 
 // Unpack object properties from `object_properties` specialization
-template <class Type>
+template <class Meta, class Type>
 	requires std::destructible<object_properties<Type>>
-struct visit<Type>
-		: visit<mapped_object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>> {
-		using visit<mapped_object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>>::visit;
+struct visit<Meta, Type>
+		: visit<Meta, mapped_object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>> {
+		using visit<Meta, mapped_object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>>::visit;
 };
 
 } // namespace ivm::value

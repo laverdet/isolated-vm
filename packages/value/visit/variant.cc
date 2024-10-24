@@ -93,12 +93,12 @@ struct accept<Meta, recursive_variant<First, Rest...>>
 // `std::variant` visitor. This used to delegate to the `boost::variant` visitor above, but
 // `boost::apply_visitor` isn't constexpr, so we can't use it to test statically. `boost::variant`
 // can't delegate to this one either because it handles recursive variants.
-template <class... Types>
+template <class Meta, class... Types>
 	requires is_variant_v<Types...>
-struct visit<std::variant<Types...>> {
+struct visit<Meta, std::variant<Types...>> {
 	public:
 		constexpr visit() :
-				visitors{visit<Types>{0, *this}...} {}
+				visitors{visit<Meta, Types>{0, *this}...} {}
 		constexpr visit(int /*dummy*/, const auto_visit auto& /*visit*/) :
 				visit{} {}
 
@@ -113,19 +113,19 @@ struct visit<std::variant<Types...>> {
 		}
 
 	private:
-		std::tuple<visit<Types>...> visitors;
+		std::tuple<visit<Meta, Types>...> visitors;
 };
 
 // Visiting a `boost::variant` visits the underlying members
-template <class Variant, class... Types>
-struct visit<variant_of<Variant, Types...>> : visit<substitute_recursive<Variant, Types>>... {
+template <class Meta, class Variant, class... Types>
+struct visit<Meta, variant_of<Variant, Types...>> : visit<Meta, substitute_recursive<Variant, Types>>... {
 		constexpr visit(int dummy, const auto_visit auto& visit_) :
-				visit<substitute_recursive<Variant, Types>>{dummy, visit_}... {}
+				visit<Meta, substitute_recursive<Variant, Types>>{dummy, visit_}... {}
 
 		auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return boost::apply_visitor(
 				[ & ]<class Value>(Value&& value) {
-					const visit<std::decay_t<Value>>& visit = *this;
+					const visit<Meta, std::decay_t<Value>>& visit = *this;
 					return visit(std::forward<decltype(value)>(value), accept);
 				},
 				std::forward<decltype(value)>(value)
@@ -134,12 +134,12 @@ struct visit<variant_of<Variant, Types...>> : visit<substitute_recursive<Variant
 };
 
 // `visit` entry for `boost::make_recursive_variant`
-template <class First, class... Rest>
-struct visit<recursive_variant<First, Rest...>>
-		: visit<variant_of<recursive_variant<First, Rest...>, First, Rest...>> {
-		using visit<variant_of<recursive_variant<First, Rest...>, First, Rest...>>::visit;
+template <class Meta, class First, class... Rest>
+struct visit<Meta, recursive_variant<First, Rest...>>
+		: visit<Meta, variant_of<recursive_variant<First, Rest...>, First, Rest...>> {
+		using visit<Meta, variant_of<recursive_variant<First, Rest...>, First, Rest...>>::visit;
 		constexpr visit() :
-				visit<variant_of<recursive_variant<First, Rest...>, First, Rest...>>{0, *this} {}
+				visit<Meta, variant_of<recursive_variant<First, Rest...>, First, Rest...>>{0, *this} {}
 };
 
 } // namespace ivm::value

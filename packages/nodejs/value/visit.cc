@@ -36,12 +36,12 @@ struct transferee_subject<Napi::CallbackInfo> : std::type_identity<Napi::Value> 
 
 // Delegate Napi::Value to various visitors
 template <>
-struct visit<Napi::Value> : visit<v8::Local<v8::Value>> {
+struct visit<void, Napi::Value> : visit<void, v8::Local<v8::Value>> {
 	public:
-		using visit<v8::Local<v8::Value>>::operator();
+		using visit<void, v8::Local<v8::Value>>::operator();
 
 		visit(Napi::Env env, v8::Isolate* isolate, v8::Local<v8::Context> context) :
-				visit<v8::Local<v8::Value>>{isolate, context},
+				visit<void, v8::Local<v8::Value>>{isolate, context},
 				env_{env} {}
 		visit(Napi::Env env, v8::Isolate* isolate) :
 				visit{env, isolate, isolate->GetCurrentContext()} {}
@@ -95,8 +95,8 @@ struct visit<Napi::Value> : visit<v8::Local<v8::Value>> {
 
 // Napi function arguments to list
 template <>
-struct visit<Napi::CallbackInfo> : visit<Napi::Value> {
-		using visit<Napi::Value>::visit;
+struct visit<void, Napi::CallbackInfo> : visit<void, Napi::Value> {
+		using visit<void, Napi::Value>::visit;
 };
 
 } // namespace ivm::value
