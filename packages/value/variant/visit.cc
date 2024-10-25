@@ -11,7 +11,7 @@ import :visit;
 
 namespace ivm::value {
 
-// `std::variant` visitor. This used to delegate to the `boost::variant` visitor above, but
+// `std::variant` visitor. This used to delegate to the `boost::variant` visitor elsewhere, but
 // `boost::apply_visitor` isn't constexpr, so we can't use it to test statically. `boost::variant`
 // can't delegate to this one either because it handles recursive variants.
 template <class Meta, class... Types>
@@ -22,12 +22,12 @@ struct visit<Meta, std::variant<Types...>> {
 				visitors{visit<Meta, Types>{0, *this}...} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
-			return util::visit_by_index(
-				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
+			return util::visit_with_index(
+				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/, auto&& value) constexpr {
 					const auto& visit = std::get<Index>(visitors);
-					return visit(std::get<Index>(std::forward<decltype(value)>(value)), accept);
+					return visit(std::forward<decltype(value)>(value), accept);
 				},
-				value
+				std::forward<decltype(value)>(value)
 			);
 		}
 

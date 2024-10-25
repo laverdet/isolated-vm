@@ -48,22 +48,29 @@ struct string_literal {
 
 // Like `std::visit` but it visits with a `std::integral_constant` of the variant index. That way
 // you can use the index for other structures.
+template <class... Types>
+constexpr auto visit_with_index_(const auto& visitor, auto&& variant) -> decltype(auto) {
+	auto next = []<size_t Index>(std::integral_constant<size_t, Index> index, const auto& next, const auto& visitor, auto&& variant) constexpr -> decltype(auto) {
+		if constexpr (Index == sizeof...(Types)) {
+			std::unreachable();
+			return next(std::integral_constant<size_t, 0>{}, next, visitor, std::forward<decltype(variant)>(variant));
+		} else if (Index == variant.index()) {
+			return visitor(index, std::get<Index>(std::forward<decltype(variant)>(variant)));
+		} else {
+			return next(std::integral_constant<size_t, Index + 1>{}, next, visitor, std::forward<decltype(variant)>(variant));
+		}
+	};
+	return next(std::integral_constant<size_t, 0>{}, next, visitor, std::forward<decltype(variant)>(variant));
+}
+
 export template <class... Types>
-constexpr auto visit_by_index(auto visitor, const std::variant<Types...>& variant) -> decltype(auto) {
-	using result_type = std::invoke_result_t<decltype(visitor), std::integral_constant<size_t, 0>>;
-	using function_type = result_type (*)(decltype(visitor));
-	const auto visitors = std::invoke(
-		[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
-			return std::array{invoke(std::integral_constant<size_t, Index>{})...};
-		},
-		[]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr -> function_type {
-			return [](decltype(visitor) visitor_) -> result_type {
-				return visitor_(std::integral_constant<size_t, Index>{});
-			};
-		},
-		std::make_index_sequence<sizeof...(Types)>{}
-	);
-	return visitors[ variant.index() ](std::forward<decltype(visitor)>(visitor));
+constexpr auto visit_with_index(const auto& visitor, const std::variant<Types...>& variant) -> decltype(auto) {
+	return visit_with_index_<Types...>(visitor, variant);
+}
+
+export template <class... Types>
+constexpr auto visit_with_index(const auto& visitor, std::variant<Types...>&& variant) -> decltype(auto) {
+	return visit_with_index_<Types...>(visitor, std::move(variant));
 }
 
 // Explicitly move-constructs a new object from an existing rvalue reference. Used to immediately
