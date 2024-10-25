@@ -2,30 +2,18 @@ module;
 #include <format>
 #include <functional>
 #include <stdexcept>
-#include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <variant>
-export module ivm.value:union_of;
+export module ivm.value:union_.accept;
 import :tag;
-import :variant;
+import :union_.types;
+import :variant.types;
 import :visit;
 import ivm.utility;
 
 namespace ivm::value {
-
-// Specialize to turn `std::variant` into a discriminated union
-export template <class Type>
-struct union_of;
-
-// Holds typed union alternative w/ discriminant
-export template <class Type>
-struct alternative {
-		constexpr alternative(const std::string& discriminant) :
-				discriminant{discriminant} {}
-
-		std::string discriminant;
-};
 
 // Suppress `std::variant` visitor
 template <class... Types>

@@ -5,7 +5,7 @@ module;
 #include <variant>
 export module ivm.value:value;
 import :date;
-import :dictionary;
+import :dictionary.vector_of;
 import :tag;
 
 namespace ivm::value {

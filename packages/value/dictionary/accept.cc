@@ -1,11 +1,11 @@
 module;
-#include <boost/variant.hpp>
-#include <optional>
+#include <functional>
 #include <ranges>
 #include <type_traits>
 #include <utility>
-export module ivm.value:dictionary_visit;
-import :dictionary;
+export module ivm.value:dictionary.accept;
+import :dictionary.types;
+import :dictionary.vector_of;
 import :visit;
 import ivm.utility;
 
@@ -35,28 +35,10 @@ struct visit_key<Meta, Key, void> {
 		accept_next<Meta, std::string> first;
 };
 
-// Look for `boost::recursive_variant_` to determine if this container is recursive
-template <class Type>
-struct is_recursive : std::bool_constant<false> {};
-
-template <class Type>
-constexpr auto is_recursive_v = is_recursive<Type>::value;
-
-template <>
-struct is_recursive<boost::recursive_variant_> : std::bool_constant<true> {};
-
-template <template <class...> class Type, class... Types>
-struct is_recursive<Type<Types...>>
-		: std::bool_constant<std::disjunction_v<is_recursive<Types>...>> {};
-
-// Helper to instantiate a different `accept` or `visit` structure for recursive containers
-template <class Type>
-struct recursive;
-
 // If the container is not recursive then it will own its own entry acceptor. Otherwise it accepts
 // a reference to an existing one.
 template <class Meta, class Type>
-struct accept<Meta, recursive<Type>> : accept_next<Meta, Type> {
+struct accept<Meta, dictionary_subject<Type>> : accept_next<Meta, Type> {
 		constexpr accept(const auto_visit auto& visit) :
 				accept_next<Meta, Type>{visit} {}
 		constexpr accept(int /*dummy*/, const auto_visit auto& visit, const auto_accept auto& /*accept*/) :
@@ -65,7 +47,7 @@ struct accept<Meta, recursive<Type>> : accept_next<Meta, Type> {
 
 template <class Meta, class Type>
 	requires is_recursive_v<Type>
-struct accept<Meta, recursive<Type>> {
+struct accept<Meta, dictionary_subject<Type>> {
 	private:
 		using accept_type = accept_next<Meta, Type>;
 
@@ -125,48 +107,8 @@ struct accept<Meta, dictionary<Tag, Key, Value>> {
 		}
 
 	private:
-		accept<Meta, recursive<Key>> first;
-		accept<Meta, recursive<Value>> second;
-};
-
-// Non-recursive visitor
-template <class Meta, class Type>
-struct visit<Meta, recursive<Type>> : visit<Meta, Type> {
-		visit() = default;
-		constexpr visit(int /*dummy*/, const auto& /*visit*/) {}
-};
-
-// Recursive visitor
-template <class Meta, class Type>
-	requires is_recursive_v<Type>
-struct visit<Meta, recursive<Type>> {
-	public:
-		visit() = delete;
-		constexpr visit(int /*dummy*/, const auto_visit auto& visit) :
-				visit_{&visit} {}
-
-		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
-			return (*visit_)(std::forward<decltype(value)>(value), accept);
-		}
-
-	private:
-		const visit<Meta, Type>* visit_;
-};
-
-// Entrypoint for `dictionary`
-template <class Meta, class Tag, class Key, class Value>
-struct visit<Meta, dictionary<Tag, Key, Value>> {
-		visit() = default;
-		constexpr visit(int dummy, const auto_visit auto& visit) :
-				first{dummy, visit},
-				second{dummy, visit} {}
-
-		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
-			return accept(Tag{}, std::forward<decltype(value)>(value), *this);
-		}
-
-		visit<Meta, recursive<Key>> first;
-		visit<Meta, recursive<Value>> second;
+		accept<Meta, dictionary_subject<Key>> first;
+		accept<Meta, dictionary_subject<Value>> second;
 };
 
 } // namespace ivm::value

@@ -1,7 +1,7 @@
 module;
 #include <ranges>
 #include <vector>
-export module ivm.value:dictionary;
+export module ivm.value:dictionary.vector_of;
 import ivm.utility;
 import :tag;
 

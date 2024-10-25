@@ -2,16 +2,13 @@ module;
 #include <cstdint>
 #include <stdexcept>
 #include <type_traits>
-export module ivm.value:enumeration;
+export module ivm.value:enum_.accept;
 import ivm.utility;
+import :enum_.types;
 import :tag;
 import :visit;
 
 namespace ivm::value {
-
-// You override this with pairs of your enum values
-export template <class Enum>
-struct enum_values;
 
 // Matches an enumerated string to an underlying enum value.
 template <class Enum>
