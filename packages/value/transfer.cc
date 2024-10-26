@@ -12,20 +12,23 @@ namespace ivm::value {
 
 // Default `accept` passthrough `Meta`
 struct accept_pass {
-		template <class Type>
-		using wrap = std::decay_t<Type>;
+		template <class Meta, class Type>
+		using accept = value::accept<Meta, std::decay_t<Type>>;
 };
 
 // `Meta` for `accept` which throws on unknown values
 struct accept_with_throw {
 		template <class Type>
 		struct accept_throw;
-		template <class Type>
-		using wrap = accept_throw<Type>;
+		template <class Meta, class Type>
+		using accept = value::accept<Meta, accept_throw<Type>>;
 };
 
 // Adds fallback acceptor which throws on unknown values
 template <class Meta, class Type>
+// If the requirement fails then a helper struct like `covariant_subject` was instantiated
+// probably via `accept_next`
+	requires std::destructible<Type>
 struct accept<Meta, accept_with_throw::accept_throw<Type>>
 		: accept<Meta, std::decay_t<Type>> {
 	private:
@@ -51,7 +54,7 @@ constexpr auto transfer_with(
 	using from_type = std::decay_t<decltype(value)>;
 	using meta_holder = transferee_meta<Wrap, from_type, std::decay_t<Type>>;
 	using visit_type = visit<meta_holder, from_type>;
-	using accept_type = accept<meta_holder, typename Wrap::template wrap<Type>>;
+	using accept_type = Wrap::template accept<meta_holder, Type>;
 	auto visitor = std::make_from_tuple<visit_type>(std::forward<decltype(visit_args)>(visit_args));
 	auto acceptor = std::make_from_tuple<accept_type>(std::tuple_cat(
 		std::forward_as_tuple(visitor),

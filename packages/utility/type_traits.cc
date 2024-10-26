@@ -1,9 +1,23 @@
 module;
+#include <cstddef>
 #include <type_traits>
 #include <utility>
 export module ivm.utility:type_traits;
 
 namespace ivm::util {
+
+// Select the indexed type from a parameter pack
+template <size_t Index, class... Types>
+struct select;
+
+export template <size_t Index, class... Types>
+using select_t = select<Index, Types...>::type;
+
+template <class Type, class... Types>
+struct select<0, Type, Types...> : std::type_identity<Type> {};
+
+template <size_t Index, class Type, class... Types>
+struct select<Index, Type, Types...> : select<Index - 1, Types...> {};
 
 // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0870r4.html
 export template <class From, class To>

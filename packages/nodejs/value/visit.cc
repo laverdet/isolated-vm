@@ -94,9 +94,9 @@ struct visit<void, Napi::Value> : visit<void, v8::Local<v8::Value>> {
 };
 
 // Napi function arguments to list
-template <>
-struct visit<void, Napi::CallbackInfo> : visit<void, Napi::Value> {
-		using visit<void, Napi::Value>::visit;
+template <class Meta>
+struct visit<Meta, Napi::CallbackInfo> : visit<Meta, Napi::Value> {
+		using visit<Meta, Napi::Value>::visit;
 };
 
 } // namespace ivm::value

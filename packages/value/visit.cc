@@ -20,6 +20,39 @@ struct transferee_subject : std::type_identity<void> {};
 template <class Type>
 using transferee_subject_t = transferee_subject<Type>::type;
 
+// Extract `Wrap` from `Meta`
+template <class Meta>
+struct select_wrap;
+
+template <class Meta>
+using select_wrap_t = select_wrap<Meta>::type;
+
+template <class Wrap, class Subject, class Target>
+struct select_wrap<transferee_meta<Wrap, Subject, Target>>
+		: std::type_identity<Wrap> {};
+
+// Extract `Target` from `Meta`, which is the `Type` passed to the root `accept` instance
+template <class Meta>
+struct accept_target;
+
+export template <class Meta>
+using accept_target_t = accept_target<Meta>::type;
+
+template <class Wrap, class Subject, class Target>
+struct accept_target<transferee_meta<Wrap, Subject, Target>>
+		: std::type_identity<transferee_subject_t<Target>> {};
+
+// Extract `Subject` from `Meta`, which is the `Type` passed to the root `visit` instance
+template <class Meta>
+struct visit_subject;
+
+export template <class Meta>
+using visit_subject_t = visit_subject<Meta>::type;
+
+template <class Wrap, class Subject, class Target>
+struct visit_subject<transferee_meta<Wrap, Subject, Target>>
+		: std::type_identity<transferee_subject_t<Subject>> {};
+
 // `visit` accepts a value and acceptor and then invokes the acceptor with a JavaScript type tag and
 // a value which follows some sort of casting interface corresponding to the tag.
 export template <class Meta, class Type>
@@ -52,24 +85,13 @@ struct visit<void, void> {
 		constexpr visit(int /*dummy*/, const auto& /*visit*/) {}
 };
 
-// Used by acceptors w/ context to store reference to the root visitor
-template <class Meta>
-struct visit_subject;
-
-template <class Wrap, class Subject, class Target>
-struct visit_subject<transferee_meta<Wrap, Subject, Target>>
-		: std::type_identity<visit<transferee_meta<Wrap, Subject, Target>, Subject>> {};
-
-export template <class Meta>
-using visit_subject_t = visit_subject<Meta>::type;
-
 // `accept` is the target of `visit`
 export template <class Meta, class Type>
 struct accept;
 
 // Concept for any `accept`
 template <class Type>
-struct is_accept : std::bool_constant<false> {};
+struct is_accept : std::bool_constant<true> {};
 
 template <class Meta, class Type>
 struct is_accept<accept<Meta, Type>> : std::bool_constant<true> {};
@@ -99,50 +121,26 @@ struct accept<void, void> {
 };
 
 // `accept` with transfer wrapping
-template <class Meta, class Type>
-struct wrap_next;
-
-template <class Meta, class Type>
-using wrap_next_t = wrap_next<Meta, Type>::type;
-
-template <class Wrap, class Subject, class Target, class Type>
-struct wrap_next<transferee_meta<Wrap, Subject, Target>, Type>
-		: std::type_identity<typename Wrap::template wrap<Type>> {};
-
 export template <class Meta, class Type>
-using accept_next = accept<Meta, wrap_next_t<Meta, Type>>;
+using accept_next = select_wrap_t<Meta>::template accept<Meta, Type>;
 
-// Context for dictionary placement operations
-export template <class Subject, util::string_literal Key>
-struct accept_key {
-		constexpr auto operator()(const auto& /*visit*/) const {
-			return Key;
+// Used by a visitor to returns the immediate accepted value matching a tag.
+export template <class Tag>
+struct accept_immediate;
+
+template <class Tag>
+struct accept<void, accept_immediate<Tag>> {
+		constexpr auto operator()(Tag /*tag*/, auto&& value) const -> decltype(auto) {
+			return std::forward<decltype(value)>(value);
 		}
 };
 
-// Unwrap `Target` from `Meta`.
-template <class Wrap, class Subject, class Target, util::string_literal Key>
-struct accept_key<transferee_meta<Wrap, Subject, Target>, Key> : accept_key<Target, Key> {
-		using accept_key<Target, Key>::accept_key;
-};
+// Returns the key type expected by the accept target.
+export template <util::string_literal Key, class Subject>
+struct key_for;
 
-// Context for dictionary lookup operations
-export template <class Meta, util::string_literal Key, class Type = Meta>
-struct visit_key;
-
-// Default `visit_key` swallows `Meta`
-template <class Meta, util::string_literal Key, class Subject>
-struct visit_key : visit_key<void, Key, Subject> {
-		// Swallow `visit` argument on behalf of non-meta visitors
-		constexpr visit_key(const auto_visit auto& /*visit*/) {}
-};
-
-// Unwrap `Subject` from `Meta`. `Type` defaults to `Meta` which means we want to unwrap the *visit*
-// subject.
-template <class Wrap, class Subject, class Target, auto Key>
-struct visit_key<transferee_meta<Wrap, Subject, Target>, Key, transferee_meta<Wrap, Subject, Target>>
-		: visit_key<transferee_meta<Wrap, Subject, Target>, Key, transferee_subject_t<Subject>> {
-		using visit_key<transferee_meta<Wrap, Subject, Target>, Key, transferee_subject_t<Subject>>::visit_key;
-};
+// Returns the value corresponding to a key with an accepted object subject.
+export template <util::string_literal Key, class Type, class Subject>
+struct value_by_key;
 
 } // namespace ivm::value

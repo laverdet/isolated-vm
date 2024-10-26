@@ -17,15 +17,18 @@ namespace ivm::value {
 // Acceptor function for C++ object types.
 template <class Meta, class Type, class... Setters>
 struct accept<Meta, object_type<Type, std::tuple<Setters...>>> : accept<Meta, void> {
+	private:
+		template <class Setter>
+		using accept_setter = accept<Meta, value_by_key<property_name_v<Setter>, std::optional<typename Setter::type>, visit_subject_t<Meta>>>;
+
 	public:
 		using hash_type = uint32_t;
 
 		constexpr accept(const auto_visit auto& visit) :
 				accept<Meta, void>{visit},
 				first{visit},
-				second{accept_next<Meta, typename Setters::type>{visit}...},
-				visit_properties{visit_key<Meta, property_name_v<Setters>>{visit}...} {}
-		constexpr accept(int /*dummy*/, const auto_visit auto& visit, const auto_accept auto& /*acceptor*/) :
+				second{accept_setter<Setters>{visit}...} {}
+		constexpr accept(int /*dummy*/, const auto_visit auto& visit, const auto_accept auto& /*accept_*/) :
 				accept{visit} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> Type {
@@ -35,11 +38,8 @@ struct accept<Meta, object_type<Type, std::tuple<Setters...>>> : accept<Meta, vo
 					(invoke(std::integral_constant<size_t, Index>{}), ...);
 				},
 				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
-					using setter_type = std::tuple_element_t<Index, std::tuple<Setters...>>;
-					setter_type setter{};
-					const auto& accept = std::get<Index>(second);
-					const auto& visit_property = std::get<Index>(visit_properties);
-					auto value = visit_property(dictionary, visit, accept);
+					util::select_t<Index, Setters...> setter{};
+					auto value = std::get<Index>(second)(dictionary_tag{}, dictionary, visit);
 					if (value) {
 						setter(subject, *std::move(value));
 					} else if (setter.required) {
@@ -53,8 +53,7 @@ struct accept<Meta, object_type<Type, std::tuple<Setters...>>> : accept<Meta, vo
 
 	private:
 		accept_next<Meta, std::string> first;
-		std::tuple<accept_next<Meta, typename Setters::type>...> second;
-		std::tuple<visit_key<Meta, property_name_v<Setters>>...> visit_properties;
+		std::tuple<accept_setter<Setters>...> second;
 };
 
 // Apply `setter_delegate` to each property, filtering properties which do not have a setter.

@@ -11,30 +11,6 @@ import ivm.utility;
 
 namespace ivm::value {
 
-// Object key lookup for primitive dictionary variants. This should generally only be used for
-// testing, since the subject is basically a C++ heap JSON payload.
-template <class Meta, util::string_literal Key>
-struct visit_key<Meta, Key, void> {
-	public:
-		constexpr visit_key(const auto_visit auto& visit) :
-				first{visit} {}
-
-		constexpr auto operator()(const auto& dictionary, const auto& visit, const auto_accept auto& accept) const {
-			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) {
-				return visit.first(entry.first, first) == Key;
-			});
-			using accepted_typed = std::decay_t<decltype(visit.second(it->second, accept))>;
-			if (it != dictionary.end()) {
-				return std::optional<accepted_typed>{visit.second(it->second, accept)};
-			} else {
-				return std::optional<accepted_typed>{};
-			}
-		}
-
-	private:
-		accept_next<Meta, std::string> first;
-};
-
 // If the container is not recursive then it will own its own entry acceptor. Otherwise it accepts
 // a reference to an existing one.
 template <class Meta, class Type>
@@ -97,8 +73,9 @@ struct accept<Meta, dictionary<Tag, Key, Value>> {
 					dictionary<Tag, Key, Value>{invoke(std::integral_constant<size_t, Index>{})...};
 				},
 				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> index) constexpr {
+					accept<void, accept_immediate<string_tag>> accept_string;
 					return std::pair{
-						visit.first(index, *this),
+						visit.first(index, *this, accept_string),
 						visit.second(index, value, *this),
 					};
 				},

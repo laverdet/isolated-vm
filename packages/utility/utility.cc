@@ -37,7 +37,7 @@ struct string_literal {
 		}
 
 		consteval operator std::string_view() const { return {payload.data(), length()}; } // NOLINT(google-explicit-constructor)
-		consteval auto operator<=>(const string_literal& right) const -> std::strong_ordering { return std::string_view{*this} <=> right.payload; }
+		consteval auto operator<=>(const string_literal& right) const -> std::strong_ordering { return payload <=> right.payload; }
 		consteval auto operator==(const string_literal& right) const -> bool { return payload == right.payload; }
 		constexpr auto operator==(std::string_view string) const -> bool { return std::string_view{*this} == string; }
 		[[nodiscard]] consteval auto data() const -> const char* { return payload.data(); }

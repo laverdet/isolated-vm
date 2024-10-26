@@ -4,6 +4,7 @@ module;
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <variant>
 export module ivm.value:dictionary.visit;
 import :dictionary.types;
 import :dictionary.vector_of;
@@ -50,6 +51,31 @@ struct visit<Meta, dictionary<Tag, Key, Value>> {
 
 		visit<Meta, dictionary_subject<Key>> first;
 		visit<Meta, dictionary_subject<Value>> second;
+};
+
+// Object key lookup for primitive dictionary variants. This should generally only be used for
+// testing, since the subject is basically a C++ heap JSON payload.
+template <class Meta, util::string_literal Key, class Type>
+struct accept<Meta, value_by_key<Key, Type, void>> {
+	public:
+		constexpr accept(const auto_visit auto& visit) :
+				first{visit},
+				second{visit} {}
+
+		constexpr auto operator()(dictionary_tag /*tag*/, const auto& dictionary, const auto& visit) const {
+			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) {
+				return visit.first(entry.first, first) == Key;
+			});
+			if (it != dictionary.end()) {
+				return visit.second(it->second, second);
+			} else {
+				return second(undefined_in_tag{}, std::monostate{});
+			}
+		}
+
+	private:
+		accept_next<Meta, std::string> first;
+		accept_next<Meta, Type> second;
 };
 
 } // namespace ivm::value

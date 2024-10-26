@@ -21,6 +21,7 @@ target_sources(ivm_value
 		tag.cc
 		transfer.cc
 		tuple/accept.cc
+		tuple/visit.cc
 		type/date.cc
 		type/value.cc
 		union/accept.cc

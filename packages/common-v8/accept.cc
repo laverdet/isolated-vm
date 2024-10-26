@@ -15,35 +15,6 @@ import v8;
 
 namespace ivm::value {
 
-// Object key lookup for v8 values
-template <class Meta, util::string_literal Key>
-struct visit_key<Meta, Key, v8::Local<v8::Value>> {
-	public:
-		constexpr visit_key(const auto_visit auto& visit) :
-				root{visit} {}
-
-		auto operator()(const auto& object, const auto& visit, const auto_accept auto& accept) const {
-			auto local = get_local();
-			using accepted_type = std::decay_t<decltype(visit.second(object.get(local), accept))>;
-			if (object.has(local)) {
-				return std::optional<accepted_type>{visit.second(object.get(local), accept)};
-			} else {
-				return std::optional<accepted_type>{};
-			}
-		}
-
-	private:
-		auto get_local() const -> v8::Local<v8::Value> {
-			if (local_key == v8::Local<v8::String>{}) {
-				local_key = v8::String::NewFromUtf8Literal(root.isolate(), Key);
-			}
-			return local_key;
-		}
-
-		const visit_subject_t<Meta>& root;
-		v8::Local<v8::String> local_key;
-};
-
 // Base class for primitive acceptors. Not really an acceptor.
 template <>
 struct accept<void, v8::Local<v8::Data>> {

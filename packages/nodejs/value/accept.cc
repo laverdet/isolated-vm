@@ -6,6 +6,7 @@ module;
 #include <optional>
 #include <type_traits>
 #include <utility>
+#include <variant>
 #include <version>
 export module ivm.node:accept;
 import :environment;
@@ -29,14 +30,15 @@ auto v8_to_napi(const v8::Local<Type>& local) -> napi_value {
 
 namespace ivm::value {
 
+// Object key maker via Napi
 template <util::string_literal Key>
-struct napi_key_holder {
+struct visit<void, key_for<Key, Napi::Value>> {
 	public:
-		auto get_local(Napi::Env env) const -> Napi::Value {
+		auto operator()(const auto& context, const auto& accept) const -> decltype(auto) {
 			if (local_key.IsEmpty()) {
-				local_key = Napi::String::New(env, std::string_view{Key}.data(), Key.length());
+				local_key = Napi::String::New(context.env(), Key.data(), Key.length());
 			}
-			return local_key;
+			return accept(string_tag{}, local_key);
 		}
 
 	private:
@@ -44,32 +46,27 @@ struct napi_key_holder {
 };
 
 // Object key lookup via Napi
-template <class Meta, util::string_literal Key>
-struct visit_key<Meta, Key, Napi::Value> : napi_key_holder<Key> {
+template <class Meta, util::string_literal Key, class Type>
+struct accept<Meta, value_by_key<Key, Type, Napi::Value>> {
 	public:
-		constexpr visit_key(const auto_visit auto& visit) :
-				root{visit} {}
+		constexpr accept(const auto_visit auto& visit) :
+				root{visit},
+				accept_value{visit} {}
 
-		auto operator()(auto&& object, const auto& visit, const auto_accept auto& accept) const {
-			auto local = this->get_local(root.env());
-			using accepted_type = std::decay_t<decltype(visit.second(object.get(local), accept))>;
+		auto operator()(dictionary_tag /*tag*/, auto&& object, const auto& visit) const {
+			accept<void, accept_immediate<string_tag>> accept_string;
+			auto local = visit_key(root, accept_string);
 			if (object.has(local)) {
-				return std::optional<accepted_type>{visit.second(object.get(local), accept)};
+				return visit.second(object.get(local), accept_value);
 			} else {
-				return std::optional<accepted_type>{};
+				return accept_value(undefined_in_tag{}, std::monostate{});
 			}
 		}
 
 	private:
-		const visit_subject_t<Meta>& root;
-};
-
-// Object key maker via Napi
-template <util::string_literal Key>
-struct accept_key<Napi::Value, Key> : napi_key_holder<Key> {
-		auto operator()(const auto& visit) const {
-			return this->get_local(visit.env());
-		}
+		const visit<Meta, visit_subject_t<Meta>>& root;
+		visit<Meta, key_for<Key, Napi::Value>> visit_key;
+		accept_next<Meta, Type> accept_value;
 };
 
 // Fake acceptor for primitive values
@@ -178,8 +175,9 @@ struct accept<Meta, Napi::Value> : accept<Meta, Napi::Env> {
 					(invoke(std::integral_constant<size_t, Index>{}), ...);
 				},
 				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> index) {
+					accept<void, accept_immediate<string_tag>> accept_string;
 					object.Set(
-						visit.first(index, *this),
+						visit.first(index, *this, accept_string),
 						visit.second(index, dictionary, *this)
 					);
 				},

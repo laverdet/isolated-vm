@@ -20,6 +20,9 @@ struct external_tag : value_tag {};
 
 struct null_tag : primitive_tag {};
 struct undefined_tag : primitive_tag {};
+// Represents a value which is not present in an object, as opposed to one that is defined but
+// `undefined`.
+struct undefined_in_tag : undefined_tag {};
 
 struct boolean_tag : primitive_tag {};
 

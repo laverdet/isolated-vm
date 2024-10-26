@@ -17,6 +17,7 @@ import :primitive.visit;
 import :struct_.accept;
 import :struct_.visit;
 import :tuple.accept;
+import :tuple.visit;
 import :union_.accept;
 import :variant.accept;
 import :variant.visit;
