@@ -39,7 +39,9 @@ struct accept<Meta, object_type<Type, std::tuple<Setters...>>> : accept<Meta, vo
 				},
 				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
 					util::select_t<Index, Setters...> setter{};
-					auto value = std::get<Index>(second)(dictionary_tag{}, dictionary, visit);
+					// nb: We `std::forward` the value to *each* setter. This allows the setters to pick an
+					// lvalue object apart member by member if it wants.
+					auto value = std::get<Index>(second)(dictionary_tag{}, std::forward<decltype(dictionary)>(dictionary), visit);
 					if (value) {
 						setter(subject, *std::move(value));
 					} else if (setter.required) {
@@ -59,8 +61,8 @@ struct accept<Meta, object_type<Type, std::tuple<Setters...>>> : accept<Meta, vo
 // Apply `setter_delegate` to each property, filtering properties which do not have a setter.
 template <class Meta, class Type, class... Properties>
 struct accept<Meta, mapped_object_type<Type, std::tuple<Properties...>>>
-		: accept<Meta, object_type<Type, remove_void_t<std::tuple<setter_delegate<Properties>...>>>> {
-		using accept<Meta, object_type<Type, remove_void_t<std::tuple<setter_delegate<Properties>...>>>>::accept;
+		: accept<Meta, object_type<Type, remove_void_t<std::tuple<setter_delegate<Type, Properties>...>>>> {
+		using accept<Meta, object_type<Type, remove_void_t<std::tuple<setter_delegate<Type, Properties>...>>>>::accept;
 };
 
 // Unpack object properties from `object_properties` specialization

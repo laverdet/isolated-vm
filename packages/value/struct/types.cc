@@ -15,7 +15,7 @@ export template <class Type>
 struct object_properties;
 
 // Descriptor for object getter and/or setter
-export template <util::string_literal Name, auto Getter, auto Setter, bool Required = true>
+export template <util::string_literal Name, auto Getter, auto Setter = nullptr, bool Required = true>
 struct accessor {};
 
 // Descriptor for object property through direct member access

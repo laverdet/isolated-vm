@@ -34,8 +34,8 @@ struct visit<Meta, object_type<Type, std::tuple<Getters...>>> : visit<Meta, void
 	public:
 		using visit<Meta, void>::visit;
 
-		constexpr auto operator()(const auto& value, const auto_accept auto& accept) const -> decltype(auto) {
-			return accept(struct_tag<sizeof...(Getters)>{}, value, *this);
+		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
+			return accept(struct_tag<sizeof...(Getters)>{}, std::forward<decltype(value)>(value), *this);
 		}
 
 	public:
@@ -46,8 +46,8 @@ struct visit<Meta, object_type<Type, std::tuple<Getters...>>> : visit<Meta, void
 // Apply `getter_delegate` to each property, filtering properties which do not have a getter.
 template <class Meta, class Type, class... Properties>
 struct visit<Meta, mapped_object_type<Type, std::tuple<Properties...>>>
-		: visit<Meta, object_type<Type, remove_void_t<std::tuple<getter_delegate<Properties>...>>>> {
-		using visit<Meta, object_type<Type, remove_void_t<std::tuple<getter_delegate<Properties>...>>>>::visit;
+		: visit<Meta, object_type<Type, remove_void_t<std::tuple<getter_delegate<Type, Properties>...>>>> {
+		using visit<Meta, object_type<Type, remove_void_t<std::tuple<getter_delegate<Type, Properties>...>>>>::visit;
 };
 
 // Unpack object properties from `object_properties` specialization

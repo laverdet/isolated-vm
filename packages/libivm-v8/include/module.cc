@@ -17,11 +17,11 @@ export class module_request {
 	public:
 		using attributes_type = value::dictionary<value::dictionary_tag, value::string_t, value::string_t>;
 		module_request(value::string_t specifier, attributes_type attributes_);
-		// [[nodiscard]] auto specifier() const -> const value::string_t&;
-		value::string_t specifier;
+		[[nodiscard]] auto specifier() const -> const value::string_t& { return specifier_; }
 
 	private:
 		attributes_type attributes_;
+		value::string_t specifier_;
 };
 
 export class js_module : util::non_copyable {
@@ -51,7 +51,7 @@ namespace ivm::value {
 template <>
 struct object_properties<module_request> {
 		constexpr static auto properties = std::tuple{
-			member<"specifier", &module_request::specifier>{},
+			accessor<"specifier", &module_request::specifier>{},
 		};
 };
 

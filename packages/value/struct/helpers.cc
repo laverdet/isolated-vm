@@ -36,45 +36,48 @@ struct property_info {
 };
 
 // Getter delegate for object property
-export template <class Property>
+export template <class Subject, class Property>
 struct getter_delegate;
 
-template <util::string_literal Name, bool Required, auto Setter, class Type, class Subject, Type (Subject::* Getter)()>
-struct getter_delegate<accessor<Name, Getter, Setter, Required>>
-		: std::type_identity<std::decay_t<Type>>,
+// Getter by free function
+template <class Subject, util::string_literal Name, auto Getter, auto Setter, bool Required>
+struct getter_delegate<Subject, accessor<Name, Getter, Setter, Required>>
+		: std::type_identity<std::decay_t<std::invoke_result_t<decltype(Getter), const Subject&>>>,
 			property_info<Name, Required> {
-		constexpr auto operator()(Subject& subject) const -> Type { return (&subject->*Getter)(); }
+		constexpr auto operator()(const Subject& subject) const -> decltype(auto) { return Getter(subject); }
 };
 
-template <util::string_literal Name, auto Setter>
-struct getter_delegate<accessor<Name, nullptr, Setter, false>> : std::type_identity<void> {};
+// Getter by member function
+template <class S, util::string_literal Name, auto Setter, bool Required, class Type, class Subject, Type (Subject::* Getter)() const>
+struct getter_delegate<S, accessor<Name, Getter, Setter, Required>>
+		: std::type_identity<std::decay_t<Type>>,
+			property_info<Name, Required> {
+		constexpr auto operator()(const Subject& subject) const -> decltype(auto) { return (subject.*Getter)(); }
+};
 
-template <util::string_literal Name, bool Required, class Subject, class Type, Type Subject::* Member>
-struct getter_delegate<member<Name, Member, Required>>
+// Missing getter
+template <class Subject, util::string_literal Name, auto Setter>
+struct getter_delegate<Subject, accessor<Name, nullptr, Setter, false>> : std::type_identity<void> {};
+
+// Getter by direct member access
+template <class S, util::string_literal Name, class Subject, class Type, Type Subject::* Member, bool Required>
+struct getter_delegate<S, member<Name, Member, Required>>
 		: std::type_identity<std::decay_t<Type>>,
 			property_info<Name, Required> {
 		constexpr auto operator()(const Subject& subject) const -> const Type& { return subject.*Member; }
+		constexpr auto operator()(Subject&& subject) const -> Type&& { return std::move(subject.*Member); }
 };
 
 // Setter delegate for object property
-export template <class Property>
+export template <class Subject, class Property>
 struct setter_delegate;
 
-template <util::string_literal Name, bool Required, auto Getter, class Type, class Subject, void (Subject::* Setter)(Type)>
-struct setter_delegate<accessor<Name, Getter, Setter, Required>>
-		: std::type_identity<std::decay_t<Type>>,
+// Setter by direct member access
+template <class S, util::string_literal Name, class Subject, class Type, Type Subject::* Member, bool Required>
+struct setter_delegate<S, member<Name, Member, Required>>
+		: std::type_identity<Type>,
 			property_info<Name, Required> {
-		constexpr auto operator()(Subject& subject, Type value) const -> void { (&subject->*Setter)(std::forward<Type>(value)); }
-};
-
-template <util::string_literal Name, auto Getter>
-struct setter_delegate<accessor<Name, Getter, nullptr, false>> : std::type_identity<void> {};
-
-template <util::string_literal Name, bool Required, class Subject, class Type, Type Subject::* Member>
-struct setter_delegate<member<Name, Member, Required>>
-		: std::type_identity<std::decay_t<Type>>,
-			property_info<Name, Required> {
-		constexpr auto operator()(Subject& subject, const Type& value) const -> void { subject.*Member = std::move(value); }
+		constexpr auto operator()(Subject& subject, Type value) const -> void { subject.*Member = std::move(value); }
 };
 
 // Extract property name from property type
@@ -84,11 +87,11 @@ struct property_name;
 export template <class Property>
 constexpr auto property_name_v = property_name<Property>::value;
 
-template <class Type>
-struct property_name<getter_delegate<Type>> : property_name<Type> {};
+template <class Subject, class Property>
+struct property_name<getter_delegate<Subject, Property>> : property_name<Property> {};
 
-template <class Type>
-struct property_name<setter_delegate<Type>> : property_name<Type> {};
+template <class Subject, class Property>
+struct property_name<setter_delegate<Subject, Property>> : property_name<Property> {};
 
 template <util::string_literal Name, auto Getter, auto Setter, bool Required>
 struct property_name<accessor<Name, Getter, Setter, Required>> {

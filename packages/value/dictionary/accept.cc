@@ -67,7 +67,7 @@ struct accept<Meta, dictionary<Tag, Key, Value>> {
 
 		template <std::size_t Size>
 			requires std::is_same_v<dictionary_tag, Tag>
-		constexpr auto operator()(struct_tag<Size> /*tag*/, const auto& value, const auto& visit) const -> dictionary<Tag, Key, Value> {
+		constexpr auto operator()(struct_tag<Size> /*tag*/, auto&& value, const auto& visit) const -> dictionary<Tag, Key, Value> {
 			return std::invoke(
 				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
 					dictionary<Tag, Key, Value>{invoke(std::integral_constant<size_t, Index>{})...};
@@ -76,7 +76,9 @@ struct accept<Meta, dictionary<Tag, Key, Value>> {
 					accept<void, accept_immediate<string_tag>> accept_string;
 					return std::pair{
 						visit.first(index, *this, accept_string),
-						visit.second(index, value, *this),
+						// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
+						// reference members one at a time.
+						visit.second(index, std::forward<decltype(value)>(value), *this),
 					};
 				},
 				std::make_index_sequence<Size>{}

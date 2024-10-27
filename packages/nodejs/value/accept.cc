@@ -53,7 +53,7 @@ struct accept<Meta, value_by_key<Key, Type, Napi::Value>> {
 				root{visit},
 				accept_value{visit} {}
 
-		auto operator()(dictionary_tag /*tag*/, auto&& object, const auto& visit) const {
+		auto operator()(dictionary_tag /*tag*/, const auto& object, const auto& visit) const {
 			accept<void, accept_immediate<string_tag>> accept_string;
 			auto local = visit_key(root, accept_string);
 			if (object.has(local)) {
@@ -168,7 +168,7 @@ struct accept<Meta, Napi::Value> : accept<Meta, Napi::Env> {
 		}
 
 		template <std::size_t Size>
-		auto operator()(struct_tag<Size> /*tag*/, const auto& dictionary, const auto& visit) const -> Napi::Value {
+		auto operator()(struct_tag<Size> /*tag*/, auto&& dictionary, const auto& visit) const -> Napi::Value {
 			auto object = Napi::Object::New(this->env());
 			std::invoke(
 				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
@@ -178,7 +178,9 @@ struct accept<Meta, Napi::Value> : accept<Meta, Napi::Env> {
 					accept<void, accept_immediate<string_tag>> accept_string;
 					object.Set(
 						visit.first(index, *this, accept_string),
-						visit.second(index, dictionary, *this)
+						// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
+						// reference members one at a time.
+						visit.second(index, std::forward<decltype(dictionary)>(dictionary), *this)
 					);
 				},
 				std::make_index_sequence<Size>{}

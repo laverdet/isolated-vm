@@ -13,10 +13,9 @@ import v8;
 namespace ivm {
 
 // module_request
-module_request::module_request(value::string_t specifier, attributes_type attributes_) :
-		specifier{std::move(specifier)},
-		attributes_{std::move(attributes_)} {
-}
+module_request::module_request(value::string_t specifier, attributes_type attributes) :
+		attributes_{std::move(attributes)},
+		specifier_{std::move(specifier)} {}
 
 // js_module
 js_module::js_module(agent::lock& agent, v8::Local<v8::Module> module_) :
