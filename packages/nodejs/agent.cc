@@ -37,7 +37,7 @@ struct make_agent_options {
 auto create_agent(environment& env, std::optional<make_agent_options> options_optional) -> Napi::Value {
 	auto options = std::move(options_optional).value_or(make_agent_options{});
 	auto& cluster = env.cluster();
-	auto [ dispatch, promise ] = make_promise<ivm::agent>(env, [](environment& env, ivm::agent agent) -> expected_value {
+	auto [ dispatch, promise ] = make_promise(env, [](environment& env, ivm::agent agent) -> expected_value {
 		return make_collected_external<ivm::agent>(env, std::move(agent));
 	});
 	auto clock = std::visit(
@@ -72,7 +72,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 }
 
 auto create_realm(environment& env, iv8::external_reference<agent>& agent) -> Napi::Value {
-	auto [ dispatch, promise ] = make_promise<ivm::realm>(env, [](environment& env, ivm::realm realm) -> expected_value {
+	auto [ dispatch, promise ] = make_promise(env, [](environment& env, ivm::realm realm) -> expected_value {
 		return make_collected_external<ivm::realm>(env, std::move(realm));
 	});
 	agent->schedule(

@@ -24,10 +24,12 @@ auto compile_module(
 	iv8::external_reference<realm>& realm_,
 	value::string_t source_text
 ) -> Napi::Value {
-	using result_type = std::tuple<ivm::js_module, std::vector<ivm::module_request>>;
-	auto [ dispatch, promise ] = make_promise<result_type>(env, [](environment& env, auto result) -> expected_value {
-		return value::transfer_strict<Napi::Value>(std::get<1>(result), std::tuple{}, std::tuple{env.napi_env()});
-	});
+	auto [ dispatch, promise ] = make_promise(
+		env,
+		[](environment& env, js_module /*module_*/, std::vector<ivm::module_request> requests) -> expected_value {
+			return value::transfer_strict<Napi::Value>(std::move(requests), std::tuple{}, std::tuple{env.napi_env()});
+		}
+	);
 	auto& realm = *realm_;
 	agent->schedule(
 		[ &realm, /* TODO: NO!*/
@@ -39,7 +41,7 @@ auto compile_module(
 			ivm::realm::managed_scope realm_scope{agent, realm};
 			auto module = ivm::js_module::compile(realm_scope, std::move(source_text), source_origin);
 			auto requests = module.requests(realm_scope);
-			return dispatch(std::tuple{std::move(module), std::move(requests)});
+			return dispatch(std::move(module), requests);
 		}
 	);
 	return promise;

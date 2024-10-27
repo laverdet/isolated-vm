@@ -27,7 +27,7 @@ auto compile_script(
 	std::optional<compile_script_options> options_optional
 ) -> Napi::Value {
 	auto options = std::move(options_optional).value_or(compile_script_options{});
-	auto [ dispatch, promise ] = make_promise<ivm::script>(env, [](environment& env, ivm::script script) -> expected_value {
+	auto [ dispatch, promise ] = make_promise(env, [](environment& env, ivm::script script) -> expected_value {
 		return make_collected_external<ivm::script>(env, std::move(script));
 	});
 	agent->schedule(
@@ -49,7 +49,7 @@ auto run_script(
 	iv8::external_reference<script>& script,
 	iv8::external_reference<realm>& realm
 ) -> Napi::Value {
-	auto [ dispatch, promise ] = make_promise<value::value_t>(env, [](environment& env, value::value_t result) -> expected_value {
+	auto [ dispatch, promise ] = make_promise(env, [](environment& env, value::value_t result) -> expected_value {
 		return value::transfer_strict<Napi::Value>(std::move(result), std::tuple{}, std::tuple{env.napi_env()});
 	});
 	agent->schedule(
