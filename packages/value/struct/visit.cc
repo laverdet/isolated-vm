@@ -31,16 +31,21 @@ struct visit<Meta, getter_for<Getter>> : visit<Meta, void> {
 // Visitor function for C++ object types
 template <class Meta, class Type, class... Getters>
 struct visit<Meta, object_type<Type, std::tuple<Getters...>>> : visit<Meta, void> {
+	private:
+		template <class Getter>
+		using first_visit = visit<Meta, key_for<property_name_v<Getter>, accept_target_t<Meta>>>;
+		template <class Getter>
+		using second_visit = visit<Meta, getter_for<Getter>>;
+
 	public:
 		using visit<Meta, void>::visit;
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
-			return accept(struct_tag<sizeof...(Getters)>{}, std::forward<decltype(value)>(value), *this);
+			return accept(struct_tag<sizeof...(Getters)>{}, std::forward<decltype(value)>(value), visit_);
 		}
 
-	public:
-		visit<Meta, std::tuple<key_for<property_name_v<Getters>, accept_target_t<Meta>>...>> first;
-		visit<Meta, std::tuple<getter_for<Getters>...>> second;
+	private:
+		std::tuple<std::pair<first_visit<Getters>, second_visit<Getters>>...> visit_;
 };
 
 // Apply `getter_delegate` to each property, filtering properties which do not have a getter.

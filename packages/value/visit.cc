@@ -143,4 +143,26 @@ struct key_for;
 export template <util::string_literal Key, class Type, class Subject>
 struct value_by_key;
 
+// Allows the invoker of `transfer` to pass through a value directly without invoking `visit` or `accept`. For example, as a directly created element of an array.
+export template <class Type>
+struct transfer_direct {
+	public:
+		transfer_direct(Type&& value) :
+				value{std::move(value)} {}
+
+		constexpr auto operator*() && -> Type&& {
+			return std::move(value);
+		}
+
+	private:
+		Type value;
+};
+
+template <class Type>
+struct visit<void, transfer_direct<Type>> {
+		constexpr auto operator()(auto value, const auto_accept auto& /*accept*/) const {
+			return *std::move(value);
+		}
+};
+
 } // namespace ivm::value

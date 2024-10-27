@@ -53,9 +53,12 @@ struct dictionary_tag : object_tag {};
 struct list_tag : object_tag {};
 struct date_tag : object_tag {};
 struct promise_tag : object_tag {};
-// Continuous array-like with integer keys and known length. Generally `arguments` or "trusted"
-// arrays.
+// Continuous packed array-like with integer keys and known (at runtime) length. Generally
+// `arguments` or "trusted" arrays.
 struct vector_tag : object_tag {};
+// Tuple of elements, each possibly a different type.
+template <std::size_t Element>
+struct tuple_tag : object_tag {};
 
 struct array_buffer_tag : object_tag {};
 struct shared_array_buffer_tag : object_tag {};

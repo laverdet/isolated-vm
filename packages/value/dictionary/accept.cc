@@ -72,13 +72,14 @@ struct accept<Meta, dictionary<Tag, Key, Value>> {
 				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
 					dictionary<Tag, Key, Value>{invoke(std::integral_constant<size_t, Index>{})...};
 				},
-				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> index) constexpr {
+				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
+					const auto& visit_n = std::get<Index>(visit);
 					accept<void, accept_immediate<string_tag>> accept_string;
 					return std::pair{
-						visit.first(index, *this, accept_string),
+						visit_n.first(*this, accept_string),
 						// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
 						// reference members one at a time.
-						visit.second(index, std::forward<decltype(value)>(value), *this),
+						visit_n.second(std::forward<decltype(value)>(value), *this),
 					};
 				},
 				std::make_index_sequence<Size>{}

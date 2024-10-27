@@ -15,16 +15,14 @@ export interface ModuleRequest {
 export type ImportAssertions = Record<string, string>;
 
 export class Module {
+	readonly requests: readonly ModuleRequest[];
 	readonly #agent;
 	readonly #module;
 
 	/** @internal */
-	constructor(agent: ivm.Agent, module: ivm.Module) {
+	constructor(agent: ivm.Agent, module: ivm.Module, requests: readonly ModuleRequest[]) {
 		this.#agent = agent;
 		this.#module = module;
-	}
-
-	get requests(): any {
-		return this.#module;
+		this.requests = requests;
 	}
 }

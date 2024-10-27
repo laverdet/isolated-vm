@@ -26,8 +26,16 @@ auto compile_module(
 ) -> Napi::Value {
 	auto [ dispatch, promise ] = make_promise(
 		env,
-		[](environment& env, js_module /*module_*/, std::vector<ivm::module_request> requests) -> expected_value {
-			return value::transfer_strict<Napi::Value>(std::move(requests), std::tuple{}, std::tuple{env.napi_env()});
+		[](environment& env, js_module module_, std::vector<ivm::module_request> requests) -> expected_value {
+			auto handle = make_collected_external<ivm::js_module>(env, std::move(module_));
+			return value::transfer_strict<Napi::Value>(
+				std::tuple{
+					value::transfer_direct{std::move(handle)},
+					std::move(requests),
+				},
+				std::tuple{},
+				std::tuple{env.napi_env()}
+			);
 		}
 	);
 	auto& realm = *realm_;

@@ -174,18 +174,39 @@ struct accept<Meta, Napi::Value> : accept<Meta, Napi::Env> {
 				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
 					(invoke(std::integral_constant<size_t, Index>{}), ...);
 				},
-				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> index) {
+				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> /*index*/) {
+					const auto& visit_n = std::get<Index>(visit);
 					accept<void, accept_immediate<string_tag>> accept_string;
 					object.Set(
-						visit.first(index, *this, accept_string),
+						visit_n.first(*this, accept_string),
 						// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
 						// reference members one at a time.
-						visit.second(index, std::forward<decltype(dictionary)>(dictionary), *this)
+						visit_n.second(std::forward<decltype(dictionary)>(dictionary), *this)
 					);
 				},
 				std::make_index_sequence<Size>{}
 			);
 			return object;
+		}
+
+		template <std::size_t Size>
+		auto operator()(tuple_tag<Size> /*tag*/, auto tuple, const auto& visit) const -> Napi::Value {
+			auto array = Napi::Array::New(this->env(), Size);
+			std::invoke(
+				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
+					(invoke(std::integral_constant<size_t, Index>{}), ...);
+				},
+				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> index) {
+					array.Set(
+						Index,
+						// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
+						// reference members one at a time.
+						visit(index, tuple, *this)
+					);
+				},
+				std::make_index_sequence<Size>{}
+			);
+			return array;
 		}
 };
 

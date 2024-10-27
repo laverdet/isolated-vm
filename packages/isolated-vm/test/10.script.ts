@@ -31,5 +31,5 @@ await test("placeholder module test", async () => {
 	await using agent = await ivm.Agent.create();
 	const realm = await agent.createRealm();
 	const module = await agent.compileModule(realm, "import { foo } from 'bar'");
-	assert.deepEqual(module, [ { specifier: "bar" } ]);
+	assert.deepEqual(module.requests, [ { specifier: "bar" } ]);
 });
