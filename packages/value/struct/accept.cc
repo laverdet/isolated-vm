@@ -19,14 +19,12 @@ template <class Meta, class Type, class... Setters>
 struct accept<Meta, object_type<Type, std::tuple<Setters...>>> {
 	private:
 		template <class Setter>
-		using accept_setter = accept<Meta, value_by_key<property_name_v<Setter>, std::optional<typename Setter::type>, visit_subject_t<Meta>>>;
+		using setter_helper = value_by_key<property_name_v<Setter>, std::optional<typename Setter::type>, visit_subject_t<Meta>>;
 
 	public:
-		using hash_type = uint32_t;
-
 		constexpr accept(const auto_visit auto& visit) :
 				first{visit},
-				second{accept_setter<Setters>{visit}...} {}
+				second{accept<Meta, setter_helper<Setters>>{visit}...} {}
 		constexpr accept(int /*dummy*/, const auto_visit auto& visit, const auto_accept auto& /*accept_*/) :
 				accept{visit} {}
 
@@ -40,7 +38,8 @@ struct accept<Meta, object_type<Type, std::tuple<Setters...>>> {
 					util::select_t<Index, Setters...> setter{};
 					// nb: We `std::forward` the value to *each* setter. This allows the setters to pick an
 					// lvalue object apart member by member if it wants.
-					auto value = std::get<Index>(second)(dictionary_tag{}, std::forward<decltype(dictionary)>(dictionary), visit);
+					auto& accept = std::get<Index>(second);
+					auto value = accept(dictionary_tag{}, std::forward<decltype(dictionary)>(dictionary), visit);
 					if (value) {
 						setter(subject, *std::move(value));
 					} else if (setter.required) {
@@ -54,7 +53,7 @@ struct accept<Meta, object_type<Type, std::tuple<Setters...>>> {
 
 	private:
 		accept_next<Meta, std::string> first;
-		std::tuple<accept_setter<Setters>...> second;
+		std::tuple<accept<Meta, setter_helper<Setters>>...> second;
 };
 
 // Apply `setter_delegate` to each property, filtering properties which do not have a setter.

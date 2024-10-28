@@ -34,11 +34,6 @@ struct accept<Meta, std::tuple<Types...>> {
 		constexpr accept(int /*dummy*/, const auto_visit auto& visit, const auto_accept auto& /*accept*/) :
 				accept{visit} {}
 
-		template <size_t Index>
-		constexpr auto operator()(std::integral_constant<size_t, Index> /*index*/, auto_tag auto tag, auto&& value, auto&&... rest) const -> decltype(auto) {
-			return std::get<Index>(acceptors_)(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
-		}
-
 		constexpr auto operator()(vector_tag /*tag*/, auto&& value, const auto& visit) const -> std::tuple<Types...> {
 			auto it = std::begin(value);
 			auto end = std::end(value);

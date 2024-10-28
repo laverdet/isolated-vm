@@ -28,7 +28,6 @@ struct visit<Meta, std::tuple<Types...>> {
 		constexpr visit(int dummy, const auto_visit auto& visit_) :
 				visit_{visit<Meta, Types>{dummy, visit_}...} {}
 
-		// The invoker of visit is expected to invoke `std::get`. This should be fixed.
 		template <size_t Index>
 		constexpr auto operator()(std::integral_constant<size_t, Index> /*index*/, auto&& value, const auto& accept) const -> decltype(auto) {
 			return std::get<Index>(visit_)(std::get<Index>(std::forward<decltype(value)>(value)), accept);

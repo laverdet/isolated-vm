@@ -14,7 +14,6 @@ namespace ivm::value {
 template <class Enum>
 	requires std::is_enum_v<Enum>
 struct accept<void, Enum> : accept<void, void> {
-		using hash_type = uint32_t;
 		using accept<void, void>::accept;
 
 		template <class String>
