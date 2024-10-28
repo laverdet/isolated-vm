@@ -16,7 +16,7 @@ namespace ivm::value {
 
 // Acceptor function for C++ object types.
 template <class Meta, class Type, class... Setters>
-struct accept<Meta, object_type<Type, std::tuple<Setters...>>> : accept<Meta, void> {
+struct accept<Meta, object_type<Type, std::tuple<Setters...>>> {
 	private:
 		template <class Setter>
 		using accept_setter = accept<Meta, value_by_key<property_name_v<Setter>, std::optional<typename Setter::type>, visit_subject_t<Meta>>>;
@@ -25,7 +25,6 @@ struct accept<Meta, object_type<Type, std::tuple<Setters...>>> : accept<Meta, vo
 		using hash_type = uint32_t;
 
 		constexpr accept(const auto_visit auto& visit) :
-				accept<Meta, void>{visit},
 				first{visit},
 				second{accept_setter<Setters>{visit}...} {}
 		constexpr accept(int /*dummy*/, const auto_visit auto& visit, const auto_accept auto& /*accept_*/) :

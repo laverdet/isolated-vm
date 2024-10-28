@@ -23,7 +23,7 @@ struct is_variant<Types...> : std::bool_constant<false> {};
 // Acceptor for discriminated union/variant types
 template <class Meta, class... Types>
 	requires std::negation_v<is_variant<Types...>>
-struct accept<Meta, std::variant<Types...>> : accept<Meta, void> {
+struct accept<Meta, std::variant<Types...>> {
 	public:
 		using accepted_type = std::variant<Types...>;
 		using descriptor_type = union_of<accepted_type>;
