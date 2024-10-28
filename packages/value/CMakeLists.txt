@@ -5,7 +5,7 @@ target_sources(ivm_value
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		dictionary/accept.cc
-		dictionary/types.cc
+		dictionary/helpers.cc
 		dictionary/vector_of.cc
 		dictionary/visit.cc
 		enum/accept.cc

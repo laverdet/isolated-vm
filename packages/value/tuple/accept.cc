@@ -10,6 +10,21 @@ import :visit;
 
 namespace ivm::value {
 
+template <class Meta, class First, class Second>
+struct accept<Meta, std::pair<First, Second>> {
+	public:
+		constexpr accept(const auto_visit auto& visit) :
+				first{visit},
+				second{visit} {}
+		constexpr accept(int dummy, const auto_visit auto& visit, const auto_accept auto& accept) :
+				first{dummy, visit, accept},
+				second{dummy, visit, accept} {}
+
+	public:
+		accept<Meta, First> first;
+		accept<Meta, Second> second;
+};
+
 // Accepting a `std::tuple` unfolds from a visited vector
 template <class Meta, class... Types>
 struct accept<Meta, std::tuple<Types...>> {

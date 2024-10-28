@@ -6,7 +6,7 @@ module;
 #include <utility>
 #include <variant>
 export module ivm.value:dictionary.visit;
-import :dictionary.types;
+import :dictionary.helpers;
 import :dictionary.vector_of;
 import :visit;
 import ivm.utility;
@@ -15,7 +15,7 @@ namespace ivm::value {
 
 // Non-recursive visitor
 template <class Meta, class Type>
-struct visit<Meta, dictionary_subject<Type>> : visit<Meta, Type> {
+struct visit<Meta, entry_subject<Type>> : visit<Meta, Type> {
 		visit() = default;
 		constexpr visit(int /*dummy*/, const auto_visit auto& /*visit*/) {}
 };
@@ -23,34 +23,41 @@ struct visit<Meta, dictionary_subject<Type>> : visit<Meta, Type> {
 // Recursive visitor
 template <class Meta, class Type>
 	requires is_recursive_v<Type>
-struct visit<Meta, dictionary_subject<Type>> {
+struct visit<Meta, entry_subject<Type>> {
 	public:
 		visit() = delete;
 		constexpr visit(int /*dummy*/, const auto_visit auto& visit) :
-				visit_{&visit} {}
+				visit_{visit} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
-			return (*visit_)(std::forward<decltype(value)>(value), accept);
+			return visit_(std::forward<decltype(value)>(value), accept);
 		}
 
 	private:
-		const visit<Meta, Type>* visit_;
+		const visit<Meta, Type>& visit_;
 };
 
-// Entrypoint for `dictionary`
-template <class Meta, class Tag, class Key, class Value>
-struct visit<Meta, dictionary<Tag, Key, Value>> {
+// Implementation for `vector_of` visitor
+template <class Meta, class Tag, class Entry, class Subject>
+struct visit<Meta, vector_of_subject<Tag, Entry, Subject>> {
+	public:
 		visit() = default;
 		constexpr visit(int dummy, const auto_visit auto& visit) :
-				first{dummy, visit},
-				second{dummy, visit} {}
+				visit_{dummy, visit} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
-			return accept(Tag{}, std::forward<decltype(value)>(value), *this);
+			return accept(Tag{}, std::forward<decltype(value)>(value), visit_);
 		}
 
-		visit<Meta, dictionary_subject<Key>> first;
-		visit<Meta, dictionary_subject<Value>> second;
+	private:
+		visit<Meta, Subject> visit_;
+};
+
+// Entrypoint for `vector_of` visitor
+template <class Meta, class Tag, class Entry>
+struct visit<Meta, vector_of<Tag, Entry>>
+		: visit<Meta, vector_of_subject<Tag, Entry, entry_subject_for_t<Entry>>> {
+		using visit<Meta, vector_of_subject<Tag, Entry, entry_subject_for_t<Entry>>>::visit;
 };
 
 // Object key lookup for primitive dictionary variants. This should generally only be used for
