@@ -6,7 +6,7 @@ export module ivm.value:enum_.accept;
 import ivm.utility;
 import :enum_.types;
 import :tag;
-import :visit;
+import :transfer;
 
 namespace ivm::value {
 

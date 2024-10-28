@@ -7,7 +7,8 @@ export module ivm.value:primitive.accept;
 import :date;
 import :primitive.tag;
 import :tag;
-import :visit;
+import :transfer;
+import ivm.utility;
 
 namespace ivm::value {
 

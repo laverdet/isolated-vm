@@ -19,7 +19,10 @@ target_sources(ivm_value
 		struct/types.cc
 		struct/visit.cc
 		tag.cc
-		transfer.cc
+		transfer/accept.cc
+		transfer/transfer.cc
+		transfer/types.cc
+		transfer/visit.cc
 		tuple/accept.cc
 		tuple/visit.cc
 		type/date.cc
@@ -30,7 +33,6 @@ target_sources(ivm_value
 		variant/types.cc
 		variant/visit.cc
 		vector/visit.cc
-		visit.cc
 )
 target_link_libraries(ivm_value PRIVATE
 	Boost::boost

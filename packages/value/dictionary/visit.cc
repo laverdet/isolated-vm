@@ -8,7 +8,7 @@ module;
 export module ivm.value:dictionary.visit;
 import :dictionary.helpers;
 import :dictionary.vector_of;
-import :visit;
+import :transfer;
 import ivm.utility;
 
 namespace ivm::value {

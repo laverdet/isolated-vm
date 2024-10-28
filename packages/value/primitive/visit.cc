@@ -5,7 +5,7 @@ module;
 export module ivm.value:primitive.visit;
 import :primitive.tag;
 import :tag;
-import :visit;
+import :transfer;
 
 namespace ivm::value {
 

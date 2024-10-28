@@ -4,8 +4,8 @@ module;
 #include <variant>
 export module ivm.value:variant.accept;
 import :tag;
+import :transfer;
 import :variant.types;
-import :visit;
 
 namespace ivm::value {
 

@@ -1,12 +1,13 @@
 module;
-#include <functional>
 #include <stdexcept>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 export module ivm.value:transfer;
+export import :transfer.types;
+export import :accept;
+export import :visit;
 import :tag;
-import :visit;
-import ivm.utility;
 
 namespace ivm::value {
 
@@ -31,12 +32,8 @@ template <class Meta, class Type>
 	requires std::destructible<Type>
 struct accept<Meta, accept_with_throw::accept_throw<Type>>
 		: accept<Meta, std::decay_t<Type>> {
-	private:
-		using accept_type = accept<Meta, std::decay_t<Type>>;
-
-	public:
 		constexpr accept(const auto_visit auto& visit) :
-				accept_type{0, visit, *this} {}
+				accept<Meta, std::decay_t<Type>>{0, visit, *this} {}
 
 		using accept<Meta, std::decay_t<Type>>::operator();
 		constexpr auto operator()(value_tag /*tag*/, auto&& /*value*/, auto&&... /*rest*/) const -> Type {
@@ -92,5 +89,28 @@ export template <class Type>
 constexpr auto transfer_strict(auto&& value) -> decltype(auto) {
 	return transfer_strict<Type>(std::forward<decltype(value)>(value), std::tuple{}, std::tuple{});
 }
+
+// Allows the invoker of `transfer` to pass through a value directly without invoking `visit` or
+// `accept`. For example, as a directly created element of an array.
+export template <class Type>
+struct transfer_direct {
+	public:
+		explicit transfer_direct(Type&& value) :
+				value{std::move(value)} {}
+
+		constexpr auto operator*() && -> Type&& {
+			return std::move(value);
+		}
+
+	private:
+		Type value;
+};
+
+template <class Type>
+struct visit<void, transfer_direct<Type>> {
+		constexpr auto operator()(auto value, const auto_accept auto& /*accept*/) const {
+			return *std::move(value);
+		}
+};
 
 } // namespace ivm::value

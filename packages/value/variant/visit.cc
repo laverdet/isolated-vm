@@ -6,8 +6,9 @@ module;
 #include <utility>
 #include <variant>
 export module ivm.value:variant.visit;
+import :transfer;
 import :variant.types;
-import :visit;
+import ivm.utility;
 
 namespace ivm::value {
 

@@ -6,7 +6,7 @@ module;
 #include <variant>
 export module ivm.value:tuple.accept;
 import :tag;
-import :visit;
+import :transfer;
 
 namespace ivm::value {
 

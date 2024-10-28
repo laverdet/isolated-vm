@@ -1,7 +1,7 @@
 module;
 #include <vector>
 export module ivm.value:vector.visit;
-import :visit;
+import :transfer;
 import ivm.utility;
 
 namespace ivm::value {

@@ -8,9 +8,9 @@ module;
 #include <variant>
 export module ivm.value:union_.accept;
 import :tag;
+import :transfer;
 import :union_.types;
 import :variant.types;
-import :visit;
 import ivm.utility;
 
 namespace ivm::value {

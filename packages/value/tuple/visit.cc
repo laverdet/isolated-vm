@@ -4,7 +4,7 @@ module;
 #include <utility>
 #include <variant>
 export module ivm.value:tuple.visit;
-import :visit;
+import :transfer;
 
 namespace ivm::value {
 

@@ -10,7 +10,7 @@ module;
 export module ivm.value:struct_.accept;
 import :struct_.helpers;
 import :tag;
-import :visit;
+import :transfer;
 
 namespace ivm::value {
 

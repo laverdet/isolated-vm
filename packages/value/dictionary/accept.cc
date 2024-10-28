@@ -6,7 +6,7 @@ module;
 export module ivm.value:dictionary.accept;
 import :dictionary.helpers;
 import :dictionary.vector_of;
-import :visit;
+import :transfer;
 import ivm.utility;
 
 namespace ivm::value {

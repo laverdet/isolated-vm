@@ -8,7 +8,6 @@ export import :tag;
 export import :transfer;
 export import :union_.types;
 export import :value;
-export import :visit;
 import :dictionary.accept;
 import :dictionary.visit;
 import :enum_.accept;

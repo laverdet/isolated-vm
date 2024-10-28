@@ -6,7 +6,7 @@ module;
 export module ivm.value:struct_.visit;
 import :struct_.helpers;
 import :tag;
-import :visit;
+import :transfer;
 
 namespace ivm::value {
 
