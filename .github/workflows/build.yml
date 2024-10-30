@@ -19,7 +19,7 @@ jobs:
           node-version: ${{ matrix.node }}
       - name: Add msbuild to PATH
         if: matrix.os == 'windows-latest'
-        uses: microsoft/setup-msbuild@v1.3
+        uses: microsoft/setup-msbuild@v2
       - name: Install node-gyp
         if: matrix.os == 'windows-latest'
         run: |
@@ -28,7 +28,7 @@ jobs:
         run: |
           npm install --build-from-source
       - name: Test
-        uses: nick-fields/retry@v2
+        uses: nick-fields/retry@v3
         with:
           max_attempts: 3
           retry_on: error
