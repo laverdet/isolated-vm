@@ -14,11 +14,11 @@
     "test": "node test.js"
   },
   "dependencies": {
-    "prebuild-install": "^7.1.1"
+    "prebuild-install": "^7.1.2"
   },
   "devDependencies": {
     "isolated-vm": ".",
-    "prebuild": "^13.0.0"
+    "prebuild": "^13.0.1"
   },
   "binary": {
     "module_path": "out"
