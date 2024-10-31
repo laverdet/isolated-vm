@@ -68,7 +68,7 @@ auto LibHandle::TestHang() -> Local<Value> {
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto LibHandle::TestOOM() -> Local<Value> {
 	Isolate* isolate = Isolate::GetCurrent();
-	for (int ii = 0; ; ++ii) {
+	for (;;) {
 		Array::New(isolate, 128);
 	}
 	return {};
