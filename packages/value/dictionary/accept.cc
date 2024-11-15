@@ -6,6 +6,7 @@ module;
 export module ivm.value:dictionary.accept;
 import :dictionary.helpers;
 import :dictionary.vector_of;
+import :tag;
 import :transfer;
 import ivm.utility;
 
