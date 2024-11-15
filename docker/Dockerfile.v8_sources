@@ -1,9 +1,0 @@
-# Checkout v8 sources at the given version
-FROM alpine/git
-ARG REF
-RUN git clone https://chromium.googlesource.com/v8/v8.git --branch $REF --depth 1 /v8
-# nb: You cannot `gclient sync` here because it will try to delete cross-device hard links over
-# different layers:
-# [cleanup] Failed to remove infra/3pp/build_support/ninja-1_11_1/linux-arm64 in
-#   "v8/third_party/ninja": removing the deployed package directory: rename /.cipd/pkgs/1
-#   /.cipd/pkgs/URISGa6ZV5UB: invalid cross-device link

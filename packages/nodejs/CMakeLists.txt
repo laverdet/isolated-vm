@@ -26,7 +26,7 @@ target_compile_definitions(ivm_backend_v8 PRIVATE
 )
 target_include_directories(ivm_backend_v8 SYSTEM PRIVATE
 	${NAPI_INCLUDE_DIR}
-	${NODE_DIST_DIR}/include
+	${NODE_DIST_DIR}/include/node
 )
 target_link_libraries(ivm_backend_v8 PUBLIC
 	ivm_isolated_v8
@@ -39,7 +39,7 @@ target_link_libraries(ivm_backend_v8 PUBLIC
 
 # Windows linking
 if (WIN32)
-	target_link_directories(ivm_backend_v8 PUBLIC ${NODE_DIST_DIR}/windows/${IVM_HOST_ARCH})
+	target_link_directories(ivm_backend_v8 PUBLIC ${NODE_DIST_DIR}/node/windows/${IVM_HOST_ARCH})
 	target_link_libraries(ivm_backend_v8 PUBLIC node dbghelp winmm)
 endif()
 

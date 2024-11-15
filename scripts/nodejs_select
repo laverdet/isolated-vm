@@ -1,9 +1,9 @@
 #!/bin/sh
 set -eu
 VERSION=$(basename "$1")
-mkdir -p "$1/include"
+mkdir -p "$1"
 curl "https://nodejs.org/download/release/v$VERSION/node-v$VERSION-headers.tar.gz" | \
-	tar xz --strip-components=3 --directory="$1/include"
+	tar xz --strip-components=1 --directory="$1"
 for PLATFORM in arm64 x64 x86; do
 	mkdir -p "$1/windows/$PLATFORM"
 	curl "https://nodejs.org/download/release/v$VERSION/win-$PLATFORM/node.lib" -o "$1/windows/$PLATFORM/node.lib"

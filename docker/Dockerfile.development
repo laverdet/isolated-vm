@@ -1,13 +1,14 @@
 FROM debian
-COPY --from=isolated-vm/node_sources node node
+COPY --from=isolated-vm/depot_tools depot_tools depot_tools
 COPY --from=isolated-vm/node opt opt
-COPY --from=isolated-vm/v8_sources v8 v8
+COPY --from=isolated-vm/node_sources node node
 COPY --from=isolated-vm/v8 v8/out v8/out
-ENV PATH="/opt/bin:${PATH}"
+COPY --from=isolated-vm/v8_sources v8 v8
+ENV PATH=/opt/bin:/depot_tools:$PATH
 ARG LLVM_VERSION
 RUN <<DONE
 	set -eux
-	gclient config --unmanaged $(git -C v8 config --get remote.origin.url)
+	# Prerequisites & tools
 	apt-get update
 	apt-get install -y \
 		build-essential \
@@ -16,6 +17,8 @@ RUN <<DONE
 		clang-tidy-$LLVM_VERSION \
 		clangd-$LLVM_VERSION \
 		cmake \
+		curl \
+		git \
 		jq \
 		libboost-all-dev \
 		lld-$LLVM_VERSION \
@@ -23,8 +26,12 @@ RUN <<DONE
 		man \
 		ninja-build \
 		pkg-config \
+		python3 \
 		vim \
 	;
+
+	# Configure gclient
+	gclient config --unmanaged $(git -C v8 config --get remote.origin.url)
 
 	# Link clang-N binaries and libraries to system paths
 	ln -fs /lib/"llvm-$LLVM_VERSION"/bin/* /usr/bin/

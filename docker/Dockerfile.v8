@@ -1,5 +1,49 @@
+# Image w/ depot_tools & other prerequisites installed
+FROM debian AS depot_tools
+RUN <<DONE
+	set -eux
+	apt-get update
+	apt-get install -y \
+		curl \
+		git \
+		python3 \
+	;
+	mkdir -p ~/.config/depot_tools
+	echo '{"is-googler":false,"countdown":10,"opt-in":null,"version":3}' > ~/.config/depot_tools/metrics.cfg
+	git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git --depth 1
+	PATH=$PATH:/depot_tools update_depot_tools
+DONE
+ENV PATH=$PATH:/depot_tools
+
+# Checkout v8 sources at the given version
+FROM alpine/git AS sources
+ARG REF
+RUN git clone https://chromium.googlesource.com/v8/v8.git --branch $REF --depth 1 /v8
+# nb: You cannot `gclient sync` here because it will try to delete cross-device hard links over
+# different layers:
+# [cleanup] Failed to remove infra/3pp/build_support/ninja-1_11_1/linux-arm64 in
+#   "v8/third_party/ninja": removing the deployed package directory: rename /.cipd/pkgs/1
+#   /.cipd/pkgs/URISGa6ZV5UB: invalid cross-device link
+
+# Run `gclient sync` & apply patches on the sources
+FROM depot_tools AS synced_sources
+COPY --from=sources v8 v8
+RUN <<DONE
+	set -eux
+	gclient config --unmanaged $(git -C v8 config --get remote.origin.url)
+	gclient sync --no-history --shallow --with_branch_heads 1>&2
+DONE
+COPY --from=patches . patches
+COPY --from=scripts v8_select .
+ARG REF
+RUN <<DONE
+	set -eux
+	cd v8
+	PATCH_DIR=/patches SKIP_SYNC=thanks /v8_select "$REF"
+DONE
+
 # Build v8 objects for the given target
-FROM debian AS build
+FROM depot_tools AS build
 ARG LLVM_VERSION
 RUN <<DONE
 	set -eux
@@ -16,20 +60,72 @@ RUN <<DONE
 DONE
 ENV LD_LIBRARY_PATH=/usr/lib/llvm-$LLVM_VERSION/lib/clang/$LLVM_VERSION/lib/linux:$LD_LIBRARY_PATH
 ENV PATH=/lib/llvm-$LLVM_VERSION/bin:$PATH
-COPY --from=isolated-vm/v8_sources v8 v8
-COPY --from=patches . patches
-COPY --from=scripts v8_build v8_select .
+COPY --from=synced_sources v8 v8
+COPY --from=scripts v8_build .
 ARG REF TARGET
 RUN <<DONE
 	set -eux
-	gclient config --unmanaged $(git -C v8 config --get remote.origin.url)
 	cd v8
-	PATCH_DIR=/patches /v8_select "$REF"
 	CLANG_BASE_PATH=$(echo /lib/llvm-* | head -n1) /v8_build "out/$REF/$TARGET"
 	rm -rf "out/$REF/$TARGET/gen"
 	find out -type f ! -name env ! -name '*.so' ! -name '*.a' ! -name '*.h' -delete
 	find out -type d -empty -delete
 DONE
 
+# Build `gn` for alpine
+FROM alpine AS gn
+RUN <<DONE
+	set -eux
+	apk add \
+		clang \
+		git \
+		python3 \
+		ninja-is-really-ninja \
+	;
+	git clone https://gn.googlesource.com/gn
+	cd gn
+	CFLAGS=-D_LARGEFILE64_SOURCE build/gen.py
+	ninja -C out
+DONE
+
+# Build v8 for alpine
+FROM alpine AS build_alpine
+RUN <<DONE
+	set -eux
+	apk add \
+		bash \
+		build-base \
+		coreutils \
+		curl \
+		git \
+		libstdc++ \
+		linux-headers \
+		ninja-is-really-ninja \
+		openssh \
+		patch \
+		pkgconf \
+		python3 \
+		xz \
+	;
+DONE
+COPY --from=gn gn/out gn
+COPY --from=synced_sources v8 v8
+COPY --from=scripts v8_build .
+ARG REF TARGET
+ENV PATH=$PATH:/gn
+RUN <<DONE
+	set -eux
+	cd v8
+	/v8_build "out/$REF/$TARGET"
+	rm -rf "out/$REF/$TARGET/gen"
+	find out -type f ! -name env ! -name '*.so' ! -name '*.a' ! -name '*.h' -delete
+	find out -type d -empty -delete
+DONE
+
+# Copy only build artifacts
+FROM scratch AS v8_alpine
+COPY --from=build_alpine v8/out v8/out
+
+# Copy only build artifacts
 FROM scratch
 COPY --from=build v8/out v8/out

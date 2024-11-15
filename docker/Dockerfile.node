@@ -1,3 +1,8 @@
+# Checkout nodejs sources at the given version
+FROM alpine/git AS sources
+ARG REF
+RUN git clone https://github.com/nodejs/node.git --branch $REF --depth 1 /node
+
 # Build nodejs debug (for local development)
 FROM debian AS build
 RUN <<DONE
@@ -8,7 +13,7 @@ RUN <<DONE
 		python3 \
 	;
 DONE
-COPY --from=isolated-vm/node_sources node node
+COPY --from=sources node node
 RUN <<DONE
 	set -eux
 	cd node
@@ -23,5 +28,6 @@ RUN <<DONE
 	./tools/install.py install --build-dir out/Debug --dest-dir '' --prefix /opt
 DONE
 
+# Copy only built distribution
 FROM scratch
 COPY --from=build opt opt

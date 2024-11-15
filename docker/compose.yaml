@@ -1,4 +1,6 @@
-# LLVM_VERSION=20 NODE_VERSION=22.5.1 V8_TARGET=arm64.debug V8_VERSION=12.8.20 docker compose --parallel=1 --progress=plain build
+# LLVM_VERSION=19 NODE_VERSION=22.11.0 V8_TARGET=arm64.debug V8_VERSION=12.8.20 docker compose --parallel=1 --progress=plain build depot_tools v8 v8_sources node node_sources development
+# Set your gc keep storage in docker engine higher than the default or it will rebuild all the time:
+# { "builder": { "gc": { "defaultKeepStorage": "50GB", "enabled": true } } }
 
 # Tips:
 # https://containers.dev/implementors/spec/#devcontainerjson
@@ -10,34 +12,8 @@ services:
     build:
       additional_contexts:
         - debian=docker-image://debian:sid
-      dockerfile: Dockerfile.depot_tools
-
-  gn_alpine:
-    image: isolated-vm/gn_alpine
-    build:
-      additional_contexts:
-        - alpine=docker-image://alpine:edge
-      args:
-        LLVM_VERSION: ${LLVM_VERSION}
-      dockerfile: Dockerfile.gn_alpine
-
-  v8_sources:
-    image: isolated-vm/v8_sources:${V8_VERSION}
-    build:
-      args:
-        REF: ${V8_VERSION}
-      dockerfile: Dockerfile.v8_sources
-
-  v8_synced:
-    image: isolated-vm/v8_synced:${V8_VERSION}
-    build:
-      additional_contexts:
-        - patches=../patches
-        - scripts=../scripts
-        - isolated-vm/v8_sources=docker-image://isolated-vm/v8_sources:${V8_VERSION}
-      args:
-        REF: ${V8_VERSION}
-      dockerfile: Dockerfile.v8_synced
+      dockerfile: Dockerfile.v8
+      target: depot_tools
 
   v8:
     image: isolated-vm/v8:${V8_TARGET}-${V8_VERSION}
@@ -45,46 +21,45 @@ services:
       additional_contexts:
         - patches=../patches
         - scripts=../scripts
-        - debian=docker-image://isolated-vm/depot_tools
-        - isolated-vm/v8_sources=docker-image://isolated-vm/v8_sources:${V8_VERSION}
+        - debian=docker-image://debian:sid
       args:
         REF: ${V8_VERSION}
         TARGET: ${V8_TARGET}
         LLVM_VERSION: ${LLVM_VERSION}
       dockerfile: Dockerfile.v8
 
-  v8_alpine:
-    image: isolated-vm/v8_alpine:${V8_TARGET}-${V8_VERSION}
+  v8_sources:
+    image: isolated-vm/v8_sources:${V8_VERSION}
     build:
-      additional_contexts:
-        - scripts=../scripts
-        - isolated-vm/v8_synced=docker-image://isolated-vm/v8_synced:${V8_VERSION}
       args:
         REF: ${V8_VERSION}
-        TARGET: linux-musl.${V8_TARGET}
-      dockerfile: Dockerfile.v8_alpine
+      dockerfile: Dockerfile.v8
+      target: sources
+
+  node:
+    image: isolated-vm/node:${NODE_VERSION}
+    build:
+      args:
+        REF: v${NODE_VERSION}
+      additional_contexts:
+        - debian=docker-image://debian:sid
+        - scripts=../scripts
+      dockerfile: Dockerfile.node
 
   node_sources:
     image: isolated-vm/node_sources:${NODE_VERSION}
     build:
       args:
         REF: v${NODE_VERSION}
-      dockerfile: Dockerfile.node_sources
-
-  node:
-    image: isolated-vm/node:${NODE_VERSION}
-    build:
-      additional_contexts:
-        - debian=docker-image://debian:sid
-        - isolated-vm/node_sources=docker-image://isolated-vm/node_sources:${NODE_VERSION}
-        - scripts=../scripts
       dockerfile: Dockerfile.node
+      target: sources
 
   development:
     image: isolated-vm/development
     build:
       additional_contexts:
-        - debian=docker-image://isolated-vm/depot_tools
+        - debian=docker-image://debian:sid
+        - isolated-vm/depot_tools=docker-image://isolated-vm/depot_tools
         - isolated-vm/node_sources=docker-image://isolated-vm/node_sources:${NODE_VERSION}
         - isolated-vm/node=docker-image://isolated-vm/node:${NODE_VERSION}
         - isolated-vm/v8_sources=docker-image://isolated-vm/v8_sources:${V8_VERSION}
@@ -92,3 +67,15 @@ services:
       args:
         LLVM_VERSION: ${LLVM_VERSION}
       dockerfile: Dockerfile.development
+
+  v8_alpine:
+    image: isolated-vm/v8_alpine:${V8_TARGET}-${V8_VERSION}
+    build:
+      additional_contexts:
+        - patches=../patches
+        - scripts=../scripts
+      args:
+        REF: ${V8_VERSION}
+        TARGET: linux-musl.${V8_TARGET}
+      dockerfile: Dockerfile.v8
+      target: v8_alpine

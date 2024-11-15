@@ -136,7 +136,7 @@ add_subdirectory(packages/value)
 # linked to the final target.
 # https://gitlab.kitware.com/cmake/cmake/-/issues/18090
 set(IV8_PREFIX ivm_nodejs)
-set(IV8_INCLUDE_DIR ${NODE_DIST_DIR}/include)
+set(IV8_INCLUDE_DIR ${NODE_DIST_DIR}/include/node)
 add_subdirectory(packages/common-v8 ivm_nodejs_common_v8)
 add_subdirectory(packages/third_party/v8 ivm_nodejs_v8)
 

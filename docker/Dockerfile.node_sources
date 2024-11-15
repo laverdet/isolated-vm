@@ -1,4 +1,0 @@
-# Checkout nodejs sources at the given version
-FROM alpine/git
-ARG REF
-RUN git clone https://github.com/nodejs/node.git --branch $REF --depth 1 /node
