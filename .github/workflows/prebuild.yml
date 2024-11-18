@@ -49,6 +49,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: latest
+      - name: Set up GCC
+        uses: egor-tensin/setup-gcc@v1
+        with:
+          version: 11
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
