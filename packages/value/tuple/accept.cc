@@ -7,6 +7,7 @@ module;
 export module ivm.value:tuple.accept;
 import :tag;
 import :transfer;
+import ivm.utility;
 
 namespace ivm::value {
 
@@ -35,8 +36,9 @@ struct accept<Meta, std::tuple<Types...>> {
 				accept{visit} {}
 
 		constexpr auto operator()(vector_tag /*tag*/, auto&& value, const auto& visit) const -> std::tuple<Types...> {
-			auto it = std::begin(value);
-			auto end = std::end(value);
+			auto range = util::into_range(std::forward<decltype(value)>(value));
+			auto it = std::begin(range);
+			auto end = std::end(range);
 			return std::invoke(
 				[ & ]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr -> std::tuple<Types...> {
 					return {invoke(std::get<Index>(acceptors_))...};

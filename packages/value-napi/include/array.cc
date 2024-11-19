@@ -1,27 +1,25 @@
 module;
 #include <compare>
 #include <cstdint>
-export module ivm.node:array;
+export module ivm.napi:array;
+import :container;
 import ivm.utility;
 import napi;
 
 namespace ivm::napi {
 
-export class array {
+export class array : public container {
 	public:
 		class iterator;
-		using value_type = Napi::Value;
-
-		array() = default;
-		explicit array(Napi::Array array);
+		using value_type = napi_value;
+		using container::container;
 
 		[[nodiscard]] auto begin() const -> iterator;
 		[[nodiscard]] auto end() const -> iterator;
 		[[nodiscard]] auto size() const -> uint32_t;
-		auto value() -> Napi::Value&;
 
 	private:
-		Napi::Array array_;
+		mutable uint32_t size_{};
 };
 
 class array::iterator : public util::random_access_iterator_facade<iterator, int32_t, int64_t> {
@@ -33,7 +31,7 @@ class array::iterator : public util::random_access_iterator_facade<iterator, int
 		using value_type = array::value_type;
 
 		iterator() = default;
-		iterator(Napi::Array array, size_type index);
+		iterator(array array, size_type index);
 
 		auto operator*() const -> value_type;
 
@@ -48,7 +46,7 @@ class array::iterator : public util::random_access_iterator_facade<iterator, int
 	private:
 		auto operator+() const -> size_type { return index; }
 
-		Napi::Array array;
+		array subject_;
 		size_type index{};
 };
 

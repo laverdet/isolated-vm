@@ -155,4 +155,5 @@ add_subdirectory(packages/libivm-v8)
 add_subdirectory(packages/third_party/napi)
 
 # nodejs require-able module
+add_subdirectory(packages/value-napi ivm_value_napi)
 add_subdirectory(packages/nodejs)

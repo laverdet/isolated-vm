@@ -7,10 +7,10 @@ module ivm.node;
 import :environment;
 import :external;
 import :utility;
-import :visit;
 import ivm.isolated_v8;
-import ivm.utility;
 import ivm.iv8;
+import ivm.napi;
+import ivm.utility;
 import ivm.value;
 import napi;
 
@@ -34,7 +34,7 @@ struct make_agent_options {
 		std::optional<double> random_seed;
 };
 
-auto create_agent(environment& env, std::optional<make_agent_options> options_optional) -> Napi::Value {
+auto create_agent(environment& env, std::optional<make_agent_options> options_optional) -> napi_value {
 	auto options = std::move(options_optional).value_or(make_agent_options{});
 	auto& cluster = env.cluster();
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, ivm::agent agent) -> expected_value {
@@ -71,7 +71,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	return promise;
 }
 
-auto create_realm(environment& env, iv8::external_reference<agent>& agent) -> Napi::Value {
+auto create_realm(environment& env, iv8::external_reference<agent>& agent) -> napi_value {
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, ivm::realm realm) -> expected_value {
 		return make_collected_external<ivm::realm>(env, std::move(realm));
 	});
@@ -87,11 +87,11 @@ auto create_realm(environment& env, iv8::external_reference<agent>& agent) -> Na
 	return promise;
 }
 
-auto make_create_agent(environment& env) -> Napi::Function {
+auto make_create_agent(environment& env) -> napi_value {
 	return make_node_function(env, create_agent);
 }
 
-auto make_create_realm(environment& env) -> Napi::Function {
+auto make_create_realm(environment& env) -> napi_value {
 	return make_node_function(env, create_realm);
 }
 

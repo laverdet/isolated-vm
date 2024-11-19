@@ -33,10 +33,10 @@ struct tag_for<double> : std::type_identity<number_tag_of<double>> {};
 
 // `bigint`
 template <>
-struct tag_for<int64_t> : std::type_identity<number_tag_of<int64_t>> {};
+struct tag_for<int64_t> : std::type_identity<bigint_tag_of<int64_t>> {};
 
 template <>
-struct tag_for<uint64_t> : std::type_identity<number_tag_of<uint64_t>> {};
+struct tag_for<uint64_t> : std::type_identity<bigint_tag_of<uint64_t>> {};
 
 // `date`
 template <>

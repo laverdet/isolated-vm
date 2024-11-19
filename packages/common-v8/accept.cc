@@ -23,7 +23,7 @@ struct accept<void, v8::Local<v8::Data>> {
 		explicit accept(v8::Isolate* isolate) :
 				isolate_{isolate} {}
 
-		auto isolate() const {
+		[[nodiscard]] auto isolate() const {
 			return isolate_;
 		}
 

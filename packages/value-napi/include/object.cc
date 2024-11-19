@@ -1,39 +1,39 @@
 module;
 #include <ranges>
 #include <string_view>
-export module ivm.node:object;
-import napi;
+export module ivm.napi:object;
 import :array;
+import :container;
 import ivm.utility;
+import napi;
 
 namespace ivm::napi {
 
-export class object {
+export class object : public container {
 	public:
-		using value_type = std::pair<Napi::Value, Napi::Value>;
+		using value_type = std::pair<napi_value, napi_value>;
+		using container::container;
 
 	private:
 		class iterator_transform {
 			public:
-				explicit iterator_transform(Napi::Object object);
-				auto operator()(Napi::Value key) const -> value_type;
+				explicit iterator_transform(const object& subject_);
+				auto operator()(napi_value key) const -> value_type;
 
 			private:
-				Napi::Object object_;
+				const object& subject_;
 		};
 
 	public:
 		using range_type = std::ranges::transform_view<std::views::all_t<array&>, iterator_transform>;
 		using iterator = std::ranges::iterator_t<range_type>;
 
-		explicit object(Napi::Object object);
-		[[nodiscard]] auto get(Napi::Value key) const -> Napi::Value;
-		[[nodiscard]] auto has(Napi::Value key) const -> bool;
+		[[nodiscard]] auto get(napi_value key) const -> napi_value;
+		[[nodiscard]] auto has(napi_value key) const -> bool;
 		[[nodiscard]] auto into_range() const -> range_type;
 
 	private:
 		mutable array keys_;
-		Napi::Object object_;
 };
 
 } // namespace ivm::napi

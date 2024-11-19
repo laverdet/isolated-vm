@@ -11,26 +11,26 @@ namespace ivm {
 // Instance of the `isolated-vm` module, once per nodejs environment.
 export class environment {
 	public:
-		explicit environment(Napi::Env env);
+		explicit environment(napi_env env);
 
 		auto cluster() -> ivm::cluster&;
 		auto collection() -> util::collection_group&;
-		auto napi_env() -> Napi::Env;
+		auto nenv() -> napi_env;
 		auto isolate() -> v8::Isolate*;
-		static auto get(Napi::Env env) -> environment&;
+		static auto get(napi_env env) -> environment&;
 
 	private:
-		Napi::Env env_;
+		napi_env env_;
 		ivm::cluster cluster_;
 		v8::Isolate* isolate_;
 		util::collection_group collection_group_;
 };
 
 // Module forward declarations
-export auto make_compile_module(environment& env) -> Napi::Function;
-export auto make_compile_script(environment& env) -> Napi::Function;
-export auto make_create_agent(environment& env) -> Napi::Function;
-export auto make_create_realm(environment& env) -> Napi::Function;
-export auto make_run_script(environment& env) -> Napi::Function;
+export auto make_compile_module(environment& env) -> napi_value;
+export auto make_compile_script(environment& env) -> napi_value;
+export auto make_create_agent(environment& env) -> napi_value;
+export auto make_create_realm(environment& env) -> napi_value;
+export auto make_run_script(environment& env) -> napi_value;
 
 } // namespace ivm

@@ -4,6 +4,7 @@ module;
 module ivm.node;
 import :environment;
 import ivm.isolated_v8;
+import ivm.napi;
 import ivm.utility;
 import ivm.value;
 import napi;
@@ -11,7 +12,7 @@ import v8;
 
 namespace ivm {
 
-environment::environment(Napi::Env env) :
+environment::environment(napi_env env) :
 		env_{env},
 		isolate_{v8::Isolate::GetCurrent()} {
 }
@@ -24,7 +25,7 @@ auto environment::cluster() -> ivm::cluster& {
 	return cluster_;
 }
 
-auto environment::napi_env() -> Napi::Env {
+auto environment::nenv() -> napi_env {
 	return env_;
 }
 
@@ -32,8 +33,8 @@ auto environment::isolate() -> v8::Isolate* {
 	return isolate_;
 }
 
-auto environment::get(Napi::Env env) -> environment& {
-	return *env.GetInstanceData<environment>();
+auto environment::get(napi_env env) -> environment& {
+	return *static_cast<environment*>(napi_invoke_checked(napi_get_instance_data, env));
 }
 
 } // namespace ivm

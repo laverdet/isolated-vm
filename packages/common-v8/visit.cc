@@ -22,10 +22,6 @@ import v8;
 // pretty stable for a long because v8 seems to have those figured out by now.
 namespace ivm::value {
 
-// Enable transferee context
-template <>
-struct transferee_subject<v8::Local<v8::Value>> : std::type_identity<v8::Local<v8::Value>> {};
-
 // boolean
 template <>
 struct visit<void, v8::Local<v8::Boolean>> {

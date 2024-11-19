@@ -6,26 +6,17 @@ target_sources(ivm_backend_v8
 		main.cc
 		module.cc
 		script.cc
-		value/arguments.cc
-		value/array.cc
-		value/object.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		include/_module.cc
-		include/arguments.cc
-		include/array.cc
 		include/environment.cc
 		include/external.cc
-		include/object.cc
 		include/script.cc
 		utility.cc
-		value/accept.cc
-		value/visit.cc
 )
 target_compile_definitions(ivm_backend_v8 PRIVATE
 	NODE_ADDON_API_DISABLE_DEPRECATED
 )
 target_include_directories(ivm_backend_v8 SYSTEM PRIVATE
-	${NAPI_INCLUDE_DIR}
 	${NODE_DIST_DIR}/include/node
 )
 target_link_libraries(ivm_backend_v8 PUBLIC
@@ -35,6 +26,7 @@ target_link_libraries(ivm_backend_v8 PUBLIC
 	ivm_nodejs_v8
 	ivm_utility
 	ivm_value
+	ivm_value_napi
 )
 
 # Windows linking

@@ -13,7 +13,7 @@ struct transferee_meta;
 // This struct can be specialized for cases in which the root visitor is a subclass of a more
 // specific visitor. For example, `v8::FunctionCallbackInfo` -> `v8::Value`.
 export template <class Type>
-struct transferee_subject : std::type_identity<void> {};
+struct transferee_subject : std::type_identity<Type> {};
 
 template <class Type>
 using transferee_subject_t = transferee_subject<Type>::type;

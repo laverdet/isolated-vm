@@ -1,0 +1,194 @@
+module;
+#include <cstdint>
+#include <functional>
+#include <utility>
+#include <variant>
+export module ivm.napi:accept;
+import :number;
+import :string;
+import :utility;
+import ivm.value;
+import napi;
+import v8;
+
+namespace ivm::value {
+
+// Fake acceptor for primitive values
+template <>
+struct accept<void, napi_env> {
+	public:
+		accept() = delete;
+		explicit accept(napi_env env) :
+				env_{env} {}
+
+		auto env() const -> napi_env {
+			return env_;
+		}
+
+		auto operator()(undefined_tag /*tag*/, auto&& /*undefined*/) const -> napi_value {
+			return napi_invoke_checked(napi_get_undefined, env_);
+		}
+
+		auto operator()(null_tag /*tag*/, auto&& /*null*/) const -> napi_value {
+			return napi_invoke_checked(napi_get_null, env_);
+		}
+
+		auto operator()(boolean_tag /*tag*/, auto&& value) const -> napi_value {
+			return napi_invoke_checked(napi_get_boolean, env_, std::forward<decltype(value)>(value));
+		}
+
+		template <class Numeric>
+		auto operator()(number_tag_of<Numeric> /*tag*/, auto&& value) const -> napi_value {
+			return ivm::napi::create_number(env_, std::forward<decltype(value)>(value));
+		}
+
+		template <class Numeric>
+		auto operator()(bigint_tag_of<Numeric> /*tag*/, auto&& value) const -> napi_value {
+			return ivm::napi::create_bigint(env_, std::forward<decltype(value)>(value));
+		}
+
+		template <class String>
+		auto operator()(string_tag_of<String> /*tag*/, auto&& value) const -> napi_value {
+			return ivm::napi::create_string(env_, std::forward<decltype(value)>(value));
+		}
+
+		auto operator()(date_tag /*tag*/, js_clock::time_point value) const -> napi_value {
+			return napi_invoke_checked(napi_create_date, env_, value.time_since_epoch().count());
+		}
+
+	private:
+		napi_env env_;
+};
+
+// Generic acceptor for most values
+template <class Meta>
+struct accept<Meta, napi_value> : accept<Meta, napi_env> {
+	private:
+		using accept_type = accept<Meta, napi_env>;
+
+	public:
+		using accept<Meta, napi_env>::accept;
+
+		auto operator()(auto_tag auto tag, auto&& value) const -> napi_value
+			requires std::invocable<accept_type, decltype(tag), decltype(value)> {
+			const accept_type& accept = *this;
+			return accept(tag, std::forward<decltype(value)>(value));
+		}
+
+		auto operator()(vector_tag /*tag*/, auto&& list, const auto& visit) const -> napi_value {
+			auto array = napi_invoke_checked(napi_create_array_with_length, this->env(), list.size());
+			int ii = 0;
+			for (auto&& value : std::forward<decltype(list)>(list)) {
+				napi_check_result_of(
+					napi_set_element,
+					this->env(),
+					array,
+					ii++,
+					visit(std::forward<decltype(value)>(value), *this)
+				);
+			}
+			return array;
+		}
+
+		auto operator()(list_tag /*tag*/, auto&& list, const auto& visit) const -> napi_value {
+			auto array = napi_invoke_checked(napi_create_array, this->env());
+			for (auto&& [ key, value ] : std::forward<decltype(list)>(list)) {
+				napi_check_result_of(
+					napi_set_property,
+					this->env(),
+					array,
+					visit.first(std::forward<decltype(key)>(key), *this),
+					visit.second(std::forward<decltype(value)>(value), *this)
+				);
+			}
+			return array;
+		}
+
+		auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> napi_value {
+			auto object = napi_invoke_checked(napi_create_object, this->env());
+			for (auto&& [ key, value ] : util::into_range(std::forward<decltype(dictionary)>(dictionary))) {
+				napi_check_result_of(
+					napi_set_property,
+					this->env(),
+					object,
+					visit.first(std::forward<decltype(key)>(key), *this),
+					visit.second(std::forward<decltype(value)>(value), *this)
+				);
+			}
+			return object;
+		}
+
+		template <std::size_t Size>
+		auto operator()(struct_tag<Size> /*tag*/, auto&& dictionary, const auto& visit) const -> napi_value {
+			auto object = napi_invoke_checked(napi_create_object, this->env());
+			std::invoke(
+				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
+					(invoke(std::integral_constant<size_t, Index>{}), ...);
+				},
+				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> /*index*/) {
+					const auto& visit_n = std::get<Index>(visit);
+					accept<void, accept_immediate<string_tag>> accept_string;
+					napi_check_result_of(
+						napi_set_property,
+						this->env(),
+						object,
+						visit_n.first(*this, accept_string),
+						// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
+						// reference members one at a time.
+						visit_n.second(std::forward<decltype(dictionary)>(dictionary), *this)
+					);
+				},
+				std::make_index_sequence<Size>{}
+			);
+			return object;
+		}
+
+		template <std::size_t Size>
+		auto operator()(tuple_tag<Size> /*tag*/, auto tuple, const auto& visit) const -> napi_value {
+			auto array = napi_invoke_checked(napi_create_array_with_length, this->env(), Size);
+			std::invoke(
+				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
+					(invoke(std::integral_constant<size_t, Index>{}), ...);
+				},
+				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> index) {
+					napi_check_result_of(
+						napi_set_element,
+						this->env(),
+						array,
+						Index,
+						// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
+						// reference members one at a time.
+						visit(index, tuple, *this)
+					);
+				},
+				std::make_index_sequence<Size>{}
+			);
+			return array;
+		}
+};
+
+// Object key lookup via napi
+template <class Meta, util::string_literal Key, class Type>
+struct accept<Meta, value_by_key<Key, Type, napi_value>> {
+	public:
+		constexpr accept(const auto_visit auto& visit) :
+				root{visit},
+				accept_value{visit} {}
+
+		auto operator()(dictionary_tag /*tag*/, const auto& object, const auto& visit) const {
+			accept<void, accept_immediate<string_tag>> accept_string;
+			auto local = visit_key(root, accept_string);
+			if (object.has(local)) {
+				return visit.second(object.get(local), accept_value);
+			} else {
+				return accept_value(undefined_in_tag{}, std::monostate{});
+			}
+		}
+
+	private:
+		const visit<Meta, visit_subject_t<Meta>>& root;
+		visit<Meta, key_for<Key, napi_value>> visit_key;
+		accept_next<Meta, Type> accept_value;
+};
+
+} // namespace ivm::value

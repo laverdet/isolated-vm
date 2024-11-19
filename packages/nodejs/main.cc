@@ -1,19 +1,28 @@
-#include <napi.h>
+#include <node_api.h>
+#include <memory>
+import ivm.napi;
 import ivm.node;
 import napi;
 
-auto isolated_vm(Napi::Env env, Napi::Object exports) -> Napi::Object {
+using namespace ivm;
+
+NAPI_MODULE_INIT(/*napi_env env, napi_value exports*/) {
 	// Initialize isolated-vm environment for this nodejs context
-	auto ienv = std::make_unique<ivm::environment>(env);
+	auto ienv = std::make_unique<environment>(env);
 
-	exports.Set(Napi::String::New(env, "compileModule"), ivm::make_compile_module(*ienv));
-	exports.Set(Napi::String::New(env, "compileScript"), ivm::make_compile_script(*ienv));
-	exports.Set(Napi::String::New(env, "createAgent"), ivm::make_create_agent(*ienv));
-	exports.Set(Napi::String::New(env, "createRealm"), ivm::make_create_realm(*ienv));
-	exports.Set(Napi::String::New(env, "runScript"), ivm::make_run_script(*ienv));
+	napi_check_result_of(napi_set_property, env, exports, ivm::napi::create_string_literal<"compileModule">(env), make_compile_module(*ienv));
+	napi_check_result_of(napi_set_property, env, exports, ivm::napi::create_string_literal<"compileScript">(env), make_compile_script(*ienv));
+	napi_check_result_of(napi_set_property, env, exports, ivm::napi::create_string_literal<"createAgent">(env), make_create_agent(*ienv));
+	napi_check_result_of(napi_set_property, env, exports, ivm::napi::create_string_literal<"createRealm">(env), make_create_realm(*ienv));
+	napi_check_result_of(napi_set_property, env, exports, ivm::napi::create_string_literal<"runScript">(env), make_run_script(*ienv));
 
-	env.SetInstanceData(ienv.release());
+	napi_check_result_of(napi_set_instance_data, env, ienv.get(), nullptr, nullptr);
+	napi_check_result_of(
+		napi_set_instance_data,
+		env,
+		ienv.release(),
+		[](napi_env /*env*/, void* data, void* /*hint*/) { delete static_cast<environment*>(data); },
+		nullptr
+	);
 	return exports;
 }
-
-NODE_API_MODULE(isolated_vm, isolated_vm);

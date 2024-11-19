@@ -7,14 +7,14 @@ module;
 #include <utility>
 export module ivm.node:utility;
 import :environment;
-import :visit;
+import ivm.napi;
 import ivm.utility;
 import ivm.value;
 import napi;
 
 namespace ivm {
 
-export using expected_value = std::expected<Napi::Value, Napi::Value>;
+export using expected_value = std::expected<napi_value, napi_value>;
 
 template <class Tuple>
 struct dispatch_parameters;
@@ -29,7 +29,7 @@ auto make_promise(environment& ienv, auto accept) {
 	using tuple_type = dispatch_parameters<util::functor_parameters_t<decltype(accept)>>::type;
 
 	// nodejs promise & future
-	auto env = ienv.napi_env();
+	auto env = ienv.nenv();
 	Napi::Promise::Deferred deferred{env};
 	auto promise = deferred.Promise();
 
@@ -98,12 +98,12 @@ class node_function<Result (*)(environment&, Args...)> : util::non_copyable {
 				env{&env},
 				fn{std::move(fn)} {}
 
-		auto operator()(const Napi::CallbackInfo& info) -> Napi::Value {
+		auto operator()(const Napi::CallbackInfo& info) -> napi_value {
 			return std::apply(
 				fn,
 				std::tuple_cat(
 					std::forward_as_tuple(*env),
-					value::transfer<std::tuple<Args...>>(info, std::tuple{env->napi_env(), env->isolate()}, std::tuple{})
+					value::transfer<std::tuple<Args...>>(static_cast<napi_callback_info>(info), std::tuple{env->nenv(), env->isolate()}, std::tuple{})
 				)
 			);
 		}
@@ -114,7 +114,7 @@ class node_function<Result (*)(environment&, Args...)> : util::non_copyable {
 };
 
 export auto make_node_function(environment& env, auto fn) {
-	return Napi::Function::New(env.napi_env(), node_function<decltype(fn)>{env, fn});
+	return Napi::Function::New(env.nenv(), node_function<decltype(fn)>{env, fn});
 }
 
 } // namespace ivm

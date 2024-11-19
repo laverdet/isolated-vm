@@ -8,9 +8,9 @@ import :environment;
 import :external;
 import :script;
 import :utility;
-import :visit;
 import ivm.isolated_v8;
 import ivm.iv8;
+import ivm.napi;
 import ivm.value;
 import napi;
 
@@ -25,7 +25,7 @@ auto compile_script(
 	iv8::external_reference<agent>& agent,
 	value::string_t code_string,
 	std::optional<compile_script_options> options_optional
-) -> Napi::Value {
+) -> napi_value {
 	auto options = std::move(options_optional).value_or(compile_script_options{});
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, ivm::script script) -> expected_value {
 		return make_collected_external<ivm::script>(env, std::move(script));
@@ -48,9 +48,9 @@ auto run_script(
 	iv8::external_reference<agent>& agent,
 	iv8::external_reference<script>& script,
 	iv8::external_reference<realm>& realm
-) -> Napi::Value {
+) -> napi_value {
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, value::value_t result) -> expected_value {
-		return value::transfer_strict<Napi::Value>(std::move(result), std::tuple{}, std::tuple{env.napi_env()});
+		return value::transfer_strict<napi_value>(std::move(result), std::tuple{}, std::tuple{env.nenv()});
 	});
 	agent->schedule(
 		[ &realm,
@@ -75,11 +75,11 @@ auto make_source_origin(agent::lock& agent, const std::optional<source_origin_op
 	}
 }
 
-auto make_compile_script(environment& env) -> Napi::Function {
+auto make_compile_script(environment& env) -> napi_value {
 	return make_node_function(env, compile_script);
 }
 
-auto make_run_script(environment& env) -> Napi::Function {
+auto make_run_script(environment& env) -> napi_value {
 	return make_node_function(env, run_script);
 }
 

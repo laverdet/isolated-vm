@@ -40,7 +40,7 @@ struct string_literal {
 		consteval auto operator<=>(const string_literal& right) const -> std::strong_ordering { return payload <=> right.payload; }
 		consteval auto operator==(const string_literal& right) const -> bool { return payload == right.payload; }
 		constexpr auto operator==(std::string_view string) const -> bool { return std::string_view{*this} == string; }
-		[[nodiscard]] consteval auto data() const -> const char* { return payload.data(); }
+		[[nodiscard]] constexpr auto data() const -> const char (&)[ Size ] { return *reinterpret_cast<const char(*)[ Size ]>(payload.data()); }
 		[[nodiscard]] consteval auto length() const -> size_t { return Size - 1; }
 
 		std::array<char, Size> payload{};
