@@ -9,6 +9,7 @@ namespace ivm::util {
  * `operator+()` and the rest is handled automatically.
  */
 export template <class Type, class difference_type_, class wide_size_type = difference_type_>
+// NOLINTNEXTLINE(bugprone-crtp-constructor-accessibility)
 class arithmetic_facade {
 	public:
 		using difference_type = difference_type_;
@@ -57,6 +58,7 @@ class arithmetic_facade {
  * Implements `operator[]` in the context of `operator+()` and `operator*()`.
  */
 export template <class Type, class difference_type>
+// NOLINTNEXTLINE(bugprone-crtp-constructor-accessibility)
 class array_facade {
 	public:
 		auto operator[](this auto&& self, difference_type offset) -> decltype(auto) {
@@ -68,6 +70,7 @@ class array_facade {
  * Implements `operator->()` in the context of `operator*()`.
  */
 export template <class Type>
+// NOLINTNEXTLINE(bugprone-crtp-constructor-accessibility)
 class pointer_facade {
 	public:
 		auto operator->(this auto& self) -> auto* { return &*self; }
@@ -77,6 +80,7 @@ class pointer_facade {
  * Implements the requirements of `std::random_access_iterator`.
  */
 export template <class Type, class difference_type, class wide_size_type = difference_type>
+// NOLINTNEXTLINE(bugprone-crtp-constructor-accessibility)
 class random_access_iterator_facade
 		: public arithmetic_facade<Type, difference_type, wide_size_type>,
 			public array_facade<Type, difference_type> {};

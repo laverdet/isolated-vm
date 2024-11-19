@@ -47,7 +47,8 @@ constexpr inline bool is_convertible_without_narrowing_v = false;
 
 template <class To, class From>
 concept construct_without_narrowing = requires(From&& from) {
-	{ std::type_identity_t<To[]>{std::forward<From>(from)} }; // NOLINT(modernize-avoid-c-arrays)
+	// NOLINTNEXTLINE(modernize-avoid-c-arrays)
+	{ std::type_identity_t<To[]>{std::forward<From>(from)} };
 };
 
 template <class From, class To>

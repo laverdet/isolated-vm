@@ -37,7 +37,7 @@ class prehashed_string_map {
 		using const_iterator = container_type::const_iterator;
 
 		template <class Key>
-		consteval explicit prehashed_string_map(std::initializer_list<std::pair<Key, Type>> range) :
+		consteval prehashed_string_map(std::initializer_list<std::pair<Key, Type>> range) :
 				prehashed_string_map{std::views::all(range)} {}
 
 		consteval explicit prehashed_string_map(const std::ranges::range auto& range) :

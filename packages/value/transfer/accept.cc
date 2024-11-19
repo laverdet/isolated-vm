@@ -40,7 +40,7 @@ template <class Meta, class Type>
 struct accept : accept<void, Type> {
 		using accept<void, Type>::accept;
 		// Swallow `visit` argument on behalf of non-meta acceptors
-		constexpr accept(const auto_visit auto& /*visit*/, auto&&... args) :
+		explicit constexpr accept(const auto_visit auto& /*visit*/, auto&&... args) :
 				accept<void, Type>{std::forward<decltype(args)>(args)...} {}
 };
 

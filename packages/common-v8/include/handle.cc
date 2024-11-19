@@ -39,7 +39,7 @@ class handle : public v8::Local<Type> {
 			return handle<To>{v8::Local<Type>::template As<To>(), env_};
 		}
 
-		auto env() const { return env_; }
+		[[nodiscard]] auto env() const { return env_; }
 
 		// Forward cast operators to the underlying method `materialize(std::type_identity<To>, ...)`
 		template <class To>
@@ -54,17 +54,17 @@ class handle : public v8::Local<Type> {
 		}
 
 		// Forward iteration to underlying value
-		auto begin() const -> decltype(auto)
+		[[nodiscard]] auto begin() const -> decltype(auto)
 			requires std::invocable<decltype(&Type::begin), const Type&, handle_env, const Extra&...> {
 			return apply_handle(&Type::begin);
 		}
 
-		auto end() const -> decltype(auto)
+		[[nodiscard]] auto end() const -> decltype(auto)
 			requires std::invocable<decltype(&Type::begin), const Type&, handle_env, const Extra&...> {
 			return apply_handle(&Type::end);
 		}
 
-		auto into_range() const -> decltype(auto)
+		[[nodiscard]] auto into_range() const -> decltype(auto)
 			requires std::invocable<decltype(&Type::into_range), Type&, handle_env, Extra&...> {
 			auto* non_const = const_cast<handle*>(this); // NOLINT(cppcoreguidelines-pro-type-const-cast)
 			return non_const->apply_handle(&Type::into_range);

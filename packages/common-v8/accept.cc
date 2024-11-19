@@ -92,7 +92,7 @@ struct accept<void, v8::Local<v8::Value>> : accept<void, v8::Local<v8::Data>> {
 				accept<void, v8::Local<v8::Data>>{isolate},
 				context_{context} {}
 
-		auto context() const {
+		[[nodiscard]] auto context() const {
 			return context_;
 		}
 

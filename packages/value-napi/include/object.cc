@@ -21,7 +21,7 @@ export class object : public container {
 				auto operator()(napi_value key) const -> value_type;
 
 			private:
-				const object& subject_;
+				const object* subject_;
 		};
 
 	public:

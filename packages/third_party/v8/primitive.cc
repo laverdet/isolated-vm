@@ -1,3 +1,4 @@
+// NOLINTBEGIN(misc-unused-using-decls)
 module;
 #include "version.h"
 #include <v8-primitive.h>
@@ -20,3 +21,4 @@ export using v8::Symbol;
 export using v8::Uint32;
 export using v8::Undefined;
 } // namespace v8
+// NOLINTEND(misc-unused-using-decls)

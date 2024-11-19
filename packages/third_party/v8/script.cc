@@ -1,3 +1,4 @@
+// NOLINTBEGIN(misc-unused-using-decls)
 module;
 #include <v8-script.h>
 export module v8:script;
@@ -12,3 +13,4 @@ export using v8::ScriptType;
 export using v8::UnboundModuleScript;
 export using v8::UnboundScript;
 } // namespace v8
+// NOLINTEND(misc-unused-using-decls)

@@ -16,7 +16,6 @@ struct visit<Meta, std::pair<First, Second>> {
 				first{dummy, visit_},
 				second{dummy, visit_} {}
 
-	public:
 		visit<Meta, First> first;
 		visit<Meta, Second> second;
 };

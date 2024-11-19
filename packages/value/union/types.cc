@@ -13,8 +13,8 @@ struct union_of;
 // Holds typed union alternative w/ discriminant
 export template <class Type>
 struct alternative {
-		constexpr alternative(const std::string& discriminant) :
-				discriminant{discriminant} {}
+		explicit constexpr alternative(std::string discriminant) :
+				discriminant{std::move(discriminant)} {}
 
 		std::string discriminant;
 };

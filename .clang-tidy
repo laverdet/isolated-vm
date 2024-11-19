@@ -2,6 +2,7 @@
 # https://clang.llvm.org/extra/clang-tidy/checks/list.html
 
 # Note: The big block of ignored rules are aliases for other rules.
+# Note: `readability-redundant-declaration` is buggy and raises in libc system headers
 Checks: >
   bugprone-*,
   clang-*,
@@ -20,11 +21,13 @@ Checks: >
   -cppcoreguidelines-avoid-non-const-global-variables,
   -cppcoreguidelines-pro-type-reinterpret-cast,
   -google-build-using-namespace,
+  -google-global-names-in-headers,
   -google-readability-todo,
   -misc-include-cleaner,
   -misc-use-internal-linkage,
   -readability-else-after-return,
   -readability-magic-numbers,
+  -readability-redundant-declaration,
 
   -bugprone-narrowing-conversions,
   -cppcoreguidelines-avoid-c-arrays,

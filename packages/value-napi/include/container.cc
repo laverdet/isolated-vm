@@ -6,9 +6,10 @@ namespace ivm::napi {
 export class container {
 	public:
 		container() = default;
-		container(napi_env env, napi_value value); // NOLINT(google-explicit-constructor)
+		container(napi_env env, napi_value value);
 
-		operator napi_value() const; // NOLINT(google-explicit-constructor)
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		operator napi_value() const;
 		auto operator*() const -> napi_value;
 		auto operator==(const container& right) const -> bool;
 		[[nodiscard]] auto env() const -> napi_env;

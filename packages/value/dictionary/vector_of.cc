@@ -16,7 +16,7 @@ class vector_of {
 		using iterator = container_type::iterator;
 
 		vector_of() = default;
-		consteval explicit vector_of(std::initializer_list<Value> list) :
+		consteval vector_of(std::initializer_list<Value> list) :
 				values{list.begin(), list.end()} {}
 		constexpr explicit vector_of(std::ranges::range auto&& range) :
 				values{std::ranges::begin(range), std::ranges::end(range)} {}

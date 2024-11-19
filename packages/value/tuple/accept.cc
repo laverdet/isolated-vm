@@ -14,14 +14,13 @@ namespace ivm::value {
 template <class Meta, class First, class Second>
 struct accept<Meta, std::pair<First, Second>> {
 	public:
-		constexpr accept(const auto_visit auto& visit) :
+		explicit constexpr accept(const auto_visit auto& visit) :
 				first{visit},
 				second{visit} {}
 		constexpr accept(int dummy, const auto_visit auto& visit, const auto_accept auto& accept) :
 				first{dummy, visit, accept},
 				second{dummy, visit, accept} {}
 
-	public:
 		accept<Meta, First> first;
 		accept<Meta, Second> second;
 };
@@ -30,7 +29,7 @@ struct accept<Meta, std::pair<First, Second>> {
 template <class Meta, class... Types>
 struct accept<Meta, std::tuple<Types...>> {
 	public:
-		constexpr accept(const auto_visit auto& visit) :
+		explicit constexpr accept(const auto_visit auto& visit) :
 				acceptors_{accept_next<Meta, Types>{visit}...} {}
 		constexpr accept(int /*dummy*/, const auto_visit auto& visit, const auto_accept auto& /*accept*/) :
 				accept{visit} {}

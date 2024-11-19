@@ -1,5 +1,6 @@
 #include <v8-version.h>
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define V8_AT_LEAST(major, minor, patch) (                                                   \
 	V8_MAJOR_VERSION > (major) ||                                                              \
 	(V8_MAJOR_VERSION == (major) && V8_MINOR_VERSION > (minor)) ||                             \

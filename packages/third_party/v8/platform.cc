@@ -1,3 +1,4 @@
+// NOLINTBEGIN(misc-unused-using-decls)
 module;
 #ifndef IVM_V8_VIA_NODEJS
 #include <libplatform/v8-tracing.h>
@@ -23,3 +24,4 @@ export using v8::platform::tracing::TracingController;
 }
 } // namespace v8
 #endif
+// NOLINTEND(misc-unused-using-decls)

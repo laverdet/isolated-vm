@@ -1,5 +1,4 @@
 module;
-#include <functional>
 #include <ranges>
 #include <utility>
 #include <variant>
@@ -32,14 +31,17 @@ export constexpr auto into_range(auto&& range) -> decltype(auto)
 // null-terminated, which is required by v8's `String::NewFromUtf8Literal`.
 export template <size_t Size>
 struct string_literal {
-		consteval string_literal(const char (&string)[ Size ]) { // NOLINT(google-explicit-constructor)
+		// NOLINTNEXTLINE(google-explicit-constructor, modernize-avoid-c-arrays)
+		consteval string_literal(const char (&string)[ Size ]) {
 			std::copy_n(static_cast<const char*>(string), Size, payload.data());
 		}
 
-		consteval operator std::string_view() const { return {payload.data(), length()}; } // NOLINT(google-explicit-constructor)
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		consteval operator std::string_view() const { return {payload.data(), length()}; }
 		consteval auto operator<=>(const string_literal& right) const -> std::strong_ordering { return payload <=> right.payload; }
 		consteval auto operator==(const string_literal& right) const -> bool { return payload == right.payload; }
 		constexpr auto operator==(std::string_view string) const -> bool { return std::string_view{*this} == string; }
+		// NOLINTNEXTLINE(modernize-avoid-c-arrays)
 		[[nodiscard]] constexpr auto data() const -> const char (&)[ Size ] { return *reinterpret_cast<const char(*)[ Size ]>(payload.data()); }
 		[[nodiscard]] consteval auto length() const -> size_t { return Size - 1; }
 
@@ -105,8 +107,8 @@ export class non_moveable {
 export template <class Invoke>
 class scope_exit : non_copyable {
 	public:
-		explicit scope_exit(Invoke&& invoke) :
-				invoke_{std::forward<Invoke>(invoke)} {}
+		explicit scope_exit(Invoke invoke) :
+				invoke_{std::move(invoke)} {}
 		scope_exit(const scope_exit&) = delete;
 		~scope_exit() { invoke_(); }
 		auto operator=(const scope_exit&) -> scope_exit& = delete;

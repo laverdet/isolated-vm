@@ -19,7 +19,7 @@ auto external::Cast(v8::Value* value) -> external* {
 }
 
 auto external::materialize(std::type_identity<void*> /*tag*/) const -> void* {
-	return static_cast<void*>(Value());
+	return Value();
 }
 
 export template <class Type>

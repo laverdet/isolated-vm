@@ -7,12 +7,12 @@ namespace ivm::util {
 export template <class Operation, class Fn>
 class mapped_comparator {
 	public:
-		constexpr explicit mapped_comparator(Operation&& operation, Fn&& fn) :
+		constexpr mapped_comparator(auto&& operation, auto&& fn) :
 				operation{std::forward<decltype(operation)>(operation)},
 				fn{std::forward<decltype(fn)>(fn)} {}
 
 		constexpr auto operator()(const auto& left, const auto& right) const {
-			return Operation{}(fn(left), fn(right));
+			return operation(fn(left), fn(right));
 		}
 
 	private:

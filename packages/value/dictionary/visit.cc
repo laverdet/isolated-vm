@@ -27,14 +27,14 @@ struct visit<Meta, entry_subject<Type>> {
 	public:
 		visit() = delete;
 		constexpr visit(int /*dummy*/, const auto_visit auto& visit) :
-				visit_{visit} {}
+				visit_{&visit} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
-			return visit_(std::forward<decltype(value)>(value), accept);
+			return (*visit_)(std::forward<decltype(value)>(value), accept);
 		}
 
 	private:
-		const visit<Meta, Type>& visit_;
+		const visit<Meta, Type>* visit_;
 };
 
 // Implementation for `vector_of` visitor
@@ -65,7 +65,7 @@ struct visit<Meta, vector_of<Tag, Entry>>
 template <class Meta, util::string_literal Key, class Type>
 struct accept<Meta, value_by_key<Key, Type, void>> {
 	public:
-		constexpr accept(const auto_visit auto& visit) :
+		explicit constexpr accept(const auto_visit auto& visit) :
 				first{visit},
 				second{visit} {}
 

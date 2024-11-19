@@ -11,23 +11,23 @@ namespace ivm {
 
 export class job_handle : public v8::JobHandle, public v8::JobDelegate {
 	public:
-		job_handle(std::unique_ptr<v8::JobTask> job_task);
-		virtual ~job_handle() = default;
+		explicit job_handle(std::unique_ptr<v8::JobTask> job_task);
+		~job_handle() override = default;
 
 		// JobHandle
-		virtual auto Cancel() -> void;
-		virtual auto CancelAndDetach() -> void;
-		virtual auto IsActive() -> bool;
-		virtual auto IsValid() -> bool final;
-		virtual auto Join() -> void;
-		virtual auto NotifyConcurrencyIncrease() -> void;
-		virtual auto UpdatePriority(v8::TaskPriority new_priority) -> void final;
-		virtual auto UpdatePriorityEnabled() const -> bool final;
+		auto Cancel() -> void override;
+		auto CancelAndDetach() -> void override;
+		auto IsActive() -> bool override;
+		auto IsValid() -> bool final;
+		auto Join() -> void override;
+		auto NotifyConcurrencyIncrease() -> void override;
+		auto UpdatePriority(v8::TaskPriority new_priority) -> void final;
+		[[nodiscard]] auto UpdatePriorityEnabled() const -> bool final;
 
 		// JobDelegate
-		virtual auto GetTaskId() -> uint8_t;
-		virtual auto IsJoiningThread() const -> bool;
-		virtual auto ShouldYield() -> bool;
+		auto GetTaskId() -> uint8_t override;
+		[[nodiscard]] auto IsJoiningThread() const -> bool override;
+		auto ShouldYield() -> bool override;
 
 	private:
 		std::unique_ptr<v8::JobTask> job_task;
@@ -41,7 +41,7 @@ export class platform : util::non_moveable, public v8::Platform {
 		class handle;
 
 		platform();
-		virtual ~platform();
+		~platform() override;
 
 		auto GetTracingController() -> v8::TracingController* final;
 		auto GetPageAllocator() -> v8::PageAllocator* final;
@@ -78,7 +78,7 @@ export class platform : util::non_moveable, public v8::Platform {
 		) -> void final;
 
 	private:
-		static bool fill_random_bytes(unsigned char* buffer, size_t length);
+		static auto fill_random_bytes(unsigned char* buffer, size_t length) -> bool;
 
 		std::unique_ptr<v8::Platform> default_platform_{v8::platform::NewDefaultPlatform()};
 };

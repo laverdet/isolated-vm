@@ -19,7 +19,7 @@ export class task_runner : public v8::TaskRunner {
 
 		using idle_task = std::unique_ptr<v8::IdleTask>;
 		using task_type = std::unique_ptr<v8::Task>;
-		enum class nestability {
+		enum class nestability : std::int8_t {
 			non_nestable,
 			nestable
 		};
@@ -71,6 +71,10 @@ auto task_runner::delayed_task::timeout_predicate() {
 // implements `post_idle` (& co.)
 template <class Self>
 class task_runner::task_runner_of : public task_runner {
+	private:
+		friend Self;
+		task_runner_of() = default;
+
 	public:
 		[[nodiscard]] auto IdleTasksEnabled() -> bool final;
 		[[nodiscard]] auto NonNestableTasksEnabled() const -> bool final;

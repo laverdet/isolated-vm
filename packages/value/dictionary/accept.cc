@@ -16,7 +16,7 @@ namespace ivm::value {
 // a reference to an existing one.
 template <class Meta, class Type>
 struct accept<Meta, entry_subject<Type>> : accept_next<Meta, Type> {
-		constexpr accept(const auto_visit auto& visit) :
+		explicit constexpr accept(const auto_visit auto& visit) :
 				accept_next<Meta, Type>{visit} {}
 		constexpr accept(int /*dummy*/, const auto_visit auto& visit, const auto_accept auto& /*accept*/) :
 				accept{visit} {}
@@ -46,7 +46,7 @@ struct accept<Meta, entry_subject<Type>> {
 template <class Meta, class Tag, class Entry, class Subject>
 struct accept<Meta, vector_of_subject<Tag, Entry, Subject>> {
 	public:
-		constexpr accept(const auto_visit auto& visit) :
+		explicit constexpr accept(const auto_visit auto& visit) :
 				accept_{visit} {}
 		constexpr accept(int dummy, const auto_visit auto& visit, const auto_accept auto& accept) :
 				accept_{dummy, visit, accept} {}

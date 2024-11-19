@@ -48,7 +48,7 @@ struct getter_delegate<Subject, accessor<Name, Getter, Setter, Required>>
 };
 
 // Getter by member function
-template <class S, util::string_literal Name, auto Setter, bool Required, class Type, class Subject, Type (Subject::* Getter)() const>
+template <class S, util::string_literal Name, auto Setter, bool Required, class Type, class Subject, Type (Subject::*Getter)() const>
 struct getter_delegate<S, accessor<Name, Getter, Setter, Required>>
 		: std::type_identity<std::decay_t<Type>>,
 			property_info<Name, Required> {
@@ -65,6 +65,7 @@ struct getter_delegate<S, member<Name, Member, Required>>
 		: std::type_identity<std::decay_t<Type>>,
 			property_info<Name, Required> {
 		constexpr auto operator()(const Subject& subject) const -> const Type& { return subject.*Member; }
+		// NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
 		constexpr auto operator()(Subject&& subject) const -> Type&& { return std::move(subject.*Member); }
 };
 

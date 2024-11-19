@@ -1,3 +1,4 @@
+// NOLINTBEGIN(misc-unused-using-decls)
 module;
 #include <v8-object.h>
 export module v8:object;
@@ -8,3 +9,4 @@ export using v8::KeyConversionMode;
 export using v8::Object;
 export using v8::PropertyFilter;
 } // namespace v8
+// NOLINTEND(misc-unused-using-decls)

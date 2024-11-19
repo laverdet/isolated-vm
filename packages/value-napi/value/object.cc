@@ -26,10 +26,10 @@ auto object::has(napi_value key) const -> bool {
 }
 
 object::iterator_transform::iterator_transform(const object& subject) :
-		subject_{subject} {}
+		subject_{&subject} {}
 
 auto object::iterator_transform::operator()(napi_value key) const -> value_type {
-	return std::pair{key, subject_.get(key)};
+	return std::pair{key, subject_->get(key)};
 }
 
 } // namespace ivm::napi

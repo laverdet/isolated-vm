@@ -39,7 +39,7 @@ static_assert(just_optional_value == 1);
 static_assert(transfer<std::optional<double>>(1) == 1.0);
 
 // Enumerations
-enum class enum_test {
+enum class enum_test : std::int8_t {
 	first,
 	second,
 	third,

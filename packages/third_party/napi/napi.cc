@@ -1,3 +1,4 @@
+// NOLINTBEGIN(misc-unused-using-decls)
 module;
 #include <js_native_api.h>
 #include <napi.h>
@@ -44,3 +45,5 @@ export using Napi::Function;
 export using Napi::Promise;
 export using Napi::TypedThreadSafeFunction;
 } // namespace Napi
+
+// NOLINTEND(misc-unused-using-decls)

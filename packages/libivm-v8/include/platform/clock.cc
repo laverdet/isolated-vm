@@ -25,6 +25,10 @@ class base_clock {
 
 template <class Self>
 class base_clock_of : public base_clock {
+	private:
+		friend Self;
+		base_clock_of() = default;
+
 	public:
 		auto clock_time_ms() -> int64_t;
 };
@@ -80,6 +84,7 @@ export class realtime : public base_clock_of<realtime> {
 // Pass through system time
 export class system : public base_clock_of<system> {
 	public:
+		system() = default;
 		auto clock_time() -> system_clock::time_point;
 };
 

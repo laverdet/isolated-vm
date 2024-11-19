@@ -32,7 +32,7 @@ template <class Meta, class Type>
 	requires std::destructible<Type>
 struct accept<Meta, accept_with_throw::accept_throw<Type>>
 		: accept<Meta, std::decay_t<Type>> {
-		constexpr accept(const auto_visit auto& visit) :
+		explicit constexpr accept(const auto_visit auto& visit) :
 				accept<Meta, std::decay_t<Type>>{0, visit, *this} {}
 
 		using accept<Meta, std::decay_t<Type>>::operator();

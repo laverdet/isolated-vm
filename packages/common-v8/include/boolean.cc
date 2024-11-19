@@ -7,7 +7,7 @@ namespace ivm::iv8 {
 
 export class boolean : public v8::Boolean {
 	public:
-		auto materialize(std::type_identity<bool> /*tag*/) const -> bool;
+		[[nodiscard]] auto materialize(std::type_identity<bool> /*tag*/) const -> bool;
 		static auto Cast(v8::Data* data) -> boolean*;
 };
 

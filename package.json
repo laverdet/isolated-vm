@@ -8,8 +8,8 @@
   },
   "scripts": {
     "clang-format": "find packages -name '*.cc' -exec clang-format -i {} \\;",
-    "clang-tidy": "find packages -name '*.cc' -print0 | xargs -0 clang-tidy --fix",
-    "eslint": "eslint --fix packages",
+    "lint:cc": "run-clang-tidy -p build",
+    "lint:js": "eslint --fix packages",
     "test": "node --enable-source-maps --test-reporter=spec --test dist/test/*.js"
   },
   "description": "JavaScript sandbox",

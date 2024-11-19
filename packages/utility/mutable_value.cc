@@ -9,10 +9,12 @@ export template <class Type>
 class mutable_value : pointer_facade<mutable_value<Type>> {
 	public:
 		mutable_value() = default;
-		mutable_value(Type value) : // NOLINT(google-explicit-constructor)
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		mutable_value(Type value) :
 				value_{std::move(value)} {}
 
-		operator Type&() const { return value_; } // NOLINT(google-explicit-constructor)
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		operator Type&() const { return value_; }
 		auto operator*() const -> Type& { return value_; }
 
 	private:

@@ -171,7 +171,7 @@ struct accept<Meta, napi_value> : accept<Meta, napi_env> {
 template <class Meta, util::string_literal Key, class Type>
 struct accept<Meta, value_by_key<Key, Type, napi_value>> {
 	public:
-		constexpr accept(const auto_visit auto& visit) :
+		explicit constexpr accept(const auto_visit auto& visit) :
 				root{visit},
 				accept_value{visit} {}
 
