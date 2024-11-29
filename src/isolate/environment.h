@@ -153,6 +153,7 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		/**
 		 * GC hooks to kill this isolate before it runs out of memory
 		 */
+		static void MarkSweepCompactPrologue(v8::Isolate* isolate, v8::GCType gc_type, v8::GCCallbackFlags gc_flags, void* data);
 		static void MarkSweepCompactEpilogue(v8::Isolate* isolate, v8::GCType gc_type, v8::GCCallbackFlags gc_flags, void* data);
 		static auto NearHeapLimitCallback(void* data, size_t current_heap_limit, size_t initial_heap_limit) -> size_t;
 		void RequestMemoryPressureNotification(v8::MemoryPressureLevel memory_pressure, bool as_interrupt = false);
