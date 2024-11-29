@@ -89,6 +89,7 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		Executor executor;
 		std::shared_ptr<IsolateDisposeWait> dispose_wait{std::make_shared<IsolateDisposeWait>()};
 		std::weak_ptr<IsolateHolder> holder;
+		std::weak_ptr<IsolateHolder> parent_holder;
 		std::shared_ptr<IsolateTaskRunner> task_runner;
 		std::unique_ptr<class InspectorAgent> inspector_agent;
 		v8::Persistent<v8::Context> default_context;
@@ -99,6 +100,7 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		size_t memory_limit = 0;
 		size_t initial_heap_size_limit = 0;
 		size_t misc_memory_size = 0;
+		size_t last_reported_external_memory_size = 0;
 		std::atomic<size_t> extra_allocated_memory = 0;
 		v8::MemoryPressureLevel memory_pressure = v8::MemoryPressureLevel::kNone;
 		v8::MemoryPressureLevel last_memory_pressure = v8::MemoryPressureLevel::kNone;
@@ -192,6 +194,7 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 			auto env = std::make_shared<IsolateEnvironment>(static_cast<UvScheduler&>(*Executor::GetDefaultEnvironment().scheduler));
 			auto holder = std::make_shared<IsolateHolder>(env);
 			env->holder = holder;
+			env->parent_holder = IsolateEnvironment::GetCurrentHolder();
 			env->IsolateCtor(memory_limit_in_mb, std::move(snapshot_blob), snapshot_length);
 			return holder;
 		}
@@ -311,6 +314,36 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		}
 		void AdjustExtraAllocatedMemory(int size) {
 			extra_allocated_memory += size;
+		}
+
+		void ReportExternalMemoryToParentIsolate(v8::HeapStatistics &heap) {
+			if (nodejs_isolate) {
+				return;
+			}
+
+			auto parent_isolate_holder = this->parent_holder.lock();
+			if (!parent_isolate_holder) {
+				return;
+			}
+
+			size_t new_external_memory_size =
+					heap.total_heap_size() +
+					heap.external_memory() +
+					heap.malloced_memory() +
+					extra_allocated_memory;
+			auto delta = static_cast<ssize_t>(new_external_memory_size - last_reported_external_memory_size);
+			last_reported_external_memory_size = new_external_memory_size;
+
+			static_assert(sizeof(ssize_t) <= sizeof(void*), "ssize_t does not fit into a void*");
+
+			if (delta != 0) {
+				auto parent_env = parent_isolate_holder->GetIsolate();
+				if (parent_env) {
+					parent_env->isolate->RequestInterrupt([](v8::Isolate* isolate, void* delta) {
+						isolate->AdjustAmountOfExternalAllocatedMemory(reinterpret_cast<ssize_t>(delta));
+					}, reinterpret_cast<void *>(delta)); // NOLINT(*-no-int-to-ptr)
+				}
+			}
 		}
 
 		/**

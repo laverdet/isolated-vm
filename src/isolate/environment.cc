@@ -103,7 +103,11 @@ void IsolateEnvironment::HeapCheck::Epilogue() {
 				env.hit_memory_limit = true;
 				env.Terminate();
 				throw FatalRuntimeError("Isolate was disposed during execution due to memory limit");
+			} else {
+				env.ReportExternalMemoryToParentIsolate(heap);
 			}
+		} else {
+			env.ReportExternalMemoryToParentIsolate(heap);
 		}
 	}
 }
@@ -188,6 +192,7 @@ void IsolateEnvironment::MarkSweepCompactEpilogue(Isolate* isolate, GCType /*gc_
 	that->isolate->GetHeapStatistics(&heap);
 	size_t total_memory = heap.used_heap_size() + that->extra_allocated_memory;
 	size_t memory_limit = that->memory_limit + that->misc_memory_size;
+	that->ReportExternalMemoryToParentIsolate(heap);
 	if (total_memory > memory_limit) {
 		if ((gc_flags & (GCCallbackFlags::kGCCallbackFlagCollectAllAvailableGarbage | GCCallbackFlags::kGCCallbackFlagForced)) == 0) {
 			// Force full garbage collection
@@ -214,7 +219,6 @@ void IsolateEnvironment::MarkSweepCompactEpilogue(Isolate* isolate, GCType /*gc_
 		} else {
 			that->RequestMemoryPressureNotification(MemoryPressureLevel::kNone);
 		}
-		return;
 	}
 }
 
@@ -432,6 +436,17 @@ IsolateEnvironment::~IsolateEnvironment() {
 			handle.dispose_wait->Join();
 		}
 	} else {
+		{
+			auto parent_isolate_holder = parent_holder.lock();
+			if (parent_isolate_holder) {
+				auto parent_isolate = parent_isolate_holder->GetIsolate();
+				if (parent_isolate) {
+					parent_isolate->GetIsolate()->AdjustAmountOfExternalAllocatedMemory(
+							-(ssize_t) last_reported_external_memory_size
+					);
+				}
+			}
+		}
 		{
 			// Grab local pointer to inspector agent with scheduler lock active
 			auto agent_ptr = [&]() {
