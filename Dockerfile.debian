@@ -7,7 +7,6 @@ RUN apt-get update && \
   python3
 COPY . .
 RUN npm install --ignore-scripts
-RUN MAKEFLAGS=-j$(nproc) npx -y prebuild
-
+RUN CXX=g++-11 MAKEFLAGS=-j$(nproc) npx -y prebuild
 FROM scratch
 COPY --from=build /isolated-vm/prebuilds .
