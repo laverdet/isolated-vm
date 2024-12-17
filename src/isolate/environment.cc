@@ -40,6 +40,7 @@ static auto GetStackBase() -> void* {
                 base = (void*)((char*)ss.ss_sp - ss.ss_size);
         }
 	return base;
+}
 #elif defined __FreeBSD__
 #include <pthread_np.h>
 static auto GetStackBase() -> void* {
