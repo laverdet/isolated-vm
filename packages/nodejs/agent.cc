@@ -88,11 +88,11 @@ auto create_realm(environment& env, iv8::external_reference<agent>& agent) -> na
 }
 
 auto make_create_agent(environment& env) -> napi_value {
-	return make_node_function(env, create_agent);
+	return make_node_function<create_agent>(env);
 }
 
 auto make_create_realm(environment& env) -> napi_value {
-	return make_node_function(env, create_realm);
+	return make_node_function<create_realm>(env);
 }
 
 } // namespace ivm

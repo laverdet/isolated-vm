@@ -1,7 +1,7 @@
 // NOLINTBEGIN(misc-unused-using-decls)
 module;
 #include <js_native_api.h>
-#include <napi.h>
+#include <node_api.h>
 export module napi;
 export using ::napi_callback_info;
 export using ::napi_deferred;
@@ -18,6 +18,7 @@ export using ::napi_create_bigint_int64;
 export using ::napi_create_bigint_uint64;
 export using ::napi_create_date;
 export using ::napi_create_double;
+export using ::napi_create_function;
 export using ::napi_create_int32;
 export using ::napi_create_int64;
 export using ::napi_create_object;
@@ -45,10 +46,5 @@ export using ::napi_resolve_deferred;
 export using ::napi_set_element;
 export using ::napi_set_property;
 export using ::napi_typeof;
-
-namespace Napi {
-export using Napi::CallbackInfo;
-export using Napi::Function;
-} // namespace Napi
 
 // NOLINTEND(misc-unused-using-decls)

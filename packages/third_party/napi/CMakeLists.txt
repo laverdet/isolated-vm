@@ -5,6 +5,5 @@ target_sources(ivm_napi
 )
 
 target_include_directories(ivm_napi SYSTEM PRIVATE
-	${NAPI_INCLUDE_DIR}
 	${NODE_DIST_DIR}/include/node
 )

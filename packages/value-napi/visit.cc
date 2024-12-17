@@ -1,9 +1,9 @@
 module;
+#include <span>
 #include <type_traits>
 #include <utility>
 #include <variant>
 export module ivm.napi:visit;
-import :arguments;
 import :object;
 import :string;
 import ivm.iv8;
@@ -65,10 +65,6 @@ struct visit<void, napi_value> : visit<void, v8::Local<v8::Value>> {
 			}
 		}
 
-		auto operator()(napi_callback_info info, const auto_accept auto& accept) const -> decltype(auto) {
-			return accept(vector_tag{}, ivm::napi::arguments{env_, info}, *this);
-		}
-
 	private:
 		napi_env env_;
 };
@@ -86,15 +82,6 @@ struct visit<void, key_for<Key, napi_value>> {
 
 	private:
 		mutable napi_value local_key{};
-};
-
-// Napi function arguments to list
-template <>
-struct transferee_subject<napi_callback_info> : std::type_identity<napi_value> {};
-
-template <class Meta>
-struct visit<Meta, napi_callback_info> : visit<Meta, napi_value> {
-		using visit<Meta, napi_value>::visit;
 };
 
 } // namespace ivm::value

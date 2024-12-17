@@ -56,7 +56,7 @@ auto compile_module(
 }
 
 auto make_compile_module(environment& env) -> napi_value {
-	return make_node_function(env, compile_module);
+	return make_node_function<compile_module>(env);
 }
 
 } // namespace ivm

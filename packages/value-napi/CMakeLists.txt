@@ -1,7 +1,6 @@
 add_library(ivm_value_napi OBJECT)
 target_sources(ivm_value_napi
 	PRIVATE
-		value/arguments.cc
 		value/array.cc
 		value/container.cc
 		value/number.cc
@@ -10,7 +9,6 @@ target_sources(ivm_value_napi
 	PUBLIC FILE_SET CXX_MODULES FILES
 		accept.cc
 		include/_module.cc
-		include/arguments.cc
 		include/array.cc
 		include/container.cc
 		include/number.cc

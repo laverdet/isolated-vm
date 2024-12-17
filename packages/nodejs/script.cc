@@ -76,11 +76,11 @@ auto make_source_origin(agent::lock& agent, const std::optional<source_origin_op
 }
 
 auto make_compile_script(environment& env) -> napi_value {
-	return make_node_function(env, compile_script);
+	return make_node_function<compile_script>(env);
 }
 
 auto make_run_script(environment& env) -> napi_value {
-	return make_node_function(env, run_script);
+	return make_node_function<run_script>(env);
 }
 
 } // namespace ivm

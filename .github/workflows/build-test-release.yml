@@ -173,10 +173,6 @@ jobs:
       - uses: bahmutov/npm-install@v1
         with:
           install-command: npm install --no-audit --no-fund
-      - name: node-addon-api include path
-        shell: sh
-        id: node-addon-api
-        run: echo "include-dir=$(node -p 'require("node-addon-api").include_dir')" >> "$GITHUB_OUTPUT"
 
       # Download nodejs headers
       - uses: actions/cache/restore@v4
@@ -204,7 +200,6 @@ jobs:
         env:
           IVM_HOST_ARCH: ${{ matrix.host.arch }}
           IVM_HOST_PLATFORM: ${{ matrix.host.platform }}
-          NAPI_INCLUDE_DIR: ${{ steps.node-addon-api.outputs.include-dir }}
           NODE_DIST_DIR: deps/nodejs/${{ env.NODE_HEADERS }}
           V8_REF: ${{ env.V8_REF }}
           V8_TARGET: ${{ matrix.host.platform }}.${{ matrix.host.arch }}.${{ env.V8_CONFIGURATION }}
@@ -234,7 +229,6 @@ jobs:
             -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
             -DIVM_HOST_ARCH="$IVM_HOST_ARCH"\
             -DIVM_HOST_PLATFORM="$IVM_HOST_PLATFORM" \
-            -DNAPI_INCLUDE_DIR="$NAPI_INCLUDE_DIR" \
             -DNODE_DIST_DIR="$NODE_DIST_DIR" \
             -DV8_INCLUDE_DIR="$V8_REF_PATH/include" \
             -DV8_INCLUDE_GN_FILE="$V8_REF_PATH/$V8_TARGET/include/v8-gn.h" \

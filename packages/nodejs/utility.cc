@@ -1,6 +1,8 @@
 module;
 #include <cstring>
 #include <expected>
+#include <span>
+#include <stdexcept>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -70,36 +72,37 @@ auto make_promise(environment& ienv, auto accept) {
 	return std::make_tuple(std::move(dispatch), promise);
 }
 
-template <class Function>
-class node_function;
+template <class Tuple>
+struct callback_parameters;
 
-template <class Result, class... Args>
-class node_function<Result (*)(environment&, Args...)> : util::non_copyable {
-	public:
-		using function_type = Result (*)(environment&, Args...);
+template <class... Types>
+struct callback_parameters<std::tuple<environment&, Types...>>
+		: std::type_identity<std::tuple<Types...>> {};
 
-		node_function() = delete;
-		explicit node_function(environment& env, function_type fn) :
-				env{&env},
-				fn{std::move(fn)} {}
-
-		auto operator()(const Napi::CallbackInfo& info) -> napi_value {
-			return std::apply(
-				fn,
-				std::tuple_cat(
-					std::forward_as_tuple(*env),
-					value::transfer<std::tuple<Args...>>(static_cast<napi_callback_info>(info), std::tuple{env->nenv(), env->isolate()}, std::tuple{})
-				)
-			);
+export template <auto Fn>
+auto make_node_function(environment& ienv) -> napi_value {
+	using parameters_type = callback_parameters<util::functor_parameters_t<decltype(Fn)>>::type;
+	auto* env = ienv.nenv();
+	auto callback = [](napi_env env, napi_callback_info info) -> napi_value {
+		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
+		std::array<napi_value, 8> arguments;
+		auto count = arguments.size();
+		// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+		void* data;
+		napi_check_result_of(napi_get_cb_info, env, info, &count, arguments.data(), nullptr, &data);
+		if (count > arguments.size()) {
+			throw std::runtime_error{"Too many arguments"};
 		}
-
-	private:
-		environment* env;
-		function_type fn;
-};
-
-export auto make_node_function(environment& env, auto fn) {
-	return Napi::Function::New(env.nenv(), node_function<decltype(fn)>{env, fn});
+		auto& ienv = *static_cast<environment*>(data);
+		return std::apply(
+			Fn,
+			std::tuple_cat(
+				std::forward_as_tuple(ienv),
+				value::transfer<parameters_type>(std::span{arguments}.subspan(0, count), std::tuple{env, ienv.isolate()}, std::tuple{})
+			)
+		);
+	};
+	return napi_invoke_checked(napi_create_function, env, nullptr, 0, callback, &ienv);
 }
 
 } // namespace ivm
