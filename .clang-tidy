@@ -20,6 +20,7 @@ Checks: >
 
   -cppcoreguidelines-avoid-non-const-global-variables,
   -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-owning-memory,
   -google-build-using-namespace,
   -google-global-names-in-headers,
   -google-readability-todo,

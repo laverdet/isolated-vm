@@ -3,6 +3,7 @@ target_sources(ivm_backend_v8
 	PRIVATE
 		agent.cc
 		environment.cc
+		scheduler.cc
 		main.cc
 		module.cc
 		script.cc
@@ -10,6 +11,7 @@ target_sources(ivm_backend_v8
 		include/_module.cc
 		include/environment.cc
 		include/external.cc
+		include/scheduler.cc
 		include/script.cc
 		utility.cc
 )

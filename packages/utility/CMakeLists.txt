@@ -4,7 +4,6 @@ target_sources(ivm_utility
 		FILE_SET CXX_MODULES FILES
 			_module.cc
 			byte_literals.cc
-			call_once_or_else.cc
 			collection_group.cc
 			comparator.cc
 			facade.cc

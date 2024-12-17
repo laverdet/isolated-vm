@@ -1,6 +1,5 @@
 export module ivm.utility;
 export import :byte_literals;
-export import :call_once_or_else;
 export import :collection_group;
 export import :comparator;
 export import :facade;

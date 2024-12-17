@@ -1,5 +1,4 @@
 module;
-#include <concepts>
 #include <cstring>
 #include <expected>
 #include <tuple>
@@ -16,70 +15,56 @@ namespace ivm {
 
 export using expected_value = std::expected<napi_value, napi_value>;
 
-template <class Tuple>
-struct dispatch_parameters;
+class handle_scope : util::non_moveable {
+	public:
+		explicit handle_scope(napi_env env) :
+				env_{env},
+				handle_scope_{napi_invoke_checked(napi_open_handle_scope, env)} {}
 
-template <class... Types>
-struct dispatch_parameters<std::tuple<environment&, Types...>>
-		: std::type_identity<std::tuple<Types...>> {
-		static_assert(std::conjunction_v<std::is_move_constructible<Types>...>);
+		~handle_scope() {
+			if (napi_close_handle_scope(env_, handle_scope_) != napi_ok) {
+				std::terminate();
+			}
+		}
+
+	private:
+		napi_env env_;
+		napi_handle_scope handle_scope_;
 };
 
 auto make_promise(environment& ienv, auto accept) {
-	using tuple_type = dispatch_parameters<util::functor_parameters_t<decltype(accept)>>::type;
+	auto* env = ienv.nenv();
 
 	// nodejs promise & future
-	auto env = ienv.nenv();
-	Napi::Promise::Deferred deferred{env};
-	auto promise = deferred.Promise();
+	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+	napi_deferred deferred;
+	auto* promise = napi_invoke_checked(napi_create_promise, env, &deferred);
 
 	// nodejs promise fulfillment
-	auto settle =
+	ienv.scheduler().increment_ref();
+	auto dispatch =
 		[ accept = std::move(accept),
-			deferred ](
-			Napi::Env env,
-			tuple_type* payload_raw_ptr
+			deferred,
+			env,
+			scheduler = ienv.scheduler() ](
+			auto&&... args
 		) mutable {
-			if (env) {
-				auto& ienv = environment::get(env);
-				auto payload_ptr = ienv.collection().accept_ptr<tuple_type>(payload_raw_ptr);
-				auto arguments = std::tuple_cat(std::forward_as_tuple(ienv), std::move(*payload_ptr));
-				if (auto result = std::apply(accept, std::move(arguments))) {
-					deferred.Resolve(result.value());
-				} else {
-					deferred.Reject(result.error());
+			scheduler.schedule(
+				[ accept = std::move(accept),
+					deferred,
+					env,
+					... args = std::forward<decltype(args)>(args) ]() mutable {
+					auto scope = handle_scope{env};
+					auto& ienv = environment::get(env);
+					ienv.scheduler().decrement_ref();
+					if (auto result = accept(ienv, std::forward<decltype(args)>(args)...)) {
+						napi_check_result_of(napi_resolve_deferred, env, deferred, result.value());
+					} else {
+						napi_check_result_of(napi_reject_deferred, env, deferred, result.error());
+					}
 				}
-			}
+			);
 		};
-
-	// napi adapter to own complex types through the C boundary
-	auto holder = ienv.collection().make_ptr<decltype(settle)>(std::move(settle));
-	auto trampoline = [](Napi::Env env, Napi::Function /*unused*/, decltype(settle)* settle, tuple_type* payload_raw_ptr) {
-		(*settle)(env, payload_raw_ptr);
-	};
-	auto finalizer = [](Napi::Env /*env*/, util::collection_group* collection, decltype(settle)* settle) {
-		collection->collect(settle);
-	};
-
-	// Thread-safe -> nodejs callback
-	auto& collection = ienv.collection();
-	using Dispatcher = Napi::TypedThreadSafeFunction<decltype(settle), tuple_type, trampoline>;
-	Dispatcher dispatcher = Dispatcher::New(env, "isolated-vm", 0, 1, holder.release(), finalizer, &collection);
-
-	// Function with abandonment detection
-	auto invoked = [ &collection ](Dispatcher dispatcher, tuple_type payload) {
-		auto payload_holder = collection.make_ptr<tuple_type>(std::move(payload));
-		dispatcher.BlockingCall(payload_holder.release());
-		dispatcher.Release();
-	};
-	auto apply_invoked = [ invoked = std::move(invoked) ](Dispatcher dispatcher, auto&&... args) {
-		return invoked(dispatcher, std::tuple{std::forward<decltype(args)>(args)...});
-	};
-	auto abandoned = [](Dispatcher dispatcher) {
-		dispatcher.BlockingCall(nullptr);
-		dispatcher.Release();
-	};
-	auto dispatch = util::call_once_or_else(std::move(apply_invoked), std::move(abandoned), std::move(dispatcher));
 
 	// `[ dispatch, promise ]`
 	return std::make_tuple(std::move(dispatch), promise);
