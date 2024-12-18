@@ -31,29 +31,29 @@ struct visit<void, napi_value> : visit<void, v8::Local<v8::Value>> {
 		}
 
 		auto operator()(napi_value value, const auto_accept auto& accept) const -> decltype(auto) {
-			switch (napi_invoke_checked(napi_typeof, env_, value)) {
+			switch (ivm::napi::invoke(napi_typeof, env_, value)) {
 				case napi_boolean:
-					return (*this)(napi_to_v8(value).As<v8::Boolean>(), accept);
+					return (*this)(ivm::napi::to_v8(value).As<v8::Boolean>(), accept);
 				case napi_number:
-					return (*this)(napi_to_v8(value).As<v8::Number>(), accept);
+					return (*this)(ivm::napi::to_v8(value).As<v8::Number>(), accept);
 				case napi_bigint:
-					return (*this)(napi_to_v8(value).As<v8::BigInt>(), accept);
+					return (*this)(ivm::napi::to_v8(value).As<v8::BigInt>(), accept);
 				case napi_string:
-					return (*this)(napi_to_v8(value).As<v8::String>(), accept);
+					return (*this)(ivm::napi::to_v8(value).As<v8::String>(), accept);
 				case napi_object:
 					{
 						auto visit_entry = std::pair<const visit&, const visit&>{*this, *this};
-						if (napi_invoke_checked(napi_is_array, env_, value)) {
+						if (ivm::napi::invoke(napi_is_array, env_, value)) {
 							return accept(list_tag{}, ivm::napi::object{env_, value}, visit_entry);
-						} else if (napi_invoke_checked(napi_is_date, env_, value)) {
-							return (*this)(napi_to_v8(value).As<v8::Date>(), accept);
-						} else if (napi_invoke_checked(napi_is_promise, env_, value)) {
+						} else if (ivm::napi::invoke(napi_is_date, env_, value)) {
+							return (*this)(ivm::napi::to_v8(value).As<v8::Date>(), accept);
+						} else if (ivm::napi::invoke(napi_is_promise, env_, value)) {
 							return accept(promise_tag{}, value);
 						}
 						return accept(dictionary_tag{}, ivm::napi::object{env_, value}, visit_entry);
 					}
 				case napi_external:
-					return (*this)(napi_to_v8(value).As<v8::External>(), accept);
+					return (*this)(ivm::napi::to_v8(value).As<v8::External>(), accept);
 				case napi_symbol:
 					return accept(symbol_tag{}, value);
 				case napi_null:

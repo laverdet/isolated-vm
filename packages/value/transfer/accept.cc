@@ -57,7 +57,7 @@ struct accept<void, void> {
 export template <class Meta, class Type>
 using accept_next = select_wrap_t<Meta>::template accept<Meta, Type>;
 
-// Used by a visitor to returns the immediate accepted value matching a tag.
+// Used by a visitor to return the immediate accepted value matching a tag.
 export template <class Tag>
 struct accept_immediate;
 

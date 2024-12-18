@@ -24,7 +24,7 @@ auto make_collected_external(environment& env, auto&&... args) -> napi_value {
 	// an additional dereference on the accessing side.
 	auto collected = env.collection().make_ptr<iv8::external_reference<Type>>(std::forward<decltype(args)>(args)...);
 	auto external = v8::External::New(env.isolate(), collected.get());
-	auto as_napi_value = v8_to_napi(external);
+	auto as_napi_value = ivm::napi::from_v8(external);
 	// Now we make a weak reference via napi (which also leaks) which finalizes the underlying object.
 	if (napi_add_finalizer(env.nenv(), as_napi_value, collected.get(), collection_group_finalizer, &env.collection(), nullptr) == napi_ok) {
 		collected.release();

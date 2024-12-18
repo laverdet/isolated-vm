@@ -15,7 +15,7 @@ export auto create_string(napi_env env, std::u16string_view value) -> napi_value
 
 export template <util::string_literal Value>
 auto create_string_literal(napi_env env) -> napi_value {
-	return napi_invoke_checked(napi_create_string_latin1, env, Value.data(), Value.length());
+	return ivm::napi::invoke(napi_create_string_latin1, env, Value.data(), Value.length());
 }
 
 } // namespace ivm::napi

@@ -14,7 +14,7 @@ namespace ivm {
 environment::environment(napi_env env) :
 		env_{env},
 		isolate_{v8::Isolate::GetCurrent()} {
-	scheduler_.open(napi_invoke_checked(napi_get_uv_event_loop, env));
+	scheduler_.open(ivm::napi::invoke(napi_get_uv_event_loop, env));
 }
 
 environment::~environment() {
@@ -22,7 +22,7 @@ environment::~environment() {
 }
 
 auto environment::get(napi_env env) -> environment& {
-	return *static_cast<environment*>(napi_invoke_checked(napi_get_instance_data, env));
+	return *static_cast<environment*>(ivm::napi::invoke(napi_get_instance_data, env));
 }
 
 } // namespace ivm

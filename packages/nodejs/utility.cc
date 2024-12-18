@@ -21,7 +21,7 @@ class handle_scope : util::non_moveable {
 	public:
 		explicit handle_scope(napi_env env) :
 				env_{env},
-				handle_scope_{napi_invoke_checked(napi_open_handle_scope, env)} {}
+				handle_scope_{ivm::napi::invoke(napi_open_handle_scope, env)} {}
 
 		~handle_scope() {
 			if (napi_close_handle_scope(env_, handle_scope_) != napi_ok) {
@@ -40,7 +40,7 @@ auto make_promise(environment& ienv, auto accept) {
 	// nodejs promise & future
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	napi_deferred deferred;
-	auto* promise = napi_invoke_checked(napi_create_promise, env, &deferred);
+	auto* promise = ivm::napi::invoke(napi_create_promise, env, &deferred);
 
 	// nodejs promise fulfillment
 	ienv.scheduler().increment_ref();
@@ -60,9 +60,9 @@ auto make_promise(environment& ienv, auto accept) {
 					auto& ienv = environment::get(env);
 					ienv.scheduler().decrement_ref();
 					if (auto result = accept(ienv, std::forward<decltype(args)>(args)...)) {
-						napi_check_result_of(napi_resolve_deferred, env, deferred, result.value());
+						ivm::napi::invoke0(napi_resolve_deferred, env, deferred, result.value());
 					} else {
-						napi_check_result_of(napi_reject_deferred, env, deferred, result.error());
+						ivm::napi::invoke0(napi_reject_deferred, env, deferred, result.error());
 					}
 				}
 			);
@@ -89,7 +89,7 @@ auto make_node_function(environment& ienv) -> napi_value {
 		auto count = arguments.size();
 		// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 		void* data;
-		napi_check_result_of(napi_get_cb_info, env, info, &count, arguments.data(), nullptr, &data);
+		ivm::napi::invoke0(napi_get_cb_info, env, info, &count, arguments.data(), nullptr, &data);
 		if (count > arguments.size()) {
 			throw std::runtime_error{"Too many arguments"};
 		}
@@ -102,7 +102,7 @@ auto make_node_function(environment& ienv) -> napi_value {
 			)
 		);
 	};
-	return napi_invoke_checked(napi_create_function, env, nullptr, 0, callback, &ienv);
+	return ivm::napi::invoke(napi_create_function, env, nullptr, 0, callback, &ienv);
 }
 
 } // namespace ivm

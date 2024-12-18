@@ -26,15 +26,15 @@ struct accept<void, napi_env> {
 		}
 
 		auto operator()(undefined_tag /*tag*/, auto&& /*undefined*/) const -> napi_value {
-			return napi_invoke_checked(napi_get_undefined, env_);
+			return ivm::napi::invoke(napi_get_undefined, env_);
 		}
 
 		auto operator()(null_tag /*tag*/, auto&& /*null*/) const -> napi_value {
-			return napi_invoke_checked(napi_get_null, env_);
+			return ivm::napi::invoke(napi_get_null, env_);
 		}
 
 		auto operator()(boolean_tag /*tag*/, auto&& value) const -> napi_value {
-			return napi_invoke_checked(napi_get_boolean, env_, std::forward<decltype(value)>(value));
+			return ivm::napi::invoke(napi_get_boolean, env_, std::forward<decltype(value)>(value));
 		}
 
 		template <class Numeric>
@@ -53,7 +53,7 @@ struct accept<void, napi_env> {
 		}
 
 		auto operator()(date_tag /*tag*/, js_clock::time_point value) const -> napi_value {
-			return napi_invoke_checked(napi_create_date, env_, value.time_since_epoch().count());
+			return ivm::napi::invoke(napi_create_date, env_, value.time_since_epoch().count());
 		}
 
 	private:
@@ -76,10 +76,10 @@ struct accept<Meta, napi_value> : accept<Meta, napi_env> {
 		}
 
 		auto operator()(vector_tag /*tag*/, auto&& list, const auto& visit) const -> napi_value {
-			auto array = napi_invoke_checked(napi_create_array_with_length, this->env(), list.size());
+			auto array = ivm::napi::invoke(napi_create_array_with_length, this->env(), list.size());
 			int ii = 0;
 			for (auto&& value : std::forward<decltype(list)>(list)) {
-				napi_check_result_of(
+				ivm::napi::invoke0(
 					napi_set_element,
 					this->env(),
 					array,
@@ -91,9 +91,9 @@ struct accept<Meta, napi_value> : accept<Meta, napi_env> {
 		}
 
 		auto operator()(list_tag /*tag*/, auto&& list, const auto& visit) const -> napi_value {
-			auto array = napi_invoke_checked(napi_create_array, this->env());
+			auto array = ivm::napi::invoke(napi_create_array, this->env());
 			for (auto&& [ key, value ] : std::forward<decltype(list)>(list)) {
-				napi_check_result_of(
+				ivm::napi::invoke0(
 					napi_set_property,
 					this->env(),
 					array,
@@ -105,9 +105,9 @@ struct accept<Meta, napi_value> : accept<Meta, napi_env> {
 		}
 
 		auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> napi_value {
-			auto object = napi_invoke_checked(napi_create_object, this->env());
+			auto object = ivm::napi::invoke(napi_create_object, this->env());
 			for (auto&& [ key, value ] : util::into_range(std::forward<decltype(dictionary)>(dictionary))) {
-				napi_check_result_of(
+				ivm::napi::invoke0(
 					napi_set_property,
 					this->env(),
 					object,
@@ -120,7 +120,7 @@ struct accept<Meta, napi_value> : accept<Meta, napi_env> {
 
 		template <std::size_t Size>
 		auto operator()(struct_tag<Size> /*tag*/, auto&& dictionary, const auto& visit) const -> napi_value {
-			auto object = napi_invoke_checked(napi_create_object, this->env());
+			auto object = ivm::napi::invoke(napi_create_object, this->env());
 			std::invoke(
 				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
 					(invoke(std::integral_constant<size_t, Index>{}), ...);
@@ -128,7 +128,7 @@ struct accept<Meta, napi_value> : accept<Meta, napi_env> {
 				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> /*index*/) {
 					const auto& visit_n = std::get<Index>(visit);
 					accept<void, accept_immediate<string_tag>> accept_string;
-					napi_check_result_of(
+					ivm::napi::invoke0(
 						napi_set_property,
 						this->env(),
 						object,
@@ -145,13 +145,13 @@ struct accept<Meta, napi_value> : accept<Meta, napi_env> {
 
 		template <std::size_t Size>
 		auto operator()(tuple_tag<Size> /*tag*/, auto tuple, const auto& visit) const -> napi_value {
-			auto array = napi_invoke_checked(napi_create_array_with_length, this->env(), Size);
+			auto array = ivm::napi::invoke(napi_create_array_with_length, this->env(), Size);
 			std::invoke(
 				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
 					(invoke(std::integral_constant<size_t, Index>{}), ...);
 				},
 				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> index) {
-					napi_check_result_of(
+					ivm::napi::invoke0(
 						napi_set_element,
 						this->env(),
 						array,
