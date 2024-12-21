@@ -46,11 +46,19 @@ auto js_module::requests(realm::scope& realm) -> std::vector<module_request> {
 	return {requests_view.begin(), requests_view.end()};
 }
 
-auto js_module::compile(realm::scope& realm, v8::Local<v8::String> source_text, const source_origin& source_origin) -> js_module {
+auto js_module::compile(realm::scope& realm, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module {
+	auto maybe_resource_name = value::transfer_strict<v8::MaybeLocal<v8::String>>(
+		source_origin.name,
+		std::tuple{},
+		std::tuple{realm.isolate()}
+	);
+	v8::Local<v8::String> resource_name{};
+	(void)maybe_resource_name.ToLocal(&resource_name);
+	auto location = source_origin.location.value_or(source_location{});
 	v8::ScriptOrigin origin{
-		source_origin.resource_name(),
-		source_origin.location().line(),
-		source_origin.location().column(),
+		resource_name,
+		location.line,
+		location.column,
 		false,
 		-1,
 		v8::Local<v8::Value>{},
@@ -59,8 +67,15 @@ auto js_module::compile(realm::scope& realm, v8::Local<v8::String> source_text, 
 		true,
 	};
 	v8::ScriptCompiler::Source source{source_text, origin};
-	auto script_handle = v8::ScriptCompiler::CompileModule(realm.isolate(), &source).ToLocalChecked();
-	return js_module{realm.agent(), script_handle};
+	auto module_handle = v8::ScriptCompiler::CompileModule(realm.isolate(), &source).ToLocalChecked();
+	v8::Global<v8::Module> module_global{realm.isolate(), module_handle};
+	if (source_origin.name) {
+		realm.agent()->weak_module_specifiers().insert(
+			realm.isolate(),
+			std::pair{module_handle, *std::move(source_origin.name)}
+		);
+	}
+	return js_module{realm.agent(), module_handle};
 }
 
 } // namespace ivm

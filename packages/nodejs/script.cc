@@ -6,7 +6,6 @@ module;
 module ivm.node;
 import :environment;
 import :external;
-import :script;
 import :utility;
 import ivm.isolated_v8;
 import ivm.iv8;
@@ -17,7 +16,7 @@ import napi;
 namespace ivm {
 
 struct compile_script_options {
-		std::optional<source_origin_options> origin;
+		std::optional<source_origin> origin;
 };
 
 auto compile_script(
@@ -36,8 +35,8 @@ auto compile_script(
 			dispatch = std::move(dispatch) ](
 			ivm::agent::lock& agent
 		) mutable {
-			auto source_origin = make_source_origin(agent, options.origin);
-			dispatch(ivm::script::compile(agent, std::move(code_string), source_origin));
+			auto origin = std::move(options.origin).value_or(source_origin{});
+			dispatch(ivm::script::compile(agent, std::move(code_string), std::move(origin)));
 		}
 	);
 	return promise;
@@ -64,15 +63,6 @@ auto run_script(
 		}
 	);
 	return promise;
-}
-
-auto make_source_origin(agent::lock& agent, const std::optional<source_origin_options>& options) -> source_origin {
-	if (options) {
-		auto location = options->location.value_or(source_location_options{});
-		return {agent, options->name, {location.line, location.column}};
-	} else {
-		return {};
-	}
 }
 
 auto make_compile_script(environment& env) -> napi_value {

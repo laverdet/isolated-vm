@@ -10,3 +10,4 @@ export import :number;
 export import :object;
 export import :string;
 export import :visit;
+export import :weak_map;

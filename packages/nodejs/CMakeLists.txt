@@ -12,7 +12,6 @@ target_sources(ivm_backend_v8
 		include/environment.cc
 		include/external.cc
 		include/scheduler.cc
-		include/script.cc
 		utility.cc
 )
 target_compile_definitions(ivm_backend_v8 PRIVATE

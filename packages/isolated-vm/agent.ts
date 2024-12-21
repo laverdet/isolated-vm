@@ -38,6 +38,10 @@ export namespace Agent {
 		randomSeed?: number | undefined;
 	}
 
+	export interface CompileModuleOptions {
+		origin?: SourceOrigin;
+	}
+
 	export interface CompileScriptOptions {
 		origin?: SourceOrigin;
 	}
@@ -61,9 +65,9 @@ export class Agent {
 		return new Realm(realm);
 	}
 
-	async compileModule(realm: Realm, code: string): Promise<Module> {
-		const [ module, requests ] = await compileModule(this.#agent, extractRealmInternal(realm), code);
-		return new Module(this.#agent, module, requests);
+	async compileModule(realm: Realm, code: string, options?: Agent.CompileModuleOptions): Promise<Module> {
+		const [ module, requests ] = await compileModule(this.#agent, extractRealmInternal(realm), code, options);
+		return new Module(this.#agent, Realm.extractRealmInternal(realm), module, requests);
 	}
 
 	async compileScript(code: string, options?: Agent.CompileScriptOptions): Promise<Script> {

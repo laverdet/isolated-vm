@@ -7,6 +7,7 @@ target_sources(${IV8_PREFIX}_common_v8
 		value/string.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		accept.cc
+		container/weak_map.cc
 		include/_module.cc
 		include/array.cc
 		include/boolean.cc

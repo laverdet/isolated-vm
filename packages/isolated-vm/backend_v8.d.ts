@@ -6,13 +6,14 @@ declare module "backend_v8.node" {
 
 	export type { Agent, Module, Realm, Script };
 
-	type CreateAgentOptions = import("./agent.ts").Agent.CreateOptions;
+	type CompileModuleOptions = import("./agent.ts").Agent.CompileModuleOptions;
 	type CompileScriptOptions = import("./agent.ts").Agent.CompileScriptOptions;
+	type CreateAgentOptions = import("./agent.ts").Agent.CreateOptions;
 	type ModuleRequest = import("./module.ts").ModuleRequest;
 
 	/** @internal */
 	const exports: {
-		compileModule: (agent: Agent, realm: Realm, code: string) => Promise<[ Module, ModuleRequest[] ]>;
+		compileModule: (agent: Agent, realm: Realm, code: string, options: CompileModuleOptions | undefined) => Promise<[ Module, ModuleRequest[] ]>;
 		compileScript: (agent: Agent, code: string, options: CompileScriptOptions | undefined) => Promise<Script>;
 		createAgent: (options: CreateAgentOptions | undefined) => Promise<Agent>;
 		createRealm: (agent: Agent) => Promise<Realm>;

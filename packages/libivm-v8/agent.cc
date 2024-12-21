@@ -10,7 +10,9 @@ import :agent;
 import :platform.foreground_runner;
 import :scheduler;
 import v8;
+import ivm.iv8;
 import ivm.utility;
+import ivm.value;
 
 namespace ivm {
 
@@ -132,6 +134,10 @@ auto agent::host::take_random_seed() -> std::optional<double> {
 
 auto agent::host::task_runner(v8::TaskPriority /*priority*/) -> std::shared_ptr<v8::TaskRunner> {
 	return task_runner_;
+}
+
+auto agent::host::weak_module_specifiers() -> iv8::weak_map<v8::Module, value::string_t>& {
+	return weak_module_specifiers_;
 }
 
 // isolate_destructor

@@ -31,17 +31,21 @@ export class js_module : util::non_copyable {
 
 		auto requests(realm::scope& realm) -> std::vector<module_request>;
 
-		static auto compile(realm::scope& realm, auto&& source_text, const source_origin& source_origin) -> js_module;
+		static auto compile(realm::scope& realm, auto&& source_text, source_origin source_origin) -> js_module;
 
 	private:
-		static auto compile(realm::scope& realm, v8::Local<v8::String> source_text, const source_origin& source_origin) -> js_module;
+		static auto compile(realm::scope& realm, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module;
 
 		v8::Global<v8::Module> module_;
 };
 
-auto js_module::compile(realm::scope& realm, auto&& source_text, const source_origin& source_origin) -> js_module {
-	auto local_source_text = value::transfer_strict<v8::Local<v8::String>>(std::forward<decltype(source_text)>(source_text), std::tuple{}, std::tuple{realm.isolate()});
-	return js_module::compile(realm, local_source_text, source_origin);
+auto js_module::compile(realm::scope& realm, auto&& source_text, source_origin source_origin) -> js_module {
+	auto local_source_text = value::transfer_strict<v8::Local<v8::String>>(
+		std::forward<decltype(source_text)>(source_text),
+		std::tuple{},
+		std::tuple{realm.isolate()}
+	);
+	return js_module::compile(realm, local_source_text, std::move(source_origin));
 }
 
 } // namespace ivm

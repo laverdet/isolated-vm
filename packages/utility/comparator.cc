@@ -4,6 +4,16 @@ export module ivm.utility:comparator;
 
 namespace ivm::util {
 
+export template <class Hash>
+struct hash_comparator {
+		using is_transparent = void;
+
+		template <class Left, class Right>
+		auto operator()(const Left& left, const Right& right) const -> bool {
+			return Hash{}(left) == Hash{}(right);
+		}
+};
+
 export template <class Operation, class Fn>
 class mapped_comparator {
 	public:
