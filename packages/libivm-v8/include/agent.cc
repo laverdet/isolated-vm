@@ -72,9 +72,10 @@ class agent::host : util::non_moveable {
 		);
 
 		auto clock_time_ms() -> int64_t;
-		auto execute(const std::stop_token& stop_token, agent::lock& agent) -> void;
+		auto execute(const std::stop_token& stop_token) -> void;
 		auto isolate() -> v8::Isolate*;
 		auto random_seed_latch() -> util::scope_exit<random_seed_unlatch>;
+		auto run_task(std::invocable<lock&> auto task) -> void;
 		auto scratch_context() -> v8::Local<v8::Context>;
 		auto take_random_seed() -> std::optional<double>;
 		auto task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner>;
@@ -90,6 +91,7 @@ class agent::host : util::non_moveable {
 		iv8::weak_map<v8::Module, value::string_t> weak_module_specifiers_;
 		std::unique_ptr<v8::Isolate, isolate_destructor> isolate_;
 		v8::Global<v8::Context> scratch_context_;
+		scheduler async_scheduler_;
 
 		bool should_give_seed_{false};
 		std::optional<double> random_seed_;
@@ -99,8 +101,8 @@ class agent::host : util::non_moveable {
 // Allow lambda-style callbacks to be called with the same virtual dispatch as `v8::Task`
 template <std::invocable<agent::lock&> Invocable>
 struct task_of : v8::Task {
-		explicit task_of(Invocable&& task) :
-				task_{std::forward<Invocable>(task)} {}
+		explicit task_of(Invocable task) :
+				task_{std::move(task)} {}
 
 		auto Run() -> void final {
 			auto* host = agent::host::get_current();
@@ -114,6 +116,35 @@ struct task_of : v8::Task {
 	private:
 		[[no_unique_address]] Invocable task_;
 };
+
+auto agent::host::run_task(std::invocable<lock&> auto task) -> void {
+	agent::managed_lock agent_lock{*this};
+	const auto handle_scope = v8::HandleScope{isolate_.get()};
+	task(agent_lock);
+}
+
+auto agent::schedule_async(std::invocable<const std::stop_token&, lock&> auto task) -> void {
+	auto host = host_.lock();
+	if (host) {
+		auto& handle = host->agent_storage_->scheduler_handle();
+		host->async_scheduler_.run(
+			[ host = std::move(host),
+				task = std::move(task) ](
+				const std::stop_token& stop_token
+			) mutable {
+				host->run_task(
+					[ task = std::move(task),
+						&stop_token ](
+						lock& agent
+					) mutable {
+						task(stop_token, agent);
+					}
+				);
+			},
+			handle
+		);
+	}
+}
 
 auto agent::schedule(std::invocable<lock&> auto task) -> void {
 	task_runner_->schedule_non_nestable(std::make_unique<task_of<decltype(task)>>(std::move(task)));

@@ -1,5 +1,4 @@
 module;
-#include <array>
 #include <optional>
 #include <tuple>
 #include <variant>
@@ -59,8 +58,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	);
 	cluster.make_agent(
 		[ dispatch = std::move(dispatch) ](
-			ivm::agent agent,
-			ivm::agent::lock&
+			ivm::agent agent
 		) mutable {
 			dispatch(std::move(agent));
 		},

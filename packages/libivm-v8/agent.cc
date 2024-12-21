@@ -67,23 +67,20 @@ auto agent::host::clock_time_ms() -> int64_t {
 	return std::visit([](auto&& clock) { return clock.clock_time_ms(); }, clock_);
 }
 
-auto agent::host::execute(const std::stop_token& stop_token, agent::lock& /*lock*/) -> void {
+auto agent::host::execute(const std::stop_token& stop_token) -> void {
 	// Enter task runner scope
-	task_runner_->scope([ & ](auto lock) {
+	task_runner_->scope([ & ](auto task_lock) {
 		do {
-			auto task = lock->acquire();
+			auto task = task_lock->acquire();
 			if (task) {
-				lock.unlock();
-				const auto handle_scope = v8::HandleScope{isolate_.get()};
-				std::visit([](auto& clock) { clock.begin_tick(); }, clock_);
-				task->Run();
-				lock.lock();
+				task_lock.unlock();
+				run_task([ & ](auto& /*agent_lock*/) {
+					std::visit([](auto& clock) { clock.begin_tick(); }, clock_);
+					task->Run();
+				});
+				task_lock.lock();
 			}
-		} while (std::invoke([ & ]() {
-			// Unlock v8 isolate before suspending
-			const auto unlocker = v8::Unlocker{isolate_.get()};
-			return lock.wait(stop_token);
-		}));
+		} while (task_lock.wait(stop_token));
 	});
 }
 

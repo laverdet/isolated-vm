@@ -1,6 +1,7 @@
 module;
 #include <concepts>
 #include <memory>
+#include <stop_token>
 export module ivm.isolated_v8:agent_fwd;
 import :platform.foreground_runner;
 import ivm.utility;
@@ -22,6 +23,7 @@ export class agent : util::non_copyable {
 		);
 
 		auto schedule(std::invocable<lock&> auto task) -> void;
+		auto schedule_async(std::invocable<const std::stop_token&, lock&> auto task) -> void;
 
 	private:
 		std::weak_ptr<host> host_;

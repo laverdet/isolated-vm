@@ -20,18 +20,14 @@ namespace ivm {
 export class cluster : util::non_moveable {
 	public:
 		cluster();
-		auto make_agent(
-			std::invocable<agent, agent::lock&> auto fn,
-			clock::any_clock clock,
-			std::optional<double> random_seed
-		) -> void;
+		auto make_agent(std::invocable<agent> auto fn, clock::any_clock clock, std::optional<double> random_seed) -> void;
 
 	private:
 		platform::handle platform_handle_;
 		scheduler scheduler_;
 };
 
-auto cluster::make_agent(std::invocable<agent, agent::lock&> auto fn, clock::any_clock clock, std::optional<double> random_seed) -> void {
+auto cluster::make_agent(std::invocable<agent> auto fn, clock::any_clock clock, std::optional<double> random_seed) -> void {
 	auto agent_storage = std::make_shared<agent::storage>(scheduler_);
 	auto* storage_ptr = agent_storage.get();
 	scheduler_.run(
@@ -43,9 +39,8 @@ auto cluster::make_agent(std::invocable<agent, agent::lock&> auto fn, clock::any
 		) mutable {
 			auto task_runner = std::make_shared<foreground_runner>();
 			auto agent_host = std::make_shared<agent::host>(agent_storage, task_runner, clock, random_seed);
-			agent::managed_lock agent_lock{*agent_host};
-			util::take(std::move(fn))(agent{agent_host, task_runner}, agent_lock);
-			agent_host->execute(stop_token, agent_lock);
+			util::take(std::move(fn))(agent{agent_host, task_runner});
+			agent_host->execute(stop_token);
 		},
 		storage_ptr->scheduler_handle()
 	);
