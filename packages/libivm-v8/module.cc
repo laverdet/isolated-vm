@@ -37,8 +37,8 @@ auto js_module::requests(realm::scope& realm) -> std::vector<module_request> {
 				std::views::chunk(3) |
 				std::views::transform([ & ](const auto& triplet) {
 					return std::pair{
-						value::transfer_strict<value::string_t>(triplet[ 0 ].template As<v8::String>(), visit_args, std::tuple{}),
-						value::transfer_strict<value::string_t>(triplet[ 1 ].template As<v8::String>(), visit_args, std::tuple{})
+						value::transfer<value::string_t>(triplet[ 0 ].template As<v8::Name>(), visit_args, std::tuple{}),
+						value::transfer<value::string_t>(triplet[ 1 ].template As<v8::Value>(), visit_args, std::tuple{})
 					};
 				});
 			return {specifier, module_request::attributes_type{attributes_view}};

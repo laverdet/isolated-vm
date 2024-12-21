@@ -27,16 +27,16 @@ struct undefined_in_tag : undefined_tag {};
 
 struct boolean_tag : primitive_tag {};
 
-struct key_tag : primitive_tag {};
-struct symbol_tag : key_tag {};
+struct name_tag : primitive_tag {};
+struct symbol_tag : name_tag {};
 
-struct number_tag : key_tag {};
+struct number_tag : name_tag {};
 template <class Type>
 struct number_tag_of : number_tag {};
 template <class Tag>
 struct con_tag_for<number_tag_of<Tag>> : std::type_identity<number_tag> {};
 
-struct string_tag : key_tag {};
+struct string_tag : name_tag {};
 template <class Type>
 struct string_tag_of : string_tag {};
 template <class Tag>

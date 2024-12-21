@@ -7,22 +7,22 @@ export interface ModuleRequest {
 	specifier: string;
 
 	/**
-	 * Import assertions of this import: `import {} from "specifier" assert { type: 'json' }`
+	 * Import attributes of this import: `import {} from "specifier" with { type: 'json' }`
 	 */
-	assertions?: ImportAssertions;
+	attributes?: ImportAttributes;
 }
-
-export type ImportAssertions = Record<string, string>;
 
 export class Module {
 	readonly requests: readonly ModuleRequest[];
 	readonly #agent;
 	readonly #module;
+	readonly #realm;
 
 	/** @internal */
-	constructor(agent: ivm.Agent, module: ivm.Module, requests: readonly ModuleRequest[]) {
+	constructor(agent: ivm.Agent, realm: ivm.Realm, module: ivm.Module, requests: readonly ModuleRequest[]) {
 		this.#agent = agent;
 		this.#module = module;
+		this.#realm = realm;
 		this.requests = requests;
 	}
 }

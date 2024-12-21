@@ -9,6 +9,7 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
+				"dbaeumer.vscode-eslint",
 				"llvm-vs-code-extensions.vscode-clangd",
 				"ms-vscode.cpptools",
 				"twxs.cmake",

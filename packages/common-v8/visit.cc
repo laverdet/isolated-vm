@@ -97,6 +97,18 @@ struct visit<void, v8::Local<v8::Value>>
 				isolate_{isolate},
 				context_{context} {}
 
+		auto operator()(v8::Local<v8::Name> value, const auto_accept auto& accept) const -> decltype(auto) {
+			if (value->IsString()) {
+				return (*this)(value.As<v8::String>(), accept);
+			} else {
+				return (*this)(value.As<v8::Symbol>(), accept);
+			}
+		}
+
+		auto operator()(v8::Local<v8::Symbol> value, const auto_accept auto& accept) const -> decltype(auto) {
+			return accept(symbol_tag{}, value);
+		}
+
 		auto operator()(v8::Local<v8::String> value, const auto_accept auto& accept) const -> decltype(auto) {
 			auto string = iv8::handle{value.As<iv8::string>(), {isolate_, context_}};
 			if (value->IsOneByte()) {
@@ -141,10 +153,22 @@ struct visit<void, v8::Local<v8::Value>>
 		v8::Local<v8::Context> context_;
 };
 
+// name (string + symbol)
+template <>
+struct visit<void, v8::Local<v8::Name>> : visit<void, v8::Local<v8::Value>> {
+		using visit<void, v8::Local<v8::Value>>::visit;
+};
+
+// symbol
+template <>
+struct visit<void, v8::Local<v8::Symbol>> : visit<void, v8::Local<v8::Name>> {
+		using visit<void, v8::Local<v8::Name>>::visit;
+};
+
 // string
 template <>
-struct visit<void, v8::Local<v8::String>> : visit<void, v8::Local<v8::Value>> {
-		using visit<void, v8::Local<v8::Value>>::visit;
+struct visit<void, v8::Local<v8::String>> : visit<void, v8::Local<v8::Name>> {
+		using visit<void, v8::Local<v8::Name>>::visit;
 };
 
 } // namespace ivm::value
