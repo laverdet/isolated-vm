@@ -95,12 +95,11 @@ constexpr auto transfer_strict(auto&& value) -> decltype(auto) {
 export template <class Type>
 struct transfer_direct {
 	public:
-		explicit transfer_direct(Type&& value) :
+		explicit transfer_direct(Type value) :
 				value{std::move(value)} {}
 
-		constexpr auto operator*() && -> Type&& {
-			return std::move(value);
-		}
+		constexpr auto operator*() && -> Type&& { return std::move(value); }
+		constexpr auto operator*() const -> const Type& { return value; }
 
 	private:
 		Type value;

@@ -17,6 +17,7 @@ struct con_tag_for : std::type_identity<Tag> {};
 struct value_tag {};
 struct primitive_tag : value_tag {};
 struct external_tag : value_tag {};
+struct function_tag : primitive_tag {};
 
 struct null_tag : primitive_tag {};
 struct undefined_tag : primitive_tag {};

@@ -1,5 +1,4 @@
 module;
-#include <span>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -61,7 +60,7 @@ struct visit<void, napi_value> : visit<void, v8::Local<v8::Value>> {
 				case napi_undefined:
 					return accept(undefined_tag{}, std::monostate{});
 				case napi_function:
-					return accept(value_tag{}, std::type_identity<void>{});
+					return accept(function_tag{}, value);
 			}
 		}
 

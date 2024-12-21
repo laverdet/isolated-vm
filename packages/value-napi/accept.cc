@@ -1,5 +1,4 @@
 module;
-#include <cstdint>
 #include <functional>
 #include <utility>
 #include <variant>
@@ -172,12 +171,12 @@ template <class Meta, util::string_literal Key, class Type>
 struct accept<Meta, value_by_key<Key, Type, napi_value>> {
 	public:
 		explicit constexpr accept(const auto_visit auto& visit) :
-				root{visit},
+				root{&visit},
 				accept_value{visit} {}
 
 		auto operator()(dictionary_tag /*tag*/, const auto& object, const auto& visit) const {
 			accept<void, accept_immediate<string_tag>> accept_string;
-			auto local = visit_key(root, accept_string);
+			auto local = visit_key(*root, accept_string);
 			if (object.has(local)) {
 				return visit.second(object.get(local), accept_value);
 			} else {
@@ -186,9 +185,18 @@ struct accept<Meta, value_by_key<Key, Type, napi_value>> {
 		}
 
 	private:
-		const visit<Meta, visit_subject_t<Meta>>& root;
+		const visit<Meta, visit_subject_t<Meta>>* root;
 		visit<Meta, key_for<Key, napi_value>> visit_key;
 		accept_next<Meta, Type> accept_value;
+};
+
+// Tagged value acceptor
+template <class Tag>
+struct accept<void, ivm::napi::tagged_value<Tag>> : accept<void, void> {
+		using accept<void, void>::accept;
+		auto operator()(Tag /*tag*/, auto&& value) const -> ivm::napi::tagged_value<Tag> {
+			return ivm::napi::tagged_value<Tag>{std::forward<decltype(value)>(value)};
+		}
 };
 
 } // namespace ivm::value

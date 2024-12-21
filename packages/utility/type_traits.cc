@@ -19,6 +19,18 @@ struct select<0, Type, Types...> : std::type_identity<Type> {};
 template <size_t Index, class Type, class... Types>
 struct select<Index, Type, Types...> : select<Index - 1, Types...> {};
 
+// Select the last element in a tuple
+export template <class Tuple>
+struct last_element;
+
+template <class... Types>
+struct last_element<std::tuple<Types...>> {
+		using type = std::tuple_element_t<sizeof...(Types) - 1, std::tuple<Types...>>;
+};
+
+export template <class Tuple>
+using last_element_t = typename last_element<Tuple>::type;
+
 // Infer the parameters of a non-overloaded function for..
 template <class Functor>
 struct functor_parameters;
