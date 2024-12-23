@@ -56,6 +56,26 @@ for (const buffer of bufferViews) {
 
     const resultWithProps = identityFunctionRef.applySync(null, [buffer], { result: { copy: true }, arguments: { copy: true } });
     assert.deepStrictEqual(buffer, resultWithProps);
+
+    // fail to copy with function properties to the Isolate
+    buffer.functionProp = () => {};
+    try {
+        identityFunctionRef.applySync(null, [buffer], { result: { copy: true }, arguments: { copy: true } });
+        assert.fail("Expected an error");
+    } catch (error) {
+        assert.strictEqual(error.message, "() => {} could not be cloned.");
+    }
+
+    // fail to copy with function properties from the Isolate
+    const constructorName = buffer.constructor.name;
+    context.evalSync(`function getBuffer() { const buffer = new ${constructorName}(new ArrayBuffer(8)); buffer.x = { functionProp() {} }; return buffer; }`);
+    const getBufferFunctionRef = jail.getSync('getBuffer', { reference: true });
+    try {
+        getBufferFunctionRef.applySync(null, [], { result: { copy: true } });
+        assert.fail("Expected an error");
+    } catch (error) {
+        assert.strictEqual(error.message, "functionProp() {} could not be cloned.");
+    }
 }
 
 console.log('pass');

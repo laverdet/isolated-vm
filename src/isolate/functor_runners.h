@@ -39,6 +39,11 @@ inline void RunCatchExternal(v8::Local<v8::Context> default_context, F1 fn1, F2 
 	try {
 		try {
 			fn1();
+
+			if (try_catch.HasCaught()) {
+				v8::Context::Scope context_scope{default_context};
+				fn2(ExternalCopy::CopyThrownValue(try_catch.Exception()));
+			}
 		} catch (const RuntimeTypeError& cc_error) {
 			// The following errors are just various C++ strings with an error type
 			fn2(std::make_unique<ExternalCopyError>(ExternalCopyError::ErrorType::TypeError, cc_error.GetMessage().c_str(), cc_error.GetStackTrace()));

@@ -69,8 +69,13 @@ auto DeserializerDelegate::ReadHostObject(Isolate* isolate) -> MaybeLocal<Object
 	detail::RunBarrier([&]() {
 		uint32_t ii;
 		assert(deserializer->ReadUint32(&ii));
-		if (std::find(array_buffer_view_indexes.begin(), array_buffer_view_indexes.end(), ii) != array_buffer_view_indexes.end()) {
-			ReadArrayBufferView(isolate, ii);
+
+		// Replacing std::find with a for loop for compatibility with Alpine Linux
+		for (const auto& value : array_buffer_view_indexes) {
+			if (value == ii) {
+				ReadArrayBufferView(isolate, ii);
+				break;
+			}
 		}
 
 		result = transferables[ii]->TransferIn().As<Object>();
