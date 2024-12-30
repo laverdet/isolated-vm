@@ -28,10 +28,10 @@ struct accept<Meta, std::variant<Types...>> {
 		using accepted_type = std::variant<Types...>;
 		using descriptor_type = union_of<accepted_type>;
 
-		explicit constexpr accept(const auto_visit auto& visit) :
+		explicit constexpr accept(const visit_root<Meta>& visit) :
 				second{accept_next<Meta, Types>{visit}...},
 				accept_discriminant{visit} {}
-		constexpr accept(int /*dummy*/, const auto_visit auto& visit, const auto_accept auto& /*accept*/) :
+		constexpr accept(int /*dummy*/, const visit_root<Meta>& visit, const auto_accept auto& /*accept*/) :
 				second{accept_next<Meta, Types>{visit}...},
 				accept_discriminant{visit} {}
 

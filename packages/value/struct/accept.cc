@@ -1,5 +1,4 @@
 module;
-#include <cstdint>
 #include <format>
 #include <functional>
 #include <stdexcept>
@@ -22,10 +21,10 @@ struct accept<Meta, object_type<Type, std::tuple<Setters...>>> {
 		using setter_helper = value_by_key<property_name_v<Setter>, std::optional<typename Setter::type>, visit_subject_t<Meta>>;
 
 	public:
-		explicit constexpr accept(const auto_visit auto& visit) :
+		explicit constexpr accept(const visit_root<Meta>& visit) :
 				first{visit},
 				second{accept<Meta, setter_helper<Setters>>{visit}...} {}
-		constexpr accept(int /*dummy*/, const auto_visit auto& visit, const auto_accept auto& /*accept_*/) :
+		constexpr accept(int /*dummy*/, const visit_root<Meta>& visit, const auto_accept auto& /*accept*/) :
 				accept{visit} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> Type {

@@ -40,17 +40,17 @@ template <class Meta, class Type>
 struct accept : accept<void, Type> {
 		using accept<void, Type>::accept;
 		// Swallow `visit` argument on behalf of non-meta acceptors
-		explicit constexpr accept(const auto_visit auto& /*visit*/, auto&&... args) :
+		explicit constexpr accept(const visit_root<Meta>& /*visit*/, auto&&... args) :
 				accept<void, Type>{std::forward<decltype(args)>(args)...} {}
 };
 
-// Base specialization for stateless acceptors. This just gets you the `dummy` constructor used by
-// recursive acceptors.
+// Base specialization for stateless acceptors. This just gets you the `auto_accept` constructor
+// used by recursive acceptors.
 template <>
 struct accept<void, void> {
 		accept() = default;
 		// Recursive acceptor constructor
-		constexpr accept(int /*dummy*/, const auto_visit auto& /*visit*/, const auto_accept auto& /*accept*/) {}
+		constexpr accept(int /*dummy*/, auto&& /*visit*/, const auto_accept auto& /*accept*/) {}
 };
 
 // `accept` with transfer wrapping

@@ -2,7 +2,6 @@ module;
 #include <cstddef>
 #include <tuple>
 #include <utility>
-#include <variant>
 export module ivm.value:tuple.visit;
 import :transfer;
 
@@ -12,7 +11,7 @@ template <class Meta, class First, class Second>
 struct visit<Meta, std::pair<First, Second>> {
 	public:
 		visit() = default;
-		constexpr visit(int dummy, const auto_visit auto& visit_) :
+		constexpr visit(int dummy, const visit_root<Meta>& visit_) :
 				first{dummy, visit_},
 				second{dummy, visit_} {}
 
@@ -24,7 +23,7 @@ template <class Meta, class... Types>
 struct visit<Meta, std::tuple<Types...>> {
 	public:
 		visit() = default;
-		constexpr visit(int dummy, const auto_visit auto& visit_) :
+		constexpr visit(int dummy, const visit_root<Meta>& visit_) :
 				visit_{visit<Meta, Types>{dummy, visit_}...} {}
 
 		template <size_t Index>

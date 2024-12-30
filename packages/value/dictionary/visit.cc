@@ -1,8 +1,6 @@
 module;
-#include <optional>
 #include <ranges>
 #include <string>
-#include <type_traits>
 #include <utility>
 #include <variant>
 export module ivm.value:dictionary.visit;
@@ -17,7 +15,7 @@ namespace ivm::value {
 template <class Meta, class Type>
 struct visit<Meta, entry_subject<Type>> : visit<Meta, Type> {
 		visit() = default;
-		constexpr visit(int /*dummy*/, const auto_visit auto& /*visit*/) {}
+		constexpr visit(int /*dummy*/, const visit_root<Meta>& /*visit*/) {}
 };
 
 // Recursive visitor
@@ -26,7 +24,7 @@ template <class Meta, class Type>
 struct visit<Meta, entry_subject<Type>> {
 	public:
 		visit() = delete;
-		constexpr visit(int /*dummy*/, const auto_visit auto& visit) :
+		constexpr visit(int /*dummy*/, const visit_root<Meta>& visit) :
 				visit_{&visit} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
@@ -34,7 +32,7 @@ struct visit<Meta, entry_subject<Type>> {
 		}
 
 	private:
-		const visit<Meta, Type>* visit_;
+		const visit_root<Meta>* visit_;
 };
 
 // Implementation for `vector_of` visitor
@@ -42,7 +40,7 @@ template <class Meta, class Tag, class Entry, class Subject>
 struct visit<Meta, vector_of_subject<Tag, Entry, Subject>> {
 	public:
 		visit() = default;
-		constexpr visit(int dummy, const auto_visit auto& visit) :
+		constexpr visit(int dummy, const visit_root<Meta>& visit) :
 				visit_{dummy, visit} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
@@ -65,7 +63,7 @@ struct visit<Meta, vector_of<Tag, Entry>>
 template <class Meta, util::string_literal Key, class Type>
 struct accept<Meta, value_by_key<Key, Type, void>> {
 	public:
-		explicit constexpr accept(const auto_visit auto& visit) :
+		explicit constexpr accept(const visit_root<Meta>& visit) :
 				first{visit},
 				second{visit} {}
 

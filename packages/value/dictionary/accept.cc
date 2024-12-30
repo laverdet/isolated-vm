@@ -16,9 +16,8 @@ namespace ivm::value {
 // a reference to an existing one.
 template <class Meta, class Type>
 struct accept<Meta, entry_subject<Type>> : accept_next<Meta, Type> {
-		explicit constexpr accept(const auto_visit auto& visit) :
-				accept_next<Meta, Type>{visit} {}
-		constexpr accept(int /*dummy*/, const auto_visit auto& visit, const auto_accept auto& /*accept*/) :
+		using accept_next<Meta, Type>::accept_next;
+		constexpr accept(int /*dummy*/, const visit_root<Meta>& visit, const auto_accept auto& /*accept*/) :
 				accept{visit} {}
 };
 
@@ -29,8 +28,7 @@ struct accept<Meta, entry_subject<Type>> {
 		using accept_type = accept_next<Meta, Type>;
 
 	public:
-		// nb: No `auto_visit` constructor because this is the recursive case and we require a reference
-		constexpr accept(int /*dummy*/, const auto_visit auto& /*visit*/, const auto_accept auto& accept) :
+		constexpr accept(int /*dummy*/, const visit_root<Meta>& /*visit*/, const accept_type& accept) :
 				accept_{&accept} {}
 
 		constexpr auto operator()(auto_tag auto tag, auto&&... args) const -> decltype(auto)
@@ -46,9 +44,9 @@ struct accept<Meta, entry_subject<Type>> {
 template <class Meta, class Tag, class Entry, class Subject>
 struct accept<Meta, vector_of_subject<Tag, Entry, Subject>> {
 	public:
-		explicit constexpr accept(const auto_visit auto& visit) :
+		explicit constexpr accept(const visit_root<Meta>& visit) :
 				accept_{visit} {}
-		constexpr accept(int dummy, const auto_visit auto& visit, const auto_accept auto& accept) :
+		constexpr accept(int dummy, const visit_root<Meta>& visit, const auto_accept auto& accept) :
 				accept_{dummy, visit, accept} {}
 
 		constexpr auto operator()(Tag /*tag*/, auto&& dictionary, const auto& visit) const -> vector_of<Tag, Entry> {

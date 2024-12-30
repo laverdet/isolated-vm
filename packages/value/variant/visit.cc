@@ -39,7 +39,7 @@ struct visit<Meta, std::variant<Types...>> {
 // Visiting a `boost::variant` visits the underlying members
 template <class Meta, class Variant, class... Types>
 struct visit<Meta, variant_of<Variant, Types...>> : visit<Meta, substitute_recursive<Variant, Types>>... {
-		constexpr visit(int dummy, const auto_visit auto& visit_) :
+		constexpr visit(int dummy, const visit_root<Meta>& visit_) :
 				visit<Meta, substitute_recursive<Variant, Types>>{dummy, visit_}... {}
 
 		auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
