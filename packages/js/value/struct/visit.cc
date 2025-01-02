@@ -8,7 +8,7 @@ import :struct_.helpers;
 import :tag;
 import :transfer;
 
-namespace ivm::value {
+namespace ivm::js {
 
 template <class Getter>
 struct getter_for;
@@ -63,4 +63,4 @@ struct visit<Meta, Type>
 		using visit<Meta, mapped_object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>>::visit;
 };
 
-} // namespace ivm::value
+} // namespace ivm::js

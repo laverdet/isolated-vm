@@ -3,7 +3,7 @@ module;
 #include <type_traits>
 export module ivm.value:dictionary.helpers;
 
-namespace ivm::value {
+namespace ivm::js {
 
 // Look for `boost::recursive_variant_` to determine if this container is recursive
 export template <class Type>
@@ -44,4 +44,4 @@ struct entry_subject_for<std::pair<Left, Right>>
 export template <class Tag, class Type, class Entry>
 struct vector_of_subject;
 
-} // namespace ivm::value
+} // namespace ivm::js

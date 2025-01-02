@@ -15,17 +15,17 @@ script::script(agent::lock& agent, v8::Local<v8::UnboundScript> script) :
 		unbound_script_{agent->isolate(), script} {
 }
 
-auto script::run(realm::scope& realm_scope) -> value::value_t {
+auto script::run(realm::scope& realm_scope) -> js::value_t {
 	auto* isolate = realm_scope.isolate();
 	auto script = unbound_script_.Get(isolate);
 	auto context = realm_scope.context();
 	auto result = script->BindToCurrentContext()->Run(context).ToLocalChecked();
-	return value::transfer<value::value_t>(result, std::tuple{isolate, context}, std::tuple{});
+	return js::transfer<js::value_t>(result, std::tuple{isolate, context}, std::tuple{});
 }
 
 auto script::compile(agent::lock& agent, v8::Local<v8::String> code_string, source_origin source_origin) -> script {
 	v8::Context::Scope context_scope{agent->scratch_context()};
-	auto maybe_resource_name = value::transfer_strict<v8::MaybeLocal<v8::String>>(
+	auto maybe_resource_name = js::transfer_strict<v8::MaybeLocal<v8::String>>(
 		std::move(source_origin.name),
 		std::tuple{},
 		std::tuple{agent->isolate()}

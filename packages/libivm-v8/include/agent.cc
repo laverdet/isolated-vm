@@ -79,7 +79,7 @@ class agent::host : util::non_moveable {
 		auto scratch_context() -> v8::Local<v8::Context>;
 		auto take_random_seed() -> std::optional<double>;
 		auto task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner>;
-		auto weak_module_specifiers() -> iv8::weak_map<v8::Module, value::string_t>&;
+		auto weak_module_specifiers() -> js::iv8::weak_map<v8::Module, js::string_t>&;
 
 		static auto get_current() -> host*;
 		static auto get_current(v8::Isolate* isolate) -> host&;
@@ -88,7 +88,7 @@ class agent::host : util::non_moveable {
 		std::shared_ptr<storage> agent_storage_;
 		std::shared_ptr<foreground_runner> task_runner_;
 		std::unique_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
-		iv8::weak_map<v8::Module, value::string_t> weak_module_specifiers_;
+		js::iv8::weak_map<v8::Module, js::string_t> weak_module_specifiers_;
 		std::unique_ptr<v8::Isolate, isolate_destructor> isolate_;
 		v8::Global<v8::Context> scratch_context_;
 		scheduler async_scheduler_;

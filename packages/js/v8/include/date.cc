@@ -4,9 +4,7 @@ export module ivm.iv8:date;
 import ivm.value;
 import v8;
 
-namespace ivm::iv8 {
-
-using value::js_clock;
+namespace ivm::js::iv8 {
 
 export class date : public v8::Date {
 	public:
@@ -27,4 +25,4 @@ auto date::materialize(std::type_identity<js_clock::time_point> /*tag*/) const -
 	return js_clock::time_point{js_clock::duration{ValueOf()}};
 }
 
-} // namespace ivm::iv8
+} // namespace ivm::js::iv8

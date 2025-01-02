@@ -7,7 +7,7 @@ export module ivm.value:primitive.tag;
 import :date;
 import :tag;
 
-namespace ivm::value {
+namespace ivm::js {
 
 // `undefined`
 template <>
@@ -52,4 +52,4 @@ struct tag_for<std::string_view> : std::type_identity<string_tag_of<std::string_
 template <>
 struct tag_for<std::u16string> : std::type_identity<string_tag_of<std::u16string>> {};
 
-} // namespace ivm::value
+} // namespace ivm::js

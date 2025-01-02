@@ -57,7 +57,7 @@ if (APPLE)
 	set(CMAKE_OSX_DEPLOYMENT_TARGET 10.12)
 endif()
 
-# Microsoft Visual C++. It can't actually compile the templates in `ivm::value`, but this would be
+# Microsoft Visual C++. It can't actually compile the templates in `ivm::js`, but this would be
 # required if it could.
 if (MSVC)
 	# Lmfao: "After 20+ years, we’re finally able to set the value for “__cplusplus” macro forward in

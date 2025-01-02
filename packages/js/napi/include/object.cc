@@ -7,7 +7,7 @@ import :container;
 import ivm.utility;
 import napi;
 
-namespace ivm::napi {
+namespace ivm::js::napi {
 
 export class object : public container {
 	public:
@@ -36,4 +36,4 @@ export class object : public container {
 		mutable array keys_;
 };
 
-} // namespace ivm::napi
+} // namespace ivm::js::napi

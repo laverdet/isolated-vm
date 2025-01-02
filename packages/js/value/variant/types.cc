@@ -3,7 +3,7 @@ module;
 #include <type_traits>
 export module ivm.value:variant.types;
 
-namespace ivm::value {
+namespace ivm::js {
 
 // Specialize in order to disable `std::variant` visitor
 export template <class... Types>
@@ -24,4 +24,4 @@ using recursive_variant = boost::variant<boost::detail::variant::recursive_flag<
 export template <class Variant, class Type>
 using substitute_recursive = typename boost::detail::variant::substitute<Type, Variant, boost::recursive_variant_>::type;
 
-} // namespace ivm::value
+} // namespace ivm::js

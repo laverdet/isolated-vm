@@ -15,13 +15,13 @@ namespace ivm {
 
 export class module_request {
 	public:
-		using attributes_type = value::dictionary<value::dictionary_tag, value::string_t, value::string_t>;
-		module_request(value::string_t specifier, attributes_type attributes_);
-		[[nodiscard]] auto specifier() const -> const value::string_t& { return specifier_; }
+		using attributes_type = js::dictionary<js::dictionary_tag, js::string_t, js::string_t>;
+		module_request(js::string_t specifier, attributes_type attributes_);
+		[[nodiscard]] auto specifier() const -> const js::string_t& { return specifier_; }
 
 	private:
 		attributes_type attributes_;
-		value::string_t specifier_;
+		js::string_t specifier_;
 };
 
 export class js_module : util::non_copyable {
@@ -40,7 +40,7 @@ export class js_module : util::non_copyable {
 };
 
 auto js_module::compile(realm::scope& realm, auto&& source_text, source_origin source_origin) -> js_module {
-	auto local_source_text = value::transfer_strict<v8::Local<v8::String>>(
+	auto local_source_text = js::transfer_strict<v8::Local<v8::String>>(
 		std::forward<decltype(source_text)>(source_text),
 		std::tuple{},
 		std::tuple{realm.isolate()}
@@ -50,7 +50,7 @@ auto js_module::compile(realm::scope& realm, auto&& source_text, source_origin s
 
 } // namespace ivm
 
-namespace ivm::value {
+namespace ivm::js {
 
 template <>
 struct object_properties<module_request> {
@@ -59,4 +59,4 @@ struct object_properties<module_request> {
 		};
 };
 
-} // namespace ivm::value
+} // namespace ivm::js

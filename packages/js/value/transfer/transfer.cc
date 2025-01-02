@@ -9,12 +9,12 @@ export import :accept;
 export import :visit;
 import :tag;
 
-namespace ivm::value {
+namespace ivm::js {
 
 // Default `accept` passthrough `Meta`
 struct accept_pass {
 		template <class Meta, class Type>
-		using accept = value::accept<Meta, std::decay_t<Type>>;
+		using accept = js::accept<Meta, std::decay_t<Type>>;
 };
 
 // `Meta` for `accept` which throws on unknown values
@@ -22,7 +22,7 @@ struct accept_with_throw {
 		template <class Type>
 		struct accept_throw;
 		template <class Meta, class Type>
-		using accept = value::accept<Meta, accept_throw<Type>>;
+		using accept = js::accept<Meta, accept_throw<Type>>;
 };
 
 // Adds fallback acceptor which throws on unknown values
@@ -112,4 +112,4 @@ struct visit<void, transfer_direct<Type>> {
 		}
 };
 
-} // namespace ivm::value
+} // namespace ivm::js

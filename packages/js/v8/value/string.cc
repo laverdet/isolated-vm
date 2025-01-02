@@ -7,7 +7,7 @@ import :handle;
 import :string;
 import v8;
 
-namespace ivm::iv8 {
+namespace ivm::js::iv8 {
 
 auto string::Cast(v8::Data* data) -> string* {
 	return reinterpret_cast<string*>(v8::String::Cast(data));
@@ -63,4 +63,4 @@ auto string::materialize(std::type_identity<std::u16string> /*tag*/, handle_env 
 	return string;
 }
 
-} // namespace ivm::iv8
+} // namespace ivm::js::iv8

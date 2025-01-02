@@ -10,7 +10,7 @@ import :transfer;
 import :variant.types;
 import ivm.utility;
 
-namespace ivm::value {
+namespace ivm::js {
 
 // `std::variant` visitor. This used to delegate to the `boost::variant` visitor elsewhere, but
 // `boost::apply_visitor` isn't constexpr, so we can't use it to test statically. `boost::variant`
@@ -61,4 +61,4 @@ struct visit<Meta, recursive_variant<First, Rest...>>
 				visit<Meta, variant_of<recursive_variant<First, Rest...>, First, Rest...>>{0, *this} {}
 };
 
-} // namespace ivm::value
+} // namespace ivm::js

@@ -10,7 +10,7 @@ import :tag;
 import :transfer;
 import ivm.utility;
 
-namespace ivm::value {
+namespace ivm::js {
 
 // If the container is not recursive then it will own its own entry acceptor. Otherwise it accepts
 // a reference to an existing one.
@@ -94,4 +94,4 @@ struct accept<Meta, vector_of<Tag, Entry>>
 		using accept<Meta, vector_of_subject<Tag, Entry, entry_subject_for_t<Entry>>>::accept;
 };
 
-} // namespace ivm::value
+} // namespace ivm::js

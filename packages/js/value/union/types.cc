@@ -4,7 +4,7 @@ export module ivm.value:union_.types;
 import :tag;
 import :variant.types;
 
-namespace ivm::value {
+namespace ivm::js {
 
 // Specialize to turn `std::variant` into a discriminated union
 export template <class Type>
@@ -19,4 +19,4 @@ struct alternative {
 		std::string discriminant;
 };
 
-} // namespace ivm::value
+} // namespace ivm::js

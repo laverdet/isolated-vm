@@ -21,10 +21,10 @@ export class handle_scope : util::non_moveable {
 	public:
 		explicit handle_scope(napi_env env) :
 				env_{env},
-				handle_scope_{ivm::napi::invoke(napi_open_handle_scope, env)} {}
+				handle_scope_{js::napi::invoke(napi_open_handle_scope, env)} {}
 
 		~handle_scope() {
-			ivm::napi::invoke_dtor(napi_close_handle_scope, env_, handle_scope_);
+			js::napi::invoke_dtor(napi_close_handle_scope, env_, handle_scope_);
 		}
 
 	private:
@@ -36,7 +36,7 @@ export class reference : util::non_copyable {
 	public:
 		reference(napi_env env, napi_value value) :
 				env_{env},
-				value_{ivm::napi::invoke(napi_create_reference, env, value, 1)} {}
+				value_{js::napi::invoke(napi_create_reference, env, value, 1)} {}
 
 		reference(reference&& right) noexcept :
 				env_{right.env_},
@@ -44,14 +44,14 @@ export class reference : util::non_copyable {
 
 		~reference() {
 			if (value_ != nullptr) {
-				ivm::napi::invoke_dtor(napi_delete_reference, env_, value_);
+				js::napi::invoke_dtor(napi_delete_reference, env_, value_);
 			}
 		}
 
 		auto operator=(reference&& right) = delete;
 
 		auto operator*() const -> napi_value {
-			return ivm::napi::invoke(napi_get_reference_value, env_, value_);
+			return js::napi::invoke(napi_get_reference_value, env_, value_);
 		}
 
 	private:
@@ -65,7 +65,7 @@ auto make_promise(environment& ienv, auto accept) {
 	// nodejs promise & future
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	napi_deferred deferred;
-	auto* promise = ivm::napi::invoke(napi_create_promise, env, &deferred);
+	auto* promise = js::napi::invoke(napi_create_promise, env, &deferred);
 
 	// nodejs promise fulfillment
 	ienv.scheduler().increment_ref();
@@ -85,9 +85,9 @@ auto make_promise(environment& ienv, auto accept) {
 					auto& ienv = environment::get(env);
 					ienv.scheduler().decrement_ref();
 					if (auto result = accept(ienv, std::forward<decltype(args)>(args)...)) {
-						ivm::napi::invoke0(napi_resolve_deferred, env, deferred, result.value());
+						js::napi::invoke0(napi_resolve_deferred, env, deferred, result.value());
 					} else {
-						ivm::napi::invoke0(napi_reject_deferred, env, deferred, result.error());
+						js::napi::invoke0(napi_reject_deferred, env, deferred, result.error());
 					}
 				}
 			);
@@ -114,7 +114,7 @@ auto make_node_function(environment& ienv) -> napi_value {
 		auto count = arguments.size();
 		// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 		void* data;
-		ivm::napi::invoke0(napi_get_cb_info, env, info, &count, arguments.data(), nullptr, &data);
+		js::napi::invoke0(napi_get_cb_info, env, info, &count, arguments.data(), nullptr, &data);
 		if (count > arguments.size()) {
 			throw std::runtime_error{"Too many arguments"};
 		}
@@ -123,11 +123,11 @@ auto make_node_function(environment& ienv) -> napi_value {
 			Fn,
 			std::tuple_cat(
 				std::forward_as_tuple(ienv),
-				value::transfer<parameters_type>(std::span{arguments}.subspan(0, count), std::tuple{env, ienv.isolate()}, std::tuple{})
+				js::transfer<parameters_type>(std::span{arguments}.subspan(0, count), std::tuple{env, ienv.isolate()}, std::tuple{})
 			)
 		);
 	};
-	return ivm::napi::invoke(napi_create_function, env, nullptr, 0, callback, &ienv);
+	return js::napi::invoke(napi_create_function, env, nullptr, 0, callback, &ienv);
 }
 
 } // namespace ivm

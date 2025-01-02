@@ -6,7 +6,7 @@ import ivm.utility;
 import ivm.value;
 import v8;
 
-namespace ivm::iv8 {
+namespace ivm::js::iv8 {
 
 export class external : public v8::External {
 	public:
@@ -35,9 +35,9 @@ class external_reference : util::non_moveable {
 		Type value;
 };
 
-} // namespace ivm::iv8
+} // namespace ivm::js::iv8
 
-namespace ivm::value {
+namespace ivm::js {
 
 template <class Type>
 struct accept<void, iv8::external_reference<Type>> : accept<void, void> {
@@ -48,4 +48,4 @@ struct accept<void, iv8::external_reference<Type>> : accept<void, void> {
 		}
 };
 
-} // namespace ivm::value
+} // namespace ivm::js

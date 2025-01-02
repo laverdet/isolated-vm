@@ -4,7 +4,7 @@ module;
 export module ivm.iv8:number;
 import v8;
 
-namespace ivm::iv8 {
+namespace ivm::js::iv8 {
 
 export class number : public v8::Number {
 	public:
@@ -44,4 +44,4 @@ auto number::cast() const -> const Type* {
 	return Type::Cast(const_cast<number*>(this)); // NOLINT(cppcoreguidelines-pro-type-const-cast)
 }
 
-} // namespace ivm::iv8
+} // namespace ivm::js::iv8

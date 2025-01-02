@@ -2,7 +2,7 @@ module ivm.napi;
 import :container;
 import :utility;
 
-namespace ivm::napi {
+namespace ivm::js::napi {
 
 container::container(napi_env env, napi_value value) :
 		env_{env},
@@ -24,4 +24,4 @@ auto container::env() const -> napi_env {
 	return env_;
 }
 
-} // namespace ivm::napi
+} // namespace ivm::js::napi

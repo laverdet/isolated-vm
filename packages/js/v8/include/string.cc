@@ -5,7 +5,7 @@ export module ivm.iv8:string;
 import :handle;
 import v8;
 
-namespace ivm::iv8 {
+namespace ivm::js::iv8 {
 
 export class string : public v8::String {
 	public:
@@ -18,4 +18,4 @@ export class string : public v8::String {
 		static auto make(v8::Isolate* isolate, std::u16string_view view) -> v8::Local<v8::String>;
 };
 
-} // namespace ivm::iv8
+} // namespace ivm::js::iv8

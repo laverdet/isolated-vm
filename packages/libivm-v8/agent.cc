@@ -133,7 +133,7 @@ auto agent::host::task_runner(v8::TaskPriority /*priority*/) -> std::shared_ptr<
 	return task_runner_;
 }
 
-auto agent::host::weak_module_specifiers() -> iv8::weak_map<v8::Module, value::string_t>& {
+auto agent::host::weak_module_specifiers() -> js::iv8::weak_map<v8::Module, js::string_t>& {
 	return weak_module_specifiers_;
 }
 

@@ -4,7 +4,7 @@ module ivm.iv8;
 import :array;
 import v8;
 
-namespace ivm::iv8 {
+namespace ivm::js::iv8 {
 
 auto array::Cast(v8::Value* data) -> array* {
 	return reinterpret_cast<array*>(v8::Array::Cast(data));
@@ -42,4 +42,4 @@ auto array::iterator::operator+=(difference_type offset) -> iterator& {
 	return *this;
 }
 
-} // namespace ivm::iv8
+} // namespace ivm::js::iv8

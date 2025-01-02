@@ -8,7 +8,7 @@ module;
 export module ivm.value:struct_.types;
 import ivm.utility;
 
-namespace ivm::value {
+namespace ivm::js {
 
 // You override this with an object property descriptor for each accepted type
 export template <class Type>
@@ -22,4 +22,4 @@ struct accessor {};
 export template <util::string_literal Name, auto Member, bool Required = true>
 struct member {};
 
-} // namespace ivm::value
+} // namespace ivm::js

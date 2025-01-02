@@ -7,7 +7,7 @@ import v8;
 import :handle;
 import ivm.utility;
 
-namespace ivm::iv8 {
+namespace ivm::js::iv8 {
 
 export class fixed_array : util::non_copyable {
 	public:
@@ -54,4 +54,4 @@ class fixed_array::iterator : public util::random_access_iterator_facade<iterato
 static_assert(std::ranges::viewable_range<fixed_array>);
 static_assert(std::random_access_iterator<fixed_array::iterator>);
 
-} // namespace ivm::iv8
+} // namespace ivm::js::iv8

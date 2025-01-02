@@ -1,5 +1,4 @@
 module;
-#include <functional>
 #include <optional>
 #include <tuple>
 #include <utility>
@@ -19,7 +18,7 @@ export struct source_location {
 };
 
 export struct source_origin {
-		std::optional<value::string_t> name;
+		std::optional<js::string_t> name;
 		std::optional<source_location> location;
 };
 
@@ -28,7 +27,7 @@ export class script : util::non_copyable {
 		script() = delete;
 		script(agent::lock& agent, v8::Local<v8::UnboundScript> script);
 
-		auto run(realm::scope& realm_scope) -> value::value_t;
+		auto run(realm::scope& realm_scope) -> js::value_t;
 		static auto compile(agent::lock& agent, auto&& code_string, source_origin source_origin) -> script;
 
 	private:
@@ -38,7 +37,7 @@ export class script : util::non_copyable {
 };
 
 auto script::compile(agent::lock& agent, auto&& code_string, source_origin source_origin) -> script {
-	auto local_code_string = value::transfer_strict<v8::Local<v8::String>>(
+	auto local_code_string = js::transfer_strict<v8::Local<v8::String>>(
 		std::forward<decltype(code_string)>(code_string),
 		std::tuple{},
 		std::tuple{agent->isolate()}
@@ -48,7 +47,7 @@ auto script::compile(agent::lock& agent, auto&& code_string, source_origin sourc
 
 } // namespace ivm
 
-namespace ivm::value {
+namespace ivm::js {
 
 template <>
 struct object_properties<source_location> {
@@ -66,4 +65,4 @@ struct object_properties<source_origin> {
 		};
 };
 
-} // namespace ivm::value
+} // namespace ivm::js

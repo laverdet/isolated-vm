@@ -5,7 +5,7 @@ export module ivm.value:accept;
 import :transfer.types;
 import :visit;
 
-namespace ivm::value {
+namespace ivm::js {
 
 // Extract `Wrap` from `Meta`
 template <class Meta>
@@ -68,4 +68,4 @@ struct accept<void, accept_immediate<Tag>> {
 		}
 };
 
-} // namespace ivm::value
+} // namespace ivm::js

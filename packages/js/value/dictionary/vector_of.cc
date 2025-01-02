@@ -5,7 +5,7 @@ export module ivm.value:dictionary.vector_of;
 import ivm.utility;
 import :tag;
 
-namespace ivm::value {
+namespace ivm::js {
 
 export template <class Tag, class Value>
 class vector_of {
@@ -39,4 +39,4 @@ static_assert(std::random_access_iterator<vector_of<void, int>::const_iterator>)
 export template <class Tag, class Key, class Value>
 using dictionary = vector_of<Tag, std::pair<Key, Value>>;
 
-} // namespace ivm::value
+} // namespace ivm::js

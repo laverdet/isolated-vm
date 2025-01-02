@@ -7,7 +7,7 @@ import :primitive.tag;
 import :tag;
 import :transfer;
 
-namespace ivm::value {
+namespace ivm::js {
 
 // Tagged primitive types
 template <class Type>
@@ -33,4 +33,4 @@ struct visit<Meta, std::optional<Type>> : visit<Meta, Type> {
 		}
 };
 
-} // namespace ivm::value
+} // namespace ivm::js

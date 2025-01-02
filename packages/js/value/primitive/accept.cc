@@ -10,7 +10,7 @@ import :tag;
 import :transfer;
 import ivm.utility;
 
-namespace ivm::value {
+namespace ivm::js {
 
 // Default acceptor just forwards the given value directly to the underlying type's constructor
 template <class Meta, class Type>
@@ -60,4 +60,4 @@ struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
 		}
 };
 
-} // namespace ivm::value
+} // namespace ivm::js

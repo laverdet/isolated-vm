@@ -6,7 +6,7 @@ import :container;
 import ivm.utility;
 import napi;
 
-namespace ivm::napi {
+namespace ivm::js::napi {
 
 export class array : public container {
 	public:
@@ -50,4 +50,4 @@ class array::iterator : public util::random_access_iterator_facade<iterator, int
 		size_type index{};
 };
 
-} // namespace ivm::napi
+} // namespace ivm::js::napi

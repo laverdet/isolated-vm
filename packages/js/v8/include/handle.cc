@@ -5,7 +5,7 @@ module;
 export module ivm.iv8:handle;
 import v8;
 
-export namespace ivm::iv8 {
+export namespace ivm::js::iv8 {
 
 struct handle_env {
 		handle_env() = default;
@@ -124,4 +124,4 @@ class handle_cast : public v8::Local<Type> {
 		}
 };
 
-} // namespace ivm::iv8
+} // namespace ivm::js::iv8

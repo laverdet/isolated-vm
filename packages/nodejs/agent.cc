@@ -17,14 +17,14 @@ namespace ivm {
 
 struct make_agent_options {
 		struct clock_deterministic {
-				value::js_clock::time_point epoch;
+				js::js_clock::time_point epoch;
 				double interval{};
 		};
 		struct clock_microtask {
-				std::optional<value::js_clock::time_point> epoch;
+				std::optional<js::js_clock::time_point> epoch;
 		};
 		struct clock_realtime {
-				value::js_clock::time_point epoch;
+				js::js_clock::time_point epoch;
 		};
 		struct clock_system {};
 		using clock_type = std::variant<clock_deterministic, clock_microtask, clock_realtime, clock_system>;
@@ -42,7 +42,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	auto clock = std::visit(
 		util::overloaded{
 			[](const make_agent_options::clock_deterministic& options) -> clock::any_clock {
-				return clock::deterministic{options.epoch, value::js_clock::duration{options.interval}};
+				return clock::deterministic{options.epoch, js::js_clock::duration{options.interval}};
 			},
 			[](const make_agent_options::clock_microtask& options) -> clock::any_clock {
 				return clock::microtask{options.epoch};
@@ -69,7 +69,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	return promise;
 }
 
-auto create_realm(environment& env, iv8::external_reference<agent>& agent) -> napi_value {
+auto create_realm(environment& env, js::iv8::external_reference<agent>& agent) -> napi_value {
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, ivm::realm realm) -> expected_value {
 		return make_collected_external<ivm::realm>(env, std::move(realm));
 	});
@@ -96,7 +96,7 @@ auto make_create_realm(environment& env) -> napi_value {
 } // namespace ivm
 
 // Options visitors & acceptors
-namespace ivm::value {
+namespace ivm::js {
 
 template <>
 struct object_properties<make_agent_options::clock_deterministic> {
@@ -144,4 +144,4 @@ struct object_properties<make_agent_options> {
 		};
 };
 
-} // namespace ivm::value
+} // namespace ivm::js

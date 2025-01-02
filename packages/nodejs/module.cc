@@ -25,9 +25,9 @@ struct compile_module_options {
 
 auto compile_module(
 	environment& env,
-	iv8::external_reference<agent>& agent,
-	iv8::external_reference<realm>& realm_,
-	value::string_t source_text,
+	js::iv8::external_reference<agent>& agent,
+	js::iv8::external_reference<realm>& realm_,
+	js::string_t source_text,
 	std::optional<compile_module_options> options_optional
 ) -> napi_value {
 	auto options = std::move(options_optional).value_or(compile_module_options{});
@@ -35,9 +35,9 @@ auto compile_module(
 		env,
 		[](environment& env, js_module module_, std::vector<ivm::module_request> requests) -> expected_value {
 			auto handle = make_collected_external<ivm::js_module>(env, std::move(module_));
-			return value::transfer_strict<napi_value>(
+			return js::transfer_strict<napi_value>(
 				std::tuple{
-					value::transfer_direct{std::move(handle)},
+					js::transfer_direct{std::move(handle)},
 					std::move(requests),
 				},
 				std::tuple{},
@@ -69,7 +69,7 @@ auto make_compile_module(environment& env) -> napi_value {
 
 } // namespace ivm
 
-namespace ivm::value {
+namespace ivm::js {
 
 template <>
 struct object_properties<compile_module_options> {
@@ -78,4 +78,4 @@ struct object_properties<compile_module_options> {
 		};
 };
 
-} // namespace ivm::value
+} // namespace ivm::js

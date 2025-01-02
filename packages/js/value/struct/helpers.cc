@@ -6,7 +6,7 @@ export module ivm.value:struct_.helpers;
 import :struct_.types;
 import ivm.utility;
 
-namespace ivm::value {
+namespace ivm::js {
 
 // Helper for object accept & visit
 export template <class Type, class Properties>
@@ -104,4 +104,4 @@ struct property_name<member<Name, Member, Required>> {
 		constexpr static auto value = Name;
 };
 
-} // namespace ivm::value
+} // namespace ivm::js

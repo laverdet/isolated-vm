@@ -1,7 +1,7 @@
 module ivm.napi:container;
 import napi;
 
-namespace ivm::napi {
+namespace ivm::js::napi {
 
 export class container {
 	public:
@@ -19,4 +19,4 @@ export class container {
 		napi_value value_{};
 };
 
-} // namespace ivm::napi
+} // namespace ivm::js::napi

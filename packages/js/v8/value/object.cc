@@ -9,7 +9,7 @@ import :string;
 import ivm.utility;
 import v8;
 
-namespace ivm::iv8 {
+namespace ivm::js::iv8 {
 
 auto object::Cast(v8::Value* data) -> object* {
 	return reinterpret_cast<object*>(v8::Object::Cast(data));
@@ -41,4 +41,4 @@ auto object::iterator_transform::operator()(v8::Local<v8::Value> key) const -> v
 	return std::pair{key, value};
 }
 
-} // namespace ivm::iv8
+} // namespace ivm::js::iv8

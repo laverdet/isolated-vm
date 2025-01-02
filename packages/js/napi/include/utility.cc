@@ -8,7 +8,7 @@ import ivm.utility;
 import napi;
 import v8;
 
-namespace ivm::napi {
+namespace ivm::js::napi {
 
 // Convert a napi handle to a v8 handle
 export auto to_v8(napi_value value) -> v8::Local<v8::Value> {
@@ -52,8 +52,8 @@ export auto invoke(auto fn, auto&&... args)
 	using out_arg_t = std::tuple_element_t<std::tuple_size_v<parameters_t> - 1, parameters_t>;
 	static_assert(std::is_pointer_v<out_arg_t>);
 	std::remove_pointer_t<out_arg_t> out_arg;
-	ivm::napi::invoke0(fn, std::forward<decltype(args)>(args)..., &out_arg);
+	js::napi::invoke0(fn, std::forward<decltype(args)>(args)..., &out_arg);
 	return std::move(out_arg);
-} // namespace ivm::napi
+} // namespace ivm::js::napi
 
-} // namespace ivm::napi
+} // namespace ivm::js::napi

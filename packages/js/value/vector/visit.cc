@@ -5,7 +5,7 @@ export module ivm.value:vector.visit;
 import :transfer;
 import ivm.utility;
 
-namespace ivm::value {
+namespace ivm::js {
 
 template <class Type>
 struct transferee_subject<std::span<Type>> : std::type_identity<Type> {};
@@ -33,4 +33,4 @@ struct visit<Meta, std::vector<Type>> : visit<Meta, std::span<Type>> {
 		}
 };
 
-} // namespace ivm::value
+} // namespace ivm::js

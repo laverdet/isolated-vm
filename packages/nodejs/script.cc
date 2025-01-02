@@ -21,8 +21,8 @@ struct compile_script_options {
 
 auto compile_script(
 	environment& env,
-	iv8::external_reference<agent>& agent,
-	value::string_t code_string,
+	js::iv8::external_reference<agent>& agent,
+	js::string_t code_string,
 	std::optional<compile_script_options> options_optional
 ) -> napi_value {
 	auto options = std::move(options_optional).value_or(compile_script_options{});
@@ -44,12 +44,12 @@ auto compile_script(
 
 auto run_script(
 	environment& env,
-	iv8::external_reference<agent>& agent,
-	iv8::external_reference<script>& script,
-	iv8::external_reference<realm>& realm
+	js::iv8::external_reference<agent>& agent,
+	js::iv8::external_reference<script>& script,
+	js::iv8::external_reference<realm>& realm
 ) -> napi_value {
-	auto [ dispatch, promise ] = make_promise(env, [](environment& env, value::value_t result) -> expected_value {
-		return value::transfer_strict<napi_value>(std::move(result), std::tuple{}, std::tuple{env.nenv()});
+	auto [ dispatch, promise ] = make_promise(env, [](environment& env, js::value_t result) -> expected_value {
+		return js::transfer_strict<napi_value>(std::move(result), std::tuple{}, std::tuple{env.nenv()});
 	});
 	agent->schedule(
 		[ &realm,
@@ -75,7 +75,7 @@ auto make_run_script(environment& env) -> napi_value {
 
 } // namespace ivm
 
-namespace ivm::value {
+namespace ivm::js {
 
 template <>
 struct object_properties<compile_script_options> {
@@ -84,4 +84,4 @@ struct object_properties<compile_script_options> {
 		};
 };
 
-} // namespace ivm::value
+} // namespace ivm::js

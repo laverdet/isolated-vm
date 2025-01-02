@@ -13,7 +13,7 @@ import v8;
 namespace ivm {
 
 // module_request
-module_request::module_request(value::string_t specifier, attributes_type attributes) :
+module_request::module_request(js::string_t specifier, attributes_type attributes) :
 		attributes_{std::move(attributes)},
 		specifier_{std::move(specifier)} {}
 
@@ -23,22 +23,22 @@ js_module::js_module(agent::lock& agent, v8::Local<v8::Module> module_) :
 }
 
 auto js_module::requests(realm::scope& realm) -> std::vector<module_request> {
-	auto requests_array = iv8::fixed_array{module_.Get(realm.isolate())->GetModuleRequests(), realm.context()};
+	auto requests_array = js::iv8::fixed_array{module_.Get(realm.isolate())->GetModuleRequests(), realm.context()};
 	auto requests_view =
 		requests_array |
 		std::views::transform([ & ](v8::Local<v8::Data> value) -> module_request {
 			auto request = value.As<v8::ModuleRequest>();
 			auto visit_args = std::tuple{realm.isolate(), realm.context()};
 			auto specifier_handle = request->GetSpecifier().As<v8::String>();
-			auto specifier = value::transfer_strict<value::string_t>(specifier_handle, visit_args, std::tuple{});
+			auto specifier = js::transfer_strict<js::string_t>(specifier_handle, visit_args, std::tuple{});
 			auto attributes_view =
 				// [ key, value, location, ...[] ]
-				iv8::fixed_array{request->GetImportAttributes(), realm.context()} |
+				js::iv8::fixed_array{request->GetImportAttributes(), realm.context()} |
 				std::views::chunk(3) |
 				std::views::transform([ & ](const auto& triplet) {
 					return std::pair{
-						value::transfer<value::string_t>(triplet[ 0 ].template As<v8::Name>(), visit_args, std::tuple{}),
-						value::transfer<value::string_t>(triplet[ 1 ].template As<v8::Value>(), visit_args, std::tuple{})
+						js::transfer<js::string_t>(triplet[ 0 ].template As<v8::Name>(), visit_args, std::tuple{}),
+						js::transfer<js::string_t>(triplet[ 1 ].template As<v8::Value>(), visit_args, std::tuple{})
 					};
 				});
 			return {specifier, module_request::attributes_type{attributes_view}};
@@ -47,7 +47,7 @@ auto js_module::requests(realm::scope& realm) -> std::vector<module_request> {
 }
 
 auto js_module::compile(realm::scope& realm, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module {
-	auto maybe_resource_name = value::transfer_strict<v8::MaybeLocal<v8::String>>(
+	auto maybe_resource_name = js::transfer_strict<v8::MaybeLocal<v8::String>>(
 		source_origin.name,
 		std::tuple{},
 		std::tuple{realm.isolate()}

@@ -8,7 +8,7 @@ import :date;
 import :dictionary.vector_of;
 import :tag;
 
-namespace ivm::value {
+namespace ivm::js {
 
 // Any (cloneable) object key
 export using key_t = std::variant<int32_t, std::string, std::u16string>;
@@ -33,7 +33,7 @@ export using value_t = boost::make_recursive_variant<
 	// date
 	js_clock::time_point,
 	// object(s)
-	value::dictionary<list_tag, key_t, boost::recursive_variant_>,
-	value::dictionary<dictionary_tag, key_t, boost::recursive_variant_>>::type;
+	dictionary<list_tag, key_t, boost::recursive_variant_>,
+	dictionary<dictionary_tag, key_t, boost::recursive_variant_>>::type;
 
-} // namespace ivm::value
+} // namespace ivm::js

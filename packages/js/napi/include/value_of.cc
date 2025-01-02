@@ -3,7 +3,7 @@ module;
 export module ivm.napi:value_of;
 import napi;
 
-namespace ivm::napi {
+namespace ivm::js::napi {
 
 // Simple wrapper around `napi_value` denoting underlying value type
 export template <class Tag>
@@ -40,4 +40,4 @@ class value_of {
 		napi_value value_;
 };
 
-} // namespace ivm::napi
+} // namespace ivm::js::napi
