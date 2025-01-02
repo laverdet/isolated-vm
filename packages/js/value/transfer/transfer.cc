@@ -1,7 +1,6 @@
 module;
 #include <stdexcept>
 #include <tuple>
-#include <type_traits>
 #include <utility>
 export module ivm.js:transfer;
 export import :transfer.types;
@@ -14,7 +13,7 @@ namespace ivm::js {
 // Default `accept` passthrough `Meta`
 struct accept_pass {
 		template <class Meta, class Type>
-		using accept = js::accept<Meta, std::decay_t<Type>>;
+		using accept = js::accept<Meta, Type>;
 };
 
 // `Meta` for `accept` which throws on unknown values
@@ -31,12 +30,12 @@ template <class Meta, class Type>
 // probably via `accept_next`
 	requires std::destructible<Type>
 struct accept<Meta, accept_with_throw::accept_throw<Type>>
-		: accept<Meta, std::decay_t<Type>> {
+		: accept<Meta, Type> {
 		explicit constexpr accept(const visit_root<Meta>& visit) :
-				accept<Meta, std::decay_t<Type>>{0, visit, *this} {}
+				accept<Meta, Type>{0, visit, *this} {}
 
-		using accept<Meta, std::decay_t<Type>>::operator();
-		constexpr auto operator()(value_tag /*tag*/, const auto& /*value*/, auto&&... /*rest*/) const -> Type {
+		using accept<Meta, Type>::operator();
+		constexpr auto operator()(value_tag /*tag*/, const auto& /*value*/, const auto&... /*rest*/) const -> Type {
 			throw std::logic_error("Type error");
 		}
 };
