@@ -2,6 +2,7 @@ module;
 #include <concepts>
 #include <type_traits>
 export module ivm.js:tag;
+import ivm.utility;
 
 export namespace ivm::js {
 
@@ -41,6 +42,8 @@ template <class Type>
 struct string_tag_of : string_tag {};
 template <class Tag>
 struct con_tag_for<string_tag_of<Tag>> : std::type_identity<string_tag> {};
+template <util::string_literal Literal>
+struct string_literal_tag : string_tag {};
 
 struct bigint_tag : value_tag {};
 template <class Type>

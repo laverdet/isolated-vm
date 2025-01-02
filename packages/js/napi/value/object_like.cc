@@ -1,7 +1,7 @@
 module ivm.napi;
 import :object_like;
 import :utility;
-import :value_of;
+import :value;
 import ivm.utility;
 import napi;
 

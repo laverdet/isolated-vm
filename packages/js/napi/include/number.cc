@@ -1,16 +1,58 @@
 module;
 #include <cstdint>
 export module ivm.napi:number;
+import :value;
 import napi;
 
 namespace ivm::js::napi {
 
-export auto create_number(napi_env env, double value) -> napi_value;
-export auto create_number(napi_env env, int32_t value) -> napi_value;
-export auto create_number(napi_env env, int64_t value) -> napi_value;
-export auto create_number(napi_env env, uint32_t value) -> napi_value;
+// number constructors
+template <>
+struct factory<number_tag> : factory<value_tag> {
+		using factory<value_tag>::factory;
+		auto operator()(double number) const -> value<number_tag_of<double>>;
+		auto operator()(int32_t number) const -> value<number_tag_of<int32_t>>;
+		auto operator()(int64_t number) const -> value<number_tag_of<int64_t>>;
+		auto operator()(uint32_t number) const -> value<number_tag_of<uint32_t>>;
+};
 
-export auto create_bigint(napi_env env, int64_t value) -> napi_value;
-export auto create_bigint(napi_env env, uint64_t value) -> napi_value;
+template <>
+struct factory<number_tag_of<double>> : factory<number_tag> {
+		using factory<number_tag>::factory;
+};
+
+template <>
+struct factory<number_tag_of<int32_t>> : factory<number_tag> {
+		using factory<number_tag>::factory;
+};
+
+template <>
+struct factory<number_tag_of<int64_t>> : factory<number_tag> {
+		using factory<number_tag>::factory;
+};
+
+template <>
+struct factory<number_tag_of<uint32_t>> : factory<number_tag> {
+		using factory<number_tag>::factory;
+};
+
+// bigint constructors
+template <>
+struct factory<bigint_tag> : factory<value_tag> {
+	public:
+		using factory<value_tag>::factory;
+		auto operator()(int64_t number) const -> value<bigint_tag_of<int64_t>>;
+		auto operator()(uint64_t number) const -> value<bigint_tag_of<uint64_t>>;
+};
+
+template <>
+struct factory<bigint_tag_of<int64_t>> : factory<bigint_tag> {
+		using factory<bigint_tag>::factory;
+};
+
+template <>
+struct factory<bigint_tag_of<uint64_t>> : factory<bigint_tag> {
+		using factory<bigint_tag>::factory;
+};
 
 } // namespace ivm::js::napi

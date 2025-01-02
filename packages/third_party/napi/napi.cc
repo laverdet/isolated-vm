@@ -3,6 +3,18 @@ module;
 #include <js_native_api.h>
 #include <node_api.h>
 export module napi;
+
+export using ::napi_bigint;
+export using ::napi_boolean;
+export using ::napi_external;
+export using ::napi_function;
+export using ::napi_null;
+export using ::napi_number;
+export using ::napi_object;
+export using ::napi_string;
+export using ::napi_symbol;
+export using ::napi_undefined;
+
 export using ::napi_callback_info;
 export using ::napi_deferred;
 export using ::napi_env;

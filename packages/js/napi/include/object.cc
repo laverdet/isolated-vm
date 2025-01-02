@@ -3,7 +3,7 @@ module;
 export module ivm.napi:object;
 import :array;
 import :object_like;
-import :value_of;
+import :value;
 import ivm.js;
 import ivm.utility;
 import napi;
@@ -28,7 +28,7 @@ export class object : public object_like {
 		using range_type = std::ranges::transform_view<std::views::all_t<array&>, iterator_transform>;
 		using iterator = std::ranges::iterator_t<range_type>;
 
-		object(napi_env env, value_of<js::object_tag> value);
+		object(napi_env env, value<js::object_tag> value);
 		[[nodiscard]] auto into_range() const -> range_type;
 
 	private:

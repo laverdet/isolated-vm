@@ -2,16 +2,17 @@ module;
 #include <string_view>
 module ivm.napi;
 import :string;
+import ivm.js;
 import napi;
 
 namespace ivm::js::napi {
 
-auto create_string(napi_env env, std::string_view value) -> napi_value {
-	return js::napi::invoke(napi_create_string_latin1, env, value.data(), value.length());
+auto factory<string_tag>::operator()(std::string_view string) const -> value<string_tag_of<std::string>> {
+	return value<string_tag_of<std::string>>::from(js::napi::invoke(napi_create_string_latin1, env(), string.data(), string.length()));
 }
 
-auto create_string(napi_env env, std::u16string_view value) -> napi_value {
-	return js::napi::invoke(napi_create_string_utf16, env, value.data(), value.length());
+auto factory<string_tag>::operator()(std::u16string_view string) const -> value<string_tag_of<std::u16string>> {
+	return value<string_tag_of<std::u16string>>::from(js::napi::invoke(napi_create_string_utf16, env(), string.data(), string.length()));
 }
 
 } // namespace ivm::js::napi

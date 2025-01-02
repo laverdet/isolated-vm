@@ -10,7 +10,7 @@ import napi;
 
 namespace ivm::js::napi {
 
-object::object(napi_env env, value_of<js::object_tag> value) :
+object::object(napi_env env, value<js::object_tag> value) :
 		object_like{env, value} {}
 
 auto object::into_range() const -> range_type {

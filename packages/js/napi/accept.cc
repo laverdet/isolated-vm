@@ -3,10 +3,8 @@ module;
 #include <utility>
 #include <variant>
 export module ivm.napi:accept;
-import :number;
-import :string;
 import :utility;
-import :value_of;
+import :value;
 import ivm.js;
 import napi;
 import v8;
@@ -26,11 +24,11 @@ struct accept<void, napi_env> {
 		}
 
 		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const -> napi_value {
-			return js::napi::invoke(napi_get_undefined, env_);
+			return js::napi::value<undefined_tag>::make(env_);
 		}
 
 		auto operator()(null_tag /*tag*/, const auto& /*null*/) const -> napi_value {
-			return js::napi::invoke(napi_get_null, env_);
+			return js::napi::value<null_tag>::make(env_);
 		}
 
 		auto operator()(boolean_tag /*tag*/, auto&& value) const -> napi_value {
@@ -39,17 +37,17 @@ struct accept<void, napi_env> {
 
 		template <class Numeric>
 		auto operator()(number_tag_of<Numeric> /*tag*/, auto&& value) const -> napi_value {
-			return js::napi::create_number(env_, std::forward<decltype(value)>(value));
+			return js::napi::value<number_tag_of<Numeric>>::make(env_, std::forward<decltype(value)>(value));
 		}
 
 		template <class Numeric>
 		auto operator()(bigint_tag_of<Numeric> /*tag*/, auto&& value) const -> napi_value {
-			return js::napi::create_bigint(env_, std::forward<decltype(value)>(value));
+			return js::napi::value<bigint_tag_of<Numeric>>::make(env_, std::forward<decltype(value)>(value));
 		}
 
 		template <class String>
 		auto operator()(string_tag_of<String> /*tag*/, auto&& value) const -> napi_value {
-			return js::napi::create_string(env_, std::forward<decltype(value)>(value));
+			return js::napi::value<string_tag_of<String>>::make(env_, std::forward<decltype(value)>(value));
 		}
 
 		auto operator()(date_tag /*tag*/, js_clock::time_point value) const -> napi_value {
@@ -194,10 +192,10 @@ struct accept<Meta, value_by_key<Key, Type, napi_value>> {
 
 // Tagged value acceptor
 template <class Tag>
-struct accept<void, js::napi::value_of<Tag>> : accept<void, void> {
+struct accept<void, js::napi::value<Tag>> : accept<void, void> {
 		using accept<void, void>::accept;
-		auto operator()(Tag /*tag*/, auto&& value) const -> js::napi::value_of<Tag> {
-			return js::napi::value_of<Tag>::from(std::forward<decltype(value)>(value));
+		auto operator()(Tag /*tag*/, auto&& value) const -> js::napi::value<Tag> {
+			return js::napi::value<Tag>::from(std::forward<decltype(value)>(value));
 		}
 };
 

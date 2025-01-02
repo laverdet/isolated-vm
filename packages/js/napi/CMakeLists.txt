@@ -7,6 +7,7 @@ target_sources(ivm_value_napi
 		value/object_like.cc
 		value/object.cc
 		value/string.cc
+		value/value.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		accept.cc
 		include/_module.cc
@@ -17,7 +18,7 @@ target_sources(ivm_value_napi
 		include/object.cc
 		include/string.cc
 		include/utility.cc
-		include/value_of.cc
+		include/value.cc
 		visit.cc
 )
 target_compile_definitions(ivm_value_napi PRIVATE
