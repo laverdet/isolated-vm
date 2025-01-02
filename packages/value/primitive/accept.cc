@@ -30,7 +30,7 @@ struct accept<Meta, Type> : accept<Meta, void> {
 template <>
 struct accept<void, std::monostate> : accept<void, void> {
 		using accept<void, void>::accept;
-		constexpr auto operator()(undefined_tag /*tag*/, auto&& /*undefined*/) const {
+		constexpr auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const {
 			return std::monostate{};
 		}
 };
@@ -39,7 +39,7 @@ struct accept<void, std::monostate> : accept<void, void> {
 template <>
 struct accept<void, std::nullptr_t> : accept<void, void> {
 		using accept<void, void>::accept;
-		constexpr auto operator()(null_tag /*tag*/, auto&& /*null*/) const {
+		constexpr auto operator()(null_tag /*tag*/, const auto& /*null*/) const {
 			return std::nullptr_t{};
 		}
 };
@@ -55,7 +55,7 @@ struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
 			return {accept_type::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...)};
 		}
 
-		constexpr auto operator()(undefined_tag /*tag*/, auto&& /*value*/) const -> std::optional<Type> {
+		constexpr auto operator()(undefined_tag /*tag*/, const auto& /*value*/) const -> std::optional<Type> {
 			return std::nullopt;
 		}
 };

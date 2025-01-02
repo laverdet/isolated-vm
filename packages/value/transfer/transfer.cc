@@ -36,7 +36,7 @@ struct accept<Meta, accept_with_throw::accept_throw<Type>>
 				accept<Meta, std::decay_t<Type>>{0, visit, *this} {}
 
 		using accept<Meta, std::decay_t<Type>>::operator();
-		constexpr auto operator()(value_tag /*tag*/, auto&& /*value*/, auto&&... /*rest*/) const -> Type {
+		constexpr auto operator()(value_tag /*tag*/, const auto& /*value*/, auto&&... /*rest*/) const -> Type {
 			throw std::logic_error("Type error");
 		}
 };

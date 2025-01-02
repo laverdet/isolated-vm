@@ -56,20 +56,4 @@ export auto invoke(auto fn, auto&&... args)
 	return std::move(out_arg);
 } // namespace ivm::napi
 
-// Wrapper around `napi_value` denoting underlying value type
-export template <class Tag>
-class tagged_value {
-	public:
-		explicit tagged_value(napi_value value) :
-				value_{value} {}
-
-		// NOLINTNEXTLINE(google-explicit-constructor)
-		operator napi_value() const {
-			return value_;
-		}
-
-	private:
-		napi_value value_;
-};
-
 } // namespace ivm::napi

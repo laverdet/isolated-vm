@@ -6,6 +6,7 @@ export module ivm.napi:accept;
 import :number;
 import :string;
 import :utility;
+import :value_of;
 import ivm.value;
 import napi;
 import v8;
@@ -24,11 +25,11 @@ struct accept<void, napi_env> {
 			return env_;
 		}
 
-		auto operator()(undefined_tag /*tag*/, auto&& /*undefined*/) const -> napi_value {
+		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const -> napi_value {
 			return ivm::napi::invoke(napi_get_undefined, env_);
 		}
 
-		auto operator()(null_tag /*tag*/, auto&& /*null*/) const -> napi_value {
+		auto operator()(null_tag /*tag*/, const auto& /*null*/) const -> napi_value {
 			return ivm::napi::invoke(napi_get_null, env_);
 		}
 
@@ -193,10 +194,10 @@ struct accept<Meta, value_by_key<Key, Type, napi_value>> {
 
 // Tagged value acceptor
 template <class Tag>
-struct accept<void, ivm::napi::tagged_value<Tag>> : accept<void, void> {
+struct accept<void, ivm::napi::value_of<Tag>> : accept<void, void> {
 		using accept<void, void>::accept;
-		auto operator()(Tag /*tag*/, auto&& value) const -> ivm::napi::tagged_value<Tag> {
-			return ivm::napi::tagged_value<Tag>{std::forward<decltype(value)>(value)};
+		auto operator()(Tag /*tag*/, auto&& value) const -> ivm::napi::value_of<Tag> {
+			return ivm::napi::value_of<Tag>::from(std::forward<decltype(value)>(value));
 		}
 };
 

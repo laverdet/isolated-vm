@@ -15,6 +15,7 @@ target_sources(ivm_value_napi
 		include/object.cc
 		include/string.cc
 		include/utility.cc
+		include/value_of.cc
 		visit.cc
 )
 target_compile_definitions(ivm_value_napi PRIVATE

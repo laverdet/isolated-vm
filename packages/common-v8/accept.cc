@@ -27,11 +27,11 @@ struct accept<void, v8::Local<v8::Data>> {
 			return isolate_;
 		}
 
-		auto operator()(undefined_tag /*tag*/, auto&& /*undefined*/) const -> v8::Local<v8::Value> {
+		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const -> v8::Local<v8::Value> {
 			return v8::Undefined(isolate());
 		}
 
-		auto operator()(null_tag /*tag*/, auto&& /*null*/) const -> v8::Local<v8::Value> {
+		auto operator()(null_tag /*tag*/, const auto& /*null*/) const -> v8::Local<v8::Value> {
 			return v8::Null(isolate());
 		}
 
@@ -148,7 +148,7 @@ struct accept<Meta, v8::MaybeLocal<Type>> : accept<Meta, v8::Local<Type>> {
 			return {accept_type::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...)};
 		}
 
-		auto operator()(undefined_tag /*tag*/, auto&& /*undefined*/) const -> v8::MaybeLocal<Type> {
+		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const -> v8::MaybeLocal<Type> {
 			return v8::MaybeLocal<Type>{};
 		}
 };

@@ -50,7 +50,7 @@ template <>
 struct accept<void, void> {
 		accept() = default;
 		// Recursive acceptor constructor
-		constexpr accept(int /*dummy*/, auto&& /*visit*/, const auto_accept auto& /*accept*/) {}
+		constexpr accept(int /*dummy*/, const auto& /*visit*/, const auto_accept auto& /*accept*/) {}
 };
 
 // `accept` with transfer wrapping
