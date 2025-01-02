@@ -26,6 +26,7 @@ target_sources(ivm_value
 		tuple/accept.cc
 		tuple/visit.cc
 		type/date.cc
+		type/function.cc
 		type/value.cc
 		union/accept.cc
 		union/types.cc

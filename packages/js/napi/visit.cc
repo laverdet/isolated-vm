@@ -1,5 +1,4 @@
 module;
-#include <type_traits>
 #include <utility>
 #include <variant>
 export module ivm.napi:visit;
@@ -25,8 +24,11 @@ struct visit<void, napi_value> : visit<void, v8::Local<v8::Value>> {
 				env_{env} {}
 		visit(napi_env env, v8::Isolate* isolate) :
 				visit{env, isolate, isolate->GetCurrentContext()} {}
+		// nb: TODO: Remove (again)
+		explicit visit(napi_env env) :
+				visit{env, v8::Isolate::GetCurrent()} {}
 
-		auto env() const -> napi_env {
+		[[nodiscard]] auto env() const -> napi_env {
 			return env_;
 		}
 

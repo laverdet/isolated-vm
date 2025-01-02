@@ -3,6 +3,8 @@ module;
 export module ivm.node:environment;
 import :uv_scheduler;
 import ivm.isolated_v8;
+import ivm.js;
+import ivm.napi;
 import ivm.utility;
 import napi;
 import v8;
@@ -31,10 +33,10 @@ export class environment : util::non_moveable {
 };
 
 // Module forward declarations
-export auto make_compile_module(environment& env) -> napi_value;
-export auto make_compile_script(environment& env) -> napi_value;
-export auto make_create_agent(environment& env) -> napi_value;
-export auto make_create_realm(environment& env) -> napi_value;
-export auto make_run_script(environment& env) -> napi_value;
+export auto make_compile_module(environment& env) -> js::napi::value<js::function_tag>;
+export auto make_compile_script(environment& env) -> js::napi::value<js::function_tag>;
+export auto make_create_agent(environment& env) -> js::napi::value<js::function_tag>;
+export auto make_create_realm(environment& env) -> js::napi::value<js::function_tag>;
+export auto make_run_script(environment& env) -> js::napi::value<js::function_tag>;
 
 } // namespace ivm

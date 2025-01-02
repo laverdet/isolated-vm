@@ -12,6 +12,7 @@ target_sources(ivm_value_napi
 		accept.cc
 		include/_module.cc
 		include/array.cc
+		include/function.cc
 		include/handle.cc
 		include/number.cc
 		include/object_like.cc

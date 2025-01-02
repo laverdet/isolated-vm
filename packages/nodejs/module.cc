@@ -1,8 +1,5 @@
 module;
-#include <concepts>
-#include <future>
 #include <optional>
-#include <stop_token>
 #include <tuple>
 #include <utility>
 #include <variant>
@@ -34,10 +31,10 @@ auto compile_module(
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](environment& env, js_module module_, std::vector<ivm::module_request> requests) -> expected_value {
-			auto handle = make_collected_external<ivm::js_module>(env, std::move(module_));
+			auto* handle = make_collected_external<ivm::js_module>(env, std::move(module_));
 			return js::transfer_strict<napi_value>(
 				std::tuple{
-					js::transfer_direct{std::move(handle)},
+					js::transfer_direct{handle},
 					std::move(requests),
 				},
 				std::tuple{},
@@ -63,8 +60,8 @@ auto compile_module(
 	return promise;
 }
 
-auto make_compile_module(environment& env) -> napi_value {
-	return make_node_function<compile_module>(env);
+auto make_compile_module(environment& env) -> js::napi::value<js::function_tag> {
+	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<compile_module>{}, env);
 }
 
 } // namespace ivm

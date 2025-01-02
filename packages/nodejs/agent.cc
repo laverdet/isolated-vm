@@ -85,12 +85,12 @@ auto create_realm(environment& env, js::iv8::external_reference<agent>& agent) -
 	return promise;
 }
 
-auto make_create_agent(environment& env) -> napi_value {
-	return make_node_function<create_agent>(env);
+auto make_create_agent(environment& env) -> js::napi::value<js::function_tag> {
+	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<create_agent>{}, env);
 }
 
-auto make_create_realm(environment& env) -> napi_value {
-	return make_node_function<create_realm>(env);
+auto make_create_realm(environment& env) -> js::napi::value<js::function_tag> {
+	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<create_realm>{}, env);
 }
 
 } // namespace ivm

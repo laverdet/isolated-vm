@@ -65,12 +65,12 @@ auto run_script(
 	return promise;
 }
 
-auto make_compile_script(environment& env) -> napi_value {
-	return make_node_function<compile_script>(env);
+auto make_compile_script(environment& env) -> js::napi::value<js::function_tag> {
+	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<compile_script>{}, env);
 }
 
-auto make_run_script(environment& env) -> napi_value {
-	return make_node_function<run_script>(env);
+auto make_run_script(environment& env) -> js::napi::value<js::function_tag> {
+	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<run_script>{}, env);
 }
 
 } // namespace ivm
