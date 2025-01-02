@@ -124,7 +124,7 @@ endif()
 add_subdirectory(packages/utility)
 
 # JavaScript adjacent code which is not specific to v8 or nodejs
-add_subdirectory(packages/value)
+add_subdirectory(packages/js/value)
 
 # v8 common packages. These source files are built twice, once which links against nodejs, and
 # another which links against internal v8/z8.
@@ -133,7 +133,7 @@ add_subdirectory(packages/value)
 # https://gitlab.kitware.com/cmake/cmake/-/issues/18090
 set(IV8_PREFIX ivm_nodejs)
 set(IV8_INCLUDE_DIR ${NODE_DIST_DIR}/include/node)
-add_subdirectory(packages/common-v8 ivm_nodejs_common_v8)
+add_subdirectory(packages/js/v8 ivm_nodejs_jsv8)
 add_subdirectory(packages/third_party/v8 ivm_nodejs_v8)
 
 # Embedded v8
@@ -141,7 +141,7 @@ set(IV8_PREFIX ivm_embedded)
 set(IV8_INCLUDE_DIR ${V8_INCLUDE_DIR})
 set(IVM_IV8_EMBEDDED ON)
 set(IVM_IV8_TRICKSHOT ON)
-add_subdirectory(packages/common-v8 ivm_embedded_common_v8)
+add_subdirectory(packages/js/v8 ivm_embedded_jsv8)
 add_subdirectory(packages/third_party/v8 ivm_embedded_v8)
 
 # libivm-v8
@@ -151,5 +151,5 @@ add_subdirectory(packages/libivm-v8)
 add_subdirectory(packages/third_party/napi)
 
 # nodejs require-able module
-add_subdirectory(packages/value-napi ivm_value_napi)
+add_subdirectory(packages/js/napi ivm_jsnapi)
 add_subdirectory(packages/nodejs)
