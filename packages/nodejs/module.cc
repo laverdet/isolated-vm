@@ -13,8 +13,8 @@ import :external;
 import :utility;
 import ivm.isolated_v8;
 import ivm.iv8;
+import ivm.js;
 import ivm.napi;
-import ivm.value;
 import napi;
 
 namespace ivm {

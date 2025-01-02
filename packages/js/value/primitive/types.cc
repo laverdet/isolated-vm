@@ -2,7 +2,7 @@ module;
 #include <cstdint>
 #include <string>
 #include <variant>
-export module ivm.value:primitive.types;
+export module ivm.js:primitive.types;
 import :date;
 import :tag;
 

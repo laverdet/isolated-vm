@@ -3,7 +3,7 @@ module;
 #include <string>
 #include <type_traits>
 #include <variant>
-export module ivm.value:primitive.tag;
+export module ivm.js:primitive.tag;
 import :date;
 import :tag;
 

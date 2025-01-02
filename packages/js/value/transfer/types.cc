@@ -1,6 +1,6 @@
 module;
 #include <type_traits>
-export module ivm.value:transfer.types;
+export module ivm.js:transfer.types;
 import ivm.utility;
 
 namespace ivm::js {

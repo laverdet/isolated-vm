@@ -4,8 +4,8 @@ export module ivm.napi:object;
 import :array;
 import :object_like;
 import :value_of;
+import ivm.js;
 import ivm.utility;
-import ivm.value;
 import napi;
 
 namespace ivm::js::napi {

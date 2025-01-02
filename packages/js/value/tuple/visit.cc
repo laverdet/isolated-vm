@@ -2,7 +2,7 @@ module;
 #include <cstddef>
 #include <tuple>
 #include <utility>
-export module ivm.value:tuple.visit;
+export module ivm.js:tuple.visit;
 import :transfer;
 
 namespace ivm::js {

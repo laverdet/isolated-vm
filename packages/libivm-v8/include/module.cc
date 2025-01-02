@@ -7,8 +7,8 @@ import :agent;
 import :realm;
 import :script;
 import ivm.iv8;
+import ivm.js;
 import ivm.utility;
-import ivm.value;
 import v8;
 
 namespace ivm {

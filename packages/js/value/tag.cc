@@ -1,7 +1,7 @@
 module;
 #include <concepts>
 #include <type_traits>
-export module ivm.value:tag;
+export module ivm.js:tag;
 
 export namespace ivm::js {
 

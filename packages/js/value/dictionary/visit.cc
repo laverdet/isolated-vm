@@ -3,7 +3,7 @@ module;
 #include <string>
 #include <utility>
 #include <variant>
-export module ivm.value:dictionary.visit;
+export module ivm.js:dictionary.visit;
 import :dictionary.helpers;
 import :dictionary.vector_of;
 import :transfer;

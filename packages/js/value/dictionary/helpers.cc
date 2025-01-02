@@ -1,7 +1,7 @@
 module;
 #include <boost/variant.hpp>
 #include <type_traits>
-export module ivm.value:dictionary.helpers;
+export module ivm.js:dictionary.helpers;
 
 namespace ivm::js {
 

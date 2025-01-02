@@ -2,8 +2,8 @@ module;
 #include <type_traits>
 #include <utility>
 export module ivm.iv8:external;
+import ivm.js;
 import ivm.utility;
-import ivm.value;
 import v8;
 
 namespace ivm::js::iv8 {

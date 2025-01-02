@@ -1,6 +1,6 @@
 module;
 #include <string>
-export module ivm.value:union_.types;
+export module ivm.js:union_.types;
 import :tag;
 import :variant.types;
 

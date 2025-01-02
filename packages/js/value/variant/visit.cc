@@ -5,7 +5,7 @@ module;
 #include <type_traits>
 #include <utility>
 #include <variant>
-export module ivm.value:variant.visit;
+export module ivm.js:variant.visit;
 import :transfer;
 import :variant.types;
 import ivm.utility;

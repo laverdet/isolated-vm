@@ -11,8 +11,8 @@ import :platform.foreground_runner;
 import :scheduler;
 import v8;
 import ivm.iv8;
+import ivm.js;
 import ivm.utility;
-import ivm.value;
 
 namespace ivm {
 

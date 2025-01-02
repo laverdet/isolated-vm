@@ -2,7 +2,7 @@ module;
 #include <string_view>
 #include <type_traits>
 #include <utility>
-export module ivm.value:struct_.helpers;
+export module ivm.js:struct_.helpers;
 import :struct_.types;
 import ivm.utility;
 

@@ -7,7 +7,7 @@
 #include <tuple>
 #include <utility>
 #include <variant>
-import ivm.value;
+import ivm.js;
 using namespace std::literals;
 #if __clang_major__ >= 20
 

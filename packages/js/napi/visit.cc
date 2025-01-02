@@ -6,8 +6,8 @@ export module ivm.napi:visit;
 import :object;
 import :string;
 import ivm.iv8;
+import ivm.js;
 import ivm.utility;
-import ivm.value;
 import napi;
 import v8;
 

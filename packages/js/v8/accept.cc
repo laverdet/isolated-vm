@@ -9,8 +9,8 @@ module;
 export module ivm.iv8:accept;
 import :date;
 import :string;
+import ivm.js;
 import ivm.utility;
-import ivm.value;
 import v8;
 
 namespace ivm::js {

@@ -6,8 +6,8 @@ export module ivm.isolated_v8:script;
 import :agent;
 import :realm;
 import ivm.iv8;
+import ivm.js;
 import ivm.utility;
-import ivm.value;
 import v8;
 
 namespace ivm {

@@ -2,7 +2,7 @@ module;
 #include <type_traits>
 #include <utility>
 #include <variant>
-export module ivm.value:variant.accept;
+export module ivm.js:variant.accept;
 import :tag;
 import :transfer;
 import :variant.types;

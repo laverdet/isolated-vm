@@ -1,7 +1,7 @@
 module;
 #include <span>
 #include <vector>
-export module ivm.value:vector.visit;
+export module ivm.js:vector.visit;
 import :transfer;
 import ivm.utility;
 

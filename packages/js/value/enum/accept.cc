@@ -2,7 +2,7 @@ module;
 #include <cstdint>
 #include <stdexcept>
 #include <type_traits>
-export module ivm.value:enum_.accept;
+export module ivm.js:enum_.accept;
 import ivm.utility;
 import :enum_.types;
 import :tag;

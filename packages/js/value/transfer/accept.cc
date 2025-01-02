@@ -1,7 +1,7 @@
 module;
 #include <type_traits>
 #include <utility>
-export module ivm.value:accept;
+export module ivm.js:accept;
 import :transfer.types;
 import :visit;
 

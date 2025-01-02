@@ -6,7 +6,7 @@ module;
 #include <tuple>
 #include <type_traits>
 #include <utility>
-export module ivm.value:struct_.accept;
+export module ivm.js:struct_.accept;
 import :struct_.helpers;
 import :tag;
 import :transfer;

@@ -13,8 +13,8 @@ import :handle;
 import :number;
 import :object;
 import :string;
+import ivm.js;
 import ivm.utility;
-import ivm.value;
 import v8;
 
 // nb: These visitors are split out to share implementations with the napi visitors in the case

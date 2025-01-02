@@ -8,9 +8,9 @@ module;
 #include <utility>
 export module ivm.node:utility;
 import :environment;
+import ivm.js;
 import ivm.napi;
 import ivm.utility;
-import ivm.value;
 import napi;
 
 namespace ivm {

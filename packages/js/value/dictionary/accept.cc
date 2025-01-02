@@ -3,7 +3,7 @@ module;
 #include <ranges>
 #include <type_traits>
 #include <utility>
-export module ivm.value:dictionary.accept;
+export module ivm.js:dictionary.accept;
 import :dictionary.helpers;
 import :dictionary.vector_of;
 import :tag;

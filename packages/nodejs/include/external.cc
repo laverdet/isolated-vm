@@ -6,9 +6,9 @@ module ivm.node:external;
 import :environment;
 import :utility;
 import ivm.iv8;
+import ivm.js;
 import ivm.napi;
 import ivm.utility;
-import ivm.value;
 import napi;
 import v8;
 

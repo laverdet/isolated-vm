@@ -1,7 +1,7 @@
 module;
 #include <type_traits>
 export module ivm.iv8:date;
-import ivm.value;
+import ivm.js;
 import v8;
 
 namespace ivm::js::iv8 {

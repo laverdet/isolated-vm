@@ -1,4 +1,4 @@
-export module ivm.value:enum_.types;
+export module ivm.js:enum_.types;
 
 namespace ivm::js {
 

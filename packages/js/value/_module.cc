@@ -1,4 +1,4 @@
-export module ivm.value;
+export module ivm.js;
 export import :date;
 export import :dictionary.vector_of;
 export import :enum_.types;

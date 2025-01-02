@@ -1,4 +1,4 @@
-export module ivm.value:visit;
+export module ivm.js:visit;
 import :transfer.types;
 
 namespace ivm::js {

@@ -5,7 +5,7 @@ module;
 #include <type_traits>
 #include <utility>
 #include <variant>
-export module ivm.value:struct_.types;
+export module ivm.js:struct_.types;
 import ivm.utility;
 
 namespace ivm::js {

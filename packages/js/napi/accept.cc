@@ -7,7 +7,7 @@ import :number;
 import :string;
 import :utility;
 import :value_of;
-import ivm.value;
+import ivm.js;
 import napi;
 import v8;
 

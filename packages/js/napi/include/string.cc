@@ -4,8 +4,8 @@ module;
 #include <utility>
 export module ivm.napi:string;
 import :utility;
+import ivm.js;
 import ivm.utility;
-import ivm.value;
 import napi;
 
 namespace ivm::js::napi {

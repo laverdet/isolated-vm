@@ -3,7 +3,7 @@ module;
 #include <tuple>
 #include <type_traits>
 #include <utility>
-export module ivm.value:transfer;
+export module ivm.js:transfer;
 export import :transfer.types;
 export import :accept;
 export import :visit;

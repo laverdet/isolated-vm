@@ -2,7 +2,7 @@ module;
 #include <optional>
 #include <type_traits>
 #include <variant>
-export module ivm.value:primitive.visit;
+export module ivm.js:primitive.visit;
 import :primitive.tag;
 import :tag;
 import :transfer;

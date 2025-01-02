@@ -3,7 +3,7 @@ module;
 #include <optional>
 #include <variant>
 export module ivm.isolated_v8:platform.clock;
-import ivm.value;
+import ivm.js;
 
 using namespace std::chrono;
 using ivm::js::js_clock;

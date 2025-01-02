@@ -3,9 +3,9 @@ module;
 module ivm.node;
 import :environment;
 import ivm.isolated_v8;
+import ivm.js;
 import ivm.napi;
 import ivm.utility;
-import ivm.value;
 import napi;
 import v8;
 

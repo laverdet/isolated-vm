@@ -4,7 +4,7 @@ module;
 #include <tuple>
 #include <utility>
 #include <variant>
-export module ivm.value:tuple.accept;
+export module ivm.js:tuple.accept;
 import :tag;
 import :transfer;
 import ivm.utility;
