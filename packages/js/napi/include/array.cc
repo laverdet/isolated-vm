@@ -2,17 +2,17 @@ module;
 #include <compare>
 #include <cstdint>
 export module ivm.napi:array;
-import :container;
+import :object_like;
 import ivm.utility;
 import napi;
 
 namespace ivm::js::napi {
 
-export class array : public container {
+export class array : public object_like {
 	public:
 		class iterator;
 		using value_type = napi_value;
-		using container::container;
+		using object_like::object_like;
 
 		[[nodiscard]] auto begin() const -> iterator;
 		[[nodiscard]] auto end() const -> iterator;

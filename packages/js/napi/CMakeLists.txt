@@ -2,16 +2,18 @@ add_library(ivm_value_napi OBJECT)
 target_sources(ivm_value_napi
 	PRIVATE
 		value/array.cc
-		value/container.cc
+		value/handle.cc
 		value/number.cc
+		value/object_like.cc
 		value/object.cc
 		value/string.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		accept.cc
 		include/_module.cc
 		include/array.cc
-		include/container.cc
+		include/handle.cc
 		include/number.cc
+		include/object_like.cc
 		include/object.cc
 		include/string.cc
 		include/utility.cc

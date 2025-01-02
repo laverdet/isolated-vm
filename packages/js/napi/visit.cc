@@ -43,13 +43,13 @@ struct visit<void, napi_value> : visit<void, v8::Local<v8::Value>> {
 					{
 						auto visit_entry = std::pair<const visit&, const visit&>{*this, *this};
 						if (js::napi::invoke(napi_is_array, env_, value)) {
-							return accept(list_tag{}, js::napi::object{env_, value}, visit_entry);
+							return accept(list_tag{}, js::napi::object{env_, js::napi::value_of<js::list_tag>::from(value)}, visit_entry);
 						} else if (js::napi::invoke(napi_is_date, env_, value)) {
 							return (*this)(js::napi::to_v8(value).As<v8::Date>(), accept);
 						} else if (js::napi::invoke(napi_is_promise, env_, value)) {
 							return accept(promise_tag{}, value);
 						}
-						return accept(dictionary_tag{}, js::napi::object{env_, value}, visit_entry);
+						return accept(dictionary_tag{}, js::napi::object{env_, js::napi::value_of<js::object_tag>::from(value)}, visit_entry);
 					}
 				case napi_external:
 					return (*this)(js::napi::to_v8(value).As<v8::External>(), accept);

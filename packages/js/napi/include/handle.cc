@@ -1,17 +1,17 @@
-module ivm.napi:container;
+module ivm.napi:handle;
 import napi;
 
 namespace ivm::js::napi {
 
-export class container {
+export class handle {
 	public:
-		container() = default;
-		container(napi_env env, napi_value value);
+		handle() = default;
+		handle(napi_env env, napi_value value);
 
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		operator napi_value() const;
 		auto operator*() const -> napi_value;
-		auto operator==(const container& right) const -> bool;
+		auto operator==(const handle& right) const -> bool;
 		[[nodiscard]] auto env() const -> napi_env;
 
 	private:

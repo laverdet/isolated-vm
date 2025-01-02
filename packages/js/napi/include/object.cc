@@ -1,18 +1,18 @@
 module;
 #include <ranges>
-#include <string_view>
 export module ivm.napi:object;
 import :array;
-import :container;
+import :object_like;
+import :value_of;
 import ivm.utility;
+import ivm.value;
 import napi;
 
 namespace ivm::js::napi {
 
-export class object : public container {
+export class object : public object_like {
 	public:
 		using value_type = std::pair<napi_value, napi_value>;
-		using container::container;
 
 	private:
 		class iterator_transform {
@@ -28,8 +28,7 @@ export class object : public container {
 		using range_type = std::ranges::transform_view<std::views::all_t<array&>, iterator_transform>;
 		using iterator = std::ranges::iterator_t<range_type>;
 
-		[[nodiscard]] auto get(napi_value key) const -> napi_value;
-		[[nodiscard]] auto has(napi_value key) const -> bool;
+		object(napi_env env, value_of<js::object_tag> value);
 		[[nodiscard]] auto into_range() const -> range_type;
 
 	private:
