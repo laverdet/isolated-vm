@@ -66,11 +66,11 @@ auto foreground_runner::storage::acquire() -> task_type {
 
 auto foreground_runner::storage::flush_delayed() -> void {
 	if (!delayed_tasks_.empty()) {
-		auto predicate = delayed_task::timeout_predicate();
+		auto predicate = delayed_task::timeout_predicate{};
 		do {
 			const auto& top = delayed_tasks_.top();
 			if (predicate(top)) {
-				tasks_.emplace_back(top.nestability_, std::move(top.task_));
+				tasks_.emplace_back(top.nestability, std::move(top.task));
 				delayed_tasks_.pop();
 			}
 		} while (!delayed_tasks_.empty());
@@ -92,7 +92,7 @@ auto foreground_runner::storage::should_resume() const -> bool {
 	}
 	// Also check expiring delayed tasks
 	if (!delayed_tasks_.empty()) {
-		auto predicate = delayed_task::timeout_predicate();
+		auto predicate = delayed_task::timeout_predicate{};
 		if (predicate(delayed_tasks_.top())) {
 			return true;
 		}

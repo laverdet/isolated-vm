@@ -48,23 +48,32 @@ auto task_runner::post_non_nestable(task_type /*task*/) -> void {
 
 // Contains a task and a time point after which it should run.
 struct task_runner::delayed_task {
+		struct timeout_predicate;
 		auto operator<=>(const delayed_task& right) const -> std::strong_ordering;
-		static auto timeout_predicate();
 
-		nestability nestability_;
-		steady_clock::time_point timeout_;
-		mutable task_type task_;
+		nestability nestability;
+		steady_clock::time_point timeout;
+		mutable task_type task;
+};
+
+struct task_runner::delayed_task::timeout_predicate {
+	public:
+		timeout_predicate();
+		auto operator()(const delayed_task& task) const -> bool;
+
+	private:
+		std::chrono::steady_clock::time_point now;
 };
 
 auto task_runner::delayed_task::operator<=>(const delayed_task& right) const -> std::strong_ordering {
-	return timeout_ <=> right.timeout_;
+	return timeout <=> right.timeout;
 }
 
-auto task_runner::delayed_task::timeout_predicate() {
-	auto now = steady_clock::now();
-	return [ = ](const delayed_task& task) {
-		return task.timeout_ < now;
-	};
+task_runner::delayed_task::timeout_predicate::timeout_predicate() :
+		now{std::chrono::steady_clock::now()} {}
+
+auto task_runner::delayed_task::timeout_predicate::operator()(const delayed_task& task) const -> bool {
+	return task.timeout < now;
 }
 
 // The result of `IdleTasksEnabled` (& co.) will change depending on whether or not `Self`
