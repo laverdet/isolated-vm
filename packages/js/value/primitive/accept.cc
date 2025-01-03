@@ -40,7 +40,7 @@ template <>
 struct accept<void, std::nullptr_t> : accept<void, void> {
 		using accept<void, void>::accept;
 		constexpr auto operator()(null_tag /*tag*/, const auto& /*null*/) const {
-			return std::nullptr_t{};
+			return nullptr;
 		}
 };
 

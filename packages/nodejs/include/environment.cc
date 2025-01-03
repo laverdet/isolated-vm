@@ -37,6 +37,7 @@ export auto make_compile_module(environment& env) -> js::napi::value<js::functio
 export auto make_compile_script(environment& env) -> js::napi::value<js::function_tag>;
 export auto make_create_agent(environment& env) -> js::napi::value<js::function_tag>;
 export auto make_create_realm(environment& env) -> js::napi::value<js::function_tag>;
+export auto make_link_module(environment& env) -> js::napi::value<js::function_tag>;
 export auto make_run_script(environment& env) -> js::napi::value<js::function_tag>;
 
 } // namespace ivm

@@ -133,7 +133,7 @@ struct visit<void, v8::Local<v8::Value>>
 				return accept(dictionary_tag{}, iv8::object_handle{value.As<iv8::object>(), {isolate_, context_}}, visit_entry);
 			} else if (value->IsNullOrUndefined()) {
 				if (value->IsNull()) {
-					return accept(null_tag{}, std::nullptr_t{});
+					return accept(null_tag{}, nullptr);
 				} else {
 					return accept(undefined_tag{}, std::monostate{});
 				}

@@ -194,8 +194,18 @@ struct accept<Meta, value_by_key<Key, Type, napi_value>> {
 template <class Tag>
 struct accept<void, js::napi::value<Tag>> : accept<void, void> {
 		using accept<void, void>::accept;
-		auto operator()(Tag /*tag*/, auto&& value) const -> js::napi::value<Tag> {
+
+		auto operator()(undefined_tag /*tag*/, std::monostate /*undefined*/) const -> js::napi::value<Tag> {
+			return js::napi::value<Tag>::from(nullptr);
+		}
+
+		auto operator()(Tag /*tag*/, napi_value value) const -> js::napi::value<Tag> {
 			return js::napi::value<Tag>::from(std::forward<decltype(value)>(value));
+		}
+
+		template <class Type>
+		auto operator()(Tag /*tag*/, v8::Local<Type> value) const -> js::napi::value<Tag> {
+			return js::napi::value<Tag>::from(from_v8(value));
 		}
 };
 

@@ -4,11 +4,19 @@ declare module "backend_v8.node" {
 	class Realm { readonly #private; }
 	class Script { readonly #private; }
 
+	class Internal { readonly #private; }
+	type InternalCallback<Type> = [
+		Internal,
+		(internal: Internal, error: unknown | null, value?: Type) => void,
+	];
+
 	export type { Agent, Module, Realm, Script };
 
 	type CompileModuleOptions = import("./agent.ts").Agent.CompileModuleOptions;
 	type CompileScriptOptions = import("./agent.ts").Agent.CompileScriptOptions;
 	type CreateAgentOptions = import("./agent.ts").Agent.CreateOptions;
+	type ImportAttributes = import("./module.ts").ImportAttributes;
+	type ModuleLinker = (specifier: string, referrer: string | undefined, attributes: ImportAttributes | undefined, ...callback: InternalCallback<Module>) => void;
 	type ModuleRequest = import("./module.ts").ModuleRequest;
 
 	/** @internal */
@@ -17,6 +25,7 @@ declare module "backend_v8.node" {
 		compileScript: (agent: Agent, code: string, options: CompileScriptOptions | undefined) => Promise<Script>;
 		createAgent: (options: CreateAgentOptions | undefined) => Promise<Agent>;
 		createRealm: (agent: Agent) => Promise<Realm>;
+		linkModule: (agent: Agent, realm: Realm, module: Module, linker: ModuleLinker) => Promise<void>;
 		runScript: (agent: Agent, script: Script, realm: Realm) => Promise<Script>;
 	};
 	export default exports;

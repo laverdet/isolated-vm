@@ -59,7 +59,7 @@ struct visit<void, napi_value> : visit<void, v8::Local<v8::Value>> {
 				case napi_symbol:
 					return accept(symbol_tag{}, value);
 				case napi_null:
-					return accept(null_tag{}, std::nullptr_t{});
+					return accept(null_tag{}, value);
 				case napi_undefined:
 					return accept(undefined_tag{}, std::monostate{});
 				case napi_function:

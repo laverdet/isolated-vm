@@ -29,4 +29,5 @@ export const compileModule: typeof backend.compileModule = backend.compileModule
 export const compileScript: typeof backend.compileScript = backend.compileScript;
 export const createAgent: typeof backend.createAgent = backend.createAgent;
 export const createRealm: typeof backend.createRealm = backend.createRealm;
+export const linkModule: typeof backend.linkModule = backend.linkModule;
 export const runScript: typeof backend.runScript = backend.runScript;

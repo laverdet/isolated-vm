@@ -24,6 +24,7 @@ export using ::napi_status;
 export using ::napi_value;
 export using ::napi_valuetype;
 
+export using ::napi_call_function;
 export using ::napi_close_handle_scope;
 export using ::napi_create_array_with_length;
 export using ::napi_create_array;

@@ -41,7 +41,7 @@ auto js_module::requests(realm::scope& realm) -> std::vector<module_request> {
 						js::transfer<js::string_t>(triplet[ 1 ].template As<v8::Value>(), visit_args, std::tuple{})
 					};
 				});
-			return {specifier, module_request::attributes_type{attributes_view}};
+			return {specifier, module_request::attributes_type{std::move(attributes_view)}};
 		});
 	return {requests_view.begin(), requests_view.end()};
 }
@@ -76,6 +76,13 @@ auto js_module::compile(realm::scope& realm, v8::Local<v8::String> source_text, 
 		);
 	}
 	return js_module{realm.agent(), module_handle};
+}
+
+auto js_module::link(realm::scope& realm, v8::Module::ResolveModuleCallback callback) -> void {
+	auto* isolate = realm.isolate();
+	auto module = module_.Get(isolate);
+	// module->InstantiateModule(realm.context(), callback).ToChecked();
+	module->InstantiateModule(realm.context(), callback);
 }
 
 } // namespace ivm

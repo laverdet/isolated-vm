@@ -4,6 +4,7 @@ module;
 #include <tuple>
 #include <type_traits>
 export module ivm.napi:function;
+import :object_like;
 import :utility;
 import :value;
 import ivm.js;
@@ -57,6 +58,25 @@ auto factory<function_tag>::operator()(const free_function<Fn>& /*callback*/, au
 		);
 	};
 	return value<function_tag>::from(js::napi::invoke(napi_create_function, env(), nullptr, 0, callback, &data));
+}
+
+export class function : public object_like {
+	public:
+		function(napi_env env, value<js::function_tag> value) :
+				object_like{env, value} {}
+
+		template <class Result>
+		auto invoke(auto&&... args) -> Result;
+};
+
+template <class Result>
+auto function::invoke(auto&&... args) -> Result {
+	std::array<napi_value, sizeof...(args)> arg_values{
+		js::transfer_strict<napi_value>(args, std::tuple{}, std::tuple{env()})...
+	};
+	auto undefined = js::napi::value<js::undefined_tag>::make(env());
+	auto* result = js::napi::invoke(napi_call_function, env(), undefined, *this, arg_values.size(), arg_values.data());
+	return js::transfer<Result>(result, std::tuple{env()}, std::tuple{});
 }
 
 } // namespace ivm::js::napi
