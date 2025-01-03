@@ -95,9 +95,9 @@ auto link_module(
 			module.link(
 				realm_scope,
 				[ & ](
-					const auto& specifier,
-					const auto& referrer,
-					const auto& attributes
+					auto specifier,
+					auto referrer,
+					auto attributes
 				) mutable -> ivm::js_module& {
 					std::promise<ivm::js_module*> promise;
 					auto future = promise.get_future();
@@ -106,23 +106,20 @@ auto link_module(
 							js::napi::handle_scope scope{env.nenv()};
 							auto callback =
 								[](
-									environment& /*env*/,
-									js::iv8::external_reference<std::promise<js_module*>>& future,
-									js::napi::value<js::value_tag>, /*error*/
+									std::promise<js_module*>& promise,
+									js::napi::value<js::value_tag> /*error*/,
 									js::iv8::external_reference<js_module>* module
 								) -> void {
 								if (module) {
-									future->set_value(&**module);
+									promise.set_value(&**module);
 								}
 							};
-							auto callback_fn = js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<callback>{}, env);
-							auto* callback_internal = make_collected_external<std::promise<js_module*>>(env, std::move(promise));
-							auto link_callback = js::napi::function{env.nenv(), js::napi::value<js::function_tag>::from(*link_callback_ref)};
+							auto callback_fn = js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<callback>{}, promise);
+							auto link_callback = js::napi::function{env.nenv(), *link_callback_ref};
 							link_callback.invoke<std::monostate>(
 								std::move(specifier),
 								std::move(referrer),
 								std::move(attributes),
-								js::transfer_direct{callback_internal},
 								js::transfer_direct{callback_fn}
 							);
 						}

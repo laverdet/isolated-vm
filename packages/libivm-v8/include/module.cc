@@ -94,7 +94,11 @@ auto js_module::link(realm::scope& realm, auto callback) -> void {
 				};
 			});
 		auto attributes_vector = module_request::attributes_type{std::move(attributes_view)};
-		auto& result = thread_callback(specifier_string, referrer_name, attributes_vector);
+		auto& result = thread_callback(
+			std::move(specifier_string),
+			std::move(referrer_name),
+			std::move(attributes_vector)
+		);
 		return result.module_.Get(isolate);
 	};
 	link(realm, v8_callback);

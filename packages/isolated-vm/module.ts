@@ -46,13 +46,13 @@ export class Module {
 	}
 
 	link(linker: ModuleLinker): Promise<void> {
-		return ivm.linkModule(this.#agent, this.#realm, this.#module, (specifier, parentName, attributes, internal, callback) => {
+		return ivm.linkModule(this.#agent, this.#realm, this.#module, (specifier, parentName, attributes, callback) => {
 			void async function() {
 				try {
 					const module = await linker(specifier, parentName, attributes);
-					callback(internal, null, module.#module);
+					callback(null, module.#module);
 				} catch (error) {
-					callback(internal, error);
+					callback(error);
 				}
 			}();
 		});
