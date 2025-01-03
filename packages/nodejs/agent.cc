@@ -33,7 +33,7 @@ struct make_agent_options {
 		std::optional<double> random_seed;
 };
 
-auto create_agent(environment& env, std::optional<make_agent_options> options_optional) -> napi_value {
+auto create_agent(environment& env, std::optional<make_agent_options> options_optional) {
 	auto options = std::move(options_optional).value_or(make_agent_options{});
 	auto& cluster = env.cluster();
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, ivm::agent agent) -> expected_value {
@@ -66,10 +66,10 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 		options.random_seed
 	);
 
-	return promise;
+	return js::transfer_direct{promise};
 }
 
-auto create_realm(environment& env, js::iv8::external_reference<agent>& agent) -> napi_value {
+auto create_realm(environment& env, js::iv8::external_reference<agent>& agent) {
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, ivm::realm realm) -> expected_value {
 		return make_collected_external<ivm::realm>(env, std::move(realm));
 	});
@@ -82,7 +82,7 @@ auto create_realm(environment& env, js::iv8::external_reference<agent>& agent) -
 		}
 	);
 
-	return promise;
+	return js::transfer_direct{promise};
 }
 
 auto make_create_agent(environment& env) -> js::napi::value<js::function_tag> {

@@ -28,7 +28,7 @@ auto compile_module(
 	js::iv8::external_reference<realm>& realm_,
 	js::string_t source_text,
 	std::optional<compile_module_options> options_optional
-) -> napi_value {
+) {
 	auto options = std::move(options_optional).value_or(compile_module_options{});
 	auto [ dispatch, promise ] = make_promise(
 		env,
@@ -59,7 +59,7 @@ auto compile_module(
 			dispatch(std::move(module), requests);
 		}
 	);
-	return promise;
+	return js::transfer_direct{promise};
 }
 
 auto link_module(
@@ -68,7 +68,7 @@ auto link_module(
 	js::iv8::external_reference<realm>& realm_,
 	js::iv8::external_reference<js_module>& module_,
 	js::napi::value<js::function_tag> link_callback_
-) -> napi_value {
+) {
 	auto* nenv = env.nenv();
 	auto callback = reference{nenv, link_callback_};
 	auto scheduler = env.scheduler();
@@ -106,15 +106,14 @@ auto link_module(
 							handle_scope scope{env.nenv()};
 							auto callback =
 								[](
-									environment& env,
+									environment& /*env*/,
 									js::iv8::external_reference<std::promise<js_module*>>& future,
 									js::napi::value<js::value_tag>, /*error*/
 									js::iv8::external_reference<js_module>* module
-								) -> napi_value {
+								) -> void {
 								if (module) {
 									future->set_value(&**module);
 								}
-								return js::transfer_strict<napi_value>(std::monostate{}, std::tuple{}, std::tuple{env.nenv()});
 							};
 							auto callback_fn = js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<callback>{}, env);
 							auto* callback_internal = make_collected_external<std::promise<js_module*>>(env, std::move(promise));
@@ -134,7 +133,7 @@ auto link_module(
 			dispatch();
 		}
 	);
-	return promise;
+	return js::transfer_direct{promise};
 }
 
 auto make_compile_module(environment& env) -> js::napi::value<js::function_tag> {

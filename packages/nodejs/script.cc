@@ -24,7 +24,7 @@ auto compile_script(
 	js::iv8::external_reference<agent>& agent,
 	js::string_t code_string,
 	std::optional<compile_script_options> options_optional
-) -> napi_value {
+) {
 	auto options = std::move(options_optional).value_or(compile_script_options{});
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, ivm::script script) -> expected_value {
 		return make_collected_external<ivm::script>(env, std::move(script));
@@ -39,7 +39,7 @@ auto compile_script(
 			dispatch(ivm::script::compile(agent, std::move(code_string), std::move(origin)));
 		}
 	);
-	return promise;
+	return js::transfer_direct{promise};
 }
 
 auto run_script(
@@ -47,7 +47,7 @@ auto run_script(
 	js::iv8::external_reference<agent>& agent,
 	js::iv8::external_reference<script>& script,
 	js::iv8::external_reference<realm>& realm
-) -> napi_value {
+) {
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, js::value_t result) -> expected_value {
 		return js::transfer_strict<napi_value>(std::move(result), std::tuple{}, std::tuple{env.nenv()});
 	});
@@ -62,7 +62,7 @@ auto run_script(
 			dispatch(std::move(result));
 		}
 	);
-	return promise;
+	return js::transfer_direct{promise};
 }
 
 auto make_compile_script(environment& env) -> js::napi::value<js::function_tag> {

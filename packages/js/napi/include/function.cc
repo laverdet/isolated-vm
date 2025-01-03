@@ -3,6 +3,7 @@ module;
 #include <stdexcept>
 #include <tuple>
 #include <type_traits>
+#include <variant>
 export module ivm.napi:function;
 import :object_like;
 import :utility;
@@ -46,16 +47,24 @@ auto factory<function_tag>::operator()(const free_function<Fn>& /*callback*/, au
 			throw std::runtime_error{"Too many arguments"};
 		}
 		auto& data = *static_cast<data_type*>(data_ptr);
-		return std::apply(
-			Fn,
-			std::tuple_cat(
-				std::forward_as_tuple(data),
-				// nb: Invokes `visit(napi_env)` constructor. The isolate is available on the environment
-				// object without needing to invoke `v8::Isolate::GetCurrent()`. But that's in the nodejs
-				// module so it would need to be further abstracted.
-				js::transfer<parameters_type>(std::span{arguments}.subspan(0, count), std::tuple{env}, std::tuple{})
-			)
-		);
+		auto run = [ & ]() -> decltype(auto) {
+			return std::apply(
+				Fn,
+				std::tuple_cat(
+					std::forward_as_tuple(data),
+					// nb: Invokes `visit(napi_env)` constructor. The isolate is available on the environment
+					// object without needing to invoke `v8::Isolate::GetCurrent()`. But that's in the nodejs
+					// module so it would need to be further abstracted.
+					js::transfer<parameters_type>(std::span{arguments}.subspan(0, count), std::tuple{env}, std::tuple{})
+				)
+			);
+		};
+		if constexpr (std::is_void_v<std::invoke_result_t<decltype(run)>>) {
+			run();
+			return js::napi::value<undefined_tag>::make(env);
+		} else {
+			return js::transfer_strict<napi_value>(run(), std::tuple{}, std::tuple{env});
+		}
 	};
 	return value<function_tag>::from(js::napi::invoke(napi_create_function, env(), nullptr, 0, callback, &data));
 }
