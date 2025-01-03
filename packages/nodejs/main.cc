@@ -1,5 +1,6 @@
 #include <node_api.h>
 #include <memory>
+#include <tuple>
 import ivm.napi;
 import ivm.node;
 import ivm.js;
@@ -11,11 +12,17 @@ NAPI_MODULE_INIT(/*napi_env env, napi_value exports*/) {
 	// Initialize isolated-vm environment for this nodejs context
 	auto ienv = std::make_unique<environment>(env);
 
-	js::napi::invoke0(napi_set_property, env, exports, js::napi::value<js::string_tag>::make(env, js::string_literal<"compileModule">{}), make_compile_module(*ienv));
-	js::napi::invoke0(napi_set_property, env, exports, js::napi::value<js::string_tag>::make(env, js::string_literal<"compileScript">{}), make_compile_script(*ienv));
-	js::napi::invoke0(napi_set_property, env, exports, js::napi::value<js::string_tag>::make(env, js::string_literal<"createAgent">{}), make_create_agent(*ienv));
-	js::napi::invoke0(napi_set_property, env, exports, js::napi::value<js::string_tag>::make(env, js::string_literal<"createRealm">{}), make_create_realm(*ienv));
-	js::napi::invoke0(napi_set_property, env, exports, js::napi::value<js::string_tag>::make(env, js::string_literal<"runScript">{}), make_run_script(*ienv));
+	js::napi::object::assign(
+		env,
+		js::napi::object{env, js::napi::value<js::object_tag>::from(exports)},
+		std::tuple{
+			std::pair{js::string_literal<"compileModule">{}, js::transfer_direct{make_compile_module(*ienv)}},
+			std::pair{js::string_literal<"compileScript">{}, js::transfer_direct{make_compile_script(*ienv)}},
+			std::pair{js::string_literal<"createAgent">{}, js::transfer_direct{make_create_agent(*ienv)}},
+			std::pair{js::string_literal<"createRealm">{}, js::transfer_direct{make_create_realm(*ienv)}},
+			std::pair{js::string_literal<"runScript">{}, js::transfer_direct{make_run_script(*ienv)}}
+		}
+	);
 
 	js::napi::invoke0(
 		napi_set_instance_data,

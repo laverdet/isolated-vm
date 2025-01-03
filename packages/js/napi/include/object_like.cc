@@ -10,6 +10,7 @@ export class object_like : public handle {
 
 		[[nodiscard]] auto get(napi_value key) const -> napi_value;
 		[[nodiscard]] auto has(napi_value key) const -> bool;
+		auto set(napi_value key, napi_value value) -> void;
 };
 
 } // namespace ivm::js::napi

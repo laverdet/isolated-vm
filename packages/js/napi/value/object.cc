@@ -5,6 +5,7 @@ module ivm.napi;
 import :array;
 import :utility;
 import :object;
+import ivm.js;
 import ivm.utility;
 import napi;
 

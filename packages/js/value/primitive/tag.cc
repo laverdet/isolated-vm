@@ -5,7 +5,9 @@ module;
 #include <variant>
 export module ivm.js:primitive.tag;
 import :date;
+import :string;
 import :tag;
+import ivm.utility;
 
 namespace ivm::js {
 
@@ -51,5 +53,8 @@ struct tag_for<std::string_view> : std::type_identity<string_tag_of<std::string_
 
 template <>
 struct tag_for<std::u16string> : std::type_identity<string_tag_of<std::u16string>> {};
+
+template <auto Literal>
+struct tag_for<js::string_literal<Literal>> : std::type_identity<string_tag_of<std::string>> {};
 
 } // namespace ivm::js
