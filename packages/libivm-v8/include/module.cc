@@ -32,6 +32,7 @@ export class js_module : util::non_copyable {
 		js_module() = delete;
 		js_module(agent::lock& agent, v8::Local<v8::Module> module_);
 
+		auto evaluate(realm::scope& realm_scope) -> js::value_t;
 		auto link(realm::scope& realm, auto callback) -> void;
 		auto requests(realm::scope& realm) -> std::vector<module_request>;
 
@@ -94,11 +95,19 @@ auto js_module::link(realm::scope& realm, auto callback) -> void {
 				};
 			});
 		auto attributes_vector = module_request::attributes_type{std::move(attributes_view)};
-		auto& result = thread_callback(
-			std::move(specifier_string),
-			std::move(referrer_name),
-			std::move(attributes_vector)
-		);
+		auto& result = std::invoke([ & ]() -> decltype(auto) {
+			isolate->Exit();
+			auto enter = util::scope_exit([ & ]() {
+				isolate->Enter();
+			});
+			v8::Unlocker unlocker{isolate};
+			auto&& result = thread_callback(
+				std::move(specifier_string),
+				std::move(referrer_name),
+				std::move(attributes_vector)
+			);
+			return result;
+		});
 		return result.module_.Get(isolate);
 	};
 	link(realm, v8_callback);

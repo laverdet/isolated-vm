@@ -18,6 +18,7 @@ target_sources(${IV8_PREFIX}_v8
 		persistent_handle.cc
 		platform.cc
 		primitive.cc
+		promise.cc
 		script.cc
 		v8.cc
 		value.cc

@@ -45,6 +45,10 @@ export class Module {
 		this.requests = requests;
 	}
 
+	evaluate(): Promise<unknown> {
+		return ivm.evaluateModule(this.#agent, this.#realm, this.#module);
+	}
+
 	link(linker: ModuleLinker): Promise<void> {
 		return ivm.linkModule(this.#agent, this.#realm, this.#module, (specifier, parentName, attributes, callback) => {
 			void async function() {

@@ -16,6 +16,7 @@ export import :object;
 export import :persistent_handle;
 export import :platform;
 export import :primitive;
+export import :promise;
 export import :script;
 export import :value;
 export import :weak_callback_info;

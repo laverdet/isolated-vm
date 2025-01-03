@@ -62,6 +62,29 @@ auto compile_module(
 	return js::transfer_direct{promise};
 }
 
+auto evaluate_module(
+	environment& env,
+	js::iv8::external_reference<agent>& agent,
+	js::iv8::external_reference<realm>& realm,
+	js::iv8::external_reference<js_module>& module_
+) {
+	auto [ dispatch, promise ] = make_promise(env, [](environment& env, js::value_t result) -> expected_value {
+		return js::transfer_strict<napi_value>(std::move(result), std::tuple{}, std::tuple{env.nenv()});
+	});
+	agent->schedule(
+		[ &realm,
+			&module_,
+			dispatch = std::move(dispatch) ](
+			ivm::agent::lock& agent
+		) mutable {
+			ivm::realm::managed_scope realm_scope{agent, *realm};
+			auto result = module_->evaluate(realm_scope);
+			dispatch(std::move(result));
+		}
+	);
+	return js::transfer_direct{promise};
+}
+
 auto link_module(
 	environment& env,
 	js::iv8::external_reference<agent>& agent,
@@ -135,6 +158,10 @@ auto link_module(
 
 auto make_compile_module(environment& env) -> js::napi::value<js::function_tag> {
 	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<compile_module>{}, env);
+}
+
+auto make_evaluate_module(environment& env) -> js::napi::value<js::function_tag> {
+	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<evaluate_module>{}, env);
 }
 
 auto make_link_module(environment& env) -> js::napi::value<js::function_tag> {

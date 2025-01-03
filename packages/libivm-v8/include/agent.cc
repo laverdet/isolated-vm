@@ -122,7 +122,7 @@ struct task_of : v8::Task {
 
 auto agent::host::run_task(std::invocable<lock&> auto task) -> void {
 	agent::managed_lock agent_lock{*this};
-	const auto handle_scope = v8::HandleScope{isolate_.get()};
+	v8::HandleScope handle_scope{isolate_.get()};
 	task(agent_lock);
 }
 

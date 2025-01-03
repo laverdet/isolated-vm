@@ -46,6 +46,20 @@ auto js_module::requests(realm::scope& realm) -> std::vector<module_request> {
 	return {requests_view.begin(), requests_view.end()};
 }
 
+auto js_module::evaluate(realm::scope& realm_scope) -> js::value_t {
+	auto* isolate = realm_scope.isolate();
+	auto module_handle = module_.Get(isolate);
+	auto context = realm_scope.context();
+	auto result = module_handle->Evaluate(context).ToLocalChecked();
+	auto promise = result.As<v8::Promise>();
+	if (module_handle->IsGraphAsync()) {
+		throw std::runtime_error("Module is async");
+	} else {
+		auto resolved_result = promise->Result();
+		return js::transfer<js::value_t>(resolved_result, std::tuple{isolate, context}, std::tuple{});
+	}
+}
+
 auto js_module::compile(realm::scope& realm, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module {
 	auto maybe_resource_name = js::transfer_strict<v8::MaybeLocal<v8::String>>(
 		source_origin.name,
@@ -81,8 +95,7 @@ auto js_module::compile(realm::scope& realm, v8::Local<v8::String> source_text, 
 auto js_module::link(realm::scope& realm, v8::Module::ResolveModuleCallback callback) -> void {
 	auto* isolate = realm.isolate();
 	auto module = module_.Get(isolate);
-	// module->InstantiateModule(realm.context(), callback).ToChecked();
-	module->InstantiateModule(realm.context(), callback);
+	module->InstantiateModule(realm.context(), callback).ToChecked();
 }
 
 } // namespace ivm
