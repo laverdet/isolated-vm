@@ -4,6 +4,20 @@ export module ivm.utility:comparator;
 
 namespace ivm::util {
 
+export template <class Type>
+struct address_predicate {
+	public:
+		explicit address_predicate(const Type& value) :
+				value_{&value} {}
+
+		auto operator()(const Type& right) const -> bool {
+			return value_ == &right;
+		}
+
+	private:
+		const Type* value_;
+};
+
 export template <class Hash>
 struct hash_comparator {
 		using is_transparent = void;

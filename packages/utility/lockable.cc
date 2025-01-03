@@ -3,6 +3,7 @@ module;
 #include <functional>
 #include <mutex>
 #include <shared_mutex>
+#include <stdexcept>
 #include <stop_token>
 #include <type_traits>
 #include <utility>
@@ -111,7 +112,10 @@ class lock_waitable {
 
 		auto wait(std::stop_token stop_token) -> bool
 			requires std::same_as<Waitable, std::condition_variable_any> {
-			return cv->wait(lock_, stop_token, predicate);
+			if (!stop_token.stop_possible()) {
+				throw std::logic_error{"stop_token is not stoppable"};
+			}
+			return cv->wait(lock_, stop_token, predicate) && !stop_token.stop_requested();
 		}
 
 	private:
@@ -155,7 +159,7 @@ class lockable {
 				resource_{std::forward<decltype(args)>(args)...} {}
 
 		auto read() -> read_type {
-			return {resource_, mutex_};
+			return read_type{resource_, mutex_};
 		}
 
 		auto read_waitable(std::predicate<const_reference> auto predicate) -> read_waitable_type<decltype(predicate)>

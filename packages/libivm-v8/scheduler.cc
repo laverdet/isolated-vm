@@ -1,11 +1,6 @@
 module;
 #include <boost/intrusive/list.hpp>
-#include <concepts>
-#include <condition_variable>
-#include <mutex>
-#include <stdexcept>
 #include <stop_token>
-#include <thread>
 module ivm.isolated_v8;
 import :scheduler;
 import ivm.utility;
@@ -19,13 +14,14 @@ scheduler::~scheduler() {
 		return handles.empty();
 	});
 	for (const auto& handle : *lock) {
-		handle.thread.write()->request_stop();
+		handle.stop_source_.write()->request_stop();
 	}
 	lock.wait();
 }
 
 scheduler::handle::handle(scheduler& scheduler) :
-		scheduler_{scheduler} {
+		scheduler_{scheduler},
+		stop_source_{std::nostopstate} {
 	scheduler_.handles.write()->push_back(*this);
 }
 
@@ -33,7 +29,7 @@ scheduler::handle::~handle() {
 	auto lock = scheduler_.handles.write_notify([](const handle_list& handles) {
 		return handles.empty();
 	});
-	scheduler_hook.unlink();
+	scheduler_hook_.unlink();
 }
 
 } // namespace ivm

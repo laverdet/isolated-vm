@@ -1,5 +1,4 @@
 module;
-#include <functional>
 #include <memory>
 #include <optional>
 #include <stop_token>
@@ -67,7 +66,7 @@ auto agent::host::clock_time_ms() -> int64_t {
 	return std::visit([](auto&& clock) { return clock.clock_time_ms(); }, clock_);
 }
 
-auto agent::host::execute(const std::stop_token& stop_token) -> void {
+auto agent::host::execute(std::stop_token stop_token) -> void {
 	// Enter task runner scope
 	task_runner_->scope([ & ](auto task_lock) {
 		do {

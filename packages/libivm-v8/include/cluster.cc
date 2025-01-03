@@ -29,20 +29,20 @@ export class cluster : util::non_moveable {
 
 auto cluster::make_agent(std::invocable<agent> auto fn, clock::any_clock clock, std::optional<double> random_seed) -> void {
 	auto agent_storage = std::make_shared<agent::storage>(scheduler_);
-	auto* storage_ptr = agent_storage.get();
+	auto& handle = agent_storage->scheduler_handle();
 	scheduler_.run(
 		[ clock,
 			random_seed,
 			agent_storage = std::move(agent_storage),
 			fn = std::move(fn) ](
-			const std::stop_token& stop_token
+			std::stop_token stop_token
 		) mutable {
 			auto task_runner = std::make_shared<foreground_runner>();
 			auto agent_host = std::make_shared<agent::host>(agent_storage, task_runner, clock, random_seed);
 			util::take(std::move(fn))(agent{agent_host, task_runner});
-			agent_host->execute(stop_token);
+			agent_host->execute(std::move(stop_token));
 		},
-		storage_ptr->scheduler_handle()
+		handle
 	);
 };
 

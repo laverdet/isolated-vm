@@ -1,7 +1,6 @@
 module;
 #include <chrono>
 #include <condition_variable>
-#include <memory>
 #include <mutex>
 #include <queue>
 export module ivm.isolated_v8:platform.foreground_runner;

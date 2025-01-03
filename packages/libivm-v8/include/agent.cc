@@ -1,5 +1,7 @@
 module;
 #include <concepts>
+#include <forward_list>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -72,7 +74,7 @@ class agent::host : util::non_moveable {
 		);
 
 		auto clock_time_ms() -> int64_t;
-		auto execute(const std::stop_token& stop_token) -> void;
+		auto execute(std::stop_token stop_token) -> void;
 		auto isolate() -> v8::Isolate*;
 		auto random_seed_latch() -> util::scope_exit<random_seed_unlatch>;
 		auto run_task(std::invocable<lock&> auto task) -> void;
@@ -92,6 +94,7 @@ class agent::host : util::non_moveable {
 		std::unique_ptr<v8::Isolate, isolate_destructor> isolate_;
 		v8::Global<v8::Context> scratch_context_;
 		scheduler async_scheduler_;
+		util::lockable<std::forward_list<scheduler::handle>> async_task_handles_;
 
 		bool should_give_seed_{false};
 		std::optional<double> random_seed_;
@@ -126,20 +129,24 @@ auto agent::host::run_task(std::invocable<lock&> auto task) -> void {
 auto agent::schedule_async(std::invocable<const std::stop_token&, lock&> auto task) -> void {
 	auto host = host_.lock();
 	if (host) {
-		auto& handle = host->agent_storage_->scheduler_handle();
+		auto& handle = std::invoke([ & ]() -> decltype(auto) {
+			return host->async_task_handles_.write()->emplace_front(host->async_scheduler_);
+		});
 		host->async_scheduler_.run(
-			[ host = std::move(host),
+			[ &handle,
+				host = std::move(host),
 				task = std::move(task) ](
-				const std::stop_token& stop_token
+				std::stop_token stop_token
 			) mutable {
 				host->run_task(
 					[ task = std::move(task),
-						&stop_token ](
+						stop_token = std::move(stop_token) ](
 						lock& agent
 					) mutable {
-						task(stop_token, agent);
+						task(std::move(stop_token), agent);
 					}
 				);
+				host->async_task_handles_.write()->remove_if(util::address_predicate{handle});
 			},
 			handle
 		);
