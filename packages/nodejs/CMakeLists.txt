@@ -3,7 +3,6 @@ target_sources(ivm_backend_v8
 	PRIVATE
 		agent.cc
 		environment.cc
-		scheduler.cc
 		main.cc
 		module.cc
 		script.cc
@@ -11,11 +10,7 @@ target_sources(ivm_backend_v8
 		include/_module.cc
 		include/environment.cc
 		include/external.cc
-		include/scheduler.cc
 		utility.cc
-)
-target_compile_definitions(ivm_backend_v8 PRIVATE
-	NODE_ADDON_API_DISABLE_DEPRECATED
 )
 target_include_directories(ivm_backend_v8 SYSTEM PRIVATE
 	${NODE_DIST_DIR}/include/node

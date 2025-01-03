@@ -1,13 +1,12 @@
 module;
 #include <uv.h>
-#include <functional>
 #include <utility>
 #include <vector>
-module ivm.node;
+module ivm.napi;
 import ivm.utility;
 import :uv_scheduler;
 
-namespace ivm {
+namespace ivm::js::napi {
 
 auto uv_scheduler::close() -> void {
 	auto& storage = *async_;
@@ -47,4 +46,4 @@ auto uv_scheduler::schedule(task_type task) -> void {
 	}
 }
 
-} // namespace ivm
+} // namespace ivm::js::napi

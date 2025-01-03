@@ -70,11 +70,11 @@ auto link_module(
 	js::napi::value<js::function_tag> link_callback_
 ) {
 	auto* nenv = env.nenv();
-	auto callback = reference{nenv, link_callback_};
+	auto callback = js::napi::reference{nenv, link_callback_};
 	auto scheduler = env.scheduler();
 	auto& module = *module_;
 	auto& realm = *realm_;
-	ivm::reference link_callback_ref{nenv, link_callback_};
+	js::napi::reference link_callback_ref{nenv, link_callback_};
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](environment& env) -> expected_value {
@@ -103,7 +103,7 @@ auto link_module(
 					auto future = promise.get_future();
 					scheduler.schedule(
 						[ & ]() {
-							handle_scope scope{env.nenv()};
+							js::napi::handle_scope scope{env.nenv()};
 							auto callback =
 								[](
 									environment& /*env*/,

@@ -4,10 +4,10 @@ module;
 #include <memory>
 #include <stdexcept>
 #include <utility>
-export module ivm.node:uv_scheduler;
+export module ivm.napi:uv_scheduler;
 import ivm.utility;
 
-namespace ivm {
+namespace ivm::js::napi {
 
 // `uv_handle_t` subtype wrapper with uv-owned shared memory. An open handle must be closed before
 // the handle is destroyed or it is UB.
@@ -64,7 +64,7 @@ uv_handle_of<Handle, Type>::~uv_handle_of() {
 
 template <class Handle, class Type>
 auto uv_handle_of<Handle, Type>::close() {
-	uv_close(reinterpret_cast<uv_handle_t*>(&handle_), [](uv_handle_t* handle) {
+	uv_close(handle_base(), [](uv_handle_t* handle) {
 		delete reinterpret_cast<std::shared_ptr<uv_handle_of>*>(std::exchange(handle->data, nullptr));
 	});
 }
@@ -75,7 +75,7 @@ auto uv_handle_of<Handle, Type>::open(const auto& init, uv_loop_t* loop, auto&&.
 	auto weak_ptr_ptr = std::unique_ptr<std::weak_ptr<uv_handle_of>>{weak_raw_ptr_ptr};
 	auto shared_ptr_ptr = std::make_unique<std::shared_ptr<uv_handle_of>>(*weak_ptr_ptr);
 	handle_.data = shared_ptr_ptr.get();
-	if (init(loop, &handle_, std::forward<decltype(args)>(args)...) == 0) {
+	if (init(loop, handle(), std::forward<decltype(args)>(args)...) == 0) {
 		shared_ptr_ptr.release();
 	} else {
 		handle_.data = weak_ptr_ptr.release();
@@ -96,4 +96,4 @@ auto uv_handle_of<Handle, Type>::unwrap(const Handle* handle) -> const std::shar
 	return *reinterpret_cast<std::shared_ptr<uv_handle_of>*>(handle->data);
 }
 
-} // namespace ivm
+} // namespace ivm::js::napi
