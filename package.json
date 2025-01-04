@@ -2,7 +2,10 @@
   "name": "isolated-vm",
   "type": "module",
   "version": "0.0.0",
-  "exports": "./dist/isolated-vm.js",
+  "exports": {
+    ".":"./dist/isolated-vm.js",
+    "./*":"./dist/*.js"
+  },
   "imports": {
     "#backend-v8": "./backend_v8.cjs"
   },

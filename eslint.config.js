@@ -285,7 +285,6 @@ const typeScriptRules = acceptTypeScriptRules({
 	"@typescript-eslint/no-extraneous-class": "warn",
 	"@typescript-eslint/no-invalid-void-type": [ "warn", { allowAsThisParameter: true } ],
 	"@typescript-eslint/no-non-null-asserted-nullish-coalescing": "warn",
-	"@typescript-eslint/no-non-null-assertion": "warn",
 	"@typescript-eslint/no-unsafe-unary-minus": "warn",
 	"@typescript-eslint/no-useless-constructor": "warn",
 	"@typescript-eslint/no-useless-empty-export": "warn",
@@ -464,6 +463,7 @@ export default [
 			...acceptRecommended(typeScriptPlugin.configs["eslint-recommended"].overrides[0].rules),
 			// @ts-expect-error
 			...acceptRecommended(typeScriptPlugin.configs.recommended.rules),
+			...formattingRules,
 			...typeScriptRules,
 		},
 	},
