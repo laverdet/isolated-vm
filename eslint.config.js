@@ -439,7 +439,7 @@ export default [
 		languageOptions: {
 			parser: typeScriptParser,
 			parserOptions: {
-				project: "./tsconfig.json",
+				projectService: true,
 			},
 		},
 	},

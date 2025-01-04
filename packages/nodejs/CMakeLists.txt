@@ -35,5 +35,5 @@ endif()
 add_custom_command(TARGET ivm_backend_v8 POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy
 		$<TARGET_FILE:ivm_backend_v8>
-		${CMAKE_SOURCE_DIR}/dist/backend_v8/${IVM_HOST_PLATFORM}-${IVM_HOST_ARCH}/backend_v8.node
+		${CMAKE_SOURCE_DIR}/packages/isolated-vm/dist/backend_v8/${IVM_HOST_PLATFORM}-${IVM_HOST_ARCH}/backend_v8.node
 )

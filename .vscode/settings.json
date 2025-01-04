@@ -36,10 +36,10 @@
 	},
 	"files.exclude": {
 		".cache": true,
+		"**/dist": true,
+		"**/node_modules": true,
 		"build": true,
 		"compile_commands.json": true,
-		"dist": true,
-		"node_modules": true,
 	},
 	"files.insertFinalNewline": true,
 	"files.trimTrailingWhitespace": true,

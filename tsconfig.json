@@ -1,41 +1,7 @@
 {
-	"compilerOptions": {
-		"composite": true,
-
-		// Sources
-		"rootDir": "${configDir}/packages/isolated-vm",
-		"outDir": "${configDir}/dist",
-		// If you don't set this then `tsc` will put the build info file in some upwards parent
-		// directory
-		// https://www.typescriptlang.org/tsconfig/#tsBuildInfoFile
-		"tsBuildInfoFile": "${configDir}/dist/tsconfig.tsbuildinfo",
-
-		// Language & emit settings
-		"declarationMap": true,
-		"importHelpers": true,
-		"isolatedDeclarations": true,
-		"isolatedModules": true,
-		"noEmitOnError": false,
-		"sourceMap": true,
-		"stripInternal": true,
-		"target": "es2022",
-		"verbatimModuleSyntax": true,
-
-		// Module resolution settings
-		"allowArbitraryExtensions": true,
-		"esModuleInterop": false,
-		"lib": [ "dom", "esnext" ],
-		"module": "nodenext",
-		"moduleResolution": "nodenext",
-		"types": [ "node" ],
-
-		// Types / strictness
-		"exactOptionalPropertyTypes": true,
-		"noImplicitOverride": true,
-		"noUncheckedIndexedAccess": true,
-		"strict": true,
-	},
-	"include": [ "${configDir}/packages/isolated-vm" ],
-	"exclude": [],
-	"references": [],
+	"extends": "./tsconfig.base.json",
+	"references": [
+		{ "path": "./packages/isolated-vm/tsconfig.json" },
+		{ "path": "./packages/nodejs/runtime/tsconfig.json" },
+	],
 }

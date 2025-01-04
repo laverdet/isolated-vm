@@ -1,37 +1,22 @@
 {
-  "name": "isolated-vm",
+  "name": "@isolated-vm/workspace",
   "type": "module",
+  "private": true,
   "version": "0.0.0",
-  "exports": {
-    ".":"./dist/isolated-vm.js",
-    "./*":"./dist/*.js"
-  },
-  "imports": {
-    "#backend-v8": "./backend_v8.cjs"
-  },
+  "packageManager": "pnpm@9.15.2",
   "scripts": {
     "clang-format": "find packages -name '*.cc' -exec clang-format -i {} \\;",
     "lint:cc": "run-clang-tidy -p build",
-    "lint:js": "eslint --fix packages",
-    "test": "node --enable-source-maps --test-reporter=spec --test dist/test/*.js"
-  },
-  "description": "JavaScript sandbox",
-  "author": "https://github.com/laverdet/",
-  "homepage": "https://github.com/laverdet/isolated-vm#readme",
-  "license": "ISC",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/laverdet/isolated-vm.git"
+    "lint:js": "eslint --fix packages"
   },
   "devDependencies": {
     "@eslint/js": "^9.8.0",
     "@stylistic/eslint-plugin": "^2.6.2",
-    "@types/node": "^22.1.0",
     "@typescript-eslint/eslint-plugin": "^8.0.1",
     "@typescript-eslint/parser": "^8.0.1",
-    "eslint": "^8.57.0",
+    "eslint": "^9.17.0",
     "eslint-plugin-import": "^2.29.1",
-    "isolated-vm": ".",
+    "isolated-vm": "workspace:*",
     "typescript": "^5.5.4"
   },
   "dependencies": {

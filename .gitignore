@@ -1,7 +1,7 @@
 # clangd cache
+**/dist
+**/node_modules
 /.cache
 /.env
 /build
 /compile_commands.json
-/dist
-/node_modules

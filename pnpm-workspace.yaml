@@ -1,0 +1,3 @@
+packages:
+  - packages/isolated-vm
+  - packages/libivm-v8/runtime
