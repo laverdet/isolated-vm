@@ -34,24 +34,25 @@ export class js_module : util::non_copyable {
 
 		auto evaluate(realm::scope& realm_scope) -> js::value_t;
 		auto link(realm::scope& realm, auto callback) -> void;
-		auto requests(realm::scope& realm) -> std::vector<module_request>;
+		auto requests(agent::lock& agent) -> std::vector<module_request>;
 
-		static auto compile(realm::scope& realm, auto&& source_text, source_origin source_origin) -> js_module;
+		static auto compile(agent::lock& agent, auto&& source_text, source_origin source_origin) -> js_module;
 
 	private:
-		static auto compile(realm::scope& realm, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module;
+		static auto compile(agent::lock& agent, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module;
 		auto link(realm::scope& realm, v8::Module::ResolveModuleCallback callback) -> void;
 
 		v8::Global<v8::Module> module_;
 };
 
-auto js_module::compile(realm::scope& realm, auto&& source_text, source_origin source_origin) -> js_module {
+auto js_module::compile(agent::lock& agent, auto&& source_text, source_origin source_origin) -> js_module {
+	v8::Context::Scope context_scope{agent->scratch_context()};
 	auto local_source_text = js::transfer_strict<v8::Local<v8::String>>(
 		std::forward<decltype(source_text)>(source_text),
 		std::tuple{},
-		std::tuple{realm.isolate()}
+		std::tuple{agent->isolate()}
 	);
-	return js_module::compile(realm, local_source_text, std::move(source_origin));
+	return js_module::compile(agent, local_source_text, std::move(source_origin));
 }
 
 auto js_module::link(realm::scope& realm, auto callback) -> void {

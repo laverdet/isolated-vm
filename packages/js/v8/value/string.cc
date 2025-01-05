@@ -13,14 +13,6 @@ auto string::Cast(v8::Data* data) -> string* {
 	return reinterpret_cast<string*>(v8::String::Cast(data));
 }
 
-auto string::make(v8::Isolate* isolate, const std::string& string) -> v8::Local<v8::String> {
-	return make(isolate, std::string_view{string});
-}
-
-auto string::make(v8::Isolate* isolate, const std::u16string& string) -> v8::Local<v8::String> {
-	return make(isolate, std::u16string_view{string});
-}
-
 auto string::make(v8::Isolate* isolate, std::string_view view) -> v8::Local<v8::String> {
 	auto string = v8::String::NewFromOneByte(
 		isolate,

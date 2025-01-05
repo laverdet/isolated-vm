@@ -45,9 +45,9 @@ struct accept<void, napi_env> {
 			return js::napi::value<bigint_tag_of<Numeric>>::make(env_, std::forward<decltype(value)>(value));
 		}
 
-		template <class String>
-		auto operator()(string_tag_of<String> /*tag*/, auto&& value) const -> napi_value {
-			return js::napi::value<string_tag_of<String>>::make(env_, std::forward<decltype(value)>(value));
+		template <class Char>
+		auto operator()(string_tag_of<Char> /*tag*/, auto&& value) const -> napi_value {
+			return js::napi::value<string_tag_of<Char>>::make(env_, std::forward<decltype(value)>(value));
 		}
 
 		auto operator()(date_tag /*tag*/, js_clock::time_point value) const -> napi_value {

@@ -10,8 +10,10 @@ target_sources(ivm_backend_v8
 		include/_module.cc
 		include/environment.cc
 		include/external.cc
+		include/realm.cc
 		utility.cc
 )
+target_embed_content(ivm_backend_v8 runtime/dist/runtime.js)
 target_include_directories(ivm_backend_v8 SYSTEM PRIVATE
 	${NODE_DIST_DIR}/include/node
 )

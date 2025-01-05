@@ -25,7 +25,6 @@ struct compile_module_options {
 auto compile_module(
 	environment& env,
 	js::iv8::external_reference<agent>& agent,
-	js::iv8::external_reference<realm>& realm_,
 	js::string_t source_text,
 	std::optional<compile_module_options> options_optional
 ) {
@@ -44,18 +43,15 @@ auto compile_module(
 			);
 		}
 	);
-	auto& realm = *realm_;
 	agent->schedule(
-		[ &realm, /* TODO: NO!*/
-			options = std::move(options),
+		[ options = std::move(options),
 			source_text = std::move(source_text),
 			dispatch = std::move(dispatch) ](
 			ivm::agent::lock& agent
 		) mutable {
-			ivm::realm::managed_scope realm_scope{agent, realm};
 			auto origin = std::move(options.origin).value_or(source_origin{});
-			auto module = ivm::js_module::compile(realm_scope, std::move(source_text), origin);
-			auto requests = module.requests(realm_scope);
+			auto module = ivm::js_module::compile(agent, std::move(source_text), origin);
+			auto requests = module.requests(agent);
 			dispatch(std::move(module), requests);
 		}
 	);

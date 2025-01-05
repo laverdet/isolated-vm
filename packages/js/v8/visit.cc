@@ -112,9 +112,9 @@ struct visit<void, v8::Local<v8::Value>>
 		auto operator()(v8::Local<v8::String> value, const auto_accept auto& accept) const -> decltype(auto) {
 			auto string = iv8::handle{value.As<iv8::string>(), {isolate_, context_}};
 			if (value->IsOneByte()) {
-				return accept(string_tag_of<std::string>{}, string);
+				return accept(string_tag_of<char>{}, string);
 			} else {
-				return accept(string_tag_of<std::u16string>{}, string);
+				return accept(string_tag_of<char16_t>{}, string);
 			}
 		}
 

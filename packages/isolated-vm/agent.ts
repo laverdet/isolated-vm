@@ -65,9 +65,9 @@ export class Agent {
 		return new Realm(realm);
 	}
 
-	async compileModule(realm: Realm, code: string, options?: Agent.CompileModuleOptions): Promise<Module> {
-		const [ module, requests ] = await compileModule(this.#agent, extractRealmInternal(realm), code, options);
-		return new Module(this.#agent, Realm.extractRealmInternal(realm), module, requests);
+	async compileModule(code: string, options?: Agent.CompileModuleOptions): Promise<Module> {
+		const [ module, requests ] = await compileModule(this.#agent, code, options);
+		return new Module(this.#agent, module, requests);
 	}
 
 	async compileScript(code: string, options?: Agent.CompileScriptOptions): Promise<Script> {

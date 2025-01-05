@@ -1,4 +1,5 @@
 import * as ivm from "./backend.js";
+import { Realm } from "./realm.js";
 
 export type ImportAttributes = Record<string, string>;
 
@@ -35,22 +36,20 @@ export class Module {
 	readonly requests: readonly ModuleRequest[];
 	readonly #agent;
 	readonly #module;
-	readonly #realm;
 
 	/** @internal */
-	constructor(agent: ivm.Agent, realm: ivm.Realm, module: ivm.Module, requests: readonly ModuleRequest[]) {
+	constructor(agent: ivm.Agent, module: ivm.Module, requests: readonly ModuleRequest[]) {
 		this.#agent = agent;
 		this.#module = module;
-		this.#realm = realm;
 		this.requests = requests;
 	}
 
-	evaluate(): Promise<unknown> {
-		return ivm.evaluateModule(this.#agent, this.#realm, this.#module);
+	evaluate(realm: Realm): Promise<unknown> {
+		return ivm.evaluateModule(this.#agent, Realm.extractRealmInternal(realm), this.#module);
 	}
 
-	link(linker: ModuleLinker): Promise<void> {
-		return ivm.linkModule(this.#agent, this.#realm, this.#module, (specifier, parentName, attributes, callback) => {
+	link(realm: Realm, linker: ModuleLinker): Promise<void> {
+		return ivm.linkModule(this.#agent, Realm.extractRealmInternal(realm), this.#module, (specifier, parentName, attributes, callback) => {
 			void async function() {
 				try {
 					const module = await linker(specifier, parentName, attributes);

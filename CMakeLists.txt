@@ -34,7 +34,7 @@ cmake_path(ABSOLUTE_PATH V8_INCLUDE_GN_FILE BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
 cmake_path(ABSOLUTE_PATH V8_OUT_PATH BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 # Project config
-project(isolated_vm LANGUAGES CXX)
+project(isolated_vm LANGUAGES C CXX)
 
 # Boost requirement
 find_package(Boost 1.83 REQUIRED)
@@ -108,7 +108,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
 	# Debug / Release configuration flags
 	if (CMAKE_BUILD_TYPE STREQUAL Debug)
 		# Required for clangd w/ modules
-		add_compile_options(-fretain-comments-from-system-headers)
+		add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fretain-comments-from-system-headers>)
 
 		# Enable ASAN / LSAN
 		add_compile_options(-fsanitize=address)
@@ -119,6 +119,29 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
 		add_compile_options(-Wno-deprecated-declarations)
 	endif()
 endif()
+
+# Convert file into a binary blob and embed it into a C++ source file.
+function(target_embed_content TARGET)
+	set(FILE_SET ${ARGV})
+	list(POP_FRONT FILE_SET)
+	set(EMBED_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/embed")
+	file(MAKE_DIRECTORY ${EMBED_OUTPUT_DIR})
+	target_include_directories(${TARGET} PRIVATE "${EMBED_OUTPUT_DIR}")
+	foreach(FILE ${FILE_SET})
+		set(IDENTIFIER "${FILE}")
+		string(REPLACE . _ IDENTIFIER "${IDENTIFIER}")
+		string(REPLACE / _ IDENTIFIER "${IDENTIFIER}")
+		message(STATUS "Embedding ${FILE} as ${IDENTIFIER}")
+		add_custom_command(
+			DEPENDS "${FILE}"
+			OUTPUT "${EMBED_OUTPUT_DIR}/${FILE}.c" "${EMBED_OUTPUT_DIR}/${FILE}.h"
+			COMMAND "${PROJECT_SOURCE_DIR}/embed.sh" "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}" "${EMBED_OUTPUT_DIR}/${FILE}" ${IDENTIFIER}
+		)
+		set_source_files_properties("${EMBED_OUTPUT_DIR}/${FILE}.c" PROPERTIES GENERATED TRUE)
+		target_sources(${TARGET} PRIVATE "${EMBED_OUTPUT_DIR}/${FILE}.c")
+		target_sources(${TARGET} PRIVATE "${EMBED_OUTPUT_DIR}/${FILE}.c")
+	endforeach()
+endfunction()
 
 # Generic abstract C++ utilities
 add_subdirectory(packages/utility)

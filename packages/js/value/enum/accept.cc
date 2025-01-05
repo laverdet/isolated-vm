@@ -1,6 +1,6 @@
 module;
-#include <cstdint>
 #include <stdexcept>
+#include <string>
 #include <type_traits>
 export module ivm.js:enum_.accept;
 import ivm.utility;
@@ -16,10 +16,9 @@ template <class Enum>
 struct accept<void, Enum> : accept<void, void> {
 		using accept<void, void>::accept;
 
-		template <class String>
-		constexpr auto operator()(string_tag_of<String> /*tag*/, auto&& value) const -> Enum {
+		constexpr auto operator()(string_tag_of<char> /*tag*/, auto&& value) const -> Enum {
 			auto values = accept::enum_map();
-			auto result = values.get(String{std::forward<decltype(value)>(value)});
+			auto result = values.get(std::string{std::forward<decltype(value)>(value)});
 			if (result == nullptr) {
 				throw std::logic_error("Invalid enumeration");
 			}

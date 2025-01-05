@@ -1,5 +1,6 @@
 module;
 #include <concepts>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <stop_token>
@@ -39,7 +40,7 @@ auto cluster::make_agent(std::invocable<agent> auto fn, clock::any_clock clock, 
 		) mutable {
 			auto task_runner = std::make_shared<foreground_runner>();
 			auto agent_host = std::make_shared<agent::host>(agent_storage, task_runner, clock, random_seed);
-			util::take(std::move(fn))(agent{agent_host, task_runner});
+			std::invoke(std::move(fn), agent{agent_host, task_runner});
 			agent_host->execute(std::move(stop_token));
 		},
 		handle

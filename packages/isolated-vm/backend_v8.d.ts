@@ -19,7 +19,7 @@ declare module "backend_v8.node" {
 
 	/** @internal */
 	const exports: {
-		compileModule: (agent: Agent, realm: Realm, code: string, options: CompileModuleOptions | undefined) => Promise<[ Module, ModuleRequest[] ]>;
+		compileModule: (agent: Agent, code: string, options: CompileModuleOptions | undefined) => Promise<[ Module, ModuleRequest[] ]>;
 		compileScript: (agent: Agent, code: string, options: CompileScriptOptions | undefined) => Promise<Script>;
 		createAgent: (options: CreateAgentOptions | undefined) => Promise<Agent>;
 		createRealm: (agent: Agent) => Promise<Realm>;

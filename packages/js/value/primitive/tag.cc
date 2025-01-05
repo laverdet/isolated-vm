@@ -46,15 +46,18 @@ struct tag_for<js_clock::time_point> : std::type_identity<date_tag> {};
 
 // `string`
 template <>
-struct tag_for<std::string> : std::type_identity<string_tag_of<std::string>> {};
+struct tag_for<const char*> : std::type_identity<string_tag_of<char>> {};
 
 template <>
-struct tag_for<std::string_view> : std::type_identity<string_tag_of<std::string_view>> {};
+struct tag_for<std::string> : std::type_identity<string_tag_of<char>> {};
 
 template <>
-struct tag_for<std::u16string> : std::type_identity<string_tag_of<std::u16string>> {};
+struct tag_for<std::string_view> : std::type_identity<string_tag_of<char>> {};
+
+template <>
+struct tag_for<std::u16string> : std::type_identity<string_tag_of<char16_t>> {};
 
 template <auto Literal>
-struct tag_for<js::string_literal<Literal>> : std::type_identity<string_tag_of<std::string>> {};
+struct tag_for<js::string_literal<Literal>> : std::type_identity<string_tag_of<char>> {};
 
 } // namespace ivm::js

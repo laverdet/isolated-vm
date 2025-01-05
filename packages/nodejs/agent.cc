@@ -1,4 +1,5 @@
 module;
+#include "runtime/dist/runtime.js.h"
 #include <optional>
 #include <tuple>
 #include <variant>
@@ -78,6 +79,12 @@ auto create_realm(environment& env, js::iv8::external_reference<agent>& agent) {
 			ivm::agent::lock& agent
 		) mutable {
 			auto realm = ivm::realm::make(agent);
+			auto runtime = ivm::js_module::compile(agent, runtime_dist_runtime_js, source_origin{});
+			ivm::realm::managed_scope realm_scope{agent, realm};
+			runtime.link(realm_scope, [](auto&&...) -> ivm::js_module& {
+				std::terminate();
+			});
+			runtime.evaluate(realm_scope);
 			dispatch(std::move(realm));
 		}
 	);
