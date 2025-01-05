@@ -7,7 +7,7 @@ target_sources(ivm_backend_v8
 		module.cc
 		script.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
-		include/_module.cc
+		_module.cc
 		include/environment.cc
 		include/external.cc
 		include/realm.cc

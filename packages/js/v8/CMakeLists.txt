@@ -6,18 +6,18 @@ target_sources(${IV8_PREFIX}_common_v8
 		value/object.cc
 		value/string.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
+		_module.cc
 		accept.cc
 		container/weak_map.cc
-		include/_module.cc
-		include/array.cc
-		include/boolean.cc
-		include/date.cc
-		include/external.cc
-		include/fixed_array.cc
-		include/handle.cc
-		include/number.cc
-		include/object.cc
-		include/string.cc
+		value/include/array.cc
+		value/include/boolean.cc
+		value/include/date.cc
+		value/include/external.cc
+		value/include/fixed_array.cc
+		value/include/handle.cc
+		value/include/number.cc
+		value/include/object.cc
+		value/include/string.cc
 		visit.cc
 )
 target_link_libraries(${IV8_PREFIX}_common_v8 PUBLIC

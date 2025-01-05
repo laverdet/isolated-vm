@@ -10,20 +10,20 @@ target_sources(ivm_value_napi
 		value/string.cc
 		value/value.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
+		_module.cc
 		accept.cc
-		include/_module.cc
-		include/array.cc
-		include/function.cc
-		include/handle.cc
-		include/number.cc
-		include/object_like.cc
-		include/object.cc
-		include/string.cc
-		include/utility.cc
-		include/value.cc
 		support/include/handle_scope.cc
 		support/include/reference.cc
 		support/include/scheduler.cc
+		utility.cc
+		value/include/array.cc
+		value/include/function.cc
+		value/include/handle.cc
+		value/include/number.cc
+		value/include/object_like.cc
+		value/include/object.cc
+		value/include/string.cc
+		value/include/value.cc
 		visit.cc
 )
 target_compile_definitions(ivm_value_napi PRIVATE
