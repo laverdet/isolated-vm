@@ -2,6 +2,7 @@ module;
 #include <memory>
 #include <thread>
 export module ivm.isolated_v8:platform;
+import :scheduler;
 import v8;
 import ivm.utility;
 
@@ -39,9 +40,11 @@ export class job_handle : public v8::JobHandle, public v8::JobDelegate {
 export class platform : util::non_moveable, public v8::Platform {
 	public:
 		class handle;
+		using platform_scheduler = scheduler::layer<{.root = true}>;
 
 		platform();
 		~platform() override;
+		auto scheduler() -> platform_scheduler& { return scheduler_; }
 
 		auto GetTracingController() -> v8::TracingController* final;
 		auto GetPageAllocator() -> v8::PageAllocator* final;
@@ -81,11 +84,12 @@ export class platform : util::non_moveable, public v8::Platform {
 		static auto fill_random_bytes(unsigned char* buffer, size_t length) -> bool;
 
 		std::unique_ptr<v8::Platform> default_platform_{v8::platform::NewDefaultPlatform()};
+		platform_scheduler scheduler_;
 };
 
 // Responsible for initializing v8 and creating one `platform` per process. When the last handle is
 // destroyed, the `platform` is destroyed and v8 is shut down.
-class platform::handle {
+class platform::handle : public util::pointer_facade<platform> {
 	public:
 		handle(const handle&) = default;
 		handle(handle&&) = default;
@@ -93,6 +97,7 @@ class platform::handle {
 		auto operator=(handle&&) noexcept -> handle& = default;
 		~handle();
 
+		auto operator*(this auto& self) -> decltype(auto) { return *self.platform_; }
 		static auto acquire() -> handle;
 
 	private:

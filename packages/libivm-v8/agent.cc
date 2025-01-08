@@ -6,6 +6,7 @@ module;
 #include <variant>
 module ivm.isolated_v8;
 import :agent;
+import :platform;
 import :platform.foreground_runner;
 import :scheduler;
 import v8;
@@ -36,12 +37,8 @@ agent::agent(
 		task_runner_{task_runner} {}
 
 // storage
-agent::storage::storage(scheduler& scheduler) :
-		scheduler_handle_{scheduler} {}
-
-auto agent::storage::scheduler_handle() -> scheduler::handle& {
-	return scheduler_handle_;
-}
+agent::storage::storage(ivm::cluster_scheduler& cluster_scheduler) :
+		scheduler_{cluster_scheduler} {}
 
 // host
 agent::host::host(
@@ -73,10 +70,10 @@ auto agent::host::execute(std::stop_token stop_token) -> void {
 			auto task = task_lock->acquire();
 			if (task) {
 				task_lock.unlock();
-				run_task([ & ](auto& /*agent_lock*/) {
-					std::visit([](auto& clock) { clock.begin_tick(); }, clock_);
-					task->Run();
-				});
+				agent::managed_lock agent_lock{*this};
+				v8::HandleScope handle_scope{isolate_.get()};
+				std::visit([](auto& clock) { clock.begin_tick(); }, clock_);
+				task->Run();
 				task_lock.lock();
 			}
 		} while (task_lock.wait(stop_token));

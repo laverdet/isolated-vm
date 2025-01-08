@@ -25,25 +25,28 @@ export class cluster : util::non_moveable {
 
 	private:
 		platform::handle platform_handle_;
-		scheduler scheduler_;
+		cluster_scheduler scheduler_;
 };
 
 auto cluster::make_agent(std::invocable<agent> auto fn, clock::any_clock clock, std::optional<double> random_seed) -> void {
 	auto agent_storage = std::make_shared<agent::storage>(scheduler_);
-	auto& handle = agent_storage->scheduler_handle();
-	scheduler_.run(
-		[ clock,
-			random_seed,
-			agent_storage = std::move(agent_storage),
-			fn = std::move(fn) ](
-			std::stop_token stop_token
-		) mutable {
+	auto& scheduler = agent_storage->scheduler();
+	scheduler(
+		[ clock, random_seed ](
+			std::stop_token stop_token,
+			std::shared_ptr<agent::storage> agent_storage,
+			auto fn
+		) {
 			auto task_runner = std::make_shared<foreground_runner>();
 			auto agent_host = std::make_shared<agent::host>(agent_storage, task_runner, clock, random_seed);
 			std::invoke(std::move(fn), agent{agent_host, task_runner});
 			agent_host->execute(std::move(stop_token));
+			// nb: `agent_storage` contains the scheduler so it must be allowed to escape up the stack to
+			// be released later.
+			return agent_storage;
 		},
-		handle
+		std::move(agent_storage),
+		std::move(fn)
 	);
 };
 

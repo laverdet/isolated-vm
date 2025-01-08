@@ -1,21 +1,21 @@
 module;
+#include <cassert>
 #include <concepts>
 #include <forward_list>
-#include <functional>
 #include <memory>
 #include <optional>
-#include <stdexcept>
 #include <stop_token>
 export module ivm.isolated_v8:agent;
 export import :agent_fwd;
 import :platform.clock;
-import :platform.foreground_runner;
 import :scheduler;
 import ivm.iv8;
 import ivm.utility;
 import v8;
 
 namespace ivm {
+
+export using cluster_scheduler = scheduler::layer<{}>;
 
 // A `lock` is a simple holder for an `agent::host` which proves that we are executing in
 // the isolate context.
@@ -41,12 +41,13 @@ class agent::managed_lock : public agent::lock {
 // This is constructed before (and may outlive) an agent
 class agent::storage : util::non_moveable {
 	public:
-		explicit storage(scheduler& scheduler);
+		using agent_scheduler = scheduler::runner<{}>;
+		explicit storage(ivm::cluster_scheduler& cluster_scheduler);
 
-		auto scheduler_handle() -> scheduler::handle&;
+		auto scheduler() -> agent_scheduler& { return scheduler_; }
 
 	private:
-		scheduler::handle scheduler_handle_;
+		agent_scheduler scheduler_;
 };
 
 // Directly handles the actual isolate. If someone has a reference to this then it probably means
@@ -77,7 +78,6 @@ class agent::host : util::non_moveable {
 		auto execute(std::stop_token stop_token) -> void;
 		auto isolate() -> v8::Isolate*;
 		auto random_seed_latch() -> util::scope_exit<random_seed_unlatch>;
-		auto run_task(std::invocable<lock&> auto task) -> void;
 		auto scratch_context() -> v8::Local<v8::Context>;
 		auto take_random_seed() -> std::optional<double>;
 		auto task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner>;
@@ -93,7 +93,6 @@ class agent::host : util::non_moveable {
 		js::iv8::weak_map<v8::Module, js::string_t> weak_module_specifiers_;
 		std::unique_ptr<v8::Isolate, isolate_destructor> isolate_;
 		v8::Global<v8::Context> scratch_context_;
-		scheduler async_scheduler_;
 		util::lockable<std::forward_list<scheduler::handle>> async_task_handles_;
 
 		bool should_give_seed_{false};
@@ -109,9 +108,7 @@ struct task_of : v8::Task {
 
 		auto Run() -> void final {
 			auto* host = agent::host::get_current();
-			if (host == nullptr) {
-				throw std::logic_error("Task invoked outside of agent context");
-			}
+			assert(host != nullptr);
 			agent::lock lock{*host};
 			task_(lock);
 		}
@@ -120,35 +117,22 @@ struct task_of : v8::Task {
 		[[no_unique_address]] Invocable task_;
 };
 
-auto agent::host::run_task(std::invocable<lock&> auto task) -> void {
-	agent::managed_lock agent_lock{*this};
-	v8::HandleScope handle_scope{isolate_.get()};
-	task(agent_lock);
-}
-
 auto agent::schedule_async(std::invocable<const std::stop_token&, lock&> auto task) -> void {
 	auto host = host_.lock();
 	if (host) {
-		auto& handle = std::invoke([ & ]() -> decltype(auto) {
-			return host->async_task_handles_.write()->emplace_front(host->async_scheduler_);
-		});
-		host->async_scheduler_.run(
-			[ &handle,
-				host = std::move(host),
-				task = std::move(task) ](
-				std::stop_token stop_token
-			) mutable {
-				host->run_task(
-					[ task = std::move(task),
-						stop_token = std::move(stop_token) ](
-						lock& agent
-					) mutable {
-						task(std::move(stop_token), agent);
-					}
-				);
-				host->async_task_handles_.write()->remove_if(util::address_predicate{handle});
+		auto& scheduler = host->agent_storage_->scheduler();
+		scheduler(
+			[](
+				std::stop_token stop_token,
+				const std::shared_ptr<agent::host>& host,
+				auto task
+			) {
+				agent::managed_lock agent_lock{*host};
+				v8::HandleScope handle_scope{host->isolate_.get()};
+				task(std::move(stop_token), agent_lock);
 			},
-			handle
+			std::move(host),
+			std::move(task)
 		);
 	}
 }

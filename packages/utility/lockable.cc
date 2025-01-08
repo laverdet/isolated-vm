@@ -1,9 +1,9 @@
 module;
+#include <cassert>
 #include <condition_variable>
 #include <functional>
 #include <mutex>
 #include <shared_mutex>
-#include <stdexcept>
 #include <stop_token>
 #include <type_traits>
 #include <utility>
@@ -112,9 +112,7 @@ class lock_waitable {
 
 		auto wait(std::stop_token stop_token) -> bool
 			requires std::same_as<Waitable, std::condition_variable_any> {
-			if (!stop_token.stop_possible()) {
-				throw std::logic_error{"stop_token is not stoppable"};
-			}
+			assert(stop_token.stop_possible());
 			return cv->wait(lock_, stop_token, predicate) && !stop_token.stop_requested();
 		}
 

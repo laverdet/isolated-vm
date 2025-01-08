@@ -10,7 +10,6 @@ target_sources(ivm_isolated_v8
 		platform/job_handle.cc
 		platform/platform.cc
 		realm.cc
-		scheduler.cc
 		script.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
@@ -19,12 +18,12 @@ target_sources(ivm_isolated_v8
 		include/cluster.cc
 		include/module.cc
 		include/realm.cc
-		include/scheduler.cc
 		include/script.cc
 		platform/include/clock.cc
 		platform/include/foreground_runner.cc
 		platform/include/platform.cc
 		platform/include/task_runner.cc
+		scheduler.cc
 )
 target_link_libraries(ivm_isolated_v8 PRIVATE
 	Boost::boost
