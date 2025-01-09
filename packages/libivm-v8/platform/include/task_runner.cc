@@ -9,6 +9,24 @@ using namespace std::chrono;
 
 namespace ivm {
 
+// Allow lambda-style callbacks to be called with the same virtual dispatch as `v8::Task`
+template <std::invocable<> Invocable>
+struct task_of : v8::Task {
+		explicit task_of(Invocable task) :
+				task_{std::move(task)} {}
+
+		auto Run() -> void final {
+			task_();
+		}
+
+	private:
+		[[no_unique_address]] Invocable task_;
+};
+
+export auto make_task_of(std::invocable<> auto task) -> std::unique_ptr<v8::Task> {
+	return std::make_unique<task_of<decltype(task)>>(std::move(task));
+}
+
 // Instances of `v8::TaskRunner` can directly accept scheduled tasks from v8, which may or may not
 // run at some point in the future.
 export class task_runner : public v8::TaskRunner {

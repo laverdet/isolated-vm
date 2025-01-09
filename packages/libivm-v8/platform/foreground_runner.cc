@@ -3,6 +3,7 @@ module;
 #include <chrono>
 #include <memory>
 #include <queue>
+#include <stop_token>
 #include <utility>
 module ivm.isolated_v8;
 import :platform.foreground_runner;
@@ -15,8 +16,24 @@ auto task_is_nestable(const std::pair<task_runner::nestability, task_runner::tas
 	return task.first == task_runner::nestability::nestable;
 }
 
-foreground_runner::foreground_runner() :
-		storage_{nesting_depth_} {}
+// foreground_runner
+foreground_runner::foreground_runner(scheduler::runner<{}>& runner) :
+		scheduler_{runner} {}
+
+auto foreground_runner::foreground_thread(const std::stop_token& stop_token) -> void {
+	foreground_runner::scope task_scope{*this};
+	while (!stop_token.stop_requested()) {
+		auto task = task_scope->acquire();
+		if (task) {
+			task_scope.unlock();
+			task->Run();
+			task_scope.lock();
+		} else {
+			break;
+		}
+	};
+	task_scope->idle_ = true;
+}
 
 auto foreground_runner::post_delayed(task_type task, steady_clock::time_point timeout) -> void {
 	storage_.write()->delayed_tasks_.emplace(nestability::nestable, timeout, std::move(task));
@@ -24,7 +41,7 @@ auto foreground_runner::post_delayed(task_type task, steady_clock::time_point ti
 
 auto foreground_runner::post_non_nestable_delayed(task_type task, steady_clock::time_point timeout) -> void {
 	storage_.write()->delayed_tasks_.emplace(nestability::non_nestable, timeout, std::move(task));
-};
+}
 
 auto foreground_runner::post_non_nestable(task_type task) -> void {
 	storage_.write()->tasks_.emplace_back(nestability::non_nestable, std::move(task));
@@ -33,21 +50,24 @@ auto foreground_runner::post_non_nestable(task_type task) -> void {
 auto foreground_runner::post(task_type task) -> void {
 	storage_.write()->tasks_.emplace_back(nestability::nestable, std::move(task));
 }
-
-auto foreground_runner::schedule_non_nestable(task_type task) -> void {
-	auto lock = storage_.write_notify();
+auto foreground_runner::schedule_non_nestable(const std::shared_ptr<foreground_runner>& self, task_type task) -> void {
+	auto lock = self->storage_.write_notify();
 	lock->tasks_.emplace_back(task_runner::nestability::non_nestable, std::move(task));
-	lock->should_resume_ = true;
+	if (lock->idle_) {
+		lock->idle_ = false;
+		self->scheduler_([ self ](const std::stop_token& stop_token) mutable {
+			self->foreground_thread(stop_token);
+			return std::move(self);
+		});
+	}
 }
 
-foreground_runner::storage::storage(int& nesting_depth) :
-		nesting_depth_{&nesting_depth} {}
-
+// foreground_runner::storage
 auto foreground_runner::storage::acquire() -> task_type {
 	flush_delayed();
-	if (*nesting_depth_ < 1) {
+	if (nesting_depth_ < 1) {
 		std::unreachable();
-	} else if (*nesting_depth_ == 1) {
+	} else if (nesting_depth_ == 1) {
 		if (!tasks_.empty()) {
 			auto result = std::move(tasks_.front().second);
 			tasks_.pop_front();
@@ -79,9 +99,9 @@ auto foreground_runner::storage::flush_delayed() -> void {
 
 auto foreground_runner::storage::should_resume() const -> bool {
 	// Check current tasks
-	if (*nesting_depth_ < 1) {
+	if (nesting_depth_ < 1) {
 		std::unreachable();
-	} else if (*nesting_depth_ == 1) {
+	} else if (nesting_depth_ == 1) {
 		if (!tasks_.empty()) {
 			return true;
 		}
@@ -98,6 +118,16 @@ auto foreground_runner::storage::should_resume() const -> bool {
 		}
 	}
 	return false;
+}
+
+// foreground_runner::scope
+foreground_runner::scope::scope(foreground_runner& runner) :
+		write_waitable_type{runner.storage_.write_waitable(&storage::should_resume)} {
+	++(*this)->nesting_depth_;
+}
+
+foreground_runner::scope::~scope() {
+	--(*this)->nesting_depth_;
 }
 
 } // namespace ivm

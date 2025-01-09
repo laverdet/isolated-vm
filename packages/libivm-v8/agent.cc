@@ -1,7 +1,6 @@
 module;
 #include <memory>
 #include <optional>
-#include <stop_token>
 #include <utility>
 #include <variant>
 module ivm.isolated_v8;
@@ -16,9 +15,6 @@ import ivm.utility;
 
 namespace ivm {
 
-// lock
-thread_local agent::lock* current_lock{};
-
 agent::lock::lock(agent::host& host) :
 		host_{host} {}
 
@@ -29,26 +25,30 @@ agent::managed_lock::managed_lock(host& host) :
 		scope_{host.isolate()} {}
 
 // handle
-agent::agent(
-	const std::shared_ptr<host>& host,
-	const std::shared_ptr<foreground_runner>& task_runner
-) :
+agent::agent(const std::shared_ptr<host>& host, std::shared_ptr<severable> severable_) :
 		host_{host},
-		task_runner_{task_runner} {}
+		severable_{std::move(severable_)} {}
 
 // storage
 agent::storage::storage(ivm::cluster_scheduler& cluster_scheduler) :
 		scheduler_{cluster_scheduler} {}
 
+// severable
+agent::severable::severable(std::shared_ptr<host> host) :
+		host_{std::move(host)} {}
+
+auto agent::severable::sever() -> void {
+	host_->severable_.reset();
+}
+
 // host
 agent::host::host(
 	std::shared_ptr<storage> agent_storage,
-	std::shared_ptr<foreground_runner> task_runner,
 	clock::any_clock clock,
 	std::optional<double> random_seed
 ) :
 		agent_storage_{std::move(agent_storage)},
-		task_runner_{std::move(task_runner)},
+		task_runner_{std::make_shared<ivm::foreground_runner>(agent_storage_->scheduler())},
 		array_buffer_allocator_{v8::ArrayBuffer::Allocator::NewDefaultAllocator()},
 		isolate_{v8::Isolate::Allocate()},
 		random_seed_{random_seed},
@@ -63,25 +63,21 @@ auto agent::host::clock_time_ms() -> int64_t {
 	return std::visit([](auto&& clock) { return clock.clock_time_ms(); }, clock_);
 }
 
-auto agent::host::execute(std::stop_token stop_token) -> void {
-	// Enter task runner scope
-	task_runner_->scope([ & ](auto task_lock) {
-		do {
-			auto task = task_lock->acquire();
-			if (task) {
-				task_lock.unlock();
-				agent::managed_lock agent_lock{*this};
-				v8::HandleScope handle_scope{isolate_.get()};
-				std::visit([](auto& clock) { clock.begin_tick(); }, clock_);
-				task->Run();
-				task_lock.lock();
-			}
-		} while (task_lock.wait(stop_token));
-	});
+auto agent::host::foreground_runner() -> std::shared_ptr<ivm::foreground_runner> {
+	return task_runner_;
 }
 
 auto agent::host::isolate() -> v8::Isolate* {
 	return isolate_.get();
+}
+
+auto agent::host::make_handle(const std::shared_ptr<host>& self) -> agent {
+	auto severable = self->severable_.lock();
+	if (!severable) {
+		severable = std::make_shared<agent::severable>(self);
+		self->severable_ = severable;
+	}
+	return {self, std::move(severable)};
 }
 
 // v8 uses the same entropy source for `Math.random()` and also memory page randomization. We want

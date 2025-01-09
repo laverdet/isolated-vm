@@ -71,8 +71,10 @@ auto uv_handle_of<Handle, Type>::close() {
 
 template <class Handle, class Type>
 auto uv_handle_of<Handle, Type>::open(const auto& init, uv_loop_t* loop, auto&&... args) {
-	auto* weak_raw_ptr_ptr = reinterpret_cast<std::weak_ptr<uv_handle_of>*>(std::exchange(handle_.data, nullptr));
-	auto weak_ptr_ptr = std::unique_ptr<std::weak_ptr<uv_handle_of>>{weak_raw_ptr_ptr};
+	auto weak_ptr_ptr = std::invoke([ & ]() {
+		auto* raw_ptr = reinterpret_cast<std::weak_ptr<uv_handle_of>*>(std::exchange(handle_.data, nullptr));
+		return std::unique_ptr<std::weak_ptr<uv_handle_of>>{raw_ptr};
+	});
 	auto shared_ptr_ptr = std::make_unique<std::shared_ptr<uv_handle_of>>(*weak_ptr_ptr);
 	handle_.data = shared_ptr_ptr.get();
 	if (init(loop, handle(), std::forward<decltype(args)>(args)...) == 0) {

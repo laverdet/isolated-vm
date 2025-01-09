@@ -33,14 +33,16 @@ auto cluster::make_agent(std::invocable<agent> auto fn, clock::any_clock clock, 
 	auto& scheduler = agent_storage->scheduler();
 	scheduler(
 		[ clock, random_seed ](
-			std::stop_token stop_token,
+			const std::stop_token& stop_token,
 			std::shared_ptr<agent::storage> agent_storage,
 			auto fn
 		) {
-			auto task_runner = std::make_shared<foreground_runner>();
-			auto agent_host = std::make_shared<agent::host>(agent_storage, task_runner, clock, random_seed);
-			std::invoke(std::move(fn), agent{agent_host, task_runner});
-			agent_host->execute(std::move(stop_token));
+			auto agent_host = std::make_shared<agent::host>(agent_storage, clock, random_seed);
+			auto foreground_runner = agent_host->foreground_runner();
+			auto agent = agent::host::make_handle(agent_host);
+			agent_host.reset();
+			std::invoke(std::move(fn), std::move(agent));
+			foreground_runner->foreground_thread(stop_token);
 			// nb: `agent_storage` contains the scheduler so it must be allowed to escape up the stack to
 			// be released later.
 			return agent_storage;

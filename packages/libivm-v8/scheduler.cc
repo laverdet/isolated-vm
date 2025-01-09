@@ -162,9 +162,9 @@ class layer_connected : public layer_base, public member<layer_connected>, publi
 // instantiation.
 struct pick_container {
 		template <layer_traits Traits>
-		auto operator()(layer<Traits>& layer) -> container<layer_connected>::lockable_type& { return layer.container_; }
+		auto operator()(layer<Traits>& layer) -> auto& { return layer.container_; }
 		template <layer_traits Traits>
-		auto operator()(runner<Traits>& runner) -> container<layer_connected>::lockable_type& { return *runner.container_; }
+		auto operator()(runner<Traits>& runner) { return runner.container_; }
 };
 
 // Manages a graph of scheduler layers & runners. On destruction all children are closed before
@@ -179,7 +179,7 @@ class layer final : public std::conditional_t<Traits.root, layer_base, layer_con
 		explicit layer(layer<ParentTraits>& parent) :
 				layer_connected{pick_container{}(parent)} {}
 
-		~layer() { container<layer_connected>::close(container_); }
+		~layer() final { container<layer_connected>::close(container_); }
 
 		layer(const layer&) = delete;
 		auto operator=(const layer&) -> layer& = delete;
@@ -192,7 +192,9 @@ class layer final : public std::conditional_t<Traits.root, layer_base, layer_con
 
 // Dispatches and owns threads.
 template <layer_traits Traits = {}>
-class runner : public layer_connected {
+class runner final : public layer_connected {
+		static_assert(!Traits.root, "not implemented");
+
 	public:
 		friend pick_container;
 
@@ -201,7 +203,7 @@ class runner : public layer_connected {
 				layer_connected{pick_container{}(parent)},
 				container_{std::make_shared<container<thread>::lockable_type>()} {}
 
-		~runner() { container<thread>::close(*container_); }
+		~runner() final { container<thread>::close(*container_); }
 
 		runner(const runner&) = delete;
 		auto operator=(const runner&) -> runner& = delete;

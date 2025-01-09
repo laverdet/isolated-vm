@@ -1,13 +1,13 @@
 module;
 #include <cassert>
 #include <concepts>
-#include <forward_list>
 #include <memory>
 #include <optional>
 #include <stop_token>
 export module ivm.isolated_v8:agent;
 export import :agent_fwd;
 import :platform.clock;
+import :platform.task_runner;
 import :scheduler;
 import ivm.iv8;
 import ivm.utility;
@@ -50,6 +50,18 @@ class agent::storage : util::non_moveable {
 		agent_scheduler scheduler_;
 };
 
+// This keep the `weak_ptr` in `agent` alive. The `host` maintains a `weak_ptr` to this and can
+// "sever" the client connection if it needs to.
+class agent::severable {
+	public:
+		explicit severable(std::shared_ptr<host> host);
+
+		auto sever() -> void;
+
+	private:
+		std::shared_ptr<host> host_;
+};
+
 // Directly handles the actual isolate. If someone has a reference to this then it probably means
 // the isolate is locked and entered.
 class agent::host : util::non_moveable {
@@ -69,13 +81,12 @@ class agent::host : util::non_moveable {
 
 		explicit host(
 			std::shared_ptr<storage> agent_storage,
-			std::shared_ptr<foreground_runner> task_runner,
 			clock::any_clock clock,
 			std::optional<double> random_seed
 		);
 
 		auto clock_time_ms() -> int64_t;
-		auto execute(std::stop_token stop_token) -> void;
+		auto foreground_runner() -> std::shared_ptr<ivm::foreground_runner>;
 		auto isolate() -> v8::Isolate*;
 		auto random_seed_latch() -> util::scope_exit<random_seed_unlatch>;
 		auto scratch_context() -> v8::Local<v8::Context>;
@@ -85,37 +96,34 @@ class agent::host : util::non_moveable {
 
 		static auto get_current() -> host*;
 		static auto get_current(v8::Isolate* isolate) -> host&;
+		static auto make_handle(const std::shared_ptr<host>& self) -> agent;
 
 	private:
 		std::shared_ptr<storage> agent_storage_;
-		std::shared_ptr<foreground_runner> task_runner_;
+		std::weak_ptr<severable> severable_;
+		std::shared_ptr<ivm::foreground_runner> task_runner_;
 		std::unique_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
-		js::iv8::weak_map<v8::Module, js::string_t> weak_module_specifiers_;
 		std::unique_ptr<v8::Isolate, isolate_destructor> isolate_;
+		js::iv8::weak_map<v8::Module, js::string_t> weak_module_specifiers_;
 		v8::Global<v8::Context> scratch_context_;
-		util::lockable<std::forward_list<scheduler::handle>> async_task_handles_;
 
 		bool should_give_seed_{false};
 		std::optional<double> random_seed_;
 		clock::any_clock clock_;
 };
 
-// Allow lambda-style callbacks to be called with the same virtual dispatch as `v8::Task`
-template <std::invocable<agent::lock&> Invocable>
-struct task_of : v8::Task {
-		explicit task_of(Invocable task) :
-				task_{std::move(task)} {}
-
-		auto Run() -> void final {
-			auto* host = agent::host::get_current();
-			assert(host != nullptr);
-			agent::lock lock{*host};
-			task_(lock);
-		}
-
-	private:
-		[[no_unique_address]] Invocable task_;
-};
+auto agent::schedule(std::invocable<lock&> auto task) -> void {
+	auto host = host_.lock();
+	if (host) {
+		auto task_with_lock = [ host, task = std::move(task) ]() mutable {
+			agent::managed_lock agent_lock{*host};
+			v8::HandleScope handle_scope{host->isolate_.get()};
+			std::visit([](auto& clock) { clock.begin_tick(); }, host->clock_);
+			task(agent_lock);
+		};
+		foreground_runner::schedule_non_nestable(host->task_runner_, make_task_of(std::move(task_with_lock)));
+	}
+}
 
 auto agent::schedule_async(std::invocable<const std::stop_token&, lock&> auto task) -> void {
 	auto host = host_.lock();
@@ -135,10 +143,6 @@ auto agent::schedule_async(std::invocable<const std::stop_token&, lock&> auto ta
 			std::move(task)
 		);
 	}
-}
-
-auto agent::schedule(std::invocable<lock&> auto task) -> void {
-	task_runner_->schedule_non_nestable(std::make_unique<task_of<decltype(task)>>(std::move(task)));
 }
 
 } // namespace ivm
