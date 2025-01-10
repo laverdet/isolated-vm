@@ -3,7 +3,8 @@ target_sources(ivm_isolated_v8
 	PRIVATE
 		agent.cc
 		cluster.cc
-		module.cc
+		evaluation/module.cc
+		evaluation/script.cc
 		platform/clock.cc
 		platform/foreground_runner.cc
 		platform/handle.cc
@@ -11,16 +12,15 @@ target_sources(ivm_isolated_v8
 		platform/platform.cc
 		realm.cc
 		remote.cc
-		script.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
+		evaluation/include/module.cc
+		evaluation/include/script.cc
 		include/agent_fwd.cc
 		include/agent.cc
 		include/cluster.cc
-		include/module.cc
 		include/realm.cc
 		include/remote.cc
-		include/script.cc
 		platform/include/clock.cc
 		platform/include/foreground_runner.cc
 		platform/include/platform.cc
