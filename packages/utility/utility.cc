@@ -75,6 +75,15 @@ constexpr auto visit_with_index(const auto& visitor, std::variant<Types...>&& va
 	return visit_with_index_<Types...>(visitor, std::move(variant));
 }
 
+// Convert static function pointer into a functor type
+export template <auto Function>
+struct functor_of {
+		auto operator()(auto&&... args) const -> decltype(auto)
+			requires std::invocable<decltype(Function), decltype(args)...> {
+			return Function(std::forward<decltype(args)>(args)...);
+		}
+};
+
 // `boost::noncopyable` actually prevents moving too
 export class non_copyable {
 	public:

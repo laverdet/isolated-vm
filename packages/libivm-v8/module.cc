@@ -6,6 +6,7 @@ module ivm.isolated_v8;
 import :agent;
 import :js_module;
 import :realm;
+import :remote;
 import ivm.iv8;
 import ivm.js;
 import v8;
@@ -19,12 +20,12 @@ module_request::module_request(js::string_t specifier, attributes_type attribute
 
 // js_module
 js_module::js_module(agent::lock& agent, v8::Local<v8::Module> module_) :
-		module_{agent->isolate(), module_} {
+		module_{make_shared_remote(agent, module_)} {
 }
 
 auto js_module::requests(agent::lock& agent) -> std::vector<module_request> {
 	auto context = agent->scratch_context();
-	auto requests_array = js::iv8::fixed_array{module_.Get(agent->isolate())->GetModuleRequests(), context};
+	auto requests_array = js::iv8::fixed_array{module_->deref(agent)->GetModuleRequests(), context};
 	auto requests_view =
 		requests_array |
 		std::views::transform([ & ](v8::Local<v8::Data> value) -> module_request {
@@ -49,7 +50,7 @@ auto js_module::requests(agent::lock& agent) -> std::vector<module_request> {
 
 auto js_module::evaluate(realm::scope& realm_scope) -> js::value_t {
 	auto* isolate = realm_scope.isolate();
-	auto module_handle = module_.Get(isolate);
+	auto module_handle = module_->deref(realm_scope.agent());
 	auto context = realm_scope.context();
 	auto result = module_handle->Evaluate(context).ToLocalChecked();
 	auto promise = result.As<v8::Promise>();
@@ -94,8 +95,7 @@ auto js_module::compile(agent::lock& agent, v8::Local<v8::String> source_text, s
 }
 
 auto js_module::link(realm::scope& realm, v8::Module::ResolveModuleCallback callback) -> void {
-	auto* isolate = realm.isolate();
-	auto module = module_.Get(isolate);
+	auto module = module_->deref(realm.agent());
 	module->InstantiateModule(realm.context(), callback).ToChecked();
 }
 

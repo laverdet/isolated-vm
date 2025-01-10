@@ -147,6 +147,8 @@ class layer;
 export template <layer_traits Traits>
 class runner;
 
+export class handle;
+
 struct layer_base : util::non_moveable {
 		virtual ~layer_base() = default;
 		virtual auto request_stop() -> void = 0;
@@ -158,26 +160,18 @@ class layer_connected : public layer_base, public member<layer_connected>, publi
 				link{container} {}
 };
 
-// Pick `container_` from `layer`. Used for `friend` access to `container_` over any template
-// instantiation.
-struct pick_container {
-		template <layer_traits Traits>
-		auto operator()(layer<Traits>& layer) -> auto& { return layer.container_; }
-		template <layer_traits Traits>
-		auto operator()(runner<Traits>& runner) { return runner.container_; }
-};
-
 // Manages a graph of scheduler layers & runners. On destruction all children are closed before
 // continuing.
 template <layer_traits Traits = {}>
 class layer final : public std::conditional_t<Traits.root, layer_base, layer_connected> {
 	public:
-		friend pick_container;
+		template <layer_traits> friend class layer;
+		template <layer_traits> friend class runner;
 		layer() = default;
 
 		template <layer_traits ParentTraits>
 		explicit layer(layer<ParentTraits>& parent) :
-				layer_connected{pick_container{}(parent)} {}
+				layer_connected{parent.container_} {}
 
 		~layer() final { container<layer_connected>::close(container_); }
 
@@ -196,11 +190,11 @@ class runner final : public layer_connected {
 		static_assert(!Traits.root, "not implemented");
 
 	public:
-		friend pick_container;
+		friend handle;
 
 		template <layer_traits ParentTraits>
 		explicit runner(layer<ParentTraits>& parent) :
-				layer_connected{pick_container{}(parent)},
+				layer_connected{parent.container_},
 				container_{std::make_shared<container<thread>::lockable_type>()} {}
 
 		~runner() final { container<thread>::close(*container_); }
@@ -221,7 +215,7 @@ class handle {
 	public:
 		template <layer_traits Traits>
 		explicit handle(runner<Traits>& runner) :
-				container_{pick_container{}(runner)} {}
+				container_{runner.container_} {}
 
 		auto operator()(auto fn, auto&&... args) -> void
 			requires std::invocable<decltype(fn), std::stop_token, decltype(args)...>;

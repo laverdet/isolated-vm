@@ -8,6 +8,7 @@ module;
 export module ivm.isolated_v8:js_module;
 import :agent;
 import :realm;
+import :remote;
 import :script;
 import ivm.iv8;
 import ivm.js;
@@ -27,7 +28,7 @@ export class module_request {
 		js::string_t specifier_;
 };
 
-export class js_module : util::non_copyable {
+export class js_module {
 	public:
 		js_module() = delete;
 		js_module(agent::lock& agent, v8::Local<v8::Module> module_);
@@ -42,7 +43,7 @@ export class js_module : util::non_copyable {
 		static auto compile(agent::lock& agent, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module;
 		auto link(realm::scope& realm, v8::Module::ResolveModuleCallback callback) -> void;
 
-		v8::Global<v8::Module> module_;
+		shared_remote<v8::Module> module_;
 };
 
 auto js_module::compile(agent::lock& agent, auto&& source_text, source_origin source_origin) -> js_module {
@@ -109,7 +110,7 @@ auto js_module::link(realm::scope& realm, auto callback) -> void {
 			);
 			return result;
 		});
-		return result.module_.Get(isolate);
+		return result.module_->deref(realm.agent());
 	};
 	link(realm, v8_callback);
 }

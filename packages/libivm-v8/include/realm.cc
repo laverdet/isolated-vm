@@ -1,22 +1,23 @@
 export module ivm.isolated_v8:realm;
 import :agent_fwd;
+import :remote;
 import ivm.utility;
 import v8;
 
 namespace ivm {
 
-export class realm : util::non_copyable {
+export class realm {
 	public:
 		class managed_scope;
 		class scope;
 
 		realm() = delete;
-		realm(v8::Isolate* isolate, v8::Local<v8::Context> context);
+		realm(agent::lock& agent_lock, v8::Local<v8::Context> context);
 		static auto get(v8::Local<v8::Context> context) -> realm&;
 		static auto make(agent::lock& agent) -> realm;
 
 	private:
-		v8::Global<v8::Context> context;
+		shared_remote<v8::Context> context_;
 };
 
 class realm::scope : util::non_copyable {

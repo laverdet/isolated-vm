@@ -14,10 +14,12 @@ namespace ivm::js::napi {
 template <class Handle, class Type>
 class uv_handle_of : public util::pointer_facade<uv_handle_of<Handle, Type>>, util::non_moveable {
 	private:
-		class private_constructor {};
+		struct private_ctor {
+				explicit private_ctor() = default;
+		};
 
 	public:
-		explicit uv_handle_of(const private_constructor& /*dummy*/, auto&&... args) :
+		explicit uv_handle_of(const private_ctor& /*private*/, auto&&... args) :
 				value_{std::forward<decltype(args)>(args)...} {}
 		~uv_handle_of();
 		uv_handle_of() = delete;
@@ -87,7 +89,7 @@ auto uv_handle_of<Handle, Type>::open(const auto& init, uv_loop_t* loop, auto&&.
 
 template <class Handle, class Type>
 auto uv_handle_of<Handle, Type>::make(auto&&... args) -> std::shared_ptr<uv_handle_of> {
-	auto shared_with_block = std::make_shared<uv_handle_of>(private_constructor{}, std::forward<decltype(args)>(args)...);
+	auto shared_with_block = std::make_shared<uv_handle_of>(private_ctor{}, std::forward<decltype(args)>(args)...);
 	auto weak_ptr_ptr = std::make_unique<std::weak_ptr<uv_handle_of>>(shared_with_block);
 	shared_with_block->handle_.data = weak_ptr_ptr.release();
 	return shared_with_block;

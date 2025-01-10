@@ -3,6 +3,7 @@ module;
 module ivm.isolated_v8;
 import :agent;
 import :realm;
+import :remote;
 import :script;
 import ivm.iv8;
 import ivm.js;
@@ -12,12 +13,12 @@ namespace ivm {
 
 // script
 script::script(agent::lock& agent, v8::Local<v8::UnboundScript> script) :
-		unbound_script_{agent->isolate(), script} {
+		unbound_script_{make_shared_remote(agent, script)} {
 }
 
 auto script::run(realm::scope& realm_scope) -> js::value_t {
 	auto* isolate = realm_scope.isolate();
-	auto script = unbound_script_.Get(isolate);
+	auto script = unbound_script_->deref(realm_scope.agent());
 	auto context = realm_scope.context();
 	auto result = script->BindToCurrentContext()->Run(context).ToLocalChecked();
 	return js::transfer<js::value_t>(result, std::tuple{isolate, context}, std::tuple{});

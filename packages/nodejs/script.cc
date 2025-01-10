@@ -52,15 +52,17 @@ auto run_script(
 		return js::transfer_strict<napi_value>(std::move(result), std::tuple{}, std::tuple{env.nenv()});
 	});
 	agent->schedule(
-		[ &realm,
-			&script,
-			dispatch = std::move(dispatch) ](
-			ivm::agent::lock& agent
+		[ dispatch = std::move(dispatch) ](
+			ivm::agent::lock& agent,
+			ivm::realm realm,
+			ivm::script script
 		) mutable {
-			ivm::realm::managed_scope realm_scope{agent, *realm};
-			auto result = script->run(realm_scope);
+			ivm::realm::managed_scope realm_scope{agent, realm};
+			auto result = script.run(realm_scope);
 			dispatch(std::move(result));
-		}
+		},
+		*realm,
+		*script
 	);
 	return js::transfer_direct{promise};
 }

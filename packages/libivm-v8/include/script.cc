@@ -5,6 +5,7 @@ module;
 export module ivm.isolated_v8:script;
 import :agent;
 import :realm;
+import :remote;
 import ivm.iv8;
 import ivm.js;
 import ivm.utility;
@@ -22,7 +23,7 @@ export struct source_origin {
 		std::optional<source_location> location;
 };
 
-export class script : util::non_copyable {
+export class script {
 	public:
 		script() = delete;
 		script(agent::lock& agent, v8::Local<v8::UnboundScript> script);
@@ -33,7 +34,7 @@ export class script : util::non_copyable {
 	private:
 		static auto compile(agent::lock& agent, v8::Local<v8::String> code_string, source_origin source_origin) -> script;
 
-		v8::Global<v8::UnboundScript> unbound_script_;
+		shared_remote<v8::UnboundScript> unbound_script_;
 };
 
 auto script::compile(agent::lock& agent, auto&& code_string, source_origin source_origin) -> script {

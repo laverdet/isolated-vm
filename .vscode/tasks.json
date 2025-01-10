@@ -16,7 +16,7 @@
         "Release",
         "RelWithDebInfo",
       ],
-      "default": "Debug",
+      "default": "RelWithDebInfo",
     },
     {
       "type": "pickString",

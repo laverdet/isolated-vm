@@ -43,7 +43,7 @@ auto agent::severable::sever() -> void {
 
 // host
 agent::host::host(
-	std::shared_ptr<storage> agent_storage,
+	std::shared_ptr<agent::storage> agent_storage,
 	clock::any_clock clock,
 	std::optional<double> random_seed
 ) :
@@ -59,8 +59,17 @@ agent::host::host(
 	v8::Isolate::Initialize(isolate_.get(), create_params);
 }
 
+agent::host::~host() {
+	managed_lock lock{*this};
+	agent_storage_->remote_handles().reset(lock);
+}
+
 auto agent::host::clock_time_ms() -> int64_t {
 	return std::visit([](auto&& clock) { return clock.clock_time_ms(); }, clock_);
+}
+
+auto agent::host::dispose_isolate(v8::Isolate* isolate) -> void {
+	isolate->Dispose();
 }
 
 auto agent::host::foreground_runner() -> std::shared_ptr<ivm::foreground_runner> {
@@ -127,11 +136,6 @@ auto agent::host::task_runner(v8::TaskPriority /*priority*/) -> std::shared_ptr<
 
 auto agent::host::weak_module_specifiers() -> js::iv8::weak_map<v8::Module, js::string_t>& {
 	return weak_module_specifiers_;
-}
-
-// isolate_destructor
-auto agent::host::isolate_destructor::operator()(v8::Isolate* isolate) -> void {
-	isolate->Dispose();
 }
 
 // random_seed_unlatch

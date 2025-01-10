@@ -68,15 +68,17 @@ auto evaluate_module(
 		return js::transfer_strict<napi_value>(std::move(result), std::tuple{}, std::tuple{env.nenv()});
 	});
 	agent->schedule(
-		[ &realm,
-			&module_,
-			dispatch = std::move(dispatch) ](
-			ivm::agent::lock& agent
+		[ dispatch = std::move(dispatch) ](
+			ivm::agent::lock& agent,
+			ivm::realm realm,
+			ivm::js_module module_
 		) mutable {
-			ivm::realm::managed_scope realm_scope{agent, *realm};
-			auto result = module_->evaluate(realm_scope);
+			ivm::realm::managed_scope realm_scope{agent, realm};
+			auto result = module_.evaluate(realm_scope);
 			dispatch(std::move(result));
-		}
+		},
+		*realm,
+		*module_
 	);
 	return js::transfer_direct{promise};
 }
@@ -91,8 +93,6 @@ auto link_module(
 	auto* nenv = env.nenv();
 	auto callback = js::napi::reference{nenv, link_callback_};
 	auto scheduler = env.scheduler();
-	auto& module = *module_;
-	auto& realm = *realm_;
 	js::napi::reference link_callback_ref{nenv, link_callback_};
 	auto [ dispatch, promise ] = make_promise(
 		env,
@@ -101,14 +101,14 @@ auto link_module(
 		}
 	);
 	agent->schedule_async(
-		[ &module, /* TODO: NO!*/
-			&realm,	 /* TODO: NO!*/
-			&env,
+		[ &env,
 			link_callback_ref = std::move(link_callback_ref),
 			scheduler = std::move(scheduler),
 			dispatch = std::move(dispatch) ](
 			const std::stop_token& /*stop_token*/,
-			ivm::agent::lock& agent
+			ivm::agent::lock& agent,
+			ivm::realm realm,
+			ivm::js_module module
 		) mutable {
 			ivm::realm::managed_scope realm_scope{agent, realm};
 			module.link(
@@ -117,7 +117,7 @@ auto link_module(
 					auto specifier,
 					auto referrer,
 					auto attributes
-				) mutable -> ivm::js_module& {
+				) -> ivm::js_module& {
 					std::promise<ivm::js_module*> promise;
 					auto future = promise.get_future();
 					scheduler.schedule(
@@ -147,7 +147,9 @@ auto link_module(
 				}
 			);
 			dispatch();
-		}
+		},
+		*realm_,
+		*module_
 	);
 	return js::transfer_direct{promise};
 }

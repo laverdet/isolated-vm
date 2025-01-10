@@ -10,6 +10,7 @@ target_sources(ivm_isolated_v8
 		platform/job_handle.cc
 		platform/platform.cc
 		realm.cc
+		remote.cc
 		script.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
@@ -18,6 +19,7 @@ target_sources(ivm_isolated_v8
 		include/cluster.cc
 		include/module.cc
 		include/realm.cc
+		include/remote.cc
 		include/script.cc
 		platform/include/clock.cc
 		platform/include/foreground_runner.cc
