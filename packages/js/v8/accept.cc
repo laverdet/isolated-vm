@@ -57,8 +57,7 @@ template <>
 struct accept<void, v8::Local<v8::Boolean>> : accept<void, v8::Local<v8::Data>> {
 		using accept<void, v8::Local<v8::Data>>::accept;
 		auto operator()(boolean_tag tag, auto&& value) const -> v8::Local<v8::Boolean> {
-			const accept<void, v8::Local<v8::Data>>& accept = *this;
-			return accept(tag, std::forward<decltype(value)>(value));
+			return accept<void, v8::Local<v8::Data>>::operator()(tag, std::forward<decltype(value)>(value));
 		}
 };
 
@@ -68,8 +67,7 @@ struct accept<void, v8::Local<v8::Number>> : accept<void, v8::Local<v8::Data>> {
 		using accept<void, v8::Local<v8::Data>>::accept;
 		template <class Numeric>
 		auto operator()(number_tag_of<Numeric> tag, auto&& value) const -> v8::Local<v8::Number> {
-			const accept<void, v8::Local<v8::Data>>& accept = *this;
-			return accept(tag, std::forward<decltype(value)>(value));
+			return accept<void, v8::Local<v8::Data>>::operator()(tag, std::forward<decltype(value)>(value));
 		}
 };
 
@@ -78,8 +76,7 @@ template <>
 struct accept<void, v8::Local<v8::String>> : accept<void, v8::Local<v8::Data>> {
 		using accept<void, v8::Local<v8::Data>>::accept;
 		auto operator()(string_tag tag, auto&& value) const -> v8::Local<v8::String> {
-			const accept<void, v8::Local<v8::Data>>& accept = *this;
-			return accept(tag, std::forward<decltype(value)>(value));
+			return accept<void, v8::Local<v8::Data>>::operator()(tag, std::forward<decltype(value)>(value));
 		}
 };
 
@@ -99,8 +96,7 @@ struct accept<void, v8::Local<v8::Value>> : accept<void, v8::Local<v8::Data>> {
 		auto operator()(auto_tag auto tag, auto&& value) const -> v8::Local<v8::Value>
 			requires std::invocable<accept<void, v8::Local<v8::Data>>, decltype(tag), decltype(value)>
 		{
-			const accept<void, v8::Local<v8::Data>>& accept = *this;
-			return accept(tag, std::forward<decltype(value)>(value));
+			return accept<void, v8::Local<v8::Data>>::operator()(tag, std::forward<decltype(value)>(value));
 		}
 
 		auto operator()(date_tag /*tag*/, auto&& value) const -> v8::Local<v8::Value> {

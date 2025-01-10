@@ -77,7 +77,7 @@ struct visit<void, key_for<Key, napi_value>> {
 	public:
 		auto operator()(const auto& context, const auto& accept) const -> decltype(auto) {
 			if (local_key == napi_value{}) {
-				local_key = js::napi::value<string_tag>::make(context.env(), js::string_literal<Key>{});
+				local_key = js::napi::value<string_tag>::make(context.env(), Key.data());
 			}
 			return accept(string_tag{}, local_key);
 		}

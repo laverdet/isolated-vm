@@ -69,8 +69,7 @@ struct accept<Meta, napi_value> : accept<Meta, napi_env> {
 
 		auto operator()(auto_tag auto tag, auto&& value) const -> napi_value
 			requires std::invocable<accept_type, decltype(tag), decltype(value)> {
-			const accept_type& accept = *this;
-			return accept(tag, std::forward<decltype(value)>(value));
+			return accept_type::operator()(tag, std::forward<decltype(value)>(value));
 		}
 
 		auto operator()(vector_tag /*tag*/, auto&& list, const auto& visit) const -> napi_value {

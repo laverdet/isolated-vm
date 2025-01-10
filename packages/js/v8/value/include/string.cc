@@ -16,7 +16,7 @@ export class string : public v8::String {
 		template <size_t Size>
 		// NOLINTNEXTLINE(modernize-avoid-c-arrays)
 		static auto make(v8::Isolate* isolate, const char string[ Size ]) -> v8::Local<v8::String> {
-			return make(isolate, std::string_view{string, Size});
+			return v8::String::NewFromUtf8Literal(isolate, string);
 		}
 
 		static auto make(v8::Isolate* isolate, std::string_view view) -> v8::Local<v8::String>;

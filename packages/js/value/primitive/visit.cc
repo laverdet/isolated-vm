@@ -19,14 +19,22 @@ struct visit<void, Type> : visit<void, void> {
 		}
 };
 
+// `util::string_literal` is a UTF-8 string of known size
+template <class Meta, size_t Size>
+struct visit<Meta, util::string_literal<Size>> : visit<void, void> {
+		using visit<void, void>::visit;
+		constexpr auto operator()(const auto& value, const auto_accept auto& accept) const -> decltype(auto) {
+			return accept(string_tag_of<char>{}, value.data());
+		}
+};
+
 // `std::optional` visitor may yield `undefined`
 template <class Meta, class Type>
 struct visit<Meta, std::optional<Type>> : visit<Meta, Type> {
 		using visit<Meta, Type>::visit;
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			if (value) {
-				const visit<Meta, Type>& visit = *this;
-				return visit(*std::forward<decltype(value)>(value), accept);
+				return visit<Meta, Type>::operator()(*std::forward<decltype(value)>(value), accept);
 			} else {
 				return accept(undefined_tag{}, std::monostate{});
 			}

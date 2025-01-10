@@ -20,8 +20,7 @@ struct accept<Meta, covariant_subject<Type, Result>> : accept<Meta, Type> {
 
 		constexpr auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> Result
 			requires std::is_invocable_v<accept<Meta, Type>, decltype(tag), decltype(value), decltype(rest)...> {
-			const accept<Meta, Type>& parent = *this;
-			return parent(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
+			return accept<Meta, Type>::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
 		}
 };
 
@@ -32,8 +31,7 @@ struct accept<Meta, covariant_subject<Type, Result>> : accept<Meta, Type> {
 		using accept<Meta, Type>::accept;
 
 		constexpr auto operator()(tag_for_t<Type> tag, auto&& value) const -> Result {
-			const accept<Meta, Type>& parent = *this;
-			return parent(tag, std::forward<decltype(value)>(value));
+			return accept<Meta, Type>::operator()(tag, std::forward<decltype(value)>(value));
 		}
 };
 
