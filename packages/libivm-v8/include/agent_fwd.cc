@@ -3,7 +3,7 @@ module;
 #include <memory>
 #include <stop_token>
 export module ivm.isolated_v8:agent_fwd;
-import :platform.foreground_runner;
+import isolated_v8.foreground_runner;
 import ivm.utility;
 
 namespace isolated_v8 {

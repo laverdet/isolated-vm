@@ -2,9 +2,9 @@ module;
 #include <memory>
 #include <thread>
 export module ivm.isolated_v8:platform;
-import :scheduler;
-import v8;
+import isolated_v8.scheduler;
 import ivm.utility;
+import v8;
 
 // See: /v8/src/libplatform/default-job.cc
 

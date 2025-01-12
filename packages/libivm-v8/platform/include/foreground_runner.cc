@@ -3,9 +3,9 @@ module;
 #include <condition_variable>
 #include <mutex>
 #include <queue>
-export module ivm.isolated_v8:platform.foreground_runner;
-import :platform.task_runner;
-import :scheduler;
+export module isolated_v8.foreground_runner;
+import isolated_v8.scheduler;
+import isolated_v8.task_runner;
 import ivm.utility;
 import v8;
 
@@ -13,7 +13,7 @@ using namespace std::chrono;
 
 namespace isolated_v8 {
 
-class foreground_runner : public task_runner::task_runner_of<foreground_runner> {
+export class foreground_runner : public task_runner::task_runner_of<foreground_runner> {
 	public:
 		class scope;
 		friend scope;

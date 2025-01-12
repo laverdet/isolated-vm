@@ -4,7 +4,7 @@ module;
 #include <memory>
 export module ivm.isolated_v8:remote;
 import :agent_fwd;
-import :scheduler;
+import isolated_v8.scheduler;
 import v8;
 
 namespace isolated_v8 {

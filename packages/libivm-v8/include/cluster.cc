@@ -7,10 +7,10 @@ module;
 #include <utility>
 export module ivm.isolated_v8:cluster;
 import :agent;
-import :clock;
+import isolated_v8.clock;
+import isolated_v8.foreground_runner;
 import :platform;
-import :platform.foreground_runner;
-import :scheduler;
+import isolated_v8.scheduler;
 import ivm.utility;
 import v8;
 

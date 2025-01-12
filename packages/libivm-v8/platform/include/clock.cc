@@ -2,7 +2,7 @@ module;
 #include <chrono>
 #include <optional>
 #include <variant>
-export module ivm.isolated_v8:clock;
+export module isolated_v8.clock;
 import ivm.js;
 
 using namespace std::chrono;

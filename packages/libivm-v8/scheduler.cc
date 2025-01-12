@@ -10,7 +10,7 @@ module;
 #include <stop_token>
 #include <thread>
 #include <type_traits>
-export module ivm.isolated_v8:scheduler;
+export module isolated_v8.scheduler;
 import ivm.utility;
 
 namespace scheduler {

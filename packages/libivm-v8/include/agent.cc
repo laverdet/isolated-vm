@@ -6,10 +6,11 @@ module;
 #include <stop_token>
 export module ivm.isolated_v8:agent;
 export import :agent_fwd;
-import :clock;
-import :platform.task_runner;
 import :remote;
-import :scheduler;
+import isolated_v8.clock;
+import isolated_v8.foreground_runner;
+import isolated_v8.scheduler;
+import isolated_v8.task_runner;
 import ivm.iv8;
 import ivm.js;
 import ivm.utility;

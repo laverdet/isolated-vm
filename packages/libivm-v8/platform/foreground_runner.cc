@@ -5,9 +5,8 @@ module;
 #include <queue>
 #include <stop_token>
 #include <utility>
-module ivm.isolated_v8;
-import :platform.foreground_runner;
-import :platform.task_runner;
+module isolated_v8.foreground_runner;
+import isolated_v8.task_runner;
 import v8;
 
 namespace isolated_v8 {
@@ -50,6 +49,7 @@ auto foreground_runner::post_non_nestable(task_type task) -> void {
 auto foreground_runner::post(task_type task) -> void {
 	storage_.write()->tasks_.emplace_back(nestability::nestable, std::move(task));
 }
+
 auto foreground_runner::schedule_non_nestable(const std::shared_ptr<foreground_runner>& self, task_type task) -> void {
 	auto lock = self->storage_.write_notify();
 	lock->tasks_.emplace_back(task_runner::nestability::non_nestable, std::move(task));

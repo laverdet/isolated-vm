@@ -1,12 +1,12 @@
 module;
 #include <chrono>
 #include <optional>
-module ivm.isolated_v8;
+module isolated_v8.clock;
 import ivm.js;
 import ivm.utility;
-
 using namespace std::chrono;
 using js::js_clock;
+
 #ifdef _LIBCPP_VERSION
 namespace std::chrono {
 using utc_clock = system_clock;

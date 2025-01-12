@@ -5,13 +5,13 @@ module;
 #include <variant>
 module ivm.isolated_v8;
 import :agent;
+import isolated_v8.foreground_runner;
 import :platform;
-import :platform.foreground_runner;
-import :scheduler;
-import v8;
+import isolated_v8.scheduler;
 import ivm.iv8;
 import ivm.js;
 import ivm.utility;
+import v8;
 
 namespace isolated_v8 {
 
