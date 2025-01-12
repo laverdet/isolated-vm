@@ -1,7 +1,7 @@
 export module ivm.js:visit;
 import :transfer.types;
 
-namespace ivm::js {
+namespace js {
 
 // `visit` accepts a value and acceptor and then invokes the acceptor with a JavaScript type tag and
 // a value which follows some sort of casting interface corresponding to the tag.
@@ -27,4 +27,4 @@ struct visit<void, void> {
 		constexpr visit(int /*dummy*/, const auto& /*visit*/) {}
 };
 
-} // namespace ivm::js
+} // namespace js

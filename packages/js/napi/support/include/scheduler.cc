@@ -7,7 +7,7 @@ module;
 export module ivm.napi:uv_scheduler;
 import ivm.utility;
 
-namespace ivm::js::napi {
+namespace js::napi {
 
 // `uv_handle_t` subtype wrapper with uv-owned shared memory. An open handle must be closed before
 // the handle is destroyed or it is UB.
@@ -100,4 +100,4 @@ auto uv_handle_of<Handle, Type>::unwrap(const Handle* handle) -> const std::shar
 	return *reinterpret_cast<std::shared_ptr<uv_handle_of>*>(handle->data);
 }
 
-} // namespace ivm::js::napi
+} // namespace js::napi

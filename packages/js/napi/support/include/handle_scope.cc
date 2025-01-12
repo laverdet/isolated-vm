@@ -4,7 +4,7 @@ import ivm.js;
 import ivm.utility;
 import napi;
 
-namespace ivm::js::napi {
+namespace js::napi {
 
 export class handle_scope : util::non_moveable {
 	public:
@@ -21,4 +21,4 @@ export class handle_scope : util::non_moveable {
 		napi_handle_scope handle_scope_;
 };
 
-} // namespace ivm::js::napi
+} // namespace js::napi

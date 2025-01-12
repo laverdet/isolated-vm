@@ -9,7 +9,7 @@ import ivm.js;
 import napi;
 import v8;
 
-namespace ivm::js {
+namespace js {
 
 // Fake acceptor for primitive values
 template <>
@@ -208,4 +208,4 @@ struct accept<void, js::napi::value<Tag>> : accept<void, void> {
 		}
 };
 
-} // namespace ivm::js
+} // namespace js

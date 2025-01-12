@@ -15,7 +15,7 @@ import ivm.js;
 import ivm.utility;
 import v8;
 
-namespace ivm {
+namespace isolated_v8 {
 
 export class module_request {
 	public:
@@ -115,9 +115,11 @@ auto js_module::link(realm::scope& realm, auto callback) -> void {
 	link(realm, v8_callback);
 }
 
-} // namespace ivm
+} // namespace isolated_v8
 
-namespace ivm::js {
+namespace js {
+
+using isolated_v8::module_request;
 
 template <>
 struct object_properties<module_request> {
@@ -126,4 +128,4 @@ struct object_properties<module_request> {
 		};
 };
 
-} // namespace ivm::js
+} // namespace js

@@ -11,7 +11,7 @@ import :struct_.helpers;
 import :tag;
 import :transfer;
 
-namespace ivm::js {
+namespace js {
 
 // Acceptor function for C++ object types.
 template <class Meta, class Type, class... Setters>
@@ -69,4 +69,4 @@ struct accept<Meta, Type> : accept<Meta, mapped_object_type<Type, std::decay_t<d
 		using accept<Meta, mapped_object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>>::accept;
 };
 
-} // namespace ivm::js
+} // namespace js

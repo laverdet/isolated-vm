@@ -6,7 +6,7 @@ export module ivm.isolated_v8:agent_fwd;
 import :platform.foreground_runner;
 import ivm.utility;
 
-namespace ivm {
+namespace isolated_v8 {
 
 // The base `agent` class holds a weak reference to a `agent::host`. libivm directly controls the
 // lifetime of a `host` and can sever the `weak_ptr` in this class if needed.
@@ -32,4 +32,4 @@ export class agent : util::non_copyable {
 		std::shared_ptr<severable> severable_;
 };
 
-} // namespace ivm
+} // namespace isolated_v8

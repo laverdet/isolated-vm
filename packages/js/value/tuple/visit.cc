@@ -5,7 +5,7 @@ module;
 export module ivm.js:tuple.visit;
 import :transfer;
 
-namespace ivm::js {
+namespace js {
 
 template <class Meta, class First, class Second>
 struct visit<Meta, std::pair<First, Second>> {
@@ -39,4 +39,4 @@ struct visit<Meta, std::tuple<Types...>> {
 		std::tuple<visit<Meta, Types>...> visit_;
 };
 
-} // namespace ivm::js
+} // namespace js

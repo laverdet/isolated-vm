@@ -11,7 +11,7 @@ import ivm.js;
 import ivm.utility;
 import v8;
 
-namespace ivm {
+namespace isolated_v8 {
 
 export struct source_location {
 		int line{};
@@ -46,9 +46,12 @@ auto script::compile(agent::lock& agent, auto&& code_string, source_origin sourc
 	return script::compile(agent, local_code_string, std::move(source_origin));
 }
 
-} // namespace ivm
+} // namespace isolated_v8
 
-namespace ivm::js {
+namespace js {
+
+using isolated_v8::source_location;
+using isolated_v8::source_origin;
 
 template <>
 struct object_properties<source_location> {
@@ -66,4 +69,4 @@ struct object_properties<source_origin> {
 		};
 };
 
-} // namespace ivm::js
+} // namespace js

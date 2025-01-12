@@ -7,7 +7,7 @@ using utc_clock = system_clock;
 }
 #endif
 
-namespace ivm::js {
+namespace js {
 
 // `Clock` implementation for JavaScript time. The point is to avoid casting from `double` to
 // `int64_t` where possible and still be able to use `clock_cast` when needed. The epochs are the
@@ -28,4 +28,4 @@ auto js_clock::now() noexcept -> time_point {
 	return time_point{time_ms};
 };
 
-} // namespace ivm::js
+} // namespace js

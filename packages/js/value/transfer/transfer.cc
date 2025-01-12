@@ -8,7 +8,7 @@ export import :accept;
 export import :visit;
 import :tag;
 
-namespace ivm::js {
+namespace js {
 
 // Default `accept` passthrough `Meta`
 struct accept_pass {
@@ -111,4 +111,4 @@ struct visit<void, transfer_direct<Type>> {
 		}
 };
 
-} // namespace ivm::js
+} // namespace js

@@ -7,7 +7,7 @@ import v8;
 import :handle;
 import ivm.utility;
 
-namespace ivm::js::iv8 {
+namespace js::iv8 {
 
 export class array : public v8::Array {
 	public:
@@ -49,4 +49,4 @@ export using array_handle = handle<array, util::mutable_value<uint32_t>>;
 static_assert(std::ranges::range<array_handle>);
 static_assert(std::random_access_iterator<array::iterator>);
 
-} // namespace ivm::js::iv8
+} // namespace js::iv8

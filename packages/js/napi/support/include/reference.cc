@@ -5,7 +5,7 @@ import :utility;
 import :value;
 import napi;
 
-namespace ivm::js::napi {
+namespace js::napi {
 
 export template <class Tag>
 class reference : util::non_copyable {
@@ -37,4 +37,4 @@ class reference : util::non_copyable {
 		napi_ref value_;
 };
 
-} // namespace ivm::js::napi
+} // namespace js::napi

@@ -5,7 +5,7 @@ module;
 export module ivm.utility:collection_group;
 import :utility;
 
-namespace ivm::util {
+namespace util {
 
 // v8 may not invoke destructors on `External` objects, but we still want to give it owning
 // references to resources. This provides an allocator-like interface to manage those resources. If
@@ -101,7 +101,7 @@ class collection_group::holder : non_copyable {
 		}
 
 		void* ptr{};
-		void (holder::* dtor)(){};
+		void (holder::*dtor)(){};
 };
 
 auto collection_group::collect(auto* ptr) -> void {
@@ -128,4 +128,4 @@ auto collection_group::make_ptr(auto&&... args)
 	return std::unique_ptr<Type, decltype(destructor)>{resource.template get<Type>(), destructor};
 }
 
-} // namespace ivm::util
+} // namespace util

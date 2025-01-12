@@ -5,7 +5,7 @@ export module ivm.iv8:weak_map;
 import v8;
 import ivm.utility;
 
-namespace ivm::js::iv8 {
+namespace js::iv8 {
 
 template <class Key, class Container>
 class weak_map_handle : util::non_copyable {
@@ -96,4 +96,4 @@ auto weak_map<Key, Value>::insert(v8::Isolate* isolate, std::pair<v8::Local<Key>
 	);
 }
 
-} // namespace ivm::js::iv8
+} // namespace js::iv8

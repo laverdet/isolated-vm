@@ -7,7 +7,7 @@ import :agent_fwd;
 import :scheduler;
 import v8;
 
-namespace ivm {
+namespace isolated_v8 {
 
 using intrusive_no_size = boost::intrusive::constant_time_size<false>;
 using intrusive_normal_mode = boost::intrusive::link_mode<boost::intrusive::normal_link>;
@@ -108,4 +108,4 @@ auto remote<Type>::send(remote* self) -> void {
 	// TODO: Break the remote -> agent -> remote cycle
 }
 
-} // namespace ivm
+} // namespace isolated_v8

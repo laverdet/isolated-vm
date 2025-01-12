@@ -6,10 +6,10 @@ namespace ivm {
 
 export class hosted_realm : util::non_copyable {
 	public:
-		explicit hosted_realm(ivm::realm realm);
+		explicit hosted_realm(isolated_v8::realm realm);
 
 	private:
-		ivm::realm realm_;
+		isolated_v8::realm realm_;
 };
 
 } // namespace ivm

@@ -3,7 +3,7 @@ module;
 export module ivm.utility:mutable_value;
 import :facade;
 
-namespace ivm::util {
+namespace util {
 
 export template <class Type>
 class mutable_value : pointer_facade<mutable_value<Type>> {
@@ -21,4 +21,4 @@ class mutable_value : pointer_facade<mutable_value<Type>> {
 		mutable Type value_{};
 };
 
-} // namespace ivm::util
+} // namespace util

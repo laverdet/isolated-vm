@@ -13,7 +13,7 @@ import ivm.js;
 import ivm.utility;
 import v8;
 
-namespace ivm::js {
+namespace js {
 
 // Base class for primitive acceptors. Not really an acceptor.
 template <>
@@ -149,4 +149,4 @@ struct accept<Meta, v8::MaybeLocal<Type>> : accept<Meta, v8::Local<Type>> {
 		}
 };
 
-}; // namespace ivm::js
+}; // namespace js

@@ -2,18 +2,18 @@ module;
 #include <chrono>
 #include <optional>
 #include <variant>
-export module ivm.isolated_v8:platform.clock;
+export module ivm.isolated_v8:clock;
 import ivm.js;
 
 using namespace std::chrono;
-using ivm::js::js_clock;
+using js::js_clock;
 #ifdef _LIBCPP_VERSION
 namespace std::chrono {
 using utc_clock = system_clock;
 }
 #endif
 
-namespace ivm::clock {
+namespace isolated_v8::clock {
 
 class base_clock {
 	public:
@@ -86,8 +86,11 @@ export class system : public base_clock_of<system> {
 	public:
 		system() = default;
 		auto clock_time() -> system_clock::time_point;
+		auto foo() -> void;
 };
 
 export using any_clock = std::variant<deterministic, microtask, realtime, system>;
 
-}; // namespace ivm::clock
+} // namespace isolated_v8::clock
+
+;

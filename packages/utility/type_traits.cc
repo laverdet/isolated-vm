@@ -4,7 +4,7 @@ module;
 #include <utility>
 export module ivm.utility:type_traits;
 
-namespace ivm::util {
+namespace util {
 
 // Select the indexed type from a parameter pack
 template <size_t Index, class... Types>
@@ -71,4 +71,4 @@ constexpr inline bool is_convertible_without_narrowing_v<From, To> =
 export template <class From, class To>
 concept convertible_without_narrowing = is_convertible_without_narrowing_v<From, To>;
 
-} // namespace ivm::util
+} // namespace util

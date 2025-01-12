@@ -6,7 +6,7 @@ module ivm.isolated_v8;
 import :platform;
 import ivm.utility;
 
-namespace ivm {
+namespace isolated_v8 {
 
 util::lockable<std::weak_ptr<platform>, std::mutex> shared_platform{};
 
@@ -29,4 +29,4 @@ auto platform::handle::acquire() -> handle {
 	return handle{std::move(acquired_platform)};
 }
 
-} // namespace ivm
+} // namespace isolated_v8

@@ -11,7 +11,7 @@ import v8;
 
 using namespace std::chrono;
 
-namespace ivm {
+namespace isolated_v8 {
 
 class foreground_runner : public task_runner::task_runner_of<foreground_runner> {
 	public:
@@ -59,4 +59,4 @@ class foreground_runner::scope : public foreground_runner::write_waitable_type {
 		~scope();
 };
 
-} // namespace ivm
+} // namespace isolated_v8

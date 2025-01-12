@@ -9,7 +9,7 @@ import :platform;
 import ivm.utility;
 import v8;
 
-namespace ivm {
+namespace isolated_v8 {
 
 platform::platform() {
 	v8::V8::InitializeICU();
@@ -114,4 +114,4 @@ auto platform::fill_random_bytes(unsigned char* buffer, size_t length) -> bool {
 	return fill(integer_stream);
 }
 
-} // namespace ivm
+} // namespace isolated_v8

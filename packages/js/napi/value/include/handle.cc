@@ -1,7 +1,7 @@
 module ivm.napi:handle;
 import napi;
 
-namespace ivm::js::napi {
+namespace js::napi {
 
 export class handle {
 	public:
@@ -19,4 +19,4 @@ export class handle {
 		napi_value value_{};
 };
 
-} // namespace ivm::js::napi
+} // namespace js::napi

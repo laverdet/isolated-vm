@@ -8,7 +8,7 @@ import ivm.utility;
 import napi;
 import v8;
 
-namespace ivm::js::napi {
+namespace js::napi {
 
 // Convert a napi handle to a v8 handle
 export auto to_v8(napi_value value) -> v8::Local<v8::Value> {
@@ -54,6 +54,6 @@ export auto invoke(auto fn, auto&&... args)
 	std::remove_pointer_t<out_arg_t> out_arg;
 	js::napi::invoke0(fn, std::forward<decltype(args)>(args)..., &out_arg);
 	return std::move(out_arg);
-} // namespace ivm::js::napi
+} // namespace js::napi
 
-} // namespace ivm::js::napi
+} // namespace js::napi

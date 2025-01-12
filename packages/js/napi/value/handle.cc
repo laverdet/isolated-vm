@@ -2,7 +2,7 @@ module ivm.napi;
 import :handle;
 import :utility;
 
-namespace ivm::js::napi {
+namespace js::napi {
 
 handle::handle(napi_env env, napi_value value) :
 		env_{env},
@@ -24,4 +24,4 @@ auto handle::env() const -> napi_env {
 	return env_;
 }
 
-} // namespace ivm::js::napi
+} // namespace js::napi

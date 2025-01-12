@@ -7,7 +7,7 @@ import :tag;
 import :transfer;
 import :variant.types;
 
-namespace ivm::js {
+namespace js {
 
 // Covariant `accept` helper for variant-like types
 template <class Type, class Result>
@@ -66,4 +66,4 @@ struct accept<Meta, recursive_variant<First, Rest...>>
 		using accept<Meta, variant_of<recursive_variant<First, Rest...>, First, Rest...>>::accept;
 };
 
-} // namespace ivm::js
+} // namespace js

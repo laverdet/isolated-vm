@@ -12,6 +12,7 @@ import ivm.iv8;
 import ivm.js;
 import ivm.napi;
 import napi;
+using namespace isolated_v8;
 
 namespace ivm {
 
@@ -26,17 +27,17 @@ auto compile_script(
 	std::optional<compile_script_options> options_optional
 ) {
 	auto options = std::move(options_optional).value_or(compile_script_options{});
-	auto [ dispatch, promise ] = make_promise(env, [](environment& env, ivm::script script) -> expected_value {
-		return make_collected_external<ivm::script>(env, std::move(script));
+	auto [ dispatch, promise ] = make_promise(env, [](environment& env, isolated_v8::script script) -> expected_value {
+		return make_collected_external<isolated_v8::script>(env, std::move(script));
 	});
 	agent->schedule(
 		[ code_string = std::move(code_string),
 			options = std::move(options),
 			dispatch = std::move(dispatch) ](
-			ivm::agent::lock& agent
+			isolated_v8::agent::lock& agent
 		) mutable {
 			auto origin = std::move(options.origin).value_or(source_origin{});
-			dispatch(ivm::script::compile(agent, std::move(code_string), std::move(origin)));
+			dispatch(isolated_v8::script::compile(agent, std::move(code_string), std::move(origin)));
 		}
 	);
 	return js::transfer_direct{promise};
@@ -53,11 +54,11 @@ auto run_script(
 	});
 	agent->schedule(
 		[ dispatch = std::move(dispatch) ](
-			ivm::agent::lock& agent,
-			ivm::realm realm,
-			ivm::script script
+			isolated_v8::agent::lock& agent,
+			isolated_v8::realm realm,
+			isolated_v8::script script
 		) mutable {
-			ivm::realm::managed_scope realm_scope{agent, realm};
+			isolated_v8::realm::managed_scope realm_scope{agent, realm};
 			auto result = script.run(realm_scope);
 			dispatch(std::move(result));
 		},
@@ -77,7 +78,9 @@ auto make_run_script(environment& env) -> js::napi::value<js::function_tag> {
 
 } // namespace ivm
 
-namespace ivm::js {
+namespace js {
+
+using ivm::compile_script_options;
 
 template <>
 struct object_properties<compile_script_options> {
@@ -86,4 +89,4 @@ struct object_properties<compile_script_options> {
 		};
 };
 
-} // namespace ivm::js
+} // namespace js

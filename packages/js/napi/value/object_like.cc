@@ -5,7 +5,7 @@ import :value;
 import ivm.utility;
 import napi;
 
-namespace ivm::js::napi {
+namespace js::napi {
 
 auto object_like::get(napi_value key) const -> napi_value {
 	return js::napi::invoke(napi_get_property, env(), *this, key);
@@ -19,4 +19,4 @@ auto object_like::set(napi_value key, napi_value value) -> void {
 	js::napi::invoke0(napi_set_property, env(), *this, key, value);
 }
 
-} // namespace ivm::js::napi
+} // namespace js::napi

@@ -10,7 +10,7 @@ module;
 #include <variant>
 export module ivm.utility:lockable;
 
-namespace ivm::util {
+namespace util {
 
 template <class Type>
 concept basic_lockable = requires(Type lock) {
@@ -199,4 +199,4 @@ class lockable {
 		[[no_unique_address]] ConditionVariable condition_variable_;
 };
 
-} // namespace ivm::util
+} // namespace util

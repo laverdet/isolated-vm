@@ -11,7 +11,7 @@ import ivm.utility;
 import napi;
 import v8;
 
-namespace ivm::js {
+namespace js {
 
 // Delegate napi_value to various visitors
 template <>
@@ -86,4 +86,4 @@ struct visit<void, key_for<Key, napi_value>> {
 		mutable napi_value local_key{};
 };
 
-} // namespace ivm::js
+} // namespace js

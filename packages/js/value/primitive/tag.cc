@@ -8,7 +8,7 @@ import :date;
 import :tag;
 import ivm.utility;
 
-namespace ivm::js {
+namespace js {
 
 // `undefined`
 template <>
@@ -56,4 +56,4 @@ struct tag_for<std::string_view> : std::type_identity<string_tag_of<char>> {};
 template <>
 struct tag_for<std::u16string> : std::type_identity<string_tag_of<char16_t>> {};
 
-} // namespace ivm::js
+} // namespace js

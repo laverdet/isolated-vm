@@ -7,7 +7,7 @@ import v8;
 
 using namespace std::chrono;
 
-namespace ivm {
+namespace isolated_v8 {
 
 // Allow lambda-style callbacks to be called with the same virtual dispatch as `v8::Task`
 template <std::invocable<> Invocable>
@@ -191,4 +191,4 @@ auto task_runner::task_runner_of<Self>::PostIdleTaskImpl(
 	return static_cast<Self*>(this)->post_idle(std::move(task));
 }
 
-} // namespace ivm
+} // namespace isolated_v8

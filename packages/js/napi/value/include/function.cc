@@ -13,7 +13,7 @@ import ivm.utility;
 import napi;
 import v8;
 
-namespace ivm::js::napi {
+namespace js::napi {
 
 template <>
 struct factory<function_tag> : factory<value_tag> {
@@ -88,4 +88,4 @@ auto function::invoke(auto&&... args) -> Result {
 	return js::transfer<Result>(result, std::tuple{env()}, std::tuple{});
 }
 
-} // namespace ivm::js::napi
+} // namespace js::napi

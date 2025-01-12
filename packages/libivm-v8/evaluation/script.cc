@@ -9,7 +9,7 @@ import ivm.iv8;
 import ivm.js;
 import v8;
 
-namespace ivm {
+namespace isolated_v8 {
 
 // script
 script::script(agent::lock& agent, v8::Local<v8::UnboundScript> script) :
@@ -41,4 +41,4 @@ auto script::compile(agent::lock& agent, v8::Local<v8::String> code_string, sour
 	return script{agent, script_handle};
 }
 
-} // namespace ivm
+} // namespace isolated_v8

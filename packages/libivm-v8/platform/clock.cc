@@ -6,14 +6,14 @@ import ivm.js;
 import ivm.utility;
 
 using namespace std::chrono;
-using ivm::js::js_clock;
+using js::js_clock;
 #ifdef _LIBCPP_VERSION
 namespace std::chrono {
 using utc_clock = system_clock;
 }
 #endif
 
-namespace ivm::clock {
+namespace isolated_v8::clock {
 
 // base_clock
 auto base_clock::begin_tick() -> void {}
@@ -62,4 +62,4 @@ auto system::clock_time() -> system_clock::time_point {
 	return system_clock::now();
 }
 
-} // namespace ivm::clock
+} // namespace isolated_v8::clock

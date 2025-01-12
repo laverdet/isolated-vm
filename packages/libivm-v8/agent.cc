@@ -13,7 +13,7 @@ import ivm.iv8;
 import ivm.js;
 import ivm.utility;
 
-namespace ivm {
+namespace isolated_v8 {
 
 agent::lock::lock(agent::host& host) :
 		host_{host} {}
@@ -30,7 +30,7 @@ agent::agent(const std::shared_ptr<host>& host, std::shared_ptr<severable> sever
 		severable_{std::move(severable_)} {}
 
 // storage
-agent::storage::storage(ivm::cluster_scheduler& cluster_scheduler) :
+agent::storage::storage(scheduler::layer<{}>& cluster_scheduler) :
 		scheduler_{cluster_scheduler} {}
 
 // severable
@@ -48,7 +48,7 @@ agent::host::host(
 	std::optional<double> random_seed
 ) :
 		agent_storage_{std::move(agent_storage)},
-		task_runner_{std::make_shared<ivm::foreground_runner>(agent_storage_->scheduler())},
+		task_runner_{std::make_shared<isolated_v8::foreground_runner>(agent_storage_->scheduler())},
 		array_buffer_allocator_{v8::ArrayBuffer::Allocator::NewDefaultAllocator()},
 		isolate_{v8::Isolate::Allocate()},
 		random_seed_{random_seed},
@@ -72,7 +72,7 @@ auto agent::host::dispose_isolate(v8::Isolate* isolate) -> void {
 	isolate->Dispose();
 }
 
-auto agent::host::foreground_runner() -> std::shared_ptr<ivm::foreground_runner> {
+auto agent::host::foreground_runner() -> std::shared_ptr<isolated_v8::foreground_runner> {
 	return task_runner_;
 }
 
@@ -146,4 +146,4 @@ auto agent::host::random_seed_unlatch::operator()() const -> void {
 	*latch = false;
 }
 
-} // namespace ivm
+} // namespace isolated_v8

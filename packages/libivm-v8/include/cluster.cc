@@ -7,14 +7,14 @@ module;
 #include <utility>
 export module ivm.isolated_v8:cluster;
 import :agent;
+import :clock;
 import :platform;
-import :platform.clock;
 import :platform.foreground_runner;
 import :scheduler;
 import ivm.utility;
 import v8;
 
-namespace ivm {
+namespace isolated_v8 {
 
 // Owns a group of `agent` instances. There's one cluster per nodejs context (worker_thread).
 // `cluster` is ultimately the owner of all agents it creates.
@@ -25,7 +25,7 @@ export class cluster : util::non_moveable {
 
 	private:
 		platform::handle platform_handle_;
-		cluster_scheduler scheduler_;
+		scheduler::layer<{}> scheduler_;
 };
 
 auto cluster::make_agent(std::invocable<agent> auto fn, clock::any_clock clock, std::optional<double> random_seed) -> void {
@@ -52,4 +52,4 @@ auto cluster::make_agent(std::invocable<agent> auto fn, clock::any_clock clock, 
 	);
 };
 
-} // namespace ivm
+} // namespace isolated_v8

@@ -9,7 +9,7 @@ import :dictionary.vector_of;
 import :transfer;
 import ivm.utility;
 
-namespace ivm::js {
+namespace js {
 
 // Non-recursive visitor
 template <class Meta, class Type>
@@ -83,4 +83,4 @@ struct accept<Meta, value_by_key<Key, Type, void>> {
 		accept_next<Meta, Type> second;
 };
 
-} // namespace ivm::js
+} // namespace js

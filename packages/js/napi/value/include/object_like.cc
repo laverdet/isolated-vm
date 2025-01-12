@@ -2,7 +2,7 @@ export module ivm.napi:object_like;
 import :handle;
 import napi;
 
-namespace ivm::js::napi {
+namespace js::napi {
 
 export class object_like : public handle {
 	public:
@@ -13,4 +13,4 @@ export class object_like : public handle {
 		auto set(napi_value key, napi_value value) -> void;
 };
 
-} // namespace ivm::js::napi
+} // namespace js::napi

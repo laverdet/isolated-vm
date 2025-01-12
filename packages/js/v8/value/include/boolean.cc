@@ -3,7 +3,7 @@ module;
 export module ivm.iv8:boolean;
 import v8;
 
-namespace ivm::js::iv8 {
+namespace js::iv8 {
 
 export class boolean : public v8::Boolean {
 	public:
@@ -19,4 +19,4 @@ auto boolean::materialize(std::type_identity<bool> /*tag*/) const -> bool {
 	return Value();
 }
 
-} // namespace ivm::js::iv8
+} // namespace js::iv8

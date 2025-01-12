@@ -11,7 +11,7 @@ import ivm.js;
 using namespace std::literals;
 #if __clang_major__ >= 20
 
-namespace ivm::js {
+namespace js {
 
 // Narrowing sanity check. We want to narrow in non-variant cases because if the visitor has a
 // string and the acceptor wants a string_view, that should be fine. Or if v8 gives us a uint32_t
@@ -183,6 +183,6 @@ struct union_of<union_object> {
 // static_assert(variant_is_equal_to(discriminated_with_one, union_alternative_one{.one = "left"s}));
 // static_assert(variant_is_equal_to(discriminated_with_two, union_alternative_two{.two = "right"s}));
 
-} // namespace ivm::js
+} // namespace js
 
 #endif

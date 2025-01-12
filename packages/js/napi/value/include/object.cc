@@ -9,7 +9,7 @@ import ivm.js;
 import ivm.utility;
 import napi;
 
-namespace ivm::js::napi {
+namespace js::napi {
 
 export class object : public object_like {
 	public:
@@ -55,4 +55,4 @@ auto object::assign(napi_env env, object_like target, std::tuple<Entries...> ent
 	);
 }
 
-} // namespace ivm::js::napi
+} // namespace js::napi

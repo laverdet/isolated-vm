@@ -15,6 +15,7 @@ import ivm.iv8;
 import ivm.js;
 import ivm.napi;
 import napi;
+using namespace isolated_v8;
 
 namespace ivm {
 
@@ -31,8 +32,8 @@ auto compile_module(
 	auto options = std::move(options_optional).value_or(compile_module_options{});
 	auto [ dispatch, promise ] = make_promise(
 		env,
-		[](environment& env, ivm::js_module module_, std::vector<ivm::module_request> requests) -> expected_value {
-			auto* handle = make_collected_external<ivm::js_module>(env, std::move(module_));
+		[](environment& env, isolated_v8::js_module module_, std::vector<isolated_v8::module_request> requests) -> expected_value {
+			auto* handle = make_collected_external<isolated_v8::js_module>(env, std::move(module_));
 			return js::transfer_strict<napi_value>(
 				std::tuple{
 					js::transfer_direct{handle},
@@ -47,10 +48,10 @@ auto compile_module(
 		[ options = std::move(options),
 			source_text = std::move(source_text),
 			dispatch = std::move(dispatch) ](
-			ivm::agent::lock& agent
+			isolated_v8::agent::lock& agent
 		) mutable {
 			auto origin = std::move(options.origin).value_or(source_origin{});
-			auto module = ivm::js_module::compile(agent, std::move(source_text), origin);
+			auto module = isolated_v8::js_module::compile(agent, std::move(source_text), origin);
 			auto requests = module.requests(agent);
 			dispatch(std::move(module), requests);
 		}
@@ -69,11 +70,11 @@ auto evaluate_module(
 	});
 	agent->schedule(
 		[ dispatch = std::move(dispatch) ](
-			ivm::agent::lock& agent,
-			ivm::realm realm,
-			ivm::js_module module_
+			isolated_v8::agent::lock& agent,
+			isolated_v8::realm realm,
+			isolated_v8::js_module module_
 		) mutable {
-			ivm::realm::managed_scope realm_scope{agent, realm};
+			isolated_v8::realm::managed_scope realm_scope{agent, realm};
 			auto result = module_.evaluate(realm_scope);
 			dispatch(std::move(result));
 		},
@@ -106,19 +107,19 @@ auto link_module(
 			scheduler = std::move(scheduler),
 			dispatch = std::move(dispatch) ](
 			const std::stop_token& /*stop_token*/,
-			ivm::agent::lock& agent,
-			ivm::realm realm,
-			ivm::js_module module
+			isolated_v8::agent::lock& agent,
+			isolated_v8::realm realm,
+			isolated_v8::js_module module
 		) mutable {
-			ivm::realm::managed_scope realm_scope{agent, realm};
+			isolated_v8::realm::managed_scope realm_scope{agent, realm};
 			module.link(
 				realm_scope,
 				[ & ](
 					auto specifier,
 					auto referrer,
 					auto attributes
-				) -> ivm::js_module& {
-					std::promise<ivm::js_module*> promise;
+				) -> isolated_v8::js_module& {
+					std::promise<isolated_v8::js_module*> promise;
 					auto future = promise.get_future();
 					scheduler.schedule(
 						[ & ]() {
@@ -168,7 +169,9 @@ auto make_link_module(environment& env) -> js::napi::value<js::function_tag> {
 
 } // namespace ivm
 
-namespace ivm::js {
+namespace js {
+
+using ivm::compile_module_options;
 
 template <>
 struct object_properties<compile_module_options> {
@@ -177,4 +180,4 @@ struct object_properties<compile_module_options> {
 		};
 };
 
-} // namespace ivm::js
+} // namespace js

@@ -3,7 +3,7 @@ module;
 export module ivm.js:transfer.types;
 import ivm.utility;
 
-namespace ivm::js {
+namespace js {
 
 // Holder for `Meta` template
 export template <class Wrap, class Subject, class Target>
@@ -50,4 +50,4 @@ template <class Wrap, class Subject, class Target>
 struct visit_subject<transferee_meta<Wrap, Subject, Target>>
 		: std::type_identity<transferee_subject_t<Subject>> {};
 
-} // namespace ivm::js
+} // namespace js

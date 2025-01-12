@@ -13,7 +13,7 @@ module;
 export module ivm.isolated_v8:scheduler;
 import ivm.utility;
 
-namespace ivm::scheduler {
+namespace scheduler {
 
 using intrusive_no_size = boost::intrusive::constant_time_size<false>;
 using intrusive_normal_mode = boost::intrusive::link_mode<boost::intrusive::normal_link>;
@@ -284,4 +284,4 @@ auto handle::operator()(auto fn, auto&&... args) -> void
 	}
 }
 
-} // namespace ivm::scheduler
+} // namespace scheduler

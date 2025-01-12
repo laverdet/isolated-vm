@@ -5,7 +5,7 @@ import :array;
 import :utility;
 import napi;
 
-namespace ivm::js::napi {
+namespace js::napi {
 
 auto array::begin() const -> iterator {
 	return {*this, 0};
@@ -30,4 +30,4 @@ auto array::iterator::operator*() const -> value_type {
 	return js::napi::invoke(napi_get_element, subject_.env(), subject_, index);
 }
 
-} // namespace ivm::js::napi
+} // namespace js::napi

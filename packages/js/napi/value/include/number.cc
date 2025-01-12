@@ -4,7 +4,7 @@ export module ivm.napi:number;
 import :value;
 import napi;
 
-namespace ivm::js::napi {
+namespace js::napi {
 
 // number constructors
 template <>
@@ -55,4 +55,4 @@ struct factory<bigint_tag_of<uint64_t>> : factory<bigint_tag> {
 		using factory<bigint_tag>::factory;
 };
 
-} // namespace ivm::js::napi
+} // namespace js::napi

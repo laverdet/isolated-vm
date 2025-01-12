@@ -3,7 +3,7 @@ import :remote;
 import v8;
 import ivm.utility;
 
-namespace ivm {
+namespace isolated_v8 {
 
 // remote_handle
 remote_handle::remote_handle(agent::lock& agent_lock, v8::Local<v8::Data> handle) :
@@ -39,4 +39,4 @@ auto remote_handle_list::reset(agent::lock& lock) -> void {
 	}
 }
 
-} // namespace ivm
+} // namespace isolated_v8

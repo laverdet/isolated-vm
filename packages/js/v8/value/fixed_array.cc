@@ -4,7 +4,7 @@ module ivm.iv8;
 import :fixed_array;
 import v8;
 
-namespace ivm::js::iv8 {
+namespace js::iv8 {
 
 fixed_array::fixed_array(v8::Local<v8::FixedArray> array, v8::Local<v8::Context> context) :
 		array_{array},
@@ -36,4 +36,4 @@ auto fixed_array::iterator::operator+=(difference_type offset) -> iterator& {
 	return *this;
 }
 
-} // namespace ivm::js::iv8
+} // namespace js::iv8

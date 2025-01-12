@@ -6,7 +6,7 @@ import :value;
 import ivm.js;
 import napi;
 
-namespace ivm::js::napi {
+namespace js::napi {
 
 // string constructors
 template <>
@@ -36,4 +36,4 @@ auto factory<string_tag>::operator()(const char string[ Size ]) -> value<string_
 	return (*this)(std::string_view{string, Size});
 }
 
-} // namespace ivm::js::napi
+} // namespace js::napi

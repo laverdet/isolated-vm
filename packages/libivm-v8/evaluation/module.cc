@@ -11,7 +11,7 @@ import ivm.iv8;
 import ivm.js;
 import v8;
 
-namespace ivm {
+namespace isolated_v8 {
 
 // module_request
 module_request::module_request(js::string_t specifier, attributes_type attributes) :
@@ -99,4 +99,4 @@ auto js_module::link(realm::scope& realm, v8::Module::ResolveModuleCallback call
 	module->InstantiateModule(realm.context(), callback).ToChecked();
 }
 
-} // namespace ivm
+} // namespace isolated_v8

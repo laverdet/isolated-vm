@@ -6,7 +6,7 @@ import :utility;
 import ivm.js;
 import napi;
 
-namespace ivm::js::napi {
+namespace js::napi {
 
 auto factory<number_tag>::operator()(double number) const -> value<number_tag_of<double>> {
 	return value<number_tag_of<double>>::from(js::napi::invoke(napi_create_double, env(), number));
@@ -32,4 +32,4 @@ auto factory<bigint_tag>::operator()(uint64_t number) const -> value<bigint_tag_
 	return value<bigint_tag_of<uint64_t>>::from(js::napi::invoke(napi_create_bigint_uint64, env(), number));
 }
 
-} // namespace ivm::js::napi
+} // namespace js::napi

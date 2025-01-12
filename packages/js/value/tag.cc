@@ -3,7 +3,7 @@ module;
 #include <type_traits>
 export module ivm.js:tag;
 
-export namespace ivm::js {
+export namespace js {
 
 // Should be defined unless `accept` and/or `visit` are specialized depending on whether this type
 // sends or receives or both.
@@ -90,4 +90,4 @@ using tag_for_t = tag_for<Type>::type;
 template <class Type>
 using con_tag_for_t = con_tag_for<tag_for_t<Type>>::type;
 
-} // namespace ivm::js
+} // namespace js

@@ -7,7 +7,7 @@ export module ivm.napi:value;
 import ivm.js;
 import napi;
 
-namespace ivm::js::napi {
+namespace js::napi {
 
 // napi_value factory
 export template <class Tag>
@@ -86,4 +86,4 @@ class value {
 		napi_value value_;
 };
 
-} // namespace ivm::js::napi
+} // namespace js::napi

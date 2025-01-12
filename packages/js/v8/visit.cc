@@ -20,7 +20,7 @@ import v8;
 // nb: These visitors are split out to share implementations with the napi visitors in the case
 // where it is kind of safe to do so. For numbers, strings, most primitives, etc the ABI has been
 // pretty stable for a long because v8 seems to have those figured out by now.
-namespace ivm::js {
+namespace js {
 
 // boolean
 template <>
@@ -171,4 +171,4 @@ struct visit<void, v8::Local<v8::String>> : visit<void, v8::Local<v8::Name>> {
 		using visit<void, v8::Local<v8::Name>>::visit;
 };
 
-} // namespace ivm::js
+} // namespace js

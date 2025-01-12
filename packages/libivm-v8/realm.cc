@@ -6,7 +6,7 @@ import :realm;
 import :remote;
 import v8;
 
-namespace ivm {
+namespace isolated_v8 {
 
 realm::realm(agent::lock& agent_lock, v8::Local<v8::Context> context) :
 		context_{make_shared_remote(agent_lock, context)} {}
@@ -39,4 +39,4 @@ realm::managed_scope::managed_scope(agent::lock& agent, realm& realm) :
 		context_scope{context()} {
 }
 
-} // namespace ivm
+} // namespace isolated_v8

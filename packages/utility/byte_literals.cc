@@ -2,7 +2,7 @@ module;
 #include <cstddef>
 export module ivm.utility:byte_literals;
 
-export namespace ivm::util::byte_literals {
+export namespace util::byte_literals {
 
 constexpr auto operator""_kb(unsigned long long megabytes) -> size_t {
 	return megabytes << 10U;
@@ -16,4 +16,4 @@ constexpr auto operator""_gb(unsigned long long gigabytes) -> size_t {
 	return gigabytes << 20U;
 }
 
-} // namespace ivm::util::byte_literals
+} // namespace util::byte_literals

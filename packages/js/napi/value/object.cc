@@ -9,7 +9,7 @@ import ivm.js;
 import ivm.utility;
 import napi;
 
-namespace ivm::js::napi {
+namespace js::napi {
 
 object::object(napi_env env, value<js::object_tag> value) :
 		object_like{env, value} {}
@@ -28,4 +28,4 @@ auto object::iterator_transform::operator()(napi_value key) const -> value_type 
 	return std::pair{key, subject_->get(key)};
 }
 
-} // namespace ivm::js::napi
+} // namespace js::napi

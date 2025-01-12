@@ -2,7 +2,7 @@ module;
 #include <utility>
 export module ivm.utility:facade;
 
-namespace ivm::util {
+namespace util {
 
 /**
  * Facade class for arithmetic operations. You have implement `operator+=(different_type)` and unary
@@ -85,4 +85,4 @@ class random_access_iterator_facade
 		: public arithmetic_facade<Type, difference_type, wide_size_type>,
 			public array_facade<Type, difference_type> {};
 
-} // namespace ivm::util
+} // namespace util

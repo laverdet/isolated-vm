@@ -4,7 +4,7 @@ import :remote;
 import ivm.utility;
 import v8;
 
-namespace ivm {
+namespace isolated_v8 {
 
 export class realm {
 	public:
@@ -42,4 +42,4 @@ class realm::managed_scope : public realm::scope {
 		v8::Context::Scope context_scope;
 };
 
-} // namespace ivm
+} // namespace isolated_v8

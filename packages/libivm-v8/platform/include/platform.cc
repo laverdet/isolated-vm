@@ -8,7 +8,7 @@ import ivm.utility;
 
 // See: /v8/src/libplatform/default-job.cc
 
-namespace ivm {
+namespace isolated_v8 {
 
 export class job_handle : public v8::JobHandle, public v8::JobDelegate {
 	public:
@@ -105,4 +105,4 @@ class platform::handle : public util::pointer_facade<platform> {
 		std::shared_ptr<platform> platform_;
 };
 
-} // namespace ivm
+} // namespace isolated_v8

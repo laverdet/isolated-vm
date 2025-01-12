@@ -8,7 +8,7 @@ import :enum_.types;
 import :tag;
 import :transfer;
 
-namespace ivm::js {
+namespace js {
 
 // Matches an enumerated string to an underlying enum value.
 template <class Enum>
@@ -31,4 +31,4 @@ struct accept<void, Enum> : accept<void, void> {
 		}
 };
 
-} // namespace ivm::js
+} // namespace js

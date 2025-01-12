@@ -2,7 +2,7 @@ module;
 #include <utility>
 export module ivm.utility:comparator;
 
-namespace ivm::util {
+namespace util {
 
 export template <class Type>
 struct address_predicate {
@@ -47,4 +47,4 @@ class mapped_comparator {
 template <class Operation, class Fn>
 mapped_comparator(Operation&&, Fn&&) -> mapped_comparator<Operation, Fn>;
 
-} // namespace ivm::util
+} // namespace util

@@ -9,7 +9,7 @@ import :tag;
 import :transfer;
 import ivm.utility;
 
-namespace ivm::js {
+namespace js {
 
 template <class Meta, class First, class Second>
 struct accept<Meta, std::pair<First, Second>> {
@@ -57,4 +57,4 @@ struct accept<Meta, std::tuple<Types...>> {
 		std::tuple<accept_next<Meta, Types>...> acceptors_;
 };
 
-} // namespace ivm::js
+} // namespace js

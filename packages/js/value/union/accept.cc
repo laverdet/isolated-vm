@@ -13,7 +13,7 @@ import :union_.types;
 import :variant.types;
 import ivm.utility;
 
-namespace ivm::js {
+namespace js {
 
 // Suppress `std::variant` visitor
 template <class... Types>
@@ -69,4 +69,4 @@ struct accept<Meta, std::variant<Types...>> {
 		accept<Meta, value_by_key<descriptor_type::discriminant, std::string, visit_subject_t<Meta>>> accept_discriminant;
 };
 
-} // namespace ivm::js
+} // namespace js

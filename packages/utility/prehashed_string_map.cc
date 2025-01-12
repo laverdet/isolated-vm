@@ -14,7 +14,7 @@ import :comparator;
 import :type_traits;
 import :utility;
 
-namespace ivm::util {
+namespace util {
 
 // `constexpr` hash for property lookup
 constexpr auto djb2_hash(std::ranges::range auto&& view) -> uint32_t {
@@ -120,4 +120,4 @@ class prehashed_string_map {
 template <class Key, class Type, class... Rest>
 prehashed_string_map(std::pair<Key, Type>, Rest...) -> prehashed_string_map<Type, sizeof...(Rest) + 1>;
 
-} // namespace ivm::util
+} // namespace util

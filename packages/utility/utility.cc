@@ -4,7 +4,7 @@ module;
 #include <variant>
 export module ivm.utility:utility;
 
-namespace ivm::util {
+namespace util {
 
 // https://en.cppreference.com/w/cpp/utility/variant/visit
 export template <class... Visitors>
@@ -130,4 +130,4 @@ class defaulter_finalizer : non_copyable {
 		Type* value;
 };
 
-} // namespace ivm::util
+} // namespace util

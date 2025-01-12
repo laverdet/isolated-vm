@@ -10,7 +10,7 @@ import :platform.foreground_runner;
 import :platform.task_runner;
 import v8;
 
-namespace ivm {
+namespace isolated_v8 {
 
 auto task_is_nestable(const std::pair<task_runner::nestability, task_runner::task_type>& task) -> bool {
 	return task.first == task_runner::nestability::nestable;
@@ -130,4 +130,4 @@ foreground_runner::scope::~scope() {
 	--(*this)->nesting_depth_;
 }
 
-} // namespace ivm
+} // namespace isolated_v8

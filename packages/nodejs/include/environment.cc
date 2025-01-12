@@ -16,7 +16,7 @@ export class environment : util::non_moveable {
 		explicit environment(napi_env env);
 		~environment();
 
-		auto cluster() -> ivm::cluster& { return cluster_; }
+		auto cluster() -> isolated_v8::cluster& { return cluster_; }
 		auto collection() -> util::collection_group& { return collection_group_; }
 		auto nenv() -> napi_env { return env_; }
 		auto isolate() -> v8::Isolate* { return isolate_; }
@@ -26,7 +26,7 @@ export class environment : util::non_moveable {
 	private:
 		napi_env env_;
 		js::napi::uv_scheduler scheduler_;
-		ivm::cluster cluster_;
+		isolated_v8::cluster cluster_;
 		v8::Isolate* isolate_;
 		util::collection_group collection_group_;
 };

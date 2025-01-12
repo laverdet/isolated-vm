@@ -13,6 +13,7 @@ import ivm.js;
 import ivm.napi;
 import ivm.utility;
 import napi;
+using namespace isolated_v8;
 
 namespace ivm {
 
@@ -37,8 +38,8 @@ struct make_agent_options {
 auto create_agent(environment& env, std::optional<make_agent_options> options_optional) {
 	auto options = std::move(options_optional).value_or(make_agent_options{});
 	auto& cluster = env.cluster();
-	auto [ dispatch, promise ] = make_promise(env, [](environment& env, ivm::agent agent) -> expected_value {
-		return make_collected_external<ivm::agent>(env, std::move(agent));
+	auto [ dispatch, promise ] = make_promise(env, [](environment& env, isolated_v8::agent agent) -> expected_value {
+		return make_collected_external<isolated_v8::agent>(env, std::move(agent));
 	});
 	auto clock = std::visit(
 		util::overloaded{
@@ -59,7 +60,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	);
 	cluster.make_agent(
 		[ dispatch = std::move(dispatch) ](
-			ivm::agent agent
+			isolated_v8::agent agent
 		) mutable {
 			dispatch(std::move(agent));
 		},
@@ -71,17 +72,17 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 }
 
 auto create_realm(environment& env, js::iv8::external_reference<agent>& agent) {
-	auto [ dispatch, promise ] = make_promise(env, [](environment& env, ivm::realm realm) -> expected_value {
-		return make_collected_external<ivm::realm>(env, std::move(realm));
+	auto [ dispatch, promise ] = make_promise(env, [](environment& env, isolated_v8::realm realm) -> expected_value {
+		return make_collected_external<isolated_v8::realm>(env, std::move(realm));
 	});
 	agent->schedule(
 		[ dispatch = std::move(dispatch) ](
-			ivm::agent::lock& agent
+			isolated_v8::agent::lock& agent
 		) mutable {
-			auto realm = ivm::realm::make(agent);
-			auto runtime = ivm::js_module::compile(agent, runtime_dist_runtime_js, source_origin{});
-			ivm::realm::managed_scope realm_scope{agent, realm};
-			runtime.link(realm_scope, [](auto&&...) -> ivm::js_module& {
+			auto realm = isolated_v8::realm::make(agent);
+			auto runtime = isolated_v8::js_module::compile(agent, runtime_dist_runtime_js, source_origin{});
+			isolated_v8::realm::managed_scope realm_scope{agent, realm};
+			runtime.link(realm_scope, [](auto&&...) -> isolated_v8::js_module& {
 				std::terminate();
 			});
 			runtime.evaluate(realm_scope);
@@ -103,7 +104,9 @@ auto make_create_realm(environment& env) -> js::napi::value<js::function_tag> {
 } // namespace ivm
 
 // Options visitors & acceptors
-namespace ivm::js {
+namespace js {
+
+using ivm::make_agent_options;
 
 template <>
 struct object_properties<make_agent_options::clock_deterministic> {
@@ -151,4 +154,4 @@ struct object_properties<make_agent_options> {
 		};
 };
 
-} // namespace ivm::js
+} // namespace js

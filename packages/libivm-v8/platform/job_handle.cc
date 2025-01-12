@@ -8,7 +8,7 @@ import v8;
 
 // See: /v8/src/libplatform/default-job.cc
 
-namespace ivm {
+namespace isolated_v8 {
 
 job_handle::job_handle(std::unique_ptr<v8::JobTask> job_task) :
 		thread{[ this, job_task = std::move(job_task) ]() {
@@ -59,4 +59,4 @@ auto job_handle::ShouldYield() -> bool {
 	return false;
 }
 
-} // namespace ivm
+} // namespace isolated_v8

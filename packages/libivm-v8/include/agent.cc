@@ -6,17 +6,16 @@ module;
 #include <stop_token>
 export module ivm.isolated_v8:agent;
 export import :agent_fwd;
-import :platform.clock;
+import :clock;
 import :platform.task_runner;
 import :remote;
 import :scheduler;
 import ivm.iv8;
+import ivm.js;
 import ivm.utility;
 import v8;
 
-namespace ivm {
-
-export using cluster_scheduler = scheduler::layer<{}>;
+namespace isolated_v8 {
 
 // A `lock` is a simple holder for an `agent::host` which proves that we are executing in
 // the isolate context.
@@ -43,7 +42,7 @@ class agent::managed_lock : public agent::lock {
 class agent::storage : util::non_moveable {
 	public:
 		using agent_scheduler = scheduler::runner<{}>;
-		explicit storage(ivm::cluster_scheduler& cluster_scheduler);
+		explicit storage(scheduler::layer<{}>& cluster_scheduler);
 
 		auto remote_handles() -> remote_handle_list& { return remote_handles_; }
 		auto scheduler() -> agent_scheduler& { return scheduler_; }
@@ -86,7 +85,7 @@ class agent::host : util::non_moveable {
 		~host();
 
 		auto clock_time_ms() -> int64_t;
-		auto foreground_runner() -> std::shared_ptr<ivm::foreground_runner>;
+		auto foreground_runner() -> std::shared_ptr<isolated_v8::foreground_runner>;
 		auto isolate() -> v8::Isolate*;
 		auto random_seed_latch() -> util::scope_exit<random_seed_unlatch>;
 		auto scratch_context() -> v8::Local<v8::Context>;
@@ -104,7 +103,7 @@ class agent::host : util::non_moveable {
 
 		std::shared_ptr<agent::storage> agent_storage_;
 		std::weak_ptr<severable> severable_;
-		std::shared_ptr<ivm::foreground_runner> task_runner_;
+		std::shared_ptr<isolated_v8::foreground_runner> task_runner_;
 		std::unique_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
 		std::unique_ptr<v8::Isolate, util::functor_of<dispose_isolate>> isolate_;
 		js::iv8::weak_map<v8::Module, js::string_t> weak_module_specifiers_;
@@ -155,4 +154,4 @@ auto agent::schedule_async(auto task, auto&&... args) -> void
 	}
 }
 
-} // namespace ivm
+} // namespace isolated_v8
