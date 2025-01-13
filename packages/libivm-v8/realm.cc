@@ -1,5 +1,3 @@
-module;
-#include <memory>
 module ivm.isolated_v8;
 import :agent;
 import :realm;

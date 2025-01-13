@@ -4,6 +4,8 @@ module;
 #include <memory>
 export module ivm.isolated_v8:remote;
 import :agent_fwd;
+import :remote_fwd;
+import isolated_v8.foreground_runner;
 import isolated_v8.scheduler;
 import v8;
 
@@ -24,7 +26,8 @@ class remote_handle : util::non_moveable {
 		auto reset(agent::lock& agent_lock) -> void;
 
 	private:
-		std::shared_ptr<agent::storage> agent_storage_;
+		std::weak_ptr<foreground_runner> foreground_runner_;
+		std::shared_ptr<remote_handle_list> handle_list_;
 		v8::Global<v8::Data> global_;
 		intrusive_list_hook hook_;
 

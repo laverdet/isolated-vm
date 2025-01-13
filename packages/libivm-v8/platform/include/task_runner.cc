@@ -4,43 +4,27 @@ module;
 #include <utility>
 export module isolated_v8.task_runner;
 import v8;
+using std::chrono::steady_clock;
 
-using namespace std::chrono;
+// NOTE:
+// There is nothing interesting in this file. The main thing is that `task_runner_of` automatically
+// defines `NonNestableTasksEnabled` (etc) for you based on whether or not `post_non_nestable` (etc)
+// is defined.
 
 namespace isolated_v8 {
 
-// Allow lambda-style callbacks to be called with the same virtual dispatch as `v8::Task`
-template <std::invocable<> Invocable>
-struct task_of : v8::Task {
-		explicit task_of(Invocable task) :
-				task_{std::move(task)} {}
-
-		auto Run() -> void final {
-			task_();
-		}
-
-	private:
-		[[no_unique_address]] Invocable task_;
-};
-
-export auto make_task_of(std::invocable<> auto task) -> std::unique_ptr<v8::Task> {
-	return std::make_unique<task_of<decltype(task)>>(std::move(task));
-}
-
 // Instances of `v8::TaskRunner` can directly accept scheduled tasks from v8, which may or may not
 // run at some point in the future.
+// nb: v8's documentation says "All tasks posted to a given TaskRunner will be invoked in sequence"
+// but their default implementation will skip non-nestable tasks in a nestable context.
+// Additionally, idle tasks are their own queue.
 export class task_runner : public v8::TaskRunner {
 	public:
 		template <class Self>
 		class task_runner_of;
-		struct delayed_task;
 
 		using idle_task = std::unique_ptr<v8::IdleTask>;
 		using task_type = std::unique_ptr<v8::Task>;
-		enum class nestability : std::int8_t {
-			non_nestable,
-			nestable
-		};
 
 		auto post_idle(idle_task task) -> void;
 		auto post_non_nestable_delayed(task_type task, steady_clock::time_point timeout) -> void;
@@ -48,51 +32,6 @@ export class task_runner : public v8::TaskRunner {
 		virtual auto post_delayed(task_type task, steady_clock::time_point timeout) -> void = 0;
 		virtual auto post(task_type task) -> void = 0;
 };
-
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto task_runner::post_idle(idle_task /*task*/) -> void {
-	std::unreachable();
-}
-
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto task_runner::post_non_nestable_delayed(task_type /*task*/, steady_clock::time_point /*timeout*/) -> void {
-	std::unreachable();
-};
-
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-auto task_runner::post_non_nestable(task_type /*task*/) -> void {
-	std::unreachable();
-}
-
-// Contains a task and a time point after which it should run.
-struct task_runner::delayed_task {
-		struct timeout_predicate;
-		auto operator<=>(const delayed_task& right) const -> std::strong_ordering;
-
-		nestability nestability;
-		steady_clock::time_point timeout;
-		mutable task_type task;
-};
-
-struct task_runner::delayed_task::timeout_predicate {
-	public:
-		timeout_predicate();
-		auto operator()(const delayed_task& task) const -> bool;
-
-	private:
-		std::chrono::steady_clock::time_point now;
-};
-
-auto task_runner::delayed_task::operator<=>(const delayed_task& right) const -> std::strong_ordering {
-	return timeout <=> right.timeout;
-}
-
-task_runner::delayed_task::timeout_predicate::timeout_predicate() :
-		now{std::chrono::steady_clock::now()} {}
-
-auto task_runner::delayed_task::timeout_predicate::operator()(const delayed_task& task) const -> bool {
-	return task.timeout < now;
-}
 
 // The result of `IdleTasksEnabled` (& co.) will change depending on whether or not `Self`
 // implements `post_idle` (& co.)
@@ -108,30 +47,35 @@ class task_runner::task_runner_of : public task_runner {
 		[[nodiscard]] auto NonNestableDelayedTasksEnabled() const -> bool final;
 
 	protected:
-		auto PostTaskImpl(
-			task_type task,
-			const v8::SourceLocation& location
-		) -> void final;
-		auto PostNonNestableTaskImpl(
-			task_type task,
-			const v8::SourceLocation& location
-		) -> void final;
-		auto PostDelayedTaskImpl(
-			task_type task,
-			double delay_in_seconds,
-			const v8::SourceLocation& location
-		) -> void final;
-		auto PostNonNestableDelayedTaskImpl(
-			task_type task,
-			double delay_in_seconds,
-			const v8::SourceLocation& location
-		) -> void final;
-		auto PostIdleTaskImpl(
-			idle_task task,
-			const v8::SourceLocation& location
-		) -> void final;
+		auto PostTaskImpl(task_type task, const v8::SourceLocation& location) -> void final;
+		auto PostNonNestableTaskImpl(task_type task, const v8::SourceLocation& location) -> void final;
+		auto PostDelayedTaskImpl(task_type task, double delay_in_seconds, const v8::SourceLocation& location) -> void final;
+		auto PostNonNestableDelayedTaskImpl(task_type task, double delay_in_seconds, const v8::SourceLocation& location) -> void final;
+		auto PostIdleTaskImpl(idle_task task, const v8::SourceLocation& location) -> void final;
+
+	private:
+		auto self() -> Self& { return *static_cast<Self*>(this); }
 };
 
+// ---
+
+// task_runner
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto task_runner::post_idle(idle_task /*task*/) -> void {
+	std::unreachable();
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto task_runner::post_non_nestable_delayed(task_type /*task*/, steady_clock::time_point /*timeout*/) -> void {
+	std::unreachable();
+};
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+auto task_runner::post_non_nestable(task_type /*task*/) -> void {
+	std::unreachable();
+}
+
+// task_runner::task_runner_of<T>
 template <class Self>
 auto task_runner::task_runner_of<Self>::IdleTasksEnabled() -> bool {
 	return &Self::post_idle != &task_runner::post_idle;
@@ -148,47 +92,35 @@ auto task_runner::task_runner_of<Self>::NonNestableDelayedTasksEnabled() const -
 }
 
 template <class Self>
-auto task_runner::task_runner_of<Self>::PostTaskImpl(
-	task_type task,
-	const v8::SourceLocation& /*location*/
+auto task_runner::task_runner_of<Self>::PostTaskImpl(task_type task, const v8::SourceLocation& /*location*/
 ) -> void {
-	return static_cast<Self*>(this)->post(std::move(task));
+	return self().post(std::move(task));
 }
 
 template <class Self>
-auto task_runner::task_runner_of<Self>::PostNonNestableTaskImpl(
-	task_type task,
-	const v8::SourceLocation& /*location*/
+auto task_runner::task_runner_of<Self>::PostNonNestableTaskImpl(task_type task, const v8::SourceLocation& /*location*/
 ) -> void {
-	return static_cast<Self*>(this)->post_non_nestable(std::move(task));
+	return self().post_non_nestable(std::move(task));
 }
 
 template <class Self>
-auto task_runner::task_runner_of<Self>::PostDelayedTaskImpl(
-	task_type task,
-	double delay_in_seconds,
-	const v8::SourceLocation& /*location*/
+auto task_runner::task_runner_of<Self>::PostDelayedTaskImpl(task_type task, double delay_in_seconds, const v8::SourceLocation& /*location*/
 ) -> void {
-	auto timeout = duration_cast<steady_clock::duration>(duration<double>{delay_in_seconds});
-	return static_cast<Self*>(this)->post_delayed(std::move(task), steady_clock::now() + timeout);
+	auto timeout = duration_cast<steady_clock::duration>(std::chrono::duration<double>{delay_in_seconds});
+	return self().post_delayed(std::move(task), steady_clock::now() + timeout);
 }
 
 template <class Self>
-auto task_runner::task_runner_of<Self>::PostNonNestableDelayedTaskImpl(
-	task_type task,
-	double delay_in_seconds,
-	const v8::SourceLocation& /*location*/
+auto task_runner::task_runner_of<Self>::PostNonNestableDelayedTaskImpl(task_type task, double delay_in_seconds, const v8::SourceLocation& /*location*/
 ) -> void {
-	auto timeout = duration_cast<steady_clock::duration>(duration<double>{delay_in_seconds});
-	return static_cast<Self*>(this)->post_non_nestable_delayed(std::move(task), steady_clock::now() + timeout);
+	auto timeout = duration_cast<steady_clock::duration>(std::chrono::duration<double>{delay_in_seconds});
+	return self().post_non_nestable_delayed(std::move(task), steady_clock::now() + timeout);
 }
 
 template <class Self>
-auto task_runner::task_runner_of<Self>::PostIdleTaskImpl(
-	idle_task task,
-	const v8::SourceLocation& /*location*/
+auto task_runner::task_runner_of<Self>::PostIdleTaskImpl(idle_task task, const v8::SourceLocation& /*location*/
 ) -> void {
-	return static_cast<Self*>(this)->post_idle(std::move(task));
+	return self().post_idle(std::move(task));
 }
 
 } // namespace isolated_v8

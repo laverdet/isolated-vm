@@ -3,6 +3,7 @@ export import :byte_literals;
 export import :collection_group;
 export import :comparator;
 export import :facade;
+export import :iterator;
 export import :lockable;
 export import :mutable_value;
 export import :prehashed_string_map;

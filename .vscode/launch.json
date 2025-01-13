@@ -6,10 +6,6 @@
 			"type": "lldb",
 			"request": "launch",
 			"program": "node",
-			"env": {
-				"LD_PRELOAD": "libclang_rt.asan-aarch64.so",
-				"LSAN_OPTIONS": "suppressions=./scripts/.lsan-supressions",
-			},
 			"args": [
 				"debug.mjs"
 			],

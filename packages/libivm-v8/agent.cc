@@ -5,8 +5,9 @@ module;
 #include <variant>
 module ivm.isolated_v8;
 import :agent;
-import isolated_v8.foreground_runner;
 import :platform;
+import :remote;
+import isolated_v8.foreground_runner;
 import isolated_v8.scheduler;
 import ivm.iv8;
 import ivm.js;
@@ -29,10 +30,6 @@ agent::agent(const std::shared_ptr<host>& host, std::shared_ptr<severable> sever
 		host_{host},
 		severable_{std::move(severable_)} {}
 
-// storage
-agent::storage::storage(scheduler::layer<{}>& cluster_scheduler) :
-		scheduler_{cluster_scheduler} {}
-
 // severable
 agent::severable::severable(std::shared_ptr<host> host) :
 		host_{std::move(host)} {}
@@ -43,14 +40,16 @@ auto agent::severable::sever() -> void {
 
 // host
 agent::host::host(
-	std::shared_ptr<agent::storage> agent_storage,
+	scheduler::layer<{}>& cluster_scheduler,
+	std::shared_ptr<isolated_v8::foreground_runner> foreground_runner,
 	clock::any_clock clock,
 	std::optional<double> random_seed
 ) :
-		agent_storage_{std::move(agent_storage)},
-		task_runner_{std::make_shared<isolated_v8::foreground_runner>(agent_storage_->scheduler())},
+		foreground_runner_{std::move(foreground_runner)},
+		async_scheduler_{cluster_scheduler},
 		array_buffer_allocator_{v8::ArrayBuffer::Allocator::NewDefaultAllocator()},
 		isolate_{v8::Isolate::Allocate()},
+		remote_handle_list_{std::make_shared<isolated_v8::remote_handle_list>()},
 		random_seed_{random_seed},
 		clock_{clock} {
 	isolate_->SetData(0, this);
@@ -61,7 +60,7 @@ agent::host::host(
 
 agent::host::~host() {
 	managed_lock lock{*this};
-	agent_storage_->remote_handles().reset(lock);
+	remote_handle_list_->reset(lock);
 }
 
 auto agent::host::clock_time_ms() -> int64_t {
@@ -73,7 +72,7 @@ auto agent::host::dispose_isolate(v8::Isolate* isolate) -> void {
 }
 
 auto agent::host::foreground_runner() -> std::shared_ptr<isolated_v8::foreground_runner> {
-	return task_runner_;
+	return foreground_runner_;
 }
 
 auto agent::host::isolate() -> v8::Isolate* {
@@ -95,6 +94,10 @@ auto agent::host::make_handle(const std::shared_ptr<host>& self) -> agent {
 auto agent::host::random_seed_latch() -> util::scope_exit<random_seed_unlatch> {
 	should_give_seed_ = true;
 	return util::scope_exit{random_seed_unlatch{should_give_seed_}};
+}
+
+auto agent::host::remote_handle_list() -> std::shared_ptr<isolated_v8::remote_handle_list> {
+	return remote_handle_list_;
 }
 
 auto agent::host::scratch_context() -> v8::Local<v8::Context> {
@@ -130,8 +133,8 @@ auto agent::host::take_random_seed() -> std::optional<double> {
 	}
 }
 
-auto agent::host::task_runner(v8::TaskPriority /*priority*/) -> std::shared_ptr<v8::TaskRunner> {
-	return task_runner_;
+auto agent::host::task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner> {
+	return foreground_runner::get_for_priority(foreground_runner_, priority);
 }
 
 auto agent::host::weak_module_specifiers() -> js::iv8::weak_map<v8::Module, js::string_t>& {

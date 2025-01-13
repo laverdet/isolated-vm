@@ -29,26 +29,24 @@ export class cluster : util::non_moveable {
 };
 
 auto cluster::make_agent(std::invocable<agent> auto fn, clock::any_clock clock, std::optional<double> random_seed) -> void {
-	auto agent_storage = std::make_shared<agent::storage>(scheduler_);
-	auto& scheduler = agent_storage->scheduler();
-	scheduler(
-		[ clock, random_seed ](
-			const std::stop_token& stop_token,
-			std::shared_ptr<agent::storage> agent_storage,
-			auto fn
-		) {
-			auto agent_host = std::make_shared<agent::host>(agent_storage, clock, random_seed);
-			auto foreground_runner = agent_host->foreground_runner();
+	auto runner = std::make_shared<foreground_runner>(scheduler_);
+	foreground_runner::schedule_client_task(
+		runner,
+		[ this, // I *think* this is safe because if `cluster` is destroyed the lambda won't be invoked
+			clock,
+			random_seed,
+			runner,
+			fn = std::move(fn) ](
+			const std::stop_token& /*stop_token*/
+		) mutable {
+			auto agent_host = std::make_shared<agent::host>(scheduler_, runner, clock, random_seed);
 			auto agent = agent::host::make_handle(agent_host);
 			agent_host.reset();
 			std::invoke(std::move(fn), std::move(agent));
-			foreground_runner->foreground_thread(stop_token);
-			// nb: `agent_storage` contains the scheduler so it must be allowed to escape up the stack to
+			// nb: `runner` contains the scheduler so it must be allowed to escape up the stack to
 			// be released later.
-			return agent_storage;
-		},
-		std::move(agent_storage),
-		std::move(fn)
+			return std::move(runner);
+		}
 	);
 };
 

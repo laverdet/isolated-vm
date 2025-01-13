@@ -7,13 +7,14 @@ namespace isolated_v8 {
 
 // remote_handle
 remote_handle::remote_handle(agent::lock& agent_lock, v8::Local<v8::Data> handle) :
-		agent_storage_{agent_lock->storage()},
+		foreground_runner_{agent_lock->foreground_runner()},
+		handle_list_{agent_lock->remote_handle_list()},
 		global_{agent_lock->isolate(), handle} {
-	agent_storage_->remote_handles().insert(*this);
+	handle_list_->insert(*this);
 }
 
 remote_handle::~remote_handle() {
-	agent_storage_->remote_handles().erase(*this);
+	handle_list_->erase(*this);
 }
 
 auto remote_handle::deref(agent::lock& agent_lock) -> v8::Local<v8::Data> {

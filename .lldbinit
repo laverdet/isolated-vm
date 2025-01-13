@@ -1,3 +1,5 @@
+env LD_PRELOAD=libclang_rt.asan-aarch64.so
+env LSAN_OPTIONS=suppressions=./scripts/.lsan-supressions
 settings set frame-format "frame #${frame.index}: ${ansi.fg.yellow}${frame.pc}${ansi.normal}{ ${module.file.basename}{\`${function.name-with-args}{${frame.no-debug}${function.pc-offset}}}}{ at ${ansi.fg.cyan}${line.file.fullpath}${ansi.normal}:${ansi.fg.yellow}${line.number}${ansi.normal}{:${ansi.fg.yellow}${line.column}${ansi.normal}}}{${function.is-optimized} [opt]}{${frame.is-artificial} [artificial]}\n"
 settings set symbols.enable-lldb-index-cache true
 settings set symbols.load-on-demand true

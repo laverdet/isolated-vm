@@ -7,6 +7,7 @@ target_sources(ivm_utility
 			collection_group.cc
 			comparator.cc
 			facade.cc
+			iterator.cc
 			lockable.cc
 			mutable_value.cc
 			prehashed_string_map.cc
