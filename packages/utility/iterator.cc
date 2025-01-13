@@ -19,16 +19,11 @@ class subrange_ratchet : public std::ranges::subrange<Type> {
 		}
 
 		auto remove(Type iterator) -> void {
-			if (this->begin() == iterator) {
-				*this = {
-					std::next(iterator),
-					this->end()
-				};
-			} else if (this->end() == std::next(iterator)) {
-				*this = {
-					this->begin(),
-					iterator
-				};
+			auto next = std::next(iterator);
+			if (this->end() == next) {
+				*this = {this->begin(), iterator};
+			} else if (this->begin() == iterator) {
+				*this = {next, this->end()};
 			}
 		}
 };

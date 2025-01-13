@@ -1,7 +1,7 @@
 module ivm.isolated_v8;
 import :agent;
 import :realm;
-import :remote;
+import isolated_v8.remote;
 import v8;
 
 namespace isolated_v8 {

@@ -6,7 +6,7 @@ module ivm.isolated_v8;
 import :agent;
 import :js_module;
 import :realm;
-import :remote;
+import isolated_v8.remote;
 import ivm.iv8;
 import ivm.js;
 import v8;

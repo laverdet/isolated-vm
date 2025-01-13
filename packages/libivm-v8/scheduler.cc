@@ -1,5 +1,6 @@
 module;
 #include <boost/intrusive/list.hpp>
+#include <algorithm>
 #include <cassert>
 #include <concepts>
 #include <condition_variable>
@@ -28,6 +29,7 @@ class member : util::non_moveable {
 
 	public:
 		auto self() -> Type& { return *static_cast<Type*>(this); }
+		auto cself() const -> const Type& { return *static_cast<const Type*>(this); }
 
 	private:
 		intrusive_list_hook hook_;
@@ -64,20 +66,21 @@ class container : util::non_moveable {
 
 		[[nodiscard]] auto empty() const -> bool { return members_.empty(); }
 		[[nodiscard]] auto is_open() const -> bool { return !closed_; }
+		[[nodiscard]] auto members() -> list_type& { return members_; }
 
 		static auto close(lockable_type& self) -> void {
-			auto lock = self.write_waitable(empty_predicate);
+			auto lock = self.write_waitable(&container::empty);
 			lock->request_stop();
 			lock.wait();
 		}
 
 		static auto write_notify(lockable_type& self) {
-			return self.write_notify(empty_predicate);
+			return self.write_notify([](const auto& container) {
+				return container.members_.size() <= 1;
+			});
 		}
 
 	private:
-		static auto empty_predicate(const container& container) -> bool { return container.empty(); }
-
 		bool closed_{};
 		list_type members_;
 };
@@ -129,9 +132,11 @@ class thread : public member<thread>, public link<thread> {
 			stop_source_.write()->request_stop();
 		}
 
+		[[nodiscard]] auto thread_id() const -> std::thread::id { return thread_id_.load(std::memory_order_relaxed); }
 		static auto launch(std::unique_ptr<thread> self, auto fn, auto&&... args) -> void;
 
 	private:
+		std::atomic<std::thread::id> thread_id_;
 		std::latch launch_latch_{1};
 		util::lockable<std::stop_source> stop_source_;
 };
@@ -150,11 +155,20 @@ class runner;
 export class handle;
 
 struct layer_base : util::non_moveable {
-		virtual ~layer_base() = default;
+	protected:
+		~layer_base() = default;
+
+	public:
 		virtual auto request_stop() -> void = 0;
 };
 
-class layer_connected : public layer_base, public member<layer_connected>, public link<layer_connected> {
+class layer_connected
+		: public layer_base,
+			public member<layer_connected>,
+			public link<layer_connected> {
+	protected:
+		~layer_connected() = default;
+
 	public:
 		explicit layer_connected(container<layer_connected>::lockable_type& container) :
 				link{container} {}
@@ -173,7 +187,7 @@ class layer final : public std::conditional_t<Traits.root, layer_base, layer_con
 		explicit layer(layer<ParentTraits>& parent) :
 				layer_connected{parent.container_} {}
 
-		~layer() final { container<layer_connected>::close(container_); }
+		~layer() { container<layer_connected>::close(container_); }
 
 		layer(const layer&) = delete;
 		auto operator=(const layer&) -> layer& = delete;
@@ -197,13 +211,29 @@ class runner final : public layer_connected {
 				layer_connected{parent.container_},
 				container_{std::make_shared<container<thread>::lockable_type>()} {}
 
-		~runner() final { container<thread>::close(*container_); }
+		~runner() { container<thread>::close(*container_); }
 
 		runner(const runner&) = delete;
 		auto operator=(const runner&) -> runner& = delete;
 
 		auto operator()(auto fn, auto&&... args) -> void
 			requires std::invocable<decltype(fn), std::stop_token, decltype(args)...>;
+
+		// Waits for all thread to drain, except for the current thread, if it is owned by this runner.
+		auto close_threads() -> void {
+			auto lock = container_->write_waitable([](const auto& container) -> bool {
+				auto thread_id = std::this_thread::get_id();
+				// The const version of the container can't iterate and I'm already fed up with my
+				// implementation
+				// NOLINT(cppcoreguidelines-pro-type-const-cast)
+				auto& rwcontainer = const_cast<scheduler::container<thread>&>(container);
+				return std::ranges::all_of(rwcontainer.members(), [ & ](const auto& thread) -> bool {
+					return thread.cself().thread_id() == thread_id;
+				});
+			});
+			lock->request_stop();
+			lock.wait();
+		}
 		auto request_stop() -> void final { container_->write()->request_stop(); }
 
 	private:
@@ -247,6 +277,7 @@ auto thread::launch(std::unique_ptr<thread> self, auto fn, auto&&... args) -> vo
 					return run();
 				}
 			};
+			self->thread_id_.store(std::this_thread::get_id(), std::memory_order_relaxed);
 			auto releasable = run_with_releasable();
 			self->launch_latch_.wait();
 			self.reset();
@@ -256,6 +287,7 @@ auto thread::launch(std::unique_ptr<thread> self, auto fn, auto&&... args) -> vo
 		std::move(fn),
 		std::forward<decltype(args)>(args)...
 	};
+	self_ptr->thread_id_.store(thread_.get_id(), std::memory_order_relaxed);
 	*self_ptr->stop_source_.write() = thread_.get_stop_source();
 	self_ptr->launch_latch_.count_down();
 	thread_.detach();

@@ -20,7 +20,6 @@ target_sources(ivm_isolated_v8
 		include/agent.cc
 		include/cluster.cc
 		include/realm.cc
-		include/remote_fwd.cc
 		include/remote.cc
 		platform/include/clock.cc
 		platform/include/foreground_runner.cc

@@ -23,6 +23,10 @@ auto delayed_task::operator<=>(steady_clock::time_point right) const -> std::str
 }
 
 // task_queue
+auto task_queue::clear() -> void {
+	tasks_.clear();
+}
+
 auto task_queue::empty() const -> bool {
 	return tasks_.size() - empty_tasks_ == 0;
 }
@@ -63,6 +67,10 @@ auto task_queue::push(task task) -> void {
 }
 
 // delayed_task_queue
+auto delayed_task_queue::clear() -> void {
+	tasks_ = {};
+}
+
 auto delayed_task_queue::empty() const -> bool {
 	return tasks_.empty();
 }
@@ -88,6 +96,14 @@ thread_local std::stop_token* foreground_runner::stop_token_{};
 
 foreground_runner::foreground_runner(scheduler::layer<>& scheduler) :
 		scheduler_{scheduler} {}
+
+auto foreground_runner::close() -> void {
+	scheduler_.close_threads();
+}
+
+auto foreground_runner::finalize() -> void {
+	storage_.write()->clear();
+}
 
 auto foreground_runner::foreground_thread(std::stop_token stop_token) -> void {
 	stop_token_ = &stop_token;
@@ -139,6 +155,13 @@ auto foreground_runner::schedule(std::shared_ptr<foreground_runner> self, write_
 }
 
 // foreground_runner::storage
+auto foreground_runner::storage::clear() -> void {
+	for (auto& queue : queues_by_priority_) {
+		queue.delayed_tasks.clear();
+		queue.tasks.clear();
+	}
+}
+
 auto foreground_runner::storage::did_push_tasks(task_queue_for_priority* iterator) -> void {
 	has_tasks_.insert(iterator);
 }

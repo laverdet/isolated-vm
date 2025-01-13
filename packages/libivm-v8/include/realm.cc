@@ -1,6 +1,6 @@
 export module ivm.isolated_v8:realm;
 import :agent_fwd;
-import :remote;
+import isolated_v8.remote;
 import ivm.utility;
 import v8;
 

@@ -1,13 +1,14 @@
 module;
 #include <memory>
 #include <optional>
+#include <stop_token>
 #include <utility>
 #include <variant>
 module ivm.isolated_v8;
 import :agent;
 import :platform;
-import :remote;
 import isolated_v8.foreground_runner;
+import isolated_v8.remote;
 import isolated_v8.scheduler;
 import ivm.iv8;
 import ivm.js;
@@ -16,14 +17,40 @@ import v8;
 
 namespace isolated_v8 {
 
-agent::lock::lock(agent::host& host) :
-		host_{host} {}
+// agent::isolate_lock
+agent::isolate_lock::isolate_lock(v8::Isolate* isolate) :
+		locker_{isolate},
+		scope_{isolate} {}
 
-// managed_lock
-agent::managed_lock::managed_lock(host& host) :
-		lock{host},
-		locker_{host.isolate()},
-		scope_{host.isolate()} {}
+// agent::lock
+agent::lock::lock(std::shared_ptr<agent::host> host) :
+		agent::isolate_lock{host->isolate()},
+		host_{std::move(host)} {}
+
+auto agent::lock::isolate() -> v8::Isolate* {
+	return host_->isolate();
+}
+
+auto agent::lock::remote_handle_delegate() -> std::weak_ptr<isolated_v8::remote_handle_delegate> {
+	return std::static_pointer_cast<isolated_v8::remote_handle_delegate>(host_);
+}
+
+auto agent::lock::remote_handle_list() -> isolated_v8::remote_handle_list& {
+	return host_->remote_handle_list();
+}
+
+// agent::termination_lock
+agent::termination_lock::termination_lock(agent::host& host) :
+		agent::isolate_lock{host.isolate()},
+		host_{&host} {}
+
+auto agent::termination_lock::isolate() -> v8::Isolate* {
+	return host_->isolate();
+}
+
+auto agent::termination_lock::remote_handle_list() -> isolated_v8::remote_handle_list& {
+	return host_->remote_handle_list();
+}
 
 // handle
 agent::agent(const std::shared_ptr<host>& host, std::shared_ptr<severable> severable_) :
@@ -49,7 +76,6 @@ agent::host::host(
 		async_scheduler_{cluster_scheduler},
 		array_buffer_allocator_{v8::ArrayBuffer::Allocator::NewDefaultAllocator()},
 		isolate_{v8::Isolate::Allocate()},
-		remote_handle_list_{std::make_shared<isolated_v8::remote_handle_list>()},
 		random_seed_{random_seed},
 		clock_{clock} {
 	isolate_->SetData(0, this);
@@ -59,8 +85,10 @@ agent::host::host(
 }
 
 agent::host::~host() {
-	managed_lock lock{*this};
-	remote_handle_list_->reset(lock);
+	foreground_runner_->close();
+	agent::termination_lock lock{*this};
+	remote_handle_list_.reset(lock);
+	foreground_runner_->finalize();
 }
 
 auto agent::host::clock_time_ms() -> int64_t {
@@ -96,8 +124,18 @@ auto agent::host::random_seed_latch() -> util::scope_exit<random_seed_unlatch> {
 	return util::scope_exit{random_seed_unlatch{should_give_seed_}};
 }
 
-auto agent::host::remote_handle_list() -> std::shared_ptr<isolated_v8::remote_handle_list> {
+auto agent::host::remote_handle_list() -> isolated_v8::remote_handle_list& {
 	return remote_handle_list_;
+}
+
+auto agent::host::reset_remote_handle(remote_handle_delegate::expired_remote_type remote) -> void {
+	foreground_runner::schedule_handle_task(
+		foreground_runner_,
+		[ this, remote = std::move(remote) ](const std::stop_token& /*stop_token*/) mutable {
+			agent::termination_lock lock{*this};
+			remote->reset(lock);
+		}
+	);
 }
 
 auto agent::host::scratch_context() -> v8::Local<v8::Context> {

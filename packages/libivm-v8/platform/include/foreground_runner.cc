@@ -74,6 +74,7 @@ struct delayed_task : task {
 class task_queue {
 	public:
 		[[nodiscard]] auto empty() const -> bool;
+		auto clear() -> void;
 		auto pop_non_nestable() -> task_type;
 		auto pop() -> task_type;
 		auto push(task task) -> void;
@@ -87,6 +88,7 @@ class task_queue {
 class delayed_task_queue {
 	public:
 		[[nodiscard]] auto empty() const -> bool;
+		auto clear() -> void;
 		auto pop_if(std::chrono::steady_clock::time_point time) -> std::optional<task>;
 		auto push(delayed_task task) -> void;
 
@@ -158,6 +160,7 @@ export class foreground_runner
 				friend foreground_runner;
 
 			protected:
+				auto clear() -> void;
 				auto did_push_delayed_tasks(task_queue_for_priority* iterator) -> void;
 				auto did_push_tasks(task_queue_for_priority* iterator) -> void;
 				auto pop_non_nestable() -> task_type;
@@ -181,6 +184,8 @@ export class foreground_runner
 	public:
 		explicit foreground_runner(scheduler::layer<>& scheduler);
 
+		auto close() -> void;
+		auto finalize() -> void;
 		auto foreground_thread(std::stop_token stop_token) -> void;
 		static auto get_for_priority(std::shared_ptr<foreground_runner> self, v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner>;
 		static auto schedule_client_task(std::shared_ptr<foreground_runner> self, host_task_type auto task) -> void;
@@ -254,7 +259,7 @@ auto foreground_runner::schedule_client_task(std::shared_ptr<foreground_runner> 
 auto foreground_runner::schedule_handle_task(std::shared_ptr<foreground_runner> self, host_task_type auto task) -> void {
 	auto lock = self->storage_.write_notify(&storage::should_resume);
 	if (lock->thread_id_ == std::this_thread::get_id()) {
-		task->Run();
+		task(std::stop_token{});
 	} else {
 		auto& queues = lock->template task_queues_by_priority<v8::TaskPriority::kUserBlocking>();
 		queues.tasks.push(isolated_v8::task{.task = make_task_of(std::move(task)), .nestability = nestability::nestable});

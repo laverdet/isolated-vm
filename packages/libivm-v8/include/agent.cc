@@ -6,9 +6,9 @@ module;
 #include <stop_token>
 export module ivm.isolated_v8:agent;
 export import :agent_fwd;
-import :remote_fwd;
 import isolated_v8.clock;
 import isolated_v8.foreground_runner;
+import isolated_v8.remote;
 import isolated_v8.scheduler;
 import isolated_v8.task_runner;
 import ivm.iv8;
@@ -18,25 +18,45 @@ import v8;
 
 namespace isolated_v8 {
 
-// A `lock` is a simple holder for an `agent::host` which proves that we are executing in
-// the isolate context.
-class agent::lock : util::non_moveable, public util::pointer_facade<agent::lock> {
+// Locks the v8 isolate
+class agent::isolate_lock : util::non_moveable {
 	public:
-		explicit lock(host& host);
-		auto operator*(this auto& self) -> decltype(auto) { return self.host_; }
-
-	private:
-		host& host_;
-};
-
-// A lock explicitly created on this stack
-class agent::managed_lock : public agent::lock {
-	public:
-		explicit managed_lock(host& host);
+		explicit isolate_lock(v8::Isolate* isolate);
 
 	private:
 		v8::Locker locker_;
 		v8::Isolate::Scope scope_;
+};
+
+// A `lock` is a simple holder for an `agent::host` which proves that we are executing in
+// the isolate context.
+class agent::lock final
+		: public util::pointer_facade<agent::lock>,
+			public agent::isolate_lock,
+			public remote_handle_delegate_lock {
+	public:
+		explicit lock(std::shared_ptr<agent::host> host);
+		auto operator*(this auto& self) -> decltype(auto) { return *self.host_; }
+		[[nodiscard]] auto isolate() -> v8::Isolate* final;
+		[[nodiscard]] auto remote_handle_delegate() -> std::weak_ptr<isolated_v8::remote_handle_delegate> final;
+		[[nodiscard]] auto remote_handle_list() -> isolated_v8::remote_handle_list& final;
+
+	private:
+		std::shared_ptr<host> host_;
+};
+
+// Lock created while the agent is terminating. In this case we do not have a `shared_ptr` to the
+// host anymore.
+class agent::termination_lock final
+		: public agent::isolate_lock,
+			public remote_handle_lock {
+	public:
+		explicit termination_lock(agent::host& host);
+		[[nodiscard]] auto isolate() -> v8::Isolate* final;
+		[[nodiscard]] auto remote_handle_list() -> isolated_v8::remote_handle_list& final;
+
+	private:
+		host* host_;
 };
 
 // This keep the `weak_ptr` in `agent` alive. The `host` maintains a `weak_ptr` to this and can
@@ -53,7 +73,7 @@ class agent::severable {
 
 // Directly handles the actual isolate. If someone has a reference to this then it probably means
 // the isolate is locked and entered.
-class agent::host : util::non_moveable {
+class agent::host final : public remote_handle_delegate {
 	private:
 		struct random_seed_unlatch : util::non_copyable {
 				explicit random_seed_unlatch(bool& latch);
@@ -76,7 +96,8 @@ class agent::host : util::non_moveable {
 		auto foreground_runner() -> std::shared_ptr<isolated_v8::foreground_runner>;
 		auto isolate() -> v8::Isolate*;
 		auto random_seed_latch() -> util::scope_exit<random_seed_unlatch>;
-		auto remote_handle_list() -> std::shared_ptr<isolated_v8::remote_handle_list>;
+		auto remote_handle_list() -> isolated_v8::remote_handle_list&;
+		auto reset_remote_handle(remote_handle_delegate::expired_remote_type remote) -> void final;
 		auto scratch_context() -> v8::Local<v8::Context>;
 		auto take_random_seed() -> std::optional<double>;
 		auto task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner>;
@@ -94,7 +115,7 @@ class agent::host : util::non_moveable {
 		scheduler::runner<{}> async_scheduler_;
 		std::unique_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
 		std::unique_ptr<v8::Isolate, util::functor_of<dispose_isolate>> isolate_;
-		std::shared_ptr<isolated_v8::remote_handle_list> remote_handle_list_;
+		isolated_v8::remote_handle_list remote_handle_list_;
 		js::iv8::weak_map<v8::Module, js::string_t> weak_module_specifiers_;
 		v8::Global<v8::Context> scratch_context_;
 
@@ -113,7 +134,7 @@ auto agent::schedule(auto task, auto... args) -> void
 				... args = std::move(args) ](
 				const std::stop_token& /*stop_token*/
 			) mutable {
-				agent::managed_lock agent_lock{*host};
+				agent::lock agent_lock{host};
 				v8::HandleScope handle_scope{host->isolate_.get()};
 				std::visit([](auto& clock) { clock.begin_tick(); }, host->clock_);
 				task(agent_lock, std::move(args)...);
@@ -134,7 +155,7 @@ auto agent::schedule_async(auto task, auto... args) -> void
 				auto task,
 				auto&&... args
 			) {
-				agent::managed_lock agent_lock{*host};
+				agent::lock agent_lock{host};
 				v8::HandleScope handle_scope{host->isolate_.get()};
 				task(std::move(stop_token), agent_lock, std::move(args)...);
 			},
