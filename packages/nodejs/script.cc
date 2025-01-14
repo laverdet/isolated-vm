@@ -28,7 +28,7 @@ auto compile_script(
 ) {
 	auto options = std::move(options_optional).value_or(compile_script_options{});
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, isolated_v8::script script) -> expected_value {
-		return make_collected_external<isolated_v8::script>(env, std::move(script));
+		return make_external<isolated_v8::script>(env, std::move(script));
 	});
 	agent->schedule(
 		[ code_string = std::move(code_string),

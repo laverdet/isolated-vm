@@ -17,7 +17,6 @@ export class environment : util::non_moveable {
 		~environment();
 
 		auto cluster() -> isolated_v8::cluster& { return cluster_; }
-		auto collection() -> util::collection_group& { return collection_group_; }
 		auto nenv() -> napi_env { return env_; }
 		auto isolate() -> v8::Isolate* { return isolate_; }
 		auto scheduler() -> js::napi::uv_scheduler& { return scheduler_; };
@@ -28,7 +27,6 @@ export class environment : util::non_moveable {
 		js::napi::uv_scheduler scheduler_;
 		isolated_v8::cluster cluster_;
 		v8::Isolate* isolate_;
-		util::collection_group collection_group_;
 };
 
 // Module forward declarations

@@ -33,7 +33,7 @@ auto compile_module(
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](environment& env, isolated_v8::js_module module_, std::vector<isolated_v8::module_request> requests) -> expected_value {
-			auto* handle = make_collected_external<isolated_v8::js_module>(env, std::move(module_));
+			auto* handle = make_external<isolated_v8::js_module>(env, std::move(module_));
 			return js::transfer_strict<napi_value>(
 				std::tuple{
 					js::transfer_direct{handle},

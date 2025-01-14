@@ -1,6 +1,6 @@
 module;
 #include <js_native_api.h>
-#include <stdexcept>
+#include <memory>
 #include <utility>
 module ivm.node:external;
 import :environment;
@@ -14,23 +14,22 @@ import v8;
 
 namespace ivm {
 
-auto collection_group_finalizer(napi_env /*env*/, void* finalize_data, void* finalize_hint) {
-	static_cast<util::collection_group*>(finalize_hint)->collect(finalize_data);
+template <class Type>
+auto finalizer(napi_env /*env*/, void* finalize_data, void* /*finalize_hint*/) {
+	delete static_cast<Type*>(finalize_data);
 }
 
 export template <class Type>
-auto make_collected_external(environment& env, auto&&... args) -> napi_value {
+auto make_external(environment& env, auto&&... args) -> napi_value {
 	// We manually create a `v8::External` to avoid napi's leaky `ExternalWrapper` class. Also avoids
 	// an additional dereference on the accessing side.
-	auto collected = env.collection().make_ptr<js::iv8::external_reference<Type>>(std::forward<decltype(args)>(args)...);
-	auto external = v8::External::New(env.isolate(), collected.get());
+	using external_type = js::iv8::external_reference<Type>;
+	auto ptr = std::make_unique<external_type>(std::forward<decltype(args)>(args)...);
+	auto external = v8::External::New(env.isolate(), ptr.get());
 	auto as_napi_value = js::napi::from_v8(external);
 	// Now we make a weak reference via napi (which also leaks) which finalizes the underlying object.
-	if (napi_add_finalizer(env.nenv(), as_napi_value, collected.get(), collection_group_finalizer, &env.collection(), nullptr) == napi_ok) {
-		collected.release();
-	} else {
-		throw std::runtime_error("Failed to create external reference");
-	}
+	js::napi::invoke(napi_add_finalizer, env.nenv(), as_napi_value, ptr.get(), finalizer<external_type>, nullptr);
+	ptr.release();
 	return as_napi_value;
 }
 

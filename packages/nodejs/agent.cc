@@ -39,7 +39,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	auto options = std::move(options_optional).value_or(make_agent_options{});
 	auto& cluster = env.cluster();
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, isolated_v8::agent agent) -> expected_value {
-		return make_collected_external<isolated_v8::agent>(env, std::move(agent));
+		return make_external<isolated_v8::agent>(env, std::move(agent));
 	});
 	auto clock = std::visit(
 		util::overloaded{
@@ -73,7 +73,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 
 auto create_realm(environment& env, js::iv8::external_reference<agent>& agent) {
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, isolated_v8::realm realm) -> expected_value {
-		return make_collected_external<isolated_v8::realm>(env, std::move(realm));
+		return make_external<isolated_v8::realm>(env, std::move(realm));
 	});
 	agent->schedule(
 		[ dispatch = std::move(dispatch) ](
