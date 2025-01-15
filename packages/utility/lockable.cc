@@ -8,7 +8,7 @@ module;
 #include <type_traits>
 #include <utility>
 #include <variant>
-export module ivm.utility:lockable;
+export module ivm.utility.lockable;
 
 namespace util {
 

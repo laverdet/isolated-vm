@@ -114,7 +114,7 @@ class agent::host final : public remote_handle_delegate {
 		std::shared_ptr<isolated_v8::foreground_runner> foreground_runner_;
 		scheduler::runner<{}> async_scheduler_;
 		std::unique_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
-		std::unique_ptr<v8::Isolate, util::functor_of<dispose_isolate>> isolate_;
+		std::unique_ptr<v8::Isolate, util::function_type_of<dispose_isolate>> isolate_;
 		isolated_v8::remote_handle_list remote_handle_list_;
 		js::iv8::weak_map<v8::Module, js::string_t> weak_module_specifiers_;
 		v8::Global<v8::Context> scratch_context_;

@@ -3,15 +3,14 @@ target_sources(ivm_utility
 	PUBLIC
 		FILE_SET CXX_MODULES FILES
 			_module.cc
-			byte_literals.cc
-			collection_group.cc
-			comparator.cc
-			facade.cc
-			iterator.cc
+			container/prehashed_string_map.cc
+			functional/comparator.cc
 			lockable.cc
-			mutable_value.cc
-			prehashed_string_map.cc
+			ranges.cc
 			type_traits.cc
-			utility.cc
+			utility/facade.cc
+			utility/mutable_value.cc
+			utility/utility.cc
+			variant.cc
 )
 target_link_libraries(ivm_utility PRIVATE Boost::boost)

@@ -1,7 +1,7 @@
 module;
 #include <utility>
-export module ivm.utility:mutable_value;
-import :facade;
+export module ivm.utility.mutable_value;
+import ivm.utility.facade;
 
 namespace util {
 

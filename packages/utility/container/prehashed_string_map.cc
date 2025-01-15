@@ -9,10 +9,10 @@ module;
 #include <tuple>
 #include <type_traits>
 #include <utility>
-export module ivm.utility:prehashed_string_map;
-import :comparator;
-import :type_traits;
-import :utility;
+export module ivm.utility.prehashed_string_map;
+import ivm.utility.comparator;
+import ivm.utility.type_traits;
+import ivm.utility.utility;
 
 namespace util {
 

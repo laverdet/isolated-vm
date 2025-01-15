@@ -102,7 +102,7 @@ class remote : public remote_handle {
 		static auto send(remote* self) -> void;
 
 	public:
-		using unique_remote = std::unique_ptr<remote, util::functor_of<send>>;
+		using unique_remote = std::unique_ptr<remote, util::function_type_of<send>>;
 		remote(private_ctor /*private*/, remote_handle_delegate_lock& lock, v8::Local<v8::Data> handle) :
 				remote_handle{lock, handle} {}
 
