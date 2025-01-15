@@ -1,10 +1,10 @@
 module;
-#include <uv.h>
 #include <utility>
 #include <vector>
 module ivm.napi;
-import ivm.utility;
 import :uv_scheduler;
+import ivm.utility;
+import nodejs;
 
 namespace js::napi {
 

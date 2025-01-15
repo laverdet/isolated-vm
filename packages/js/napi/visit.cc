@@ -8,7 +8,7 @@ import :value;
 import ivm.iv8;
 import ivm.js;
 import ivm.utility;
-import napi;
+import nodejs;
 import v8;
 
 namespace js {

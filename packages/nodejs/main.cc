@@ -5,7 +5,7 @@ import ivm.napi;
 import ivm.node;
 import ivm.js;
 import ivm.utility;
-import napi;
+import nodejs;
 using namespace ivm;
 
 NAPI_MODULE_INIT(/*napi_env env, napi_value exports*/) {

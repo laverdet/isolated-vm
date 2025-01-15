@@ -7,7 +7,7 @@ import :utility;
 import :object;
 import ivm.js;
 import ivm.utility;
-import napi;
+import nodejs;
 
 namespace js::napi {
 

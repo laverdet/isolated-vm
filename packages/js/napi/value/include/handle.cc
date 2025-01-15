@@ -1,5 +1,5 @@
 module ivm.napi:handle;
-import napi;
+import nodejs;
 
 namespace js::napi {
 

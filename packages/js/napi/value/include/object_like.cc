@@ -1,6 +1,6 @@
 export module ivm.napi:object_like;
 import :handle;
-import napi;
+import nodejs;
 
 namespace js::napi {
 

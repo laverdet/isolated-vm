@@ -4,7 +4,7 @@ module;
 export module ivm.napi:array;
 import :object_like;
 import ivm.utility;
-import napi;
+import nodejs;
 
 namespace js::napi {
 

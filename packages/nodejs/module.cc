@@ -14,7 +14,7 @@ import ivm.isolated_v8;
 import ivm.iv8;
 import ivm.js;
 import ivm.napi;
-import napi;
+import nodejs;
 using namespace isolated_v8;
 
 namespace ivm {

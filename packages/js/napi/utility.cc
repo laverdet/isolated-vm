@@ -5,7 +5,7 @@ module;
 #include <stdexcept>
 export module ivm.napi:utility;
 import ivm.utility;
-import napi;
+import nodejs;
 import v8;
 
 namespace js::napi {

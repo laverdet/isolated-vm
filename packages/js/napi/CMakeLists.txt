@@ -33,7 +33,7 @@ target_include_directories(ivm_value_napi SYSTEM PRIVATE
 	${NODE_DIST_DIR}/include/node
 )
 target_link_libraries(ivm_value_napi PRIVATE
-	ivm_napi
+	nodejs
 	ivm_nodejs_common_v8
 	ivm_utility
 )

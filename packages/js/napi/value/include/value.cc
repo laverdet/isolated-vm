@@ -5,7 +5,7 @@ module;
 #include <variant>
 export module ivm.napi:value;
 import ivm.js;
-import napi;
+import nodejs;
 
 namespace js::napi {
 

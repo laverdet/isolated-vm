@@ -4,7 +4,7 @@ module ivm.napi;
 import :number;
 import :utility;
 import ivm.js;
-import napi;
+import nodejs;
 
 namespace js::napi {
 

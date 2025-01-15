@@ -6,7 +6,7 @@ export module ivm.napi:accept;
 import :utility;
 import :value;
 import ivm.js;
-import napi;
+import nodejs;
 import v8;
 
 namespace js {

@@ -1,11 +1,11 @@
 module;
-#include <uv.h>
 #include <functional>
 #include <memory>
 #include <stdexcept>
 #include <utility>
 export module ivm.napi:uv_scheduler;
 import ivm.utility;
+import nodejs;
 
 namespace js::napi {
 

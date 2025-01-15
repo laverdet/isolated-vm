@@ -2,7 +2,7 @@ export module ivm.napi:handle_scope;
 import :utility;
 import ivm.js;
 import ivm.utility;
-import napi;
+import nodejs;
 
 namespace js::napi {
 

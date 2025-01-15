@@ -19,7 +19,7 @@ target_include_directories(ivm_backend_v8 SYSTEM PRIVATE
 )
 target_link_libraries(ivm_backend_v8 PUBLIC
 	ivm_isolated_v8
-	ivm_napi
+	nodejs
 	ivm_nodejs_common_v8
 	ivm_nodejs_v8
 	ivm_utility

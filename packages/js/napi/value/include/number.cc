@@ -2,7 +2,7 @@ module;
 #include <cstdint>
 export module ivm.napi:number;
 import :value;
-import napi;
+import nodejs;
 
 namespace js::napi {
 

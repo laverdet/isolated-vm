@@ -1,8 +1,7 @@
 // NOLINTBEGIN(misc-unused-using-decls)
 module;
 #include <js_native_api.h>
-#include <node_api.h>
-export module napi;
+export module nodejs:js_native_api;
 
 export using ::napi_bigint;
 export using ::napi_boolean;
@@ -52,7 +51,6 @@ export using ::napi_get_property_names;
 export using ::napi_get_property;
 export using ::napi_get_reference_value;
 export using ::napi_get_undefined;
-export using ::napi_get_uv_event_loop;
 export using ::napi_has_own_property;
 export using ::napi_is_array;
 export using ::napi_is_date;

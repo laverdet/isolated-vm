@@ -10,7 +10,7 @@ import :utility;
 import :value;
 import ivm.js;
 import ivm.utility;
-import napi;
+import nodejs;
 import v8;
 
 namespace js::napi {

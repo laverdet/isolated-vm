@@ -3,7 +3,7 @@ module;
 module ivm.napi;
 import :string;
 import ivm.js;
-import napi;
+import nodejs;
 
 namespace js::napi {
 

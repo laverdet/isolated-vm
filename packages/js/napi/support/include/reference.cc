@@ -3,7 +3,7 @@ module;
 export module ivm.napi:reference;
 import :utility;
 import :value;
-import napi;
+import nodejs;
 
 namespace js::napi {
 

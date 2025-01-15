@@ -6,7 +6,7 @@ import ivm.isolated_v8;
 import ivm.js;
 import ivm.napi;
 import ivm.utility;
-import napi;
+import nodejs;
 import v8;
 
 namespace ivm {

@@ -3,7 +3,7 @@ import :object_like;
 import :utility;
 import :value;
 import ivm.utility;
-import napi;
+import nodejs;
 
 namespace js::napi {
 

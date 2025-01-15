@@ -171,7 +171,7 @@ add_subdirectory(packages/third_party/v8 ivm_embedded_v8)
 add_subdirectory(packages/libivm-v8)
 
 # Napi shim
-add_subdirectory(packages/third_party/napi)
+add_subdirectory(packages/third_party/nodejs)
 
 # nodejs require-able module
 add_subdirectory(packages/js/napi ivm_jsnapi)
