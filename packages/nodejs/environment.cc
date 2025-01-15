@@ -2,7 +2,6 @@ module;
 #include <cstring>
 module ivm.node;
 import :environment;
-import ivm.isolated_v8;
 import ivm.js;
 import ivm.napi;
 import ivm.utility;

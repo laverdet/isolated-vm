@@ -2,10 +2,9 @@ module;
 #include <ranges>
 #include <utility>
 #include <vector>
-module ivm.isolated_v8;
-import :agent;
-import :js_module;
-import :realm;
+module isolated_v8.module_;
+import isolated_v8.agent;
+import isolated_v8.realm;
 import isolated_v8.remote;
 import ivm.iv8;
 import ivm.js;

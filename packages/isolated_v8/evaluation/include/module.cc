@@ -5,11 +5,11 @@ module;
 #include <tuple>
 #include <utility>
 #include <vector>
-export module ivm.isolated_v8:js_module;
-import :agent;
-import :realm;
-import :script;
+export module isolated_v8.module_;
+import isolated_v8.agent;
+import isolated_v8.realm;
 import isolated_v8.remote;
+import isolated_v8.script;
 import ivm.iv8;
 import ivm.js;
 import ivm.utility;

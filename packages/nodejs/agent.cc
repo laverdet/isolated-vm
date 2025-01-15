@@ -7,7 +7,7 @@ module ivm.node;
 import :environment;
 import :external;
 import :utility;
-import ivm.isolated_v8;
+import isolated_v8;
 import ivm.iv8;
 import ivm.js;
 import ivm.napi;
@@ -58,14 +58,14 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 		},
 		options.clock.value_or(make_agent_options::clock_system{})
 	);
-	cluster.make_agent(
+	agent::make(
 		[ dispatch = std::move(dispatch) ](
 			isolated_v8::agent agent
 		) mutable {
 			dispatch(std::move(agent));
 		},
-		clock,
-		options.random_seed
+		cluster,
+		{.clock = clock, .random_seed = options.random_seed}
 	);
 
 	return js::transfer_direct{promise};

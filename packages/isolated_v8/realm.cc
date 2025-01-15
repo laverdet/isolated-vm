@@ -1,6 +1,5 @@
-module ivm.isolated_v8;
-import :agent;
-import :realm;
+module isolated_v8.realm;
+import isolated_v8.agent;
 import isolated_v8.remote;
 import v8;
 

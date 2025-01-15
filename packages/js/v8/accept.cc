@@ -149,4 +149,4 @@ struct accept<Meta, v8::MaybeLocal<Type>> : accept<Meta, v8::Local<Type>> {
 		}
 };
 
-}; // namespace js
+} // namespace js

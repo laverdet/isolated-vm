@@ -1,9 +1,11 @@
 module;
 #include <concepts>
 #include <memory>
+#include <optional>
 #include <stop_token>
-export module ivm.isolated_v8:agent_fwd;
-import isolated_v8.foreground_runner;
+export module isolated_v8.agent:fwd;
+import isolated_v8.clock;
+import isolated_v8.cluster;
 import ivm.utility;
 
 namespace isolated_v8 {
@@ -14,6 +16,11 @@ export class agent : util::non_copyable {
 	public:
 		class host;
 		class lock;
+
+		struct behavior_params {
+				clock::any_clock clock;
+				std::optional<double> random_seed;
+		};
 
 	private:
 		class severable;
@@ -26,6 +33,9 @@ export class agent : util::non_copyable {
 		auto schedule_async(auto task, auto... args) -> void
 			requires std::invocable<decltype(task), const std::stop_token&, lock&, decltype(args)...>;
 
+		static auto make(std::invocable<agent> auto fn, cluster& cluster, behavior_params params) -> void;
+
+	private:
 		std::weak_ptr<host> host_;
 		std::shared_ptr<severable> severable_;
 };

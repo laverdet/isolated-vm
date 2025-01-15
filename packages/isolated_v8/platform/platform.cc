@@ -4,8 +4,8 @@ module;
 #include <memory>
 #include <random>
 #include <ranges>
-module ivm.isolated_v8;
-import :platform;
+module isolated_v8.platform;
+import isolated_v8.agent;
 import ivm.utility;
 import v8;
 

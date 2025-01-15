@@ -1,7 +1,7 @@
 module;
 #include <expected>
 export module ivm.node:environment;
-import ivm.isolated_v8;
+import isolated_v8;
 import ivm.js;
 import ivm.napi;
 import ivm.utility;

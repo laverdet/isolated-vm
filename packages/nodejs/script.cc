@@ -7,7 +7,7 @@ module ivm.node;
 import :environment;
 import :external;
 import :utility;
-import ivm.isolated_v8;
+import isolated_v8;
 import ivm.iv8;
 import ivm.js;
 import ivm.napi;

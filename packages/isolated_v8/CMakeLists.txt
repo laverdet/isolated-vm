@@ -1,12 +1,12 @@
 add_library(ivm_isolated_v8 STATIC)
 target_sources(ivm_isolated_v8
 	PRIVATE
-		agent.cc
-		cluster.cc
+		agent/host.cc
+		agent/lock.cc
 		evaluation/module.cc
 		evaluation/script.cc
-		handle/remote_handle.cc
 		handle/remote_handle_list.cc
+		handle/remote_handle.cc
 		platform/clock.cc
 		platform/foreground_runner.cc
 		platform/handle.cc
@@ -15,13 +15,15 @@ target_sources(ivm_isolated_v8
 		realm.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
+		agent/include/agent.cc
+		agent/include/fwd.cc
+		agent/include/host.cc
+		agent/include/lock.cc
 		evaluation/include/module.cc
 		evaluation/include/script.cc
 		handle/include/remote_handle_list.cc
 		handle/include/remote_handle.cc
 		handle/include/remote.cc
-		include/agent_fwd.cc
-		include/agent.cc
 		include/cluster.cc
 		include/lock.cc
 		include/realm.cc
