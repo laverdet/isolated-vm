@@ -167,8 +167,8 @@ set(IVM_IV8_TRICKSHOT ON)
 add_subdirectory(packages/js/v8 ivm_embedded_jsv8)
 add_subdirectory(packages/third_party/v8 ivm_embedded_v8)
 
-# libivm-v8
-add_subdirectory(packages/libivm-v8)
+# isolated_v8
+add_subdirectory(packages/isolated_v8)
 
 # Napi shim
 add_subdirectory(packages/third_party/nodejs)
