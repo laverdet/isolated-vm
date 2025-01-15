@@ -5,22 +5,26 @@ target_sources(ivm_isolated_v8
 		cluster.cc
 		evaluation/module.cc
 		evaluation/script.cc
+		handle/remote_handle.cc
+		handle/remote_handle_list.cc
 		platform/clock.cc
 		platform/foreground_runner.cc
 		platform/handle.cc
 		platform/job_handle.cc
 		platform/platform.cc
 		realm.cc
-		remote.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		evaluation/include/module.cc
 		evaluation/include/script.cc
+		handle/include/remote_handle_list.cc
+		handle/include/remote_handle.cc
+		handle/include/remote.cc
 		include/agent_fwd.cc
 		include/agent.cc
 		include/cluster.cc
+		include/lock.cc
 		include/realm.cc
-		include/remote.cc
 		platform/include/clock.cc
 		platform/include/foreground_runner.cc
 		platform/include/platform.cc

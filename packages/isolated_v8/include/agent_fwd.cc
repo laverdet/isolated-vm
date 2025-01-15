@@ -17,8 +17,6 @@ export class agent : util::non_copyable {
 
 	private:
 		class severable;
-		class isolate_lock;
-		class termination_lock;
 
 	public:
 		agent(const std::shared_ptr<host>& host, std::shared_ptr<severable> severable_);
