@@ -44,6 +44,10 @@ struct accept : accept<void, Type> {
 				accept<void, Type>{std::forward<decltype(args)>(args)...} {}
 };
 
+// Prevent instantiation of non-specialized void-Meta `accept` (better error messages)
+template <class Type>
+struct accept<void, Type>;
+
 // Base specialization for stateless acceptors. This just gets you the `auto_accept` constructor
 // used by recursive acceptors.
 template <>

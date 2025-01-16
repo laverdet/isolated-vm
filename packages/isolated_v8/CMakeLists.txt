@@ -21,10 +21,12 @@ target_sources(ivm_isolated_v8
 		agent/include/lock.cc
 		evaluation/include/module.cc
 		evaluation/include/script.cc
+		handle/include/collected_handle.cc
 		handle/include/remote_handle_list.cc
 		handle/include/remote_handle.cc
 		handle/include/remote.cc
 		include/cluster.cc
+		include/function.cc
 		include/lock.cc
 		include/realm.cc
 		platform/include/clock.cc

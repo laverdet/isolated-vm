@@ -29,7 +29,8 @@ agent::host::host(
 
 agent::host::~host() {
 	foreground_runner_->close();
-	isolate_scope_lock lock{isolate_.get()};
+	isolate_scope lock{isolate_.get()};
+	autorelease_pool_.clear();
 	remote_handle_list_.reset(lock);
 	foreground_runner_->finalize();
 }

@@ -19,6 +19,10 @@ struct visit : visit<void, Type> {
 		using visit<void, Type>::visit;
 };
 
+// Prevent instantiation of non-specialized void-Meta `visit` (better error messages)
+template <class Type>
+struct visit<void, Type>;
+
 // Base specialization for stateless visitors.
 template <>
 struct visit<void, void> {

@@ -33,6 +33,7 @@ class agent::host final {
 		);
 		~host();
 
+		auto autorelease_pool() -> util::autorelease_pool& { return autorelease_pool_; }
 		auto clock_time_ms() -> int64_t;
 		auto foreground_runner() -> std::shared_ptr<isolated_v8::foreground_runner> { return foreground_runner_; }
 		auto isolate() -> v8::Isolate* { return isolate_.get(); }
@@ -50,6 +51,7 @@ class agent::host final {
 	private:
 		static auto dispose_isolate(v8::Isolate* isolate) -> void { isolate->Dispose(); }
 
+		util::autorelease_pool autorelease_pool_;
 		std::weak_ptr<severable> severable_;
 		std::shared_ptr<isolated_v8::foreground_runner> foreground_runner_;
 		scheduler::runner<{}> async_scheduler_;

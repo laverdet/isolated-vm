@@ -17,6 +17,8 @@ class uv_handle_of : public util::pointer_facade<uv_handle_of<Handle, Type>>, ut
 		struct private_ctor {
 				explicit private_ctor() = default;
 		};
+		using shared_ptr_type = std::shared_ptr<uv_handle_of>;
+		using weak_ptr_type = std::weak_ptr<uv_handle_of>;
 
 	public:
 		explicit uv_handle_of(const private_ctor& /*private*/, auto&&... args) :
@@ -32,8 +34,8 @@ class uv_handle_of : public util::pointer_facade<uv_handle_of<Handle, Type>>, ut
 		auto handle_base(this auto& self) -> auto* { return reinterpret_cast<uv_handle_t*>(&self.handle_); }
 		auto open(const auto& init, uv_loop_t* loop, auto&&... args);
 
-		static auto make(auto&&... args) -> std::shared_ptr<uv_handle_of>;
-		static auto unwrap(const Handle* handle) -> const std::shared_ptr<uv_handle_of>&;
+		static auto make(auto&&... args) -> shared_ptr_type;
+		static auto unwrap(const Handle* handle) -> const shared_ptr_type&;
 
 	private:
 		Handle handle_;
@@ -61,23 +63,23 @@ export class uv_scheduler {
 
 template <class Handle, class Type>
 uv_handle_of<Handle, Type>::~uv_handle_of() {
-	delete reinterpret_cast<std::weak_ptr<uv_handle_of>*>(handle_.data);
+	delete reinterpret_cast<weak_ptr_type*>(handle_.data);
 }
 
 template <class Handle, class Type>
 auto uv_handle_of<Handle, Type>::close() {
 	uv_close(handle_base(), [](uv_handle_t* handle) {
-		delete reinterpret_cast<std::shared_ptr<uv_handle_of>*>(std::exchange(handle->data, nullptr));
+		delete reinterpret_cast<shared_ptr_type*>(std::exchange(handle->data, nullptr));
 	});
 }
 
 template <class Handle, class Type>
 auto uv_handle_of<Handle, Type>::open(const auto& init, uv_loop_t* loop, auto&&... args) {
 	auto weak_ptr_ptr = std::invoke([ & ]() {
-		auto* raw_ptr = reinterpret_cast<std::weak_ptr<uv_handle_of>*>(std::exchange(handle_.data, nullptr));
-		return std::unique_ptr<std::weak_ptr<uv_handle_of>>{raw_ptr};
+		auto* raw_ptr = reinterpret_cast<weak_ptr_type*>(std::exchange(handle_.data, nullptr));
+		return std::unique_ptr<weak_ptr_type>{raw_ptr};
 	});
-	auto shared_ptr_ptr = std::make_unique<std::shared_ptr<uv_handle_of>>(*weak_ptr_ptr);
+	auto shared_ptr_ptr = std::make_unique<shared_ptr_type>(*weak_ptr_ptr);
 	handle_.data = shared_ptr_ptr.get();
 	if (init(loop, handle(), std::forward<decltype(args)>(args)...) == 0) {
 		shared_ptr_ptr.release();
@@ -88,16 +90,16 @@ auto uv_handle_of<Handle, Type>::open(const auto& init, uv_loop_t* loop, auto&&.
 }
 
 template <class Handle, class Type>
-auto uv_handle_of<Handle, Type>::make(auto&&... args) -> std::shared_ptr<uv_handle_of> {
+auto uv_handle_of<Handle, Type>::make(auto&&... args) -> shared_ptr_type {
 	auto shared_with_block = std::make_shared<uv_handle_of>(private_ctor{}, std::forward<decltype(args)>(args)...);
-	auto weak_ptr_ptr = std::make_unique<std::weak_ptr<uv_handle_of>>(shared_with_block);
+	auto weak_ptr_ptr = std::make_unique<weak_ptr_type>(shared_with_block);
 	shared_with_block->handle_.data = weak_ptr_ptr.release();
 	return shared_with_block;
 }
 
 template <class Handle, class Type>
-auto uv_handle_of<Handle, Type>::unwrap(const Handle* handle) -> const std::shared_ptr<uv_handle_of>& {
-	return *reinterpret_cast<std::shared_ptr<uv_handle_of>*>(handle->data);
+auto uv_handle_of<Handle, Type>::unwrap(const Handle* handle) -> const shared_ptr_type& {
+	return *reinterpret_cast<shared_ptr_type*>(handle->data);
 }
 
 } // namespace js::napi

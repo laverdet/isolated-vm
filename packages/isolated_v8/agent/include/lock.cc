@@ -11,7 +11,7 @@ namespace isolated_v8 {
 // the isolate context.
 class agent::lock final
 		: public util::pointer_facade<agent::lock>,
-			public isolate_scope_lock,
+			public isolate_scope,
 			public remote_handle_lock {
 	public:
 		explicit lock(std::shared_ptr<agent::host> host);

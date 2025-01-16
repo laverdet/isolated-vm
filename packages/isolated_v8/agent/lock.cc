@@ -10,7 +10,7 @@ namespace isolated_v8 {
 
 // agent::lock
 agent::lock::lock(std::shared_ptr<agent::host> host) :
-		isolate_scope_lock{host->isolate()},
+		isolate_scope{host->isolate()},
 		host_{std::move(host)} {}
 
 auto agent::lock::accept_remote_handle(remote_handle& remote) noexcept -> void {
@@ -27,7 +27,7 @@ auto agent::lock::remote_expiration_task() const -> reset_handle_type {
 					remote = std::move(remote) ](
 					const std::stop_token& /*stop_token*/
 				) {
-					isolate_scope_lock lock{host->isolate()};
+					isolate_scope lock{host->isolate()};
 					remote->reset(lock);
 					host->remote_handle_list().erase(*remote);
 				}

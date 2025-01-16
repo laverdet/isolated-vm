@@ -3,8 +3,6 @@ module;
 // nb: Symbol visibility hack
 #include <__iterator/wrap_iter.h>
 #endif
-#include <cstddef>
-#include <optional>
 #include <utility>
 export module ivm.iv8:accept;
 import :date;
@@ -147,6 +145,42 @@ struct accept<Meta, v8::MaybeLocal<Type>> : accept<Meta, v8::Local<Type>> {
 		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const -> v8::MaybeLocal<Type> {
 			return v8::MaybeLocal<Type>{};
 		}
+};
+
+// return value (actually a c++ void return)
+template <>
+struct accept<void, v8::ReturnValue<v8::Value>> : accept<void, v8::Local<v8::Value>> {
+	public:
+		using accept_type = accept<void, v8::Local<v8::Value>>;
+
+		accept(v8::Isolate* isolate, v8::Local<v8::Context> context, v8::ReturnValue<v8::Value> return_value) :
+				accept<void, v8::Local<v8::Value>>{isolate, context},
+				return_value_{return_value} {}
+
+		auto operator()(boolean_tag /*tag*/, const auto& value) const -> void {
+			return_value_.Set(static_cast<bool>(value));
+		}
+
+		template <class Type>
+		auto operator()(number_tag_of<Type> /*tag*/, const auto& value) const -> void {
+			return_value_.Set(static_cast<Type>(value));
+		}
+
+		auto operator()(null_tag /*tag*/, const auto& /*null*/) const -> void {
+			return_value_.SetNull();
+		}
+
+		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const -> void {
+			return_value_.SetUndefined();
+		}
+
+		auto operator()(auto_tag auto tag, auto&& value) const -> void
+			requires std::invocable<accept_type, decltype(tag), decltype(value)> {
+			return_value_.Set(accept_type::operator()(tag, std::forward<decltype(value)>(value)));
+		}
+
+	private:
+		mutable v8::ReturnValue<v8::Value> return_value_;
 };
 
 } // namespace js

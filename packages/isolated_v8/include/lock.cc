@@ -17,9 +17,9 @@ export class isolate_lock : util::non_moveable {
 };
 
 // Locks the v8 isolate
-export class isolate_scope_lock : public isolate_lock {
+export class isolate_scope : public isolate_lock {
 	public:
-		explicit isolate_scope_lock(v8::Isolate* isolate) :
+		explicit isolate_scope(v8::Isolate* isolate) :
 				isolate_lock{isolate},
 				locker_{isolate},
 				scope_{isolate} {}
@@ -27,6 +27,16 @@ export class isolate_scope_lock : public isolate_lock {
 	private:
 		v8::Locker locker_;
 		v8::Isolate::Scope scope_;
+};
+
+// Enters a context
+export class context_scope {
+	public:
+		explicit context_scope(v8::Local<v8::Context> context) :
+				scope_{context} {}
+
+	private:
+		v8::Context::Scope scope_;
 };
 
 } // namespace isolated_v8

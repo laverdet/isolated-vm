@@ -1,9 +1,10 @@
 module;
 #include <tuple>
-module isolated_v8.script;
 import isolated_v8.agent;
+import isolated_v8.lock;
 import isolated_v8.realm;
 import isolated_v8.remote;
+module isolated_v8.script;
 import ivm.iv8;
 import ivm.js;
 import v8;
@@ -24,7 +25,7 @@ auto script::run(realm::scope& realm_scope) -> js::value_t {
 }
 
 auto script::compile(agent::lock& agent, v8::Local<v8::String> code_string, source_origin source_origin) -> script {
-	v8::Context::Scope context_scope{agent->scratch_context()};
+	context_scope context{agent->scratch_context()};
 	auto maybe_resource_name = js::transfer_strict<v8::MaybeLocal<v8::String>>(
 		std::move(source_origin.name),
 		std::tuple{},

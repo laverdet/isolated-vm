@@ -7,6 +7,8 @@ target_sources(${IV8_PREFIX}_v8
 		data.cc
 		date.cc
 		external.cc
+		function_callback.cc
+		function.cc
 		initialization.cc
 		isolate.cc
 		libplatform.cc
@@ -20,6 +22,7 @@ target_sources(${IV8_PREFIX}_v8
 		primitive.cc
 		promise.cc
 		script.cc
+		template.cc
 		v8.cc
 		value.cc
 		weak_callback_info.cc

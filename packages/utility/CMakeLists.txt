@@ -6,6 +6,9 @@ target_sources(ivm_utility
 			container/prehashed_string_map.cc
 			functional/comparator.cc
 			lockable.cc
+			memory/autorelease_pool.cc
+			memory/comparator.cc
+			memory/memory.cc
 			ranges.cc
 			type_traits.cc
 			utility/facade.cc

@@ -3,6 +3,7 @@ module;
 module isolated_v8.remote_handle;
 import isolated_v8.lock;
 import v8;
+import ivm.utility;
 
 namespace isolated_v8 {
 
@@ -19,8 +20,9 @@ auto remote_handle::reset(const isolate_lock& /*lock*/) -> void {
 }
 
 auto remote_handle::expire(expired_remote_type remote) -> void {
-	auto* ptr = remote.get();
-	ptr->reset_(std::move(remote));
+	util::move_pointer_operation(std::move(remote), [ & ](auto* ptr, auto unique) {
+		ptr->reset_(std::move(unique));
+	});
 }
 
 } // namespace isolated_v8
