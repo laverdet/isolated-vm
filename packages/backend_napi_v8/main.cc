@@ -2,11 +2,11 @@
 #include <memory>
 #include <tuple>
 import ivm.napi;
-import ivm.node;
+import backend_napi_v8;
 import ivm.js;
 import ivm.utility;
 import nodejs;
-using namespace ivm;
+using namespace backend_napi_v8;
 
 NAPI_MODULE_INIT(/*napi_env env, napi_value exports*/) {
 	// Initialize isolated-vm environment for this nodejs context

@@ -3,18 +3,18 @@ module;
 #include <expected>
 #include <tuple>
 #include <utility>
-export module ivm.node:utility;
-import :environment;
+export module backend_napi_v8.utility;
+import backend_napi_v8.environment;
 import ivm.js;
 import ivm.napi;
 import ivm.utility;
 import nodejs;
 
-namespace ivm {
+namespace backend_napi_v8 {
 
 export using expected_value = std::expected<napi_value, napi_value>;
 
-auto make_promise(environment& ienv, auto accept) {
+export auto make_promise(environment& ienv, auto accept) {
 	auto* env = ienv.nenv();
 
 	// nodejs promise & future
@@ -52,4 +52,4 @@ auto make_promise(environment& ienv, auto accept) {
 	return std::make_tuple(std::move(dispatch), promise);
 }
 
-} // namespace ivm
+} // namespace backend_napi_v8

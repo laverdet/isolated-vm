@@ -154,10 +154,10 @@ add_subdirectory(packages/js/value)
 # Note: `target_link_libraries` of OBJECT isn't inherited. So ivm_value and ivm_utility must be
 # linked to the final target.
 # https://gitlab.kitware.com/cmake/cmake/-/issues/18090
-set(IV8_PREFIX ivm_nodejs)
+set(IV8_PREFIX backend_napi_v8)
 set(IV8_INCLUDE_DIR ${NODE_DIST_DIR}/include/node)
-add_subdirectory(packages/js/v8 ivm_nodejs_jsv8)
-add_subdirectory(packages/third_party/v8 ivm_nodejs_v8)
+add_subdirectory(packages/js/v8 backend_napi_v8_jsv8)
+add_subdirectory(packages/third_party/v8 backend_napi_v8_v8)
 
 # Embedded v8
 set(IV8_PREFIX ivm_embedded)
@@ -175,4 +175,4 @@ add_subdirectory(packages/third_party/nodejs)
 
 # nodejs require-able module
 add_subdirectory(packages/js/napi ivm_jsnapi)
-add_subdirectory(packages/nodejs)
+add_subdirectory(packages/backend_napi_v8)

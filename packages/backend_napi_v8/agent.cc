@@ -3,10 +3,10 @@ module;
 #include <optional>
 #include <tuple>
 #include <variant>
-module ivm.node;
-import :environment;
-import :external;
-import :utility;
+module backend_napi_v8.agent;
+import backend_napi_v8.environment;
+import backend_napi_v8.external;
+import backend_napi_v8.utility;
 import isolated_v8;
 import ivm.iv8;
 import ivm.js;
@@ -15,7 +15,7 @@ import ivm.utility;
 import nodejs;
 using namespace isolated_v8;
 
-namespace ivm {
+namespace backend_napi_v8 {
 
 struct make_agent_options {
 		struct clock_deterministic {
@@ -101,12 +101,11 @@ auto make_create_realm(environment& env) -> js::napi::value<js::function_tag> {
 	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<create_realm>{}, env);
 }
 
-} // namespace ivm
+} // namespace backend_napi_v8
 
 // Options visitors & acceptors
 namespace js {
-
-using ivm::make_agent_options;
+using backend_napi_v8::make_agent_options;
 
 template <>
 struct object_properties<make_agent_options::clock_deterministic> {

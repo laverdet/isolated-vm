@@ -6,10 +6,10 @@ module;
 #include <utility>
 #include <variant>
 #include <vector>
-module ivm.node;
-import :environment;
-import :external;
-import :utility;
+module backend_napi_v8.module_;
+import backend_napi_v8.environment;
+import backend_napi_v8.external;
+import backend_napi_v8.utility;
 import isolated_v8;
 import ivm.iv8;
 import ivm.js;
@@ -17,7 +17,7 @@ import ivm.napi;
 import nodejs;
 using namespace isolated_v8;
 
-namespace ivm {
+namespace backend_napi_v8 {
 
 struct compile_module_options {
 		std::optional<source_origin> origin;
@@ -200,10 +200,10 @@ auto make_link_module(environment& env) -> js::napi::value<js::function_tag> {
 	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<link_module>{}, env);
 }
 
-} // namespace ivm
+} // namespace backend_napi_v8
 
 namespace js {
-using namespace ivm;
+using namespace backend_napi_v8;
 
 template <>
 struct object_properties<compile_module_options> {

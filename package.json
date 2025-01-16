@@ -7,7 +7,8 @@
   "scripts": {
     "clang-format": "find packages -name '*.cc' -exec clang-format -i {} \\;",
     "lint:cc": "run-clang-tidy -p build",
-    "lint:js": "eslint --fix packages"
+    "lint:js": "eslint --fix packages",
+    "test": "pnpm run --recursive --silent test"
   },
   "devDependencies": {
     "@eslint/js": "^9.8.0",

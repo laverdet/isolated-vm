@@ -8,8 +8,11 @@ target_sources(ivm_backend_v8
 		script.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
+		include/agent.cc
 		include/environment.cc
 		include/external.cc
+		include/module.cc
+		include/script.cc
 		utility.cc
 )
 target_embed_content(ivm_backend_v8 runtime/dist/runtime.js)
@@ -17,13 +20,13 @@ target_include_directories(ivm_backend_v8 SYSTEM PRIVATE
 	${NODE_DIST_DIR}/include/node
 )
 target_link_libraries(ivm_backend_v8 PUBLIC
-	ivm_isolated_v8
-	nodejs
-	ivm_nodejs_common_v8
-	ivm_nodejs_v8
+	backend_napi_v8_common_v8
+	backend_napi_v8_v8
+	isolated_v8
 	ivm_utility
 	ivm_value
 	ivm_value_napi
+	nodejs
 )
 
 # Windows linking

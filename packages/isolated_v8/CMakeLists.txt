@@ -1,5 +1,5 @@
-add_library(ivm_isolated_v8 STATIC)
-target_sources(ivm_isolated_v8
+add_library(isolated_v8 STATIC)
+target_sources(isolated_v8
 	PRIVATE
 		agent/host.cc
 		agent/lock.cc
@@ -38,7 +38,7 @@ target_sources(ivm_isolated_v8
 		platform/include/task_runner.cc
 		scheduler.cc
 )
-target_link_libraries(ivm_isolated_v8 PRIVATE
+target_link_libraries(isolated_v8 PRIVATE
 	Boost::boost
 	ivm_embedded_common_v8
 	ivm_embedded_v8

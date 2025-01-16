@@ -3,10 +3,10 @@ module;
 #include <tuple>
 #include <utility>
 #include <variant>
-module ivm.node;
-import :environment;
-import :external;
-import :utility;
+module backend_napi_v8.script;
+import backend_napi_v8.environment;
+import backend_napi_v8.external;
+import backend_napi_v8.utility;
 import isolated_v8;
 import ivm.iv8;
 import ivm.js;
@@ -14,7 +14,7 @@ import ivm.napi;
 import nodejs;
 using namespace isolated_v8;
 
-namespace ivm {
+namespace backend_napi_v8 {
 
 struct compile_script_options {
 		std::optional<source_origin> origin;
@@ -76,11 +76,10 @@ auto make_run_script(environment& env) -> js::napi::value<js::function_tag> {
 	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<run_script>{}, env);
 }
 
-} // namespace ivm
+} // namespace backend_napi_v8
 
 namespace js {
-
-using ivm::compile_script_options;
+using backend_napi_v8::compile_script_options;
 
 template <>
 struct object_properties<compile_script_options> {

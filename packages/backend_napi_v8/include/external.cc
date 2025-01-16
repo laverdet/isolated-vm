@@ -2,9 +2,9 @@ module;
 #include <js_native_api.h>
 #include <memory>
 #include <utility>
-module ivm.node:external;
-import :environment;
-import :utility;
+export module backend_napi_v8.external;
+import backend_napi_v8.environment;
+import backend_napi_v8.utility;
 import ivm.iv8;
 import ivm.js;
 import ivm.napi;
@@ -12,7 +12,7 @@ import ivm.utility;
 import nodejs;
 import v8;
 
-namespace ivm {
+namespace backend_napi_v8 {
 
 template <class Type>
 auto finalizer(napi_env /*env*/, void* finalize_data, void* /*finalize_hint*/) {
@@ -33,4 +33,4 @@ auto make_external(environment& env, auto&&... args) -> napi_value {
 	return as_napi_value;
 }
 
-} // namespace ivm
+} // namespace backend_napi_v8

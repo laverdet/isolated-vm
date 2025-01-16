@@ -1,14 +1,13 @@
 module;
 #include <cstring>
-module ivm.node;
-import :environment;
+module backend_napi_v8.environment;
 import ivm.js;
 import ivm.napi;
 import ivm.utility;
 import nodejs;
 import v8;
 
-namespace ivm {
+namespace backend_napi_v8 {
 
 environment::environment(napi_env env) :
 		env_{env},
@@ -24,4 +23,4 @@ auto environment::get(napi_env env) -> environment& {
 	return *static_cast<environment*>(js::napi::invoke(napi_get_instance_data, env));
 }
 
-} // namespace ivm
+} // namespace backend_napi_v8
