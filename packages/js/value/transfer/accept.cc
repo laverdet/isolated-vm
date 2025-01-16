@@ -1,9 +1,9 @@
 module;
 #include <type_traits>
 #include <utility>
-export module ivm.js:accept;
-import :transfer.types;
-import :visit;
+export module isolated_js.accept;
+import isolated_js.transfer.types;
+import isolated_js.visit;
 
 namespace js {
 

@@ -1,4 +1,4 @@
-export module ivm.js:enum_.types;
+export module isolated_js.enum_.types;
 
 namespace js {
 

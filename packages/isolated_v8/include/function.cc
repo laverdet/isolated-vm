@@ -8,7 +8,7 @@ import isolated_v8.agent;
 import isolated_v8.collected_handle;
 import isolated_v8.realm;
 import isolated_v8.remote;
-import ivm.js;
+import isolated_js;
 import ivm.utility;
 import v8;
 

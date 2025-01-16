@@ -1,15 +1,15 @@
 module;
 #include <boost/variant.hpp>
 #include <type_traits>
-export module ivm.js:dictionary.helpers;
+export module isolated_js.dictionary.helpers;
 
 namespace js {
 
 // Look for `boost::recursive_variant_` to determine if this container is recursive
-export template <class Type>
+template <class Type>
 struct is_recursive : std::bool_constant<false> {};
 
-template <class Type>
+export template <class Type>
 constexpr auto is_recursive_v = is_recursive<Type>::value;
 
 template <>

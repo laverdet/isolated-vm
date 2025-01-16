@@ -2,7 +2,7 @@ module;
 #include <type_traits>
 #include <utility>
 export module ivm.iv8:external;
-import ivm.js;
+import isolated_js;
 import ivm.utility;
 import v8;
 

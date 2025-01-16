@@ -1,7 +1,7 @@
 module;
 #include <type_traits>
 export module ivm.iv8:date;
-import ivm.js;
+import isolated_js;
 import v8;
 
 namespace js::iv8 {

@@ -6,11 +6,11 @@ module;
 #include <type_traits>
 #include <utility>
 #include <variant>
-export module ivm.js:union_.accept;
-import :tag;
-import :transfer;
-import :union_.types;
-import :variant.types;
+export module isolated_js.union_.accept;
+import isolated_js.tag;
+import isolated_js.transfer;
+import isolated_js.union_.types;
+import isolated_js.variant.types;
 import ivm.utility;
 
 namespace js {

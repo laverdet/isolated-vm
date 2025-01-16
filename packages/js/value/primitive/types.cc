@@ -2,9 +2,9 @@ module;
 #include <cstdint>
 #include <string>
 #include <variant>
-export module ivm.js:primitive.types;
-import :date;
-import :tag;
+export module isolated_js.primitive.types;
+import isolated_js.date;
+import isolated_js.tag;
 
 namespace js {
 

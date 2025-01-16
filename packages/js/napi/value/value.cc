@@ -3,7 +3,7 @@ module;
 #include <variant>
 module ivm.napi;
 import :value;
-import ivm.js;
+import isolated_js;
 import nodejs;
 
 namespace js::napi {

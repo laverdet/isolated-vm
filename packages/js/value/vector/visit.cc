@@ -2,8 +2,9 @@ module;
 #include <array>
 #include <span>
 #include <vector>
-export module ivm.js:vector.visit;
-import :transfer;
+export module isolated_js.vector.visit;
+import isolated_js.tag;
+import isolated_js.transfer;
 import ivm.utility;
 
 namespace js {

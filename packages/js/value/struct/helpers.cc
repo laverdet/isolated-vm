@@ -2,8 +2,8 @@ module;
 #include <string_view>
 #include <type_traits>
 #include <utility>
-export module ivm.js:struct_.helpers;
-import :struct_.types;
+export module isolated_js.struct_.helpers;
+import isolated_js.struct_.types;
 import ivm.utility;
 
 namespace js {

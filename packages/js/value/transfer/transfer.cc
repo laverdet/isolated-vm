@@ -2,11 +2,11 @@ module;
 #include <stdexcept>
 #include <tuple>
 #include <utility>
-export module ivm.js:transfer;
-export import :transfer.types;
-export import :accept;
-export import :visit;
-import :tag;
+export module isolated_js.transfer;
+export import isolated_js.transfer.types;
+export import isolated_js.accept;
+export import isolated_js.visit;
+import isolated_js.tag;
 
 namespace js {
 

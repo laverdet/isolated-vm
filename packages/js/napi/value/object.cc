@@ -5,7 +5,7 @@ module ivm.napi;
 import :array;
 import :utility;
 import :object;
-import ivm.js;
+import isolated_js;
 import ivm.utility;
 import nodejs;
 

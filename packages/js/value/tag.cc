@@ -1,7 +1,7 @@
 module;
 #include <concepts>
 #include <type_traits>
-export module ivm.js:tag;
+export module isolated_js.tag;
 
 export namespace js {
 

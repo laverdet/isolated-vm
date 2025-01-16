@@ -3,7 +3,7 @@
 #include <tuple>
 import ivm.napi;
 import backend_napi_v8;
-import ivm.js;
+import isolated_js;
 import ivm.utility;
 import nodejs;
 using namespace backend_napi_v8;

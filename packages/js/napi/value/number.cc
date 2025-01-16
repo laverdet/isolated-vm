@@ -3,7 +3,7 @@ module;
 module ivm.napi;
 import :number;
 import :utility;
-import ivm.js;
+import isolated_js;
 import nodejs;
 
 namespace js::napi {

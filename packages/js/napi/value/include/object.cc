@@ -5,7 +5,7 @@ export module ivm.napi:object;
 import :array;
 import :object_like;
 import :value;
-import ivm.js;
+import isolated_js;
 import ivm.utility;
 import nodejs;
 

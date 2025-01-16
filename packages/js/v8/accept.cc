@@ -7,7 +7,7 @@ module;
 export module ivm.iv8:accept;
 import :date;
 import :string;
-import ivm.js;
+import isolated_js;
 import ivm.utility;
 import v8;
 

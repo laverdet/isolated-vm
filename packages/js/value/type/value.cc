@@ -3,10 +3,10 @@ module;
 #include <cstdint>
 #include <string>
 #include <variant>
-export module ivm.js:value;
-import :date;
-import :dictionary.vector_of;
-import :tag;
+export module isolated_js.value;
+import isolated_js.date;
+import isolated_js.dictionary.vector_of;
+import isolated_js.tag;
 
 namespace js {
 

@@ -7,7 +7,7 @@
 #include <tuple>
 #include <utility>
 #include <variant>
-import ivm.js;
+import isolated_js;
 using namespace std::literals;
 #if __clang_major__ >= 20
 

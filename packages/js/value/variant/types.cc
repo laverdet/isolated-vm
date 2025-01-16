@@ -1,7 +1,7 @@
 module;
 #include <boost/variant.hpp>
 #include <type_traits>
-export module ivm.js:variant.types;
+export module isolated_js.variant.types;
 
 namespace js {
 

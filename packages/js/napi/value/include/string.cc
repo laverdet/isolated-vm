@@ -3,7 +3,7 @@ module;
 export module ivm.napi:string;
 import :utility;
 import :value;
-import ivm.js;
+import isolated_js;
 import nodejs;
 
 namespace js::napi {

@@ -6,10 +6,12 @@ module;
 #include <tuple>
 #include <type_traits>
 #include <utility>
-export module ivm.js:struct_.accept;
-import :struct_.helpers;
-import :tag;
-import :transfer;
+export module isolated_js.struct_.accept;
+import isolated_js.struct_.helpers;
+import isolated_js.struct_.types;
+import isolated_js.tag;
+import isolated_js.transfer;
+import ivm.utility;
 
 namespace js {
 

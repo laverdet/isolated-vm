@@ -8,7 +8,7 @@ export module ivm.napi:function;
 import :object_like;
 import :utility;
 import :value;
-import ivm.js;
+import isolated_js;
 import ivm.utility;
 import nodejs;
 import v8;

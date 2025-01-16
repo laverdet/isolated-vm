@@ -3,9 +3,9 @@ module;
 #include <string>
 #include <type_traits>
 #include <variant>
-export module ivm.js:primitive.tag;
-import :date;
-import :tag;
+export module isolated_js.primitive.tag;
+import isolated_js.date;
+import isolated_js.tag;
 import ivm.utility;
 
 namespace js {

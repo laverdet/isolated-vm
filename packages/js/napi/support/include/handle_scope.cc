@@ -1,6 +1,6 @@
 export module ivm.napi:handle_scope;
 import :utility;
-import ivm.js;
+import isolated_js;
 import ivm.utility;
 import nodejs;
 

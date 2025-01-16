@@ -4,7 +4,7 @@ module;
 #include <utility>
 #include <variant>
 export module ivm.napi:value;
-import ivm.js;
+import isolated_js;
 import nodejs;
 
 namespace js::napi {

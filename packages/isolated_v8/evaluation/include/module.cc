@@ -14,7 +14,7 @@ import isolated_v8.realm;
 import isolated_v8.remote;
 import isolated_v8.script;
 import ivm.iv8;
-import ivm.js;
+import isolated_js;
 import ivm.utility;
 import v8;
 

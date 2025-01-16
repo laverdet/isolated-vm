@@ -1,5 +1,5 @@
-export module ivm.js:visit;
-import :transfer.types;
+export module isolated_js.visit;
+import isolated_js.transfer.types;
 
 namespace js {
 

@@ -2,11 +2,11 @@ module;
 #include <stdexcept>
 #include <string>
 #include <type_traits>
-export module ivm.js:enum_.accept;
+export module isolated_js.enum_.accept;
+import isolated_js.enum_.types;
+import isolated_js.tag;
+import isolated_js.transfer;
 import ivm.utility;
-import :enum_.types;
-import :tag;
-import :transfer;
 
 namespace js {
 

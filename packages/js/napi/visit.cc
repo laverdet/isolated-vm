@@ -6,7 +6,7 @@ import :object;
 import :utility;
 import :value;
 import ivm.iv8;
-import ivm.js;
+import isolated_js;
 import ivm.utility;
 import nodejs;
 import v8;

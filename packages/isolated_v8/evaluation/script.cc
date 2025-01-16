@@ -6,7 +6,7 @@ import isolated_v8.realm;
 import isolated_v8.remote;
 module isolated_v8.script;
 import ivm.iv8;
-import ivm.js;
+import isolated_js;
 import v8;
 
 namespace isolated_v8 {

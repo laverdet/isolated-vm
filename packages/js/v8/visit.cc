@@ -13,7 +13,7 @@ import :handle;
 import :number;
 import :object;
 import :string;
-import ivm.js;
+import isolated_js;
 import ivm.utility;
 import v8;
 

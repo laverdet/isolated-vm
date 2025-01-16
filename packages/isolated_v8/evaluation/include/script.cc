@@ -7,7 +7,7 @@ import isolated_v8.evaluation.origin;
 import isolated_v8.realm;
 import isolated_v8.remote;
 import ivm.iv8;
-import ivm.js;
+import isolated_js;
 import ivm.utility;
 import v8;
 

@@ -2,7 +2,7 @@ module;
 #include <string_view>
 module ivm.napi;
 import :string;
-import ivm.js;
+import isolated_js;
 import nodejs;
 
 namespace js::napi {

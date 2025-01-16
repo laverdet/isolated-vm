@@ -1,7 +1,7 @@
 module;
 #include <cstring>
 module backend_napi_v8.environment;
-import ivm.js;
+import isolated_js;
 import ivm.napi;
 import ivm.utility;
 import nodejs;

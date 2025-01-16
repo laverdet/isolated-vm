@@ -3,7 +3,7 @@ module;
 #include <tuple>
 export module isolated_v8.evaluation.origin;
 import v8;
-import ivm.js;
+import isolated_js;
 
 namespace isolated_v8 {
 

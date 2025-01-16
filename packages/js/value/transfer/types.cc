@@ -1,6 +1,6 @@
 module;
 #include <type_traits>
-export module ivm.js:transfer.types;
+export module isolated_js.transfer.types;
 import ivm.utility;
 
 namespace js {

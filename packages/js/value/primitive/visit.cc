@@ -2,10 +2,10 @@ module;
 #include <optional>
 #include <type_traits>
 #include <variant>
-export module ivm.js:primitive.visit;
-import :primitive.tag;
-import :tag;
-import :transfer;
+export module isolated_js.primitive.visit;
+import isolated_js.tag;
+import isolated_js.transfer;
+import ivm.utility;
 
 namespace js {
 

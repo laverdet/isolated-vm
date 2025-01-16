@@ -2,7 +2,7 @@ module;
 #include <expected>
 export module backend_napi_v8.environment;
 import isolated_v8;
-import ivm.js;
+import isolated_js;
 import ivm.napi;
 import ivm.utility;
 import nodejs;

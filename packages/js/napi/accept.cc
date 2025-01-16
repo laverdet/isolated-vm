@@ -5,7 +5,7 @@ module;
 export module ivm.napi:accept;
 import :utility;
 import :value;
-import ivm.js;
+import isolated_js;
 import nodejs;
 import v8;
 
