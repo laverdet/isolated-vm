@@ -9,7 +9,7 @@ export class Realm {
 	}
 
 	/** @internal */
-	static extractRealmInternal(this: void, realm: Realm) {
+	static __extractRealm(this: void, realm: Realm) {
 		return realm.#realm;
 	}
 }

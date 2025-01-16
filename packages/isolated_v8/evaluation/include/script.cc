@@ -1,9 +1,9 @@
 module;
-#include <optional>
 #include <tuple>
 #include <utility>
 export module isolated_v8.script;
 import isolated_v8.agent;
+import isolated_v8.evaluation.origin;
 import isolated_v8.realm;
 import isolated_v8.remote;
 import ivm.iv8;
@@ -12,16 +12,6 @@ import ivm.utility;
 import v8;
 
 namespace isolated_v8 {
-
-export struct source_location {
-		int line{};
-		int column{};
-};
-
-export struct source_origin {
-		std::optional<js::string_t> name;
-		std::optional<source_location> location;
-};
 
 export class script {
 	public:
@@ -47,26 +37,3 @@ auto script::compile(agent::lock& agent, auto&& code_string, source_origin sourc
 }
 
 } // namespace isolated_v8
-
-namespace js {
-
-using isolated_v8::source_location;
-using isolated_v8::source_origin;
-
-template <>
-struct object_properties<source_location> {
-		constexpr static auto properties = std::tuple{
-			member<"line", &source_location::line>{},
-			member<"column", &source_location::column>{},
-		};
-};
-
-template <>
-struct object_properties<source_origin> {
-		constexpr static auto properties = std::tuple{
-			member<"name", &source_origin::name>{},
-			member<"location", &source_origin::location>{},
-		};
-};
-
-} // namespace js

@@ -19,6 +19,7 @@ NAPI_MODULE_INIT(/*napi_env env, napi_value exports*/) {
 			std::pair{util::string_literal{"compileModule"}, js::transfer_direct{make_compile_module(*ienv)}},
 			std::pair{util::string_literal{"compileScript"}, js::transfer_direct{make_compile_script(*ienv)}},
 			std::pair{util::string_literal{"createAgent"}, js::transfer_direct{make_create_agent(*ienv)}},
+			std::pair{util::string_literal{"createCapability"}, js::transfer_direct{make_create_capability(*ienv)}},
 			std::pair{util::string_literal{"createRealm"}, js::transfer_direct{make_create_realm(*ienv)}},
 			std::pair{util::string_literal{"evaluateModule"}, js::transfer_direct{make_evaluate_module(*ienv)}},
 			std::pair{util::string_literal{"linkModule"}, js::transfer_direct{make_link_module(*ienv)}},

@@ -2,7 +2,7 @@ import type * as ivm from "./backend.js";
 import { runScript } from "./backend.js";
 import { Realm } from "./realm.js";
 
-const { extractRealmInternal } = Realm;
+const { __extractRealm } = Realm;
 
 export interface SourceOrigin {
 	/**
@@ -17,6 +17,11 @@ export interface SourceOrigin {
 	 * tag in an HTML file. The script is actually located at an offset within another document.
 	 */
 	location?: Location;
+}
+
+export interface CapabilityOrigin extends SourceOrigin {
+	name: string;
+	location?: never;
 }
 
 export interface Location {
@@ -35,6 +40,6 @@ export class Script {
 	}
 
 	run(realm: Realm): Promise<unknown> {
-		return runScript(this.#agent, this.#script, extractRealmInternal(realm));
+		return runScript(this.#agent, this.#script, __extractRealm(realm));
 	}
 }

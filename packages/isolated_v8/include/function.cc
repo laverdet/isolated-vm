@@ -19,7 +19,7 @@ export class function_template {
 		explicit function_template(agent::lock& agent, v8::Local<v8::FunctionTemplate> function);
 
 	public:
-		auto make_function(realm::scope& realm) -> v8::Local<v8::Function>;
+		auto make_function(v8::Local<v8::Context> context) -> v8::Local<v8::Function>;
 
 		template <class Functor, class Result, class... Args>
 		static auto make(agent::lock& agent, js::bound_function<Functor, std::function<Result(Args...)>> function) -> function_template;

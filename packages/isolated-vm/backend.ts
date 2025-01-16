@@ -28,6 +28,7 @@ const backend: typeof import("backend_v8.node")["default"] = require(`./backend_
 export const compileModule: typeof backend.compileModule = backend.compileModule;
 export const compileScript: typeof backend.compileScript = backend.compileScript;
 export const createAgent: typeof backend.createAgent = backend.createAgent;
+export const createCapability: typeof backend.createCapability = backend.createCapability;
 export const createRealm: typeof backend.createRealm = backend.createRealm;
 export const evaluateModule: typeof backend.evaluateModule = backend.evaluateModule;
 export const linkModule: typeof backend.linkModule = backend.linkModule;

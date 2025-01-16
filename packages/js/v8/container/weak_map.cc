@@ -46,6 +46,8 @@ class weak_map : util::non_moveable {
 	public:
 		auto find(auto&& key) const -> const Value*;
 		auto insert(v8::Isolate* isolate, std::pair<v8::Local<Key>, Value> entry) -> void;
+		// TODO: clean this up
+		auto take(auto&& key) -> Value;
 
 	private:
 		using container_type = std::unordered_map<
@@ -80,7 +82,7 @@ auto weak_map_handle<Key, Container>::weak_callback(const v8::WeakCallbackInfo<w
 // weak_map
 template <class Key, class Value>
 auto weak_map<Key, Value>::find(auto&& key) const -> const Value* {
-	auto it = map_.find(key);
+	auto it = map_.find(std::forward<decltype(key)>(key));
 	if (it == map_.end()) {
 		return nullptr;
 	} else {
@@ -94,6 +96,18 @@ auto weak_map<Key, Value>::insert(v8::Isolate* isolate, std::pair<v8::Local<Key>
 		std::make_unique<handle_type>(isolate, *this, std::move(entry.first)),
 		std::move(entry.second)
 	);
+}
+
+template <class Key, class Value>
+auto weak_map<Key, Value>::take(auto&& key) -> Value {
+	auto it = map_.find(std::forward<decltype(key)>(key));
+	if (it == map_.end()) {
+		std::terminate();
+	} else {
+		auto value = std::move(it->second);
+		map_.erase(it);
+		return value;
+	}
 }
 
 } // namespace js::iv8

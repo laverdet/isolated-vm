@@ -23,6 +23,10 @@ struct compile_module_options {
 		std::optional<source_origin> origin;
 };
 
+struct create_capability_options {
+		source_required_name origin;
+};
+
 auto compile_module(
 	environment& env,
 	js::iv8::external_reference<agent>& agent,
@@ -155,8 +159,37 @@ auto link_module(
 	return js::transfer_direct{promise};
 }
 
+auto create_capability(
+	environment& env,
+	js::iv8::external_reference<isolated_v8::agent>& agent,
+	js::napi::value<js::function_tag> /*capability*/,
+	create_capability_options options
+) {
+	auto [ dispatch, promise ] = make_promise(
+		env,
+		[](environment& env, js_module module_) -> expected_value {
+			return make_external<isolated_v8::js_module>(env, std::move(module_));
+		}
+	);
+	agent->schedule(
+		[ dispatch = std::move(dispatch), options = std::move(options) ](
+			isolated_v8::agent::lock& agent
+		) mutable {
+			auto fn = js::bound_function{[]() { printf("hello world\n"); }};
+			auto exports = isolated_v8::function_template::make(agent, std::move(fn));
+			auto module_ = isolated_v8::js_module::create_synthetic(agent, exports, std::move(options.origin));
+			dispatch(std::move(module_));
+		}
+	);
+	return js::transfer_direct{promise};
+}
+
 auto make_compile_module(environment& env) -> js::napi::value<js::function_tag> {
 	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<compile_module>{}, env);
+}
+
+auto make_create_capability(environment& env) -> js::napi::value<js::function_tag> {
+	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<create_capability>{}, env);
 }
 
 auto make_evaluate_module(environment& env) -> js::napi::value<js::function_tag> {
@@ -170,13 +203,19 @@ auto make_link_module(environment& env) -> js::napi::value<js::function_tag> {
 } // namespace ivm
 
 namespace js {
-
-using ivm::compile_module_options;
+using namespace ivm;
 
 template <>
 struct object_properties<compile_module_options> {
 		constexpr static auto properties = std::tuple{
 			member<"origin", &compile_module_options::origin, false>{},
+		};
+};
+
+template <>
+struct object_properties<create_capability_options> {
+		constexpr static auto properties = std::tuple{
+			member<"origin", &create_capability_options::origin, false>{},
 		};
 };
 

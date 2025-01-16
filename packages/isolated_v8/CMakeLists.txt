@@ -5,6 +5,7 @@ target_sources(ivm_isolated_v8
 		agent/lock.cc
 		evaluation/module.cc
 		evaluation/script.cc
+		function.cc
 		handle/remote_handle_list.cc
 		handle/remote_handle.cc
 		platform/clock.cc
@@ -19,7 +20,9 @@ target_sources(ivm_isolated_v8
 		agent/include/fwd.cc
 		agent/include/host.cc
 		agent/include/lock.cc
+		evaluation/include/module_action.cc
 		evaluation/include/module.cc
+		evaluation/include/origin.cc
 		evaluation/include/script.cc
 		handle/include/collected_handle.cc
 		handle/include/remote_handle_list.cc

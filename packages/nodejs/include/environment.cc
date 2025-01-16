@@ -33,6 +33,7 @@ export class environment : util::non_moveable {
 export auto make_compile_module(environment& env) -> js::napi::value<js::function_tag>;
 export auto make_compile_script(environment& env) -> js::napi::value<js::function_tag>;
 export auto make_create_agent(environment& env) -> js::napi::value<js::function_tag>;
+export auto make_create_capability(environment& env) -> js::napi::value<js::function_tag>;
 export auto make_create_realm(environment& env) -> js::napi::value<js::function_tag>;
 export auto make_evaluate_module(environment& env) -> js::napi::value<js::function_tag>;
 export auto make_link_module(environment& env) -> js::napi::value<js::function_tag>;

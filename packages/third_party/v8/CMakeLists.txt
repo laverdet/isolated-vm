@@ -15,6 +15,7 @@ target_sources(${IV8_PREFIX}_v8
 		local_handle.cc
 		locker.cc
 		maybe.cc
+		memory_span.cc
 		message.cc
 		object.cc
 		persistent_handle.cc

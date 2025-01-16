@@ -1,8 +1,10 @@
 module;
+#include <functional>
 #include <memory>
 #include <optional>
 export module isolated_v8.agent:host;
 export import :fwd;
+import isolated_v8.evaluation.module_action;
 import isolated_v8.foreground_runner;
 import isolated_v8.remote_handle_list;
 import isolated_v8.scheduler;
@@ -42,6 +44,7 @@ class agent::host final {
 		auto scratch_context() -> v8::Local<v8::Context>;
 		auto take_random_seed() -> std::optional<double>;
 		auto task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner>;
+		auto weak_module_actions() -> js::iv8::weak_map<v8::Module, synthetic_module_action_type>& { return weak_module_actions_; }
 		auto weak_module_specifiers() -> js::iv8::weak_map<v8::Module, js::string_t>& { return weak_module_specifiers_; }
 
 		static auto get_current() -> host*;
@@ -58,6 +61,7 @@ class agent::host final {
 		std::unique_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
 		std::unique_ptr<v8::Isolate, util::function_type_of<dispose_isolate>> isolate_;
 		isolated_v8::remote_handle_list remote_handle_list_;
+		js::iv8::weak_map<v8::Module, synthetic_module_action_type> weak_module_actions_;
 		js::iv8::weak_map<v8::Module, js::string_t> weak_module_specifiers_;
 		v8::Global<v8::Context> scratch_context_;
 

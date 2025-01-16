@@ -61,6 +61,32 @@ auto js_module::evaluate(realm::scope& realm_scope) -> js::value_t {
 	}
 }
 
+auto js_module::create_synthetic(
+	agent::lock& agent,
+	// const v8::MemorySpan<const v8::Local<v8::String>>& export_names,
+	source_required_name source_origin,
+	synthetic_module_action_type action
+) -> js_module {
+	v8::Module::SyntheticModuleEvaluationSteps evaluation_steps =
+		[](v8::Local<v8::Context> context, v8::Local<v8::Module> module) -> v8::MaybeLocal<v8::Value> {
+		auto* isolate = context->GetIsolate();
+		auto& agent = agent::host::get_current(context->GetIsolate());
+		auto action = agent.weak_module_actions().take(module);
+		action(context, module);
+		auto resolver = v8::Promise::Resolver::New(context).ToLocalChecked();
+		resolver->Resolve(context, v8::Undefined(isolate));
+		return resolver->GetPromise();
+	};
+	auto name = v8::String::NewFromOneByte(agent.isolate(), reinterpret_cast<const uint8_t*>("default")).ToLocalChecked();
+	auto names = std::array{name};
+	v8::MemorySpan<const v8::Local<v8::String>> export_names{names};
+	auto* isolate = agent->isolate();
+	auto module_name = js::transfer_strict<v8::Local<v8::String>>(source_origin.name, std::tuple{}, std::tuple{isolate});
+	auto module_handle = v8::Module::CreateSyntheticModule(isolate, module_name, export_names, evaluation_steps);
+	agent->weak_module_actions().insert(isolate, std::pair{module_handle, std::move(action)});
+	return js_module{agent, module_handle};
+}
+
 auto js_module::compile(agent::lock& agent, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module {
 	auto maybe_resource_name = js::transfer_strict<v8::MaybeLocal<v8::String>>(
 		source_origin.name,

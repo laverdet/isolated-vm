@@ -7,6 +7,9 @@ module;
 #include <vector>
 export module isolated_v8.module_;
 import isolated_v8.agent;
+import isolated_v8.evaluation.module_action;
+import isolated_v8.evaluation.origin;
+import isolated_v8.function;
 import isolated_v8.realm;
 import isolated_v8.remote;
 import isolated_v8.script;
@@ -38,9 +41,17 @@ export class js_module {
 		auto requests(agent::lock& agent) -> std::vector<module_request>;
 
 		static auto compile(agent::lock& agent, auto&& source_text, source_origin source_origin) -> js_module;
+		static auto create_synthetic(agent::lock& agent, function_template function, source_required_name source_origin) -> js_module;
 
 	private:
 		static auto compile(agent::lock& agent, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module;
+		static auto create_synthetic(
+			agent::lock& agent,
+			// const v8::MemorySpan<const v8::Local<v8::String>>& export_names,
+			source_required_name source_origin,
+			synthetic_module_action_type action
+		) -> js_module;
+
 		auto link(realm::scope& realm, v8::Module::ResolveModuleCallback callback) -> void;
 
 		shared_remote<v8::Module> module_;
@@ -53,7 +64,20 @@ auto js_module::compile(agent::lock& agent, auto&& source_text, source_origin so
 		std::tuple{},
 		std::tuple{agent->isolate()}
 	);
-	return js_module::compile(agent, local_source_text, std::move(source_origin));
+	return compile(agent, local_source_text, std::move(source_origin));
+}
+
+auto js_module::create_synthetic(agent::lock& agent, function_template function, source_required_name source_origin) -> js_module {
+	auto* isolate = agent->isolate();
+	synthetic_module_action_type action =
+		[ isolate, function ](
+			v8::Local<v8::Context> context,
+			v8::Local<v8::Module> module
+		) mutable {
+			auto name = v8::String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>("default")).ToLocalChecked();
+			module->SetSyntheticModuleExport(isolate, name, function.make_function(context));
+		};
+	return create_synthetic(agent, std::move(source_origin), std::move(action));
 }
 
 auto js_module::link(realm::scope& realm, auto callback) -> void {

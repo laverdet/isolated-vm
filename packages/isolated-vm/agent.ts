@@ -1,11 +1,9 @@
-import type { SourceOrigin } from "./script.js";
+import type { CapabilityOrigin, SourceOrigin } from "./script.js";
 import * as ivm from "./backend.js";
-import { compileModule, compileScript, createAgent, createRealm } from "./backend.js";
-import { Module } from "./module.js";
+import { compileModule, compileScript, createAgent, createCapability, createRealm } from "./backend.js";
+import { Capability, Module } from "./module.js";
 import { Realm } from "./realm.js";
 import { Script } from "./script.js";
-
-const { extractRealmInternal } = Realm;
 
 export namespace Agent {
 	export namespace CreateOptions {
@@ -33,6 +31,10 @@ export namespace Agent {
 		}
 	}
 
+	export interface CreateCapabilityOptions {
+		origin: CapabilityOrigin;
+	}
+
 	export interface CreateOptions {
 		clock?: CreateOptions.Clock | undefined;
 		randomSeed?: number | undefined;
@@ -58,6 +60,11 @@ export class Agent {
 	static async create(options?: Agent.CreateOptions): Promise<Agent> {
 		const agent = await createAgent(options);
 		return new Agent(agent);
+	}
+
+	async createCapability(callback: (...args: unknown[]) => void, options: Agent.CreateCapabilityOptions): Promise<Capability> {
+		const module = await createCapability(this.#agent, callback, options);
+		return new Capability(this.#agent, module);
 	}
 
 	async createRealm(): Promise<Realm> {

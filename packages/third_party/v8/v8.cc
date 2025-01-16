@@ -13,6 +13,7 @@ export import :libplatform;
 export import :local_handle;
 export import :locker;
 export import :maybe;
+export import :memory_span;
 export import :message;
 export import :object;
 export import :persistent_handle;
