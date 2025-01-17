@@ -1,6 +1,5 @@
 module;
 #include <array>
-#include <functional>
 #include <span>
 #include <stdexcept>
 export module isolated_v8.function;
@@ -21,8 +20,8 @@ export class function_template {
 	public:
 		auto make_function(v8::Local<v8::Context> context) -> v8::Local<v8::Function>;
 
-		template <class Functor, class Result, class... Args>
-		static auto make(agent::lock& agent, js::bound_function<Functor, std::function<Result(Args...)>> function) -> function_template;
+		template <class Invocable, class Result, class... Args>
+		static auto make(agent::lock& agent, js::bound_function<Invocable, Result(Args...)> function) -> function_template;
 
 	private:
 		shared_remote<v8::FunctionTemplate> function_;
@@ -30,8 +29,8 @@ export class function_template {
 
 // ---
 
-template <class Functor, class Result, class... Args>
-auto function_template::make(agent::lock& agent, js::bound_function<Functor, std::function<Result(Args...)>> function) -> function_template {
+template <class Invocable, class Result, class... Args>
+auto function_template::make(agent::lock& agent, js::bound_function<Invocable, Result(Args...)> function) -> function_template {
 	using function_type = decltype(function);
 	auto external = make_collected_external<function_type>(agent, agent->autorelease_pool(), std::move(function));
 	v8::FunctionCallback callback = [](const v8::FunctionCallbackInfo<v8::Value>& info) {

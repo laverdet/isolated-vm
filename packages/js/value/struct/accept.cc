@@ -44,7 +44,7 @@ struct accept<Meta, object_type<Type, std::tuple<Setters...>>> {
 					if (value) {
 						setter(subject, *std::move(value));
 					} else if (setter.required) {
-						throw std::logic_error(std::format("Missing required property: {}", setter.name));
+						throw std::logic_error{std::format("Missing required property: {}", setter.name)};
 					}
 				},
 				std::make_index_sequence<sizeof...(Setters)>{}

@@ -1,22 +1,30 @@
 module;
 #include <algorithm>
+#include <functional>
 #include <string_view>
 export module ivm.utility.type_traits;
 
 namespace util {
 
 // Select the indexed type from a parameter pack
-template <size_t Index, class... Types>
+export template <std::size_t Index, class... Types>
 struct select;
 
-export template <size_t Index, class... Types>
+export template <std::size_t Index, class... Types>
 using select_t = select<Index, Types...>::type;
 
 template <class Type, class... Types>
 struct select<0, Type, Types...> : std::type_identity<Type> {};
 
-template <size_t Index, class Type, class... Types>
+template <std::size_t Index, class Type, class... Types>
 struct select<Index, Type, Types...> : select<Index - 1, Types...> {};
+
+// Same as select, but counting from the end
+export template <std::size_t Index, class... Types>
+struct reverse_select : select<sizeof...(Types) - Index - 1, Types...> {};
+
+export template <std::size_t Index, class... Types>
+using reverse_select_t = reverse_select<Index, Types...>::type;
 
 // Structural string literal which may be used as a template parameter. The string is
 // null-terminated, which is required by v8's `String::NewFromUtf8Literal`.
@@ -39,39 +47,35 @@ struct string_literal {
 		std::array<char, Size> payload{};
 };
 
-// Select the last element in a tuple
-export template <class Tuple>
-struct last_element;
+// Use `std::function` to deduce the signature of an invocable
+export template <class Type>
+struct function_signature;
 
-template <class... Types>
-struct last_element<std::tuple<Types...>> {
-		using type = std::tuple_element_t<sizeof...(Types) - 1, std::tuple<Types...>>;
-};
+export template <class Type>
+using function_signature_t = function_signature<Type>::type;
 
-export template <class Tuple>
-using last_element_t = typename last_element<Tuple>::type;
+template <class Type>
+struct function_signature
+		: function_signature<decltype(std::function{std::declval<Type>()})> {};
 
-// Infer the parameters of a non-overloaded function for..
-template <class Functor>
-struct functor_parameters;
+// Non-function type passed
+template <class Type>
+struct function_signature<std::function<Type>>;
 
-export template <class Functor>
-using functor_parameters_t = functor_parameters<Functor>::type;
+// Free function
+template <class Result, class... Args>
+struct function_signature<std::function<auto(Args...)->Result>>
+		: std::type_identity<auto(Args...)->Result> {};
 
-// ..lambda expression (default template instantiation)
-template <class Functor>
-struct functor_parameters
-		: functor_parameters<decltype(+std::declval<Functor>())> {};
+// Pointer type intentionally erased because it is pointless
+template <class Result, class... Args>
+struct function_signature<std::function<auto (*)(Args...)->Result>>
+		: std::type_identity<auto(Args...)->Result> {};
 
-// ..function type
-template <class Result, bool Noexcept, class... Params>
-struct functor_parameters<Result(Params...) noexcept(Noexcept)>
-		: std::type_identity<std::tuple<Params...>> {};
-
-// ..function pointer
-template <class Result, bool Noexcept, class... Params>
-struct functor_parameters<Result (*)(Params...) noexcept(Noexcept)>
-		: functor_parameters<Result(Params...) noexcept(Noexcept)> {};
+// Member function (this doesn't seem to actually work)
+template <class Result, class Object, class... Args>
+struct function_signature<std::function<auto (Object::*)(Args...)->Result>>
+		: std::type_identity<auto (Object::*)(Args...)->Result> {};
 
 // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0870r4.html
 export template <class From, class To>

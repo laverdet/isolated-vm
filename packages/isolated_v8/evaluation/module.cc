@@ -54,7 +54,7 @@ auto js_module::evaluate(realm::scope& realm_scope) -> js::value_t {
 	auto result = module_handle->Evaluate(context).ToLocalChecked();
 	auto promise = result.As<v8::Promise>();
 	if (module_handle->IsGraphAsync()) {
-		throw std::runtime_error("Module is async");
+		throw std::runtime_error{"Module is async"};
 	} else {
 		auto resolved_result = promise->Result();
 		return js::transfer<js::value_t>(resolved_result, std::tuple{isolate, context}, std::tuple{});

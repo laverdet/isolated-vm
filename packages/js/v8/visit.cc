@@ -74,7 +74,7 @@ struct visit<void, v8::Local<v8::BigInt>> {
 			if (lossless) {
 				return accept(bigint_tag_of<uint64_t>{}, u64);
 			}
-			throw std::logic_error("Bigint is too big");
+			throw std::logic_error{"Bigint is too big"};
 		}
 };
 

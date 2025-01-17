@@ -61,7 +61,7 @@ class prehashed_string_map {
 					if (duplicate != hashed_values.end()) {
 						// This error message can't actually render in constexpr but it's the thought that
 						// counts.
-						throw std::logic_error(std::format("Duplicate hash {}", map(*duplicate)));
+						throw std::logic_error{std::format("Duplicate hash {}", map(*duplicate))};
 					}
 					return hashed_values;
 				})} {}

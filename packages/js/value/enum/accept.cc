@@ -20,7 +20,7 @@ struct accept<void, Enum> : accept<void, void> {
 			auto values = accept::enum_map();
 			auto result = values.get(std::string{std::forward<decltype(value)>(value)});
 			if (result == nullptr) {
-				throw std::logic_error("Invalid enumeration");
+				throw std::logic_error{"Invalid enumeration"};
 			}
 			return *result;
 		}

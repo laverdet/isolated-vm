@@ -36,7 +36,7 @@ struct accept<Meta, accept_with_throw::accept_throw<Type>>
 
 		using accept<Meta, Type>::operator();
 		constexpr auto operator()(value_tag /*tag*/, const auto& /*value*/, const auto&... /*rest*/) const -> Type {
-			throw std::logic_error("Type error");
+			throw std::logic_error{"Type error"};
 		}
 };
 

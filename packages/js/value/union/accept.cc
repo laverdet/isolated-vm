@@ -40,7 +40,7 @@ struct accept<Meta, std::variant<Types...>> {
 			auto discriminant_value = accept_discriminant(dictionary_tag{}, dictionary, visit);
 			auto accept_alternative = alternatives.get(discriminant_value);
 			if (accept_alternative == nullptr) {
-				throw std::logic_error(std::format("Unknown discriminant: {}", discriminant_value));
+				throw std::logic_error{std::format("Unknown discriminant: {}", discriminant_value)};
 			}
 			return (*accept_alternative)(*this, std::forward<decltype(dictionary)>(dictionary), visit);
 		}
