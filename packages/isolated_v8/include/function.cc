@@ -45,14 +45,14 @@ auto function_template::make(agent::lock& agent, js::bound_function<Invocable, R
 		auto run = [ & ]() -> decltype(auto) {
 			return std::apply(
 				functor,
-				js::transfer<std::tuple<Args...>>(std::span{arguments}.subspan(0, count), std::tuple{isolate, context}, std::tuple{})
+				js::transfer_out<std::tuple<Args...>>(std::span{arguments}.subspan(0, count), isolate, context)
 			);
 		};
 		if constexpr (std::is_void_v<std::invoke_result_t<decltype(run)>>) {
 			info.GetReturnValue().SetUndefined();
 			run();
 		} else {
-			js::transfer_strict<v8::ReturnValue<v8::Value>>(run(), std::tuple{}, std::tuple{isolate, context, info.GetReturnValue()});
+			js::transfer_in_strict<v8::ReturnValue<v8::Value>>(run(), isolate, context, info.GetReturnValue());
 		}
 	};
 	auto fn_template = v8::FunctionTemplate::New(agent.isolate(), callback, external, {}, sizeof...(Args), v8::ConstructorBehavior::kThrow);

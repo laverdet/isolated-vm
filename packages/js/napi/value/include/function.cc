@@ -43,7 +43,7 @@ auto factory<function_tag>::operator()(const free_function<Function, Result(Data
 					// nb: Invokes `visit(napi_env)` constructor. The isolate is available on the environment
 					// object without needing to invoke `v8::Isolate::GetCurrent()`. But that's in the nodejs
 					// module so it would need to be further abstracted.
-					js::transfer<std::tuple<Args...>>(std::span{arguments}.subspan(0, count), std::tuple{env}, std::tuple{})
+					js::transfer_out<std::tuple<Args...>>(std::span{arguments}.subspan(0, count), env)
 				)
 			);
 		};
@@ -51,7 +51,7 @@ auto factory<function_tag>::operator()(const free_function<Function, Result(Data
 			run();
 			return js::napi::value<undefined_tag>::make(env);
 		} else {
-			return js::transfer_strict<napi_value>(run(), std::tuple{}, std::tuple{env});
+			return js::transfer_in_strict<napi_value>(run(), env);
 		}
 	};
 	return value<function_tag>::from(js::napi::invoke(napi_create_function, env(), nullptr, 0, callback, &data));
@@ -69,11 +69,11 @@ export class function : public object_like {
 template <class Result>
 auto function::invoke(auto&&... args) -> Result {
 	std::array<napi_value, sizeof...(args)> arg_values{
-		js::transfer_strict<napi_value>(args, std::tuple{}, std::tuple{env()})...
+		js::transfer_in_strict<napi_value>(args, env())...
 	};
 	auto undefined = js::napi::value<js::undefined_tag>::make(env());
 	auto* result = js::napi::invoke(napi_call_function, env(), undefined, *this, arg_values.size(), arg_values.data());
-	return js::transfer<Result>(result, std::tuple{env()}, std::tuple{});
+	return js::transfer_out<Result>(result, env());
 }
 
 } // namespace js::napi

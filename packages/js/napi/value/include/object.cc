@@ -47,8 +47,8 @@ auto object::assign(napi_env env, object_like target, std::tuple<Entries...> ent
 		},
 		[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) {
 			target.set(
-				transfer_strict<napi_value>(std::get<Index>(entries).first, std::tuple{}, std::tuple{env}),
-				transfer_strict<napi_value>(std::get<Index>(entries).second, std::tuple{}, std::tuple{env})
+				transfer_in_strict<napi_value>(std::get<Index>(entries).first, env),
+				transfer_in_strict<napi_value>(std::get<Index>(entries).second, env)
 			);
 		},
 		std::index_sequence_for<Entries...>{}

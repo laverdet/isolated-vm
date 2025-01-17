@@ -10,9 +10,9 @@ module backend_napi_v8.module_;
 import backend_napi_v8.environment;
 import backend_napi_v8.external;
 import backend_napi_v8.utility;
+import isolated_js;
 import isolated_v8;
 import ivm.iv8;
-import isolated_js;
 import napi_js;
 import nodejs;
 using namespace isolated_v8;
@@ -38,14 +38,11 @@ auto compile_module(
 		env,
 		[](environment& env, isolated_v8::js_module module_, std::vector<isolated_v8::module_request> requests) -> expected_value {
 			auto* handle = make_external<isolated_v8::js_module>(env, std::move(module_));
-			return js::transfer_strict<napi_value>(
-				std::tuple{
-					js::transfer_direct{handle},
-					std::move(requests),
-				},
-				std::tuple{},
-				std::tuple{env.nenv()}
-			);
+			auto result = std::tuple{
+				js::transfer_direct{handle},
+				std::move(requests),
+			};
+			return js::transfer_in_strict<napi_value>(std::move(result), env.nenv());
 		}
 	);
 	agent->schedule(
@@ -70,7 +67,7 @@ auto evaluate_module(
 	js::iv8::external_reference<js_module>& module_
 ) {
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, js::value_t result) -> expected_value {
-		return js::transfer_strict<napi_value>(std::move(result), std::tuple{}, std::tuple{env.nenv()});
+		return js::transfer_in_strict<napi_value>(std::move(result), env.nenv());
 	});
 	agent->schedule(
 		[ dispatch = std::move(dispatch) ](

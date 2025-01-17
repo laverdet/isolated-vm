@@ -50,7 +50,7 @@ auto run_script(
 	js::iv8::external_reference<realm>& realm
 ) {
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, js::value_t result) -> expected_value {
-		return js::transfer_strict<napi_value>(std::move(result), std::tuple{}, std::tuple{env.nenv()});
+		return js::transfer_in_strict<napi_value>(std::move(result), env.nenv());
 	});
 	agent->schedule(
 		[ dispatch = std::move(dispatch) ](

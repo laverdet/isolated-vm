@@ -69,11 +69,6 @@ constexpr auto transfer(auto&& value, auto&& visit_args, auto&& accept_args) -> 
 	);
 }
 
-export template <class Type>
-constexpr auto transfer(auto&& value) -> decltype(auto) {
-	return transfer<Type>(std::forward<decltype(value)>(value), std::tuple{}, std::tuple{});
-}
-
 // Transfer from known types, won't compile if all paths aren't known
 export template <class Type>
 constexpr auto transfer_strict(auto&& value, auto&& visit_args, auto&& accept_args) -> decltype(auto) {
@@ -82,6 +77,34 @@ constexpr auto transfer_strict(auto&& value, auto&& visit_args, auto&& accept_ar
 		std::forward<decltype(visit_args)>(visit_args),
 		std::forward<decltype(accept_args)>(accept_args)
 	);
+}
+
+// Transfer "out" to a stateless acceptor. No tuple arguments needed.
+export template <class Type>
+constexpr auto transfer_out(auto&& value, auto&&... visit_args) -> decltype(auto) {
+	return transfer<Type>(std::forward<decltype(value)>(value), std::forward_as_tuple(visit_args...), std::tuple{});
+}
+
+export template <class Type>
+constexpr auto transfer_out_strict(auto&& value, auto&&... visit_args) -> decltype(auto) {
+	return transfer_strict<Type>(std::forward<decltype(value)>(value), std::forward_as_tuple(visit_args...), std::tuple{});
+}
+
+// Transfer "in" from a stateless visitor.
+export template <class Type>
+constexpr auto transfer_in(auto&& value, auto&&... accept_args) -> decltype(auto) {
+	return transfer<Type>(std::forward<decltype(value)>(value), std::tuple{}, std::forward_as_tuple(accept_args...));
+}
+
+export template <class Type>
+constexpr auto transfer_in_strict(auto&& value, auto&&... accept_args) -> decltype(auto) {
+	return transfer_strict<Type>(std::forward<decltype(value)>(value), std::tuple{}, std::forward_as_tuple(accept_args...));
+}
+
+// Only used for testing. Stateless to stateless transfer
+export template <class Type>
+constexpr auto transfer(auto&& value) -> decltype(auto) {
+	return transfer<Type>(std::forward<decltype(value)>(value), std::tuple{}, std::tuple{});
 }
 
 export template <class Type>

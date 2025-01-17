@@ -21,16 +21,12 @@ auto script::run(realm::scope& realm_scope) -> js::value_t {
 	auto script = unbound_script_->deref(realm_scope.agent());
 	auto context = realm_scope.context();
 	auto result = script->BindToCurrentContext()->Run(context).ToLocalChecked();
-	return js::transfer<js::value_t>(result, std::tuple{isolate, context}, std::tuple{});
+	return js::transfer_out<js::value_t>(result, isolate, context);
 }
 
 auto script::compile(agent::lock& agent, v8::Local<v8::String> code_string, source_origin source_origin) -> script {
 	context_scope context{agent->scratch_context()};
-	auto maybe_resource_name = js::transfer_strict<v8::MaybeLocal<v8::String>>(
-		std::move(source_origin.name),
-		std::tuple{},
-		std::tuple{agent->isolate()}
-	);
+	auto maybe_resource_name = js::transfer_in_strict<v8::MaybeLocal<v8::String>>(std::move(source_origin.name), agent->isolate());
 	v8::Local<v8::String> resource_name{};
 	(void)maybe_resource_name.ToLocal(&resource_name);
 	auto location = source_origin.location.value_or(source_location{});
