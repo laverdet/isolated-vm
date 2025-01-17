@@ -1,6 +1,6 @@
-module ivm.napi;
-import :handle;
-import :utility;
+module napi_js.handle;
+import napi_js.utility;
+import nodejs;
 
 namespace js::napi {
 

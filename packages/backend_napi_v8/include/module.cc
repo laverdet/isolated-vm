@@ -1,7 +1,7 @@
 export module backend_napi_v8.module_;
 import backend_napi_v8.environment;
 import isolated_js;
-import ivm.napi;
+import napi_js;
 
 namespace backend_napi_v8 {
 

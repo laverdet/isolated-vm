@@ -1,12 +1,12 @@
 module;
 #include <functional>
 #include <ranges>
-export module ivm.napi:object;
-import :array;
-import :object_like;
-import :value;
+export module napi_js.object;
 import isolated_js;
 import ivm.utility;
+import napi_js.array;
+import napi_js.object_like;
+import napi_js.value;
 import nodejs;
 
 namespace js::napi {

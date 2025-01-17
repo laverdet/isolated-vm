@@ -1,7 +1,6 @@
 module;
 #include <string_view>
-module ivm.napi;
-import :string;
+module napi_js.string;
 import isolated_js;
 import nodejs;
 

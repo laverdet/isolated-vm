@@ -7,7 +7,7 @@ import backend_napi_v8.environment;
 import backend_napi_v8.utility;
 import ivm.iv8;
 import isolated_js;
-import ivm.napi;
+import napi_js;
 import ivm.utility;
 import nodejs;
 import v8;

@@ -1,7 +1,8 @@
 module;
 #include <cstdint>
-export module ivm.napi:number;
-import :value;
+export module napi_js.number;
+import isolated_js;
+import napi_js.value;
 import nodejs;
 
 namespace js::napi {

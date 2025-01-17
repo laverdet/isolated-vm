@@ -1,8 +1,9 @@
 module;
 #include <utility>
-export module ivm.napi:reference;
-import :utility;
-import :value;
+export module napi_js.reference;
+import ivm.utility;
+import napi_js.utility;
+import napi_js.value;
 import nodejs;
 
 namespace js::napi {

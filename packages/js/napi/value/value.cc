@@ -1,9 +1,9 @@
 module;
 #include <cstddef>
 #include <variant>
-module ivm.napi;
-import :value;
+module napi_js.value;
 import isolated_js;
+import napi_js.utility;
 import nodejs;
 
 namespace js::napi {

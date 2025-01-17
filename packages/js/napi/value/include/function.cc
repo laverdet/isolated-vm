@@ -3,12 +3,12 @@ module;
 #include <stdexcept>
 #include <tuple>
 #include <type_traits>
-export module ivm.napi:function;
-import :object_like;
-import :utility;
-import :value;
+export module napi_js.function;
 import isolated_js;
 import ivm.utility;
+import napi_js.object_like;
+import napi_js.utility;
+import napi_js.value;
 import nodejs;
 import v8;
 

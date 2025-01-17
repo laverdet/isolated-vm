@@ -1,8 +1,7 @@
-module ivm.napi;
-import :object_like;
-import :utility;
-import :value;
+module napi_js.object_like;
 import ivm.utility;
+import napi_js.utility;
+import napi_js.value;
 import nodejs;
 
 namespace js::napi {

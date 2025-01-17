@@ -3,7 +3,7 @@ module;
 #include <cstddef>
 #include <utility>
 #include <variant>
-export module ivm.napi:value;
+export module napi_js.value;
 import isolated_js;
 import nodejs;
 

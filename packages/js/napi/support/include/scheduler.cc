@@ -3,7 +3,7 @@ module;
 #include <memory>
 #include <stdexcept>
 #include <utility>
-export module ivm.napi:uv_scheduler;
+export module napi_js.uv_scheduler;
 import ivm.utility;
 import nodejs;
 

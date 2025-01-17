@@ -1,7 +1,7 @@
 #include <node_api.h>
 #include <memory>
 #include <tuple>
-import ivm.napi;
+import napi_js;
 import backend_napi_v8;
 import isolated_js;
 import ivm.utility;

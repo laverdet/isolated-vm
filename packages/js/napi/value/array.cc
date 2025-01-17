@@ -1,8 +1,7 @@
 module;
 #include <cstdint>
-module ivm.napi;
-import :array;
-import :utility;
+module napi_js.array;
+import napi_js.utility;
 import nodejs;
 
 namespace js::napi {

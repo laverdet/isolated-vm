@@ -1,8 +1,8 @@
 module;
 #include <compare>
 #include <cstdint>
-export module ivm.napi:array;
-import :object_like;
+export module napi_js.array;
+import napi_js.object_like;
 import ivm.utility;
 import nodejs;
 

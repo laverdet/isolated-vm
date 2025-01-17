@@ -1,4 +1,4 @@
-module ivm.napi:handle;
+export module napi_js.handle;
 import nodejs;
 
 namespace js::napi {

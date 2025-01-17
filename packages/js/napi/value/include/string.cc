@@ -1,9 +1,9 @@
 module;
 #include <string_view>
-export module ivm.napi:string;
-import :utility;
-import :value;
+export module napi_js.string;
 import isolated_js;
+import napi_js.utility;
+import napi_js.value;
 import nodejs;
 
 namespace js::napi {

@@ -2,7 +2,7 @@ module;
 #include <concepts>
 #include <exception>
 #include <stdexcept>
-export module ivm.napi:utility;
+export module napi_js.utility;
 import ivm.utility;
 import nodejs;
 import v8;

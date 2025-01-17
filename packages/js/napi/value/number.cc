@@ -1,9 +1,8 @@
 module;
 #include <cstdint>
-module ivm.napi;
-import :number;
-import :utility;
+module napi_js.number;
 import isolated_js;
+import napi_js.utility;
 import nodejs;
 
 namespace js::napi {

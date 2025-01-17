@@ -3,11 +3,11 @@ module;
 #include <span>
 #include <stdexcept>
 export module isolated_v8.function;
+import isolated_js;
 import isolated_v8.agent;
 import isolated_v8.collected_handle;
 import isolated_v8.realm;
 import isolated_v8.remote;
-import isolated_js;
 import ivm.utility;
 import v8;
 

@@ -1,13 +1,13 @@
 module;
 #include <utility>
 #include <variant>
-export module ivm.napi:visit;
-import :object;
-import :utility;
-import :value;
-import ivm.iv8;
+export module napi_js.visit;
 import isolated_js;
+import napi_js.object;
+import ivm.iv8;
 import ivm.utility;
+import napi_js.utility;
+import napi_js.value;
 import nodejs;
 import v8;
 

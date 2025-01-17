@@ -2,10 +2,11 @@ module;
 #include <functional>
 #include <utility>
 #include <variant>
-export module ivm.napi:accept;
-import :utility;
-import :value;
+export module napi_js.accept;
 import isolated_js;
+import ivm.utility;
+import napi_js.utility;
+import napi_js.value;
 import nodejs;
 import v8;
 

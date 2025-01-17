@@ -1,7 +1,7 @@
-export module ivm.napi:handle_scope;
-import :utility;
+export module napi_js.handle_scope;
 import isolated_js;
 import ivm.utility;
+import napi_js.utility;
 import nodejs;
 
 namespace js::napi {

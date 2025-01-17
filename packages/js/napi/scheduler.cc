@@ -1,8 +1,7 @@
 module;
 #include <utility>
 #include <vector>
-module ivm.napi;
-import :uv_scheduler;
+module napi_js.uv_scheduler;
 import ivm.utility;
 import nodejs;
 
