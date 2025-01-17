@@ -13,19 +13,30 @@ import v8;
 
 namespace js {
 
+class napi_visit_witness_lock {
+	public:
+		napi_visit_witness_lock(v8::Isolate* isolate, v8::Local<v8::Context> context) :
+				isolate_lock_{isolate},
+				context_lock_{isolate_lock_, context} {}
+
+		[[nodiscard]] auto witness(this auto& self) -> decltype(auto) { return (self.context_lock_); }
+
+	private:
+		iv8::isolate_implicit_witness_lock isolate_lock_;
+		iv8::context_implicit_witness_lock context_lock_;
+};
+
 // Delegate napi_value to various visitors
 template <>
-struct visit<void, napi_value> : visit<void, v8::Local<v8::Value>> {
+struct visit<void, napi_value>
+		: napi_visit_witness_lock,
+			visit<void, v8::Local<v8::Value>> {
 	public:
 		using visit<void, v8::Local<v8::Value>>::operator();
 
 		visit(napi_env env, v8::Isolate* isolate, v8::Local<v8::Context> context) :
-				visit<void, v8::Local<v8::Value>>{
-					iv8::context_implicit_witness_lock{
-						iv8::isolate_implicit_witness_lock{isolate},
-						context
-					}
-				},
+				napi_visit_witness_lock{isolate, context},
+				visit<void, v8::Local<v8::Value>>{witness()},
 				env_{env} {}
 		visit(napi_env env, v8::Isolate* isolate) :
 				visit{env, isolate, isolate->GetCurrentContext()} {}

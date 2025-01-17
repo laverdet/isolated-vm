@@ -8,10 +8,6 @@ import v8;
 
 namespace js::iv8 {
 
-auto string::Cast(v8::Data* data) -> string* {
-	return reinterpret_cast<string*>(v8::String::Cast(data));
-}
-
 auto string::make(v8::Isolate* isolate, std::string_view view) -> v8::Local<v8::String> {
 	auto string = v8::String::NewFromOneByte(
 		isolate,
@@ -32,23 +28,23 @@ auto string::make(v8::Isolate* isolate, std::u16string_view view) -> v8::Local<v
 	return string.ToLocalChecked();
 }
 
-auto string::materialize(std::type_identity<std::string> /*tag*/, handle_env env) const -> std::string {
-	auto length = Length();
+auto string::materialize(std::type_identity<std::string> /*tag*/) const -> std::string {
+	auto length = (*this)->Length();
 	std::string string;
-	string.resize_and_overwrite(length, [ this, &env ](char* data, auto length) {
+	string.resize_and_overwrite(length, [ this ](char* data, auto length) {
 		auto* data_uint8 = reinterpret_cast<uint8_t*>(data);
-		WriteOneByte(env.isolate, data_uint8, 0, length, v8::String::WriteOptions::NO_NULL_TERMINATION);
+		(*this)->WriteOneByte(isolate(), data_uint8, 0, length, v8::String::WriteOptions::NO_NULL_TERMINATION);
 		return length;
 	});
 	return string;
 }
 
-auto string::materialize(std::type_identity<std::u16string> /*tag*/, handle_env env) const -> std::u16string {
-	auto length = Length();
+auto string::materialize(std::type_identity<std::u16string> /*tag*/) const -> std::u16string {
+	auto length = (*this)->Length();
 	std::u16string string;
-	string.resize_and_overwrite(length, [ this, &env ](char16_t* data, auto length) {
+	string.resize_and_overwrite(length, [ this ](char16_t* data, auto length) {
 		auto* data_uint16 = reinterpret_cast<uint16_t*>(data);
-		Write(env.isolate, data_uint16, 0, length, v8::String::WriteOptions::NO_NULL_TERMINATION);
+		(*this)->Write(isolate(), data_uint16, 0, length, v8::String::WriteOptions::NO_NULL_TERMINATION);
 		return length;
 	});
 	return string;

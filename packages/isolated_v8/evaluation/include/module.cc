@@ -89,7 +89,7 @@ auto js_module::link(realm::scope& realm, auto callback) -> void {
 
 	v8::Module::ResolveModuleCallback v8_callback =
 		[](
-			v8::Local<v8::Context> context,
+			v8::Local<v8::Context> /*context*/,
 			v8::Local<v8::String> specifier,
 			v8::Local<v8::FixedArray> attributes,
 			v8::Local<v8::Module> referrer
@@ -100,19 +100,19 @@ auto js_module::link(realm::scope& realm, auto callback) -> void {
 		auto referrer_name = std::invoke([ & ]() -> std::optional<js::string_t> {
 			const auto* referrer_name = realm.agent()->weak_module_specifiers().find(referrer);
 			if (referrer_name == nullptr) {
-				return {};
+				return std::nullopt;
 			} else {
 				return *referrer_name;
 			}
 		});
 		auto attributes_view =
-			js::iv8::fixed_array{attributes, context} |
+			js::iv8::fixed_array{realm, attributes} |
 			// [ key, value, ...[] ]
 			std::views::chunk(2) |
 			std::views::transform([ & ](const auto& pair) {
 				return std::pair{
 					js::transfer_out_strict<js::string_t>(pair[ 0 ].template As<v8::String>(), realm),
-					js::transfer_out<js::string_t>(pair[ 1 ].template As<v8::Value>(), realm)
+					js::transfer_out_strict<js::string_t>(pair[ 1 ].template As<v8::String>(), realm)
 				};
 			});
 		auto attributes_vector = module_request::attributes_type{std::move(attributes_view)};

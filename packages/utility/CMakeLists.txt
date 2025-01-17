@@ -12,7 +12,6 @@ target_sources(ivm_utility
 			ranges.cc
 			type_traits.cc
 			utility/facade.cc
-			utility/mutable_value.cc
 			utility/utility.cc
 			variant.cc
 )

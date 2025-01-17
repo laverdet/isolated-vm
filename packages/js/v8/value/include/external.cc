@@ -4,23 +4,20 @@ module;
 export module v8_js.external;
 import isolated_js;
 import ivm.utility;
+import v8_js.handle;
 import v8;
 
 namespace js::iv8 {
 
-export class external : public v8::External {
+export class external
+		: public v8::Local<v8::External>,
+			public handle_materializable<external> {
 	public:
+		explicit external(v8::Local<v8::External> handle) :
+				Local{handle} {}
+
 		[[nodiscard]] auto materialize(std::type_identity<void*> /*tag*/) const -> void*;
-		static auto Cast(v8::Value* value) -> external*;
 };
-
-auto external::Cast(v8::Value* value) -> external* {
-	return reinterpret_cast<external*>(v8::External::Cast(value));
-}
-
-auto external::materialize(std::type_identity<void*> /*tag*/) const -> void* {
-	return Value();
-}
 
 export template <class Type>
 class external_reference : util::non_moveable {
@@ -34,6 +31,12 @@ class external_reference : util::non_moveable {
 	private:
 		Type value;
 };
+
+// ---
+
+auto external::materialize(std::type_identity<void*> /*tag*/) const -> void* {
+	return (*this)->Value();
+}
 
 } // namespace js::iv8
 

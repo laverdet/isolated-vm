@@ -24,9 +24,8 @@ js_module::js_module(agent::lock& agent, v8::Local<v8::Module> module_) :
 
 auto js_module::requests(agent::lock& agent) -> std::vector<module_request> {
 	auto context = agent->scratch_context();
-	// TODO: switch back to agent lock
 	js::iv8::context_implicit_witness_lock context_lock{agent, context};
-	auto requests_array = js::iv8::fixed_array{module_->deref(agent)->GetModuleRequests(), context};
+	auto requests_array = js::iv8::fixed_array{context_lock, module_->deref(agent)->GetModuleRequests()};
 	auto requests_view =
 		requests_array |
 		std::views::transform([ & ](v8::Local<v8::Data> value) -> module_request {
@@ -35,12 +34,12 @@ auto js_module::requests(agent::lock& agent) -> std::vector<module_request> {
 			auto specifier = js::transfer_out_strict<js::string_t>(specifier_handle, context_lock);
 			auto attributes_view =
 				// [ key, value, location, ...[] ]
-				js::iv8::fixed_array{request->GetImportAttributes(), context} |
+				js::iv8::fixed_array{context_lock, request->GetImportAttributes()} |
 				std::views::chunk(3) |
 				std::views::transform([ & ](const auto& triplet) {
 					return std::pair{
-						js::transfer_out<js::string_t>(triplet[ 0 ].template As<v8::Name>(), context_lock),
-						js::transfer_out<js::string_t>(triplet[ 1 ].template As<v8::Value>(), context_lock)
+						js::transfer_out_strict<js::string_t>(triplet[ 0 ].template As<v8::String>(), agent),
+						js::transfer_out_strict<js::string_t>(triplet[ 1 ].template As<v8::String>(), agent)
 					};
 				});
 			return {specifier, module_request::attributes_type{std::move(attributes_view)}};

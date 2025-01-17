@@ -5,39 +5,33 @@ import v8;
 
 namespace js::iv8 {
 
-auto array::Cast(v8::Value* data) -> array* {
-	return reinterpret_cast<array*>(v8::Array::Cast(data));
+auto array::begin() const -> iterator {
+	return iterator{*this, context(), 0};
 }
 
-auto array::begin(handle_env env, uint32_t& /*length*/) const -> iterator {
-	auto* non_const = const_cast<array*>(this); // NOLINT(cppcoreguidelines-pro-type-const-cast)
-	return {non_const, env, 0};
+auto array::end() const -> iterator {
+	return iterator{*this, context(), size()};
 }
 
-auto array::end(handle_env env, uint32_t& length) const -> iterator {
-	auto* non_const = const_cast<array*>(this); // NOLINT(cppcoreguidelines-pro-type-const-cast)
-	return {non_const, env, size(env, length)};
-}
-
-auto array::size(handle_env /*env*/, uint32_t& length) const -> uint32_t {
+auto array::size() const -> uint32_t {
 	// nb: `0` means "uninitialized", `length + 1` is stored
-	if (length == 0) {
-		length = Length() + 1;
+	if (length_ == 0) {
+		length_ = (*this)->Length() + 1;
 	}
-	return length - 1;
+	return length_ - 1;
 }
 
-array::iterator::iterator(array* array, handle_env env, uint32_t index) :
-		env{env},
+array::iterator::iterator(v8::Local<v8::Array> array, v8::Local<v8::Context> context, uint32_t index) :
 		array_{array},
-		index{index} {}
+		context_{context},
+		index_{index} {}
 
 auto array::iterator::operator*() const -> value_type {
-	return array_->Get(env.context, index).ToLocalChecked();
+	return array_->Get(context_, index_).ToLocalChecked();
 }
 
 auto array::iterator::operator+=(difference_type offset) -> iterator& {
-	index += offset;
+	index_ += offset;
 	return *this;
 }
 

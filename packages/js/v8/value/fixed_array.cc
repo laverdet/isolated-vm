@@ -5,9 +5,9 @@ import v8;
 
 namespace js::iv8 {
 
-fixed_array::fixed_array(v8::Local<v8::FixedArray> array, v8::Local<v8::Context> context) :
+fixed_array::fixed_array(const context_lock& lock, v8::Local<v8::FixedArray> array) :
 		array_{array},
-		context_{context} {}
+		context_{lock.context()} {}
 
 auto fixed_array::begin() const -> iterator {
 	return {array_, context_, 0};

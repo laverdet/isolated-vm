@@ -4,7 +4,6 @@ export import ivm.utility.comparator;
 export import ivm.utility.facade;
 export import ivm.utility.lockable;
 export import ivm.utility.memory;
-export import ivm.utility.mutable_value;
 export import ivm.utility.prehashed_string_map;
 export import ivm.utility.ranges;
 export import ivm.utility.type_traits;

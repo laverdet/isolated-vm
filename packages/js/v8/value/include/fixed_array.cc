@@ -3,19 +3,20 @@ module;
 #include <cstdint>
 #include <ranges>
 export module v8_js.fixed_array;
-import v8;
-import v8_js.handle;
 import ivm.utility;
+import v8_js.handle;
+import v8_js.lock;
+import v8;
 
 namespace js::iv8 {
 
-export class fixed_array : util::non_copyable {
+export class fixed_array {
 	public:
 		class iterator;
 		using value_type = v8::Local<v8::Data>;
 
 		fixed_array() = delete;
-		fixed_array(v8::Local<v8::FixedArray> array, v8::Local<v8::Context> context);
+		fixed_array(const context_lock& lock, v8::Local<v8::FixedArray> array);
 
 		[[nodiscard]] auto begin() const -> iterator;
 		[[nodiscard]] auto end() const -> iterator;

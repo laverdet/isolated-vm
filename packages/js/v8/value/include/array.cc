@@ -3,22 +3,33 @@ module;
 #include <cstdint>
 #include <ranges>
 export module v8_js.array;
-import v8;
-import v8_js.handle;
 import ivm.utility;
+import v8_js.handle;
+import v8_js.lock;
+import v8;
 
 namespace js::iv8 {
 
-export class array : public v8::Array {
+export class array
+		: public v8::Local<v8::Array>,
+			public handle_with_context,
+			public handle_materializable<array> {
 	public:
 		class iterator;
 		struct handle_data;
 		using value_type = v8::Local<v8::Value>;
 
-		[[nodiscard]] auto begin(handle_env env, uint32_t& length) const -> iterator;
-		[[nodiscard]] auto end(handle_env env, uint32_t& length) const -> iterator;
-		[[nodiscard]] auto size(handle_env env, uint32_t& length) const -> uint32_t;
-		static auto Cast(v8::Value* data) -> array*;
+		array() = default;
+		explicit array(const context_lock& lock, v8::Local<v8::Array> handle) :
+				Local{handle},
+				handle_with_context{lock} {}
+
+		[[nodiscard]] auto begin() const -> iterator;
+		[[nodiscard]] auto end() const -> iterator;
+		[[nodiscard]] auto size() const -> uint32_t;
+
+	private:
+		mutable uint32_t length_{};
 };
 
 class array::iterator : public util::random_access_iterator_facade<iterator, int32_t, int64_t> {
@@ -30,23 +41,22 @@ class array::iterator : public util::random_access_iterator_facade<iterator, int
 		using value_type = array::value_type;
 
 		iterator() = default;
-		iterator(array* array_, handle_env env, uint32_t index);
+		iterator(v8::Local<v8::Array> array, v8::Local<v8::Context> context, uint32_t index);
 
 		auto operator*() const -> value_type;
 		auto operator+=(difference_type offset) -> iterator&;
-		auto operator==(const iterator& right) const -> bool { return index == right.index; }
-		auto operator<=>(const iterator& right) const -> std::strong_ordering { return index <=> right.index; }
+		auto operator==(const iterator& right) const -> bool { return index_ == right.index_; }
+		auto operator<=>(const iterator& right) const -> std::strong_ordering { return index_ <=> right.index_; }
 
 	private:
-		auto operator+() const -> size_type { return index; }
+		auto operator+() const -> size_type { return index_; }
 
-		handle_env env;
-		array* array_{};
-		uint32_t index{};
+		v8::Local<v8::Array> array_;
+		v8::Local<v8::Context> context_;
+		uint32_t index_{};
 };
 
-export using array_handle = handle<array, util::mutable_value<uint32_t>>;
-static_assert(std::ranges::range<array_handle>);
+static_assert(std::ranges::range<array>);
 static_assert(std::random_access_iterator<array::iterator>);
 
 } // namespace js::iv8

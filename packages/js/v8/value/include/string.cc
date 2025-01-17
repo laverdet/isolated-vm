@@ -3,15 +3,22 @@ module;
 #include <type_traits>
 export module v8_js.string;
 import v8_js.handle;
+import v8_js.lock;
 import v8;
 
 namespace js::iv8 {
 
-export class string : public v8::String {
+export class string
+		: public v8::Local<v8::String>,
+			public handle_with_isolate,
+			public handle_materializable<string> {
 	public:
-		[[nodiscard]] auto materialize(std::type_identity<std::string> tag, handle_env env) const -> std::string;
-		[[nodiscard]] auto materialize(std::type_identity<std::u16string> tag, handle_env env) const -> std::u16string;
-		static auto Cast(v8::Data* data) -> string*;
+		explicit string(const isolate_lock& lock, v8::Local<v8::String> handle) :
+				Local{handle},
+				handle_with_isolate{lock} {}
+
+		[[nodiscard]] auto materialize(std::type_identity<std::string> tag) const -> std::string;
+		[[nodiscard]] auto materialize(std::type_identity<std::u16string> tag) const -> std::u16string;
 
 		template <size_t Size>
 		// NOLINTNEXTLINE(modernize-avoid-c-arrays)

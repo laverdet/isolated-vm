@@ -27,7 +27,7 @@ namespace js {
 template <>
 struct visit<void, v8::Local<v8::Boolean>> {
 		auto operator()(v8::Local<v8::Boolean> value, const auto_accept auto& accept) const -> decltype(auto) {
-			return accept(boolean_tag{}, iv8::handle_cast{value.As<iv8::boolean>()});
+			return accept(boolean_tag{}, iv8::boolean{value});
 		}
 };
 
@@ -35,7 +35,7 @@ struct visit<void, v8::Local<v8::Boolean>> {
 template <>
 struct visit<void, v8::Local<v8::Number>> {
 		auto operator()(v8::Local<v8::Number> value, const auto_accept auto& accept) const -> decltype(auto) {
-			auto number = iv8::handle_cast{value.As<iv8::number>()};
+			auto number = iv8::number{value};
 			if (value->IsInt32()) {
 				return accept(number_tag_of<int32_t>{}, number);
 			} else {
@@ -48,7 +48,7 @@ struct visit<void, v8::Local<v8::Number>> {
 template <>
 struct visit<void, v8::Local<v8::Date>> {
 		auto operator()(v8::Local<v8::Date> value, const auto_accept auto& accept) const -> decltype(auto) {
-			return accept(date_tag{}, iv8::handle_cast{value.As<iv8::date>()});
+			return accept(date_tag{}, iv8::date{value});
 		}
 };
 
@@ -56,7 +56,7 @@ struct visit<void, v8::Local<v8::Date>> {
 template <>
 struct visit<void, v8::Local<v8::External>> {
 		auto operator()(v8::Local<v8::External> value, const auto_accept auto& accept) const -> decltype(auto) {
-			return accept(external_tag{}, iv8::handle_cast{value.As<iv8::external>()});
+			return accept(external_tag{}, iv8::external{value});
 		}
 };
 
@@ -65,7 +65,7 @@ template <>
 struct visit<void, v8::Local<v8::BigInt>> {
 		auto operator()(v8::Local<v8::BigInt> value, const auto_accept auto& accept) const -> decltype(auto) {
 			// We actually have to convert the bigint in order to see how big it is. So the acceptor is
-			// invoked directly the underlying value, instead of a `handle_cast`.
+			// invoked directly the underlying value, instead of a handle.
 			bool lossless{};
 			auto i64 = value->Int64Value(&lossless);
 			if (lossless) {
@@ -79,24 +79,12 @@ struct visit<void, v8::Local<v8::BigInt>> {
 		}
 };
 
-// Primary visitor
+// name (string + symbol)
 template <>
-struct visit<void, v8::Local<v8::Value>>
-		: visit<void, v8::Local<v8::Boolean>>,
-			visit<void, v8::Local<v8::Number>>,
-			visit<void, v8::Local<v8::Date>>,
-			visit<void, v8::Local<v8::External>>,
-			visit<void, v8::Local<v8::BigInt>> {
+struct visit<void, v8::Local<v8::Name>> {
 	public:
-		using visit<void, v8::Local<v8::Boolean>>::operator();
-		using visit<void, v8::Local<v8::Number>>::operator();
-		using visit<void, v8::Local<v8::Date>>::operator();
-		using visit<void, v8::Local<v8::External>>::operator();
-		using visit<void, v8::Local<v8::BigInt>>::operator();
-
-		visit(const iv8::context_lock& lock) :
-				isolate_{lock.isolate()},
-				context_{lock.context()} {}
+		visit(const iv8::isolate_lock& lock) :
+				lock_{&lock} {}
 
 		auto operator()(v8::Local<v8::Name> value, const auto_accept auto& accept) const -> decltype(auto) {
 			if (value->IsString()) {
@@ -111,8 +99,7 @@ struct visit<void, v8::Local<v8::Value>>
 		}
 
 		auto operator()(v8::Local<v8::String> value, const auto_accept auto& accept) const -> decltype(auto) {
-			// TODO: string visitor does not need context
-			auto string = iv8::handle{value.As<iv8::string>(), {isolate_, context_}};
+			auto string = iv8::string{*lock_, value};
 			if (value->IsOneByte()) {
 				return accept(string_tag_of<char>{}, string);
 			} else {
@@ -120,11 +107,48 @@ struct visit<void, v8::Local<v8::Value>>
 			}
 		}
 
+	private:
+		const iv8::isolate_lock* lock_;
+};
+
+// symbol
+template <>
+struct visit<void, v8::Local<v8::Symbol>> : visit<void, v8::Local<v8::Name>> {
+		using visit<void, v8::Local<v8::Name>>::visit;
+};
+
+// string
+template <>
+struct visit<void, v8::Local<v8::String>> : visit<void, v8::Local<v8::Name>> {
+		using visit<void, v8::Local<v8::Name>>::visit;
+};
+
+// Primary visitor
+template <>
+struct visit<void, v8::Local<v8::Value>>
+		: visit<void, v8::Local<v8::Boolean>>,
+			visit<void, v8::Local<v8::Number>>,
+			visit<void, v8::Local<v8::Date>>,
+			visit<void, v8::Local<v8::External>>,
+			visit<void, v8::Local<v8::BigInt>>,
+			visit<void, v8::Local<v8::Name>> {
+	public:
+		using visit<void, v8::Local<v8::Boolean>>::operator();
+		using visit<void, v8::Local<v8::Number>>::operator();
+		using visit<void, v8::Local<v8::Date>>::operator();
+		using visit<void, v8::Local<v8::External>>::operator();
+		using visit<void, v8::Local<v8::BigInt>>::operator();
+		using visit<void, v8::Local<v8::Name>>::operator();
+
+		visit(const iv8::context_lock& lock) :
+				visit<void, v8::Local<v8::Name>>{lock},
+				lock_{&lock} {}
+
 		auto operator()(v8::Local<v8::Value> value, const auto_accept auto& accept) const -> decltype(auto) {
 			if (value->IsObject()) {
 				auto visit_entry = std::pair<const visit&, const visit&>{*this, *this};
 				if (value->IsArray()) {
-					return accept(list_tag{}, iv8::object_handle{value.As<iv8::object>(), {isolate_, context_}}, visit_entry);
+					return accept(list_tag{}, iv8::object{*lock_, value.As<v8::Object>()}, visit_entry);
 				} else if (value->IsExternal()) {
 					return (*this)(value.As<v8::External>(), accept);
 				} else if (value->IsDate()) {
@@ -132,7 +156,7 @@ struct visit<void, v8::Local<v8::Value>>
 				} else if (value->IsPromise()) {
 					return accept(promise_tag{}, value);
 				}
-				return accept(dictionary_tag{}, iv8::object_handle{value.As<iv8::object>(), {isolate_, context_}}, visit_entry);
+				return accept(dictionary_tag{}, iv8::object{*lock_, value.As<v8::Object>()}, visit_entry);
 			} else if (value->IsNullOrUndefined()) {
 				if (value->IsNull()) {
 					return accept(null_tag{}, nullptr);
@@ -151,26 +175,7 @@ struct visit<void, v8::Local<v8::Value>>
 		}
 
 	private:
-		v8::Isolate* isolate_;
-		v8::Local<v8::Context> context_;
-};
-
-// name (string + symbol)
-template <>
-struct visit<void, v8::Local<v8::Name>> : visit<void, v8::Local<v8::Value>> {
-		using visit<void, v8::Local<v8::Value>>::visit;
-};
-
-// symbol
-template <>
-struct visit<void, v8::Local<v8::Symbol>> : visit<void, v8::Local<v8::Name>> {
-		using visit<void, v8::Local<v8::Name>>::visit;
-};
-
-// string
-template <>
-struct visit<void, v8::Local<v8::String>> : visit<void, v8::Local<v8::Name>> {
-		using visit<void, v8::Local<v8::Name>>::visit;
+		const iv8::context_lock* lock_;
 };
 
 } // namespace js
