@@ -1,11 +1,10 @@
 module;
 #include <ranges>
 #include <string>
-module ivm.iv8;
-import :array;
-import :handle;
-import :object;
-import :string;
+module v8_js.object;
+import v8_js.array;
+import v8_js.handle;
+import v8_js.string;
 import ivm.utility;
 import v8;
 

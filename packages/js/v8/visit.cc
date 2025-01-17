@@ -4,15 +4,15 @@ module;
 #include <string>
 #include <type_traits>
 #include <variant>
-export module ivm.iv8:visit;
-import :array;
-import :boolean;
-import :date;
-import :external;
-import :handle;
-import :number;
-import :object;
-import :string;
+export module v8_js.visit;
+import v8_js.array;
+import v8_js.boolean;
+import v8_js.date;
+import v8_js.external;
+import v8_js.handle;
+import v8_js.number;
+import v8_js.object;
+import v8_js.string;
 import isolated_js;
 import ivm.utility;
 import v8;

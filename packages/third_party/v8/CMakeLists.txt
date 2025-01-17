@@ -35,8 +35,11 @@ target_include_directories(${IV8_PREFIX}_v8 SYSTEM PRIVATE ${IV8_INCLUDE_DIR})
 # Preprocessor macros which enable dual v8 in the same process
 if (IVM_IV8_TRICKSHOT)
 	target_compile_definitions(${IV8_PREFIX}_v8 PUBLIC
-		cppgc=zppgc
+		# mine
 		iv8=iz8
+		v8_js=z8_js
+		# theirs
+		cppgc=zppgc
 		unibrow=znibrow
 		v8_crdtp=z8_crdtp
 		V8_Dcheck=Z8_Dcheck

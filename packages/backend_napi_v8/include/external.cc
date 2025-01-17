@@ -5,7 +5,7 @@ module;
 export module backend_napi_v8.external;
 import backend_napi_v8.environment;
 import backend_napi_v8.utility;
-import ivm.iv8;
+import v8_js;
 import isolated_js;
 import napi_js;
 import ivm.utility;

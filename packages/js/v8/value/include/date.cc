@@ -1,6 +1,6 @@
 module;
 #include <type_traits>
-export module ivm.iv8:date;
+export module v8_js.date;
 import isolated_js;
 import v8;
 

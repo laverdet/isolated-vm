@@ -5,7 +5,7 @@ import isolated_v8.lock;
 import isolated_v8.realm;
 import isolated_v8.remote;
 module isolated_v8.script;
-import ivm.iv8;
+import v8_js;
 import isolated_js;
 import v8;
 

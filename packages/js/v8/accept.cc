@@ -4,9 +4,9 @@ module;
 #include <__iterator/wrap_iter.h>
 #endif
 #include <utility>
-export module ivm.iv8:accept;
-import :date;
-import :string;
+export module v8_js.accept;
+import v8_js.date;
+import v8_js.string;
 import isolated_js;
 import ivm.utility;
 import v8;

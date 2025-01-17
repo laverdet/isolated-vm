@@ -8,7 +8,7 @@ import isolated_v8.evaluation.module_action;
 import isolated_v8.foreground_runner;
 import isolated_v8.remote_handle_list;
 import isolated_v8.scheduler;
-import ivm.iv8;
+import v8_js;
 import isolated_js;
 import ivm.utility;
 import v8;

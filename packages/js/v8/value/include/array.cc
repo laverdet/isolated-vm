@@ -2,9 +2,9 @@ module;
 #include <compare>
 #include <cstdint>
 #include <ranges>
-export module ivm.iv8:array;
+export module v8_js.array;
 import v8;
-import :handle;
+import v8_js.handle;
 import ivm.utility;
 
 namespace js::iv8 {

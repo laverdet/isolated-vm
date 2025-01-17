@@ -1,6 +1,6 @@
 module;
 #include <type_traits>
-export module ivm.iv8:boolean;
+export module v8_js.boolean;
 import v8;
 
 namespace js::iv8 {

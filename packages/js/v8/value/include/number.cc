@@ -1,7 +1,7 @@
 module;
 #include <cstdint>
 #include <type_traits>
-export module ivm.iv8:number;
+export module v8_js.number;
 import v8;
 
 namespace js::iv8 {

@@ -2,7 +2,7 @@ module;
 #include <concepts>
 #include <tuple>
 #include <type_traits>
-export module ivm.iv8:handle;
+export module v8_js.handle;
 import v8;
 
 export namespace js::iv8 {

@@ -1,8 +1,8 @@
 module;
 #include <string>
 #include <type_traits>
-export module ivm.iv8:string;
-import :handle;
+export module v8_js.string;
+import v8_js.handle;
 import v8;
 
 namespace js::iv8 {

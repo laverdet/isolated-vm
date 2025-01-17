@@ -1,7 +1,7 @@
 module;
 #include <memory>
 #include <unordered_map>
-export module ivm.iv8:weak_map;
+export module v8_js.weak_map;
 import v8;
 import ivm.utility;
 

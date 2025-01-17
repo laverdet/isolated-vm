@@ -12,7 +12,7 @@ import backend_napi_v8.external;
 import backend_napi_v8.utility;
 import isolated_js;
 import isolated_v8;
-import ivm.iv8;
+import v8_js;
 import napi_js;
 import nodejs;
 using namespace isolated_v8;

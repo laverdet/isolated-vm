@@ -4,7 +4,7 @@ module;
 export module napi_js.visit;
 import isolated_js;
 import napi_js.object;
-import ivm.iv8;
+import v8_js;
 import ivm.utility;
 import napi_js.utility;
 import napi_js.value;

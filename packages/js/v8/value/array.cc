@@ -1,7 +1,6 @@
 module;
 #include <cstdint>
-module ivm.iv8;
-import :array;
+module v8_js.array;
 import v8;
 
 namespace js::iv8 {
