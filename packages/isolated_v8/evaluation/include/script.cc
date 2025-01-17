@@ -28,7 +28,7 @@ export class script {
 };
 
 auto script::compile(agent::lock& agent, auto&& code_string, source_origin source_origin) -> script {
-	auto local_code_string = js::transfer_in_strict<v8::Local<v8::String>>(std::forward<decltype(code_string)>(code_string), agent->isolate());
+	auto local_code_string = js::transfer_in_strict<v8::Local<v8::String>>(std::forward<decltype(code_string)>(code_string), agent);
 	return script::compile(agent, local_code_string, std::move(source_origin));
 }
 

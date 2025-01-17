@@ -58,8 +58,9 @@ export class js_module {
 };
 
 auto js_module::compile(agent::lock& agent, auto&& source_text, source_origin source_origin) -> js_module {
+	// nb: Context lock is needed for compilation errors
 	js::iv8::context_managed_lock context_lock{agent, agent->scratch_context()};
-	auto local_source_text = js::transfer_in_strict<v8::Local<v8::String>>(std::forward<decltype(source_text)>(source_text), agent->isolate());
+	auto local_source_text = js::transfer_in_strict<v8::Local<v8::String>>(std::forward<decltype(source_text)>(source_text), agent);
 	return compile(agent, local_source_text, std::move(source_origin));
 }
 
@@ -95,8 +96,7 @@ auto js_module::link(realm::scope& realm, auto callback) -> void {
 		) -> v8::MaybeLocal<v8::Module> {
 		auto& realm = *realm_local;
 		auto& thread_callback = *thread_callback_local;
-		auto* isolate = realm.isolate();
-		auto specifier_string = js::transfer_out_strict<js::string_t>(specifier, isolate, context);
+		auto specifier_string = js::transfer_out_strict<js::string_t>(specifier, realm);
 		auto referrer_name = std::invoke([ & ]() -> std::optional<js::string_t> {
 			const auto* referrer_name = realm.agent()->weak_module_specifiers().find(referrer);
 			if (referrer_name == nullptr) {
@@ -111,17 +111,13 @@ auto js_module::link(realm::scope& realm, auto callback) -> void {
 			std::views::chunk(2) |
 			std::views::transform([ & ](const auto& pair) {
 				return std::pair{
-					js::transfer_out_strict<js::string_t>(pair[ 0 ].template As<v8::String>(), isolate, context),
-					js::transfer_out<js::string_t>(pair[ 1 ].template As<v8::Value>(), isolate, context)
+					js::transfer_out_strict<js::string_t>(pair[ 0 ].template As<v8::String>(), realm),
+					js::transfer_out<js::string_t>(pair[ 1 ].template As<v8::Value>(), realm)
 				};
 			});
 		auto attributes_vector = module_request::attributes_type{std::move(attributes_view)};
 		auto& result = std::invoke([ & ]() -> decltype(auto) {
-			isolate->Exit();
-			auto enter = util::scope_exit([ & ]() {
-				isolate->Enter();
-			});
-			v8::Unlocker unlocker{isolate};
+			js::iv8::isolate_unlock unlocker{realm};
 			auto&& result = thread_callback(
 				std::move(specifier_string),
 				std::move(referrer_name),
@@ -137,7 +133,6 @@ auto js_module::link(realm::scope& realm, auto callback) -> void {
 } // namespace isolated_v8
 
 namespace js {
-
 using isolated_v8::module_request;
 
 template <>

@@ -16,16 +16,16 @@ script::script(agent::lock& agent, v8::Local<v8::UnboundScript> script) :
 }
 
 auto script::run(realm::scope& realm) -> js::value_t {
-	auto* isolate = realm.isolate();
 	auto script = unbound_script_->deref(realm);
-	auto context = realm.context();
-	auto result = script->BindToCurrentContext()->Run(context).ToLocalChecked();
-	return js::transfer_out<js::value_t>(result, isolate, context);
+	auto result = script->BindToCurrentContext()->Run(realm.context()).ToLocalChecked();
+	return js::transfer_out<js::value_t>(result, realm);
 }
 
 auto script::compile(agent::lock& agent, v8::Local<v8::String> code_string, source_origin source_origin) -> script {
+	// nb: It is undocumented (and even mentions "context independent"), but the script compiler
+	// actually needs a context because it can throw an error and *that* would need a context.
 	js::iv8::context_managed_lock context{agent, agent->scratch_context()};
-	auto maybe_resource_name = js::transfer_in_strict<v8::MaybeLocal<v8::String>>(std::move(source_origin.name), agent->isolate());
+	auto maybe_resource_name = js::transfer_in_strict<v8::MaybeLocal<v8::String>>(std::move(source_origin.name), agent);
 	v8::Local<v8::String> resource_name{};
 	(void)maybe_resource_name.ToLocal(&resource_name);
 	auto location = source_origin.location.value_or(source_location{});

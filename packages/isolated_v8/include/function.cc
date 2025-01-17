@@ -9,6 +9,7 @@ import isolated_v8.collected_handle;
 import isolated_v8.realm;
 import isolated_v8.remote;
 import ivm.utility;
+import v8_js;
 import v8;
 
 namespace isolated_v8 {
@@ -34,25 +35,25 @@ auto function_template::make(agent::lock& agent, js::bound_function<Invocable, R
 	using function_type = decltype(function);
 	auto external = make_collected_external<function_type>(agent, agent->autorelease_pool(), std::move(function));
 	v8::FunctionCallback callback = [](const v8::FunctionCallbackInfo<v8::Value>& info) {
+		js::iv8::isolate_implicit_witness_lock isolate_lock{info.GetIsolate()};
+		js::iv8::context_implicit_witness_lock context_lock{isolate_lock, isolate_lock.isolate()->GetCurrentContext()};
 		std::array<v8::Local<v8::Value>, 8> arguments;
 		auto count = static_cast<size_t>(info.Length());
 		if (count > arguments.size()) {
 			throw std::runtime_error{"Too many arguments"};
 		}
-		auto* isolate = info.GetIsolate();
-		auto context = isolate->GetCurrentContext();
 		auto& functor = unwrap_collected_external<function_type>(info.Data().As<v8::External>());
 		auto run = [ & ]() -> decltype(auto) {
 			return std::apply(
 				functor,
-				js::transfer_out<std::tuple<Args...>>(std::span{arguments}.subspan(0, count), isolate, context)
+				js::transfer_out<std::tuple<Args...>>(std::span{arguments}.subspan(0, count), context_lock)
 			);
 		};
 		if constexpr (std::is_void_v<std::invoke_result_t<decltype(run)>>) {
 			info.GetReturnValue().SetUndefined();
 			run();
 		} else {
-			js::transfer_in_strict<v8::ReturnValue<v8::Value>>(run(), isolate, context, info.GetReturnValue());
+			js::transfer_in_strict<v8::ReturnValue<v8::Value>>(run(), context_lock, info.GetReturnValue());
 		}
 	};
 	auto fn_template = v8::FunctionTemplate::New(agent.isolate(), callback, external, {}, sizeof...(Args), v8::ConstructorBehavior::kThrow);

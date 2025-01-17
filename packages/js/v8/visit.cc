@@ -5,16 +5,17 @@ module;
 #include <type_traits>
 #include <variant>
 export module v8_js.visit;
+import isolated_js;
+import ivm.utility;
 import v8_js.array;
 import v8_js.boolean;
 import v8_js.date;
 import v8_js.external;
 import v8_js.handle;
+import v8_js.lock;
 import v8_js.number;
 import v8_js.object;
 import v8_js.string;
-import isolated_js;
-import ivm.utility;
 import v8;
 
 // nb: These visitors are split out to share implementations with the napi visitors in the case
@@ -93,9 +94,9 @@ struct visit<void, v8::Local<v8::Value>>
 		using visit<void, v8::Local<v8::External>>::operator();
 		using visit<void, v8::Local<v8::BigInt>>::operator();
 
-		visit(v8::Isolate* isolate, v8::Local<v8::Context> context) :
-				isolate_{isolate},
-				context_{context} {}
+		visit(const iv8::context_lock& lock) :
+				isolate_{lock.isolate()},
+				context_{lock.context()} {}
 
 		auto operator()(v8::Local<v8::Name> value, const auto_accept auto& accept) const -> decltype(auto) {
 			if (value->IsString()) {
@@ -110,6 +111,7 @@ struct visit<void, v8::Local<v8::Value>>
 		}
 
 		auto operator()(v8::Local<v8::String> value, const auto_accept auto& accept) const -> decltype(auto) {
+			// TODO: string visitor does not need context
 			auto string = iv8::handle{value.As<iv8::string>(), {isolate_, context_}};
 			if (value->IsOneByte()) {
 				return accept(string_tag_of<char>{}, string);

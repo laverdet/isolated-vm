@@ -37,6 +37,31 @@ export class isolate_implicit_witness_lock : public isolate_lock {
 				isolate_lock{isolate} {}
 };
 
+// Yield v8 lock
+export class isolate_unlock : util::non_copyable {
+	private:
+		class isolate_exit : util::non_copyable {
+			public:
+				explicit isolate_exit(v8::Isolate* isolate) :
+						isolate_{isolate} {
+					isolate_->Exit();
+				}
+				~isolate_exit() { isolate_->Enter(); }
+
+			private:
+				v8::Isolate* isolate_;
+		};
+
+	public:
+		explicit isolate_unlock(const isolate_lock& lock) :
+				isolate_exit_{lock.isolate()},
+				unlocker_{lock.isolate()} {}
+
+	private:
+		isolate_exit isolate_exit_;
+		v8::Unlocker unlocker_;
+};
+
 // Context lock witness
 export class context_lock : public isolate_lock {
 	protected:

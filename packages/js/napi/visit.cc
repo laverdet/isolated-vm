@@ -20,7 +20,12 @@ struct visit<void, napi_value> : visit<void, v8::Local<v8::Value>> {
 		using visit<void, v8::Local<v8::Value>>::operator();
 
 		visit(napi_env env, v8::Isolate* isolate, v8::Local<v8::Context> context) :
-				visit<void, v8::Local<v8::Value>>{isolate, context},
+				visit<void, v8::Local<v8::Value>>{
+					iv8::context_implicit_witness_lock{
+						iv8::isolate_implicit_witness_lock{isolate},
+						context
+					}
+				},
 				env_{env} {}
 		visit(napi_env env, v8::Isolate* isolate) :
 				visit{env, isolate, isolate->GetCurrentContext()} {}

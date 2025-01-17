@@ -5,10 +5,11 @@ module;
 #endif
 #include <utility>
 export module v8_js.accept;
-import v8_js.date;
-import v8_js.string;
 import isolated_js;
 import ivm.utility;
+import v8_js.date;
+import v8_js.lock;
+import v8_js.string;
 import v8;
 
 namespace js {
@@ -18,8 +19,8 @@ template <>
 struct accept<void, v8::Local<v8::Data>> {
 	public:
 		accept() = delete;
-		explicit accept(v8::Isolate* isolate) :
-				isolate_{isolate} {}
+		explicit accept(const iv8::isolate_lock& lock) :
+				isolate_{lock.isolate()} {}
 
 		[[nodiscard]] auto isolate() const {
 			return isolate_;
@@ -83,9 +84,9 @@ template <>
 struct accept<void, v8::Local<v8::Value>> : accept<void, v8::Local<v8::Data>> {
 	public:
 		accept() = delete;
-		accept(v8::Isolate* isolate, v8::Local<v8::Context> context) :
-				accept<void, v8::Local<v8::Data>>{isolate},
-				context_{context} {}
+		accept(const iv8::context_lock& lock) :
+				accept<void, v8::Local<v8::Data>>{lock},
+				context_{lock.context()} {}
 
 		[[nodiscard]] auto context() const {
 			return context_;
@@ -153,8 +154,8 @@ struct accept<void, v8::ReturnValue<v8::Value>> : accept<void, v8::Local<v8::Val
 	public:
 		using accept_type = accept<void, v8::Local<v8::Value>>;
 
-		accept(v8::Isolate* isolate, v8::Local<v8::Context> context, v8::ReturnValue<v8::Value> return_value) :
-				accept<void, v8::Local<v8::Value>>{isolate, context},
+		accept(const iv8::context_lock& lock, v8::ReturnValue<v8::Value> return_value) :
+				accept<void, v8::Local<v8::Value>>{lock},
 				return_value_{return_value} {}
 
 		auto operator()(boolean_tag /*tag*/, const auto& value) const -> void {

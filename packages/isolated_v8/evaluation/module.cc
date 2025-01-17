@@ -24,21 +24,23 @@ js_module::js_module(agent::lock& agent, v8::Local<v8::Module> module_) :
 
 auto js_module::requests(agent::lock& agent) -> std::vector<module_request> {
 	auto context = agent->scratch_context();
+	// TODO: switch back to agent lock
+	js::iv8::context_implicit_witness_lock context_lock{agent, context};
 	auto requests_array = js::iv8::fixed_array{module_->deref(agent)->GetModuleRequests(), context};
 	auto requests_view =
 		requests_array |
 		std::views::transform([ & ](v8::Local<v8::Data> value) -> module_request {
 			auto request = value.As<v8::ModuleRequest>();
 			auto specifier_handle = request->GetSpecifier().As<v8::String>();
-			auto specifier = js::transfer_out_strict<js::string_t>(specifier_handle, agent->isolate(), context);
+			auto specifier = js::transfer_out_strict<js::string_t>(specifier_handle, context_lock);
 			auto attributes_view =
 				// [ key, value, location, ...[] ]
 				js::iv8::fixed_array{request->GetImportAttributes(), context} |
 				std::views::chunk(3) |
 				std::views::transform([ & ](const auto& triplet) {
 					return std::pair{
-						js::transfer_out<js::string_t>(triplet[ 0 ].template As<v8::Name>(), agent->isolate(), context),
-						js::transfer_out<js::string_t>(triplet[ 1 ].template As<v8::Value>(), agent->isolate(), context)
+						js::transfer_out<js::string_t>(triplet[ 0 ].template As<v8::Name>(), context_lock),
+						js::transfer_out<js::string_t>(triplet[ 1 ].template As<v8::Value>(), context_lock)
 					};
 				});
 			return {specifier, module_request::attributes_type{std::move(attributes_view)}};
@@ -47,16 +49,14 @@ auto js_module::requests(agent::lock& agent) -> std::vector<module_request> {
 }
 
 auto js_module::evaluate(realm::scope& realm) -> js::value_t {
-	auto* isolate = realm.isolate();
 	auto module_handle = module_->deref(realm);
-	auto context = realm.context();
-	auto result = module_handle->Evaluate(context).ToLocalChecked();
+	auto result = module_handle->Evaluate(realm.context()).ToLocalChecked();
 	auto promise = result.As<v8::Promise>();
 	if (module_handle->IsGraphAsync()) {
 		throw std::runtime_error{"Module is async"};
 	} else {
 		auto resolved_result = promise->Result();
-		return js::transfer_out<js::value_t>(resolved_result, isolate, context);
+		return js::transfer_out<js::value_t>(resolved_result, realm);
 	}
 }
 
@@ -76,18 +76,18 @@ auto js_module::create_synthetic(
 		resolver->Resolve(context, v8::Undefined(isolate));
 		return resolver->GetPromise();
 	};
-	auto name = v8::String::NewFromOneByte(agent.isolate(), reinterpret_cast<const uint8_t*>("default")).ToLocalChecked();
+	auto* isolate = agent->isolate();
+	auto name = v8::String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>("default")).ToLocalChecked();
 	auto names = std::array{name};
 	v8::MemorySpan<const v8::Local<v8::String>> export_names{names};
-	auto* isolate = agent->isolate();
-	auto module_name = js::transfer_in_strict<v8::Local<v8::String>>(source_origin.name, isolate);
+	auto module_name = js::transfer_in_strict<v8::Local<v8::String>>(source_origin.name, agent);
 	auto module_handle = v8::Module::CreateSyntheticModule(isolate, module_name, export_names, evaluation_steps);
 	agent->weak_module_actions().insert(isolate, std::pair{module_handle, std::move(action)});
 	return js_module{agent, module_handle};
 }
 
 auto js_module::compile(agent::lock& agent, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module {
-	auto maybe_resource_name = js::transfer_in_strict<v8::MaybeLocal<v8::String>>(source_origin.name, agent->isolate());
+	auto maybe_resource_name = js::transfer_in_strict<v8::MaybeLocal<v8::String>>(source_origin.name, agent);
 	v8::Local<v8::String> resource_name{};
 	(void)maybe_resource_name.ToLocal(&resource_name);
 	auto location = source_origin.location.value_or(source_location{});
