@@ -1,7 +1,9 @@
 export module isolated_v8.realm;
 import isolated_v8.agent;
+import isolated_v8.remote_handle;
 import isolated_v8.remote;
 import ivm.utility;
+import v8_js;
 import v8;
 
 namespace isolated_v8 {
@@ -12,7 +14,7 @@ export class realm {
 		class scope;
 
 		realm() = delete;
-		realm(agent::lock& agent_lock, v8::Local<v8::Context> context);
+		realm(agent::lock& agent, v8::Local<v8::Context> context);
 		static auto get(v8::Local<v8::Context> context) -> realm&;
 		static auto make(agent::lock& agent) -> realm;
 
@@ -20,26 +22,20 @@ export class realm {
 		shared_remote<v8::Context> context_;
 };
 
-class realm::scope : util::non_copyable {
+class realm::scope final
+		: public js::iv8::context_managed_lock,
+			public remote_handle_lock {
 	public:
 		scope() = delete;
-		scope(agent::lock& agent, v8::Local<v8::Context> context);
+		scope(agent::lock& agent, realm& realm);
 
 		[[nodiscard]] auto agent() const -> agent::lock&;
-		[[nodiscard]] auto context() const -> v8::Local<v8::Context>;
-		[[nodiscard]] auto isolate() const -> v8::Isolate*;
+
+		auto accept_remote_handle(remote_handle& remote) noexcept -> void final;
+		[[nodiscard]] auto remote_expiration_task() const -> reset_handle_type final;
 
 	private:
 		agent::lock* agent_lock_;
-		v8::Local<v8::Context> context_;
-};
-
-class realm::managed_scope : public realm::scope {
-	public:
-		managed_scope(agent::lock& agent, realm& realm);
-
-	private:
-		v8::Context::Scope context_scope;
 };
 
 } // namespace isolated_v8

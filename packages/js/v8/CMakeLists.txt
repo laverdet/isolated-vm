@@ -9,6 +9,7 @@ target_sources(${IV8_PREFIX}_common_v8
 		_module.cc
 		accept.cc
 		container/weak_map.cc
+		lock.cc
 		value/include/array.cc
 		value/include/boolean.cc
 		value/include/date.cc

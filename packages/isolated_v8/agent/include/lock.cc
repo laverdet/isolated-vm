@@ -1,9 +1,9 @@
 module;
 #include <memory>
 export module isolated_v8.agent:lock;
-import isolated_v8.lock;
-import isolated_v8.remote_handle;
 import :fwd;
+import isolated_v8.remote_handle;
+import v8_js;
 
 namespace isolated_v8 {
 
@@ -11,7 +11,7 @@ namespace isolated_v8 {
 // the isolate context.
 class agent::lock final
 		: public util::pointer_facade<agent::lock>,
-			public isolate_scope,
+			public js::iv8::isolate_managed_lock,
 			public remote_handle_lock {
 	public:
 		explicit lock(std::shared_ptr<agent::host> host);

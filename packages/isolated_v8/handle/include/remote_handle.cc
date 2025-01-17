@@ -3,8 +3,8 @@ module;
 #include <functional>
 #include <memory>
 export module isolated_v8.remote_handle;
-import isolated_v8.lock;
 import ivm.utility;
+import v8_js;
 import v8;
 
 namespace isolated_v8 {
@@ -31,10 +31,10 @@ using intrusive_list_hook = boost::intrusive::list_member_hook<intrusive_safe_mo
 class remote_handle : util::non_moveable {
 	public:
 		remote_handle(v8::Global<v8::Data> handle, reset_handle_type reset);
-		auto reset(const isolate_lock& lock) -> void;
+		auto reset(const js::iv8::isolate_lock& lock) -> void;
 
 	protected:
-		auto deref(const isolate_lock& lock) -> v8::Local<v8::Data>;
+		auto deref(const js::iv8::isolate_lock& lock) -> v8::Local<v8::Data>;
 		static auto expire(expired_remote_type remote) -> void;
 
 	private:

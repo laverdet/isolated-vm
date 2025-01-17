@@ -58,7 +58,7 @@ export class js_module {
 };
 
 auto js_module::compile(agent::lock& agent, auto&& source_text, source_origin source_origin) -> js_module {
-	v8::Context::Scope context_scope{agent->scratch_context()};
+	js::iv8::context_managed_lock context_lock{agent, agent->scratch_context()};
 	auto local_source_text = js::transfer_in_strict<v8::Local<v8::String>>(std::forward<decltype(source_text)>(source_text), agent->isolate());
 	return compile(agent, local_source_text, std::move(source_origin));
 }
@@ -129,7 +129,7 @@ auto js_module::link(realm::scope& realm, auto callback) -> void {
 			);
 			return result;
 		});
-		return result.module_->deref(realm.agent());
+		return result.module_->deref(realm);
 	};
 	link(realm, v8_callback);
 }

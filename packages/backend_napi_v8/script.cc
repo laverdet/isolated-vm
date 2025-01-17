@@ -58,7 +58,7 @@ auto run_script(
 			isolated_v8::realm realm,
 			isolated_v8::script script
 		) mutable {
-			isolated_v8::realm::managed_scope realm_scope{agent, realm};
+			isolated_v8::realm::scope realm_scope{agent, realm};
 			auto result = script.run(realm_scope);
 			dispatch(std::move(result));
 		},

@@ -5,8 +5,9 @@ import v8;
 
 namespace isolated_v8 {
 
-realm::realm(agent::lock& agent_lock, v8::Local<v8::Context> context) :
-		context_{make_shared_remote(agent_lock, context)} {}
+// realm
+realm::realm(agent::lock& agent, v8::Local<v8::Context> context) :
+		context_{make_shared_remote(agent, context)} {}
 
 auto realm::make(agent::lock& agent) -> realm {
 	auto* isolate = agent->isolate();
@@ -14,26 +15,21 @@ auto realm::make(agent::lock& agent) -> realm {
 	return realm{agent, v8::Context::New(isolate)};
 }
 
-realm::scope::scope(agent::lock& agent, v8::Local<v8::Context> context) :
-		agent_lock_{&agent},
-		context_{context} {
-}
+// realm::scope
+realm::scope::scope(agent::lock& agent, realm& realm) :
+		js::iv8::context_managed_lock{agent, realm.context_->deref(agent)},
+		agent_lock_{&agent} {}
 
 auto realm::scope::agent() const -> agent::lock& {
 	return *agent_lock_;
 }
 
-auto realm::scope::context() const -> v8::Local<v8::Context> {
-	return context_;
+auto realm::scope::accept_remote_handle(remote_handle& remote) noexcept -> void {
+	return agent_lock_->accept_remote_handle(remote);
 }
 
-auto realm::scope::isolate() const -> v8::Isolate* {
-	return (*agent_lock_)->isolate();
-}
-
-realm::managed_scope::managed_scope(agent::lock& agent, realm& realm) :
-		scope{agent, realm.context_->deref(agent)},
-		context_scope{context()} {
+auto realm::scope::remote_expiration_task() const -> reset_handle_type {
+	return agent_lock_->remote_expiration_task();
 }
 
 } // namespace isolated_v8

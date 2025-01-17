@@ -30,7 +30,6 @@ target_sources(isolated_v8
 		handle/include/remote.cc
 		include/cluster.cc
 		include/function.cc
-		include/lock.cc
 		include/realm.cc
 		platform/include/clock.cc
 		platform/include/foreground_runner.cc

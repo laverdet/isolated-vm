@@ -1,9 +1,9 @@
 module;
 #include <memory>
 export module isolated_v8.remote;
-import isolated_v8.lock;
 import isolated_v8.remote_handle;
 import ivm.utility;
+import v8_js;
 import v8;
 
 namespace isolated_v8 {
@@ -17,7 +17,7 @@ class remote : public remote_handle {
 		using unique_remote = std::unique_ptr<remote, util::function_type_of<expire>>;
 		using remote_handle::remote_handle;
 
-		auto deref(isolate_lock& lock) -> v8::Local<Type>;
+		auto deref(const js::iv8::isolate_lock& lock) -> v8::Local<Type>;
 
 		static auto make_shared(remote_handle_lock& lock, v8::Local<Type> handle) -> std::shared_ptr<remote>;
 		static auto make_unique(remote_handle_lock& lock, v8::Local<Type> handle) -> unique_remote;
@@ -46,7 +46,7 @@ auto make_shared_remote(remote_handle_lock& lock, v8::Local<Type> handle) -> sha
 // ---
 
 template <class Type>
-auto remote<Type>::deref(isolate_lock& lock) -> v8::Local<Type> {
+auto remote<Type>::deref(const js::iv8::isolate_lock& lock) -> v8::Local<Type> {
 	// `handle.As<Type>()` doesn't work because types like `UnboundScript` don't provide a `Cast`
 	// function.
 	return std::bit_cast<v8::Local<Type>>(this->remote_handle::deref(lock));

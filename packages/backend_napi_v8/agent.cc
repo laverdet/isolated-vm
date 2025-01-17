@@ -81,7 +81,7 @@ auto create_realm(environment& env, js::iv8::external_reference<agent>& agent) {
 		) mutable {
 			auto realm = isolated_v8::realm::make(agent);
 			auto runtime = isolated_v8::js_module::compile(agent, runtime_dist_runtime_js, source_origin{});
-			isolated_v8::realm::managed_scope realm_scope{agent, realm};
+			isolated_v8::realm::scope realm_scope{agent, realm};
 			runtime.link(realm_scope, [](auto&&...) -> isolated_v8::js_module& {
 				std::terminate();
 			});

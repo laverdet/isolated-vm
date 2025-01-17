@@ -1,9 +1,9 @@
 module;
 #include <utility>
 module isolated_v8.remote_handle;
-import isolated_v8.lock;
-import v8;
 import ivm.utility;
+import v8_js;
+import v8;
 
 namespace isolated_v8 {
 
@@ -11,11 +11,11 @@ remote_handle::remote_handle(v8::Global<v8::Data> handle, reset_handle_type rese
 		global_{std::move(handle)},
 		reset_{std::move(reset)} {}
 
-auto remote_handle::deref(const isolate_lock& lock) -> v8::Local<v8::Data> {
+auto remote_handle::deref(const js::iv8::isolate_lock& lock) -> v8::Local<v8::Data> {
 	return global_.Get(lock.isolate());
 }
 
-auto remote_handle::reset(const isolate_lock& /*lock*/) -> void {
+auto remote_handle::reset(const js::iv8::isolate_lock& /*lock*/) -> void {
 	global_.Reset();
 }
 

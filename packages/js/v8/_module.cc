@@ -6,6 +6,7 @@ export import v8_js.date;
 export import v8_js.external;
 export import v8_js.fixed_array;
 export import v8_js.handle;
+export import v8_js.lock;
 export import v8_js.number;
 export import v8_js.object;
 export import v8_js.string;

@@ -5,12 +5,13 @@ module;
 module isolated_v8.agent;
 import isolated_v8.foreground_runner;
 import isolated_v8.remote_handle;
+import v8_js;
 
 namespace isolated_v8 {
 
 // agent::lock
 agent::lock::lock(std::shared_ptr<agent::host> host) :
-		isolate_scope{host->isolate()},
+		isolate_managed_lock{host->isolate()},
 		host_{std::move(host)} {}
 
 auto agent::lock::accept_remote_handle(remote_handle& remote) noexcept -> void {
@@ -27,7 +28,7 @@ auto agent::lock::remote_expiration_task() const -> reset_handle_type {
 					remote = std::move(remote) ](
 					const std::stop_token& /*stop_token*/
 				) {
-					isolate_scope lock{host->isolate()};
+					js::iv8::isolate_managed_lock lock{host->isolate()};
 					remote->reset(lock);
 					host->remote_handle_list().erase(*remote);
 				}

@@ -3,9 +3,9 @@ module;
 #include <utility>
 module isolated_v8.agent;
 import isolated_v8.foreground_runner;
-import isolated_v8.lock;
 import isolated_v8.scheduler;
 import ivm.utility;
+import v8_js;
 
 namespace isolated_v8 {
 
@@ -29,7 +29,7 @@ agent::host::host(
 
 agent::host::~host() {
 	foreground_runner_->close();
-	isolate_scope lock{isolate_.get()};
+	js::iv8::isolate_managed_lock lock{isolate_.get()};
 	autorelease_pool_.clear();
 	remote_handle_list_.reset(lock);
 	foreground_runner_->finalize();

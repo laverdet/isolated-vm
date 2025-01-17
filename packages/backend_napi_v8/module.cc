@@ -75,7 +75,7 @@ auto evaluate_module(
 			isolated_v8::realm realm,
 			isolated_v8::js_module module_
 		) mutable {
-			isolated_v8::realm::managed_scope realm_scope{agent, realm};
+			isolated_v8::realm::scope realm_scope{agent, realm};
 			auto result = module_.evaluate(realm_scope);
 			dispatch(std::move(result));
 		},
@@ -112,7 +112,7 @@ auto link_module(
 			isolated_v8::realm realm,
 			isolated_v8::js_module module
 		) mutable {
-			isolated_v8::realm::managed_scope realm_scope{agent, realm};
+			isolated_v8::realm::scope realm_scope{agent, realm};
 			module.link(
 				realm_scope,
 				[ & ](
