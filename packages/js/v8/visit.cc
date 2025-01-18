@@ -9,6 +9,7 @@ import isolated_js;
 import ivm.utility;
 import v8_js.array;
 import v8_js.boolean;
+import v8_js.callback_info;
 import v8_js.date;
 import v8_js.external;
 import v8_js.handle;
@@ -86,6 +87,8 @@ struct visit<void, v8::Local<v8::Name>> {
 		visit(const iv8::isolate_lock& lock) :
 				lock_{&lock} {}
 
+		auto witness() const -> const iv8::isolate_lock& { return *lock_; }
+
 		auto operator()(v8::Local<v8::Name> value, const auto_accept auto& accept) const -> decltype(auto) {
 			if (value->IsString()) {
 				return (*this)(value.As<v8::String>(), accept);
@@ -144,6 +147,8 @@ struct visit<void, v8::Local<v8::Value>>
 				visit<void, v8::Local<v8::Name>>{lock},
 				lock_{&lock} {}
 
+		auto witness() const -> const iv8::context_lock& { return *lock_; }
+
 		auto operator()(v8::Local<v8::Value> value, const auto_accept auto& accept) const -> decltype(auto) {
 			if (value->IsObject()) {
 				auto visit_entry = std::pair<const visit&, const visit&>{*this, *this};
@@ -176,6 +181,17 @@ struct visit<void, v8::Local<v8::Value>>
 
 	private:
 		const iv8::context_lock* lock_;
+};
+
+// `arguments` visitor
+template <>
+struct visit<void, v8::FunctionCallbackInfo<v8::Value>> : visit<void, v8::Local<v8::Value>> {
+		using visit<void, v8::Local<v8::Value>>::visit;
+
+		auto operator()(v8::FunctionCallbackInfo<v8::Value> info, const auto_accept auto& accept) const -> decltype(auto) {
+			const visit<void, v8::Local<v8::Value>>& visit = *this;
+			return accept(arguments_tag{}, iv8::callback_info{info}, visit);
+		}
 };
 
 } // namespace js

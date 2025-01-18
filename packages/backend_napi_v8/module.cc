@@ -172,7 +172,7 @@ auto create_capability(
 		[ dispatch = std::move(dispatch), options = std::move(options) ](
 			isolated_v8::agent::lock& agent
 		) mutable {
-			auto fn = js::bound_function{[]() { printf("hello world\n"); }};
+			auto fn = js::bound_function{[](realm::scope& /*realm*/) { printf("hello world\n"); }};
 			auto exports = isolated_v8::function_template::make(agent, std::move(fn));
 			auto module_ = isolated_v8::js_module::create_synthetic(agent, exports, std::move(options.origin));
 			dispatch(std::move(module_));

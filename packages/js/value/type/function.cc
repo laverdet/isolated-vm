@@ -7,6 +7,9 @@ import ivm.utility;
 
 namespace js {
 
+// Holds `this` and arguments vector
+export struct arguments_tag : vector_tag {};
+
 // Function which is statically invocable
 export template <auto Function, class Signature = util::function_signature_t<decltype(Function)>>
 struct free_function;

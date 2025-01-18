@@ -41,7 +41,7 @@ export class js_module {
 		auto requests(agent::lock& agent) -> std::vector<module_request>;
 
 		static auto compile(agent::lock& agent, auto&& source_text, source_origin source_origin) -> js_module;
-		static auto create_synthetic(agent::lock& agent, function_template function, source_required_name source_origin) -> js_module;
+		static auto create_synthetic(agent::lock& agent, auto exports_default, source_required_name source_origin) -> js_module;
 
 	private:
 		static auto compile(agent::lock& agent, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module;
@@ -64,15 +64,17 @@ auto js_module::compile(agent::lock& agent, auto&& source_text, source_origin so
 	return compile(agent, local_source_text, std::move(source_origin));
 }
 
-auto js_module::create_synthetic(agent::lock& agent, function_template function, source_required_name source_origin) -> js_module {
-	auto* isolate = agent->isolate();
+auto js_module::create_synthetic(agent::lock& agent, auto exports_default, source_required_name source_origin) -> js_module {
 	synthetic_module_action_type action =
-		[ isolate, function ](
+		[ exports_default = std::move(exports_default) ](
 			v8::Local<v8::Context> context,
 			v8::Local<v8::Module> module
 		) mutable {
-			auto name = v8::String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>("default")).ToLocalChecked();
-			module->SetSyntheticModuleExport(isolate, name, function.make_function(context));
+			auto& agent = agent::lock::get_current();
+			realm::witness_scope realm{agent, context};
+			auto name = js::transfer_in_strict<v8::Local<v8::String>>("default", agent);
+			auto value = js::transfer_strict<v8::Local<v8::Value>>(std::move(exports_default), std::forward_as_tuple(realm), std::forward_as_tuple(realm));
+			module->SetSyntheticModuleExport(agent->isolate(), name, value);
 		};
 	return create_synthetic(agent, std::move(source_origin), std::move(action));
 }

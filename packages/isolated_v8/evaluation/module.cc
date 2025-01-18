@@ -31,7 +31,7 @@ auto js_module::requests(agent::lock& agent) -> std::vector<module_request> {
 		std::views::transform([ & ](v8::Local<v8::Data> value) -> module_request {
 			auto request = value.As<v8::ModuleRequest>();
 			auto specifier_handle = request->GetSpecifier().As<v8::String>();
-			auto specifier = js::transfer_out_strict<js::string_t>(specifier_handle, context_lock);
+			auto specifier = js::transfer_out_strict<js::string_t>(specifier_handle, agent);
 			auto attributes_view =
 				// [ key, value, location, ...[] ]
 				js::iv8::fixed_array{context_lock, request->GetImportAttributes()} |
@@ -68,7 +68,7 @@ auto js_module::create_synthetic(
 	v8::Module::SyntheticModuleEvaluationSteps evaluation_steps =
 		[](v8::Local<v8::Context> context, v8::Local<v8::Module> module) -> v8::MaybeLocal<v8::Value> {
 		auto* isolate = context->GetIsolate();
-		auto& agent = agent::host::get_current(context->GetIsolate());
+		auto& agent = agent::host::get_current(isolate);
 		auto action = agent.weak_module_actions().take(module);
 		action(context, module);
 		auto resolver = v8::Promise::Resolver::New(context).ToLocalChecked();

@@ -10,18 +10,22 @@ namespace isolated_v8 {
 // A `lock` is a simple holder for an `agent::host` which proves that we are executing in
 // the isolate context.
 class agent::lock final
-		: public util::pointer_facade<agent::lock>,
+		: util::non_moveable,
+			public util::pointer_facade<agent::lock>,
 			public js::iv8::isolate_managed_lock,
 			public remote_handle_lock {
 	public:
 		explicit lock(std::shared_ptr<agent::host> host);
+		~lock();
 
 		auto operator*(this auto& self) -> decltype(auto) { return *self.host_; }
 		auto accept_remote_handle(remote_handle& remote) noexcept -> void final;
 		[[nodiscard]] auto remote_expiration_task() const -> reset_handle_type final;
+		static auto get_current() -> lock&;
 
 	private:
 		std::shared_ptr<host> host_;
+		lock* previous_;
 };
 
 // This keeps the `weak_ptr` in `agent` alive. The `host` maintains a `weak_ptr` to this and can

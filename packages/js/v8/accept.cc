@@ -92,9 +92,12 @@ struct accept<void, v8::Local<v8::Value>> : accept<void, v8::Local<v8::Data>> {
 			return context_;
 		}
 
+		auto operator()(auto_tag auto /*tag*/, v8::Local<v8::Value> value) const -> v8::Local<v8::Value> {
+			return value;
+		}
+
 		auto operator()(auto_tag auto tag, auto&& value) const -> v8::Local<v8::Value>
-			requires std::invocable<accept<void, v8::Local<v8::Data>>, decltype(tag), decltype(value)>
-		{
+			requires std::invocable<accept<void, v8::Local<v8::Data>>, decltype(tag), decltype(value)> {
 			return accept<void, v8::Local<v8::Data>>::operator()(tag, std::forward<decltype(value)>(value));
 		}
 

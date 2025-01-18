@@ -1,3 +1,5 @@
+module;
+#include <optional>
 export module isolated_v8.realm;
 import isolated_v8.agent;
 import isolated_v8.remote_handle;
@@ -10,8 +12,8 @@ namespace isolated_v8 {
 
 export class realm {
 	public:
-		class managed_scope;
 		class scope;
+		class witness_scope;
 
 		realm() = delete;
 		realm(agent::lock& agent, v8::Local<v8::Context> context);
@@ -22,9 +24,16 @@ export class realm {
 		shared_remote<v8::Context> context_;
 };
 
-class realm::scope final
-		: public js::iv8::context_managed_lock,
+class realm::scope
+		: util::non_moveable,
+			public js::iv8::context_implicit_witness_lock,
 			public remote_handle_lock {
+	protected:
+		// enters the context
+		scope(agent::lock& agent, realm& realm, v8::Local<v8::Context> context);
+		// does not enter the context
+		scope(agent::lock& agent, v8::Local<v8::Context> context);
+
 	public:
 		scope() = delete;
 		scope(agent::lock& agent, realm& realm);
@@ -36,6 +45,12 @@ class realm::scope final
 
 	private:
 		agent::lock* agent_lock_;
+		std::optional<js::iv8::context_managed_lock> context_lock_;
+};
+
+class realm::witness_scope : public realm::scope {
+	public:
+		witness_scope(agent::lock& agent, v8::Local<v8::Context> context);
 };
 
 } // namespace isolated_v8
