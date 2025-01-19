@@ -186,7 +186,7 @@ struct accept<Meta, value_by_key<Key, Type, napi_value>> {
 
 	private:
 		const visit_root<Meta>* root;
-		visit<Meta, key_for<Key, napi_value>> visit_key;
+		visit_key_literal<Key, napi_value> visit_key;
 		accept_next<Meta, Type> accept_value;
 };
 

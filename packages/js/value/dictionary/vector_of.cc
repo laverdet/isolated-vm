@@ -7,27 +7,25 @@ import isolated_js.tag;
 
 namespace js {
 
+// `vector_of` is just a vector with an associated js tag
 export template <class Tag, class Value>
-class vector_of {
+class vector_of : public std::vector<Value> {
 	public:
-		using value_type = Value;
-		using container_type = std::vector<value_type>;
-		using const_iterator = container_type::const_iterator;
-		using iterator = container_type::iterator;
-
 		vector_of() = default;
 		consteval vector_of(std::initializer_list<Value> list) :
-				values{list.begin(), list.end()} {}
+				std::vector<Value>{list.begin(), list.end()} {}
+		consteval explicit vector_of(std::in_place_t /*in_place*/, auto&&... args) {
+			this->reserve(sizeof...(args));
+			(this->emplace_back(std::forward<decltype(args)>(args)), ...);
+		}
 		constexpr explicit vector_of(std::ranges::range auto&& range) :
-				values{std::ranges::begin(range), std::ranges::end(range)} {}
+				std::vector<Value>{std::ranges::begin(range), std::ranges::end(range)} {}
 
-		[[nodiscard]] constexpr auto begin(this auto&& self) { return self.values.begin(); }
-		[[nodiscard]] constexpr auto end(this auto&& self) { return self.values.end(); }
 		// For testing / assertions
-		[[nodiscard]] consteval auto operator==(const vector_of& right) const -> bool { return values == right.values; }
-
-	private:
-		container_type values;
+		[[nodiscard]] consteval auto operator==(const vector_of& right) const -> bool {
+			const std::vector<Value>& left = *this;
+			return left == right;
+		}
 };
 
 template <class Key, class Value>

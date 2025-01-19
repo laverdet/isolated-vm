@@ -1,5 +1,7 @@
 export module isolated_js.visit;
 import isolated_js.transfer.types;
+import isolated_js.tag;
+import ivm.utility;
 
 namespace js {
 
@@ -29,6 +31,15 @@ struct visit<void, void> {
 		visit() = default;
 		// Recursive visitor constructor
 		constexpr visit(int /*dummy*/, const auto& /*visit*/) {}
+};
+
+// Returns the key type expected by the accept target.
+export template <util::string_literal Key, class Subject>
+struct visit_key_literal : visit<void, void> {
+		constexpr auto get() const { return Key; }
+		constexpr auto operator()(const auto& /*nothing*/, const auto& accept) const -> decltype(auto) {
+			return accept(string_tag{}, Key);
+		}
 };
 
 } // namespace js

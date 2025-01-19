@@ -1,5 +1,4 @@
 module;
-#include <cstddef>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -8,15 +7,13 @@ import isolated_js.struct_.helpers;
 import isolated_js.struct_.types;
 import isolated_js.tag;
 import isolated_js.transfer;
+import ivm.utility;
 
 namespace js {
 
-template <class Getter>
-struct getter_for;
-
 // Visit a member of a struct via a getter delegate
 template <class Meta, class Getter>
-struct visit<Meta, getter_for<Getter>> : visit<Meta, void> {
+struct visit_getter : visit<Meta, void> {
 	public:
 		using visit<Meta, void>::visit;
 
@@ -29,39 +26,61 @@ struct visit<Meta, getter_for<Getter>> : visit<Meta, void> {
 		visit<Meta, typename Getter::type> visit_;
 };
 
-// Visitor function for C++ object types
-template <class Meta, class Type, class... Getters>
-struct visit<Meta, object_type<Type, std::tuple<Getters...>>> : visit<Meta, void> {
+// Visitor passed to acceptor for each member
+template <class Meta, class Getter>
+struct visit_object_member {
 	private:
-		template <class Getter>
-		using first_visit = visit<Meta, key_for<property_name_v<Getter>, accept_target_t<Meta>>>;
-		template <class Getter>
-		using second_visit = visit<Meta, getter_for<Getter>>;
+		using first_type = visit_key_literal<property_name_v<Getter>, accept_target_t<Meta>>;
+		using second_type = visit_getter<Meta, Getter>;
 
 	public:
-		using visit<Meta, void>::visit;
+		visit_object_member() = default;
+		constexpr visit_object_member(int dummy, const visit_root<Meta>& visit_) :
+				first{dummy, visit_},
+				second{dummy, visit_} {}
+
+		first_type first;
+		second_type second;
+};
+
+// Receives a C++ object and accepts a `struct_tag`, which is a tuple of visitors.
+template <class Meta, class Type, class Getters>
+struct visit_object_subject;
+
+template <class Meta, class Type, class... Getters>
+struct visit_object_subject<Meta, Type, std::tuple<Getters...>> {
+	public:
+		visit_object_subject() = default;
+		constexpr visit_object_subject(int dummy, const visit_root<Meta>& visit_) :
+				visit_{visit_object_member<Meta, Getters>{dummy, visit_}...} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return accept(struct_tag<sizeof...(Getters)>{}, std::forward<decltype(value)>(value), visit_);
 		}
 
 	private:
-		std::tuple<std::pair<first_visit<Getters>, second_visit<Getters>>...> visit_;
+		std::tuple<visit_object_member<Meta, Getters>...> visit_;
 };
 
-// Apply `getter_delegate` to each property, filtering properties which do not have a getter.
-template <class Meta, class Type, class... Properties>
-struct visit<Meta, mapped_object_type<Type, std::tuple<Properties...>>>
-		: visit<Meta, object_type<Type, remove_void_t<std::tuple<getter_delegate<Type, Properties>...>>>> {
-		using visit<Meta, object_type<Type, remove_void_t<std::tuple<getter_delegate<Type, Properties>...>>>>::visit;
-};
+// Helper to unpack `properties` tuple, apply getter delegate, filter void members, and repack for
+// `visit_object_subject`
+template <class Type, class Properties>
+struct expand_object_getters;
 
-// Unpack object properties from `object_properties` specialization
+template <class Type, class Properties>
+using expand_object_getters_t = expand_object_getters<Type, Properties>::type;
+
+template <class Type, class... Properties>
+struct expand_object_getters<Type, std::tuple<Properties...>>
+		: std::type_identity<filter_void_members<getter_delegate<Type, Properties>...>> {};
+
+// Visitor function for C++ object types
 template <class Meta, class Type>
 	requires std::destructible<object_properties<Type>>
 struct visit<Meta, Type>
-		: visit<Meta, mapped_object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>> {
-		using visit<Meta, mapped_object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>>::visit;
+		: visit_object_subject<Meta, Type, expand_object_getters_t<Type, std::decay_t<decltype(object_properties<Type>::properties)>>> {
+		using visit_object_subject<Meta, Type, expand_object_getters_t<Type, std::decay_t<decltype(object_properties<Type>::properties)>>>::
+			visit_object_subject;
 };
 
 } // namespace js

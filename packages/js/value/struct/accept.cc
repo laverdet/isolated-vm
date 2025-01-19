@@ -16,18 +16,21 @@ import ivm.utility;
 namespace js {
 
 // Acceptor function for C++ object types.
+template <class Meta, class Type, class Setters>
+struct accept_object_target;
+
 template <class Meta, class Type, class... Setters>
-struct accept<Meta, object_type<Type, std::tuple<Setters...>>> {
+struct accept_object_target<Meta, Type, std::tuple<Setters...>> {
 	private:
 		template <class Setter>
 		using setter_helper = value_by_key<property_name_v<Setter>, std::optional<typename Setter::type>, visit_subject_t<Meta>>;
 
 	public:
-		explicit constexpr accept(const visit_root<Meta>& visit) :
+		explicit constexpr accept_object_target(const visit_root<Meta>& visit) :
 				first{visit},
 				second{accept<Meta, setter_helper<Setters>>{visit}...} {}
-		constexpr accept(int /*dummy*/, const visit_root<Meta>& visit, const auto_accept auto& /*accept*/) :
-				accept{visit} {}
+		constexpr accept_object_target(int /*dummy*/, const visit_root<Meta>& visit, const auto_accept auto& /*accept*/) :
+				accept_object_target{visit} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> Type {
 			Type subject;
@@ -57,18 +60,25 @@ struct accept<Meta, object_type<Type, std::tuple<Setters...>>> {
 		std::tuple<accept<Meta, setter_helper<Setters>>...> second;
 };
 
-// Apply `setter_delegate` to each property, filtering properties which do not have a setter.
-template <class Meta, class Type, class... Properties>
-struct accept<Meta, mapped_object_type<Type, std::tuple<Properties...>>>
-		: accept<Meta, object_type<Type, remove_void_t<std::tuple<setter_delegate<Type, Properties>...>>>> {
-		using accept<Meta, object_type<Type, remove_void_t<std::tuple<setter_delegate<Type, Properties>...>>>>::accept;
-};
+// Helper to unpack `properties` tuple, apply setter delegate, filter void members, and repack for
+// `accept_object_target`
+template <class Type, class Properties>
+struct expand_object_setters;
 
-// Unpack object properties from `object_properties` specialization
+template <class Type, class Properties>
+using expand_object_setters_t = expand_object_setters<Type, Properties>::type;
+
+template <class Type, class... Properties>
+struct expand_object_setters<Type, std::tuple<Properties...>>
+		: std::type_identity<filter_void_members<setter_delegate<Type, Properties>...>> {};
+
+// Forward object property tuple from `object_properties` specialization
 template <class Meta, class Type>
 	requires std::destructible<object_properties<Type>>
-struct accept<Meta, Type> : accept<Meta, mapped_object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>> {
-		using accept<Meta, mapped_object_type<Type, std::decay_t<decltype(object_properties<Type>::properties)>>>::accept;
+struct accept<Meta, Type>
+		: accept_object_target<Meta, Type, expand_object_setters_t<Type, std::decay_t<decltype(object_properties<Type>::properties)>>> {
+		using accept_object_target<Meta, Type, expand_object_setters_t<Type, std::decay_t<decltype(object_properties<Type>::properties)>>>::
+			accept_object_target;
 };
 
 } // namespace js

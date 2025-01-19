@@ -24,10 +24,10 @@ struct accept;
 
 // Concept for any `accept`
 template <class Type>
-struct is_accept : std::bool_constant<false> {};
+struct is_accept : Type::is_accept {};
 
 template <class Meta, class Type>
-struct is_accept<accept<Meta, Type>> : std::bool_constant<true> {};
+struct is_accept<accept<Meta, Type>> : std::true_type {};
 
 template <class Type>
 constexpr bool is_accept_v = is_accept<Type>::value;

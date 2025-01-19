@@ -8,25 +8,26 @@ import ivm.utility;
 
 namespace js {
 
-// Helper for object accept & visit
-export template <class Type, class Properties>
-struct object_type;
-
-export template <class Type, class Properties>
-struct mapped_object_type;
-
 // Remove `void` type identities from tuple
-template <class Left, class>
-struct remove_void_helper : std::type_identity<Left> {};
+template <class Tuple, class... Types>
+struct filter_void_member_types;
 
-template <class Type, class... Left, class... Right>
-struct remove_void_helper<std::tuple<Left...>, std::tuple<Type, Right...>>
-		: remove_void_helper<
-				std::conditional_t<std::is_void_v<typename Type::type>, std::tuple<Left...>, std::tuple<Left..., Type>>,
-				std::tuple<Right...>> {};
+template <class... Filtered>
+struct filter_void_member_types<std::tuple<Filtered...>>
+		: std::type_identity<std::tuple<Filtered...>> {};
 
-export template <class Type>
-using remove_void_t = remove_void_helper<std::tuple<>, Type>::type;
+template <class... Filtered, class Left, class... Types>
+struct filter_void_member_types<std::tuple<Filtered...>, Left, Types...>
+		: filter_void_member_types<std::tuple<Filtered..., Left>, Types...> {};
+
+template <class... Filtered, class Left, class... Types>
+	requires std::is_void_v<typename Left::type>
+struct filter_void_member_types<std::tuple<Filtered...>, Left, Types...>
+		: filter_void_member_types<std::tuple<Filtered...>, Types...> {};
+
+// Turns packed types into a tuple, filtering those in which `type` is `void`
+export template <class... Types>
+using filter_void_members = filter_void_member_types<std::tuple<>, Types...>::type;
 
 // Property name & required flag
 template <util::string_literal Name, bool Required>

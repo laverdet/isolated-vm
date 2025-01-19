@@ -23,8 +23,8 @@ struct visit<Meta, std::span<Type>> : visit<Meta, Type> {
 		using visit<Meta, Type>::visit;
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
-			const visit<Meta, Type>& visit = *this;
-			return accept(vector_tag{}, std::forward<decltype(value)>(value), visit);
+			const visit<Meta, Type>& visitor = *this;
+			return accept(vector_tag{}, std::forward<decltype(value)>(value), visitor);
 		}
 };
 

@@ -11,20 +11,6 @@ import ivm.utility;
 
 namespace js {
 
-template <class Meta, class First, class Second>
-struct accept<Meta, std::pair<First, Second>> {
-	public:
-		explicit constexpr accept(const visit_root<Meta>& visit) :
-				first{visit},
-				second{visit} {}
-		constexpr accept(int dummy, const visit_root<Meta>& visit, const auto_accept auto& accept) :
-				first{dummy, visit, accept},
-				second{dummy, visit, accept} {}
-
-		accept<Meta, First> first;
-		accept<Meta, Second> second;
-};
-
 // Accepting a `std::tuple` unfolds from a visited vector
 template <class Meta, class... Types>
 struct accept<Meta, std::tuple<Types...>> {

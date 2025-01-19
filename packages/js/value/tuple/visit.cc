@@ -8,18 +8,6 @@ import isolated_js.transfer;
 
 namespace js {
 
-template <class Meta, class First, class Second>
-struct visit<Meta, std::pair<First, Second>> {
-	public:
-		visit() = default;
-		constexpr visit(int dummy, const visit_root<Meta>& visit_) :
-				first{dummy, visit_},
-				second{dummy, visit_} {}
-
-		visit<Meta, First> first;
-		visit<Meta, Second> second;
-};
-
 template <class Meta, class... Types>
 struct visit<Meta, std::tuple<Types...>> {
 	public:

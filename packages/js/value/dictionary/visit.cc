@@ -1,5 +1,5 @@
 module;
-#include <ranges>
+#include <algorithm>
 #include <string>
 #include <utility>
 #include <variant>
@@ -12,23 +12,23 @@ import ivm.utility;
 
 namespace js {
 
-// Non-recursive visitor
+// Non-recursive member visitor
 template <class Meta, class Type>
-struct visit<Meta, entry_subject<Type>> : visit<Meta, Type> {
-		visit() = default;
-		constexpr visit(int /*dummy*/, const visit_root<Meta>& /*visit*/) {}
+struct visit_entry_value : visit<Meta, Type> {
+		visit_entry_value() = default;
+		constexpr visit_entry_value(int /*dummy*/, const visit_root<Meta>& /*visit*/) {}
 };
 
-// Recursive visitor
+// Recursive member
 template <class Meta, class Type>
 	requires is_recursive_v<Type>
-struct visit<Meta, entry_subject<Type>> {
+struct visit_entry_value<Meta, Type> {
 	public:
-		visit() = delete;
-		constexpr visit(int /*dummy*/, const visit_root<Meta>& visit) :
+		visit_entry_value() = delete;
+		constexpr visit_entry_value(int /*dummy*/, const visit_root<Meta>& visit) :
 				visit_{&visit} {}
 
-		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			return (*visit_)(std::forward<decltype(value)>(value), accept);
 		}
 
@@ -36,33 +36,38 @@ struct visit<Meta, entry_subject<Type>> {
 		const visit_root<Meta>* visit_;
 };
 
-// Implementation for `vector_of` visitor
-template <class Meta, class Tag, class Entry, class Subject>
-struct visit<Meta, vector_of_subject<Tag, Entry, Subject>> {
-	public:
-		visit() = default;
-		constexpr visit(int dummy, const visit_root<Meta>& visit) :
-				visit_{dummy, visit} {}
-
-		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
-			return accept(Tag{}, std::forward<decltype(value)>(value), visit_);
-		}
-
-	private:
-		visit<Meta, Subject> visit_;
+// Default visitor for non-pair values
+template <class Meta, class Type>
+struct visit_vector_value : visit_entry_value<Meta, Type> {
+		using visit_entry_value<Meta, Type>::visit_entry_value;
 };
 
-// Entrypoint for `vector_of` visitor
-template <class Meta, class Tag, class Entry>
-struct visit<Meta, vector_of<Tag, Entry>>
-		: visit<Meta, vector_of_subject<Tag, Entry, entry_subject_for_t<Entry>>> {
-		using visit<Meta, vector_of_subject<Tag, Entry, entry_subject_for_t<Entry>>>::visit;
+// Special case for pairs
+template <class Meta, class Key, class Value>
+struct visit_vector_value<Meta, std::pair<Key, Value>> {
+		visit_vector_value() = default;
+		constexpr visit_vector_value(int dummy, const visit_root<Meta>& visit_) :
+				second{dummy, visit_} {}
+
+		visit<Meta, Key> first;
+		visit_entry_value<Meta, Value> second;
+};
+
+// Entrypoint for `vector_of` visitor. Probably `Entry` is a `std::pair` though maybe it's not
+// required.
+template <class Meta, class Tag, class Value>
+struct visit<Meta, vector_of<Tag, Value>> : visit_vector_value<Meta, Value> {
+		using visit_vector_value<Meta, Value>::visit_vector_value;
+		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
+			const visit_vector_value<Meta, Value>& visitor = *this;
+			return accept(Tag{}, std::forward<decltype(value)>(value), visitor);
+		}
 };
 
 // Object key lookup for primitive dictionary variants. This should generally only be used for
 // testing, since the subject is basically a C++ heap JSON payload.
-template <class Meta, util::string_literal Key, class Type>
-struct accept<Meta, value_by_key<Key, Type, void>> {
+template <class Meta, util::string_literal Key, class Type, class Subject>
+struct accept<Meta, value_by_key<Key, Type, Subject>> {
 	public:
 		explicit constexpr accept(const visit_root<Meta>& visit) :
 				first{visit},
@@ -72,10 +77,10 @@ struct accept<Meta, value_by_key<Key, Type, void>> {
 			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) {
 				return visit.first(entry.first, first) == Key;
 			});
-			if (it != dictionary.end()) {
-				return visit.second(it->second, second);
-			} else {
+			if (it == dictionary.end()) {
 				return second(undefined_in_tag{}, std::monostate{});
+			} else {
+				return visit.second(it->second, second);
 			}
 		}
 

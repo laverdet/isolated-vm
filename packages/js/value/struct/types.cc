@@ -1,10 +1,3 @@
-module;
-#include <functional>
-#include <ranges>
-#include <string>
-#include <type_traits>
-#include <utility>
-#include <variant>
 export module isolated_js.struct_.types;
 import ivm.utility;
 

@@ -1,5 +1,5 @@
-#include <algorithm>
 #include <array>
+#include <cstdint>
 #include <initializer_list>
 #include <optional>
 #include <string>
@@ -9,7 +9,7 @@
 #include <variant>
 import isolated_js;
 using namespace std::literals;
-#if __clang_major__ >= 20
+#if __clang_major__ >= 19
 
 namespace js {
 
@@ -100,14 +100,14 @@ constexpr auto object_values_test = transfer<object_literal>(dictionary{{
 static_assert(object_values_test.integer == 1);
 static_assert(object_values_test.number == 2.0);
 static_assert(object_values_test.string == "hello");
-// static_assert(
-// 	transfer<dictionary<dictionary_tag, std::string, object_test_variant>>(object_values_test) ==
-// 	dictionary{{
-// 		std::pair{"integer"s, object_test_variant{1}},
-// 		std::pair{"number"s, object_test_variant{2.0}},
-// 		std::pair{"string"s, object_test_variant{"hello"}},
-// 	}}
-// );
+static_assert(
+	transfer<dictionary<dictionary_tag, std::string, object_test_variant>>(object_values_test) ==
+	dictionary{{
+		std::pair{"integer"s, object_test_variant{1}},
+		std::pair{"number"s, object_test_variant{2.0}},
+		std::pair{"string"s, object_test_variant{"hello"}},
+	}}
+);
 
 // Ensure custom acceptors work
 struct specialized {
@@ -167,21 +167,18 @@ struct union_of<union_object> {
 		};
 };
 
-// Causes:
-// error: cannot take address of immediate call operator of '(lambda at /workspace/packages/value/visit/union.cc:72:33)' outside of an immediate invocation
+constexpr auto discriminated_with_one = transfer<union_object>(dictionary{{
+	std::pair{"type"s, "one"s},
+	std::pair{"one"s, "left"s},
+}});
 
-// constexpr auto discriminated_with_one = transfer<union_object>(dictionary{{
-// 	std::pair{"type"s, "one"s},
-// 	std::pair{"one"s, "left"s},
-// }});
+constexpr auto discriminated_with_two = transfer<union_object>(dictionary{{
+	std::pair{"type"s, "two"s},
+	std::pair{"two"s, "right"s},
+}});
 
-// constexpr auto discriminated_with_two = transfer<union_object>(dictionary{{
-// 	std::pair{"type"s, "two"s},
-// 	std::pair{"two"s, "right"s},
-// }});
-
-// static_assert(variant_is_equal_to(discriminated_with_one, union_alternative_one{.one = "left"s}));
-// static_assert(variant_is_equal_to(discriminated_with_two, union_alternative_two{.two = "right"s}));
+static_assert(variant_is_equal_to(discriminated_with_one, union_alternative_one{.one = "left"s}));
+static_assert(variant_is_equal_to(discriminated_with_two, union_alternative_two{.two = "right"s}));
 
 } // namespace js
 

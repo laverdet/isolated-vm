@@ -89,7 +89,7 @@ struct visit<void, napi_value>
 
 // Object key maker via napi
 template <util::string_literal Key>
-struct visit<void, key_for<Key, napi_value>> {
+struct visit_key_literal<Key, napi_value> {
 	public:
 		auto operator()(const auto& context, const auto& accept) const -> decltype(auto) {
 			if (local_key == napi_value{}) {

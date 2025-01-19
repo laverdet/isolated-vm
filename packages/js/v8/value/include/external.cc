@@ -57,8 +57,8 @@ struct accept<void, iv8::external_reference<Type>*> : accept<void, iv8::external
 		using accept<void, iv8::external_reference<Type>&>::accept;
 
 		auto operator()(external_tag tag, auto&& value) const -> iv8::external_reference<Type>* {
-			const accept<void, iv8::external_reference<Type>&>& accept = *this;
-			return &accept(tag, std::forward<decltype(value)>(value));
+			const accept<void, iv8::external_reference<Type>&>& acceptor = *this;
+			return &acceptor(tag, std::forward<decltype(value)>(value));
 		}
 
 		auto operator()(undefined_tag /*tag*/, const auto& /*value*/) const -> iv8::external_reference<Type>* {

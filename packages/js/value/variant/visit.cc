@@ -25,8 +25,8 @@ struct visit<Meta, std::variant<Types...>> {
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return util::visit_with_index(
 				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/, auto&& value) constexpr {
-					const auto& visit = std::get<Index>(visitors);
-					return visit(std::forward<decltype(value)>(value), accept);
+					const auto& visitor = std::get<Index>(visitors);
+					return visitor(std::forward<decltype(value)>(value), accept);
 				},
 				std::forward<decltype(value)>(value)
 			);
@@ -37,16 +37,19 @@ struct visit<Meta, std::variant<Types...>> {
 };
 
 // Visiting a `boost::variant` visits the underlying members
+template <class Meta, class Variant>
+struct visit_recursive_variant;
+
 template <class Meta, class Variant, class... Types>
-struct visit<Meta, variant_of<Variant, Types...>> : visit<Meta, substitute_recursive<Variant, Types>>... {
-		constexpr visit(int dummy, const visit_root<Meta>& visit_) :
+struct visit_recursive_variant<Meta, variant_of<Variant, Types...>> : visit<Meta, substitute_recursive<Variant, Types>>... {
+		constexpr visit_recursive_variant(int dummy, const visit_root<Meta>& visit_) :
 				visit<Meta, substitute_recursive<Variant, Types>>{dummy, visit_}... {}
 
 		auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return boost::apply_visitor(
 				[ & ]<class Value>(Value&& value) {
-					const visit<Meta, std::decay_t<Value>>& visit = *this;
-					return visit(std::forward<decltype(value)>(value), accept);
+					const visit<Meta, std::decay_t<Value>>& visitor = *this;
+					return visitor(std::forward<decltype(value)>(value), accept);
 				},
 				std::forward<decltype(value)>(value)
 			);
@@ -56,9 +59,9 @@ struct visit<Meta, variant_of<Variant, Types...>> : visit<Meta, substitute_recur
 // `visit` entry for `boost::make_recursive_variant`
 template <class Meta, class First, class... Rest>
 struct visit<Meta, recursive_variant<First, Rest...>>
-		: visit<Meta, variant_of<recursive_variant<First, Rest...>, First, Rest...>> {
+		: visit_recursive_variant<Meta, variant_of<recursive_variant<First, Rest...>, First, Rest...>> {
 		constexpr visit() :
-				visit<Meta, variant_of<recursive_variant<First, Rest...>, First, Rest...>>{0, *this} {}
+				visit_recursive_variant<Meta, variant_of<recursive_variant<First, Rest...>, First, Rest...>>{0, *this} {}
 };
 
 } // namespace js
