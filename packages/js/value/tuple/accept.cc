@@ -15,10 +15,8 @@ namespace js {
 template <class Meta, class... Types>
 struct accept<Meta, std::tuple<Types...>> {
 	public:
-		explicit constexpr accept(const visit_root<Meta>& visit) :
-				acceptors_{accept_next<Meta, Types>{visit}...} {}
-		constexpr accept(int /*dummy*/, const visit_root<Meta>& visit, const auto_accept auto& /*accept*/) :
-				accept{visit} {}
+		explicit constexpr accept(auto accept_heritage) :
+				acceptors_{accept_next<Meta, Types>{accept_heritage}...} {}
 
 		constexpr auto operator()(vector_tag /*tag*/, auto&& value, const auto& visit) const -> std::tuple<Types...> {
 			auto range = util::into_range(std::forward<decltype(value)>(value));

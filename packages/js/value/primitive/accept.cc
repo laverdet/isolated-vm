@@ -12,10 +12,9 @@ import ivm.utility;
 namespace js {
 
 // Default acceptor just forwards the given value directly to the underlying type's constructor
-template <class Meta, class Type>
+template <class Type>
 	requires std::negation_v<std::is_same<tag_for_t<Type>, void>>
-struct accept<Meta, Type> : accept<Meta, void> {
-		using accept<Meta, void>::accept;
+struct accept<void, Type> {
 		constexpr auto operator()(con_tag_for_t<Type> /*tag*/, auto&& value) const {
 			if constexpr (util::is_convertible_without_narrowing_v<decltype(value), Type>) {
 				return Type{std::forward<decltype(value)>(value)};
@@ -27,8 +26,7 @@ struct accept<Meta, Type> : accept<Meta, void> {
 
 // `undefined` -> `std::monostate`
 template <>
-struct accept<void, std::monostate> : accept<void, void> {
-		using accept<void, void>::accept;
+struct accept<void, std::monostate> {
 		constexpr auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const {
 			return std::monostate{};
 		}
@@ -36,8 +34,7 @@ struct accept<void, std::monostate> : accept<void, void> {
 
 // `null` -> `std::nullptr_t`
 template <>
-struct accept<void, std::nullptr_t> : accept<void, void> {
-		using accept<void, void>::accept;
+struct accept<void, std::nullptr_t> {
 		constexpr auto operator()(null_tag /*tag*/, const auto& /*null*/) const {
 			return nullptr;
 		}

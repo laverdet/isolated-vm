@@ -18,9 +18,7 @@ template <auto Function, class Result, class... Args>
 struct free_function<Function, Result(Args...)> {};
 
 template <auto Function, class Signature>
-struct visit<void, free_function<Function, Signature>> : visit<void, void> {
-		using visit<void, void>::visit;
-
+struct visit<void, free_function<Function, Signature>> {
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			return accept(function_tag{}, std::forward<decltype(value)>(value));
 		}
@@ -48,9 +46,7 @@ template <class Invocable>
 bound_function(Invocable) -> bound_function<Invocable, util::function_signature_t<Invocable>>;
 
 template <class Invocable, class Signature>
-struct visit<void, bound_function<Invocable, Signature>> : visit<void, void> {
-		using visit<void, void>::visit;
-
+struct visit<void, bound_function<Invocable, Signature>> {
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			return accept(function_tag{}, std::forward<decltype(value)>(value));
 		}

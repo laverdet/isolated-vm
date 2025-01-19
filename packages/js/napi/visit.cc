@@ -88,9 +88,13 @@ struct visit<void, napi_value>
 };
 
 // Object key maker via napi
-template <util::string_literal Key>
-struct visit_key_literal<Key, napi_value> {
+template <class Meta, util::string_literal Key>
+struct visit_key_literal<Meta, Key, napi_value> {
 	public:
+		visit_key_literal() = default;
+		explicit visit_key_literal(auto visit_heritage) :
+				root{&visit_heritage.visit} {}
+
 		auto operator()(const auto& context, const auto& accept) const -> decltype(auto) {
 			if (local_key == napi_value{}) {
 				local_key = js::napi::value<string_tag>::make(context.env(), Key.data());
@@ -99,6 +103,7 @@ struct visit_key_literal<Key, napi_value> {
 		}
 
 	private:
+		const visit_root<Meta>* root;
 		mutable napi_value local_key{};
 };
 

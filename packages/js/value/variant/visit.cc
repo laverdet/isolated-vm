@@ -19,8 +19,8 @@ template <class Meta, class... Types>
 	requires is_variant_v<Types...>
 struct visit<Meta, std::variant<Types...>> {
 	public:
-		constexpr visit() :
-				visitors{visit<Meta, Types>{0, *this}...} {}
+		constexpr explicit visit(auto visit_heritage) :
+				visitors{visit<Meta, Types>{visit_heritage(this)}...} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return util::visit_with_index(
@@ -42,8 +42,8 @@ struct visit_recursive_variant;
 
 template <class Meta, class Variant, class... Types>
 struct visit_recursive_variant<Meta, variant_of<Variant, Types...>> : visit<Meta, substitute_recursive<Variant, Types>>... {
-		constexpr visit_recursive_variant(int dummy, const visit_root<Meta>& visit_) :
-				visit<Meta, substitute_recursive<Variant, Types>>{dummy, visit_}... {}
+		constexpr explicit visit_recursive_variant(auto visit_heritage) :
+				visit<Meta, substitute_recursive<Variant, Types>>{visit_heritage}... {}
 
 		auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return boost::apply_visitor(
@@ -58,10 +58,13 @@ struct visit_recursive_variant<Meta, variant_of<Variant, Types...>> : visit<Meta
 
 // `visit` entry for `boost::make_recursive_variant`
 template <class Meta, class First, class... Rest>
-struct visit<Meta, recursive_variant<First, Rest...>>
-		: visit_recursive_variant<Meta, variant_of<recursive_variant<First, Rest...>, First, Rest...>> {
-		constexpr visit() :
-				visit_recursive_variant<Meta, variant_of<recursive_variant<First, Rest...>, First, Rest...>>{0, *this} {}
+using visit_recursive_variant_type =
+	visit_recursive_variant<Meta, variant_of<recursive_variant<First, Rest...>, First, Rest...>>;
+
+template <class Meta, class First, class... Rest>
+struct visit<Meta, recursive_variant<First, Rest...>> : visit_recursive_variant_type<Meta, First, Rest...> {
+		constexpr explicit visit(auto visit_heritage) :
+				visit_recursive_variant_type<Meta, First, Rest...>{visit_heritage(this)} {}
 };
 
 } // namespace js

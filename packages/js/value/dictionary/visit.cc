@@ -15,8 +15,7 @@ namespace js {
 // Non-recursive member visitor
 template <class Meta, class Type>
 struct visit_entry_value : visit<Meta, Type> {
-		visit_entry_value() = default;
-		constexpr visit_entry_value(int /*dummy*/, const visit_root<Meta>& /*visit*/) {}
+		using visit<Meta, Type>::visit;
 };
 
 // Recursive member
@@ -24,9 +23,8 @@ template <class Meta, class Type>
 	requires is_recursive_v<Type>
 struct visit_entry_value<Meta, Type> {
 	public:
-		visit_entry_value() = delete;
-		constexpr visit_entry_value(int /*dummy*/, const visit_root<Meta>& visit) :
-				visit_{&visit} {}
+		constexpr explicit visit_entry_value(auto visit_heritage) :
+				visit_{&visit_heritage.visit} {}
 
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			return (*visit_)(std::forward<decltype(value)>(value), accept);
@@ -45,9 +43,9 @@ struct visit_vector_value : visit_entry_value<Meta, Type> {
 // Special case for pairs
 template <class Meta, class Key, class Value>
 struct visit_vector_value<Meta, std::pair<Key, Value>> {
-		visit_vector_value() = default;
-		constexpr visit_vector_value(int dummy, const visit_root<Meta>& visit_) :
-				second{dummy, visit_} {}
+		constexpr explicit visit_vector_value(auto visit_heritage) :
+				first{visit_heritage},
+				second{visit_heritage} {}
 
 		visit<Meta, Key> first;
 		visit_entry_value<Meta, Value> second;
@@ -57,7 +55,9 @@ struct visit_vector_value<Meta, std::pair<Key, Value>> {
 // required.
 template <class Meta, class Tag, class Value>
 struct visit<Meta, vector_of<Tag, Value>> : visit_vector_value<Meta, Value> {
-		using visit_vector_value<Meta, Value>::visit_vector_value;
+		constexpr explicit visit(auto visit_heritage) :
+				visit_vector_value<Meta, Value>{visit_heritage(this)} {}
+
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			const visit_vector_value<Meta, Value>& visitor = *this;
 			return accept(Tag{}, std::forward<decltype(value)>(value), visitor);
@@ -69,9 +69,9 @@ struct visit<Meta, vector_of<Tag, Value>> : visit_vector_value<Meta, Value> {
 template <class Meta, util::string_literal Key, class Type, class Subject>
 struct accept<Meta, value_by_key<Key, Type, Subject>> {
 	public:
-		explicit constexpr accept(const visit_root<Meta>& visit) :
-				first{visit},
-				second{visit} {}
+		explicit constexpr accept(auto visit_heritage) :
+				first{visit_heritage},
+				second{visit_heritage} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, const auto& dictionary, const auto& visit) const {
 			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) {

@@ -1,5 +1,6 @@
 module;
 #include <cstddef>
+#include <functional>
 #include <tuple>
 #include <utility>
 export module isolated_js.tuple.visit;
@@ -11,9 +12,8 @@ namespace js {
 template <class Meta, class... Types>
 struct visit<Meta, std::tuple<Types...>> {
 	public:
-		visit() = default;
-		constexpr visit(int dummy, const visit_root<Meta>& visit_) :
-				visit_{visit<Meta, Types>{dummy, visit_}...} {}
+		constexpr explicit visit(auto visit_heritage) :
+				visit_{visit<Meta, Types>{visit_heritage(this)}...} {}
 
 		template <size_t Index>
 		constexpr auto operator()(std::integral_constant<size_t, Index> /*index*/, auto&& value, const auto& accept) const -> decltype(auto) {

@@ -13,9 +13,7 @@ namespace js {
 // Matches an enumerated string to an underlying enum value.
 template <class Enum>
 	requires std::is_enum_v<Enum>
-struct accept<void, Enum> : accept<void, void> {
-		using accept<void, void>::accept;
-
+struct accept<void, Enum> {
 		constexpr auto operator()(string_tag_of<char> /*tag*/, auto&& value) const -> Enum {
 			auto values = accept::enum_map();
 			auto result = values.get(std::string{std::forward<decltype(value)>(value)});

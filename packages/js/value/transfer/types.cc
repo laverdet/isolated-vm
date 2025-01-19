@@ -46,4 +46,19 @@ template <class Wrap, class Subject, class Target>
 struct visit_subject<transferee_meta<Wrap, Subject, Target>>
 		: std::type_identity<transferee_subject_t<Subject>> {};
 
+// Marker for any `accept` type
+export template <class Type>
+struct is_accept : std::false_type {};
+
+template <class Type>
+	requires Type::is_accept::value
+struct is_accept<Type> : Type::is_accept {};
+
+export template <class Type>
+constexpr bool is_accept_v = is_accept<Type>::value;
+
+export struct accept_like {
+		using is_accept = std::true_type;
+};
+
 } // namespace js

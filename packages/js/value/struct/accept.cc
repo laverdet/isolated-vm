@@ -26,11 +26,9 @@ struct accept_object_target<Meta, Type, std::tuple<Setters...>> {
 		using setter_helper = value_by_key<property_name_v<Setter>, std::optional<typename Setter::type>, visit_subject_t<Meta>>;
 
 	public:
-		explicit constexpr accept_object_target(const visit_root<Meta>& visit) :
-				first{visit},
-				second{accept<Meta, setter_helper<Setters>>{visit}...} {}
-		constexpr accept_object_target(int /*dummy*/, const visit_root<Meta>& visit, const auto_accept auto& /*accept*/) :
-				accept_object_target{visit} {}
+		explicit constexpr accept_object_target(auto accept_heritage) :
+				first{accept_heritage},
+				second{accept<Meta, setter_helper<Setters>>{accept_heritage}...} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> Type {
 			Type subject;
@@ -74,11 +72,14 @@ struct expand_object_setters<Type, std::tuple<Properties...>>
 
 // Forward object property tuple from `object_properties` specialization
 template <class Meta, class Type>
+using accept_object_target_type =
+	accept_object_target<Meta, Type, expand_object_setters_t<Type, std::decay_t<decltype(object_properties<Type>::properties)>>>;
+
+template <class Meta, class Type>
 	requires std::destructible<object_properties<Type>>
 struct accept<Meta, Type>
-		: accept_object_target<Meta, Type, expand_object_setters_t<Type, std::decay_t<decltype(object_properties<Type>::properties)>>> {
-		using accept_object_target<Meta, Type, expand_object_setters_t<Type, std::decay_t<decltype(object_properties<Type>::properties)>>>::
-			accept_object_target;
+		: accept_object_target_type<Meta, Type> {
+		using accept_object_target_type<Meta, Type>::accept_object_target_type;
 };
 
 } // namespace js

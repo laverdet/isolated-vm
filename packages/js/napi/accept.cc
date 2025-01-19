@@ -170,9 +170,9 @@ template <class Meta, util::string_literal Key, class Type>
 struct accept<Meta, value_by_key<Key, Type, napi_value>> {
 	public:
 		accept() = delete;
-		explicit constexpr accept(const visit_root<Meta>& visit) :
-				root{&visit},
-				accept_value{visit} {}
+		explicit constexpr accept(auto accept_heritage) :
+				root{&accept_heritage.visit},
+				accept_value{accept_heritage} {}
 
 		auto operator()(dictionary_tag /*tag*/, const auto& object, const auto& visit) const {
 			accept<void, accept_immediate<string_tag>> accept_string;
@@ -186,15 +186,13 @@ struct accept<Meta, value_by_key<Key, Type, napi_value>> {
 
 	private:
 		const visit_root<Meta>* root;
-		visit_key_literal<Key, napi_value> visit_key;
+		visit_key_literal<Meta, Key, napi_value> visit_key;
 		accept_next<Meta, Type> accept_value;
 };
 
 // Tagged value acceptor
 template <class Tag>
-struct accept<void, js::napi::value<Tag>> : accept<void, void> {
-		using accept<void, void>::accept;
-
+struct accept<void, js::napi::value<Tag>> {
 		auto operator()(undefined_tag /*tag*/, std::monostate /*undefined*/) const -> js::napi::value<Tag> {
 			return js::napi::value<Tag>::from(nullptr);
 		}

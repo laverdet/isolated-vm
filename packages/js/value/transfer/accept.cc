@@ -23,39 +23,49 @@ export template <class Meta, class Type>
 struct accept;
 
 // Concept for any `accept`
-template <class Type>
-struct is_accept : Type::is_accept {};
-
 template <class Meta, class Type>
 struct is_accept<accept<Meta, Type>> : std::true_type {};
 
-template <class Type>
-constexpr bool is_accept_v = is_accept<Type>::value;
-
 export template <class Type>
 concept auto_accept = is_accept_v<Type>;
+
+// Automatic creation context which sends the previous visitor down to children. Unlike
+// `visitor_heritage`, the call operator should only need to be invoked when passing to a recursive
+// acceptor.
+export template <class Meta>
+struct acceptor_heritage {
+		template <class Accept>
+		struct child {
+				constexpr explicit child(const visit_root<Meta>& visit, const Accept& accept) :
+						visit{visit},
+						accept{accept} {}
+				template <class Next>
+				constexpr auto operator()(const Next* accept) const { return child<Next>{visit, *accept}; }
+				// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
+				const visit_root<Meta>& visit;
+				// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
+				const Accept& accept;
+		};
+
+		constexpr explicit acceptor_heritage(const visit_root<Meta>& visit) :
+				visit{visit} {}
+		constexpr auto operator()(const auto* accept) const { return child{visit, *accept}; }
+		// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
+		const visit_root<Meta>& visit;
+};
 
 // Default `accept` swallows `Meta`
 template <class Meta, class Type>
 struct accept : accept<void, Type> {
 		using accept<void, Type>::accept;
-		// Swallow `visit` argument on behalf of non-meta acceptors
-		explicit constexpr accept(const visit_root<Meta>& /*visit*/, auto&&... args) :
+		// Swallow `heritage` argument on behalf of non-meta acceptors
+		explicit constexpr accept(auto /*heritage*/, auto&&... args) :
 				accept<void, Type>{std::forward<decltype(args)>(args)...} {}
 };
 
 // Prevent instantiation of non-specialized void-Meta `accept` (better error messages)
 template <class Type>
 struct accept<void, Type>;
-
-// Base specialization for stateless acceptors. This just gets you the `auto_accept` constructor
-// used by recursive acceptors.
-template <>
-struct accept<void, void> {
-		accept() = default;
-		// Recursive acceptor constructor
-		constexpr accept(int /*dummy*/, const auto& /*visit*/, const auto_accept auto& /*accept*/) {}
-};
 
 // `accept` with transfer wrapping
 export template <class Meta, class Type>

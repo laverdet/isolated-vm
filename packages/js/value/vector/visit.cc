@@ -20,7 +20,8 @@ struct transferee_subject<std::vector<Type>> : std::type_identity<Type> {};
 
 template <class Meta, class Type>
 struct visit<Meta, std::span<Type>> : visit<Meta, Type> {
-		using visit<Meta, Type>::visit;
+		constexpr explicit visit(auto visit_heritage, auto&&... args) :
+				visit<Meta, Type>{visit_heritage(this), std::forward<decltype(args)>(args)...} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			const visit<Meta, Type>& visitor = *this;
@@ -30,7 +31,8 @@ struct visit<Meta, std::span<Type>> : visit<Meta, Type> {
 
 template <class Meta, class Type, size_t Size>
 struct visit<Meta, std::array<Type, Size>> : visit<Meta, std::span<Type>> {
-		using visit<Meta, std::span<Type>>::visit;
+		constexpr explicit visit(auto visit_heritage, auto&&... args) :
+				visit<Meta, std::span<Type>>{visit_heritage(this), std::forward<decltype(args)>(args)...} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return visit<Meta, std::span<Type>>::operator()(std::span{std::forward<decltype(value)>(value)}, accept);
@@ -39,7 +41,8 @@ struct visit<Meta, std::array<Type, Size>> : visit<Meta, std::span<Type>> {
 
 template <class Meta, class Type>
 struct visit<Meta, std::vector<Type>> : visit<Meta, std::span<Type>> {
-		using visit<Meta, std::span<Type>>::visit;
+		constexpr explicit visit(auto visit_heritage, auto&&... args) :
+				visit<Meta, std::span<Type>>{visit_heritage(this), std::forward<decltype(args)>(args)...} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return visit<Meta, std::span<Type>>::operator()(std::span{std::forward<decltype(value)>(value)}, accept);
