@@ -24,6 +24,7 @@ target_sources(ivm_value
 		transfer/types.cc
 		transfer/visit.cc
 		tuple/accept.cc
+		tuple/helpers.cc
 		tuple/visit.cc
 		type/date.cc
 		type/function.cc
@@ -33,6 +34,7 @@ target_sources(ivm_value
 		variant/accept.cc
 		variant/types.cc
 		variant/visit.cc
+		vector/accept.cc
 		vector/visit.cc
 )
 target_link_libraries(ivm_value PRIVATE

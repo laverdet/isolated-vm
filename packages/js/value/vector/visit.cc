@@ -5,7 +5,6 @@ module;
 export module isolated_js.vector.visit;
 import isolated_js.tag;
 import isolated_js.transfer;
-import ivm.utility;
 
 namespace js {
 

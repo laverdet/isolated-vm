@@ -1,7 +1,9 @@
 module;
 #include <future>
+#include <iostream>
 #include <optional>
 #include <stop_token>
+#include <string>
 #include <tuple>
 #include <utility>
 #include <variant>
@@ -172,7 +174,11 @@ auto create_capability(
 		[ dispatch = std::move(dispatch), options = std::move(options) ](
 			isolated_v8::agent::lock& agent
 		) mutable {
-			auto fn = js::bound_function{[](realm::scope& /*realm*/) { printf("hello world\n"); }};
+			auto fn = js::bound_function{[](realm::scope& /*realm*/, js::rest /*rest*/, std::vector<std::string> params) {
+				for (const auto& param : params) {
+					std::cout << param << "\n";
+				}
+			}};
 			auto exports = isolated_v8::function_template::make(agent, std::move(fn));
 			auto module_ = isolated_v8::js_module::create_synthetic(agent, exports, std::move(options.origin));
 			dispatch(std::move(module_));
