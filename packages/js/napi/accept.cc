@@ -158,10 +158,9 @@ struct accept<Meta, napi_value> : accept<Meta, napi_env> {
 
 // Object key lookup via napi
 template <class Meta, util::string_literal Key, class Type>
-struct accept<Meta, value_by_key<Key, Type, napi_value>> {
+struct accept_property_value<Meta, Key, Type, napi_value> {
 	public:
-		accept() = delete;
-		explicit constexpr accept(auto_heritage auto accept_heritage) :
+		explicit constexpr accept_property_value(auto_heritage auto accept_heritage) :
 				visit_key_{key_literal_, accept_heritage.visit},
 				accept_value_{accept_heritage} {}
 

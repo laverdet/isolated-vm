@@ -1,6 +1,6 @@
 module;
 #include <algorithm>
-#include <string>
+#include <string_view>
 #include <utility>
 #include <variant>
 export module isolated_js.dictionary.visit;
@@ -66,10 +66,10 @@ struct visit<Meta, vector_of<Tag, Value>> : visit_vector_value<Meta, Value> {
 
 // Object key lookup for primitive dictionary variants. This should generally only be used for
 // testing, since the subject is basically a C++ heap JSON payload.
-template <class Meta, util::string_literal Key, class Type, class Subject>
-struct accept<Meta, value_by_key<Key, Type, Subject>> {
+template <class Meta, util::string_literal Key, class Type, class Tag, class KeyType, class Value>
+struct accept_property_value<Meta, Key, Type, vector_of<Tag, std::pair<KeyType, Value>>> {
 	public:
-		explicit constexpr accept(auto_heritage auto accept_heritage) :
+		explicit constexpr accept_property_value(auto_heritage auto accept_heritage) :
 				first{accept_heritage},
 				second{accept_heritage} {}
 
@@ -85,7 +85,7 @@ struct accept<Meta, value_by_key<Key, Type, Subject>> {
 		}
 
 	private:
-		accept_next<Meta, std::string> first;
+		accept_next<Meta, std::string_view> first;
 		accept_next<Meta, Type> second;
 };
 

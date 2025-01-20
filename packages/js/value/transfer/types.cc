@@ -1,7 +1,6 @@
 module;
 #include <type_traits>
 export module isolated_js.transfer.types;
-import ivm.utility;
 
 namespace js {
 
@@ -17,10 +16,6 @@ struct transferee_subject : std::type_identity<Type> {};
 
 template <class Type>
 using transferee_subject_t = transferee_subject<Type>::type;
-
-// Returns the value corresponding to a key with an accepted object subject.
-export template <util::string_literal Key, class Type, class Subject>
-struct value_by_key;
 
 // Extract `Target` from `Meta` (which is the `Type` passed to the root `accept` instance) and map
 // to transferee subject

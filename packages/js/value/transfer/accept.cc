@@ -4,6 +4,7 @@ module;
 export module isolated_js.accept;
 import isolated_js.transfer.types;
 import isolated_js.visit;
+import ivm.utility;
 
 namespace js {
 
@@ -72,5 +73,9 @@ struct accept<void, Type>;
 // `accept` with transfer wrapping
 export template <class Meta, class Type>
 using accept_next = select_wrap_t<Meta>::template accept<Meta, Type>;
+
+// Returns the value corresponding to a key with an accepted object subject.
+export template <class Meta, util::string_literal Key, class Type, class Subject>
+struct accept_property_value;
 
 } // namespace js
