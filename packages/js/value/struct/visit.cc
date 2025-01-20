@@ -1,4 +1,5 @@
 module;
+#include <functional>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -29,17 +30,33 @@ struct visit_getter : visit<Meta, typename Getter::type> {
 // Visitor passed to acceptor for each member
 template <class Meta, class Getter>
 struct visit_object_member {
-	private:
-		using first_type = visit_key_literal<Meta, property_name_v<Getter>, accept_target_t<Meta>>;
+	public:
+		using first_type = visit_key_literal<property_name_v<Getter>, accept_target_t<Meta>>;
 		using second_type = visit_getter<Meta, Getter>;
 
-	public:
 		constexpr explicit visit_object_member(auto_heritage auto visit_heritage) :
-				first{visit_heritage},
 				second{visit_heritage} {}
 
 		first_type first;
 		second_type second;
+};
+
+// This takes the place of a simple `std::pair`. Building a tuple of pairs was causing the peculiar
+// error: "substitution into constraint expression resulted in a non-constant expression" with a
+// useless trace. Breaking it out into this simpler class fixes the issue.
+// Maybe related to this: https://github.com/llvm/llvm-project/issues/93327
+template <class Meta, class Getter>
+struct resolved_visit_object_member {
+		using first_type = visit_key_literal<property_name_v<Getter>, accept_target_t<Meta>>;
+		using second_type = visit_getter<Meta, Getter>;
+
+		constexpr resolved_visit_object_member(const visit_object_member<Meta, Getter>& member, const auto& accept_or_visit) :
+				first{member.first, accept_or_visit},
+				second{member.second} {}
+
+		first_type::visit first;
+		// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
+		const second_type& second;
 };
 
 // Receives a C++ object and accepts a `struct_tag`, which is a tuple of visitors.
@@ -50,16 +67,34 @@ template <class Meta, class Type, class... Getters>
 struct visit_object_subject<Meta, Type, std::tuple<Getters...>> {
 	public:
 		constexpr explicit visit_object_subject(auto_heritage auto visit_heritage) :
-				visit_{util::make_tuple_in_place(
+				object_members_{util::make_tuple_in_place(
 					[ & ] constexpr { return visit_object_member<Meta, Getters>{visit_heritage}; }...
 				)} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
-			return accept(struct_tag<sizeof...(Getters)>{}, std::forward<decltype(value)>(value), visit_);
+			// For `struct_tag` we need to make a tuple of visitor pairs. The first element is a
+			// `visit_key_literal::visit` instance passed by value. It's initialized with the underlying
+			// `visit_key_literal` instance and also the `accept` instance, which hopefully
+			// `visit_key_literal::visit` will know what to do with. The second element is simply a
+			// reference to the existing visitor in `visit_object_member`.
+			auto make_visit = [ & ]() {
+				return std::invoke(
+					[ & ]<std::size_t... Indices>(const auto& invoke, std::index_sequence<Indices...> /*indices*/) constexpr {
+						return std::tuple{invoke(std::integral_constant<size_t, Indices>{})...};
+					},
+					[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
+						using getter_type = util::select_t<Index, Getters...>;
+						const auto& member = std::get<Index>(object_members_);
+						return resolved_visit_object_member<Meta, getter_type>{member, accept};
+					},
+					std::make_index_sequence<sizeof...(Getters)>{}
+				);
+			};
+			return accept(struct_tag<sizeof...(Getters)>{}, std::forward<decltype(value)>(value), make_visit());
 		}
 
 	private:
-		std::tuple<visit_object_member<Meta, Getters>...> visit_;
+		std::tuple<visit_object_member<Meta, Getters>...> object_members_;
 };
 
 // Helper to unpack `properties` tuple, apply getter delegate, filter void members, and repack for

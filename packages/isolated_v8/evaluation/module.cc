@@ -1,4 +1,5 @@
 module;
+#include <cstdint>
 #include <ranges>
 #include <utility>
 #include <vector>

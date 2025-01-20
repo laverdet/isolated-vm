@@ -47,15 +47,18 @@ struct visit : visit<void, Type> {
 template <class Type>
 struct visit<void, Type>;
 
-// Returns the key type expected by the accept target.
-export template <class Meta, util::string_literal Key, class Subject>
+// Returns the key type expected by the accept target. The outer class may maintain any needed state
+// which is then passed into the inner `visit` class. The inner class receives either a `visit`
+// instance or an `accept` instance, since this class is used on both sides.
+export template <util::string_literal Key, class Subject>
 struct visit_key_literal {
-		visit_key_literal() = default;
-		constexpr explicit visit_key_literal(auto_heritage auto /*heritage*/) {}
-		constexpr auto get() const { return Key; }
-		constexpr auto operator()(const auto& /*nothing*/, const auto& accept) const -> decltype(auto) {
-			return accept(string_tag{}, Key);
-		}
+		struct visit {
+				constexpr visit(const visit_key_literal& /*key_literal*/, const auto& /*accept_or_visit*/) {}
+				[[nodiscard]] constexpr auto get() const { return Key; }
+				constexpr auto operator()(const auto& /*could_be_literally_anything*/, const auto& accept) const -> decltype(auto) {
+					return accept(string_tag{}, Key);
+				}
+		};
 };
 
 } // namespace js

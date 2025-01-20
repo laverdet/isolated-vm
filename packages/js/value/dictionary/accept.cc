@@ -30,7 +30,7 @@ struct accept_entry_value<Meta, Type> : accept_like {
 		constexpr explicit accept_entry_value(auto_heritage auto accept_heritage) :
 				accept_{&accept_heritage.accept} {}
 
-		constexpr auto operator()(auto_tag auto tag, auto&&... args) const -> decltype(auto)
+		constexpr auto operator()(auto_tag auto tag, auto&&... args) const -> Type
 			requires std::invocable<accept_type, decltype(tag), decltype(args)...> {
 			return (*accept_)(tag, std::forward<decltype(args)>(args)...);
 		}
@@ -43,6 +43,10 @@ struct accept_entry_value<Meta, Type> : accept_like {
 template <class Meta, class Type>
 struct accept_vector_value : accept_entry_value<Meta, Type> {
 		using accept_entry_value<Meta, Type>::accept_entry_value;
+
+		constexpr auto make_struct_subject(auto&& entry) {
+			return std::forward<decltype(entry)>(entry);
+		}
 };
 
 // Special case for pairs
@@ -51,6 +55,19 @@ struct accept_vector_value<Meta, std::pair<Key, Value>> {
 		explicit constexpr accept_vector_value(auto_heritage auto accept_heritage) :
 				first{accept_heritage},
 				second{accept_heritage} {}
+
+		constexpr auto operator()(auto&& entry, const auto& visit) const -> std::pair<Key, Value> {
+			return std::pair{
+				visit.first(std::forward<decltype(entry)>(entry).first, first),
+				visit.second(std::forward<decltype(entry)>(entry).second, second),
+			};
+		}
+
+		constexpr auto make_struct_subject(auto&& entry) const -> std::pair<std::nullptr_t, decltype(entry)> {
+			// nb: `nullptr` is used here because this is a "bound" `visit_key_literal::visit` visitor
+			// which simply returns a static string and does not need a value to visit.
+			return {nullptr, std::forward<decltype(entry)>(entry)};
+		}
 
 		accept_next<Meta, Key> first;
 		accept_entry_value<Meta, Value> second;
@@ -63,15 +80,11 @@ struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
 				accept_vector_value<Meta, Entry>{accept_heritage} {}
 
 		constexpr auto operator()(Tag /*tag*/, auto&& dictionary, const auto& visit) const -> vector_of<Tag, Entry> {
-			const accept_vector_value<Meta, Entry>& acceptor = *this;
+			const accept_vector_value<Meta, Entry>& accept_value = *this;
 			return vector_of<Tag, Entry>{
 				util::into_range(std::forward<decltype(dictionary)>(dictionary)) |
-				std::views::transform([ & ](auto entry) {
-					auto&& [ key, value ] = entry;
-					return std::pair{
-						visit.first(std::forward<decltype(key)>(key), acceptor.first),
-						visit.second(std::forward<decltype(value)>(value), acceptor.second)
-					};
+				std::views::transform([ & ](auto&& entry) -> Entry {
+					return accept_value(std::forward<decltype(entry)>(entry), visit);
 				})
 			};
 		}
@@ -79,20 +92,17 @@ struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
 		template <std::size_t Size>
 			requires std::is_same_v<dictionary_tag, Tag>
 		constexpr auto operator()(struct_tag<Size> /*tag*/, auto&& dictionary, const auto& visit) const -> vector_of<Tag, Entry> {
-			const accept_vector_value<Meta, Entry>& acceptor = *this;
+			const accept_vector_value<Meta, Entry>& accept_value = *this;
+			// nb: The value category of `dictionary` is forwarded to *each* visitor. Move operations
+			// should keep this in mind and only move one member at time.
+			auto&& subject = accept_value.make_struct_subject(std::forward<decltype(dictionary)>(dictionary));
 			return std::invoke(
 				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
 					return vector_of<Tag, Entry>{std::in_place, invoke(std::integral_constant<size_t, Index>{})...};
 				},
 				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
 					const auto& visit_n = std::get<Index>(visit);
-					accept<void, accept_immediate<string_tag>> accept_string;
-					return std::pair{
-						visit_n.first(acceptor.first, accept_string),
-						// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
-						// reference members one at a time.
-						visit_n.second(std::forward<decltype(dictionary)>(dictionary), acceptor.second),
-					};
+					return accept_value(std::forward<decltype(subject)>(subject), visit_n);
 				},
 				std::make_index_sequence<Size>{}
 			);

@@ -69,9 +69,9 @@ struct visit<Meta, vector_of<Tag, Value>> : visit_vector_value<Meta, Value> {
 template <class Meta, util::string_literal Key, class Type, class Subject>
 struct accept<Meta, value_by_key<Key, Type, Subject>> {
 	public:
-		explicit constexpr accept(auto_heritage auto visit_heritage) :
-				first{visit_heritage},
-				second{visit_heritage} {}
+		explicit constexpr accept(auto_heritage auto accept_heritage) :
+				first{accept_heritage},
+				second{accept_heritage} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, const auto& dictionary, const auto& visit) const {
 			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) {

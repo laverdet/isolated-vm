@@ -117,12 +117,11 @@ struct accept<Meta, napi_value> : accept<Meta, napi_env> {
 				},
 				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> /*index*/) {
 					const auto& visit_n = std::get<Index>(visit);
-					accept<void, accept_immediate<string_tag>> accept_string;
 					js::napi::invoke0(
 						napi_set_property,
 						this->env(),
 						object,
-						visit_n.first(*this, accept_string),
+						visit_n.first.get(),
 						// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
 						// reference members one at a time.
 						visit_n.second(std::forward<decltype(dictionary)>(dictionary), *this)
@@ -163,23 +162,22 @@ struct accept<Meta, value_by_key<Key, Type, napi_value>> {
 	public:
 		accept() = delete;
 		explicit constexpr accept(auto_heritage auto accept_heritage) :
-				root{&accept_heritage.visit},
-				accept_value{accept_heritage} {}
+				visit_key_{key_literal_, accept_heritage.visit},
+				accept_value_{accept_heritage} {}
 
 		auto operator()(dictionary_tag /*tag*/, const auto& object, const auto& visit) const {
-			accept<void, accept_immediate<string_tag>> accept_string;
-			auto local = visit_key(*root, accept_string);
-			if (object.has(local)) {
-				return visit.second(object.get(local), accept_value);
+			if (auto local = visit_key_.get(); object.has(local)) {
+				return visit.second(object.get(local), accept_value_);
 			} else {
-				return accept_value(undefined_in_tag{}, std::monostate{});
+				return accept_value_(undefined_in_tag{}, std::monostate{});
 			}
 		}
 
 	private:
-		const visit_root<Meta>* root;
-		visit_key_literal<Meta, Key, napi_value> visit_key;
-		accept_next<Meta, Type> accept_value;
+		using key_literal_type = visit_key_literal<Key, napi_value>;
+		key_literal_type key_literal_;
+		key_literal_type::visit visit_key_;
+		accept_next<Meta, Type> accept_value_;
 };
 
 // Tagged value acceptor

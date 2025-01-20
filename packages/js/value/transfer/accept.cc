@@ -73,15 +73,4 @@ struct accept<void, Type>;
 export template <class Meta, class Type>
 using accept_next = select_wrap_t<Meta>::template accept<Meta, Type>;
 
-// Used by a visitor to return the immediate accepted value matching a tag.
-export template <class Tag>
-struct accept_immediate;
-
-template <class Tag>
-struct accept<void, accept_immediate<Tag>> {
-		constexpr auto operator()(Tag /*tag*/, auto&& value) const -> decltype(auto) {
-			return std::forward<decltype(value)>(value);
-		}
-};
-
 } // namespace js

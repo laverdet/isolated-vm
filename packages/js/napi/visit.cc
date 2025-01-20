@@ -76,23 +76,34 @@ struct visit<void, napi_value>
 };
 
 // Object key maker via napi
-template <class Meta, util::string_literal Key>
-struct visit_key_literal<Meta, Key, napi_value> : util::non_moveable {
+template <util::string_literal Key>
+struct visit_key_literal<Key, napi_value> : util::non_moveable {
 	public:
-		visit_key_literal() = default;
-		explicit visit_key_literal(auto_heritage auto visit_heritage) :
-				root{&visit_heritage.visit} {}
+		struct visit {
+			public:
+				visit(const visit_key_literal& key_literal, const napi_witness_lock& lock) :
+						local_key_{&key_literal.local_key_},
+						lock_{&lock} {}
 
-		auto operator()(const napi_witness_lock& lock, const auto& accept) const -> decltype(auto) {
-			if (local_key == napi_value{}) {
-				local_key = js::napi::value<string_tag>::make(lock.env(), Key.data());
-			}
-			return accept(string_tag{}, local_key);
-		}
+				[[nodiscard]] auto get() const -> napi_value {
+					if (*local_key_ == napi_value{}) {
+						*local_key_ = js::napi::value<string_tag>::make(lock_->env(), Key.data());
+					}
+					return *local_key_;
+				}
+
+				auto operator()(const auto& /*could_be_literally_anything*/, const auto& accept) const -> decltype(auto) {
+					return accept(string_tag{}, get());
+				}
+
+			private:
+				napi_value* local_key_;
+				const napi_witness_lock* lock_;
+		};
+		friend visit;
 
 	private:
-		const visit_root<Meta>* root;
-		mutable napi_value local_key{};
+		mutable napi_value local_key_{};
 };
 
 } // namespace js

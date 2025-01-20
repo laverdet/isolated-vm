@@ -40,7 +40,7 @@ project(isolated_vm LANGUAGES C CXX)
 find_package(Boost 1.83 REQUIRED)
 
 # C++26 environment w/ `import std`
-set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Global compiler flags
