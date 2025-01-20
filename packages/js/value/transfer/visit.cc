@@ -21,7 +21,9 @@ using visit_root = visit<Meta, visit_subject_t<Meta>>;
 // instance should invoke the heritage call operator with itself when passing down to children.
 export template <class Meta>
 struct visitor_heritage {
+		using is_heritage = std::true_type;
 		struct child {
+				using is_heritage = std::true_type;
 				constexpr explicit child(const visit_root<Meta>& visit) :
 						visit{visit} {}
 				constexpr auto operator()(const auto* /*visit*/) const { return *this; }
@@ -49,7 +51,7 @@ struct visit<void, Type>;
 export template <class Meta, util::string_literal Key, class Subject>
 struct visit_key_literal {
 		visit_key_literal() = default;
-		constexpr explicit visit_key_literal(auto /*heritage*/) {}
+		constexpr explicit visit_key_literal(auto_heritage auto /*heritage*/) {}
 		constexpr auto get() const { return Key; }
 		constexpr auto operator()(const auto& /*nothing*/, const auto& accept) const -> decltype(auto) {
 			return accept(string_tag{}, Key);

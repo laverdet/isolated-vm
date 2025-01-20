@@ -34,7 +34,7 @@ struct visit_object_member {
 		using second_type = visit_getter<Meta, Getter>;
 
 	public:
-		constexpr explicit visit_object_member(auto visit_heritage) :
+		constexpr explicit visit_object_member(auto_heritage auto visit_heritage) :
 				first{visit_heritage},
 				second{visit_heritage} {}
 
@@ -49,8 +49,10 @@ struct visit_object_subject;
 template <class Meta, class Type, class... Getters>
 struct visit_object_subject<Meta, Type, std::tuple<Getters...>> {
 	public:
-		constexpr explicit visit_object_subject(auto visit_heritage) :
-				visit_{visit_object_member<Meta, Getters>{visit_heritage}...} {}
+		constexpr explicit visit_object_subject(auto_heritage auto visit_heritage) :
+				visit_{util::make_tuple_in_place(
+					[ & ] constexpr { return visit_object_member<Meta, Getters>{visit_heritage}; }...
+				)} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return accept(struct_tag<sizeof...(Getters)>{}, std::forward<decltype(value)>(value), visit_);
@@ -80,7 +82,7 @@ using visit_subject_type =
 template <class Meta, class Type>
 	requires std::destructible<object_properties<Type>>
 struct visit<Meta, Type> : visit_subject_type<Meta, Type> {
-		constexpr explicit visit(auto visit_heritage) :
+		constexpr explicit visit(auto_heritage auto visit_heritage) :
 				visit_subject_type<Meta, Type>{visit_heritage(this)} {}
 };
 

@@ -31,7 +31,7 @@ template <class Meta, class Type>
 	requires std::destructible<Type>
 struct accept<Meta, accept_with_throw::accept_throw<Type>>
 		: accept<Meta, Type> {
-		explicit constexpr accept(auto accept_heritage) :
+		explicit constexpr accept(auto_heritage auto accept_heritage) :
 				accept<Meta, Type>{accept_heritage(this)} {}
 
 		using accept<Meta, Type>::operator();
@@ -56,7 +56,7 @@ constexpr auto transfer_with(
 		std::forward<decltype(visit_args)>(visit_args)
 	));
 	auto acceptor = std::make_from_tuple<accept_type>(std::tuple_cat(
-		std::forward_as_tuple(acceptor_heritage<meta_holder>{visitor}),
+		std::tuple{acceptor_heritage<meta_holder>{visitor}},
 		std::forward<decltype(accept_args)>(accept_args)
 	));
 	return visitor(std::forward<decltype(value)>(value), acceptor);

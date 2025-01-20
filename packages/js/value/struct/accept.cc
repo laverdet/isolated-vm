@@ -26,9 +26,11 @@ struct accept_object_target<Meta, Type, std::tuple<Setters...>> {
 		using setter_helper = value_by_key<property_name_v<Setter>, std::optional<typename Setter::type>, visit_subject_t<Meta>>;
 
 	public:
-		explicit constexpr accept_object_target(auto accept_heritage) :
+		explicit constexpr accept_object_target(auto_heritage auto accept_heritage) :
 				first{accept_heritage},
-				second{accept<Meta, setter_helper<Setters>>{accept_heritage}...} {}
+				second{util::make_tuple_in_place(
+					[ & ] constexpr { return accept<Meta, setter_helper<Setters>>{accept_heritage}; }...
+				)} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> Type {
 			Type subject;

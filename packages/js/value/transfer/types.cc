@@ -61,4 +61,10 @@ export struct accept_like {
 		using is_accept = std::true_type;
 };
 
+// Requirement for any "heritage" type used in `visit` & `accept`.
+export template <class Type>
+concept auto_heritage = requires {
+	typename Type::is_heritage;
+};
+
 } // namespace js

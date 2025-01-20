@@ -34,8 +34,10 @@ concept auto_accept = is_accept_v<Type>;
 // acceptor.
 export template <class Meta>
 struct acceptor_heritage {
+		using is_heritage = std::true_type;
 		template <class Accept>
 		struct child {
+				using is_heritage = std::true_type;
 				constexpr explicit child(const visit_root<Meta>& visit, const Accept& accept) :
 						visit{visit},
 						accept{accept} {}
@@ -59,7 +61,7 @@ template <class Meta, class Type>
 struct accept : accept<void, Type> {
 		using accept<void, Type>::accept;
 		// Swallow `heritage` argument on behalf of non-meta acceptors
-		explicit constexpr accept(auto /*heritage*/, auto&&... args) :
+		explicit constexpr accept(auto_heritage auto /*heritage*/, auto&&... args) :
 				accept<void, Type>{std::forward<decltype(args)>(args)...} {}
 };
 

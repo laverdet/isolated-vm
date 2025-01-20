@@ -19,8 +19,10 @@ template <class Meta, class... Types>
 	requires is_variant_v<Types...>
 struct visit<Meta, std::variant<Types...>> {
 	public:
-		constexpr explicit visit(auto visit_heritage) :
-				visitors{visit<Meta, Types>{visit_heritage(this)}...} {}
+		constexpr explicit visit(auto_heritage auto visit_heritage) :
+				visitors{util::make_tuple_in_place(
+					[ & ] constexpr { return visit<Meta, Types>{visit_heritage(this)}; }...
+				)} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return util::visit_with_index(
@@ -42,7 +44,7 @@ struct visit_recursive_variant;
 
 template <class Meta, class Variant, class... Types>
 struct visit_recursive_variant<Meta, variant_of<Variant, Types...>> : visit<Meta, substitute_recursive<Variant, Types>>... {
-		constexpr explicit visit_recursive_variant(auto visit_heritage) :
+		constexpr explicit visit_recursive_variant(auto_heritage auto visit_heritage) :
 				visit<Meta, substitute_recursive<Variant, Types>>{visit_heritage}... {}
 
 		auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
@@ -63,7 +65,7 @@ using visit_recursive_variant_type =
 
 template <class Meta, class First, class... Rest>
 struct visit<Meta, recursive_variant<First, Rest...>> : visit_recursive_variant_type<Meta, First, Rest...> {
-		constexpr explicit visit(auto visit_heritage) :
+		constexpr explicit visit(auto_heritage auto visit_heritage) :
 				visit_recursive_variant_type<Meta, First, Rest...>{visit_heritage(this)} {}
 };
 

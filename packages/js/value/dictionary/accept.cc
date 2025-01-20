@@ -16,7 +16,7 @@ namespace js {
 // a reference to an existing one.
 template <class Meta, class Type>
 struct accept_entry_value : accept_like, accept_next<Meta, Type> {
-		constexpr explicit accept_entry_value(auto accept_heritage) :
+		constexpr explicit accept_entry_value(auto_heritage auto accept_heritage) :
 				accept_next<Meta, Type>{accept_heritage} {}
 };
 
@@ -27,7 +27,7 @@ struct accept_entry_value<Meta, Type> : accept_like {
 		using accept_type = accept_next<Meta, Type>;
 
 	public:
-		constexpr explicit accept_entry_value(auto accept_heritage) :
+		constexpr explicit accept_entry_value(auto_heritage auto accept_heritage) :
 				accept_{&accept_heritage.accept} {}
 
 		constexpr auto operator()(auto_tag auto tag, auto&&... args) const -> decltype(auto)
@@ -48,7 +48,7 @@ struct accept_vector_value : accept_entry_value<Meta, Type> {
 // Special case for pairs
 template <class Meta, class Key, class Value>
 struct accept_vector_value<Meta, std::pair<Key, Value>> {
-		explicit constexpr accept_vector_value(auto accept_heritage) :
+		explicit constexpr accept_vector_value(auto_heritage auto accept_heritage) :
 				first{accept_heritage},
 				second{accept_heritage} {}
 
@@ -59,7 +59,7 @@ struct accept_vector_value<Meta, std::pair<Key, Value>> {
 // Dictionary's acceptor manages the recursive acceptor for the entry key/value types
 template <class Meta, class Tag, class Entry>
 struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
-		explicit constexpr accept(auto accept_heritage) :
+		explicit constexpr accept(auto_heritage auto accept_heritage) :
 				accept_vector_value<Meta, Entry>{accept_heritage} {}
 
 		constexpr auto operator()(Tag /*tag*/, auto&& dictionary, const auto& visit) const -> vector_of<Tag, Entry> {

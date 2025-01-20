@@ -89,10 +89,10 @@ struct visit<void, napi_value>
 
 // Object key maker via napi
 template <class Meta, util::string_literal Key>
-struct visit_key_literal<Meta, Key, napi_value> {
+struct visit_key_literal<Meta, Key, napi_value> : util::non_moveable {
 	public:
 		visit_key_literal() = default;
-		explicit visit_key_literal(auto visit_heritage) :
+		explicit visit_key_literal(auto_heritage auto visit_heritage) :
 				root{&visit_heritage.visit} {}
 
 		auto operator()(const auto& context, const auto& accept) const -> decltype(auto) {

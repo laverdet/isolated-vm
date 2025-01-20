@@ -23,7 +23,7 @@ template <class Meta, class Type>
 	requires is_recursive_v<Type>
 struct visit_entry_value<Meta, Type> {
 	public:
-		constexpr explicit visit_entry_value(auto visit_heritage) :
+		constexpr explicit visit_entry_value(auto_heritage auto visit_heritage) :
 				visit_{&visit_heritage.visit} {}
 
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
@@ -43,7 +43,7 @@ struct visit_vector_value : visit_entry_value<Meta, Type> {
 // Special case for pairs
 template <class Meta, class Key, class Value>
 struct visit_vector_value<Meta, std::pair<Key, Value>> {
-		constexpr explicit visit_vector_value(auto visit_heritage) :
+		constexpr explicit visit_vector_value(auto_heritage auto visit_heritage) :
 				first{visit_heritage},
 				second{visit_heritage} {}
 
@@ -55,7 +55,7 @@ struct visit_vector_value<Meta, std::pair<Key, Value>> {
 // required.
 template <class Meta, class Tag, class Value>
 struct visit<Meta, vector_of<Tag, Value>> : visit_vector_value<Meta, Value> {
-		constexpr explicit visit(auto visit_heritage) :
+		constexpr explicit visit(auto_heritage auto visit_heritage) :
 				visit_vector_value<Meta, Value>{visit_heritage(this)} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
@@ -69,7 +69,7 @@ struct visit<Meta, vector_of<Tag, Value>> : visit_vector_value<Meta, Value> {
 template <class Meta, util::string_literal Key, class Type, class Subject>
 struct accept<Meta, value_by_key<Key, Type, Subject>> {
 	public:
-		explicit constexpr accept(auto visit_heritage) :
+		explicit constexpr accept(auto_heritage auto visit_heritage) :
 				first{visit_heritage},
 				second{visit_heritage} {}
 

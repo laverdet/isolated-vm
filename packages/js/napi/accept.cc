@@ -170,7 +170,7 @@ template <class Meta, util::string_literal Key, class Type>
 struct accept<Meta, value_by_key<Key, Type, napi_value>> {
 	public:
 		accept() = delete;
-		explicit constexpr accept(auto accept_heritage) :
+		explicit constexpr accept(auto_heritage auto accept_heritage) :
 				root{&accept_heritage.visit},
 				accept_value{accept_heritage} {}
 

@@ -10,6 +10,7 @@ target_sources(ivm_utility
 			memory/comparator.cc
 			memory/memory.cc
 			ranges.cc
+			tuple.cc
 			type_traits.cc
 			utility/facade.cc
 			utility/utility.cc
