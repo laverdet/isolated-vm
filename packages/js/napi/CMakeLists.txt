@@ -13,6 +13,7 @@ target_sources(ivm_value_napi
 		_module.cc
 		accept.cc
 		support/include/handle_scope.cc
+		support/include/lock.cc
 		support/include/reference.cc
 		support/include/scheduler.cc
 		utility.cc

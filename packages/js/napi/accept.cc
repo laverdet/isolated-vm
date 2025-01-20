@@ -5,6 +5,7 @@ module;
 export module napi_js.accept;
 import isolated_js;
 import ivm.utility;
+import napi_js.lock;
 import napi_js.utility;
 import napi_js.value;
 import nodejs;
@@ -14,49 +15,40 @@ namespace js {
 
 // Fake acceptor for primitive values
 template <>
-struct accept<void, napi_env> {
+struct accept<void, napi_env> : public napi_witness_lock {
 	public:
-		accept() = delete;
-		explicit accept(napi_env env) :
-				env_{env} {}
-
-		auto env() const -> napi_env {
-			return env_;
-		}
+		using napi_witness_lock::napi_witness_lock;
 
 		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const -> napi_value {
-			return js::napi::value<undefined_tag>::make(env_);
+			return js::napi::value<undefined_tag>::make(env());
 		}
 
 		auto operator()(null_tag /*tag*/, const auto& /*null*/) const -> napi_value {
-			return js::napi::value<null_tag>::make(env_);
+			return js::napi::value<null_tag>::make(env());
 		}
 
 		auto operator()(boolean_tag /*tag*/, auto&& value) const -> napi_value {
-			return js::napi::invoke(napi_get_boolean, env_, std::forward<decltype(value)>(value));
+			return js::napi::invoke(napi_get_boolean, env(), std::forward<decltype(value)>(value));
 		}
 
 		template <class Numeric>
 		auto operator()(number_tag_of<Numeric> /*tag*/, auto&& value) const -> napi_value {
-			return js::napi::value<number_tag_of<Numeric>>::make(env_, std::forward<decltype(value)>(value));
+			return js::napi::value<number_tag_of<Numeric>>::make(env(), std::forward<decltype(value)>(value));
 		}
 
 		template <class Numeric>
 		auto operator()(bigint_tag_of<Numeric> /*tag*/, auto&& value) const -> napi_value {
-			return js::napi::value<bigint_tag_of<Numeric>>::make(env_, std::forward<decltype(value)>(value));
+			return js::napi::value<bigint_tag_of<Numeric>>::make(env(), std::forward<decltype(value)>(value));
 		}
 
 		template <class Char>
 		auto operator()(string_tag_of<Char> /*tag*/, auto&& value) const -> napi_value {
-			return js::napi::value<string_tag_of<Char>>::make(env_, std::forward<decltype(value)>(value));
+			return js::napi::value<string_tag_of<Char>>::make(env(), std::forward<decltype(value)>(value));
 		}
 
 		auto operator()(date_tag /*tag*/, js_clock::time_point value) const -> napi_value {
-			return js::napi::invoke(napi_create_date, env_, value.time_since_epoch().count());
+			return js::napi::invoke(napi_create_date, env(), value.time_since_epoch().count());
 		}
-
-	private:
-		napi_env env_;
 };
 
 // Generic acceptor for most values

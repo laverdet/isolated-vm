@@ -84,10 +84,8 @@ struct visit<void, v8::Local<v8::BigInt>> {
 template <>
 struct visit<void, v8::Local<v8::Name>> {
 	public:
-		visit(const iv8::isolate_lock& lock) :
+		explicit visit(const iv8::isolate_lock& lock) :
 				lock_{&lock} {}
-
-		auto witness() const -> const iv8::isolate_lock& { return *lock_; }
 
 		auto operator()(v8::Local<v8::Name> value, const auto_accept auto& accept) const -> decltype(auto) {
 			if (value->IsString()) {
@@ -143,7 +141,7 @@ struct visit<void, v8::Local<v8::Value>>
 		using visit<void, v8::Local<v8::BigInt>>::operator();
 		using visit<void, v8::Local<v8::Name>>::operator();
 
-		visit(const iv8::context_lock& lock) :
+		explicit visit(const iv8::context_lock& lock) :
 				visit<void, v8::Local<v8::Name>>{lock},
 				lock_{&lock} {}
 
