@@ -74,7 +74,7 @@ auto js_module::create_synthetic(agent::lock& agent, auto exports_default, sourc
 			realm::witness_scope realm{agent, context};
 			auto name = js::transfer_in_strict<v8::Local<v8::String>>("default", agent);
 			auto value = js::transfer_strict<v8::Local<v8::Value>>(std::move(exports_default), std::forward_as_tuple(realm), std::forward_as_tuple(realm));
-			module->SetSyntheticModuleExport(agent->isolate(), name, value);
+			module->SetSyntheticModuleExport(agent->isolate(), name, value).ToChecked();
 		};
 	return create_synthetic(agent, std::move(source_origin), std::move(action));
 }
@@ -100,7 +100,8 @@ auto js_module::link(realm::scope& realm, auto callback) -> void {
 		auto& thread_callback = *thread_callback_local;
 		auto specifier_string = js::transfer_out_strict<js::string_t>(specifier, realm);
 		auto referrer_name = std::invoke([ & ]() -> std::optional<js::string_t> {
-			const auto* referrer_name = realm.agent()->weak_module_specifiers().find(referrer);
+			auto& weak_module_specifiers = realm.agent()->weak_module_specifiers();
+			const auto* referrer_name = weak_module_specifiers.find(referrer);
 			if (referrer_name == nullptr) {
 				return std::nullopt;
 			} else {

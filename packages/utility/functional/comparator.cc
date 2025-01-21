@@ -5,12 +5,14 @@ export module ivm.utility.comparator;
 namespace util {
 
 export template <class Hash>
-struct hash_comparator {
-		using is_transparent = void;
+	requires requires { typename Hash::is_transparent; }
+struct hash_compare : private Hash {
+		using is_transparent = Hash::is_transparent;
 
-		template <class Left, class Right>
-		auto operator()(const Left& left, const Right& right) const -> bool {
-			return Hash{}(left) == Hash{}(right);
+		auto operator()(auto&& left, auto&& right) const -> bool
+			requires std::invocable<Hash, decltype(left)> && std::invocable<Hash, decltype(left)> {
+			return Hash::operator()(std::forward<decltype(left)>(left)) ==
+				Hash::operator()(std::forward<decltype(right)>(right));
 		}
 };
 

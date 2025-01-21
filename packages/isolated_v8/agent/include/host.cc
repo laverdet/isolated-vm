@@ -19,6 +19,9 @@ namespace isolated_v8 {
 // the isolate is locked and entered.
 class agent::host final {
 	private:
+		using weak_modules_actions_type = js::iv8::weak_map<v8::Module, synthetic_module_action_type>;
+		using weak_modules_specifiers_type = js::iv8::weak_map<v8::Module, js::string_t>;
+
 		struct random_seed_unlatch : util::non_copyable {
 				explicit random_seed_unlatch(bool& latch);
 				auto operator()() const -> void;
@@ -44,8 +47,8 @@ class agent::host final {
 		auto scratch_context() -> v8::Local<v8::Context>;
 		auto take_random_seed() -> std::optional<double>;
 		auto task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner>;
-		auto weak_module_actions() -> js::iv8::weak_map<v8::Module, synthetic_module_action_type>& { return weak_module_actions_; }
-		auto weak_module_specifiers() -> js::iv8::weak_map<v8::Module, js::string_t>& { return weak_module_specifiers_; }
+		auto weak_module_actions() -> weak_modules_actions_type& { return weak_module_actions_; }
+		auto weak_module_specifiers() -> weak_modules_specifiers_type& { return weak_module_specifiers_; }
 
 		static auto get_current() -> host*;
 		static auto get_current(v8::Isolate* isolate) -> host& { return *static_cast<host*>(isolate->GetData(0)); }
@@ -61,8 +64,8 @@ class agent::host final {
 		std::unique_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
 		std::unique_ptr<v8::Isolate, util::function_type_of<dispose_isolate>> isolate_;
 		isolated_v8::remote_handle_list remote_handle_list_;
-		js::iv8::weak_map<v8::Module, synthetic_module_action_type> weak_module_actions_;
-		js::iv8::weak_map<v8::Module, js::string_t> weak_module_specifiers_;
+		weak_modules_actions_type weak_module_actions_;
+		weak_modules_specifiers_type weak_module_specifiers_;
 		v8::Global<v8::Context> scratch_context_;
 
 		bool should_give_seed_{false};

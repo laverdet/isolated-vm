@@ -1,4 +1,5 @@
 module;
+#include <cassert>
 #include <cstdint>
 #include <ranges>
 #include <utility>
@@ -74,12 +75,11 @@ auto js_module::create_synthetic(
 ) -> js_module {
 	v8::Module::SyntheticModuleEvaluationSteps evaluation_steps =
 		[](v8::Local<v8::Context> context, v8::Local<v8::Module> module) -> v8::MaybeLocal<v8::Value> {
-		auto* isolate = context->GetIsolate();
-		auto& agent = agent::host::get_current(isolate);
-		auto action = agent.weak_module_actions().take(module);
+		auto& agent = agent::lock::get_current();
+		auto action = agent->weak_module_actions().extract(agent, module);
 		action(context, module);
 		auto resolver = v8::Promise::Resolver::New(context).ToLocalChecked();
-		resolver->Resolve(context, v8::Undefined(isolate));
+		resolver->Resolve(context, v8::Undefined(agent.isolate())).ToChecked();
 		return resolver->GetPromise();
 	};
 	auto* isolate = agent->isolate();
@@ -88,7 +88,9 @@ auto js_module::create_synthetic(
 	v8::MemorySpan<const v8::Local<v8::String>> export_names{names};
 	auto module_name = js::transfer_in_strict<v8::Local<v8::String>>(source_origin.name, agent);
 	auto module_handle = v8::Module::CreateSyntheticModule(isolate, module_name, export_names, evaluation_steps);
-	agent->weak_module_actions().insert(isolate, std::pair{module_handle, std::move(action)});
+	[[maybe_unused]] auto insertion_result =
+		agent->weak_module_actions().emplace(agent, std::pair{module_handle, std::move(action)});
+	assert(insertion_result);
 	return js_module{agent, module_handle};
 }
 
@@ -112,10 +114,7 @@ auto js_module::compile(agent::lock& agent, v8::Local<v8::String> source_text, s
 	auto module_handle = v8::ScriptCompiler::CompileModule(agent->isolate(), &source).ToLocalChecked();
 	v8::Global<v8::Module> module_global{agent->isolate(), module_handle};
 	if (source_origin.name) {
-		agent->weak_module_specifiers().insert(
-			agent->isolate(),
-			std::pair{module_handle, *std::move(source_origin.name)}
-		);
+		agent->weak_module_specifiers().emplace(agent, std::pair{module_handle, *std::move(source_origin.name)});
 	}
 	return js_module{agent, module_handle};
 }
