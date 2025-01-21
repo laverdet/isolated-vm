@@ -112,10 +112,14 @@ auto js_module::link(realm::scope& realm, auto callback) -> void {
 			// [ key, value, ...[] ]
 			std::views::chunk(2) |
 			std::views::transform([ & ](const auto& pair) {
-				return std::pair{
-					js::transfer_out_strict<js::string_t>(pair[ 0 ].template As<v8::String>(), realm),
-					js::transfer_out_strict<js::string_t>(pair[ 1 ].template As<v8::String>(), realm)
-				};
+				auto entry = js::transfer_out_strict<std::array<js::string_t, 2>>(
+					std::array{
+						pair[ 0 ].template As<v8::String>(),
+						pair[ 1 ].template As<v8::String>()
+					},
+					realm
+				);
+				return std::pair{std::move(entry[ 0 ]), std::move(entry[ 1 ])};
 			});
 		auto attributes_vector = module_request::attributes_type{std::move(attributes_view)};
 		auto& result = std::invoke([ & ]() -> decltype(auto) {

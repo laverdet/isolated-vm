@@ -68,9 +68,10 @@ export class function : public object_like {
 
 template <class Result>
 auto function::invoke(auto&&... args) -> Result {
-	std::array<napi_value, sizeof...(args)> arg_values{
-		js::transfer_in_strict<napi_value>(args, env())...
-	};
+	auto arg_values = js::transfer_in_strict<
+		std::array<napi_value, sizeof...(args)>>(
+		std::forward_as_tuple(args...), env()
+	);
 	auto undefined = js::napi::value<js::undefined_tag>::make(env());
 	auto* result = js::napi::invoke(napi_call_function, env(), undefined, *this, arg_values.size(), arg_values.data());
 	return js::transfer_out<Result>(result, env());

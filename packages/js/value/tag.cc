@@ -57,6 +57,9 @@ struct promise_tag : object_tag {};
 // Continuous packed array-like with integer keys and known (at runtime) length. Generally
 // `arguments` or "trusted" arrays.
 struct vector_tag : object_tag {};
+// A vectory of known size
+template <std::size_t Size>
+struct vector_n_tag : vector_tag {};
 // Tuple of elements, each possibly a different type.
 template <std::size_t Element>
 struct tuple_tag : object_tag {};

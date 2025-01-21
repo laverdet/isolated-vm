@@ -33,15 +33,21 @@ auto js_module::requests(agent::lock& agent) -> std::vector<module_request> {
 			auto request = value.As<v8::ModuleRequest>();
 			auto specifier_handle = request->GetSpecifier().As<v8::String>();
 			auto specifier = js::transfer_out_strict<js::string_t>(specifier_handle, agent);
+			std::array<v8::Local<v8::String>, 2> test{};
+			auto arst = std::span{test};
 			auto attributes_view =
 				// [ key, value, location, ...[] ]
 				js::iv8::fixed_array{context_lock, request->GetImportAttributes()} |
 				std::views::chunk(3) |
 				std::views::transform([ & ](const auto& triplet) {
-					return std::pair{
-						js::transfer_out_strict<js::string_t>(triplet[ 0 ].template As<v8::String>(), agent),
-						js::transfer_out_strict<js::string_t>(triplet[ 1 ].template As<v8::String>(), agent)
-					};
+					auto entry = js::transfer_out_strict<std::array<js::string_t, 2>>(
+						std::array{
+							triplet[ 0 ].template As<v8::String>(),
+							triplet[ 1 ].template As<v8::String>()
+						},
+						agent
+					);
+					return std::pair{std::move(entry[ 0 ]), std::move(entry[ 1 ])};
 				});
 			return {specifier, module_request::attributes_type{std::move(attributes_view)}};
 		});
