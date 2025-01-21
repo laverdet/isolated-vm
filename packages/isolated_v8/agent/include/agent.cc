@@ -51,7 +51,7 @@ auto agent::schedule(auto task, auto... args) -> void
 				std::visit([](auto& clock) { clock.begin_tick(); }, host->clock_);
 				task(agent_lock, std::move(args)...);
 			};
-		foreground_runner::schedule_client_task(host->foreground_runner_, task_with_lock);
+		foreground_runner::schedule_client_task(host->foreground_runner_, std::move(task_with_lock));
 	}
 }
 

@@ -139,7 +139,7 @@ auto link_module(
 							};
 							auto callback_fn = js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<callback>{}, promise);
 							auto link_callback = js::napi::function{env.nenv(), *link_callback_ref};
-							link_callback.invoke<std::monostate>(
+							link_callback.call<std::monostate>(
 								std::move(specifier),
 								std::move(referrer),
 								std::move(attributes),
@@ -161,9 +161,10 @@ auto link_module(
 auto create_capability(
 	environment& env,
 	js::iv8::external_reference<isolated_v8::agent>& agent,
-	js::napi::value<js::function_tag> /*capability*/,
+	js::napi::value<js::function_tag> capability,
 	create_capability_options options
 ) {
+	auto callback = js::napi::reference{env.nenv(), capability};
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](environment& env, js_module module_) -> expected_value {
@@ -171,15 +172,33 @@ auto create_capability(
 		}
 	);
 	agent->schedule(
-		[ dispatch = std::move(dispatch), options = std::move(options) ](
+		[ &env,
+			scheduler = env.scheduler(),
+			callback = std::move(callback),
+			dispatch = std::move(dispatch),
+			options = std::move(options) ](
 			isolated_v8::agent::lock& agent
 		) mutable {
-			auto fn = js::bound_function{[](realm::scope& /*realm*/, js::rest /*rest*/, std::vector<std::string> params) {
-				for (const auto& param : params) {
-					std::cout << param << "\n";
+			auto isolated_callback = js::bound_function{
+				[ &env,
+					callback = std::move(callback),
+					scheduler = std::move(scheduler) ](
+					realm::scope& /*realm*/,
+					js::rest /*rest*/,
+					std::vector<js::value_t> params
+				) mutable {
+					scheduler.schedule(
+						[ &env,
+							&callback, /*NO!*/
+							params = std::move(params) ]() {
+							js::napi::handle_scope scope{env.nenv()};
+							js::napi::function local{env.nenv(), *callback};
+							local.apply<std::monostate>(std::move(params));
+						}
+					);
 				}
-			}};
-			auto exports = isolated_v8::function_template::make(agent, std::move(fn));
+			};
+			auto exports = isolated_v8::function_template::make(agent, std::move(isolated_callback));
 			auto module_ = isolated_v8::js_module::create_synthetic(agent, exports, std::move(options.origin));
 			dispatch(std::move(module_));
 		}

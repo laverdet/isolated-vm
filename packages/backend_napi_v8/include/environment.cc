@@ -17,9 +17,9 @@ export class environment : util::non_moveable {
 		~environment();
 
 		auto cluster() -> isolated_v8::cluster& { return cluster_; }
-		auto nenv() -> napi_env { return env_; }
+		auto nenv(this auto& self) -> napi_env { return self.env_; }
 		auto isolate() -> v8::Isolate* { return isolate_; }
-		auto scheduler() -> js::napi::uv_scheduler& { return scheduler_; };
+		auto scheduler(this auto& self) -> decltype(auto) { return (self.scheduler_); };
 		static auto get(napi_env env) -> environment&;
 
 	private:

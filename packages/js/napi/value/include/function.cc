@@ -3,6 +3,7 @@ module;
 #include <stdexcept>
 #include <tuple>
 #include <type_traits>
+#include <vector>
 export module napi_js.function;
 import isolated_js;
 import ivm.utility;
@@ -63,17 +64,31 @@ export class function : public object_like {
 				object_like{env, value} {}
 
 		template <class Result>
-		auto invoke(auto&&... args) -> Result;
+		auto apply(auto&& args) -> Result;
+		template <class Result>
+		auto call(auto&&... args) -> Result;
+
+	private:
+		template <class Result>
+		auto invoke(std::span<napi_value> args) -> Result;
 };
 
 template <class Result>
-auto function::invoke(auto&&... args) -> Result {
-	auto arg_values = js::transfer_in_strict<
-		std::array<napi_value, sizeof...(args)>>(
-		std::forward_as_tuple(args...), env()
-	);
+auto function::apply(auto&& args) -> Result {
+	auto arg_values = js::transfer_in_strict<std::vector<napi_value>>(std::forward<decltype(args)>(args), env());
+	return invoke<Result>(std::span{arg_values});
+}
+
+template <class Result>
+auto function::call(auto&&... args) -> Result {
+	auto arg_values = js::transfer_in_strict<std::array<napi_value, sizeof...(args)>>(std::forward_as_tuple(args...), env());
+	return invoke<Result>(std::span{arg_values});
+}
+
+template <class Result>
+auto function::invoke(std::span<napi_value> args) -> Result {
 	auto undefined = js::napi::value<js::undefined_tag>::make(env());
-	auto* result = js::napi::invoke(napi_call_function, env(), undefined, *this, arg_values.size(), arg_values.data());
+	auto* result = js::napi::invoke(napi_call_function, env(), undefined, *this, args.size(), args.data());
 	return js::transfer_out<Result>(result, env());
 }
 
