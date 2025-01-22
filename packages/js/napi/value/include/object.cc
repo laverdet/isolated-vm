@@ -5,6 +5,7 @@ export module napi_js.object;
 import isolated_js;
 import ivm.utility;
 import napi_js.array;
+import napi_js.environment;
 import napi_js.object_like;
 import napi_js.value;
 import nodejs;
@@ -33,14 +34,14 @@ export class object : public object_like {
 		[[nodiscard]] auto into_range() const -> range_type;
 
 		template <class... Entries>
-		static auto assign(napi_env env, object_like target, std::tuple<Entries...> entries) -> void;
+		static auto assign(const auto_environment auto& env, object_like target, std::tuple<Entries...> entries) -> void;
 
 	private:
 		mutable array keys_;
 };
 
 template <class... Entries>
-auto object::assign(napi_env env, object_like target, std::tuple<Entries...> entries) -> void {
+auto object::assign(const auto_environment auto& env, object_like target, std::tuple<Entries...> entries) -> void {
 	std::invoke(
 		[ & ]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) {
 			return (invoke(std::integral_constant<size_t, Index>{}), ...);

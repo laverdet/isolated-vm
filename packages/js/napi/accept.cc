@@ -6,12 +6,14 @@ export module napi_js.accept;
 import isolated_js;
 import ivm.utility;
 import napi_js.lock;
+import napi_js.primitive;
 import napi_js.utility;
 import napi_js.value;
 import nodejs;
 import v8;
 
 namespace js {
+using namespace napi;
 
 // Fake acceptor for primitive values
 template <>
@@ -20,11 +22,11 @@ struct accept<void, napi_env> : public napi_witness_lock {
 		using napi_witness_lock::napi_witness_lock;
 
 		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const -> napi_value {
-			return js::napi::value<undefined_tag>::make(env());
+			return js::napi::value<undefined_tag>::make(env(), std::monostate{});
 		}
 
 		auto operator()(null_tag /*tag*/, const auto& /*null*/) const -> napi_value {
-			return js::napi::value<null_tag>::make(env());
+			return js::napi::value<null_tag>::make(env(), nullptr);
 		}
 
 		auto operator()(boolean_tag /*tag*/, auto&& value) const -> napi_value {

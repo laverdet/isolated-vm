@@ -12,7 +12,7 @@ NAPI_MODULE_INIT(/*napi_env env, napi_value exports*/) {
 	auto& ienv = environment::make(env);
 
 	js::napi::object::assign(
-		env,
+		ienv,
 		js::napi::object{env, js::napi::value<js::object_tag>::from(exports)},
 		std::tuple{
 			std::pair{util::string_literal{"compileModule"}, js::transfer_direct{make_compile_module(ienv)}},

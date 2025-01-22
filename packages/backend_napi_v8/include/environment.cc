@@ -11,7 +11,7 @@ import v8;
 namespace backend_napi_v8 {
 
 // Instance of the `isolated-vm` module, once per nodejs environment.
-export class environment : util::non_moveable, public napi_js::environment_of<environment> {
+export class environment : util::non_moveable, public js::napi::environment_of<environment> {
 	public:
 		explicit environment(napi_env env);
 		~environment();

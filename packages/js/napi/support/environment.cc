@@ -6,8 +6,9 @@ import napi_js.utility;
 import nodejs;
 import v8;
 
-namespace napi_js {
+namespace js::napi {
 
+// A reference to an environment is used as the lock witness
 export class environment {
 	public:
 		using napi_env_type = napi_env;
@@ -45,4 +46,7 @@ class environment_of : public environment {
 		}
 };
 
-} // namespace napi_js
+export template <class Type>
+concept auto_environment = std::derived_from<Type, environment>;
+
+} // namespace js::napi

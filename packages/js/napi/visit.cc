@@ -4,8 +4,10 @@ module;
 export module napi_js.visit;
 import isolated_js;
 import ivm.utility;
+import napi_js.environment;
 import napi_js.lock;
 import napi_js.object;
+import napi_js.primitive;
 import napi_js.utility;
 import napi_js.value;
 import nodejs;
@@ -13,11 +15,12 @@ import v8_js;
 import v8;
 
 namespace js {
+using namespace napi;
 
 // Delegate napi_value to various visitors
 template <>
 struct visit<void, napi_value>
-		: napi_isolate_witness_lock,
+		: js::napi::napi_isolate_witness_lock,
 			visit<void, v8::Local<v8::Boolean>>,
 			visit<void, v8::Local<v8::Number>>,
 			visit<void, v8::Local<v8::BigInt>>,
@@ -32,11 +35,11 @@ struct visit<void, napi_value>
 		using visit<void, v8::Local<v8::Date>>::operator();
 		using visit<void, v8::Local<v8::External>>::operator();
 
-		visit(napi_env env, v8::Isolate* isolate) :
+		visit(const environment& env, v8::Isolate* isolate) :
 				napi_isolate_witness_lock{env, isolate},
 				visit<void, v8::Local<v8::String>>{*util::disambiguate_pointer<napi_isolate_witness_lock>(this)} {}
 		// nb: TODO: Remove (again)
-		explicit visit(napi_env env) :
+		explicit visit(const environment& env) :
 				visit{env, v8::Isolate::GetCurrent()} {}
 
 		auto operator()(napi_value value, const auto_accept auto& accept) const -> decltype(auto) {

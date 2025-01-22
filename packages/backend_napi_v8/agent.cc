@@ -94,11 +94,11 @@ auto create_realm(environment& env, js::iv8::external_reference<agent>& agent) {
 }
 
 auto make_create_agent(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::free_function<create_agent>{}, env);
+	return js::napi::value<js::function_tag>::make(env, js::free_function<create_agent>{});
 }
 
 auto make_create_realm(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::free_function<create_realm>{}, env);
+	return js::napi::value<js::function_tag>::make(env, js::free_function<create_realm>{});
 }
 
 } // namespace backend_napi_v8
