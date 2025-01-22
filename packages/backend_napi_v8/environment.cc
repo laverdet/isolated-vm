@@ -10,7 +10,7 @@ import v8;
 namespace backend_napi_v8 {
 
 environment::environment(napi_env env) :
-		env_{env},
+		environment_of{env},
 		isolate_{v8::Isolate::GetCurrent()} {
 	scheduler_.open(js::napi::invoke(napi_get_uv_event_loop, env));
 }

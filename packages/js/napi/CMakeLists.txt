@@ -12,6 +12,7 @@ target_sources(ivm_value_napi
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		accept.cc
+		support/environment.cc
 		support/include/handle_scope.cc
 		support/include/lock.cc
 		support/include/reference.cc

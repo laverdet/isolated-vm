@@ -15,7 +15,7 @@ namespace backend_napi_v8 {
 export using expected_value = std::expected<napi_value, napi_value>;
 
 export auto make_promise(environment& ienv, auto accept) {
-	auto* env = ienv.nenv();
+	napi_env env{ienv};
 
 	// nodejs promise & future
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)

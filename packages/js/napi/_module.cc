@@ -1,5 +1,6 @@
 export module napi_js;
 export import napi_js.accept;
+export import napi_js.environment;
 export import napi_js.function;
 export import napi_js.handle_scope;
 export import napi_js.number;

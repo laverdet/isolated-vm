@@ -44,7 +44,7 @@ auto compile_module(
 				js::transfer_direct{handle},
 				std::move(requests),
 			};
-			return js::transfer_in_strict<napi_value>(std::move(result), env.nenv());
+			return js::transfer_in_strict<napi_value>(std::move(result), env);
 		}
 	);
 	agent->schedule(
@@ -69,7 +69,7 @@ auto evaluate_module(
 	js::iv8::external_reference<js_module>& module_
 ) {
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, js::value_t result) -> expected_value {
-		return js::transfer_in_strict<napi_value>(std::move(result), env.nenv());
+		return js::transfer_in_strict<napi_value>(std::move(result), env);
 	});
 	agent->schedule(
 		[ dispatch = std::move(dispatch) ](
@@ -94,14 +94,14 @@ auto link_module(
 	js::iv8::external_reference<js_module>& module_,
 	js::napi::value<js::function_tag> link_callback_
 ) {
-	auto* nenv = env.nenv();
+	napi_env nenv{env};
 	auto callback = js::napi::reference{nenv, link_callback_};
 	auto scheduler = env.scheduler();
 	js::napi::reference link_callback_ref{nenv, link_callback_};
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](environment& env) -> expected_value {
-			return js::napi::invoke(napi_get_boolean, env.nenv(), true);
+			return js::napi::invoke(napi_get_boolean, env, true);
 		}
 	);
 	agent->schedule_async(
@@ -126,7 +126,7 @@ auto link_module(
 					auto future = promise.get_future();
 					scheduler.schedule(
 						[ & ]() {
-							js::napi::handle_scope scope{env.nenv()};
+							js::napi::handle_scope scope{env};
 							auto callback =
 								[](
 									std::promise<js_module*>& promise,
@@ -137,8 +137,8 @@ auto link_module(
 									promise.set_value(&**module);
 								}
 							};
-							auto callback_fn = js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<callback>{}, promise);
-							auto link_callback = js::napi::function{env.nenv(), *link_callback_ref};
+							auto callback_fn = js::napi::value<js::function_tag>::make(env, js::free_function<callback>{}, promise);
+							auto link_callback = js::napi::function{env, *link_callback_ref};
 							link_callback.call<std::monostate>(
 								std::move(specifier),
 								std::move(referrer),
@@ -164,7 +164,7 @@ auto create_capability(
 	js::napi::value<js::function_tag> capability,
 	create_capability_options options
 ) {
-	auto callback = js::napi::reference{env.nenv(), capability};
+	auto callback = js::napi::reference{env, capability};
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](environment& env, js_module module_) -> expected_value {
@@ -191,8 +191,8 @@ auto create_capability(
 						[ &env,
 							&callback, /*NO!*/
 							params = std::move(params) ]() {
-							js::napi::handle_scope scope{env.nenv()};
-							js::napi::function local{env.nenv(), *callback};
+							js::napi::handle_scope scope{env};
+							js::napi::function local{env, *callback};
 							local.apply<std::monostate>(std::move(params));
 						}
 					);
@@ -207,19 +207,19 @@ auto create_capability(
 }
 
 auto make_compile_module(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<compile_module>{}, env);
+	return js::napi::value<js::function_tag>::make(env, js::free_function<compile_module>{}, env);
 }
 
 auto make_create_capability(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<create_capability>{}, env);
+	return js::napi::value<js::function_tag>::make(env, js::free_function<create_capability>{}, env);
 }
 
 auto make_evaluate_module(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<evaluate_module>{}, env);
+	return js::napi::value<js::function_tag>::make(env, js::free_function<evaluate_module>{}, env);
 }
 
 auto make_link_module(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<link_module>{}, env);
+	return js::napi::value<js::function_tag>::make(env, js::free_function<link_module>{}, env);
 }
 
 } // namespace backend_napi_v8

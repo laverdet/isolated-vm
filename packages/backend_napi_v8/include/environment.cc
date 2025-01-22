@@ -11,19 +11,16 @@ import v8;
 namespace backend_napi_v8 {
 
 // Instance of the `isolated-vm` module, once per nodejs environment.
-export class environment : util::non_moveable {
+export class environment : util::non_moveable, public napi_js::environment_of<environment> {
 	public:
 		explicit environment(napi_env env);
 		~environment();
 
 		auto cluster() -> isolated_v8::cluster& { return cluster_; }
-		auto nenv(this auto& self) -> napi_env { return self.env_; }
-		auto isolate() -> v8::Isolate* { return isolate_; }
 		auto scheduler(this auto& self) -> decltype(auto) { return (self.scheduler_); };
 		static auto get(napi_env env) -> environment&;
 
 	private:
-		napi_env env_;
 		js::napi::uv_scheduler scheduler_;
 		isolated_v8::cluster cluster_;
 		v8::Isolate* isolate_;

@@ -28,7 +28,7 @@ auto make_external(environment& env, auto&&... args) -> napi_value {
 	auto external = v8::External::New(env.isolate(), ptr.get());
 	auto as_napi_value = js::napi::from_v8(external);
 	// Now we make a weak reference via napi (which also leaks) which finalizes the underlying object.
-	js::napi::invoke(napi_add_finalizer, env.nenv(), as_napi_value, ptr.get(), finalizer<external_type>, nullptr);
+	js::napi::invoke(napi_add_finalizer, env, as_napi_value, ptr.get(), finalizer<external_type>, nullptr);
 	ptr.release();
 	return as_napi_value;
 }

@@ -50,7 +50,7 @@ auto run_script(
 	js::iv8::external_reference<realm>& realm
 ) {
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, js::value_t result) -> expected_value {
-		return js::transfer_in_strict<napi_value>(std::move(result), env.nenv());
+		return js::transfer_in_strict<napi_value>(std::move(result), env);
 	});
 	agent->schedule(
 		[ dispatch = std::move(dispatch) ](
@@ -69,11 +69,11 @@ auto run_script(
 }
 
 auto make_compile_script(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<compile_script>{}, env);
+	return js::napi::value<js::function_tag>::make(env, js::free_function<compile_script>{}, env);
 }
 
 auto make_run_script(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env.nenv(), js::free_function<run_script>{}, env);
+	return js::napi::value<js::function_tag>::make(env, js::free_function<run_script>{}, env);
 }
 
 } // namespace backend_napi_v8
