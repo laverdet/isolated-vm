@@ -13,17 +13,18 @@ import napi_js.environment;
 import napi_js.primitive;
 import napi_js.utility;
 import napi_js.value;
+import napi_js.value.internal;
 import nodejs;
 import v8;
 
 namespace js::napi {
 
 template <>
-struct implementation<function_tag> : implementation<value_tag> {
+struct implementation<function_tag> : implementation<function_tag::tag_type> {
 		template <class Result>
-		auto apply(this value<function_tag>& self, const environment& env, auto&& args) -> Result;
+		auto apply(const environment& env, auto&& args) -> Result;
 		template <class Result>
-		auto call(this value<function_tag>& self, const environment& env, auto&&... args) -> Result;
+		auto call(const environment& env, auto&&... args) -> Result;
 
 		template <auto_environment Environment, class Invocable, class Result, class... Args>
 		static auto make(Environment& env, js::bound_function<Invocable, Result(Environment&, Args...)> function) -> value<function_tag>;
@@ -32,7 +33,7 @@ struct implementation<function_tag> : implementation<value_tag> {
 
 	private:
 		template <class Result>
-		auto invoke(this value<function_tag>& self, const environment& env, std::span<napi_value> args) -> Result;
+		auto invoke(const environment& env, std::span<napi_value> args) -> Result;
 };
 
 // ---
@@ -76,21 +77,21 @@ auto invoke_callback(auto_environment auto& env, callback_info& info, const auto
 }
 
 template <class Result>
-auto implementation<function_tag>::apply(this value<function_tag>& self, const environment& env, auto&& args) -> Result {
+auto implementation<function_tag>::apply(const environment& env, auto&& args) -> Result {
 	auto arg_values = js::transfer_in_strict<std::vector<napi_value>>(std::forward<decltype(args)>(args), env);
-	return self.invoke<Result>(env, std::span{arg_values});
+	return invoke<Result>(env, std::span{arg_values});
 }
 
 template <class Result>
-auto implementation<function_tag>::call(this value<function_tag>& self, const environment& env, auto&&... args) -> Result {
+auto implementation<function_tag>::call(const environment& env, auto&&... args) -> Result {
 	auto arg_values = js::transfer_in_strict<std::array<napi_value, sizeof...(args)>>(std::forward_as_tuple(args...), env);
-	return self.invoke<Result>(env, std::span{arg_values});
+	return invoke<Result>(env, std::span{arg_values});
 }
 
 template <class Result>
-auto implementation<function_tag>::invoke(this value<function_tag>& self, const environment& env, std::span<napi_value> args) -> Result {
+auto implementation<function_tag>::invoke(const environment& env, std::span<napi_value> args) -> Result {
 	auto undefined = js::napi::value<js::undefined_tag>::make(env);
-	auto* result = js::napi::invoke(napi_call_function, env, undefined, self, args.size(), args.data());
+	auto* result = js::napi::invoke(napi_call_function, env, undefined, *this, args.size(), args.data());
 	return js::transfer_out<Result>(result, env);
 }
 

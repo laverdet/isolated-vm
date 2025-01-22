@@ -6,7 +6,7 @@ module;
 module napi_js.primitive;
 import isolated_js;
 import napi_js.utility;
-import napi_js.value;
+import napi_js.value.internal;
 import nodejs;
 
 namespace js::napi {

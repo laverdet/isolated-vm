@@ -10,6 +10,7 @@ target_sources(ivm_value_napi
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		accept.cc
+		handle/internal.cc
 		handle/reference.cc
 		handle/value.cc
 		support/environment.cc
