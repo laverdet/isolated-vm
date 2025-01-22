@@ -20,7 +20,7 @@ export type ModuleLinker = (
 	 * Import attributes of this import: `import {} from "specifier" with { type: 'json' }`
 	 */
 	attributes: ImportAttributes | undefined,
-) => AbstractModule | Promise<AbstractModule>;
+) => AbstractModule | undefined | Promise<AbstractModule | undefined>;
 
 export interface ModuleRequest {
 	/**
@@ -34,7 +34,7 @@ export interface ModuleRequest {
 	attributes?: ImportAttributes;
 }
 
-class AbstractModule {
+export class AbstractModule {
 	readonly #agent;
 	readonly #module;
 
@@ -87,6 +87,16 @@ export class Module extends AbstractModule {
 				void async function() {
 					try {
 						const module = await linker(specifier, parentName, attributes);
+						if (module === undefined) {
+							let message = `Cannot find module '${specifier}'`;
+							if (parentName !== undefined) {
+								message += ` imported from ${parentName}`;
+							}
+							if (attributes !== undefined) {
+								message += ` with attributes ${JSON.stringify(attributes)}`;
+							}
+							throw new Error(message);
+						}
 						callback(null, __extractModule(module));
 					} catch (error) {
 						callback(error);

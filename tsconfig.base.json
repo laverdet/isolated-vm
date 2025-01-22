@@ -33,6 +33,7 @@
 		"exactOptionalPropertyTypes": true,
 		"noImplicitOverride": true,
 		"noUncheckedIndexedAccess": true,
+		"skipLibCheck": true,
 		"strict": true,
 	},
 	"include": [ "${configDir}" ],

@@ -1,6 +1,6 @@
 // https://html.spec.whatwg.org/multipage/webappapis.html#atob
 import { DOMException } from "isolated-vm/host/html/exception";
-import { StringConstructor, StringFromCharCode, StringPrototypeCharCodeAt, isNaN } from "isolated-vm/host/intrinsics";
+import { GlobalIsNaN, StringCharCodeAt, StringConstructor, StringFromCharCode } from "isolated-vm/host/intrinsics";
 
 // https://datatracker.ietf.org/doc/html/rfc4648#section-4
 const alphabet = [
@@ -26,14 +26,13 @@ reverseAlphabet[12] =
 reverseAlphabet[13] =
 reverseAlphabet[32] = kAlphabetSizeish;
 
-/** @internal */
-export function atob(inputString: string) {
+export function atob(inputString: unknown): string {
 	const string = StringConstructor(inputString);
 	let result = "";
 	for (let ii = 0, length = string.length; ii < length;) {
 		const read = () => {
 			while (true) {
-				const char = StringPrototypeCharCodeAt(string, ii++);
+				const char = StringCharCodeAt(string, ii++);
 				const byte = reverseAlphabet[char]!;
 				if (byte === kAlphabetSizeish) {
 					continue;
@@ -61,13 +60,12 @@ export function atob(inputString: string) {
 	return result;
 }
 
-/** @internal */
-export function btoa(inputString: string) {
+export function btoa(inputString: unknown): string {
 	const string = StringConstructor(inputString);
 	let result = "";
 	for (let ii = 0, length = string.length; ii < length;) {
 		const read = () => {
-			const byte = StringPrototypeCharCodeAt(string, ii++);
+			const byte = StringCharCodeAt(string, ii++);
 			if (byte > 0xff) {
 				throw new DOMException("Invalid character", "InvalidCharacterError");
 			}
@@ -80,9 +78,9 @@ export function btoa(inputString: string) {
 		const char2 = ((byte1 & 3) << 4) | (byte2 >> 4);
 		let char3 = ((byte2 & 15) << 2) | (byte3 >> 6);
 		let char4 = byte3 & 63;
-		if (isNaN(byte2)) {
+		if (GlobalIsNaN(byte2)) {
 			char3 = char4 = 64;
-		} else if (isNaN(byte3)) {
+		} else if (GlobalIsNaN(byte3)) {
 			char4 = 64;
 		}
 		result += alphabet[char1]! + alphabet[char2]! + alphabet[char3]! + alphabet[char4]!;

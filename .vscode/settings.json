@@ -20,10 +20,12 @@
 		"!prefer-const",
 		"*",
 	],
-	"eslint.format.enable": true,
+	// When used as a formatter, it doesn't listen to `codeActionsOnSave`
+	"eslint.format.enable": false,
 	"eslint.rules.customizations": [
 		// Annoying whitespace rules which fire all the time and are fixed on save anyway
 		{ "rule": "@stylistic/eol-last", "severity": "off" },
+		{ "rule": "@stylistic/no-tabs", "severity": "off" },
 		{ "rule": "@stylistic/no-trailing-spaces", "severity": "off" },
 	],
 	"eslint.validate": [

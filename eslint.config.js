@@ -190,6 +190,7 @@ const formattingRules = {
 	} ],
 	"@stylistic/no-multi-spaces": "warn",
 	"@stylistic/no-multiple-empty-lines": [ "warn", { max: 1, maxEOF: 0 } ],
+	"@stylistic/no-tabs": [ "warn", { allowIndentationTabs: true } ],
 	"@stylistic/no-trailing-spaces": "warn",
 	"@stylistic/no-whitespace-before-property": "warn",
 	"@stylistic/object-curly-newline": [ "warn", { consistent: true } ],
@@ -296,7 +297,6 @@ const typeScriptRules = acceptTypeScriptRules({
 	// I would love to use this but boy is it lousy
 	"@typescript-eslint/prefer-readonly-parameter-types": "off",
 	"@typescript-eslint/prefer-ts-expect-error": "warn",
-	"@typescript-eslint/sort-type-constituents": "warn",
 	"@typescript-eslint/unified-signatures": "warn",
 
 	"import/consistent-type-specifier-style": [ "warn", "prefer-top-level" ],
