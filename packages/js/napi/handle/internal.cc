@@ -1,3 +1,5 @@
+module;
+#include <type_traits>
 export module napi_js.value.internal;
 import nodejs;
 
@@ -13,6 +15,8 @@ export class indirect_value {
 		// Implicit cast back to a `napi_value`
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		operator napi_value() const { return value_; }
+
+		auto operator==(const indirect_value& right) const -> bool { return value_ == right.value_; }
 
 	private:
 		napi_value value_;

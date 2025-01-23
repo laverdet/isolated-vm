@@ -42,4 +42,25 @@ class value : public indirect_value {
 		}
 };
 
+// Member & method implementation for stateful objects. Used internally in visitors.
+export template <class Tag>
+class bound_value : public bound_value<typename Tag::tag_type> {
+	public:
+		bound_value(napi_env env, value<Tag> value) :
+				bound_value<typename Tag::tag_type>{env, value} {}
+};
+
+template <>
+class bound_value<void> : public indirect_value {
+	protected:
+		explicit bound_value(napi_env env, napi_value value) :
+				indirect_value{value},
+				env_{env} {}
+
+		[[nodiscard]] auto env() const { return env_; }
+
+	private:
+		napi_env env_;
+};
+
 } // namespace js::napi

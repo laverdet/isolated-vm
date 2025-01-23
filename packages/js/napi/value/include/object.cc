@@ -1,53 +1,47 @@
 module;
+#include <cstddef>
 #include <functional>
-#include <ranges>
+#include <tuple>
+#include <utility>
 export module napi_js.object;
 import isolated_js;
-import ivm.utility;
-import napi_js.array;
 import napi_js.environment;
-import napi_js.object_like;
+import napi_js.primitive;
 import napi_js.value;
+import napi_js.value.internal;
 import nodejs;
 
 namespace js::napi {
 
-export class object : public object_like {
+template <>
+class bound_value<object_tag> : public bound_value<object_tag::tag_type> {
 	public:
-		using value_type = std::pair<napi_value, napi_value>;
+		bound_value(napi_env env, value<object_tag> value) :
+				bound_value<object_tag::tag_type>{env, value} {}
 
-	private:
-		class iterator_transform {
-			public:
-				explicit iterator_transform(const object& subject_);
-				auto operator()(napi_value key) const -> value_type;
-
-			private:
-				const object* subject_;
-		};
-
-	public:
-		using range_type = std::ranges::transform_view<std::views::all_t<array&>, iterator_transform>;
-		using iterator = std::ranges::iterator_t<range_type>;
-
-		object(napi_env env, value<js::object_tag> value);
-		[[nodiscard]] auto into_range() const -> range_type;
-
-		template <class... Entries>
-		static auto assign(const auto_environment auto& env, object_like target, std::tuple<Entries...> entries) -> void;
-
-	private:
-		mutable array keys_;
+		[[nodiscard]] auto get(napi_value key) const -> napi_value;
+		[[nodiscard]] auto has(napi_value key) const -> bool;
 };
 
+template <>
+struct implementation<object_tag> : implementation<object_tag::tag_type> {
+		template <class... Entries>
+		auto assign(const auto_environment auto& env, std::tuple<Entries...> entries) -> void;
+
+		auto set(const environment& env, napi_value key, napi_value value) -> void;
+};
+
+// ---
+
 template <class... Entries>
-auto object::assign(const auto_environment auto& env, object_like target, std::tuple<Entries...> entries) -> void {
+auto implementation<object_tag>::assign(const auto_environment auto& env, std::tuple<Entries...> entries) -> void {
 	std::invoke(
 		[ & ]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) {
 			return (invoke(std::integral_constant<size_t, Index>{}), ...);
 		},
 		[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) {
-			target.set(
+			set(
+				env,
 				transfer_in_strict<napi_value>(std::get<Index>(entries).first, env),
 				transfer_in_strict<napi_value>(std::get<Index>(entries).second, env)
 			);

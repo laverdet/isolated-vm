@@ -2,17 +2,22 @@ module;
 #include <compare>
 #include <cstdint>
 export module napi_js.array;
-import napi_js.object_like;
+import isolated_js;
 import ivm.utility;
+import napi_js.object;
+import napi_js.value;
+import napi_js.value.internal;
 import nodejs;
 
 namespace js::napi {
 
-export class array : public object_like {
+template <>
+class bound_value<vector_tag> : public bound_value<vector_tag::tag_type> {
 	public:
 		class iterator;
 		using value_type = napi_value;
-		using object_like::object_like;
+		bound_value(napi_env env, value<vector_tag> value) :
+				bound_value<vector_tag::tag_type>{env, value} {}
 
 		[[nodiscard]] auto begin() const -> iterator;
 		[[nodiscard]] auto end() const -> iterator;
@@ -22,16 +27,18 @@ export class array : public object_like {
 		mutable uint32_t size_{};
 };
 
-class array::iterator : public util::random_access_iterator_facade<iterator, int32_t, int64_t> {
+class bound_value<vector_tag>::iterator : public util::random_access_iterator_facade<iterator, int32_t, int64_t> {
 	public:
 		friend arithmetic_facade;
 		using arithmetic_facade::operator+;
 		using difference_type = arithmetic_facade::difference_type;
 		using size_type = uint32_t;
-		using value_type = array::value_type;
+		using value_type = bound_value::value_type;
 
-		iterator() = default;
-		iterator(array array, size_type index);
+		iterator() :
+				subject_{nullptr, value<vector_tag>::from(nullptr)},
+				index{} {}
+		iterator(bound_value subject, size_type index);
 
 		auto operator*() const -> value_type;
 
@@ -46,7 +53,7 @@ class array::iterator : public util::random_access_iterator_facade<iterator, int
 	private:
 		auto operator+() const -> size_type { return index; }
 
-		array subject_;
+		bound_value subject_;
 		size_type index{};
 };
 

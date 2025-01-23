@@ -3,8 +3,7 @@ target_sources(ivm_value_napi
 	PRIVATE
 		scheduler.cc
 		value/array.cc
-		value/handle.cc
-		value/object_like.cc
+		value/dictionary.cc
 		value/object.cc
 		value/primitive.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
@@ -19,9 +18,8 @@ target_sources(ivm_value_napi
 		support/include/scheduler.cc
 		utility.cc
 		value/include/array.cc
+		value/include/dictionary.cc
 		value/include/function.cc
-		value/include/handle.cc
-		value/include/object_like.cc
 		value/include/object.cc
 		value/include/primitive.cc
 		visit.cc

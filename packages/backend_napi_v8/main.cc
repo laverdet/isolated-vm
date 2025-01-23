@@ -11,9 +11,9 @@ NAPI_MODULE_INIT(/*napi_env env, napi_value exports*/) {
 	// Initialize isolated-vm environment for this nodejs context
 	auto& ienv = environment::make(env);
 
-	js::napi::object::assign(
+	auto exports_val = js::napi::value<js::dictionary_tag>::from(exports);
+	exports_val->assign(
 		ienv,
-		js::napi::object{env, js::napi::value<js::object_tag>::from(exports)},
 		std::tuple{
 			std::pair{util::string_literal{"compileModule"}, js::transfer_direct{make_compile_module(ienv)}},
 			std::pair{util::string_literal{"compileScript"}, js::transfer_direct{make_compile_script(ienv)}},

@@ -4,9 +4,9 @@ module;
 export module napi_js.visit;
 import isolated_js;
 import ivm.utility;
+import napi_js.dictionary;
 import napi_js.environment;
 import napi_js.lock;
-import napi_js.object;
 import napi_js.primitive;
 import napi_js.utility;
 import napi_js.value;
@@ -56,13 +56,16 @@ struct visit<void, napi_value>
 					{
 						auto visit_entry = std::pair<const visit&, const visit&>{*this, *this};
 						if (js::napi::invoke(napi_is_array, env(), value)) {
-							return accept(list_tag{}, js::napi::object{env(), js::napi::value<js::list_tag>::from(value)}, visit_entry);
+							// nb: It is intentional that `dictionary_tag` is bound. It handles sparse arrays.
+							auto tagged_value = js::napi::value<js::dictionary_tag>::from(value);
+							return accept(list_tag{}, js::napi::bound_value{env(), tagged_value}, visit_entry);
 						} else if (js::napi::invoke(napi_is_date, env(), value)) {
 							return (*this)(js::napi::to_v8(value).As<v8::Date>(), accept);
 						} else if (js::napi::invoke(napi_is_promise, env(), value)) {
 							return accept(promise_tag{}, value);
 						}
-						return accept(dictionary_tag{}, js::napi::object{env(), js::napi::value<js::object_tag>::from(value)}, visit_entry);
+						auto tagged_value = js::napi::value<js::dictionary_tag>::from(value);
+						return accept(dictionary_tag{}, js::napi::bound_value{env(), tagged_value}, visit_entry);
 					}
 				case napi_external:
 					return (*this)(js::napi::to_v8(value).As<v8::External>(), accept);
