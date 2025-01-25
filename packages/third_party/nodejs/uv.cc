@@ -5,6 +5,7 @@ export module nodejs:uv;
 
 export using ::uv_async_t;
 export using ::uv_handle_t;
+export using ::uv_handle_type;
 export using ::uv_loop_t;
 
 export using ::uv_async_init;

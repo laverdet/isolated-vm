@@ -34,8 +34,6 @@ auto js_module::requests(agent::lock& agent) -> std::vector<module_request> {
 			auto request = value.As<v8::ModuleRequest>();
 			auto specifier_handle = request->GetSpecifier().As<v8::String>();
 			auto specifier = js::transfer_out_strict<js::string_t>(specifier_handle, agent);
-			std::array<v8::Local<v8::String>, 2> test{};
-			auto arst = std::span{test};
 			auto attributes_view =
 				// [ key, value, location, ...[] ]
 				js::iv8::fixed_array{context_lock, request->GetImportAttributes()} |

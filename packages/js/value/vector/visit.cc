@@ -33,9 +33,9 @@ struct visit<Meta, std::span<Type>> : visit<Meta, Type> {
 		constexpr explicit visit(auto_heritage auto visit_heritage, auto&&... args) :
 				visit<Meta, Type>{visit_heritage(this), std::forward<decltype(args)>(args)...} {}
 
-		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(auto value, const auto_accept auto& accept) const -> decltype(auto) {
 			const visit<Meta, Type>& visitor = *this;
-			return accept(vector_tag{}, std::forward<decltype(value)>(value), visitor);
+			return accept(vector_tag{}, value, visitor);
 		}
 };
 
@@ -45,7 +45,7 @@ struct visit<Meta, std::vector<Type>> : visit<Meta, std::span<Type>> {
 				visit<Meta, std::span<Type>>{visit_heritage(this), std::forward<decltype(args)>(args)...} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
-			return visit<Meta, std::span<Type>>::operator()(std::span{std::forward<decltype(value)>(value)}, accept);
+			return visit<Meta, std::span<Type>>::operator()(std::span{value}, accept);
 		}
 };
 

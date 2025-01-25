@@ -12,15 +12,15 @@ namespace js::napi {
 
 // Simple wrapper around `napi_value` denoting underlying value type
 export template <class Tag>
-class value : public indirect_value {
+class value : public value_handle {
 	public:
-		using indirect_value::indirect_value;
+		using value_handle::value_handle;
 
 		// "Downcast" from a more specific tag
 		template <std::convertible_to<Tag> From>
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		value(value<From> value_) :
-				indirect_value{napi_value{value_}} {}
+				value_handle{napi_value{value_}} {}
 
 		// "Upcast" to a more specific tag. Potentially unsafe.
 		template <std::convertible_to<Tag> To>
@@ -29,8 +29,8 @@ class value : public indirect_value {
 		// Access underlying implementation. `operator*()` intentionally not implemented.
 		auto operator->() -> implementation<Tag>* {
 			static_assert(std::is_layout_compatible_v<value, implementation<Tag>>);
-			indirect_value* indirect = this;
-			return static_cast<implementation<Tag>*>(indirect);
+			value_handle* value = this;
+			return static_cast<implementation<Tag>*>(value);
 		}
 
 		// Construct from any `napi_value`. Potentially unsafe.
@@ -51,10 +51,10 @@ class bound_value : public bound_value<typename Tag::tag_type> {
 };
 
 template <>
-class bound_value<void> : public indirect_value {
+class bound_value<void> : public value_handle {
 	protected:
 		explicit bound_value(napi_env env, napi_value value) :
-				indirect_value{value},
+				value_handle{value},
 				env_{env} {}
 
 		[[nodiscard]] auto env() const { return env_; }

@@ -12,11 +12,11 @@ namespace backend_napi_v8 {
 environment::environment(napi_env env) :
 		environment_of{env},
 		isolate_{v8::Isolate::GetCurrent()} {
-	scheduler_.open(js::napi::invoke(napi_get_uv_event_loop, env));
+	scheduler().open(js::napi::invoke(napi_get_uv_event_loop, env));
 }
 
 environment::~environment() {
-	scheduler_.close();
+	scheduler().close();
 }
 
 auto environment::get(napi_env env) -> environment& {

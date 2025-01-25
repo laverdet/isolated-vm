@@ -11,6 +11,7 @@ target_sources(ivm_value_napi
 		accept.cc
 		handle/internal.cc
 		handle/reference.cc
+		handle/remote.cc
 		handle/value.cc
 		support/environment.cc
 		support/include/handle_scope.cc

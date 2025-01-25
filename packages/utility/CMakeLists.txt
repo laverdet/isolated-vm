@@ -1,19 +1,18 @@
 add_library(ivm_utility OBJECT)
 target_sources(ivm_utility
-	PUBLIC
-		FILE_SET CXX_MODULES FILES
-			_module.cc
-			container/prehashed_string_map.cc
-			functional/comparator.cc
-			lockable.cc
-			memory/autorelease_pool.cc
-			memory/comparator.cc
-			memory/memory.cc
-			ranges.cc
-			tuple.cc
-			type_traits.cc
-			utility/facade.cc
-			utility/utility.cc
-			variant.cc
+	PUBLIC FILE_SET CXX_MODULES FILES
+		_module.cc
+		container/prehashed_string_map.cc
+		functional/comparator.cc
+		lockable.cc
+		memory/autorelease_pool.cc
+		memory/comparator.cc
+		memory/memory.cc
+		ranges.cc
+		tuple.cc
+		type_traits.cc
+		utility/facade.cc
+		utility/utility.cc
+		variant.cc
 )
 target_link_libraries(ivm_utility PRIVATE Boost::boost)

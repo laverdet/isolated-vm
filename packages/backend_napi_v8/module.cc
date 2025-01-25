@@ -1,9 +1,7 @@
 module;
 #include <future>
-#include <iostream>
 #include <optional>
 #include <stop_token>
-#include <string>
 #include <tuple>
 #include <utility>
 #include <variant>
@@ -165,7 +163,34 @@ auto create_capability(
 	js::napi::value<js::function_tag> capability,
 	create_capability_options options
 ) {
-	auto callback = js::napi::reference{env, capability};
+	// Callback to invoke the capability in the node environment
+	auto capability_callback =
+		[ callback = js::napi::make_shared_remote(env, capability) ](
+			environment& env,
+			std::vector<js::value_t> params
+		) {
+			js::napi::handle_scope scope{env};
+			auto local = callback->get(env);
+			local->apply<std::monostate>(env, std::move(params));
+		};
+	// Callback passed to isolated v8
+	auto invoke_capability = js::bound_function{
+		[ &env,
+			capability_callback = std::move(capability_callback) ](
+			realm::scope& /*realm*/,
+			js::rest /*rest*/,
+			std::vector<js::value_t> params
+		) mutable {
+			env.scheduler().schedule(
+				[ &env,
+					capability_callback,
+					params = std::move(params) ]() mutable {
+					capability_callback(env, std::move(params));
+				}
+			);
+		}
+	};
+	// Make synthetic module
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](environment& env, js_module module_) -> expected_value {
@@ -173,33 +198,12 @@ auto create_capability(
 		}
 	);
 	agent->schedule(
-		[ &env,
-			scheduler = env.scheduler(),
-			callback = std::move(callback),
+		[ invoke_capability = std::move(invoke_capability),
 			dispatch = std::move(dispatch),
 			options = std::move(options) ](
 			isolated_v8::agent::lock& agent
 		) mutable {
-			auto isolated_callback = js::bound_function{
-				[ &env,
-					callback = std::move(callback),
-					scheduler = std::move(scheduler) ](
-					realm::scope& /*realm*/,
-					js::rest /*rest*/,
-					std::vector<js::value_t> params
-				) mutable {
-					scheduler.schedule(
-						[ &env,
-							&callback, /*NO!*/
-							params = std::move(params) ]() {
-							js::napi::handle_scope scope{env};
-							auto local = callback.get(env);
-							local->apply<std::monostate>(env, std::move(params));
-						}
-					);
-				}
-			};
-			auto exports = isolated_v8::function_template::make(agent, std::move(isolated_callback));
+			auto exports = isolated_v8::function_template::make(agent, std::move(invoke_capability));
 			auto module_ = isolated_v8::js_module::create_synthetic(agent, exports, std::move(options.origin));
 			dispatch(std::move(module_));
 		}

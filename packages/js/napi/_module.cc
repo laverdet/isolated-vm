@@ -5,6 +5,7 @@ export import napi_js.function;
 export import napi_js.handle_scope;
 export import napi_js.object;
 export import napi_js.reference;
+export import napi_js.remote;
 export import napi_js.utility;
 export import napi_js.uv_scheduler;
 export import napi_js.value;

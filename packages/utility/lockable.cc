@@ -76,12 +76,8 @@ class lock_notify {
 			}
 		}
 
-		auto operator=(const lock_notify&) -> lock_notify& = delete;
-		auto operator=(lock_notify&& that) noexcept -> lock_notify& {
-			cv = std::exchange(that.cv, nullptr);
-			lock = std::move(that.lock);
-			return *this;
-		}
+		auto operator=(const lock_notify&) = delete;
+		auto operator=(lock_notify&& that) = delete;
 
 	private:
 		[[no_unique_address]] Predicate predicate;
@@ -133,7 +129,7 @@ class lockable {
 		using read_scope =
 			std::conditional_t<shared_lockable<mutex_type>, std::shared_lock<mutex_type>, std::scoped_lock<mutex_type>>;
 		using read_lock =
-			std::conditional_t<shared_lockable<mutex_type>, std::shared_lock<mutex_type>, std::unique_lock<mutex_type>>;
+			std::conditional_t<shared_lockable<mutex_type>, std::shared_lock<mutex_type>, std::scoped_lock<mutex_type>>;
 
 		// Internal bound predicate type
 		template <class Predicate>
@@ -148,7 +144,7 @@ class lockable {
 			locked<const_reference, lock_waitable<read_lock, ConditionVariable, predicate_type<Predicate>>>;
 		template <class Predicate>
 		using write_notify_type =
-			locked<reference, lock_notify<std::unique_lock<mutex_type>, ConditionVariable, predicate_type<Predicate>>>;
+			locked<reference, lock_notify<std::scoped_lock<mutex_type>, ConditionVariable, predicate_type<Predicate>>>;
 		template <class Predicate>
 		using write_waitable_type =
 			locked<reference, lock_waitable<std::unique_lock<mutex_type>, ConditionVariable, predicate_type<Predicate>>>;
