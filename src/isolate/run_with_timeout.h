@@ -124,7 +124,7 @@ auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
 					std::lock_guard<std::mutex> lock{state.mutex};
 					if (state.did_finish) {
 						return;
-					} else if (isolate.error_handler && deadline > std::chrono::steady_clock::now()) {
+					} else if (isolate.error_handler && deadline < std::chrono::steady_clock::now()) {
 						assert(RaiseCatastrophicError(isolate.error_handler, "Script failed to terminate"));
 						thread_suspend.suspend();
 						return;
