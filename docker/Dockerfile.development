@@ -29,6 +29,7 @@ RUN <<DONE
 		python3 \
 		vim \
 	;
+	npm install -g pnpm
 
 	# Configure gclient
 	gclient config --unmanaged $(git -C v8 config --get remote.origin.url)

@@ -1,4 +1,7 @@
-# LLVM_VERSION=19 NODE_VERSION=22.11.0 V8_TARGET=arm64.debug V8_VERSION=12.8.20 docker compose --parallel=1 --progress=plain build depot_tools v8 v8_sources node node_sources development
+# export LLVM_VERSION=20 NODE_VERSION=22.14.0 V8_TARGET=arm64.debug V8_VERSION=12.8.20
+# docker compose --progress=plain build --pull depot_tools v8_sources v8 node_sources node
+# docker compose --progress=plain build development
+
 # Set your gc keep storage in docker engine higher than the default or it will rebuild all the time:
 # { "builder": { "gc": { "defaultKeepStorage": "50GB", "enabled": true } } }
 
@@ -11,7 +14,7 @@ services:
     image: isolated-vm/depot_tools
     build:
       additional_contexts:
-        - debian=docker-image://debian:sid
+        - debian=docker-image://debian:experimental
       dockerfile: Dockerfile.v8
       target: depot_tools
 
@@ -21,7 +24,7 @@ services:
       additional_contexts:
         - patches=../patches
         - scripts=../scripts
-        - debian=docker-image://debian:sid
+        - debian=docker-image://debian:experimental
       args:
         REF: ${V8_VERSION}
         TARGET: ${V8_TARGET}
@@ -42,7 +45,7 @@ services:
       args:
         REF: v${NODE_VERSION}
       additional_contexts:
-        - debian=docker-image://debian:sid
+        - debian=docker-image://debian:experimental
         - scripts=../scripts
       dockerfile: Dockerfile.node
 
@@ -58,7 +61,7 @@ services:
     image: isolated-vm/development
     build:
       additional_contexts:
-        - debian=docker-image://debian:sid
+        - debian=docker-image://debian:experimental
         - isolated-vm/depot_tools=docker-image://isolated-vm/depot_tools
         - isolated-vm/node_sources=docker-image://isolated-vm/node_sources:${NODE_VERSION}
         - isolated-vm/node=docker-image://isolated-vm/node:${NODE_VERSION}
