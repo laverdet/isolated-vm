@@ -2,7 +2,7 @@ name: Build
 on: [ push ]
 
 env:
-  NODE_HEADERS: 18.0.0
+  NODE_HEADERS: 22.0.0
   V8_CONFIGURATION: release
   V8_REF: 12.8.20
 
@@ -134,6 +134,7 @@ jobs:
             ninja-build
             nodejs
             npm
+            xxd
       - name: Toolchain [macOS]
         if: matrix.host.platform == 'darwin'
         run: brew install boost cmake llvm ninja node
@@ -169,10 +170,10 @@ jobs:
           echo "$PWD" >> "$GITHUB_PATH"
           echo ::endgroup::
 
-      # Install npm dependencies
-      - uses: bahmutov/npm-install@v1
-        with:
-          install-command: npm install --no-audit --no-fund
+      # Install node & npm dependencies
+      - uses: pnpm/action-setup@v4
+      - name: Install
+        run: pnpm install --frozen-lockfile
 
       # Download nodejs headers
       - uses: actions/cache/restore@v4
@@ -210,12 +211,15 @@ jobs:
           CMAKE_PREFIX_PATH=
           case "$IVM_HOST_PLATFORM" in
             darwin)
+              CMAKE_C_COMPILER=$(brew --prefix llvm)/bin/clang
               CMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++
               ;;
             linux-*)
-              CMAKE_CXX_COMPILER=$(realpath "$(which clang-18)")
+              CMAKE_C_COMPILER=$(realpath "$(which clang-18)")
+              CMAKE_CXX_COMPILER=$(realpath "$(which clang++-18)")
               ;;
             win32)
+              CMAKE_C_COMPILER="C:/Program Files/LLVM/bin/clang.exe"
               CMAKE_CXX_COMPILER="C:/Program Files/LLVM/bin/clang++.exe"
               # I do not know why cmake cannot find ninja without explicitly being told where it is.
               CMAKE_MAKE_PROGRAM=$(which ninja)
@@ -224,6 +228,7 @@ jobs:
           esac
           cmake \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER="$CMAKE_C_COMPILER" \
             -DCMAKE_CXX_COMPILER="$CMAKE_CXX_COMPILER" \
             -DCMAKE_MAKE_PROGRAM="$CMAKE_MAKE_PROGRAM" \
             -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
@@ -239,9 +244,12 @@ jobs:
           ;
       - name: Build
         shell: sh
-        run: ninja -C build ivm_backend_v8
+        run: |
+          npx tsc -b
+          ninja -C build ivm_backend_v8
       - name: Sanity Check
         shell: sh
+        working-directory: packages/isolated-vm
         env:
           ARCH: ${{ matrix.host.arch }}
           PLATFORM: ${{ matrix.host.platform }}
@@ -250,13 +258,15 @@ jobs:
       # Diagnostics
       - name: Symbols [Linux]
         if: startsWith(matrix.host.platform, 'linux-')
+        working-directory: packages/isolated-vm
         run: |
           set +x
           ldd "dist/backend_v8/${{ matrix.host.platform }}-${{ matrix.host.arch }}/backend_v8.node" 2>&1 | grep -v 'Error relocating'
           nm -guC "dist/backend_v8/${{ matrix.host.platform }}-${{ matrix.host.arch }}/backend_v8.node"
       - name: Symbols [Windows]
-        shell: sh
         if: matrix.host.platform == 'win32'
+        shell: sh
+        working-directory: packages/isolated-vm
         run: |
           set +x
           dependencies.exe -imports "dist/backend_v8/${{ matrix.host.platform }}-${{ matrix.host.arch }}/backend_v8.node"
@@ -265,7 +275,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.host.platform }}-${{ matrix.host.arch }}
-          path: ./dist/backend_v8
+          path: ./packages/isolated-vm/dist/backend_v8
           if-no-files-found: error
 
   # Run tests
@@ -314,7 +324,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.host.platform }}-${{ matrix.host.arch }}
-          path: ./dist/backend_v8
+          path: ./packages/isolated-vm/dist/backend_v8
 
       # Install nodejs [musl]
       - shell: sh
@@ -351,12 +361,12 @@ jobs:
         env:
           ARCH: ${{ matrix.host.arch }}
           PLATFORM: ${{ matrix.host.platform }}
-        run: node -e 'require("./dist/backend_v8/${{ matrix.host.platform }}-${{ matrix.host.arch }}/backend_v8.node")'
+        run: node -e 'require("./packages/isolated-vm/dist/backend_v8/${{ matrix.host.platform }}-${{ matrix.host.arch }}/backend_v8.node")'
 
       # Install npm dependencies and build TypeScript
-      - uses: bahmutov/npm-install@v1
-        with:
-          install-command: npm install --no-audit --no-fund
+      - uses: pnpm/action-setup@v4
+      - name: Install
+        run: pnpm install --frozen-lockfile
       - name: npm
         shell: sh
         run: |
@@ -397,7 +407,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.host.platform }}-${{ matrix.host.arch }}
-          path: ./dist/backend_v8
+          path: ./packages/isolated-vm/dist/backend_v
 
       # Save tar
       - name: tar
@@ -408,7 +418,7 @@ jobs:
         run: |
           TAG=${GITHUB_REF#refs/tags/}
           TAR_FILE="isolated-vm-node-$TAG-$PLATFORM_NAME.tar.gz"
-          tar czf "$TAR_FILE" dist/backend_v8
+          tar czf "$TAR_FILE" packages/isolated-vm/dist/backend_v8
           echo "tar=$PWD/$TAR_FILE" >> "$GITHUB_OUTPUT"
 
       # Release

@@ -51,14 +51,24 @@ else
 	GN_ARGS+=(clang_base_path="\"$CLANG_BASE_PATH\"")
 fi
 
-if [ "$PLATFORM" = linux-musl ]; then
-	GN_ARGS+=(
-		use_glib=false
-		use_lld=false
-		use_sysroot=false
-	)
-fi
+# Platform flags
+case "$PLATFORM" in
+	darwin)
+		GN_ARGS+=(
+			use_lld=false
+		)
+		;;
 
+	linux-musl)
+		GN_ARGS+=(
+			use_glib=false
+			use_lld=false
+			use_sysroot=false
+		)
+		;;
+esac
+
+# Debug flags
 case "$CONFIG" in
 	debug|optdebug)
 		GN_ARGS+=(
@@ -82,6 +92,8 @@ case "$CONFIG" in
 		V8_TARGETS=(v8_monolith)
 		;;
 esac
+
+# Optimization flags
 case "$CONFIG" in
 	debug)
 		GN_ARGS+=(
