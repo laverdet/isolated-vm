@@ -217,7 +217,11 @@ class runner final : public layer_connected {
 		auto operator=(const runner&) -> runner& = delete;
 
 		auto operator()(auto fn, auto&&... args) -> void
-			requires std::invocable<decltype(fn), std::stop_token, decltype(args)...>;
+			requires std::invocable<decltype(fn), std::stop_token, decltype(args)...> {
+			auto lock = container_->write();
+			auto instance = std::make_unique<thread>(lock, *container_);
+			instance->launch(std::move(instance), std::move(fn), std::forward<decltype(args)>(args)...);
+		}
 
 		// Waits for all thread to drain, except for the current thread, if it is owned by this runner.
 		auto close_threads() -> void {
@@ -291,14 +295,6 @@ auto thread::launch(std::unique_ptr<thread> self, auto fn, auto&&... args) -> vo
 	*self_ptr->stop_source_.write() = thread_.get_stop_source();
 	self_ptr->launch_latch_.count_down();
 	thread_.detach();
-}
-
-template <layer_traits Traits>
-auto runner<Traits>::operator()(auto fn, auto&&... args) -> void
-	requires std::invocable<decltype(fn), std::stop_token, decltype(args)...> {
-	auto lock = container_->write();
-	auto instance = std::make_unique<thread>(lock, *container_);
-	instance->launch(std::move(instance), std::move(fn), std::forward<decltype(args)>(args)...);
 }
 
 auto handle::operator()(auto fn, auto&&... args) -> void

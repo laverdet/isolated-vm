@@ -6,6 +6,7 @@ module;
 #include <queue>
 #include <ranges>
 #include <stop_token>
+#include <thread>
 #include <utility>
 module isolated_v8.foreground_runner;
 import isolated_v8.task_runner;

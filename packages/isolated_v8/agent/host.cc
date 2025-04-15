@@ -1,6 +1,8 @@
 module;
 #include <memory>
+#include <optional>
 #include <utility>
+#include <variant>
 module isolated_v8.agent;
 import isolated_v8.foreground_runner;
 import isolated_v8.scheduler;

@@ -1,4 +1,5 @@
 module;
+#include <bit>
 #include <chrono>
 #include <cstring>
 #include <memory>

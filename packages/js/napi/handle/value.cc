@@ -28,7 +28,8 @@ class value : public value_handle {
 
 		// Access underlying implementation. `operator*()` intentionally not implemented.
 		auto operator->() -> implementation<Tag>* {
-			static_assert(std::is_layout_compatible_v<value, implementation<Tag>>);
+			// TODO: Put it back after clang-18 is not used
+			// static_assert(std::is_layout_compatible_v<value, implementation<Tag>>);
 			value_handle* value = this;
 			return static_cast<implementation<Tag>*>(value);
 		}

@@ -1,4 +1,5 @@
 module;
+#include <concepts>
 #include <format>
 #include <functional>
 #include <stdexcept>

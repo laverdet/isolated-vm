@@ -1,6 +1,7 @@
 module;
 #include <array>
 #include <cassert>
+#include <concepts>
 #include <condition_variable>
 #include <deque>
 #include <memory>
@@ -173,7 +174,7 @@ export class foreground_runner
 				[[nodiscard]] auto should_resume() const -> bool;
 
 				std::array<task_queue_for_priority, priority_queue_length> queues_by_priority_;
-				util::subrange_ratchet<task_queue_for_priority*> has_tasks_{queues_by_priority_.end(), queues_by_priority_.end()};
+				util::subrange_ratchet<task_queue_for_priority*> has_tasks_{&*queues_by_priority_.end(), &*queues_by_priority_.end()};
 				util::subrange_ratchet<task_queue_for_priority*> has_delayed_tasks_{has_tasks_};
 				std::thread::id thread_id_;
 				bool has_thread_{};

@@ -3,6 +3,7 @@ module;
 export module isolated_v8.agent:lock;
 import :fwd;
 import isolated_v8.remote_handle;
+import ivm.utility;
 import v8_js;
 
 namespace isolated_v8 {

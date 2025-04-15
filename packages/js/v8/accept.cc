@@ -3,6 +3,7 @@ module;
 // nb: Symbol visibility hack
 #include <__iterator/wrap_iter.h>
 #endif
+#include <concepts>
 #include <utility>
 export module v8_js.accept;
 import isolated_js;

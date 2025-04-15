@@ -1,5 +1,6 @@
 module;
 #include "runtime/dist/runtime.js.h"
+#include <exception>
 #include <optional>
 #include <tuple>
 #include <variant>

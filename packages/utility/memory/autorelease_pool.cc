@@ -150,7 +150,7 @@ export class autorelease_pool : util::non_copyable {
 				constexpr explicit deleter(autorelease_pool& pool) :
 						pool_{&pool} {}
 
-				constexpr auto operator()(Type* pointer) const -> void {
+				auto operator()(Type* pointer) const -> void {
 					using resource_type = resource<Type, allocator_type>;
 					pool_->erase(resource_type::translate(pointer));
 				}
@@ -169,10 +169,10 @@ export class autorelease_pool : util::non_copyable {
 		using unique_ptr = std::unique_ptr<Type, deleter<Type>>;
 
 		autorelease_pool() = default;
-		constexpr explicit autorelease_pool(const allocator_type& alloc) :
+		explicit autorelease_pool(const allocator_type& alloc) :
 				allocator_{alloc} {}
 
-		constexpr auto clear() -> void {
+		auto clear() -> void {
 			releasables_.clear();
 		}
 
@@ -184,7 +184,7 @@ export class autorelease_pool : util::non_copyable {
 		// }
 
 		template <class Type>
-		constexpr auto make_unique(auto&&... args) -> unique_ptr<Type>
+		auto make_unique(auto&&... args) -> unique_ptr<Type>
 			requires std::constructible_from<Type, decltype(args)...> {
 			releasable_type* allocation = emplace<Type>();
 			allocation->construct<Type>(allocator_, std::forward<decltype(args)>(args)...);
@@ -204,15 +204,15 @@ export class autorelease_pool : util::non_copyable {
 		template <class> friend class allocator;
 
 		template <class Type>
-		constexpr auto emplace() -> releasable_type* {
+		auto emplace() -> releasable_type* {
 			return releasables_.emplace(releasable_type::allocate<Type>(allocator_)).first->get();
 		}
 
-		constexpr auto erase(releasable_type* ptr) -> void {
+		auto erase(releasable_type* ptr) -> void {
 			releasables_.erase(find(ptr));
 		}
 
-		constexpr auto find(releasable_type* ptr) const -> container_type::const_iterator {
+		auto find(releasable_type* ptr) const -> container_type::const_iterator {
 			auto iterator = releasables_.find(ptr);
 			assert(iterator != releasables_.end());
 			return iterator;

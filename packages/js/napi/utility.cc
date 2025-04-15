@@ -1,7 +1,9 @@
 module;
+#include <bit>
 #include <concepts>
 #include <exception>
 #include <stdexcept>
+#include <type_traits>
 export module napi_js.utility;
 import ivm.utility;
 import nodejs;

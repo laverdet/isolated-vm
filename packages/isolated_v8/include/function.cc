@@ -2,6 +2,7 @@ module;
 #include <array>
 #include <span>
 #include <stdexcept>
+#include <tuple>
 export module isolated_v8.function;
 import isolated_js;
 import isolated_v8.agent;

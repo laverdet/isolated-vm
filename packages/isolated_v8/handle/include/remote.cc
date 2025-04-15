@@ -1,4 +1,5 @@
 module;
+#include <bit>
 #include <memory>
 export module isolated_v8.remote;
 import isolated_v8.remote_handle;

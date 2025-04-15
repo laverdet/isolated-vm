@@ -4,6 +4,7 @@ module;
 #include <optional>
 export module isolated_v8.agent:host;
 export import :fwd;
+import isolated_v8.clock;
 import isolated_v8.evaluation.module_action;
 import isolated_v8.foreground_runner;
 import isolated_v8.remote_handle_list;

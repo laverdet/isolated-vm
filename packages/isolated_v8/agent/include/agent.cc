@@ -4,6 +4,7 @@ module;
 #include <memory>
 #include <stop_token>
 #include <utility>
+#include <variant>
 export module isolated_v8.agent;
 export import :fwd;
 export import :host;
@@ -37,7 +38,7 @@ auto agent::make(std::invocable<agent> auto fn, cluster& cluster, behavior_param
 }
 
 auto agent::schedule(auto task, auto... args) -> void
-	requires std::invocable<decltype(task), lock&, decltype(args)...> {
+	requires std::invocable<decltype(task), agent::lock&, decltype(args)...> {
 	auto host = host_.lock();
 	if (host) {
 		auto task_with_lock =
@@ -56,7 +57,7 @@ auto agent::schedule(auto task, auto... args) -> void
 }
 
 auto agent::schedule_async(auto task, auto... args) -> void
-	requires std::invocable<decltype(task), const std::stop_token&, lock&, decltype(args)...> {
+	requires std::invocable<decltype(task), const std::stop_token&, agent::lock&, decltype(args)...> {
 	auto host = host_.lock();
 	if (host) {
 		auto& scheduler = host->async_scheduler_;
