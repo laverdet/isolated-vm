@@ -8,6 +8,12 @@ import ivm.utility;
 
 namespace js {
 
+// Check whether or not `object_properties` is defined for a type
+export template <class Type>
+concept is_object_struct = requires {
+	object_properties<Type>::properties;
+};
+
 // Remove `void` type identities from tuple
 template <class Tuple, class... Types>
 struct filter_void_member_types;

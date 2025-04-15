@@ -15,14 +15,25 @@ import ivm.utility;
 
 namespace js {
 
+// Helper concept
+template <class Type>
+concept is_discriminated_union_descriptor = requires {
+	Type::alternatives;
+	Type::discriminant;
+};
+
+template <class... Types>
+concept is_discriminated_union =
+	is_discriminated_union_descriptor<union_of<std::variant<Types...>>>;
+
 // Suppress `std::variant` visitor
 template <class... Types>
-	requires std::destructible<union_of<std::variant<Types...>>>
+	requires is_discriminated_union<Types...>
 struct is_variant<Types...> : std::bool_constant<false> {};
 
 // Acceptor for discriminated union/variant types
 template <class Meta, class... Types>
-	requires std::negation_v<is_variant<Types...>>
+	requires is_discriminated_union<Types...>
 struct accept<Meta, std::variant<Types...>> {
 	public:
 		using accepted_type = std::variant<Types...>;

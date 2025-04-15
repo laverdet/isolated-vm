@@ -5,7 +5,7 @@ namespace js {
 
 // You override this with an object property descriptor for each accepted type
 export template <class Type>
-struct object_properties;
+struct object_properties {};
 
 // Descriptor for object getter and/or setter
 export template <util::string_literal Name, auto Getter, auto Setter = nullptr, bool Required = true>

@@ -78,7 +78,7 @@ using accept_object_target_type =
 	accept_object_target<Meta, Type, expand_object_setters_t<Type, std::decay_t<decltype(object_properties<Type>::properties)>>>;
 
 template <class Meta, class Type>
-	requires std::destructible<object_properties<Type>>
+	requires is_object_struct<Type>
 struct accept<Meta, Type>
 		: accept_object_target_type<Meta, Type> {
 		using accept_object_target_type<Meta, Type>::accept_object_target_type;

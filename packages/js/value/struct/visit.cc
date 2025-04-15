@@ -115,7 +115,7 @@ using visit_subject_type =
 
 // Visitor function for C++ object types
 template <class Meta, class Type>
-	requires std::destructible<object_properties<Type>>
+	requires is_object_struct<Type>
 struct visit<Meta, Type> : visit_subject_type<Meta, Type> {
 		constexpr explicit visit(auto_heritage auto visit_heritage) :
 				visit_subject_type<Meta, Type>{visit_heritage(this)} {}
