@@ -133,7 +133,7 @@ function(target_embed_content TARGET)
 		string(REPLACE / _ IDENTIFIER "${IDENTIFIER}")
 		message(STATUS "Embedding ${FILE} as ${IDENTIFIER}")
 		add_custom_command(
-			DEPENDS "${FILE}"
+			DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}"
 			OUTPUT "${EMBED_OUTPUT_DIR}/${FILE}.c" "${EMBED_OUTPUT_DIR}/${FILE}.h"
 			COMMAND "${PROJECT_SOURCE_DIR}/embed.sh" "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}" "${EMBED_OUTPUT_DIR}/${FILE}" ${IDENTIFIER}
 		)
