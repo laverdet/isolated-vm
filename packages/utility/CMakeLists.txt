@@ -16,4 +16,6 @@ target_sources(ivm_utility
 		utility/utility.cc
 		variant.cc
 )
+# TODO: Only used for libc++ missing features on macOS
+target_include_directories(ivm_utility PUBLIC cxx)
 target_link_libraries(ivm_utility PRIVATE Boost::boost)

@@ -1,4 +1,5 @@
 module;
+#include "chunk_view.h"
 #include <cassert>
 #include <cstdint>
 #include <ranges>
