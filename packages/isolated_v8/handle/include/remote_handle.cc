@@ -11,7 +11,7 @@ namespace isolated_v8 {
 
 export class remote_handle;
 export using expired_remote_type = std::unique_ptr<remote_handle, auto (*)(remote_handle*)->void>;
-export using reset_handle_type = std::move_only_function<auto(expired_remote_type)->void>;
+export using reset_handle_type = util::maybe_move_only_function<auto(expired_remote_type)->void>;
 
 // Interface needed in order to create `remote<T>` handles
 export class remote_handle_lock : util::non_copyable {

@@ -4,6 +4,7 @@ target_sources(ivm_utility
 		_module.cc
 		container/prehashed_string_map.cc
 		functional/comparator.cc
+		functional/function.cc
 		lockable.cc
 		memory/autorelease_pool.cc
 		memory/comparator.cc

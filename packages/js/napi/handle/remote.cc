@@ -65,10 +65,14 @@ auto make_unique_remote(remote_handle_environment auto& env, value<Tag> value) -
 template <class Tag>
 auto remote<Tag>::expire(remote* ptr) -> void {
 	std::unique_ptr<remote> self{ptr};
-	ptr->scheduler_.schedule([ self = std::move(self) ] mutable {
-		handle_scope scope{self->env()};
-		self.reset();
-	});
+	ptr->scheduler_.schedule(
+		util::make_indirect_moveable_function(
+			[ self = std::move(self) ] mutable {
+				handle_scope scope{self->env()};
+				self.reset();
+			}
+		)
+	);
 }
 
 template <class Tag>

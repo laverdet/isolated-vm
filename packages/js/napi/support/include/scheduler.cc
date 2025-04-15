@@ -76,7 +76,7 @@ class uv_handle_of : public util::pointer_facade<uv_handle_of<Handle, Type>> {
 // Shareable libuv scheduler
 export class uv_scheduler {
 	private:
-		using task_type = std::move_only_function<void()>;
+		using task_type = util::maybe_move_only_function<void()>;
 
 	public:
 		auto close() -> void;

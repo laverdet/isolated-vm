@@ -32,19 +32,21 @@ export auto make_promise(environment& ienv, auto accept) {
 			auto&&... args
 		) mutable {
 			scheduler.schedule(
-				[ accept = std::move(accept),
-					deferred,
-					env,
-					... args = std::forward<decltype(args)>(args) ]() mutable {
-					auto scope = js::napi::handle_scope{env};
-					auto& ienv = environment::get(env);
-					ienv.scheduler().decrement_ref();
-					if (auto result = accept(ienv, std::forward<decltype(args)>(args)...)) {
-						js::napi::invoke0(napi_resolve_deferred, env, deferred, result.value());
-					} else {
-						js::napi::invoke0(napi_reject_deferred, env, deferred, result.error());
+				util::make_indirect_moveable_function(
+					[ accept = std::move(accept),
+						deferred,
+						env,
+						... args = std::forward<decltype(args)>(args) ]() mutable {
+						auto scope = js::napi::handle_scope{env};
+						auto& ienv = environment::get(env);
+						ienv.scheduler().decrement_ref();
+						if (auto result = accept(ienv, std::forward<decltype(args)>(args)...)) {
+							js::napi::invoke0(napi_resolve_deferred, env, deferred, result.value());
+						} else {
+							js::napi::invoke0(napi_reject_deferred, env, deferred, result.error());
+						}
 					}
-				}
+				)
 			);
 		};
 
