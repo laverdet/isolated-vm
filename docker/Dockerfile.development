@@ -33,6 +33,7 @@ RUN <<DONE
 
 	# Configure gclient
 	gclient config --unmanaged $(git -C v8 config --get remote.origin.url)
+	echo 'entries = {}' > .gclient_entries
 
 	# Link clang-N binaries and libraries to system paths
 	ln -fs /lib/"llvm-$LLVM_VERSION"/bin/* /usr/bin/

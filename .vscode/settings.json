@@ -46,7 +46,7 @@
 	"files.insertFinalNewline": true,
 	"files.trimTrailingWhitespace": true,
 	"search.exclude": {
-		"package-lock.json": true,
+		"pnpm-lock.yaml": true,
 	},
 	"terminal.integrated.defaultProfile.linux": "bash",
   "terminal.integrated.profiles.linux": {
