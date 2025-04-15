@@ -1,6 +1,6 @@
 #!/bin/sh
 # ./embed.sh <source> <target> <variable>
-SIZE=$(($(stat -c %s "$1") + 1))
+SIZE=$(($(cat "$1" | wc -c) + 1))
 
 cat <<EOF > "$2.h"
 #pragma once
