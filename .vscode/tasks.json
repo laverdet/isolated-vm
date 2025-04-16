@@ -90,7 +90,7 @@
 		{
 			"label": "cmake: configure",
 			"type": "shell",
-			"command": "set -eu; set -a; . $ENV_FILE; . $V8_OUT_PATH/env; cmake -DCMAKE_BUILD_TYPE=${input:ivm_target} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DIVM_HOST_PLATFORM=linux-gnu -DIVM_HOST_ARCH=\"$(uname -m)\" -DV8_INCLUDE_DIR=\"$V8_INCLUDE_DIR\" -DV8_INCLUDE_GN_FILE=\"$V8_INCLUDE_GN_FILE\" -DV8_OUT_PATH=\"$V8_OUT_PATH\" -DV8_LIBRARY_TYPE=\"$V8_LIBRARY_TYPE\" -DCMAKE_CXX_COMPILER=\"$(realpath \"$(which clang-18)\")\" -DNODE_DIST_DIR=\"$NODE_DIST_DIR\" -DCMAKE_BUILD_TYPE=${input:ivm_target} -G Ninja -B build",
+			"command": "set -eu; set -a; . $ENV_FILE; . $V8_OUT_PATH/env; cmake -DCMAKE_BUILD_TYPE=${input:ivm_target} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DIVM_HOST_PLATFORM=linux-gnu -DIVM_HOST_ARCH=\"$(uname -m)\" -DV8_INCLUDE_DIR=\"$V8_INCLUDE_DIR\" -DV8_INCLUDE_GN_FILE=\"$V8_INCLUDE_GN_FILE\" -DV8_OUT_PATH=\"$V8_OUT_PATH\" -DV8_LIBRARY_TYPE=\"$V8_LIBRARY_TYPE\" -DCMAKE_CXX_COMPILER=clang -DNODE_DIST_DIR=\"$NODE_DIST_DIR\" -DCMAKE_BUILD_TYPE=${input:ivm_target} -G Ninja -B build",
 			"dependsOn": [ "cmake: clean" ],
 			"problemMatcher": [],
 			"presentation": {

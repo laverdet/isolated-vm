@@ -58,6 +58,5 @@
 	},
 	"clangd.arguments": [
 		"--compile-commands-dir=build",
-		"--experimental-modules-support",
 	],
 }

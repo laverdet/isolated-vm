@@ -107,9 +107,6 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
 
 	# Debug / Release configuration flags
 	if (CMAKE_BUILD_TYPE STREQUAL Debug)
-		# Required for clangd w/ modules
-		add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fretain-comments-from-system-headers>)
-
 		# Enable ASAN / LSAN
 		add_compile_options(-fsanitize=address)
 		add_link_options(-fsanitize=address -shared-libasan)
