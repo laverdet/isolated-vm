@@ -1,6 +1,6 @@
 // NOLINTBEGIN(misc-unused-using-decls)
 module;
-#include <v8-local-handle.h>
+#include "v8-local-handle.h"
 export module v8:local_handle;
 namespace v8 {
 export using v8::HandleScope;

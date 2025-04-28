@@ -1,5 +1,17 @@
 add_library(${IV8_PREFIX}_common_v8 OBJECT)
-target_sources(${IV8_PREFIX}_common_v8
+
+# Dual module build for embedded / nodejs v8
+if (IVM_IV8_TRICKSHOT)
+	set(V8_JS_MODULE_NAME z8_js)
+	target_compile_definitions(${IV8_PREFIX}_common_v8 PUBLIC
+		iv8=iz8
+		v8_js=z8_js
+	)
+else()
+	set(V8_JS_MODULE_NAME v8_js)
+endif()
+
+target_preprocessed_sources(${IV8_PREFIX}_common_v8 v8_js ${V8_JS_MODULE_NAME}
 	PRIVATE
 		value/array.cc
 		value/fixed_array.cc

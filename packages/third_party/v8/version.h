@@ -1,4 +1,4 @@
-#include <v8-version.h>
+#include "v8-version.h"
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define V8_AT_LEAST(major, minor, patch) (                                                   \

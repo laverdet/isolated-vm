@@ -1,9 +1,9 @@
 // NOLINTBEGIN(misc-unused-using-decls)
 module;
 #ifndef IVM_V8_VIA_NODEJS
-#include <libplatform/v8-tracing.h>
-#include <v8-platform.h>
-#include <v8-source-location.h>
+#include "libplatform/v8-tracing.h"
+#include "v8-platform.h"
+#include "v8-source-location.h"
 #endif
 export module v8:platform;
 #ifndef IVM_V8_VIA_NODEJS

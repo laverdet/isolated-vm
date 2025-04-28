@@ -1,7 +1,7 @@
 // NOLINTBEGIN(misc-unused-using-decls)
 module;
 #ifndef IVM_V8_VIA_NODEJS
-#include <libplatform/libplatform.h>
+#include "libplatform/libplatform.h"
 #endif
 export module v8:libplatform;
 

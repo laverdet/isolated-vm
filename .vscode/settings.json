@@ -38,6 +38,8 @@
 	},
 	"files.exclude": {
 		".cache": true,
+		"**/.z8_js": true,
+		"**/.z8": true,
 		"**/dist": true,
 		"**/node_modules": true,
 		"build": true,

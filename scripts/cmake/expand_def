@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+FILE="$1"
+shift
+# Use the c preprocessor to expand command-line macros. This works around the draconian P3034R1
+# standard.
+# Usage: expand_def source.cc -Dfrom=to
+echo "#line 1 \"$FILE\""
+sed -E "s/(\s*#)/__REMOVE_PRE__\1/" "$FILE" | \
+cpp -E "$@" | \
+sed -E "s/__REMOVE_PRE__//" | \
+grep -Ev "^# [01]"

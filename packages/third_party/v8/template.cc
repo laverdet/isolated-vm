@@ -1,6 +1,6 @@
 // NOLINTBEGIN(misc-unused-using-decls)
 module;
-#include <v8-template.h>
+#include "v8-template.h"
 export module v8:template_;
 namespace v8 {
 export using v8::AccessCheckCallback;

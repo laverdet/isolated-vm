@@ -1,6 +1,6 @@
 // NOLINTBEGIN(misc-unused-using-decls)
 module;
-#include <v8-function-callback.h>
+#include "v8-function-callback.h"
 export module v8:function_callback;
 namespace v8 {
 export using v8::FunctionCallback;

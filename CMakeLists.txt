@@ -121,9 +121,9 @@ endif()
 function(target_embed_content TARGET)
 	set(FILE_SET ${ARGV})
 	list(POP_FRONT FILE_SET)
-	set(EMBED_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/embed")
-	file(MAKE_DIRECTORY ${EMBED_OUTPUT_DIR})
-	target_include_directories(${TARGET} PRIVATE "${EMBED_OUTPUT_DIR}")
+	set(GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/embed")
+	file(MAKE_DIRECTORY "${GEN_DIR}")
+	target_include_directories(${TARGET} PRIVATE "${GEN_DIR}")
 	foreach(FILE ${FILE_SET})
 		set(IDENTIFIER "${FILE}")
 		string(REPLACE . _ IDENTIFIER "${IDENTIFIER}")
@@ -131,13 +131,49 @@ function(target_embed_content TARGET)
 		message(STATUS "Embedding ${FILE} as ${IDENTIFIER}")
 		add_custom_command(
 			DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}"
-			OUTPUT "${EMBED_OUTPUT_DIR}/${FILE}.c" "${EMBED_OUTPUT_DIR}/${FILE}.h"
-			COMMAND "${PROJECT_SOURCE_DIR}/embed.sh" "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}" "${EMBED_OUTPUT_DIR}/${FILE}" ${IDENTIFIER}
+			OUTPUT "${GEN_DIR}/${FILE}.c" "${GEN_DIR}/${FILE}.h"
+			COMMAND "${PROJECT_SOURCE_DIR}/embed.sh" "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}" "${GEN_DIR}/${FILE}" ${IDENTIFIER}
 		)
-		set_source_files_properties("${EMBED_OUTPUT_DIR}/${FILE}.c" PROPERTIES GENERATED TRUE)
-		target_sources(${TARGET} PRIVATE "${EMBED_OUTPUT_DIR}/${FILE}.c")
-		target_sources(${TARGET} PRIVATE "${EMBED_OUTPUT_DIR}/${FILE}.c")
+		set_source_files_properties("${GEN_DIR}/${FILE}.c" PROPERTIES GENERATED TRUE)
+		target_sources(${TARGET} PRIVATE "${GEN_DIR}/${FILE}.c")
 	endforeach()
+endfunction()
+
+# Generate lightly preprocessed C++ source files, to workaround P3034R1
+function(target_preprocessed_sources TARGET SEARCH REPLACE)
+	set(FILE_SET ${ARGV})
+	list(POP_FRONT FILE_SET) # TARGET
+	list(POP_FRONT FILE_SET) # SEARCH
+	list(POP_FRONT FILE_SET) # REPLACE
+
+	if("${SEARCH}" STREQUAL "${REPLACE}")
+		# No-op replacement directly uses original sources
+		target_sources(${TARGET} ${FILE_SET})
+	else()
+		# Generated sources with macro replacement
+		set(GEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.${REPLACE}")
+		file(MAKE_DIRECTORY "${GEN_DIR}")
+		set(SCOPE)
+		set(NEXT_SCOPE)
+		foreach(FILE ${FILE_SET})
+			# Uppercase "files" are actually scope keywords
+			if("${FILE}" MATCHES "^[A-Z_]+$")
+				list(APPEND NEXT_SCOPE "${FILE}")
+				continue()
+			elseif(NEXT_SCOPE)
+				set(SCOPE ${NEXT_SCOPE})
+				set(NEXT_SCOPE)
+			endif()
+			# Add generator command
+			add_custom_command(
+				DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}"
+				OUTPUT "${GEN_DIR}/${FILE}"
+				COMMAND "${PROJECT_SOURCE_DIR}/scripts/cmake/expand_def" "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}" "-D${SEARCH}=${REPLACE}" > "${GEN_DIR}/${FILE}"
+			)
+			set_source_files_properties("${GEN_DIR}/${FILE}" PROPERTIES GENERATED TRUE)
+			target_sources(${TARGET} ${SCOPE} "${GEN_DIR}/${FILE}")
+		endforeach()
+	endif()
 endfunction()
 
 # Generic abstract C++ utilities
@@ -152,13 +188,13 @@ add_subdirectory(packages/js/value)
 # linked to the final target.
 # https://gitlab.kitware.com/cmake/cmake/-/issues/18090
 set(IV8_PREFIX backend_napi_v8)
-set(IV8_INCLUDE_DIR ${NODE_DIST_DIR}/include/node)
+set(IV8_INCLUDE_DIR "${NODE_DIST_DIR}/include/node")
 add_subdirectory(packages/js/v8 backend_napi_v8_jsv8)
 add_subdirectory(packages/third_party/v8 backend_napi_v8_v8)
 
 # Embedded v8
 set(IV8_PREFIX ivm_embedded)
-set(IV8_INCLUDE_DIR ${V8_INCLUDE_DIR})
+set(IV8_INCLUDE_DIR "${V8_INCLUDE_DIR}")
 set(IVM_IV8_EMBEDDED ON)
 set(IVM_IV8_TRICKSHOT ON)
 add_subdirectory(packages/js/v8 ivm_embedded_jsv8)

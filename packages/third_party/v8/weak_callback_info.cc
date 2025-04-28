@@ -1,6 +1,6 @@
 // NOLINTBEGIN(misc-unused-using-decls)
 module;
-#include <v8-weak-callback-info.h>
+#include "v8-weak-callback-info.h"
 export module v8:weak_callback_info;
 namespace v8 {
 export using v8::WeakCallbackInfo;

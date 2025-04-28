@@ -1,6 +1,6 @@
 // NOLINTBEGIN(misc-unused-using-decls)
 module;
-#include <v8-promise.h>
+#include "v8-promise.h"
 export module v8:promise;
 namespace v8 {
 export using v8::Promise;

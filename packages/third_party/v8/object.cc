@@ -1,6 +1,6 @@
 // NOLINTBEGIN(misc-unused-using-decls)
 module;
-#include <v8-object.h>
+#include "v8-object.h"
 export module v8:object;
 namespace v8 {
 export using v8::IndexFilter;
