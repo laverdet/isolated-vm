@@ -69,18 +69,18 @@ struct object_literal {
 };
 
 template <>
-struct object_properties<object_literal_one> {
+struct struct_properties<object_literal_one> {
 		constexpr static auto properties = std::tuple{
-			member<"integer", &object_literal_one::integer, false>{},
+			property<"integer">::descriptor{struct_member{&object_literal_one::integer}},
 		};
 };
 
 template <>
-struct object_properties<object_literal> {
+struct struct_properties<object_literal> {
 		constexpr static auto properties = std::tuple{
-			member<"integer", &object_literal::integer, false>{},
-			member<"number", &object_literal::number, false>{},
-			member<"string", &object_literal::string>{},
+			property<"integer">::descriptor{struct_member{&object_literal::integer}},
+			property<"number">::descriptor{struct_member{&object_literal::number}},
+			property<"string">::descriptor{struct_member{&object_literal::string}},
 		};
 };
 
@@ -141,16 +141,16 @@ struct union_alternative_two {
 };
 
 template <>
-struct object_properties<union_alternative_one> {
+struct struct_properties<union_alternative_one> {
 		constexpr static auto properties = std::tuple{
-			member<"one", &union_alternative_one::one, false>{},
+			property<"one">::descriptor{struct_member{&union_alternative_one::one}},
 		};
 };
 
 template <>
-struct object_properties<union_alternative_two> {
+struct struct_properties<union_alternative_two> {
 		constexpr static auto properties = std::tuple{
-			member<"two", &union_alternative_two::two, false>{},
+			property<"two">::descriptor{struct_member{&union_alternative_two::two}},
 		};
 };
 

@@ -233,16 +233,16 @@ namespace js {
 using namespace backend_napi_v8;
 
 template <>
-struct object_properties<compile_module_options> {
+struct struct_properties<compile_module_options> {
 		constexpr static auto properties = std::tuple{
-			member<"origin", &compile_module_options::origin, false>{},
+			property<"origin">::descriptor{struct_member{&compile_module_options::origin}},
 		};
 };
 
 template <>
-struct object_properties<create_capability_options> {
+struct struct_properties<create_capability_options> {
 		constexpr static auto properties = std::tuple{
-			member<"origin", &create_capability_options::origin, false>{},
+			property<"origin">::descriptor{struct_member{&create_capability_options::origin}},
 		};
 };
 

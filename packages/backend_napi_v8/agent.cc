@@ -109,29 +109,29 @@ namespace js {
 using backend_napi_v8::make_agent_options;
 
 template <>
-struct object_properties<make_agent_options::clock_deterministic> {
+struct struct_properties<make_agent_options::clock_deterministic> {
 		constexpr static auto properties = std::tuple{
-			member<"epoch", &make_agent_options::clock_deterministic::epoch>{},
-			member<"interval", &make_agent_options::clock_deterministic::interval>{},
+			property<"epoch">::descriptor{struct_member{&make_agent_options::clock_deterministic::epoch}},
+			property<"interval">::descriptor{struct_member{&make_agent_options::clock_deterministic::interval}},
 		};
 };
 
 template <>
-struct object_properties<make_agent_options::clock_microtask> {
+struct struct_properties<make_agent_options::clock_microtask> {
 		constexpr static auto properties = std::tuple{
-			member<"epoch", &make_agent_options::clock_microtask::epoch>{},
+			property<"epoch">::descriptor{struct_member{&make_agent_options::clock_microtask::epoch}},
 		};
 };
 
 template <>
-struct object_properties<make_agent_options::clock_realtime> {
+struct struct_properties<make_agent_options::clock_realtime> {
 		constexpr static auto properties = std::tuple{
-			member<"epoch", &make_agent_options::clock_realtime::epoch>{},
+			property<"epoch">::descriptor{struct_member{&make_agent_options::clock_realtime::epoch}},
 		};
 };
 
 template <>
-struct object_properties<make_agent_options::clock_system> {
+struct struct_properties<make_agent_options::clock_system> {
 		constexpr static auto properties = std::tuple{};
 };
 
@@ -147,10 +147,10 @@ struct union_of<make_agent_options::clock_type> {
 };
 
 template <>
-struct object_properties<make_agent_options> {
+struct struct_properties<make_agent_options> {
 		constexpr static auto properties = std::tuple{
-			member<"clock", &make_agent_options::clock, false>{},
-			member<"randomSeed", &make_agent_options::random_seed, false>{},
+			property<"clock">::descriptor{struct_member{&make_agent_options::clock}},
+			property<"randomSeed">::descriptor{struct_member{&make_agent_options::random_seed}},
 		};
 };
 

@@ -27,25 +27,25 @@ namespace js {
 using namespace isolated_v8;
 
 template <>
-struct object_properties<source_location> {
+struct struct_properties<source_location> {
 		constexpr static auto properties = std::tuple{
-			member<"line", &source_location::line>{},
-			member<"column", &source_location::column>{},
+			property<"line">::descriptor{struct_member{&source_location::line}},
+			property<"column">::descriptor{struct_member{&source_location::column}},
 		};
 };
 
 template <>
-struct object_properties<source_origin> {
+struct struct_properties<source_origin> {
 		constexpr static auto properties = std::tuple{
-			member<"name", &source_origin::name>{},
-			member<"location", &source_origin::location>{},
+			property<"name">::descriptor{struct_member{&source_origin::name}},
+			property<"location">::descriptor{struct_member{&source_origin::location}},
 		};
 };
 
 template <>
-struct object_properties<source_required_name> {
+struct struct_properties<source_required_name> {
 		constexpr static auto properties = std::tuple{
-			member<"name", &source_required_name::name>{},
+			property<"name">::descriptor{struct_member{&source_required_name::name}},
 		};
 };
 

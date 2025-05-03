@@ -1,6 +1,7 @@
 module;
 #include <concepts>
 #include <cstddef>
+#include <expected>
 #include <optional>
 #include <type_traits>
 #include <variant>
@@ -49,11 +50,32 @@ struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
 
 		constexpr auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> std::optional<Type>
 			requires std::invocable<accept_type, decltype(tag), decltype(value), decltype(rest)...> {
-			return {accept_type::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...)};
+			const accept_type& accept_ = *this;
+			return accept_(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
 		}
 
 		constexpr auto operator()(undefined_tag /*tag*/, const auto& /*value*/) const -> std::optional<Type> {
 			return std::nullopt;
+		}
+};
+
+// `std::expected` is abused to provide an undefined case similar to `std::optional`, but only when
+// `undefined_in_tag` is passed. This detects missing object properties, as as opposed to
+// `undefined` properties.
+template <class Meta, class Type>
+struct accept<Meta, std::expected<Type, undefined_in_tag>> : accept<Meta, Type> {
+		using accept_type = accept<Meta, Type>;
+		using accept_type::accept;
+		using value_type = std::expected<Type, undefined_in_tag>;
+
+		constexpr auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> value_type
+			requires std::invocable<accept_type, decltype(tag), decltype(value), decltype(rest)...> {
+			const accept_type& accept_ = *this;
+			return value_type{std::in_place, accept_(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...)};
+		}
+
+		constexpr auto operator()(undefined_in_tag tag, const auto& /*value*/) const -> value_type {
+			return value_type{std::unexpect, tag};
 		}
 };
 

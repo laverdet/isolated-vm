@@ -4,6 +4,7 @@ export import isolated_js.dictionary.vector_of;
 export import isolated_js.enum_.types;
 export import isolated_js.function;
 export import isolated_js.primitive.types;
+export import isolated_js.property;
 export import isolated_js.struct_.types;
 export import isolated_js.tag;
 export import isolated_js.transfer;

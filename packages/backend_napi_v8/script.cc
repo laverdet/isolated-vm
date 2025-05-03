@@ -82,9 +82,9 @@ namespace js {
 using backend_napi_v8::compile_script_options;
 
 template <>
-struct object_properties<compile_script_options> {
+struct struct_properties<compile_script_options> {
 		constexpr static auto properties = std::tuple{
-			member<"origin", &compile_script_options::origin, false>{},
+			property<"origin">::descriptor{struct_member{&compile_script_options::origin}},
 		};
 };
 

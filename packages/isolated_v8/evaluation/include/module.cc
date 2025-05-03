@@ -144,9 +144,9 @@ namespace js {
 using isolated_v8::module_request;
 
 template <>
-struct object_properties<module_request> {
+struct struct_properties<module_request> {
 		constexpr static auto properties = std::tuple{
-			accessor<"specifier", &module_request::specifier>{},
+			property<"specifier">::descriptor{struct_accessor{&module_request::specifier}},
 		};
 };
 
