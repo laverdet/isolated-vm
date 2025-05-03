@@ -23,12 +23,15 @@ RUN <<DONE
 		libboost-all-dev \
 		lld-$LLVM_VERSION \
 		lldb-$LLVM_VERSION \
+		locales-all \
 		man \
 		ninja-build \
 		pkg-config \
 		python3 \
 		vim \
 	;
+	# apt-get install -y -t experimental gcc-15 g++-15
+	# curl https://archives.boost.io/release/1.88.0/source/boost_1_88_0.tar.gz | tar xz --strip-components=2 -C /usr/include/boost boost_1_88_0/boost
 	npm install -g pnpm
 
 	# Configure gclient
