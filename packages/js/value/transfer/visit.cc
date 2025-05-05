@@ -15,7 +15,7 @@ struct visit;
 // Given `Meta`, this is the type of the root visitor which will be passed as a constructor argument
 // to `accept`. It follows that `void` acceptors don't receive this parameter.
 export template <class Meta>
-using visit_root = visit<Meta, visit_subject_t<Meta>>;
+using visit_root = visit<Meta, typename Meta::visit_subject_type>;
 
 // Automatic creation context which sends the root visitor down to children. Any `visit<M, T>`
 // instance should invoke the heritage call operator with itself when passing down to children.

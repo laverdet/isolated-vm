@@ -60,7 +60,7 @@ struct visit_getter : visit<Meta, typename Getter::type> {
 // Visitor passed to acceptor for each member
 template <class Meta, class Property>
 struct visit_object_property {
-		using first_type = visit_key_literal<Property::property_name, accept_target_t<Meta>>;
+		using first_type = visit_key_literal<Property::property_name, typename Meta::accept_target_type>;
 		using second_type = visit_getter<Meta, getter_delegate<typename Property::property_type>>;
 
 		constexpr explicit visit_object_property(auto_heritage auto visit_heritage, Property property) :
