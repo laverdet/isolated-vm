@@ -2,7 +2,7 @@ add_library(ivm_utility OBJECT)
 target_sources(ivm_utility
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
-		container/prehashed_string_map.cc
+		container/sealed_map.cc
 		functional/comparator.cc
 		functional/function.cc
 		lockable.cc
@@ -13,6 +13,7 @@ target_sources(ivm_utility
 		tuple.cc
 		type_traits.cc
 		utility/facade.cc
+		utility/hash.cc
 		utility/utility.cc
 		variant.cc
 )

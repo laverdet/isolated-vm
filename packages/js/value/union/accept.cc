@@ -1,5 +1,4 @@
 module;
-#include <concepts>
 #include <format>
 #include <functional>
 #include <stdexcept>
@@ -49,11 +48,11 @@ struct accept<Meta, std::variant<Types...>> {
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> accepted_type {
 			auto alternatives = make_discriminant_map<decltype(dictionary), decltype(visit)>();
 			auto discriminant_value = accept_discriminant(dictionary_tag{}, dictionary, visit);
-			auto accept_alternative = alternatives.get(discriminant_value);
+			auto accept_alternative = alternatives.find(util::djb2_hash(discriminant_value));
 			if (accept_alternative == nullptr) {
 				throw std::logic_error{std::format("Unknown discriminant: {}", discriminant_value)};
 			}
-			return (*accept_alternative)(*this, std::forward<decltype(dictionary)>(dictionary), visit);
+			return accept_alternative->second(*this, std::forward<decltype(dictionary)>(dictionary), visit);
 		}
 
 	private:
@@ -61,11 +60,14 @@ struct accept<Meta, std::variant<Types...>> {
 		consteval static auto make_discriminant_map() {
 			return std::invoke(
 				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) consteval {
-					return util::prehashed_string_map{invoke(std::integral_constant<size_t, Index>{})...};
+					return util::sealed_map{
+						std::in_place,
+						invoke(std::integral_constant<size_t, Index>{})...
+					};
 				},
 				[]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
 					const auto& alternative = std::get<Index>(descriptor_type::alternatives);
-					return std::pair{alternative.discriminant, &accept_value<Index, Value, Visit>};
+					return std::pair{util::djb2_hash(alternative.discriminant), &accept_value<Index, Value, Visit>};
 				},
 				std::index_sequence_for<Types...>{}
 			);

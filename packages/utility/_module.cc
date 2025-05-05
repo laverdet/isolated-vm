@@ -1,12 +1,13 @@
 export module ivm.utility;
+export import ivm.utility.hash;
 export import ivm.utility.autorelease_pool;
 export import ivm.utility.comparator;
 export import ivm.utility.facade;
 export import ivm.utility.functional;
 export import ivm.utility.lockable;
 export import ivm.utility.memory;
-export import ivm.utility.prehashed_string_map;
 export import ivm.utility.ranges;
+export import ivm.utility.sealed_map;
 export import ivm.utility.tuple;
 export import ivm.utility.type_traits;
 export import ivm.utility.utility;
