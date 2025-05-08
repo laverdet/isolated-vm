@@ -46,6 +46,10 @@ auto implementation<number_tag>::make(const environment& env, uint32_t number) -
 }
 
 // bigint
+auto implementation<bigint_tag>::make(const environment& env, const bigint& number) -> value<bigint_tag_of<bigint>> {
+	return value<bigint_tag_of<bigint>>::from(napi::invoke(napi_create_bigint_words, env, number.sign_bit(), number.size(), number.data()));
+}
+
 auto implementation<bigint_tag>::make(const environment& env, int64_t number) -> value<bigint_tag_of<int64_t>> {
 	return value<bigint_tag_of<int64_t>>::from(napi::invoke(napi_create_bigint_int64, env, number));
 }

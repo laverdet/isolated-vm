@@ -35,6 +35,9 @@ struct tag_for<uint32_t> : std::type_identity<number_tag_of<uint32_t>> {};
 
 // `bigint`
 template <>
+struct tag_for<bigint> : std::type_identity<bigint_tag> {};
+
+template <>
 struct tag_for<int64_t> : std::type_identity<bigint_tag_of<int64_t>> {};
 
 template <>

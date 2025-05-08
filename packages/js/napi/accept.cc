@@ -44,6 +44,14 @@ struct accept<void, napi_env> : public napi_witness_lock {
 			return js::napi::value<number_tag_of<Numeric>>::make(env(), std::forward<decltype(value)>(value));
 		}
 
+		auto operator()(bigint_tag /*tag*/, const bigint& value) const -> napi_value {
+			return js::napi::value<bigint_tag>::make(env(), value);
+		}
+
+		auto operator()(bigint_tag /*tag*/, auto&& value) const -> napi_value {
+			return js::napi::value<bigint_tag>::make(env(), bigint{std::forward<decltype(value)>(value)});
+		}
+
 		template <class Numeric>
 		auto operator()(bigint_tag_of<Numeric> /*tag*/, auto&& value) const -> napi_value {
 			return js::napi::value<bigint_tag_of<Numeric>>::make(env(), std::forward<decltype(value)>(value));

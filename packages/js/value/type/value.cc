@@ -6,6 +6,7 @@ module;
 export module isolated_js.value;
 import isolated_js.date;
 import isolated_js.dictionary.vector_of;
+import isolated_js.primitive.types;
 import isolated_js.tag;
 
 namespace js {
@@ -25,6 +26,7 @@ export using value_t = boost::make_recursive_variant<
 	int32_t,
 	uint32_t,
 	// bigint
+	bigint,
 	int64_t,
 	uint64_t,
 	// string

@@ -1,6 +1,5 @@
 module;
 #include <cstdint>
-#include <stdexcept>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -76,7 +75,15 @@ struct visit<void, v8::Local<v8::BigInt>> {
 			if (lossless) {
 				return accept(bigint_tag_of<uint64_t>{}, u64);
 			}
-			throw std::logic_error{"Bigint is too big"};
+			js::bigint bigint_words;
+			bigint_words.resize_and_overwrite(value->WordCount(), [ & ](auto* words, auto length) {
+				if (length > 0) {
+					int int_length = static_cast<int>(length);
+					value->ToWordsArray(&bigint_words.sign_bit(), &int_length, words);
+				}
+				return length;
+			});
+			return accept(bigint_tag{}, std::move(bigint_words));
 		}
 };
 
@@ -172,6 +179,8 @@ struct visit<void, v8::Local<v8::Value>>
 				return (*this)(value.As<v8::String>(), accept);
 			} else if (value->IsBoolean()) {
 				return (*this)(value.As<v8::Boolean>(), accept);
+			} else if (value->IsBigInt()) {
+				return (*this)(value.As<v8::BigInt>(), accept);
 			} else {
 				return accept(value_tag{}, std::type_identity<void>{});
 			}

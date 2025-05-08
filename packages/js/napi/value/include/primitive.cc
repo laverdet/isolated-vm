@@ -45,6 +45,7 @@ struct implementation<number_tag> : implementation<number_tag::tag_type> {
 // bigint
 template <>
 struct implementation<bigint_tag> : implementation<bigint_tag::tag_type> {
+		static auto make(const environment& env, const bigint& number) -> value<bigint_tag_of<bigint>>;
 		static auto make(const environment& env, int64_t number) -> value<bigint_tag_of<int64_t>>;
 		static auto make(const environment& env, uint64_t number) -> value<bigint_tag_of<uint64_t>>;
 };

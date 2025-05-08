@@ -75,6 +75,7 @@ CheckOptions:
   cppcoreguidelines-avoid-non-const-global-variables.AllowInternalLinkage: true
   cppcoreguidelines-special-member-functions.AllowImplicitlyDeletedCopyOrMove: true
   cppcoreguidelines-special-member-functions.AllowMissingMoveFunctionsWhenCopyIsDeleted: true
+  hicpp-signed-bitwise.IgnorePositiveIntegerLiterals: true
   misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: true
   readability-identifier-length.MinimumParameterNameLength: 2
   readability-identifier-length.MinimumVariableNameLength: 2

@@ -1,5 +1,6 @@
 module;
 #include <concepts>
+#include <type_traits>
 #include <utility>
 export module ivm.utility.utility;
 
@@ -59,6 +60,15 @@ class scope_exit : non_copyable {
 
 	private:
 		Invoke invoke_;
+};
+
+// Wrapper which does not initialize the data member. For use in `std::vector`.
+export template <class Type>
+	requires std::is_trivially_destructible_v<Type>
+struct trivial_aggregate {
+	private:
+		// NOLINTNEXTLINE(modernize-avoid-c-arrays)
+		std::byte data[ sizeof(Type) ];
 };
 
 } // namespace util

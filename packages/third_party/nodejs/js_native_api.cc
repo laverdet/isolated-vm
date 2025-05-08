@@ -31,6 +31,7 @@ export using ::napi_create_array_with_length;
 export using ::napi_create_array;
 export using ::napi_create_bigint_int64;
 export using ::napi_create_bigint_uint64;
+export using ::napi_create_bigint_words;
 export using ::napi_create_date;
 export using ::napi_create_double;
 export using ::napi_create_function;
