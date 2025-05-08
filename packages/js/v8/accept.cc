@@ -62,7 +62,7 @@ struct accept<void, v8::Local<v8::Data>> {
 		}
 
 		auto operator()(string_tag_of<char> /*tag*/, auto&& value) const -> v8::Local<v8::String> {
-			return iv8::string::make(isolate_, std::forward<decltype(value)>(value));
+			return iv8::string::make(isolate_, std::string_view{std::forward<decltype(value)>(value)});
 		}
 
 	private:

@@ -71,6 +71,6 @@ export class bigint {
 
 export using number_t = std::variant<double, int32_t, uint32_t>;
 export using bigint_t = std::variant<bigint, int64_t, uint64_t>;
-export using string_t = std::variant<std::string, std::u16string>;
+export using string_t = std::variant<std::u16string, std::string>;
 
 } // namespace js

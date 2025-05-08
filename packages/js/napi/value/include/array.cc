@@ -6,18 +6,16 @@ import isolated_js;
 import ivm.utility;
 import napi_js.object;
 import napi_js.value;
-import napi_js.value.internal;
 import nodejs;
 
 namespace js::napi {
 
 template <>
-class bound_value<vector_tag> : public bound_value<vector_tag::tag_type> {
+class bound_value<vector_tag> : public bound_value_next<vector_tag> {
 	public:
 		class iterator;
+		using bound_value_next<vector_tag>::bound_value_next;
 		using value_type = napi_value;
-		bound_value(napi_env env, value<vector_tag> value) :
-				bound_value<vector_tag::tag_type>{env, value} {}
 
 		[[nodiscard]] auto begin() const -> iterator;
 		[[nodiscard]] auto end() const -> iterator;
@@ -35,9 +33,7 @@ class bound_value<vector_tag>::iterator : public util::random_access_iterator_fa
 		using size_type = uint32_t;
 		using value_type = bound_value::value_type;
 
-		iterator() :
-				subject_{nullptr, value<vector_tag>::from(nullptr)},
-				index{} {}
+		iterator() = default;
 		iterator(bound_value subject, size_type index);
 
 		auto operator*() const -> value_type;
@@ -53,7 +49,7 @@ class bound_value<vector_tag>::iterator : public util::random_access_iterator_fa
 	private:
 		auto operator+() const -> size_type { return index; }
 
-		bound_value subject_;
+		bound_value<vector_tag> subject_;
 		size_type index{};
 };
 

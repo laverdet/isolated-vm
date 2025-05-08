@@ -2,70 +2,125 @@ module;
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
-#include <variant>
 export module napi_js.primitive;
 import isolated_js;
 import napi_js.environment;
 import napi_js.value;
-import napi_js.value.internal;
 import nodejs;
 
 namespace js::napi {
 
-// Base specialization which provides a constructor & `null` / `undefined` value constructors
+// undefined
 template <>
-struct implementation<value_tag> : implementation<value_tag::tag_type> {
+class value<undefined_tag> : public detail::value_next<undefined_tag> {
 	public:
-		static auto make(const environment& env, std::monostate /*undefined*/) -> value<undefined_tag>;
-		static auto make(const environment& env, std::nullptr_t /*null*/) -> value<null_tag>;
-};
-
-// undefined & null
-template <>
-struct implementation<undefined_tag> : implementation<undefined_tag::tag_type> {
-		using implementation<value_tag>::make;
+		using value_next<undefined_tag>::value_next;
 		static auto make(const environment& env) -> value<undefined_tag>;
+		static auto make(const environment& env, auto&& /*undefined*/) -> value<undefined_tag> {
+			return make(env);
+		}
+};
+
+// null
+template <>
+class value<null_tag> : public detail::value_next<null_tag> {
+	public:
+		using detail::value_next<null_tag>::value_next;
+		static auto make(const environment& env) -> value<null_tag>;
+		static auto make(const environment& env, auto&& /*null*/) -> value<null_tag> {
+			return make(env);
+		}
+};
+
+// boolean
+template <>
+class value<boolean_tag> : public detail::value_next<boolean_tag> {
+	public:
+		using value_next<boolean_tag>::value_next;
+		static auto make(const environment& env, bool boolean) -> value<boolean_tag>;
 };
 
 template <>
-struct implementation<null_tag> : implementation<null_tag::tag_type> {
-		using implementation<value_tag>::make;
-		static auto make(const environment& env) -> value<null_tag>;
+class bound_value<boolean_tag>
+		: public bound_value_next<boolean_tag>,
+			public materializable<bound_value<boolean_tag>> {
+	public:
+		using bound_value_next<boolean_tag>::bound_value_next;
+		[[nodiscard]] auto materialize(std::type_identity<bool> tag) const -> bool;
 };
 
 // number
 template <>
-struct implementation<number_tag> : implementation<number_tag::tag_type> {
-		static auto make(const environment& env, double number) -> value<number_tag_of<double>>;
-		static auto make(const environment& env, int32_t number) -> value<number_tag_of<int32_t>>;
-		static auto make(const environment& env, int64_t number) -> value<number_tag_of<int64_t>>;
-		static auto make(const environment& env, uint32_t number) -> value<number_tag_of<uint32_t>>;
+class value<number_tag> : public detail::value_next<number_tag> {
+	public:
+		using detail::value_next<number_tag>::value_next;
+		static auto make(const environment& env, double number) -> value<number_tag>;
+		static auto make(const environment& env, int32_t number) -> value<number_tag>;
+		static auto make(const environment& env, int64_t number) -> value<number_tag>;
+		static auto make(const environment& env, uint32_t number) -> value<number_tag>;
+};
+
+template <>
+class bound_value<number_tag>
+		: public bound_value_next<number_tag>,
+			public materializable<bound_value<number_tag>> {
+	public:
+		using bound_value_next<number_tag>::bound_value_next;
+		[[nodiscard]] auto materialize(std::type_identity<double> tag) const -> double;
+		[[nodiscard]] auto materialize(std::type_identity<int32_t> tag) const -> int32_t;
+		[[nodiscard]] auto materialize(std::type_identity<int64_t> tag) const -> int64_t;
+		[[nodiscard]] auto materialize(std::type_identity<uint32_t> tag) const -> uint32_t;
 };
 
 // bigint
 template <>
-struct implementation<bigint_tag> : implementation<bigint_tag::tag_type> {
-		static auto make(const environment& env, const bigint& number) -> value<bigint_tag_of<bigint>>;
-		static auto make(const environment& env, int64_t number) -> value<bigint_tag_of<int64_t>>;
-		static auto make(const environment& env, uint64_t number) -> value<bigint_tag_of<uint64_t>>;
+class value<bigint_tag> : public detail::value_next<bigint_tag> {
+	public:
+		using detail::value_next<bigint_tag>::value_next;
+		static auto make(const environment& env, const bigint& number) -> value<bigint_tag>;
+		static auto make(const environment& env, int64_t number) -> value<bigint_tag>;
+		static auto make(const environment& env, uint64_t number) -> value<bigint_tag>;
+};
+
+template <>
+class bound_value<bigint_tag>
+		: public bound_value_next<bigint_tag>,
+			public materializable<bound_value<bigint_tag>> {
+	public:
+		using bound_value_next<bigint_tag>::bound_value_next;
+		[[nodiscard]] auto materialize(std::type_identity<bigint> tag) const -> bigint;
+		[[nodiscard]] auto materialize(std::type_identity<int64_t> tag) const -> int64_t;
+		[[nodiscard]] auto materialize(std::type_identity<uint64_t> tag) const -> uint64_t;
 };
 
 // string
 template <>
-struct implementation<string_tag> : implementation<string_tag::tag_type> {
-		static auto make(const environment& env, std::string_view string) -> value<string_tag_of<char>>;
-		static auto make(const environment& env, std::u16string_view string) -> value<string_tag_of<char16_t>>;
+class value<string_tag> : public detail::value_next<string_tag> {
+	public:
+		using detail::value_next<string_tag>::value_next;
+		static auto make(const environment& env, std::string_view string) -> value<string_tag>;
+		static auto make(const environment& env, std::u16string_view string) -> value<string_tag>;
 
 		template <size_t Size>
 		// NOLINTNEXTLINE(modernize-avoid-c-arrays)
-		static auto make(const environment& env, const char string[ Size ]) -> value<string_tag_of<char>>;
+		static auto make(const environment& env, const char string[ Size ]) -> value<string_tag>;
+};
+
+template <>
+class bound_value<string_tag>
+		: public bound_value_next<string_tag>,
+			public materializable<bound_value<string_tag>> {
+	public:
+		using bound_value_next<string_tag>::bound_value_next;
+		[[nodiscard]] auto materialize(std::type_identity<std::u16string> tag) const -> std::u16string;
+		[[nodiscard]] auto materialize(std::type_identity<std::string> tag) const -> std::string;
 };
 
 // ---
 
 template <size_t Size>
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-auto implementation<string_tag>::make(const environment& env, const char string[ Size ]) -> value<string_tag_of<char>> {
+auto value<string_tag>::make(const environment& env, const char string[ Size ]) -> value<string_tag> {
 	return make(env, std::string_view{string, Size});
 }
 } // namespace js::napi

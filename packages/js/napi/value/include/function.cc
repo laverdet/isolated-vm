@@ -5,6 +5,7 @@ module;
 #include <stdexcept>
 #include <tuple>
 #include <type_traits>
+#include <variant>
 #include <vector>
 export module napi_js.function;
 import isolated_js;
@@ -13,18 +14,20 @@ import napi_js.environment;
 import napi_js.primitive;
 import napi_js.utility;
 import napi_js.value;
-import napi_js.value.internal;
 import nodejs;
 import v8;
 
 namespace js::napi {
 
 template <>
-struct implementation<function_tag> : implementation<function_tag::tag_type> {
+class value<function_tag> : public detail::value_next<function_tag> {
+	public:
+		using detail::value_next<function_tag>::value_next;
+
 		template <class Result>
-		auto apply(const environment& env, auto&& args) -> Result;
+		auto apply(auto_environment auto& env, auto&& args) -> Result;
 		template <class Result>
-		auto call(const environment& env, auto&&... args) -> Result;
+		auto call(auto_environment auto& env, auto&&... args) -> Result;
 
 		template <auto_environment Environment, class Invocable, class Result, class... Args>
 		static auto make(Environment& env, js::bound_function<Invocable, Result(Environment&, Args...)> function) -> value<function_tag>;
@@ -33,7 +36,7 @@ struct implementation<function_tag> : implementation<function_tag::tag_type> {
 
 	private:
 		template <class Result>
-		auto invoke(const environment& env, std::span<napi_value> args) -> Result;
+		auto invoke(auto_environment auto& env, std::span<napi_value> args) -> Result;
 };
 
 // ---
@@ -77,26 +80,26 @@ auto invoke_callback(auto_environment auto& env, callback_info& info, const auto
 }
 
 template <class Result>
-auto implementation<function_tag>::apply(const environment& env, auto&& args) -> Result {
+auto value<function_tag>::apply(auto_environment auto& env, auto&& args) -> Result {
 	auto arg_values = js::transfer_in_strict<std::vector<napi_value>>(std::forward<decltype(args)>(args), env);
 	return invoke<Result>(env, std::span{arg_values});
 }
 
 template <class Result>
-auto implementation<function_tag>::call(const environment& env, auto&&... args) -> Result {
+auto value<function_tag>::call(auto_environment auto& env, auto&&... args) -> Result {
 	auto arg_values = js::transfer_in_strict<std::array<napi_value, sizeof...(args)>>(std::forward_as_tuple(args...), env);
 	return invoke<Result>(env, std::span{arg_values});
 }
 
 template <class Result>
-auto implementation<function_tag>::invoke(const environment& env, std::span<napi_value> args) -> Result {
-	auto undefined = js::napi::value<js::undefined_tag>::make(env);
+auto value<function_tag>::invoke(auto_environment auto& env, std::span<napi_value> args) -> Result {
+	auto undefined = js::transfer_in_strict<napi_value>(std::monostate{}, env);
 	auto* result = js::napi::invoke(napi_call_function, env, undefined, *this, args.size(), args.data());
 	return js::transfer_out<Result>(result, env);
 }
 
 template <auto_environment Environment, class Invocable, class Result, class... Args>
-auto implementation<function_tag>::make(Environment& env, js::bound_function<Invocable, Result(Environment&, Args...)> function) -> value<function_tag> {
+auto value<function_tag>::make(Environment& env, js::bound_function<Invocable, Result(Environment&, Args...)> function) -> value<function_tag> {
 	using function_type = js::bound_function<Invocable, Result(Environment&, Args...)>;
 	// Holds environment + function data. I guess we could also use thread locals for the environment,
 	// but we're already here so we might as well stash it in the function data.
@@ -131,7 +134,7 @@ auto implementation<function_tag>::make(Environment& env, js::bound_function<Inv
 }
 
 template <auto_environment Environment, auto Function, class Result, class... Args>
-auto implementation<function_tag>::make(Environment& env, free_function<Function, Result(Environment&, Args...)> /*function*/) -> value<function_tag> {
+auto value<function_tag>::make(Environment& env, free_function<Function, Result(Environment&, Args...)> /*function*/) -> value<function_tag> {
 	auto callback = [](napi_env nenv, napi_callback_info info) -> napi_value {
 		callback_info args{nenv, info};
 		auto& env = *static_cast<Environment*>(args.data());

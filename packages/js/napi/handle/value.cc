@@ -1,60 +1,87 @@
 module;
 #include <concepts>
-#include <type_traits>
-#include <utility>
 export module napi_js.value;
-import isolated_js;
-import napi_js.environment;
-import napi_js.value.internal;
 import nodejs;
+import isolated_js;
 
 namespace js::napi {
 
-// Simple wrapper around `napi_value` denoting underlying value type
-export template <class Tag>
-class value : public value_handle {
-	public:
-		using value_handle::value_handle;
+// Forward declarations
+export template <class Tag> class value;
+export template <class Tag> class bound_value;
 
-		// "Downcast" from a more specific tag
-		template <std::convertible_to<Tag> From>
+namespace detail {
+
+// `detail:value_handle` is the base class of `value<T>`, and `bound_value<T>`.
+export class value_handle {
+	public:
+		value_handle() = default;
+		explicit value_handle(napi_value value) :
+				value_{value} {}
+
+		// Implicit cast back to a `napi_value`
 		// NOLINTNEXTLINE(google-explicit-constructor)
-		value(value<From> value_) :
-				value_handle{napi_value{value_}} {}
+		operator napi_value() const { return value_; }
+
+	private:
+		napi_value value_;
+};
+
+// Details applied to each level of the `value<T>` hierarchy.
+export template <class Tag>
+class value_next : public value<typename Tag::tag_type> {
+	public:
+		using value<typename Tag::tag_type>::value;
 
 		// "Upcast" to a more specific tag. Potentially unsafe.
 		template <std::convertible_to<Tag> To>
 		auto cast(To /*tag*/) const -> value<To> { return value<To>::from(*this); }
 
-		// Access underlying implementation. `operator*()` intentionally not implemented.
-		auto operator->() -> implementation<Tag>* {
-			// TODO: Put it back after clang-18 is not used
-			// static_assert(std::is_layout_compatible_v<value, implementation<Tag>>);
-			value_handle* value = this;
-			return static_cast<implementation<Tag>*>(value);
-		}
-
 		// Construct from any `napi_value`. Potentially unsafe.
-		static auto from(napi_value value_) -> value { return value{value_}; }
-
-		// Make a new `napi_value` with this value tag
-		static auto make(auto_environment auto& env, auto&&... args) -> value {
-			return implementation<Tag>::make(env, std::forward<decltype(args)>(args)...);
-		}
+		static auto from(napi_value value_) -> value<Tag> { return value<Tag>{value_}; }
 };
 
-// Member & method implementation for stateful objects. Used internally in visitors.
+} // namespace detail
+
+// Tagged napi_value
 export template <class Tag>
-class bound_value : public bound_value<typename Tag::tag_type> {
+class value : public detail::value_next<Tag> {
 	public:
-		bound_value(napi_env env, value<Tag> value) :
-				bound_value<typename Tag::tag_type>{env, value} {}
+		using detail::value_next<Tag>::value_next;
 };
 
 template <>
-class bound_value<void> : public value_handle {
+class value<void> : public detail::value_handle {
+		using value_handle::value_handle;
+};
+
+// Details applied to each level of the `bound_value<T>` hierarchy.
+export template <class Tag>
+class bound_value_next : public bound_value<typename Tag::tag_type> {
+	public:
+		using bound_value<typename Tag::tag_type>::bound_value;
+		bound_value_next() = default;
+		bound_value_next(napi_env env, value<Tag> value) :
+				bound_value<typename Tag::tag_type>{env, napi_value{value}} {}
+};
+
+// Member & method implementation for stateful objects. Used internally in visitors. I think it
+// might make sense to have the environment specified by a template parameter. Then you would use
+// `bound_value<T>` or something instead of passing the environment to each `value<T>` method.
+export template <class Tag>
+class bound_value : public bound_value_next<Tag> {
+	public:
+		using bound_value_next<Tag>::bound_value_next;
+};
+
+template <class Tag>
+bound_value(auto, value<Tag>) -> bound_value<Tag>;
+
+template <>
+class bound_value<void> : public detail::value_handle {
 	protected:
-		explicit bound_value(napi_env env, napi_value value) :
+		bound_value() = default;
+		bound_value(napi_env env, napi_value value) :
 				value_handle{value},
 				env_{env} {}
 

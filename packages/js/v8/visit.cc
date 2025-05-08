@@ -18,72 +18,13 @@ import v8_js.object;
 import v8_js.string;
 import v8;
 
-// nb: These visitors are split out to share implementations with the napi visitors in the case
-// where it is kind of safe to do so. For numbers, strings, most primitives, etc the ABI has been
-// pretty stable for a long because v8 seems to have those figured out by now.
 namespace js {
-
-// boolean
-template <>
-struct visit<void, v8::Local<v8::Boolean>> {
-		auto operator()(v8::Local<v8::Boolean> value, const auto_accept auto& accept) const -> decltype(auto) {
-			return accept(boolean_tag{}, iv8::boolean{value});
-		}
-};
-
-// number
-template <>
-struct visit<void, v8::Local<v8::Number>> {
-		auto operator()(v8::Local<v8::Number> value, const auto_accept auto& accept) const -> decltype(auto) {
-			auto number = iv8::number{value};
-			if (value->IsInt32()) {
-				return accept(number_tag_of<int32_t>{}, number);
-			} else {
-				return accept(number_tag{}, number);
-			}
-		}
-};
-
-// date
-template <>
-struct visit<void, v8::Local<v8::Date>> {
-		auto operator()(v8::Local<v8::Date> value, const auto_accept auto& accept) const -> decltype(auto) {
-			return accept(date_tag{}, iv8::date{value});
-		}
-};
 
 // external
 template <>
 struct visit<void, v8::Local<v8::External>> {
 		auto operator()(v8::Local<v8::External> value, const auto_accept auto& accept) const -> decltype(auto) {
 			return accept(external_tag{}, iv8::external{value});
-		}
-};
-
-// bigint
-template <>
-struct visit<void, v8::Local<v8::BigInt>> {
-		auto operator()(v8::Local<v8::BigInt> value, const auto_accept auto& accept) const -> decltype(auto) {
-			// We actually have to convert the bigint in order to see how big it is. So the acceptor is
-			// invoked directly the underlying value, instead of a handle.
-			bool lossless{};
-			auto i64 = value->Int64Value(&lossless);
-			if (lossless) {
-				return accept(bigint_tag_of<int64_t>{}, i64);
-			}
-			auto u64 = value->Uint64Value(&lossless);
-			if (lossless) {
-				return accept(bigint_tag_of<uint64_t>{}, u64);
-			}
-			js::bigint bigint_words;
-			bigint_words.resize_and_overwrite(value->WordCount(), [ & ](auto* words, auto length) {
-				if (length > 0) {
-					int int_length = static_cast<int>(length);
-					value->ToWordsArray(&bigint_words.sign_bit(), &int_length, words);
-				}
-				return length;
-			});
-			return accept(bigint_tag{}, std::move(bigint_words));
 		}
 };
 
@@ -134,18 +75,10 @@ struct visit<void, v8::Local<v8::String>> : visit<void, v8::Local<v8::Name>> {
 // Primary visitor
 template <>
 struct visit<void, v8::Local<v8::Value>>
-		: visit<void, v8::Local<v8::Boolean>>,
-			visit<void, v8::Local<v8::Number>>,
-			visit<void, v8::Local<v8::Date>>,
-			visit<void, v8::Local<v8::External>>,
-			visit<void, v8::Local<v8::BigInt>>,
+		: visit<void, v8::Local<v8::External>>,
 			visit<void, v8::Local<v8::Name>> {
 	public:
-		using visit<void, v8::Local<v8::Boolean>>::operator();
-		using visit<void, v8::Local<v8::Number>>::operator();
-		using visit<void, v8::Local<v8::Date>>::operator();
 		using visit<void, v8::Local<v8::External>>::operator();
-		using visit<void, v8::Local<v8::BigInt>>::operator();
 		using visit<void, v8::Local<v8::Name>>::operator();
 
 		explicit visit(const iv8::context_lock& lock) :
@@ -162,7 +95,7 @@ struct visit<void, v8::Local<v8::Value>>
 				} else if (value->IsExternal()) {
 					return (*this)(value.As<v8::External>(), accept);
 				} else if (value->IsDate()) {
-					return (*this)(value.As<v8::Date>(), accept);
+					return accept(date_tag{}, iv8::date{value.As<v8::Date>()});
 				} else if (value->IsPromise()) {
 					return accept(promise_tag{}, value);
 				}
@@ -178,12 +111,46 @@ struct visit<void, v8::Local<v8::Value>>
 			} else if (value->IsString()) {
 				return (*this)(value.As<v8::String>(), accept);
 			} else if (value->IsBoolean()) {
-				return (*this)(value.As<v8::Boolean>(), accept);
+				return accept(boolean_tag{}, iv8::boolean{value.As<v8::Boolean>()});
 			} else if (value->IsBigInt()) {
 				return (*this)(value.As<v8::BigInt>(), accept);
 			} else {
 				return accept(value_tag{}, std::type_identity<void>{});
 			}
+		}
+
+		// number
+		auto operator()(v8::Local<v8::Number> value, const auto_accept auto& accept) const -> decltype(auto) {
+			auto number = iv8::number{value};
+			if (value->IsInt32()) {
+				return accept(number_tag_of<int32_t>{}, number);
+			} else {
+				return accept(number_tag{}, number);
+			}
+		}
+
+		// bigint
+		auto operator()(v8::Local<v8::BigInt> value, const auto_accept auto& accept) const -> decltype(auto) {
+			// We actually have to convert the bigint in order to see how big it is. So the acceptor is
+			// invoked directly the underlying value, instead of a handle.
+			bool lossless{};
+			auto i64 = value->Int64Value(&lossless);
+			if (lossless) {
+				return accept(bigint_tag_of<int64_t>{}, i64);
+			}
+			auto u64 = value->Uint64Value(&lossless);
+			if (lossless) {
+				return accept(bigint_tag_of<uint64_t>{}, u64);
+			}
+			js::bigint bigint_words;
+			bigint_words.resize_and_overwrite(value->WordCount(), [ & ](auto* words, auto length) {
+				if (length > 0) {
+					int int_length = static_cast<int>(length);
+					value->ToWordsArray(&bigint_words.sign_bit(), &int_length, words);
+				}
+				return length;
+			});
+			return accept(bigint_tag{}, std::move(bigint_words));
 		}
 
 	private:

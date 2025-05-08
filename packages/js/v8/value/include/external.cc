@@ -11,7 +11,7 @@ namespace js::iv8 {
 
 export class external
 		: public v8::Local<v8::External>,
-			public handle_materializable<external> {
+			public materializable<external> {
 	public:
 		explicit external(v8::Local<v8::External> handle) :
 				Local{handle} {}

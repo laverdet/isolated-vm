@@ -7,32 +7,32 @@ module;
 export module napi_js.accept;
 import isolated_js;
 import ivm.utility;
+import napi_js.dictionary;
 import napi_js.lock;
 import napi_js.primitive;
 import napi_js.utility;
 import napi_js.value;
 import nodejs;
-import v8;
 
 namespace js {
-using namespace napi;
+using napi::value;
 
 // Fake acceptor for primitive values
 template <>
-struct accept<void, napi_env> : public napi_witness_lock {
+struct accept<void, napi_env> : public napi::napi_witness_lock {
 	public:
 		using napi_witness_lock::napi_witness_lock;
 
-		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const -> napi_value {
-			return js::napi::value<undefined_tag>::make(env(), std::monostate{});
+		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const -> napi::value<undefined_tag> {
+			return napi::value<undefined_tag>::make(env(), std::monostate{});
 		}
 
-		auto operator()(null_tag /*tag*/, const auto& /*null*/) const -> napi_value {
-			return js::napi::value<null_tag>::make(env(), nullptr);
+		auto operator()(null_tag /*tag*/, const auto& /*null*/) const -> napi::value<null_tag> {
+			return napi::value<null_tag>::make(env(), nullptr);
 		}
 
-		auto operator()(boolean_tag /*tag*/, auto&& value) const -> napi_value {
-			return js::napi::invoke(napi_get_boolean, env(), std::forward<decltype(value)>(value));
+		auto operator()(boolean_tag /*tag*/, auto&& value) const -> napi::value<boolean_tag> {
+			return napi::value<boolean_tag>::make(env(), std::forward<decltype(value)>(value));
 		}
 
 		auto operator()(number_tag /*tag*/, auto&& value) const -> napi_value {
@@ -40,8 +40,8 @@ struct accept<void, napi_env> : public napi_witness_lock {
 		}
 
 		template <class Numeric>
-		auto operator()(number_tag_of<Numeric> /*tag*/, auto&& value) const -> napi_value {
-			return js::napi::value<number_tag_of<Numeric>>::make(env(), std::forward<decltype(value)>(value));
+		auto operator()(number_tag_of<Numeric> /*tag*/, auto&& value) const -> napi::value<number_tag> {
+			return napi::value<number_tag_of<Numeric>>::make(env(), std::forward<decltype(value)>(value));
 		}
 
 		auto operator()(bigint_tag /*tag*/, const bigint& value) const -> napi_value {
@@ -53,20 +53,20 @@ struct accept<void, napi_env> : public napi_witness_lock {
 		}
 
 		template <class Numeric>
-		auto operator()(bigint_tag_of<Numeric> /*tag*/, auto&& value) const -> napi_value {
-			return js::napi::value<bigint_tag_of<Numeric>>::make(env(), std::forward<decltype(value)>(value));
+		auto operator()(bigint_tag_of<Numeric> /*tag*/, auto&& value) const -> napi::value<bigint_tag> {
+			return napi::value<bigint_tag_of<Numeric>>::make(env(), std::forward<decltype(value)>(value));
 		}
 
 		auto operator()(string_tag /*tag*/, auto&& value) const -> napi_value {
 			return js::napi::value<string_tag>::make(env(), std::u16string_view{std::forward<decltype(value)>(value)});
 		}
 
-		auto operator()(string_tag_of<char> /*tag*/, auto&& value) const -> napi_value {
-			return js::napi::value<string_tag_of<char>>::make(env(), std::forward<decltype(value)>(value));
+		auto operator()(string_tag_of<char> /*tag*/, auto&& value) const -> napi::value<string_tag> {
+			return napi::value<string_tag_of<char>>::make(env(), std::forward<decltype(value)>(value));
 		}
 
-		auto operator()(date_tag /*tag*/, js_clock::time_point value) const -> napi_value {
-			return js::napi::invoke(napi_create_date, env(), value.time_since_epoch().count());
+		auto operator()(date_tag /*tag*/, js_clock::time_point value) const -> napi::value<date_tag> {
+			return napi::value<date_tag>::make(env(), std::forward<decltype(value)>(value));
 		}
 };
 
@@ -85,10 +85,10 @@ struct accept<Meta, napi_value> : accept<Meta, napi_env> {
 		}
 
 		auto operator()(vector_tag /*tag*/, auto&& list, const auto& visit) const -> napi_value {
-			auto array = js::napi::invoke(napi_create_array_with_length, this->env(), list.size());
+			auto array = napi::invoke(napi_create_array_with_length, this->env(), list.size());
 			int ii = 0;
 			for (auto&& value : std::forward<decltype(list)>(list)) {
-				js::napi::invoke0(
+				napi::invoke0(
 					napi_set_element,
 					this->env(),
 					array,
@@ -100,9 +100,9 @@ struct accept<Meta, napi_value> : accept<Meta, napi_env> {
 		}
 
 		auto operator()(list_tag /*tag*/, auto&& list, const auto& visit) const -> napi_value {
-			auto array = js::napi::invoke(napi_create_array, this->env());
+			auto array = napi::invoke(napi_create_array, this->env());
 			for (auto&& [ key, value ] : std::forward<decltype(list)>(list)) {
-				js::napi::invoke0(
+				napi::invoke0(
 					napi_set_property,
 					this->env(),
 					array,
@@ -114,9 +114,9 @@ struct accept<Meta, napi_value> : accept<Meta, napi_env> {
 		}
 
 		auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> napi_value {
-			auto object = js::napi::invoke(napi_create_object, this->env());
+			auto object = napi::invoke(napi_create_object, this->env());
 			for (auto&& [ key, value ] : util::into_range(std::forward<decltype(dictionary)>(dictionary))) {
-				js::napi::invoke0(
+				napi::invoke0(
 					napi_set_property,
 					this->env(),
 					object,
@@ -129,14 +129,14 @@ struct accept<Meta, napi_value> : accept<Meta, napi_env> {
 
 		template <std::size_t Size>
 		auto operator()(struct_tag<Size> /*tag*/, auto&& dictionary, const auto& visit) const -> napi_value {
-			auto object = js::napi::invoke(napi_create_object, this->env());
+			auto object = napi::invoke(napi_create_object, this->env());
 			std::invoke(
 				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
 					(invoke(std::integral_constant<size_t, Index>{}), ...);
 				},
 				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> /*index*/) {
 					const auto& visit_n = std::get<Index>(visit);
-					js::napi::invoke0(
+					napi::invoke0(
 						napi_set_property,
 						this->env(),
 						object,
@@ -153,13 +153,13 @@ struct accept<Meta, napi_value> : accept<Meta, napi_env> {
 
 		template <std::size_t Size>
 		auto operator()(tuple_tag<Size> /*tag*/, auto tuple, const auto& visit) const -> napi_value {
-			auto array = js::napi::invoke(napi_create_array_with_length, this->env(), Size);
+			auto array = napi::invoke(napi_create_array_with_length, this->env(), Size);
 			std::invoke(
 				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
 					(invoke(std::integral_constant<size_t, Index>{}), ...);
 				},
 				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> index) {
-					js::napi::invoke0(
+					napi::invoke0(
 						napi_set_element,
 						this->env(),
 						array,
@@ -200,18 +200,9 @@ struct accept_property_value<Meta, Key, Type, napi_value> {
 
 // Tagged value acceptor
 template <class Tag>
-struct accept<void, js::napi::value<Tag>> {
-		auto operator()(undefined_tag /*tag*/, std::monostate /*undefined*/) const -> js::napi::value<Tag> {
-			return js::napi::value<Tag>::from(nullptr);
-		}
-
-		auto operator()(Tag /*tag*/, napi_value value) const -> js::napi::value<Tag> {
-			return js::napi::value<Tag>::from(std::forward<decltype(value)>(value));
-		}
-
-		template <class Type>
-		auto operator()(Tag /*tag*/, v8::Local<Type> value) const -> js::napi::value<Tag> {
-			return js::napi::value<Tag>::from(from_v8(value));
+struct accept<void, napi::value<Tag>> {
+		auto operator()(Tag /*tag*/, napi_value value) const -> napi::value<Tag> {
+			return napi::value<Tag>::from(std::forward<decltype(value)>(value));
 		}
 };
 

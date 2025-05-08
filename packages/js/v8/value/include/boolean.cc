@@ -1,6 +1,7 @@
 module;
 #include <type_traits>
 export module v8_js.boolean;
+import isolated_js;
 import v8_js.handle;
 import v8;
 
@@ -8,7 +9,7 @@ namespace js::iv8 {
 
 export class boolean
 		: public v8::Local<v8::Boolean>,
-			public handle_materializable<boolean> {
+			public materializable<boolean> {
 	public:
 		explicit boolean(v8::Local<v8::Boolean> handle) :
 				Local{handle} {}

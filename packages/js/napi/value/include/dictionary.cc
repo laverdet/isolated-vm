@@ -16,9 +16,9 @@ namespace js::napi {
 // (which is also an object). So this needs to be its own class or it is a circular inheritance.
 class dictionary_like : public bound_value<object_tag> {
 	public:
+		using bound_value<object_tag>::bound_value;
 		using keys_type = bound_value<vector_tag>;
 		using value_type = std::pair<napi_value, napi_value>;
-		using bound_value<object_tag>::bound_value;
 
 	private:
 		class iterator_transform {
@@ -43,18 +43,13 @@ class dictionary_like : public bound_value<object_tag> {
 template <>
 class bound_value<list_tag> : public dictionary_like {
 	public:
-		bound_value(napi_env env, value<list_tag> value) :
-				dictionary_like{env, value} {}
+		using dictionary_like::dictionary_like;
 };
 
 template <>
 class bound_value<dictionary_tag> : public dictionary_like {
 	public:
-		bound_value(napi_env env, value<dictionary_tag> value) :
-				dictionary_like{env, value} {}
-
-		template <class... Entries>
-		auto assign(const auto_environment auto& env, std::tuple<Entries...> entries) -> void;
+		using dictionary_like::dictionary_like;
 };
 
 } // namespace js::napi

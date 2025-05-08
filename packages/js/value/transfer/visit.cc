@@ -61,4 +61,22 @@ struct visit_key_literal {
 		};
 };
 
+// Forward cast operators to the underlying method `materialize(std::type_identity<To>, ...)`
+export template <class Type>
+class materializable {
+	protected:
+		friend Type;
+		materializable() = default;
+
+	public:
+		template <class To>
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		[[nodiscard]] operator To(this auto&& self)
+			requires requires {
+				{ self.materialize(std::type_identity<To>{}) } -> std::same_as<To>;
+			} {
+			return self.materialize(std::type_identity<To>{});
+		}
+};
+
 } // namespace js

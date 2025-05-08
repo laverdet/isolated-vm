@@ -3,6 +3,7 @@ module;
 #include <cstdint>
 #include <ranges>
 export module v8_js.array;
+import isolated_js;
 import ivm.utility;
 import v8_js.handle;
 import v8_js.lock;
@@ -13,7 +14,7 @@ namespace js::iv8 {
 export class array
 		: public v8::Local<v8::Array>,
 			public handle_with_context,
-			public handle_materializable<array> {
+			public materializable<array> {
 	public:
 		class iterator;
 		struct handle_data;

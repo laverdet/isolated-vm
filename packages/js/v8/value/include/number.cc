@@ -2,6 +2,7 @@ module;
 #include <cstdint>
 #include <type_traits>
 export module v8_js.number;
+import isolated_js;
 import v8_js.handle;
 import v8;
 
@@ -9,7 +10,7 @@ namespace js::iv8 {
 
 export class number
 		: public v8::Local<v8::Number>,
-			public handle_materializable<number> {
+			public materializable<number> {
 	public:
 		explicit number(v8::Local<v8::Number> handle) :
 				Local{handle} {}

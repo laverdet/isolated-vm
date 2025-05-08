@@ -7,10 +7,9 @@ export module napi_js.remote;
 import ivm.utility;
 import napi_js.environment;
 import napi_js.handle_scope;
-import napi_js.utility;
+import napi_js.reference;
 import napi_js.uv_scheduler;
 import napi_js.value;
-import napi_js.value.internal;
 import nodejs;
 
 namespace js::napi {
@@ -22,7 +21,7 @@ concept remote_handle_environment =
 
 // Thread safe persistent value reference
 export template <class Tag>
-class remote : private reference_handle {
+class remote : protected detail::reference_handle {
 	private:
 		struct private_ctor {};
 		static auto expire(remote* ptr) -> void;
@@ -77,7 +76,7 @@ auto remote<Tag>::expire(remote* ptr) -> void {
 
 template <class Tag>
 auto remote<Tag>::get(const environment& env) const -> value<Tag> {
-	return value<Tag>::from(reference_handle::get(env));
+	return value<Tag>::from(get_value(env));
 }
 
 template <class Tag>

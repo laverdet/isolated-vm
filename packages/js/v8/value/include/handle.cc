@@ -41,22 +41,4 @@ export class handle_with_context : public handle_with_isolate {
 		v8::Local<v8::Context> context_;
 };
 
-// Forward cast operators to the underlying method `materialize(std::type_identity<To>, ...)`
-export template <class Type>
-class handle_materializable {
-	protected:
-		friend Type;
-		handle_materializable() = default;
-
-	public:
-		template <class To>
-		// NOLINTNEXTLINE(google-explicit-constructor)
-		[[nodiscard]] operator To(this auto&& self)
-			requires requires {
-				{ self.materialize(std::type_identity<To>{}) } -> std::same_as<To>;
-			} {
-			return self.materialize(std::type_identity<To>{});
-		}
-};
-
 } // namespace js::iv8

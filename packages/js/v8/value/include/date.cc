@@ -9,7 +9,7 @@ namespace js::iv8 {
 
 export class date
 		: public v8::Local<v8::Date>,
-			public handle_materializable<date> {
+			public materializable<date> {
 	public:
 		explicit date(v8::Local<v8::Date> handle) :
 				Local{handle} {}

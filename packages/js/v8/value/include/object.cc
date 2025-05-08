@@ -2,6 +2,7 @@ module;
 #include <ranges>
 #include <string>
 export module v8_js.object;
+import isolated_js;
 import ivm.utility;
 import v8_js.array;
 import v8_js.handle;
@@ -14,7 +15,7 @@ namespace js::iv8 {
 export class object
 		: public v8::Local<v8::Object>,
 			public handle_with_context,
-			public handle_materializable<object> {
+			public materializable<object> {
 	public:
 		using value_type = std::pair<v8::Local<v8::Value>, v8::Local<v8::Value>>;
 

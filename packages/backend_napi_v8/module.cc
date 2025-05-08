@@ -136,8 +136,7 @@ auto link_module(
 								}
 							};
 							auto callback_fn = js::napi::value<js::function_tag>::make(env, std::move(callback));
-							auto link_callback = link_callback_ref.get(env);
-							link_callback->call<std::monostate>(
+							link_callback_ref.get(env).call<std::monostate>(
 								env,
 								std::move(specifier),
 								std::move(referrer),
@@ -170,8 +169,7 @@ auto create_capability(
 			std::vector<js::value_t> params
 		) {
 			js::napi::handle_scope scope{env};
-			auto local = callback->get(env);
-			local->apply<std::monostate>(env, std::move(params));
+			callback->get(env).apply<std::monostate>(env, std::move(params));
 		};
 	// Callback passed to isolated v8
 	auto invoke_capability = js::bound_function{

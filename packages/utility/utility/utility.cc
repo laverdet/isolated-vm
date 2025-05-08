@@ -33,12 +33,6 @@ export class non_moveable {
 		auto operator=(const non_moveable&) = delete;
 };
 
-// Cast to a base class. For disambiguation of certain copy constructors.
-export template <class Type>
-auto disambiguate_pointer(auto* pointer) -> Type* {
-	return pointer;
-}
-
 // Convert static function pointer into a default-constructible function type
 export template <auto Function>
 struct function_type_of {

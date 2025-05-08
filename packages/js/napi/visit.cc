@@ -11,7 +11,6 @@ import napi_js.primitive;
 import napi_js.utility;
 import napi_js.value;
 import nodejs;
-import v8_js;
 import v8;
 
 namespace js {
@@ -20,55 +19,42 @@ using namespace napi;
 // Delegate napi_value to various visitors
 template <>
 struct visit<void, napi_value>
-		: js::napi::napi_isolate_witness_lock,
-			visit<void, v8::Local<v8::Boolean>>,
-			visit<void, v8::Local<v8::Number>>,
-			visit<void, v8::Local<v8::BigInt>>,
-			visit<void, v8::Local<v8::String>>,
-			visit<void, v8::Local<v8::Date>>,
+		: napi::napi_isolate_witness_lock,
 			visit<void, v8::Local<v8::External>> {
 	public:
-		using visit<void, v8::Local<v8::Boolean>>::operator();
-		using visit<void, v8::Local<v8::Number>>::operator();
-		using visit<void, v8::Local<v8::BigInt>>::operator();
-		using visit<void, v8::Local<v8::String>>::operator();
-		using visit<void, v8::Local<v8::Date>>::operator();
 		using visit<void, v8::Local<v8::External>>::operator();
 
 		visit(const environment& env, v8::Isolate* isolate) :
-				napi_isolate_witness_lock{env, isolate},
-				visit<void, v8::Local<v8::String>>{*util::disambiguate_pointer<napi_isolate_witness_lock>(this)} {}
+				napi_isolate_witness_lock{env, isolate} {}
 		// nb: TODO: Remove (again)
 		explicit visit(const environment& env) :
 				visit{env, v8::Isolate::GetCurrent()} {}
 
 		auto operator()(napi_value value, const auto_accept auto& accept) const -> decltype(auto) {
-			switch (js::napi::invoke(napi_typeof, env(), value)) {
+			switch (napi::invoke(napi_typeof, env(), value)) {
 				case napi_boolean:
-					return (*this)(js::napi::to_v8(value).As<v8::Boolean>(), accept);
+					return accept(boolean_tag{}, napi::bound_value{env(), napi::value<boolean_tag>::from(value)});
 				case napi_number:
-					return (*this)(js::napi::to_v8(value).As<v8::Number>(), accept);
+					return accept(number_tag{}, napi::bound_value{env(), napi::value<number_tag>::from(value)});
 				case napi_bigint:
-					return (*this)(js::napi::to_v8(value).As<v8::BigInt>(), accept);
+					return accept(bigint_tag{}, napi::bound_value{env(), napi::value<bigint_tag>::from(value)});
 				case napi_string:
-					return (*this)(js::napi::to_v8(value).As<v8::String>(), accept);
+					return accept(string_tag{}, napi::bound_value{env(), napi::value<string_tag>::from(value)});
 				case napi_object:
 					{
 						auto visit_entry = std::pair<const visit&, const visit&>{*this, *this};
-						if (js::napi::invoke(napi_is_array, env(), value)) {
+						if (napi::invoke(napi_is_array, env(), value)) {
 							// nb: It is intentional that `dictionary_tag` is bound. It handles sparse arrays.
-							auto tagged_value = js::napi::value<js::dictionary_tag>::from(value);
-							return accept(list_tag{}, js::napi::bound_value{env(), tagged_value}, visit_entry);
-						} else if (js::napi::invoke(napi_is_date, env(), value)) {
-							return (*this)(js::napi::to_v8(value).As<v8::Date>(), accept);
-						} else if (js::napi::invoke(napi_is_promise, env(), value)) {
+							return accept(list_tag{}, napi::bound_value{env(), napi::value<dictionary_tag>::from(value)}, visit_entry);
+						} else if (napi::invoke(napi_is_date, env(), value)) {
+							return accept(date_tag{}, napi::bound_value{env(), napi::value<date_tag>::from(value)});
+						} else if (napi::invoke(napi_is_promise, env(), value)) {
 							return accept(promise_tag{}, value);
 						}
-						auto tagged_value = js::napi::value<js::dictionary_tag>::from(value);
-						return accept(dictionary_tag{}, js::napi::bound_value{env(), tagged_value}, visit_entry);
+						return accept(dictionary_tag{}, napi::bound_value{env(), napi::value<dictionary_tag>::from(value)}, visit_entry);
 					}
 				case napi_external:
-					return (*this)(js::napi::to_v8(value).As<v8::External>(), accept);
+					return (*this)(napi::to_v8(value).As<v8::External>(), accept);
 				case napi_symbol:
 					return accept(symbol_tag{}, value);
 				case napi_null:
@@ -93,7 +79,7 @@ struct visit_key_literal<Key, napi_value> : util::non_moveable {
 
 				[[nodiscard]] auto get() const -> napi_value {
 					if (*local_key_ == napi_value{}) {
-						*local_key_ = js::napi::value<string_tag>::make(lock_->env(), Key.data());
+						*local_key_ = napi::invoke(napi_create_string_utf8, lock_->env(), Key.data(), Key.length());
 					}
 					return *local_key_;
 				}
