@@ -29,22 +29,24 @@ auto string::make(v8::Isolate* isolate, std::u16string_view view) -> v8::Local<v
 }
 
 auto string::materialize(std::type_identity<std::string> /*tag*/) const -> std::string {
-	auto length = (*this)->Length();
 	std::string string;
-	string.resize_and_overwrite(length, [ this ](char* data, auto length) {
-		auto* data_uint8 = reinterpret_cast<uint8_t*>(data);
-		(*this)->WriteOneByte(isolate(), data_uint8, 0, length, v8::String::WriteOptions::NO_NULL_TERMINATION);
+	string.resize_and_overwrite((*this)->Length(), [ this ](char* data, auto length) {
+		if (length > 0) {
+			auto* data_uint8 = reinterpret_cast<uint8_t*>(data);
+			(*this)->WriteOneByte(isolate(), data_uint8, 0, length, v8::String::WriteOptions::NO_NULL_TERMINATION);
+		}
 		return length;
 	});
 	return string;
 }
 
 auto string::materialize(std::type_identity<std::u16string> /*tag*/) const -> std::u16string {
-	auto length = (*this)->Length();
 	std::u16string string;
-	string.resize_and_overwrite(length, [ this ](char16_t* data, auto length) {
-		auto* data_uint16 = reinterpret_cast<uint16_t*>(data);
-		(*this)->Write(isolate(), data_uint16, 0, length, v8::String::WriteOptions::NO_NULL_TERMINATION);
+	string.resize_and_overwrite((*this)->Length(), [ this ](char16_t* data, auto length) {
+		if (length > 0) {
+			auto* data_uint16 = reinterpret_cast<uint16_t*>(data);
+			(*this)->Write(isolate(), data_uint16, 0, length, v8::String::WriteOptions::NO_NULL_TERMINATION);
+		}
 		return length;
 	});
 	return string;

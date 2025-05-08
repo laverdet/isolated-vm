@@ -1,5 +1,6 @@
 module;
 #include <optional>
+#include <string_view>
 #include <type_traits>
 #include <variant>
 export module isolated_js.primitive.visit;
@@ -15,6 +16,21 @@ template <class Type>
 struct visit<void, Type> {
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
 			return accept(tag_for_t<Type>{}, std::forward<decltype(value)>(value));
+		}
+};
+
+// Constant string visitors
+template <>
+struct visit<void, std::string_view> {
+		constexpr auto operator()(std::string_view value, const auto_accept auto& accept) const -> decltype(auto) {
+			return accept(string_tag_of<char>{}, value);
+		}
+};
+
+template <>
+struct visit<void, const char*> {
+		constexpr auto operator()(const char* value, const auto_accept auto& accept) const -> decltype(auto) {
+			return accept(string_tag_of<char>{}, std::string_view{value});
 		}
 };
 

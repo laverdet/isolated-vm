@@ -1,6 +1,7 @@
 module;
 #include <concepts>
 #include <functional>
+#include <string_view>
 #include <utility>
 #include <variant>
 export module napi_js.accept;
@@ -34,6 +35,10 @@ struct accept<void, napi_env> : public napi_witness_lock {
 			return js::napi::invoke(napi_get_boolean, env(), std::forward<decltype(value)>(value));
 		}
 
+		auto operator()(number_tag /*tag*/, auto&& value) const -> napi_value {
+			return js::napi::value<number_tag>::make(env(), double{std::forward<decltype(value)>(value)});
+		}
+
 		template <class Numeric>
 		auto operator()(number_tag_of<Numeric> /*tag*/, auto&& value) const -> napi_value {
 			return js::napi::value<number_tag_of<Numeric>>::make(env(), std::forward<decltype(value)>(value));
@@ -44,9 +49,12 @@ struct accept<void, napi_env> : public napi_witness_lock {
 			return js::napi::value<bigint_tag_of<Numeric>>::make(env(), std::forward<decltype(value)>(value));
 		}
 
-		template <class Char>
-		auto operator()(string_tag_of<Char> /*tag*/, auto&& value) const -> napi_value {
-			return js::napi::value<string_tag_of<Char>>::make(env(), std::forward<decltype(value)>(value));
+		auto operator()(string_tag /*tag*/, auto&& value) const -> napi_value {
+			return js::napi::value<string_tag>::make(env(), std::u16string_view{std::forward<decltype(value)>(value)});
+		}
+
+		auto operator()(string_tag_of<char> /*tag*/, auto&& value) const -> napi_value {
+			return js::napi::value<string_tag_of<char>>::make(env(), std::forward<decltype(value)>(value));
 		}
 
 		auto operator()(date_tag /*tag*/, js_clock::time_point value) const -> napi_value {

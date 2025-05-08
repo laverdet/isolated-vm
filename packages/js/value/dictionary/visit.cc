@@ -1,6 +1,6 @@
 module;
 #include <algorithm>
-#include <string_view>
+#include <string>
 #include <utility>
 #include <variant>
 export module isolated_js.dictionary.visit;
@@ -85,7 +85,7 @@ struct accept_property_value<Meta, Key, Type, vector_of<Tag, std::pair<KeyType, 
 		}
 
 	private:
-		accept_next<Meta, std::string_view> first;
+		accept_next<Meta, std::string> first;
 		accept_next<Meta, Type> second;
 };
 

@@ -21,15 +21,15 @@ export using value_t = boost::make_recursive_variant<
 	// boolean
 	bool,
 	// number
+	double,
 	int32_t,
 	uint32_t,
-	double,
 	// bigint
 	int64_t,
 	uint64_t,
 	// string
-	std::string,
 	std::u16string,
+	std::string,
 	// date
 	js_clock::time_point,
 	// object(s)

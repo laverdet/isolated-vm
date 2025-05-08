@@ -5,6 +5,7 @@ module;
 #include <variant>
 export module isolated_js.primitive.tag;
 import isolated_js.date;
+import isolated_js.primitive.types;
 import isolated_js.tag;
 import ivm.utility;
 
@@ -24,13 +25,13 @@ struct tag_for<bool> : std::type_identity<boolean_tag> {};
 
 // `number`
 template <>
+struct tag_for<double> : std::type_identity<number_tag> {};
+
+template <>
 struct tag_for<int32_t> : std::type_identity<number_tag_of<int32_t>> {};
 
 template <>
 struct tag_for<uint32_t> : std::type_identity<number_tag_of<uint32_t>> {};
-
-template <>
-struct tag_for<double> : std::type_identity<number_tag_of<double>> {};
 
 // `bigint`
 template <>
@@ -45,15 +46,9 @@ struct tag_for<js_clock::time_point> : std::type_identity<date_tag> {};
 
 // `string`
 template <>
-struct tag_for<const char*> : std::type_identity<string_tag_of<char>> {};
+struct tag_for<std::u16string> : std::type_identity<string_tag> {};
 
 template <>
 struct tag_for<std::string> : std::type_identity<string_tag_of<char>> {};
-
-template <>
-struct tag_for<std::string_view> : std::type_identity<string_tag_of<char>> {};
-
-template <>
-struct tag_for<std::u16string> : std::type_identity<string_tag_of<char16_t>> {};
 
 } // namespace js

@@ -1,8 +1,8 @@
 module;
 #include <cstdint>
 #include <stdexcept>
-#include <string>
 #include <type_traits>
+#include <utility>
 #include <variant>
 export module v8_js.visit;
 import isolated_js;
@@ -40,7 +40,7 @@ struct visit<void, v8::Local<v8::Number>> {
 			if (value->IsInt32()) {
 				return accept(number_tag_of<int32_t>{}, number);
 			} else {
-				return accept(number_tag_of<double>{}, number);
+				return accept(number_tag{}, number);
 			}
 		}
 };
@@ -104,7 +104,7 @@ struct visit<void, v8::Local<v8::Name>> {
 			if (value->IsOneByte()) {
 				return accept(string_tag_of<char>{}, string);
 			} else {
-				return accept(string_tag_of<char16_t>{}, string);
+				return accept(string_tag{}, string);
 			}
 		}
 
