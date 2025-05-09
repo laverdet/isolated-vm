@@ -100,54 +100,81 @@ struct accept<Meta, napi_value> : accept<Meta, napi_env> {
 		}
 
 		auto operator()(list_tag /*tag*/, auto&& list, const auto& visit) const -> napi_value {
-			auto array = napi::invoke(napi_create_array, this->env());
+			std::vector<napi_property_descriptor> properties;
+			properties.reserve(std::size(list));
 			for (auto&& [ key, value ] : std::forward<decltype(list)>(list)) {
-				napi::invoke0(
-					napi_set_property,
-					this->env(),
-					array,
-					visit.first(std::forward<decltype(key)>(key), *this),
-					visit.second(std::forward<decltype(value)>(value), *this)
-				);
+				properties.emplace_back(napi_property_descriptor{
+					.utf8name{},
+					.name = visit.first(std::forward<decltype(key)>(key), *this),
+
+					.method{},
+					.getter{},
+					.setter{},
+					.value = visit.second(std::forward<decltype(value)>(value), *this),
+
+					// NOLINTNEXTLINE(hicpp-signed-bitwise)
+					.attributes = static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable),
+					.data{},
+				});
 			}
+			auto array = napi::invoke(napi_create_array, this->env());
+			napi::invoke0(napi_define_properties, this->env(), array, properties.size(), properties.data());
 			return array;
 		}
 
 		auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> napi_value {
-			auto object = napi::invoke(napi_create_object, this->env());
-			for (auto&& [ key, value ] : util::into_range(std::forward<decltype(dictionary)>(dictionary))) {
-				napi::invoke0(
-					napi_set_property,
-					this->env(),
-					object,
-					visit.first(std::forward<decltype(key)>(key), *this),
-					visit.second(std::forward<decltype(value)>(value), *this)
-				);
+			std::vector<napi_property_descriptor> properties;
+			auto&& range = util::into_range(std::forward<decltype(dictionary)>(dictionary));
+			properties.reserve(std::size(range));
+			for (auto&& [ key, value ] : std::forward<decltype(range)>(range)) {
+				properties.emplace_back(napi_property_descriptor{
+					.utf8name{},
+					.name = visit.first(std::forward<decltype(key)>(key), *this),
+
+					.method{},
+					.getter{},
+					.setter{},
+					.value = visit.second(std::forward<decltype(value)>(value), *this),
+
+					// NOLINTNEXTLINE(hicpp-signed-bitwise)
+					.attributes = static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable),
+					.data{},
+				});
 			}
+			auto object = napi::invoke(napi_create_object, this->env());
+			napi::invoke0(napi_define_properties, this->env(), object, properties.size(), properties.data());
 			return object;
 		}
 
 		template <std::size_t Size>
 		auto operator()(struct_tag<Size> /*tag*/, auto&& dictionary, const auto& visit) const -> napi_value {
-			auto object = napi::invoke(napi_create_object, this->env());
+			std::array<napi_property_descriptor, Size> properties;
 			std::invoke(
 				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
 					(invoke(std::integral_constant<size_t, Index>{}), ...);
 				},
 				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> /*index*/) {
 					const auto& visit_n = std::get<Index>(visit);
-					napi::invoke0(
-						napi_set_property,
-						this->env(),
-						object,
-						visit_n.first.get(),
+					properties[ Index ] = {
+						.utf8name = visit_n.first.get_utf8(),
+						.name{},
+
+						.method{},
+						.getter{},
+						.setter{},
 						// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
 						// reference members one at a time.
-						visit_n.second(std::forward<decltype(dictionary)>(dictionary), *this)
-					);
+						.value = visit_n.second(std::forward<decltype(dictionary)>(dictionary), *this),
+
+						// NOLINTNEXTLINE(hicpp-signed-bitwise)
+						.attributes = static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable),
+						.data{},
+					};
 				},
 				std::make_index_sequence<Size>{}
 			);
+			auto object = napi::invoke(napi_create_object, this->env());
+			napi::invoke0(napi_define_properties, this->env(), object, properties.size(), properties.data());
 			return object;
 		}
 
@@ -184,7 +211,7 @@ struct accept_property_value<Meta, Key, Type, napi_value> {
 				accept_value_{accept_heritage} {}
 
 		auto operator()(dictionary_tag /*tag*/, const auto& object, const auto& visit) const {
-			if (auto local = visit_key_.get(); object.has(local)) {
+			if (auto local = visit_key_.get_local(); object.has(local)) {
 				return visit.second(object.get(local), accept_value_);
 			} else {
 				return accept_value_(undefined_in_tag{}, std::monostate{});

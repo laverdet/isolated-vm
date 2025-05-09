@@ -3,27 +3,6 @@ module;
 #include <js_native_api.h>
 export module nodejs:js_native_api;
 
-export using ::napi_bigint;
-export using ::napi_boolean;
-export using ::napi_external;
-export using ::napi_function;
-export using ::napi_null;
-export using ::napi_number;
-export using ::napi_object;
-export using ::napi_string;
-export using ::napi_symbol;
-export using ::napi_undefined;
-
-export using ::napi_callback_info;
-export using ::napi_deferred;
-export using ::napi_env;
-export using ::napi_finalize;
-export using ::napi_handle_scope;
-export using ::napi_ref;
-export using ::napi_status;
-export using ::napi_value;
-export using ::napi_valuetype;
-
 export using ::napi_add_finalizer;
 export using ::napi_call_function;
 export using ::napi_close_handle_scope;
@@ -50,6 +29,7 @@ export using ::napi_get_boolean;
 export using ::napi_get_cb_info;
 export using ::napi_get_date_value;
 export using ::napi_get_element;
+export using ::napi_define_properties;
 export using ::napi_get_instance_data;
 export using ::napi_get_null;
 export using ::napi_get_property_names;

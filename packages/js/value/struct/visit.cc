@@ -100,7 +100,7 @@ struct visit_struct_properties<Meta, Type, std::tuple<Property...>> {
 				)} {}
 
 		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
-			auto visit_struct = std::invoke(
+			const auto visit_struct = std::invoke(
 				[ & ]<std::size_t... Indices>(const auto& invoke, std::index_sequence<Indices...> /*indices*/) constexpr {
 					return util::make_tuple_in_place(invoke(std::integral_constant<size_t, Indices>{})...);
 				},
@@ -111,7 +111,7 @@ struct visit_struct_properties<Meta, Type, std::tuple<Property...>> {
 				},
 				std::make_index_sequence<sizeof...(Property)>{}
 			);
-			return accept(struct_tag<sizeof...(Property)>{}, std::forward<decltype(value)>(value), std::move(visit_struct));
+			return accept(struct_tag<sizeof...(Property)>{}, std::forward<decltype(value)>(value), visit_struct);
 		}
 
 	private:

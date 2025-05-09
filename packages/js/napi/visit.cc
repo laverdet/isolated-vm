@@ -73,19 +73,23 @@ struct visit_key_literal<Key, napi_value> : util::non_moveable {
 	public:
 		struct visit {
 			public:
-				visit(const visit_key_literal& key_literal, const napi_witness_lock& lock) :
+				constexpr visit(const visit_key_literal& key_literal, const napi_witness_lock& lock) :
 						local_key_{&key_literal.local_key_},
 						lock_{&lock} {}
 
-				[[nodiscard]] auto get() const -> napi_value {
+				[[nodiscard]] auto get_local() const -> napi_value {
 					if (*local_key_ == napi_value{}) {
 						*local_key_ = napi::invoke(napi_create_string_utf8, lock_->env(), Key.data(), Key.length());
 					}
 					return *local_key_;
 				}
 
+				[[nodiscard]] constexpr auto get_utf8() const -> const char* {
+					return Key.data();
+				}
+
 				auto operator()(const auto& /*could_be_literally_anything*/, const auto& accept) const -> decltype(auto) {
-					return accept(string_tag{}, get());
+					return accept(string_tag{}, get_local());
 				}
 
 			private:
