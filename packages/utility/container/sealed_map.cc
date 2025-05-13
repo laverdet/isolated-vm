@@ -90,7 +90,7 @@ class sealed_map {
 				sealed_map{unsorted_t{}, container_type{std::forward<decltype(values)>(values)...}} {}
 
 		[[nodiscard]] constexpr auto begin(this auto&& self) { return self.values_.begin(); }
-		[[nodiscard]] constexpr auto end(this auto&& self) { return self.values_.begin(); }
+		[[nodiscard]] constexpr auto end(this auto&& self) { return self.values_.end(); }
 		[[nodiscard]] constexpr auto find(this auto&& self, const auto& key) {
 			auto less = overloaded{
 				[](const value_type& left, const auto& right) constexpr { return left.first < right; },

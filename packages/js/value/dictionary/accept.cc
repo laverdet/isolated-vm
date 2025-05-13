@@ -16,14 +16,14 @@ namespace js {
 // If the container is not recursive then it will own its own entry acceptor. Otherwise it accepts
 // a reference to an existing one.
 template <class Meta, class Type>
-struct accept_entry_value : accept_like, accept_next<Meta, Type> {
+struct accept_entry_value : accept_next<Meta, Type> {
 		constexpr explicit accept_entry_value(auto_heritage auto accept_heritage) :
 				accept_next<Meta, Type>{accept_heritage} {}
 };
 
 template <class Meta, class Type>
 	requires is_recursive_v<Type>
-struct accept_entry_value<Meta, Type> : accept_like {
+struct accept_entry_value<Meta, Type> {
 	private:
 		using accept_type = accept_next<Meta, Type>;
 

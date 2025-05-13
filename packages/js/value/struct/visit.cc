@@ -48,7 +48,7 @@ struct visit_getter : visit<Meta, typename Getter::type> {
 				visit<Meta, typename Getter::type>{visit_heritage},
 				getter{std::move(getter)} {}
 
-		constexpr auto operator()(const auto& value, const auto_accept auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(const auto& value, const auto& accept) const -> decltype(auto) {
 			const visit<Meta, typename Getter::type>& visitor = *this;
 			return visitor(getter(value), accept);
 		}
@@ -66,7 +66,7 @@ struct visit_object_property {
 		constexpr explicit visit_object_property(auto_heritage auto visit_heritage, Property property) :
 				second{visit_heritage, getter_delegate{property.value_template}} {}
 
-		constexpr auto make_visit_entry(const auto_accept auto& accept) const {
+		constexpr auto make_visit_entry(const auto& accept) const {
 			return std::pair<typename first_type::visit, const second_type&>{typename first_type::visit{first, accept}, second};
 		}
 
@@ -99,7 +99,7 @@ struct visit_struct_properties<Meta, Type, std::tuple<Property...>> {
 					std::make_index_sequence<sizeof...(Property)>{}
 				)} {}
 
-		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			const auto visit_struct = std::invoke(
 				[ & ]<std::size_t... Indices>(const auto& invoke, std::index_sequence<Indices...> /*indices*/) constexpr {
 					return util::make_tuple_in_place(invoke(std::integral_constant<size_t, Indices>{})...);

@@ -133,7 +133,7 @@ struct transfer_direct {
 
 template <class Type>
 struct visit<void, transfer_direct<Type>> {
-		constexpr auto operator()(auto value, const auto_accept auto& /*accept*/) const {
+		constexpr auto operator()(auto value, const auto& /*accept*/) const {
 			return *std::move(value);
 		}
 };

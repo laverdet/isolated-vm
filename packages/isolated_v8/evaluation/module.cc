@@ -51,7 +51,7 @@ auto js_module::requests(agent::lock& agent) -> std::vector<module_request> {
 				});
 			return {specifier, module_request::attributes_type{std::move(attributes_view)}};
 		});
-	return {requests_view.begin(), requests_view.end()};
+	return {std::from_range, std::move(requests_view)};
 }
 
 auto js_module::evaluate(realm::scope& realm) -> js::value_t {

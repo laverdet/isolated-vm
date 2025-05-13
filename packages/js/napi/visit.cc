@@ -30,7 +30,7 @@ struct visit<void, napi_value>
 		explicit visit(const environment& env) :
 				visit{env, v8::Isolate::GetCurrent()} {}
 
-		auto operator()(napi_value value, const auto_accept auto& accept) const -> decltype(auto) {
+		auto operator()(napi_value value, const auto& accept) const -> decltype(auto) {
 			switch (napi::invoke(napi_typeof, env(), value)) {
 				case napi_boolean:
 					return accept(boolean_tag{}, napi::bound_value{env(), napi::value<boolean_tag>::from(value)});

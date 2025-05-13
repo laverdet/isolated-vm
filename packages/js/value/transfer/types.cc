@@ -17,22 +17,8 @@ using transferee_subject_t = transferee_subject<Type>::type;
 export template <class Wrap, class Subject, class Target>
 struct transferee_meta {
 		using accept_target_type = transferee_subject_t<Target>;
+		using accept_wrap_type = Wrap;
 		using visit_subject_type = transferee_subject_t<Subject>;
-};
-
-// Marker for any `accept` type
-export template <class Type>
-struct is_accept : std::false_type {};
-
-template <class Type>
-	requires Type::is_accept::value
-struct is_accept<Type> : Type::is_accept {};
-
-export template <class Type>
-constexpr bool is_accept_v = is_accept<Type>::value;
-
-export struct accept_like {
-		using is_accept = std::true_type;
 };
 
 // Requirement for any "heritage" type used in `visit` & `accept`.

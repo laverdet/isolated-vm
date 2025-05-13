@@ -1,8 +1,6 @@
 module;
-#include <array>
-#include <span>
-#include <stdexcept>
 #include <tuple>
+#include <type_traits>
 export module isolated_v8.function;
 import isolated_js;
 import isolated_v8.agent;
@@ -23,7 +21,7 @@ export class function_template {
 		auto make_function(v8::Local<v8::Context> context) -> v8::Local<v8::Function>;
 
 		template <class Invocable, class Result, class... Args>
-		static auto make(agent::lock& agent, js::bound_function<Invocable, Result(realm::scope&, Args...)> function) -> function_template;
+		static auto make(agent::lock& agent, js::bound_function<Invocable, Result(realm::scope&, Args...)> invocable) -> function_template;
 		template <auto Function, class Result, class... Args>
 		static auto make(agent::lock& agent, js::free_function<Function, Result(realm::scope&, Args...)> function) -> function_template;
 
@@ -87,7 +85,7 @@ struct visit<void, function_template> : visit<void, v8::Local<v8::Value>> {
 	public:
 		using visit<void, v8::Local<v8::Value>>::visit;
 
-		auto operator()(function_template value, const auto_accept auto& accept) const -> decltype(auto) {
+		auto operator()(function_template value, const auto& accept) const -> decltype(auto) {
 			return accept(function_tag{}, value.make_function(witness().context()));
 		}
 };

@@ -58,7 +58,7 @@ struct visit<Meta, vector_of<Tag, Value>> : visit_vector_value<Meta, Value> {
 		constexpr explicit visit(auto_heritage auto visit_heritage) :
 				visit_vector_value<Meta, Value>{visit_heritage(this)} {}
 
-		constexpr auto operator()(auto&& value, const auto_accept auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			const visit_vector_value<Meta, Value>& visitor = *this;
 			return accept(Tag{}, std::forward<decltype(value)>(value), visitor);
 		}

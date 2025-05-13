@@ -12,14 +12,9 @@ namespace js {
 // Simply wraps `accept_next`, but with the addition of the `get` overload. This may be the acceptor
 // for a tuple which wants a `get`able.
 template <class Meta, class Type>
-struct accept_list_element : accept_like, accept_next<Meta, Type> {
+struct accept_list_element : accept_next<Meta, Type> {
 		using accept_next<Meta, Type>::accept_next;
 };
-
-template <std::size_t Index, class Meta, class Type>
-auto get(const accept_list_element<Meta, Type>& container) -> decltype(auto) {
-	return container;
-}
 
 // `std::array` can only accept a tuple of statically known size
 template <class Meta, std::size_t Size, class Type>
@@ -67,7 +62,7 @@ struct accept<Meta, std::vector<Type>> : accept_list_element<Meta, Type> {
 				std::views::transform([ & ](auto&& value) -> Type {
 					return visit(std::forward<decltype(value)>(value).second, acceptor);
 				});
-			return {range.begin(), range.end()};
+			return {std::from_range, std::move(range)};
 		}
 
 		constexpr auto operator()(vector_tag /*tag*/, auto&& list, const auto& visit) const -> std::vector<Type> {
@@ -77,7 +72,7 @@ struct accept<Meta, std::vector<Type>> : accept_list_element<Meta, Type> {
 				std::views::transform([ & ](auto&& value) -> Type {
 					return visit(std::forward<decltype(value)>(value), acceptor);
 				});
-			return {range.begin(), range.end()};
+			return {std::from_range, std::move(range)};
 		}
 
 		template <std::size_t Size>

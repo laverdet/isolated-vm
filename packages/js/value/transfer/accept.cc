@@ -8,27 +8,9 @@ import ivm.utility;
 
 namespace js {
 
-// Extract `Wrap` from `Meta`
-template <class Meta>
-struct select_wrap;
-
-template <class Meta>
-using select_wrap_t = select_wrap<Meta>::type;
-
-template <class Wrap, class Subject, class Target>
-struct select_wrap<transferee_meta<Wrap, Subject, Target>>
-		: std::type_identity<Wrap> {};
-
 // `accept` is the target of `visit`
 export template <class Meta, class Type>
 struct accept;
-
-// Concept for any `accept`
-template <class Meta, class Type>
-struct is_accept<accept<Meta, Type>> : std::true_type {};
-
-export template <class Type>
-concept auto_accept = is_accept_v<Type>;
 
 // Automatic creation context which sends the previous visitor down to children. Unlike
 // `visitor_heritage`, the call operator should only need to be invoked when passing to a recursive
@@ -72,7 +54,7 @@ struct accept<void, Type>;
 
 // `accept` with transfer wrapping
 export template <class Meta, class Type>
-using accept_next = select_wrap_t<Meta>::template accept<Meta, Type>;
+using accept_next = Meta::accept_wrap_type::template accept<Meta, Type>;
 
 // Returns the value corresponding to a key with an accepted object subject.
 export template <class Meta, util::string_literal Key, class Type, class Subject>
