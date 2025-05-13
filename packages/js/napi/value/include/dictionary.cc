@@ -37,7 +37,7 @@ class dictionary_like : public bound_value<object_tag> {
 		[[nodiscard]] auto into_range() const -> range_type;
 
 	private:
-		mutable keys_type keys_{nullptr, value<vector_tag>::from(nullptr)};
+		mutable keys_type keys_;
 };
 
 template <>

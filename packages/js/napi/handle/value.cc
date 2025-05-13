@@ -23,8 +23,11 @@ export class value_handle {
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		operator napi_value() const { return value_; }
 
+		// Check for empty value
+		explicit operator bool() const { return value_ != nullptr; }
+
 	private:
-		napi_value value_;
+		napi_value value_{};
 };
 
 // Details applied to each level of the `value<T>` hierarchy.
@@ -63,6 +66,8 @@ class bound_value_next : public bound_value<typename Tag::tag_type> {
 		bound_value_next() = default;
 		bound_value_next(napi_env env, value<Tag> value) :
 				bound_value<typename Tag::tag_type>{env, napi_value{value}} {}
+
+		explicit operator value<Tag>() const { return value<Tag>::from(napi_value{*this}); }
 };
 
 // Member & method implementation for stateful objects. Used internally in visitors. I think it
@@ -88,7 +93,7 @@ class bound_value<void> : public detail::value_handle {
 		[[nodiscard]] auto env() const { return env_; }
 
 	private:
-		napi_env env_;
+		napi_env env_{};
 };
 
 } // namespace js::napi

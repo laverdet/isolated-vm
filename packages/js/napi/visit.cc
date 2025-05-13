@@ -1,6 +1,5 @@
 module;
 #include <utility>
-#include <variant>
 export module napi_js.visit;
 import isolated_js;
 import ivm.utility;
@@ -16,7 +15,7 @@ import v8;
 namespace js {
 using namespace napi;
 
-// Delegate napi_value to various visitors
+// Napi visitor which can detect the underlying type of a given value
 template <>
 struct visit<void, napi_value>
 		: napi::napi_isolate_witness_lock,
@@ -25,21 +24,26 @@ struct visit<void, napi_value>
 		using visit<void, v8::Local<v8::External>>::operator();
 
 		visit(const environment& env, v8::Isolate* isolate) :
-				napi_isolate_witness_lock{env, isolate} {}
+				napi::napi_isolate_witness_lock{env, isolate} {}
 		// nb: TODO: Remove (again)
 		explicit visit(const environment& env) :
 				visit{env, v8::Isolate::GetCurrent()} {}
 
+		template <class Tag>
+		auto operator()(value<Tag> value, const auto& accept) const -> decltype(auto) {
+			return accept(Tag{}, napi::bound_value{env(), value});
+		}
+
 		auto operator()(napi_value value, const auto& accept) const -> decltype(auto) {
 			switch (napi::invoke(napi_typeof, env(), value)) {
 				case napi_boolean:
-					return accept(boolean_tag{}, napi::bound_value{env(), napi::value<boolean_tag>::from(value)});
+					return (*this)(napi::value<boolean_tag>::from(value), accept);
 				case napi_number:
-					return accept(number_tag{}, napi::bound_value{env(), napi::value<number_tag>::from(value)});
+					return (*this)(napi::value<number_tag>::from(value), accept);
 				case napi_bigint:
-					return accept(bigint_tag{}, napi::bound_value{env(), napi::value<bigint_tag>::from(value)});
+					return (*this)(napi::value<bigint_tag>::from(value), accept);
 				case napi_string:
-					return accept(string_tag{}, napi::bound_value{env(), napi::value<string_tag>::from(value)});
+					return (*this)(napi::value<string_tag>::from(value), accept);
 				case napi_object:
 					{
 						auto visit_entry = std::pair<const visit&, const visit&>{*this, *this};
@@ -47,22 +51,22 @@ struct visit<void, napi_value>
 							// nb: It is intentional that `dictionary_tag` is bound. It handles sparse arrays.
 							return accept(list_tag{}, napi::bound_value{env(), napi::value<dictionary_tag>::from(value)}, visit_entry);
 						} else if (napi::invoke(napi_is_date, env(), value)) {
-							return accept(date_tag{}, napi::bound_value{env(), napi::value<date_tag>::from(value)});
+							return (*this)(napi::value<date_tag>::from(value), accept);
 						} else if (napi::invoke(napi_is_promise, env(), value)) {
-							return accept(promise_tag{}, value);
+							return accept(promise_tag{}, napi::value<promise_tag>::from(value));
 						}
 						return accept(dictionary_tag{}, napi::bound_value{env(), napi::value<dictionary_tag>::from(value)}, visit_entry);
 					}
 				case napi_external:
 					return (*this)(napi::to_v8(value).As<v8::External>(), accept);
 				case napi_symbol:
-					return accept(symbol_tag{}, value);
+					return accept(symbol_tag{}, napi::value<symbol_tag>::from(value));
 				case napi_null:
-					return accept(null_tag{}, value);
+					return accept(null_tag{}, napi::value<null_tag>::from(value));
 				case napi_undefined:
-					return accept(undefined_tag{}, std::monostate{});
+					return accept(undefined_tag{}, napi::value<undefined_tag>::from(value));
 				case napi_function:
-					return accept(function_tag{}, value);
+					return accept(function_tag{}, napi::value<function_tag>::from(value));
 			}
 		}
 };

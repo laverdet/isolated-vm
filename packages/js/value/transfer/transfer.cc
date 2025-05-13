@@ -30,14 +30,17 @@ template <class Meta, class Type>
 // If the requirement fails then a helper struct like `covariant_subject` was instantiated
 // probably via `accept_next`
 	requires std::destructible<Type>
-struct accept<Meta, accept_with_throw::accept_throw<Type>>
-		: accept<Meta, Type> {
+struct accept<Meta, accept_with_throw::accept_throw<Type>> : accept<Meta, Type> {
 		explicit constexpr accept(auto_heritage auto accept_heritage) :
 				accept<Meta, Type>{accept_heritage(this)} {}
 
-		using accept<Meta, Type>::operator();
-		constexpr auto operator()(value_tag /*tag*/, const auto& /*value*/, const auto&... /*rest*/) const -> Type {
-			throw std::logic_error{"Type error"};
+		constexpr auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> Type {
+			if constexpr (std::invocable<accept<Meta, Type>, decltype(tag), decltype(value), decltype(rest)...>) {
+				const accept<Meta, Type>& accept = *this;
+				return accept(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
+			} else {
+				throw std::logic_error{"Type error"};
+			}
 		}
 };
 

@@ -71,12 +71,15 @@ auto invoke_callback(auto_environment auto& env, callback_info& info, const auto
 			)
 		);
 	};
-	if constexpr (std::is_void_v<std::invoke_result_t<decltype(run)>>) {
-		run();
-		return js::napi::value<undefined_tag>::make(env);
-	} else {
-		return js::transfer_in_strict<napi_value>(run(), env);
-	}
+	auto run_with_result = [ & ]() -> decltype(auto) {
+		if constexpr (std::is_void_v<std::invoke_result_t<decltype(run)>>) {
+			run();
+			return std::monostate{};
+		} else {
+			return run();
+		}
+	};
+	return js::transfer_in_strict<napi_value>(run_with_result(), env);
 }
 
 template <class Result>
@@ -94,7 +97,7 @@ auto value<function_tag>::call(auto_environment auto& env, auto&&... args) -> Re
 template <class Result>
 auto value<function_tag>::invoke(auto_environment auto& env, std::span<napi_value> args) -> Result {
 	auto undefined = js::transfer_in_strict<napi_value>(std::monostate{}, env);
-	auto* result = js::napi::invoke(napi_call_function, env, undefined, *this, args.size(), args.data());
+	auto* result = js::napi::invoke(napi_call_function, env, undefined, napi_value{*this}, args.size(), args.data());
 	return js::transfer_out<Result>(result, env);
 }
 

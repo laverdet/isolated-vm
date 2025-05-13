@@ -29,8 +29,8 @@ class remote : protected detail::reference_handle {
 	public:
 		using unique_remote = std::unique_ptr<remote, util::function_type_of<expire>>;
 
-		remote(private_ctor /*private*/, napi_env env, napi_value value, uv_scheduler scheduler) :
-				reference_handle{env, value},
+		remote(private_ctor /*private*/, napi_env env, value<Tag> value, uv_scheduler scheduler) :
+				reference_handle{env, napi_value{value}},
 				scheduler_{std::move(scheduler)} {}
 
 		auto get(const environment& env) const -> value<Tag>;

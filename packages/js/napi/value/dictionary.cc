@@ -11,7 +11,7 @@ import nodejs;
 namespace js::napi {
 
 auto dictionary_like::into_range() const -> range_type {
-	if (keys_ == keys_type{nullptr, value<vector_tag>::from(nullptr)}) {
+	if (!keys_) {
 		auto property_names = js::napi::invoke(napi_get_property_names, env(), *this);
 		keys_ = keys_type{env(), js::napi::value<vector_tag>::from(property_names)};
 	}
