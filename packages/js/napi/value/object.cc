@@ -2,6 +2,7 @@ module;
 #include <type_traits>
 module napi_js.object;
 import ivm.utility;
+import napi_js.bound_value;
 import napi_js.utility;
 import napi_js.value;
 import nodejs;
@@ -23,7 +24,7 @@ auto bound_value<object_tag>::set(napi_value key, napi_value value) -> void {
 
 // date
 auto value<date_tag>::make(const environment& env, js_clock::time_point date) -> value<date_tag> {
-	return value<date_tag>::from(napi::invoke(napi_create_date, env, date.time_since_epoch().count()));
+	return value<date_tag>::from(napi::invoke(napi_create_date, napi_env{env}, date.time_since_epoch().count()));
 }
 
 auto bound_value<date_tag>::materialize(std::type_identity<js_clock::time_point> /*tag*/) const -> js_clock::time_point {

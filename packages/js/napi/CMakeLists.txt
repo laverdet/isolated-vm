@@ -9,14 +9,14 @@ target_sources(ivm_value_napi
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		accept.cc
+		handle/bound_value.cc
 		handle/reference.cc
 		handle/remote.cc
 		handle/value.cc
 		support/environment.cc
-		support/include/handle_scope.cc
-		support/include/lock.cc
-		support/include/scheduler.cc
-		utility.cc
+		support/handle_scope.cc
+		support/scheduler.cc
+		support/utility.cc
 		value/include/array.cc
 		value/include/dictionary.cc
 		value/include/function.cc

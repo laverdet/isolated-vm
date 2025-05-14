@@ -2,6 +2,7 @@ module;
 #include <concepts>
 #include <stdexcept>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 export module isolated_js.transfer;
 export import isolated_js.transfer.types;
@@ -11,13 +12,13 @@ import isolated_js.tag;
 
 namespace js {
 
-// Default `accept` passthrough `Meta`
+// Default `accept` passthrough `Wrap`
 struct accept_pass {
 		template <class Meta, class Type>
 		using accept = js::accept<Meta, Type>;
 };
 
-// `Meta` for `accept` which throws on unknown values
+// `Wrap` for `accept` which throws on unknown values
 struct accept_with_throw {
 		template <class Type>
 		struct accept_throw;
@@ -44,6 +45,20 @@ struct accept<Meta, accept_with_throw::accept_throw<Type>> : accept<Meta, Type> 
 		}
 };
 
+// Select environment type for `accept` or `visit`. This is either `void` for stateless visitors, or
+// something like `environment_of<T>` for runtime visitors.
+template <class Tuple>
+struct select_transferee_environment;
+
+template <class Tuple>
+using select_transferee_environment_t = select_transferee_environment<Tuple>::type;
+
+template <>
+struct select_transferee_environment<std::tuple<>> : std::type_identity<void> {};
+
+template <class Type>
+struct select_transferee_environment<std::tuple<Type>> : std::type_identity<std::decay_t<Type>> {};
+
 // Transfer a JavaScript value from one domain to another
 template <class Type, class Wrap>
 constexpr auto transfer_with(
@@ -51,16 +66,19 @@ constexpr auto transfer_with(
 	auto&& visit_args,
 	auto&& accept_args
 ) -> decltype(auto) {
-	using from_type = std::decay_t<decltype(value)>;
-	using meta_holder = transferee_meta<Wrap, from_type, std::decay_t<Type>>;
-	using visit_type = visit<meta_holder, from_type>;
+	using subject_type = std::decay_t<decltype(value)>;
+	using target_type = std::decay_t<Type>;
+	using visit_env = select_transferee_environment_t<std::decay_t<decltype(visit_args)>>;
+	using accept_env = select_transferee_environment_t<std::decay_t<decltype(accept_args)>>;
+	using meta_holder = transferee_meta<Wrap, visit_env, subject_type, accept_env, target_type>;
+	using visit_type = visit<meta_holder, subject_type>;
 	using accept_type = Wrap::template accept<meta_holder, Type>;
-	auto visitor = std::make_from_tuple<visit_type>(std::tuple_cat(
-		std::tuple{visitor_heritage<meta_holder>{}},
+	visit_type visitor = std::make_from_tuple<visit_type>(std::tuple_cat(
+		std::tuple{visitor_heritage<visit_type>{}},
 		std::forward<decltype(visit_args)>(visit_args)
 	));
-	auto acceptor = std::make_from_tuple<accept_type>(std::tuple_cat(
-		std::tuple{acceptor_heritage<meta_holder>{visitor}},
+	accept_type acceptor = std::make_from_tuple<accept_type>(std::tuple_cat(
+		std::tuple{acceptor_heritage{visitor}},
 		std::forward<decltype(accept_args)>(accept_args)
 	));
 	return visitor(std::forward<decltype(value)>(value), acceptor);
@@ -88,24 +106,24 @@ constexpr auto transfer_strict(auto&& value, auto&& visit_args, auto&& accept_ar
 
 // Transfer "out" to a stateless acceptor. No tuple arguments needed.
 export template <class Type>
-constexpr auto transfer_out(auto&& value, auto&&... visit_args) -> decltype(auto) {
-	return transfer<Type>(std::forward<decltype(value)>(value), std::forward_as_tuple(visit_args...), std::tuple{});
+constexpr auto transfer_out(auto&& value, auto&& visit_env) -> decltype(auto) {
+	return transfer<Type>(std::forward<decltype(value)>(value), std::forward_as_tuple(visit_env), std::tuple{});
 }
 
 export template <class Type>
-constexpr auto transfer_out_strict(auto&& value, auto&&... visit_args) -> decltype(auto) {
-	return transfer_strict<Type>(std::forward<decltype(value)>(value), std::forward_as_tuple(visit_args...), std::tuple{});
+constexpr auto transfer_out_strict(auto&& value, auto&& visit_env) -> decltype(auto) {
+	return transfer_strict<Type>(std::forward<decltype(value)>(value), std::forward_as_tuple(visit_env), std::tuple{});
 }
 
 // Transfer "in" from a stateless visitor.
 export template <class Type>
-constexpr auto transfer_in(auto&& value, auto&&... accept_args) -> decltype(auto) {
-	return transfer<Type>(std::forward<decltype(value)>(value), std::tuple{}, std::forward_as_tuple(accept_args...));
+constexpr auto transfer_in(auto&& value, auto&& accept_env) -> decltype(auto) {
+	return transfer<Type>(std::forward<decltype(value)>(value), std::tuple{}, std::forward_as_tuple(accept_env));
 }
 
 export template <class Type>
-constexpr auto transfer_in_strict(auto&& value, auto&&... accept_args) -> decltype(auto) {
-	return transfer_strict<Type>(std::forward<decltype(value)>(value), std::tuple{}, std::forward_as_tuple(accept_args...));
+constexpr auto transfer_in_strict(auto&& value, auto&& accept_env) -> decltype(auto) {
+	return transfer_strict<Type>(std::forward<decltype(value)>(value), std::tuple{}, std::forward_as_tuple(accept_env));
 }
 
 // Only used for testing. Stateless to stateless transfer

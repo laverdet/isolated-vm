@@ -19,27 +19,25 @@ using visit_root = visit<Meta, typename Meta::visit_subject_type>;
 
 // Automatic creation context which sends the root visitor down to children. Any `visit<M, T>`
 // instance should invoke the heritage call operator with itself when passing down to children.
-export template <class Meta>
+export template <class Visit>
 struct visitor_heritage {
 		using is_heritage = std::true_type;
 		struct child {
 				using is_heritage = std::true_type;
-				constexpr explicit child(const visit_root<Meta>& visit) :
+				constexpr explicit child(const Visit& visit) :
 						visit{visit} {}
 				constexpr auto operator()(const auto* /*visit*/) const { return *this; }
 				// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
-				const visit_root<Meta>& visit;
+				const Visit& visit;
 		};
 
-		constexpr auto operator()(visit_root<Meta>* visit) const { return child{*visit}; }
+		constexpr auto operator()(const Visit* visit) const { return child{*visit}; }
 };
 
 // Default `visit` swallows `Meta`
 template <class Meta, class Type>
 struct visit : visit<void, Type> {
-		constexpr explicit visit(visitor_heritage<Meta> /*heritage*/, auto&&... args) :
-				visit<void, Type>{std::forward<decltype(args)>(args)...} {}
-		constexpr explicit visit(visitor_heritage<Meta>::child /*heritage*/, auto&&... args) :
+		constexpr explicit visit(const auto& /*heritage*/, auto&&... args) :
 				visit<void, Type>{std::forward<decltype(args)>(args)...} {}
 };
 

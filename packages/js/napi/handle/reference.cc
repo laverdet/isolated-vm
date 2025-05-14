@@ -54,10 +54,10 @@ class reference : public reference<typename Tag::tag_type> {
 		using reference<typename Tag::tag_type>::reference;
 
 		reference(const environment& env, value<Tag> value) :
-				reference<typename Tag::tag_type>{env, napi_value{value}} {}
+				reference<typename Tag::tag_type>{napi_env{env}, napi_value{value}} {}
 
 		[[nodiscard]] auto get(const environment& env) const -> value<Tag> {
-			return value<Tag>::from(this->get_value(env));
+			return value<Tag>::from(this->get_value(napi_env{env}));
 		}
 };
 

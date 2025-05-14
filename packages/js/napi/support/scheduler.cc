@@ -83,7 +83,7 @@ export class uv_scheduler {
 		auto decrement_ref() -> void;
 		auto increment_ref() -> void;
 		auto open(uv_loop_t* loop) -> void;
-		auto schedule(task_type task) -> void;
+		auto operator()(task_type task) -> void;
 
 	private:
 		struct locked_storage {

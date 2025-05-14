@@ -15,28 +15,28 @@ struct accept;
 // Automatic creation context which sends the previous visitor down to children. Unlike
 // `visitor_heritage`, the call operator should only need to be invoked when passing to a recursive
 // acceptor.
-export template <class Meta>
+export template <class Visit>
 struct acceptor_heritage {
 		using is_heritage = std::true_type;
 		template <class Accept>
 		struct child {
 				using is_heritage = std::true_type;
-				constexpr explicit child(const visit_root<Meta>& visit, const Accept& accept) :
+				constexpr explicit child(const Visit& visit, const Accept& accept) :
 						visit{visit},
 						accept{accept} {}
 				template <class Next>
 				constexpr auto operator()(const Next* accept) const { return child<Next>{visit, *accept}; }
 				// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
-				const visit_root<Meta>& visit;
+				const Visit& visit;
 				// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
 				const Accept& accept;
 		};
 
-		constexpr explicit acceptor_heritage(const visit_root<Meta>& visit) :
+		constexpr explicit acceptor_heritage(const Visit& visit) :
 				visit{visit} {}
 		constexpr auto operator()(const auto* accept) const { return child{visit, *accept}; }
 		// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
-		const visit_root<Meta>& visit;
+		const Visit& visit;
 };
 
 // Default `accept` swallows `Meta`

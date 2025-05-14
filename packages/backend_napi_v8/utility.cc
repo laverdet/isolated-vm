@@ -1,5 +1,4 @@
 module;
-#include <cstring>
 #include <expected>
 #include <tuple>
 #include <utility>
@@ -11,40 +10,46 @@ import ivm.utility;
 import nodejs;
 
 namespace backend_napi_v8 {
+using namespace js;
 
 export using expected_value = std::expected<napi_value, napi_value>;
 
-export auto make_promise(environment& ienv, auto accept) {
-	napi_env env{ienv};
-
-	// nodejs promise & future
+export auto make_promise(environment& env, auto accept) {
+	// Make nodejs promise & future
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	napi_deferred deferred;
-	auto* promise = js::napi::invoke(napi_create_promise, env, &deferred);
+	auto* promise = js::napi::invoke(napi_create_promise, napi_env{env}, &deferred);
 
-	// nodejs promise fulfillment
-	ienv.scheduler().increment_ref();
-	auto dispatch =
+	// Invoked in napi environment and resolves the deferred
+	auto resolve =
 		[ accept = std::move(accept),
-			deferred,
-			env,
-			scheduler = ienv.scheduler() ](
+			env_ptr = napi_env{env},
+			deferred ](
 			auto&&... args
 		) mutable {
-			scheduler.schedule(
+			auto& env = environment::get(env_ptr);
+			js::napi::handle_scope scope{napi_env{env}};
+			env.scheduler().decrement_ref();
+			if (auto result = accept(env, std::forward<decltype(args)>(args)...)) {
+				js::napi::invoke0(napi_resolve_deferred, napi_env{env}, deferred, std::move(result).value());
+			} else {
+				js::napi::invoke0(napi_reject_deferred, napi_env{env}, deferred, std::move(result).error());
+			}
+		};
+
+	// Dispatcher can be invoked in any thread, and schedules the resolution on the node thread.
+	auto scheduler = env.scheduler();
+	scheduler.increment_ref();
+	auto dispatch =
+		[ resolve = std::move(resolve),
+			scheduler = std::move(scheduler) ](
+			auto&&... args
+		) mutable {
+			scheduler(
 				util::make_indirect_moveable_function(
-					[ accept = std::move(accept),
-						deferred,
-						env,
+					[ resolve = std::move(resolve),
 						... args = std::forward<decltype(args)>(args) ]() mutable {
-						auto scope = js::napi::handle_scope{env};
-						auto& ienv = environment::get(env);
-						ienv.scheduler().decrement_ref();
-						if (auto result = accept(ienv, std::forward<decltype(args)>(args)...)) {
-							js::napi::invoke0(napi_resolve_deferred, env, deferred, result.value());
-						} else {
-							js::napi::invoke0(napi_reject_deferred, env, deferred, result.error());
-						}
+						resolve(std::forward<decltype(args)>(args)...);
 					}
 				)
 			);

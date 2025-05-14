@@ -25,18 +25,18 @@ class value<function_tag> : public detail::value_next<function_tag> {
 		using detail::value_next<function_tag>::value_next;
 
 		template <class Result>
-		auto apply(auto_environment auto& env, auto&& args) -> Result;
+		auto apply(auto& env, auto&& args) -> Result;
 		template <class Result>
-		auto call(auto_environment auto& env, auto&&... args) -> Result;
+		auto call(auto& env, auto&&... args) -> Result;
 
-		template <auto_environment Environment, class Invocable, class Result, class... Args>
+		template <class Environment, class Invocable, class Result, class... Args>
 		static auto make(Environment& env, js::bound_function<Invocable, Result(Environment&, Args...)> function) -> value<function_tag>;
-		template <auto_environment Environment, auto Function, class Result, class... Args>
+		template <class Environment, auto Function, class Result, class... Args>
 		static auto make(Environment& env, free_function<Function, Result(Environment&, Args...)> function) -> value<function_tag>;
 
 	private:
 		template <class Result>
-		auto invoke(auto_environment auto& env, std::span<napi_value> args) -> Result;
+		auto invoke(auto& env, std::span<napi_value> args) -> Result;
 };
 
 // ---
@@ -61,7 +61,7 @@ struct callback_info : util::non_copyable {
 };
 
 template <class... Args>
-auto invoke_callback(auto_environment auto& env, callback_info& info, const auto& invocable) -> napi_value {
+auto invoke_callback(auto& env, callback_info& info, const auto& invocable) -> napi_value {
 	auto run = [ & ]() -> decltype(auto) {
 		return std::apply(
 			invocable,
@@ -83,26 +83,29 @@ auto invoke_callback(auto_environment auto& env, callback_info& info, const auto
 }
 
 template <class Result>
-auto value<function_tag>::apply(auto_environment auto& env, auto&& args) -> Result {
+auto value<function_tag>::apply(auto& env, auto&& args) -> Result {
 	auto arg_values = js::transfer_in_strict<std::vector<napi_value>>(std::forward<decltype(args)>(args), env);
 	return invoke<Result>(env, std::span{arg_values});
 }
 
 template <class Result>
-auto value<function_tag>::call(auto_environment auto& env, auto&&... args) -> Result {
+auto value<function_tag>::call(auto& env, auto&&... args) -> Result {
 	auto arg_values = js::transfer_in_strict<std::array<napi_value, sizeof...(args)>>(std::forward_as_tuple(args...), env);
 	return invoke<Result>(env, std::span{arg_values});
 }
 
 template <class Result>
-auto value<function_tag>::invoke(auto_environment auto& env, std::span<napi_value> args) -> Result {
+auto value<function_tag>::invoke(auto& env, std::span<napi_value> args) -> Result {
 	auto undefined = js::transfer_in_strict<napi_value>(std::monostate{}, env);
-	auto* result = js::napi::invoke(napi_call_function, env, undefined, napi_value{*this}, args.size(), args.data());
+	auto* result = js::napi::invoke(napi_call_function, napi_env{env}, undefined, napi_value{*this}, args.size(), args.data());
 	return js::transfer_out<Result>(result, env);
 }
 
-template <auto_environment Environment, class Invocable, class Result, class... Args>
-auto value<function_tag>::make(Environment& env, js::bound_function<Invocable, Result(Environment&, Args...)> function) -> value<function_tag> {
+template <class Environment, class Invocable, class Result, class... Args>
+auto value<function_tag>::make(
+	Environment& env,
+	js::bound_function<Invocable, Result(Environment&, Args...)> function
+) -> value<function_tag> {
 	using function_type = js::bound_function<Invocable, Result(Environment&, Args...)>;
 	// Holds environment + function data. I guess we could also use thread locals for the environment,
 	// but we're already here so we might as well stash it in the function data.
@@ -123,27 +126,30 @@ auto value<function_tag>::make(Environment& env, js::bound_function<Invocable, R
 	};
 	// Make function, stashed with the holder ref
 	auto holder_ptr = std::make_unique<holder>(env, std::move(function));
-	auto js_function = js::napi::invoke(napi_create_function, env, nullptr, 0, callback, holder_ptr.get());
+	auto js_function = js::napi::invoke(napi_create_function, napi_env{env}, nullptr, 0, callback, holder_ptr.get());
 	// On destruction, clean up the function holder
 	auto finalizer = [](napi_env /*env*/, void* finalize_data, void* /*finalize_hint*/) {
 		auto* holder_ptr = static_cast<holder*>(finalize_data);
-		js::napi::invoke0(napi_delete_reference, *holder_ptr->env, holder_ptr->reference);
+		js::napi::invoke0(napi_delete_reference, napi_env{*holder_ptr->env}, holder_ptr->reference);
 		delete holder_ptr;
 	};
 	holder_ptr->reference =
-		js::napi::invoke(napi_add_finalizer, env, js_function, holder_ptr.get(), finalizer, nullptr);
+		js::napi::invoke(napi_add_finalizer, napi_env{env}, js_function, holder_ptr.get(), finalizer, nullptr);
 	holder_ptr.release();
 	return value<function_tag>::from(js_function);
 }
 
-template <auto_environment Environment, auto Function, class Result, class... Args>
-auto value<function_tag>::make(Environment& env, free_function<Function, Result(Environment&, Args...)> /*function*/) -> value<function_tag> {
+template <class Environment, auto Function, class Result, class... Args>
+auto value<function_tag>::make(
+	Environment& env,
+	free_function<Function, Result(Environment&, Args...)> /*function*/
+) -> value<function_tag> {
 	auto callback = [](napi_env nenv, napi_callback_info info) -> napi_value {
 		callback_info args{nenv, info};
 		auto& env = *static_cast<Environment*>(args.data());
 		return invoke_callback<Args...>(env, args, Function);
 	};
-	return value<function_tag>::from(js::napi::invoke(napi_create_function, env, nullptr, 0, callback, &env));
+	return value<function_tag>::from(js::napi::invoke(napi_create_function, napi_env{env}, nullptr, 0, callback, &env));
 }
 
 } // namespace js::napi

@@ -4,6 +4,7 @@ module;
 #include <string_view>
 module napi_js.primitive;
 import isolated_js;
+import napi_js.bound_value;
 import napi_js.utility;
 import nodejs;
 
@@ -11,17 +12,17 @@ namespace js::napi {
 
 // undefined
 auto value<undefined_tag>::make(const environment& env) -> value<undefined_tag> {
-	return value<undefined_tag>::from(js::napi::invoke(napi_get_undefined, env));
+	return value<undefined_tag>::from(js::napi::invoke(napi_get_undefined, napi_env{env}));
 }
 
 // null
 auto value<null_tag>::make(const environment& env) -> value<null_tag> {
-	return value<null_tag>::from(js::napi::invoke(napi_get_null, env));
+	return value<null_tag>::from(js::napi::invoke(napi_get_null, napi_env{env}));
 }
 
 // boolean
 auto value<boolean_tag>::make(const environment& env, bool boolean) -> value<boolean_tag> {
-	return value<boolean_tag>::from(js::napi::invoke(napi_get_boolean, env, boolean));
+	return value<boolean_tag>::from(js::napi::invoke(napi_get_boolean, napi_env{env}, boolean));
 }
 
 auto bound_value<boolean_tag>::materialize(std::type_identity<bool> /*tag*/) const -> bool {
@@ -30,19 +31,19 @@ auto bound_value<boolean_tag>::materialize(std::type_identity<bool> /*tag*/) con
 
 // number
 auto value<number_tag>::make(const environment& env, double number) -> value<number_tag> {
-	return value<number_tag>::from(napi::invoke(napi_create_double, env, number));
+	return value<number_tag>::from(napi::invoke(napi_create_double, napi_env{env}, number));
 }
 
 auto value<number_tag>::make(const environment& env, int32_t number) -> value<number_tag> {
-	return value<number_tag>::from(napi::invoke(napi_create_int32, env, number));
+	return value<number_tag>::from(napi::invoke(napi_create_int32, napi_env{env}, number));
 }
 
 auto value<number_tag>::make(const environment& env, int64_t number) -> value<number_tag> {
-	return value<number_tag>::from(napi::invoke(napi_create_int64, env, number));
+	return value<number_tag>::from(napi::invoke(napi_create_int64, napi_env{env}, number));
 }
 
 auto value<number_tag>::make(const environment& env, uint32_t number) -> value<number_tag> {
-	return value<number_tag>::from(napi::invoke(napi_create_uint32, env, number));
+	return value<number_tag>::from(napi::invoke(napi_create_uint32, napi_env{env}, number));
 }
 
 auto bound_value<number_tag>::materialize(std::type_identity<double> /*tag*/) const -> double {
@@ -63,15 +64,15 @@ auto bound_value<number_tag>::materialize(std::type_identity<uint32_t> /*tag*/) 
 
 // bigint
 auto value<bigint_tag>::make(const environment& env, const bigint& number) -> value<bigint_tag> {
-	return value<bigint_tag>::from(napi::invoke(napi_create_bigint_words, env, number.sign_bit(), number.size(), number.data()));
+	return value<bigint_tag>::from(napi::invoke(napi_create_bigint_words, napi_env{env}, number.sign_bit(), number.size(), number.data()));
 }
 
 auto value<bigint_tag>::make(const environment& env, int64_t number) -> value<bigint_tag> {
-	return value<bigint_tag>::from(napi::invoke(napi_create_bigint_int64, env, number));
+	return value<bigint_tag>::from(napi::invoke(napi_create_bigint_int64, napi_env{env}, number));
 }
 
 auto value<bigint_tag>::make(const environment& env, uint64_t number) -> value<bigint_tag> {
-	return value<bigint_tag>::from(napi::invoke(napi_create_bigint_uint64, env, number));
+	return value<bigint_tag>::from(napi::invoke(napi_create_bigint_uint64, napi_env{env}, number));
 }
 
 auto bound_value<bigint_tag>::materialize(std::type_identity<bigint> /*tag*/) const -> bigint {
@@ -110,11 +111,11 @@ auto bound_value<bigint_tag>::materialize(std::type_identity<uint64_t> /*tag*/) 
 
 // string
 auto value<string_tag>::make(const environment& env, std::u16string_view string) -> value<string_tag> {
-	return value<string_tag>::from(napi::invoke(napi_create_string_utf16, env, string.data(), string.length()));
+	return value<string_tag>::from(napi::invoke(napi_create_string_utf16, napi_env{env}, string.data(), string.length()));
 }
 
 auto value<string_tag>::make(const environment& env, std::string_view string) -> value<string_tag> {
-	return value<string_tag_of<char>>::from(napi::invoke(napi_create_string_latin1, env, string.data(), string.length()));
+	return value<string_tag_of<char>>::from(napi::invoke(napi_create_string_latin1, napi_env{env}, string.data(), string.length()));
 }
 
 auto bound_value<string_tag>::materialize(std::type_identity<std::u16string> /*tag*/) const -> std::u16string {

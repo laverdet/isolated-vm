@@ -4,6 +4,7 @@ export module napi_js.dictionary;
 import isolated_js;
 import ivm.utility;
 import napi_js.array;
+import napi_js.bound_value;
 import napi_js.environment;
 import napi_js.object;
 import napi_js.value;

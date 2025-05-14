@@ -56,7 +56,7 @@ auto uv_scheduler::open(uv_loop_t* loop) -> void {
 	uv_unref(async.handle());
 }
 
-auto uv_scheduler::schedule(task_type task) -> void {
+auto uv_scheduler::operator()(task_type task) -> void {
 	auto& async = *async_;
 	auto shared = async->shared.write();
 	if (shared->is_open) {

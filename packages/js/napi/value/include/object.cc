@@ -5,6 +5,7 @@ module;
 #include <utility>
 export module napi_js.object;
 import isolated_js;
+import napi_js.bound_value;
 import napi_js.environment;
 import napi_js.primitive;
 import napi_js.value;
@@ -23,9 +24,9 @@ class value<object_tag> : public detail::value_next<object_tag> {
 };
 
 template <>
-class bound_value<object_tag> : public bound_value_next<object_tag> {
+class bound_value<object_tag> : public detail::bound_value_next<object_tag> {
 	public:
-		using bound_value_next<object_tag>::bound_value_next;
+		using detail::bound_value_next<object_tag>::bound_value_next;
 
 		[[nodiscard]] auto get(napi_value key) const -> napi_value;
 		[[nodiscard]] auto has(napi_value key) const -> bool;
@@ -43,10 +44,10 @@ class value<date_tag> : public detail::value_next<date_tag> {
 
 template <>
 class bound_value<date_tag>
-		: public bound_value_next<date_tag>,
+		: public detail::bound_value_next<date_tag>,
 			public materializable<bound_value<date_tag>> {
 	public:
-		using bound_value_next<date_tag>::bound_value_next;
+		using detail::bound_value_next<date_tag>::bound_value_next;
 		[[nodiscard]] auto materialize(std::type_identity<js_clock::time_point> tag) const -> js_clock::time_point;
 };
 

@@ -4,6 +4,7 @@ module;
 #include <string_view>
 export module napi_js.primitive;
 import isolated_js;
+import napi_js.bound_value;
 import napi_js.environment;
 import napi_js.value;
 import nodejs;
@@ -42,10 +43,10 @@ class value<boolean_tag> : public detail::value_next<boolean_tag> {
 
 template <>
 class bound_value<boolean_tag>
-		: public bound_value_next<boolean_tag>,
+		: public detail::bound_value_next<boolean_tag>,
 			public materializable<bound_value<boolean_tag>> {
 	public:
-		using bound_value_next<boolean_tag>::bound_value_next;
+		using detail::bound_value_next<boolean_tag>::bound_value_next;
 		[[nodiscard]] auto materialize(std::type_identity<bool> tag) const -> bool;
 };
 
@@ -62,10 +63,10 @@ class value<number_tag> : public detail::value_next<number_tag> {
 
 template <>
 class bound_value<number_tag>
-		: public bound_value_next<number_tag>,
+		: public detail::bound_value_next<number_tag>,
 			public materializable<bound_value<number_tag>> {
 	public:
-		using bound_value_next<number_tag>::bound_value_next;
+		using detail::bound_value_next<number_tag>::bound_value_next;
 		[[nodiscard]] auto materialize(std::type_identity<double> tag) const -> double;
 		[[nodiscard]] auto materialize(std::type_identity<int32_t> tag) const -> int32_t;
 		[[nodiscard]] auto materialize(std::type_identity<int64_t> tag) const -> int64_t;
@@ -84,10 +85,10 @@ class value<bigint_tag> : public detail::value_next<bigint_tag> {
 
 template <>
 class bound_value<bigint_tag>
-		: public bound_value_next<bigint_tag>,
+		: public detail::bound_value_next<bigint_tag>,
 			public materializable<bound_value<bigint_tag>> {
 	public:
-		using bound_value_next<bigint_tag>::bound_value_next;
+		using detail::bound_value_next<bigint_tag>::bound_value_next;
 		[[nodiscard]] auto materialize(std::type_identity<bigint> tag) const -> bigint;
 		[[nodiscard]] auto materialize(std::type_identity<int64_t> tag) const -> int64_t;
 		[[nodiscard]] auto materialize(std::type_identity<uint64_t> tag) const -> uint64_t;
@@ -108,10 +109,10 @@ class value<string_tag> : public detail::value_next<string_tag> {
 
 template <>
 class bound_value<string_tag>
-		: public bound_value_next<string_tag>,
+		: public detail::bound_value_next<string_tag>,
 			public materializable<bound_value<string_tag>> {
 	public:
-		using bound_value_next<string_tag>::bound_value_next;
+		using detail::bound_value_next<string_tag>::bound_value_next;
 		[[nodiscard]] auto materialize(std::type_identity<std::u16string> tag) const -> std::u16string;
 		[[nodiscard]] auto materialize(std::type_identity<std::string> tag) const -> std::string;
 };

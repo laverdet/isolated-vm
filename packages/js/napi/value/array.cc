@@ -1,6 +1,7 @@
 module;
 #include <cstdint>
 module napi_js.array;
+import napi_js.bound_value;
 import napi_js.utility;
 import nodejs;
 

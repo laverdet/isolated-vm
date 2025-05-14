@@ -1,5 +1,3 @@
-module;
-#include <expected>
 export module backend_napi_v8.environment;
 import isolated_v8;
 import isolated_js;

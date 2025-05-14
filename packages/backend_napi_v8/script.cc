@@ -27,9 +27,12 @@ auto compile_script(
 	std::optional<compile_script_options> options_optional
 ) {
 	auto options = std::move(options_optional).value_or(compile_script_options{});
-	auto [ dispatch, promise ] = make_promise(env, [](environment& env, isolated_v8::script script) -> expected_value {
-		return make_external<isolated_v8::script>(env, std::move(script));
-	});
+	auto [ dispatch, promise ] = make_promise(
+		env,
+		[](environment& env, isolated_v8::script script) -> expected_value {
+			return make_external<isolated_v8::script>(env, std::move(script));
+		}
+	);
 	agent->schedule(
 		[ code_string = std::move(code_string),
 			options = std::move(options),
@@ -49,9 +52,12 @@ auto run_script(
 	js::iv8::external_reference<script>& script,
 	js::iv8::external_reference<realm>& realm
 ) {
-	auto [ dispatch, promise ] = make_promise(env, [](environment& env, js::value_t result) -> expected_value {
-		return js::transfer_in_strict<napi_value>(std::move(result), env);
-	});
+	auto [ dispatch, promise ] = make_promise(
+		env,
+		[](environment& env, js::value_t result) -> expected_value {
+			return js::transfer_in_strict<napi_value>(std::move(result), env);
+		}
+	);
 	agent->schedule(
 		[ dispatch = std::move(dispatch) ](
 			isolated_v8::agent::lock& agent,

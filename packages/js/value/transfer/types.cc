@@ -14,10 +14,13 @@ template <class Type>
 using transferee_subject_t = transferee_subject<Type>::type;
 
 // Holder for `Meta` template
-export template <class Wrap, class Subject, class Target>
+export template <class Wrap, class Visit, class Subject, class Accept, class Target>
 struct transferee_meta {
-		using accept_target_type = transferee_subject_t<Target>;
 		using accept_wrap_type = Wrap;
+
+		using accept_context_type = Accept;
+		using accept_target_type = transferee_subject_t<Target>;
+		using visit_context_type = Visit;
 		using visit_subject_type = transferee_subject_t<Subject>;
 };
 

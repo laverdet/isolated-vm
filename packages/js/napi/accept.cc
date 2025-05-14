@@ -7,95 +7,107 @@ module;
 export module napi_js.accept;
 import isolated_js;
 import ivm.utility;
+import napi_js.bound_value;
 import napi_js.dictionary;
-import napi_js.lock;
+import napi_js.environment;
 import napi_js.primitive;
 import napi_js.utility;
 import napi_js.value;
 import nodejs;
 
 namespace js {
-using napi::value;
+using namespace napi;
 
 // Non-recursive primitive / intrinsic acceptor
-struct accept_napi_intrinsics : public napi::napi_witness_lock {
+template <class Environment>
+struct accept_napi_intrinsics {
 	public:
-		using napi_witness_lock::napi_witness_lock;
+		explicit accept_napi_intrinsics(const Environment& env) :
+				env_{env} {}
 
 		// undefined & null
 		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const {
-			return napi::value<undefined_tag>::make(env(), std::monostate{});
+			return napi::value<undefined_tag>::make(env_, std::monostate{});
 		}
 
 		auto operator()(null_tag /*tag*/, const auto& /*null*/) const {
-			return napi::value<null_tag>::make(env(), nullptr);
+			return napi::value<null_tag>::make(env_, nullptr);
 		}
 
 		// boolean
 		auto operator()(boolean_tag /*tag*/, auto&& value) const {
-			return napi::value<boolean_tag>::make(env(), std::forward<decltype(value)>(value));
+			return napi::value<boolean_tag>::make(env_, std::forward<decltype(value)>(value));
 		}
 
 		// number
 		auto operator()(number_tag /*tag*/, auto&& value) const {
-			return js::napi::value<number_tag>::make(env(), double{std::forward<decltype(value)>(value)});
+			return js::napi::value<number_tag>::make(env_, double{std::forward<decltype(value)>(value)});
 		}
 
 		template <class Numeric>
 		auto operator()(number_tag_of<Numeric> /*tag*/, auto&& value) const {
-			return napi::value<number_tag_of<Numeric>>::make(env(), std::forward<decltype(value)>(value));
+			return napi::value<number_tag_of<Numeric>>::make(env_, std::forward<decltype(value)>(value));
 		}
 
 		// bigint
 		auto operator()(bigint_tag /*tag*/, const bigint& value) const {
-			return js::napi::value<bigint_tag>::make(env(), value);
+			return js::napi::value<bigint_tag>::make(env_, value);
 		}
 
 		auto operator()(bigint_tag /*tag*/, auto&& value) const {
-			return js::napi::value<bigint_tag>::make(env(), bigint{std::forward<decltype(value)>(value)});
+			return js::napi::value<bigint_tag>::make(env_, bigint{std::forward<decltype(value)>(value)});
 		}
 
 		template <class Numeric>
 		auto operator()(bigint_tag_of<Numeric> /*tag*/, auto&& value) const {
-			return napi::value<bigint_tag_of<Numeric>>::make(env(), std::forward<decltype(value)>(value));
+			return napi::value<bigint_tag_of<Numeric>>::make(env_, std::forward<decltype(value)>(value));
 		}
 
 		// string
 		auto operator()(string_tag /*tag*/, auto&& value) const {
-			return js::napi::value<string_tag>::make(env(), std::u16string_view{std::forward<decltype(value)>(value)});
+			return js::napi::value<string_tag>::make(env_, std::u16string_view{std::forward<decltype(value)>(value)});
 		}
 
 		auto operator()(string_tag_of<char> /*tag*/, auto&& value) const {
-			return napi::value<string_tag_of<char>>::make(env(), std::forward<decltype(value)>(value));
+			return napi::value<string_tag_of<char>>::make(env_, std::forward<decltype(value)>(value));
 		}
 
 		// date
 		auto operator()(date_tag /*tag*/, js_clock::time_point value) const {
-			return napi::value<date_tag>::make(env(), std::forward<decltype(value)>(value));
+			return napi::value<date_tag>::make(env_, std::forward<decltype(value)>(value));
 		}
+
+		explicit operator napi_env() const {
+			return napi_env{env_};
+		}
+
+	private:
+		// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
+		const Environment& env_;
 };
 
 // Recursive acceptor which can handle arrays & objects
-template <>
-struct accept<void, napi_value> : accept_napi_intrinsics {
+template <class Meta>
+struct accept<Meta, napi_value> : accept_napi_intrinsics<typename Meta::accept_context_type> {
 	public:
-		using accept_napi_intrinsics::accept_napi_intrinsics;
+		explicit constexpr accept(auto_heritage auto /*accept_heritage*/, const auto& env) :
+				accept_napi_intrinsics<typename Meta::accept_context_type>{env} {}
 
 		// forward intrinsic value
 		auto operator()(auto_tag auto tag, auto&&... args) const -> napi_value
-			requires std::invocable<accept_napi_intrinsics, decltype(tag), decltype(args)...> {
-			const accept_napi_intrinsics& accept = *this;
+			requires std::invocable<accept_napi_intrinsics<typename Meta::accept_context_type>, decltype(tag), decltype(args)...> {
+			const accept_napi_intrinsics<typename Meta::accept_context_type>& accept = *this;
 			return accept(tag, std::forward<decltype(args)>(args)...);
 		}
 
 		// vectors
 		auto operator()(vector_tag /*tag*/, auto&& list, const auto& visit) const -> napi_value {
-			auto array = value<vector_tag>::from(napi::invoke(napi_create_array_with_length, this->env(), list.size()));
+			auto array = value<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{*this}, list.size()));
 			int ii = 0;
 			for (auto&& value : std::forward<decltype(list)>(list)) {
 				napi::invoke0(
 					napi_set_element,
-					this->env(),
+					napi_env{*this},
 					napi_value{array},
 					ii++,
 					visit(std::forward<decltype(value)>(value), *this)
@@ -106,7 +118,7 @@ struct accept<void, napi_value> : accept_napi_intrinsics {
 
 		template <std::size_t Size>
 		auto operator()(tuple_tag<Size> /*tag*/, auto tuple, const auto& visit) const -> napi_value {
-			auto array = value<vector_tag>::from(napi::invoke(napi_create_array_with_length, this->env(), Size));
+			auto array = value<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{*this}, Size));
 			std::invoke(
 				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
 					(invoke(std::integral_constant<size_t, Index>{}), ...);
@@ -114,8 +126,8 @@ struct accept<void, napi_value> : accept_napi_intrinsics {
 				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> index) {
 					napi::invoke0(
 						napi_set_element,
-						this->env(),
-						array,
+						napi_env{*this},
+						napi_value{array},
 						Index,
 						// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
 						// reference members one at a time.
@@ -146,8 +158,8 @@ struct accept<void, napi_value> : accept_napi_intrinsics {
 					.data{},
 				});
 			}
-			auto array = value<list_tag>::from(napi::invoke(napi_create_array, this->env()));
-			napi::invoke0(napi_define_properties, this->env(), napi_value{array}, properties.size(), properties.data());
+			auto array = value<list_tag>::from(napi::invoke(napi_create_array, napi_env{*this}));
+			napi::invoke0(napi_define_properties, napi_env{*this}, napi_value{array}, properties.size(), properties.data());
 			return array;
 		}
 
@@ -170,8 +182,8 @@ struct accept<void, napi_value> : accept_napi_intrinsics {
 					.data{},
 				});
 			}
-			auto object = value<dictionary_tag>::from(napi::invoke(napi_create_object, this->env()));
-			napi::invoke0(napi_define_properties, this->env(), napi_value{object}, properties.size(), properties.data());
+			auto object = value<dictionary_tag>::from(napi::invoke(napi_create_object, napi_env{*this}));
+			napi::invoke0(napi_define_properties, napi_env{*this}, napi_value{object}, properties.size(), properties.data());
 			return object;
 		}
 
@@ -203,8 +215,8 @@ struct accept<void, napi_value> : accept_napi_intrinsics {
 				},
 				std::make_index_sequence<Size>{}
 			);
-			auto object = value<dictionary_tag>::from(napi::invoke(napi_create_object, this->env()));
-			napi::invoke0(napi_define_properties, this->env(), napi_value{object}, properties.size(), properties.data());
+			auto object = value<dictionary_tag>::from(napi::invoke(napi_create_object, napi_env{*this}));
+			napi::invoke0(napi_define_properties, napi_env{*this}, napi_value{object}, properties.size(), properties.data());
 			return object;
 		}
 };

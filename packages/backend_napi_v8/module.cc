@@ -36,7 +36,11 @@ auto compile_module(
 	auto options = std::move(options_optional).value_or(compile_module_options{});
 	auto [ dispatch, promise ] = make_promise(
 		env,
-		[](environment& env, isolated_v8::js_module module_, std::vector<isolated_v8::module_request> requests) -> expected_value {
+		[](
+			environment& env,
+			isolated_v8::js_module module_,
+			std::vector<isolated_v8::module_request> requests
+		) -> expected_value {
 			auto* handle = make_external<isolated_v8::js_module>(env, std::move(module_));
 			auto result = std::tuple{
 				js::transfer_direct{handle},
@@ -66,9 +70,12 @@ auto evaluate_module(
 	js::iv8::external_reference<realm>& realm,
 	js::iv8::external_reference<js_module>& module_
 ) {
-	auto [ dispatch, promise ] = make_promise(env, [](environment& env, js::value_t result) -> expected_value {
-		return js::transfer_in_strict<napi_value>(std::move(result), env);
-	});
+	auto [ dispatch, promise ] = make_promise(
+		env,
+		[](environment& env, js::value_t result) -> expected_value {
+			return js::transfer_in_strict<napi_value>(std::move(result), env);
+		}
+	);
 	agent->schedule(
 		[ dispatch = std::move(dispatch) ](
 			isolated_v8::agent::lock& agent,
@@ -98,7 +105,7 @@ auto link_module(
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](environment& env) -> expected_value {
-			return js::napi::invoke(napi_get_boolean, env, true);
+			return js::napi::invoke(napi_get_boolean, napi_env{env}, true);
 		}
 	);
 	agent->schedule_async(
@@ -121,9 +128,9 @@ auto link_module(
 				) -> isolated_v8::js_module& {
 					std::promise<isolated_v8::js_module*> promise;
 					auto future = promise.get_future();
-					scheduler.schedule(
+					scheduler(
 						[ & ]() {
-							js::napi::handle_scope scope{env};
+							js::napi::handle_scope scope{napi_env{env}};
 							auto callback = js::bound_function{
 								[ &promise ](
 									environment& /*env*/,
@@ -168,7 +175,7 @@ auto create_capability(
 			environment& env,
 			std::vector<js::value_t> params
 		) {
-			js::napi::handle_scope scope{env};
+			js::napi::handle_scope scope{napi_env{env}};
 			callback->get(env).apply<std::monostate>(env, std::move(params));
 		};
 	// Callback passed to isolated v8
@@ -179,7 +186,7 @@ auto create_capability(
 			js::rest /*rest*/,
 			std::vector<js::value_t> params
 		) mutable {
-			env.scheduler().schedule(
+			env.scheduler()(
 				[ &env,
 					capability_callback,
 					params = std::move(params) ]() mutable {
