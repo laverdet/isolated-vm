@@ -6,6 +6,7 @@ export module napi_js.primitive;
 import isolated_js;
 import napi_js.bound_value;
 import napi_js.environment;
+import napi_js.utility;
 import napi_js.value;
 import nodejs;
 
@@ -122,6 +123,7 @@ class bound_value<string_tag>
 template <size_t Size>
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
 auto value<string_tag>::make(const environment& env, const char string[ Size ]) -> value<string_tag> {
-	return make(env, std::string_view{string, Size});
+	return napi::invoke(napi_create_string_utf8, napi_env{env}, string, Size);
 }
+
 } // namespace js::napi

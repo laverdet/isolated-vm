@@ -19,9 +19,9 @@ template <class Meta, class... Types>
 	requires is_variant_v<Types...>
 struct visit<Meta, std::variant<Types...>> {
 	public:
-		constexpr explicit visit(auto_heritage auto visit_heritage) :
+		constexpr explicit visit(auto* root) :
 				visitors{util::make_tuple_in_place(
-					[ & ] constexpr { return visit<Meta, Types>{visit_heritage(this)}; }...
+					[ & ] constexpr { return visit<Meta, Types>{root}; }...
 				)} {}
 
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
@@ -44,8 +44,8 @@ struct visit_recursive_variant;
 
 template <class Meta, class Variant, class... Types>
 struct visit_recursive_variant<Meta, variant_of<Variant, Types...>> : visit<Meta, substitute_recursive<Variant, Types>>... {
-		constexpr explicit visit_recursive_variant(auto_heritage auto visit_heritage) :
-				visit<Meta, substitute_recursive<Variant, Types>>{visit_heritage}... {}
+		constexpr explicit visit_recursive_variant(auto* root) :
+				visit<Meta, substitute_recursive<Variant, Types>>{root}... {}
 
 		auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			return boost::apply_visitor(
@@ -65,8 +65,7 @@ using visit_recursive_variant_type =
 
 template <class Meta, class First, class... Rest>
 struct visit<Meta, recursive_variant<First, Rest...>> : visit_recursive_variant_type<Meta, First, Rest...> {
-		constexpr explicit visit(auto_heritage auto visit_heritage) :
-				visit_recursive_variant_type<Meta, First, Rest...>{visit_heritage(this)} {}
+		using visit_recursive_variant_type<Meta, First, Rest...>::visit_recursive_variant_type;
 };
 
 } // namespace js

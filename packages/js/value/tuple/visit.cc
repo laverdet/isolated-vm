@@ -13,9 +13,9 @@ namespace js {
 template <class Meta, class... Types>
 struct visit<Meta, std::tuple<Types...>> {
 	public:
-		constexpr explicit visit(auto_heritage auto visit_heritage) :
+		constexpr explicit visit(auto* root) :
 				visit_{util::make_tuple_in_place(
-					[ & ] constexpr { return visit<Meta, std::decay_t<Types>>{visit_heritage(this)}; }...
+					[ & ] constexpr { return visit<Meta, std::decay_t<Types>>{root}; }...
 				)} {}
 
 		template <size_t Index>

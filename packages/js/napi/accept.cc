@@ -20,77 +20,69 @@ using namespace napi;
 
 // Non-recursive primitive / intrinsic acceptor
 template <class Environment>
-struct accept_napi_intrinsics {
+struct accept_napi_intrinsics : napi::environment_scope<Environment> {
 	public:
-		explicit accept_napi_intrinsics(const Environment& env) :
-				env_{env} {}
+		explicit accept_napi_intrinsics(auto& env) :
+				napi::environment_scope<Environment>{env} {}
 
 		// undefined & null
 		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const {
-			return napi::value<undefined_tag>::make(env_, std::monostate{});
+			return napi::value<undefined_tag>::make(this->environment(), std::monostate{});
 		}
 
 		auto operator()(null_tag /*tag*/, const auto& /*null*/) const {
-			return napi::value<null_tag>::make(env_, nullptr);
+			return napi::value<null_tag>::make(this->environment(), nullptr);
 		}
 
 		// boolean
 		auto operator()(boolean_tag /*tag*/, auto&& value) const {
-			return napi::value<boolean_tag>::make(env_, std::forward<decltype(value)>(value));
+			return napi::value<boolean_tag>::make(this->environment(), std::forward<decltype(value)>(value));
 		}
 
 		// number
 		auto operator()(number_tag /*tag*/, auto&& value) const {
-			return js::napi::value<number_tag>::make(env_, double{std::forward<decltype(value)>(value)});
+			return js::napi::value<number_tag>::make(this->environment(), double{std::forward<decltype(value)>(value)});
 		}
 
 		template <class Numeric>
 		auto operator()(number_tag_of<Numeric> /*tag*/, auto&& value) const {
-			return napi::value<number_tag_of<Numeric>>::make(env_, std::forward<decltype(value)>(value));
+			return napi::value<number_tag_of<Numeric>>::make(this->environment(), std::forward<decltype(value)>(value));
 		}
 
 		// bigint
 		auto operator()(bigint_tag /*tag*/, const bigint& value) const {
-			return js::napi::value<bigint_tag>::make(env_, value);
+			return js::napi::value<bigint_tag>::make(this->environment(), value);
 		}
 
 		auto operator()(bigint_tag /*tag*/, auto&& value) const {
-			return js::napi::value<bigint_tag>::make(env_, bigint{std::forward<decltype(value)>(value)});
+			return js::napi::value<bigint_tag>::make(this->environment(), bigint{std::forward<decltype(value)>(value)});
 		}
 
 		template <class Numeric>
 		auto operator()(bigint_tag_of<Numeric> /*tag*/, auto&& value) const {
-			return napi::value<bigint_tag_of<Numeric>>::make(env_, std::forward<decltype(value)>(value));
+			return napi::value<bigint_tag_of<Numeric>>::make(this->environment(), std::forward<decltype(value)>(value));
 		}
 
 		// string
 		auto operator()(string_tag /*tag*/, auto&& value) const {
-			return js::napi::value<string_tag>::make(env_, std::u16string_view{std::forward<decltype(value)>(value)});
+			return js::napi::value<string_tag>::make(this->environment(), std::u16string_view{std::forward<decltype(value)>(value)});
 		}
 
 		auto operator()(string_tag_of<char> /*tag*/, auto&& value) const {
-			return napi::value<string_tag_of<char>>::make(env_, std::forward<decltype(value)>(value));
+			return napi::value<string_tag_of<char>>::make(this->environment(), std::forward<decltype(value)>(value));
 		}
 
 		// date
 		auto operator()(date_tag /*tag*/, js_clock::time_point value) const {
-			return napi::value<date_tag>::make(env_, std::forward<decltype(value)>(value));
+			return napi::value<date_tag>::make(this->environment(), std::forward<decltype(value)>(value));
 		}
-
-		explicit operator napi_env() const {
-			return napi_env{env_};
-		}
-
-	private:
-		// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
-		const Environment& env_;
 };
 
 // Recursive acceptor which can handle arrays & objects
 template <class Meta>
 struct accept<Meta, napi_value> : accept_napi_intrinsics<typename Meta::accept_context_type> {
 	public:
-		explicit constexpr accept(auto_heritage auto /*accept_heritage*/, const auto& env) :
+		constexpr accept(auto* /*previous*/, auto& env) :
 				accept_napi_intrinsics<typename Meta::accept_context_type>{env} {}
 
 		// forward intrinsic value
@@ -198,8 +190,8 @@ struct accept<Meta, napi_value> : accept_napi_intrinsics<typename Meta::accept_c
 				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> /*index*/) {
 					const auto& visit_n = std::get<Index>(visit);
 					properties[ Index ] = {
-						.utf8name = visit_n.first.get_utf8(),
-						.name{},
+						.utf8name{},
+						.name = visit_n.first.get_local(*this),
 
 						.method{},
 						.getter{},
@@ -225,23 +217,20 @@ struct accept<Meta, napi_value> : accept_napi_intrinsics<typename Meta::accept_c
 template <class Meta, util::string_literal Key, class Type>
 struct accept_property_value<Meta, Key, Type, napi_value> {
 	public:
-		explicit constexpr accept_property_value(auto_heritage auto accept_heritage) :
-				visit_key_{key_literal_, accept_heritage.visit},
-				accept_value_{accept_heritage} {}
+		explicit constexpr accept_property_value(auto* previous) :
+				second{previous} {}
 
 		auto operator()(dictionary_tag /*tag*/, const auto& object, const auto& visit) const {
-			if (auto local = visit_key_.get_local(); object.has(local)) {
-				return visit.second(object.get(local), accept_value_);
+			if (auto local = first.get_local(visit.first); object.has(local)) {
+				return visit.second(object.get(local), second);
 			} else {
-				return accept_value_(undefined_in_tag{}, std::monostate{});
+				return second(undefined_in_tag{}, std::monostate{});
 			}
 		}
 
 	private:
-		using key_literal_type = visit_key_literal<Key, napi_value>;
-		key_literal_type key_literal_;
-		key_literal_type::visit visit_key_;
-		accept_next<Meta, Type> accept_value_;
+		visit_key_literal<Key, napi_value> first;
+		accept_next<Meta, Type> second;
 };
 
 // Tagged value acceptor

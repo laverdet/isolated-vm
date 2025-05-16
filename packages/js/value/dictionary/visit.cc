@@ -23,15 +23,15 @@ template <class Meta, class Type>
 	requires is_recursive_v<Type>
 struct visit_entry_value<Meta, Type> {
 	public:
-		constexpr explicit visit_entry_value(auto_heritage auto visit_heritage) :
-				visit_{&visit_heritage.visit} {}
+		constexpr explicit visit_entry_value(auto* root) :
+				visit_{root} {}
 
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			return (*visit_)(std::forward<decltype(value)>(value), accept);
 		}
 
 	private:
-		const visit_root<Meta>* visit_;
+		const visit<Meta, typename Meta::visit_subject_type>* visit_;
 };
 
 // Default visitor for non-pair values
@@ -43,9 +43,9 @@ struct visit_vector_value : visit_entry_value<Meta, Type> {
 // Special case for pairs
 template <class Meta, class Key, class Value>
 struct visit_vector_value<Meta, std::pair<Key, Value>> {
-		constexpr explicit visit_vector_value(auto_heritage auto visit_heritage) :
-				first{visit_heritage},
-				second{visit_heritage} {}
+		constexpr explicit visit_vector_value(auto* root) :
+				first{root},
+				second{root} {}
 
 		visit<Meta, Key> first;
 		visit_entry_value<Meta, Value> second;
@@ -55,8 +55,7 @@ struct visit_vector_value<Meta, std::pair<Key, Value>> {
 // required.
 template <class Meta, class Tag, class Value>
 struct visit<Meta, vector_of<Tag, Value>> : visit_vector_value<Meta, Value> {
-		constexpr explicit visit(auto_heritage auto visit_heritage) :
-				visit_vector_value<Meta, Value>{visit_heritage(this)} {}
+		using visit_vector_value<Meta, Value>::visit_vector_value;
 
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			const visit_vector_value<Meta, Value>& visitor = *this;
@@ -69,9 +68,9 @@ struct visit<Meta, vector_of<Tag, Value>> : visit_vector_value<Meta, Value> {
 template <class Meta, util::string_literal Key, class Type, class Tag, class KeyType, class Value>
 struct accept_property_value<Meta, Key, Type, vector_of<Tag, std::pair<KeyType, Value>>> {
 	public:
-		explicit constexpr accept_property_value(auto_heritage auto accept_heritage) :
-				first{accept_heritage},
-				second{accept_heritage} {}
+		explicit constexpr accept_property_value(auto* previous) :
+				first{previous},
+				second{previous} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, const auto& dictionary, const auto& visit) const {
 			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) {

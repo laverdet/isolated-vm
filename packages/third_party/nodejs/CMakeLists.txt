@@ -8,6 +8,7 @@ target_sources(nodejs
 		uv.cc
 )
 
-target_include_directories(nodejs SYSTEM PRIVATE
-	${NODE_DIST_DIR}/include/node
-)
+# Required for `napi_create_reference` to non-object types
+target_compile_definitions(nodejs PUBLIC NAPI_VERSION=10)
+
+target_include_directories(nodejs SYSTEM PRIVATE ${NODE_DIST_DIR}/include/node)

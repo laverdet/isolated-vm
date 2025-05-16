@@ -24,10 +24,10 @@ struct transferee_meta {
 		using visit_subject_type = transferee_subject_t<Subject>;
 };
 
-// Requirement for any "heritage" type used in `visit` & `accept`.
-export template <class Type>
-concept auto_heritage = requires {
-	typename Type::is_heritage;
+// Holder for a compile-time value literal template.
+export template <auto Value>
+struct value_literal {
+		consteval auto operator*() const { return Value; }
 };
 
 } // namespace js

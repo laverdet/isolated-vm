@@ -40,7 +40,7 @@ struct accept_tuple_param<Meta, std::pair<Type, Previous>> : accept_next<Meta, T
 // Rest placeholder
 template <class Meta, class Previous>
 struct accept_tuple_param<Meta, std::pair<rest, Previous>> {
-		explicit constexpr accept_tuple_param(auto_heritage auto /*accept_heritage*/) {}
+		explicit constexpr accept_tuple_param(auto* /*previous*/) {}
 		constexpr auto operator()(auto& /*iterator*/, auto& /*end*/, const auto& /*visit*/) const -> rest {
 			return rest{};
 		}
@@ -72,9 +72,9 @@ struct accept_tuple_param_acceptors<Meta, std::tuple<Pairs...>>
 template <class Meta, class... Types>
 struct accept<Meta, std::tuple<Types...>> {
 	public:
-		explicit constexpr accept(auto_heritage auto accept_heritage) :
+		explicit constexpr accept(auto* previous) :
 				acceptors_{
-					std::invoke([ & ](std::type_identity<Types> /*type*/ = {}) constexpr { return accept_heritage; })...
+					std::invoke([ & ](std::type_identity<Types> /*type*/ = {}) constexpr { return previous; })...
 				} {}
 
 		constexpr auto operator()(vector_tag /*tag*/, auto&& value, const auto& visit) const -> std::tuple<Types...> {

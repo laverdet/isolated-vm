@@ -32,8 +32,8 @@ template <class Meta, class Type>
 // probably via `accept_next`
 	requires std::destructible<Type>
 struct accept<Meta, accept_with_throw::accept_throw<Type>> : accept<Meta, Type> {
-		explicit constexpr accept(auto_heritage auto accept_heritage) :
-				accept<Meta, Type>{accept_heritage(this)} {}
+		explicit constexpr accept(auto* /*previous*/) :
+				accept<Meta, Type>{this} {}
 
 		constexpr auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> Type {
 			if constexpr (std::invocable<accept<Meta, Type>, decltype(tag), decltype(value), decltype(rest)...>) {
@@ -43,6 +43,28 @@ struct accept<Meta, accept_with_throw::accept_throw<Type>> : accept<Meta, Type> 
 				throw std::logic_error{"Type error"};
 			}
 		}
+};
+
+// Instantiates `visit` or `accept` and automatically pass the `this` pointer as the first constructor argument.
+template <class VisitOrAccept>
+struct transfer_holder : VisitOrAccept {
+	private:
+		template <size_t... Index>
+		constexpr transfer_holder(
+			VisitOrAccept* self,
+			auto&& args,
+			std::index_sequence<Index...> /*index*/
+		) :
+				VisitOrAccept{self, std::get<Index>(std::forward<decltype(args)>(args))...} {}
+
+	public:
+		template <class Args>
+		explicit constexpr transfer_holder(std::in_place_t /*in_place*/, Args&& args) :
+				transfer_holder{
+					this,
+					std::forward<decltype(args)>(args),
+					std::make_index_sequence<std::tuple_size_v<Args>>{},
+				} {}
 };
 
 // Select environment type for `accept` or `visit`. This is either `void` for stateless visitors, or
@@ -73,15 +95,10 @@ constexpr auto transfer_with(
 	using meta_holder = transferee_meta<Wrap, visit_env, subject_type, accept_env, target_type>;
 	using visit_type = visit<meta_holder, subject_type>;
 	using accept_type = Wrap::template accept<meta_holder, Type>;
-	visit_type visitor = std::make_from_tuple<visit_type>(std::tuple_cat(
-		std::tuple{visitor_heritage<visit_type>{}},
-		std::forward<decltype(visit_args)>(visit_args)
-	));
-	accept_type acceptor = std::make_from_tuple<accept_type>(std::tuple_cat(
-		std::tuple{acceptor_heritage{visitor}},
-		std::forward<decltype(accept_args)>(accept_args)
-	));
-	return visitor(std::forward<decltype(value)>(value), acceptor);
+
+	transfer_holder<visit_type> visit{std::in_place, std::forward<decltype(visit_args)>(visit_args)};
+	transfer_holder<accept_type> accept{std::in_place, std::forward<decltype(accept_args)>(accept_args)};
+	return visit(std::forward<decltype(value)>(value), accept);
 }
 
 // Transfer from unknown types, throws at runtime on unknown type

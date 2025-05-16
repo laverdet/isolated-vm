@@ -23,6 +23,21 @@ class sealed_map {
 		using container_type = std::array<value_type, Size>;
 
 	private:
+		// Holder for consteval'd key into the map
+		struct key_for {
+				using value_type = size_t;
+				constexpr key_for() :
+						index_{std::numeric_limits<value_type>::max()} {}
+				explicit constexpr key_for(auto index) :
+						index_{static_cast<value_type>(index)} {}
+
+				constexpr auto operator*() const { return index_; }
+				explicit constexpr operator bool() const { return index_ != std::numeric_limits<value_type>::max(); }
+
+			private:
+				size_t index_;
+		};
+
 		explicit consteval sealed_map(sorted_unique_t /*tag*/, container_type values) :
 				values_{std::invoke(
 					[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
@@ -91,13 +106,30 @@ class sealed_map {
 
 		[[nodiscard]] constexpr auto begin(this auto&& self) { return self.values_.begin(); }
 		[[nodiscard]] constexpr auto end(this auto&& self) { return self.values_.end(); }
+
+		// Returns a reference to the value at the key previously found by `lookup`.
+		[[nodiscard]] constexpr auto at(this auto&& self, key_for index) -> auto& {
+			if (!index) {
+				throw std::out_of_range{"Key not found"};
+			}
+			return *std::next(self.values_.begin(), *index);
+		}
+
+		// Find the given key in the map and return a nullable pointer to the value.
 		[[nodiscard]] constexpr auto find(this auto&& self, const auto& key) {
+			const auto index = self.lookup(key);
+			return index ? std::next(self.values_.begin(), *index) : nullptr;
+		}
+
+		// Return an opaque index type which can be used with `at`. Generally should be used in a
+		// consteval context.
+		[[nodiscard]] constexpr auto lookup(const auto& key) const {
 			auto less = overloaded{
 				[](const value_type& left, const auto& right) constexpr { return left.first < right; },
 				[](const auto& left, const value_type& right) constexpr { return left < right.first; },
 			};
-			auto range = std::equal_range(self.values_.begin(), self.values_.end(), key, less);
-			return range.first != range.second ? range.first : nullptr;
+			auto range = std::equal_range(values_.begin(), values_.end(), key, less);
+			return range.first == range.second ? key_for{} : key_for{std::distance(values_.begin(), range.first)};
 		}
 
 	private:

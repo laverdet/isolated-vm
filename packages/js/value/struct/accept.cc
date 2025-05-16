@@ -46,8 +46,8 @@ struct accept_object_property {
 		using setter_type = setter_delegate<typename Property::property_type>;
 
 	public:
-		explicit constexpr accept_object_property(auto_heritage auto accept_heritage, Property property) :
-				acceptor{accept_heritage},
+		constexpr accept_object_property(auto* previous, Property property) :
+				acceptor{previous},
 				setter{property.value_template} {}
 
 		constexpr auto operator()(auto&& dictionary, auto& target, const auto& visit) const -> void {
@@ -81,7 +81,7 @@ using accept_struct_properties_t = accept_struct_properties<Meta, Type, std::dec
 template <class Meta, class Type, class... Property>
 struct accept_struct_properties<Meta, Type, std::tuple<Property...>> {
 	public:
-		explicit constexpr accept_struct_properties(auto_heritage auto accept_heritage) :
+		explicit constexpr accept_struct_properties(auto* previous) :
 				properties{std::invoke(
 					[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
 						return util::make_tuple_in_place(invoke(std::integral_constant<size_t, Index>{})...);
@@ -89,7 +89,7 @@ struct accept_struct_properties<Meta, Type, std::tuple<Property...>> {
 					[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
 						using property_type = util::select_t<Index, Property...>;
 						return [ & ]() constexpr {
-							return accept_object_property<Meta, property_type>{accept_heritage, std::get<Index>(struct_properties<Type>::properties)};
+							return accept_object_property<Meta, property_type>{previous, std::get<Index>(struct_properties<Type>::properties)};
 						};
 					},
 					std::make_index_sequence<sizeof...(Property)>{}

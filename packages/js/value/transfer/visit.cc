@@ -12,32 +12,11 @@ namespace js {
 export template <class Meta, class Type>
 struct visit;
 
-// Given `Meta`, this is the type of the root visitor which will be passed as a constructor argument
-// to `accept`. It follows that `void` acceptors don't receive this parameter.
-export template <class Meta>
-using visit_root = visit<Meta, typename Meta::visit_subject_type>;
-
-// Automatic creation context which sends the root visitor down to children. Any `visit<M, T>`
-// instance should invoke the heritage call operator with itself when passing down to children.
-export template <class Visit>
-struct visitor_heritage {
-		using is_heritage = std::true_type;
-		struct child {
-				using is_heritage = std::true_type;
-				constexpr explicit child(const Visit& visit) :
-						visit{visit} {}
-				constexpr auto operator()(const auto* /*visit*/) const { return *this; }
-				// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
-				const Visit& visit;
-		};
-
-		constexpr auto operator()(const Visit* visit) const { return child{*visit}; }
-};
-
 // Default `visit` swallows `Meta`
 template <class Meta, class Type>
 struct visit : visit<void, Type> {
-		constexpr explicit visit(const auto& /*heritage*/, auto&&... args) :
+		// Swallow `root` argument on behalf of non-meta visitors
+		constexpr explicit visit(auto* /*root*/, auto&&... args) :
 				visit<void, Type>{std::forward<decltype(args)>(args)...} {}
 };
 
@@ -45,18 +24,13 @@ struct visit : visit<void, Type> {
 template <class Type>
 struct visit<void, Type>;
 
-// Returns the key type expected by the accept target. The outer class may maintain any needed state
-// which is then passed into the inner `visit` class. The inner class receives either a `visit`
-// instance or an `accept` instance, since this class is used on both sides.
+// Returns the key type expected by the delegate (an instance of `visit` or `accept`) target.
 export template <util::string_literal Key, class Subject>
 struct visit_key_literal {
-		struct visit {
-				constexpr visit(const visit_key_literal& /*key_literal*/, const auto& /*accept_or_visit*/) {}
-				[[nodiscard]] constexpr auto get() const { return Key; }
-				constexpr auto operator()(const auto& /*could_be_literally_anything*/, const auto& accept) const -> decltype(auto) {
-					return accept(string_tag{}, Key);
-				}
-		};
+		[[nodiscard]] constexpr auto get() const { return Key; }
+		constexpr auto operator()(const auto& /*could_be_literally_anything*/, const auto& accept) const -> decltype(auto) {
+			return accept(string_tag{}, Key);
+		}
 };
 
 // Forward cast operators to the underlying method `materialize(std::type_identity<To>, ...)`

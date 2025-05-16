@@ -23,13 +23,13 @@ export using ::napi_create_string_latin1;
 export using ::napi_create_string_utf16;
 export using ::napi_create_string_utf8;
 export using ::napi_create_uint32;
+export using ::napi_define_properties;
 export using ::napi_delete_reference;
 export using ::napi_get_array_length;
 export using ::napi_get_boolean;
 export using ::napi_get_cb_info;
 export using ::napi_get_date_value;
 export using ::napi_get_element;
-export using ::napi_define_properties;
 export using ::napi_get_instance_data;
 export using ::napi_get_null;
 export using ::napi_get_property_names;
@@ -60,5 +60,6 @@ export using ::napi_set_element;
 export using ::napi_set_instance_data;
 export using ::napi_set_property;
 export using ::napi_typeof;
+export using ::node_api_create_property_key_utf8;
 
 // NOLINTEND(misc-unused-using-decls)

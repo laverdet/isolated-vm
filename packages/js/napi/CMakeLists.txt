@@ -24,12 +24,6 @@ target_sources(ivm_value_napi
 		value/include/primitive.cc
 		visit.cc
 )
-target_compile_definitions(ivm_value_napi PRIVATE
-	NAPI_VERSION=9
-)
-target_include_directories(ivm_value_napi SYSTEM PRIVATE
-	${NODE_DIST_DIR}/include/node
-)
 target_link_libraries(ivm_value_napi PRIVATE
 	backend_napi_v8_common_v8
 	ivm_utility

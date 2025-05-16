@@ -39,11 +39,11 @@ struct accept<Meta, std::variant<Types...>> {
 		using accepted_type = std::variant<Types...>;
 		using descriptor_type = union_of<accepted_type>;
 
-		explicit constexpr accept(auto_heritage auto accept_heritage) :
+		explicit constexpr accept(auto* previous) :
 				second{util::make_tuple_in_place(
-					[ & ] constexpr { return accept_next<Meta, Types>{accept_heritage}; }...
+					[ & ] constexpr { return accept_next<Meta, Types>{previous}; }...
 				)},
-				accept_discriminant{accept_heritage} {}
+				accept_discriminant{previous} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> accepted_type {
 			auto alternatives = make_discriminant_map<decltype(dictionary), decltype(visit)>();

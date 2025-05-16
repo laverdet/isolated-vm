@@ -17,13 +17,15 @@ using namespace napi;
 
 // Napi visitor which can detect the underlying type of a given value
 template <class Meta>
-struct visit<Meta, napi_value> : visit<Meta, v8::Local<v8::External>> {
+struct visit<Meta, napi_value>
+		: visit<Meta, v8::Local<v8::External>>,
+			napi::environment_scope<typename Meta::visit_context_type> {
 	public:
 		using visit<Meta, v8::Local<v8::External>>::operator();
 
-		explicit visit(auto_heritage auto visit_heritage, const auto& env) :
-				visit<Meta, v8::Local<v8::External>>{visit_heritage(this)},
-				env_{env} {}
+		visit(auto* root, auto& env) :
+				visit<Meta, v8::Local<v8::External>>{root},
+				napi::environment_scope<typename Meta::visit_context_type>{env} {}
 
 		template <class Tag>
 		auto operator()(value<Tag> value, const auto& accept) const -> decltype(auto) {
@@ -65,46 +67,27 @@ struct visit<Meta, napi_value> : visit<Meta, v8::Local<v8::External>> {
 					return accept(function_tag{}, napi::value<function_tag>::from(value));
 			}
 		}
-
-		explicit operator napi_env() const {
-			return napi_env{env_};
-		}
-
-	private:
-		// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
-		const Meta::visit_context_type& env_;
 };
 
 // Object key maker via napi
 template <util::string_literal Key>
 struct visit_key_literal<Key, napi_value> : util::non_moveable {
 	public:
-		struct visit {
-			public:
-				constexpr visit(const visit_key_literal& key_literal, const auto& lock) :
-						local_key_{&key_literal.local_key_},
-						env_{napi_env{lock}} {}
-
-				[[nodiscard]] auto get_local() const -> napi_value {
-					if (*local_key_ == napi_value{}) {
-						*local_key_ = napi::invoke(napi_create_string_utf8, env_, Key.data(), Key.length());
-					}
-					return *local_key_;
+		[[nodiscard]] auto get_local(const auto& accept_or_visit) const -> napi_value {
+			if (local_key_ == napi_value{}) {
+				auto make = [ & ]() { return accept_or_visit.environment().make_global_literal(value_literal<Key>{}); };
+				if constexpr (std::is_same_v<std::invoke_result_t<decltype(make)>, void>) {
+					local_key_ = napi::invoke(node_api_create_property_key_utf8, napi_env{accept_or_visit}, Key.data(), Key.length());
+				} else {
+					local_key_ = make();
 				}
+			}
+			return local_key_;
+		}
 
-				[[nodiscard]] constexpr auto get_utf8() const -> const char* {
-					return Key.data();
-				}
-
-				auto operator()(const auto& /*could_be_literally_anything*/, const auto& accept) const -> decltype(auto) {
-					return accept(string_tag{}, get_local());
-				}
-
-			private:
-				napi_value* local_key_;
-				napi_env env_{};
-		};
-		friend visit;
+		auto operator()(const auto& /*could_be_literally_anything*/, const auto& accept) const -> decltype(auto) {
+			return accept(string_tag{}, get_local(accept));
+		}
 
 	private:
 		mutable napi_value local_key_{};

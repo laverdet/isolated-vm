@@ -9,7 +9,8 @@ import v8;
 
 namespace js::napi {
 
-// A reference to an environment is used as the lock witness
+// A reference to an environment is used as the lock witness. Generally, you should not have an
+// `environment&` unless you're in the napi thread and locked.
 export class environment {
 	public:
 		explicit environment(napi_env env) :
@@ -24,6 +25,7 @@ export class environment {
 		v8::Isolate* isolate_;
 };
 
+// CRTP helper to instantiate an environment and attach it to the napi context
 export template <class Type>
 class environment_of : public environment {
 	protected:
@@ -46,5 +48,20 @@ class environment_of : public environment {
 
 export template <class Type>
 concept auto_environment = std::derived_from<Type, environment>;
+
+// Internal holder for an environment pointer. Used as a common base class for `visit` & `accept`.
+// This could maybe become something similar to `realm_scope` if the need for it is more common.
+export template <class Type>
+class environment_scope {
+	public:
+		explicit environment_scope(Type& env) :
+				env_{&env} {}
+
+		explicit operator napi_env() const { return napi_env{*env_}; }
+		auto environment() const -> Type& { return *env_; }
+
+	private:
+		Type* env_;
+};
 
 } // namespace js::napi

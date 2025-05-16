@@ -45,8 +45,7 @@ struct visit<void, util::string_literal<Size>> {
 // `std::optional` visitor may yield `undefined`
 template <class Meta, class Type>
 struct visit<Meta, std::optional<Type>> : visit<Meta, Type> {
-		constexpr explicit visit(auto_heritage auto visit_heritage) :
-				visit<Meta, Type>{visit_heritage(this)} {}
+		using visit<Meta, Type>::visit;
 
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			if (value) {

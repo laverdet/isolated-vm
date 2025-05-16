@@ -17,8 +17,7 @@ namespace js {
 // a reference to an existing one.
 template <class Meta, class Type>
 struct accept_entry_value : accept_next<Meta, Type> {
-		constexpr explicit accept_entry_value(auto_heritage auto accept_heritage) :
-				accept_next<Meta, Type>{accept_heritage} {}
+		using accept_next<Meta, Type>::accept_next;
 };
 
 template <class Meta, class Type>
@@ -28,8 +27,8 @@ struct accept_entry_value<Meta, Type> {
 		using accept_type = accept_next<Meta, Type>;
 
 	public:
-		constexpr explicit accept_entry_value(auto_heritage auto accept_heritage) :
-				accept_{&accept_heritage.accept} {}
+		explicit constexpr accept_entry_value(auto* previous) :
+				accept_{previous} {}
 
 		constexpr auto operator()(auto_tag auto tag, auto&&... args) const -> Type
 			requires std::invocable<accept_type, decltype(tag), decltype(args)...> {
@@ -53,9 +52,9 @@ struct accept_vector_value : accept_entry_value<Meta, Type> {
 // Special case for pairs
 template <class Meta, class Key, class Value>
 struct accept_vector_value<Meta, std::pair<Key, Value>> {
-		explicit constexpr accept_vector_value(auto_heritage auto accept_heritage) :
-				first{accept_heritage},
-				second{accept_heritage} {}
+		explicit constexpr accept_vector_value(auto* previous) :
+				first{previous},
+				second{previous} {}
 
 		constexpr auto operator()(auto&& entry, const auto& visit) const -> std::pair<Key, Value> {
 			return std::pair{
@@ -77,8 +76,7 @@ struct accept_vector_value<Meta, std::pair<Key, Value>> {
 // Dictionary's acceptor manages the recursive acceptor for the entry key/value types
 template <class Meta, class Tag, class Entry>
 struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
-		explicit constexpr accept(auto_heritage auto accept_heritage) :
-				accept_vector_value<Meta, Entry>{accept_heritage} {}
+		using accept_vector_value<Meta, Entry>::accept_vector_value;
 
 		constexpr auto operator()(Tag /*tag*/, auto&& dictionary, const auto& visit) const -> vector_of<Tag, Entry> {
 			const accept_vector_value<Meta, Entry>& accept_value = *this;
