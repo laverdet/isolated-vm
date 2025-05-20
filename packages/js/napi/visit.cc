@@ -1,4 +1,5 @@
 module;
+#include <string_view>
 #include <utility>
 export module napi_js.visit;
 import isolated_js;
@@ -75,11 +76,14 @@ struct visit_key_literal<Key, napi_value> : util::non_moveable {
 	public:
 		[[nodiscard]] auto get_local(const auto& accept_or_visit) const -> napi_value {
 			if (local_key_ == napi_value{}) {
-				auto make = [ & ]() { return accept_or_visit.environment().make_global_literal(value_literal<Key>{}); };
-				if constexpr (std::is_same_v<std::invoke_result_t<decltype(make)>, void>) {
-					local_key_ = napi::invoke(node_api_create_property_key_utf8, napi_env{accept_or_visit}, Key.data(), Key.length());
+				auto& environment = accept_or_visit.environment();
+				auto& storage = environment.global_storage(value_literal<Key>{});
+				if (storage) {
+					local_key_ = storage.get(environment);
 				} else {
-					local_key_ = make();
+					auto value = napi::value<string_tag>::make_property_name(environment, std::string_view{Key});
+					storage.reset(environment, value);
+					local_key_ = napi_value{value};
 				}
 			}
 			return local_key_;

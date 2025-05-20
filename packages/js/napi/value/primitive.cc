@@ -114,8 +114,24 @@ auto value<string_tag>::make(const environment& env, std::u16string_view string)
 	return value<string_tag>::from(napi::invoke(napi_create_string_utf16, napi_env{env}, string.data(), string.length()));
 }
 
+auto value<string_tag>::make(const environment& env, std::basic_string_view<std::byte> string) -> value<string_tag> {
+	return value<string_tag_of<char>>::from(napi::invoke(napi_create_string_latin1, napi_env{env}, reinterpret_cast<const char*>(string.data()), string.length()));
+}
+
 auto value<string_tag>::make(const environment& env, std::string_view string) -> value<string_tag> {
-	return value<string_tag_of<char>>::from(napi::invoke(napi_create_string_latin1, napi_env{env}, string.data(), string.length()));
+	return value<string_tag_of<char>>::from(napi::invoke(napi_create_string_utf8, napi_env{env}, string.data(), string.length()));
+}
+
+auto value<string_tag>::make_property_name(const environment& env, std::u16string_view string) -> value<string_tag> {
+	return value<string_tag>::from(napi::invoke(node_api_create_property_key_utf16, napi_env{env}, string.data(), string.length()));
+}
+
+auto value<string_tag>::make_property_name(const environment& env, std::basic_string_view<std::byte> string) -> value<string_tag> {
+	return value<string_tag_of<char>>::from(napi::invoke(node_api_create_property_key_latin1, napi_env{env}, reinterpret_cast<const char*>(string.data()), string.length()));
+}
+
+auto value<string_tag>::make_property_name(const environment& env, std::string_view string) -> value<string_tag> {
+	return value<string_tag_of<char>>::from(napi::invoke(node_api_create_property_key_utf8, napi_env{env}, string.data(), string.length()));
 }
 
 auto bound_value<string_tag>::materialize(std::type_identity<std::u16string> /*tag*/) const -> std::u16string {

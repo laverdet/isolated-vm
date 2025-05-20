@@ -60,6 +60,8 @@ class value<number_tag> : public detail::value_next<number_tag> {
 		static auto make(const environment& env, int32_t number) -> value<number_tag>;
 		static auto make(const environment& env, int64_t number) -> value<number_tag>;
 		static auto make(const environment& env, uint32_t number) -> value<number_tag>;
+
+		static auto make_property_name(const environment& env, int32_t number) -> value<number_tag> { return make(env, number); }
 };
 
 template <>
@@ -100,8 +102,12 @@ template <>
 class value<string_tag> : public detail::value_next<string_tag> {
 	public:
 		using detail::value_next<string_tag>::value_next;
-		static auto make(const environment& env, std::string_view string) -> value<string_tag>;
 		static auto make(const environment& env, std::u16string_view string) -> value<string_tag>;
+		static auto make(const environment& env, std::string_view string) -> value<string_tag>;
+		static auto make(const environment& env, std::basic_string_view<std::byte> string) -> value<string_tag>;
+		static auto make_property_name(const environment& env, std::u16string_view string) -> value<string_tag>;
+		static auto make_property_name(const environment& env, std::basic_string_view<std::byte> string) -> value<string_tag>;
+		static auto make_property_name(const environment& env, std::string_view string) -> value<string_tag>;
 
 		template <size_t Size>
 		// NOLINTNEXTLINE(modernize-avoid-c-arrays)
@@ -115,6 +121,7 @@ class bound_value<string_tag>
 	public:
 		using detail::bound_value_next<string_tag>::bound_value_next;
 		[[nodiscard]] auto materialize(std::type_identity<std::u16string> tag) const -> std::u16string;
+		[[nodiscard]] auto materialize(std::type_identity<std::basic_string<std::byte>> tag) const -> std::basic_string<std::byte>;
 		[[nodiscard]] auto materialize(std::type_identity<std::string> tag) const -> std::string;
 };
 

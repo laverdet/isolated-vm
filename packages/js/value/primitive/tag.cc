@@ -52,6 +52,9 @@ template <>
 struct tag_for<std::u16string> : std::type_identity<string_tag> {};
 
 template <>
+struct tag_for<std::basic_string<std::byte>> : std::type_identity<string_tag_of<std::byte>> {};
+
+template <>
 struct tag_for<std::string> : std::type_identity<string_tag_of<char>> {};
 
 } // namespace js

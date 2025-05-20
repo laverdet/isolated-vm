@@ -60,6 +60,8 @@ export using ::napi_set_element;
 export using ::napi_set_instance_data;
 export using ::napi_set_property;
 export using ::napi_typeof;
+export using ::node_api_create_property_key_latin1;
+export using ::node_api_create_property_key_utf16;
 export using ::node_api_create_property_key_utf8;
 
 // NOLINTEND(misc-unused-using-decls)

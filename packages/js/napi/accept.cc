@@ -17,6 +17,24 @@ import nodejs;
 namespace js {
 using namespace napi;
 
+template <class Environment, class Type>
+struct accept_napi_value;
+
+// Helper which accepts property names and uses `make_property_name` to make an internalized property name
+template <class Environment>
+struct accept_napi_property_name : napi::environment_scope<Environment> {
+		explicit accept_napi_property_name(const auto& accept) :
+				napi::environment_scope<Environment>{accept} {}
+
+		template <auto_tag Tag>
+		auto operator()(Tag /*tag*/, auto&& value) const -> napi::value<primitive_tag> {
+			return js::napi::value<Tag>::make_property_name(this->environment(), std::forward<decltype(value)>(value));
+		}
+};
+
+template <class Environment, class Type>
+accept_napi_property_name(const accept_napi_value<Environment, Type>&) -> accept_napi_property_name<Environment>;
+
 // Non-recursive primitive / intrinsic acceptor which returns varying `value<T>` types depending on the subject
 template <class Environment, class Type>
 struct accept_napi_value : napi::environment_scope<Environment> {
@@ -67,8 +85,9 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			return js::napi::value<string_tag>::make(this->environment(), std::u16string_view{std::forward<decltype(value)>(value)});
 		}
 
-		auto operator()(string_tag_of<char> /*tag*/, auto&& value) const -> Type {
-			return napi::value<string_tag_of<char>>::make(this->environment(), std::forward<decltype(value)>(value));
+		template <class Char>
+		auto operator()(string_tag_of<Char> /*tag*/, auto&& value) const -> Type {
+			return napi::value<string_tag_of<Char>>::make(this->environment(), std::forward<decltype(value)>(value));
 		}
 
 		// date
@@ -112,7 +131,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			for (auto&& [ key, value ] : std::forward<decltype(list)>(list)) {
 				properties.emplace_back(napi_property_descriptor{
 					.utf8name{},
-					.name = napi_value{visit.first(std::forward<decltype(key)>(key), *this)},
+					.name = napi_value{visit.first(std::forward<decltype(key)>(key), accept_napi_property_name{*this})},
 
 					.method{},
 					.getter{},
@@ -136,7 +155,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			for (auto&& [ key, value ] : std::forward<decltype(range)>(range)) {
 				properties.emplace_back(napi_property_descriptor{
 					.utf8name{},
-					.name = napi_value{visit.first(std::forward<decltype(key)>(key), *this)},
+					.name = napi_value{visit.first(std::forward<decltype(key)>(key), accept_napi_property_name{*this})},
 
 					.method{},
 					.getter{},

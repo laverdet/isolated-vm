@@ -12,7 +12,7 @@ import isolated_js.tag;
 namespace js {
 
 // Any (cloneable) object key
-export using key_t = std::variant<int32_t, std::string, std::u16string>;
+export using key_t = std::variant<int32_t, std::u16string, std::basic_string<std::byte>>;
 
 export using value_t = boost::make_recursive_variant<
 	// `undefined`
@@ -31,7 +31,7 @@ export using value_t = boost::make_recursive_variant<
 	uint64_t,
 	// string
 	std::u16string,
-	std::string,
+	std::basic_string<std::byte>,
 	// date
 	js_clock::time_point,
 	// object(s)

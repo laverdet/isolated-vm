@@ -40,32 +40,18 @@ export class environment
 
 		auto cluster() -> isolated_v8::cluster& { return cluster_; }
 
-		auto make_global_literal(auto literal) {
-			auto& storage = literal_storage(literal);
-			if (storage) {
-				return storage.get(*this);
-			} else {
-				using value_type = std::decay_t<decltype(storage)>::value_type;
-				// `napi_value` acceptor is used since the `value<T>` actually only accepts already created
-				// values. These should be unified!
-				value_type value = value_type::from(transfer_in_strict<napi_value>(*literal, *this));
-				storage.reset(*this, value);
-				return value;
-			}
-		}
-
-		static auto get(napi_env env) -> environment&;
-
-	private:
 		// Lookup `reference<T>` for the given literal
 		template <util::string_literal Value>
-		auto literal_storage(value_literal<Value> /*value*/) -> auto& {
+		auto global_storage(value_literal<Value> /*value*/) -> auto& {
 			constexpr auto index = string_literals.lookup(std::string_view{Value});
 			static_assert(index, "String literal is missing in storage");
 			// static_assert(index, std::format("String literal '{}' is missing in storage", Value.data()));
 			return string_literal_storage_.at(index).second;
 		}
 
+		static auto get(napi_env env) -> environment&;
+
+	private:
 		isolated_v8::cluster cluster_;
 		v8::Isolate* isolate_;
 		std::decay_t<decltype(string_literals)> string_literal_storage_{string_literals};

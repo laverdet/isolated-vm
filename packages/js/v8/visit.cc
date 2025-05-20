@@ -50,7 +50,7 @@ struct visit<void, v8::Local<v8::Name>> {
 		auto operator()(v8::Local<v8::String> value, const auto& accept) const -> decltype(auto) {
 			auto string = iv8::string{*lock_, value};
 			if (value->IsOneByte()) {
-				return accept(string_tag_of<char>{}, string);
+				return accept(string_tag_of<std::byte>{}, string);
 			} else {
 				return accept(string_tag{}, string);
 			}

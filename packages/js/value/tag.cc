@@ -52,6 +52,10 @@ template <class Type> struct bigint_tag_of : con_tag_of<bigint_tag> {};
 struct name_tag : tag_of<primitive_tag> {};
 struct symbol_tag : tag_of<name_tag> {};
 struct string_tag : tag_of<name_tag> {};
+// string_tag = we're not sure, utf16 to be safe
+// string_tag_of<char> = utf8
+// string_tag_of<char16_t> = utf16
+// string_tag_of<std::byte> = latin1
 template <class Type> struct string_tag_of : con_tag_of<string_tag> {};
 
 // objects
