@@ -1,11 +1,11 @@
 {
   "name": "isolated-vm",
-  "version": "5.0.4",
+  "version": "6.0.0",
   "description": "Access to multiple isolates",
   "main": "isolated-vm.js",
   "types": "isolated-vm.d.ts",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "install": "prebuild-install || (node-gyp rebuild --release -j max && node-gyp clean)",
