@@ -3,18 +3,18 @@
 		'default_configuration': 'Release',
 		'configurations': {
 			'Common': {
-				'cflags_cc': [ '-std=c++17', '-g', '-Wno-unknown-pragmas' ],
+				'cflags_cc': [ '-std=c++20', '-g', '-Wno-unknown-pragmas' ],
 				'cflags_cc!': [ '-fno-exceptions' ],
 				'include_dirs': [ './src', './vendor' ],
 				'xcode_settings': {
 					'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
 					'GCC_GENERATE_DEBUGGING_SYMBOLS': 'YES',
-					'CLANG_CXX_LANGUAGE_STANDARD': 'c++17',
+					'CLANG_CXX_LANGUAGE_STANDARD': 'c++20',
 					'MACOSX_DEPLOYMENT_TARGET': '10.12',
 				},
 				'msvs_settings': {
 					'VCCLCompilerTool': {
-						'AdditionalOptions': [ '-std:c++17', '/GR' ],
+						'AdditionalOptions': [ '-std:c++20', '/GR' ],
 						'ExceptionHandling': '1',
 					},
 				},

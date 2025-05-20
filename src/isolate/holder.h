@@ -52,9 +52,9 @@ class IsolateTaskRunner final : public TaskRunner {
 		auto operator=(const IsolateTaskRunner&) = delete;
 
 		// Methods for v8::TaskRunner
-		void PostTask(std::unique_ptr<v8::Task> task) final;
-		void PostDelayedTask(std::unique_ptr<v8::Task> task, double delay_in_seconds) final;
-		void PostNonNestableTask(std::unique_ptr<v8::Task> task) final { PostTask(std::move(task)); }
+		void PostTaskImpl(std::unique_ptr<v8::Task> task, const v8::SourceLocation& /*location*/) final;
+		void PostDelayedTaskImpl(std::unique_ptr<v8::Task> task, double delay_in_seconds, const v8::SourceLocation& /*location*/) final;
+		void PostNonNestableTaskImpl(std::unique_ptr<v8::Task> task, const v8::SourceLocation& /*location*/) final { PostTask(std::move(task)); }
 
 	private:
 		std::weak_ptr<IsolateEnvironment> weak_env;

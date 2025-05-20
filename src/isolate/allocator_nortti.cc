@@ -115,17 +115,6 @@ void LimitedAllocator::Free(void* data, size_t length) {
 	std::free(data);
 }
 
-auto LimitedAllocator::Reallocate(void* data, size_t old_length, size_t new_length) -> void* {
-	auto delta = static_cast<ssize_t>(new_length) - static_cast<ssize_t>(old_length);
-	if (delta > 0) {
-		if (!Check(delta)) {
-			return nullptr;
-		}
-	}
-	env.extra_allocated_memory += delta;
-	return ArrayBuffer::Allocator::Reallocate(data, old_length, new_length);
-}
-
 void LimitedAllocator::AdjustAllocatedSize(ptrdiff_t length) {
 	env.extra_allocated_memory += length;
 }

@@ -13,14 +13,12 @@ class LimitedAllocator : public v8::ArrayBuffer::Allocator {
 		size_t next_check;
 		int failures = 0;
 
-
 	public:
 		auto Check(size_t length) -> bool;
 		explicit LimitedAllocator(class IsolateEnvironment& env, size_t limit);
 		auto Allocate(size_t length) -> void* final;
 		auto AllocateUninitialized(size_t length) -> void* final;
 		void Free(void* data, size_t length) final;
-		auto Reallocate(void* data, size_t old_length, size_t new_length) -> void* final;
 
 		// This is used by ExternalCopy when an ArrayBuffer is transferred. The memory is not freed but
 		// we should no longer count it against the isolate

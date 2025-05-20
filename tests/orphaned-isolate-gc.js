@@ -1,6 +1,6 @@
 // node-args: --expose-gc
 const ivm = require('isolated-vm');
-let isolate = Array(100).fill().map(() => new ivm.Isolate());
+let isolate = Array(1000).fill().map(() => new ivm.Isolate());
 gc();
 let rss1 = process.memoryUsage().rss;
 isolate = null;

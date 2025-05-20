@@ -100,12 +100,11 @@ void ErrorStackGetter(Local<Name> /*property*/, const PropertyCallbackInfo<Value
 void AttachStackGetter(Local<Object> error, Local<Value> data) {
 	Local<Context> context = Isolate::GetCurrent()->GetCurrentContext();
 	Unmaybe(error->SetPrivate(context, GetPrivateStackSymbol(), data));
-	Unmaybe(error->SetAccessor(
+	Unmaybe(error->SetNativeDataProperty(
 		context,
 		StringTable::Get().stack,
 		ErrorStackGetter, nullptr,
 		Local<Value>(),
-		AccessControl::DEFAULT,
 		PropertyAttribute::DontEnum
 	));
 }

@@ -17,7 +17,7 @@ namespace detail {
 template <size_t Index, class Type>
 struct HandleTupleElement {
 	HandleTupleElement(v8::Isolate* isolate, v8::Local<Type> local) : persistent{isolate, local} {}
-	v8::Persistent<Type, v8::NonCopyablePersistentTraits<Type>> persistent;
+	v8::Persistent<Type> persistent;
 };
 
 template <class Indices, class ...Types>

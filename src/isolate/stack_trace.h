@@ -13,7 +13,7 @@ class StackTraceHolder : public ClassHandle {
 	private:
 		static void AppendFileLocation(v8::Isolate* isolate, v8::Local<v8::StackFrame> frame, std::stringstream& ss);
 	public:
-		v8::Persistent<v8::StackTrace, v8::CopyablePersistentTraits<v8::StackTrace>> stack_trace;
+		v8::Global<v8::StackTrace> stack_trace;
 		explicit StackTraceHolder(v8::Local<v8::StackTrace> stack_handle);
 		static auto Definition() -> v8::Local<v8::FunctionTemplate>;
 		static void AttachStack(v8::Local<v8::Object> error, v8::Local<v8::StackTrace> stack);

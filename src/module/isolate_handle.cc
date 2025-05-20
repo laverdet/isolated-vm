@@ -139,7 +139,7 @@ struct CreateContextRunner : public ThreePhaseTask {
 	void Phase2() final {
 		// Use custom deleter on the shared_ptr which will notify the isolate when we're probably done with this context
 		struct ContextDeleter {
-			void operator() (Persistent<Context>& context) const {
+			void operator() (v8::Persistent<Context>& context) const {
 				auto& env = IsolateEnvironment::GetCurrent();
 				context.Reset();
 				env.GetIsolate()->ContextDisposedNotification();
@@ -483,15 +483,15 @@ auto IsolateHandle::CreateSnapshot(ArrayRange script_handles, MaybeLocal<String>
 			}
 
 			// Methods for v8::TaskRunner
-			void PostTask(std::unique_ptr<v8::Task> task) final {
+			void PostTaskImpl(std::unique_ptr<v8::Task> task, const v8::SourceLocation& /*location*/) final {
 				tasks.write()->push_back(std::move(task));
 			}
-			void PostDelayedTask(std::unique_ptr<v8::Task> task, double /*delay_in_seconds*/) final {
+			void PostDelayedTaskImpl(std::unique_ptr<v8::Task> task, double /*delay_in_seconds*/, const v8::SourceLocation& /*location*/) final {
 				if (!done) {
 					PostTask(std::move(task));
 				}
 			}
-			void PostNonNestableTask(std::unique_ptr<v8::Task> task) final {
+			void PostNonNestableTaskImpl(std::unique_ptr<v8::Task> task, const v8::SourceLocation& /*location*/) final {
 				PostTask(std::move(task));
 			}
 

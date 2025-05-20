@@ -63,14 +63,14 @@ void IsolateHolder::ScheduleTask(std::unique_ptr<Runnable> task, bool run_inline
 }
 
 // Methods for v8::TaskRunner
-void IsolateTaskRunner::PostTask(std::unique_ptr<v8::Task> task) {
+void IsolateTaskRunner::PostTaskImpl(std::unique_ptr<v8::Task> task, const v8::SourceLocation& /*location*/) {
 	auto env = weak_env.lock();
 	if (env) {
 		env->GetScheduler().Lock()->tasks.push(std::move(task));
 	}
 }
 
-void IsolateTaskRunner::PostDelayedTask(std::unique_ptr<v8::Task> task, double delay_in_seconds) {
+void IsolateTaskRunner::PostDelayedTaskImpl(std::unique_ptr<v8::Task> task, double delay_in_seconds, const v8::SourceLocation& /*location*/) {
 	// wait_detached erases the type of the lambda into a std::function which must be
 	// copyable. The unique_ptr is stored in a shared pointer so ownership can be handled correctly.
 	auto shared_task = std::make_shared<std::unique_ptr<v8::Task>>(std::move(task));

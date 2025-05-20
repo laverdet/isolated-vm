@@ -92,7 +92,7 @@ class ClassHandle {
 			template <typename... Args>
 			void Add(const char* name, detail::MemberAccessorHolder impl, Args... args) {
 				v8::Local<v8::String> name_handle = v8_symbol(name);
-				proto->SetAccessor(name_handle, impl.getter.callback, impl.setter.callback);
+				proto->SetNativeDataProperty(name_handle, impl.getter.callback, impl.setter.callback);
 				Add(args...);
 			}
 

@@ -108,7 +108,7 @@ class IsolateEnvironment {
 		std::atomic<unsigned int> remotes_count{0};
 		v8::HeapStatistics last_heap {};
 		// Copyable traits used to opt into destructor handle reset
-		std::deque<v8::Persistent<v8::Promise, v8::CopyablePersistentTraits<v8::Promise>>> unhandled_promise_rejections;
+		std::deque<v8::Global<v8::Promise>> unhandled_promise_rejections;
 		StringTable string_table;
 
 		std::vector<v8::Eternal<v8::Data>> specifics;

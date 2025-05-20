@@ -21,7 +21,6 @@ ScriptOriginHolder::ScriptOriginHolder(MaybeLocal<Object> maybe_options, bool is
 
 ScriptOriginHolder::operator ScriptOrigin() const {
 	return ScriptOrigin{
-			Isolate::GetCurrent(),
 			HandleCast<Local<String>>(filename),
 			line_offset,
 			column_offset,

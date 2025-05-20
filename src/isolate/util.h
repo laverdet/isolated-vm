@@ -27,7 +27,7 @@ auto Deref(const v8::Persistent<T>& handle) -> v8::Local<T> {
 }
 
 template <typename T>
-auto Deref(const v8::Persistent<T, v8::CopyablePersistentTraits<T>>& handle) -> v8::Local<T> {
+auto Deref(const v8::Global<T>& handle) -> v8::Local<T> {
 	return v8::Local<T>::New(v8::Isolate::GetCurrent(), handle);
 }
 
