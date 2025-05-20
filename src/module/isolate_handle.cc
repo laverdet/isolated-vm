@@ -41,7 +41,7 @@ IsolateHandle::IsolateHandle(shared_ptr<IsolateHolder> isolate) : isolate(std::m
 
 auto IsolateHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
-	 "Isolate", ConstructorFunction<decltype(&New), &New>{},
+	 "Isolate", ConstructorFunction<decltype(&IsolateHandle::New), &IsolateHandle::New>{},
 		"createSnapshot", FreeFunction<decltype(&CreateSnapshot), &CreateSnapshot>{},
 		"compileScript", MemberFunction<decltype(&IsolateHandle::CompileScript<1>), &IsolateHandle::CompileScript<1>>{},
 		"compileScriptSync", MemberFunction<decltype(&IsolateHandle::CompileScript<0>), &IsolateHandle::CompileScript<0>>{},

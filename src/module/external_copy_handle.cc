@@ -29,7 +29,7 @@ ExternalCopyHandle::~ExternalCopyHandle() {
 
 auto ExternalCopyHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
-		"ExternalCopy", ConstructorFunction<decltype(&New), &New>{},
+		"ExternalCopy", ConstructorFunction<decltype(&ExternalCopyHandle::New), &ExternalCopyHandle::New>{},
 		"totalExternalSize", StaticAccessor<decltype(&ExternalCopyHandle::TotalExternalSizeGetter), &ExternalCopyHandle::TotalExternalSizeGetter>{},
 		"copy", MemberFunction<decltype(&ExternalCopyHandle::Copy), &ExternalCopyHandle::Copy>{},
 		"copyInto", MemberFunction<decltype(&ExternalCopyHandle::CopyInto), &ExternalCopyHandle::CopyInto>{},

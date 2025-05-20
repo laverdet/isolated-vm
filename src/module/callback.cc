@@ -14,7 +14,7 @@ namespace ivm {
  */
 auto CallbackHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
-		"Callback", ConstructorFunction<decltype(&New), &New>{}
+		"Callback", ConstructorFunction<decltype(&CallbackHandle::New), &CallbackHandle::New>{}
 	));
 }
 
