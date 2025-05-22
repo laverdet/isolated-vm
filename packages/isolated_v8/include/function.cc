@@ -1,6 +1,7 @@
 module;
 #include <tuple>
 #include <type_traits>
+#include <variant>
 export module isolated_v8.function;
 import isolated_js;
 import isolated_v8.agent;
@@ -20,10 +21,7 @@ export class function_template {
 	public:
 		auto make_function(v8::Local<v8::Context> context) -> v8::Local<v8::Function>;
 
-		template <class Invocable, class Result, class... Args>
-		static auto make(agent::lock& agent, js::bound_function<Invocable, Result(realm::scope&, Args...)> invocable) -> function_template;
-		template <auto Function, class Result, class... Args>
-		static auto make(agent::lock& agent, js::free_function<Function, Result(realm::scope&, Args...)> function) -> function_template;
+		static auto make(agent::lock& agent, auto&& function) -> function_template;
 
 	private:
 		shared_remote<v8::FunctionTemplate> function_;
@@ -31,48 +29,58 @@ export class function_template {
 
 // ---
 
-template <class... Args>
-auto invoke_callback(const v8::FunctionCallbackInfo<v8::Value>& info, auto&& invocable) -> void {
-	auto& agent = agent::lock::get_current();
-	realm::witness_scope realm{agent, agent->isolate()->GetCurrentContext()};
-	auto run = [ & ]() -> decltype(auto) {
-		return std::apply(
-			std::forward<decltype(invocable)>(invocable),
-			std::tuple_cat(
-				std::forward_as_tuple(realm),
-				js::transfer_out<std::tuple<Args...>>(info, realm)
-			)
-		);
-	};
-	if constexpr (std::is_void_v<std::invoke_result_t<decltype(run)>>) {
-		info.GetReturnValue().SetUndefined();
-		run();
-	} else {
-		js::transfer_in_strict<v8::ReturnValue<v8::Value>>(run(), realm, info.GetReturnValue());
-	}
-}
+// Helper specializing against a function signature to transfer out the arguments, and transfer in
+// the result.
+template <class Signature>
+struct invoke_callback;
+
+template <class Result, class... Args>
+struct invoke_callback<Result(realm::scope&, Args...)> {
+		constexpr static auto length = sizeof...(Args);
+
+		auto operator()(const v8::FunctionCallbackInfo<v8::Value>& info, auto&& invocable) {
+			auto& agent = agent::lock::get_current();
+			realm::witness_scope realm{agent, agent->isolate()->GetCurrentContext()};
+			auto run = [ & ]() -> decltype(auto) {
+				return std::apply(
+					std::forward<decltype(invocable)>(invocable),
+					std::tuple_cat(
+						std::forward_as_tuple(realm),
+						js::transfer_out<std::tuple<Args...>>(info, realm)
+					)
+				);
+			};
+			auto run_with_result = [ & ]() -> decltype(auto) {
+				if constexpr (std::is_void_v<std::invoke_result_t<decltype(run)>>) {
+					run();
+					return std::monostate{};
+				} else {
+					return run();
+				}
+			};
+			js::transfer_in_strict<v8::ReturnValue<v8::Value>>(run_with_result(), realm, info.GetReturnValue());
+		}
+};
 
 // Bound function factory
-template <class Invocable, class Result, class... Args>
-auto function_template::make(agent::lock& agent, js::bound_function<Invocable, Result(realm::scope&, Args...)> invocable) -> function_template {
-	using invocable_type = decltype(invocable);
-	auto external = make_collected_external<invocable_type>(agent, agent->autorelease_pool(), std::move(invocable));
-	v8::FunctionCallback callback = [](const v8::FunctionCallbackInfo<v8::Value>& info) {
-		auto& invocable = unwrap_collected_external<invocable_type>(info.Data().As<v8::External>());
-		invoke_callback<Args...>(info, invocable);
-	};
-	auto fn_template = v8::FunctionTemplate::New(agent.isolate(), callback, external, {}, sizeof...(Args), v8::ConstructorBehavior::kThrow);
-	return function_template{agent, fn_template};
-}
+auto function_template::make(agent::lock& agent, auto&& function) -> function_template {
+	using function_type = std::decay_t<decltype(function.invocable)>;
+	using signature_type = util::function_signature_t<function_type>;
 
-// Free function factory
-template <auto Function, class Result, class... Args>
-auto function_template::make(agent::lock& agent, js::free_function<Function, Result(realm::scope&, Args...)> /*function*/) -> function_template {
-	v8::FunctionCallback callback = [](const v8::FunctionCallbackInfo<v8::Value>& info) {
-		invoke_callback<Args...>(info, Function);
-	};
-	auto fn_template = v8::FunctionTemplate::New(agent.isolate(), callback, {}, {}, sizeof...(Args), v8::ConstructorBehavior::kThrow);
-	return function_template{agent, fn_template};
+	if constexpr (std::is_empty_v<function_type>) {
+		static_assert(false, "Not implemented");
+	} else if constexpr (sizeof(function_type) == sizeof(void*) && std::is_trivially_destructible_v<function_type>) {
+		static_assert(false, "Not implemented");
+	} else {
+		auto external = make_collected_external<function_type>(agent, agent->autorelease_pool(), std::forward<decltype(function)>(function).invocable);
+		v8::FunctionCallback callback = [](const v8::FunctionCallbackInfo<v8::Value>& info) {
+			auto& invocable = unwrap_collected_external<function_type>(info.Data().As<v8::External>());
+			invoke_callback<signature_type> invoke{};
+			invoke(info, invocable);
+		};
+		auto fn_template = v8::FunctionTemplate::New(agent.isolate(), callback, external, {}, invoke_callback<signature_type>::length, v8::ConstructorBehavior::kThrow);
+		return function_template{agent, fn_template};
+	}
 }
 
 } // namespace isolated_v8

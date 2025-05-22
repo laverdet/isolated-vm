@@ -1,4 +1,5 @@
 module;
+#include <string_view>
 #include <utility>
 export module isolated_js.function;
 import isolated_js.tag;
@@ -10,45 +11,34 @@ namespace js {
 // Holds `this` and arguments vector
 export struct arguments_tag : vector_tag {};
 
-// Function which is statically invocable
-export template <auto Function, class Signature = util::function_signature_t<decltype(Function)>>
-struct free_function;
+// Non-constructor, non-member stateless free function
+export template <auto Function>
+struct free_function {
+		constexpr static auto invocable = Function;
+		constexpr static auto name = std::string_view{};
+};
 
-template <auto Function, class Result, class... Args>
-struct free_function<Function, Result(Args...)> {};
-
-template <auto Function, class Signature>
-struct visit<void, free_function<Function, Signature>> {
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
-			return accept(function_tag{}, std::forward<decltype(value)>(value));
+template <auto Function>
+struct visit<void, free_function<Function>> {
+		constexpr auto operator()(const auto& function, const auto& accept) const -> decltype(auto) {
+			return accept(function_tag{}, function);
 		}
 };
 
-// Function which requires state
-export template <class Invocable, class Signature>
-class bound_function;
+// Function which requires carried state
+export template <class Invocable>
+struct bound_function {
+		explicit constexpr bound_function(Invocable invocable) :
+				invocable{std::move(invocable)} {}
 
-template <class Invocable, class Result, class... Args>
-class bound_function<Invocable, Result(Args...)> {
-	public:
-		explicit bound_function(Invocable functor) :
-				invocable_{std::move(functor)} {}
-
-		auto operator()(this auto& self, Args... args) -> Result {
-			return self.invocable_(std::forward<Args>(args)...);
-		}
-
-	private:
-		Invocable invocable_;
+		Invocable invocable;
+		constexpr static auto name = std::string_view{};
 };
 
-template <class Invocable>
-bound_function(Invocable) -> bound_function<Invocable, util::function_signature_t<Invocable>>;
-
-template <class Invocable, class Signature>
-struct visit<void, bound_function<Invocable, Signature>> {
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
-			return accept(function_tag{}, std::forward<decltype(value)>(value));
+template <class Function>
+struct visit<void, bound_function<Function>> {
+		constexpr auto operator()(auto&& function, const auto& accept) const -> decltype(auto) {
+			return accept(function_tag{}, std::forward<decltype(function)>(function));
 		}
 };
 

@@ -13,6 +13,7 @@ target_sources(ivm_value_napi
 		handle/reference.cc
 		handle/remote.cc
 		handle/value.cc
+		support/callback_info.cc
 		support/environment.cc
 		support/handle_scope.cc
 		support/scheduler.cc
