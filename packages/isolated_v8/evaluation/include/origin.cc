@@ -2,8 +2,10 @@ module;
 #include <optional>
 #include <tuple>
 export module isolated_v8.evaluation.origin;
-import v8;
 import isolated_js;
+import ivm.utility;
+import v8;
+using namespace util::string_literals;
 
 namespace isolated_v8 {
 
@@ -29,23 +31,23 @@ using namespace isolated_v8;
 template <>
 struct struct_properties<source_location> {
 		constexpr static auto properties = std::tuple{
-			property<"line">::descriptor{struct_member{&source_location::line}},
-			property<"column">::descriptor{struct_member{&source_location::column}},
+			property{"line"_st, struct_member{&source_location::line}},
+			property{"column"_st, struct_member{&source_location::column}},
 		};
 };
 
 template <>
 struct struct_properties<source_origin> {
 		constexpr static auto properties = std::tuple{
-			property<"name">::descriptor{struct_member{&source_origin::name}},
-			property<"location">::descriptor{struct_member{&source_origin::location}},
+			property{"name"_st, struct_member{&source_origin::name}},
+			property{"location"_st, struct_member{&source_origin::location}},
 		};
 };
 
 template <>
 struct struct_properties<source_required_name> {
 		constexpr static auto properties = std::tuple{
-			property<"name">::descriptor{struct_member{&source_required_name::name}},
+			property{"name"_st, struct_member{&source_required_name::name}},
 		};
 };
 

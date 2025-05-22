@@ -12,10 +12,12 @@ import backend_napi_v8.external;
 import backend_napi_v8.utility;
 import isolated_js;
 import isolated_v8;
-import v8_js;
+import ivm.utility;
 import napi_js;
 import nodejs;
+import v8_js;
 using namespace isolated_v8;
+using namespace util::string_literals;
 
 namespace backend_napi_v8 {
 
@@ -240,14 +242,14 @@ using namespace backend_napi_v8;
 template <>
 struct struct_properties<compile_module_options> {
 		constexpr static auto properties = std::tuple{
-			property<"origin">::descriptor{struct_member{&compile_module_options::origin}},
+			property{"origin"_st, struct_member{&compile_module_options::origin}},
 		};
 };
 
 template <>
 struct struct_properties<create_capability_options> {
 		constexpr static auto properties = std::tuple{
-			property<"origin">::descriptor{struct_member{&create_capability_options::origin}},
+			property{"origin"_st, struct_member{&create_capability_options::origin}},
 		};
 };
 

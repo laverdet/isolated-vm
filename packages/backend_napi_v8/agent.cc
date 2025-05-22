@@ -15,6 +15,7 @@ import napi_js;
 import ivm.utility;
 import nodejs;
 using namespace isolated_v8;
+using namespace util::string_literals;
 
 namespace backend_napi_v8 {
 
@@ -120,22 +121,22 @@ using backend_napi_v8::make_agent_options;
 template <>
 struct struct_properties<make_agent_options::clock_deterministic> {
 		constexpr static auto properties = std::tuple{
-			property<"epoch">::descriptor{struct_member{&make_agent_options::clock_deterministic::epoch}},
-			property<"interval">::descriptor{struct_member{&make_agent_options::clock_deterministic::interval}},
+			property{"epoch"_st, struct_member{&make_agent_options::clock_deterministic::epoch}},
+			property{"interval"_st, struct_member{&make_agent_options::clock_deterministic::interval}},
 		};
 };
 
 template <>
 struct struct_properties<make_agent_options::clock_microtask> {
 		constexpr static auto properties = std::tuple{
-			property<"epoch">::descriptor{struct_member{&make_agent_options::clock_microtask::epoch}},
+			property{"epoch"_st, struct_member{&make_agent_options::clock_microtask::epoch}},
 		};
 };
 
 template <>
 struct struct_properties<make_agent_options::clock_realtime> {
 		constexpr static auto properties = std::tuple{
-			property<"epoch">::descriptor{struct_member{&make_agent_options::clock_realtime::epoch}},
+			property{"epoch"_st, struct_member{&make_agent_options::clock_realtime::epoch}},
 		};
 };
 
@@ -158,8 +159,8 @@ struct union_of<make_agent_options::clock_type> {
 template <>
 struct struct_properties<make_agent_options> {
 		constexpr static auto properties = std::tuple{
-			property<"clock">::descriptor{struct_member{&make_agent_options::clock}},
-			property<"randomSeed">::descriptor{struct_member{&make_agent_options::random_seed}},
+			property{"clock"_st, struct_member{&make_agent_options::clock}},
+			property{"randomSeed"_st, struct_member{&make_agent_options::random_seed}},
 		};
 };
 

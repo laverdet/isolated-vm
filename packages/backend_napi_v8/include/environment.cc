@@ -42,7 +42,7 @@ export class environment
 
 		// Lookup `reference<T>` for the given literal
 		template <util::string_literal Value>
-		auto global_storage(value_literal<Value> /*value*/) -> auto& {
+		auto global_storage(util::value_constant<Value> /*value*/) -> auto& {
 			constexpr auto index = string_literals.lookup(std::string_view{Value});
 			static_assert(index, "String literal is missing in storage");
 			// static_assert(index, std::format("String literal '{}' is missing in storage", Value.data()));
@@ -54,7 +54,7 @@ export class environment
 	private:
 		isolated_v8::cluster cluster_;
 		v8::Isolate* isolate_;
-		std::decay_t<decltype(string_literals)> string_literal_storage_{string_literals};
+		util::copy_of<&string_literals> string_literal_storage_;
 };
 
 } // namespace backend_napi_v8

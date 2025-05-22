@@ -14,6 +14,7 @@ target_sources(ivm_utility
 		type_traits.cc
 		utility/facade.cc
 		utility/hash.cc
+		utility/string_literal.cc
 		utility/utility.cc
 		variant.cc
 )

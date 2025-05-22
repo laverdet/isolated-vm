@@ -18,6 +18,7 @@ import v8_js;
 import isolated_js;
 import ivm.utility;
 import v8;
+using namespace util::string_literals;
 
 namespace isolated_v8 {
 
@@ -146,7 +147,7 @@ using isolated_v8::module_request;
 template <>
 struct struct_properties<module_request> {
 		constexpr static auto properties = std::tuple{
-			property<"specifier">::descriptor{struct_accessor{&module_request::specifier}},
+			property{"specifier"_st, struct_accessor{&module_request::specifier}},
 		};
 };
 

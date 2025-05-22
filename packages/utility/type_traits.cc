@@ -1,10 +1,16 @@
 module;
-#include <algorithm>
 #include <functional>
-#include <string_view>
 export module ivm.utility.type_traits;
 
 namespace util {
+
+// Similar to `std::integral_constant` but with w/ c++17 auto type
+export template <auto Value>
+struct value_constant {
+		using value_type = decltype(Value);
+		consteval auto operator*() const { return Value; }
+		constexpr static auto value = Value;
+};
 
 // Select the indexed type from a parameter pack
 export template <std::size_t Index, class... Types>
@@ -25,27 +31,6 @@ struct reverse_select : select<sizeof...(Types) - Index - 1, Types...> {};
 
 export template <std::size_t Index, class... Types>
 using reverse_select_t = reverse_select<Index, Types...>::type;
-
-// Structural string literal which may be used as a template parameter. The string is
-// null-terminated, which is required by v8's `String::NewFromUtf8Literal`.
-export template <size_t Size>
-struct string_literal {
-		// NOLINTNEXTLINE(google-explicit-constructor, modernize-avoid-c-arrays)
-		consteval string_literal(const char (&string)[ Size ]) {
-			std::copy_n(static_cast<const char*>(string), Size, payload.data());
-		}
-
-		// NOLINTNEXTLINE(google-explicit-constructor)
-		consteval operator std::string_view() const { return {payload.data(), length()}; }
-		consteval auto operator<=>(const string_literal& right) const -> std::strong_ordering { return payload <=> right.payload; }
-		consteval auto operator==(const string_literal& right) const -> bool { return payload == right.payload; }
-		constexpr auto operator==(std::string_view string) const -> bool { return std::string_view{*this} == string; }
-		// NOLINTNEXTLINE(modernize-avoid-c-arrays)
-		[[nodiscard]] constexpr auto data() const -> const char (&)[ Size ] { return *reinterpret_cast<const char(*)[ Size ]>(payload.data()); }
-		[[nodiscard]] consteval auto length() const -> size_t { return Size - 1; }
-
-		std::array<char, Size> payload{};
-};
 
 // Use `std::function` to deduce the signature of an invocable
 export template <class Type>

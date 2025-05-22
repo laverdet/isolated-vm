@@ -13,14 +13,14 @@ export struct property_attributes {
 };
 
 // Property descriptor configuration
-export template <util::string_literal Name>
+export template <class Name, class Value>
 struct property {
-		template <class Value>
-		struct descriptor {
-				using property_type = Value;
-				constexpr static auto property_name = Name;
-				Value value_template;
-		};
+		using property_type = Value;
+		constexpr static auto property_name = Name::value;
+
+		consteval property(Name /*name*/, Value value_template) :
+				value_template{value_template} {}
+		Value value_template;
 };
 
 // Value template for struct getter

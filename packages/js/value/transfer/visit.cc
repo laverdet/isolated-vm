@@ -27,7 +27,6 @@ struct visit<void, Type>;
 // Returns the key type expected by the delegate (an instance of `visit` or `accept`) target.
 export template <util::string_literal Key, class Subject>
 struct visit_key_literal {
-		[[nodiscard]] constexpr auto get() const { return Key; }
 		constexpr auto operator()(const auto& /*could_be_literally_anything*/, const auto& accept) const -> decltype(auto) {
 			return accept(string_tag{}, Key);
 		}

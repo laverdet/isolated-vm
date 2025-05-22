@@ -8,7 +8,9 @@
 #include <utility>
 #include <variant>
 import isolated_js;
+import ivm.utility;
 using namespace std::literals;
+using namespace util::string_literals;
 #if __clang_major__ >= 19
 
 namespace js {
@@ -71,16 +73,16 @@ struct object_literal {
 template <>
 struct struct_properties<object_literal_one> {
 		constexpr static auto properties = std::tuple{
-			property<"integer">::descriptor{struct_member{&object_literal_one::integer}},
+			property{"integer"_st, struct_member{&object_literal_one::integer}},
 		};
 };
 
 template <>
 struct struct_properties<object_literal> {
 		constexpr static auto properties = std::tuple{
-			property<"integer">::descriptor{struct_member{&object_literal::integer}},
-			property<"number">::descriptor{struct_member{&object_literal::number}},
-			property<"string">::descriptor{struct_member{&object_literal::string}},
+			property{"integer"_st, struct_member{&object_literal::integer}},
+			property{"number"_st, struct_member{&object_literal::number}},
+			property{"string"_st, struct_member{&object_literal::string}},
 		};
 };
 
@@ -143,14 +145,14 @@ struct union_alternative_two {
 template <>
 struct struct_properties<union_alternative_one> {
 		constexpr static auto properties = std::tuple{
-			property<"one">::descriptor{struct_member{&union_alternative_one::one}},
+			property{"one"_st, struct_member{&union_alternative_one::one}},
 		};
 };
 
 template <>
 struct struct_properties<union_alternative_two> {
 		constexpr static auto properties = std::tuple{
-			property<"two">::descriptor{struct_member{&union_alternative_two::two}},
+			property{"two"_st, struct_member{&union_alternative_two::two}},
 		};
 };
 

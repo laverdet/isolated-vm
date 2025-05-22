@@ -1,5 +1,4 @@
 module;
-#include <concepts>
 #include <type_traits>
 #include <utility>
 export module ivm.utility.utility;
@@ -33,12 +32,24 @@ export class non_moveable {
 		auto operator=(const non_moveable&) = delete;
 };
 
+// Allocates storage for a copy of a constant expression value and initializes it with the value.
+export template <auto Value, class Type = decltype(Value)>
+struct copy_of;
+
+template <auto Value, class Type>
+struct copy_of<Value, const Type*> : Type {
+		constexpr copy_of() :
+				Type{*Value} {}
+};
+
 // Convert static function pointer into a default-constructible function type
 export template <auto Function>
-struct function_type_of {
-		auto operator()(auto&&... args) const -> decltype(auto)
-			requires std::invocable<decltype(Function), decltype(args)...> {
-			return Function(std::forward<decltype(args)>(args)...);
+struct function_type_of;
+
+template <class Result, class... Args, Result(Function)(Args...)>
+struct function_type_of<Function> {
+		auto operator()(Args... args) const -> decltype(auto) {
+			return Function(std::forward<Args>(args)...);
 		}
 };
 

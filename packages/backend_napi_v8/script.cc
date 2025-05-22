@@ -7,12 +7,14 @@ module backend_napi_v8.script;
 import backend_napi_v8.environment;
 import backend_napi_v8.external;
 import backend_napi_v8.utility;
-import isolated_v8;
-import v8_js;
 import isolated_js;
+import isolated_v8;
+import ivm.utility;
 import napi_js;
 import nodejs;
+import v8_js;
 using namespace isolated_v8;
+using namespace util::string_literals;
 
 namespace backend_napi_v8 {
 
@@ -90,7 +92,7 @@ using backend_napi_v8::compile_script_options;
 template <>
 struct struct_properties<compile_script_options> {
 		constexpr static auto properties = std::tuple{
-			property<"origin">::descriptor{struct_member{&compile_script_options::origin}},
+			property{"origin"_st, struct_member{&compile_script_options::origin}},
 		};
 };
 

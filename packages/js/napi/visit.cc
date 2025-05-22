@@ -77,7 +77,7 @@ struct visit_key_literal<Key, napi_value> : util::non_moveable {
 		[[nodiscard]] auto get_local(const auto& accept_or_visit) const -> napi_value {
 			if (local_key_ == napi_value{}) {
 				auto& environment = accept_or_visit.environment();
-				auto& storage = environment.global_storage(value_literal<Key>{});
+				auto& storage = environment.global_storage(util::value_constant<Key>{});
 				if (storage) {
 					local_key_ = storage.get(environment);
 				} else {
