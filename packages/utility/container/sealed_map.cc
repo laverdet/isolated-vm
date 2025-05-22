@@ -5,9 +5,9 @@ module;
 #include <functional>
 #include <type_traits>
 #include <utility>
-export module ivm.utility.sealed_map;
-import ivm.utility.comparator;
-import ivm.utility.utility;
+export module ivm.utility:sealed_map;
+import :comparator;
+import :utility;
 
 namespace util {
 

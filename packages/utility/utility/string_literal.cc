@@ -1,8 +1,8 @@
 module;
 #include <algorithm>
 #include <string_view>
-export module ivm.utility.string_literal;
-import ivm.utility.type_traits;
+export module ivm.utility:string_literal;
+import :type_traits;
 
 namespace util {
 

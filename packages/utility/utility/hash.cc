@@ -1,7 +1,7 @@
 module;
 #include <cstdint>
 #include <ranges>
-export module ivm.utility.hash;
+export module ivm.utility:hash;
 
 namespace util {
 

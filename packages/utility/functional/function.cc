@@ -2,7 +2,7 @@ module;
 #include <functional>
 #include <memory>
 #include <utility>
-export module ivm.utility.functional;
+export module ivm.utility:functional;
 
 namespace util {
 

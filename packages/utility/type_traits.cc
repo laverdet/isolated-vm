@@ -1,6 +1,6 @@
 module;
 #include <functional>
-export module ivm.utility.type_traits;
+export module ivm.utility:type_traits;
 
 namespace util {
 

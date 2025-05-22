@@ -1,7 +1,7 @@
 module;
 #include <type_traits>
 #include <utility>
-export module ivm.utility.utility;
+export module ivm.utility:utility;
 
 namespace util {
 

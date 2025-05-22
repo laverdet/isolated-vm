@@ -1,7 +1,7 @@
 module;
 #include <concepts>
 #include <utility>
-export module ivm.utility.comparator;
+export module ivm.utility:comparator;
 
 namespace util {
 

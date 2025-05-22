@@ -2,7 +2,7 @@ module;
 #include <algorithm>
 #include <iterator>
 #include <ranges>
-export module ivm.utility.ranges;
+export module ivm.utility:ranges;
 
 namespace util {
 

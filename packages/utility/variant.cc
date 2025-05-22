@@ -2,10 +2,10 @@ module;
 #include <cstddef>
 #include <utility>
 #include <variant>
-export module ivm.utility.variant;
+export module ivm.utility:variant;
 
 namespace util {
-
+namespace detail {
 // Like `std::visit` but it visits with a `std::integral_constant` of the variant index. That way
 // you can use the index for other structures.
 template <class... Types>
@@ -22,15 +22,16 @@ constexpr auto visit_with_index_(const auto& visitor, auto&& variant) -> decltyp
 	};
 	return next(std::integral_constant<size_t, 0>{}, next, visitor, std::forward<decltype(variant)>(variant));
 }
+} // namespace detail
 
 export template <class... Types>
 constexpr auto visit_with_index(const auto& visitor, const std::variant<Types...>& variant) -> decltype(auto) {
-	return visit_with_index_<Types...>(visitor, variant);
+	return detail::visit_with_index_<Types...>(visitor, variant);
 }
 
 export template <class... Types>
 constexpr auto visit_with_index(const auto& visitor, std::variant<Types...>&& variant) -> decltype(auto) {
-	return visit_with_index_<Types...>(visitor, std::move(variant));
+	return detail::visit_with_index_<Types...>(visitor, std::move(variant));
 }
 
 } // namespace util

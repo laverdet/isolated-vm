@@ -2,7 +2,7 @@ module;
 #include <concepts>
 #include <functional>
 #include <tuple>
-export module ivm.utility.tuple;
+export module ivm.utility:tuple;
 
 namespace util {
 
@@ -16,6 +16,7 @@ namespace util {
 //
 // Adapted from this solution into a generic utility:
 // https://stackoverflow.com/questions/56187926/how-to-construct-a-tuple-of-non-movable-non-copyable-objects/56188636#56188636
+namespace {
 template <std::invocable<> Invocable>
 struct construct_type {
 		using result_type = std::invoke_result_t<Invocable>;
@@ -23,6 +24,7 @@ struct construct_type {
 		constexpr operator result_type() const { return invocable(); }
 		Invocable invocable;
 };
+} // namespace
 
 export template <std::invocable<>... Invocables>
 constexpr auto make_tuple_in_place(Invocables... invocables) {

@@ -3,9 +3,9 @@ module;
 #include <cassert>
 #include <memory>
 #include <utility>
-export module ivm.utility.autorelease_pool;
-import ivm.utility.memory.comparator;
-import ivm.utility.utility;
+export module ivm.utility:autorelease_pool;
+import :memory.comparator;
+import :utility;
 
 namespace util {
 

@@ -1,6 +1,6 @@
 module;
 #include <memory>
-export module ivm.utility.memory.comparator;
+export module ivm.utility:memory.comparator;
 
 namespace util {
 
