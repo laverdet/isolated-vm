@@ -5,19 +5,15 @@ module;
 export module backend_napi_v8.external;
 import backend_napi_v8.environment;
 import backend_napi_v8.utility;
-import v8_js;
 import isolated_js;
-import napi_js;
 import ivm.utility;
+import napi_js;
+import napi_js.finalizer;
 import nodejs;
+import v8_js;
 import v8;
 
 namespace backend_napi_v8 {
-
-template <class Type>
-auto finalizer(napi_env /*env*/, void* finalize_data, void* /*finalize_hint*/) {
-	delete static_cast<Type*>(finalize_data);
-}
 
 export template <class Type>
 auto make_external(environment& env, auto&&... args) -> napi_value {
@@ -27,9 +23,10 @@ auto make_external(environment& env, auto&&... args) -> napi_value {
 	auto ptr = std::make_unique<external_type>(std::forward<decltype(args)>(args)...);
 	auto external = v8::External::New(env.isolate(), ptr.get());
 	auto as_napi_value = js::napi::from_v8(external);
-	// Now we make a weak reference via napi (which also leaks) which finalizes the underlying object.
-	js::napi::invoke(napi_add_finalizer, napi_env{env}, as_napi_value, ptr.get(), finalizer<external_type>, nullptr);
-	ptr.release();
+	// Now we make a weak reference via napi which finalizes the underlying object.
+	js::napi::apply_finalizer(std::move(ptr), [ & ](external_type* data, napi_finalize finalize, void* hint) {
+		js::napi::invoke0(napi_add_finalizer, napi_env{env}, as_napi_value, data, finalize, hint, nullptr);
+	});
 	return as_napi_value;
 }
 

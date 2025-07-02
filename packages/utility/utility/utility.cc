@@ -1,6 +1,7 @@
 module;
 #include <type_traits>
 #include <utility>
+#include <variant>
 export module ivm.utility:utility;
 
 namespace util {
@@ -51,6 +52,29 @@ struct function_type_of<Function> {
 		auto operator()(Args... args) const -> decltype(auto) {
 			return Function(std::forward<Args>(args)...);
 		}
+};
+
+// Wraps the given invocable. When invoked if it returns `void` then `std::monostate{}` will be
+// returned instead.
+export template <class Invoke>
+class regular_return {
+	public:
+		explicit regular_return(Invoke invoke) :
+				invoke{std::move(invoke)} {}
+
+		auto operator()(auto&&... args) -> decltype(auto)
+			requires std::invocable<Invoke, decltype(args)...>
+		{
+			if constexpr (std::is_void_v<std::invoke_result_t<Invoke, decltype(args)...>>) {
+				invoke();
+				return std::monostate{};
+			} else {
+				return invoke();
+			}
+		}
+
+	private:
+		Invoke invoke;
 };
 
 // https://en.cppreference.com/w/cpp/experimental/scope_exit

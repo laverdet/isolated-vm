@@ -21,7 +21,7 @@ export struct callback_info : util::non_copyable {
 			}
 		}
 
-		[[nodiscard]] auto arguments() -> std::span<napi_value> { return std::span{storage_}.first(count_); }
+		[[nodiscard]] auto arguments() const -> std::span<const napi_value> { return std::span{storage_}.first(count_); }
 		[[nodiscard]] auto data() const -> void* { return data_; }
 		[[nodiscard]] auto this_arg() const -> napi_value { return this_; }
 

@@ -12,7 +12,7 @@ template <class Type, size_t Size>
 struct transferee_subject<std::array<Type, Size>> : std::type_identity<Type> {};
 
 template <class Type>
-struct transferee_subject<std::span<Type>> : std::type_identity<Type> {};
+struct transferee_subject<std::span<Type>> : std::type_identity<std::remove_cv_t<Type>> {};
 
 template <class Type>
 struct transferee_subject<std::vector<Type>> : std::type_identity<Type> {};
@@ -28,11 +28,11 @@ struct visit<Meta, std::array<Type, Size>> : visit<Meta, Type> {
 };
 
 template <class Meta, class Type>
-struct visit<Meta, std::span<Type>> : visit<Meta, Type> {
-		using visit<Meta, Type>::visit;
+struct visit<Meta, std::span<Type>> : visit<Meta, std::remove_cv_t<Type>> {
+		using visit<Meta, std::remove_cv_t<Type>>::visit;
 
 		constexpr auto operator()(auto value, const auto& accept) const -> decltype(auto) {
-			const visit<Meta, Type>& visitor = *this;
+			const visit<Meta, std::remove_cv_t<Type>>& visitor = *this;
 			return accept(vector_tag{}, value, visitor);
 		}
 };

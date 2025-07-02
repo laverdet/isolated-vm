@@ -2,6 +2,7 @@ module;
 #include <memory>
 export module napi_js.environment;
 import ivm.utility;
+import napi_js.finalizer;
 import napi_js.utility;
 import nodejs;
 import v8_js;
@@ -37,12 +38,10 @@ class environment_of : public environment {
 		static auto make(napi_env env, auto&&... args) -> Type&
 			requires std::constructible_from<Type, napi_env, decltype(args)...> {
 			auto instance = std::make_unique<Type>(env, std::forward<decltype(args)>(args)...);
-			napi_finalize finalizer = [](napi_env /*env*/, void* data, void* /*hint*/) {
-				delete static_cast<Type*>(data);
-			};
-			js::napi::invoke0(napi_set_instance_data, env, instance.get(), finalizer, nullptr);
-			// That's a spicy dereference
-			return *instance.release();
+			return *js::napi::apply_finalizer(std::move(instance), [ & ](Type* data, napi_finalize finalize, void* hint) {
+				js::napi::invoke0(napi_set_instance_data, env, data, finalize, hint);
+				return data;
+			});
 		}
 };
 
