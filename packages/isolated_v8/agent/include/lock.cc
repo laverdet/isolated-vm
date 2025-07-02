@@ -19,7 +19,7 @@ class agent::lock final
 		explicit lock(std::shared_ptr<agent::host> host);
 		~lock();
 
-		auto operator*(this auto& self) -> decltype(auto) { return *self.host_; }
+		auto operator*(this auto& self) -> auto& { return *self.host_; }
 		auto accept_remote_handle(remote_handle& remote) noexcept -> void final;
 		[[nodiscard]] auto remote_expiration_task() const -> reset_handle_type final;
 		static auto get_current() -> lock&;

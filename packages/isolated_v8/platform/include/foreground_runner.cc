@@ -167,7 +167,7 @@ export class foreground_runner
 				auto pop_non_nestable() -> task_type;
 				auto pop() -> task_type;
 				template <v8::TaskPriority Priority>
-				auto task_queues_by_priority(this auto& self) -> decltype(auto);
+				auto task_queues_by_priority(this auto& self) -> auto&;
 
 			private:
 				auto flush_delayed() -> void;
@@ -244,7 +244,7 @@ auto foreground_runner_of_priority<Self, Priority>::post(task_type task) -> void
 }
 
 template <v8::TaskPriority Priority>
-auto foreground_runner::storage::task_queues_by_priority(this auto& self) -> decltype(auto) {
+auto foreground_runner::storage::task_queues_by_priority(this auto& self) -> auto& {
 	// NOLINTNEXTLINE(google-readability-casting) -- Linting is incorrect, it is not a C-style cast!
 	return self.queues_by_priority_[ priority_queue_length - priority_numeric_from<Priority> - 1 ];
 }

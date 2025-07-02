@@ -97,7 +97,7 @@ class platform::handle : public util::pointer_facade<platform> {
 		auto operator=(handle&&) noexcept -> handle& = default;
 		~handle();
 
-		auto operator*(this auto& self) -> decltype(auto) { return *self.platform_; }
+		auto operator*(this auto& self) -> auto& { return *self.platform_; }
 		static auto acquire() -> handle;
 
 	private:

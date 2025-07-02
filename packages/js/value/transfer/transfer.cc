@@ -36,7 +36,7 @@ struct accept<Meta, accept_with_throw::accept_throw<Type>> : accept<Meta, Type> 
 				accept<Meta, Type>{this} {}
 
 		constexpr auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> Type {
-			if constexpr (std::invocable<accept<Meta, Type>, decltype(tag), decltype(value), decltype(rest)...>) {
+			if constexpr (std::invocable<const accept<Meta, Type>&, decltype(tag), decltype(value), decltype(rest)...>) {
 				const accept<Meta, Type>& accept = *this;
 				return accept(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
 			} else {

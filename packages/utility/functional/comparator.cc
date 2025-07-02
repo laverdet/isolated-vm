@@ -11,7 +11,7 @@ struct hash_compare : private Hash {
 		using is_transparent = Hash::is_transparent;
 
 		auto operator()(auto&& left, auto&& right) const -> bool
-			requires std::invocable<Hash, decltype(left)> && std::invocable<Hash, decltype(left)> {
+			requires std::invocable<const Hash&, decltype(left)> && std::invocable<const Hash&, decltype(left)> {
 			return Hash::operator()(std::forward<decltype(left)>(left)) ==
 				Hash::operator()(std::forward<decltype(right)>(right));
 		}

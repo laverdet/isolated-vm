@@ -63,7 +63,7 @@ class regular_return {
 				invoke{std::move(invoke)} {}
 
 		auto operator()(auto&&... args) -> decltype(auto)
-			requires std::invocable<Invoke, decltype(args)...>
+			requires std::invocable<Invoke&, decltype(args)...>
 		{
 			if constexpr (std::is_void_v<std::invoke_result_t<Invoke, decltype(args)...>>) {
 				invoke();
