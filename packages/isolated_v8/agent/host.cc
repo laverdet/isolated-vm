@@ -41,13 +41,13 @@ auto agent::host::clock_time_ms() -> int64_t {
 	return std::visit([](auto&& clock) { return clock.clock_time_ms(); }, clock_);
 }
 
-auto agent::host::make_handle(const std::shared_ptr<host>& self) -> agent {
+auto agent::host::make_handle(std::shared_ptr<host> self) -> agent {
 	auto severable = self->severable_.lock();
 	if (!severable) {
 		severable = std::make_shared<agent::severable>(self);
 		self->severable_ = severable;
 	}
-	return {self, std::move(severable)};
+	return agent{std::move(self), std::move(severable)};
 }
 
 // v8 uses the same entropy source for `Math.random()` and also memory page randomization. We want

@@ -6,13 +6,12 @@ module;
 export module isolated_v8.agent:fwd;
 import isolated_v8.clock;
 import isolated_v8.cluster;
-import ivm.utility;
 
 namespace isolated_v8 {
 
 // The base `agent` class holds a weak reference to a `agent::host`. libivm directly controls the
 // lifetime of a `host` and can sever the `weak_ptr` in this class if needed.
-export class agent : util::non_copyable {
+export class agent {
 	public:
 		class host;
 		class lock;

@@ -53,7 +53,7 @@ class agent::host final {
 
 		static auto get_current() -> host*;
 		static auto get_current(v8::Isolate* isolate) -> host& { return *static_cast<host*>(isolate->GetData(0)); }
-		static auto make_handle(const std::shared_ptr<host>& self) -> agent;
+		static auto make_handle(std::shared_ptr<host> self) -> agent;
 
 	private:
 		static auto dispose_isolate(v8::Isolate* isolate) -> void { isolate->Dispose(); }

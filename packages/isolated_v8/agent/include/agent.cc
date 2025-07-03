@@ -27,8 +27,7 @@ auto agent::make(std::invocable<agent> auto fn, cluster& cluster, behavior_param
 			const std::stop_token& /*stop_token*/
 		) mutable {
 			auto agent_host = std::make_shared<agent::host>(cluster.scheduler(), runner, params);
-			auto agent = agent::host::make_handle(agent_host);
-			agent_host.reset();
+			auto agent = agent::host::make_handle(std::move(agent_host));
 			std::invoke(std::move(fn), std::move(agent));
 			// nb: `runner` contains the scheduler so it must be allowed to escape up the stack to
 			// be released later.
