@@ -1,5 +1,5 @@
-add_library(ivm_value_napi OBJECT)
-target_sources(ivm_value_napi
+add_library(napi_js OBJECT)
+target_sources(napi_js
 	PRIVATE
 		scheduler.cc
 		value/array.cc
@@ -28,8 +28,8 @@ target_sources(ivm_value_napi
 		value/include/primitive.cc
 		visit.cc
 )
-target_link_libraries(ivm_value_napi PRIVATE
+target_link_libraries(napi_js PRIVATE
 	ivm_utility
-	ivm_value
 	nodejs
+	value_js
 )

@@ -7,7 +7,6 @@ import isolated_js;
 import napi_js;
 import ivm.utility;
 import nodejs;
-import v8;
 using namespace js;
 using namespace std::string_literals;
 
@@ -53,7 +52,6 @@ export class environment
 
 	private:
 		isolated_v8::cluster cluster_;
-		v8::Isolate* isolate_;
 		util::copy_of<&string_literals> string_literal_storage_;
 };
 

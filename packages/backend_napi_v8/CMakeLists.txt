@@ -21,13 +21,11 @@ target_include_directories(ivm_backend_v8 SYSTEM PRIVATE
 	${NODE_DIST_DIR}/include/node
 )
 target_link_libraries(ivm_backend_v8 PUBLIC
-	backend_napi_v8_common_v8
-	backend_napi_v8_v8
 	isolated_v8
 	ivm_utility
-	ivm_value
-	ivm_value_napi
+	napi_js
 	nodejs
+	value_js
 )
 
 # Windows linking

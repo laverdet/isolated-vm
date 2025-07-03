@@ -5,13 +5,11 @@ import isolated_js;
 import napi_js;
 import ivm.utility;
 import nodejs;
-import v8;
 
 namespace backend_napi_v8 {
 
 environment::environment(napi_env env) :
-		environment_of{env},
-		isolate_{v8::Isolate::GetCurrent()} {
+		environment_of{env} {
 	scheduler().open(js::napi::invoke(napi_get_uv_event_loop, env));
 }
 

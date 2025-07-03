@@ -1,9 +1,9 @@
-add_library(${IV8_PREFIX}_v8 STATIC)
+add_library(google_v8 STATIC)
 
 # Preprocessor macros which enable dual v8 in the same process
-if (IVM_IV8_TRICKSHOT)
-	set(V8_MODULE_NAME z8)
-	target_compile_definitions(${IV8_PREFIX}_v8 PUBLIC
+if (IVM_V8_TRICKSHOT)
+	set(MODULE_NAME z8)
+	target_compile_definitions(google_v8 PUBLIC
 		cppgc=zppgc
 		unibrow=znibrow
 		v8_crdtp=z8_crdtp
@@ -12,13 +12,13 @@ if (IVM_IV8_TRICKSHOT)
 		v8_inspector=z8_inspector
 		v8=z8
 	)
-	target_include_directories(${IV8_PREFIX}_v8 SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+	target_include_directories(google_v8 SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 else()
-	set(V8_MODULE_NAME v8)
+	set(MODULE_NAME v8)
 endif()
 
 # Sources which will be preprocessed by `expand_def`
-target_preprocessed_sources(${IV8_PREFIX}_v8 v8 ${V8_MODULE_NAME}
+target_preprocessed_sources(google_v8 v8 ${MODULE_NAME}
 	PUBLIC FILE_SET CXX_MODULES FILES
 		array_buffer.cc
 		container.cc
@@ -49,21 +49,21 @@ target_preprocessed_sources(${IV8_PREFIX}_v8 v8 ${V8_MODULE_NAME}
 )
 
 # v8 headers
-target_include_directories(${IV8_PREFIX}_v8 SYSTEM PRIVATE "${IV8_INCLUDE_DIR}")
+target_include_directories(google_v8 SYSTEM PRIVATE "${V8_INCLUDE_DIR}")
 
-if (IVM_IV8_EMBEDDED)
+if (IVM_V8_EMBEDDED)
 	# Include v8-gn.h
-	target_compile_options(${IV8_PREFIX}_v8 PRIVATE -include "${V8_INCLUDE_GN_FILE}")
+	target_compile_options(google_v8 PRIVATE -include "${V8_INCLUDE_GN_FILE}")
 
 	# Link against v8, which is built elsewhere
 	if (V8_LIBRARY_TYPE STREQUAL static)
-		target_link_directories(${IV8_PREFIX}_v8 PUBLIC "${V8_OUT_PATH}/obj")
-		target_link_libraries(${IV8_PREFIX}_v8 PUBLIC v8_monolith)
+		target_link_directories(google_v8 PUBLIC "${V8_OUT_PATH}/obj")
+		target_link_libraries(google_v8 PUBLIC v8_monolith)
 	else()
-		target_link_directories(${IV8_PREFIX}_v8 PUBLIC "${V8_OUT_PATH}")
-		target_link_libraries(${IV8_PREFIX}_v8 PUBLIC v8 v8_libbase v8_libplatform)
+		target_link_directories(google_v8 PUBLIC "${V8_OUT_PATH}")
+		target_link_libraries(google_v8 PUBLIC v8 v8_libbase v8_libplatform)
 	endif()
 else()
 	# Prevents deeper v8 headers from being included from nodejs
-	target_compile_definitions(${IV8_PREFIX}_v8 PRIVATE IVM_V8_VIA_NODEJS)
+	target_compile_definitions(google_v8 PRIVATE V8_VIA_NODEJS)
 endif()

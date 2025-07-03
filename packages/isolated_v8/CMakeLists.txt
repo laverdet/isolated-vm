@@ -39,8 +39,8 @@ target_sources(isolated_v8
 )
 target_link_libraries(isolated_v8 PRIVATE
 	Boost::boost
-	ivm_embedded_common_v8
-	ivm_embedded_v8
+	google_v8
 	ivm_utility
-	ivm_value
+	v8_js
+	value_js
 )

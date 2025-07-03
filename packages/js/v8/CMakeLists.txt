@@ -1,17 +1,6 @@
-add_library(${IV8_PREFIX}_common_v8 OBJECT)
+add_library(v8_js OBJECT)
 
-# Dual module build for embedded / nodejs v8
-if (IVM_IV8_TRICKSHOT)
-	set(V8_JS_MODULE_NAME z8_js)
-	target_compile_definitions(${IV8_PREFIX}_common_v8 PUBLIC
-		iv8=iz8
-		v8_js=z8_js
-	)
-else()
-	set(V8_JS_MODULE_NAME v8_js)
-endif()
-
-target_preprocessed_sources(${IV8_PREFIX}_common_v8 v8_js ${V8_JS_MODULE_NAME}
+target_sources(v8_js
 	PRIVATE
 		value/array.cc
 		value/fixed_array.cc
@@ -35,8 +24,8 @@ target_preprocessed_sources(${IV8_PREFIX}_common_v8 v8_js ${V8_JS_MODULE_NAME}
 		value/include/string.cc
 		visit.cc
 )
-target_link_libraries(${IV8_PREFIX}_common_v8 PUBLIC
-	${IV8_PREFIX}_v8
+target_link_libraries(v8_js PUBLIC
+	google_v8
 	ivm_utility
-	ivm_value
+	value_js
 )

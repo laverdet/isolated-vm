@@ -15,7 +15,6 @@ import isolated_v8;
 import ivm.utility;
 import napi_js;
 import nodejs;
-import v8_js;
 using namespace isolated_v8;
 using namespace util::string_literals;
 

@@ -182,23 +182,11 @@ add_subdirectory(packages/utility)
 # JavaScript adjacent code which is not specific to v8 or nodejs
 add_subdirectory(packages/js/value)
 
-# v8 common packages. These source files are built twice, once which links against nodejs, and
-# another which links against internal v8/z8.
-# Note: `target_link_libraries` of OBJECT isn't inherited. So ivm_value and ivm_utility must be
-# linked to the final target.
-# https://gitlab.kitware.com/cmake/cmake/-/issues/18090
-set(IV8_PREFIX backend_napi_v8)
-set(IV8_INCLUDE_DIR "${NODE_DIST_DIR}/include/node")
-add_subdirectory(packages/js/v8 backend_napi_v8_jsv8)
-add_subdirectory(packages/third_party/v8 backend_napi_v8_v8)
-
 # Embedded v8
-set(IV8_PREFIX ivm_embedded)
-set(IV8_INCLUDE_DIR "${V8_INCLUDE_DIR}")
-set(IVM_IV8_EMBEDDED ON)
-set(IVM_IV8_TRICKSHOT ON)
-add_subdirectory(packages/js/v8 ivm_embedded_jsv8)
-add_subdirectory(packages/third_party/v8 ivm_embedded_v8)
+set(IVM_V8_EMBEDDED ON)
+set(IVM_V8_TRICKSHOT ON)
+add_subdirectory(packages/js/v8)
+add_subdirectory(packages/third_party/v8)
 
 # isolated_v8
 add_subdirectory(packages/isolated_v8)

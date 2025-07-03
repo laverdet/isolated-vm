@@ -1,5 +1,5 @@
-add_library(ivm_value OBJECT)
-target_sources(ivm_value
+add_library(value_js OBJECT)
+target_sources(value_js
 	PRIVATE
 		assertions.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
@@ -38,7 +38,7 @@ target_sources(ivm_value
 		vector/accept.cc
 		vector/visit.cc
 )
-target_link_libraries(ivm_value PRIVATE
+target_link_libraries(value_js PRIVATE
 	Boost::boost
 	ivm_utility
 )
