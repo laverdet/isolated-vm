@@ -5,7 +5,7 @@ module;
 #include <thread>
 #include <type_traits>
 #include <utility>
-export module napi_js.uv_scheduler;
+export module napi_js:uv_scheduler;
 import ivm.utility;
 import nodejs;
 

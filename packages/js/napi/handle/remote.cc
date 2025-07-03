@@ -3,13 +3,13 @@ module;
 #include <memory>
 #include <type_traits>
 #include <utility>
-export module napi_js.remote;
+export module napi_js:remote;
+import :environment;
+import :handle_scope;
+import :reference;
+import :uv_scheduler;
+import :value;
 import ivm.utility;
-import napi_js.environment;
-import napi_js.handle_scope;
-import napi_js.reference;
-import napi_js.uv_scheduler;
-import napi_js.value;
 import nodejs;
 
 namespace js::napi {

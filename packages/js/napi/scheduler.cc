@@ -6,7 +6,7 @@ module;
 #include <vector>
 import ivm.utility;
 import nodejs;
-module napi_js.uv_scheduler;
+module napi_js;
 
 namespace js::napi {
 

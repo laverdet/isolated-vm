@@ -1,17 +1,16 @@
 module;
 #include <string_view>
 #include <utility>
-export module napi_js.visit;
+export module napi_js:visit;
+import :api;
+import :bound_value;
+import :dictionary;
+import :environment;
+import :external;
+import :primitive;
+import :value;
 import isolated_js;
 import ivm.utility;
-import napi_js.bound_value;
-import napi_js.dictionary;
-import napi_js.environment;
-import napi_js.external;
-import napi_js.primitive;
-import napi_js.utility;
-import napi_js.value;
-import nodejs;
 
 namespace js {
 using namespace napi;

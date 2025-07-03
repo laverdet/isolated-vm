@@ -5,8 +5,8 @@ module;
 #include <memory>
 #include <type_traits>
 #include <utility>
-export module napi_js.callback;
-import napi_js.callback_info;
+export module napi_js:callback;
+export import :callback_info;
 import nodejs;
 
 namespace js::napi {

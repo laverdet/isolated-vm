@@ -1,11 +1,10 @@
 module;
 #include <type_traits>
-module napi_js.object;
+module napi_js;
+import :api;
+import :bound_value;
+import :value;
 import ivm.utility;
-import napi_js.bound_value;
-import napi_js.utility;
-import napi_js.value;
-import nodejs;
 
 namespace js::napi {
 

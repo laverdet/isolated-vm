@@ -1,12 +1,12 @@
 module;
 #include <compare>
 #include <cstdint>
-export module napi_js.array;
+export module napi_js:array;
+import :bound_value;
+import :object;
+import :value;
 import isolated_js;
 import ivm.utility;
-import napi_js.bound_value;
-import napi_js.object;
-import napi_js.value;
 import nodejs;
 
 namespace js::napi {

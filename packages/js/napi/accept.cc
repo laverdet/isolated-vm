@@ -3,16 +3,15 @@ module;
 #include <string_view>
 #include <utility>
 #include <variant>
-export module napi_js.accept;
+export module napi_js:accept;
+import :api;
+import :bound_value;
+import :dictionary;
+import :environment;
+import :primitive;
+import :value;
 import isolated_js;
 import ivm.utility;
-import napi_js.bound_value;
-import napi_js.dictionary;
-import napi_js.environment;
-import napi_js.primitive;
-import napi_js.utility;
-import napi_js.value;
-import nodejs;
 
 namespace js {
 using namespace napi;

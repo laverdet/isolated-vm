@@ -1,10 +1,9 @@
 module;
 #include <memory>
-export module napi_js.environment;
+export module napi_js:environment;
+import :api;
+import :finalizer;
 import ivm.utility;
-import napi_js.finalizer;
-import napi_js.utility;
-import nodejs;
 
 namespace js::napi {
 

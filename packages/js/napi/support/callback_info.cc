@@ -2,11 +2,10 @@ module;
 #include <array>
 #include <span>
 #include <stdexcept>
-export module napi_js.callback_info;
+export module napi_js:callback_info;
+import :api;
+import :environment;
 import ivm.utility;
-import napi_js.environment;
-import napi_js.utility;
-import nodejs;
 
 namespace js::napi {
 

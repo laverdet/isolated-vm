@@ -1,12 +1,11 @@
 module;
 #include <ranges>
 #include <utility>
-module napi_js.dictionary;
+module napi_js;
+import :api;
+import :array;
 import isolated_js;
 import ivm.utility;
-import napi_js.array;
-import napi_js.utility;
-import nodejs;
 
 namespace js::napi {
 

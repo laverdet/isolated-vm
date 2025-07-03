@@ -2,13 +2,12 @@ module;
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
-export module napi_js.primitive;
+export module napi_js:primitive;
+import :api;
+import :bound_value;
+import :environment;
+import :value;
 import isolated_js;
-import napi_js.bound_value;
-import napi_js.environment;
-import napi_js.utility;
-import napi_js.value;
-import nodejs;
 
 namespace js::napi {
 

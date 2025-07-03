@@ -4,17 +4,15 @@ module;
 #include <tuple>
 #include <variant>
 #include <vector>
-export module napi_js.function;
+export module napi_js:function;
+import :api;
+import :callback;
+import :environment;
+import :finalizer;
+import :primitive;
+import :value;
 import isolated_js;
 import ivm.utility;
-import napi_js.callback_info;
-import napi_js.callback;
-import napi_js.environment;
-import napi_js.finalizer;
-import napi_js.primitive;
-import napi_js.utility;
-import napi_js.value;
-import nodejs;
 
 namespace js::napi {
 

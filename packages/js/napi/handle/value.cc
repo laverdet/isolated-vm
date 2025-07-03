@@ -1,6 +1,6 @@
 module;
 #include <concepts>
-export module napi_js.value;
+export module napi_js:value;
 import nodejs;
 import isolated_js;
 

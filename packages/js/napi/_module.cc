@@ -1,13 +1,14 @@
 export module napi_js;
-export import napi_js.accept;
-export import napi_js.environment;
-export import napi_js.external;
-export import napi_js.function;
-export import napi_js.handle_scope;
-export import napi_js.object;
-export import napi_js.reference;
-export import napi_js.remote;
-export import napi_js.utility;
-export import napi_js.uv_scheduler;
-export import napi_js.value;
-export import napi_js.visit;
+export import :accept;
+// should be removed
+export import :api;
+export import :environment;
+export import :external;
+export import :function;
+export import :handle_scope;
+export import :object;
+export import :reference;
+export import :remote;
+export import :uv_scheduler;
+export import :value;
+export import :visit;

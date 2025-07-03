@@ -1,9 +1,8 @@
 module;
 #include <cstdint>
-module napi_js.array;
-import napi_js.bound_value;
-import napi_js.utility;
-import nodejs;
+module napi_js;
+import :api;
+import :bound_value;
 
 namespace js::napi {
 

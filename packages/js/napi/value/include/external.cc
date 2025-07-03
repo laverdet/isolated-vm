@@ -1,14 +1,13 @@
 module;
 #include <concepts>
 #include <memory>
-export module napi_js.external;
+export module napi_js:external;
+import :api;
+import :bound_value;
+import :finalizer;
+import :value;
 import isolated_js;
 import ivm.utility;
-import napi_js.bound_value;
-import napi_js.finalizer;
-import napi_js.utility;
-import napi_js.value;
-import nodejs;
 
 namespace js::napi {
 

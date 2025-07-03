@@ -3,9 +3,9 @@ module;
 #include <exception>
 #include <stdexcept>
 #include <type_traits>
-export module napi_js.utility;
+export module napi_js:api;
+export import nodejs;
 import ivm.utility;
-import nodejs;
 
 namespace js::napi {
 

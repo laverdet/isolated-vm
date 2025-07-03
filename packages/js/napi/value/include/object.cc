@@ -3,12 +3,12 @@ module;
 #include <functional>
 #include <tuple>
 #include <utility>
-export module napi_js.object;
+export module napi_js:object;
+import :bound_value;
+import :environment;
+import :primitive;
+import :value;
 import isolated_js;
-import napi_js.bound_value;
-import napi_js.environment;
-import napi_js.primitive;
-import napi_js.value;
 import nodejs;
 
 namespace js::napi {

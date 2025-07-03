@@ -2,11 +2,10 @@ module;
 #include <cstdint>
 #include <stdexcept>
 #include <string_view>
-module napi_js.primitive;
+module napi_js;
+import :api;
+import :bound_value;
 import isolated_js;
-import napi_js.bound_value;
-import napi_js.utility;
-import nodejs;
 
 namespace js::napi {
 
