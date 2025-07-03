@@ -22,13 +22,14 @@ target_sources(ivm_value_napi
 		support/utility.cc
 		value/include/array.cc
 		value/include/dictionary.cc
+		value/include/external.cc
 		value/include/function.cc
 		value/include/object.cc
 		value/include/primitive.cc
 		visit.cc
 )
 target_link_libraries(ivm_value_napi PRIVATE
-	backend_napi_v8_common_v8
 	ivm_utility
+	ivm_value
 	nodejs
 )

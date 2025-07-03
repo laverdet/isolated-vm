@@ -10,7 +10,6 @@ target_sources(ivm_backend_v8
 		_module.cc
 		include/agent.cc
 		include/environment.cc
-		include/external.cc
 		include/module.cc
 		include/script.cc
 		utility.cc

@@ -1,5 +1,4 @@
 module;
-#include <bit>
 #include <concepts>
 #include <exception>
 #include <stdexcept>
@@ -7,20 +6,8 @@ module;
 export module napi_js.utility;
 import ivm.utility;
 import nodejs;
-import v8;
 
 namespace js::napi {
-
-// Convert a napi handle to a v8 handle
-export auto to_v8(napi_value value) -> v8::Local<v8::Value> {
-	return std::bit_cast<v8::Local<v8::Value>>(value);
-}
-
-// Convert a v8 handle to a napi handle
-export template <class Type>
-auto from_v8(const v8::Local<Type>& local) -> napi_value {
-	return std::bit_cast<napi_value>(local);
-}
 
 // Invoke the given napi function and throw if it fails
 export template <class... Params>

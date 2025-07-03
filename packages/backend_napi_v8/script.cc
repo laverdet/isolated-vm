@@ -5,7 +5,6 @@ module;
 #include <variant>
 module backend_napi_v8.script;
 import backend_napi_v8.environment;
-import backend_napi_v8.external;
 import backend_napi_v8.utility;
 import isolated_js;
 import isolated_v8;
@@ -24,7 +23,7 @@ struct compile_script_options {
 
 auto compile_script(
 	environment& env,
-	js::iv8::external_reference<agent>& agent,
+	js::napi::untagged_external<agent>& agent,
 	js::string_t code_string,
 	std::optional<compile_script_options> options_optional
 ) {
@@ -32,7 +31,7 @@ auto compile_script(
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](environment& env, isolated_v8::script script) -> expected_value {
-			return make_external<isolated_v8::script>(env, std::move(script));
+			return js::napi::untagged_external<isolated_v8::script>::make(env, std::move(script));
 		}
 	);
 	agent->schedule(
@@ -50,9 +49,9 @@ auto compile_script(
 
 auto run_script(
 	environment& env,
-	js::iv8::external_reference<agent>& agent,
-	js::iv8::external_reference<script>& script,
-	js::iv8::external_reference<realm>& realm
+	js::napi::untagged_external<agent>& agent,
+	js::napi::untagged_external<script>& script,
+	js::napi::untagged_external<realm>& realm
 ) {
 	auto [ dispatch, promise ] = make_promise(
 		env,

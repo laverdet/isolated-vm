@@ -7,11 +7,11 @@ import ivm.utility;
 import napi_js.bound_value;
 import napi_js.dictionary;
 import napi_js.environment;
+import napi_js.external;
 import napi_js.primitive;
 import napi_js.utility;
 import napi_js.value;
 import nodejs;
-import v8;
 
 namespace js {
 using namespace napi;
@@ -19,13 +19,9 @@ using namespace napi;
 // Napi visitor which can detect the underlying type of a given value
 template <class Meta>
 struct visit<Meta, napi_value>
-		: visit<Meta, v8::Local<v8::External>>,
-			napi::environment_scope<typename Meta::visit_context_type> {
+		: napi::environment_scope<typename Meta::visit_context_type> {
 	public:
-		using visit<Meta, v8::Local<v8::External>>::operator();
-
-		visit(auto* root, auto& env) :
-				visit<Meta, v8::Local<v8::External>>{root},
+		visit(auto* /*root*/, auto& env) :
 				napi::environment_scope<typename Meta::visit_context_type>{env} {}
 
 		template <class Tag>
@@ -57,7 +53,7 @@ struct visit<Meta, napi_value>
 						return accept(dictionary_tag{}, napi::bound_value{napi_env{*this}, napi::value<dictionary_tag>::from(value)}, visit_entry);
 					}
 				case napi_external:
-					return (*this)(napi::to_v8(value).As<v8::External>(), accept);
+					return accept(external_tag{}, napi::bound_value{napi_env{*this}, napi::value<external_tag>::from(value)});
 				case napi_symbol:
 					return accept(symbol_tag{}, napi::value<symbol_tag>::from(value));
 				case napi_null:

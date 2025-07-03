@@ -5,8 +5,6 @@ import ivm.utility;
 import napi_js.finalizer;
 import napi_js.utility;
 import nodejs;
-import v8_js;
-import v8;
 
 namespace js::napi {
 
@@ -15,15 +13,12 @@ namespace js::napi {
 export class environment {
 	public:
 		explicit environment(napi_env env) :
-				env_{env},
-				isolate_{v8::Isolate::GetCurrent()} {}
+				env_{env} {}
 
 		[[nodiscard]] explicit operator napi_env() const { return env_; }
-		[[nodiscard]] auto isolate() const -> v8::Isolate* { return isolate_; }
 
 	private:
 		napi_env env_;
-		v8::Isolate* isolate_;
 };
 
 // CRTP helper to instantiate an environment and attach it to the napi context

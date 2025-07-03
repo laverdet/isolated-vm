@@ -6,7 +6,6 @@ module;
 #include <variant>
 module backend_napi_v8.agent;
 import backend_napi_v8.environment;
-import backend_napi_v8.external;
 import backend_napi_v8.utility;
 import isolated_v8;
 import v8_js;
@@ -43,7 +42,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](environment& env, isolated_v8::agent agent) -> expected_value {
-			return make_external<isolated_v8::agent>(env, std::move(agent));
+			return js::napi::untagged_external<isolated_v8::agent>::make(env, std::move(agent));
 		}
 	);
 	auto clock = std::visit(
@@ -78,12 +77,12 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 
 auto create_realm(
 	environment& env,
-	js::iv8::external_reference<agent>& agent
+	js::napi::untagged_external<agent>& agent
 ) {
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](environment& env, isolated_v8::realm realm) -> expected_value {
-			return make_external<isolated_v8::realm>(env, std::move(realm));
+			return js::napi::untagged_external<isolated_v8::realm>::make(env, std::move(realm));
 		}
 	);
 	agent->schedule(

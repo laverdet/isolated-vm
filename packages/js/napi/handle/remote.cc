@@ -23,13 +23,15 @@ concept remote_handle_environment =
 export template <class Tag>
 class remote : protected detail::reference_handle {
 	private:
-		struct private_ctor {};
+		struct private_constructor {
+				explicit private_constructor() = default;
+		};
 		static auto expire(remote* ptr) -> void;
 
 	public:
 		using unique_remote = std::unique_ptr<remote, util::function_type_of<expire>>;
 
-		remote(private_ctor /*private*/, const napi::environment& env, value<Tag> value, uv_scheduler scheduler) :
+		remote(private_constructor /*private*/, const napi::environment& env, value<Tag> value, uv_scheduler scheduler) :
 				reference_handle{napi_env{env}, napi_value{value}},
 				scheduler_{std::move(scheduler)} {}
 
@@ -81,12 +83,12 @@ auto remote<Tag>::get(const environment& env) const -> value<Tag> {
 
 template <class Tag>
 auto remote<Tag>::make_shared(remote_handle_environment auto& env, value<Tag> value) -> std::shared_ptr<remote> {
-	return std::shared_ptr<remote>{new remote{private_ctor{}, env, value, env.scheduler()}, expire};
+	return std::shared_ptr<remote>{new remote{private_constructor{}, env, value, env.scheduler()}, expire};
 }
 
 template <class Tag>
 auto remote<Tag>::make_unique(remote_handle_environment auto& env, value<Tag> value) -> unique_remote {
-	return unique_remote{new remote{private_ctor{}, env, value, env.scheduler()}};
+	return unique_remote{new remote{private_constructor{}, env, value, env.scheduler()}};
 }
 
 } // namespace js::napi

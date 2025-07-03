@@ -8,7 +8,6 @@ module;
 #include <vector>
 module backend_napi_v8.module_;
 import backend_napi_v8.environment;
-import backend_napi_v8.external;
 import backend_napi_v8.utility;
 import isolated_js;
 import isolated_v8;
@@ -31,7 +30,7 @@ struct create_capability_options {
 
 auto compile_module(
 	environment& env,
-	js::iv8::external_reference<agent>& agent,
+	js::napi::untagged_external<agent>& agent,
 	js::string_t source_text,
 	std::optional<compile_module_options> options_optional
 ) {
@@ -43,7 +42,7 @@ auto compile_module(
 			isolated_v8::js_module module_,
 			std::vector<isolated_v8::module_request> requests
 		) -> expected_value {
-			auto* handle = make_external<isolated_v8::js_module>(env, std::move(module_));
+			auto* handle = js::napi::untagged_external<isolated_v8::js_module>::make(env, std::move(module_));
 			auto result = std::tuple{
 				js::transfer_direct{handle},
 				std::move(requests),
@@ -68,9 +67,9 @@ auto compile_module(
 
 auto evaluate_module(
 	environment& env,
-	js::iv8::external_reference<agent>& agent,
-	js::iv8::external_reference<realm>& realm,
-	js::iv8::external_reference<js_module>& module_
+	js::napi::untagged_external<agent>& agent,
+	js::napi::untagged_external<realm>& realm,
+	js::napi::untagged_external<js_module>& module_
 ) {
 	auto [ dispatch, promise ] = make_promise(
 		env,
@@ -96,9 +95,9 @@ auto evaluate_module(
 
 auto link_module(
 	environment& env,
-	js::iv8::external_reference<agent>& agent,
-	js::iv8::external_reference<realm>& realm_,
-	js::iv8::external_reference<js_module>& module_,
+	js::napi::untagged_external<agent>& agent,
+	js::napi::untagged_external<realm>& realm_,
+	js::napi::untagged_external<js_module>& module_,
 	js::napi::value<js::function_tag> link_callback_
 ) {
 	js::napi::reference callback{env, link_callback_};
@@ -137,7 +136,7 @@ auto link_module(
 								[ &promise ](
 									environment& /*env*/,
 									js::napi::value<js::value_tag> /*error*/,
-									js::iv8::external_reference<js_module>* module
+									js::napi::untagged_external<js_module>* module
 								) -> void {
 									if (module) {
 										promise.set_value(&**module);
@@ -167,7 +166,7 @@ auto link_module(
 
 auto create_capability(
 	environment& env,
-	js::iv8::external_reference<isolated_v8::agent>& agent,
+	js::napi::untagged_external<isolated_v8::agent>& agent,
 	js::napi::value<js::function_tag> capability,
 	create_capability_options options
 ) {
@@ -201,7 +200,7 @@ auto create_capability(
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](environment& env, js_module module_) -> expected_value {
-			return make_external<isolated_v8::js_module>(env, std::move(module_));
+			return js::napi::untagged_external<isolated_v8::js_module>::make(env, std::move(module_));
 		}
 	);
 	agent->schedule(
