@@ -8,6 +8,7 @@ module;
 #include <vector>
 module backend_napi_v8.module_;
 import backend_napi_v8.environment;
+import backend_napi_v8.realm;
 import backend_napi_v8.utility;
 import isolated_js;
 import isolated_v8;
@@ -68,7 +69,7 @@ auto compile_module(
 auto evaluate_module(
 	environment& env,
 	js::napi::untagged_external<agent>& agent,
-	js::napi::untagged_external<realm>& realm,
+	js::napi::untagged_external<realm_handle>& realm,
 	js::napi::untagged_external<js_module>& module_
 ) {
 	auto [ dispatch, promise ] = make_promise(
@@ -87,7 +88,7 @@ auto evaluate_module(
 			auto result = module_.evaluate(realm_scope);
 			dispatch(std::move(result));
 		},
-		*realm,
+		realm->realm(),
 		*module_
 	);
 	return js::transfer_direct{promise};
@@ -96,7 +97,7 @@ auto evaluate_module(
 auto link_module(
 	environment& env,
 	js::napi::untagged_external<agent>& agent,
-	js::napi::untagged_external<realm>& realm_,
+	js::napi::untagged_external<realm_handle>& realm,
 	js::napi::untagged_external<js_module>& module_,
 	js::napi::value<js::function_tag> link_callback_
 ) {
@@ -158,7 +159,7 @@ auto link_module(
 			);
 			dispatch();
 		},
-		*realm_,
+		realm->realm(),
 		*module_
 	);
 	return js::transfer_direct{promise};

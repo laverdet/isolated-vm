@@ -5,6 +5,7 @@ module;
 #include <variant>
 module backend_napi_v8.script;
 import backend_napi_v8.environment;
+import backend_napi_v8.realm;
 import backend_napi_v8.utility;
 import isolated_js;
 import isolated_v8;
@@ -49,9 +50,8 @@ auto compile_script(
 
 auto run_script(
 	environment& env,
-	js::napi::untagged_external<agent>& agent,
 	js::napi::untagged_external<script>& script,
-	js::napi::untagged_external<realm>& realm
+	js::napi::untagged_external<realm_handle>& realm
 ) {
 	auto [ dispatch, promise ] = make_promise(
 		env,
@@ -59,7 +59,7 @@ auto run_script(
 			return js::transfer_in_strict<napi_value>(std::move(result), env);
 		}
 	);
-	agent->schedule(
+	realm->agent().schedule(
 		[ dispatch = std::move(dispatch) ](
 			isolated_v8::agent::lock& agent,
 			isolated_v8::realm realm,
@@ -69,7 +69,7 @@ auto run_script(
 			auto result = script.run(realm_scope);
 			dispatch(std::move(result));
 		},
-		*realm,
+		realm->realm(),
 		*script
 	);
 	return js::transfer_direct{promise};

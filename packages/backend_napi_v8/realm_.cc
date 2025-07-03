@@ -1,0 +1,23 @@
+export module backend_napi_v8.realm;
+import backend_napi_v8.environment;
+import isolated_js;
+import isolated_v8;
+import napi_js;
+
+namespace backend_napi_v8 {
+
+export class realm_handle {
+	public:
+		realm_handle(isolated_v8::agent agent, isolated_v8::realm realm);
+
+		auto agent() -> auto& { return agent_; }
+		auto realm() -> auto& { return realm_; }
+
+		static auto make_create_realm(environment& env) -> js::napi::value<js::function_tag>;
+
+	private:
+		isolated_v8::agent agent_;
+		isolated_v8::realm realm_;
+};
+
+} // namespace backend_napi_v8

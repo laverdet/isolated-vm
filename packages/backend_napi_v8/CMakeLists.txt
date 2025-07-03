@@ -5,6 +5,7 @@ target_sources(ivm_backend_v8
 		environment.cc
 		main.cc
 		module.cc
+		realm.cc
 		script.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
@@ -12,6 +13,7 @@ target_sources(ivm_backend_v8
 		include/environment.cc
 		include/module.cc
 		include/script.cc
+		realm_.cc
 		utility.cc
 )
 target_embed_content(ivm_backend_v8 runtime/dist/runtime.js)

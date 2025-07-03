@@ -20,7 +20,7 @@ NAPI_MODULE_INIT(/*napi_env env, napi_value exports*/) {
 			std::pair{"compileScript"_sl, js::transfer_direct{make_compile_script(backend_env)}},
 			std::pair{"createAgent"_sl, js::transfer_direct{make_create_agent(backend_env)}},
 			std::pair{"createCapability"_sl, js::transfer_direct{make_create_capability(backend_env)}},
-			std::pair{"createRealm"_sl, js::transfer_direct{make_create_realm(backend_env)}},
+			std::pair{"createRealm"_sl, js::transfer_direct{realm_handle::make_create_realm(backend_env)}},
 			std::pair{"evaluateModule"_sl, js::transfer_direct{make_evaluate_module(backend_env)}},
 			std::pair{"linkModule"_sl, js::transfer_direct{make_link_module(backend_env)}},
 			std::pair{"runScript"_sl, js::transfer_direct{make_run_script(backend_env)}}

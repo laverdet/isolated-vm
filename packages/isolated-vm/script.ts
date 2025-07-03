@@ -30,16 +30,14 @@ export interface Location {
 }
 
 export class Script {
-	readonly #agent;
 	readonly #script;
 
 	/** @internal */
-	constructor(agent: ivm.Agent, script: ivm.Script) {
-		this.#agent = agent;
+	constructor(script: ivm.Script) {
 		this.#script = script;
 	}
 
 	run(realm: Realm): Promise<unknown> {
-		return runScript(this.#agent, this.#script, __extractRealm(realm));
+		return runScript(this.#script, __extractRealm(realm));
 	}
 }

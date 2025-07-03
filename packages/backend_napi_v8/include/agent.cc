@@ -6,6 +6,5 @@ import napi_js;
 namespace backend_napi_v8 {
 
 export auto make_create_agent(environment& env) -> js::napi::value<js::function_tag>;
-export auto make_create_realm(environment& env) -> js::napi::value<js::function_tag>;
 
 } // namespace backend_napi_v8

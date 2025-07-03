@@ -1,6 +1,4 @@
 module;
-#include "runtime/dist/runtime.js.h"
-#include <exception>
 #include <optional>
 #include <tuple>
 #include <variant>
@@ -75,40 +73,8 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	return js::transfer_direct{promise};
 }
 
-auto create_realm(
-	environment& env,
-	js::napi::untagged_external<agent>& agent
-) {
-	auto [ dispatch, promise ] = make_promise(
-		env,
-		[](environment& env, isolated_v8::realm realm) -> expected_value {
-			return js::napi::untagged_external<isolated_v8::realm>::make(env, std::move(realm));
-		}
-	);
-	agent->schedule(
-		[ dispatch = std::move(dispatch) ](
-			isolated_v8::agent::lock& agent
-		) mutable {
-			auto realm = isolated_v8::realm::make(agent);
-			auto runtime = isolated_v8::js_module::compile(agent, runtime_dist_runtime_js, source_origin{});
-			isolated_v8::realm::scope realm_scope{agent, realm};
-			runtime.link(realm_scope, [](auto&&...) -> isolated_v8::js_module& {
-				std::terminate();
-			});
-			runtime.evaluate(realm_scope);
-			dispatch(std::move(realm));
-		}
-	);
-
-	return js::transfer_direct{promise};
-}
-
 auto make_create_agent(environment& env) -> js::napi::value<js::function_tag> {
 	return js::napi::value<js::function_tag>::make(env, js::free_function<create_agent>{});
-}
-
-auto make_create_realm(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::free_function<create_realm>{});
 }
 
 } // namespace backend_napi_v8

@@ -79,7 +79,7 @@ export class Agent {
 
 	async compileScript(code: string, options?: Agent.CompileScriptOptions): Promise<Script> {
 		const script = await compileScript(this.#agent, code, options);
-		return new Script(this.#agent, script);
+		return new Script(script);
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
