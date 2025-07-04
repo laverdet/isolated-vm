@@ -25,8 +25,8 @@ declare module "backend_v8.node" {
 		createAgent: (options: CreateAgentOptions | undefined) => Promise<Agent>;
 		createCapability: (agent: Agent, callback: (...args: unknown[]) => void, options: CreateCapabilityOptions) => Promise<Module>;
 		createRealm: (agent: Agent) => Promise<Realm>;
-		evaluateModule: (agent: Agent, realm: Realm, module: Module) => Promise<unknown>;
-		linkModule: (agent: Agent, realm: Realm, module: Module, linker: ModuleLinker) => Promise<void>;
+		evaluateModule: (realm: Realm, module: Module) => Promise<unknown>;
+		linkModule: (realm: Realm, module: Module, linker: ModuleLinker) => Promise<void>;
 		runScript: (script: Script, realm: Realm) => Promise<unknown>;
 	};
 	export default exports;

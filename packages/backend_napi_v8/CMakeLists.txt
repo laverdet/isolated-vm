@@ -11,8 +11,8 @@ target_sources(ivm_backend_v8
 		_module.cc
 		include/agent.cc
 		include/environment.cc
-		include/module.cc
 		include/script.cc
+		module_.cc
 		realm_.cc
 		utility.cc
 )

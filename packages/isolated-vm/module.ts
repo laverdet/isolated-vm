@@ -35,18 +35,11 @@ export interface ModuleRequest {
 }
 
 export class AbstractModule {
-	readonly #agent;
 	readonly #module;
 
 	/** @internal */
-	constructor(agent: ivm.Agent, module: ivm.Module) {
-		this.#agent = agent;
+	constructor(module: ivm.Module) {
 		this.#module = module;
-	}
-
-	/** @internal */
-	static __extractAgent(this: void, module: AbstractModule) {
-		return module.#agent;
 	}
 
 	/** @internal */
@@ -55,7 +48,7 @@ export class AbstractModule {
 	}
 }
 
-const { __extractAgent, __extractModule } = AbstractModule;
+const { __extractModule } = AbstractModule;
 
 /**
  * A callback into nodejs which grants some kind of low-level capability to internal APIs.
@@ -69,18 +62,17 @@ export class Module extends AbstractModule {
 	readonly requests: readonly ModuleRequest[];
 
 	/** @internal */
-	constructor(agent: ivm.Agent, module: ivm.Module, requests: readonly ModuleRequest[]) {
-		super(agent, module);
+	constructor(module: ivm.Module, requests: readonly ModuleRequest[]) {
+		super(module);
 		this.requests = requests;
 	}
 
 	evaluate(realm: Realm): Promise<unknown> {
-		return ivm.evaluateModule(__extractAgent(this), __extractRealm(realm), __extractModule(this));
+		return ivm.evaluateModule(__extractRealm(realm), __extractModule(this));
 	}
 
 	link(realm: Realm, linker: ModuleLinker): Promise<void> {
 		return ivm.linkModule(
-			__extractAgent(this),
 			__extractRealm(realm),
 			__extractModule(this),
 			(specifier, parentName, attributes, callback) => {

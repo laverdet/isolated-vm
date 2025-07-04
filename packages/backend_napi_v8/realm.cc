@@ -7,7 +7,6 @@ import :environment;
 import :utility;
 import isolated_js;
 import isolated_v8;
-import ivm.utility;
 import napi_js;
 
 namespace backend_napi_v8 {

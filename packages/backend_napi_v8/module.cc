@@ -28,21 +28,25 @@ struct create_capability_options {
 		source_required_name origin;
 };
 
+module_handle::module_handle(isolated_v8::agent agent, isolated_v8::js_module module) :
+		agent_{std::move(agent)},
+		module_{std::move(module)} {}
+
 auto compile_module(
 	environment& env,
 	js::napi::untagged_external<agent>& agent,
 	js::string_t source_text,
 	std::optional<compile_module_options> options_optional
 ) {
-	auto options = std::move(options_optional).value_or(compile_module_options{});
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](
 			environment& env,
+			isolated_v8::agent agent,
 			isolated_v8::js_module module_,
 			std::vector<isolated_v8::module_request> requests
 		) -> expected_value {
-			auto* handle = js::napi::untagged_external<isolated_v8::js_module>::make(env, std::move(module_));
+			auto* handle = js::napi::untagged_external<module_handle>::make(env, std::move(agent), std::move(module_));
 			auto result = std::tuple{
 				js::transfer_direct{handle},
 				std::move(requests),
@@ -51,25 +55,28 @@ auto compile_module(
 		}
 	);
 	agent->schedule(
-		[ options = std::move(options),
-			source_text = std::move(source_text),
-			dispatch = std::move(dispatch) ](
-			isolated_v8::agent::lock& agent
+		[ dispatch = std::move(dispatch) ](
+			isolated_v8::agent::lock& lock,
+			isolated_v8::agent agent,
+			js::string_t source_text,
+			compile_module_options options
 		) mutable {
 			auto origin = std::move(options.origin).value_or(source_origin{});
-			auto module = isolated_v8::js_module::compile(agent, std::move(source_text), origin);
-			auto requests = module.requests(agent);
-			dispatch(std::move(module), requests);
-		}
+			auto module = isolated_v8::js_module::compile(lock, std::move(source_text), std::move(origin));
+			auto requests = module.requests(lock);
+			dispatch(std::move(agent), std::move(module), std::move(requests));
+		},
+		*agent,
+		std::move(source_text),
+		std::move(options_optional).value_or(compile_module_options{})
 	);
 	return js::transfer_direct{promise};
 }
 
 auto evaluate_module(
 	environment& env,
-	js::napi::untagged_external<agent>& agent,
 	js::napi::untagged_external<realm_handle>& realm,
-	js::napi::untagged_external<js_module>& module_
+	js::napi::untagged_external<module_handle>& module_
 ) {
 	auto [ dispatch, promise ] = make_promise(
 		env,
@@ -77,7 +84,7 @@ auto evaluate_module(
 			return js::transfer_in_strict<napi_value>(std::move(result), env);
 		}
 	);
-	agent->schedule(
+	module_->agent().schedule(
 		[ dispatch = std::move(dispatch) ](
 			isolated_v8::agent::lock& agent,
 			isolated_v8::realm realm,
@@ -88,16 +95,15 @@ auto evaluate_module(
 			dispatch(std::move(result));
 		},
 		realm->realm(),
-		*module_
+		module_->module()
 	);
 	return js::transfer_direct{promise};
 }
 
 auto link_module(
 	environment& env,
-	js::napi::untagged_external<agent>& agent,
 	js::napi::untagged_external<realm_handle>& realm,
-	js::napi::untagged_external<js_module>& module_,
+	js::napi::untagged_external<module_handle>& module_,
 	js::napi::value<js::function_tag> link_callback_
 ) {
 	js::napi::reference callback{env, link_callback_};
@@ -109,7 +115,7 @@ auto link_module(
 			return js::napi::invoke(napi_get_boolean, napi_env{env}, true);
 		}
 	);
-	agent->schedule_async(
+	module_->agent().schedule_async(
 		[ &env,
 			link_callback_ref = std::move(link_callback_ref),
 			scheduler = std::move(scheduler),
@@ -136,10 +142,10 @@ auto link_module(
 								[ &promise ](
 									environment& /*env*/,
 									js::napi::value<js::value_tag> /*error*/,
-									js::napi::untagged_external<js_module>* module
+									js::napi::untagged_external<module_handle>* module
 								) -> void {
 									if (module) {
-										promise.set_value(&**module);
+										promise.set_value(&(*module)->module());
 									}
 								}
 							};
@@ -159,7 +165,7 @@ auto link_module(
 			dispatch();
 		},
 		realm->realm(),
-		*module_
+		module_->module()
 	);
 	return js::transfer_direct{promise};
 }
@@ -199,37 +205,44 @@ auto create_capability(
 	// Make synthetic module
 	auto [ dispatch, promise ] = make_promise(
 		env,
-		[](environment& env, js_module module_) -> expected_value {
-			return js::napi::untagged_external<isolated_v8::js_module>::make(env, std::move(module_));
+		[](
+			environment& env,
+			isolated_v8::agent agent,
+			js_module module_
+		) -> expected_value {
+			return js::napi::untagged_external<module_handle>::make(env, std::move(agent), std::move(module_));
 		}
 	);
 	agent->schedule(
 		[ invoke_capability = std::move(invoke_capability),
-			dispatch = std::move(dispatch),
-			options = std::move(options) ](
-			isolated_v8::agent::lock& agent
+			dispatch = std::move(dispatch) ](
+			isolated_v8::agent::lock& lock,
+			isolated_v8::agent agent,
+			create_capability_options options
 		) mutable {
-			auto exports = isolated_v8::function_template::make(agent, std::move(invoke_capability));
-			auto module_ = isolated_v8::js_module::create_synthetic(agent, exports, std::move(options.origin));
-			dispatch(std::move(module_));
-		}
+			auto exports = isolated_v8::function_template::make(lock, std::move(invoke_capability));
+			auto module_ = isolated_v8::js_module::create_synthetic(lock, exports, std::move(options.origin));
+			dispatch(std::move(agent), std::move(module_));
+		},
+		*agent,
+		std::move(options)
 	);
 	return js::transfer_direct{promise};
 }
 
-auto make_compile_module(environment& env) -> js::napi::value<js::function_tag> {
+auto module_handle::make_compile_module(environment& env) -> js::napi::value<js::function_tag> {
 	return js::napi::value<js::function_tag>::make(env, js::free_function<compile_module>{});
 }
 
-auto make_create_capability(environment& env) -> js::napi::value<js::function_tag> {
+auto module_handle::make_create_capability(environment& env) -> js::napi::value<js::function_tag> {
 	return js::napi::value<js::function_tag>::make(env, js::free_function<create_capability>{});
 }
 
-auto make_evaluate_module(environment& env) -> js::napi::value<js::function_tag> {
+auto module_handle::make_evaluate_module(environment& env) -> js::napi::value<js::function_tag> {
 	return js::napi::value<js::function_tag>::make(env, js::free_function<evaluate_module>{});
 }
 
-auto make_link_module(environment& env) -> js::napi::value<js::function_tag> {
+auto module_handle::make_link_module(environment& env) -> js::napi::value<js::function_tag> {
 	return js::napi::value<js::function_tag>::make(env, js::free_function<link_module>{});
 }
 

@@ -64,7 +64,7 @@ export class Agent {
 
 	async createCapability(callback: (...args: unknown[]) => void, options: Agent.CreateCapabilityOptions): Promise<Capability> {
 		const module = await createCapability(this.#agent, callback, options);
-		return new Capability(this.#agent, module);
+		return new Capability(module);
 	}
 
 	async createRealm(): Promise<Realm> {
@@ -74,7 +74,7 @@ export class Agent {
 
 	async compileModule(code: string, options?: Agent.CompileModuleOptions): Promise<Module> {
 		const [ module, requests ] = await compileModule(this.#agent, code, options);
-		return new Module(this.#agent, module, requests);
+		return new Module(module, requests);
 	}
 
 	async compileScript(code: string, options?: Agent.CompileScriptOptions): Promise<Script> {
