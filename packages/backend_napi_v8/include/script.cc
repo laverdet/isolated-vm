@@ -1,5 +1,5 @@
-export module backend_napi_v8.script;
-import backend_napi_v8.environment;
+export module backend_napi_v8:script;
+import :environment;
 import isolated_js;
 import napi_js;
 

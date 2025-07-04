@@ -3,10 +3,10 @@ module;
 #include <tuple>
 #include <utility>
 #include <variant>
-module backend_napi_v8.script;
-import backend_napi_v8.environment;
-import backend_napi_v8.realm;
-import backend_napi_v8.utility;
+module backend_napi_v8;
+import :environment;
+import :realm;
+import :utility;
 import isolated_js;
 import isolated_v8;
 import ivm.utility;

@@ -1,11 +1,11 @@
 module;
 #include <string>
 #include <type_traits>
-export module backend_napi_v8.environment;
-import isolated_v8;
+export module backend_napi_v8:environment;
 import isolated_js;
-import napi_js;
+import isolated_v8;
 import ivm.utility;
+import napi_js;
 import nodejs;
 using namespace js;
 using namespace std::string_literals;

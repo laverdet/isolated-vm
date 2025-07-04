@@ -2,11 +2,11 @@ module;
 #include <expected>
 #include <tuple>
 #include <utility>
-export module backend_napi_v8.utility;
-import backend_napi_v8.environment;
+export module backend_napi_v8:utility;
+import :environment;
 import isolated_js;
-import napi_js;
 import ivm.utility;
+import napi_js;
 
 namespace backend_napi_v8 {
 using namespace js;

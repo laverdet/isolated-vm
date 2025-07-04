@@ -2,9 +2,9 @@ module;
 #include "runtime/dist/runtime.js.h"
 #include <exception>
 #include <utility>
-module backend_napi_v8.realm;
-import backend_napi_v8.environment;
-import backend_napi_v8.utility;
+module backend_napi_v8;
+import :environment;
+import :utility;
 import isolated_js;
 import isolated_v8;
 import ivm.utility;

@@ -1,5 +1,5 @@
-export module backend_napi_v8.realm;
-import backend_napi_v8.environment;
+export module backend_napi_v8:realm;
+import :environment;
 import isolated_js;
 import isolated_v8;
 import napi_js;

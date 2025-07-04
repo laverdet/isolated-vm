@@ -1,9 +1,9 @@
 module;
 #include <cstring>
-module backend_napi_v8.environment;
+module backend_napi_v8;
 import isolated_js;
-import napi_js;
 import ivm.utility;
+import napi_js;
 import nodejs;
 
 namespace backend_napi_v8 {

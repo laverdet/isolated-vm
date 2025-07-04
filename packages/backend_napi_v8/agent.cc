@@ -2,13 +2,13 @@ module;
 #include <optional>
 #include <tuple>
 #include <variant>
-module backend_napi_v8.agent;
-import backend_napi_v8.environment;
-import backend_napi_v8.utility;
-import isolated_v8;
+module backend_napi_v8;
+import :environment;
+import :utility;
 import isolated_js;
-import napi_js;
+import isolated_v8;
 import ivm.utility;
+import napi_js;
 import nodejs;
 using namespace isolated_v8;
 using namespace util::string_literals;
