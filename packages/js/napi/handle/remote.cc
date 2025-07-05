@@ -29,7 +29,7 @@ class remote : protected detail::reference_handle {
 		static auto expire(remote* ptr) -> void;
 
 	public:
-		using unique_remote = std::unique_ptr<remote, util::function_type_of<expire>>;
+		using unique_remote = std::unique_ptr<remote, util::invocable_constant<expire>>;
 
 		remote(private_constructor /*private*/, const napi::environment& env, value<Tag> value, uv_scheduler scheduler) :
 				reference_handle{napi_env{env}, napi_value{value}},

@@ -43,26 +43,15 @@ struct copy_of<Value, const Type*> : Type {
 				Type{*Value} {}
 };
 
-// Convert static function pointer into a default-constructible function type
-export template <auto Function>
-struct function_type_of;
-
-template <class Result, class... Args, Result(Function)(Args...)>
-struct function_type_of<Function> {
-		auto operator()(Args... args) const -> decltype(auto) {
-			return Function(std::forward<Args>(args)...);
-		}
-};
-
 // Wraps the given invocable. When invoked if it returns `void` then `std::monostate{}` will be
 // returned instead.
 export template <class Invoke>
 class regular_return {
 	public:
-		explicit regular_return(Invoke invoke) :
+		constexpr explicit regular_return(Invoke invoke) :
 				invoke{std::move(invoke)} {}
 
-		auto operator()(auto&&... args) -> decltype(auto)
+		constexpr auto operator()(auto&&... args) -> decltype(auto)
 			requires std::invocable<Invoke&, decltype(args)...>
 		{
 			if constexpr (std::is_void_v<std::invoke_result_t<Invoke, decltype(args)...>>) {

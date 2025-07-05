@@ -75,11 +75,11 @@ auto run_script(
 }
 
 auto make_compile_script(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::free_function<compile_script>{});
+	return js::napi::value<js::function_tag>::make(env, js::make_static_function<compile_script>());
 }
 
 auto make_run_script(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::free_function<run_script>{});
+	return js::napi::value<js::function_tag>::make(env, js::make_static_function<run_script>());
 }
 
 } // namespace backend_napi_v8

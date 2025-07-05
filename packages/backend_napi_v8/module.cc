@@ -138,7 +138,7 @@ auto link_module(
 					scheduler(
 						[ & ]() {
 							js::napi::handle_scope scope{napi_env{env}};
-							auto callback = js::bound_function{
+							auto callback = js::free_function{
 								[ &promise ](
 									environment& /*env*/,
 									js::napi::value<js::value_tag> /*error*/,
@@ -186,7 +186,7 @@ auto create_capability(
 			callback->get(env).apply<std::monostate>(env, std::move(params));
 		};
 	// Callback passed to isolated v8
-	auto invoke_capability = js::bound_function{
+	auto invoke_capability = js::free_function{
 		[ &env,
 			capability_callback = std::move(capability_callback) ](
 			realm::scope& /*realm*/,
@@ -231,19 +231,19 @@ auto create_capability(
 }
 
 auto module_handle::make_compile_module(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::free_function<compile_module>{});
+	return js::napi::value<js::function_tag>::make(env, js::make_static_function<compile_module>());
 }
 
 auto module_handle::make_create_capability(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::free_function<create_capability>{});
+	return js::napi::value<js::function_tag>::make(env, js::make_static_function<create_capability>());
 }
 
 auto module_handle::make_evaluate_module(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::free_function<evaluate_module>{});
+	return js::napi::value<js::function_tag>::make(env, js::make_static_function<evaluate_module>());
 }
 
 auto module_handle::make_link_module(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::free_function<link_module>{});
+	return js::napi::value<js::function_tag>::make(env, js::make_static_function<link_module>());
 }
 
 } // namespace backend_napi_v8

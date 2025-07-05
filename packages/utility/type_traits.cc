@@ -8,7 +8,7 @@ namespace util {
 export template <auto Value>
 struct value_constant {
 		using value_type = decltype(Value);
-		consteval auto operator*() const { return Value; }
+		constexpr auto operator*() const { return Value; }
 		constexpr static auto value = Value;
 };
 
@@ -47,20 +47,34 @@ struct function_signature
 template <class Type>
 struct function_signature<std::function<Type>>;
 
-// Free function
+// Most invocable types including: pointers, lambdas, function objects, explicit-this member functions
 template <class Result, class... Args>
 struct function_signature<std::function<auto(Args...)->Result>>
 		: std::type_identity<auto(Args...)->Result> {};
 
-// Pointer type intentionally erased because it is pointless
-template <class Result, class... Args>
-struct function_signature<std::function<auto (*)(Args...)->Result>>
-		: std::type_identity<auto(Args...)->Result> {};
+// Non-explicit this member functions (abridged)
+template <class Result, class Object, bool Ex, class... Args>
+struct function_signature<auto (Object::*)(Args...) noexcept(Ex)->Result>
+		: std::type_identity<auto(Object&, Args...)->Result> {};
 
-// Member function (this doesn't seem to actually work)
-template <class Result, class Object, class... Args>
-struct function_signature<std::function<auto (Object::*)(Args...)->Result>>
-		: std::type_identity<auto (Object::*)(Args...)->Result> {};
+template <class Result, class Object, bool Ex, class... Args>
+struct function_signature<auto (Object::*)(Args...) && noexcept(Ex)->Result>
+		: std::type_identity<auto(Object&&, Args...)->Result> {};
+
+template <class Result, class Object, bool Ex, class... Args>
+struct function_signature<auto (Object::*)(Args...) const noexcept(Ex)->Result>
+		: std::type_identity<auto(const Object&, Args...)->Result> {};
+
+// Implementation of `value_constant` for invocable values
+export template <auto Invocable, class Signature = function_signature_t<decltype(Invocable)>>
+struct invocable_constant;
+
+template <class Result, class... Args, auto(Invocable)(Args...)->Result>
+struct invocable_constant<Invocable, auto(Args...)->Result> : value_constant<Invocable> {
+		constexpr auto operator()(Args... args) const -> decltype(auto) {
+			return (**this)(std::forward<Args>(args)...);
+		}
+};
 
 // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0870r4.html
 export template <class From, class To>

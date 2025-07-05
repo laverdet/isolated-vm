@@ -63,7 +63,7 @@ class agent::host final {
 		std::shared_ptr<isolated_v8::foreground_runner> foreground_runner_;
 		scheduler::runner<{}> async_scheduler_;
 		std::unique_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
-		std::unique_ptr<v8::Isolate, util::function_type_of<dispose_isolate>> isolate_;
+		std::unique_ptr<v8::Isolate, util::invocable_constant<dispose_isolate>> isolate_;
 		isolated_v8::remote_handle_list remote_handle_list_;
 		weak_modules_actions_type weak_module_actions_;
 		weak_modules_specifiers_type weak_module_specifiers_;

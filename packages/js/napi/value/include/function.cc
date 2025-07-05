@@ -44,7 +44,7 @@ struct invoke_callback;
 template <class Result, class Environment, class... Args>
 struct invoke_callback<Result(Environment, Args...)> {
 		auto operator()(auto& env, const callback_info& info, auto&& invocable) {
-			auto run = [ & ]() -> decltype(auto) {
+			auto run = util::regular_return{[ & ]() -> decltype(auto) {
 				return std::apply(
 					std::forward<decltype(invocable)>(invocable),
 					std::tuple_cat(
@@ -52,8 +52,8 @@ struct invoke_callback<Result(Environment, Args...)> {
 						js::transfer_out<std::tuple<Args...>>(info.arguments(), env)
 					)
 				);
-			};
-			return js::transfer_in_strict<napi_value>(util::regular_return{run}(), env);
+			}};
+			return js::transfer_in_strict<napi_value>(run(), env);
 		}
 };
 
@@ -78,10 +78,13 @@ auto value<function_tag>::invoke(auto& env, std::span<napi_value> args) -> Resul
 
 template <class Environment>
 auto value<function_tag>::make(Environment& env, auto function) -> value<function_tag> {
-	using function_type = std::decay_t<decltype(function.invocable)>;
+	using function_type = std::decay_t<decltype(function.callback)>;
 	using signature_type = util::function_signature_t<function_type>;
-	auto trampoline = [ invoke = std::move(function.invocable) ](Environment& env, const callback_info& info) -> napi_value {
-		return invoke_callback<signature_type>{}(env, info, invoke);
+	auto trampoline = util::bind_parameters{
+		[](const auto& callback, Environment& env, const callback_info& info) -> napi_value {
+			return invoke_callback<signature_type>{}(env, info, callback);
+		},
+		std::move(function.callback)
 	};
 	auto [ callback_ptr, finalizer ] = make_napi_callback(env, std::move(trampoline));
 	const auto make = [ & ]() {

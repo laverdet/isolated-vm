@@ -3,6 +3,7 @@ module;
 #include <memory>
 #include <utility>
 export module ivm.utility:functional;
+import :tuple;
 
 namespace util {
 
@@ -31,5 +32,36 @@ auto make_indirect_moveable_function(Fn&& fn) {
 }
 
 #endif
+
+// Captures the given parameters in way such that empty objects yield an empty invocable. See:
+//   static_assert(std::is_empty_v<decltype([]() {})>);
+//   static_assert(!std::is_empty_v<decltype([ a = std::monostate{} ]() {})>);
+export template <class Invocable, class... Params>
+class bind_parameters;
+
+template <class Invocable, class... Params>
+class bind_parameters {
+	public:
+		constexpr explicit bind_parameters(Invocable invocable, Params... params) :
+				invocable_{std::move(invocable)},
+				params_{std::move(params)...} {}
+
+		constexpr auto operator()(this auto&& self, auto&&... args)
+			requires std::invocable<Invocable, Params..., decltype(args)...> {
+			return std::invoke(
+				[ & ]<size_t... Index>(std::index_sequence<Index...> /*indices*/) constexpr -> decltype(auto) {
+					return std::forward<decltype(self)>(self).invocable_(
+						get<Index>(std::forward<decltype(self)>(self).params_)...,
+						std::forward<decltype(args)>(args)...
+					);
+				},
+				std::make_index_sequence<sizeof...(Params)>{}
+			);
+		}
+
+	private:
+		[[no_unique_address]] Invocable invocable_;
+		[[no_unique_address]] flat_tuple<Params...> params_;
+};
 
 } // namespace util

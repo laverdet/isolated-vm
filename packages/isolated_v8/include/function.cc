@@ -64,7 +64,7 @@ struct invoke_callback<Result(realm::scope&, Args...)> {
 
 // Bound function factory
 auto function_template::make(agent::lock& agent, auto&& function) -> function_template {
-	using function_type = std::decay_t<decltype(function.invocable)>;
+	using function_type = std::decay_t<decltype(function.callback)>;
 	using signature_type = util::function_signature_t<function_type>;
 
 	if constexpr (std::is_empty_v<function_type>) {
@@ -72,11 +72,11 @@ auto function_template::make(agent::lock& agent, auto&& function) -> function_te
 	} else if constexpr (sizeof(function_type) == sizeof(void*) && std::is_trivially_destructible_v<function_type>) {
 		static_assert(false, "Not implemented");
 	} else {
-		auto external = make_collected_external<function_type>(agent, agent->autorelease_pool(), std::forward<decltype(function)>(function).invocable);
+		auto external = make_collected_external<function_type>(agent, agent->autorelease_pool(), std::forward<decltype(function)>(function).callback);
 		v8::FunctionCallback callback = [](const v8::FunctionCallbackInfo<v8::Value>& info) {
-			auto& invocable = unwrap_collected_external<function_type>(info.Data().As<v8::External>());
+			auto& callback = unwrap_collected_external<function_type>(info.Data().As<v8::External>());
 			invoke_callback<signature_type> invoke{};
-			invoke(info, invocable);
+			invoke(info, callback);
 		};
 		auto fn_template = v8::FunctionTemplate::New(agent.isolate(), callback, external, {}, invoke_callback<signature_type>::length, v8::ConstructorBehavior::kThrow);
 		return function_template{agent, fn_template};

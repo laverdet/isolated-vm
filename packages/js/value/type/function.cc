@@ -11,35 +11,27 @@ namespace js {
 // Holds `this` and arguments vector
 export struct arguments_tag : vector_tag {};
 
-// Non-constructor, non-member stateless free function
-export template <auto Function>
+// Non-constructor, non-member function
+export template <class Callback>
 struct free_function {
-		constexpr static auto invocable = Function;
-		constexpr static auto name = std::string_view{};
-};
+		explicit constexpr free_function(Callback callback) :
+				callback{std::move(callback)} {}
 
-template <auto Function>
-struct visit<void, free_function<Function>> {
-		constexpr auto operator()(const auto& function, const auto& accept) const -> decltype(auto) {
-			return accept(function_tag{}, function);
-		}
-};
-
-// Function which requires carried state
-export template <class Invocable>
-struct bound_function {
-		explicit constexpr bound_function(Invocable invocable) :
-				invocable{std::move(invocable)} {}
-
-		Invocable invocable;
+		Callback callback;
 		constexpr static auto name = std::string_view{};
 };
 
 template <class Function>
-struct visit<void, bound_function<Function>> {
+struct visit<void, free_function<Function>> {
 		constexpr auto operator()(auto&& function, const auto& accept) const -> decltype(auto) {
 			return accept(function_tag{}, std::forward<decltype(function)>(function));
 		}
 };
+
+// Convenience maker for plain function
+export template <auto Callback>
+consteval auto make_static_function() {
+	return js::free_function{util::invocable_constant<Callback>{}};
+}
 
 } // namespace js

@@ -15,7 +15,7 @@ namespace isolated_v8 {
 export template <class Type>
 class remote : public remote_handle {
 	public:
-		using unique_remote = std::unique_ptr<remote, util::function_type_of<expire>>;
+		using unique_remote = std::unique_ptr<remote, util::invocable_constant<expire>>;
 		using remote_handle::remote_handle;
 
 		auto deref(const js::iv8::isolate_lock& lock) -> v8::Local<Type>;

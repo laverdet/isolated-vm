@@ -7,6 +7,7 @@ module;
 #include <utility>
 export module napi_js:callback;
 export import :callback_info;
+import ivm.utility;
 import nodejs;
 
 namespace js::napi {
@@ -25,11 +26,11 @@ export template <class Environment>
 auto make_napi_callback(Environment& env, std::invocable<Environment&, const callback_info&> auto function) {
 	using function_type = std::decay_t<decltype(function)>;
 	if constexpr (std::is_empty_v<function_type>) {
-		// Constant expression function. `data` is the environment.
-		static_assert(std::is_trivially_constructible_v<function_type>);
+		// Constant expression function, expressed entirely in the type. `data` is the environment.
+		static_assert(std::is_trivially_destructible_v<function_type>);
 		const auto callback = napi_callback{[](napi_env nenv, napi_callback_info info) -> napi_value {
 			const auto args = callback_info{nenv, info};
-			const auto invoke = function_type{};
+			const auto& invoke = *util::start_lifetime_as<function_type>(nullptr);
 			auto& env = *static_cast<Environment*>(args.data());
 			return invoke(env, args);
 		}};
@@ -48,19 +49,21 @@ auto make_napi_callback(Environment& env, std::invocable<Environment&, const cal
 		auto callback_ptr = std::pair{callback, std::bit_cast<void*>(function)};
 		return std::pair{std::move(callback_ptr), nullptr};
 	} else if constexpr (sizeof(function_type) <= sizeof(void*) && std::is_trivially_copyable_v<function_type>) {
+		// This branch is currently unused but works fine. The assertion is here because it's probably a
+		// mistake to have a function like this.
+		static_assert(false);
 		// Trivial function type which is non-empty, but smaller than a pointer. I would imagine that
 		// this compiles down to the same thing as the branch above, which uses `std::bit_cast` instead
 		// of `std::memcpy`.
 		env_local<Environment> = &env;
 		const auto callback = napi_callback{[](napi_env nenv, napi_callback_info info) -> napi_value {
 			const auto args = callback_info{nenv, info};
-			auto invoke = function_type{};
-			std::memcpy(&invoke, args.data(), sizeof(function_type));
+			const auto& invoke = *util::start_lifetime_as<function_type>(args.data());
 			auto& env = *env_local<Environment>;
 			return invoke(env, args);
 		}};
 		void* data{};
-		std::memcpy(&data, function, sizeof(function_type));
+		std::memcpy(&data, &function, sizeof(function_type));
 		auto callback_ptr = std::pair{callback, data};
 		return std::pair{std::move(callback_ptr), nullptr};
 	} else {
