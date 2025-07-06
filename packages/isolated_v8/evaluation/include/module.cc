@@ -125,14 +125,13 @@ auto js_module::link(realm::scope& realm, auto callback) -> void {
 				return std::pair{std::move(entry[ 0 ]), std::move(entry[ 1 ])};
 			});
 		auto attributes_vector = module_request::attributes_type{std::move(attributes_view)};
-		auto& result = std::invoke([ & ]() -> decltype(auto) {
+		auto result = std::invoke([ & ]() -> decltype(auto) {
 			js::iv8::isolate_unlock unlocker{realm};
-			auto&& result = thread_callback(
+			return thread_callback(
 				std::move(specifier_string),
 				std::move(referrer_name),
 				std::move(attributes_vector)
 			);
-			return result;
 		});
 		return result.module_->deref(realm);
 	};

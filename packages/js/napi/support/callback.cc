@@ -30,7 +30,7 @@ auto make_napi_callback(Environment& env, std::invocable<Environment&, const cal
 		static_assert(std::is_trivially_destructible_v<function_type>);
 		const auto callback = napi_callback{[](napi_env nenv, napi_callback_info info) -> napi_value {
 			const auto args = callback_info{nenv, info};
-			const auto& invoke = *util::start_lifetime_as<function_type>(nullptr);
+			auto& invoke = *util::start_lifetime_as<function_type>(nullptr);
 			auto& env = *static_cast<Environment*>(args.data());
 			return invoke(env, args);
 		}};
@@ -42,7 +42,7 @@ auto make_napi_callback(Environment& env, std::invocable<Environment&, const cal
 		env_local<Environment> = &env;
 		const auto callback = napi_callback{[](napi_env nenv, napi_callback_info info) -> napi_value {
 			const auto args = callback_info{nenv, info};
-			const auto invoke = std::bit_cast<function_type>(args.data());
+			auto invoke = std::bit_cast<function_type>(args.data());
 			auto& env = *env_local<Environment>;
 			return invoke(env, args);
 		}};
@@ -58,7 +58,7 @@ auto make_napi_callback(Environment& env, std::invocable<Environment&, const cal
 		env_local<Environment> = &env;
 		const auto callback = napi_callback{[](napi_env nenv, napi_callback_info info) -> napi_value {
 			const auto args = callback_info{nenv, info};
-			const auto& invoke = *util::start_lifetime_as<function_type>(args.data());
+			auto& invoke = *static_cast<function_type*>(args.data());
 			auto& env = *env_local<Environment>;
 			return invoke(env, args);
 		}};

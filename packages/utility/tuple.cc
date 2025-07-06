@@ -47,7 +47,7 @@ class flat_tuple_element {
 		using index_type = std::integral_constant<std::size_t, Index>;
 		constexpr auto get(index_type /*index*/) & -> Type& { return value_; }
 		constexpr auto get(index_type /*index*/) && -> Type&& { return std::move(value_); }
-		[[nodiscard]] constexpr auto get(index_type /*index*/) const -> const Type& { return value_; }
+		[[nodiscard]] constexpr auto get(index_type /*index*/) const& -> const Type& { return value_; }
 
 	private:
 		[[no_unique_address]] Type value_;

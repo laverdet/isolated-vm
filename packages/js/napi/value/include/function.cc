@@ -81,8 +81,8 @@ auto value<function_tag>::make(Environment& env, auto function) -> value<functio
 	using function_type = std::decay_t<decltype(function.callback)>;
 	using signature_type = util::function_signature_t<function_type>;
 	auto trampoline = util::bind_parameters{
-		[](const auto& callback, Environment& env, const callback_info& info) -> napi_value {
-			return invoke_callback<signature_type>{}(env, info, callback);
+		[](auto&& callback, Environment& env, const callback_info& info) -> napi_value {
+			return invoke_callback<signature_type>{}(env, info, std::forward<decltype(callback)>(callback));
 		},
 		std::move(function.callback)
 	};

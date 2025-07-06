@@ -55,20 +55,17 @@ auto compile_module(
 		}
 	);
 	agent->schedule(
-		[ dispatch = std::move(dispatch) ](
-			isolated_v8::agent::lock& lock,
-			isolated_v8::agent agent,
-			js::string_t source_text,
-			compile_module_options options
+		[ agent = *agent,
+			dispatch = std::move(dispatch),
+			source_text = std::move(source_text),
+			options = std::move(options_optional).value_or(compile_module_options{}) ](
+			isolated_v8::agent::lock& lock
 		) mutable {
-			auto origin = std::move(options.origin).value_or(source_origin{});
+			auto origin = std::move(options).origin.value_or(source_origin{});
 			auto module = isolated_v8::js_module::compile(lock, std::move(source_text), std::move(origin));
 			auto requests = module.requests(lock);
 			dispatch(std::move(agent), std::move(module), std::move(requests));
-		},
-		*agent,
-		std::move(source_text),
-		std::move(options_optional).value_or(compile_module_options{})
+		}
 	);
 	return js::transfer_direct{promise};
 }
@@ -85,17 +82,15 @@ auto evaluate_module(
 		}
 	);
 	module_->agent().schedule(
-		[ dispatch = std::move(dispatch) ](
-			isolated_v8::agent::lock& agent,
-			isolated_v8::realm realm,
-			isolated_v8::js_module module_
+		[ dispatch = std::move(dispatch),
+			realm = realm->realm(),
+			module_ = module_->module() ](
+			isolated_v8::agent::lock& agent
 		) mutable {
 			isolated_v8::realm::scope realm_scope{agent, realm};
 			auto result = module_.evaluate(realm_scope);
 			dispatch(std::move(result));
-		},
-		realm->realm(),
-		module_->module()
+		}
 	);
 	return js::transfer_direct{promise};
 }
@@ -115,10 +110,60 @@ auto link_module(
 			return js::napi::invoke(napi_get_boolean, napi_env{env}, true);
 		}
 	);
-	module_->agent().schedule_async(
+	// Invoke the passed link callback in response to v8 link callback. This is invoked in the node
+	// environment.
+	auto clink_link_callback =
 		[ &env,
-			link_callback_ref = std::move(link_callback_ref),
-			scheduler = std::move(scheduler),
+			link_callback_ref = std::move(link_callback_ref) ](
+			std::promise<isolated_v8::js_module> promise,
+			auto specifier,
+			auto referrer,
+			auto attributes
+		) {
+			js::napi::handle_scope scope{napi_env{env}};
+			auto callback = js::free_function{
+				[ promise = std::move(promise) ](
+					environment& /*env*/,
+					js::napi::value<js::value_tag> /*error*/,
+					js::napi::untagged_external<module_handle>* module
+				) mutable -> void {
+					if (module) {
+						promise.set_value((*module)->module());
+					}
+				}
+			};
+			auto callback_fn = js::napi::value<js::function_tag>::make(env, std::move(callback));
+			link_callback_ref.get(env).call<std::monostate>(
+				env,
+				std::move(specifier),
+				std::move(referrer),
+				std::move(attributes),
+				js::transfer_direct{callback_fn}
+			);
+		};
+	// Invoked by v8 to resolve a module link.
+	auto host_link_callback =
+		[ scheduler = std::move(scheduler),
+			clink_link_callback = std::move(clink_link_callback) ](
+			auto specifier,
+			auto referrer,
+			auto attributes
+		) mutable -> isolated_v8::js_module {
+		std::promise<isolated_v8::js_module> promise;
+		auto future = promise.get_future();
+		scheduler([ & ]() {
+			clink_link_callback(
+				std::move(promise),
+				std::move(specifier),
+				std::move(referrer),
+				std::move(attributes)
+			);
+		});
+		return future.get();
+	};
+	// Schedule the link operation
+	module_->agent().schedule_async(
+		[ host_link_callback = std::move(host_link_callback),
 			dispatch = std::move(dispatch) ](
 			const std::stop_token& /*stop_token*/,
 			isolated_v8::agent::lock& agent,
@@ -126,42 +171,7 @@ auto link_module(
 			isolated_v8::js_module module
 		) mutable {
 			isolated_v8::realm::scope realm_scope{agent, realm};
-			module.link(
-				realm_scope,
-				[ & ](
-					auto specifier,
-					auto referrer,
-					auto attributes
-				) -> isolated_v8::js_module& {
-					std::promise<isolated_v8::js_module*> promise;
-					auto future = promise.get_future();
-					scheduler(
-						[ & ]() {
-							js::napi::handle_scope scope{napi_env{env}};
-							auto callback = js::free_function{
-								[ &promise ](
-									environment& /*env*/,
-									js::napi::value<js::value_tag> /*error*/,
-									js::napi::untagged_external<module_handle>* module
-								) -> void {
-									if (module) {
-										promise.set_value(&(*module)->module());
-									}
-								}
-							};
-							auto callback_fn = js::napi::value<js::function_tag>::make(env, std::move(callback));
-							link_callback_ref.get(env).call<std::monostate>(
-								env,
-								std::move(specifier),
-								std::move(referrer),
-								std::move(attributes),
-								js::transfer_direct{callback_fn}
-							);
-						}
-					);
-					return *future.get();
-				}
-			);
+			module.link(realm_scope, std::move(host_link_callback));
 			dispatch();
 		},
 		realm->realm(),
