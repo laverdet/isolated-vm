@@ -33,7 +33,7 @@ export class array
 		mutable uint32_t length_{};
 };
 
-class array::iterator : public util::random_access_iterator_facade<iterator, int32_t, int64_t> {
+class array::iterator : public util::random_access_iterator_facade<int32_t, int64_t> {
 	public:
 		friend arithmetic_facade;
 		using arithmetic_facade::operator+;

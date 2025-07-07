@@ -10,14 +10,14 @@ namespace isolated_v8 {
 export template <class Value, class Type>
 class collected_handle
 		: util::non_moveable,
-			public util::pointer_facade<collected_handle<Value, Type>> {
+			public util::pointer_facade {
 	public:
 		using unique_ptr = util::autorelease_pool::unique_ptr<collected_handle>;
 		explicit collected_handle(util::autorelease_pool& pool, auto&&... args) :
 				pool_{&pool},
 				value_{std::forward<decltype(args)>(args)...} {}
 
-		auto operator*() -> Type& { return value_; }
+		auto operator->() -> Type* { return &value_; }
 		static auto make(util::autorelease_pool& pool, auto&&... args) -> unique_ptr;
 		static auto reset(const js::iv8::isolate_lock& lock, unique_ptr handle, v8::Local<Value> value) -> void;
 

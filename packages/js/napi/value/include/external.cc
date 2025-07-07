@@ -23,7 +23,7 @@ class bound_value<external_tag>
 export template <class Type>
 class untagged_external
 		: util::non_moveable,
-			public util::pointer_facade<untagged_external<Type>> {
+			public util::pointer_facade {
 	private:
 		struct private_constructor {
 				explicit private_constructor() = default;
@@ -33,7 +33,7 @@ class untagged_external
 		explicit untagged_external(private_constructor /*private*/, auto&&... args) :
 				value{std::forward<decltype(args)>(args)...} {}
 
-		auto operator*() -> auto& { return value; }
+		auto operator->() -> auto* { return &value; }
 
 		static auto make(const auto& env, auto&&... args) -> napi_value
 			requires std::constructible_from<Type, decltype(args)...>;

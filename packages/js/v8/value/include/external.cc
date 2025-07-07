@@ -22,11 +22,11 @@ export class external
 export template <class Type>
 class external_reference
 		: util::non_moveable,
-			public util::pointer_facade<external_reference<Type>> {
+			public util::pointer_facade {
 	public:
 		explicit external_reference(auto&&... args) :
 				value{std::forward<decltype(args)>(args)...} {}
-		auto operator*() -> auto& { return value; }
+		auto operator->() -> auto* { return &value; }
 
 	private:
 		Type value;

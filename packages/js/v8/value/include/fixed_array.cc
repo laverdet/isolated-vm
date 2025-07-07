@@ -27,7 +27,7 @@ export class fixed_array {
 		v8::Local<v8::Context> context_;
 };
 
-class fixed_array::iterator : public util::random_access_iterator_facade<iterator, int> {
+class fixed_array::iterator : public util::random_access_iterator_facade<int> {
 	public:
 		friend arithmetic_facade;
 		using arithmetic_facade::operator+;

@@ -89,7 +89,7 @@ export class platform : util::non_moveable, public v8::Platform {
 
 // Responsible for initializing v8 and creating one `platform` per process. When the last handle is
 // destroyed, the `platform` is destroyed and v8 is shut down.
-class platform::handle : public util::pointer_facade<platform> {
+class platform::handle : public util::pointer_facade {
 	public:
 		handle(const handle&) = default;
 		handle(handle&&) = default;
@@ -97,7 +97,7 @@ class platform::handle : public util::pointer_facade<platform> {
 		auto operator=(handle&&) noexcept -> handle& = default;
 		~handle();
 
-		auto operator*(this auto& self) -> auto& { return *self.platform_; }
+		auto operator->(this auto& self) -> auto* { return self.platform_.get(); }
 		static auto acquire() -> handle;
 
 	private:

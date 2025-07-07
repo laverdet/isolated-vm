@@ -38,7 +38,7 @@ class uv_typed_handle {
 // `uv_handle_t` subtype wrapper with uv-owned shared memory. An open handle must be closed before
 // the handle is destroyed or it is UB.
 template <class Handle, class Type>
-class uv_handle_of : public util::pointer_facade<uv_handle_of<Handle, Type>> {
+class uv_handle_of : public util::pointer_facade {
 	private:
 		struct private_constructor {
 				explicit private_constructor() = default;
@@ -60,7 +60,7 @@ class uv_handle_of : public util::pointer_facade<uv_handle_of<Handle, Type>> {
 		uv_handle_of(const uv_handle_of&) = delete;
 		auto operator=(const uv_handle_of&) -> uv_handle_of& = delete;
 
-		auto operator*(this auto& self) -> auto& { return self.value_; }
+		auto operator->(this auto& self) -> auto* { return &self.value_; }
 		auto close();
 		auto handle(this auto& self) -> auto& { return self.handle_; }
 		auto open(const auto& init, uv_loop_t* loop, auto&&... args);

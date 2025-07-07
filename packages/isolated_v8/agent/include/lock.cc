@@ -12,14 +12,14 @@ namespace isolated_v8 {
 // the isolate context.
 class agent::lock final
 		: util::non_moveable,
-			public util::pointer_facade<agent::lock>,
+			public util::pointer_facade,
 			public js::iv8::isolate_managed_lock,
 			public remote_handle_lock {
 	public:
 		explicit lock(std::shared_ptr<agent::host> host);
 		~lock();
 
-		auto operator*(this auto& self) -> auto& { return *self.host_; }
+		auto operator->(this auto& self) -> auto* { return self.host_.get(); }
 		auto accept_remote_handle(remote_handle& remote) noexcept -> void final;
 		[[nodiscard]] auto remote_expiration_task() const -> reset_handle_type final;
 		static auto get_current() -> lock&;

@@ -26,7 +26,7 @@ class bound_value<vector_tag> : public detail::bound_value_next<vector_tag> {
 		mutable uint32_t size_{};
 };
 
-class bound_value<vector_tag>::iterator : public util::random_access_iterator_facade<iterator, int32_t, int64_t> {
+class bound_value<vector_tag>::iterator : public util::random_access_iterator_facade<int32_t, int64_t> {
 	public:
 		friend arithmetic_facade;
 		using arithmetic_facade::operator+;
