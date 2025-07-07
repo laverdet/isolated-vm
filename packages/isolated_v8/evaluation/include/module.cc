@@ -3,6 +3,7 @@ module;
 #include <functional>
 #include <optional>
 #include <ranges>
+#include <span>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -43,13 +44,15 @@ export class js_module {
 		auto requests(agent::lock& agent) -> std::vector<module_request>;
 
 		static auto compile(agent::lock& agent, auto&& source_text, source_origin source_origin) -> js_module;
-		static auto create_synthetic(agent::lock& agent, auto exports_default, source_required_name source_origin) -> js_module;
+
+		template <class... Name, class Function>
+		static auto create_synthetic(agent::lock& agent, std::tuple<std::pair<Name, Function>...> exports, source_required_name source_origin) -> js_module;
 
 	private:
 		static auto compile(agent::lock& agent, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module;
 		static auto create_synthetic(
 			agent::lock& agent,
-			// const v8::MemorySpan<const v8::Local<v8::String>>& export_names,
+			std::span<const v8::Local<v8::String>> export_names,
 			source_required_name source_origin,
 			synthetic_module_action_type action
 		) -> js_module;
@@ -66,19 +69,33 @@ auto js_module::compile(agent::lock& agent, auto&& source_text, source_origin so
 	return compile(agent, local_source_text, std::move(source_origin));
 }
 
-auto js_module::create_synthetic(agent::lock& agent, auto exports_default, source_required_name source_origin) -> js_module {
-	synthetic_module_action_type action =
-		[ exports_default = std::move(exports_default) ](
-			v8::Local<v8::Context> context,
-			v8::Local<v8::Module> module
-		) mutable {
-			auto& agent = agent::lock::get_current();
-			realm::witness_scope realm{agent, context};
-			auto name = js::transfer_in_strict<v8::Local<v8::String>>("default", agent);
-			auto value = js::transfer_strict<v8::Local<v8::Value>>(std::move(exports_default), std::forward_as_tuple(realm), std::forward_as_tuple(realm));
-			module->SetSyntheticModuleExport(agent->isolate(), name, value).ToChecked();
-		};
-	return create_synthetic(agent, std::move(source_origin), std::move(action));
+template <class... Name, class Function>
+auto js_module::create_synthetic(agent::lock& agent, std::tuple<std::pair<Name, Function>...> exports, source_required_name source_origin) -> js_module {
+	return std::invoke(
+		[ & ]<size_t... Index>(std::index_sequence<Index...> /*indices*/) {
+			constexpr auto property_count = sizeof...(Index);
+			auto name_values = std::tuple{std::get<Index>(std::move(exports)).first...};
+			const auto name_locals = js::transfer_in_strict<std::array<v8::Local<v8::String>, property_count>>(std::move(name_values), agent);
+			auto name_persistents = std::array<v8::Global<v8::String>, property_count>{v8::Global<v8::String>{agent->isolate(), std::get<Index>(name_locals)}...};
+			// nb: We require that all exports are of the same type, probably a function template. The
+			// `std::tuple` visitor cannot accept an environment because it can't be sure that all members
+			// are compatible.
+			auto export_values = std::array{std::get<Index>(std::move(exports)).second...};
+			synthetic_module_action_type action =
+				[ name_persistents = std::move(name_persistents),
+					export_values = std::move(export_values) ](
+					v8::Local<v8::Context> context,
+					v8::Local<v8::Module> module
+				) mutable {
+					auto& agent = agent::lock::get_current();
+					realm::witness_scope realm{agent, context};
+					const auto export_locals = js::transfer_strict<std::array<v8::Local<v8::Value>, property_count>>(std::move(export_values), std::forward_as_tuple(realm), std::forward_as_tuple(realm));
+					(module->SetSyntheticModuleExport(agent->isolate(), name_persistents[ Index ].Get(agent.isolate()), std::get<Index>(std::move(export_locals))).ToChecked(), ...);
+				};
+			return create_synthetic(agent, std::span{name_locals}, std::move(source_origin), std::move(action));
+		},
+		std::make_index_sequence<sizeof...(Name)>{}
+	);
 }
 
 auto js_module::link(realm::scope& realm, auto callback) -> void {

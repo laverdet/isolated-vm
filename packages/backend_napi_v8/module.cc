@@ -230,8 +230,12 @@ auto create_capability(
 			isolated_v8::agent agent,
 			create_capability_options options
 		) mutable {
-			auto exports = isolated_v8::function_template::make(lock, std::move(invoke_capability));
-			auto module_ = isolated_v8::js_module::create_synthetic(lock, exports, std::move(options.origin));
+			auto make_interface = [ & ]() {
+				return std::make_tuple(
+					std::pair{"default"_sl, isolated_v8::function_template::make(lock, std::move(invoke_capability))}
+				);
+			};
+			auto module_ = isolated_v8::js_module::create_synthetic(lock, make_interface(), std::move(options.origin));
 			dispatch(std::move(agent), std::move(module_));
 		},
 		*agent,
