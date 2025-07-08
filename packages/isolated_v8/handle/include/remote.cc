@@ -1,8 +1,8 @@
 module;
 #include <bit>
 #include <memory>
-export module isolated_v8.remote;
-import isolated_v8.remote_handle;
+export module isolated_v8:remote;
+import :remote_handle;
 import ivm.utility;
 import v8_js;
 import v8;

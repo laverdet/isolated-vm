@@ -5,10 +5,11 @@ module;
 #include <ranges>
 #include <utility>
 #include <vector>
-module isolated_v8.module_;
-import isolated_v8.agent;
-import isolated_v8.realm;
-import isolated_v8.remote;
+module isolated_v8;
+import :agent;
+import :evaluation_module_action;
+import :realm;
+import :remote;
 import v8_js;
 import isolated_js;
 import v8;

@@ -1,7 +1,7 @@
-export module isolated_v8.cluster;
-import isolated_v8.foreground_runner;
-import isolated_v8.platform;
-import isolated_v8.scheduler;
+export module isolated_v8:cluster;
+import :foreground_runner;
+import :platform;
+import :scheduler;
 import ivm.utility;
 import v8;
 

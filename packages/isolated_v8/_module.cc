@@ -1,9 +1,9 @@
 export module isolated_v8;
-export import isolated_v8.agent;
-export import isolated_v8.clock;
-export import isolated_v8.cluster;
-export import isolated_v8.evaluation.origin;
-export import isolated_v8.function;
-export import isolated_v8.module_;
-export import isolated_v8.realm;
-export import isolated_v8.script;
+export import :agent;
+export import :clock;
+export import :cluster;
+export import :evaluation_origin;
+export import :function;
+export import :module_;
+export import :realm;
+export import :script;

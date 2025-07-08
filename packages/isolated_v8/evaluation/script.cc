@@ -1,10 +1,10 @@
 module;
 #include <tuple>
-module isolated_v8.script;
+module isolated_v8;
 import isolated_js;
-import isolated_v8.agent;
-import isolated_v8.realm;
-import isolated_v8.remote;
+import :agent;
+import :realm;
+import :remote;
 import v8_js;
 import v8;
 

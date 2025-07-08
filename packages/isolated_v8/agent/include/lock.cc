@@ -1,8 +1,8 @@
 module;
 #include <memory>
-export module isolated_v8.agent:lock;
-import :fwd;
-import isolated_v8.remote_handle;
+export module isolated_v8:agent_lock;
+import :agent_fwd;
+import :remote_handle;
 import ivm.utility;
 import v8_js;
 

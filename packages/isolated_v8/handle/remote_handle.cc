@@ -1,6 +1,7 @@
 module;
 #include <utility>
-module isolated_v8.remote_handle;
+module isolated_v8;
+import :remote_handle;
 import ivm.utility;
 import v8_js;
 import v8;

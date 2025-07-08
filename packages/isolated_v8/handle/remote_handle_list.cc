@@ -1,5 +1,6 @@
-module isolated_v8.remote_handle_list;
-import isolated_v8.remote_handle;
+module isolated_v8;
+import :remote_handle_list;
+import :remote_handle;
 import v8_js;
 import v8;
 

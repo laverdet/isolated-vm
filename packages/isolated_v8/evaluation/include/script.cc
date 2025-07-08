@@ -1,11 +1,11 @@
 module;
 #include <tuple>
 #include <utility>
-export module isolated_v8.script;
-import isolated_v8.agent;
-import isolated_v8.evaluation.origin;
-import isolated_v8.realm;
-import isolated_v8.remote;
+export module isolated_v8:script;
+import :agent;
+import :evaluation_origin;
+import :realm;
+import :remote;
 import v8_js;
 import isolated_js;
 import ivm.utility;

@@ -3,9 +3,9 @@ module;
 #include <memory>
 #include <stop_token>
 #include <utility>
-module isolated_v8.agent;
-import isolated_v8.foreground_runner;
-import isolated_v8.remote_handle;
+module isolated_v8;
+import :foreground_runner;
+import :remote_handle;
 import v8_js;
 
 namespace isolated_v8 {

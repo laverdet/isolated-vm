@@ -8,8 +8,9 @@ module;
 #include <stop_token>
 #include <thread>
 #include <utility>
-module isolated_v8.foreground_runner;
-import isolated_v8.task_runner;
+module isolated_v8;
+import :foreground_runner;
+import :task_runner;
 import v8;
 
 namespace isolated_v8 {

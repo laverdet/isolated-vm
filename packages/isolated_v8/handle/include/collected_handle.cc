@@ -1,6 +1,6 @@
 module;
 #include <utility>
-export module isolated_v8.collected_handle;
+export module isolated_v8:collected_handle;
 import ivm.utility;
 import v8_js;
 import v8;

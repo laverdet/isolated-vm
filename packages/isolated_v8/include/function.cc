@@ -2,12 +2,12 @@ module;
 #include <tuple>
 #include <type_traits>
 #include <variant>
-export module isolated_v8.function;
+export module isolated_v8:function;
 import isolated_js;
-import isolated_v8.agent;
-import isolated_v8.collected_handle;
-import isolated_v8.realm;
-import isolated_v8.remote;
+import :agent;
+import :collected_handle;
+import :realm;
+import :remote;
 import ivm.utility;
 import v8_js;
 import v8;

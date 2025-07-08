@@ -1,8 +1,8 @@
 module;
 #include <memory>
 #include <thread>
-export module isolated_v8.platform;
-import isolated_v8.scheduler;
+export module isolated_v8:platform;
+import :scheduler;
 import ivm.utility;
 import v8;
 

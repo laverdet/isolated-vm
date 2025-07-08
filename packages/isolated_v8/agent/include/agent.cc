@@ -5,12 +5,12 @@ module;
 #include <stop_token>
 #include <utility>
 #include <variant>
-export module isolated_v8.agent;
-export import :fwd;
-export import :host;
-export import :lock;
-import isolated_v8.cluster;
-import isolated_v8.foreground_runner;
+export module isolated_v8:agent;
+export import :agent_fwd;
+export import :agent_host;
+export import :agent_lock;
+import :cluster;
+import :foreground_runner;
 import ivm.utility;
 import v8;
 

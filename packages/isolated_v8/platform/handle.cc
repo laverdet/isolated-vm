@@ -2,7 +2,8 @@ module;
 #include <memory>
 #include <mutex>
 #include <utility>
-module isolated_v8.platform;
+module isolated_v8;
+import :platform;
 import ivm.utility;
 
 namespace isolated_v8 {

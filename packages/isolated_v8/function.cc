@@ -1,4 +1,5 @@
-module isolated_v8.function;
+module isolated_v8;
+import :remote;
 import v8_js;
 import v8;
 

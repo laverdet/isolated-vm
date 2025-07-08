@@ -11,9 +11,9 @@ module;
 #include <stop_token>
 #include <thread>
 #include <type_traits>
-export module isolated_v8.foreground_runner;
-import isolated_v8.scheduler;
-import isolated_v8.task_runner;
+export module isolated_v8:foreground_runner;
+import :scheduler;
+import :task_runner;
 import ivm.utility;
 import v8;
 using std::chrono::steady_clock;

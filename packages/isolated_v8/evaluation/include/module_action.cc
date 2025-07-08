@@ -1,6 +1,6 @@
 module;
 #include <functional>
-export module isolated_v8.evaluation.module_action;
+export module isolated_v8:evaluation_module_action;
 import ivm.utility;
 import v8;
 

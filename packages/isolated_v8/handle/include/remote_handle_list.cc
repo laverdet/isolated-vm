@@ -1,7 +1,7 @@
 module;
 #include <boost/intrusive/list.hpp>
-export module isolated_v8.remote_handle_list;
-import isolated_v8.remote_handle;
+export module isolated_v8:remote_handle_list;
+import :remote_handle;
 import ivm.utility;
 import v8_js;
 import v8;

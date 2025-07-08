@@ -2,13 +2,13 @@ module;
 #include <functional>
 #include <memory>
 #include <optional>
-export module isolated_v8.agent:host;
-export import :fwd;
-import isolated_v8.clock;
-import isolated_v8.evaluation.module_action;
-import isolated_v8.foreground_runner;
-import isolated_v8.remote_handle_list;
-import isolated_v8.scheduler;
+export module isolated_v8:agent_host;
+export import :agent_fwd;
+import :clock;
+import :evaluation_module_action;
+import :foreground_runner;
+import :remote_handle_list;
+import :scheduler;
 import v8_js;
 import isolated_js;
 import ivm.utility;

@@ -1,7 +1,8 @@
 module;
 #include <memory>
 #include <thread>
-module isolated_v8.platform;
+module isolated_v8;
+import :platform;
 import ivm.utility;
 import v8;
 

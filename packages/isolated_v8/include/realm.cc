@@ -1,9 +1,9 @@
 module;
 #include <optional>
-export module isolated_v8.realm;
-import isolated_v8.agent;
-import isolated_v8.remote_handle;
-import isolated_v8.remote;
+export module isolated_v8:realm;
+import :agent;
+import :remote_handle;
+import :remote;
 import ivm.utility;
 import v8_js;
 import v8;

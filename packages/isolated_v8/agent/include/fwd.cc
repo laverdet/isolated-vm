@@ -3,9 +3,9 @@ module;
 #include <memory>
 #include <optional>
 #include <stop_token>
-export module isolated_v8.agent:fwd;
-import isolated_v8.clock;
-import isolated_v8.cluster;
+export module isolated_v8:agent_fwd;
+import :clock;
+import :cluster;
 
 namespace isolated_v8 {
 

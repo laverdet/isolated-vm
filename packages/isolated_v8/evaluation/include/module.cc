@@ -7,14 +7,14 @@ module;
 #include <tuple>
 #include <utility>
 #include <vector>
-export module isolated_v8.module_;
-import isolated_v8.agent;
-import isolated_v8.evaluation.module_action;
-import isolated_v8.evaluation.origin;
-import isolated_v8.function;
-import isolated_v8.realm;
-import isolated_v8.remote;
-import isolated_v8.script;
+export module isolated_v8:module_;
+import :agent;
+import :evaluation_module_action;
+import :evaluation_origin;
+import :function;
+import :realm;
+import :remote;
+import :script;
 import v8_js;
 import isolated_js;
 import ivm.utility;

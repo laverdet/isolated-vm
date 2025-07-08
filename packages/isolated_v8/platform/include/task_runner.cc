@@ -2,7 +2,7 @@ module;
 #include <chrono>
 #include <memory>
 #include <utility>
-export module isolated_v8.task_runner;
+export module isolated_v8:task_runner;
 import v8;
 using std::chrono::steady_clock;
 

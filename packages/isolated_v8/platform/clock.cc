@@ -1,7 +1,7 @@
 module;
 #include <chrono>
 #include <optional>
-module isolated_v8.clock;
+module isolated_v8;
 import isolated_js;
 import ivm.utility;
 using namespace std::chrono;

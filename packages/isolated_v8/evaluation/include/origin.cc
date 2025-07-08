@@ -1,7 +1,7 @@
 module;
 #include <optional>
 #include <tuple>
-export module isolated_v8.evaluation.origin;
+export module isolated_v8:evaluation_origin;
 import isolated_js;
 import ivm.utility;
 import v8;
