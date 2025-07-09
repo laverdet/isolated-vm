@@ -48,7 +48,7 @@ auto compile_module(
 		) -> expected_value {
 			auto* handle = js::napi::untagged_external<module_handle>::make(env, std::move(agent), std::move(module_));
 			auto result = std::tuple{
-				js::transfer_direct{handle},
+				js::forward{handle},
 				std::move(requests),
 			};
 			return js::transfer_in_strict<napi_value>(std::move(result), env);
@@ -67,7 +67,7 @@ auto compile_module(
 			dispatch(std::move(agent), std::move(module), std::move(requests));
 		}
 	);
-	return js::transfer_direct{promise};
+	return js::forward{promise};
 }
 
 auto evaluate_module(
@@ -92,18 +92,17 @@ auto evaluate_module(
 			dispatch(std::move(result));
 		}
 	);
-	return js::transfer_direct{promise};
+	return js::forward{promise};
 }
 
 auto link_module(
 	environment& env,
 	js::napi::untagged_external<realm_handle>& realm,
 	js::napi::untagged_external<module_handle>& module_,
-	js::napi::value<js::function_tag> link_callback_
+	js::forward<js::napi::value<js::function_tag>> link_callback
 ) {
-	js::napi::reference callback{env, link_callback_};
 	auto scheduler = env.scheduler();
-	js::napi::reference link_callback_ref{env, link_callback_};
+	js::napi::reference link_callback_ref{env, *link_callback};
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](environment& env) -> expected_value {
@@ -124,7 +123,7 @@ auto link_module(
 			auto callback = js::free_function{
 				[ promise = std::move(promise) ](
 					environment& /*env*/,
-					js::napi::value<js::value_tag> /*error*/,
+					js::forward<js::napi::value<js::value_tag>> /*error*/,
 					js::napi::untagged_external<module_handle>* module
 				) mutable -> void {
 					if (module) {
@@ -138,7 +137,7 @@ auto link_module(
 				std::move(specifier),
 				std::move(referrer),
 				std::move(attributes),
-				js::transfer_direct{callback_fn}
+				js::forward{callback_fn}
 			);
 		};
 	// Invoked by v8 to resolve a module link.
@@ -177,18 +176,18 @@ auto link_module(
 		realm->realm(),
 		module_->module()
 	);
-	return js::transfer_direct{promise};
+	return js::forward{promise};
 }
 
 auto create_capability(
 	environment& env,
 	js::napi::untagged_external<isolated_v8::agent>& agent,
-	js::napi::value<js::function_tag> capability,
+	js::forward<js::napi::value<js::function_tag>, function_tag> capability,
 	create_capability_options options
 ) {
 	// Callback to invoke the capability in the node environment
 	auto capability_callback =
-		[ callback = js::napi::make_shared_remote(env, capability) ](
+		[ callback = js::napi::make_shared_remote(env, *capability) ](
 			environment& env,
 			std::vector<js::value_t> params
 		) {
@@ -241,7 +240,7 @@ auto create_capability(
 		*agent,
 		std::move(options)
 	);
-	return js::transfer_direct{promise};
+	return js::forward{promise};
 }
 
 auto module_handle::make_compile_module(environment& env) -> js::napi::value<js::function_tag> {

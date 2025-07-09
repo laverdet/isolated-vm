@@ -9,6 +9,7 @@ export import isolated_js.transfer.types;
 export import isolated_js.accept;
 export import isolated_js.visit;
 import isolated_js.tag;
+import ivm.utility;
 
 namespace js {
 
@@ -170,25 +171,37 @@ constexpr auto transfer_strict(auto&& value) -> decltype(auto) {
 	return transfer_strict<Type>(std::forward<decltype(value)>(value), std::tuple{}, std::tuple{});
 }
 
-// Allows the invoker of `transfer` to pass through a value directly without invoking `visit` or
-// `accept`. For example, as a directly created element of an array.
-export template <class Type>
-struct transfer_direct {
+// Allows the subject or target of `transfer` to pass through a value directly without invoking
+// `visit` or `accept`. For example, as a directly created element of an array.
+export template <class Type, class Tag = value_tag>
+struct forward : util::pointer_facade {
 	public:
-		explicit transfer_direct(Type value) :
-				value{std::move(value)} {}
+		explicit forward(Type&& value) :
+				value_{std::move(value)} {}
+		explicit forward(const Type& value) :
+				value_{value} {}
 
-		constexpr auto operator*() && -> Type&& { return std::move(value); }
-		constexpr auto operator*() const -> const Type& { return value; }
+		constexpr auto operator->() -> Type* { return &value_; }
+		constexpr auto operator->() const -> const Type* { return &value_; }
 
 	private:
-		Type value;
+		Type value_;
 };
 
 template <class Type>
-struct visit<void, transfer_direct<Type>> {
-		constexpr auto operator()(auto value, const auto& /*accept*/) const {
-			return *std::move(value);
+forward(Type) -> forward<Type>;
+
+template <class Type, class Tag>
+struct accept<void, forward<Type, Tag>> {
+		constexpr auto operator()(Tag /*tag*/, std::convertible_to<Type> auto&& value) const {
+			return forward<Type, Tag>{std::forward<decltype(value)>(value)};
+		}
+};
+
+template <class Type>
+struct visit<void, forward<Type>> {
+		constexpr auto operator()(auto&& value, const auto& /*accept*/) const {
+			return *std::forward<decltype(value)>(value);
 		}
 };
 

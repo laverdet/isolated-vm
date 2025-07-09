@@ -36,7 +36,7 @@ auto create_realm(
 			dispatch(std::move(agent), std::move(realm));
 		}
 	);
-	return js::transfer_direct{promise};
+	return js::forward{promise};
 }
 
 realm_handle::realm_handle(isolated_v8::agent agent, isolated_v8::realm realm) :

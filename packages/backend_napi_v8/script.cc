@@ -44,7 +44,7 @@ auto compile_script(
 			dispatch(isolated_v8::script::compile(agent, std::move(code_string), std::move(origin)));
 		}
 	);
-	return js::transfer_direct{promise};
+	return js::forward{promise};
 }
 
 auto run_script(
@@ -71,7 +71,7 @@ auto run_script(
 		realm->realm(),
 		*script
 	);
-	return js::transfer_direct{promise};
+	return js::forward{promise};
 }
 
 auto make_compile_script(environment& env) -> js::napi::value<js::function_tag> {

@@ -211,20 +211,6 @@ struct accept<Meta, napi_value> : accept_napi_value<typename Meta::accept_contex
 		using accept_napi_value<typename Meta::accept_context_type, napi_value>::accept_napi_value;
 };
 
-// Tagged value acceptor. This just forwards an existing napi value out, so you can accept a
-// `value<function_tag>` or whatever from the client. There's some domain overlap here in that it's
-// impossible to use this acceptor to copy a value from napi to napi.
-template <class Tag>
-struct accept<void, napi::value<Tag>> {
-		auto operator()(Tag /*tag*/, napi::bound_value<Tag> value) const -> napi::value<Tag> {
-			return napi::value<Tag>{value};
-		}
-
-		auto operator()(Tag /*tag*/, napi::value<Tag> value) const -> napi::value<Tag> {
-			return value;
-		}
-};
-
 // Object key lookup via napi
 template <class Meta, util::string_literal Key, class Type>
 struct accept_property_value<Meta, Key, Type, napi_value> {

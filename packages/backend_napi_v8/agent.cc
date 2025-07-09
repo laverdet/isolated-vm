@@ -69,7 +69,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 		{.clock = clock, .random_seed = options.random_seed}
 	);
 
-	return js::transfer_direct{promise};
+	return js::forward{promise};
 }
 
 auto make_create_agent(environment& env) -> js::napi::value<js::function_tag> {
