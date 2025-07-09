@@ -4,16 +4,16 @@ module;
 #include <optional>
 #include <stop_token>
 export module isolated_v8:agent_fwd;
+import :agent_host_fwd;
 import :clock;
 import :cluster;
 
 namespace isolated_v8 {
 
-// The base `agent` class holds a weak reference to a `agent::host`. libivm directly controls the
+// The base `agent` class holds a weak reference to a `agent_host`. libivm directly controls the
 // lifetime of a `host` and can sever the `weak_ptr` in this class if needed.
 export class agent {
 	public:
-		class host;
 		class lock;
 
 		struct behavior_params {
@@ -21,11 +21,7 @@ export class agent {
 				std::optional<double> random_seed;
 		};
 
-	private:
-		class severable;
-
-	public:
-		agent(const std::shared_ptr<host>& host, std::shared_ptr<severable> severable_);
+		agent(const std::shared_ptr<agent_host>& host, std::shared_ptr<agent_severable> severable);
 
 		auto schedule(auto task, auto... args) -> void
 			requires std::invocable<decltype(task), lock&, decltype(args)...>;
@@ -35,8 +31,8 @@ export class agent {
 		static auto make(std::invocable<agent::lock&, agent> auto fn, cluster& cluster, behavior_params params) -> void;
 
 	private:
-		std::weak_ptr<host> host_;
-		std::shared_ptr<severable> severable_;
+		std::weak_ptr<agent_host> host_;
+		std::shared_ptr<agent_severable> severable_;
 };
 
 } // namespace isolated_v8

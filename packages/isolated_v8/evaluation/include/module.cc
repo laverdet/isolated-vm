@@ -8,7 +8,7 @@ module;
 #include <utility>
 #include <vector>
 export module isolated_v8:module_;
-import :agent;
+import :agent_host;
 import :evaluation_module_action;
 import :evaluation_origin;
 import :function;

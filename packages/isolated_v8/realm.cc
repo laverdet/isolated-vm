@@ -3,7 +3,7 @@ module;
 #include <optional>
 #include <utility>
 module isolated_v8;
-import :agent;
+import :agent_host;
 import :remote;
 import v8;
 

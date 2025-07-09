@@ -4,7 +4,7 @@ module;
 #include <variant>
 export module isolated_v8:function;
 import isolated_js;
-import :agent;
+import :agent_handle;
 import :collected_handle;
 import :realm;
 import :remote;

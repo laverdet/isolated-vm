@@ -1,7 +1,7 @@
 module;
 #include <optional>
 export module isolated_v8:realm;
-import :agent;
+import :agent_host;
 import :remote_handle;
 import :remote;
 import ivm.utility;

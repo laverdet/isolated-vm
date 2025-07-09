@@ -1,5 +1,5 @@
 export module isolated_v8;
-export import :agent;
+export import :agent_handle;
 export import :clock;
 export import :cluster;
 export import :evaluation_origin;

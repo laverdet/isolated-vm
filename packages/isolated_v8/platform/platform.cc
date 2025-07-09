@@ -6,7 +6,7 @@ module;
 #include <random>
 #include <ranges>
 module isolated_v8;
-import :agent;
+import :agent_host;
 import :platform;
 import ivm.utility;
 import v8;
@@ -33,7 +33,7 @@ auto platform::MonotonicallyIncreasingTime() -> double {
 }
 
 auto platform::CurrentClockTimeMilliseconds() -> int64_t {
-	return agent::host::get_current()->clock_time_ms();
+	return agent_host::get_current()->clock_time_ms();
 }
 
 auto platform::CurrentClockTimeMillis() -> double {
@@ -60,7 +60,7 @@ auto platform::GetForegroundTaskRunner(
 	v8::Isolate* isolate,
 	v8::TaskPriority priority
 ) -> std::shared_ptr<v8::TaskRunner> {
-	return agent::host::get_current(isolate).task_runner(priority);
+	return agent_host::get_current(isolate).task_runner(priority);
 }
 
 auto platform::CreateJobImpl(
@@ -100,7 +100,7 @@ auto platform::fill_random_bytes(unsigned char* buffer, size_t length) -> bool {
 		std::ranges::copy_n(byte_view.begin(), length, buffer);
 		return true;
 	};
-	auto* host = agent::host::get_current();
+	auto* host = agent_host::get_current();
 	if (host != nullptr) {
 		auto seed = host->take_random_seed();
 		if (seed) {

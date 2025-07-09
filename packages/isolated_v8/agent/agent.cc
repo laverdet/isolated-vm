@@ -13,7 +13,7 @@ namespace isolated_v8 {
 thread_local agent::lock* current_agent_lock{};
 
 // agent::lock
-agent::lock::lock(std::shared_ptr<agent::host> host) :
+agent::lock::lock(std::shared_ptr<agent_host> host) :
 		isolate_managed_lock{host->isolate()},
 		host_{std::move(host)},
 		previous_{std::exchange(current_agent_lock, this)} {}
@@ -51,16 +51,8 @@ auto agent::lock::get_current() -> lock& {
 }
 
 // agent::agent
-agent::agent(const std::shared_ptr<host>& host, std::shared_ptr<severable> severable_) :
+agent::agent(const std::shared_ptr<agent_host>& host, std::shared_ptr<agent_severable> severable) :
 		host_{host},
-		severable_{std::move(severable_)} {}
-
-// agent::severable
-agent::severable::severable(std::shared_ptr<host> host) :
-		host_{std::move(host)} {}
-
-auto agent::severable::sever() -> void {
-	host_->severable_.reset();
-}
+		severable_{std::move(severable)} {}
 
 } // namespace isolated_v8

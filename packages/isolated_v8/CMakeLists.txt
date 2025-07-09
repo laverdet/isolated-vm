@@ -1,8 +1,8 @@
 add_library(isolated_v8 STATIC)
 target_sources(isolated_v8
 	PRIVATE
+		agent/agent.cc
 		agent/host.cc
-		agent/lock.cc
 		evaluation/module.cc
 		evaluation/script.cc
 		function.cc
@@ -16,10 +16,10 @@ target_sources(isolated_v8
 		realm.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
-		agent/include/agent.cc
-		agent/include/fwd.cc
-		agent/include/host.cc
-		agent/include/lock.cc
+		agent/agent_.cc
+		agent/agent_fwd_.cc
+		agent/host_.cc
+		agent/host_fwd_.cc
 		evaluation/include/module_action.cc
 		evaluation/include/module.cc
 		evaluation/include/origin.cc

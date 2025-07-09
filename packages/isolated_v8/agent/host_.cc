@@ -3,7 +3,8 @@ module;
 #include <memory>
 #include <optional>
 export module isolated_v8:agent_host;
-export import :agent_fwd;
+import :agent_fwd;
+import :agent_host_fwd;
 import :clock;
 import :evaluation_module_action;
 import :foreground_runner;
@@ -18,7 +19,7 @@ namespace isolated_v8 {
 
 // Directly handles the actual isolate. If someone has a reference to this then it probably means
 // the isolate is locked and entered.
-class agent::host final {
+class agent_host final {
 	private:
 		using weak_modules_actions_type = js::iv8::weak_map<v8::Module, synthetic_module_action_type>;
 		using weak_modules_specifiers_type = js::iv8::weak_map<v8::Module, js::string_t>;
@@ -30,18 +31,18 @@ class agent::host final {
 		};
 
 	public:
-		friend agent;
-
-		explicit host(
+		explicit agent_host(
 			scheduler::layer<{}>& cluster_scheduler,
 			std::shared_ptr<isolated_v8::foreground_runner> foreground_runner,
-			behavior_params params
+			agent::behavior_params params
 		);
-		~host();
+		~agent_host();
 
+		auto async_scheduler(this auto& self) -> auto& { return self.async_scheduler_; }
 		auto autorelease_pool() -> util::autorelease_pool& { return autorelease_pool_; }
+		auto clock(this auto& self) -> auto& { return self.clock_; }
 		auto clock_time_ms() -> int64_t;
-		auto foreground_runner() -> std::shared_ptr<isolated_v8::foreground_runner> { return foreground_runner_; }
+		auto foreground_runner(this auto& self) -> auto& { return self.foreground_runner_; }
 		auto isolate() -> v8::Isolate* { return isolate_.get(); }
 		auto random_seed_latch() -> util::scope_exit<random_seed_unlatch>;
 		auto remote_handle_list() -> isolated_v8::remote_handle_list& { return remote_handle_list_; }
@@ -51,15 +52,15 @@ class agent::host final {
 		auto weak_module_actions() -> weak_modules_actions_type& { return weak_module_actions_; }
 		auto weak_module_specifiers() -> weak_modules_specifiers_type& { return weak_module_specifiers_; }
 
-		static auto get_current() -> host*;
-		static auto get_current(v8::Isolate* isolate) -> host& { return *static_cast<host*>(isolate->GetData(0)); }
-		static auto make_handle(std::shared_ptr<host> self) -> agent;
+		static auto get_current() -> agent_host*;
+		static auto get_current(v8::Isolate* isolate) -> agent_host& { return *static_cast<agent_host*>(isolate->GetData(0)); }
+		static auto make_handle(std::shared_ptr<agent_host> self) -> agent;
 
 	private:
 		static auto dispose_isolate(v8::Isolate* isolate) -> void { isolate->Dispose(); }
 
 		util::autorelease_pool autorelease_pool_;
-		std::weak_ptr<severable> severable_;
+		std::weak_ptr<agent_severable> severable_;
 		std::shared_ptr<isolated_v8::foreground_runner> foreground_runner_;
 		scheduler::runner<{}> async_scheduler_;
 		std::unique_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
@@ -72,6 +73,18 @@ class agent::host final {
 		bool should_give_seed_{false};
 		std::optional<double> random_seed_;
 		clock::any_clock clock_;
+};
+
+// This keeps the `weak_ptr` in `agent` alive. The `agent_host` maintains a `weak_ptr` to this and
+// can "sever" the client connection if it needs to.
+class agent_severable {
+	public:
+		explicit agent_severable(std::shared_ptr<agent_host> host);
+
+		auto sever() -> void;
+
+	private:
+		std::atomic<std::shared_ptr<agent_host>> host_;
 };
 
 } // namespace isolated_v8

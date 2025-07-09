@@ -2,7 +2,7 @@ module;
 #include <tuple>
 module isolated_v8;
 import isolated_js;
-import :agent;
+import :agent_host;
 import :realm;
 import :remote;
 import v8_js;

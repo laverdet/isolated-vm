@@ -2,7 +2,7 @@ module;
 #include <tuple>
 #include <utility>
 export module isolated_v8:script;
-import :agent;
+import :agent_host;
 import :evaluation_origin;
 import :realm;
 import :remote;
