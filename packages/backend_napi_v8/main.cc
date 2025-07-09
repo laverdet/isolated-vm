@@ -18,7 +18,7 @@ NAPI_MODULE_INIT(/*napi_env env, napi_value exports*/) {
 		std::tuple{
 			std::pair{"compileModule"_sl, js::forward{module_handle::make_compile_module(backend_env)}},
 			std::pair{"compileScript"_sl, js::forward{make_compile_script(backend_env)}},
-			std::pair{"createAgent"_sl, js::forward{make_create_agent(backend_env)}},
+			std::pair{"createAgent"_sl, js::forward{agent_handle::make_create_agent(backend_env)}},
 			std::pair{"createCapability"_sl, js::forward{module_handle::make_create_capability(backend_env)}},
 			std::pair{"createRealm"_sl, js::forward{realm_handle::make_create_realm(backend_env)}},
 			std::pair{"evaluateModule"_sl, js::forward{module_handle::make_evaluate_module(backend_env)}},

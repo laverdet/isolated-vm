@@ -3,7 +3,9 @@ module;
 #include <exception>
 #include <utility>
 module backend_napi_v8;
+import :agent;
 import :environment;
+import :module_;
 import :utility;
 import isolated_js;
 import isolated_v8;
@@ -13,7 +15,7 @@ namespace backend_napi_v8 {
 
 auto create_realm(
 	environment& env,
-	js::napi::untagged_external<isolated_v8::agent>& agent
+	js::napi::untagged_external<agent_handle>& agent
 ) {
 	auto [ dispatch, promise ] = make_promise(
 		env,
@@ -21,7 +23,7 @@ auto create_realm(
 			return js::napi::untagged_external<realm_handle>::make(env, std::move(agent), std::move(realm));
 		}
 	);
-	agent->schedule(
+	agent->agent().schedule(
 		[ agent = *agent,
 			dispatch = std::move(dispatch) ](
 			isolated_v8::agent::lock& lock
@@ -33,7 +35,7 @@ auto create_realm(
 				std::terminate();
 			});
 			runtime.evaluate(realm_scope);
-			dispatch(std::move(agent), std::move(realm));
+			dispatch(agent.agent(), std::move(realm));
 		}
 	);
 	return js::forward{promise};

@@ -16,7 +16,7 @@ import v8;
 
 namespace isolated_v8 {
 
-auto agent::make(std::invocable<agent> auto fn, cluster& cluster, behavior_params params) -> void {
+auto agent::make(std::invocable<agent::lock&, agent> auto fn, cluster& cluster, behavior_params params) -> void {
 	auto runner = std::make_shared<foreground_runner>(cluster.scheduler());
 	foreground_runner::schedule_client_task(
 		runner,
@@ -26,9 +26,14 @@ auto agent::make(std::invocable<agent> auto fn, cluster& cluster, behavior_param
 			fn = std::move(fn) ](
 			const std::stop_token& /*stop_token*/
 		) mutable {
-			auto agent_host = std::make_shared<agent::host>(cluster.scheduler(), runner, params);
-			auto agent = agent::host::make_handle(std::move(agent_host));
-			std::invoke(std::move(fn), std::move(agent));
+			{
+				auto agent_host = std::make_shared<agent::host>(cluster.scheduler(), runner, params);
+				auto agent_lock = agent::lock{agent_host};
+				// TODO: HandleScope should probably be a part of the agent lock
+				auto handle_scope = v8::HandleScope{agent_host->isolate_.get()};
+				auto agent = agent::host::make_handle(std::move(agent_host));
+				std::invoke(std::move(fn), agent_lock, std::move(agent));
+			}
 			// nb: `runner` contains the scheduler so it must be allowed to escape up the stack to
 			// be released later.
 			return std::move(runner);

@@ -9,7 +9,7 @@ target_sources(ivm_backend_v8
 		script.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
-		include/agent.cc
+		agent_.cc
 		include/environment.cc
 		include/script.cc
 		module_.cc

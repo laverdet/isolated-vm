@@ -32,7 +32,7 @@ export class agent {
 		auto schedule_async(auto task, auto... args) -> void
 			requires std::invocable<decltype(task), const std::stop_token&, lock&, decltype(args)...>;
 
-		static auto make(std::invocable<agent> auto fn, cluster& cluster, behavior_params params) -> void;
+		static auto make(std::invocable<agent::lock&, agent> auto fn, cluster& cluster, behavior_params params) -> void;
 
 	private:
 		std::weak_ptr<host> host_;

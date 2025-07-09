@@ -23,7 +23,7 @@ struct compile_script_options {
 
 auto compile_script(
 	environment& env,
-	js::napi::untagged_external<agent>& agent,
+	js::napi::untagged_external<agent_handle>& agent,
 	js::string_t code_string,
 	std::optional<compile_script_options> options_optional
 ) {
@@ -34,7 +34,7 @@ auto compile_script(
 			return js::napi::untagged_external<isolated_v8::script>::make(env, std::move(script));
 		}
 	);
-	agent->schedule(
+	agent->agent().schedule(
 		[ code_string = std::move(code_string),
 			options = std::move(options),
 			dispatch = std::move(dispatch) ](

@@ -13,7 +13,8 @@ using namespace js;
 
 export using expected_value = std::expected<napi_value, napi_value>;
 
-export auto make_promise(environment& env, auto accept) {
+export template <class Accept>
+auto make_promise(environment& env, Accept accept) {
 	// Make nodejs promise & future
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	napi_deferred deferred;
@@ -43,7 +44,8 @@ export auto make_promise(environment& env, auto accept) {
 		[ resolve = std::move(resolve),
 			scheduler = std::move(scheduler) ](
 			auto&&... args
-		) mutable {
+		) mutable
+		requires std::invocable<Accept&, environment&, decltype(args)...> {
 			scheduler(
 				util::make_indirect_moveable_function(
 					[ resolve = std::move(resolve),

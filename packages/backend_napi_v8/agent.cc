@@ -3,13 +3,13 @@ module;
 #include <tuple>
 #include <variant>
 module backend_napi_v8;
+import :agent;
 import :environment;
 import :utility;
 import isolated_js;
 import isolated_v8;
 import ivm.utility;
 import napi_js;
-import nodejs;
 using namespace isolated_v8;
 using namespace util::string_literals;
 
@@ -38,8 +38,8 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	auto& cluster = env.cluster();
 	auto [ dispatch, promise ] = make_promise(
 		env,
-		[](environment& env, isolated_v8::agent agent) -> expected_value {
-			return js::napi::untagged_external<isolated_v8::agent>::make(env, std::move(agent));
+		[](environment& env, agent_handle&& agent) -> expected_value {
+			return js::napi::untagged_external<agent_handle>::make(env, std::move(agent));
 		}
 	);
 	auto clock = std::visit(
@@ -61,9 +61,10 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	);
 	agent::make(
 		[ dispatch = std::move(dispatch) ](
+			isolated_v8::agent::lock& lock,
 			isolated_v8::agent agent
 		) mutable {
-			dispatch(std::move(agent));
+			dispatch(agent_handle{lock, std::move(agent)});
 		},
 		cluster,
 		{.clock = clock, .random_seed = options.random_seed}
@@ -72,7 +73,10 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	return js::forward{promise};
 }
 
-auto make_create_agent(environment& env) -> js::napi::value<js::function_tag> {
+agent_handle::agent_handle(isolated_v8::agent::lock& /*lock*/, isolated_v8::agent agent) :
+		agent_{std::move(agent)} {}
+
+auto agent_handle::make_create_agent(environment& env) -> js::napi::value<js::function_tag> {
 	return js::napi::value<js::function_tag>::make(env, js::make_static_function<create_agent>());
 }
 

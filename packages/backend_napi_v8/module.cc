@@ -34,7 +34,7 @@ module_handle::module_handle(isolated_v8::agent agent, isolated_v8::js_module mo
 
 auto compile_module(
 	environment& env,
-	js::napi::untagged_external<agent>& agent,
+	js::napi::untagged_external<agent_handle>& agent,
 	js::string_t source_text,
 	std::optional<compile_module_options> options_optional
 ) {
@@ -54,8 +54,8 @@ auto compile_module(
 			return js::transfer_in_strict<napi_value>(std::move(result), env);
 		}
 	);
-	agent->schedule(
-		[ agent = *agent,
+	agent->agent().schedule(
+		[ agent = agent->agent(),
 			dispatch = std::move(dispatch),
 			source_text = std::move(source_text),
 			options = std::move(options_optional).value_or(compile_module_options{}) ](
