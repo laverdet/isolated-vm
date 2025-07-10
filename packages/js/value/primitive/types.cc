@@ -66,7 +66,7 @@ export class bigint {
 
 	private:
 		int sign_bit_ = 0;
-		std::vector<util::trivial_aggregate<uint64_t>> words_;
+		std::vector<util::trivial_aggregate<word_type>> words_;
 };
 
 export using number_t = std::variant<double, int32_t, uint32_t>;

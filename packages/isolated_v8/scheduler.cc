@@ -28,8 +28,7 @@ class member : util::non_moveable {
 		member() = default;
 
 	public:
-		auto self() -> Type& { return *static_cast<Type*>(this); }
-		auto cself() const -> const Type& { return *static_cast<const Type*>(this); }
+		auto self(this auto& self) -> auto& { return static_cast<util::apply_cv_ref_t<decltype(self), Type>>(self); }
 
 	private:
 		intrusive_list_hook hook_;
@@ -232,7 +231,7 @@ class runner final : public layer_connected {
 				// NOLINT(cppcoreguidelines-pro-type-const-cast)
 				auto& rwcontainer = const_cast<scheduler::container<thread>&>(container);
 				return std::ranges::all_of(rwcontainer.members(), [ & ](const auto& thread) -> bool {
-					return thread.cself().thread_id() == thread_id;
+					return thread.self().thread_id() == thread_id;
 				});
 			});
 			lock->request_stop();

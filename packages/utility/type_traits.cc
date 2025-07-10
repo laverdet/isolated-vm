@@ -25,6 +25,41 @@ struct select<0, Type, Types...> : std::type_identity<Type> {};
 template <std::size_t Index, class Type, class... Types>
 struct select<Index, Type, Types...> : select<Index - 1, Types...> {};
 
+// Copy the cv_ref qualifiers from `From` to `To`
+export template <class From, class To>
+struct apply_ref : std::type_identity<To> {};
+
+export template <class From, class To>
+using apply_ref_t = apply_ref<From, To>::type;
+
+template <class From, class To>
+struct apply_ref<From&, To> : std::type_identity<To&> {};
+
+template <class From, class To>
+struct apply_ref<From&&, To> : std::type_identity<To&&> {};
+
+export template <class From, class To>
+struct apply_cv : std::type_identity<To> {};
+
+export template <class From, class To>
+using apply_cv_t = apply_cv<From, To>::type;
+
+template <class From, class To>
+struct apply_cv<const From, To> : std::type_identity<const To> {};
+
+template <class From, class To>
+struct apply_cv<volatile From, To> : std::type_identity<volatile To> {};
+
+template <class From, class To>
+struct apply_cv<const volatile From, To> : std::type_identity<const volatile To> {};
+
+export template <class From, class To>
+struct apply_cv_ref
+		: std::type_identity<apply_ref_t<From, apply_cv_t<std::remove_reference_t<From>, To>>> {};
+
+export template <class From, class To>
+using apply_cv_ref_t = apply_cv_ref<From, To>::type;
+
 // Same as select, but counting from the end
 export template <std::size_t Index, class... Types>
 struct reverse_select : select<sizeof...(Types) - Index - 1, Types...> {};

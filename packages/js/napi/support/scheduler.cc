@@ -1,5 +1,4 @@
 module;
-#include <functional>
 #include <memory>
 #include <stdexcept>
 #include <thread>
@@ -18,7 +17,7 @@ template <class Handle, class Type>
 class uv_typed_handle {
 	public:
 		// NOLINTNEXTLINE(google-explicit-constructor)
-		operator Handle*() { return reinterpret_cast<Handle*>(&handle_); }
+		operator Handle*() { return static_cast<Handle*>(&handle_); }
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		operator uv_handle_t*() { return reinterpret_cast<uv_handle_t*>(&handle_); }
 		// Returns data lvalue

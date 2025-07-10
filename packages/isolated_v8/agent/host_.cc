@@ -1,5 +1,4 @@
 module;
-#include <functional>
 #include <memory>
 #include <optional>
 export module isolated_v8:agent_host;

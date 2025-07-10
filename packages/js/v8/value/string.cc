@@ -31,7 +31,7 @@ auto string::make(v8::Isolate* isolate, std::basic_string_view<std::byte> view) 
 auto string::make(v8::Isolate* isolate, std::string_view view) -> v8::Local<v8::String> {
 	auto string = v8::String::NewFromUtf8(
 		isolate,
-		reinterpret_cast<const char*>(view.data()),
+		view.data(),
 		v8::NewStringType::kNormal,
 		static_cast<int>(view.size())
 	);

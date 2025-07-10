@@ -18,24 +18,14 @@ namespace isolated_v8::clock {
 class base_clock {
 	public:
 		auto begin_tick() -> void;
+		auto clock_time_ms(this auto& self) -> int64_t;
 
 	protected:
 		static auto steady_clock_offset(js_clock::time_point epoch) -> steady_clock::duration;
 };
 
-template <class Self>
-class base_clock_of : public base_clock {
-	private:
-		friend Self;
-		base_clock_of() = default;
-
-	public:
-		auto clock_time_ms() -> int64_t;
-};
-
-template <class Self>
-auto base_clock_of<Self>::clock_time_ms() -> int64_t {
-	auto some_time_point = static_cast<Self*>(this)->clock_time();
+auto base_clock::clock_time_ms(this auto& self) -> int64_t {
+	auto some_time_point = self.clock_time();
 	// You can't `clock_cast` from `steady_clock` but internally we redefine that epoch to be UTC via
 	// `steady_clock_offset`, so casting the `duration` directly is correct for clocks that use that
 	// reference.
@@ -45,7 +35,7 @@ auto base_clock_of<Self>::clock_time_ms() -> int64_t {
 
 // Starts at a specified epoch and each query for the time will increment the clock by a constant
 // amount.
-export class deterministic : public base_clock_of<deterministic> {
+export class deterministic : public base_clock {
 	public:
 		deterministic(js_clock::time_point epoch, js_clock::duration increment);
 
@@ -58,7 +48,7 @@ export class deterministic : public base_clock_of<deterministic> {
 
 // During a microtask the clock will stay the same. It will update to the current time at the start
 // of the next tick. Optionally you can specify a start epoch.
-export class microtask : public base_clock_of<microtask> {
+export class microtask : public base_clock {
 	public:
 		explicit microtask(std::optional<js_clock::time_point> maybe_epoch);
 
@@ -71,7 +61,7 @@ export class microtask : public base_clock_of<microtask> {
 };
 
 // Realtime clock starting from the given epoch.
-export class realtime : public base_clock_of<realtime> {
+export class realtime : public base_clock {
 	public:
 		explicit realtime(js_clock::time_point epoch);
 
@@ -82,7 +72,7 @@ export class realtime : public base_clock_of<realtime> {
 };
 
 // Pass through system time
-export class system : public base_clock_of<system> {
+export class system : public base_clock {
 	public:
 		system() = default;
 		auto clock_time() -> system_clock::time_point;
