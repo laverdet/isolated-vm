@@ -27,9 +27,15 @@ ExternalCopyHandle::~ExternalCopyHandle() {
 	Isolate::GetCurrent()->AdjustAmountOfExternalAllocatedMemory(-size);
 }
 
+static std::unique_ptr<ExternalCopyHandle> ExternalCopyHandle_New_Wrapper(
+	v8::Local<v8::Value> value, v8::MaybeLocal<v8::Object> options
+) {
+	return ExternalCopyHandle::New(value, options);
+}
+
 auto ExternalCopyHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
-		"ExternalCopy", ConstructorFunction<decltype(&ExternalCopyHandle::New), &ExternalCopyHandle::New>{},
+		"ExternalCopy", ConstructorFunction<decltype(&ExternalCopyHandle_New_Wrapper), &ExternalCopyHandle_New_Wrapper>{},
 		"totalExternalSize", StaticAccessor<decltype(&ExternalCopyHandle::TotalExternalSizeGetter), &ExternalCopyHandle::TotalExternalSizeGetter>{},
 		"copy", MemberFunction<decltype(&ExternalCopyHandle::Copy), &ExternalCopyHandle::Copy>{},
 		"copyInto", MemberFunction<decltype(&ExternalCopyHandle::CopyInto), &ExternalCopyHandle::CopyInto>{},

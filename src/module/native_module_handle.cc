@@ -49,9 +49,13 @@ auto NativeModuleHandle::NativeModuleTransferable::TransferIn() -> Local<Value> 
  */
 NativeModuleHandle::NativeModuleHandle(shared_ptr<NativeModule> module) : module(std::move(module)) {}
 
+static std::unique_ptr<NativeModuleHandle> NativeModuleHandle_New_Wrapper(v8::Local<v8::String> value) {
+    return NativeModuleHandle::New(value);
+}
+
 auto NativeModuleHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
-		"NativeModule", ConstructorFunction<decltype(&NativeModuleHandle::New), &NativeModuleHandle::New>{},
+		"NativeModule", ConstructorFunction<decltype(&NativeModuleHandle_New_Wrapper), &NativeModuleHandle_New_Wrapper>{},
 		"create", MemberFunction<decltype(&NativeModuleHandle::Create<1>), &NativeModuleHandle::Create<1>>{},
 		"createSync", MemberFunction<decltype(&NativeModuleHandle::Create<0>), &NativeModuleHandle::Create<0>>{}
 	));

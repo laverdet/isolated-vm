@@ -12,9 +12,13 @@ namespace ivm {
 /**
  * CallbackHandle implementation
  */
+static std::unique_ptr<CallbackHandle> CallbackHandle_New_Wrapper(Local<Value> This, Local<Function> fn, MaybeLocal<Object> options) {
+	return CallbackHandle::New(fn, options);
+}
+
 auto CallbackHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
-		"Callback", ConstructorFunction<decltype(&CallbackHandle::New), &CallbackHandle::New>{}
+		"Callback", ConstructorFunction<decltype(&CallbackHandle_New_Wrapper), &CallbackHandle_New_Wrapper>{}
 	));
 }
 
