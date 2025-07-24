@@ -39,9 +39,13 @@ auto IsolateHandle::IsolateHandleTransferable::TransferIn() -> Local<Value> {
 
 IsolateHandle::IsolateHandle(shared_ptr<IsolateHolder> isolate) : isolate(std::move(isolate)) {}
 
+static std::unique_ptr<ClassHandle> IsolateHandle_New_Wrapper(v8::MaybeLocal<v8::Object> options) {
+	return IsolateHandle::New(options);
+}
+
 auto IsolateHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
-	 "Isolate", ConstructorFunction<decltype(&IsolateHandle::New), &IsolateHandle::New>{},
+		"Isolate", ConstructorFunction<decltype(&IsolateHandle_New_Wrapper), &IsolateHandle_New_Wrapper>{},
 		"createSnapshot", FreeFunction<decltype(&CreateSnapshot), &CreateSnapshot>{},
 		"compileScript", MemberFunction<decltype(&IsolateHandle::CompileScript<1>), &IsolateHandle::CompileScript<1>>{},
 		"compileScriptSync", MemberFunction<decltype(&IsolateHandle::CompileScript<0>), &IsolateHandle::CompileScript<0>>{},

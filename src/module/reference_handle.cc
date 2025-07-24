@@ -105,9 +105,13 @@ ReferenceData::ReferenceData(
 /**
  * ReferenceHandle implementation
  */
+static std::unique_ptr<ReferenceHandle> ReferenceHandle_New_Wrapper(v8::Local<v8::Value> value, v8::MaybeLocal<v8::Object> options) {
+    return ReferenceHandle::New(value, options);
+}
+
 auto ReferenceHandle::Definition() -> Local<FunctionTemplate> {
 	return Inherit<TransferableHandle>(MakeClass(
-		"Reference", ConstructorFunction<decltype(&ReferenceHandle::New), &ReferenceHandle::New>{},
+		"Reference", ConstructorFunction<decltype(&ReferenceHandle_New_Wrapper), &ReferenceHandle_New_Wrapper>{},
 		"deref", MemberFunction<decltype(&ReferenceHandle::Deref), &ReferenceHandle::Deref>{},
 		"derefInto", MemberFunction<decltype(&ReferenceHandle::DerefInto), &ReferenceHandle::DerefInto>{},
 		"release", MemberFunction<decltype(&ReferenceHandle::Release), &ReferenceHandle::Release>{},
