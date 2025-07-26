@@ -14,7 +14,7 @@
 				},
 				'msvs_settings': {
 					'VCCLCompilerTool': {
-						'AdditionalOptions': [ '-std:c++20', '/GR' ],
+						'AdditionalOptions': [ '-std:c++20' ],
 						'ExceptionHandling': '1',
 					},
 				},
@@ -50,9 +50,18 @@
 			'xcode_settings': {
 				'GCC_ENABLE_CPP_RTTI': 'YES',
 			},
-			'msvs_settings': {
-				'VCCLCompilerTool': {
-					'RuntimeTypeInfo': 'true',
+			# nb: For whatever reason this msvs setting cannot be inherited and must be directly set on
+			# each target
+			'configurations': {
+				'Debug': {
+					'msvs_settings': {
+						'VCCLCompilerTool': { 'RuntimeTypeInfo': 'true' },
+					},
+				},
+				'Release': {
+					'msvs_settings': {
+						'VCCLCompilerTool': { 'RuntimeTypeInfo': 'true' },
+					},
 				},
 			},
 			'conditions': [
@@ -65,7 +74,7 @@
 				'src/external_copy/string.cc',
 				'src/isolate/allocator_nortti.cc',
 				'src/isolate/environment.cc',
-				"src/isolate/cpu_profile_manager.cc",
+				'src/isolate/cpu_profile_manager.cc',
 				'src/isolate/executor.cc',
 				'src/isolate/holder.cc',
 				'src/isolate/inspector.cc',

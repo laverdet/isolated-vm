@@ -490,13 +490,13 @@ auto IsolateHandle::CreateSnapshot(ArrayRange script_handles, MaybeLocal<String>
 			void PostTaskImpl(std::unique_ptr<v8::Task> task, const v8::SourceLocation& /*location*/) final {
 				tasks.write()->push_back(std::move(task));
 			}
-			void PostDelayedTaskImpl(std::unique_ptr<v8::Task> task, double /*delay_in_seconds*/, const v8::SourceLocation& /*location*/) final {
+			void PostDelayedTaskImpl(std::unique_ptr<v8::Task> task, double /*delay_in_seconds*/, const v8::SourceLocation& location) final {
 				if (!done) {
-					PostTask(std::move(task));
+					PostTask(std::move(task), location);
 				}
 			}
-			void PostNonNestableTaskImpl(std::unique_ptr<v8::Task> task, const v8::SourceLocation& /*location*/) final {
-				PostTask(std::move(task));
+			void PostNonNestableTaskImpl(std::unique_ptr<v8::Task> task, const v8::SourceLocation& location) final {
+				PostTask(std::move(task), location);
 			}
 
 		private:
