@@ -492,11 +492,19 @@ auto IsolateHandle::CreateSnapshot(ArrayRange script_handles, MaybeLocal<String>
 			}
 			void PostDelayedTaskImpl(std::unique_ptr<v8::Task> task, double /*delay_in_seconds*/, const v8::SourceLocation& location) final {
 				if (!done) {
+#if V8_AT_LEAST(13, 3, 241)
 					PostTask(std::move(task), location);
+#else
+					PostTask(std::move(task));
+#endif
 				}
 			}
 			void PostNonNestableTaskImpl(std::unique_ptr<v8::Task> task, const v8::SourceLocation& location) final {
-				PostTask(std::move(task), location);
+#if V8_AT_LEAST(13, 3, 241)
+					PostTask(std::move(task), location);
+#else
+					PostTask(std::move(task));
+#endif
 			}
 
 		private:
