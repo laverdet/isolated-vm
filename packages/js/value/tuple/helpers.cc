@@ -28,13 +28,13 @@ template <class Sequence, class Types>
 struct param_pair_sequence;
 
 template <std::size_t... Index, class... Types>
-struct param_pair_sequence<std::index_sequence<Index...>, std::tuple<Types...>>
-		: std::type_identity<std::tuple<param_pair_t<Index, Types...>...>> {};
+struct param_pair_sequence<std::index_sequence<Index...>, util::parameter_pack<Types...>>
+		: std::type_identity<util::parameter_pack<param_pair_t<Index, Types...>...>> {};
 
 // Creates a tuple of param pairs from packed params.
 // For example, `[int, char]` becomes `[(int, void), (char, int)]`
 export template <class... Types>
 using make_param_pair_sequence =
-	param_pair_sequence<std::make_index_sequence<sizeof...(Types)>, std::tuple<Types...>>::type;
+	param_pair_sequence<std::make_index_sequence<sizeof...(Types)>, util::parameter_pack<Types...>>::type;
 
 } // namespace js

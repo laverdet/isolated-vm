@@ -65,7 +65,7 @@ template <class Meta, class Type>
 using accept_tuple_param_acceptors_t = accept_tuple_param_acceptors<Meta, Type>::type;
 
 template <class Meta, class... Pairs>
-struct accept_tuple_param_acceptors<Meta, std::tuple<Pairs...>>
+struct accept_tuple_param_acceptors<Meta, util::parameter_pack<Pairs...>>
 		: std::type_identity<std::tuple<accept_tuple_param<Meta, Pairs>...>> {};
 
 // Accepting a `std::tuple` unfolds from a visited vector

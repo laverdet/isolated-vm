@@ -12,6 +12,10 @@ struct value_constant {
 		constexpr static auto value = Value;
 };
 
+// Capture a pack of types into a single type
+export template <class... Type>
+struct parameter_pack {};
+
 // Select the indexed type from a parameter pack
 export template <std::size_t Index, class... Types>
 struct select;
