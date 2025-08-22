@@ -7,7 +7,7 @@ namespace backend_napi_v8 {
 
 export class agent_handle {
 	public:
-		explicit agent_handle(isolated_v8::agent::lock& lock, isolated_v8::agent agent);
+		explicit agent_handle(const isolated_v8::agent::lock& lock, isolated_v8::agent agent);
 
 		auto agent() -> auto& { return agent_; }
 

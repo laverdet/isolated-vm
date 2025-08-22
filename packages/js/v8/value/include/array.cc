@@ -21,7 +21,7 @@ export class array
 		using value_type = v8::Local<v8::Value>;
 
 		array() = default;
-		explicit array(const context_lock& lock, v8::Local<v8::Array> handle) :
+		explicit array(const context_lock_witness& lock, v8::Local<v8::Array> handle) :
 				Local{handle},
 				handle_with_context{lock} {}
 

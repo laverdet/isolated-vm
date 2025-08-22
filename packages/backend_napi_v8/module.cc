@@ -59,7 +59,7 @@ auto compile_module(
 			dispatch = std::move(dispatch),
 			source_text = std::move(source_text),
 			options = std::move(options_optional).value_or(compile_module_options{}) ](
-			isolated_v8::agent::lock& lock
+			const isolated_v8::agent::lock& lock
 		) mutable {
 			auto origin = std::move(options).origin.value_or(source_origin{});
 			auto module = isolated_v8::js_module::compile(lock, std::move(source_text), std::move(origin));
@@ -85,10 +85,11 @@ auto evaluate_module(
 		[ dispatch = std::move(dispatch),
 			realm = realm->realm(),
 			module_ = module_->module() ](
-			isolated_v8::agent::lock& agent
+			const isolated_v8::agent::lock& agent
 		) mutable {
-			isolated_v8::realm::scope realm_scope{agent, realm};
-			auto result = module_.evaluate(realm_scope);
+			auto result = realm.invoke(agent, [ & ](const isolated_v8::realm::scope& realm) {
+				return module_.evaluate(realm);
+			});
 			dispatch(std::move(result));
 		}
 	);
@@ -165,12 +166,13 @@ auto link_module(
 		[ host_link_callback = std::move(host_link_callback),
 			dispatch = std::move(dispatch) ](
 			const std::stop_token& /*stop_token*/,
-			isolated_v8::agent::lock& agent,
+			const isolated_v8::agent::lock& agent,
 			isolated_v8::realm realm,
 			isolated_v8::js_module module
 		) mutable {
-			isolated_v8::realm::scope realm_scope{agent, realm};
-			module.link(realm_scope, std::move(host_link_callback));
+			realm.invoke(agent, [ & ](const isolated_v8::realm::scope& realm) {
+				module.link(realm, std::move(host_link_callback));
+			});
 			dispatch();
 		},
 		realm->realm(),
@@ -198,7 +200,7 @@ auto create_capability(
 	auto invoke_capability = js::free_function{
 		[ &env,
 			capability_callback = std::move(capability_callback) ](
-			realm::scope& /*realm*/,
+			const realm::scope& /*realm*/,
 			js::rest /*rest*/,
 			std::vector<js::value_t> params
 		) mutable {
@@ -225,7 +227,7 @@ auto create_capability(
 	agent->schedule(
 		[ invoke_capability = std::move(invoke_capability),
 			dispatch = std::move(dispatch) ](
-			isolated_v8::agent::lock& lock,
+			const isolated_v8::agent::lock& lock,
 			isolated_v8::agent agent,
 			create_capability_options options
 		) mutable {

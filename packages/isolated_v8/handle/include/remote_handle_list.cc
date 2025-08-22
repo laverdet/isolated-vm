@@ -4,7 +4,6 @@ export module isolated_v8:remote_handle_list;
 import :remote_handle;
 import ivm.utility;
 import v8_js;
-import v8;
 
 namespace isolated_v8 {
 
@@ -21,7 +20,7 @@ export class remote_handle_list {
 	public:
 		auto erase(remote_handle& handle) -> void;
 		auto insert(remote_handle& handle) -> void;
-		auto reset(const js::iv8::isolate_lock& lock) -> void;
+		auto reset(const js::iv8::isolate_lock_witness& lock) -> void;
 
 	private:
 		lockable_list_type list_;

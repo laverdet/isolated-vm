@@ -70,7 +70,7 @@ template <>
 struct select_transferee_environment<> : std::type_identity<void> {};
 
 template <class Type, class... Rest>
-struct select_transferee_environment<Type, Rest...> : std::type_identity<std::decay_t<Type>> {};
+struct select_transferee_environment<Type, Rest...> : std::decay<Type> {};
 
 // Transfer a JavaScript value from one domain to another
 template <class Type, class Wrap, class... VisitArgs, class... AcceptArgs>
@@ -182,8 +182,7 @@ struct forward : util::pointer_facade {
 		explicit forward(const Type& value) :
 				value_{value} {}
 
-		constexpr auto operator->() -> Type* { return &value_; }
-		constexpr auto operator->() const -> const Type* { return &value_; }
+		constexpr auto operator->(this auto&& self) -> auto* { return &self.value_; }
 
 	private:
 		Type value_;

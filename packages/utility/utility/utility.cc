@@ -1,4 +1,5 @@
 module;
+#include <concepts>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -79,6 +80,12 @@ class scope_exit : non_copyable {
 	private:
 		Invoke invoke_;
 };
+
+// Explicitly annotate desired struct slicing: cppcoreguidelines-slicing
+export template <class Type>
+auto slice_cast(const std::derived_from<Type> auto& value) -> const Type& {
+	return static_cast<const Type&>(value);
+}
 
 // Wrapper which does not initialize the data member. For use in `std::vector`.
 export template <class Type>

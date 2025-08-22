@@ -24,11 +24,11 @@ export class agent {
 		agent(const std::shared_ptr<agent_host>& host, std::shared_ptr<agent_severable> severable);
 
 		auto schedule(auto task, auto... args) -> void
-			requires std::invocable<decltype(task), lock&, decltype(args)...>;
+			requires std::invocable<decltype(task), const agent::lock&, decltype(args)...>;
 		auto schedule_async(auto task, auto... args) -> void
-			requires std::invocable<decltype(task), const std::stop_token&, lock&, decltype(args)...>;
+			requires std::invocable<decltype(task), const std::stop_token&, const agent::lock&, decltype(args)...>;
 
-		static auto make(std::invocable<agent::lock&, agent> auto fn, cluster& cluster, behavior_params params) -> void;
+		static auto make(std::invocable<const agent::lock&, agent> auto fn, cluster& cluster, behavior_params params) -> void;
 
 	private:
 		std::weak_ptr<agent_host> host_;

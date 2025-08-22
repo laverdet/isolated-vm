@@ -37,32 +37,32 @@ export class module_request {
 export class js_module {
 	public:
 		js_module() = delete;
-		js_module(agent::lock& agent, v8::Local<v8::Module> module_);
+		js_module(const agent::lock& agent, v8::Local<v8::Module> module_);
 
-		auto evaluate(realm::scope& realm_scope) -> js::value_t;
-		auto link(realm::scope& realm, auto callback) -> void;
-		auto requests(agent::lock& agent) -> std::vector<module_request>;
+		auto evaluate(const realm::scope& realm_scope) -> js::value_t;
+		auto link(const realm::scope& realm, auto callback) -> void;
+		auto requests(const agent::lock& agent) -> std::vector<module_request>;
 
-		static auto compile(agent::lock& agent, auto&& source_text, source_origin source_origin) -> js_module;
+		static auto compile(const agent::lock& agent, auto&& source_text, source_origin source_origin) -> js_module;
 
 		template <class... Name, class Function>
-		static auto create_synthetic(agent::lock& agent, std::tuple<std::pair<Name, Function>...> exports, source_required_name source_origin) -> js_module;
+		static auto create_synthetic(const agent::lock& agent, std::tuple<std::pair<Name, Function>...> exports, source_required_name source_origin) -> js_module;
 
 	private:
-		static auto compile(agent::lock& agent, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module;
+		static auto compile(const agent::lock& agent, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module;
 		static auto create_synthetic(
-			agent::lock& agent,
+			const agent::lock& agent,
 			std::span<const v8::Local<v8::String>> export_names,
 			source_required_name source_origin,
 			synthetic_module_action_type action
 		) -> js_module;
 
-		auto link(realm::scope& realm, v8::Module::ResolveModuleCallback callback) -> void;
+		auto link(const realm::scope& realm, v8::Module::ResolveModuleCallback callback) -> void;
 
 		shared_remote<v8::Module> module_;
 };
 
-auto js_module::compile(agent::lock& agent, auto&& source_text, source_origin source_origin) -> js_module {
+auto js_module::compile(const agent::lock& agent, auto&& source_text, source_origin source_origin) -> js_module {
 	// nb: Context lock is needed for compilation errors
 	js::iv8::context_managed_lock context_lock{agent, agent->scratch_context()};
 	auto local_source_text = js::transfer_in_strict<v8::Local<v8::String>>(std::forward<decltype(source_text)>(source_text), agent);
@@ -70,7 +70,7 @@ auto js_module::compile(agent::lock& agent, auto&& source_text, source_origin so
 }
 
 template <class... Name, class Function>
-auto js_module::create_synthetic(agent::lock& agent, std::tuple<std::pair<Name, Function>...> exports, source_required_name source_origin) -> js_module {
+auto js_module::create_synthetic(const agent::lock& agent, std::tuple<std::pair<Name, Function>...> exports, source_required_name source_origin) -> js_module {
 	return std::invoke(
 		[ & ]<size_t... Index>(std::index_sequence<Index...> /*indices*/) {
 			constexpr auto property_count = sizeof...(Index);
@@ -88,7 +88,7 @@ auto js_module::create_synthetic(agent::lock& agent, std::tuple<std::pair<Name, 
 					v8::Local<v8::Module> module
 				) mutable {
 					auto& agent = agent::lock::get_current();
-					realm::witness_scope realm{agent, context};
+					auto realm = realm::scope{agent, js::iv8::context_lock_witness::make_witness(agent, context)};
 					const auto export_locals = js::transfer_strict<std::array<v8::Local<v8::Value>, property_count>>(std::move(export_values), std::forward_as_tuple(realm), std::forward_as_tuple(realm));
 					(module->SetSyntheticModuleExport(agent->isolate(), name_persistents[ Index ].Get(agent.isolate()), std::get<Index>(std::move(export_locals))).ToChecked(), ...);
 				};
@@ -98,11 +98,11 @@ auto js_module::create_synthetic(agent::lock& agent, std::tuple<std::pair<Name, 
 	);
 }
 
-auto js_module::link(realm::scope& realm, auto callback) -> void {
+auto js_module::link(const realm::scope& realm, auto callback) -> void {
 	// Thread locals are used to hold contextual data about this link request. `InstantiateModule`
 	// does not provide any user data, but since it is also a blocking operation it's a good place to
 	// put this.
-	static thread_local realm::scope* realm_local;
+	static thread_local const realm::scope* realm_local;
 	realm_local = &realm;
 
 	static thread_local decltype(callback)* thread_callback_local;
@@ -128,7 +128,7 @@ auto js_module::link(realm::scope& realm, auto callback) -> void {
 			}
 		});
 		auto attributes_view =
-			js::iv8::fixed_array{realm, attributes} |
+			js::iv8::fixed_array{realm.context(), attributes} |
 			// [ key, value, ...[] ]
 			std::views::chunk(2) |
 			std::views::transform([ & ](const auto& pair) {

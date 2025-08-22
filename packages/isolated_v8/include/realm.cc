@@ -1,5 +1,6 @@
 module;
-#include <optional>
+#include <concepts>
+#include <functional>
 export module isolated_v8:realm;
 import :agent_host;
 import :remote_handle;
@@ -10,47 +11,46 @@ import v8;
 
 namespace isolated_v8 {
 
+class realm_lock;
+
 export class realm {
 	public:
 		class scope;
-		class witness_scope;
 
 		realm() = delete;
-		realm(agent::lock& agent, v8::Local<v8::Context> context);
-		static auto get(v8::Local<v8::Context> context) -> realm&;
-		static auto make(agent::lock& agent) -> realm;
+		realm(const agent::lock& agent, v8::Local<v8::Context> context);
+
+		auto invoke(const agent::lock& agent, std::invocable<const realm::scope&> auto task);
+
+		[[nodiscard]] static auto get(const agent::lock& agent) -> realm&;
+		[[nodiscard]] static auto get(v8::Local<v8::Context> context, const agent::lock& agent) -> realm&;
+		[[nodiscard]] static auto get(v8::Local<v8::Context> context) -> realm&;
+		[[nodiscard]] static auto make(const agent::lock& agent) -> realm;
 
 	private:
+		[[nodiscard]] auto lock(const agent::lock& agent) -> js::iv8::context_managed_lock;
+
 		shared_remote<v8::Context> context_;
 };
 
 class realm::scope
 		: util::non_moveable,
-			public js::iv8::context_implicit_witness_lock,
+			public js::iv8::context_lock_witness,
 			public remote_handle_lock {
-	protected:
-		// enters the context
-		scope(agent::lock& agent, realm& realm, v8::Local<v8::Context> context);
-		// does not enter the context
-		scope(agent::lock& agent, v8::Local<v8::Context> context);
 
 	public:
-		scope() = delete;
-		scope(agent::lock& agent, realm& realm);
+		scope(const agent::lock& agent, const context_lock_witness& lock);
 
-		[[nodiscard]] auto agent() const -> agent::lock&;
-
-		auto accept_remote_handle(remote_handle& remote) noexcept -> void final;
-		[[nodiscard]] auto remote_expiration_task() const -> reset_handle_type final;
+		[[nodiscard]] auto agent() const -> const agent::lock&;
 
 	private:
-		agent::lock* agent_lock_;
-		std::optional<js::iv8::context_managed_lock> context_lock_;
+		std::reference_wrapper<const agent::lock> agent_lock_;
 };
 
-class realm::witness_scope : public realm::scope {
-	public:
-		witness_scope(agent::lock& agent, v8::Local<v8::Context> context);
-};
+// ---
+
+auto realm::invoke(const agent::lock& agent, std::invocable<const realm::scope&> auto task) {
+	return task(realm::scope{agent, lock(agent)});
+}
 
 } // namespace isolated_v8

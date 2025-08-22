@@ -1,13 +1,11 @@
-module;
-#include <cstdint>
 module v8_js.fixed_array;
 import v8;
 
 namespace js::iv8 {
 
-fixed_array::fixed_array(const context_lock& lock, v8::Local<v8::FixedArray> array) :
+fixed_array::fixed_array(v8::Local<v8::Context> context, v8::Local<v8::FixedArray> array) :
 		array_{array},
-		context_{lock.context()} {}
+		context_{context} {}
 
 auto fixed_array::begin() const -> iterator {
 	return {array_, context_, 0};

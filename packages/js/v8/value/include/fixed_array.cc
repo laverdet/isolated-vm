@@ -1,6 +1,5 @@
 module;
 #include <compare>
-#include <cstdint>
 #include <ranges>
 export module v8_js.fixed_array;
 import ivm.utility;
@@ -16,7 +15,7 @@ export class fixed_array {
 		using value_type = v8::Local<v8::Data>;
 
 		fixed_array() = delete;
-		fixed_array(const context_lock& lock, v8::Local<v8::FixedArray> array);
+		fixed_array(v8::Local<v8::Context> context, v8::Local<v8::FixedArray> array);
 
 		[[nodiscard]] auto begin() const -> iterator;
 		[[nodiscard]] auto end() const -> iterator;

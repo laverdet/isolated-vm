@@ -43,8 +43,8 @@ class weak_map : util::non_moveable {
 		// missing symbol of `std::__detail::operator==(std::__detail::_Node_iterator_base, ...)` which
 		// I'm pretty sure is not my fault. clang v19.1.3
 		[[nodiscard]] auto find(auto&& key) const -> const Value*;
-		auto emplace(const isolate_lock& lock, std::pair<v8::Local<Key>, Value> entry) -> bool;
-		auto extract(const isolate_lock& lock, auto&& key) -> Value;
+		auto emplace(const isolate_lock_witness& lock, std::pair<v8::Local<Key>, Value> entry) -> bool;
+		auto extract(const isolate_lock_witness& lock, auto&& key) -> Value;
 
 	private:
 		container_type map_;
@@ -72,7 +72,7 @@ auto weak_map<Key, Value>::find(auto&& key) const -> const Value* {
 }
 
 template <class Key, class Value>
-auto weak_map<Key, Value>::emplace(const isolate_lock& lock, std::pair<v8::Local<Key>, Value> entry) -> bool {
+auto weak_map<Key, Value>::emplace(const isolate_lock_witness& lock, std::pair<v8::Local<Key>, Value> entry) -> bool {
 	auto result = map_.emplace(
 		std::piecewise_construct,
 		std::forward_as_tuple(lock.isolate(), *this, std::move(entry.first)),
@@ -82,7 +82,7 @@ auto weak_map<Key, Value>::emplace(const isolate_lock& lock, std::pair<v8::Local
 }
 
 template <class Key, class Value>
-auto weak_map<Key, Value>::extract(const isolate_lock& /*lock*/, auto&& key) -> Value {
+auto weak_map<Key, Value>::extract(const isolate_lock_witness& /*lock*/, auto&& key) -> Value {
 	auto it = map_.find(std::forward<decltype(key)>(key));
 	assert(it != map_.end());
 	auto value = std::move(it->second);

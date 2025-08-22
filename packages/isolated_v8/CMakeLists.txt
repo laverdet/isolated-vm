@@ -28,6 +28,7 @@ target_sources(isolated_v8
 		handle/include/remote_handle_list.cc
 		handle/include/remote_handle.cc
 		handle/include/remote.cc
+		handle/remote_handle_fwd_.cc
 		include/cluster.cc
 		include/function.cc
 		include/realm.cc

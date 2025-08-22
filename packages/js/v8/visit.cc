@@ -32,8 +32,10 @@ struct visit<void, v8::Local<v8::External>> {
 template <>
 struct visit<void, v8::Local<v8::Name>> {
 	public:
-		explicit visit(const iv8::isolate_lock& lock) :
-				lock_{&lock} {}
+		explicit visit(const js::iv8::isolate_lock_witness& lock) :
+				isolate_lock_{lock} {}
+
+		[[nodiscard]] auto lock_witness() const -> auto& { return isolate_lock_; }
 
 		auto operator()(v8::Local<v8::Name> value, const auto& accept) const -> decltype(auto) {
 			if (value->IsString()) {
@@ -48,7 +50,7 @@ struct visit<void, v8::Local<v8::Name>> {
 		}
 
 		auto operator()(v8::Local<v8::String> value, const auto& accept) const -> decltype(auto) {
-			auto string = iv8::string{*lock_, value};
+			auto string = iv8::string{lock_witness(), value};
 			if (value->IsOneByte()) {
 				return accept(string_tag_of<std::byte>{}, string);
 			} else {
@@ -57,7 +59,7 @@ struct visit<void, v8::Local<v8::Name>> {
 		}
 
 	private:
-		const iv8::isolate_lock* lock_;
+		iv8::isolate_lock_witness isolate_lock_;
 };
 
 // symbol
@@ -81,17 +83,17 @@ struct visit<void, v8::Local<v8::Value>>
 		using visit<void, v8::Local<v8::External>>::operator();
 		using visit<void, v8::Local<v8::Name>>::operator();
 
-		explicit visit(const iv8::context_lock& lock) :
+		explicit visit(const iv8::context_lock_witness& lock) :
 				visit<void, v8::Local<v8::Name>>{lock},
-				lock_{&lock} {}
+				context_lock_{lock} {}
 
-		auto witness() const -> const iv8::context_lock& { return *lock_; }
+		[[nodiscard]] auto lock_witness() const -> auto& { return context_lock_; }
 
 		auto operator()(v8::Local<v8::Value> value, const auto& accept) const -> decltype(auto) {
 			if (value->IsObject()) {
 				auto visit_entry = std::pair<const visit&, const visit&>{*this, *this};
 				if (value->IsArray()) {
-					return accept(list_tag{}, iv8::object{*lock_, value.As<v8::Object>()}, visit_entry);
+					return accept(list_tag{}, iv8::object{lock_witness(), value.As<v8::Object>()}, visit_entry);
 				} else if (value->IsExternal()) {
 					return (*this)(value.As<v8::External>(), accept);
 				} else if (value->IsDate()) {
@@ -99,7 +101,7 @@ struct visit<void, v8::Local<v8::Value>>
 				} else if (value->IsPromise()) {
 					return accept(promise_tag{}, value);
 				}
-				return accept(dictionary_tag{}, iv8::object{*lock_, value.As<v8::Object>()}, visit_entry);
+				return accept(dictionary_tag{}, iv8::object{lock_witness(), value.As<v8::Object>()}, visit_entry);
 			} else if (value->IsNullOrUndefined()) {
 				if (value->IsNull()) {
 					return accept(null_tag{}, nullptr);
@@ -154,7 +156,7 @@ struct visit<void, v8::Local<v8::Value>>
 		}
 
 	private:
-		const iv8::context_lock* lock_;
+		js::iv8::context_lock_witness context_lock_;
 };
 
 // `arguments` visitor

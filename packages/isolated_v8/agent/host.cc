@@ -31,7 +31,7 @@ agent_host::agent_host(
 
 agent_host::~agent_host() {
 	foreground_runner_->close();
-	js::iv8::isolate_managed_lock lock{isolate_.get()};
+	auto lock = js::iv8::isolate_execution_lock{isolate_.get()};
 	autorelease_pool_.clear();
 	remote_handle_list_.reset(lock);
 	foreground_runner_->finalize();

@@ -1,7 +1,3 @@
-module;
-#include <concepts>
-#include <tuple>
-#include <type_traits>
 export module v8_js.handle;
 import v8_js.lock;
 import v8;
@@ -11,13 +7,15 @@ namespace js::iv8 {
 // Handle which requires the isolate
 export class handle_with_isolate {
 	public:
+		// nb: It is default-constructible. So instead of copying the lock witness (which is not
+		// default-constructible), the isolate is stored.
 		handle_with_isolate() = default;
-		explicit handle_with_isolate(const isolate_lock& lock) :
+		explicit handle_with_isolate(const isolate_lock_witness& lock) :
 				isolate_{lock.isolate()} {}
 
 		[[nodiscard]] auto isolate() const -> v8::Isolate* { return isolate_; }
-		[[nodiscard]] auto witness() const -> isolate_implicit_witness_lock {
-			return isolate_implicit_witness_lock{isolate_};
+		[[nodiscard]] auto witness() const -> isolate_lock_witness {
+			return isolate_lock_witness::make_witness(isolate_);
 		}
 
 	private:
@@ -28,13 +26,13 @@ export class handle_with_isolate {
 export class handle_with_context : public handle_with_isolate {
 	public:
 		handle_with_context() = default;
-		explicit handle_with_context(const context_lock& lock) :
+		explicit handle_with_context(const context_lock_witness& lock) :
 				handle_with_isolate{lock},
 				context_{lock.context()} {}
 
 		[[nodiscard]] auto context() const -> v8::Local<v8::Context> { return context_; }
-		[[nodiscard]] auto witness() const -> context_implicit_witness_lock {
-			return context_implicit_witness_lock{handle_with_isolate::witness(), context_};
+		[[nodiscard]] auto witness() const -> context_lock_witness {
+			return context_lock_witness::make_witness(handle_with_isolate::witness(), context_);
 		}
 
 	private:

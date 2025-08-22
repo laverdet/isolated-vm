@@ -1,7 +1,6 @@
 module;
 #include "chunk_view.h"
 #include <cassert>
-#include <cstdint>
 #include <ranges>
 #include <utility>
 #include <vector>
@@ -22,14 +21,13 @@ module_request::module_request(js::string_t specifier, attributes_type attribute
 		specifier_{std::move(specifier)} {}
 
 // js_module
-js_module::js_module(agent::lock& agent, v8::Local<v8::Module> module_) :
+js_module::js_module(const agent::lock& agent, v8::Local<v8::Module> module_) :
 		module_{make_shared_remote(agent, module_)} {
 }
 
-auto js_module::requests(agent::lock& agent) -> std::vector<module_request> {
+auto js_module::requests(const agent::lock& agent) -> std::vector<module_request> {
 	auto context = agent->scratch_context();
-	js::iv8::context_implicit_witness_lock context_lock{agent, context};
-	auto requests_array = js::iv8::fixed_array{context_lock, module_->deref(agent)->GetModuleRequests()};
+	auto requests_array = js::iv8::fixed_array{context, module_->deref(agent)->GetModuleRequests()};
 	auto requests_view =
 		requests_array |
 		std::views::transform([ & ](v8::Local<v8::Data> value) -> module_request {
@@ -38,7 +36,7 @@ auto js_module::requests(agent::lock& agent) -> std::vector<module_request> {
 			auto specifier = js::transfer_out_strict<js::string_t>(specifier_handle, agent);
 			auto attributes_view =
 				// [ key, value, location, ...[] ]
-				js::iv8::fixed_array{context_lock, request->GetImportAttributes()} |
+				js::iv8::fixed_array{context, request->GetImportAttributes()} |
 				std::views::chunk(3) |
 				std::views::transform([ & ](const auto& triplet) {
 					auto entry = js::transfer_out_strict<std::array<js::string_t, 2>>(
@@ -55,7 +53,7 @@ auto js_module::requests(agent::lock& agent) -> std::vector<module_request> {
 	return {std::from_range, std::move(requests_view)};
 }
 
-auto js_module::evaluate(realm::scope& realm) -> js::value_t {
+auto js_module::evaluate(const realm::scope& realm) -> js::value_t {
 	auto module_handle = module_->deref(realm);
 	auto result = module_handle->Evaluate(realm.context()).ToLocalChecked();
 	auto promise = result.As<v8::Promise>();
@@ -68,18 +66,18 @@ auto js_module::evaluate(realm::scope& realm) -> js::value_t {
 }
 
 auto js_module::create_synthetic(
-	agent::lock& agent,
+	const agent::lock& agent,
 	std::span<const v8::Local<v8::String>> export_names,
 	source_required_name source_origin,
 	synthetic_module_action_type action
 ) -> js_module {
 	v8::Module::SyntheticModuleEvaluationSteps evaluation_steps =
 		[](v8::Local<v8::Context> context, v8::Local<v8::Module> module) -> v8::MaybeLocal<v8::Value> {
-		auto& agent = agent::lock::get_current();
-		auto action = agent->weak_module_actions().extract(agent, module);
-		action(context, module);
+		auto& host = *agent_host::get_current();
+		auto implicit_witness = js::iv8::isolate_lock_witness::make_witness(host.isolate());
+		host.weak_module_actions().extract(implicit_witness, module)(context, module);
 		auto resolver = v8::Promise::Resolver::New(context).ToLocalChecked();
-		resolver->Resolve(context, v8::Undefined(agent.isolate())).ToChecked();
+		resolver->Resolve(context, v8::Undefined(host.isolate())).ToChecked();
 		return resolver->GetPromise();
 	};
 	auto* const isolate = agent->isolate();
@@ -92,7 +90,7 @@ auto js_module::create_synthetic(
 	return js_module{agent, module_handle};
 }
 
-auto js_module::compile(agent::lock& agent, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module {
+auto js_module::compile(const agent::lock& agent, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module {
 	auto maybe_resource_name = js::transfer_in_strict<v8::MaybeLocal<v8::String>>(source_origin.name, agent);
 	v8::Local<v8::String> resource_name{};
 	(void)maybe_resource_name.ToLocal(&resource_name);
@@ -117,7 +115,7 @@ auto js_module::compile(agent::lock& agent, v8::Local<v8::String> source_text, s
 	return js_module{agent, module_handle};
 }
 
-auto js_module::link(realm::scope& realm, v8::Module::ResolveModuleCallback callback) -> void {
+auto js_module::link(const realm::scope& realm, v8::Module::ResolveModuleCallback callback) -> void {
 	auto module = module_->deref(realm);
 	module->InstantiateModule(realm.context(), callback).ToChecked();
 }

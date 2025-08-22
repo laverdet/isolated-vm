@@ -19,7 +19,7 @@ export class object
 	public:
 		using value_type = std::pair<v8::Local<v8::Value>, v8::Local<v8::Value>>;
 
-		explicit object(const context_lock& lock, v8::Local<v8::Object> handle) :
+		explicit object(const context_lock_witness& lock, v8::Local<v8::Object> handle) :
 				Local{handle},
 				handle_with_context{lock} {}
 
@@ -45,7 +45,7 @@ export class object
 		[[nodiscard]] auto into_range() -> range_type;
 
 	private:
-		mutable array keys_{};
+		mutable array keys_;
 };
 
 static_assert(std::ranges::range<object::range_type>);

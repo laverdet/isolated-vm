@@ -13,36 +13,31 @@ namespace isolated_v8 {
 thread_local agent::lock* current_agent_lock{};
 
 // agent::lock
-agent::lock::lock(std::shared_ptr<agent_host> host) :
-		isolate_managed_lock{host->isolate()},
+agent::lock::lock(js::iv8::isolate_lock_witness& witness, std::shared_ptr<agent_host> host) :
+		isolate_lock_witness{witness},
+		remote_handle_lock{
+			std::shared_ptr<remote_handle_list>{host, &host->remote_handle_list()},
+			[ self = std::weak_ptr{host} ](expired_remote_type remote) {
+				if (auto host = self.lock()) {
+					foreground_runner::schedule_handle_task(
+						host->foreground_runner(),
+						[ host = host.get(),
+							remote = std::move(remote) ](
+							const std::stop_token& /*stop_token*/
+						) {
+							auto lock = js::iv8::isolate_execution_lock{host->isolate()};
+							remote->reset(lock);
+							host->remote_handle_list().erase(*remote);
+						}
+					);
+				}
+			},
+		},
 		host_{std::move(host)},
 		previous_{std::exchange(current_agent_lock, this)} {}
 
 agent::lock::~lock() {
 	current_agent_lock = previous_;
-}
-
-auto agent::lock::accept_remote_handle(remote_handle& remote) noexcept -> void {
-	host_->remote_handle_list().insert(remote);
-}
-
-auto agent::lock::remote_expiration_task() const -> reset_handle_type {
-	auto self = std::weak_ptr{host_};
-	return [ self = std::move(self) ](expired_remote_type remote) {
-		if (auto host = self.lock()) {
-			foreground_runner::schedule_handle_task(
-				host->foreground_runner(),
-				[ host = host.get(),
-					remote = std::move(remote) ](
-					const std::stop_token& /*stop_token*/
-				) {
-					js::iv8::isolate_managed_lock lock{host->isolate()};
-					remote->reset(lock);
-					host->remote_handle_list().erase(*remote);
-				}
-			);
-		}
-	};
 }
 
 auto agent::lock::get_current() -> lock& {

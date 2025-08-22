@@ -22,7 +22,7 @@ template <>
 struct accept<void, v8::Local<v8::Data>> {
 	public:
 		accept() = delete;
-		explicit accept(const iv8::isolate_lock& lock) :
+		explicit accept(const js::iv8::isolate_lock_witness& lock) :
 				isolate_{lock.isolate()} {}
 
 		[[nodiscard]] auto isolate() const {
@@ -113,7 +113,7 @@ template <>
 struct accept<void, v8::Local<v8::Value>> : accept<void, v8::Local<v8::Data>> {
 	public:
 		accept() = delete;
-		explicit accept(const iv8::context_lock& lock) :
+		explicit accept(const iv8::context_lock_witness& lock) :
 				accept<void, v8::Local<v8::Data>>{lock},
 				context_{lock.context()} {}
 
@@ -190,7 +190,7 @@ struct accept<void, v8::ReturnValue<v8::Value>> : accept<void, v8::Local<v8::Val
 	public:
 		using accept_type = accept<void, v8::Local<v8::Value>>;
 
-		accept(const iv8::context_lock& lock, v8::ReturnValue<v8::Value> return_value) :
+		accept(const iv8::context_lock_witness& lock, v8::ReturnValue<v8::Value> return_value) :
 				accept<void, v8::Local<v8::Value>>{lock},
 				return_value_{return_value} {}
 

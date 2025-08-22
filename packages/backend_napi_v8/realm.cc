@@ -26,15 +26,16 @@ auto create_realm(
 	agent->agent().schedule(
 		[ agent = *agent,
 			dispatch = std::move(dispatch) ](
-			isolated_v8::agent::lock& lock
+			const isolated_v8::agent::lock& lock
 		) mutable {
 			auto realm = isolated_v8::realm::make(lock);
 			auto runtime = isolated_v8::js_module::compile(lock, runtime_dist_runtime_js, isolated_v8::source_origin{});
-			isolated_v8::realm::scope realm_scope{lock, realm};
-			runtime.link(realm_scope, [](auto&&...) -> isolated_v8::js_module& {
-				std::terminate();
+			realm.invoke(lock, [ & ](const isolated_v8::realm::scope& realm) {
+				runtime.link(realm, [](auto&&...) -> isolated_v8::js_module& {
+					std::terminate();
+				});
+				runtime.evaluate(realm);
 			});
-			runtime.evaluate(realm_scope);
 			dispatch(agent.agent(), std::move(realm));
 		}
 	);

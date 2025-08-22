@@ -14,7 +14,7 @@ auto remote_handle_list::insert(remote_handle& handle) -> void {
 	list_.write()->push_back(handle);
 }
 
-auto remote_handle_list::reset(const js::iv8::isolate_lock& lock) -> void {
+auto remote_handle_list::reset(const js::iv8::isolate_lock_witness& lock) -> void {
 	auto list_lock = list_.write();
 	for (auto& handle : *list_lock) {
 		handle.reset(lock);

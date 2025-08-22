@@ -16,12 +16,12 @@ namespace isolated_v8 {
 
 export class function_template {
 	private:
-		explicit function_template(agent::lock& agent, v8::Local<v8::FunctionTemplate> function);
+		explicit function_template(const agent::lock& agent, v8::Local<v8::FunctionTemplate> function);
 
 	public:
-		auto make_function(v8::Local<v8::Context> context) -> v8::Local<v8::Function>;
+		auto make_function(const js::iv8::context_lock_witness& lock) -> v8::Local<v8::Function>;
 
-		static auto make(agent::lock& agent, auto&& function) -> function_template;
+		static auto make(const agent::lock& agent, auto&& function) -> function_template;
 
 	private:
 		shared_remote<v8::FunctionTemplate> function_;
@@ -35,12 +35,13 @@ template <class Signature>
 struct invoke_callback;
 
 template <class Result, class... Args>
-struct invoke_callback<Result(realm::scope&, Args...)> {
+struct invoke_callback<Result(const realm::scope&, Args...)> {
 		constexpr static auto length = sizeof...(Args);
 
 		auto operator()(const v8::FunctionCallbackInfo<v8::Value>& info, auto&& invocable) {
 			auto& agent = agent::lock::get_current();
-			realm::witness_scope realm{agent, agent->isolate()->GetCurrentContext()};
+			auto context = agent->isolate()->GetCurrentContext();
+			auto realm = realm::scope{agent, js::iv8::context_lock_witness::make_witness(agent, context)};
 			auto run = [ & ]() -> decltype(auto) {
 				return std::apply(
 					std::forward<decltype(invocable)>(invocable),
@@ -63,7 +64,7 @@ struct invoke_callback<Result(realm::scope&, Args...)> {
 };
 
 // Bound function factory
-auto function_template::make(agent::lock& agent, auto&& function) -> function_template {
+auto function_template::make(const agent::lock& agent, auto&& function) -> function_template {
 	using function_type = std::decay_t<decltype(function.callback)>;
 	using signature_type = util::function_signature_t<function_type>;
 
@@ -94,7 +95,7 @@ struct visit<void, function_template> : visit<void, v8::Local<v8::Value>> {
 		using visit<void, v8::Local<v8::Value>>::visit;
 
 		auto operator()(function_template value, const auto& accept) const -> decltype(auto) {
-			return accept(function_tag{}, value.make_function(witness().context()));
+			return accept(function_tag{}, value.make_function(lock_witness()));
 		}
 };
 

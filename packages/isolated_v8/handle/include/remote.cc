@@ -3,6 +3,7 @@ module;
 #include <memory>
 export module isolated_v8:remote;
 import :remote_handle;
+import :remote_handle_list;
 import ivm.utility;
 import v8_js;
 import v8;
@@ -18,10 +19,10 @@ class remote : public remote_handle {
 		using unique_remote = std::unique_ptr<remote, util::invocable_constant<expire>>;
 		using remote_handle::remote_handle;
 
-		auto deref(const js::iv8::isolate_lock& lock) -> v8::Local<Type>;
+		auto deref(const js::iv8::isolate_lock_witness& lock) -> v8::Local<Type>;
 
-		static auto make_shared(remote_handle_lock& lock, v8::Local<Type> handle) -> std::shared_ptr<remote>;
-		static auto make_unique(remote_handle_lock& lock, v8::Local<Type> handle) -> unique_remote;
+		static auto make_shared(const remote_handle_lock& lock, v8::Local<Type> handle) -> std::shared_ptr<remote>;
+		static auto make_unique(const remote_handle_lock& lock, v8::Local<Type> handle) -> unique_remote;
 
 	private:
 		// Deleter for the type-erased `expired_remote_type` `unique_ptr`
@@ -29,7 +30,7 @@ class remote : public remote_handle {
 		// "Deleter" for client smart pointers. Actually it wraps the handle in `expired_remote_type`
 		// and sends it along to the delegated reset function.
 		static auto expire(remote* self) -> void;
-		static auto make(remote_handle_lock& lock, v8::Local<Type> handle) -> std::unique_ptr<remote>;
+		static auto make(const remote_handle_lock& lock, v8::Local<Type> handle) -> std::unique_ptr<remote>;
 };
 
 // Convenience helpers
@@ -40,14 +41,14 @@ export template <class Type>
 using unique_remote = remote<Type>::unique_remote;
 
 export template <class Type>
-auto make_shared_remote(remote_handle_lock& lock, v8::Local<Type> handle) -> shared_remote<Type> {
+auto make_shared_remote(const remote_handle_lock& lock, v8::Local<Type> handle) -> shared_remote<Type> {
 	return remote<Type>::make_shared(lock, handle);
 }
 
 // ---
 
 template <class Type>
-auto remote<Type>::deref(const js::iv8::isolate_lock& lock) -> v8::Local<Type> {
+auto remote<Type>::deref(const js::iv8::isolate_lock_witness& lock) -> v8::Local<Type> {
 	// `handle.As<Type>()` doesn't work because types like `UnboundScript` don't provide a `Cast`
 	// function.
 	return std::bit_cast<v8::Local<Type>>(this->remote_handle::deref(lock));
@@ -65,25 +66,23 @@ auto remote<Type>::expire(remote* self) -> void {
 }
 
 template <class Type>
-auto remote<Type>::make(remote_handle_lock& lock, v8::Local<Type> handle) -> std::unique_ptr<remote> {
+auto remote<Type>::make(const remote_handle_lock& lock, v8::Local<Type> handle) -> std::unique_ptr<remote> {
 	auto data_handle = std::bit_cast<v8::Local<v8::Data>>(handle);
 	auto expire = lock.remote_expiration_task();
 	auto* isolate = v8::Isolate::GetCurrent();
-	return std::make_unique<remote>(v8::Global<v8::Data>{isolate, data_handle}, std::move(expire));
+	auto handle_ptr = std::make_unique<remote>(v8::Global<v8::Data>{isolate, data_handle}, std::move(expire));
+	lock.handle_list().insert(*handle_ptr);
+	return handle_ptr;
 }
 
 template <class Type>
-auto remote<Type>::make_shared(remote_handle_lock& lock, v8::Local<Type> handle) -> std::shared_ptr<remote> {
-	auto result = std::shared_ptr<remote>{make(lock, handle).release(), expire};
-	lock.accept_remote_handle(*result);
-	return result;
+auto remote<Type>::make_shared(const remote_handle_lock& lock, v8::Local<Type> handle) -> std::shared_ptr<remote> {
+	return std::shared_ptr<remote>{make(lock, handle).release(), expire};
 }
 
 template <class Type>
-auto remote<Type>::make_unique(remote_handle_lock& lock, v8::Local<Type> handle) -> unique_remote {
-	auto result = unique_remote{make(lock, handle).release()};
-	lock.accept_remote_handle(*result);
-	return result;
+auto remote<Type>::make_unique(const remote_handle_lock& lock, v8::Local<Type> handle) -> unique_remote {
+	return unique_remote{make(lock, handle).release()};
 }
 
 } // namespace isolated_v8

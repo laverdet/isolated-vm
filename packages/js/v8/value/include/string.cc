@@ -14,7 +14,7 @@ export class string
 			public handle_with_isolate,
 			public materializable<string> {
 	public:
-		explicit string(const isolate_lock& lock, v8::Local<v8::String> handle) :
+		explicit string(const isolate_lock_witness& lock, v8::Local<v8::String> handle) :
 				Local{handle},
 				handle_with_isolate{lock} {}
 
