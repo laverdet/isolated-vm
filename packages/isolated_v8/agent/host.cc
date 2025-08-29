@@ -15,7 +15,7 @@ namespace isolated_v8 {
 agent_host::agent_host(
 	scheduler::layer<{}>& cluster_scheduler,
 	std::shared_ptr<isolated_v8::foreground_runner> foreground_runner,
-	agent::behavior_params params
+	behavior_params params
 ) :
 		foreground_runner_{std::move(foreground_runner)},
 		async_scheduler_{cluster_scheduler},
@@ -41,13 +41,13 @@ auto agent_host::clock_time_ms() -> int64_t {
 	return std::visit([](auto&& clock) { return clock.clock_time_ms(); }, clock_);
 }
 
-auto agent_host::make_handle(std::shared_ptr<agent_host> self) -> agent {
+auto agent_host::make_handle(std::shared_ptr<agent_host> self) -> agent_handle {
 	auto severable = self->severable_.lock();
 	if (!severable) {
 		severable = std::make_shared<agent_severable>(self);
 		self->severable_ = severable;
 	}
-	return agent{std::move(self), std::move(severable)};
+	return agent_handle{std::move(self), std::move(severable)};
 }
 
 // v8 uses the same entropy source for `Math.random()` and also memory page randomization. We want

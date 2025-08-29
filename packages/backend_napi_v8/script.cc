@@ -38,7 +38,7 @@ auto compile_script(
 		[ code_string = std::move(code_string),
 			options = std::move(options),
 			dispatch = std::move(dispatch) ](
-			const isolated_v8::agent::lock& agent
+			const isolated_v8::agent_lock& agent
 		) mutable {
 			auto origin = std::move(options.origin).value_or(source_origin{});
 			dispatch(isolated_v8::script::compile(agent, std::move(code_string), std::move(origin)));
@@ -60,7 +60,7 @@ auto run_script(
 	);
 	realm->agent().schedule(
 		[ dispatch = std::move(dispatch) ](
-			const isolated_v8::agent::lock& agent,
+			const isolated_v8::agent_lock& agent,
 			isolated_v8::realm realm,
 			isolated_v8::script script
 		) mutable {

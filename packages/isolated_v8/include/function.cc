@@ -16,12 +16,12 @@ namespace isolated_v8 {
 
 export class function_template {
 	private:
-		explicit function_template(const agent::lock& agent, v8::Local<v8::FunctionTemplate> function);
+		explicit function_template(const agent_lock& agent, v8::Local<v8::FunctionTemplate> function);
 
 	public:
 		auto make_function(const js::iv8::context_lock_witness& lock) -> v8::Local<v8::Function>;
 
-		static auto make(const agent::lock& agent, auto&& function) -> function_template;
+		static auto make(const agent_lock& agent, auto&& function) -> function_template;
 
 	private:
 		shared_remote<v8::FunctionTemplate> function_;
@@ -39,7 +39,7 @@ struct invoke_callback<Result(const realm::scope&, Args...)> {
 		constexpr static auto length = sizeof...(Args);
 
 		auto operator()(const v8::FunctionCallbackInfo<v8::Value>& info, auto&& invocable) {
-			auto& agent = agent::lock::get_current();
+			auto& agent = agent_lock::get_current();
 			auto context = agent->isolate()->GetCurrentContext();
 			auto realm = realm::scope{agent, js::iv8::context_lock_witness::make_witness(agent, context)};
 			auto run = [ & ]() -> decltype(auto) {
@@ -64,7 +64,7 @@ struct invoke_callback<Result(const realm::scope&, Args...)> {
 };
 
 // Bound function factory
-auto function_template::make(const agent::lock& agent, auto&& function) -> function_template {
+auto function_template::make(const agent_lock& agent, auto&& function) -> function_template {
 	using function_type = std::decay_t<decltype(function.callback)>;
 	using signature_type = util::function_signature_t<function_type>;
 

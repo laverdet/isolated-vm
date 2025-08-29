@@ -59,10 +59,10 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 		},
 		options.clock.value_or(make_agent_options::clock_system{})
 	);
-	agent::make(
+	isolated_v8::agent_handle::make(
 		[ dispatch = std::move(dispatch) ](
-			const isolated_v8::agent::lock& lock,
-			isolated_v8::agent agent
+			const isolated_v8::agent_lock& lock,
+			isolated_v8::agent_handle agent
 		) mutable {
 			dispatch(agent_handle{lock, std::move(agent)});
 		},
@@ -73,7 +73,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	return js::forward{promise};
 }
 
-agent_handle::agent_handle(const isolated_v8::agent::lock& /*lock*/, isolated_v8::agent agent) :
+agent_handle::agent_handle(const isolated_v8::agent_lock& /*lock*/, isolated_v8::agent_handle agent) :
 		agent_{std::move(agent)} {}
 
 auto agent_handle::make_create_agent(environment& env) -> js::napi::value<js::function_tag> {

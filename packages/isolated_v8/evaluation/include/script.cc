@@ -16,18 +16,18 @@ namespace isolated_v8 {
 export class script {
 	public:
 		script() = delete;
-		script(const agent::lock& agent, v8::Local<v8::UnboundScript> script);
+		script(const agent_lock& agent, v8::Local<v8::UnboundScript> script);
 
 		auto run(const realm::scope& realm) -> js::value_t;
-		static auto compile(const agent::lock& agent, auto&& code_string, source_origin source_origin) -> script;
+		static auto compile(const agent_lock& agent, auto&& code_string, source_origin source_origin) -> script;
 
 	private:
-		static auto compile(const agent::lock& agent, v8::Local<v8::String> code_string, source_origin source_origin) -> script;
+		static auto compile(const agent_lock& agent, v8::Local<v8::String> code_string, source_origin source_origin) -> script;
 
 		shared_remote<v8::UnboundScript> unbound_script_;
 };
 
-auto script::compile(const agent::lock& agent, auto&& code_string, source_origin source_origin) -> script {
+auto script::compile(const agent_lock& agent, auto&& code_string, source_origin source_origin) -> script {
 	auto local_code_string = js::transfer_in_strict<v8::Local<v8::String>>(std::forward<decltype(code_string)>(code_string), agent);
 	return script::compile(agent, local_code_string, std::move(source_origin));
 }

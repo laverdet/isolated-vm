@@ -8,7 +8,7 @@ namespace backend_napi_v8 {
 
 export class realm_handle {
 	public:
-		realm_handle(isolated_v8::agent agent, isolated_v8::realm realm);
+		realm_handle(isolated_v8::agent_handle agent, isolated_v8::realm realm);
 
 		auto agent() -> auto& { return agent_; }
 		auto realm() -> auto& { return realm_; }
@@ -16,7 +16,7 @@ export class realm_handle {
 		static auto make_create_realm(environment& env) -> js::napi::value<js::function_tag>;
 
 	private:
-		isolated_v8::agent agent_;
+		isolated_v8::agent_handle agent_;
 		isolated_v8::realm realm_;
 };
 

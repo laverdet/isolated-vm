@@ -11,7 +11,7 @@ import v8;
 namespace isolated_v8 {
 
 // script
-script::script(const agent::lock& agent, v8::Local<v8::UnboundScript> script) :
+script::script(const agent_lock& agent, v8::Local<v8::UnboundScript> script) :
 		unbound_script_{make_shared_remote(agent, script)} {
 }
 
@@ -21,7 +21,7 @@ auto script::run(const realm::scope& realm) -> js::value_t {
 	return js::transfer_out<js::value_t>(result, realm);
 }
 
-auto script::compile(const agent::lock& agent, v8::Local<v8::String> code_string, source_origin source_origin) -> script {
+auto script::compile(const agent_lock& agent, v8::Local<v8::String> code_string, source_origin source_origin) -> script {
 	// nb: It is undocumented (and even mentions "context independent"), but the script compiler
 	// actually needs a context because it can throw an error and *that* would need a context.
 	js::iv8::context_managed_lock context{agent, agent->scratch_context()};

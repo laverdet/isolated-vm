@@ -28,7 +28,7 @@ struct create_capability_options {
 		source_required_name origin;
 };
 
-module_handle::module_handle(isolated_v8::agent agent, isolated_v8::js_module module) :
+module_handle::module_handle(isolated_v8::agent_handle agent, isolated_v8::js_module module) :
 		agent_{std::move(agent)},
 		module_{std::move(module)} {}
 
@@ -42,7 +42,7 @@ auto compile_module(
 		env,
 		[](
 			environment& env,
-			isolated_v8::agent agent,
+			isolated_v8::agent_handle agent,
 			isolated_v8::js_module module_,
 			std::vector<isolated_v8::module_request> requests
 		) -> expected_value {
@@ -59,7 +59,7 @@ auto compile_module(
 			dispatch = std::move(dispatch),
 			source_text = std::move(source_text),
 			options = std::move(options_optional).value_or(compile_module_options{}) ](
-			const isolated_v8::agent::lock& lock
+			const isolated_v8::agent_lock& lock
 		) mutable {
 			auto origin = std::move(options).origin.value_or(source_origin{});
 			auto module = isolated_v8::js_module::compile(lock, std::move(source_text), std::move(origin));
@@ -85,7 +85,7 @@ auto evaluate_module(
 		[ dispatch = std::move(dispatch),
 			realm = realm->realm(),
 			module_ = module_->module() ](
-			const isolated_v8::agent::lock& agent
+			const isolated_v8::agent_lock& agent
 		) mutable {
 			auto result = realm.invoke(agent, [ & ](const isolated_v8::realm::scope& realm) {
 				return module_.evaluate(realm);
@@ -166,7 +166,7 @@ auto link_module(
 		[ host_link_callback = std::move(host_link_callback),
 			dispatch = std::move(dispatch) ](
 			const std::stop_token& /*stop_token*/,
-			const isolated_v8::agent::lock& agent,
+			const isolated_v8::agent_lock& agent,
 			isolated_v8::realm realm,
 			isolated_v8::js_module module
 		) mutable {
@@ -183,7 +183,7 @@ auto link_module(
 
 auto create_capability(
 	environment& env,
-	js::napi::untagged_external<isolated_v8::agent>& agent,
+	js::napi::untagged_external<isolated_v8::agent_handle>& agent,
 	js::forward<js::napi::value<js::function_tag>, function_tag> capability,
 	create_capability_options options
 ) {
@@ -218,7 +218,7 @@ auto create_capability(
 		env,
 		[](
 			environment& env,
-			isolated_v8::agent agent,
+			isolated_v8::agent_handle agent,
 			js_module module_
 		) -> expected_value {
 			return js::napi::untagged_external<module_handle>::make(env, std::move(agent), std::move(module_));
@@ -227,8 +227,8 @@ auto create_capability(
 	agent->schedule(
 		[ invoke_capability = std::move(invoke_capability),
 			dispatch = std::move(dispatch) ](
-			const isolated_v8::agent::lock& lock,
-			isolated_v8::agent agent,
+			const isolated_v8::agent_lock& lock,
+			isolated_v8::agent_handle agent,
 			create_capability_options options
 		) mutable {
 			auto make_interface = [ & ]() {

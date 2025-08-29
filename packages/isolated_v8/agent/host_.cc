@@ -3,7 +3,6 @@ module;
 #include <optional>
 export module isolated_v8:agent_host;
 import :agent_fwd;
-import :agent_host_fwd;
 import :clock;
 import :evaluation_module_action;
 import :foreground_runner;
@@ -18,7 +17,7 @@ namespace isolated_v8 {
 
 // Directly handles the actual isolate. If someone has a reference to this then it probably means
 // the isolate is locked and entered.
-class agent_host final {
+export class agent_host {
 	private:
 		using weak_modules_actions_type = js::iv8::weak_map<v8::Module, synthetic_module_action_type>;
 		using weak_modules_specifiers_type = js::iv8::weak_map<v8::Module, js::string_t>;
@@ -33,7 +32,7 @@ class agent_host final {
 		explicit agent_host(
 			scheduler::layer<{}>& cluster_scheduler,
 			std::shared_ptr<isolated_v8::foreground_runner> foreground_runner,
-			agent::behavior_params params
+			behavior_params params
 		);
 		~agent_host();
 
@@ -53,7 +52,7 @@ class agent_host final {
 
 		static auto get_current() -> agent_host*;
 		static auto get_current(v8::Isolate* isolate) -> agent_host& { return *static_cast<agent_host*>(isolate->GetData(0)); }
-		static auto make_handle(std::shared_ptr<agent_host> self) -> agent;
+		static auto make_handle(std::shared_ptr<agent_host> self) -> agent_handle;
 
 	private:
 		static auto dispose_isolate(v8::Isolate* isolate) -> void { isolate->Dispose(); }
@@ -72,18 +71,6 @@ class agent_host final {
 		bool should_give_seed_{false};
 		std::optional<double> random_seed_;
 		clock::any_clock clock_;
-};
-
-// This keeps the `weak_ptr` in `agent` alive. The `agent_host` maintains a `weak_ptr` to this and
-// can "sever" the client connection if it needs to.
-class agent_severable {
-	public:
-		explicit agent_severable(std::shared_ptr<agent_host> host);
-
-		auto sever() -> void;
-
-	private:
-		std::atomic<std::shared_ptr<agent_host>> host_;
 };
 
 } // namespace isolated_v8
