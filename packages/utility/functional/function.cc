@@ -46,14 +46,11 @@ class bind_parameters {
 				invocable_{std::move(invocable)},
 				params_{std::move(params)...} {}
 
-		constexpr auto operator()(this auto&& self, auto&&... args) -> decltype(auto)
-			requires std::invocable<Invocable, Params..., decltype(args)...> {
+		constexpr auto operator()(auto&&... args) -> decltype(auto)
+			requires std::invocable<Invocable&, Params&..., decltype(args)...> {
 			return std::invoke(
 				[ & ]<size_t... Index>(std::index_sequence<Index...> /*indices*/) constexpr -> decltype(auto) {
-					return std::forward<decltype(self)>(self).invocable_(
-						get<Index>(std::forward<decltype(self)>(self).params_)...,
-						std::forward<decltype(args)>(args)...
-					);
+					return invocable_(get<Index>(params_)..., std::forward<decltype(args)>(args)...);
 				},
 				std::make_index_sequence<sizeof...(Params)>{}
 			);

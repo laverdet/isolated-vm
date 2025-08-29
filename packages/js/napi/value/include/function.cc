@@ -43,10 +43,10 @@ struct invoke_callback;
 
 template <class Result, class Environment, class... Args>
 struct invoke_callback<Result(Environment, Args...)> {
-		auto operator()(auto& env, const callback_info& info, auto&& invocable) {
+		auto operator()(auto& env, const callback_info& info, auto& invocable) {
 			auto run = util::regular_return{[ & ]() -> decltype(auto) {
 				return std::apply(
-					std::forward<decltype(invocable)>(invocable),
+					invocable,
 					std::tuple_cat(
 						std::forward_as_tuple(env),
 						js::transfer_out<std::tuple<Args...>>(info.arguments(), env)
@@ -81,8 +81,8 @@ auto value<function_tag>::make(Environment& env, auto function) -> value<functio
 	using function_type = std::decay_t<decltype(function.callback)>;
 	using signature_type = util::function_signature_t<function_type>;
 	auto trampoline = util::bind_parameters{
-		[](auto&& callback, Environment& env, const callback_info& info) -> napi_value {
-			return invoke_callback<signature_type>{}(env, info, std::forward<decltype(callback)>(callback));
+		[](auto& callback, Environment& env, const callback_info& info) -> napi_value {
+			return invoke_callback<signature_type>{}(env, info, callback);
 		},
 		std::move(function.callback)
 	};
