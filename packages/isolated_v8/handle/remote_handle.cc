@@ -10,8 +10,8 @@ import v8;
 namespace isolated_v8 {
 
 // remote_handle_lock
-remote_handle_lock::remote_handle_lock(std::shared_ptr<remote_handle_list> list, reset_handle_type expiry_scheduler_) :
-		list_{std::move(list)},
+remote_handle_lock::remote_handle_lock(remote_handle_list& list, reset_handle_type expiry_scheduler_) :
+		list_{list},
 		expiry_scheduler_{std::move(expiry_scheduler_)} {}
 
 // remote_handle

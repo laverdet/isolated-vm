@@ -39,8 +39,9 @@ struct invoke_callback<Result(const realm::scope&, Args...)> {
 		constexpr static auto length = sizeof...(Args);
 
 		auto operator()(const v8::FunctionCallbackInfo<v8::Value>& info, auto& invocable) {
-			auto& agent = agent_lock::get_current();
-			auto context = agent->isolate()->GetCurrentContext();
+			auto& host = *agent_host::get_current();
+			auto agent = agent_lock{js::iv8::isolate_execution_lock::make_witness(host.isolate()), host};
+			auto context = host.isolate()->GetCurrentContext();
 			auto realm = realm::scope{agent, js::iv8::context_lock_witness::make_witness(agent, context)};
 			auto run = util::regular_return{[ & ]() -> decltype(auto) {
 				return std::apply(

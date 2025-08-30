@@ -1,7 +1,6 @@
 module;
 #include <functional>
 #include <memory>
-#include <optional>
 #include <stop_token>
 #include <variant>
 export module isolated_v8:agent_handle;
@@ -25,15 +24,11 @@ export class agent_lock
 			public js::iv8::isolate_lock_witness,
 			public remote_handle_lock {
 	public:
-		agent_lock(js::iv8::isolate_lock_witness& witness, std::shared_ptr<agent_host> host);
-		~agent_lock();
-
-		auto operator->(this auto& self) -> auto* { return self.host_.get(); }
-		static auto get_current() -> agent_lock&;
+		agent_lock(const js::iv8::isolate_lock_witness& witness, agent_host& host);
+		auto operator->(this auto& self) -> auto* { return std::addressof(self.host_.get()); }
 
 	private:
-		std::shared_ptr<agent_host> host_;
-		agent_lock* previous_;
+		std::reference_wrapper<agent_host> host_;
 };
 
 // This keeps the `weak_ptr` in `agent_handle` alive. The `agent_host` maintains a `weak_ptr` to
@@ -82,7 +77,7 @@ auto agent_handle::make(std::invocable<const agent_lock&, agent_handle> auto fn,
 				auto host = std::make_shared<agent_host>(cluster.scheduler(), runner, params);
 				auto isolate_lock = js::iv8::isolate_execution_lock{host->isolate()};
 				auto agent = agent_host::make_handle(host);
-				std::invoke(std::move(fn), agent_lock{isolate_lock, std::move(host)}, std::move(agent));
+				std::invoke(std::move(fn), agent_lock{isolate_lock, *host}, std::move(agent));
 			}
 			// nb: `runner` contains the scheduler so it must be allowed to escape up the stack to
 			// be released later.
@@ -103,7 +98,7 @@ auto agent_handle::schedule(auto task, auto... args) -> void
 			) mutable {
 				auto isolate_lock = js::iv8::isolate_execution_lock{host->isolate()};
 				std::visit([](auto& clock) { clock.begin_tick(); }, host->clock());
-				task(agent_lock{isolate_lock, std::move(host)}, std::move(args)...);
+				task(agent_lock{isolate_lock, *host}, std::move(args)...);
 			};
 		foreground_runner::schedule_client_task(host->foreground_runner(), std::move(task_with_lock));
 	}
@@ -122,8 +117,7 @@ auto agent_handle::schedule_async(auto task, auto... args) -> void
 				auto&&... args
 			) {
 				auto isolate_lock = js::iv8::isolate_execution_lock{host->isolate()};
-				auto lock = agent_lock{isolate_lock, host};
-				task(std::move(stop_token), lock, std::move(args)...);
+				task(std::move(stop_token), agent_lock{isolate_lock, *host}, std::move(args)...);
 			},
 			std::move(host),
 			std::move(task),

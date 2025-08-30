@@ -12,19 +12,19 @@ namespace isolated_v8 {
 
 export class remote_handle;
 export using expired_remote_type = std::unique_ptr<remote_handle, auto (*)(remote_handle*)->void>;
+// TODO: It would be better if this is a struct of shared_ptr & function pointer. The
+// `std::function` is externally allocated.
 export using reset_handle_type = std::function<auto(expired_remote_type)->void>;
 
 // Interface needed in order to create `remote<T>` handles
 export class remote_handle_lock {
-	protected:
-		remote_handle_lock(std::shared_ptr<remote_handle_list> list, reset_handle_type expiry_scheduler_);
-
 	public:
-		[[nodiscard]] auto handle_list() const -> auto& { return *list_; }
+		remote_handle_lock(remote_handle_list& list, reset_handle_type expiry_scheduler_);
+		[[nodiscard]] auto handle_list() const -> auto& { return list_.get(); }
 		[[nodiscard]] auto remote_expiration_task() const -> auto& { return expiry_scheduler_; }
 
 	private:
-		std::shared_ptr<remote_handle_list> list_;
+		std::reference_wrapper<remote_handle_list> list_;
 		reset_handle_type expiry_scheduler_;
 };
 

@@ -17,7 +17,7 @@ namespace isolated_v8 {
 
 // Directly handles the actual isolate. If someone has a reference to this then it probably means
 // the isolate is locked and entered.
-export class agent_host {
+export class agent_host : public std::enable_shared_from_this<agent_host> {
 	private:
 		using weak_modules_actions_type = js::iv8::weak_map<v8::Module, synthetic_module_action_type>;
 		using weak_modules_specifiers_type = js::iv8::weak_map<v8::Module, js::string_t>;
@@ -43,7 +43,8 @@ export class agent_host {
 		auto foreground_runner(this auto& self) -> auto& { return self.foreground_runner_; }
 		auto isolate() -> v8::Isolate* { return isolate_.get(); }
 		auto random_seed_latch() -> util::scope_exit<random_seed_unlatch>;
-		auto remote_handle_list() -> isolated_v8::remote_handle_list& { return remote_handle_list_; }
+		auto remote_handle_lock() -> isolated_v8::remote_handle_lock;
+		auto remote_handle_list() -> auto& { return remote_handle_list_; }
 		auto scratch_context() -> v8::Local<v8::Context>;
 		auto take_random_seed() -> std::optional<double>;
 		auto task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner>;

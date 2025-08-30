@@ -1,10 +1,12 @@
 module;
 #include <memory>
 #include <optional>
+#include <stop_token>
 #include <utility>
 #include <variant>
 module isolated_v8;
 import :foreground_runner;
+import :remote_handle;
 import :scheduler;
 import ivm.utility;
 import v8_js;
@@ -77,6 +79,27 @@ auto agent_host::get_current() -> agent_host* {
 	} else {
 		return &get_current(isolate);
 	}
+}
+
+auto agent_host::remote_handle_lock() -> isolated_v8::remote_handle_lock {
+	return isolated_v8::remote_handle_lock{
+		remote_handle_list_,
+		[ self = std::weak_ptr{shared_from_this()} ](expired_remote_type remote) {
+			if (auto host = self.lock()) {
+				foreground_runner::schedule_handle_task(
+					host->foreground_runner(),
+					[ host = host.get(),
+						remote = std::move(remote) ](
+						const std::stop_token& /*stop_token*/
+					) {
+						auto lock = js::iv8::isolate_execution_lock{host->isolate()};
+						remote->reset(lock);
+						host->remote_handle_list().erase(*remote);
+					}
+				);
+			}
+		},
+	};
 }
 
 auto agent_host::take_random_seed() -> std::optional<double> {

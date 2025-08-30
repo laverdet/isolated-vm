@@ -87,7 +87,8 @@ auto js_module::create_synthetic(const agent_lock& agent, std::tuple<std::pair<N
 					v8::Local<v8::Context> context,
 					v8::Local<v8::Module> module
 				) mutable {
-					auto& agent = agent_lock::get_current();
+					auto& host = *agent_host::get_current();
+					auto agent = agent_lock{js::iv8::isolate_execution_lock::make_witness(host.isolate()), host};
 					auto realm = realm::scope{agent, js::iv8::context_lock_witness::make_witness(agent, context)};
 					const auto export_locals = js::transfer_strict<std::array<v8::Local<v8::Value>, property_count>>(std::move(export_values), std::forward_as_tuple(realm), std::forward_as_tuple(realm));
 					(module->SetSyntheticModuleExport(agent->isolate(), name_persistents[ Index ].Get(agent.isolate()), std::get<Index>(std::move(export_locals))).ToChecked(), ...);
