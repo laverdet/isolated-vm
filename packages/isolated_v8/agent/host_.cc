@@ -2,7 +2,6 @@ module;
 #include <memory>
 #include <optional>
 export module isolated_v8:agent_host;
-import :agent_fwd;
 import :clock;
 import :evaluation_module_action;
 import :foreground_runner;
@@ -14,6 +13,26 @@ import ivm.utility;
 import v8;
 
 namespace isolated_v8 {
+
+export class agent_host;
+
+export struct behavior_params {
+		clock::any_clock clock;
+		std::optional<double> random_seed;
+};
+
+// This keeps the `weak_ptr` in `agent_handle` alive. The `agent_host` maintains a `weak_ptr` to
+// this and can "sever" the client connection if it needs to.
+// TODO: This could be handled with an internal counter on the `agent_host` instead of creating a
+// separate shared_ptr control block.
+export class agent_severable {
+	public:
+		explicit agent_severable(std::shared_ptr<agent_host> host);
+		auto sever() -> void;
+
+	private:
+		std::atomic<std::shared_ptr<agent_host>> host_;
+};
 
 // Directly handles the actual isolate. If someone has a reference to this then it probably means
 // the isolate is locked and entered.
@@ -51,11 +70,12 @@ export class agent_host : public std::enable_shared_from_this<agent_host> {
 		auto weak_module_actions() -> weak_modules_actions_type& { return weak_module_actions_; }
 		auto weak_module_specifiers() -> weak_modules_specifiers_type& { return weak_module_specifiers_; }
 
+		static auto acquire_severable(const std::shared_ptr<agent_host>& self) -> std::shared_ptr<agent_severable>;
 		static auto get_current() -> agent_host*;
 		static auto get_current(v8::Isolate* isolate) -> agent_host& { return *static_cast<agent_host*>(isolate->GetData(0)); }
-		static auto make_handle(std::shared_ptr<agent_host> self) -> agent_handle;
 
 	private:
+		auto reset_remote_handle(expired_remote_type remote) -> void;
 		static auto dispose_isolate(v8::Isolate* isolate) -> void { isolate->Dispose(); }
 
 		util::autorelease_pool autorelease_pool_;
@@ -67,11 +87,30 @@ export class agent_host : public std::enable_shared_from_this<agent_host> {
 		isolated_v8::remote_handle_list remote_handle_list_;
 		weak_modules_actions_type weak_module_actions_;
 		weak_modules_specifiers_type weak_module_specifiers_;
+		reset_handle_type remote_expiration_callback_;
 		v8::Global<v8::Context> scratch_context_;
 
 		bool should_give_seed_{false};
 		std::optional<double> random_seed_;
 		clock::any_clock clock_;
+};
+
+// Agent which also manages environment storage of a given type.
+export template <class Type>
+class agent_host_of;
+
+template <class Type>
+class agent_host_of : public agent_host {
+	public:
+		explicit agent_host_of(auto make_environment, auto&&... creation_args)
+			requires std::constructible_from<agent_host, decltype(creation_args)...> :
+				agent_host{std::forward<decltype(creation_args)>(creation_args)...},
+				environment_{make_environment()} {}
+
+		auto environment(this auto& self) -> auto& { return self.environment_; }
+
+	private:
+		Type environment_;
 };
 
 } // namespace isolated_v8

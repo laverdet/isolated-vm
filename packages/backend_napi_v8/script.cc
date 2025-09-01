@@ -34,11 +34,11 @@ auto compile_script(
 			return js::napi::untagged_external<isolated_v8::script>::make(env, std::move(script));
 		}
 	);
-	agent->agent().schedule(
+	agent->schedule(
 		[ code_string = std::move(code_string),
 			options = std::move(options),
 			dispatch = std::move(dispatch) ](
-			const isolated_v8::agent_lock& agent
+			const agent_handle::lock& agent
 		) mutable {
 			auto origin = std::move(options.origin).value_or(source_origin{});
 			dispatch(isolated_v8::script::compile(agent, std::move(code_string), std::move(origin)));
@@ -60,7 +60,7 @@ auto run_script(
 	);
 	realm->agent().schedule(
 		[ dispatch = std::move(dispatch) ](
-			const isolated_v8::agent_lock& agent,
+			const agent_handle::lock& agent,
 			isolated_v8::realm realm,
 			isolated_v8::script script
 		) mutable {

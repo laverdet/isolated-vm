@@ -38,7 +38,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	auto& cluster = env.cluster();
 	auto [ dispatch, promise ] = make_promise(
 		env,
-		[](environment& env, agent_handle&& agent) -> expected_value {
+		[](environment& env, agent_handle agent) -> expected_value {
 			return js::napi::untagged_external<agent_handle>::make(env, std::move(agent));
 		}
 	);
@@ -59,24 +59,22 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 		},
 		options.clock.value_or(make_agent_options::clock_system{})
 	);
-	isolated_v8::agent_handle::make(
-		[ dispatch = std::move(dispatch) ](
-			const isolated_v8::agent_lock& lock,
-			isolated_v8::agent_handle agent
-		) mutable {
-			dispatch(agent_handle{lock, std::move(agent)});
-		},
+	agent_handle::make(
 		cluster,
-		{.clock = clock, .random_seed = options.random_seed}
+		[]() { return agent_environment{}; },
+		{.clock = clock, .random_seed = options.random_seed},
+		[ dispatch = std::move(dispatch) ](
+			const agent_handle::lock& /*lock*/,
+			agent_handle agent
+		) mutable {
+			dispatch(std::move(agent));
+		}
 	);
 
 	return js::forward{promise};
 }
 
-agent_handle::agent_handle(const isolated_v8::agent_lock& /*lock*/, isolated_v8::agent_handle agent) :
-		agent_{std::move(agent)} {}
-
-auto agent_handle::make_create_agent(environment& env) -> js::napi::value<js::function_tag> {
+auto make_create_agent(environment& env) -> js::napi::value<js::function_tag> {
 	return js::napi::value<js::function_tag>::make(env, js::make_static_function<create_agent>());
 }
 

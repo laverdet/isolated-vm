@@ -13,6 +13,14 @@ import v8_js;
 
 namespace isolated_v8 {
 
+// agent_severable
+agent_severable::agent_severable(std::shared_ptr<agent_host> host) :
+		host_{std::move(host)} {}
+
+auto agent_severable::sever() -> void {
+	host_.store(nullptr, std::memory_order_relaxed);
+}
+
 // agent_host
 agent_host::agent_host(
 	scheduler::layer<{}>& cluster_scheduler,
@@ -23,6 +31,7 @@ agent_host::agent_host(
 		async_scheduler_{cluster_scheduler},
 		array_buffer_allocator_{v8::ArrayBuffer::Allocator::NewDefaultAllocator()},
 		isolate_{v8::Isolate::Allocate()},
+		remote_expiration_callback_{[ this ](expired_remote_type remote) { reset_remote_handle(std::move(remote)); }},
 		random_seed_{params.random_seed},
 		clock_{params.clock} {
 	isolate_->SetData(0, this);
@@ -39,17 +48,17 @@ agent_host::~agent_host() {
 	foreground_runner_->finalize();
 }
 
-auto agent_host::clock_time_ms() -> int64_t {
-	return std::visit([](auto&& clock) { return clock.clock_time_ms(); }, clock_);
-}
-
-auto agent_host::make_handle(std::shared_ptr<agent_host> self) -> agent_handle {
+auto agent_host::acquire_severable(const std::shared_ptr<agent_host>& self) -> std::shared_ptr<agent_severable> {
 	auto severable = self->severable_.lock();
 	if (!severable) {
 		severable = std::make_shared<agent_severable>(self);
-		self->severable_ = severable;
+		self->severable_ = std::weak_ptr{severable};
 	}
-	return agent_handle{std::move(self), std::move(severable)};
+	return severable;
+}
+
+auto agent_host::clock_time_ms() -> int64_t {
+	return std::visit([](auto&& clock) { return clock.clock_time_ms(); }, clock_);
 }
 
 // v8 uses the same entropy source for `Math.random()` and also memory page randomization. We want
@@ -84,22 +93,19 @@ auto agent_host::get_current() -> agent_host* {
 auto agent_host::remote_handle_lock() -> isolated_v8::remote_handle_lock {
 	return isolated_v8::remote_handle_lock{
 		remote_handle_list_,
-		[ self = std::weak_ptr{shared_from_this()} ](expired_remote_type remote) {
-			if (auto host = self.lock()) {
-				foreground_runner::schedule_handle_task(
-					host->foreground_runner(),
-					[ host = host.get(),
-						remote = std::move(remote) ](
-						const std::stop_token& /*stop_token*/
-					) {
-						auto lock = js::iv8::isolate_execution_lock{host->isolate()};
-						remote->reset(lock);
-						host->remote_handle_list().erase(*remote);
-					}
-				);
-			}
-		},
+		std::shared_ptr<reset_handle_type>{shared_from_this(), &remote_expiration_callback_},
 	};
+}
+
+auto agent_host::reset_remote_handle(expired_remote_type remote) -> void {
+	foreground_runner::schedule_handle_task(
+		foreground_runner_,
+		[ this, remote = std::move(remote) ](const std::stop_token& /*stop_token*/) {
+			auto lock = js::iv8::isolate_execution_lock{isolate()};
+			remote->reset(lock);
+			remote_handle_list_.erase(*remote);
+		}
+	);
 }
 
 auto agent_host::take_random_seed() -> std::optional<double> {
@@ -120,14 +126,6 @@ agent_host::random_seed_unlatch::random_seed_unlatch(bool& latch) :
 
 auto agent_host::random_seed_unlatch::operator()() const -> void {
 	*latch = false;
-}
-
-// agent_severable
-agent_severable::agent_severable(std::shared_ptr<agent_host> host) :
-		host_{std::move(host)} {}
-
-auto agent_severable::sever() -> void {
-	host_.store(nullptr, std::memory_order_relaxed);
 }
 
 } // namespace isolated_v8

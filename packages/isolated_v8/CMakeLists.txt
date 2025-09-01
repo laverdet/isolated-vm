@@ -16,7 +16,6 @@ target_sources(isolated_v8
 		realm.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
-		agent/fwd_.cc
 		agent/handle_.cc
 		agent/host_.cc
 		evaluation/include/module_action.cc

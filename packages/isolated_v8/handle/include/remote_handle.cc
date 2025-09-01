@@ -12,20 +12,18 @@ namespace isolated_v8 {
 
 export class remote_handle;
 export using expired_remote_type = std::unique_ptr<remote_handle, auto (*)(remote_handle*)->void>;
-// TODO: It would be better if this is a struct of shared_ptr & function pointer. The
-// `std::function` is externally allocated.
 export using reset_handle_type = std::function<auto(expired_remote_type)->void>;
 
 // Interface needed in order to create `remote<T>` handles
 export class remote_handle_lock {
 	public:
-		remote_handle_lock(remote_handle_list& list, reset_handle_type expiry_scheduler_);
+		remote_handle_lock(remote_handle_list& list, std::weak_ptr<reset_handle_type> expiry_scheduler_);
 		[[nodiscard]] auto handle_list() const -> auto& { return list_.get(); }
 		[[nodiscard]] auto remote_expiration_task() const -> auto& { return expiry_scheduler_; }
 
 	private:
 		std::reference_wrapper<remote_handle_list> list_;
-		reset_handle_type expiry_scheduler_;
+		std::weak_ptr<reset_handle_type> expiry_scheduler_;
 };
 
 using intrusive_safe_mode = boost::intrusive::link_mode<boost::intrusive::safe_link>;
@@ -35,7 +33,7 @@ using intrusive_list_hook = boost::intrusive::list_member_hook<intrusive_safe_mo
 // intrusive list hook for use in `remote_handle_list`.
 class remote_handle : util::non_moveable {
 	public:
-		remote_handle(v8::Global<v8::Data> handle, reset_handle_type reset);
+		remote_handle(v8::Global<v8::Data> handle, std::weak_ptr<reset_handle_type> reset);
 		auto reset(const js::iv8::isolate_lock_witness& lock) -> void;
 
 	protected:
@@ -44,7 +42,7 @@ class remote_handle : util::non_moveable {
 
 	private:
 		v8::Global<v8::Data> global_;
-		reset_handle_type reset_;
+		std::weak_ptr<reset_handle_type> reset_;
 		intrusive_list_hook hook_;
 
 	public:
