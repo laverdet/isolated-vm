@@ -27,10 +27,10 @@ auto make_napi_callback(Environment& env, std::invocable<Environment&, const cal
 	using function_type = std::decay_t<decltype(function)>;
 	if constexpr (std::is_empty_v<function_type>) {
 		// Constant expression function, expressed entirely in the type. `data` is the environment.
-		static_assert(std::is_trivially_destructible_v<function_type>);
+		static_assert(std::is_trivially_constructible_v<function_type>);
 		const auto callback = napi_callback{[](napi_env nenv, napi_callback_info info) -> napi_value {
 			const auto args = callback_info{nenv, info};
-			auto& invoke = *util::start_lifetime_as<function_type>(nullptr);
+			auto invoke = function_type{};
 			auto& env = *static_cast<Environment*>(args.data());
 			return invoke(env, args);
 		}};

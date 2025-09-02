@@ -1,7 +1,6 @@
 module;
 #include <tuple>
 #include <type_traits>
-#include <variant>
 export module isolated_v8:function;
 import isolated_js;
 import :agent_handle;
@@ -62,7 +61,14 @@ auto function_template::make(const agent_lock& agent, auto function) -> function
 	using signature_type = util::function_signature_t<function_type>;
 
 	if constexpr (std::is_empty_v<function_type>) {
-		static_assert(false, "Not implemented");
+		static_assert(std::is_trivially_constructible_v<function_type>);
+		v8::FunctionCallback callback = [](const v8::FunctionCallbackInfo<v8::Value>& info) {
+			auto callback = function_type{};
+			invoke_callback<signature_type> invoke{};
+			invoke(info, callback);
+		};
+		auto fn_template = v8::FunctionTemplate::New(agent.isolate(), callback, {}, {}, invoke_callback<signature_type>::length, v8::ConstructorBehavior::kThrow);
+		return function_template{agent, fn_template};
 	} else if constexpr (sizeof(function_type) == sizeof(void*) && std::is_trivially_destructible_v<function_type>) {
 		static_assert(false, "Not implemented");
 	} else {

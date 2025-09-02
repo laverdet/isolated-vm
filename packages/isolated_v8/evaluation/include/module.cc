@@ -45,7 +45,7 @@ export class js_module {
 
 		static auto compile(const agent_lock& agent, auto&& source_text, source_origin source_origin) -> js_module;
 
-		template <class... Name, class Function>
+		template <class... Name, class... Function>
 		static auto create_synthetic(const agent_lock& agent, std::tuple<std::pair<Name, Function>...> exports, source_required_name source_origin) -> js_module;
 
 	private:
@@ -69,15 +69,14 @@ auto js_module::compile(const agent_lock& agent, auto&& source_text, source_orig
 	return compile(agent, local_source_text, std::move(source_origin));
 }
 
-template <class... Name, class Function>
+template <class... Name, class... Function>
 auto js_module::create_synthetic(const agent_lock& agent, std::tuple<std::pair<Name, Function>...> exports, source_required_name source_origin) -> js_module {
 	return std::invoke(
 		[ & ]<size_t... Index>(std::index_sequence<Index...> /*indices*/) {
-			constexpr auto property_count = sizeof...(Index);
 			auto name_values = std::tuple{std::get<Index>(std::move(exports)).first...};
-			const auto name_locals = js::transfer_in_strict<std::array<v8::Local<v8::String>, property_count>>(std::move(name_values), agent);
-			auto name_persistents = std::array<v8::Global<v8::String>, property_count>{v8::Global<v8::String>{agent->isolate(), std::get<Index>(name_locals)}...};
-			// nb: We require that all exports are of the same type, probably a function template. The
+			const auto name_locals = js::transfer_in_strict<std::array<v8::Local<v8::String>, sizeof...(Index)>>(std::move(name_values), agent);
+			auto name_persistents = std::array<v8::Global<v8::String>, sizeof...(Index)>{v8::Global<v8::String>{agent->isolate(), std::get<Index>(name_locals)}...};
+			// nb: This assumes that all exports are of the same type, probably a function template. The
 			// `std::tuple` visitor cannot accept an environment because it can't be sure that all members
 			// are compatible.
 			auto export_values = std::array{std::get<Index>(std::move(exports)).second...};
@@ -90,7 +89,7 @@ auto js_module::create_synthetic(const agent_lock& agent, std::tuple<std::pair<N
 					auto& host = *agent_host::get_current();
 					auto agent = agent_lock{js::iv8::isolate_execution_lock::make_witness(host.isolate()), host};
 					auto realm = realm::scope{agent, js::iv8::context_lock_witness::make_witness(agent, context)};
-					const auto export_locals = js::transfer_strict<std::array<v8::Local<v8::Value>, property_count>>(std::move(export_values), std::forward_as_tuple(realm), std::forward_as_tuple(realm));
+					const auto export_locals = js::transfer_strict<std::array<v8::Local<v8::Value>, sizeof...(Index)>>(std::move(export_values), std::forward_as_tuple(realm), std::forward_as_tuple(realm));
 					(module->SetSyntheticModuleExport(agent->isolate(), name_persistents[ Index ].Get(agent.isolate()), std::get<Index>(std::move(export_locals))).ToChecked(), ...);
 				};
 			return create_synthetic(agent, std::span{name_locals}, std::move(source_origin), std::move(action));
@@ -116,7 +115,7 @@ auto js_module::link(const realm::scope& realm, auto callback) -> void {
 			v8::Local<v8::FixedArray> attributes,
 			v8::Local<v8::Module> referrer
 		) -> v8::MaybeLocal<v8::Module> {
-		auto& realm = *realm_local;
+		const auto& realm = *realm_local;
 		auto& thread_callback = *thread_callback_local;
 		auto specifier_string = js::transfer_out_strict<js::string_t>(specifier, realm);
 		auto referrer_name = std::invoke([ & ]() -> std::optional<js::string_t> {

@@ -40,14 +40,6 @@ agent_host::agent_host(
 	v8::Isolate::Initialize(isolate_.get(), create_params);
 }
 
-agent_host::~agent_host() {
-	foreground_runner_->close();
-	auto lock = js::iv8::isolate_execution_lock{isolate_.get()};
-	autorelease_pool_.clear();
-	remote_handle_list_.reset(lock);
-	foreground_runner_->finalize();
-}
-
 auto agent_host::acquire_severable(const std::shared_ptr<agent_host>& self) -> std::shared_ptr<agent_severable> {
 	auto severable = self->severable_.lock();
 	if (!severable) {

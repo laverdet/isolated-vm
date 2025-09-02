@@ -236,7 +236,7 @@ auto create_capability(
 					std::pair{"default"_sl, isolated_v8::function_template::make(lock, std::move(invoke_capability))}
 				);
 			};
-			auto module_ = isolated_v8::js_module::create_synthetic(lock, make_interface(), std::move(options.origin));
+			auto module_ = isolated_v8::js_module::create_synthetic(lock, make_interface(), std::move(options).origin);
 			dispatch(std::move(agent), std::move(module_));
 		},
 		*agent,

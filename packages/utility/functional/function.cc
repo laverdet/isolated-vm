@@ -1,6 +1,5 @@
 module;
 #include <functional>
-#include <memory>
 #include <utility>
 export module ivm.utility:functional;
 import :tuple;
@@ -42,6 +41,7 @@ class bind_parameters;
 template <class Invocable, class... Params>
 class bind_parameters {
 	public:
+		bind_parameters() = default;
 		constexpr explicit bind_parameters(Invocable invocable, Params... params) :
 				invocable_{std::move(invocable)},
 				params_{std::move(params)...} {}

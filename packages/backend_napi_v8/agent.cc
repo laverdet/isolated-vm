@@ -33,6 +33,9 @@ struct make_agent_options {
 		std::optional<double> random_seed;
 };
 
+agent_environment::agent_environment(const isolated_v8::agent_lock& lock) :
+		runtime_interface_{lock} {}
+
 auto create_agent(environment& env, std::optional<make_agent_options> options_optional) {
 	auto options = std::move(options_optional).value_or(make_agent_options{});
 	auto& cluster = env.cluster();
@@ -61,7 +64,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	);
 	agent_handle::make(
 		cluster,
-		[]() { return agent_environment{}; },
+		[](const agent_handle::lock& lock) { return agent_environment{lock}; },
 		{.clock = clock, .random_seed = options.random_seed},
 		[ dispatch = std::move(dispatch) ](
 			const agent_handle::lock& /*lock*/,

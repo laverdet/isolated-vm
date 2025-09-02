@@ -39,6 +39,7 @@ constexpr auto make_tuple_in_place(Invocables... invocables) {
 template <std::size_t Index, class Type>
 class flat_tuple_element {
 	public:
+		flat_tuple_element() = default;
 		constexpr explicit flat_tuple_element(Type&& value) :
 				value_{std::move(value)} {}
 		constexpr explicit flat_tuple_element(const Type& value) :
@@ -66,6 +67,7 @@ class flat_tuple_storage;
 template <std::size_t... Index, class... Type>
 class flat_tuple_storage<std::index_sequence<Index...>, Type...> : private flat_tuple_element<Index, Type>... {
 	public:
+		flat_tuple_storage() = default;
 		constexpr explicit flat_tuple_storage(auto&&... values) :
 				flat_tuple_element<Index, Type>{std::forward<decltype(values)>(values)}... {}
 

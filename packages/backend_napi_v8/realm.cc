@@ -1,6 +1,4 @@
 module;
-#include "runtime/dist/runtime.js.h"
-#include <exception>
 #include <utility>
 module backend_napi_v8;
 import :agent;
@@ -26,18 +24,38 @@ auto create_realm(
 	agent->schedule(
 		[ agent = *agent,
 			dispatch = std::move(dispatch) ](
-			agent_handle::lock lock
+			const agent_handle::lock& lock
 		) mutable {
 			auto realm = isolated_v8::realm::make(lock);
-			auto runtime = isolated_v8::js_module::compile(lock, runtime_dist_runtime_js, isolated_v8::source_origin{});
-			realm.invoke(lock, [ & ](const isolated_v8::realm::scope& realm) {
-				runtime.link(realm, [](auto&&...) -> isolated_v8::js_module& {
-					std::terminate();
-				});
-				runtime.evaluate(realm);
-			});
 			dispatch(std::move(agent), std::move(realm));
 		}
+	);
+	return js::forward{promise};
+}
+
+auto instantiate_runtime(
+	environment& env,
+	js::napi::untagged_external<realm_handle>& realm
+) {
+	auto [ dispatch, promise ] = make_promise(
+		env,
+		[](environment& env, agent_handle agent, isolated_v8::js_module module_) -> expected_value {
+			return js::napi::untagged_external<module_handle>::make(env, std::move(agent), std::move(module_));
+		}
+	);
+	realm->agent().schedule(
+		[ dispatch = std::move(dispatch) ](
+			const agent_handle::lock& lock,
+			agent_handle agent,
+			isolated_v8::realm realm
+		) mutable {
+			auto module_ = realm.invoke(lock, [ & ](const isolated_v8::realm::scope& realm) {
+				return lock->environment().runtime().instantiate(realm);
+			});
+			dispatch(std::move(agent), std::move(module_));
+		},
+		realm->agent(),
+		realm->realm()
 	);
 	return js::forward{promise};
 }
@@ -48,6 +66,10 @@ realm_handle::realm_handle(agent_handle agent, isolated_v8::realm realm) :
 
 auto realm_handle::make_create_realm(environment& env) -> js::napi::value<js::function_tag> {
 	return js::napi::value<js::function_tag>::make(env, js::make_static_function<create_realm>());
+}
+
+auto realm_handle::make_instantiate_runtime(environment& env) -> js::napi::value<js::function_tag> {
+	return js::napi::value<js::function_tag>::make(env, js::make_static_function<instantiate_runtime>());
 }
 
 } // namespace backend_napi_v8

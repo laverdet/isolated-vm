@@ -15,6 +15,7 @@ export class realm_handle {
 		auto realm() -> auto& { return realm_; }
 
 		static auto make_create_realm(environment& env) -> js::napi::value<js::function_tag>;
+		static auto make_instantiate_runtime(environment& env) -> js::napi::value<js::function_tag>;
 
 	private:
 		agent_handle agent_;

@@ -81,17 +81,13 @@ auto agent_handle<Type>::make(cluster& cluster, auto make_environment, behavior_
 			const std::stop_token& /*stop_token*/
 		) mutable {
 			{
-				auto host = std::make_shared<agent_host_of<Type>>(
-					std::move(make_environment),
-					cluster.scheduler(),
-					runner,
-					params
-				);
-				std::invoke(
-					std::move(callback),
-					lock{js::iv8::isolate_execution_lock{host->isolate()}, *host},
-					agent_handle{host, agent_host::acquire_severable(host)}
-				);
+				auto host = std::make_shared<agent_host_of<Type>>(cluster.scheduler(), runner, params);
+				auto isolate_lock = js::iv8::isolate_execution_lock{host->isolate()};
+				auto agent_lock = lock{isolate_lock, *host};
+				host->initialize_environment([ & ]() {
+					return std::invoke(std::move(make_environment), agent_lock);
+				});
+				std::invoke(std::move(callback), agent_lock, agent_handle{host, agent_host::acquire_severable(host)});
 			}
 			// nb: `runner` contains the scheduler so it must be allowed to escape up the stack to
 			// be released later.
