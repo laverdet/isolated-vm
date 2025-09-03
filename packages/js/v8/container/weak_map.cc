@@ -19,6 +19,9 @@ class weak_map_handle {
 			key_.SetWeak(this, weak_callback, v8::WeakCallbackType::kParameter);
 		}
 
+		[[nodiscard]] auto operator==(v8::Local<Key> local) const { return key_ == local; }
+		[[nodiscard]] auto operator==(const weak_map_handle& other) const { return key_ == other.key_; }
+		[[nodiscard]] friend auto operator==(v8::Local<Key> local, const weak_map_handle& self) { return self == local; }
 		[[nodiscard]] auto GetIdentityHash() const -> int { return identity_hash_; }
 
 	private:
@@ -35,7 +38,7 @@ class weak_map : util::non_moveable {
 		using handle_type = weak_map_handle<Key, weak_map>;
 		friend handle_type;
 		using hasher = identity_hash;
-		using key_equal = util::hash_compare<identity_hash>;
+		using key_equal = std::equal_to<>;
 		using container_type = std::unordered_map<handle_type, Value, hasher, key_equal>;
 
 	public:
