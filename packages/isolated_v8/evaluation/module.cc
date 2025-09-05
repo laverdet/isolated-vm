@@ -48,7 +48,7 @@ auto js_module::requests(const agent_lock& agent) -> std::vector<module_request>
 					);
 					return std::pair{std::move(entry[ 0 ]), std::move(entry[ 1 ])};
 				});
-			return {specifier, module_request::attributes_type{std::move(attributes_view)}};
+			return {specifier, module_request::attributes_type{std::from_range, std::move(attributes_view)}};
 		});
 	return {std::from_range, std::move(requests_view)};
 }

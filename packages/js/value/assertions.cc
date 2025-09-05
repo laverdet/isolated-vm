@@ -1,6 +1,5 @@
 #include <array>
 #include <cstdint>
-#include <initializer_list>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -88,27 +87,30 @@ struct struct_properties<object_literal> {
 
 // Non-variant strict version
 constexpr auto object_numeric = transfer_strict<object_literal_one>(dictionary{
-	{std::pair{"integer"s, 1}}
+	std::in_place,
+	std::pair{"integer"s, 1}
 });
 static_assert(object_numeric.integer == 1);
 
 // Throwable values
 using object_test_variant = std::variant<int, double, std::string>;
-constexpr auto object_values_test = transfer<object_literal>(dictionary{{
+constexpr auto object_values_test = transfer<object_literal>(dictionary{
+	std::in_place,
 	std::pair{"integer"s, object_test_variant{1}},
 	std::pair{"number"s, object_test_variant{2.0}},
 	std::pair{"string"s, object_test_variant{"hello"}},
-}});
+});
 static_assert(object_values_test.integer == 1);
 static_assert(object_values_test.number == 2.0);
 static_assert(object_values_test.string == "hello");
 static_assert(
 	transfer<dictionary<dictionary_tag, std::string, object_test_variant>>(object_values_test) ==
-	dictionary{{
+	dictionary{
+		std::in_place,
 		std::pair{"integer"s, object_test_variant{1}},
 		std::pair{"number"s, object_test_variant{2.0}},
 		std::pair{"string"s, object_test_variant{"hello"}},
-	}}
+	}
 );
 
 // Ensure custom acceptors work
@@ -167,12 +169,14 @@ struct union_of<union_object> {
 		};
 };
 
-// constexpr auto discriminated_with_one = transfer<union_object>(dictionary{{
+// constexpr auto discriminated_with_one = transfer<union_object>(dictionary{
+// 	std::in_place,
 // 	std::pair{"type"s, "one"s},
 // 	std::pair{"one"s, "left"s},
-// }});
+// });
 
 // constexpr auto discriminated_with_two = transfer<union_object>(dictionary{{
+// 	std::in_place,
 // 	std::pair{"type"s, "two"s},
 // 	std::pair{"two"s, "right"s},
 // }});

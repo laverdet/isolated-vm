@@ -81,10 +81,11 @@ struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
 		constexpr auto operator()(Tag /*tag*/, auto&& dictionary, const auto& visit) const -> vector_of<Tag, Entry> {
 			const accept_vector_value<Meta, Entry>& accept_value = *this;
 			return vector_of<Tag, Entry>{
+				std::from_range,
 				util::into_range(std::forward<decltype(dictionary)>(dictionary)) |
-				std::views::transform([ & ](auto&& entry) -> Entry {
-					return accept_value(std::forward<decltype(entry)>(entry), visit);
-				})
+					std::views::transform([ & ](auto&& entry) -> Entry {
+						return accept_value(std::forward<decltype(entry)>(entry), visit);
+					})
 			};
 		}
 
