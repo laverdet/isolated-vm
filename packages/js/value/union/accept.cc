@@ -65,7 +65,7 @@ struct accept<Meta, std::variant<Types...>> {
 						invoke(std::integral_constant<size_t, Index>{})...
 					};
 				},
-				[]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
+				[]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) consteval {
 					const auto& alternative = std::get<Index>(descriptor_type::alternatives);
 					return std::pair{util::djb2_hash(alternative.discriminant), &accept_value<Index, Value, Visit>};
 				},
@@ -74,7 +74,8 @@ struct accept<Meta, std::variant<Types...>> {
 		}
 
 		template <std::size_t Index, class Value, class Visit>
-		constexpr static auto accept_value(const accept& self, Value value, Visit visit) -> accepted_type {
+		// clang bug?
+		/*constexpr*/ static auto accept_value(const accept& self, Value value, Visit visit) -> accepted_type {
 			const auto& acceptor = std::get<Index>(self.second);
 			return acceptor(dictionary_tag{}, std::forward<Value>(value), visit);
 		}

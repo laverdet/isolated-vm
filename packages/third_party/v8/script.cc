@@ -1,7 +1,7 @@
-// NOLINTBEGIN(misc-unused-using-decls)
 module;
 #include "v8-script.h"
 export module v8:script;
+// NOLINTBEGIN(misc-unused-using-decls)
 namespace v8 {
 export using v8::Location;
 export using v8::Module;

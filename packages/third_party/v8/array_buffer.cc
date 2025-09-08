@@ -1,7 +1,7 @@
-// NOLINTBEGIN(misc-unused-using-decls)
 module;
 #include "v8-array-buffer.h"
 export module v8:array_buffer;
+// NOLINTBEGIN(misc-unused-using-decls)
 namespace v8 {
 export using v8::ArrayBuffer;
 } // namespace v8

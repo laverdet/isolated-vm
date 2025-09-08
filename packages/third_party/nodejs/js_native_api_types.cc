@@ -1,7 +1,7 @@
 module;
-// NOLINTBEGIN(misc-unused-using-decls)
 #include <js_native_api_types.h>
 export module nodejs:js_native_api_types;
+// NOLINTBEGIN(misc-unused-using-decls)
 
 export using ::napi_env;
 export using ::node_api_basic_env;

@@ -1,7 +1,8 @@
-// NOLINTBEGIN(misc-unused-using-decls)
 module;
 #include <uv.h>
 export module nodejs:uv;
+
+// NOLINTBEGIN(misc-unused-using-decls)
 
 export using ::uv_async_t;
 export using ::uv_handle_t;

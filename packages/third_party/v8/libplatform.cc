@@ -1,10 +1,10 @@
-// NOLINTBEGIN(misc-unused-using-decls)
 module;
 #ifndef V8_VIA_NODEJS
 #include "libplatform/libplatform.h"
 #endif
 export module v8:libplatform;
 
+// NOLINTBEGIN(misc-unused-using-decls)
 #ifndef V8_VIA_NODEJS
 namespace v8::platform {
 export using platform::NewDefaultPlatform;

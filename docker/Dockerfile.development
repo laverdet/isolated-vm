@@ -4,7 +4,7 @@ COPY --from=isolated-vm/node opt opt
 COPY --from=isolated-vm/node_sources node node
 COPY --from=isolated-vm/v8 v8/out v8/out
 COPY --from=isolated-vm/v8_sources v8 v8
-ENV PATH=/opt/bin:/depot_tools:$PATH
+ENV PATH=/opt/bin:$PATH:/depot_tools
 ARG LLVM_VERSION
 RUN <<DONE
 	set -eux

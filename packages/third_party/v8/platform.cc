@@ -1,4 +1,3 @@
-// NOLINTBEGIN(misc-unused-using-decls)
 module;
 #ifndef V8_VIA_NODEJS
 #include "libplatform/v8-tracing.h"
@@ -6,6 +5,7 @@ module;
 #include "v8-source-location.h"
 #endif
 export module v8:platform;
+// NOLINTBEGIN(misc-unused-using-decls)
 #ifndef V8_VIA_NODEJS
 namespace v8 {
 export using v8::IdleTask;

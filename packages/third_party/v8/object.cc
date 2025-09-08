@@ -1,7 +1,7 @@
-// NOLINTBEGIN(misc-unused-using-decls)
 module;
 #include "v8-object.h"
 export module v8:object;
+// NOLINTBEGIN(misc-unused-using-decls)
 namespace v8 {
 export using v8::IndexFilter;
 export using v8::KeyCollectionMode;

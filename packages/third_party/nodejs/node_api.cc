@@ -1,7 +1,7 @@
-// NOLINTBEGIN(misc-unused-using-decls)
 module;
 #include <node_api.h>
 export module nodejs:node_api;
+// NOLINTBEGIN(misc-unused-using-decls)
 
 export using ::napi_get_uv_event_loop;
 

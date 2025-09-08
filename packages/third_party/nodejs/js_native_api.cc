@@ -1,7 +1,7 @@
-// NOLINTBEGIN(misc-unused-using-decls)
 module;
 #include <js_native_api.h>
 export module nodejs:js_native_api;
+// NOLINTBEGIN(misc-unused-using-decls)
 
 export using ::napi_add_finalizer;
 export using ::napi_call_function;

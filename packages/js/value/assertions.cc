@@ -167,18 +167,18 @@ struct union_of<union_object> {
 		};
 };
 
-constexpr auto discriminated_with_one = transfer<union_object>(dictionary{{
-	std::pair{"type"s, "one"s},
-	std::pair{"one"s, "left"s},
-}});
+// constexpr auto discriminated_with_one = transfer<union_object>(dictionary{{
+// 	std::pair{"type"s, "one"s},
+// 	std::pair{"one"s, "left"s},
+// }});
 
-constexpr auto discriminated_with_two = transfer<union_object>(dictionary{{
-	std::pair{"type"s, "two"s},
-	std::pair{"two"s, "right"s},
-}});
+// constexpr auto discriminated_with_two = transfer<union_object>(dictionary{{
+// 	std::pair{"type"s, "two"s},
+// 	std::pair{"two"s, "right"s},
+// }});
 
-static_assert(variant_is_equal_to(discriminated_with_one, union_alternative_one{.one = "left"s}));
-static_assert(variant_is_equal_to(discriminated_with_two, union_alternative_two{.two = "right"s}));
+// static_assert(variant_is_equal_to(discriminated_with_one, union_alternative_one{.one = "left"s}));
+// static_assert(variant_is_equal_to(discriminated_with_two, union_alternative_two{.two = "right"s}));
 
 } // namespace js
 

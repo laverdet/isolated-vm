@@ -1,4 +1,4 @@
-# export LLVM_VERSION=20 NODE_VERSION=22.14.0 V8_TARGET=arm64.debug V8_VERSION=12.8.20
+# export LLVM_VERSION=21 NODE_VERSION=22.14.0 V8_TARGET=arm64.debug V8_VERSION=12.8.20
 # docker compose --progress=plain build --pull depot_tools v8_sources v8 node_sources node
 # docker compose --progress=plain build development
 

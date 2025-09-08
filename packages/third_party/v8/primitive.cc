@@ -1,8 +1,8 @@
-// NOLINTBEGIN(misc-unused-using-decls)
 module;
 #include "v8-primitive.h"
 #include "version.h"
 export module v8:primitive;
+// NOLINTBEGIN(misc-unused-using-decls)
 namespace v8 {
 export using v8::BigInt;
 export using v8::Boolean;

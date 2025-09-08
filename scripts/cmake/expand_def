@@ -1,12 +1,21 @@
 #!/bin/sh
-set -eu
-FILE="$1"
-shift
 # Use the c preprocessor to expand command-line macros. This works around the draconian P3034R1
 # standard.
 # Usage: expand_def source.cc -Dfrom=to
-echo "#line 1 \"$FILE\""
-sed -E "s/(\s*#)/__REMOVE_PRE__\1/" "$FILE" | \
-cpp -E "$@" | \
-sed -E "s/__REMOVE_PRE__//" | \
-grep -Ev "^# [01]"
+set -eu
+FILE="$1"
+shift
+
+replace() {
+	sed -E "s/(\s*#)/__REMOVE_PRE__\1/" | \
+	cpp -E "$@" | \
+	sed -E "s/__REMOVE_PRE__//" | \
+	grep -Ev "^# [01]"
+}
+
+# nb: First line *must* be the module declaration, if it exists. So the `#line` directive happens
+# after that.
+CONTENT=$(cat "$FILE")
+echo "$CONTENT" | head -n1 | replace "$@"
+echo "#line 2 \"$FILE\""
+echo "$CONTENT" | tail -n+2 | replace "$@"
