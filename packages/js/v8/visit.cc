@@ -162,10 +162,11 @@ struct visit<void, v8::Local<v8::Value>>
 // `arguments` visitor
 template <>
 struct visit<void, v8::FunctionCallbackInfo<v8::Value>> : visit<void, v8::Local<v8::Value>> {
-		using visit<void, v8::Local<v8::Value>>::visit;
+		using visit_type = visit<void, v8::Local<v8::Value>>;
+		using visit_type::visit_type;
 
 		auto operator()(v8::FunctionCallbackInfo<v8::Value> info, const auto& accept) const -> decltype(auto) {
-			const visit<void, v8::Local<v8::Value>>& visitor = *this;
+			const visit_type& visitor = *this;
 			return accept(arguments_tag{}, iv8::callback_info{info}, visitor);
 		}
 };

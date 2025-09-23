@@ -55,10 +55,11 @@ struct visit_vector_value<Meta, std::pair<Key, Value>> {
 // required.
 template <class Meta, class Tag, class Value>
 struct visit<Meta, vector_of<Tag, Value>> : visit_vector_value<Meta, Value> {
-		using visit_vector_value<Meta, Value>::visit_vector_value;
+		using visit_type = visit_vector_value<Meta, Value>;
+		using visit_type::visit_type;
 
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
-			const visit_vector_value<Meta, Value>& visitor = *this;
+			const visit_type& visitor = *this;
 			return accept(Tag{}, std::forward<decltype(value)>(value), visitor);
 		}
 };

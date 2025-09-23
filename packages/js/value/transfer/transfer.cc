@@ -34,13 +34,13 @@ template <class Meta, class Type>
 // probably via `accept_next`
 	requires std::destructible<Type>
 struct accept<Meta, accept_with_throw::accept_throw<Type>> : accept<Meta, Type> {
+		using accept_type = accept<Meta, Type>;
 		explicit constexpr accept(auto* /*previous*/) :
-				accept<Meta, Type>{this} {}
+				accept_type{this} {}
 
 		constexpr auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> Type {
-			if constexpr (std::invocable<const accept<Meta, Type>&, decltype(tag), decltype(value), decltype(rest)...>) {
-				const accept<Meta, Type>& accept = *this;
-				return accept(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
+			if constexpr (std::invocable<const accept_type&, decltype(tag), decltype(value), decltype(rest)...>) {
+				return accept_type::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
 			} else {
 				throw std::logic_error{"Type error"};
 			}

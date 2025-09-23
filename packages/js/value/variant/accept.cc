@@ -3,9 +3,11 @@ module;
 #include <utility>
 #include <variant>
 export module isolated_js.variant.accept;
+import isolated_js.primitive.types;
 import isolated_js.tag;
 import isolated_js.transfer;
 import isolated_js.variant.types;
+import ivm.utility;
 
 namespace js {
 
@@ -16,11 +18,12 @@ struct accept_covariant;
 // Boxes the result of the underlying acceptor into the variant
 template <class Meta, class Type, class Result>
 struct accept_covariant : accept<Meta, Type> {
-		using accept<Meta, Type>::accept;
+		using accept_type = accept<Meta, Type>;
+		using accept_type::accept_type;
 
 		constexpr auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> Result
-			requires std::is_invocable_v<accept<Meta, Type>, decltype(tag), decltype(value), decltype(rest)...> {
-			return accept<Meta, Type>::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
+			requires std::is_invocable_v<const accept_type&, decltype(tag), decltype(value), decltype(rest)...> {
+			return accept_type::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
 		}
 };
 
@@ -28,10 +31,11 @@ struct accept_covariant : accept<Meta, Type> {
 template <class Meta, class Type, class Result>
 	requires std::negation_v<std::is_same<tag_for_t<Type>, void>>
 struct accept_covariant<Meta, Type, Result> : accept<Meta, Type> {
-		using accept<Meta, Type>::accept;
+		using accept_type = accept<Meta, Type>;
+		using accept_type::accept_type;
 
 		constexpr auto operator()(tag_for_t<Type> tag, auto&& value) const -> Result {
-			return accept<Meta, Type>::operator()(tag, std::forward<decltype(value)>(value));
+			return accept_type::operator()(tag, std::forward<decltype(value)>(value));
 		}
 };
 

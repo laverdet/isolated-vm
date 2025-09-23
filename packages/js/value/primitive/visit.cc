@@ -45,11 +45,12 @@ struct visit<void, util::string_literal<Size>> {
 // `std::optional` visitor may yield `undefined`
 template <class Meta, class Type>
 struct visit<Meta, std::optional<Type>> : visit<Meta, Type> {
-		using visit<Meta, Type>::visit;
+		using visit_type = visit<Meta, Type>;
+		using visit_type::visit_type;
 
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			if (value) {
-				return visit<Meta, Type>::operator()(*std::forward<decltype(value)>(value), accept);
+				return visit_type::operator()(*std::forward<decltype(value)>(value), accept);
 			} else {
 				return accept(undefined_tag{}, std::monostate{});
 			}

@@ -53,11 +53,11 @@ struct accept<void, iv8::external_reference<Type>&> {
 // nb: Accepting a pointer allows `undefined` to pass
 template <class Type>
 struct accept<void, iv8::external_reference<Type>*> : accept<void, iv8::external_reference<Type>&> {
-		using accept<void, iv8::external_reference<Type>&>::accept;
+		using accept_type = accept<void, iv8::external_reference<Type>&>;
+		using accept_type::accept_type;
 
 		auto operator()(external_tag tag, auto&& value) const -> iv8::external_reference<Type>* {
-			const accept<void, iv8::external_reference<Type>&>& acceptor = *this;
-			return &acceptor(tag, std::forward<decltype(value)>(value));
+			return std::addressof(accept_type::operator()(tag, std::forward<decltype(value)>(value)));
 		}
 
 		auto operator()(undefined_tag /*tag*/, const auto& /*value*/) const -> iv8::external_reference<Type>* {

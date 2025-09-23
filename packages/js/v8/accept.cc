@@ -17,12 +17,11 @@ import v8;
 
 namespace js {
 
-// Base class for primitive acceptors. Not really an acceptor.
-template <>
-struct accept<void, v8::Local<v8::Data>> {
+// Base class for primitive acceptors. These require only an isolate lock.
+struct accept_v8_primitive {
 	public:
-		accept() = delete;
-		explicit accept(const js::iv8::isolate_lock_witness& lock) :
+		accept_v8_primitive() = delete;
+		explicit accept_v8_primitive(const js::iv8::isolate_lock_witness& lock) :
 				isolate_{lock.isolate()} {}
 
 		[[nodiscard]] auto isolate() const {
@@ -30,11 +29,11 @@ struct accept<void, v8::Local<v8::Data>> {
 		}
 
 		// undefined & null
-		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const -> v8::Local<v8::Value> {
+		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const -> v8::Local<v8::Primitive> {
 			return v8::Undefined(isolate());
 		}
 
-		auto operator()(null_tag /*tag*/, const auto& /*null*/) const -> v8::Local<v8::Value> {
+		auto operator()(null_tag /*tag*/, const auto& /*null*/) const -> v8::Local<v8::Primitive> {
 			return v8::Null(isolate());
 		}
 
@@ -71,50 +70,40 @@ struct accept<void, v8::Local<v8::Data>> {
 
 // Explicit boolean acceptor
 template <>
-struct accept<void, v8::Local<v8::Boolean>> : accept<void, v8::Local<v8::Data>> {
-		using accept<void, v8::Local<v8::Data>>::accept;
+struct accept<void, v8::Local<v8::Boolean>> : accept_v8_primitive {
+		using accept_v8_primitive::accept_v8_primitive;
 		auto operator()(boolean_tag tag, auto&& value) const -> v8::Local<v8::Boolean> {
-			return accept<void, v8::Local<v8::Data>>::operator()(tag, std::forward<decltype(value)>(value));
+			return accept_v8_primitive::operator()(tag, std::forward<decltype(value)>(value));
 		}
 };
 
 // Explicit numeric acceptor
 template <>
-struct accept<void, v8::Local<v8::Number>> : accept<void, v8::Local<v8::Data>> {
-		using accept<void, v8::Local<v8::Data>>::accept;
+struct accept<void, v8::Local<v8::Number>> : accept_v8_primitive {
+		using accept_v8_primitive::accept_v8_primitive;
 
-		auto operator()(number_tag tag, auto&& value) const -> v8::Local<v8::Number> {
-			return accept<void, v8::Local<v8::Data>>::operator()(tag, std::forward<decltype(value)>(value));
-		}
-
-		template <class Numeric>
-		auto operator()(number_tag_of<Numeric> tag, auto&& value) const -> v8::Local<v8::Number> {
-			return accept<void, v8::Local<v8::Data>>::operator()(tag, std::forward<decltype(value)>(value));
+		auto operator()(std::convertible_to<number_tag> auto tag, auto&& value) const -> v8::Local<v8::Number> {
+			return accept_v8_primitive::operator()(tag, std::forward<decltype(value)>(value));
 		}
 };
 
 // Explicit string acceptor
 template <>
-struct accept<void, v8::Local<v8::String>> : accept<void, v8::Local<v8::Data>> {
-		using accept<void, v8::Local<v8::Data>>::accept;
+struct accept<void, v8::Local<v8::String>> : accept_v8_primitive {
+		using accept_v8_primitive::accept_v8_primitive;
 
-		auto operator()(string_tag tag, auto&& value) const -> v8::Local<v8::String> {
-			return accept<void, v8::Local<v8::Data>>::operator()(tag, std::forward<decltype(value)>(value));
-		}
-
-		template <class Char>
-		auto operator()(string_tag_of<Char> tag, auto&& value) const -> v8::Local<v8::String> {
-			return accept<void, v8::Local<v8::Data>>::operator()(tag, std::forward<decltype(value)>(value));
+		auto operator()(std::convertible_to<string_tag> auto tag, auto&& value) const -> v8::Local<v8::String> {
+			return accept_v8_primitive::operator()(tag, std::forward<decltype(value)>(value));
 		}
 };
 
 // Generic acceptor for most values
 template <>
-struct accept<void, v8::Local<v8::Value>> : accept<void, v8::Local<v8::Data>> {
+struct accept<void, v8::Local<v8::Value>> : accept_v8_primitive {
 	public:
 		accept() = delete;
 		explicit accept(const iv8::context_lock_witness& lock) :
-				accept<void, v8::Local<v8::Data>>{lock},
+				accept_v8_primitive{lock},
 				context_{lock.context()} {}
 
 		[[nodiscard]] auto context() const {
@@ -122,8 +111,8 @@ struct accept<void, v8::Local<v8::Value>> : accept<void, v8::Local<v8::Data>> {
 		}
 
 		auto operator()(auto_tag auto tag, auto&& value) const -> v8::Local<v8::Value>
-			requires std::invocable<accept<void, v8::Local<v8::Data>>, decltype(tag), decltype(value)> {
-			return accept<void, v8::Local<v8::Data>>::operator()(tag, std::forward<decltype(value)>(value));
+			requires std::invocable<const accept_v8_primitive&, decltype(tag), decltype(value)> {
+			return accept_v8_primitive::operator()(tag, std::forward<decltype(value)>(value));
 		}
 
 		// hacky function template acceptor
@@ -170,13 +159,12 @@ struct accept<void, v8::Local<v8::Value>> : accept<void, v8::Local<v8::Data>> {
 // A `MaybeLocal` also accepts `undefined`, similar to `std::optional`.
 template <class Meta, class Type>
 struct accept<Meta, v8::MaybeLocal<Type>> : accept<Meta, v8::Local<Type>> {
-		using accept<Meta, v8::Local<Type>>::accept;
 		using accept_type = accept<Meta, v8::Local<Type>>;
+		using accept_type::accept_type;
 
 		auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> v8::MaybeLocal<Type>
 			requires std::invocable<accept_type, decltype(tag), decltype(value), decltype(rest)...> {
-			const accept_type& accept = *this;
-			return accept(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
+			return accept_type::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
 		}
 
 		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const -> v8::MaybeLocal<Type> {
@@ -187,20 +175,18 @@ struct accept<Meta, v8::MaybeLocal<Type>> : accept<Meta, v8::Local<Type>> {
 // return value (actually a c++ void return)
 template <>
 struct accept<void, v8::ReturnValue<v8::Value>> : accept<void, v8::Local<v8::Value>> {
-	public:
 		using accept_type = accept<void, v8::Local<v8::Value>>;
-
 		accept(const iv8::context_lock_witness& lock, v8::ReturnValue<v8::Value> return_value) :
-				accept<void, v8::Local<v8::Value>>{lock},
+				accept_type{lock},
 				return_value_{return_value} {}
 
 		auto operator()(boolean_tag /*tag*/, const auto& value) const -> void {
-			return_value_.Set(static_cast<bool>(value));
+			return_value_.Set(bool{value});
 		}
 
 		template <class Type>
 		auto operator()(number_tag_of<Type> /*tag*/, const auto& value) const -> void {
-			return_value_.Set(static_cast<Type>(value));
+			return_value_.Set(Type{value});
 		}
 
 		auto operator()(null_tag /*tag*/, const auto& /*null*/) const -> void {
@@ -212,7 +198,7 @@ struct accept<void, v8::ReturnValue<v8::Value>> : accept<void, v8::Local<v8::Val
 		}
 
 		auto operator()(auto_tag auto tag, auto&& value) const -> void
-			requires std::invocable<accept_type, decltype(tag), decltype(value)> {
+			requires std::invocable<const accept_type&, decltype(tag), decltype(value)> {
 			return_value_.Set(accept_type::operator()(tag, std::forward<decltype(value)>(value)));
 		}
 

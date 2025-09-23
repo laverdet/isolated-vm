@@ -43,14 +43,13 @@ struct getter_delegate<struct_member<Subject, Type>> : struct_member<Subject, Ty
 // takes the `struct_tag`.
 template <class Meta, class Getter>
 struct visit_getter : visit<Meta, typename Getter::type> {
-	public:
+		using visit_type = visit<Meta, typename Getter::type>;
 		constexpr visit_getter(auto* root, Getter getter) :
-				visit<Meta, typename Getter::type>{root},
+				visit_type{root},
 				getter{std::move(getter)} {}
 
 		constexpr auto operator()(const auto& value, const auto& accept) const -> decltype(auto) {
-			const visit<Meta, typename Getter::type>& visitor = *this;
-			return visitor(getter(value), accept);
+			return visit_type::operator()(getter(value), accept);
 		}
 
 	private:

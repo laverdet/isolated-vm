@@ -35,10 +35,11 @@ struct is_variant<Types...> : std::bool_constant<false> {};
 template <class Meta, class... Types>
 	requires is_discriminated_union<Types...>
 struct accept<Meta, std::variant<Types...>> {
-	public:
+	private:
 		using accepted_type = std::variant<Types...>;
 		using descriptor_type = union_of<accepted_type>;
 
+	public:
 		explicit constexpr accept(auto* previous) :
 				second{util::elide{[ & ] constexpr { return accept_next<Meta, Types>{previous}; }}...},
 				accept_discriminant{previous} {}

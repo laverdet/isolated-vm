@@ -1,5 +1,4 @@
 module;
-#include <concepts>
 #include <functional>
 #include <ranges>
 #include <type_traits>
@@ -76,15 +75,15 @@ struct accept_vector_value<Meta, std::pair<Key, Value>> {
 // Dictionary's acceptor manages the recursive acceptor for the entry key/value types
 template <class Meta, class Tag, class Entry>
 struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
-		using accept_vector_value<Meta, Entry>::accept_vector_value;
+		using accept_type = accept_vector_value<Meta, Entry>;
+		using accept_type::accept_type;
 
 		constexpr auto operator()(Tag /*tag*/, auto&& dictionary, const auto& visit) const -> vector_of<Tag, Entry> {
-			const accept_vector_value<Meta, Entry>& accept_value = *this;
 			return vector_of<Tag, Entry>{
 				std::from_range,
 				util::into_range(std::forward<decltype(dictionary)>(dictionary)) |
 					std::views::transform([ & ](auto&& entry) -> Entry {
-						return accept_value(std::forward<decltype(entry)>(entry), visit);
+						return accept_type::operator()(std::forward<decltype(entry)>(entry), visit);
 					})
 			};
 		}
@@ -92,17 +91,16 @@ struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
 		template <std::size_t Size>
 			requires std::is_same_v<dictionary_tag, Tag>
 		constexpr auto operator()(struct_tag<Size> /*tag*/, auto&& dictionary, const auto& visit) const -> vector_of<Tag, Entry> {
-			const accept_vector_value<Meta, Entry>& accept_value = *this;
 			// nb: The value category of `dictionary` is forwarded to *each* visitor. Move operations
 			// should keep this in mind and only move one member at time.
-			auto&& subject = accept_value.make_struct_subject(std::forward<decltype(dictionary)>(dictionary));
+			auto&& subject = accept_type::make_struct_subject(std::forward<decltype(dictionary)>(dictionary));
 			return std::invoke(
 				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
 					return vector_of<Tag, Entry>{std::in_place, invoke(std::integral_constant<size_t, Index>{})...};
 				},
 				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
 					const auto& visit_n = std::get<Index>(visit);
-					return accept_value(std::forward<decltype(subject)>(subject), visit_n);
+					return accept_type::operator()(std::forward<decltype(subject)>(subject), visit_n);
 				},
 				std::make_index_sequence<Size>{}
 			);
