@@ -1,7 +1,6 @@
 module;
 #include <boost/variant.hpp>
 #include <cstddef>
-#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -12,30 +11,23 @@ import ivm.utility;
 
 namespace js {
 
-// `std::variant` visitor. This used to delegate to the `boost::variant` visitor elsewhere, but
-// `boost::apply_visitor` isn't constexpr, so we can't use it to test statically. `boost::variant`
-// can't delegate to this one either because it handles recursive variants.
+// `std::variant` visitor.
 template <class Meta, class... Types>
 	requires is_variant_v<Types...>
-struct visit<Meta, std::variant<Types...>> {
+struct visit<Meta, std::variant<Types...>> : visit<Meta, Types>... {
 	public:
 		constexpr explicit visit(auto* root) :
-				visitors{util::make_tuple_in_place(
-					[ & ] constexpr { return visit<Meta, Types>{root}; }...
-				)} {}
+				visit<Meta, Types>{root}... {}
 
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			return util::visit_with_index(
 				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/, auto&& value) constexpr {
-					const auto& visitor = std::get<Index>(visitors);
-					return visitor(std::forward<decltype(value)>(value), accept);
+					using variant_visit_type = visit<Meta, Types...[ Index ]>;
+					return this->variant_visit_type::operator()(std::forward<decltype(value)>(value), accept);
 				},
 				std::forward<decltype(value)>(value)
 			);
 		}
-
-	private:
-		std::tuple<visit<Meta, Types>...> visitors;
 };
 
 // Visiting a `boost::variant` visits the underlying members

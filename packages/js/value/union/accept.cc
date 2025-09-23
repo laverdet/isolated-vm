@@ -40,9 +40,7 @@ struct accept<Meta, std::variant<Types...>> {
 		using descriptor_type = union_of<accepted_type>;
 
 		explicit constexpr accept(auto* previous) :
-				second{util::make_tuple_in_place(
-					[ & ] constexpr { return accept_next<Meta, Types>{previous}; }...
-				)},
+				second{util::elide{[ & ] constexpr { return accept_next<Meta, Types>{previous}; }}...},
 				accept_discriminant{previous} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> accepted_type {

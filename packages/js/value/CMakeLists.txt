@@ -24,7 +24,6 @@ target_sources(value_js
 		transfer/types.cc
 		transfer/visit.cc
 		tuple/accept.cc
-		tuple/helpers.cc
 		tuple/visit.cc
 		type/date.cc
 		type/function.cc

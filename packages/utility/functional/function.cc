@@ -32,6 +32,18 @@ auto make_indirect_moveable_function(Fn&& fn) {
 
 #endif
 
+// `constructor<T>` adapts a constructible type into a callable object
+template <class Type>
+struct constructor_t {
+		constexpr auto operator()(auto&&... args) const -> Type
+			requires std::constructible_from<Type, decltype(args)...> {
+			return Type{std::forward<decltype(args)>(args)...};
+		}
+};
+
+export template <class Type>
+constexpr inline auto constructor = constructor_t<Type>{};
+
 // Captures the given parameters in way such that empty objects yield an empty invocable. See:
 //   static_assert(std::is_empty_v<decltype([]() {})>);
 //   static_assert(!std::is_empty_v<decltype([ a = std::monostate{} ]() {})>);

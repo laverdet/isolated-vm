@@ -6,21 +6,24 @@ export module isolated_js.tuple.visit;
 import isolated_js.tag;
 import isolated_js.transfer;
 import ivm.utility;
-using std::get;
 
 namespace js {
 
 template <class Meta, class... Types>
 struct visit<Meta, std::tuple<Types...>> {
+	private:
+		using visitors_type = std::tuple<visit<Meta, std::decay_t<Types>>...>;
+
 	public:
 		constexpr explicit visit(auto* root) :
-				visit_{util::make_tuple_in_place(
-					[ & ] constexpr { return visit<Meta, std::decay_t<Types>>{root}; }...
-				)} {}
+				visit_{[ & ]() constexpr {
+					auto [... indices ] = util::make_sequence<std::tuple_size_v<visitors_type>>();
+					return visitors_type{util::elide(util::constructor<std::tuple_element_t<indices, visitors_type>>, root)...};
+				}()} {}
 
 		template <size_t Index>
 		constexpr auto operator()(std::integral_constant<size_t, Index> /*index*/, auto&& value, const auto& accept) const -> decltype(auto) {
-			return get<Index>(visit_)(std::get<Index>(std::forward<decltype(value)>(value)), accept);
+			return std::get<Index>(visit_)(std::get<Index>(std::forward<decltype(value)>(value)), accept);
 		}
 
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
@@ -28,7 +31,7 @@ struct visit<Meta, std::tuple<Types...>> {
 		}
 
 	private:
-		std::tuple<visit<Meta, std::decay_t<Types>>...> visit_;
+		visitors_type visit_;
 };
 
 } // namespace js

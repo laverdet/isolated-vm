@@ -29,12 +29,15 @@ auto invoke_dtor(auto(function)(Params...)->napi_status, auto&&... args) noexcep
 }
 
 // Invokes the given napi function and returns the final "out" argument
+template <class... Params>
+using out_type = Params...[ sizeof...(Params) - 1 ];
+
 export template <class... Params>
 auto invoke(auto(function)(Params...)->napi_status, auto&&... args)
-	requires std::invocable<decltype(function), decltype(args)..., util::reverse_select_t<0, Params...>> {
-	using out_type = util::reverse_select_t<0, Params...>;
-	static_assert(std::is_pointer_v<out_type>);
-	std::remove_pointer_t<out_type> out_arg;
+	requires std::invocable<decltype(function), decltype(args)..., out_type<Params...>> {
+	using out_pointer_type = out_type<Params...>;
+	static_assert(std::is_pointer_v<out_pointer_type>);
+	std::remove_pointer_t<out_pointer_type> out_arg;
 	js::napi::invoke0(function, std::forward<decltype(args)>(args)..., &out_arg);
 	return std::move(out_arg);
 }

@@ -1,6 +1,7 @@
 export module ivm.utility;
 export import :autorelease_pool;
 export import :comparator;
+export import :elide;
 export import :facade;
 export import :functional;
 export import :hash;

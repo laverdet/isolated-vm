@@ -12,6 +12,7 @@ target_sources(ivm_utility
 		ranges.cc
 		tuple.cc
 		type_traits.cc
+		utility/elide.cc
 		utility/facade.cc
 		utility/hash.cc
 		utility/string_literal.cc

@@ -80,17 +80,18 @@ using visit_struct_properties_t = visit_struct_properties<Meta, Type, std::decay
 
 template <class Meta, class Type, class... Property>
 struct visit_struct_properties<Meta, Type, std::tuple<Property...>> {
+	private:
+		using properties_type = std::tuple<visit_object_property<Meta, Property>...>;
+
 	public:
 		explicit constexpr visit_struct_properties(auto* root) :
 				properties{std::invoke(
 					[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
-						return util::make_tuple_in_place(invoke(std::integral_constant<size_t, Index>{})...);
+						return properties_type{util::elide{invoke, std::integral_constant<size_t, Index>{}}...};
 					},
 					[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
-						using property_type = util::select_t<Index, Property...>;
-						return [ & ]() constexpr {
-							return visit_object_property<Meta, property_type>{root, std::get<Index>(struct_properties<Type>::properties)};
-						};
+						using property_type = Property...[ Index ];
+						return visit_object_property<Meta, property_type>{root, std::get<Index>(struct_properties<Type>::properties)};
 					},
 					std::make_index_sequence<sizeof...(Property)>{}
 				)} {}
@@ -100,7 +101,7 @@ struct visit_struct_properties<Meta, Type, std::tuple<Property...>> {
 		}
 
 	private:
-		std::tuple<visit_object_property<Meta, Property>...> properties;
+		properties_type properties;
 };
 
 // Visitor function for C++ object types

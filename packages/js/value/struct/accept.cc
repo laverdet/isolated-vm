@@ -80,17 +80,18 @@ using accept_struct_properties_t = accept_struct_properties<Meta, Type, std::dec
 
 template <class Meta, class Type, class... Property>
 struct accept_struct_properties<Meta, Type, std::tuple<Property...>> {
+	private:
+		using properties_type = std::tuple<accept_object_property<Meta, Property>...>;
+
 	public:
 		explicit constexpr accept_struct_properties(auto* previous) :
 				properties{std::invoke(
 					[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
-						return util::make_tuple_in_place(invoke(std::integral_constant<size_t, Index>{})...);
+						return properties_type{util::elide{invoke, std::integral_constant<size_t, Index>{}}...};
 					},
 					[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
-						using property_type = util::select_t<Index, Property...>;
-						return [ & ]() constexpr {
-							return accept_object_property<Meta, property_type>{previous, std::get<Index>(struct_properties<Type>::properties)};
-						};
+						using property_type = Property...[ Index ];
+						return accept_object_property<Meta, property_type>{previous, std::get<Index>(struct_properties<Type>::properties)};
 					},
 					std::make_index_sequence<sizeof...(Property)>{}
 				)} {}
@@ -111,7 +112,7 @@ struct accept_struct_properties<Meta, Type, std::tuple<Property...>> {
 		}
 
 	private:
-		std::tuple<accept_object_property<Meta, Property>...> properties;
+		properties_type properties;
 };
 
 // Struct acceptor

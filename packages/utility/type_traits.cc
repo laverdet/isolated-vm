@@ -12,22 +12,55 @@ struct value_constant {
 		constexpr static auto value = Value;
 };
 
+// `std::type_identity<T>{}` alias
+export template <class Type>
+constexpr inline auto type = std::type_identity<Type>{};
+
 // Capture a pack of types into a single type
 export template <class... Type>
-struct parameter_pack {};
+struct parameter_pack {
+		parameter_pack() = default;
+		explicit constexpr parameter_pack(std::type_identity<Type>... /*types*/)
+			requires(sizeof...(Type) > 0) {}
 
-// Select the indexed type from a parameter pack
+		template <class... Right>
+		constexpr auto operator+(parameter_pack<Right...> /*right*/) const {
+			return parameter_pack<Type..., Right...>{};
+		}
+
+		constexpr auto size() const {
+			return sizeof...(Type);
+		}
+};
+
+template <class... Type>
+parameter_pack(std::type_identity<Type>...) -> parameter_pack<Type...>;
+
 export template <std::size_t Index, class... Types>
-struct select;
+constexpr auto get(parameter_pack<Types...> /*pack*/) -> std::type_identity<Types... [ Index ]> {
+	return {};
+}
 
-export template <std::size_t Index, class... Types>
-using select_t = select<Index, Types...>::type;
+// Extract the `T` of a given `std::type_identity<T>`
+export template <auto Type>
+using meta_type_t = decltype(Type)::type;
 
-template <class Type, class... Types>
-struct select<0, Type, Types...> : std::type_identity<Type> {};
+// Return a sequence of index constants
+export template <std::size_t Size>
+consteval auto make_sequence() {
+	// With C++26 P2686 we can do constexpr decomposition. So instead of the `tuple` of
+	// `integral_constants` it can be an array of `size_t`.
+	// https://clang.llvm.org/cxx_status.html
 
-template <std::size_t Index, class Type, class... Types>
-struct select<Index, Type, Types...> : select<Index - 1, Types...> {};
+	// std::array<std::size_t, Size> result{};
+	// std::ranges::copy(std::ranges::iota_view{std::size_t{0}, Size + 1}, result.data());
+	// return result;
+
+	constexpr auto make = []<std::size_t... Index>(std::index_sequence<Index...> /*sequence*/) consteval {
+		return std::tuple{std::integral_constant<std::size_t, Index>{}...};
+	};
+	return make(std::make_index_sequence<Size>());
+}
 
 // Copy the cv_ref qualifiers from `From` to `To`
 export template <class From, class To>
@@ -63,13 +96,6 @@ struct apply_cv_ref
 
 export template <class From, class To>
 using apply_cv_ref_t = apply_cv_ref<From, To>::type;
-
-// Same as select, but counting from the end
-export template <std::size_t Index, class... Types>
-struct reverse_select : select<sizeof...(Types) - Index - 1, Types...> {};
-
-export template <std::size_t Index, class... Types>
-using reverse_select_t = reverse_select<Index, Types...>::type;
 
 // Use `std::function` to deduce the signature of an invocable
 export template <class Type>
@@ -134,3 +160,16 @@ export template <class From, class To>
 concept convertible_without_narrowing = is_convertible_without_narrowing_v<From, To>;
 
 } // namespace util
+
+namespace std {
+
+// `util::parameter_pack` metaprogramming specializations
+template <std::size_t Index, class... Types>
+struct tuple_element<Index, util::parameter_pack<Types...>> {
+		using type = std::type_identity<Types...[ Index ]>;
+};
+
+template <class... Types>
+struct tuple_size<util::parameter_pack<Types...>> : std::integral_constant<std::size_t, sizeof...(Types)> {};
+
+} // namespace std
