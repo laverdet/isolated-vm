@@ -33,11 +33,11 @@ struct visit<Meta, napi_value>
 				case napi_boolean:
 					return (*this)(napi::value<boolean_tag>::from(value), accept);
 				case napi_number:
-					return (*this)(napi::value<number_tag>::from(value), accept);
+					return (*this)(napi::value<number_tag_of<double>>::from(value), accept);
 				case napi_bigint:
-					return (*this)(napi::value<bigint_tag>::from(value), accept);
+					return (*this)(napi::value<bigint_tag_of<bigint>>::from(value), accept);
 				case napi_string:
-					return (*this)(napi::value<string_tag>::from(value), accept);
+					return (*this)(napi::value<string_tag_of<char16_t>>::from(value), accept);
 				case napi_object:
 					{
 						auto visit_entry = std::pair<const visit&, const visit&>{*this, *this};

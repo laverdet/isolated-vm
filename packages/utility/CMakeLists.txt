@@ -9,6 +9,7 @@ target_sources(ivm_utility
 		memory/autorelease_pool.cc
 		memory/comparator.cc
 		memory/memory.cc
+		memory/noinit_allocator.cc
 		ranges.cc
 		tuple.cc
 		type_traits.cc

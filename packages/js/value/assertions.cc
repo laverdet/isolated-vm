@@ -27,7 +27,8 @@ constexpr auto variant_is_equal_to(const Variant& variant, const Type& value) {
 	return std::holds_alternative<Type>(variant) && std::get<Type>(variant) == value;
 }
 
-static_assert(variant_is_equal_to(transfer_strict<std::variant<int, double>>(1.0), 1.0));
+static_assert(variant_is_equal_to(transfer_strict<std::variant<int, double>>(1.1), 1.1));
+static_assert(transfer<double>(std::variant<int, double>{1.1}) == 1.1);
 constexpr auto string_variant = std::variant<std::string>{"hello"};
 constexpr auto visited_string = transfer<std::variant<std::monostate, std::string>>(string_variant);
 static_assert(variant_is_equal_to(visited_string, "hello"s));
@@ -94,24 +95,19 @@ static_assert(object_numeric.integer == 1);
 
 // Throwable values
 using object_test_variant = std::variant<int, double, std::string>;
-constexpr auto object_values_test = transfer<object_literal>(dictionary{
-	std::in_place,
-	std::pair{"integer"s, object_test_variant{1}},
-	std::pair{"number"s, object_test_variant{2.0}},
-	std::pair{"string"s, object_test_variant{"hello"}},
-});
-static_assert(object_values_test.integer == 1);
-static_assert(object_values_test.number == 2.0);
-static_assert(object_values_test.string == "hello");
-static_assert(
-	transfer<dictionary<dictionary_tag, std::string, object_test_variant>>(object_values_test) ==
-	dictionary{
+constexpr auto dictionary_values_test = []() {
+	return dictionary{
 		std::in_place,
 		std::pair{"integer"s, object_test_variant{1}},
 		std::pair{"number"s, object_test_variant{2.0}},
 		std::pair{"string"s, object_test_variant{"hello"}},
-	}
-);
+	};
+};
+constexpr auto object_values_test = transfer<object_literal>(dictionary_values_test());
+static_assert(object_values_test.integer == 1);
+static_assert(object_values_test.number == 2.0);
+static_assert(object_values_test.string == "hello");
+static_assert(transfer<std::invoke_result_t<decltype(dictionary_values_test)>>(object_values_test) == dictionary_values_test());
 
 // Ensure custom acceptors work
 struct specialized {

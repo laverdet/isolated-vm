@@ -52,9 +52,9 @@ struct visit<void, v8::Local<v8::Name>> {
 		auto operator()(v8::Local<v8::String> value, const auto& accept) const -> decltype(auto) {
 			auto string = iv8::string{lock_witness(), value};
 			if (value->IsOneByte()) {
-				return accept(string_tag_of<std::byte>{}, string);
+				return accept(string_tag_of<char>{}, string);
 			} else {
-				return accept(string_tag{}, string);
+				return accept(string_tag_of<char16_t>{}, string);
 			}
 		}
 
@@ -127,7 +127,7 @@ struct visit<void, v8::Local<v8::Value>>
 			if (value->IsInt32()) {
 				return accept(number_tag_of<int32_t>{}, number);
 			} else {
-				return accept(number_tag{}, number);
+				return accept(number_tag_of<double>{}, number);
 			}
 		}
 
@@ -136,10 +136,6 @@ struct visit<void, v8::Local<v8::Value>>
 			// We actually have to convert the bigint in order to see how big it is. So the acceptor is
 			// invoked directly the underlying value, instead of a handle.
 			bool lossless{};
-			auto i64 = value->Int64Value(&lossless);
-			if (lossless) {
-				return accept(bigint_tag_of<int64_t>{}, i64);
-			}
 			auto u64 = value->Uint64Value(&lossless);
 			if (lossless) {
 				return accept(bigint_tag_of<uint64_t>{}, u64);
@@ -147,12 +143,12 @@ struct visit<void, v8::Local<v8::Value>>
 			js::bigint bigint_words;
 			bigint_words.resize_and_overwrite(value->WordCount(), [ & ](auto* words, auto length) {
 				if (length > 0) {
-					int int_length = static_cast<int>(length);
+					auto int_length = static_cast<int>(length);
 					value->ToWordsArray(&bigint_words.sign_bit(), &int_length, words);
 				}
 				return length;
 			});
-			return accept(bigint_tag{}, std::move(bigint_words));
+			return accept(bigint_tag_of<bigint>{}, std::move(bigint_words));
 		}
 
 	private:

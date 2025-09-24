@@ -35,7 +35,7 @@ auto runtime_interface::instantiate(const isolated_v8::realm::scope& realm) -> i
 	auto options = isolated_v8::source_required_name{.name = "isolated-vm://runtime"};
 	auto interface = isolated_v8::js_module::create_synthetic(realm.agent(), make_interface(), std::move(options));
 	auto runtime = isolated_v8::js_module::compile(realm.agent(), runtime_dist_interface_js, isolated_v8::source_origin{});
-	runtime.link(realm, [&](auto&&...) -> isolated_v8::js_module& {
+	runtime.link(realm, [ & ](auto&&...) -> isolated_v8::js_module& {
 		return interface;
 	});
 	runtime.evaluate(realm);

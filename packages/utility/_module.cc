@@ -7,6 +7,7 @@ export import :functional;
 export import :hash;
 export import :lockable;
 export import :memory;
+export import :noinit_allocator;
 export import :ranges;
 export import :sealed_map;
 export import :string_literal;

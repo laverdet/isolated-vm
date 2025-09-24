@@ -30,7 +30,7 @@ struct accept_entry_value<Meta, Type> {
 				accept_{previous} {}
 
 		constexpr auto operator()(auto_tag auto tag, auto&&... args) const -> Type
-			requires std::invocable<accept_type, decltype(tag), decltype(args)...> {
+			requires std::invocable<const accept_type&, decltype(tag), decltype(args)...> {
 			return (*accept_)(tag, std::forward<decltype(args)>(args)...);
 		}
 

@@ -7,7 +7,7 @@ import :type_traits;
 namespace util {
 
 // Structural string literal which may be used as a template parameter. The string is
-// null-terminated, which is required by v8's `String::NewFromUtf8Literal`.
+// null-terminated.
 export template <size_t Size>
 struct string_literal {
 		// NOLINTNEXTLINE(google-explicit-constructor, modernize-avoid-c-arrays)

@@ -38,12 +38,13 @@ struct accept<Meta, accept_with_throw::accept_throw<Type>> : accept<Meta, Type> 
 		explicit constexpr accept(auto* /*previous*/) :
 				accept_type{this} {}
 
-		constexpr auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> Type {
-			if constexpr (std::invocable<const accept_type&, decltype(tag), decltype(value), decltype(rest)...>) {
-				return accept_type::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
-			} else {
-				throw std::logic_error{"Type error"};
-			}
+		constexpr auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> Type
+			requires std::invocable<const accept_type&, decltype(tag), decltype(value), decltype(rest)...> {
+			return accept_type::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
+		}
+
+		constexpr auto operator()(auto&&... /*args*/) const -> Type {
+			throw std::logic_error{"Type error"};
 		}
 };
 

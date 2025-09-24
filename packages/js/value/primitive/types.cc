@@ -1,4 +1,5 @@
 module;
+#include <array>
 #include <concepts>
 #include <cstdint>
 #include <string>
@@ -17,24 +18,16 @@ export class bigint {
 
 		bigint() = default;
 
-		explicit constexpr bigint(uint64_t number) {
-			resize_and_overwrite(1, [ & ](word_type* words, std::size_t /*length*/) constexpr {
-				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-				words[ 0 ] = number;
-				sign_bit() = 0;
-				return 1;
-			});
-		}
+		explicit constexpr bigint(uint64_t number) :
+				words_{std::from_range, std::array{number}} {}
 
-		explicit constexpr bigint(int64_t number) {
-			resize_and_overwrite(1, [ & ](word_type* words, std::size_t /*length*/) constexpr {
-				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic, hicpp-signed-bitwise)
-				words[ 0 ] = static_cast<word_type>(number) & ~(1LL << 63);
+		explicit constexpr bigint(int64_t number) :
 				// NOLINTNEXTLINE(hicpp-signed-bitwise)
-				sign_bit() = static_cast<int>((number >> 63) & 1);
-				return 1;
-			});
-		}
+				sign_bit_{static_cast<int>((number >> 63) & 1)},
+				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic, hicpp-signed-bitwise)
+				words_{std::from_range, std::array{static_cast<word_type>(number) & ~(1LL << 63)}} {}
+
+		[[nodiscard]] constexpr auto operator==(const bigint&) const -> bool = default;
 
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		[[nodiscard]] constexpr operator uint64_t() const {
@@ -55,9 +48,9 @@ export class bigint {
 		}
 
 		[[nodiscard]] constexpr auto data() const -> const word_type* { return reinterpret_cast<const word_type*>(words_.data()); }
+		[[nodiscard]] constexpr auto sign_bit() -> int& { return sign_bit_; }
 		[[nodiscard]] constexpr auto sign_bit() const -> int { return sign_bit_; }
 		[[nodiscard]] constexpr auto size() const -> std::size_t { return words_.size(); }
-		constexpr auto sign_bit() -> int& { return sign_bit_; }
 
 		constexpr auto resize_and_overwrite(std::size_t size, std::invocable<word_type*, std::size_t> auto overwrite) -> void {
 			words_.resize(size);
@@ -65,12 +58,12 @@ export class bigint {
 		}
 
 	private:
-		int sign_bit_ = 0;
-		std::vector<util::trivial_aggregate<word_type>> words_;
+		int sign_bit_{};
+		std::vector<word_type, util::noinit_allocator<word_type>> words_;
 };
 
-export using number_t = std::variant<double, int32_t, uint32_t>;
-export using bigint_t = std::variant<bigint, int64_t, uint64_t>;
+export using number_t = std::variant<double, int32_t>;
+export using bigint_t = std::variant<bigint, uint64_t>;
 export using string_t = std::variant<std::u16string, std::string>;
 
 } // namespace js

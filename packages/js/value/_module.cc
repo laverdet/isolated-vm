@@ -14,7 +14,6 @@ import isolated_js.dictionary.accept;
 import isolated_js.dictionary.visit;
 import isolated_js.enum_.accept;
 import isolated_js.primitive.accept;
-import isolated_js.primitive.tag;
 import isolated_js.primitive.visit;
 import isolated_js.struct_.accept;
 import isolated_js.struct_.visit;

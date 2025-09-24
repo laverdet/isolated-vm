@@ -11,7 +11,6 @@ target_sources(value_js
 		enum/accept.cc
 		enum/types.cc
 		primitive/accept.cc
-		primitive/tag.cc
 		primitive/types.cc
 		primitive/visit.cc
 		struct/accept.cc

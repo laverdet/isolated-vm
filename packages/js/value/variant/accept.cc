@@ -1,9 +1,7 @@
 module;
-#include <type_traits>
 #include <utility>
 #include <variant>
 export module isolated_js.variant.accept;
-import isolated_js.primitive.types;
 import isolated_js.tag;
 import isolated_js.transfer;
 import isolated_js.variant.types;
@@ -22,20 +20,8 @@ struct accept_covariant : accept<Meta, Type> {
 		using accept_type::accept_type;
 
 		constexpr auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> Result
-			requires std::is_invocable_v<const accept_type&, decltype(tag), decltype(value), decltype(rest)...> {
-			return accept_type::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
-		}
-};
-
-// Tagged primitives only accept their covariant type
-template <class Meta, class Type, class Result>
-	requires std::negation_v<std::is_same<tag_for_t<Type>, void>>
-struct accept_covariant<Meta, Type, Result> : accept<Meta, Type> {
-		using accept_type = accept<Meta, Type>;
-		using accept_type::accept_type;
-
-		constexpr auto operator()(tag_for_t<Type> tag, auto&& value) const -> Result {
-			return accept_type::operator()(tag, std::forward<decltype(value)>(value));
+			requires std::is_invocable_v<const accept_type&, decltype(covariant_tag{tag}), decltype(value), decltype(rest)...> {
+			return accept_type::operator()(covariant_tag{tag}, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
 		}
 };
 
@@ -43,8 +29,7 @@ struct accept_covariant<Meta, Type, Result> : accept<Meta, Type> {
 // `accept_covariant`.
 template <class Meta, class... Types>
 	requires is_variant_v<Types...>
-struct accept<Meta, std::variant<Types...>>
-		: accept_covariant<Meta, Types, std::variant<Types...>>... {
+struct accept<Meta, std::variant<Types...>> : accept_covariant<Meta, Types, std::variant<Types...>>... {
 		explicit constexpr accept(auto* previous) :
 				accept_covariant<Meta, Types, std::variant<Types...>>{previous}... {}
 		using accept_covariant<Meta, Types, std::variant<Types...>>::operator()...;

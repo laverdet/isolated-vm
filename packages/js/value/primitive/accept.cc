@@ -1,45 +1,110 @@
 module;
 #include <concepts>
-#include <cstddef>
+#include <cstdint>
 #include <expected>
 #include <optional>
-#include <type_traits>
+#include <stdexcept>
 #include <utility>
 #include <variant>
 export module isolated_js.primitive.accept;
 import isolated_js.date;
+import isolated_js.primitive.types;
 import isolated_js.tag;
 import isolated_js.transfer;
 import ivm.utility;
 
 namespace js {
 
-// Default acceptor just forwards the given value directly to the underlying type's constructor
-template <class Type>
-	requires std::negation_v<std::is_same<tag_for_t<Type>, void>>
-struct accept<void, Type> {
-		constexpr auto operator()(con_tag_for_t<Type> /*tag*/, auto&& value) const {
-			if constexpr (util::is_convertible_without_narrowing_v<decltype(value), Type>) {
-				return Type{std::forward<decltype(value)>(value)};
-			} else {
-				return static_cast<Type>(std::forward<decltype(value)>(value));
+// Static value acceptor
+template <class Tag, auto Value>
+struct accept_as_constant {
+		constexpr auto operator()(Tag /*tag*/, const auto& /*value*/) const {
+			return Value;
+		}
+};
+
+// Lossless value acceptor
+template <class Tag, class Type>
+struct accept_without_narrowing {
+		constexpr auto operator()(Tag /*tag*/, auto&& value) const {
+			return Type{std::forward<decltype(value)>(value)};
+		}
+};
+
+// Generic coercing acceptor
+template <class Tag, template <class> class MetaTag, class Type>
+struct accept_coerced {
+		constexpr auto operator()(Tag /*tag*/, auto&& value) const {
+			return (*this)(MetaTag<Type>{}, std::forward<decltype(value)>(value));
+		}
+
+		constexpr auto operator()(covariant_tag<MetaTag<Type>> tag, auto&& value) const {
+			return (*this)(*tag, std::forward<decltype(value)>(value));
+		}
+
+		template <class Subject>
+		constexpr auto operator()(MetaTag<Subject> /*tag*/, auto&& value) const {
+			auto subject = static_cast<Subject>(std::forward<decltype(value)>(value));
+			auto result = static_cast<Type>(subject);
+			if (static_cast<Subject>(result) != subject) {
+				throw std::range_error{"Failed to losslessly coerce value"};
 			}
+			return result;
 		}
 };
 
-// `undefined` -> `std::monostate`
+// `undefined` & `null`
 template <>
-struct accept<void, std::monostate> {
-		constexpr auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const {
-			return std::monostate{};
-		}
-};
+struct accept<void, std::monostate> : accept_as_constant<undefined_tag, std::monostate{}> {};
 
-// `null` -> `std::nullptr_t`
 template <>
-struct accept<void, std::nullptr_t> {
-		constexpr auto operator()(null_tag /*tag*/, const auto& /*null*/) const {
-			return nullptr;
+struct accept<void, std::nullptr_t> : accept_as_constant<null_tag, nullptr> {};
+
+// `bool`
+template <>
+struct accept<void, bool> : accept_without_narrowing<boolean_tag, bool> {};
+
+// `number` types
+template <>
+struct accept<void, double> : accept_coerced<number_tag, number_tag_of, double> {};
+
+template <>
+struct accept<void, int32_t> : accept_coerced<number_tag, number_tag_of, int32_t> {};
+
+template <>
+struct accept<void, uint32_t> : accept_coerced<number_tag, number_tag_of, uint32_t> {};
+
+// `bigint` types
+template <>
+struct accept<void, bigint> : accept_coerced<bigint_tag, bigint_tag_of, bigint> {};
+
+template <>
+struct accept<void, int64_t> : accept_coerced<bigint_tag, bigint_tag_of, int64_t> {};
+
+template <>
+struct accept<void, uint64_t> : accept_coerced<bigint_tag, bigint_tag_of, uint64_t> {};
+
+// `date`
+template <>
+struct accept<void, js_clock::time_point> : accept_without_narrowing<date_tag, js_clock::time_point> {};
+
+// `string` types (no character set conversion is implemented)
+template <class Char>
+struct accept<void, std::basic_string<Char>> {
+		using tag_type = string_tag_of<Char>;
+		using value_type = std::basic_string<Char>;
+
+		constexpr auto operator()(string_tag /*tag*/, auto&& value) const
+			requires std::constructible_from<value_type, decltype(value)> {
+			return value_type{std::forward<decltype(value)>(value)};
+		}
+
+		constexpr auto operator()(tag_type /*tag*/, auto&& value) const {
+			return value_type{std::forward<decltype(value)>(value)};
+		}
+
+		constexpr auto operator()(covariant_tag<tag_type> tag, auto&& value) const {
+			return (*this)(*tag, std::forward<decltype(value)>(value));
 		}
 };
 
@@ -50,7 +115,7 @@ struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
 		using accept_type::accept_type;
 
 		constexpr auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> std::optional<Type>
-			requires std::invocable<accept_type, decltype(tag), decltype(value), decltype(rest)...> {
+			requires std::invocable<const accept_type&, decltype(tag), decltype(value), decltype(rest)...> {
 			return accept_type::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
 		}
 
@@ -69,7 +134,7 @@ struct accept<Meta, std::expected<Type, undefined_in_tag>> : accept<Meta, Type> 
 		using accept_type::accept_type;
 
 		constexpr auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> value_type
-			requires std::invocable<accept_type, decltype(tag), decltype(value), decltype(rest)...> {
+			requires std::invocable<const accept_type&, decltype(tag), decltype(value), decltype(rest)...> {
 			return value_type{
 				std::in_place,
 				accept_type::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...)

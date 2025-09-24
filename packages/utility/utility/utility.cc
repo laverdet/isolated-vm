@@ -87,13 +87,4 @@ auto slice_cast(const std::derived_from<Type> auto& value) -> const Type& {
 	return static_cast<const Type&>(value);
 }
 
-// Wrapper which does not initialize the data member. For use in `std::vector`.
-export template <class Type>
-	requires std::is_trivially_destructible_v<Type>
-struct trivial_aggregate {
-	private:
-		// NOLINTNEXTLINE(modernize-avoid-c-arrays)
-		std::byte data[ sizeof(Type) ];
-};
-
 } // namespace util

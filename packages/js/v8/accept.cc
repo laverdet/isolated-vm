@@ -56,12 +56,9 @@ struct accept_v8_primitive {
 		}
 
 		// string
-		auto operator()(string_tag /*tag*/, auto&& value) const -> v8::Local<v8::String> {
-			return iv8::string::make(isolate_, std::u16string_view{std::forward<decltype(value)>(value)});
-		}
-
-		auto operator()(string_tag_of<char> /*tag*/, auto&& value) const -> v8::Local<v8::String> {
-			return iv8::string::make(isolate_, std::string_view{std::forward<decltype(value)>(value)});
+		template <class Char>
+		auto operator()(string_tag_of<Char> /*tag*/, auto&& value) const -> v8::Local<v8::String> {
+			return iv8::string::make(isolate_, std::basic_string_view<Char>{std::forward<decltype(value)>(value)});
 		}
 
 	private:
@@ -82,7 +79,7 @@ template <>
 struct accept<void, v8::Local<v8::Number>> : accept_v8_primitive {
 		using accept_v8_primitive::accept_v8_primitive;
 
-		auto operator()(std::convertible_to<number_tag> auto tag, auto&& value) const -> v8::Local<v8::Number> {
+		auto operator()(auto_tag<number_tag> auto tag, auto&& value) const -> v8::Local<v8::Number> {
 			return accept_v8_primitive::operator()(tag, std::forward<decltype(value)>(value));
 		}
 };
@@ -92,7 +89,7 @@ template <>
 struct accept<void, v8::Local<v8::String>> : accept_v8_primitive {
 		using accept_v8_primitive::accept_v8_primitive;
 
-		auto operator()(std::convertible_to<string_tag> auto tag, auto&& value) const -> v8::Local<v8::String> {
+		auto operator()(auto_tag<string_tag> auto tag, auto&& value) const -> v8::Local<v8::String> {
 			return accept_v8_primitive::operator()(tag, std::forward<decltype(value)>(value));
 		}
 };
@@ -163,7 +160,7 @@ struct accept<Meta, v8::MaybeLocal<Type>> : accept<Meta, v8::Local<Type>> {
 		using accept_type::accept_type;
 
 		auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> v8::MaybeLocal<Type>
-			requires std::invocable<accept_type, decltype(tag), decltype(value), decltype(rest)...> {
+			requires std::invocable<const accept_type&, decltype(tag), decltype(value), decltype(rest)...> {
 			return accept_type::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
 		}
 
