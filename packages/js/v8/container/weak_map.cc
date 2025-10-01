@@ -3,13 +3,13 @@ module;
 #include <unordered_map>
 export module v8_js.weak_map;
 import ivm.utility;
-import v8_js.identity_hash;
+import v8_js.hash;
 import v8_js.lock;
 import v8;
 
 namespace js::iv8 {
 
-template <class Key, class Container>
+template <identity_hashable Key, class Container>
 class weak_map_handle {
 	public:
 		weak_map_handle(v8::Isolate* isolate, Container& container, v8::Local<Key> local_key) noexcept :
@@ -32,7 +32,7 @@ class weak_map_handle {
 		int identity_hash_;
 };
 
-export template <class Key, class Value>
+export template <identity_hashable Key, class Value>
 class weak_map : util::non_moveable {
 	private:
 		using handle_type = weak_map_handle<Key, weak_map>;
@@ -54,7 +54,7 @@ class weak_map : util::non_moveable {
 };
 
 // weak_map_handle
-template <class Key, class Container>
+template <identity_hashable Key, class Container>
 auto weak_map_handle<Key, Container>::weak_callback(const v8::WeakCallbackInfo<weak_map_handle>& info) -> void {
 	auto* handle = info.GetParameter();
 	auto& map = (*handle->container_).map_;
@@ -64,7 +64,7 @@ auto weak_map_handle<Key, Container>::weak_callback(const v8::WeakCallbackInfo<w
 }
 
 // weak_map
-template <class Key, class Value>
+template <identity_hashable Key, class Value>
 auto weak_map<Key, Value>::find(auto&& key) const -> const Value* {
 	auto pos = map_.find(std::forward<decltype(key)>(key));
 	if (pos == map_.end()) {
@@ -74,7 +74,7 @@ auto weak_map<Key, Value>::find(auto&& key) const -> const Value* {
 	}
 }
 
-template <class Key, class Value>
+template <identity_hashable Key, class Value>
 auto weak_map<Key, Value>::emplace(const isolate_lock_witness& lock, std::pair<v8::Local<Key>, Value> entry) -> bool {
 	auto result = map_.emplace(
 		std::piecewise_construct,
@@ -84,7 +84,7 @@ auto weak_map<Key, Value>::emplace(const isolate_lock_witness& lock, std::pair<v
 	return result.second;
 }
 
-template <class Key, class Value>
+template <identity_hashable Key, class Value>
 auto weak_map<Key, Value>::extract(const isolate_lock_witness& /*lock*/, auto&& key) -> Value {
 	auto it = map_.find(std::forward<decltype(key)>(key));
 	assert(it != map_.end());

@@ -12,6 +12,7 @@ import v8_js.callback_info;
 import v8_js.date;
 import v8_js.external;
 import v8_js.handle;
+import v8_js.hash;
 import v8_js.lock;
 import v8_js.number;
 import v8_js.object;

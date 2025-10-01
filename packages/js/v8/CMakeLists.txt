@@ -9,7 +9,7 @@ target_sources(v8_js
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		accept.cc
-		container/identity_hash.cc
+		container/hash.cc
 		container/weak_map.cc
 		lock.cc
 		value/include/array.cc
