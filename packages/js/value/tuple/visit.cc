@@ -2,9 +2,8 @@ module;
 #include <cstddef>
 #include <tuple>
 #include <utility>
-export module isolated_js.tuple.visit;
-import isolated_js.tag;
-import isolated_js.transfer;
+export module isolated_js:tuple.visit;
+import :transfer;
 import ivm.utility;
 
 namespace js {

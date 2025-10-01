@@ -1,9 +1,9 @@
 module;
 #include <string_view>
 #include <utility>
-export module isolated_js.function;
-import isolated_js.tag;
-import isolated_js.visit;
+export module isolated_js:function;
+import :tag;
+import :visit;
 import ivm.utility;
 
 namespace js {

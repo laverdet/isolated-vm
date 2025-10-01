@@ -3,12 +3,10 @@ module;
 #include <tuple>
 #include <type_traits>
 #include <utility>
-export module isolated_js.struct_.visit;
-import isolated_js.property;
-import isolated_js.struct_.helpers;
-import isolated_js.struct_.types;
-import isolated_js.tag;
-import isolated_js.transfer;
+export module isolated_js:struct_.visit;
+import :property;
+import :struct_.helpers;
+import :transfer;
 import ivm.utility;
 
 namespace js {

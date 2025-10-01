@@ -1,6 +1,6 @@
 module;
 #include <concepts>
-export module isolated_js.tag;
+export module isolated_js:tag;
 
 // Tag heirarchy helpers
 template <class Tag, class Con = Tag>

@@ -1,9 +1,9 @@
 module;
 #include <ranges>
 #include <vector>
-export module isolated_js.dictionary.vector_of;
+export module isolated_js:dictionary.vector_of;
 import ivm.utility;
-import isolated_js.tag;
+import :tag;
 
 namespace js {
 

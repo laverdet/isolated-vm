@@ -1,4 +1,4 @@
-export module isolated_js.struct_.types;
+export module isolated_js:struct_.types;
 import ivm.utility;
 
 namespace js {

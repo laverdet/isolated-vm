@@ -1,8 +1,8 @@
 module;
 #include <string>
-export module isolated_js.union_.types;
-import isolated_js.tag;
-import isolated_js.variant.types;
+export module isolated_js:union_.types;
+import :tag;
+import :variant.types;
 
 namespace js {
 

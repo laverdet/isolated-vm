@@ -2,9 +2,8 @@ module;
 #include <array>
 #include <span>
 #include <vector>
-export module isolated_js.vector.visit;
-import isolated_js.tag;
-import isolated_js.transfer;
+export module isolated_js:vector.visit;
+import :transfer;
 
 namespace js {
 

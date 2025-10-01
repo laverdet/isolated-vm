@@ -1,10 +1,9 @@
 module;
 #include <utility>
 #include <variant>
-export module isolated_js.variant.accept;
-import isolated_js.tag;
-import isolated_js.transfer;
-import isolated_js.variant.types;
+export module isolated_js:variant.accept;
+import :transfer;
+import :variant.types;
 import ivm.utility;
 
 namespace js {

@@ -6,11 +6,10 @@ module;
 #include <stdexcept>
 #include <utility>
 #include <variant>
-export module isolated_js.primitive.accept;
-import isolated_js.date;
-import isolated_js.primitive.types;
-import isolated_js.tag;
-import isolated_js.transfer;
+export module isolated_js:primitive.accept;
+import :bigint;
+import :date;
+import :transfer;
 import ivm.utility;
 
 namespace js {

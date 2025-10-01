@@ -2,12 +2,10 @@ module;
 #include <array>
 #include <concepts>
 #include <cstdint>
-#include <string>
-#include <variant>
 #include <vector>
-export module isolated_js.primitive.types;
-import isolated_js.date;
-import isolated_js.tag;
+export module isolated_js:bigint;
+import :date;
+import :tag;
 import ivm.utility;
 
 namespace js {
@@ -61,9 +59,5 @@ export class bigint {
 		int sign_bit_{};
 		std::vector<word_type, util::noinit_allocator<word_type>> words_;
 };
-
-export using number_t = std::variant<double, int32_t>;
-export using bigint_t = std::variant<bigint, uint64_t>;
-export using string_t = std::variant<std::u16string, std::string>;
 
 } // namespace js

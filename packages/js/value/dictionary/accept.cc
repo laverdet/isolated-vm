@@ -3,11 +3,10 @@ module;
 #include <ranges>
 #include <type_traits>
 #include <utility>
-export module isolated_js.dictionary.accept;
-import isolated_js.dictionary.helpers;
-import isolated_js.dictionary.vector_of;
-import isolated_js.tag;
-import isolated_js.transfer;
+export module isolated_js:dictionary.accept;
+import :dictionary.helpers;
+import :dictionary.vector_of;
+import :transfer;
 import ivm.utility;
 
 namespace js {

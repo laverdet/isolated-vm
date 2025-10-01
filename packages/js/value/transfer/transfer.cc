@@ -5,11 +5,11 @@ module;
 #include <tuple>
 #include <type_traits>
 #include <utility>
-export module isolated_js.transfer;
-export import isolated_js.transfer.types;
-export import isolated_js.accept;
-export import isolated_js.visit;
-import isolated_js.tag;
+export module isolated_js:transfer;
+export import :accept;
+export import :tag;
+export import :transfer.types;
+export import :visit;
 import ivm.utility;
 
 namespace js {

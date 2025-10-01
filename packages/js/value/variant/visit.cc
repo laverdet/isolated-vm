@@ -4,9 +4,9 @@ module;
 #include <type_traits>
 #include <utility>
 #include <variant>
-export module isolated_js.variant.visit;
-import isolated_js.transfer;
-import isolated_js.variant.types;
+export module isolated_js:variant.visit;
+import :transfer;
+import :variant.types;
 import ivm.utility;
 
 namespace js {

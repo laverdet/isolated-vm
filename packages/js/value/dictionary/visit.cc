@@ -3,11 +3,10 @@ module;
 #include <string>
 #include <utility>
 #include <variant>
-export module isolated_js.dictionary.visit;
-import isolated_js.dictionary.helpers;
-import isolated_js.dictionary.vector_of;
-import isolated_js.tag;
-import isolated_js.transfer;
+export module isolated_js:dictionary.visit;
+import :dictionary.helpers;
+import :dictionary.vector_of;
+import :transfer;
 import ivm.utility;
 
 namespace js {

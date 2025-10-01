@@ -1,6 +1,6 @@
 module;
 #include <type_traits>
-export module isolated_js.transfer.types;
+export module isolated_js:transfer.types;
 
 namespace js {
 

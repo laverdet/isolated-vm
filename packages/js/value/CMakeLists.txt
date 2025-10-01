@@ -11,7 +11,8 @@ target_sources(value_js
 		enum/accept.cc
 		enum/types.cc
 		primitive/accept.cc
-		primitive/types.cc
+		primitive/bigint.cc
+		primitive/date.cc
 		primitive/visit.cc
 		struct/accept.cc
 		struct/helpers.cc
@@ -24,7 +25,6 @@ target_sources(value_js
 		transfer/visit.cc
 		tuple/accept.cc
 		tuple/visit.cc
-		type/date.cc
 		type/function.cc
 		type/property.cc
 		type/value.cc

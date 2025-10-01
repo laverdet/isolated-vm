@@ -1,6 +1,6 @@
 module;
 #include <chrono>
-export module isolated_js.date;
+export module isolated_js:date;
 #ifdef _LIBCPP_VERSION
 namespace std::chrono {
 using utc_clock = system_clock;

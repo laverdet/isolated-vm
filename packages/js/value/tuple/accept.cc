@@ -4,9 +4,8 @@ module;
 #include <tuple>
 #include <utility>
 #include <variant>
-export module isolated_js.tuple.accept;
-import isolated_js.tag;
-import isolated_js.transfer;
+export module isolated_js:tuple.accept;
+import :transfer;
 import ivm.utility;
 
 namespace js {

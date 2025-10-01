@@ -3,16 +3,19 @@ module;
 #include <cstdint>
 #include <string>
 #include <variant>
-export module isolated_js.value;
-import isolated_js.date;
-import isolated_js.dictionary.vector_of;
-import isolated_js.primitive.types;
-import isolated_js.tag;
+export module isolated_js:value;
+export import :bigint;
+export import :date;
+export import :dictionary.vector_of;
+import :tag;
 
 namespace js {
 
 // Any (cloneable) object key
 export using key_t = std::variant<int32_t, std::u16string, std::string>;
+
+// Any latin1 or utf16 string
+export using string_t = std::variant<std::u16string, std::string>;
 
 export using value_t = boost::make_recursive_variant<
 	// `undefined`

@@ -3,9 +3,8 @@ module;
 #include <functional>
 #include <ranges>
 #include <vector>
-export module isolated_js.vector.accept;
-import isolated_js.tag;
-import isolated_js.transfer;
+export module isolated_js:vector.accept;
+import :transfer;
 
 namespace js {
 

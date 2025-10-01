@@ -3,10 +3,9 @@ module;
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
-export module isolated_js.enum_.accept;
-import isolated_js.enum_.types;
-import isolated_js.tag;
-import isolated_js.transfer;
+export module isolated_js:enum_.accept;
+import :enum_.types;
+import :transfer;
 import ivm.utility;
 
 namespace js {

@@ -1,8 +1,8 @@
 module;
 #include <utility>
-export module isolated_js.visit;
-import isolated_js.transfer.types;
-import isolated_js.tag;
+export module isolated_js:visit;
+import :tag;
+import :transfer.types;
 import ivm.utility;
 
 namespace js {

@@ -1,5 +1,5 @@
-export module isolated_js.struct_.helpers;
-import isolated_js.struct_.types;
+export module isolated_js:struct_.helpers;
+export import :struct_.types;
 import ivm.utility;
 
 namespace js {

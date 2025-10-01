@@ -1,7 +1,7 @@
 module;
 #include <boost/variant.hpp>
 #include <type_traits>
-export module isolated_js.dictionary.helpers;
+export module isolated_js:dictionary.helpers;
 
 namespace js {
 

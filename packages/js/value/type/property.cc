@@ -1,6 +1,6 @@
 module;
 #include <optional>
-export module isolated_js.property;
+export module isolated_js:property;
 import ivm.utility;
 
 namespace js {
