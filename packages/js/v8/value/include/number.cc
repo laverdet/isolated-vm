@@ -1,9 +1,9 @@
 module;
 #include <cstdint>
 #include <type_traits>
-export module v8_js.number;
+export module v8_js:number;
+import :handle;
 import isolated_js;
-import v8_js.handle;
 import v8;
 
 namespace js::iv8 {

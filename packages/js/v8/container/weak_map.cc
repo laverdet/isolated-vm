@@ -1,10 +1,10 @@
 module;
 #include <cassert>
 #include <unordered_map>
-export module v8_js.weak_map;
+export module v8_js:weak_map;
 import ivm.utility;
-import v8_js.hash;
-import v8_js.lock;
+import :hash;
+import :lock;
 import v8;
 
 namespace js::iv8 {

@@ -2,8 +2,8 @@ module;
 #include <cstdint>
 #include <string>
 #include <type_traits>
-module v8_js.string;
-import v8_js.handle;
+module v8_js;
+import :handle;
 import v8;
 
 namespace js::iv8 {

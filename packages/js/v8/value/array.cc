@@ -1,6 +1,6 @@
 module;
 #include <cstdint>
-module v8_js.array;
+module v8_js;
 import v8;
 
 namespace js::iv8 {

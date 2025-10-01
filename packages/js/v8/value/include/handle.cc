@@ -1,5 +1,5 @@
-export module v8_js.handle;
-import v8_js.lock;
+export module v8_js:handle;
+import :lock;
 import v8;
 
 namespace js::iv8 {

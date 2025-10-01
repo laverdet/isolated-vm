@@ -2,11 +2,11 @@ module;
 #include <compare>
 #include <cstdint>
 #include <ranges>
-export module v8_js.array;
+export module v8_js:array;
+import :handle;
+import :lock;
 import isolated_js;
 import ivm.utility;
-import v8_js.handle;
-import v8_js.lock;
 import v8;
 
 namespace js::iv8 {

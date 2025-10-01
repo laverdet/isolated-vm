@@ -1,10 +1,10 @@
 module;
 #include <compare>
 #include <ranges>
-export module v8_js.fixed_array;
+export module v8_js:fixed_array;
+import :handle;
+import :lock;
 import ivm.utility;
-import v8_js.handle;
-import v8_js.lock;
 import v8;
 
 namespace js::iv8 {

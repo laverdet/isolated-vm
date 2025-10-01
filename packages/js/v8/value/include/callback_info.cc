@@ -2,7 +2,7 @@ module;
 #include <compare>
 #include <iterator>
 #include <ranges>
-export module v8_js.callback_info;
+export module v8_js:callback_info;
 import ivm.utility;
 import v8;
 

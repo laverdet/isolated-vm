@@ -1,4 +1,4 @@
-export module v8_js.lock;
+export module v8_js:lock;
 import ivm.utility;
 import v8;
 

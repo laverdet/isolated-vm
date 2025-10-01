@@ -1,10 +1,10 @@
 module;
 #include <type_traits>
 #include <utility>
-export module v8_js.external;
+export module v8_js:external;
+import :handle;
 import isolated_js;
 import ivm.utility;
-import v8_js.handle;
 import v8;
 
 namespace js::iv8 {

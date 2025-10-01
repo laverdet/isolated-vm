@@ -1,10 +1,10 @@
 module;
 #include <string>
 #include <type_traits>
-export module v8_js.string;
+export module v8_js:string;
+import :handle;
+import :lock;
 import isolated_js;
-import v8_js.handle;
-import v8_js.lock;
 import v8;
 
 namespace js::iv8 {

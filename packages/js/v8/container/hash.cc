@@ -1,7 +1,7 @@
 module;
 #include <concepts>
 #include <functional>
-export module v8_js.hash;
+export module v8_js:hash;
 import ivm.utility;
 import v8;
 

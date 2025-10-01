@@ -1,4 +1,4 @@
-module v8_js.fixed_array;
+module v8_js;
 import v8;
 
 namespace js::iv8 {

@@ -7,12 +7,12 @@ module;
 #include <cstdint>
 #include <string_view>
 #include <utility>
-export module v8_js.accept;
+export module v8_js:accept;
+import :date;
+import :lock;
+import :string;
 import isolated_js;
 import ivm.utility;
-import v8_js.date;
-import v8_js.lock;
-import v8_js.string;
 import v8;
 
 namespace js {
