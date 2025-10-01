@@ -116,13 +116,13 @@ struct specialized {
 
 template <>
 struct accept<void, specialized> {
-		constexpr auto operator()(object_tag /*tag*/, auto value) const -> specialized { return value; }
+		constexpr auto operator()(object_tag /*tag*/, visit_holder /*visit*/, auto value) const -> specialized { return value; }
 };
 
 template <>
 struct visit<void, specialized> {
 		constexpr auto operator()(specialized value, const auto& accept) const -> decltype(auto) {
-			return accept(object_tag{}, value);
+			return accept(object_tag{}, *this, value);
 		}
 };
 

@@ -24,11 +24,19 @@ struct visit : visit<void, Type> {
 template <class Type>
 struct visit<void, Type>;
 
+// Takes the place of `const auto& /*visit*/` when the visitor is not needed in an acceptor.
+// Therefore a register is not wasted on the address. It's probably optimized out anyway since
+// almost all methods are inlined but being explicit never hurt anyone.
+export struct visit_holder {
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		constexpr visit_holder(const auto& /*visit*/) {}
+};
+
 // Returns the key type expected by the delegate (an instance of `visit` or `accept`) target.
 export template <util::string_literal Key, class Subject>
 struct visit_key_literal {
 		constexpr auto operator()(const auto& /*could_be_literally_anything*/, const auto& accept) const -> decltype(auto) {
-			return accept(string_tag{}, Key);
+			return accept(string_tag{}, *this, Key);
 		}
 };
 

@@ -44,14 +44,14 @@ struct accept<Meta, std::variant<Types...>> {
 				second{util::elide{[ & ] constexpr { return accept_next<Meta, Types>{previous}; }}...},
 				accept_discriminant{previous} {}
 
-		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> accepted_type {
+		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, auto&& dictionary) const -> accepted_type {
 			auto alternatives = make_discriminant_map<decltype(dictionary), decltype(visit)>();
-			auto discriminant_value = accept_discriminant(dictionary_tag{}, dictionary, visit);
+			auto discriminant_value = accept_discriminant(dictionary_tag{}, visit, dictionary);
 			auto accept_alternative = alternatives.find(util::djb2_hash(discriminant_value));
 			if (accept_alternative == nullptr) {
 				throw std::logic_error{std::format("Unknown discriminant: {}", discriminant_value)};
 			}
-			return accept_alternative->second(*this, std::forward<decltype(dictionary)>(dictionary), visit);
+			return accept_alternative->second(*this, visit, std::forward<decltype(dictionary)>(dictionary));
 		}
 
 	private:
@@ -66,17 +66,17 @@ struct accept<Meta, std::variant<Types...>> {
 				},
 				[]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) consteval {
 					const auto& alternative = std::get<Index>(descriptor_type::alternatives);
-					return std::pair{util::djb2_hash(alternative.discriminant), &accept_value<Index, Value, Visit>};
+					return std::pair{util::djb2_hash(alternative.discriminant), &accept_value<Index, Visit, Value>};
 				},
 				std::index_sequence_for<Types...>{}
 			);
 		}
 
-		template <std::size_t Index, class Value, class Visit>
+		template <std::size_t Index, class Visit, class Value>
 		// clang bug?
-		/*constexpr*/ static auto accept_value(const accept& self, Value value, Visit visit) -> accepted_type {
+		/*constexpr*/ static auto accept_value(const accept& self, Visit visit, Value value) -> accepted_type {
 			const auto& acceptor = std::get<Index>(self.second);
-			return acceptor(dictionary_tag{}, std::forward<Value>(value), visit);
+			return acceptor(dictionary_tag{}, visit, std::forward<Value>(value));
 		}
 
 		std::tuple<accept_next<Meta, Types>...> second;

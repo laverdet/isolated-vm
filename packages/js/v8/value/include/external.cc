@@ -44,7 +44,7 @@ namespace js {
 
 template <class Type>
 struct accept<void, iv8::external_reference<Type>&> {
-		auto operator()(external_tag /*tag*/, auto value) const -> iv8::external_reference<Type>& {
+		auto operator()(external_tag /*tag*/, visit_holder /*visit*/, auto value) const -> iv8::external_reference<Type>& {
 			auto* void_ptr = static_cast<void*>(value);
 			return *static_cast<iv8::external_reference<Type>*>(void_ptr);
 		}
@@ -56,11 +56,11 @@ struct accept<void, iv8::external_reference<Type>*> : accept<void, iv8::external
 		using accept_type = accept<void, iv8::external_reference<Type>&>;
 		using accept_type::accept_type;
 
-		auto operator()(external_tag tag, auto&& value) const -> iv8::external_reference<Type>* {
-			return std::addressof(accept_type::operator()(tag, std::forward<decltype(value)>(value)));
+		auto operator()(external_tag tag, const auto& visit, auto&& value) const -> iv8::external_reference<Type>* {
+			return std::addressof(accept_type::operator()(tag, visit, std::forward<decltype(value)>(value)));
 		}
 
-		auto operator()(undefined_tag /*tag*/, const auto& /*value*/) const -> iv8::external_reference<Type>* {
+		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*value*/) const -> iv8::external_reference<Type>* {
 			return nullptr;
 		}
 };

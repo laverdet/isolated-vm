@@ -35,15 +35,11 @@ template <class Meta, class Type>
 	requires std::destructible<Type>
 struct accept<Meta, accept_with_throw::accept_throw<Type>> : accept<Meta, Type> {
 		using accept_type = accept<Meta, Type>;
-		explicit constexpr accept(auto* /*previous*/) :
-				accept_type{this} {}
+		using accept_type::accept_type;
+		using accept_type::operator();
 
-		constexpr auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> Type
-			requires std::invocable<const accept_type&, decltype(tag), decltype(value), decltype(rest)...> {
-			return accept_type::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
-		}
-
-		constexpr auto operator()(auto&&... /*args*/) const -> Type {
+		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> Type
+			requires(!std::invocable<const accept_type&, decltype(tag), decltype(visit), decltype(value)>) {
 			throw std::logic_error{"Type error"};
 		}
 };
@@ -178,10 +174,10 @@ constexpr auto transfer_strict(auto&& value) -> decltype(auto) {
 export template <class Type, class Tag = value_tag>
 struct forward : util::pointer_facade {
 	public:
-		explicit forward(Type&& value) :
-				value_{std::move(value)} {}
 		explicit forward(const Type& value) :
 				value_{value} {}
+		explicit forward(Type&& value) :
+				value_{std::move(value)} {}
 
 		constexpr auto operator->(this auto&& self) -> auto* { return &self.value_; }
 
@@ -194,7 +190,7 @@ forward(Type) -> forward<Type>;
 
 template <class Type, class Tag>
 struct accept<void, forward<Type, Tag>> {
-		constexpr auto operator()(Tag /*tag*/, std::convertible_to<Type> auto&& value) const {
+		constexpr auto operator()(Tag /*tag*/, visit_holder /*visit*/, std::convertible_to<Type> auto&& value) const {
 			return forward<Type, Tag>{std::forward<decltype(value)>(value)};
 		}
 };

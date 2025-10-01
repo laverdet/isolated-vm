@@ -29,9 +29,9 @@ struct accept_entry_value<Meta, Type> {
 		explicit constexpr accept_entry_value(auto* previous) :
 				accept_{previous} {}
 
-		constexpr auto operator()(auto_tag auto tag, auto&&... args) const -> Type
-			requires std::invocable<const accept_type&, decltype(tag), decltype(args)...> {
-			return (*accept_)(tag, std::forward<decltype(args)>(args)...);
+		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> Type
+			requires std::invocable<const accept_type&, decltype(tag), decltype(visit), decltype(value)> {
+			return (*accept_)(tag, visit, std::forward<decltype(value)>(value));
 		}
 
 	private:
@@ -55,7 +55,7 @@ struct accept_vector_value<Meta, std::pair<Key, Value>> {
 				first{previous},
 				second{previous} {}
 
-		constexpr auto operator()(auto&& entry, const auto& visit) const -> std::pair<Key, Value> {
+		constexpr auto operator()(const auto& visit, auto&& entry) const -> std::pair<Key, Value> {
 			return std::pair{
 				visit.first(std::forward<decltype(entry)>(entry).first, first),
 				visit.second(std::forward<decltype(entry)>(entry).second, second),
@@ -78,19 +78,19 @@ struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
 		using accept_type = accept_vector_value<Meta, Entry>;
 		using accept_type::accept_type;
 
-		constexpr auto operator()(Tag /*tag*/, auto&& dictionary, const auto& visit) const -> vector_of<Tag, Entry> {
+		constexpr auto operator()(Tag /*tag*/, const auto& visit, auto&& dictionary) const -> vector_of<Tag, Entry> {
 			return vector_of<Tag, Entry>{
 				std::from_range,
 				util::into_range(std::forward<decltype(dictionary)>(dictionary)) |
 					std::views::transform([ & ](auto&& entry) -> Entry {
-						return accept_type::operator()(std::forward<decltype(entry)>(entry), visit);
+						return accept_type::operator()(visit, std::forward<decltype(entry)>(entry));
 					})
 			};
 		}
 
 		template <std::size_t Size>
 			requires std::is_same_v<dictionary_tag, Tag>
-		constexpr auto operator()(struct_tag<Size> /*tag*/, auto&& dictionary, const auto& visit) const -> vector_of<Tag, Entry> {
+		constexpr auto operator()(struct_tag<Size> /*tag*/, const auto& visit, auto&& dictionary) const -> vector_of<Tag, Entry> {
 			// nb: The value category of `dictionary` is forwarded to *each* visitor. Move operations
 			// should keep this in mind and only move one member at time.
 			auto&& subject = accept_type::make_struct_subject(std::forward<decltype(dictionary)>(dictionary));
@@ -100,7 +100,7 @@ struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
 				},
 				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
 					const auto& visit_n = std::get<Index>(visit);
-					return accept_type::operator()(std::forward<decltype(subject)>(subject), visit_n);
+					return accept_type::operator()(visit_n, std::forward<decltype(subject)>(subject));
 				},
 				std::make_index_sequence<Size>{}
 			);

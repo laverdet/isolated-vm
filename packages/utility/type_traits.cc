@@ -19,13 +19,14 @@ constexpr inline auto type = std::type_identity<Type>{};
 // Capture a pack of types into a single type
 export template <class... Type>
 struct parameter_pack {
+		using type = parameter_pack;
 		parameter_pack() = default;
 		explicit constexpr parameter_pack(std::type_identity<Type>... /*types*/)
 			requires(sizeof...(Type) > 0) {}
 
 		template <class... Right>
-		constexpr auto operator+(parameter_pack<Right...> /*right*/) const {
-			return parameter_pack<Type..., Right...>{};
+		constexpr auto operator+(parameter_pack<Right...> /*right*/) const -> parameter_pack<Type..., Right...> {
+			return {};
 		}
 
 		constexpr auto size() const {
@@ -47,20 +48,19 @@ using meta_type_t = decltype(Type)::type;
 
 // Return a sequence of index constants
 export template <std::size_t Size>
-consteval auto make_sequence() {
+constexpr auto sequence = []() consteval {
 	// With C++26 P2686 we can do constexpr decomposition. So instead of the `tuple` of
 	// `integral_constants` it can be an array of `size_t`.
 	// https://clang.llvm.org/cxx_status.html
 
 	// std::array<std::size_t, Size> result{};
-	// std::ranges::copy(std::ranges::iota_view{std::size_t{0}, Size + 1}, result.data());
+	// std::ranges::copy(std::ranges::iota_view{std::size_t{0}, Size}, result.begin());
 	// return result;
 
-	constexpr auto make = []<std::size_t... Index>(std::index_sequence<Index...> /*sequence*/) consteval {
+	return []<std::size_t... Index>(std::index_sequence<Index...> /*sequence*/) consteval {
 		return std::tuple{std::integral_constant<std::size_t, Index>{}...};
-	};
-	return make(std::make_index_sequence<Size>());
-}
+	}(std::make_index_sequence<Size>());
+}();
 
 // Copy the cv_ref qualifiers from `From` to `To`
 export template <class From, class To>

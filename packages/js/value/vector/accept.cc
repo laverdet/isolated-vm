@@ -9,6 +9,12 @@ import isolated_js.transfer;
 
 namespace js {
 
+template <class Type, size_t Size>
+struct accept_target_for<std::array<Type, Size>> : accept_target_for<Type> {};
+
+template <class Type>
+struct accept_target_for<std::vector<Type>> : accept_target_for<Type> {};
+
 // `std::array` can only accept a tuple of statically known size
 template <class Meta, std::size_t Size, class Type>
 struct accept<Meta, std::array<Type, Size>> : accept_next<Meta, Type> {
@@ -16,7 +22,7 @@ struct accept<Meta, std::array<Type, Size>> : accept_next<Meta, Type> {
 		using accept_type::accept_type;
 
 		template <std::size_t VectorSize>
-		constexpr auto operator()(vector_n_tag<VectorSize> /*tag*/, auto&& list, const auto& visit) const -> std::array<Type, Size> {
+		constexpr auto operator()(vector_n_tag<VectorSize> /*tag*/, const auto& visit, auto&& list) const -> std::array<Type, Size> {
 			const accept_type& acceptor = *this;
 			auto iterator = std::forward<decltype(list)>(list).begin();
 			return std::invoke(
@@ -31,7 +37,7 @@ struct accept<Meta, std::array<Type, Size>> : accept_next<Meta, Type> {
 		}
 
 		template <std::size_t TupleSize>
-		constexpr auto operator()(tuple_tag<TupleSize> /*tag*/, auto&& tuple, const auto& visit) const -> std::array<Type, Size> {
+		constexpr auto operator()(tuple_tag<TupleSize> /*tag*/, const auto& visit, auto&& tuple) const -> std::array<Type, Size> {
 			const accept_type& acceptor = *this;
 			return std::invoke(
 				[ & ]<std::size_t... Index>(std::index_sequence<Index...> /*indices*/) constexpr {
@@ -48,7 +54,7 @@ struct accept<Meta, std::vector<Type>> : accept_next<Meta, Type> {
 		using accept_type = accept_next<Meta, Type>;
 		using accept_type::accept_type;
 
-		constexpr auto operator()(list_tag /*tag*/, auto&& list, const auto& visit) const -> std::vector<Type> {
+		constexpr auto operator()(list_tag /*tag*/, const auto& visit, auto&& list) const -> std::vector<Type> {
 			// nb: This doesn't check for string keys, so like `Object.assign([ 1 ], { foo: 2 })` might
 			// yield `[ 1, 2 ]`
 			const accept_next<Meta, Type>& acceptor = *this;
@@ -60,7 +66,7 @@ struct accept<Meta, std::vector<Type>> : accept_next<Meta, Type> {
 			return {std::from_range, std::move(range)};
 		}
 
-		constexpr auto operator()(vector_tag /*tag*/, auto&& list, const auto& visit) const -> std::vector<Type> {
+		constexpr auto operator()(vector_tag /*tag*/, const auto& visit, auto&& list) const -> std::vector<Type> {
 			const accept_next<Meta, Type>& acceptor = *this;
 			auto range =
 				std::forward<decltype(list)>(list) |
@@ -71,7 +77,7 @@ struct accept<Meta, std::vector<Type>> : accept_next<Meta, Type> {
 		}
 
 		template <std::size_t Size>
-		constexpr auto operator()(tuple_tag<Size> /*tag*/, auto&& tuple, const auto& visit) const -> std::vector<Type> {
+		constexpr auto operator()(tuple_tag<Size> /*tag*/, const auto& visit, auto&& tuple) const -> std::vector<Type> {
 			const accept_type& acceptor = *this;
 			return std::invoke(
 				[ & ]<std::size_t... Index>(std::index_sequence<Index...> /*indices*/) constexpr {

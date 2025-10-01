@@ -3,6 +3,7 @@ module;
 #include <string_view>
 #include <utility>
 #include <variant>
+#include <vector>
 export module napi_js:accept;
 import :api;
 import :bound_value;
@@ -26,7 +27,7 @@ struct accept_napi_property_name : napi::environment_scope<Environment> {
 				napi::environment_scope<Environment>{accept} {}
 
 		template <auto_tag Tag>
-		auto operator()(Tag /*tag*/, auto&& value) const -> napi::value<primitive_tag> {
+		auto operator()(Tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> napi::value<primitive_tag> {
 			return js::napi::value<Tag>::make_property_name(this->environment(), std::forward<decltype(value)>(value));
 		}
 };
@@ -42,60 +43,60 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 				napi::environment_scope<Environment>{env} {}
 
 		// undefined & null
-		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const -> Type {
+		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> Type {
 			return napi::value<undefined_tag>::make(this->environment(), std::monostate{});
 		}
 
-		auto operator()(null_tag /*tag*/, const auto& /*null*/) const -> Type {
+		auto operator()(null_tag /*tag*/, visit_holder /*visit*/, const auto& /*null*/) const -> Type {
 			return napi::value<null_tag>::make(this->environment(), nullptr);
 		}
 
 		// boolean
-		auto operator()(boolean_tag /*tag*/, auto&& value) const -> Type {
+		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> Type {
 			return napi::value<boolean_tag>::make(this->environment(), std::forward<decltype(value)>(value));
 		}
 
 		// number
-		auto operator()(number_tag /*tag*/, auto&& value) const -> Type {
+		auto operator()(number_tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> Type {
 			return js::napi::value<number_tag>::make(this->environment(), double{std::forward<decltype(value)>(value)});
 		}
 
 		template <class Numeric>
-		auto operator()(number_tag_of<Numeric> /*tag*/, auto&& value) const -> Type {
+		auto operator()(number_tag_of<Numeric> /*tag*/, visit_holder /*visit*/, auto&& value) const -> Type {
 			return napi::value<number_tag_of<Numeric>>::make(this->environment(), std::forward<decltype(value)>(value));
 		}
 
 		// bigint
-		auto operator()(bigint_tag /*tag*/, const bigint& value) const -> Type {
+		auto operator()(bigint_tag /*tag*/, visit_holder /*visit*/, const bigint& value) const -> Type {
 			return js::napi::value<bigint_tag>::make(this->environment(), value);
 		}
 
-		auto operator()(bigint_tag /*tag*/, auto&& value) const -> Type {
+		auto operator()(bigint_tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> Type {
 			return js::napi::value<bigint_tag>::make(this->environment(), bigint{std::forward<decltype(value)>(value)});
 		}
 
 		template <class Numeric>
-		auto operator()(bigint_tag_of<Numeric> /*tag*/, auto&& value) const -> Type {
+		auto operator()(bigint_tag_of<Numeric> /*tag*/, visit_holder /*visit*/, auto&& value) const -> Type {
 			return napi::value<bigint_tag_of<Numeric>>::make(this->environment(), std::forward<decltype(value)>(value));
 		}
 
 		// string
-		auto operator()(string_tag /*tag*/, auto&& value) const -> Type {
+		auto operator()(string_tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> Type {
 			return js::napi::value<string_tag>::make(this->environment(), std::u16string_view{std::forward<decltype(value)>(value)});
 		}
 
 		template <class Char>
-		auto operator()(string_tag_of<Char> /*tag*/, auto&& value) const -> Type {
+		auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, auto&& value) const -> Type {
 			return napi::value<string_tag_of<Char>>::make(this->environment(), std::forward<decltype(value)>(value));
 		}
 
 		// date
-		auto operator()(date_tag /*tag*/, js_clock::time_point value) const -> Type {
+		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, js_clock::time_point value) const -> Type {
 			return napi::value<date_tag>::make(this->environment(), std::forward<decltype(value)>(value));
 		}
 
 		// vectors
-		auto operator()(vector_tag /*tag*/, auto&& list, const auto& visit) const -> Type {
+		auto operator()(vector_tag /*tag*/, const auto& visit, auto&& list) const -> Type {
 			auto array = value<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{*this}, list.size()));
 			int ii = 0;
 			for (auto&& value : std::forward<decltype(list)>(list)) {
@@ -106,7 +107,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 		}
 
 		template <std::size_t Size>
-		auto operator()(tuple_tag<Size> /*tag*/, auto&& tuple, const auto& visit) const -> Type {
+		auto operator()(tuple_tag<Size> /*tag*/, const auto& visit, auto&& tuple) const -> Type {
 			auto array = value<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{*this}, Size));
 			std::invoke(
 				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
@@ -124,7 +125,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 		}
 
 		// arrays & dictionaries
-		auto operator()(list_tag /*tag*/, auto&& list, const auto& visit) const -> Type {
+		auto operator()(list_tag /*tag*/, const auto& visit, auto&& list) const -> Type {
 			std::vector<napi_property_descriptor> properties;
 			properties.reserve(std::size(list));
 			for (auto&& [ key, value ] : std::forward<decltype(list)>(list)) {
@@ -147,7 +148,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			return array;
 		}
 
-		auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> Type {
+		auto operator()(dictionary_tag /*tag*/, const auto& visit, auto&& dictionary) const -> Type {
 			std::vector<napi_property_descriptor> properties;
 			auto&& range = util::into_range(std::forward<decltype(dictionary)>(dictionary));
 			properties.reserve(std::size(range));
@@ -173,7 +174,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 
 		// structs
 		template <std::size_t Size>
-		auto operator()(struct_tag<Size> /*tag*/, auto&& dictionary, const auto& visit) const -> Type {
+		auto operator()(struct_tag<Size> /*tag*/, const auto& visit, auto&& dictionary) const -> Type {
 			std::array<napi_property_descriptor, Size> properties;
 			std::invoke(
 				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
@@ -218,11 +219,11 @@ struct accept_property_value<Meta, Key, Type, napi_value> {
 		explicit constexpr accept_property_value(auto* previous) :
 				second{previous} {}
 
-		auto operator()(dictionary_tag /*tag*/, const auto& object, const auto& visit) const {
+		auto operator()(dictionary_tag /*tag*/, const auto& visit, const auto& object) const {
 			if (auto local = first.get_local(visit.first); object.has(local)) {
 				return visit.second(object.get(local), second);
 			} else {
-				return second(undefined_in_tag{}, std::monostate{});
+				return second(undefined_in_tag{}, visit.second, std::monostate{});
 			}
 		}
 

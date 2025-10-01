@@ -17,7 +17,7 @@ struct visit<Meta, std::tuple<Types...>> {
 	public:
 		constexpr explicit visit(auto* root) :
 				visit_{[ & ]() constexpr {
-					auto [... indices ] = util::make_sequence<std::tuple_size_v<visitors_type>>();
+					const auto [... indices ] = util::sequence<std::tuple_size_v<visitors_type>>;
 					return visitors_type{util::elide(util::constructor<std::tuple_element_t<indices, visitors_type>>, root)...};
 				}()} {}
 
@@ -27,7 +27,7 @@ struct visit<Meta, std::tuple<Types...>> {
 		}
 
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
-			return accept(tuple_tag<sizeof...(Types)>{}, std::forward<decltype(value)>(value), *this);
+			return accept(tuple_tag<sizeof...(Types)>{}, *this, std::forward<decltype(value)>(value));
 		}
 
 	private:

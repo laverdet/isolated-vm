@@ -9,13 +9,13 @@ import isolated_js.transfer;
 namespace js {
 
 template <class Type, size_t Size>
-struct transferee_subject<std::array<Type, Size>> : std::type_identity<Type> {};
+struct visit_subject_for<std::array<Type, Size>> : visit_subject_for<Type> {};
 
 template <class Type>
-struct transferee_subject<std::span<Type>> : std::type_identity<std::remove_cv_t<Type>> {};
+struct visit_subject_for<std::span<Type>> : visit_subject_for<std::remove_cv_t<Type>> {};
 
 template <class Type>
-struct transferee_subject<std::vector<Type>> : std::type_identity<Type> {};
+struct visit_subject_for<std::vector<Type>> : visit_subject_for<Type> {};
 
 template <class Meta, class Type, size_t Size>
 struct visit<Meta, std::array<Type, Size>> : visit<Meta, Type> {
@@ -24,7 +24,7 @@ struct visit<Meta, std::array<Type, Size>> : visit<Meta, Type> {
 
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			const visit_type& visitor = *this;
-			return accept(vector_n_tag<Size>{}, std::forward<decltype(value)>(value), visitor);
+			return accept(vector_n_tag<Size>{}, visitor, std::forward<decltype(value)>(value));
 		}
 };
 
@@ -35,7 +35,7 @@ struct visit<Meta, std::span<Type>> : visit<Meta, std::remove_cv_t<Type>> {
 
 		constexpr auto operator()(auto value, const auto& accept) const -> decltype(auto) {
 			const visit_type& visitor = *this;
-			return accept(vector_tag{}, value, visitor);
+			return accept(vector_tag{}, visitor, value);
 		}
 };
 

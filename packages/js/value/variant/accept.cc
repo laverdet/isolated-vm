@@ -19,9 +19,9 @@ struct accept_covariant : accept<Meta, Type> {
 		using accept_type = accept<Meta, Type>;
 		using accept_type::accept_type;
 
-		constexpr auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> Result
-			requires std::is_invocable_v<const accept_type&, decltype(covariant_tag{tag}), decltype(value), decltype(rest)...> {
-			return accept_type::operator()(covariant_tag{tag}, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
+		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> Result
+			requires std::is_invocable_v<const accept_type&, decltype(covariant_tag{tag}), decltype(visit), decltype(value)> {
+			return accept_type::operator()(covariant_tag{tag}, visit, std::forward<decltype(value)>(value));
 		}
 };
 

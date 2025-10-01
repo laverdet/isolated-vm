@@ -29,35 +29,35 @@ struct accept_v8_primitive {
 		}
 
 		// undefined & null
-		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const -> v8::Local<v8::Primitive> {
+		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> v8::Local<v8::Primitive> {
 			return v8::Undefined(isolate());
 		}
 
-		auto operator()(null_tag /*tag*/, const auto& /*null*/) const -> v8::Local<v8::Primitive> {
+		auto operator()(null_tag /*tag*/, visit_holder /*visit*/, const auto& /*null*/) const -> v8::Local<v8::Primitive> {
 			return v8::Null(isolate());
 		}
 
 		// boolean
-		auto operator()(boolean_tag /*tag*/, auto&& value) const -> v8::Local<v8::Boolean> {
+		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> v8::Local<v8::Boolean> {
 			return v8::Boolean::New(isolate_, std::forward<decltype(value)>(value));
 		}
 
 		// number
-		auto operator()(number_tag /*tag*/, auto&& value) const -> v8::Local<v8::Number> {
+		auto operator()(number_tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> v8::Local<v8::Number> {
 			return v8::Number::New(isolate_, std::forward<decltype(value)>(value));
 		}
 
-		auto operator()(number_tag_of<int32_t> /*tag*/, auto&& value) const -> v8::Local<v8::Number> {
+		auto operator()(number_tag_of<int32_t> /*tag*/, visit_holder /*visit*/, auto&& value) const -> v8::Local<v8::Number> {
 			return v8::Int32::New(isolate_, std::forward<decltype(value)>(value));
 		}
 
-		auto operator()(number_tag_of<uint32_t> /*tag*/, auto&& value) const -> v8::Local<v8::Number> {
+		auto operator()(number_tag_of<uint32_t> /*tag*/, visit_holder /*visit*/, auto&& value) const -> v8::Local<v8::Number> {
 			return v8::Int32::NewFromUnsigned(isolate_, std::forward<decltype(value)>(value));
 		}
 
 		// string
 		template <class Char>
-		auto operator()(string_tag_of<Char> /*tag*/, auto&& value) const -> v8::Local<v8::String> {
+		auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, auto&& value) const -> v8::Local<v8::String> {
 			return iv8::string::make(isolate_, std::basic_string_view<Char>{std::forward<decltype(value)>(value)});
 		}
 
@@ -69,8 +69,8 @@ struct accept_v8_primitive {
 template <>
 struct accept<void, v8::Local<v8::Boolean>> : accept_v8_primitive {
 		using accept_v8_primitive::accept_v8_primitive;
-		auto operator()(boolean_tag tag, auto&& value) const -> v8::Local<v8::Boolean> {
-			return accept_v8_primitive::operator()(tag, std::forward<decltype(value)>(value));
+		auto operator()(boolean_tag tag, const auto& visit, auto&& value) const -> v8::Local<v8::Boolean> {
+			return accept_v8_primitive::operator()(tag, visit, std::forward<decltype(value)>(value));
 		}
 };
 
@@ -78,9 +78,8 @@ struct accept<void, v8::Local<v8::Boolean>> : accept_v8_primitive {
 template <>
 struct accept<void, v8::Local<v8::Number>> : accept_v8_primitive {
 		using accept_v8_primitive::accept_v8_primitive;
-
-		auto operator()(auto_tag<number_tag> auto tag, auto&& value) const -> v8::Local<v8::Number> {
-			return accept_v8_primitive::operator()(tag, std::forward<decltype(value)>(value));
+		auto operator()(auto_tag<number_tag> auto tag, const auto& visit, auto&& value) const -> v8::Local<v8::Number> {
+			return accept_v8_primitive::operator()(tag, visit, std::forward<decltype(value)>(value));
 		}
 };
 
@@ -88,9 +87,8 @@ struct accept<void, v8::Local<v8::Number>> : accept_v8_primitive {
 template <>
 struct accept<void, v8::Local<v8::String>> : accept_v8_primitive {
 		using accept_v8_primitive::accept_v8_primitive;
-
-		auto operator()(auto_tag<string_tag> auto tag, auto&& value) const -> v8::Local<v8::String> {
-			return accept_v8_primitive::operator()(tag, std::forward<decltype(value)>(value));
+		auto operator()(auto_tag<string_tag> auto tag, const auto& visit, auto&& value) const -> v8::Local<v8::String> {
+			return accept_v8_primitive::operator()(tag, visit, std::forward<decltype(value)>(value));
 		}
 };
 
@@ -107,18 +105,18 @@ struct accept<void, v8::Local<v8::Value>> : accept_v8_primitive {
 			return context_;
 		}
 
-		auto operator()(auto_tag auto tag, auto&& value) const -> v8::Local<v8::Value>
+		auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> v8::Local<v8::Value>
 			requires std::invocable<const accept_v8_primitive&, decltype(tag), decltype(value)> {
-			return accept_v8_primitive::operator()(tag, std::forward<decltype(value)>(value));
+			return accept_v8_primitive::operator()(tag, visit, std::forward<decltype(value)>(value));
 		}
 
 		// hacky function template acceptor
-		auto operator()(function_tag /*tag*/, v8::Local<v8::Value> value) const -> v8::Local<v8::Value> {
+		auto operator()(function_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::Value> value) const -> v8::Local<v8::Value> {
 			return value;
 		}
 
 		// array
-		auto operator()(list_tag /*tag*/, auto&& list, const auto& visit) const -> v8::Local<v8::Value> {
+		auto operator()(list_tag /*tag*/, const auto& visit, auto&& list) const -> v8::Local<v8::Value> {
 			auto array = v8::Array::New(isolate());
 			for (auto&& [ key, value ] : list) {
 				auto result = array->Set(
@@ -132,11 +130,11 @@ struct accept<void, v8::Local<v8::Value>> : accept_v8_primitive {
 		}
 
 		// object
-		auto operator()(date_tag /*tag*/, auto&& value) const -> v8::Local<v8::Value> {
+		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> v8::Local<v8::Value> {
 			return iv8::date::make(context_, std::forward<decltype(value)>(value));
 		}
 
-		auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> v8::Local<v8::Value> {
+		auto operator()(dictionary_tag /*tag*/, const auto& visit, auto&& dictionary) const -> v8::Local<v8::Value> {
 			auto object = v8::Object::New(isolate());
 			for (auto&& [ key, value ] : dictionary) {
 				auto result = object->Set(
@@ -159,12 +157,12 @@ struct accept<Meta, v8::MaybeLocal<Type>> : accept<Meta, v8::Local<Type>> {
 		using accept_type = accept<Meta, v8::Local<Type>>;
 		using accept_type::accept_type;
 
-		auto operator()(auto_tag auto tag, auto&& value, auto&&... rest) const -> v8::MaybeLocal<Type>
-			requires std::invocable<const accept_type&, decltype(tag), decltype(value), decltype(rest)...> {
-			return accept_type::operator()(tag, std::forward<decltype(value)>(value), std::forward<decltype(rest)>(rest)...);
+		auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> v8::MaybeLocal<Type>
+			requires std::invocable<const accept_type&, decltype(tag), decltype(visit), decltype(value)> {
+			return accept_type::operator()(tag, visit, std::forward<decltype(value)>(value));
 		}
 
-		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const -> v8::MaybeLocal<Type> {
+		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> v8::MaybeLocal<Type> {
 			return v8::MaybeLocal<Type>{};
 		}
 };
@@ -177,26 +175,26 @@ struct accept<void, v8::ReturnValue<v8::Value>> : accept<void, v8::Local<v8::Val
 				accept_type{lock},
 				return_value_{return_value} {}
 
-		auto operator()(boolean_tag /*tag*/, const auto& value) const -> void {
+		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, const auto& value) const -> void {
 			return_value_.Set(bool{value});
 		}
 
 		template <class Type>
-		auto operator()(number_tag_of<Type> /*tag*/, const auto& value) const -> void {
+		auto operator()(number_tag_of<Type> /*tag*/, visit_holder /*visit*/, const auto& value) const -> void {
 			return_value_.Set(Type{value});
 		}
 
-		auto operator()(null_tag /*tag*/, const auto& /*null*/) const -> void {
+		auto operator()(null_tag /*tag*/, visit_holder /*visit*/, const auto& /*null*/) const -> void {
 			return_value_.SetNull();
 		}
 
-		auto operator()(undefined_tag /*tag*/, const auto& /*undefined*/) const -> void {
+		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> void {
 			return_value_.SetUndefined();
 		}
 
-		auto operator()(auto_tag auto tag, auto&& value) const -> void
-			requires std::invocable<const accept_type&, decltype(tag), decltype(value)> {
-			return_value_.Set(accept_type::operator()(tag, std::forward<decltype(value)>(value)));
+		auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> void
+			requires std::invocable<const accept_type&, decltype(visit), decltype(tag), decltype(value)> {
+			return_value_.Set(accept_type::operator()(tag, visit, std::forward<decltype(value)>(value)));
 		}
 
 	private:

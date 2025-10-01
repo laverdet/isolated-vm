@@ -25,7 +25,7 @@ struct visit<Meta, napi_value>
 
 		template <class Tag>
 		auto operator()(value<Tag> value, const auto& accept) const -> decltype(auto) {
-			return accept(Tag{}, napi::bound_value{napi_env{*this}, value});
+			return accept(Tag{}, *this, napi::bound_value{napi_env{*this}, value});
 		}
 
 		auto operator()(napi_value value, const auto& accept) const -> decltype(auto) {
@@ -43,24 +43,24 @@ struct visit<Meta, napi_value>
 						auto visit_entry = std::pair<const visit&, const visit&>{*this, *this};
 						if (napi::invoke(napi_is_array, napi_env{*this}, value)) {
 							// nb: It is intentional that `dictionary_tag` is bound. It handles sparse arrays.
-							return accept(list_tag{}, napi::bound_value{napi_env{*this}, napi::value<dictionary_tag>::from(value)}, visit_entry);
+							return accept(list_tag{}, visit_entry, napi::bound_value{napi_env{*this}, napi::value<dictionary_tag>::from(value)});
 						} else if (napi::invoke(napi_is_date, napi_env{*this}, value)) {
 							return (*this)(napi::value<date_tag>::from(value), accept);
 						} else if (napi::invoke(napi_is_promise, napi_env{*this}, value)) {
-							return accept(promise_tag{}, napi::value<promise_tag>::from(value));
+							return accept(promise_tag{}, *this, napi::value<promise_tag>::from(value));
 						}
-						return accept(dictionary_tag{}, napi::bound_value{napi_env{*this}, napi::value<dictionary_tag>::from(value)}, visit_entry);
+						return accept(dictionary_tag{}, visit_entry, napi::bound_value{napi_env{*this}, napi::value<dictionary_tag>::from(value)});
 					}
 				case napi_external:
-					return accept(external_tag{}, napi::bound_value{napi_env{*this}, napi::value<external_tag>::from(value)});
+					return accept(external_tag{}, *this, napi::bound_value{napi_env{*this}, napi::value<external_tag>::from(value)});
 				case napi_symbol:
-					return accept(symbol_tag{}, napi::value<symbol_tag>::from(value));
+					return accept(symbol_tag{}, *this, napi::value<symbol_tag>::from(value));
 				case napi_null:
-					return accept(null_tag{}, napi::value<null_tag>::from(value));
+					return accept(null_tag{}, *this, napi::value<null_tag>::from(value));
 				case napi_undefined:
-					return accept(undefined_tag{}, napi::value<undefined_tag>::from(value));
+					return accept(undefined_tag{}, *this, napi::value<undefined_tag>::from(value));
 				case napi_function:
-					return accept(function_tag{}, napi::value<function_tag>::from(value));
+					return accept(function_tag{}, *this, napi::value<function_tag>::from(value));
 			}
 		}
 };
@@ -85,7 +85,7 @@ struct visit_key_literal<Key, napi_value> : util::non_moveable {
 		}
 
 		auto operator()(const auto& /*could_be_literally_anything*/, const auto& accept) const -> decltype(auto) {
-			return accept(string_tag{}, get_local(accept));
+			return accept(string_tag{}, *this, get_local(accept));
 		}
 
 	private:

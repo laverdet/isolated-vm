@@ -50,10 +50,10 @@ struct accept_object_property {
 				acceptor{previous},
 				setter{property.value_template} {}
 
-		constexpr auto operator()(auto&& dictionary, auto& target, const auto& visit) const -> void {
+		constexpr auto operator()(const auto& visit, auto&& dictionary, auto& target) const -> void {
 			// nb: We `std::forward` the value to *each* setter. This allows the setters to pick an
 			// lvalue object apart member by member if it wants.
-			auto value = acceptor(dictionary_tag{}, std::forward<decltype(dictionary)>(dictionary), visit);
+			auto value = acceptor(dictionary_tag{}, visit, std::forward<decltype(dictionary)>(dictionary));
 			if (value) {
 				setter(target, *std::move(value));
 			} else if constexpr (!std::is_invocable_v<decltype(setter), std::nullopt_t>) {
@@ -96,7 +96,7 @@ struct accept_struct_properties<Meta, Type, std::tuple<Property...>> {
 					std::make_index_sequence<sizeof...(Property)>{}
 				)} {}
 
-		constexpr auto operator()(dictionary_tag /*tag*/, auto&& dictionary, const auto& visit) const -> Type {
+		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, auto&& dictionary) const -> Type {
 			Type target;
 			std::invoke(
 				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
@@ -104,7 +104,7 @@ struct accept_struct_properties<Meta, Type, std::tuple<Property...>> {
 				},
 				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
 					const auto& property = std::get<Index>(properties);
-					property(std::forward<decltype(dictionary)>(dictionary), target, visit);
+					property(visit, std::forward<decltype(dictionary)>(dictionary), target);
 				},
 				std::make_index_sequence<sizeof...(Property)>{}
 			);
