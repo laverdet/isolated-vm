@@ -1,6 +1,6 @@
 module;
-#include <boost/container/flat_set.hpp>
 #include <cassert>
+#include <flat_set>
 #include <memory>
 #include <utility>
 export module ivm.utility:autorelease_pool;
@@ -161,7 +161,7 @@ export class autorelease_pool : util::non_copyable {
 
 		using allocator_type = std::allocator<void>;
 		using releasable_type = releasable<allocator_type>;
-		using container_type = boost::container::flat_set<releasable_type::unique_pointer_type, pointer_less<releasable_type>>;
+		using container_type = std::flat_set<releasable_type::unique_pointer_type, pointer_less<releasable_type>>;
 
 	public:
 		template <class> class allocator;
