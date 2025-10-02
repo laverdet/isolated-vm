@@ -1,4 +1,6 @@
 module;
+#include <concepts>
+#include <type_traits>
 #include <utility>
 export module isolated_js:visit;
 import :tag;
@@ -6,11 +8,6 @@ import :transfer.types;
 import ivm.utility;
 
 namespace js {
-
-// `visit` accepts a value and acceptor and then invokes the acceptor with a JavaScript type tag and
-// a value which follows some sort of casting interface corresponding to the tag.
-export template <class Meta, class Type>
-struct visit;
 
 // Default `visit` swallows `Meta`
 template <class Meta, class Type>
@@ -31,6 +28,14 @@ export struct visit_holder {
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		constexpr visit_holder(const auto& /*visit*/) {}
 };
+
+// Invoked by `visit` directly on the return value of `accept(...)`, when multiple calls to
+// an overloaded `accept` exist in the same visitor. This allows acceptors to return values which
+// are convertible to the accepted type, perhaps with some middle step (`js::deferred_receiver`).
+export template <class Accept>
+constexpr auto accepted(const Accept& /*accept*/, std::convertible_to<accept_target_t<Accept>> auto&& value) -> decltype(auto) {
+	return accept_target_t<Accept>(std::forward<decltype(value)>(value));
+}
 
 // Returns the key type expected by the delegate (an instance of `visit` or `accept`) target.
 export template <util::string_literal Key, class Subject>

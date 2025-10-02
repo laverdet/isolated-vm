@@ -22,10 +22,10 @@ struct accept_pass {
 
 // `Wrap` for `accept` which throws on unknown values
 struct accept_with_throw {
-		template <class Type>
+		template <class Meta, class Type>
 		struct accept_throw;
 		template <class Meta, class Type>
-		using accept = js::accept<Meta, accept_throw<Type>>;
+		using accept = accept_throw<Meta, Type>;
 };
 
 // Adds fallback acceptor which throws on unknown values
@@ -33,12 +33,13 @@ template <class Meta, class Type>
 // If the requirement fails then a helper struct like `covariant_subject` was instantiated
 // probably via `accept_next`
 	requires std::destructible<Type>
-struct accept<Meta, accept_with_throw::accept_throw<Type>> : accept<Meta, Type> {
-		using accept_type = accept<Meta, Type>;
+struct accept_with_throw::accept_throw<Meta, Type> : js::accept<Meta, Type> {
+		using accept_target_type = Type;
+		using accept_type = js::accept<Meta, Type>;
 		using accept_type::accept_type;
-		using accept_type::operator();
 
-		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> Type
+		using accept_type::operator();
+		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> accept_target_type
 			requires(!std::invocable<const accept_type&, decltype(tag), decltype(visit), decltype(value)>) {
 			throw std::logic_error{"Type error"};
 		}
@@ -88,7 +89,9 @@ constexpr auto transfer_with(
 
 	transfer_holder<visit_type> visit{std::forward<decltype(visit_args)>(visit_args)...};
 	transfer_holder<accept_type> accept{std::forward<decltype(accept_args)>(accept_args)...};
-	return visit(std::forward<decltype(value)>(value), accept);
+	visit_type& visit_ = visit;
+	accept_type& accept_ = accept;
+	return visit_(std::forward<decltype(value)>(value), accept_);
 }
 
 // Transfer from known types, won't compile if all paths aren't known

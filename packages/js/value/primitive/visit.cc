@@ -86,9 +86,9 @@ struct visit<Meta, std::optional<Type>> : visit<Meta, Type> {
 
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			if (value) {
-				return visit_type::operator()(*std::forward<decltype(value)>(value), accept);
+				return accepted(accept, visit_type::operator()(*std::forward<decltype(value)>(value), accept));
 			} else {
-				return accept(undefined_tag{}, *this, std::monostate{});
+				return accepted(accept, accept(undefined_tag{}, *this, std::monostate{}));
 			}
 		}
 };

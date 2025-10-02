@@ -1,4 +1,5 @@
 module;
+#include <concepts>
 #include <utility>
 export module isolated_js:accept;
 import :transfer.types;
@@ -6,10 +7,6 @@ import :visit;
 import ivm.utility;
 
 namespace js {
-
-// `accept` is the target of `visit`
-export template <class Meta, class Type>
-struct accept;
 
 // Default `accept` swallows `Meta`
 template <class Meta, class Type>

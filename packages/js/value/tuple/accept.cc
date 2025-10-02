@@ -31,7 +31,7 @@ struct accept_tuple_param : accept_next<Meta, Type> {
 // Rest placeholder
 struct accept_tuple_rest_placeholder {
 		constexpr auto range(auto& /*iterator*/, auto& /*end*/, const visit_holder /*visit*/) const -> rest {
-			return rest{};
+			return {};
 		}
 };
 

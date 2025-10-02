@@ -105,18 +105,16 @@ struct accept<void, v8::Local<v8::Value>> : accept_v8_primitive {
 			return context_;
 		}
 
-		auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> v8::Local<v8::Value>
-			requires std::invocable<const accept_v8_primitive&, decltype(tag), decltype(value)> {
-			return accept_v8_primitive::operator()(tag, visit, std::forward<decltype(value)>(value));
-		}
+		// accept all primitives
+		using accept_v8_primitive::operator();
 
 		// hacky function template acceptor
-		auto operator()(function_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::Value> value) const -> v8::Local<v8::Value> {
+		auto operator()(function_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::Function> value) const -> v8::Local<v8::Function> {
 			return value;
 		}
 
 		// array
-		auto operator()(list_tag /*tag*/, const auto& visit, auto&& list) const -> v8::Local<v8::Value> {
+		auto operator()(list_tag /*tag*/, const auto& visit, auto&& list) const -> v8::Local<v8::Array> {
 			auto array = v8::Array::New(isolate());
 			for (auto&& [ key, value ] : list) {
 				auto result = array->Set(
@@ -130,11 +128,11 @@ struct accept<void, v8::Local<v8::Value>> : accept_v8_primitive {
 		}
 
 		// object
-		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> v8::Local<v8::Value> {
+		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> v8::Local<v8::Date> {
 			return iv8::date::make(context_, std::forward<decltype(value)>(value));
 		}
 
-		auto operator()(dictionary_tag /*tag*/, const auto& visit, auto&& dictionary) const -> v8::Local<v8::Value> {
+		auto operator()(dictionary_tag /*tag*/, const auto& visit, auto&& dictionary) const -> v8::Local<v8::Object> {
 			auto object = v8::Object::New(isolate());
 			for (auto&& [ key, value ] : dictionary) {
 				auto result = object->Set(
@@ -157,44 +155,46 @@ struct accept<Meta, v8::MaybeLocal<Type>> : accept<Meta, v8::Local<Type>> {
 		using accept_type = accept<Meta, v8::Local<Type>>;
 		using accept_type::accept_type;
 
-		auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> v8::MaybeLocal<Type>
-			requires std::invocable<const accept_type&, decltype(tag), decltype(visit), decltype(value)> {
-			return accept_type::operator()(tag, visit, std::forward<decltype(value)>(value));
-		}
-
+		using accept_type::operator();
 		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> v8::MaybeLocal<Type> {
-			return v8::MaybeLocal<Type>{};
+			return {};
 		}
 };
 
-// return value (actually a c++ void return)
+// return value
 template <>
 struct accept<void, v8::ReturnValue<v8::Value>> : accept<void, v8::Local<v8::Value>> {
+		using value_type = v8::ReturnValue<v8::Value>;
 		using accept_type = accept<void, v8::Local<v8::Value>>;
-		accept(const iv8::context_lock_witness& lock, v8::ReturnValue<v8::Value> return_value) :
+		accept(const iv8::context_lock_witness& lock, value_type return_value) :
 				accept_type{lock},
 				return_value_{return_value} {}
 
-		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, const auto& value) const -> void {
+		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, const auto& value) const -> value_type {
 			return_value_.Set(bool{value});
+			return return_value_;
 		}
 
 		template <class Type>
-		auto operator()(number_tag_of<Type> /*tag*/, visit_holder /*visit*/, const auto& value) const -> void {
+		auto operator()(number_tag_of<Type> /*tag*/, visit_holder /*visit*/, const auto& value) const -> value_type {
 			return_value_.Set(Type{value});
+			return return_value_;
 		}
 
-		auto operator()(null_tag /*tag*/, visit_holder /*visit*/, const auto& /*null*/) const -> void {
+		auto operator()(null_tag /*tag*/, visit_holder /*visit*/, const auto& /*null*/) const -> value_type {
 			return_value_.SetNull();
+			return return_value_;
 		}
 
-		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> void {
+		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> value_type {
 			return_value_.SetUndefined();
+			return return_value_;
 		}
 
-		auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> void
+		auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> value_type
 			requires std::invocable<const accept_type&, decltype(visit), decltype(tag), decltype(value)> {
 			return_value_.Set(accept_type::operator()(tag, visit, std::forward<decltype(value)>(value)));
+			return return_value_;
 		}
 
 	private:

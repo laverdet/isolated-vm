@@ -37,8 +37,8 @@ constexpr auto operator""_sl() {
 
 // "string literal template"_st
 export template <util::string_literal String>
-constexpr auto operator""_st() {
-	return util::value_constant<String>{};
+constexpr auto operator""_st() -> util::value_constant<String> {
+	return {};
 }
 
 } // namespace string_literals
