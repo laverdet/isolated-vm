@@ -36,8 +36,8 @@ class releasable {
 		// Deleter for `std::unique_ptr` / `unique_pointer_type`
 		class deleter : private Alloc {
 			public:
-				constexpr explicit deleter(Alloc& alloc) :
-						Alloc{alloc} {}
+				constexpr explicit deleter(const Alloc& alloc) :
+						Alloc(alloc) {}
 
 				constexpr auto operator()(releasable* pointer) -> void {
 					pointer->release(*this);
@@ -126,7 +126,7 @@ class resource : public releasable<Alloc>, private Type {
 	public:
 		constexpr explicit resource(releasable<Alloc>::dtor_type dtor, auto&&... args) :
 				releasable<Alloc>{dtor},
-				Type{std::forward<decltype(args)>(args)...} {}
+				Type(std::forward<decltype(args)>(args)...) {}
 
 		constexpr auto get() -> Type* { return this; }
 		constexpr static auto translate(Type* ptr) -> resource* {

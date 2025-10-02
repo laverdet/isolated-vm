@@ -15,7 +15,7 @@ export class string
 			public materializable<string> {
 	public:
 		explicit string(const isolate_lock_witness& lock, v8::Local<v8::String> handle) :
-				Local{handle},
+				v8::Local<v8::String>{handle},
 				handle_with_isolate{lock} {}
 
 		[[nodiscard]] auto materialize(std::type_identity<std::string> tag) const -> std::string;

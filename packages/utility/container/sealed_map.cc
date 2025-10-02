@@ -7,6 +7,7 @@ module;
 #include <utility>
 export module ivm.utility:sealed_map;
 import :comparator;
+import :type_traits;
 import :utility;
 
 namespace util {
@@ -39,15 +40,10 @@ class sealed_map {
 		};
 
 		explicit consteval sealed_map(sorted_unique_t /*tag*/, container_type values) :
-				values_{std::invoke(
-					[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
-						return container_type{invoke(std::integral_constant<size_t, Index>{})...};
-					},
-					[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) {
-						return value_type{std::move(values.at(Index))};
-					},
-					std::make_index_sequence<Size>{}
-				)} {}
+				values_{std::invoke([ & ]() -> container_type {
+					const auto [... indices ] = util::sequence<Size>;
+					return {value_type(std::move(values.at(indices)))...};
+				})} {}
 
 		// Check for duplicates
 		explicit consteval sealed_map(sorted_equivalent_t /*tag*/, container_type values) :
@@ -73,7 +69,7 @@ class sealed_map {
 		explicit consteval sealed_map(unsorted_t /*tag*/, container_type values) :
 				sealed_map{
 					sorted_equivalent_t{},
-					std::invoke([ & ]() constexpr {
+					std::invoke([ & ]() constexpr -> container_type {
 						// Sort without invoking `operator()=` which might not exist on the value type
 						std::array<typename container_type::iterator, Size> sortable;
 						auto inserter = sortable.begin();
@@ -82,15 +78,8 @@ class sealed_map {
 						};
 						auto map = [](const auto& ii) constexpr { return ii->first; };
 						std::sort(sortable.begin(), sortable.end(), mapped_comparator{std::less{}, map});
-						return std::invoke(
-							[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
-								return container_type{invoke(std::integral_constant<size_t, Index>{})...};
-							},
-							[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) {
-								return value_type{std::move(*sortable.at(Index))};
-							},
-							std::make_index_sequence<Size>{}
-						);
+						const auto [... indices ] = util::sequence<Size>;
+						return {value_type(std::move(*sortable.at(indices)))...};
 					})
 				} {}
 

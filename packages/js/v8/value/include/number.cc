@@ -13,7 +13,7 @@ export class number
 			public materializable<number> {
 	public:
 		explicit number(v8::Local<v8::Number> handle) :
-				Local{handle} {}
+				v8::Local<v8::Number>{handle} {}
 
 		[[nodiscard]] auto materialize(std::type_identity<double> tag) const -> double;
 		[[nodiscard]] auto materialize(std::type_identity<int32_t> tag) const -> int32_t;

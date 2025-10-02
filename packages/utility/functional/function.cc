@@ -37,7 +37,7 @@ template <class Type>
 struct constructor_t {
 		constexpr auto operator()(auto&&... args) const -> Type
 			requires std::constructible_from<Type, decltype(args)...> {
-			return Type{std::forward<decltype(args)>(args)...};
+			return Type(std::forward<decltype(args)>(args)...);
 		}
 };
 

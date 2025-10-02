@@ -12,7 +12,7 @@ export class date
 			public materializable<date> {
 	public:
 		explicit date(v8::Local<v8::Date> handle) :
-				Local{handle} {}
+				v8::Local<v8::Date>{handle} {}
 
 		[[nodiscard]] auto materialize(std::type_identity<js_clock::time_point> tag) const -> js_clock::time_point;
 		static auto make(v8::Local<v8::Context> context, js_clock::time_point date) -> v8::Local<v8::Date>;

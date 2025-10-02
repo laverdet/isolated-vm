@@ -19,7 +19,7 @@ export class object
 		using value_type = std::pair<v8::Local<v8::Value>, v8::Local<v8::Value>>;
 
 		explicit object(const context_lock_witness& lock, v8::Local<v8::Object> handle) :
-				Local{handle},
+				v8::Local<v8::Object>{handle},
 				handle_with_context{lock} {}
 
 	private:

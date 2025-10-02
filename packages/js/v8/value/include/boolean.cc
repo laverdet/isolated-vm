@@ -12,7 +12,7 @@ export class boolean
 			public materializable<boolean> {
 	public:
 		explicit boolean(v8::Local<v8::Boolean> handle) :
-				Local{handle} {}
+				v8::Local<v8::Boolean>{handle} {}
 
 		[[nodiscard]] auto materialize(std::type_identity<bool> /*tag*/) const -> bool;
 };

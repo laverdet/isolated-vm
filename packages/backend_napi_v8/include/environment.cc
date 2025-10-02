@@ -52,7 +52,7 @@ export class environment
 
 	private:
 		isolated_v8::cluster cluster_;
-		util::copy_of<&string_literals> string_literal_storage_;
+		util::copy_of<string_literals> string_literal_storage_;
 };
 
 } // namespace backend_napi_v8

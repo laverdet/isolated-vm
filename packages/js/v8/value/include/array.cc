@@ -22,7 +22,7 @@ export class array
 
 		array() = default;
 		explicit array(const context_lock_witness& lock, v8::Local<v8::Array> handle) :
-				Local{handle},
+				v8::Local<v8::Array>{handle},
 				handle_with_context{lock} {}
 
 		[[nodiscard]] auto begin() const -> iterator;

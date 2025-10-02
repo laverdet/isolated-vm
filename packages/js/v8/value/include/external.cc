@@ -14,7 +14,7 @@ export class external
 			public materializable<external> {
 	public:
 		explicit external(v8::Local<v8::External> handle) :
-				Local{handle} {}
+				v8::Local<v8::External>{handle} {}
 
 		[[nodiscard]] auto materialize(std::type_identity<void*> /*tag*/) const -> void*;
 };

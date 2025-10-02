@@ -35,13 +35,10 @@ export class non_moveable {
 };
 
 // Allocates storage for a copy of a constant expression value and initializes it with the value.
-export template <auto Value, class Type = decltype(Value)>
-struct copy_of;
-
-template <auto Value, class Type>
-struct copy_of<Value, const Type*> : Type {
+export template <const auto& Value, class Type = std::remove_cvref_t<decltype(Value)>>
+struct copy_of : Type {
 		constexpr copy_of() :
-				Type{*Value} {}
+				Type(Value) {}
 };
 
 // Wraps the given invocable. When invoked if it returns `void` then `std::monostate{}` will be
