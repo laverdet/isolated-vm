@@ -14,10 +14,10 @@ struct visit<Meta, std::tuple<Types...>> {
 		using visitors_type = std::tuple<visit<Meta, std::decay_t<Types>>...>;
 
 	public:
-		constexpr explicit visit(auto* root) :
-				visit_{[ & ]() constexpr {
+		constexpr explicit visit(auto* transfer) :
+				visit_{[ & ]() constexpr -> visitors_type {
 					const auto [... indices ] = util::sequence<std::tuple_size_v<visitors_type>>;
-					return visitors_type{util::elide(util::constructor<std::tuple_element_t<indices, visitors_type>>, root)...};
+					return {util::elide(util::constructor<std::tuple_element_t<indices, visitors_type>>, transfer)...};
 				}()} {}
 
 		template <size_t Index>

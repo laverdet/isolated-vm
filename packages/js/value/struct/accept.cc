@@ -1,7 +1,6 @@
 module;
 #include <expected>
 #include <format>
-#include <functional>
 #include <optional>
 #include <stdexcept>
 #include <tuple>
@@ -43,8 +42,8 @@ struct accept_object_property {
 		using setter_type = setter_delegate<typename Property::property_type>;
 
 	public:
-		constexpr accept_object_property(auto* previous, Property property) :
-				acceptor{previous},
+		constexpr accept_object_property(auto* transfer, Property property) :
+				acceptor{transfer},
 				setter{property.value_template} {}
 
 		constexpr auto operator()(const auto& visit, auto&& dictionary, auto& target) -> void {
@@ -81,30 +80,20 @@ struct accept_struct_properties<Meta, Type, std::tuple<Property...>> {
 		using properties_type = std::tuple<accept_object_property<Meta, Property>...>;
 
 	public:
-		explicit constexpr accept_struct_properties(auto* previous) :
-				properties{std::invoke(
-					[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
-						return properties_type{util::elide{invoke, std::integral_constant<size_t, Index>{}}...};
-					},
-					[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
-						using property_type = Property...[ Index ];
-						return accept_object_property<Meta, property_type>{previous, std::get<Index>(struct_properties<Type>::properties)};
-					},
-					std::make_index_sequence<sizeof...(Property)>{}
-				)} {}
+		explicit constexpr accept_struct_properties(auto* transfer) :
+				properties{[ & ]() -> properties_type {
+					const auto [... indices ] = util::sequence<sizeof...(Property)>;
+					return {util::elide(
+						util::constructor<accept_object_property<Meta, Property...[ indices ]>>,
+						transfer,
+						std::get<indices>(struct_properties<Type>::properties)
+					)...};
+				}()} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, auto&& dictionary) -> Type {
 			Type target;
-			std::invoke(
-				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
-					(invoke(std::integral_constant<size_t, Index>{}), ...);
-				},
-				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
-					auto& property = std::get<Index>(properties);
-					property(visit, std::forward<decltype(dictionary)>(dictionary), target);
-				},
-				std::make_index_sequence<sizeof...(Property)>{}
-			);
+			const auto [... indices ] = util::sequence<sizeof...(Property)>;
+			(..., std::get<indices>(properties)(visit, std::forward<decltype(dictionary)>(dictionary), target));
 			return target;
 		}
 

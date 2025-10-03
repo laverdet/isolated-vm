@@ -22,15 +22,15 @@ template <class Meta, class Type>
 	requires is_recursive_v<Type>
 struct visit_entry_value<Meta, Type> {
 	public:
-		constexpr explicit visit_entry_value(auto* root) :
-				visit_{root} {}
+		constexpr explicit visit_entry_value(auto* transfer) :
+				visit_{*transfer} {}
 
 		constexpr auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
-			return (*visit_)(std::forward<decltype(value)>(value), accept);
+			return visit_(std::forward<decltype(value)>(value), accept);
 		}
 
 	private:
-		const visit<Meta, typename Meta::visit_subject_type>* visit_;
+		std::reference_wrapper<const visit<Meta, typename Meta::visit_subject_type>> visit_;
 };
 
 // Default visitor for non-pair values
@@ -42,9 +42,9 @@ struct visit_vector_value : visit_entry_value<Meta, Type> {
 // Special case for pairs
 template <class Meta, class Key, class Value>
 struct visit_vector_value<Meta, std::pair<Key, Value>> {
-		constexpr explicit visit_vector_value(auto* root) :
-				first{root},
-				second{root} {}
+		constexpr explicit visit_vector_value(auto* transfer) :
+				first{transfer},
+				second{transfer} {}
 
 		visit<Meta, Key> first;
 		visit_entry_value<Meta, Value> second;
@@ -68,9 +68,9 @@ struct visit<Meta, vector_of<Tag, Value>> : visit_vector_value<Meta, Value> {
 template <class Meta, util::string_literal Key, class Type, class Tag, class KeyType, class Value>
 struct accept_property_value<Meta, Key, Type, vector_of<Tag, std::pair<KeyType, Value>>> {
 	public:
-		explicit constexpr accept_property_value(auto* previous) :
-				first{previous},
-				second{previous} {}
+		explicit constexpr accept_property_value(auto* transfer) :
+				first{transfer},
+				second{transfer} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, const auto& dictionary) {
 			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) {

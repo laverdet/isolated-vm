@@ -26,8 +26,8 @@ struct accept_entry_value<Meta, Type> {
 		using accept_target_type = Type;
 		using accept_type = accept_next<Meta, Type>;
 
-		explicit constexpr accept_entry_value(auto* previous) :
-				accept_{*previous} {}
+		explicit constexpr accept_entry_value(auto* transfer) :
+				accept_{*transfer} {}
 
 		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> Type
 			requires std::invocable<accept_type&, decltype(tag), decltype(visit), decltype(value)> {
@@ -51,9 +51,9 @@ struct accept_vector_value : accept_entry_value<Meta, Type> {
 // Special case for pairs
 template <class Meta, class Key, class Value>
 struct accept_vector_value<Meta, std::pair<Key, Value>> {
-		explicit constexpr accept_vector_value(auto* previous) :
-				first{previous},
-				second{previous} {}
+		explicit constexpr accept_vector_value(auto* transfer) :
+				first{transfer},
+				second{transfer} {}
 
 		constexpr auto operator()(const auto& visit, auto&& entry) -> std::pair<Key, Value> {
 			return std::pair{

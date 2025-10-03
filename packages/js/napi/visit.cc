@@ -20,7 +20,7 @@ template <class Meta>
 struct visit<Meta, napi_value>
 		: napi::environment_scope<typename Meta::visit_context_type> {
 	public:
-		visit(auto* /*root*/, auto& env) :
+		visit(auto* /*transfer*/, auto& env) :
 				napi::environment_scope<typename Meta::visit_context_type>{env} {}
 
 		template <class Tag>

@@ -42,8 +42,8 @@ struct getter_delegate<struct_member<Subject, Type>> : struct_member<Subject, Ty
 template <class Meta, class Getter>
 struct visit_getter : visit<Meta, typename Getter::type> {
 		using visit_type = visit<Meta, typename Getter::type>;
-		constexpr visit_getter(auto* root, Getter getter) :
-				visit_type{root},
+		constexpr visit_getter(auto* transfer, Getter getter) :
+				visit_type{transfer},
 				getter{std::move(getter)} {}
 
 		constexpr auto operator()(const auto& value, auto& accept) const -> decltype(auto) {
@@ -60,8 +60,8 @@ struct visit_object_property {
 		using first_type = visit_key_literal<Property::property_name, typename Meta::accept_target_type>;
 		using second_type = visit_getter<Meta, getter_delegate<typename Property::property_type>>;
 
-		constexpr visit_object_property(auto* root, Property property) :
-				second{root, getter_delegate{property.value_template}} {}
+		constexpr visit_object_property(auto* transfer, Property property) :
+				second{transfer, getter_delegate{property.value_template}} {}
 
 		[[no_unique_address]] first_type first;
 		[[no_unique_address]] second_type second;
@@ -81,14 +81,14 @@ struct visit_struct_properties<Meta, Type, std::tuple<Property...>> {
 		using properties_type = std::tuple<visit_object_property<Meta, Property>...>;
 
 	public:
-		explicit constexpr visit_struct_properties(auto* root) :
+		explicit constexpr visit_struct_properties(auto* transfer) :
 				properties{std::invoke(
 					[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
 						return properties_type{util::elide{invoke, std::integral_constant<size_t, Index>{}}...};
 					},
 					[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
 						using property_type = Property...[ Index ];
-						return visit_object_property<Meta, property_type>{root, std::get<Index>(struct_properties<Type>::properties)};
+						return visit_object_property<Meta, property_type>{transfer, std::get<Index>(struct_properties<Type>::properties)};
 					},
 					std::make_index_sequence<sizeof...(Property)>{}
 				)} {}

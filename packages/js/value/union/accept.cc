@@ -39,9 +39,9 @@ struct accept<Meta, std::variant<Types...>> {
 		using descriptor_type = union_of<accepted_type>;
 
 	public:
-		explicit constexpr accept(auto* previous) :
-				second{util::elide{[ & ] constexpr { return accept_next<Meta, Types>{previous}; }}...},
-				accept_discriminant{previous} {}
+		explicit constexpr accept(auto* transfer) :
+				second{util::elide{[ & ] constexpr { return accept_next<Meta, Types>{transfer}; }}...},
+				accept_discriminant{transfer} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, auto&& dictionary) -> accepted_type {
 			auto alternatives = make_discriminant_map<decltype(dictionary), decltype(visit)>();

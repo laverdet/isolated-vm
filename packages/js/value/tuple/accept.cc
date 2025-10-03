@@ -85,10 +85,10 @@ struct accept<Meta, std::tuple<Types...>> {
 		using acceptors_type = util::meta_type_t<make_tuple_acceptor_types(util::type<Meta>, util::type<value_type>)>;
 
 	public:
-		explicit constexpr accept(auto* /*previous*/) :
-				accept_{[ & ]() constexpr {
+		explicit constexpr accept(auto* /*transfer*/) :
+				accept_{[ & ]() constexpr -> acceptors_type {
 					const auto [... indices ] = util::sequence<std::tuple_size_v<acceptors_type>>;
-					return acceptors_type{util::elide(util::constructor<std::tuple_element_t<indices, acceptors_type>>)...};
+					return {util::elide(util::constructor<std::tuple_element_t<indices, acceptors_type>>)...};
 				}()} {}
 
 		constexpr auto operator()(vector_tag /*tag*/, const auto& visit, auto&& value) -> value_type {
@@ -114,7 +114,7 @@ struct accept<Meta, std::tuple<rest, Type>> : accept<Meta, Type> {
 		using accept_type::accept_type;
 
 		constexpr auto operator()(vector_tag /*tag*/, const auto& visit, auto&& value) -> value_type {
-			return value_type{rest{}, accept_type::operator()(vector_tag{}, visit, std::forward<decltype(value)>(value))};
+			return {rest{}, accept_type::operator()(vector_tag{}, visit, std::forward<decltype(value)>(value))};
 		}
 };
 

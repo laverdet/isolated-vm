@@ -13,8 +13,8 @@ namespace js {
 // Default `visit` swallows `Meta`
 template <class Meta, class Type>
 struct visit : visit<void, Type> {
-		// Swallow `root` argument on behalf of non-meta visitors
-		constexpr explicit visit(auto* /*root*/, auto&&... args) :
+		// Swallow `transfer` argument on behalf of non-meta visitors
+		constexpr explicit visit(auto* /*transfer*/, auto&&... args) :
 				visit<void, Type>{std::forward<decltype(args)>(args)...} {}
 };
 

@@ -11,8 +11,8 @@ namespace js {
 template <class Meta, class Type>
 struct accept : accept<void, Type> {
 		using accept<void, Type>::accept;
-		// Swallow `previous` argument on behalf of non-meta acceptors
-		explicit constexpr accept(auto* /*previous*/, auto&&... args) :
+		// Swallow `transfer` argument on behalf of non-meta acceptors
+		explicit constexpr accept(auto* /*transfer*/, auto&&... args) :
 				accept<void, Type>{std::forward<decltype(args)>(args)...} {}
 };
 

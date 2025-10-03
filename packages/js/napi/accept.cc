@@ -41,7 +41,7 @@ accept_napi_property_name(napi::environment_scope<Environment>, Accept) -> accep
 template <class Meta, class Environment>
 struct accept_napi_value : napi::environment_scope<Environment> {
 	public:
-		explicit accept_napi_value(auto* /*previous*/, auto& env) :
+		explicit accept_napi_value(auto* /*transfer*/, auto& env) :
 				napi::environment_scope<Environment>{env} {}
 
 		// undefined & null
@@ -235,8 +235,8 @@ struct accept<Meta, napi_value> : accept_napi_value<Meta, typename Meta::accept_
 template <class Meta, util::string_literal Key, class Type>
 struct accept_property_value<Meta, Key, Type, napi_value> {
 	public:
-		explicit constexpr accept_property_value(auto* previous) :
-				second{previous} {}
+		explicit constexpr accept_property_value(auto* transfer) :
+				second{transfer} {}
 
 		auto operator()(dictionary_tag /*tag*/, const auto& visit, const auto& object) -> Type {
 			if (auto local = first.get_local(visit.first); object.has(local)) {

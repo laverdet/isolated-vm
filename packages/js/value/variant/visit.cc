@@ -16,8 +16,8 @@ template <class Meta, class... Types>
 	requires is_variant_v<Types...>
 struct visit<Meta, std::variant<Types...>> : visit<Meta, Types>... {
 	public:
-		constexpr explicit visit(auto* root) :
-				visit<Meta, Types>{root}... {}
+		constexpr explicit visit(auto* transfer) :
+				visit<Meta, Types>{transfer}... {}
 
 		constexpr auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
 			return util::visit_with_index(
@@ -36,8 +36,8 @@ struct visit_recursive_variant;
 
 template <class Meta, class Variant, class... Types>
 struct visit_recursive_variant<Meta, variant_of<Variant, Types...>> : visit<Meta, substitute_recursive<Variant, Types>>... {
-		constexpr explicit visit_recursive_variant(auto* root) :
-				visit<Meta, substitute_recursive<Variant, Types>>{root}... {}
+		constexpr explicit visit_recursive_variant(auto* transfer) :
+				visit<Meta, substitute_recursive<Variant, Types>>{transfer}... {}
 
 		auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
 			return boost::apply_visitor(

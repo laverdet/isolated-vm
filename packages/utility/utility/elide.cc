@@ -17,7 +17,7 @@ class elide {
 
 		explicit constexpr elide(Invocable invocable, Args... args) :
 				invocable_{std::move(invocable)},
-				args_{std::move(args)...} {}
+				args_{std::forward<decltype(args)>(args)...} {}
 
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		constexpr operator result_type() && {
@@ -32,5 +32,8 @@ class elide {
 		[[no_unique_address]] Invocable invocable_;
 		[[no_unique_address]] std::tuple<Args...> args_;
 };
+
+template <class Invocable, class... Args>
+elide(Invocable, Args&&...) -> elide<Invocable, Args&&...>;
 
 } // namespace util

@@ -29,8 +29,8 @@ struct accept_covariant : accept<Meta, Type> {
 template <class Meta, class... Types>
 	requires is_variant_v<Types...>
 struct accept<Meta, std::variant<Types...>> : accept_covariant<Meta, Types, std::variant<Types...>>... {
-		explicit constexpr accept(auto* previous) :
-				accept_covariant<Meta, Types, std::variant<Types...>>{previous}... {}
+		explicit constexpr accept(auto* transfer) :
+				accept_covariant<Meta, Types, std::variant<Types...>>{transfer}... {}
 		using accept_covariant<Meta, Types, std::variant<Types...>>::operator()...;
 };
 
@@ -41,8 +41,8 @@ struct accept_recursive_variant;
 template <class Meta, class Variant, class... Types>
 struct accept_recursive_variant<Meta, variant_of<Variant, Types...>>
 		: accept_covariant<Meta, substitute_recursive<Variant, Types>, Variant>... {
-		explicit constexpr accept_recursive_variant(auto* previous) :
-				accept_covariant<Meta, substitute_recursive<Variant, Types>, Variant>{previous}... {}
+		explicit constexpr accept_recursive_variant(auto* transfer) :
+				accept_covariant<Meta, substitute_recursive<Variant, Types>, Variant>{transfer}... {}
 		using accept_covariant<Meta, substitute_recursive<Variant, Types>, Variant>::operator()...;
 };
 
