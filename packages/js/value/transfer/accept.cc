@@ -1,5 +1,4 @@
 module;
-#include <concepts>
 #include <utility>
 export module isolated_js:accept;
 import :transfer.types;

@@ -37,7 +37,7 @@ constexpr auto unwrap_accepted(const Accept& /*accept*/, auto&& result, const au
 }
 
 template <class Accept, class Type, class... Args>
-constexpr auto unwrap_accepted(const Accept& accept, js::deferred_receiver<Type, Args...> receiver, const auto& visit, auto&& value) -> accept_target_t<Accept> {
+constexpr auto unwrap_accepted(Accept& accept, js::deferred_receiver<Type, Args...> receiver, const auto& visit, auto&& value) -> accept_target_t<Accept> {
 	std::move(receiver)(accept, visit, std::forward<decltype(value)>(value));
 	return accept_target_t<Accept>(*receiver);
 }
@@ -46,7 +46,7 @@ constexpr auto unwrap_accepted(const Accept& accept, js::deferred_receiver<Type,
 // This allows acceptors to return values which are convertible to the accepted type, for example
 // `v8::Local<v8::String>` -> `v8::Local<v8::Value>`.
 export template <class Accept>
-constexpr auto invoke_accept(const Accept& accept, auto tag, const auto& visit, auto&& value) -> accept_target_t<Accept> {
+constexpr auto invoke_accept(Accept& accept, auto tag, const auto& visit, auto&& value) -> accept_target_t<Accept> {
 	return unwrap_accepted(
 		accept,
 		accept(tag, visit, std::forward<decltype(value)>(value)),
@@ -58,7 +58,7 @@ constexpr auto invoke_accept(const Accept& accept, auto tag, const auto& visit, 
 // Returns the key type expected by the delegate (an instance of `visit` or `accept`) target.
 export template <util::string_literal Key, class Subject>
 struct visit_key_literal {
-		constexpr auto operator()(const auto& /*could_be_literally_anything*/, const auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(const auto& /*could_be_literally_anything*/, auto& accept) const -> decltype(auto) {
 			return invoke_accept(accept, string_tag{}, *this, Key);
 		}
 };

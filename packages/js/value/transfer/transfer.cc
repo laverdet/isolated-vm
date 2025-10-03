@@ -30,17 +30,14 @@ struct accept_with_throw {
 
 // Adds fallback acceptor which throws on unknown values
 template <class Meta, class Type>
-// If the requirement fails then a helper struct like `covariant_subject` was instantiated
-// probably via `accept_next`
-	requires std::destructible<Type>
-struct accept_with_throw::accept_throw<Meta, Type> : js::accept<Meta, Type> {
+struct accept_with_throw::accept_throw : js::accept<Meta, Type> {
 		using accept_target_type = Type;
 		using accept_type = js::accept<Meta, Type>;
 		using accept_type::accept_type;
 
 		using accept_type::operator();
 		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> accept_target_type
-			requires(!std::invocable<const accept_type&, decltype(tag), decltype(visit), decltype(value)>) {
+			requires(!std::invocable<accept_type&, decltype(tag), decltype(visit), decltype(value)>) {
 			throw std::logic_error{"Type error"};
 		}
 };

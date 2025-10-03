@@ -145,8 +145,8 @@ struct accept<Meta, std::expected<Type, undefined_in_tag>> : accept<Meta, Type> 
 		using value_type = std::expected<Type, undefined_in_tag>;
 		using accept_type::accept_type;
 
-		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> value_type
-			requires std::invocable<const accept_type&, decltype(tag), decltype(visit), decltype(value)> {
+		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& value) -> value_type
+			requires std::invocable<accept_type&, decltype(tag), decltype(visit), decltype(value)> {
 			return value_type{std::in_place, accept_type::operator()(tag, visit, std::forward<decltype(value)>(value))};
 		}
 

@@ -46,7 +46,7 @@ struct visit_getter : visit<Meta, typename Getter::type> {
 				visit_type{root},
 				getter{std::move(getter)} {}
 
-		constexpr auto operator()(const auto& value, const auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(const auto& value, auto& accept) const -> decltype(auto) {
 			return visit_type::operator()(getter(value), accept);
 		}
 
@@ -93,7 +93,7 @@ struct visit_struct_properties<Meta, Type, std::tuple<Property...>> {
 					std::make_index_sequence<sizeof...(Property)>{}
 				)} {}
 
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
 			return invoke_accept(accept, struct_tag<sizeof...(Property)>{}, properties, std::forward<decltype(value)>(value));
 		}
 

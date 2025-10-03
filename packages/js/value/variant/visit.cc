@@ -19,7 +19,7 @@ struct visit<Meta, std::variant<Types...>> : visit<Meta, Types>... {
 		constexpr explicit visit(auto* root) :
 				visit<Meta, Types>{root}... {}
 
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
 			return util::visit_with_index(
 				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/, auto&& value) constexpr {
 					using variant_visit_type = visit<Meta, Types...[ Index ]>;
@@ -39,7 +39,7 @@ struct visit_recursive_variant<Meta, variant_of<Variant, Types...>> : visit<Meta
 		constexpr explicit visit_recursive_variant(auto* root) :
 				visit<Meta, substitute_recursive<Variant, Types>>{root}... {}
 
-		auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
+		auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
 			return boost::apply_visitor(
 				[ & ]<class Value>(Value&& value) {
 					const visit<Meta, std::decay_t<Value>>& visitor = *this;

@@ -24,11 +24,11 @@ struct visit<Meta, napi_value>
 				napi::environment_scope<typename Meta::visit_context_type>{env} {}
 
 		template <class Tag>
-		auto operator()(value<Tag> value, const auto& accept) const -> decltype(auto) {
+		auto operator()(value<Tag> value, auto& accept) const -> decltype(auto) {
 			return invoke_accept(accept, Tag{}, *this, napi::bound_value{napi_env{*this}, value});
 		}
 
-		auto operator()(napi_value value, const auto& accept) const -> decltype(auto) {
+		auto operator()(napi_value value, auto& accept) const -> decltype(auto) {
 			switch (napi::invoke(napi_typeof, napi_env{*this}, value)) {
 				case napi_boolean:
 					return (*this)(napi::value<boolean_tag>::from(value), accept);
@@ -84,7 +84,7 @@ struct visit_key_literal<Key, napi_value> : util::non_moveable {
 			return local_key_;
 		}
 
-		auto operator()(const auto& /*could_be_literally_anything*/, const auto& accept) const -> decltype(auto) {
+		auto operator()(const auto& /*could_be_literally_anything*/, auto& accept) const -> decltype(auto) {
 			return invoke_accept(accept, string_tag{}, *this, get_local(accept));
 		}
 

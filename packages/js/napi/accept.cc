@@ -106,7 +106,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			-> js::deferred_receiver<napi::value<vector_tag>, decltype(self), decltype(visit), decltype(list)> {
 			return {
 				napi::value<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{self}, list.size())),
-				[](napi::value<vector_tag> array, auto& self, const auto& visit, auto list) -> void {
+				[](napi::value<vector_tag> array, auto& self, const auto& visit, auto /*&&*/ list) -> void {
 					int ii = 0;
 					for (auto&& value : std::forward<decltype(list)>(list)) {
 						auto* element = napi_value{visit(std::forward<decltype(value)>(value), self)};
@@ -121,7 +121,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			-> js::deferred_receiver<napi::value<vector_tag>, decltype(self), decltype(visit), decltype(tuple)> {
 			return {
 				napi::value<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{self}, Size)),
-				[](napi::value<vector_tag> array, auto& self, const auto& visit, auto tuple) -> void {
+				[](napi::value<vector_tag> array, auto& self, const auto& visit, auto /*&&*/ tuple) -> void {
 					const auto [... indices ] = util::sequence<Size>;
 					(..., [ & ]() {
 						// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
@@ -138,13 +138,14 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			-> js::deferred_receiver<napi::value<list_tag>, decltype(self), decltype(visit), decltype(list)> {
 			return {
 				napi::value<list_tag>::from(napi::invoke(napi_create_array, napi_env{self})),
-				[](napi::value<list_tag> array, auto& self, const auto& visit, auto list) -> void {
+				[](napi::value<list_tag> array, auto& self, const auto& visit, auto /*&&*/ list) -> void {
 					std::vector<napi_property_descriptor> properties;
 					properties.reserve(std::size(list));
+					auto accept_name = accept_napi_property_name{self, self};
 					for (auto&& [ key, value ] : std::forward<decltype(list)>(list)) {
 						properties.emplace_back(napi_property_descriptor{
 							.utf8name{},
-							.name = napi_value{visit.first(std::forward<decltype(key)>(key), accept_napi_property_name{self, self})},
+							.name = napi_value{visit.first(std::forward<decltype(key)>(key), accept_name)},
 
 							.method{},
 							.getter{},
@@ -165,14 +166,15 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			-> js::deferred_receiver<napi::value<dictionary_tag>, decltype(self), decltype(visit), decltype(dictionary)> {
 			return {
 				napi::value<dictionary_tag>::from(napi::invoke(napi_create_object, napi_env{self})),
-				[](napi::value<dictionary_tag> object, auto& self, const auto& visit, auto dictionary) -> void {
+				[](napi::value<dictionary_tag> object, auto& self, const auto& visit, auto /*&&*/ dictionary) -> void {
 					std::vector<napi_property_descriptor> properties;
 					auto&& range = util::into_range(std::forward<decltype(dictionary)>(dictionary));
 					properties.reserve(std::size(range));
+					auto accept_name = accept_napi_property_name{self, self};
 					for (auto&& [ key, value ] : std::forward<decltype(range)>(range)) {
 						properties.emplace_back(napi_property_descriptor{
 							.utf8name{},
-							.name = napi_value{visit.first(std::forward<decltype(key)>(key), accept_napi_property_name{self, self})},
+							.name = napi_value{visit.first(std::forward<decltype(key)>(key), accept_name)},
 
 							.method{},
 							.getter{},
@@ -195,7 +197,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			-> js::deferred_receiver<napi::value<dictionary_tag>, decltype(self), decltype(visit), decltype(dictionary)> {
 			return {
 				napi::value<dictionary_tag>::from(napi::invoke(napi_create_object, napi_env{self})),
-				[](napi::value<dictionary_tag> object, auto& self, const auto& visit, auto dictionary) -> void {
+				[](napi::value<dictionary_tag> object, auto& self, const auto& visit, auto /*&&*/ dictionary) -> void {
 					std::array<napi_property_descriptor, Size> properties;
 					const auto [... indices ] = util::sequence<Size>;
 					(..., [ & ]() {
@@ -236,7 +238,7 @@ struct accept_property_value<Meta, Key, Type, napi_value> {
 		explicit constexpr accept_property_value(auto* previous) :
 				second{previous} {}
 
-		auto operator()(dictionary_tag /*tag*/, const auto& visit, const auto& object) const {
+		auto operator()(dictionary_tag /*tag*/, const auto& visit, const auto& object) {
 			if (auto local = first.get_local(visit.first); object.has(local)) {
 				return visit.second(object.get(local), second);
 			} else {

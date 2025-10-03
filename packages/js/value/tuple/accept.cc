@@ -19,7 +19,7 @@ template <class Meta, class Type>
 struct accept_tuple_param : accept_next<Meta, Type> {
 		constexpr accept_tuple_param() : accept_next<Meta, Type>{this} {}
 
-		constexpr auto range(const auto& visit, auto& iterator, auto& end) const -> decltype(auto) {
+		constexpr auto range(const auto& visit, auto& iterator, auto& end) -> decltype(auto) {
 			if (iterator == end) {
 				return (*this)(undefined_in_tag{}, visit, std::monostate{});
 			} else {
@@ -40,7 +40,7 @@ template <class Meta, class Type>
 struct accept_tuple_rest_spread : accept_next<Meta, Type> {
 		constexpr accept_tuple_rest_spread() : accept_next<Meta, Type>{this} {}
 
-		constexpr auto range(const auto& visit, auto& iterator, auto& end) const -> decltype(auto) {
+		constexpr auto range(const auto& visit, auto& iterator, auto& end) -> decltype(auto) {
 			return (*this)(vector_tag{}, std::ranges::subrange{iterator, end}, visit);
 		}
 };
@@ -91,7 +91,7 @@ struct accept<Meta, std::tuple<Types...>> {
 					return acceptors_type{util::elide(util::constructor<std::tuple_element_t<indices, acceptors_type>>)...};
 				}()} {}
 
-		constexpr auto operator()(vector_tag /*tag*/, const auto& visit, auto&& value) const -> value_type {
+		constexpr auto operator()(vector_tag /*tag*/, const auto& visit, auto&& value) -> value_type {
 			const auto [... indices ] = util::sequence<sizeof...(Types)>;
 			auto range = util::into_range(std::forward<decltype(value)>(value));
 			auto it = std::begin(range);
@@ -113,7 +113,7 @@ struct accept<Meta, std::tuple<rest, Type>> : accept<Meta, Type> {
 		using accept_type = accept<Meta, Type>;
 		using accept_type::accept_type;
 
-		constexpr auto operator()(vector_tag /*tag*/, const auto& visit, auto&& value) const -> value_type {
+		constexpr auto operator()(vector_tag /*tag*/, const auto& visit, auto&& value) -> value_type {
 			return value_type{rest{}, accept_type::operator()(vector_tag{}, visit, std::forward<decltype(value)>(value))};
 		}
 };

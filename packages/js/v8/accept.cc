@@ -118,7 +118,7 @@ struct accept<void, v8::Local<v8::Value>> : accept_v8_primitive {
 			-> js::deferred_receiver<v8::Local<v8::Array>, decltype(self), decltype(visit), decltype(list)> {
 			return {
 				v8::Array::New(self.isolate()),
-				[](v8::Local<v8::Array> array, auto& self, const auto& visit, auto list) -> void {
+				[](v8::Local<v8::Array> array, auto& self, const auto& visit, auto /*&&*/ list) -> void {
 					for (auto&& [ key, value ] : list) {
 						auto result = array->Set(
 							self.context_,
@@ -140,7 +140,7 @@ struct accept<void, v8::Local<v8::Value>> : accept_v8_primitive {
 			-> js::deferred_receiver<v8::Local<v8::Object>, decltype(self), decltype(visit), decltype(dictionary)> {
 			return {
 				v8::Object::New(self.isolate()),
-				[](v8::Local<v8::Object> object, auto& self, const auto& visit, auto dictionary) -> void {
+				[](v8::Local<v8::Object> object, auto& self, const auto& visit, auto /*&&*/ dictionary) -> void {
 					for (auto&& [ key, value ] : std::forward<decltype(dictionary)>(dictionary)) {
 						auto result = object->Set(
 							self.context_,
@@ -178,35 +178,35 @@ struct accept<void, v8::ReturnValue<v8::Value>> : accept<void, v8::Local<v8::Val
 				accept_type{lock},
 				return_value_{return_value} {}
 
-		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, const auto& value) const -> value_type {
+		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, const auto& value) -> value_type {
 			return_value_.Set(bool{value});
 			return return_value_;
 		}
 
 		template <class Type>
-		auto operator()(number_tag_of<Type> /*tag*/, visit_holder /*visit*/, const auto& value) const -> value_type {
+		auto operator()(number_tag_of<Type> /*tag*/, visit_holder /*visit*/, const auto& value) -> value_type {
 			return_value_.Set(Type{value});
 			return return_value_;
 		}
 
-		auto operator()(null_tag /*tag*/, visit_holder /*visit*/, const auto& /*null*/) const -> value_type {
+		auto operator()(null_tag /*tag*/, visit_holder /*visit*/, const auto& /*null*/) -> value_type {
 			return_value_.SetNull();
 			return return_value_;
 		}
 
-		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> value_type {
+		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) -> value_type {
 			return_value_.SetUndefined();
 			return return_value_;
 		}
 
-		auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> value_type
-			requires std::invocable<const accept_type&, decltype(visit), decltype(tag), decltype(value)> {
+		auto operator()(auto_tag auto tag, const auto& visit, auto&& value) -> value_type
+			requires std::invocable<accept_type&, decltype(visit), decltype(tag), decltype(value)> {
 			return_value_.Set(accept_type::operator()(tag, visit, std::forward<decltype(value)>(value)));
 			return return_value_;
 		}
 
 	private:
-		mutable v8::ReturnValue<v8::Value> return_value_;
+		v8::ReturnValue<v8::Value> return_value_;
 };
 
 } // namespace js

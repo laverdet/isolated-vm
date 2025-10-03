@@ -25,7 +25,7 @@ struct visit_entry_value<Meta, Type> {
 		constexpr explicit visit_entry_value(auto* root) :
 				visit_{root} {}
 
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
 			return (*visit_)(std::forward<decltype(value)>(value), accept);
 		}
 
@@ -57,7 +57,7 @@ struct visit<Meta, vector_of<Tag, Value>> : visit_vector_value<Meta, Value> {
 		using visit_type = visit_vector_value<Meta, Value>;
 		using visit_type::visit_type;
 
-		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
+		constexpr auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
 			const visit_type& visitor = *this;
 			return invoke_accept(accept, Tag{}, visitor, std::forward<decltype(value)>(value));
 		}
@@ -72,7 +72,7 @@ struct accept_property_value<Meta, Key, Type, vector_of<Tag, std::pair<KeyType, 
 				first{previous},
 				second{previous} {}
 
-		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, const auto& dictionary) const {
+		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, const auto& dictionary) {
 			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) {
 				return visit.first(entry.first, first) == Key;
 			});
