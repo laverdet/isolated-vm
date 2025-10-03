@@ -19,13 +19,10 @@ class SessionHandle : public ClassHandle {
 		explicit SessionHandle(IsolateEnvironment& isolate);
 		static auto Definition() -> v8::Local<v8::FunctionTemplate>;
 
+		void SetJSHandle(v8::Local<v8::Object> js_handle);
 		void CheckDisposed();
 		auto DispatchProtocolMessage(v8::Local<v8::String> message) -> v8::Local<v8::Value>;
 		auto Dispose() -> v8::Local<v8::Value>;
-		auto OnNotificationGetter() -> v8::Local<v8::Value>;
-		void OnNotificationSetter(v8::Local<v8::Function> value);
-		auto OnResponseGetter() -> v8::Local<v8::Value>;
-		void OnResponseSetter(v8::Local<v8::Function> value);
 };
 
 } // namespace ivm

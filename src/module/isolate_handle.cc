@@ -327,7 +327,11 @@ auto IsolateHandle::CreateInspectorSession() -> Local<Value> {
 	if (env->GetInspectorAgent() == nullptr) {
 		throw RuntimeGenericError("Inspector is not enabled for this isolate");
 	}
-	return ClassHandle::NewInstance<SessionHandle>(*env);
+	Local<Object> instance = ClassHandle::NewInstance<SessionHandle>(*env);
+	// Set the JS handle reference for callbacks
+	auto* handle = ClassHandle::Unwrap<SessionHandle>(instance);
+	handle->SetJSHandle(instance);
+	return instance;
 }
 
 /**
