@@ -114,17 +114,21 @@ struct accept<void, v8::Local<v8::Value>> : accept_v8_primitive {
 		}
 
 		// array
-		auto operator()(list_tag /*tag*/, const auto& visit, auto&& list) const -> v8::Local<v8::Array> {
-			auto array = v8::Array::New(isolate());
-			for (auto&& [ key, value ] : list) {
-				auto result = array->Set(
-					context_,
-					visit.first(std::forward<decltype(key)>(key), *this),
-					visit.second(std::forward<decltype(value)>(value), *this)
-				);
-				result.Check();
-			}
-			return array;
+		auto operator()(this auto& self, list_tag /*tag*/, const auto& visit, auto&& list)
+			-> js::deferred_receiver<v8::Local<v8::Array>, decltype(self), decltype(visit), decltype(list)> {
+			return {
+				v8::Array::New(self.isolate()),
+				[](v8::Local<v8::Array> array, auto& self, const auto& visit, auto list) -> void {
+					for (auto&& [ key, value ] : list) {
+						auto result = array->Set(
+							self.context_,
+							visit.first(std::forward<decltype(key)>(key), self),
+							visit.second(std::forward<decltype(value)>(value), self)
+						);
+						result.Check();
+					}
+				},
+			};
 		}
 
 		// object
@@ -132,17 +136,21 @@ struct accept<void, v8::Local<v8::Value>> : accept_v8_primitive {
 			return iv8::date::make(context_, std::forward<decltype(value)>(value));
 		}
 
-		auto operator()(dictionary_tag /*tag*/, const auto& visit, auto&& dictionary) const -> v8::Local<v8::Object> {
-			auto object = v8::Object::New(isolate());
-			for (auto&& [ key, value ] : dictionary) {
-				auto result = object->Set(
-					context_,
-					visit.first(std::forward<decltype(key)>(key), *this),
-					visit.second(std::forward<decltype(value)>(value), *this)
-				);
-				result.Check();
-			}
-			return object;
+		auto operator()(this auto& self, dictionary_tag /*tag*/, const auto& visit, auto&& dictionary)
+			-> js::deferred_receiver<v8::Local<v8::Object>, decltype(self), decltype(visit), decltype(dictionary)> {
+			return {
+				v8::Object::New(self.isolate()),
+				[](v8::Local<v8::Object> object, auto& self, const auto& visit, auto dictionary) -> void {
+					for (auto&& [ key, value ] : std::forward<decltype(dictionary)>(dictionary)) {
+						auto result = object->Set(
+							self.context_,
+							visit.first(std::forward<decltype(key)>(key), self),
+							visit.second(std::forward<decltype(value)>(value), self)
+						);
+						result.Check();
+					}
+				},
+			};
 		}
 
 	private:

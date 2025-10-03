@@ -59,7 +59,7 @@ struct visit<Meta, vector_of<Tag, Value>> : visit_vector_value<Meta, Value> {
 
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			const visit_type& visitor = *this;
-			return accept(Tag{}, visitor, std::forward<decltype(value)>(value));
+			return invoke_accept(accept, Tag{}, visitor, std::forward<decltype(value)>(value));
 		}
 };
 

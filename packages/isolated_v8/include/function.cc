@@ -94,7 +94,7 @@ struct visit<void, function_template> : visit<void, v8::Local<v8::Value>> {
 		using visit<void, v8::Local<v8::Value>>::visit;
 
 		auto operator()(function_template value, const auto& accept) const -> decltype(auto) {
-			return accept(function_tag{}, *this, value.make_function(lock_witness()));
+			return invoke_accept(accept, function_tag{}, *this, value.make_function(lock_witness()));
 		}
 };
 

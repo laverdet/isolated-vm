@@ -1,5 +1,6 @@
 export module isolated_js;
 export import :date;
+export import :deferred_receiver;
 export import :dictionary.vector_of;
 export import :enum_.types;
 export import :function;

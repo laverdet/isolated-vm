@@ -28,6 +28,8 @@ IncludeCategories:
 IndentAccessModifiers: true
 IndentCaseBlocks: true
 IndentCaseLabels: true
+InsertNewlineAtEOF: true
+InsertTrailingCommas: Wrapped
 IntegerLiteralSeparator:
   Binary: 8
   Decimal: 3

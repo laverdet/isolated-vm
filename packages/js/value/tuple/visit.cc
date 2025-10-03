@@ -26,7 +26,7 @@ struct visit<Meta, std::tuple<Types...>> {
 		}
 
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
-			return accept(tuple_tag<sizeof...(Types)>{}, *this, std::forward<decltype(value)>(value));
+			return invoke_accept(accept, tuple_tag<sizeof...(Types)>{}, *this, std::forward<decltype(value)>(value));
 		}
 
 	private:

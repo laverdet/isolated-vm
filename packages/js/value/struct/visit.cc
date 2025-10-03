@@ -94,7 +94,7 @@ struct visit_struct_properties<Meta, Type, std::tuple<Property...>> {
 				)} {}
 
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
-			return accept(struct_tag<sizeof...(Property)>{}, properties, std::forward<decltype(value)>(value));
+			return invoke_accept(accept, struct_tag<sizeof...(Property)>{}, properties, std::forward<decltype(value)>(value));
 		}
 
 	private:

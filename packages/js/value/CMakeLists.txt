@@ -20,6 +20,7 @@ target_sources(value_js
 		struct/visit.cc
 		tag.cc
 		transfer/accept.cc
+		transfer/deferred_receiver.cc
 		transfer/transfer.cc
 		transfer/types.cc
 		transfer/visit.cc

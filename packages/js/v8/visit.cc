@@ -25,7 +25,7 @@ namespace js {
 template <>
 struct visit<void, v8::Local<v8::External>> {
 		auto operator()(v8::Local<v8::External> value, const auto& accept) const -> decltype(auto) {
-			return accept(external_tag{}, *this, iv8::external{value});
+			return invoke_accept(accept, external_tag{}, *this, iv8::external{value});
 		}
 };
 
@@ -47,15 +47,15 @@ struct visit<void, v8::Local<v8::Name>> {
 		}
 
 		auto operator()(v8::Local<v8::Symbol> value, const auto& accept) const -> decltype(auto) {
-			return accept(symbol_tag{}, *this, value);
+			return invoke_accept(accept, symbol_tag{}, *this, value);
 		}
 
 		auto operator()(v8::Local<v8::String> value, const auto& accept) const -> decltype(auto) {
 			auto string = iv8::string{lock_witness(), value};
 			if (value->IsOneByte()) {
-				return accept(string_tag_of<char>{}, *this, string);
+				return invoke_accept(accept, string_tag_of<char>{}, *this, string);
 			} else {
-				return accept(string_tag_of<char16_t>{}, *this, string);
+				return invoke_accept(accept, string_tag_of<char16_t>{}, *this, string);
 			}
 		}
 
@@ -81,9 +81,9 @@ struct visit<void, v8::Local<v8::Number>> {
 		auto operator()(v8::Local<v8::Number> value, const auto& accept) const -> decltype(auto) {
 			auto number = iv8::number{value};
 			if (value->IsInt32()) {
-				return accept(number_tag_of<int32_t>{}, *this, number);
+				return invoke_accept(accept, number_tag_of<int32_t>{}, *this, number);
 			} else {
-				return accept(number_tag_of<double>{}, *this, number);
+				return invoke_accept(accept, number_tag_of<double>{}, *this, number);
 			}
 		}
 };
@@ -97,7 +97,7 @@ struct visit<void, v8::Local<v8::BigInt>> {
 			bool lossless{};
 			auto u64 = value->Uint64Value(&lossless);
 			if (lossless) {
-				return accept(bigint_tag_of<uint64_t>{}, *this, u64);
+				return invoke_accept(accept, bigint_tag_of<uint64_t>{}, *this, u64);
 			}
 			js::bigint bigint_words;
 			bigint_words.resize_and_overwrite(value->WordCount(), [ & ](auto* words, auto length) {
@@ -107,7 +107,7 @@ struct visit<void, v8::Local<v8::BigInt>> {
 				}
 				return length;
 			});
-			return accept(bigint_tag_of<bigint>{}, *this, std::move(bigint_words));
+			return invoke_accept(accept, bigint_tag_of<bigint>{}, *this, std::move(bigint_words));
 		}
 };
 
@@ -134,32 +134,32 @@ struct visit<void, v8::Local<v8::Value>>
 			if (value->IsObject()) {
 				auto visit_entry = std::pair<const visit&, const visit&>{*this, *this};
 				if (value->IsArray()) {
-					return accept(list_tag{}, visit_entry, iv8::object{lock_witness(), value.As<v8::Object>()});
+					return invoke_accept(accept, list_tag{}, visit_entry, iv8::object{lock_witness(), value.As<v8::Object>()});
 				} else if (value->IsExternal()) {
 					return (*this)(value.As<v8::External>(), accept);
 				} else if (value->IsDate()) {
-					return accept(date_tag{}, *this, iv8::date{value.As<v8::Date>()});
+					return invoke_accept(accept, date_tag{}, *this, iv8::date{value.As<v8::Date>()});
 				} else if (value->IsPromise()) {
-					return accept(promise_tag{}, *this, value);
+					return invoke_accept(accept, promise_tag{}, *this, value);
 				} else {
-					return accept(dictionary_tag{}, visit_entry, iv8::object{lock_witness(), value.As<v8::Object>()});
+					return invoke_accept(accept, dictionary_tag{}, visit_entry, iv8::object{lock_witness(), value.As<v8::Object>()});
 				}
 			} else if (value->IsNullOrUndefined()) {
 				if (value->IsNull()) {
-					return accept(null_tag{}, *this, nullptr);
+					return invoke_accept(accept, null_tag{}, *this, nullptr);
 				} else {
-					return accept(undefined_tag{}, *this, std::monostate{});
+					return invoke_accept(accept, undefined_tag{}, *this, std::monostate{});
 				}
 			} else if (value->IsNumber()) {
 				return (*this)(value.As<v8::Number>(), accept);
 			} else if (value->IsString()) {
 				return (*this)(value.As<v8::String>(), accept);
 			} else if (value->IsBoolean()) {
-				return accept(boolean_tag{}, *this, iv8::boolean{value.As<v8::Boolean>()});
+				return invoke_accept(accept, boolean_tag{}, *this, iv8::boolean{value.As<v8::Boolean>()});
 			} else if (value->IsBigInt()) {
 				return (*this)(value.As<v8::BigInt>(), accept);
 			} else {
-				return accept(value_tag{}, *this, std::type_identity<void>{});
+				return invoke_accept(accept, value_tag{}, *this, std::type_identity<void>{});
 			}
 		}
 
@@ -178,7 +178,7 @@ struct visit<void, v8::FunctionCallbackInfo<v8::Value>> : visit<void, v8::Local<
 
 		using visit_type::operator();
 		auto operator()(v8::FunctionCallbackInfo<v8::Value> info, const auto& accept) const -> decltype(auto) {
-			return accept(arguments_tag{}, *this, iv8::callback_info{info});
+			return invoke_accept(accept, arguments_tag{}, *this, iv8::callback_info{info});
 		}
 };
 

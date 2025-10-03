@@ -15,16 +15,17 @@ namespace js {
 // a reference to an existing one.
 template <class Meta, class Type>
 struct accept_entry_value : accept_next<Meta, Type> {
+		using accept_target_type = Type;
 		using accept_next<Meta, Type>::accept_next;
 };
 
 template <class Meta, class Type>
 	requires is_recursive_v<Type>
 struct accept_entry_value<Meta, Type> {
-	private:
+	public:
+		using accept_target_type = Type;
 		using accept_type = accept_next<Meta, Type>;
 
-	public:
 		explicit constexpr accept_entry_value(auto* previous) :
 				accept_{previous} {}
 

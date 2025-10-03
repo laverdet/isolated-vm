@@ -3,6 +3,7 @@ module;
 #include <type_traits>
 #include <utility>
 export module isolated_js:visit;
+import :deferred_receiver;
 import :tag;
 import :transfer.types;
 import ivm.utility;
@@ -29,19 +30,36 @@ export struct visit_holder {
 		constexpr visit_holder(const auto& /*visit*/) {}
 };
 
-// Invoked by `visit` directly on the return value of `accept(...)`, when multiple calls to
-// an overloaded `accept` exist in the same visitor. This allows acceptors to return values which
-// are convertible to the accepted type, perhaps with some middle step (`js::deferred_receiver`).
+// `invoke_accept` helpers
+template <class Accept>
+constexpr auto unwrap_accepted(const Accept& /*accept*/, auto&& result, const auto& /*visit*/, auto&& /*value*/) -> accept_target_t<Accept> {
+	return accept_target_t<Accept>(std::forward<decltype(result)>(result));
+}
+
+template <class Accept, class Type, class... Args>
+constexpr auto unwrap_accepted(const Accept& accept, js::deferred_receiver<Type, Args...> receiver, const auto& visit, auto&& value) -> accept_target_t<Accept> {
+	std::move(receiver)(accept, visit, std::forward<decltype(value)>(value));
+	return accept_target_t<Accept>(*receiver);
+}
+
+// Invoked by `visit` implementations to cast the result of `accept(...)` to the appropriate type.
+// This allows acceptors to return values which are convertible to the accepted type, for example
+// `v8::Local<v8::String>` -> `v8::Local<v8::Value>`.
 export template <class Accept>
-constexpr auto accepted(const Accept& /*accept*/, std::convertible_to<accept_target_t<Accept>> auto&& value) -> decltype(auto) {
-	return accept_target_t<Accept>(std::forward<decltype(value)>(value));
+constexpr auto invoke_accept(const Accept& accept, auto tag, const auto& visit, auto&& value) -> accept_target_t<Accept> {
+	return unwrap_accepted(
+		accept,
+		accept(tag, visit, std::forward<decltype(value)>(value)),
+		visit,
+		std::forward<decltype(value)>(value)
+	);
 }
 
 // Returns the key type expected by the delegate (an instance of `visit` or `accept`) target.
 export template <util::string_literal Key, class Subject>
 struct visit_key_literal {
 		constexpr auto operator()(const auto& /*could_be_literally_anything*/, const auto& accept) const -> decltype(auto) {
-			return accept(string_tag{}, *this, Key);
+			return invoke_accept(accept, string_tag{}, *this, Key);
 		}
 };
 

@@ -16,7 +16,7 @@ namespace js {
 template <class Tag>
 struct visit_value_tagged {
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
-			return accept(Tag{}, *this, std::forward<decltype(value)>(value));
+			return invoke_accept(accept, Tag{}, *this, std::forward<decltype(value)>(value));
 		}
 };
 
@@ -66,7 +66,7 @@ struct visit<void, std::basic_string_view<Char>> : visit_value_tagged<string_tag
 template <>
 struct visit<void, const char*> {
 		constexpr auto operator()(const char* value, const auto& accept) const -> decltype(auto) {
-			return accept(string_tag_of<char>{}, *this, std::string_view{value});
+			return invoke_accept(accept, string_tag_of<char>{}, *this, std::string_view{value});
 		}
 };
 
@@ -74,7 +74,7 @@ struct visit<void, const char*> {
 template <size_t Size>
 struct visit<void, util::string_literal<Size>> {
 		constexpr auto operator()(const auto& value, const auto& accept) const -> decltype(auto) {
-			return accept(string_tag_of<char>{}, *this, value.data());
+			return invoke_accept(accept, string_tag_of<char>{}, *this, value.data());
 		}
 };
 
@@ -86,9 +86,9 @@ struct visit<Meta, std::optional<Type>> : visit<Meta, Type> {
 
 		constexpr auto operator()(auto&& value, const auto& accept) const -> decltype(auto) {
 			if (value) {
-				return accepted(accept, visit_type::operator()(*std::forward<decltype(value)>(value), accept));
+				return visit_type::operator()(*std::forward<decltype(value)>(value), accept);
 			} else {
-				return accepted(accept, accept(undefined_tag{}, *this, std::monostate{}));
+				return invoke_accept(accept, undefined_tag{}, *this, std::monostate{});
 			}
 		}
 };
