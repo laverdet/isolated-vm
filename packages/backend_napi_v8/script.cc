@@ -64,7 +64,7 @@ auto run_script(
 			isolated_v8::realm realm,
 			isolated_v8::script script
 		) mutable {
-			auto result = realm.invoke(agent, [ & ](const isolated_v8::realm::scope& realm) {
+			auto result = realm.invoke(agent, [ & ](const isolated_v8::realm::scope& realm) -> js::value_t {
 				return script.run(realm);
 			});
 			dispatch(std::move(result));

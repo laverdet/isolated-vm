@@ -50,7 +50,7 @@ auto agent_host::acquire_severable(const std::shared_ptr<agent_host>& self) -> s
 }
 
 auto agent_host::clock_time_ms() -> int64_t {
-	return std::visit([](auto&& clock) { return clock.clock_time_ms(); }, clock_);
+	return std::visit([](auto&& clock) -> int64_t { return clock.clock_time_ms(); }, clock_);
 }
 
 // v8 uses the same entropy source for `Math.random()` and also memory page randomization. We want

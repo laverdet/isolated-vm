@@ -170,7 +170,7 @@ class lockable {
 
 		auto write_notify()
 			requires notifiable<ConditionVariable> {
-			return write_notify([](auto&) { return true; });
+			return write_notify([](auto&) -> bool { return true; });
 		}
 
 		auto write_notify(std::predicate<const_reference> auto predicate) -> write_notify_type<decltype(predicate)>

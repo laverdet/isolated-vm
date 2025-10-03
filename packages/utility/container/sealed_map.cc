@@ -32,7 +32,7 @@ class sealed_map {
 				explicit constexpr key_for(auto index) :
 						index_{static_cast<value_type>(index)} {}
 
-				constexpr auto operator*() const { return index_; }
+				constexpr auto operator*() const -> std::size_t { return index_; }
 				explicit constexpr operator bool() const { return index_ != std::numeric_limits<value_type>::max(); }
 
 			private:
@@ -112,7 +112,7 @@ class sealed_map {
 
 		// Return an opaque index type which can be used with `at`. Generally should be used in a
 		// consteval context.
-		[[nodiscard]] constexpr auto lookup(const auto& key) const {
+		[[nodiscard]] constexpr auto lookup(const auto& key) const -> key_for {
 			auto less = overloaded{
 				[](const value_type& left, const auto& right) constexpr { return left.first < right; },
 				[](const auto& left, const value_type& right) constexpr { return left < right.first; },

@@ -47,7 +47,7 @@ class bound_value<void> : public detail::value_handle {
 				value_handle{value},
 				env_{env} {}
 
-		[[nodiscard]] auto env() const { return env_; }
+		[[nodiscard]] auto env() const -> napi_env { return env_; }
 
 	private:
 		napi_env env_{};

@@ -24,9 +24,7 @@ struct accept_v8_primitive {
 		explicit accept_v8_primitive(const js::iv8::isolate_lock_witness& lock) :
 				isolate_{lock.isolate()} {}
 
-		[[nodiscard]] auto isolate() const {
-			return isolate_;
-		}
+		[[nodiscard]] auto isolate() const -> v8::Isolate* { return isolate_; }
 
 		// undefined & null
 		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> v8::Local<v8::Primitive> {
@@ -101,9 +99,7 @@ struct accept<void, v8::Local<v8::Value>> : accept_v8_primitive {
 				accept_v8_primitive{lock},
 				context_{lock.context()} {}
 
-		[[nodiscard]] auto context() const {
-			return context_;
-		}
+		[[nodiscard]] auto context() const -> v8::Local<v8::Context> { return context_; }
 
 		// accept all primitives
 		using accept_v8_primitive::operator();

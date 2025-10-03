@@ -12,7 +12,7 @@ export class callback_info {
 	public:
 		class iterator;
 		using value_type = v8::Local<v8::Value>;
-		callback_info(const v8::FunctionCallbackInfo<v8::Value>& info) :
+		explicit callback_info(const v8::FunctionCallbackInfo<v8::Value>& info) :
 				info_{&info} {};
 
 		[[nodiscard]] auto begin() const -> iterator;

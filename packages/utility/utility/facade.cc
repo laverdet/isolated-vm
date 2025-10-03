@@ -49,7 +49,7 @@ class arithmetic_facade {
 		}
 
 		// Type - Type
-		auto operator-(this auto&& self, decltype(self) right) {
+		auto operator-(this auto&& self, decltype(self) right) -> difference_type {
 			return static_cast<difference_type>(wide_size_type{+self} - wide_size_type{+right});
 		}
 };

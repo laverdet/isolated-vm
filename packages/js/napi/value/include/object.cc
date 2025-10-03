@@ -60,7 +60,7 @@ auto value<object_tag>::assign(auto_environment auto& env, std::tuple<Entries...
 		[ & ]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) {
 			return (invoke(std::integral_constant<size_t, Index>{}), ...);
 		},
-		[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) {
+		[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) -> void {
 			auto& entry_ref = std::get<Index>(entries);
 			auto entry_js_val = js::transfer_in_strict<std::array<napi_value, 2>>(
 				std::tuple{std::move(entry_ref.first), std::move(entry_ref.second)},

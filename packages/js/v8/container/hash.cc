@@ -12,7 +12,7 @@ export struct address_hash : std::hash<void*> {
 		using std::hash<void*>::operator();
 
 		template <class Type>
-		auto operator()(v8::Local<Type> local) const {
+		auto operator()(v8::Local<Type> local) const -> std::size_t {
 			return (*this)(*local);
 		}
 };
@@ -29,11 +29,11 @@ export struct identity_hash : std::hash<int> {
 		using std::hash<int>::operator();
 
 		template <identity_hashable Type>
-		auto operator()(v8::Local<Type> local) const {
+		auto operator()(v8::Local<Type> local) const -> std::size_t {
 			return (*this)(local->GetIdentityHash());
 		}
 
-		auto operator()(const identity_hashable auto& hashable) const {
+		auto operator()(const identity_hashable auto& hashable) const -> std::size_t {
 			return (*this)(hashable.GetIdentityHash());
 		}
 };

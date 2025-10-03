@@ -37,7 +37,7 @@ template <class Result, class... Args>
 struct invoke_callback<Result(const realm::scope&, Args...)> {
 		constexpr static auto length = sizeof...(Args);
 
-		auto operator()(const v8::FunctionCallbackInfo<v8::Value>& info, auto& invocable) {
+		auto operator()(const v8::FunctionCallbackInfo<v8::Value>& info, auto& invocable) -> void {
 			auto& host = *agent_host::get_current();
 			auto agent = agent_lock{js::iv8::isolate_execution_lock::make_witness(host.isolate()), host};
 			auto context = host.isolate()->GetCurrentContext();

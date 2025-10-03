@@ -49,7 +49,7 @@ auto instantiate_runtime(
 			agent_handle agent,
 			isolated_v8::realm realm
 		) mutable {
-			auto module_ = realm.invoke(lock, [ & ](const isolated_v8::realm::scope& realm) {
+			auto module_ = realm.invoke(lock, [ & ](const isolated_v8::realm::scope& realm) -> isolated_v8::js_module {
 				return lock->environment().runtime().instantiate(realm);
 			});
 			dispatch(std::move(agent), std::move(module_));

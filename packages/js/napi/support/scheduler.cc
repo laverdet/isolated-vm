@@ -60,9 +60,9 @@ class uv_handle_of : public util::pointer_facade {
 		auto operator=(const uv_handle_of&) -> uv_handle_of& = delete;
 
 		auto operator->(this auto& self) -> auto* { return &self.value_; }
-		auto close();
+		auto close() -> void;
 		auto handle(this auto& self) -> auto& { return self.handle_; }
-		auto open(const auto& init, uv_loop_t* loop, auto&&... args);
+		auto open(const auto& init, uv_loop_t* loop, auto&&... args) -> void;
 
 		static auto make(auto&&... args) -> shared_ptr_type;
 		static auto unwrap(const Handle* handle) -> const shared_ptr_type&;
@@ -116,14 +116,14 @@ uv_handle_of<Handle, Type>::~uv_handle_of() {
 }
 
 template <class Handle, class Type>
-auto uv_handle_of<Handle, Type>::close() {
+auto uv_handle_of<Handle, Type>::close() -> void {
 	uv_close(handle(), [](uv_handle_t* handle) {
 		delete static_cast<shared_ptr_type*>(std::exchange(handle->data, nullptr));
 	});
 }
 
 template <class Handle, class Type>
-auto uv_handle_of<Handle, Type>::open(const auto& init, uv_loop_t* loop, auto&&... args) {
+auto uv_handle_of<Handle, Type>::open(const auto& init, uv_loop_t* loop, auto&&... args) -> void {
 	auto weak_ptr_ptr = std::unique_ptr<weak_ptr_type>{std::exchange(handle_.data().weak, nullptr)};
 	auto shared_ptr_ptr = std::make_unique<shared_ptr_type>(*weak_ptr_ptr);
 	if (init(loop, handle(), std::forward<decltype(args)>(args)...) == 0) {

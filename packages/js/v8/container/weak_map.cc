@@ -19,9 +19,9 @@ class weak_map_handle {
 			key_.SetWeak(this, weak_callback, v8::WeakCallbackType::kParameter);
 		}
 
-		[[nodiscard]] auto operator==(v8::Local<Key> local) const { return key_ == local; }
-		[[nodiscard]] auto operator==(const weak_map_handle& other) const { return key_ == other.key_; }
-		[[nodiscard]] friend auto operator==(v8::Local<Key> local, const weak_map_handle& self) { return self == local; }
+		[[nodiscard]] auto operator==(v8::Local<Key> local) const -> bool { return key_ == local; }
+		[[nodiscard]] auto operator==(const weak_map_handle& other) const -> bool { return key_ == other.key_; }
+		[[nodiscard]] friend auto operator==(v8::Local<Key> local, const weak_map_handle& self) -> bool { return self == local; }
 		[[nodiscard]] auto GetIdentityHash() const -> int { return identity_hash_; }
 
 	private:

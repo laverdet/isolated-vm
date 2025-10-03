@@ -28,7 +28,7 @@ auto remote_handle::reset(const js::iv8::isolate_lock_witness& /*lock*/) -> void
 }
 
 auto remote_handle::expire(expired_remote_type remote) -> void {
-	util::move_pointer_operation(std::move(remote), [ & ](auto* ptr, auto unique) {
+	util::move_pointer_operation(std::move(remote), [ & ](auto* ptr, auto unique) -> void {
 		if (auto reset = ptr->reset_.lock()) {
 			(*reset)(std::move(unique));
 		}

@@ -87,7 +87,7 @@ auto value<function_tag>::make(Environment& env, auto function) -> value<functio
 		std::move(function.callback)
 	};
 	auto [ callback_ptr, finalizer ] = make_napi_callback(env, std::move(trampoline));
-	const auto make = [ & ]() {
+	const auto make = [ & ]() -> value<function_tag> {
 		return value<function_tag>::from(js::napi::invoke(napi_create_function, napi_env{env}, function.name.data(), function.name.length(), callback_ptr.first, callback_ptr.second));
 	};
 	if constexpr (std::is_same_v<decltype(finalizer), std::nullptr_t>) {
@@ -95,7 +95,7 @@ auto value<function_tag>::make(Environment& env, auto function) -> value<functio
 		return make();
 	} else {
 		// Function requires finalizer
-		return js::napi::apply_finalizer(std::move(finalizer), [ & ](auto* data, napi_finalize finalize, void* hint) {
+		return js::napi::apply_finalizer(std::move(finalizer), [ & ](auto* data, napi_finalize finalize, void* hint) -> value<function_tag> {
 			auto js_function = make();
 			js::napi::invoke0(napi_add_finalizer, napi_env{env}, js_function, data, finalize, hint, nullptr);
 			return js_function;

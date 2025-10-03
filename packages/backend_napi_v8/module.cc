@@ -87,7 +87,7 @@ auto evaluate_module(
 			module_ = module_->module() ](
 			const agent_handle::lock& agent
 		) mutable {
-			auto result = realm.invoke(agent, [ & ](const isolated_v8::realm::scope& realm) {
+			auto result = realm.invoke(agent, [ & ](const isolated_v8::realm::scope& realm) -> js::value_t {
 				return module_.evaluate(realm);
 			});
 			dispatch(std::move(result));

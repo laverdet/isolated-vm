@@ -108,7 +108,7 @@ auto agent_handle<Type>::schedule(auto task, auto... args) -> void
 				const std::stop_token& /*stop_token*/
 			) mutable {
 				auto isolate_lock = js::iv8::isolate_execution_lock{host->isolate()};
-				std::visit([](auto& clock) { clock.begin_tick(); }, host->clock());
+				std::visit([](auto& clock) -> void { clock.begin_tick(); }, host->clock());
 				task(lock{isolate_lock, *host}, std::move(args)...);
 			};
 		foreground_runner::schedule_client_task(host->foreground_runner(), std::move(task_with_lock));

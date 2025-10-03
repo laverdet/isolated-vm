@@ -90,7 +90,7 @@ auto platform::PostDelayedTaskOnWorkerThreadImpl(
 
 auto platform::fill_random_bytes(unsigned char* buffer, size_t length) -> bool {
 	// Copies the bit data from an infinite view of numerics into `buffer` up to `length`.
-	auto fill = [ & ](auto&& numeric_stream) {
+	auto fill = [ & ](auto&& numeric_stream) -> bool {
 		auto bytes_views =
 			numeric_stream |
 			std::views::transform([](auto value) {

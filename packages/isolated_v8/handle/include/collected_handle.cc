@@ -34,7 +34,7 @@ auto collected_handle<Value, Type>::make(util::autorelease_pool& pool, auto&&...
 
 template <class Value, class Type>
 auto collected_handle<Value, Type>::reset(const js::iv8::isolate_lock_witness& lock, unique_ptr handle, v8::Local<Value> value) -> void {
-	util::move_pointer_operation(std::move(handle), [ & ](auto* ptr, auto unique) {
+	util::move_pointer_operation(std::move(handle), [ & ](auto* ptr, auto unique) -> void {
 		ptr->global_.Reset(lock.isolate(), value);
 		ptr->global_.SetWeak(
 			unique.release(),
@@ -51,7 +51,7 @@ auto collected_handle<Value, Type>::reset(const js::iv8::isolate_lock_witness& l
 export template <class Type>
 auto make_collected_external(const js::iv8::isolate_lock_witness& lock, util::autorelease_pool& pool, auto&&... args) -> v8::Local<v8::External> {
 	auto handle = collected_handle<v8::External, Type>::make(pool, std::forward<decltype(args)>(args)...);
-	return util::move_pointer_operation(std::move(handle), [ & ](auto* ptr, auto unique) {
+	return util::move_pointer_operation(std::move(handle), [ & ](auto* ptr, auto unique) -> v8::Local<v8::External> {
 		auto value = v8::External::New(lock.isolate(), ptr);
 		collected_handle<v8::External, Type>::reset(lock, std::move(unique), value);
 		return value;

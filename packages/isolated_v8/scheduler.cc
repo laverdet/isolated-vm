@@ -56,7 +56,7 @@ class container : util::non_moveable {
 			members_.push_back(member);
 		}
 
-		auto request_stop() {
+		auto request_stop() -> void {
 			closed_ = true;
 			for (auto& member : members_) {
 				member.self().request_stop();

@@ -190,7 +190,7 @@ forward(Type) -> forward<Type>;
 
 template <class Type, class Tag>
 struct accept<void, forward<Type, Tag>> {
-		constexpr auto operator()(Tag /*tag*/, visit_holder /*visit*/, std::convertible_to<Type> auto&& value) const {
+		constexpr auto operator()(Tag /*tag*/, visit_holder /*visit*/, std::convertible_to<Type> auto&& value) const -> forward<Type, Tag> {
 			return forward<Type, Tag>{std::forward<decltype(value)>(value)};
 		}
 };

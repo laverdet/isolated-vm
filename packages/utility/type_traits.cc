@@ -8,7 +8,7 @@ namespace util {
 export template <auto Value>
 struct value_constant {
 		using value_type = decltype(Value);
-		constexpr auto operator*() const { return Value; }
+		constexpr auto operator*() const -> value_type { return Value; }
 		constexpr static auto value = Value;
 };
 
@@ -29,7 +29,7 @@ struct parameter_pack {
 			return {};
 		}
 
-		constexpr auto size() const {
+		[[nodiscard]] constexpr auto size() const -> std::size_t {
 			return sizeof...(Type);
 		}
 };

@@ -10,12 +10,12 @@ using namespace util::string_literals;
 
 namespace backend_napi_v8 {
 
-auto clock_time(const isolated_v8::realm::scope& /*realm*/) {
+auto clock_time(const isolated_v8::realm::scope& /*realm*/) -> double {
 	auto now = std::chrono::utc_clock::now();
 	return duration_cast<js_clock::duration>(now.time_since_epoch()).count();
 }
 
-auto performance_time(const isolated_v8::realm::scope& /*realm*/) {
+auto performance_time(const isolated_v8::realm::scope& /*realm*/) -> double {
 	auto now = std::chrono::steady_clock::now();
 	return duration_cast<js_clock::duration>(now.time_since_epoch()).count();
 }

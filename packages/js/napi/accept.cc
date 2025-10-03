@@ -238,7 +238,7 @@ struct accept_property_value<Meta, Key, Type, napi_value> {
 		explicit constexpr accept_property_value(auto* previous) :
 				second{previous} {}
 
-		auto operator()(dictionary_tag /*tag*/, const auto& visit, const auto& object) {
+		auto operator()(dictionary_tag /*tag*/, const auto& visit, const auto& object) -> Type {
 			if (auto local = first.get_local(visit.first); object.has(local)) {
 				return visit.second(object.get(local), second);
 			} else {
