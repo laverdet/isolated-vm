@@ -69,36 +69,36 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 		}
 
 		// bigint
-		auto operator()(bigint_tag /*tag*/, visit_holder visit, auto&& value) const -> napi::value<bigint_tag> {
+		auto operator()(bigint_tag /*tag*/, visit_holder visit, auto&& value) const -> js::referenceable_value<napi::value<bigint_tag>> {
 			return (*this)(bigint_tag_of<bigint>{}, visit, std::forward<decltype(value)>(value));
 		}
 
-		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, auto&& value) const -> napi::value<bigint_tag> {
-			return napi::value<bigint_tag>::make(this->environment(), bigint{std::forward<decltype(value)>(value)});
+		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, auto&& value) const -> js::referenceable_value<napi::value<bigint_tag>> {
+			return js::referenceable_value{napi::value<bigint_tag>::make(this->environment(), bigint{std::forward<decltype(value)>(value)})};
 		}
 
-		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, const bigint& value) const -> napi::value<bigint_tag> {
-			return napi::value<bigint_tag>::make(this->environment(), value);
+		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, const bigint& value) const -> js::referenceable_value<napi::value<bigint_tag>> {
+			return js::referenceable_value{napi::value<bigint_tag>::make(this->environment(), value)};
 		}
 
 		template <class Numeric>
-		auto operator()(bigint_tag_of<Numeric> /*tag*/, visit_holder /*visit*/, auto&& value) const -> napi::value<bigint_tag> {
-			return napi::value<bigint_tag>::make(this->environment(), Numeric{std::forward<decltype(value)>(value)});
+		auto operator()(bigint_tag_of<Numeric> /*tag*/, visit_holder /*visit*/, auto&& value) const -> js::referenceable_value<napi::value<bigint_tag>> {
+			return js::referenceable_value{napi::value<bigint_tag>::make(this->environment(), Numeric{std::forward<decltype(value)>(value)})};
 		}
 
 		// string
-		auto operator()(string_tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> napi::value<string_tag> {
-			return napi::value<string_tag>::make(this->environment(), std::u16string_view{std::forward<decltype(value)>(value)});
+		auto operator()(string_tag /*tag*/, visit_holder visit, auto&& value) const -> js::referenceable_value<napi::value<string_tag>> {
+			return (*this)(string_tag_of<char16_t>{}, visit, std::forward<decltype(value)>(value));
 		}
 
 		template <class Char>
-		auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, auto&& value) const -> napi::value<string_tag> {
-			return napi::value<string_tag>::make(this->environment(), std::basic_string_view<Char>{std::forward<decltype(value)>(value)});
+		auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, auto&& value) const -> js::referenceable_value<napi::value<string_tag>> {
+			return js::referenceable_value{napi::value<string_tag>::make(this->environment(), std::basic_string_view<Char>{std::forward<decltype(value)>(value)})};
 		}
 
 		// date
-		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, js_clock::time_point value) const -> napi::value<date_tag> {
-			return napi::value<date_tag>::make(this->environment(), std::forward<decltype(value)>(value));
+		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, js_clock::time_point value) const -> js::referenceable_value<napi::value<date_tag>> {
+			return js::referenceable_value{napi::value<date_tag>::make(this->environment(), std::forward<decltype(value)>(value))};
 		}
 
 		// vectors

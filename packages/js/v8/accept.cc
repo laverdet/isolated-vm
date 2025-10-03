@@ -55,8 +55,8 @@ struct accept_v8_primitive {
 
 		// string
 		template <class Char>
-		auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, auto&& value) const -> v8::Local<v8::String> {
-			return iv8::string::make(isolate_, std::basic_string_view<Char>{std::forward<decltype(value)>(value)});
+		auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, auto&& value) const -> js::referenceable_value<v8::Local<v8::String>> {
+			return js::referenceable_value{iv8::string::make(isolate_, std::basic_string_view<Char>{std::forward<decltype(value)>(value)})};
 		}
 
 	private:
@@ -85,7 +85,8 @@ struct accept<void, v8::Local<v8::Number>> : accept_v8_primitive {
 template <>
 struct accept<void, v8::Local<v8::String>> : accept_v8_primitive {
 		using accept_v8_primitive::accept_v8_primitive;
-		auto operator()(auto_tag<string_tag> auto tag, const auto& visit, auto&& value) const -> v8::Local<v8::String> {
+		auto operator()(auto_tag<string_tag> auto tag, const auto& visit, auto&& value) const
+			-> js::referenceable_value<v8::Local<v8::String>> {
 			return accept_v8_primitive::operator()(tag, visit, std::forward<decltype(value)>(value));
 		}
 };
@@ -128,8 +129,11 @@ struct accept<void, v8::Local<v8::Value>> : accept_v8_primitive {
 		}
 
 		// object
-		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> v8::Local<v8::Date> {
-			return iv8::date::make(context_, std::forward<decltype(value)>(value));
+		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, auto&& value) const
+			-> js::referenceable_value<v8::Local<v8::Date>> {
+			return js::referenceable_value<v8::Local<v8::Date>>{
+				iv8::date::make(context_, std::forward<decltype(value)>(value)),
+			};
 		}
 
 		auto operator()(this auto& self, dictionary_tag /*tag*/, const auto& visit, auto&& dictionary)

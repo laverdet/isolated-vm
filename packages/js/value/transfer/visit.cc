@@ -32,13 +32,18 @@ export struct visit_holder {
 
 // `invoke_accept` helpers
 template <class Accept>
-constexpr auto unwrap_accepted(const Accept& /*accept*/, auto&& result, const auto& /*visit*/, auto&& /*value*/) -> accept_target_t<Accept> {
+constexpr auto unwrap_accepted(const Accept& /*accept*/, auto&& result, const auto& /*visit*/, const auto& /*subject*/) -> accept_target_t<Accept> {
 	return accept_target_t<Accept>(std::forward<decltype(result)>(result));
 }
 
 template <class Accept, class Type, class... Args>
-constexpr auto unwrap_accepted(Accept& accept, js::deferred_receiver<Type, Args...> receiver, const auto& visit, auto&& value) -> accept_target_t<Accept> {
-	std::move(receiver)(accept, visit, std::forward<decltype(value)>(value));
+constexpr auto unwrap_accepted(const Accept& /*accept*/, js::referenceable_value<Type> value, const auto& /*visit*/, const auto& /*subject*/) -> accept_target_t<Accept> {
+	return accept_target_t<Accept>(*value);
+}
+
+template <class Accept, class Type, class... Args>
+constexpr auto unwrap_accepted(Accept& accept, js::deferred_receiver<Type, Args...> receiver, const auto& visit, auto&& subject) -> accept_target_t<Accept> {
+	std::move(receiver)(accept, visit, std::forward<decltype(subject)>(subject));
 	return accept_target_t<Accept>(*receiver);
 }
 
