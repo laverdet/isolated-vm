@@ -13,10 +13,12 @@ namespace detail {
 
 // `detail:value_handle` is the base class of `value<T>`, and `bound_value<T>`.
 export class value_handle {
-	public:
-		value_handle() = default;
+	protected:
 		explicit value_handle(napi_value value) :
 				value_{value} {}
+
+	public:
+		value_handle() = default;
 
 		// Implicit cast back to a `napi_value`
 		// NOLINTNEXTLINE(google-explicit-constructor)

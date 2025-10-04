@@ -63,6 +63,15 @@ class value<number_tag> : public detail::value_next<number_tag> {
 		static auto make_property_name(const environment& env, int32_t number) -> value<number_tag> { return make(env, number); }
 };
 
+template <class Numeric>
+class value<number_tag_of<Numeric>> : public detail::value_next<number_tag_of<Numeric>> {
+	public:
+		using detail::value_next<number_tag_of<Numeric>>::value_next;
+		static auto make(const environment& env, Numeric number) -> value<number_tag_of<Numeric>> {
+			return value<number_tag_of<Numeric>>::from(value<number_tag>::make(env, number));
+		}
+};
+
 template <>
 class bound_value<number_tag>
 		: public detail::bound_value_next<number_tag>,

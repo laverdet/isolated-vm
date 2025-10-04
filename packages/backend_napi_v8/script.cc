@@ -39,7 +39,7 @@ auto compile_script(
 			options = std::move(options),
 			dispatch = std::move(dispatch) ](
 			const agent_handle::lock& agent
-		) mutable {
+		) mutable -> void {
 			auto origin = std::move(options.origin).value_or(source_origin{});
 			dispatch(isolated_v8::script::compile(agent, std::move(code_string), std::move(origin)));
 		}

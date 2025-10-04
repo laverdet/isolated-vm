@@ -22,7 +22,7 @@ struct accept<void, Type>;
 
 // `accept` with transfer wrapping
 export template <class Meta, class Type>
-using accept_next = Meta::accept_wrap_type::template accept<Meta, Type>;
+using accept_next = Meta::accept_wrap_type::template accept<accept<Meta, Type>>;
 
 // Returns the value corresponding to a key with an accepted object subject.
 export template <class Meta, util::string_literal Key, class Type, class Subject>

@@ -1,3 +1,5 @@
+module;
+#include <concepts>
 export module napi_js:bound_value;
 import :environment;
 import :value;
@@ -22,7 +24,9 @@ class bound_value_next : public bound_value<typename Tag::tag_type> {
 		bound_value_next(const environment& env, value<Tag> value) :
 				bound_value_next{napi_env{env}, napi_value{value}} {}
 
-		explicit operator value<Tag>() const { return value<Tag>::from(napi_value{*this}); }
+		template <std::constructible_from<Tag> To>
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		operator value<To>() const { return value<To>::from(napi_value{*this}); }
 };
 
 } // namespace detail

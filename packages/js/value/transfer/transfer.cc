@@ -15,28 +15,27 @@ namespace js {
 
 // Default `accept` passthrough `Wrap`
 struct accept_pass {
-		template <class Meta, class Type>
-		using accept = js::accept<Meta, Type>;
+		template <class Accept>
+		using accept = Accept;
 };
 
 // `Wrap` for `accept` which throws on unknown values
 struct accept_with_throw {
-		template <class Meta, class Type>
+		template <class Accept>
 		struct accept_throw;
-		template <class Meta, class Type>
-		using accept = accept_throw<Meta, Type>;
+		template <class Accept>
+		using accept = accept_throw<Accept>;
 };
 
 // Adds fallback acceptor which throws on unknown values
-template <class Meta, class Type>
-struct accept_with_throw::accept_throw : js::accept<Meta, Type> {
-		using accept_target_type = Type;
-		using accept_type = js::accept<Meta, Type>;
-		using accept_type::accept_type;
+template <class Accept>
+struct accept_with_throw::accept_throw : Accept {
+		using accept_target_type = accept_target_t<Accept>;
+		using Accept::Accept;
 
-		using accept_type::operator();
+		using Accept::operator();
 		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> accept_target_type
-			requires(!std::invocable<accept_type&, decltype(tag), decltype(visit), decltype(value)>) {
+			requires(!std::invocable<Accept&, decltype(tag), decltype(visit), decltype(value)>) {
 			throw std::logic_error{"Type error"};
 		}
 };
@@ -99,7 +98,7 @@ constexpr auto transfer_with(
 	using accept_env = select_transferee_environment_t<std::remove_cvref_t<AcceptArgs>...>;
 	using meta_holder = transferee_meta<Wrap, visit_env, subject_type, accept_env, target_type>;
 	using visit_type = visit<meta_holder, subject_type>;
-	using accept_type = Wrap::template accept<meta_holder, Type>;
+	using accept_type = accept_next<meta_holder, Type>;
 
 	transfer_holder<visit_type, accept_type> visit_and_accept{std::move(visit_args), std::move(accept_args)};
 	const visit_type& visit = visit_and_accept;
@@ -152,6 +151,15 @@ constexpr auto transfer(auto&& value) -> Type {
 }
 
 export template <class Type>
+constexpr auto transfer(auto&& value, auto&& visit_args, auto&& accept_args) -> Type {
+	return transfer_with<Type, accept_with_throw>(
+		std::forward<decltype(value)>(value),
+		std::forward<decltype(visit_args)>(visit_args),
+		std::forward<decltype(accept_args)>(accept_args)
+	);
+}
+
+export template <class Type>
 constexpr auto transfer_strict(auto&& value) -> Type {
 	return transfer_with<Type, accept_pass>(std::forward<decltype(value)>(value), std::tuple{}, std::tuple{});
 }
@@ -192,9 +200,9 @@ constexpr auto transfer_strict(auto&& value, auto&& visit_args, auto&& accept_ar
 export template <class Type, class Tag = value_tag>
 struct forward : util::pointer_facade {
 	public:
-		explicit forward(const Type& value) :
+		explicit forward(const Type& value, Tag /*tag*/ = {}) :
 				value_{value} {}
-		explicit forward(Type&& value) :
+		explicit forward(Type&& value, Tag /*tag*/ = {}) :
 				value_{std::move(value)} {}
 
 		constexpr auto operator->(this auto&& self) -> auto* { return &self.value_; }
@@ -202,9 +210,6 @@ struct forward : util::pointer_facade {
 	private:
 		Type value_;
 };
-
-template <class Type>
-forward(Type) -> forward<Type>;
 
 template <class Type, class Tag>
 struct accept<void, forward<Type, Tag>> {

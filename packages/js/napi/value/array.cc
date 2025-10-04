@@ -26,7 +26,7 @@ bound_value<vector_tag>::iterator::iterator(bound_value subject, size_type index
 		index{index} {}
 
 auto bound_value<vector_tag>::iterator::operator*() const -> value_type {
-	return js::napi::invoke(napi_get_element, subject_.env(), napi_value{subject_}, index);
+	return value_type::from(js::napi::invoke(napi_get_element, subject_.env(), napi_value{subject_}, index));
 }
 
 } // namespace js::napi

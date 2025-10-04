@@ -19,25 +19,30 @@ class dictionary_like : public bound_value<object_tag> {
 	public:
 		using bound_value<object_tag>::bound_value;
 		using keys_type = bound_value<vector_tag>;
-		using value_type = std::pair<napi_value, napi_value>;
+		using key_type = value<primitive_tag>;
+		using mapped_type = value<value_tag>;
+		using value_type = std::pair<key_type, mapped_type>;
 
 	private:
 		class iterator_transform {
 			public:
 				explicit iterator_transform(const dictionary_like& subject_);
-				auto operator()(napi_value key) const -> value_type;
+				auto operator()(value<value_tag> key) const -> value_type;
 
 			private:
 				const dictionary_like* subject_;
 		};
 
 	public:
-		using range_type = std::ranges::transform_view<std::views::all_t<keys_type&>, iterator_transform>;
+		using range_type = std::ranges::transform_view<std::views::all_t<const keys_type&>, iterator_transform>;
 		using iterator = std::ranges::iterator_t<range_type>;
 
 		[[nodiscard]] auto into_range() const -> range_type;
+		[[nodiscard]] auto size() const -> std::size_t;
 
 	private:
+		[[nodiscard]] auto keys() const -> const keys_type&;
+
 		mutable keys_type keys_;
 };
 

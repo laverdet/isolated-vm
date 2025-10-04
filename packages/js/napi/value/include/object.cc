@@ -28,7 +28,7 @@ class bound_value<object_tag> : public detail::bound_value_next<object_tag> {
 	public:
 		using detail::bound_value_next<object_tag>::bound_value_next;
 
-		[[nodiscard]] auto get(napi_value key) const -> napi_value;
+		[[nodiscard]] auto get(napi_value key) const -> value<value_tag>;
 		[[nodiscard]] auto has(napi_value key) const -> bool;
 
 		auto set(napi_value key, napi_value value) -> void;

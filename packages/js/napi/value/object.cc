@@ -9,8 +9,8 @@ import ivm.utility;
 namespace js::napi {
 
 // object
-auto bound_value<object_tag>::get(napi_value key) const -> napi_value {
-	return js::napi::invoke(napi_get_property, env(), napi_value{*this}, key);
+auto bound_value<object_tag>::get(napi_value key) const -> value<value_tag> {
+	return value<value_tag>::from(js::napi::invoke(napi_get_property, env(), napi_value{*this}, key));
 }
 
 auto bound_value<object_tag>::has(napi_value key) const -> bool {

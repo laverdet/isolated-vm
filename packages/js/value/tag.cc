@@ -19,7 +19,6 @@ export namespace js {
 struct value_tag {
 		using tag_type = void;
 };
-struct external_tag : tag_of<value_tag> {};
 struct primitive_tag : tag_of<value_tag> {};
 struct function_tag : tag_of<primitive_tag> {};
 
@@ -36,7 +35,7 @@ struct boolean_tag : tag_of<primitive_tag> {};
 struct number_tag : tag_of<primitive_tag> {};
 template <class Type> struct number_tag_of : con_tag_of<number_tag> {};
 
-struct bigint_tag : tag_of<value_tag> {};
+struct bigint_tag : tag_of<primitive_tag> {};
 template <class Type> struct bigint_tag_of : con_tag_of<bigint_tag> {};
 
 // string & symbol
@@ -51,6 +50,7 @@ template <class Type> struct string_tag_of : con_tag_of<string_tag> {};
 
 // objects
 struct object_tag : tag_of<value_tag> {};
+struct external_tag : tag_of<object_tag> {};
 
 // Continuous packed array-like with integer keys and known (at runtime) length. Generally
 // `arguments` or "trusted" arrays.

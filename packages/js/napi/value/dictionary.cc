@@ -10,18 +10,26 @@ import ivm.utility;
 namespace js::napi {
 
 auto dictionary_like::into_range() const -> range_type {
+	return keys() | std::views::transform(iterator_transform{*this});
+}
+
+auto dictionary_like::size() const -> std::size_t {
+	return keys().size();
+}
+
+auto dictionary_like::keys() const -> const keys_type& {
 	if (!keys_) {
-		auto property_names = js::napi::invoke(napi_get_property_names, env(), *this);
+		auto* property_names = js::napi::invoke(napi_get_property_names, env(), *this);
 		keys_ = keys_type{env(), js::napi::value<vector_tag>::from(property_names)};
 	}
-	return keys_ | std::views::transform(iterator_transform{*this});
+	return keys_;
 }
 
 dictionary_like::iterator_transform::iterator_transform(const dictionary_like& subject) :
 		subject_{&subject} {}
 
-auto dictionary_like::iterator_transform::operator()(napi_value key) const -> value_type {
-	return std::pair{key, subject_->get(key)};
+auto dictionary_like::iterator_transform::operator()(value<value_tag> key) const -> value_type {
+	return std::pair{key_type::from(key), subject_->get(key)};
 }
 
 } // namespace js::napi

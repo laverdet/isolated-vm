@@ -184,7 +184,7 @@ auto link_module(
 auto create_capability(
 	environment& env,
 	js::napi::untagged_external<agent_handle>& agent,
-	js::forward<js::napi::value<js::function_tag>, function_tag> capability,
+	js::forward<js::napi::value<js::function_tag>> capability,
 	create_capability_options options
 ) {
 	// Callback to invoke the capability in the node environment

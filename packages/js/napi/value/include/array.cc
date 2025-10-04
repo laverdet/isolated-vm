@@ -16,7 +16,7 @@ class bound_value<vector_tag> : public detail::bound_value_next<vector_tag> {
 	public:
 		class iterator;
 		using detail::bound_value_next<vector_tag>::bound_value_next;
-		using value_type = napi_value;
+		using value_type = value<value_tag>;
 
 		[[nodiscard]] auto begin() const -> iterator;
 		[[nodiscard]] auto end() const -> iterator;
