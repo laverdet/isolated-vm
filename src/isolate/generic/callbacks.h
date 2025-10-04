@@ -157,14 +157,12 @@ struct MemberFunctionHolder : FunctionCallbackImpl {
 };
 
 // Member getters and setters
-struct MemberGetterHolder : GenericCallback<v8::AccessorNameGetterCallback,
-		v8::Local<v8::Name>, const v8::PropertyCallbackInfo<v8::Value>&> {
-	using GenericCallback::GenericCallback;
+struct MemberGetterHolder : FunctionCallbackImpl {
+	using FunctionCallbackImpl::FunctionCallbackImpl;
 };
 
-struct MemberSetterHolder : GenericCallback<v8::AccessorNameSetterCallback,
-		v8::Local<v8::Name>, v8::Local<v8::Value>, const v8::PropertyCallbackInfo<void>&> {
-	using GenericCallback::GenericCallback;
+struct MemberSetterHolder : FunctionCallbackImpl {
+	using FunctionCallbackImpl::FunctionCallbackImpl;
 };
 
 struct MemberAccessorHolder {
@@ -229,12 +227,8 @@ template <
 >
 struct MemberAccessor : detail::MemberAccessorHolder {
 	constexpr MemberAccessor() : MemberAccessorHolder{
-		detail::MemberGetterHolder{detail::MemberGetterHolder::ToCallback<
-			0, typename UnboundGetter::type, UnboundGetter::template invoke<Getter>
-		>()},
-		detail::MemberSetterHolder{detail::MemberSetterHolder::ToCallback<
-			0, typename UnboundSetter::type, UnboundSetter::template invoke<Setter>
-		>()}
+		detail::MemberGetterHolder{detail::MemberGetterHolder::ToCallback<-1, typename UnboundGetter::type, UnboundGetter::template invoke<Getter>>(), 0},
+		detail::MemberSetterHolder{detail::MemberSetterHolder::ToCallback<-1, typename UnboundSetter::type, UnboundSetter::template invoke<Setter>>(), 1},
 	} {}
 
 	private:
@@ -248,10 +242,8 @@ struct MemberAccessor : detail::MemberAccessorHolder {
 template <class GetterSignature, GetterSignature Getter>
 struct MemberAccessor<GetterSignature, Getter, std::nullptr_t, nullptr> : detail::MemberAccessorHolder {
 	constexpr MemberAccessor() : MemberAccessorHolder{
-		detail::MemberGetterHolder{detail::MemberGetterHolder::ToCallback<
-			0, typename UnboundGetter::type, UnboundGetter::template invoke<Getter>
-		>()},
-		detail::MemberSetterHolder{nullptr}
+		detail::MemberGetterHolder{detail::MemberGetterHolder::ToCallback<-1, typename UnboundGetter::type, UnboundGetter::template invoke<Getter>>(), 0},
+		detail::MemberSetterHolder{nullptr},
 	} {}
 
 	private:
