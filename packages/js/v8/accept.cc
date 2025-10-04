@@ -158,9 +158,9 @@ struct accept<void, v8::Local<v8::Value>> : accept_v8_primitive {
 };
 
 // A `MaybeLocal` also accepts `undefined`, similar to `std::optional`.
-template <class Meta, class Type>
-struct accept<Meta, v8::MaybeLocal<Type>> : accept<Meta, v8::Local<Type>> {
-		using accept_type = accept<Meta, v8::Local<Type>>;
+template <class Type>
+struct accept<void, v8::MaybeLocal<Type>> : accept<void, v8::Local<Type>> {
+		using accept_type = accept<void, v8::Local<Type>>;
 		using accept_type::accept_type;
 
 		using accept_type::operator();

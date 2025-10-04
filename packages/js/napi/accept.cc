@@ -20,23 +20,25 @@ using namespace napi;
 
 // Non-recursive primitive / intrinsic acceptor which returns varying `value<T>` types depending on
 // the subject.
-template <class Meta, class Environment>
+template <class Environment>
 struct accept_napi_value : napi::environment_scope<Environment> {
+		using napi::environment_scope<Environment>::environment;
+
 		explicit accept_napi_value(auto* /*transfer*/, auto& env) :
 				napi::environment_scope<Environment>{env} {}
 
 		// undefined & null
 		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> napi::value<undefined_tag> {
-			return napi::value<undefined_tag>::make(this->environment(), std::monostate{});
+			return napi::value<undefined_tag>::make(environment(), std::monostate{});
 		}
 
 		auto operator()(null_tag /*tag*/, visit_holder /*visit*/, const auto& /*null*/) const -> napi::value<null_tag> {
-			return napi::value<null_tag>::make(this->environment(), nullptr);
+			return napi::value<null_tag>::make(environment(), nullptr);
 		}
 
 		// boolean
 		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> napi::value<boolean_tag> {
-			return napi::value<boolean_tag>::make(this->environment(), std::forward<decltype(value)>(value));
+			return napi::value<boolean_tag>::make(environment(), std::forward<decltype(value)>(value));
 		}
 
 		// number
@@ -46,7 +48,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 
 		template <class Numeric>
 		auto operator()(number_tag_of<Numeric> /*tag*/, visit_holder /*visit*/, auto&& value) const -> napi::value<number_tag> {
-			return napi::value<number_tag>::make(this->environment(), Numeric{std::forward<decltype(value)>(value)});
+			return napi::value<number_tag>::make(environment(), Numeric{std::forward<decltype(value)>(value)});
 		}
 
 		// bigint
@@ -57,18 +59,18 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 
 		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, auto&& value) const
 			-> js::referenceable_value<napi::value<bigint_tag>> {
-			return js::referenceable_value{napi::value<bigint_tag>::make(this->environment(), bigint{std::forward<decltype(value)>(value)})};
+			return js::referenceable_value{napi::value<bigint_tag>::make(environment(), bigint{std::forward<decltype(value)>(value)})};
 		}
 
 		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, const bigint& value) const
 			-> js::referenceable_value<napi::value<bigint_tag>> {
-			return js::referenceable_value{napi::value<bigint_tag>::make(this->environment(), value)};
+			return js::referenceable_value{napi::value<bigint_tag>::make(environment(), value)};
 		}
 
 		template <class Numeric>
 		auto operator()(bigint_tag_of<Numeric> /*tag*/, visit_holder /*visit*/, auto&& value) const
 			-> js::referenceable_value<napi::value<bigint_tag>> {
-			return js::referenceable_value{napi::value<bigint_tag>::make(this->environment(), Numeric{std::forward<decltype(value)>(value)})};
+			return js::referenceable_value{napi::value<bigint_tag>::make(environment(), Numeric{std::forward<decltype(value)>(value)})};
 		}
 
 		// string
@@ -80,7 +82,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 		template <class Char>
 		auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, std::convertible_to<std::basic_string_view<Char>> auto&& value) const
 			-> js::referenceable_value<napi::value<string_tag>> {
-			return js::referenceable_value{napi::value<string_tag>::make(this->environment(), std::basic_string_view<Char>{std::forward<decltype(value)>(value)})};
+			return js::referenceable_value{napi::value<string_tag>::make(environment(), std::basic_string_view<Char>{std::forward<decltype(value)>(value)})};
 		}
 
 		template <class Char>
@@ -92,7 +94,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 		// date
 		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, js_clock::time_point value) const
 			-> js::referenceable_value<napi::value<date_tag>> {
-			return js::referenceable_value{napi::value<date_tag>::make(this->environment(), std::forward<decltype(value)>(value))};
+			return js::referenceable_value{napi::value<date_tag>::make(environment(), std::forward<decltype(value)>(value))};
 		}
 
 		// vectors
@@ -217,16 +219,22 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 };
 
 // Plain napi_value acceptor
+template <>
+struct accept_property_subject<napi_value> : std::type_identity<napi_value> {};
+
 template <class Meta>
-struct accept<Meta, napi_value> : accept_napi_value<Meta, typename Meta::accept_context_type> {
-		using accept_type = accept_napi_value<Meta, typename Meta::accept_context_type>;
+struct accept<Meta, napi_value> : accept_napi_value<typename Meta::accept_context_type> {
+		using accept_type = accept_napi_value<typename Meta::accept_context_type>;
 		using accept_type::accept_type;
 };
 
 // Tagged `napi::value<T>` acceptor
-template <class Meta, class Tag>
-struct accept<Meta, napi::value<Tag>> : accept_napi_value<Meta, typename Meta::accept_context_type> {
-		using accept_type = accept_napi_value<Meta, typename Meta::accept_context_type>;
+template <>
+struct accept_property_subject<napi::value<value_tag>> : std::type_identity<napi_value> {};
+
+template <class Meta>
+struct accept<Meta, napi::value<value_tag>> : accept_napi_value<typename Meta::accept_context_type> {
+		using accept_type = accept_napi_value<typename Meta::accept_context_type>;
 		using accept_type::accept_type;
 };
 

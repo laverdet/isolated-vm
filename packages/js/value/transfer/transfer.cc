@@ -48,20 +48,20 @@ struct transfer_holder : Visit, Accept {
 		template <std::size_t... VisitIndex, std::size_t... AcceptIndex>
 		explicit constexpr transfer_holder(
 			std::index_sequence<VisitIndex...> /*visit_index*/,
-			auto&& visit_args,
+			auto visit_args,
 			std::index_sequence<AcceptIndex...> /*accept_index*/,
-			auto&& accept_args
+			auto accept_args
 		) :
-				Visit{this, std::get<VisitIndex>(std::forward<decltype(visit_args)>(visit_args))...},
-				Accept{this, std::get<AcceptIndex>(std::forward<decltype(accept_args)>(accept_args))...} {}
+				Visit{this, std::get<VisitIndex>(std::move(visit_args))...},
+				Accept{this, std::get<AcceptIndex>(std::move(accept_args))...} {}
 
 	public:
 		// nb: Base class constructors do not perform return value optimization, so `util::elide` will
 		// not work here.
 		template <class... VisitArgs, class... AcceptArgs>
 		explicit constexpr transfer_holder(
-			std::tuple<VisitArgs...>&& visit_args,
-			std::tuple<AcceptArgs...>&& accept_args
+			std::tuple<VisitArgs...> visit_args,
+			std::tuple<AcceptArgs...> accept_args
 		) :
 				transfer_holder{
 					std::make_index_sequence<sizeof...(VisitArgs)>{},
@@ -89,16 +89,25 @@ struct select_transferee_environment<Type, Rest...> : std::decay<Type> {};
 template <class Type, class Wrap, class... VisitArgs, class... AcceptArgs>
 constexpr auto transfer_with(
 	auto&& value,
-	std::tuple<VisitArgs...>&& visit_args,
-	std::tuple<AcceptArgs...>&& accept_args
+	std::tuple<VisitArgs...> visit_args,
+	std::tuple<AcceptArgs...> accept_args
 ) -> Type {
 	using subject_type = std::decay_t<decltype(value)>;
 	using target_type = std::decay_t<Type>;
-	using visit_env = select_transferee_environment_t<std::remove_cvref_t<VisitArgs>...>;
-	using accept_env = select_transferee_environment_t<std::remove_cvref_t<AcceptArgs>...>;
-	using meta_holder = transferee_meta<Wrap, visit_env, subject_type, accept_env, target_type>;
-	using visit_type = visit<meta_holder, subject_type>;
-	using accept_type = accept_next<meta_holder, Type>;
+
+	using visit_context_type = select_transferee_environment_t<std::remove_cvref_t<VisitArgs>...>;
+	using visit_meta_type = visit_meta_holder<
+		visit_context_type,
+		typename visit_subject_for<subject_type>::type,
+		accept_property_subject_t<typename accept_target_for<target_type>::type>>;
+	using visit_type = visit<visit_meta_type, subject_type>;
+
+	using accept_context_type = select_transferee_environment_t<std::remove_cvref_t<AcceptArgs>...>;
+	using accept_meta_type = accept_meta_holder<
+		Wrap,
+		accept_context_type,
+		accept_property_subject_t<typename visit_subject_for<subject_type>::type>>;
+	using accept_type = accept_next<accept_meta_type, Type>;
 
 	transfer_holder<visit_type, accept_type> visit_and_accept{std::move(visit_args), std::move(accept_args)};
 	const visit_type& visit = visit_and_accept;
@@ -180,11 +189,11 @@ constexpr auto transfer_strict(auto&& value, auto&& visit_args, auto&& accept_ar
 // 	[](auto&& value) constexpr -> Type {
 // 		return transfer_with<Type, Wrap>(std::forward<decltype(value)>(value), std::tuple{}, std::tuple{});
 // 	},
-// 	[](auto&& value, auto&& visit_args, auto&& accept_args) constexpr -> Type {
+// 	[](auto&& value, auto visit_args, auto accept_args) constexpr -> Type {
 // 		return transfer_with<Type, Wrap>(
 // 			std::forward<decltype(value)>(value),
-// 			std::forward<decltype(visit_args)>(visit_args),
-// 			std::forward<decltype(accept_args)>(accept_args)
+// 			std::move(visit_args),
+// 			std::move(accept_args)
 // 		);
 // 	},
 // };
@@ -195,34 +204,25 @@ constexpr auto transfer_strict(auto&& value, auto&& visit_args, auto&& accept_ar
 // export template <class Type>
 // constexpr auto transfer_strict = transfer_<Type, accept_pass>;
 
-// Allows the subject or target of `transfer` to pass through a value directly without invoking
-// `visit` or `accept`. For example, as a directly created element of an array.
-export template <class Type, class Tag = value_tag>
-struct forward : util::pointer_facade {
-	public:
-		explicit forward(const Type& value, Tag /*tag*/ = {}) :
-				value_{value} {}
-		explicit forward(Type&& value, Tag /*tag*/ = {}) :
-				value_{std::move(value)} {}
-
-		constexpr auto operator->(this auto&& self) -> auto* { return &self.value_; }
-
-	private:
-		Type value_;
-};
-
-template <class Type, class Tag>
-struct accept<void, forward<Type, Tag>> {
-		constexpr auto operator()(Tag /*tag*/, visit_holder /*visit*/, std::convertible_to<Type> auto&& value) const -> forward<Type, Tag> {
-			return forward<Type, Tag>{std::forward<decltype(value)>(value)};
-		}
-};
-
-template <class Type>
-struct visit<void, forward<Type>> {
-		constexpr auto operator()(auto&& value, const auto& /*accept*/) const {
-			return *std::forward<decltype(value)>(value);
-		}
-};
+// Invoked by `visit` implementations to cast the result of `accept(...)` to the appropriate type.
+// This allows acceptors to return values which are convertible to the accepted type, for example
+// `v8::Local<v8::String>` -> `v8::Local<v8::Value>`.
+export template <class Accept>
+constexpr auto invoke_accept(Accept& accept, auto tag, const auto& visit, auto&& subject) -> accept_target_t<Accept> {
+	using value_type = accept_target_t<Accept>;
+	const auto unwrap = util::overloaded{
+		[](auto&& result) constexpr -> value_type {
+			return value_type(std::forward<decltype(result)>(result));
+		},
+		[]<class Type>(js::referenceable_value<Type> value) -> value_type {
+			return value_type(*value);
+		},
+		[ & ]<class Type, class... Args>(js::deferred_receiver<Type, Args...> receiver) -> value_type {
+			std::move(receiver)(accept, visit, std::forward<decltype(subject)>(subject));
+			return value_type(*receiver);
+		},
+	};
+	return unwrap(accept(tag, visit, std::forward<decltype(subject)>(subject)));
+}
 
 } // namespace js

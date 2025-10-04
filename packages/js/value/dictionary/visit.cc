@@ -1,8 +1,5 @@
 module;
-#include <algorithm>
-#include <string>
 #include <utility>
-#include <variant>
 export module isolated_js:dictionary.visit;
 import :dictionary.helpers;
 import :dictionary.vector_of;
@@ -61,31 +58,6 @@ struct visit<Meta, vector_of<Tag, Value>> : visit_vector_value<Meta, Value> {
 			const visit_type& visitor = *this;
 			return invoke_accept(accept, Tag{}, visitor, std::forward<decltype(value)>(value));
 		}
-};
-
-// Object key lookup for primitive dictionary variants. This should generally only be used for
-// testing, since the subject is basically a C++ heap JSON payload.
-template <class Meta, util::string_literal Key, class Type, class Tag, class KeyType, class Value>
-struct accept_property_value<Meta, Key, Type, vector_of<Tag, std::pair<KeyType, Value>>> {
-	public:
-		explicit constexpr accept_property_value(auto* transfer) :
-				first{transfer},
-				second{transfer} {}
-
-		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, const auto& dictionary) {
-			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) {
-				return visit.first(entry.first, first) == Key;
-			});
-			if (it == dictionary.end()) {
-				return second(undefined_in_tag{}, visit, std::monostate{});
-			} else {
-				return visit.second(it->second, second);
-			}
-		}
-
-	private:
-		accept_next<Meta, std::string> first;
-		accept_next<Meta, Type> second;
 };
 
 } // namespace js

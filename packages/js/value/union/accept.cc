@@ -79,7 +79,7 @@ struct accept<Meta, std::variant<Types...>> {
 		}
 
 		std::tuple<accept_next<Meta, Types>...> second;
-		accept_property_value<Meta, descriptor_type::discriminant, std::string, typename Meta::visit_subject_type> accept_discriminant;
+		accept_property_value<Meta, descriptor_type::discriminant, std::string, typename Meta::visit_property_subject_type> accept_discriminant;
 };
 
 } // namespace js

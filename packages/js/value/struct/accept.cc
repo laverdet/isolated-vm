@@ -38,7 +38,7 @@ struct accept_object_property {
 	private:
 		using member_type = Property::property_type::type;
 		using value_type = std::expected<member_type, undefined_in_tag>;
-		using accept_type = accept_property_value<Meta, Property::property_name, value_type, typename Meta::visit_subject_type>;
+		using accept_type = accept_property_value<Meta, Property::property_name, value_type, typename Meta::visit_property_subject_type>;
 		using setter_type = setter_delegate<typename Property::property_type>;
 
 	public:
