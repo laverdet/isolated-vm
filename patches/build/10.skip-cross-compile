@@ -1,5 +1,5 @@
 diff --git a/config/BUILDCONFIG.gn b/config/BUILDCONFIG.gn
-index 29625fa..4043f62 100644
+index b5c5cb75e..b672b7c68 100644
 --- a/config/BUILDCONFIG.gn
 +++ b/config/BUILDCONFIG.gn
 @@ -69,6 +69,12 @@ if (current_os == "") {
@@ -16,10 +16,10 @@ index 29625fa..4043f62 100644
  # BUILD FLAGS
  # =============================================================================
 diff --git a/config/compiler/BUILD.gn b/config/compiler/BUILD.gn
-index 371eb5c..5460495 100644
+index 502c2dd2c..7c8670749 100644
 --- a/config/compiler/BUILD.gn
 +++ b/config/compiler/BUILD.gn
-@@ -1165,7 +1165,7 @@ config("compiler_cpu_abi") {
+@@ -1204,7 +1204,7 @@ config("compiler_cpu_abi") {
      configs += [ "//build/config/chromeos:compiler_cpu_abi" ]
    }
  
@@ -28,7 +28,7 @@ index 371eb5c..5460495 100644
      # CPU architecture. We may or may not be doing a cross compile now, so for
      # simplicity we always explicitly set the architecture.
      if (current_cpu == "x64") {
-@@ -1500,7 +1500,9 @@ config("compiler_codegen") {
+@@ -1538,7 +1538,9 @@ config("compiler_codegen") {
      # This can be removed once https://bugs.llvm.org/show_bug.cgi?id=40348
      # has been resolved, and -mno-outline is obeyed by the linker during
      # ThinLTO.
@@ -40,7 +40,7 @@ index 371eb5c..5460495 100644
  
    asmflags = cflags
 diff --git a/toolchain/linux/BUILD.gn b/toolchain/linux/BUILD.gn
-index 00e8668..f73e5ae 100644
+index a6e20a05c..721031267 100644
 --- a/toolchain/linux/BUILD.gn
 +++ b/toolchain/linux/BUILD.gn
 @@ -32,6 +32,9 @@ clang_toolchain("clang_arm64") {

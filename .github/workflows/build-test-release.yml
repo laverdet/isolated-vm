@@ -4,7 +4,7 @@ on: [ push ]
 env:
   NODE_HEADERS: 22.0.0
   V8_CONFIGURATION: release
-  V8_REF: 12.8.20
+  V8_REF: 13.5.203
 
 jobs:
   # First, check to see if v8 has been built for each target. If not, then a more powerful `runs-on`

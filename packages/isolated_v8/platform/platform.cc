@@ -52,10 +52,6 @@ auto platform::NumberOfWorkerThreads() -> int {
 	return 0;
 }
 
-auto platform::GetForegroundTaskRunner(v8::Isolate* isolate) -> std::shared_ptr<v8::TaskRunner> {
-	return GetForegroundTaskRunner(isolate, v8::TaskPriority::kUserBlocking);
-}
-
 auto platform::GetForegroundTaskRunner(
 	v8::Isolate* isolate,
 	v8::TaskPriority priority
@@ -72,20 +68,20 @@ auto platform::CreateJobImpl(
 };
 
 auto platform::PostTaskOnWorkerThreadImpl(
-	v8::TaskPriority /*priority*/,
+	v8::TaskPriority priority,
 	std::unique_ptr<v8::Task> task,
 	const v8::SourceLocation& location
 ) -> void {
-	default_platform_->CallOnWorkerThread(std::move(task), location);
+	default_platform_->PostTaskOnWorkerThread(priority, std::move(task), location);
 };
 
 auto platform::PostDelayedTaskOnWorkerThreadImpl(
-	v8::TaskPriority /*priority*/,
+	v8::TaskPriority priority,
 	std::unique_ptr<v8::Task> task,
 	double delay_in_seconds,
 	const v8::SourceLocation& location
 ) -> void {
-	default_platform_->CallDelayedOnWorkerThread(std::move(task), delay_in_seconds, location);
+	default_platform_->PostDelayedTaskOnWorkerThread(priority, std::move(task), delay_in_seconds, location);
 };
 
 auto platform::fill_random_bytes(unsigned char* buffer, size_t length) -> bool {

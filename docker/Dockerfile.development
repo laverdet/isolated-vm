@@ -21,6 +21,7 @@ RUN <<DONE
 		git \
 		jq \
 		libboost-all-dev \
+		libglib2.0-dev \
 		lld-$LLVM_VERSION \
 		lldb-$LLVM_VERSION \
 		locales-all \
@@ -42,6 +43,11 @@ RUN <<DONE
 	ln -fs /lib/"llvm-$LLVM_VERSION"/bin/* /usr/bin/
 	ln -fs /usr/lib/"llvm-$LLVM_VERSION"/lib/clang/"$LLVM_VERSION"/lib/linux/* /lib/aarch64-linux-gnu/
 
+	# v8 build hack
+	CLANG_LIB_DIR="/lib/llvm-$LLVM_VERSION/lib/clang/$LLVM_VERSION/lib/$(uname -m)-unknown-linux-gnu"
+	mkdir "$CLANG_LIB_DIR"
+	ln -s "$CLANG_LIB_DIR/../linux/libclang_rt.builtins-$(uname -m).a" "$CLANG_LIB_DIR/libclang_rt.builtins.a"
+
 	# Preload asan for `node`
 	ln -s /workspace/scripts/node_asan /usr/bin/
 
@@ -55,3 +61,4 @@ RUN <<DONE
 		eval "$(dircolors)"
 	RC
 DONE
+ENV CLANG_BASE_PATH=/lib/llvm-$LLVM_VERSION

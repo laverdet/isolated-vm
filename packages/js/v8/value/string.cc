@@ -43,7 +43,7 @@ auto string::materialize(std::type_identity<std::string> /*tag*/) const -> std::
 	string.resize_and_overwrite((*this)->Length(), [ this ](char* data, auto length) {
 		if (length > 0) {
 			auto* data_uint8 = reinterpret_cast<uint8_t*>(data);
-			(*this)->WriteOneByte(isolate(), data_uint8, 0, length, v8::String::WriteOptions::NO_NULL_TERMINATION);
+			(*this)->WriteOneByteV2(isolate(), 0, length, data_uint8, v8::String::WriteOptions::NO_NULL_TERMINATION);
 		}
 		return length;
 	});
@@ -52,10 +52,10 @@ auto string::materialize(std::type_identity<std::string> /*tag*/) const -> std::
 
 auto string::materialize(std::type_identity<std::u8string> /*tag*/) const -> std::u8string {
 	std::u8string string;
-	string.resize_and_overwrite((*this)->Utf8Length(isolate()), [ this ](char8_t* data, auto length) {
+	string.resize_and_overwrite((*this)->Utf8LengthV2(isolate()), [ this ](char8_t* data, auto length) {
 		if (length > 0) {
 			auto* data_char = reinterpret_cast<char*>(data);
-			(*this)->WriteUtf8(isolate(), data_char, length, nullptr, v8::String::WriteOptions::NO_NULL_TERMINATION);
+			(*this)->WriteUtf8V2(isolate(), data_char, length, v8::String::WriteOptions::NO_NULL_TERMINATION);
 		}
 		return length;
 	});
@@ -67,7 +67,7 @@ auto string::materialize(std::type_identity<std::u16string> /*tag*/) const -> st
 	string.resize_and_overwrite((*this)->Length(), [ this ](char16_t* data, auto length) {
 		if (length > 0) {
 			auto* data_uint16 = reinterpret_cast<uint16_t*>(data);
-			(*this)->Write(isolate(), data_uint16, 0, length, v8::String::WriteOptions::NO_NULL_TERMINATION);
+			(*this)->WriteV2(isolate(), 0, length, data_uint16, v8::String::WriteOptions::NO_NULL_TERMINATION);
 		}
 		return length;
 	});

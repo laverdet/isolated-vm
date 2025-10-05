@@ -8,9 +8,9 @@ V8_REF="$1"
 git checkout --detach "tags/$V8_REF"
 if [ -z ${SKIP_SYNC+-} ]; then
 	if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
-		gclient sync --no-history --shallow --with_branch_heads 1>&2
+		(cd ..; gclient sync --no-history --shallow --with_branch_heads 1>&2)
 	else
-		gclient sync --with_branch_heads 1>&2
+		(cd ..; gclient sync --with_branch_heads 1>&2)
 	fi
 fi
 

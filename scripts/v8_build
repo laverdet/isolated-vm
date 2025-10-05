@@ -37,26 +37,27 @@ GN_ARGS=(
 	treat_warnings_as_errors=false
 	use_custom_libcxx=false
 	v8_enable_backtrace=true
+	v8_enable_conservative_stack_scanning=true
+	v8_enable_direct_handle=true
 	v8_enable_sandbox=true
 	v8_use_external_startup_data=false
 );
-if [ -z ${CLANG_BASE_PATH+-} ]; then
+if [ ${CLANG_BASE_PATH+-} ]; then
+	GN_ARGS+=(clang_base_path="\"$CLANG_BASE_PATH\"")
+else
 	# v8 drops support for gcc wow
 	# https://groups.google.com/a/chromium.org/g/chromium-dev/c/5haWEDpUK6Y/m/LkM8f4CrDAAJ
 	# https://groups.google.com/g/v8-users/c/-vbS2agi1Kw
-	GN_ARGS+=(
-		is_clang=false
-	)
-else
-	GN_ARGS+=(clang_base_path="\"$CLANG_BASE_PATH\"")
+	GN_ARGS+=(is_clang=false)
+fi
+if [ ${WITHOUT_SYSROOT+-} ]; then
+	GN_ARGS+=(use_sysroot=false)
 fi
 
 # Platform flags
 case "$PLATFORM" in
 	darwin)
-		GN_ARGS+=(
-			use_lld=false
-		)
+		GN_ARGS+=(use_lld=false)
 		;;
 
 	linux-musl)

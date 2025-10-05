@@ -53,11 +53,13 @@ RUN <<DONE
 		clang-$LLVM_VERSION \
 		cmake \
 		git \
+		libglib2.0-dev \
 		lld-$LLVM_VERSION \
 		ninja-build \
 		pkg-config \
 	;
 DONE
+ENV CLANG_BASE_PATH=/lib/llvm-$LLVM_VERSION
 ENV LD_LIBRARY_PATH=/usr/lib/llvm-$LLVM_VERSION/lib/clang/$LLVM_VERSION/lib/linux:$LD_LIBRARY_PATH
 ENV PATH=/lib/llvm-$LLVM_VERSION/bin:$PATH
 COPY --from=synced_sources v8 v8
@@ -65,8 +67,15 @@ COPY --from=scripts v8_build .
 ARG REF TARGET
 RUN <<DONE
 	set -eux
+
+	# Idk?
+	CLANG_LIB_DIR="/lib/llvm-$LLVM_VERSION/lib/clang/$LLVM_VERSION/lib/$(uname -m)-unknown-linux-gnu"
+	mkdir "$CLANG_LIB_DIR"
+	ln -s "$CLANG_LIB_DIR/../linux/libclang_rt.builtins-$(uname -m).a" "$CLANG_LIB_DIR/libclang_rt.builtins.a"
+
+	# Make v8
 	cd v8
-	CLANG_BASE_PATH=$(echo /lib/llvm-* | head -n1) /v8_build "out/$REF/$TARGET"
+	WITHOUT_SYSROOT=yikes /v8_build "out/$REF/$TARGET"
 	rm -rf "out/$REF/$TARGET/gen"
 	find out -type f ! -name env ! -name '*.so' ! -name '*.a' ! -name '*.h' -delete
 	find out -type d -empty -delete

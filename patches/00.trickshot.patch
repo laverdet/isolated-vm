@@ -1,8 +1,8 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index a7e9c6af..af099a74 100644
+index 96680594bdd..e791c055d42 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -1291,7 +1291,7 @@ config("toolchain") {
+@@ -1423,7 +1423,7 @@ config("toolchain") {
    # Only targets in this file and its subdirs can depend on this.
    visibility = [ "./*" ]
  
@@ -11,7 +11,7 @@ index a7e9c6af..af099a74 100644
    cflags = []
    ldflags = []
  
-@@ -6475,6 +6475,8 @@ v8_component("v8_libbase") {
+@@ -6551,6 +6551,8 @@ v8_component("v8_libbase") {
      defines = [ "BUILDING_V8_BASE_SHARED" ]
    }
  

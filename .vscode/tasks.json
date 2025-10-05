@@ -35,8 +35,9 @@
       "description": "Which v8 revision to checkout?",
       "options": [
         "12.8.20",
+        "13.5.203",
       ],
-      "default": "component"
+      "default": "13.5.203"
     },
     {
       "type": "pickString",
@@ -129,7 +130,7 @@
 		{
 			"label": "v8: build",
 			"type": "shell",
-			"command": "set -eu; set -a; . $ENV_FILE; export V8_OUT_PATH=$(pwd)/out/$V8_REF/${input:v8_target}; v8_build $V8_OUT_PATH; ivm_write_env V8_OUT_PATH",
+			"command": "set -eu; set -a; . $ENV_FILE; export V8_OUT_PATH=$(pwd)/out/$V8_REF/${input:v8_target}; WITHOUT_SYSROOT=1 v8_build $V8_OUT_PATH; ivm_write_env V8_OUT_PATH",
 			"options": { "cwd": "/v8" },
 			"problemMatcher": [],
 			"presentation": {

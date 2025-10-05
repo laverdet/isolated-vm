@@ -37,13 +37,13 @@ export class job_handle : public v8::JobHandle, public v8::JobDelegate {
 
 // Once per process, performs initialization of v8. Process-wide shared state is managed in this
 // class.
-export class platform : util::non_moveable, public v8::Platform {
+export class platform final : util::non_moveable, public v8::Platform {
 	public:
 		class handle;
 		using platform_scheduler = scheduler::layer<{.root = true}>;
 
 		platform();
-		~platform() override;
+		~platform() final;
 		auto scheduler() -> platform_scheduler& { return scheduler_; }
 
 		auto GetTracingController() -> v8::TracingController* final;
@@ -54,9 +54,6 @@ export class platform : util::non_moveable, public v8::Platform {
 		auto CurrentClockTimeMilliseconds() -> int64_t final;
 		auto CurrentClockTimeMillis() -> double final;
 
-		auto GetForegroundTaskRunner(
-			v8::Isolate* isolate
-		) -> std::shared_ptr<v8::TaskRunner> final;
 		auto GetForegroundTaskRunner(
 			v8::Isolate* isolate,
 			v8::TaskPriority priority
