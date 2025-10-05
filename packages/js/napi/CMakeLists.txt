@@ -16,10 +16,12 @@ target_sources(napi_js
 		support/api.cc
 		support/callback_info.cc
 		support/callback.cc
+		support/container.cc
 		support/environment.cc
 		support/finalizer.cc
 		support/handle_scope.cc
 		support/scheduler.cc
+		support/utility.cc
 		value/include/array.cc
 		value/include/dictionary.cc
 		value/include/external.cc

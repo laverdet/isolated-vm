@@ -9,11 +9,12 @@ import ivm.utility;
 namespace js {
 
 // `Meta` type for `accept` implementations
-export template <class Wrap, class Context, class Subject>
+export template <class Wrap, class Context, class Subject, class Reference>
 struct accept_meta_holder {
 		using accept_context_type = Context;
 		using accept_wrap_type = Wrap;
 		using visit_property_subject_type = Subject;
+		using visit_subject_reference = Reference;
 };
 
 // `accept` is the target of `visit`
@@ -104,5 +105,23 @@ struct accept_property_value<Meta, Key, Type, void> {
 		accept_next<Meta, std::string> first;
 		accept_next<Meta, Type> second;
 };
+
+// Construct a map to store references to visited values. If the visitor has no reference types then
+// there can be no map.
+template <class Reference, template <class> class Map>
+struct reference_map;
+
+struct null_reference_map {
+		explicit null_reference_map(auto&&... /*args*/) {}
+};
+
+export template <class Reference, template <class> class Map>
+using reference_map_t = reference_map<Reference, Map>::type;
+
+template <class Reference, template <class> class Map>
+struct reference_map : std::type_identity<Map<Reference>> {};
+
+template <template <class> class Map>
+struct reference_map<void, Map> : std::type_identity<null_reference_map> {};
 
 } // namespace js

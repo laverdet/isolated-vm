@@ -1,4 +1,5 @@
 module;
+#include <cassert>
 #include <concepts>
 #include <stdexcept>
 #include <tuple>
@@ -85,6 +86,14 @@ struct select_transferee_environment<> : std::type_identity<void> {};
 template <class Type, class... Rest>
 struct select_transferee_environment<Type, Rest...> : std::decay<Type> {};
 
+// Lookp up visitor `reference_subject_type`
+template <class Visit>
+struct visit_subject_reference : std::type_identity<void> {};
+
+template <class Visit>
+	requires requires { typename Visit::reference_subject_type; }
+struct visit_subject_reference<Visit> : std::type_identity<typename Visit::reference_subject_type> {};
+
 // Transfer a JavaScript value from one domain to another
 template <class Type, class Wrap, class... VisitArgs, class... AcceptArgs>
 constexpr auto transfer_with(
@@ -106,7 +115,8 @@ constexpr auto transfer_with(
 	using accept_meta_type = accept_meta_holder<
 		Wrap,
 		accept_context_type,
-		accept_property_subject_t<typename visit_subject_for<subject_type>::type>>;
+		accept_property_subject_t<typename visit_subject_for<subject_type>::type>,
+		typename visit_subject_reference<visit_type>::type>;
 	using accept_type = accept_next<accept_meta_type, Type>;
 
 	transfer_holder<visit_type, accept_type> visit_and_accept{std::move(visit_args), std::move(accept_args)};
@@ -204,6 +214,35 @@ constexpr auto transfer_strict(auto&& value, auto&& visit_args, auto&& accept_ar
 // export template <class Type>
 // constexpr auto transfer_strict = transfer_<Type, accept_pass>;
 
+// Requirement helpers for `invoke_accept`
+template <class Type>
+concept is_mappable = requires {
+	typename std::remove_cvref_t<Type>::mapped_type;
+};
+
+template <class Type>
+concept is_reference_map_provider = requires(Type accept) {
+	{ accept.reference_map() } -> is_mappable;
+};
+
+// Invoked by `visit` before accept, and maybe before type checking, to lookup existing references.
+export template <class Accept>
+constexpr auto lookup_or_visit(auto /*subject*/, Accept& /*accept*/, auto visit) -> accept_target_t<Accept> {
+	return visit();
+}
+
+export template <is_reference_map_provider Accept>
+constexpr auto lookup_or_visit(auto subject, Accept& accept, auto visit) -> accept_target_t<Accept> {
+	using value_type = accept_target_t<Accept>;
+	auto& map = accept.reference_map();
+	auto it = map.find(subject);
+	if (it == map.end()) {
+		return visit();
+	} else {
+		return Accept::reaccept(util::type<value_type>, it->second);
+	}
+}
+
 // Invoked by `visit` implementations to cast the result of `accept(...)` to the appropriate type.
 // This allows acceptors to return values which are convertible to the accepted type, for example
 // `v8::Local<v8::String>` -> `v8::Local<v8::Value>`.
@@ -220,6 +259,30 @@ constexpr auto invoke_accept(Accept& accept, auto tag, const auto& visit, auto&&
 		[ & ]<class Type, class... Args>(js::deferred_receiver<Type, Args...> receiver) -> value_type {
 			std::move(receiver)(accept, visit, std::forward<decltype(subject)>(subject));
 			return value_type(*receiver);
+		},
+	};
+	return unwrap(accept(tag, visit, std::forward<decltype(subject)>(subject)));
+}
+
+// This version uses the acceptor's reference map to return existing instances for the same given
+// subject.
+export template <is_reference_map_provider Accept>
+constexpr auto invoke_accept(Accept& accept, auto tag, const auto& visit, auto&& subject) -> accept_target_t<Accept> {
+	using value_type = accept_target_t<Accept>;
+	const auto unwrap = util::overloaded{
+		[](auto&& result) -> value_type {
+			return value_type(std::forward<decltype(result)>(result));
+		},
+		[ & ]<class Type>(js::referenceable_value<Type> value) -> value_type {
+			auto [ iterator, inserted ] = accept.reference_map().try_emplace(subject, *value);
+			assert(inserted);
+			return Accept::reaccept(util::type<value_type>, iterator->second);
+		},
+		[ & ]<class Type, class... Args>(js::deferred_receiver<Type, Args...> receiver) -> value_type {
+			auto [ iterator, inserted ] = accept.reference_map().try_emplace(subject, *receiver);
+			assert(inserted);
+			std::move(receiver)(accept, visit, std::forward<decltype(subject)>(subject));
+			return Accept::reaccept(util::type<value_type>, iterator->second);
 		},
 	};
 	return unwrap(accept(tag, visit, std::forward<decltype(subject)>(subject)));

@@ -18,6 +18,7 @@ target_sources(ivm_utility
 		utility/hash.cc
 		utility/string_literal.cc
 		utility/utility.cc
+		utility/virtual_covariant.cc
 		variant.cc
 )
 # TODO: Only used for libc++ missing features on macOS

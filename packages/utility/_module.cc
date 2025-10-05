@@ -15,3 +15,4 @@ export import :tuple;
 export import :type_traits;
 export import :utility;
 export import :variant;
+export import :virtual_covariant;

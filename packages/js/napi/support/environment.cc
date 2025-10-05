@@ -1,8 +1,10 @@
 module;
 #include <memory>
+#include <stdexcept>
 export module napi_js:environment;
 import :api;
 import :finalizer;
+import :utility;
 import ivm.utility;
 
 namespace js::napi {
@@ -12,12 +14,28 @@ namespace js::napi {
 export class environment {
 	public:
 		explicit environment(napi_env env) :
-				env_{env} {}
+				env_{env},
+				uses_direct_handles_{[ & ]() -> bool {
+					direct_address_equal direct_equal{};
+					indirect_address_equal indirect_equal{};
+					auto* array = napi::invoke(napi_create_array_with_length, env, 1);
+					napi::invoke0(napi_set_element, env, array, 0, array);
+					auto* result = napi::invoke(napi_get_element, env, array, 0);
+					if (direct_equal(array, result)) {
+						return true;
+					} else if (indirect_equal(array, result)) {
+						return false;
+					} else {
+						throw std::runtime_error{"Exotic napi handle behavior detected"};
+					}
+				}()} {}
 
 		[[nodiscard]] explicit operator napi_env() const { return env_; }
+		[[nodiscard]] auto uses_direct_handles() const -> bool { return uses_direct_handles_; }
 
 	private:
 		napi_env env_;
+		bool uses_direct_handles_;
 };
 
 // CRTP helper to instantiate an environment and attach it to the napi context

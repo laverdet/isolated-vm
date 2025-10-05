@@ -1,9 +1,11 @@
 module;
+#include <functional>
 #include <string_view>
 #include <utility>
 export module napi_js:visit;
 import :api;
 import :bound_value;
+import :container;
 import :dictionary;
 import :environment;
 import :external;
@@ -16,97 +18,181 @@ import ivm.utility;
 namespace js {
 using namespace napi;
 
-// Napi value visitor for property names
-template <class Environment>
-struct visit_napi_property : napi::environment_scope<Environment> {
+// Visitor which may visit only property names. `symbol` should probably be rethought since they are
+// not cloneable.
+template <class Visit>
+struct visit_napi_property_name {
 	public:
-		visit_napi_property(auto* /*transfer*/, Environment& env) :
-				napi::environment_scope<Environment>{env} {}
+		explicit visit_napi_property_name(const Visit& visit) : visit_{visit} {}
 
 		auto operator()(napi_value value, auto& accept) const -> decltype(auto) {
-			auto typeof = napi::invoke(napi_typeof, napi_env{*this}, value);
-			return accept_property_name(value, typeof, accept);
+			return lookup_or_visit(value, accept, [ & ]() -> decltype(auto) {
+				switch (napi::invoke(napi_typeof, napi_env{visit_.get()}, value)) {
+					case napi_number:
+						return visit_(napi::value<number_tag>::from(value), accept);
+					case napi_string:
+						return visit_(napi::value<string_tag>::from(value), accept);
+					case napi_symbol:
+						return visit_(napi::value<symbol_tag>::from(value), accept);
+					default:
+						std::unreachable();
+				}
+			});
+		}
+
+		[[nodiscard]] auto environment() const -> auto& { return visit_.get().environment(); }
+
+	private:
+		std::reference_wrapper<const Visit> visit_;
+};
+
+// Base napi visitor implementing all functionality. Napi doesn't give us granular information like
+// "is this a latin1 string" and all checks must be made at once. So it's structured it great deal
+// differently than the v8 visitor.
+template <class Environment>
+struct visit_napi_value : napi::environment_scope<Environment> {
+	private:
+		struct skip_lookup {};
+
+	public:
+		using reference_subject_type = napi_value;
+
+		visit_napi_value(auto* /*transfer*/, Environment& env) :
+				napi::environment_scope<Environment>{env},
+				equal_{env} {}
+
+		// If the private `skip_lookup` operation is defined: this public operation will first perform a
+		// reference map lookup, then delegate to the private operation if not found.
+		template <auto_tag Tag>
+		auto operator()(value<Tag> subject, auto& accept) const -> decltype(auto)
+			requires std::invocable<const visit_napi_value&, skip_lookup, value<Tag>, decltype(accept)> {
+			return lookup_or_visit(subject, accept, [ & ]() -> decltype(auto) {
+				return (*this)(skip_lookup{}, subject, accept);
+			});
+		}
+
+		// Visit operations for non-refable types.
+		auto operator()(value<null_tag> value, auto& accept) const -> decltype(auto) {
+			null_ = value;
+			return accept_tagged(value, accept);
+		}
+
+		auto operator()(value<undefined_tag> value, auto& accept) const -> decltype(auto) {
+			undefined_ = value;
+			return accept_tagged(value, accept);
+		}
+
+		auto operator()(value<boolean_tag> value, auto& accept) const -> decltype(auto) {
+			return accept_tagged(value, accept);
 		}
 
 		auto operator()(value<number_tag> value, auto& accept) const -> decltype(auto) {
 			return accept_tagged(napi::value<number_tag_of<double>>::from(value), accept);
 		}
 
-		auto operator()(value<string_tag> value, auto& accept) const -> decltype(auto) {
-			return accept_tagged(napi::value<string_tag_of<char16_t>>::from(value), accept);
-		}
-
 		auto operator()(value<symbol_tag> value, auto& accept) const -> decltype(auto) {
 			return accept_tagged(value, accept);
 		}
 
-	protected:
-		auto accept_property_name(napi_value value, napi_valuetype typeof, auto& accept) const -> decltype(auto) {
-			switch (typeof) {
-				case napi_number:
-					return accept_tagged(napi::value<number_tag_of<double>>::from(value), accept);
-				case napi_string:
-					return accept_tagged(napi::value<string_tag_of<char16_t>>::from(value), accept);
-				case napi_symbol:
-					return accept_tagged(napi::value<symbol_tag>::from(value), accept);
-				default:
-					std::unreachable();
+		// General purpose visit operation which actually performs the type check
+		auto operator()(napi_value value, auto& accept) const -> decltype(auto) {
+			// Check known address values before the map lookup
+			if (equal_(value, undefined_)) {
+				return (*this)(napi::value<undefined_tag>::from(value), accept);
+			} else if (equal_(value, null_)) {
+				return (*this)(napi::value<null_tag>::from(value), accept);
 			}
+
+			// Check the reference map, and lookup type via napi
+			return lookup_or_visit(value, accept, [ & ]() -> decltype(auto) {
+				auto typeof = napi::invoke(napi_typeof, napi_env{*this}, value);
+				switch (typeof) {
+					case napi_undefined:
+						return (*this)(napi::value<undefined_tag>::from(value), accept);
+					case napi_null:
+						return (*this)(napi::value<null_tag>::from(value), accept);
+					case napi_boolean:
+						return (*this)(napi::value<boolean_tag>::from(value), accept);
+					case napi_number:
+						return (*this)(napi::value<number_tag>::from(value), accept);
+					case napi_string:
+						return (*this)(skip_lookup{}, napi::value<string_tag>::from(value), accept);
+					case napi_symbol:
+						return (*this)(napi::value<symbol_tag>::from(value), accept);
+					case napi_object:
+						{
+							if (napi::invoke(napi_is_array, napi_env{*this}, value)) {
+								return (*this)(skip_lookup{}, napi::value<list_tag>::from(value), accept);
+							} else if (napi::invoke(napi_is_date, napi_env{*this}, value)) {
+								return (*this)(skip_lookup{}, napi::value<date_tag>::from(value), accept);
+							} else if (napi::invoke(napi_is_promise, napi_env{*this}, value)) {
+								return (*this)(skip_lookup{}, napi::value<promise_tag>::from(value), accept);
+							}
+							return (*this)(skip_lookup{}, napi::value<object_tag>::from(value), accept);
+						}
+					case napi_function:
+						return (*this)(skip_lookup{}, napi::value<function_tag>::from(value), accept);
+					case napi_external:
+						return (*this)(skip_lookup{}, napi::value<external_tag>::from(value), accept);
+					case napi_bigint:
+						return (*this)(skip_lookup{}, napi::value<bigint_tag>::from(value), accept);
+				}
+			});
 		}
 
+	private:
+		// Private visit operations for refable types
+		auto operator()(skip_lookup /*skip*/, value<string_tag> value, auto& accept) const -> decltype(auto) {
+			return accept_tagged(napi::value<string_tag_of<char16_t>>::from(value), accept);
+		}
+
+		auto operator()(skip_lookup /*skip*/, value<date_tag> value, auto& accept) const -> decltype(auto) {
+			return accept_tagged(value, accept);
+		}
+
+		auto operator()(skip_lookup /*skip*/, value<promise_tag> value, auto& accept) const -> decltype(auto) {
+			return accept_tagged(value, accept);
+		}
+
+		auto operator()(skip_lookup /*skip*/, value<external_tag> value, auto& accept) const -> decltype(auto) {
+			return accept_tagged(value, accept);
+		}
+
+		auto operator()(skip_lookup /*skip*/, value<function_tag> value, auto& accept) const -> decltype(auto) {
+			return accept_tagged(value, accept);
+		}
+
+		auto operator()(skip_lookup /*skip*/, value<bigint_tag> value, auto& accept) const -> decltype(auto) {
+			return accept_tagged(napi::value<bigint_tag_of<bigint>>::from(value), accept);
+		}
+
+		template <class Visit>
+		auto operator()(this const Visit& self, skip_lookup /*skip*/, value<list_tag> subject, auto& accept) -> decltype(auto) {
+			// nb: It is intentional that `dictionary_tag` is bound. It handles sparse arrays.
+			auto value = napi::bound_value{napi_env{self}, napi::value<dictionary_tag>::from(subject)};
+			auto visit_entry = std::pair<visit_napi_property_name<Visit>, const Visit&>{self, self};
+			return invoke_accept(accept, list_tag{}, visit_entry, value);
+		}
+
+		template <class Visit>
+		auto operator()(this const Visit& self, skip_lookup /*skip*/, value<object_tag> subject, auto& accept) -> decltype(auto) {
+			auto value = napi::bound_value{napi_env{self}, napi::value<dictionary_tag>::from(subject)};
+			auto visit_entry = std::pair<visit_napi_property_name<Visit>, const Visit&>{self, self};
+			return invoke_accept(accept, dictionary_tag{}, visit_entry, value);
+		}
+
+		// Convenience function which wraps in `napi::bound_value` and invokes `accept`.
 		template <auto_tag Tag>
 		auto accept_tagged(value<Tag> value, auto& accept) const -> decltype(auto) {
 			return invoke_accept(accept, Tag{}, *this, napi::bound_value{napi_env{*this}, value});
 		}
+
+		napi::address_equal equal_;
+		mutable napi_value undefined_{};
+		mutable napi_value null_{};
 };
 
-// Napi visitor for all values
-template <class Environment>
-struct visit_napi_value : visit_napi_property<Environment> {
-		using visit_property_type = visit_napi_property<Environment>;
-		using visit_property_type::accept_property_name;
-		using visit_property_type::accept_tagged;
-		using visit_property_type::visit_napi_property;
-		using visit_property_type::operator();
-
-		auto operator()(napi_value value, auto& accept) const -> decltype(auto) {
-			auto typeof = napi::invoke(napi_typeof, napi_env{*this}, value);
-			switch (typeof) {
-				case napi_number:
-				case napi_string:
-				case napi_symbol:
-					return accept_property_name(value, typeof, accept);
-
-				case napi_boolean:
-					return accept_tagged(napi::value<boolean_tag>::from(value), accept);
-				case napi_bigint:
-					return accept_tagged(napi::value<bigint_tag_of<bigint>>::from(value), accept);
-				case napi_object:
-					{
-						auto visit_entry = std::pair<const visit_property_type&, const visit_napi_value&>{*this, *this};
-						if (napi::invoke(napi_is_array, napi_env{*this}, value)) {
-							// nb: It is intentional that `dictionary_tag` is bound. It handles sparse arrays.
-							return invoke_accept(accept, list_tag{}, visit_entry, napi::bound_value{napi_env{*this}, napi::value<dictionary_tag>::from(value)});
-						} else if (napi::invoke(napi_is_date, napi_env{*this}, value)) {
-							return accept_tagged(napi::value<date_tag>::from(value), accept);
-						} else if (napi::invoke(napi_is_promise, napi_env{*this}, value)) {
-							return accept_tagged(napi::value<promise_tag>::from(value), accept);
-						}
-						return invoke_accept(accept, dictionary_tag{}, visit_entry, napi::bound_value{napi_env{*this}, napi::value<dictionary_tag>::from(value)});
-					}
-				case napi_external:
-					return accept_tagged(napi::value<external_tag>::from(value), accept);
-				case napi_null:
-					return accept_tagged(napi::value<null_tag>::from(value), accept);
-				case napi_undefined:
-					return accept_tagged(napi::value<undefined_tag>::from(value), accept);
-				case napi_function:
-					return accept_tagged(napi::value<function_tag>::from(value), accept);
-			}
-		}
-};
-
-// Napi value visitor entries
+// Napi value visitor entry
 template <class Meta>
 struct visit<Meta, napi_value> : visit_napi_value<typename Meta::visit_context_type> {
 		using visit_napi_value<typename Meta::visit_context_type>::visit_napi_value;

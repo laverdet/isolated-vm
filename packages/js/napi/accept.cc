@@ -7,6 +7,7 @@ module;
 export module napi_js:accept;
 import :api;
 import :bound_value;
+import :container;
 import :dictionary;
 import :environment;
 import :function;
@@ -20,12 +21,30 @@ using namespace napi;
 
 // Non-recursive primitive / intrinsic acceptor which returns varying `value<T>` types depending on
 // the subject.
-template <class Environment>
+template <class Environment, class Subject>
+struct accept_napi_value;
+
+template <class Meta>
+using accept_napi_value_with = accept_napi_value<
+	typename Meta::accept_context_type,
+	typename Meta::visit_property_subject_type>;
+
+template <class Environment, class Subject>
 struct accept_napi_value : napi::environment_scope<Environment> {
+	public:
 		using napi::environment_scope<Environment>::environment;
 
 		explicit accept_napi_value(auto* /*transfer*/, auto& env) :
-				napi::environment_scope<Environment>{env} {}
+				napi::environment_scope<Environment>{env},
+				reference_map_{env} {}
+
+		// reference provider
+		template <class Tag>
+		static auto reaccept(std::type_identity<napi::value<Tag>> /*type*/, napi_value value) -> napi::value<Tag> {
+			return napi::value<Tag>::from(value);
+		}
+
+		auto reference_map() -> auto& { return reference_map_; }
 
 		// undefined & null
 		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> napi::value<undefined_tag> {
@@ -216,6 +235,12 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 				}
 			};
 		}
+
+	private:
+		template <class Type>
+		using map_type = napi::value_map<Type>;
+
+		reference_map_t<Subject, map_type> reference_map_;
 };
 
 // Plain napi_value acceptor
@@ -223,8 +248,8 @@ template <>
 struct accept_property_subject<napi_value> : std::type_identity<napi_value> {};
 
 template <class Meta>
-struct accept<Meta, napi_value> : accept_napi_value<typename Meta::accept_context_type> {
-		using accept_type = accept_napi_value<typename Meta::accept_context_type>;
+struct accept<Meta, napi_value> : accept_napi_value_with<Meta> {
+		using accept_type = accept_napi_value_with<Meta>;
 		using accept_type::accept_type;
 };
 
@@ -233,8 +258,8 @@ template <>
 struct accept_property_subject<napi::value<value_tag>> : std::type_identity<napi_value> {};
 
 template <class Meta>
-struct accept<Meta, napi::value<value_tag>> : accept_napi_value<typename Meta::accept_context_type> {
-		using accept_type = accept_napi_value<typename Meta::accept_context_type>;
+struct accept<Meta, napi::value<value_tag>> : accept_napi_value_with<Meta> {
+		using accept_type = accept_napi_value_with<Meta>;
 		using accept_type::accept_type;
 };
 
