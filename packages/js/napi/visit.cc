@@ -31,6 +31,8 @@ struct visit_napi_property_name {
 					case napi_number:
 						return visit_(napi::value<number_tag>::from(value), accept);
 					case napi_string:
+						// TODO: This looks up in the reference map twice. This should actually use
+						// `make_property_name`.
 						return visit_(napi::value<string_tag>::from(value), accept);
 					case napi_symbol:
 						return visit_(napi::value<symbol_tag>::from(value), accept);
@@ -64,10 +66,10 @@ struct visit_napi_value : napi::environment_scope<Environment> {
 		// If the private `skip_lookup` operation is defined: this public operation will first perform a
 		// reference map lookup, then delegate to the private operation if not found.
 		template <auto_tag Tag>
-		auto operator()(value<Tag> subject, auto& accept) const -> decltype(auto)
-			requires std::invocable<const visit_napi_value&, skip_lookup, value<Tag>, decltype(accept)> {
+		auto operator()(this const auto& self, value<Tag> subject, auto& accept) -> decltype(auto)
+			requires requires { self(skip_lookup{}, subject, accept); } {
 			return lookup_or_visit(subject, accept, [ & ]() -> decltype(auto) {
-				return (*this)(skip_lookup{}, subject, accept);
+				return self(skip_lookup{}, subject, accept);
 			});
 		}
 
@@ -195,6 +197,11 @@ struct visit_napi_value : napi::environment_scope<Environment> {
 // Napi value visitor entry
 template <class Meta>
 struct visit<Meta, napi_value> : visit_napi_value<typename Meta::visit_context_type> {
+		using visit_napi_value<typename Meta::visit_context_type>::visit_napi_value;
+};
+
+template <class Meta>
+struct visit<Meta, value<value_tag>> : visit_napi_value<typename Meta::visit_context_type> {
 		using visit_napi_value<typename Meta::visit_context_type>::visit_napi_value;
 };
 

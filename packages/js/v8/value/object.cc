@@ -38,7 +38,7 @@ object::iterator_transform::iterator_transform(
 
 auto object::iterator_transform::operator()(v8::Local<v8::Value> key) const -> value_type {
 	auto value = object_->GetRealNamedProperty(context_, key.As<v8::Name>()).ToLocalChecked();
-	return std::pair{key, value};
+	return std::pair{key.As<v8::Primitive>(), value};
 }
 
 } // namespace js::iv8

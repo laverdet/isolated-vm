@@ -6,9 +6,11 @@ module;
 #include <concepts>
 #include <cstdint>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 export module v8_js:accept;
 import :date;
+import :hash;
 import :lock;
 import :string;
 import isolated_js;
@@ -18,6 +20,7 @@ import v8;
 namespace js {
 
 // Base class for primitive acceptors. These require only an isolate lock.
+template <class Subject>
 struct accept_v8_primitive {
 	public:
 		accept_v8_primitive() = delete;
@@ -25,6 +28,14 @@ struct accept_v8_primitive {
 				isolate_{lock.isolate()} {}
 
 		[[nodiscard]] auto isolate() const -> v8::Isolate* { return isolate_; }
+
+		// reference provider
+		template <class Type>
+		static auto reaccept(std::type_identity<v8::Local<Type>> /*type*/, v8::Local<v8::Value> value) -> v8::Local<Type> {
+			return value.As<Type>();
+		}
+
+		auto reference_map() -> auto& { return reference_map_; }
 
 		// undefined & null
 		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> v8::Local<v8::Primitive> {
@@ -61,53 +72,44 @@ struct accept_v8_primitive {
 
 	private:
 		v8::Isolate* isolate_;
-};
 
-// Explicit boolean acceptor
-template <>
-struct accept<void, v8::Local<v8::Boolean>> : accept_v8_primitive {
-		using accept_v8_primitive::accept_v8_primitive;
-		auto operator()(boolean_tag tag, const auto& visit, auto&& value) const -> v8::Local<v8::Boolean> {
-			return accept_v8_primitive::operator()(tag, visit, std::forward<decltype(value)>(value));
-		}
-};
+		template <class Type>
+		using map_type = std::unordered_map<v8::Local<v8::Value>, Type, iv8::address_hash>;
 
-// Explicit numeric acceptor
-template <>
-struct accept<void, v8::Local<v8::Number>> : accept_v8_primitive {
-		using accept_v8_primitive::accept_v8_primitive;
-		auto operator()(auto_tag<number_tag> auto tag, const auto& visit, auto&& value) const -> v8::Local<v8::Number> {
-			return accept_v8_primitive::operator()(tag, visit, std::forward<decltype(value)>(value));
-		}
+		reference_map_t<Subject, map_type> reference_map_;
 };
 
 // Explicit string acceptor
-template <>
-struct accept<void, v8::Local<v8::String>> : accept_v8_primitive {
-		using accept_v8_primitive::accept_v8_primitive;
-		auto operator()(auto_tag<string_tag> auto tag, const auto& visit, auto&& value) const
-			-> js::referenceable_value<v8::Local<v8::String>> {
-			return accept_v8_primitive::operator()(tag, visit, std::forward<decltype(value)>(value));
-		}
+template <class Meta>
+struct accept<Meta, v8::Local<v8::String>> : accept_v8_primitive<typename Meta::visit_property_subject_type> {
+		using accept_type = accept_v8_primitive<typename Meta::visit_property_subject_type>;
+		explicit accept(auto* /*transfer*/, const js::iv8::isolate_lock_witness& lock) :
+				accept_type{lock} {}
 };
 
-// Generic acceptor for most values
-template <>
-struct accept<void, v8::Local<v8::Value>> : accept_v8_primitive {
+// Generic acceptor for most values. These require a context lock.
+template <class Subject>
+struct accept_v8_value : accept_v8_primitive<Subject> {
 	public:
-		accept() = delete;
-		explicit accept(const iv8::context_lock_witness& lock) :
-				accept_v8_primitive{lock},
+		using accept_type = accept_v8_primitive<Subject>;
+		explicit accept_v8_value(const iv8::context_lock_witness& lock) :
+				accept_type{lock},
 				context_{lock.context()} {}
 
-		[[nodiscard]] auto context() const -> v8::Local<v8::Context> { return context_; }
-
 		// accept all primitives
-		using accept_v8_primitive::operator();
+		using accept_type::operator();
 
 		// hacky function template acceptor
 		auto operator()(function_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::Function> value) const -> v8::Local<v8::Function> {
 			return value;
+		}
+
+		// date
+		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, auto&& value) const
+			-> js::referenceable_value<v8::Local<v8::Date>> {
+			return js::referenceable_value<v8::Local<v8::Date>>{
+				iv8::date::make(context_, std::forward<decltype(value)>(value)),
+			};
 		}
 
 		// array
@@ -129,13 +131,6 @@ struct accept<void, v8::Local<v8::Value>> : accept_v8_primitive {
 		}
 
 		// object
-		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, auto&& value) const
-			-> js::referenceable_value<v8::Local<v8::Date>> {
-			return js::referenceable_value<v8::Local<v8::Date>>{
-				iv8::date::make(context_, std::forward<decltype(value)>(value)),
-			};
-		}
-
 		auto operator()(this auto& self, dictionary_tag /*tag*/, const auto& visit, auto&& dictionary)
 			-> js::deferred_receiver<v8::Local<v8::Object>, decltype(self), decltype(visit), decltype(dictionary)> {
 			return {
@@ -157,10 +152,17 @@ struct accept<void, v8::Local<v8::Value>> : accept_v8_primitive {
 		v8::Local<v8::Context> context_;
 };
 
+template <class Meta>
+struct accept<Meta, v8::Local<v8::Value>> : accept_v8_value<typename Meta::visit_property_subject_type> {
+		using accept_type = accept_v8_value<typename Meta::visit_property_subject_type>;
+		constexpr accept(auto* /*transfer*/, const iv8::context_lock_witness& lock) :
+				accept_type{lock} {}
+};
+
 // A `MaybeLocal` also accepts `undefined`, similar to `std::optional`.
-template <class Type>
-struct accept<void, v8::MaybeLocal<Type>> : accept<void, v8::Local<Type>> {
-		using accept_type = accept<void, v8::Local<Type>>;
+template <class Meta, class Type>
+struct accept<Meta, v8::MaybeLocal<Type>> : accept<Meta, v8::Local<Type>> {
+		using accept_type = accept<Meta, v8::Local<Type>>;
 		using accept_type::accept_type;
 
 		using accept_type::operator();
@@ -170,12 +172,14 @@ struct accept<void, v8::MaybeLocal<Type>> : accept<void, v8::Local<Type>> {
 };
 
 // return value
-template <>
-struct accept<void, v8::ReturnValue<v8::Value>> : accept<void, v8::Local<v8::Value>> {
+template <class Meta>
+struct accept<Meta, v8::ReturnValue<v8::Value>> : accept<Meta, v8::Local<v8::Value>> {
+		using accept_type = accept<Meta, v8::Local<v8::Value>>;
+		using accept_type::accept_type;
 		using value_type = v8::ReturnValue<v8::Value>;
-		using accept_type = accept<void, v8::Local<v8::Value>>;
-		accept(const iv8::context_lock_witness& lock, value_type return_value) :
-				accept_type{lock},
+
+		accept(auto* transfer, const iv8::context_lock_witness& lock, value_type return_value) :
+				accept_type{transfer, lock},
 				return_value_{return_value} {}
 
 		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, const auto& value) -> value_type {
@@ -200,7 +204,7 @@ struct accept<void, v8::ReturnValue<v8::Value>> : accept<void, v8::Local<v8::Val
 		}
 
 		auto operator()(auto_tag auto tag, const auto& visit, auto&& value) -> value_type
-			requires std::invocable<accept_type&, decltype(visit), decltype(tag), decltype(value)> {
+			requires std::invocable<const accept_type&, decltype(visit), decltype(tag), decltype(value)> {
 			return_value_.Set(accept_type::operator()(tag, visit, std::forward<decltype(value)>(value)));
 			return return_value_;
 		}

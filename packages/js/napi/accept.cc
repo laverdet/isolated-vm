@@ -19,8 +19,7 @@ import ivm.utility;
 namespace js {
 using namespace napi;
 
-// Non-recursive primitive / intrinsic acceptor which returns varying `value<T>` types depending on
-// the subject.
+// Generic napi acceptor which accepts all value types.
 template <class Environment, class Subject>
 struct accept_napi_value;
 

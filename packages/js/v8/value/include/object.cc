@@ -16,7 +16,9 @@ export class object
 			public handle_with_context,
 			public materializable<object> {
 	public:
-		using value_type = std::pair<v8::Local<v8::Value>, v8::Local<v8::Value>>;
+		using key_type = v8::Local<v8::Primitive>;
+		using mapped_type = v8::Local<v8::Value>;
+		using value_type = std::pair<key_type, mapped_type>;
 
 		explicit object(const context_lock_witness& lock, v8::Local<v8::Object> handle) :
 				v8::Local<v8::Object>{handle},

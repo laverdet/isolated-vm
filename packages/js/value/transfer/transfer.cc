@@ -104,6 +104,7 @@ constexpr auto transfer_with(
 	using subject_type = std::decay_t<decltype(value)>;
 	using target_type = std::decay_t<Type>;
 
+	// compose visit type
 	using visit_context_type = select_transferee_environment_t<std::remove_cvref_t<VisitArgs>...>;
 	using visit_meta_type = visit_meta_holder<
 		visit_context_type,
@@ -111,6 +112,7 @@ constexpr auto transfer_with(
 		accept_property_subject_t<typename accept_target_for<target_type>::type>>;
 	using visit_type = visit<visit_meta_type, subject_type>;
 
+	// compose accept type
 	using accept_context_type = select_transferee_environment_t<std::remove_cvref_t<AcceptArgs>...>;
 	using accept_meta_type = accept_meta_holder<
 		Wrap,
@@ -119,10 +121,23 @@ constexpr auto transfer_with(
 		typename visit_subject_reference<visit_type>::type>;
 	using accept_type = accept_next<accept_meta_type, Type>;
 
+	// cast subject to `T&&` or `const T&`. otherwise the `auto&&` parameters will accept too many
+	// value categories.
+	using subject_value_type = util::meta_type_t<[]() consteval {
+		using value_type = decltype(value);
+		if constexpr (std::is_rvalue_reference_v<value_type>) {
+			// `T&&`
+			return util::type<std::remove_cvref_t<value_type>&&>;
+		} else {
+			// `const T&`
+			return util::type<const std::remove_cvref_t<value_type>&>;
+		}
+	}()>;
+
 	transfer_holder<visit_type, accept_type> visit_and_accept{std::move(visit_args), std::move(accept_args)};
 	const visit_type& visit = visit_and_accept;
 	accept_type& accept = visit_and_accept;
-	return visit(std::forward<decltype(value)>(value), accept);
+	return visit(subject_value_type(std::forward<decltype(value)>(value)), accept);
 }
 
 // Transfer "out" to a stateless acceptor.
