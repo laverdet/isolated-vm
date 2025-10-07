@@ -5,10 +5,10 @@ module;
 #include <mutex>
 #include <shared_mutex>
 #include <stop_token>
-#include <type_traits>
 #include <utility>
 #include <variant>
 export module ivm.utility:lockable;
+import :facade;
 
 namespace util {
 
@@ -39,7 +39,7 @@ concept waitable = requires(Type cv, Lock lock) {
 
 // This is the return value of `read`, `write`, etc
 template <class Resource, class Lock>
-class locked : public Lock {
+class locked : public Lock, public pointer_facade {
 	private:
 		using pointer = std::add_pointer_t<Resource>;
 		using reference = Resource;
@@ -50,7 +50,6 @@ class locked : public Lock {
 				resource{&resource} {}
 
 		auto operator*() -> reference { return *resource; }
-		auto operator->() -> pointer { return resource; }
 
 	private:
 		pointer resource;

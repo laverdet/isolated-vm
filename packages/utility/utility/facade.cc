@@ -66,16 +66,12 @@ class array_facade {
 };
 
 /**
- * Implements `operator*()` in the context of `operator->()`.
+ * Implements `operator->()` in the context of `operator*()`.
  */
 export class pointer_facade {
 	public:
-		auto operator*(this auto&& self) -> auto&& {
-			if constexpr (std::is_rvalue_reference_v<decltype(self)>) {
-				return std::move(*std::forward<decltype(self)>(self).operator->());
-			} else {
-				return *std::forward<decltype(self)>(self).operator->();
-			}
+		auto operator->(this auto&& self) -> auto* {
+			return std::addressof(*std::forward<decltype(self)>(self));
 		}
 };
 

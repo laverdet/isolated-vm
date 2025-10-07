@@ -13,6 +13,7 @@ export import :sealed_map;
 export import :string_literal;
 export import :tuple;
 export import :type_traits;
+export import :type_traits.traits;
 export import :type_traits.type_of;
 export import :type_traits.type_pack;
 export import :utility;

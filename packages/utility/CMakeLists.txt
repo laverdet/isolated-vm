@@ -13,6 +13,7 @@ target_sources(ivm_utility
 		ranges.cc
 		tuple.cc
 		type_traits.cc
+		type_traits/traits.cc
 		type_traits/type_of.cc
 		type_traits/type_pack.cc
 		utility/elide.cc

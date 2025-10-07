@@ -33,7 +33,7 @@ class untagged_external
 		explicit untagged_external(private_constructor /*private*/, auto&&... args) :
 				value{std::forward<decltype(args)>(args)...} {}
 
-		auto operator->() -> auto* { return &value; }
+		auto operator*() -> Type& { return value; }
 
 		static auto make(const auto& env, auto&&... args) -> napi_value
 			requires std::constructible_from<Type, decltype(args)...>;

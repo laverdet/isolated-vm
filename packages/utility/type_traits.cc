@@ -1,5 +1,6 @@
 module;
 #include <functional>
+#include <type_traits>
 export module ivm.utility:type_traits;
 
 namespace util {
@@ -27,41 +28,6 @@ constexpr auto sequence = []() consteval {
 		return std::tuple{std::integral_constant<std::size_t, Index>{}...};
 	}(std::make_index_sequence<Size>());
 }();
-
-// Copy the cv_ref qualifiers from `From` to `To`
-export template <class From, class To>
-struct apply_ref : std::type_identity<To> {};
-
-export template <class From, class To>
-using apply_ref_t = apply_ref<From, To>::type;
-
-template <class From, class To>
-struct apply_ref<From&, To> : std::type_identity<To&> {};
-
-template <class From, class To>
-struct apply_ref<From&&, To> : std::type_identity<To&&> {};
-
-export template <class From, class To>
-struct apply_cv : std::type_identity<To> {};
-
-export template <class From, class To>
-using apply_cv_t = apply_cv<From, To>::type;
-
-template <class From, class To>
-struct apply_cv<const From, To> : std::type_identity<const To> {};
-
-template <class From, class To>
-struct apply_cv<volatile From, To> : std::type_identity<volatile To> {};
-
-template <class From, class To>
-struct apply_cv<const volatile From, To> : std::type_identity<const volatile To> {};
-
-export template <class From, class To>
-struct apply_cv_ref
-		: std::type_identity<apply_ref_t<From, apply_cv_t<std::remove_reference_t<From>, To>>> {};
-
-export template <class From, class To>
-using apply_cv_ref_t = apply_cv_ref<From, To>::type;
 
 // Use `std::function` to deduce the signature of an invocable
 export template <class Type>
@@ -106,23 +72,5 @@ struct invocable_constant<Invocable, auto(Args...)->Result> : value_constant<Inv
 			return (**this)(std::forward<Args>(args)...);
 		}
 };
-
-// https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p0870r4.html
-export template <class From, class To>
-constexpr inline bool is_convertible_without_narrowing_v = false;
-
-template <class To, class From>
-concept construct_without_narrowing = requires(From&& from) {
-	// NOLINTNEXTLINE(modernize-avoid-c-arrays)
-	{ std::type_identity_t<To[]>{std::forward<From>(from)} };
-};
-
-template <class From, class To>
-	requires std::is_convertible_v<From, To>
-constexpr inline bool is_convertible_without_narrowing_v<From, To> =
-	construct_without_narrowing<To, From>;
-
-export template <class From, class To>
-concept convertible_without_narrowing = is_convertible_without_narrowing_v<From, To>;
 
 } // namespace util

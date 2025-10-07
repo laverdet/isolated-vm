@@ -59,7 +59,7 @@ class uv_handle_of : public util::pointer_facade {
 		uv_handle_of(const uv_handle_of&) = delete;
 		auto operator=(const uv_handle_of&) -> uv_handle_of& = delete;
 
-		auto operator->(this auto& self) -> auto* { return &self.value_; }
+		auto operator*(this auto& self) -> auto& { return self.value_; }
 		auto close() -> void;
 		auto handle(this auto& self) -> auto& { return self.handle_; }
 		auto open(const auto& init, uv_loop_t* loop, auto&&... args) -> void;

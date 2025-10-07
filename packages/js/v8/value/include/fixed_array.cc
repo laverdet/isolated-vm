@@ -38,7 +38,6 @@ class fixed_array::iterator : public util::random_access_iterator_facade<int> {
 		iterator(v8::Local<v8::FixedArray> array, v8::Local<v8::Context> context, int index);
 
 		auto operator*() const -> value_type;
-		auto operator->(this auto& self) { return *self; }
 		auto operator+=(difference_type offset) -> iterator&;
 		auto operator==(const iterator& right) const -> bool { return index_ == right.index_; }
 		auto operator<=>(const iterator& right) const -> std::strong_ordering { return index_ <=> right.index_; }

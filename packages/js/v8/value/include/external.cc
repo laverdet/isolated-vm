@@ -26,7 +26,7 @@ class external_reference
 	public:
 		explicit external_reference(auto&&... args) :
 				value{std::forward<decltype(args)>(args)...} {}
-		auto operator->() -> auto* { return &value; }
+		auto operator*() -> Type& { return value; }
 
 	private:
 		Type value;

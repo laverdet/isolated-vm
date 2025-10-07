@@ -37,7 +37,6 @@ class callback_info::iterator : public util::random_access_iterator_facade<int> 
 				index_{index} {}
 
 		auto operator*() const -> value_type { return (*info_)[ index_ ]; }
-		auto operator->(this auto& self) { return *self; }
 		auto operator+=(difference_type offset) -> iterator& {
 			index_ += offset;
 			return *this;

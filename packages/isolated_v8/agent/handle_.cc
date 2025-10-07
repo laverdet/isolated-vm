@@ -23,7 +23,7 @@ export class agent_lock
 			public remote_handle_lock {
 	public:
 		agent_lock(js::iv8::isolate_lock_witness witness, agent_host& host);
-		auto operator->() const -> auto* { return std::addressof(host_.get()); }
+		auto operator*() const -> agent_host& { return host_.get(); }
 
 	private:
 		std::reference_wrapper<agent_host> host_;
@@ -34,7 +34,7 @@ class agent_lock_of : public agent_lock {
 	public:
 		agent_lock_of(js::iv8::isolate_lock_witness witness, agent_host_of<Type>& host) :
 				agent_lock{witness, host} {}
-		auto operator->() const -> auto* { return static_cast<agent_host_of<Type>*>(agent_lock::operator->()); }
+		auto operator*() const -> auto& { return static_cast<agent_host_of<Type>&>(agent_lock::operator*()); }
 };
 
 // The base `agent_handle` class holds a weak reference to a `agent_host`. libivm directly controls
