@@ -73,4 +73,22 @@ class bind_parameters {
 		[[no_unique_address]] flat_tuple<Params...> params_;
 };
 
+// Invoke the given function with the constant expression matching a runtime value.
+export constexpr auto template_switch(const auto& value, auto case_pack, auto invoke) {
+	auto dispatch = [ & ](const auto& dispatch, auto case_, auto... cases) -> decltype(auto) {
+		if (value == case_) {
+			return invoke(case_);
+		} else {
+			if constexpr (sizeof...(cases) == 0) {
+				// default
+				return invoke();
+			} else {
+				return dispatch(dispatch, cases...);
+			}
+		}
+	};
+	const auto [... cases ] = case_pack;
+	return dispatch(dispatch, cases...);
+}
+
 } // namespace util

@@ -22,6 +22,5 @@ target_sources(ivm_utility
 		utility/string_literal.cc
 		utility/utility.cc
 		utility/virtual_covariant.cc
-		variant.cc
 )
 target_link_libraries(ivm_utility PRIVATE Boost::boost)

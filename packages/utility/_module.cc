@@ -17,5 +17,4 @@ export import :type_traits.traits;
 export import :type_traits.type_of;
 export import :type_traits.type_pack;
 export import :utility;
-export import :variant;
 export import :virtual_covariant;

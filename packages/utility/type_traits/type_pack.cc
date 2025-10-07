@@ -13,15 +13,15 @@ struct type_pack {
 		type_pack() = default;
 
 		template <class... Args>
-		explicit constexpr type_pack(Args... /*types*/)
+		explicit consteval type_pack(Args... /*types*/)
 			requires(sizeof...(Types) > 0 && (... && (type_of<Types>{} == Args{}))) {}
 
 		template <class... Right>
-		constexpr auto operator+(type_pack<Right...> /*right*/) const -> type_pack<Types..., Right...> {
+		consteval auto operator+(type_pack<Right...> /*right*/) const -> type_pack<Types..., Right...> {
 			return {};
 		}
 
-		[[nodiscard]] constexpr auto size() const -> std::size_t {
+		[[nodiscard]] consteval auto size() const -> std::size_t {
 			return sizeof...(Types);
 		}
 };
@@ -30,7 +30,7 @@ template <class... Type>
 type_pack(Type...) -> type_pack<typename Type::type...>;
 
 export template <std::size_t Index, class... Types>
-constexpr auto get(type_pack<Types...> /*pack*/) -> util::type_of<Types... [ Index ]> {
+consteval auto get(type_pack<Types...> /*pack*/) -> std::type_identity<Types... [ Index ]> {
 	return {};
 }
 
@@ -41,7 +41,7 @@ namespace std {
 // `util::type_pack` metaprogramming specializations
 template <std::size_t Index, class... Types>
 struct tuple_element<Index, util::type_pack<Types...>> {
-		using type = util::type_of<Types...[ Index ]>;
+		using type = std::type_identity<Types...[ Index ]>;
 };
 
 template <class... Types>

@@ -15,17 +15,29 @@ namespace js {
 template <class Meta, class... Types>
 	requires is_variant_v<Types...>
 struct visit<Meta, std::variant<Types...>> : visit<Meta, Types>... {
-	public:
 		constexpr explicit visit(auto* transfer) :
 				visit<Meta, Types>{transfer}... {}
 
-		constexpr auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
-			return util::visit_with_index(
-				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/, auto&& value) constexpr {
-					using variant_visit_type = visit<Meta, Types...[ Index ]>;
-					return this->variant_visit_type::operator()(std::forward<decltype(value)>(value), accept);
-				},
-				std::forward<decltype(value)>(value)
+		template <class Accept>
+		constexpr auto operator()(auto&& value, Accept& accept) const -> accept_target_t<Accept> {
+			const auto visit_alternative =
+				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr -> accept_target_t<Accept> {
+				using variant_visit_type = visit<Meta, Types...[ Index ]>;
+				return this->variant_visit_type::operator()(std::get<Index>(std::forward<decltype(value)>(value)), accept);
+			};
+			return util::template_switch(
+				value.index(),
+				// nb: `util::sequence` is actually supposed to be a `std::array` but it's a tuple of
+				// constant expressions right now instead. If P1789 passes then this would be
+				// `std::index_sequence_for`.
+				util::sequence<sizeof...(Types)>,
+				util::overloaded{
+					visit_alternative,
+					[ & ]() -> accept_target_t<Accept> {
+						std::unreachable();
+						return visit_alternative(std::integral_constant<size_t, 0>{});
+					},
+				}
 			);
 		}
 };
@@ -39,13 +51,24 @@ struct visit_recursive_variant<Meta, variant_of<Variant, Types...>> : visit<Meta
 		constexpr explicit visit_recursive_variant(auto* transfer) :
 				visit<Meta, substitute_recursive<Variant, Types>>{transfer}... {}
 
-		auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
-			return boost::apply_visitor(
-				[ & ]<class Value>(Value&& value) {
-					const visit<Meta, std::decay_t<Value>>& visitor = *this;
-					return visitor(std::forward<decltype(value)>(value), accept);
-				},
-				std::forward<decltype(value)>(value)
+		template <class Accept>
+		auto operator()(auto&& value, Accept& accept) const -> accept_target_t<Accept> {
+			const auto visit_alternative =
+				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) {
+					using alternative_type = substitute_recursive<Variant, Types...[ Index ]>;
+					using variant_visit_type = visit<Meta, alternative_type>;
+					return this->variant_visit_type::operator()(boost::get<alternative_type>(std::forward<decltype(value)>(value)), accept);
+				};
+			return util::template_switch(
+				value.which(),
+				util::sequence<sizeof...(Types)>,
+				util::overloaded{
+					visit_alternative,
+					[ & ]() {
+						std::unreachable();
+						return visit_alternative(std::integral_constant<size_t, 0>{});
+					},
+				}
 			);
 		}
 };
