@@ -90,7 +90,7 @@ auto value<function_tag>::make(Environment& env, auto function) -> value<functio
 	const auto make = [ & ]() -> value<function_tag> {
 		return value<function_tag>::from(js::napi::invoke(napi_create_function, napi_env{env}, function.name.data(), function.name.length(), callback_ptr.first, callback_ptr.second));
 	};
-	if constexpr (std::is_same_v<decltype(finalizer), std::nullptr_t>) {
+	if constexpr (type<decltype(finalizer)> == type<std::nullptr_t>) {
 		// No finalizer needed
 		return make();
 	} else {

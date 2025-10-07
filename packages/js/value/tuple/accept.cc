@@ -51,26 +51,26 @@ consteval auto make_tuple_acceptor_types() {
 	constexpr auto size = sizeof...(Types);
 	constexpr auto rest_param = []() consteval {
 		if constexpr (size >= 2) {
-			return std::is_same_v<Types...[ size - 2 ], rest> ? size - 1 : size;
+			return type<Types...[ size - 2 ]> == type<rest> ? size - 1 : size;
 		} else {
 			return size;
 		}
 	}();
 	const auto [... indices ] = util::sequence<size>;
-	const auto [... acceptor_types ] = util::parameter_pack{
+	const auto [... acceptor_types ] = util::type_pack{
 		[](auto index) consteval {
 			using type_name = Types...[ index ];
-			if constexpr (std::is_same_v<type_name, rest>) {
+			if constexpr (type<type_name> == type<rest>) {
 				static_assert(index + 1 == rest_param, "`rest` must be second-to-last parameter in a tuple");
-				return util::type<accept_tuple_rest_placeholder>;
+				return type<accept_tuple_rest_placeholder>;
 			} else if constexpr (index == rest_param) {
-				return util::type<accept_tuple_rest_spread<Meta, type_name>>;
+				return type<accept_tuple_rest_spread<Meta, type_name>>;
 			} else {
-				return util::type<accept_tuple_param<Meta, type_name>>;
+				return type<accept_tuple_param<Meta, type_name>>;
 			}
 		}(indices)...,
 	};
-	return util::type<std::tuple<util::meta_type_t<acceptor_types>...>>;
+	return type<std::tuple<type_t<acceptor_types>...>>;
 };
 
 // Accepting a `std::tuple` unfolds from a visited vector
@@ -78,7 +78,7 @@ template <class Meta, class... Types>
 struct accept<Meta, std::tuple<Types...>> {
 	private:
 		using value_type = std::tuple<Types...>;
-		using acceptors_type = util::meta_type_t<make_tuple_acceptor_types<Meta, Types...>()>;
+		using acceptors_type = type_t<make_tuple_acceptor_types<Meta, Types...>()>;
 
 	public:
 		explicit constexpr accept(auto* /*transfer*/) :

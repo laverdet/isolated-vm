@@ -12,40 +12,6 @@ struct value_constant {
 		constexpr static auto value = Value;
 };
 
-// `std::type_identity<T>{}` alias
-export template <class Type>
-constexpr inline auto type = std::type_identity<Type>{};
-
-// Capture a pack of types into a single type
-export template <class... Type>
-struct parameter_pack {
-		using type = parameter_pack;
-		parameter_pack() = default;
-		explicit constexpr parameter_pack(std::type_identity<Type>... /*types*/)
-			requires(sizeof...(Type) > 0) {}
-
-		template <class... Right>
-		constexpr auto operator+(parameter_pack<Right...> /*right*/) const -> parameter_pack<Type..., Right...> {
-			return {};
-		}
-
-		[[nodiscard]] constexpr auto size() const -> std::size_t {
-			return sizeof...(Type);
-		}
-};
-
-template <class... Type>
-parameter_pack(std::type_identity<Type>...) -> parameter_pack<Type...>;
-
-export template <std::size_t Index, class... Types>
-constexpr auto get(parameter_pack<Types...> /*pack*/) -> std::type_identity<Types... [ Index ]> {
-	return {};
-}
-
-// Extract the `T` of a given `std::type_identity<T>`
-export template <auto Type>
-using meta_type_t = decltype(Type)::type;
-
 // Return a sequence of index constants
 export template <std::size_t Size>
 constexpr auto sequence = []() consteval {
@@ -160,16 +126,3 @@ export template <class From, class To>
 concept convertible_without_narrowing = is_convertible_without_narrowing_v<From, To>;
 
 } // namespace util
-
-namespace std {
-
-// `util::parameter_pack` metaprogramming specializations
-template <std::size_t Index, class... Types>
-struct tuple_element<Index, util::parameter_pack<Types...>> {
-		using type = std::type_identity<Types...[ Index ]>;
-};
-
-template <class... Types>
-struct tuple_size<util::parameter_pack<Types...>> : std::integral_constant<std::size_t, sizeof...(Types)> {};
-
-} // namespace std

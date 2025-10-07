@@ -4,6 +4,7 @@ module;
 #include <utility>
 #include <variant>
 export module ivm.utility:utility;
+import :type_traits.type_of;
 
 namespace util {
 
@@ -52,7 +53,7 @@ class regular_return {
 		constexpr auto operator()(auto&&... args) -> decltype(auto)
 			requires std::invocable<Invoke&, decltype(args)...>
 		{
-			if constexpr (std::is_void_v<std::invoke_result_t<Invoke, decltype(args)...>>) {
+			if constexpr (std::invoke_result<Invoke, decltype(args)...>{} == type<void>) {
 				invoke();
 				return std::monostate{};
 			} else {

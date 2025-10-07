@@ -13,6 +13,8 @@ target_sources(ivm_utility
 		ranges.cc
 		tuple.cc
 		type_traits.cc
+		type_traits/type_of.cc
+		type_traits/type_pack.cc
 		utility/elide.cc
 		utility/facade.cc
 		utility/hash.cc
@@ -21,6 +23,4 @@ target_sources(ivm_utility
 		utility/virtual_covariant.cc
 		variant.cc
 )
-# TODO: Only used for libc++ missing features on macOS
-target_include_directories(ivm_utility PUBLIC cxx)
 target_link_libraries(ivm_utility PRIVATE Boost::boost)

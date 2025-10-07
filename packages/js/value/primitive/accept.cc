@@ -41,12 +41,12 @@ struct accept_coerced {
 
 	public:
 		constexpr auto operator()(contravariant_tag_type /*tag*/, visit_holder /*visit*/, auto&& value) const -> Type {
-			return coerce(util::type<Canonical>, std::forward<decltype(value)>(value));
+			return coerce(std::type_identity<Canonical>{}, std::forward<decltype(value)>(value));
 		}
 
 		template <class Subject>
 		constexpr auto operator()(TagOf<Subject> /*tag*/, visit_holder /*visit*/, auto&& value) const -> Type {
-			return coerce(util::type<Subject>, std::forward<decltype(value)>(value));
+			return coerce(std::type_identity<Subject>{}, std::forward<decltype(value)>(value));
 		}
 
 		constexpr auto operator()(covariant_tag<covariant_tag_type> tag, visit_holder visit, auto&& value) const -> Type {

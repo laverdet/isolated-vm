@@ -270,10 +270,10 @@ auto thread::launch(std::unique_ptr<thread> self, auto fn, auto&&... args) -> vo
 			auto&&... args
 		) {
 			auto run = [ & ]() {
-				return std::invoke(std::move(fn), std::move(stop_token), std::forward<decltype(args)>(args)...);
+				return std::move(fn)(std::move(stop_token), std::forward<decltype(args)>(args)...);
 			};
 			auto run_with_releasable = [ & ]() {
-				if constexpr (std::is_void_v<std::invoke_result_t<decltype(run)>>) {
+				if constexpr (std::invoke_result<decltype(run)>{} == type<void>) {
 					run();
 					return std::tuple{};
 				} else {

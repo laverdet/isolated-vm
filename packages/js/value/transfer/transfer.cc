@@ -123,14 +123,14 @@ constexpr auto transfer_with(
 
 	// cast subject to `T&&` or `const T&`. otherwise the `auto&&` parameters will accept too many
 	// value categories.
-	using subject_value_type = util::meta_type_t<[]() consteval {
+	using subject_value_type = type_t<[]() consteval {
 		using value_type = decltype(value);
 		if constexpr (std::is_rvalue_reference_v<value_type>) {
 			// `T&&`
-			return util::type<std::remove_cvref_t<value_type>&&>;
+			return type<std::remove_cvref_t<value_type>&&>;
 		} else {
 			// `const T&`
-			return util::type<const std::remove_cvref_t<value_type>&>;
+			return type<const std::remove_cvref_t<value_type>&>;
 		}
 	}()>;
 
@@ -254,7 +254,7 @@ constexpr auto lookup_or_visit(auto subject, Accept& accept, auto visit) -> acce
 	if (it == map.end()) {
 		return visit();
 	} else {
-		return Accept::reaccept(util::type<value_type>, it->second);
+		return Accept::reaccept(std::type_identity<value_type>{}, it->second);
 	}
 }
 
@@ -291,13 +291,13 @@ constexpr auto invoke_accept(Accept& accept, auto tag, const auto& visit, auto&&
 		[ & ]<class Type>(js::referenceable_value<Type> value) -> value_type {
 			auto [ iterator, inserted ] = accept.reference_map().try_emplace(subject, *value);
 			assert(inserted);
-			return Accept::reaccept(util::type<value_type>, iterator->second);
+			return Accept::reaccept(std::type_identity<value_type>{}, iterator->second);
 		},
 		[ & ]<class Type, class... Args>(js::deferred_receiver<Type, Args...> receiver) -> value_type {
 			auto [ iterator, inserted ] = accept.reference_map().try_emplace(subject, *receiver);
 			assert(inserted);
 			std::move(receiver)(accept, visit, std::forward<decltype(subject)>(subject));
-			return Accept::reaccept(util::type<value_type>, iterator->second);
+			return Accept::reaccept(std::type_identity<value_type>{}, iterator->second);
 		},
 	};
 	return unwrap(accept(tag, visit, std::forward<decltype(subject)>(subject)));

@@ -89,7 +89,7 @@ struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
 		}
 
 		template <std::size_t Size>
-			requires std::is_same_v<dictionary_tag, Tag>
+			requires(type<dictionary_tag> == type<Tag>)
 		constexpr auto operator()(struct_tag<Size> /*tag*/, const auto& visit, auto&& dictionary) -> vector_of<Tag, Entry> {
 			// nb: The value category of `dictionary` is forwarded to *each* visitor. Move operations
 			// should keep this in mind and only move one member at time.

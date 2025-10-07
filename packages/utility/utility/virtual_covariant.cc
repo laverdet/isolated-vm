@@ -5,6 +5,7 @@ module;
 export module ivm.utility:virtual_covariant;
 import :facade;
 import :type_traits;
+import :type_traits.type_of;
 
 namespace util {
 
@@ -14,7 +15,7 @@ export template <class Type, class... Types>
 class virtual_covariant : public pointer_facade {
 	public:
 		template <class Derived>
-			requires(... || std::is_same_v<Types, Derived>)
+			requires(... || (type<Derived> == type<Types>))
 		constexpr explicit virtual_covariant(Derived value) :
 				value_{std::move(value)} {}
 

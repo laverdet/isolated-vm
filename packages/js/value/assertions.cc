@@ -107,7 +107,7 @@ constexpr auto object_values_test = transfer<object_literal>(dictionary_values_t
 static_assert(object_values_test.integer == 1);
 static_assert(object_values_test.number == 2.0);
 static_assert(object_values_test.string == "hello");
-static_assert(transfer<std::invoke_result_t<decltype(dictionary_values_test)>>(object_values_test) == dictionary_values_test());
+static_assert(transfer<decltype(dictionary_values_test())>(object_values_test) == dictionary_values_test());
 
 // Ensure custom acceptors work
 struct specialized {

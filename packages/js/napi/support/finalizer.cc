@@ -2,6 +2,7 @@ module;
 #include <concepts>
 #include <memory>
 export module napi_js:finalizer;
+import ivm.utility;
 import nodejs;
 
 namespace js::napi {
@@ -15,7 +16,7 @@ auto apply_finalizer(std::unique_ptr<Type, Deleter> ptr, std::invocable<Type*, n
 		deleter(static_cast<Type*>(data));
 	};
 	void* const hint = nullptr;
-	if constexpr (std::is_void_v<std::invoke_result_t<decltype(accept), Type*, napi_finalize, void*>>) {
+	if constexpr (std::invoke_result<decltype(accept), Type*, napi_finalize, void*>{} == type<void>) {
 		accept(ptr.get(), finalize, hint);
 		ptr.release();
 	} else {
