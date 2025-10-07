@@ -37,13 +37,16 @@ export class object
 				v8::Local<v8::Context> context_;
 		};
 
+		[[nodiscard]] auto keys() const -> const array&;
+
 	public:
-		using range_type = std::ranges::transform_view<std::views::all_t<array&>, iterator_transform>;
+		using range_type = std::ranges::transform_view<std::views::all_t<const array&>, iterator_transform>;
 		using iterator = std::ranges::iterator_t<range_type>;
 
 		[[nodiscard]] auto get(v8::Local<v8::Value> key) -> v8::Local<v8::Value>;
 		[[nodiscard]] auto has(v8::Local<v8::Value> key) -> bool;
 		[[nodiscard]] auto into_range() -> range_type;
+		[[nodiscard]] auto size() const -> std::size_t;
 
 	private:
 		mutable array keys_;

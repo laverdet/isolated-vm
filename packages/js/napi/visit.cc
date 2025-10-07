@@ -18,6 +18,12 @@ import ivm.utility;
 namespace js {
 using namespace napi;
 
+// Instantiated in the acceptor that corresponds to a napi visitor
+struct napi_reference_map_type {
+		template <class Type>
+		using type = napi::value_map<Type>;
+};
+
 // Visitor which may visit only property names. `symbol` should probably be rethought since they are
 // not cloneable.
 template <class Visit>
@@ -26,7 +32,7 @@ struct visit_napi_property_name {
 		explicit visit_napi_property_name(const Visit& visit) : visit_{visit} {}
 
 		auto operator()(napi_value value, auto& accept) const -> decltype(auto) {
-			return lookup_or_visit(value, accept, [ & ]() -> decltype(auto) {
+			return visit_.get().lookup_or_visit(accept, value, [ & ]() -> decltype(auto) {
 				switch (napi::invoke(napi_typeof, napi_env{visit_.get()}, value)) {
 					case napi_number:
 						return visit_(napi::value<number_tag>::from(value), accept);
@@ -51,16 +57,27 @@ struct visit_napi_property_name {
 // Base napi visitor implementing all functionality. Napi doesn't give us granular information like
 // "is this a latin1 string" and all checks must be made at once. So it's structured it great deal
 // differently than the v8 visitor.
-template <class Environment>
-struct visit_napi_value : napi::environment_scope<Environment> {
+template <class Environment, class Target>
+struct visit_napi_value;
+
+template <class Meta>
+using visit_napi_value_with = visit_napi_value<typename Meta::visit_context_type, typename Meta::accept_reference_type>;
+
+template <class Environment, class Target>
+struct visit_napi_value
+		: napi::environment_scope<Environment>,
+			reference_map_t<Target, napi_reference_map_type> {
 	private:
 		struct skip_lookup {};
 
 	public:
-		using reference_subject_type = napi_value;
+		using reference_map_type = reference_map_t<Target, napi_reference_map_type>;
+		using reference_map_type::lookup_or_visit;
+		using reference_map_type::try_emplace;
 
 		visit_napi_value(auto* /*transfer*/, Environment& env) :
 				napi::environment_scope<Environment>{env},
+				reference_map_type{env},
 				equal_{env} {}
 
 		// If the private `skip_lookup` operation is defined: this public operation will first perform a
@@ -68,7 +85,7 @@ struct visit_napi_value : napi::environment_scope<Environment> {
 		template <auto_tag Tag>
 		auto operator()(this const auto& self, value<Tag> subject, auto& accept) -> decltype(auto)
 			requires requires { self(skip_lookup{}, subject, accept); } {
-			return lookup_or_visit(subject, accept, [ & ]() -> decltype(auto) {
+			return self.lookup_or_visit(accept, subject, [ & ]() -> decltype(auto) {
 				return self(skip_lookup{}, subject, accept);
 			});
 		}
@@ -106,7 +123,7 @@ struct visit_napi_value : napi::environment_scope<Environment> {
 			}
 
 			// Check the reference map, and lookup type via napi
-			return lookup_or_visit(value, accept, [ & ]() -> decltype(auto) {
+			return lookup_or_visit(accept, value, [ & ]() -> decltype(auto) {
 				auto typeof = napi::invoke(napi_typeof, napi_env{*this}, value);
 				switch (typeof) {
 					case napi_undefined:
@@ -173,20 +190,20 @@ struct visit_napi_value : napi::environment_scope<Environment> {
 			// nb: It is intentional that `dictionary_tag` is bound. It handles sparse arrays.
 			auto value = napi::bound_value{napi_env{self}, napi::value<dictionary_tag>::from(subject)};
 			auto visit_entry = std::pair<visit_napi_property_name<Visit>, const Visit&>{self, self};
-			return invoke_accept(accept, list_tag{}, visit_entry, value);
+			return self.try_emplace(accept, list_tag{}, visit_entry, value);
 		}
 
 		template <class Visit>
 		auto operator()(this const Visit& self, skip_lookup /*skip*/, value<object_tag> subject, auto& accept) -> decltype(auto) {
 			auto value = napi::bound_value{napi_env{self}, napi::value<dictionary_tag>::from(subject)};
 			auto visit_entry = std::pair<visit_napi_property_name<Visit>, const Visit&>{self, self};
-			return invoke_accept(accept, dictionary_tag{}, visit_entry, value);
+			return self.try_emplace(accept, dictionary_tag{}, visit_entry, value);
 		}
 
 		// Convenience function which wraps in `napi::bound_value` and invokes `accept`.
 		template <auto_tag Tag>
 		auto accept_tagged(value<Tag> value, auto& accept) const -> decltype(auto) {
-			return invoke_accept(accept, Tag{}, *this, napi::bound_value{napi_env{*this}, value});
+			return try_emplace(accept, Tag{}, *this, napi::bound_value{napi_env{*this}, value});
 		}
 
 		napi::address_equal equal_;
@@ -196,13 +213,13 @@ struct visit_napi_value : napi::environment_scope<Environment> {
 
 // Napi value visitor entry
 template <class Meta>
-struct visit<Meta, napi_value> : visit_napi_value<typename Meta::visit_context_type> {
-		using visit_napi_value<typename Meta::visit_context_type>::visit_napi_value;
+struct visit<Meta, napi_value> : visit_napi_value_with<Meta> {
+		using visit_napi_value_with<Meta>::visit_napi_value_with;
 };
 
 template <class Meta>
-struct visit<Meta, value<value_tag>> : visit_napi_value<typename Meta::visit_context_type> {
-		using visit_napi_value<typename Meta::visit_context_type>::visit_napi_value;
+struct visit<Meta, value<value_tag>> : visit_napi_value_with<Meta> {
+		using visit_napi_value_with<Meta>::visit_napi_value_with;
 };
 
 // Object key maker via napi

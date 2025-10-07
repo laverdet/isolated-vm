@@ -88,13 +88,16 @@ auto function_template::make(const agent_lock& agent, auto function) -> function
 namespace js {
 using isolated_v8::function_template;
 
-template <>
-struct visit<void, function_template> : visit<void, v8::Local<v8::Value>> {
+template <class Meta>
+struct visit<Meta, function_template> : visit<Meta, v8::Local<v8::Value>> {
 	public:
-		using visit<void, v8::Local<v8::Value>>::visit;
+		using visit_type = visit<Meta, v8::Local<v8::Value>>;
+		using visit_type::lock_witness;
+		using visit_type::try_emplace;
+		using visit_type::visit_type;
 
 		auto operator()(function_template value, auto& accept) const -> decltype(auto) {
-			return invoke_accept(accept, function_tag{}, *this, value.make_function(lock_witness()));
+			return try_emplace(accept, function_tag{}, *this, value.make_function(lock_witness()));
 		}
 };
 

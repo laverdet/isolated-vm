@@ -1,6 +1,6 @@
 module;
 #include <ranges>
-#include <string>
+#include <utility>
 module v8_js;
 import :array;
 import :handle;
@@ -11,11 +11,7 @@ import v8;
 
 namespace js::iv8 {
 
-auto object::get(v8::Local<v8::Value> key) -> v8::Local<v8::Value> {
-	return (*this)->GetRealNamedProperty(context(), key.As<v8::Name>()).ToLocalChecked();
-}
-
-auto object::into_range() -> range_type {
+auto object::keys() const -> const array& {
 	if (keys_ == array{}) {
 		auto property_names = (*this)->GetPropertyNames(
 			context(),
@@ -26,7 +22,19 @@ auto object::into_range() -> range_type {
 		);
 		keys_ = array{witness(), property_names.ToLocalChecked()};
 	}
-	return keys_ | std::views::transform(iterator_transform{*this, context()});
+	return keys_;
+}
+
+auto object::get(v8::Local<v8::Value> key) -> v8::Local<v8::Value> {
+	return (*this)->GetRealNamedProperty(context(), key.As<v8::Name>()).ToLocalChecked();
+}
+
+auto object::into_range() -> range_type {
+	return keys() | std::views::transform(iterator_transform{*this, context()});
+}
+
+auto object::size() const -> std::size_t {
+	return keys().size();
 }
 
 object::iterator_transform::iterator_transform(

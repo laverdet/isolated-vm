@@ -9,17 +9,12 @@ import ivm.utility;
 namespace js {
 
 // `Meta` type for `accept` implementations
-export template <class Wrap, class Context, class Subject, class Reference>
+export template <class Wrap, class Context, class Subject>
 struct accept_meta_holder {
 		using accept_context_type = Context;
 		using accept_wrap_type = Wrap;
 		using visit_property_subject_type = Subject;
-		using visit_subject_reference = Reference;
 };
-
-// `accept` is the target of `visit`
-export template <class Meta, class Type>
-struct accept;
 
 // Default `accept` swallows `Meta`
 template <class Meta, class Type>
@@ -45,20 +40,6 @@ struct accept<void, forward<Type, Tag>> {
 // `accept` with transfer wrapping
 export template <class Meta, class Type>
 using accept_next = Meta::accept_wrap_type::template accept<accept<Meta, Type>>;
-
-// Extract the target type from an `accept`-like type. This is used to know what to cast the result
-// of `accept()` to.
-template <class Type>
-struct accept_target;
-
-export template <class Type>
-using accept_target_t = accept_target<Type>::type;
-
-template <class Accept>
-struct accept_target : std::type_identity<typename Accept::accept_target_type> {};
-
-template <class Meta, class Type>
-struct accept_target<accept<Meta, Type>> : std::type_identity<Type> {};
 
 // Specialized by certain containers to map `Target` to the first meaningful acceptor. This is
 // specifically used with `accept_property_subject_type` in relation to property names.
@@ -105,23 +86,5 @@ struct accept_property_value<Meta, Key, Type, void> {
 		accept_next<Meta, std::string> first;
 		accept_next<Meta, Type> second;
 };
-
-// Construct a map to store references to visited values. If the visitor has no reference types then
-// there can be no map.
-template <class Reference, template <class> class Map>
-struct reference_map;
-
-struct null_reference_map {
-		explicit null_reference_map(auto&&... /*args*/) {}
-};
-
-export template <class Reference, template <class> class Map>
-using reference_map_t = reference_map<Reference, Map>::type;
-
-template <class Reference, template <class> class Map>
-struct reference_map : std::type_identity<Map<Reference>> {};
-
-template <template <class> class Map>
-struct reference_map<void, Map> : std::type_identity<null_reference_map> {};
 
 } // namespace js

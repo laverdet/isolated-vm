@@ -20,30 +20,26 @@ namespace js {
 using namespace napi;
 
 // Generic napi acceptor which accepts all value types.
-template <class Environment, class Subject>
+template <class Environment>
 struct accept_napi_value;
 
 template <class Meta>
-using accept_napi_value_with = accept_napi_value<
-	typename Meta::accept_context_type,
-	typename Meta::visit_property_subject_type>;
+using accept_napi_value_with = accept_napi_value<typename Meta::accept_context_type>;
 
-template <class Environment, class Subject>
+template <class Environment>
 struct accept_napi_value : napi::environment_scope<Environment> {
 	public:
 		using napi::environment_scope<Environment>::environment;
+		using accept_reference_type = napi_value;
 
 		explicit accept_napi_value(auto* /*transfer*/, auto& env) :
-				napi::environment_scope<Environment>{env},
-				reference_map_{env} {}
+				napi::environment_scope<Environment>{env} {}
 
 		// reference provider
 		template <class Tag>
 		static auto reaccept(std::type_identity<napi::value<Tag>> /*type*/, napi_value value) -> napi::value<Tag> {
 			return napi::value<Tag>::from(value);
 		}
-
-		auto reference_map() -> auto& { return reference_map_; }
 
 		// undefined & null
 		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> napi::value<undefined_tag> {
@@ -234,12 +230,6 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 				}
 			};
 		}
-
-	private:
-		template <class Type>
-		using map_type = napi::value_map<Type>;
-
-		reference_map_t<Subject, map_type> reference_map_;
 };
 
 // Plain napi_value acceptor
