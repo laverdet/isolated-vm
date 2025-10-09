@@ -76,7 +76,7 @@ struct accept<void, napi::untagged_external<Type>*> : accept<void, napi::untagge
 		using accept_type::accept_type;
 
 		auto operator()(external_tag tag, const auto& visit, auto&& value) const -> napi::untagged_external<Type>* {
-			return std::addressof(accept_type::operator()(tag, visit, std::forward<decltype(value)>(value)));
+			return std::addressof(util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(value)>(value)));
 		}
 
 		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*value*/) const -> napi::untagged_external<Type>* {

@@ -112,7 +112,7 @@ struct accept<Meta, std::tuple<rest, Type>> : accept<Meta, Type> {
 		using accept_type::accept_type;
 
 		constexpr auto operator()(vector_tag /*tag*/, const auto& visit, auto&& value) -> value_type {
-			return {rest{}, accept_type::operator()(vector_tag{}, visit, std::forward<decltype(value)>(value))};
+			return {rest{}, util::invoke_as<accept_type>(*this, vector_tag{}, visit, std::forward<decltype(value)>(value))};
 		}
 };
 

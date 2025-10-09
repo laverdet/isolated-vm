@@ -44,7 +44,7 @@ struct visit<Meta, std::vector<Type>> : visit<Meta, std::span<Type>> {
 		using visit_type::visit_type;
 
 		constexpr auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
-			return visit_type::operator()(std::span{value}, accept);
+			return util::invoke_as<visit_type>(*this, std::span{value}, accept);
 		}
 };
 

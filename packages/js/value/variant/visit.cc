@@ -22,8 +22,8 @@ struct visit<Meta, std::variant<Types...>> : visit<Meta, Types>... {
 			using target_type = accept_target_t<decltype(accept)>;
 			const auto visit_alternative =
 				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr -> target_type {
-				using variant_visit_type = visit<Meta, Types...[ Index ]>;
-				return this->variant_visit_type::operator()(std::get<Index>(std::forward<decltype(value)>(value)), accept);
+				using visit_type = visit<Meta, Types...[ Index ]>;
+				return util::invoke_as<visit_type>(*this, std::get<Index>(std::forward<decltype(value)>(value)), accept);
 			};
 			return util::template_switch(
 				value.index(),
@@ -56,8 +56,8 @@ struct visit_recursive_variant<Meta, variant_of<Variant, Types...>> : visit<Meta
 			const auto visit_alternative =
 				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) {
 					using alternative_type = substitute_recursive<Variant, Types...[ Index ]>;
-					using variant_visit_type = visit<Meta, alternative_type>;
-					return this->variant_visit_type::operator()(boost::get<alternative_type>(std::forward<decltype(value)>(value)), accept);
+					using visit_type = visit<Meta, alternative_type>;
+					return util::invoke_as<visit_type>(*this, boost::get<alternative_type>(std::forward<decltype(value)>(value)), accept);
 				};
 			return util::template_switch(
 				value.which(),

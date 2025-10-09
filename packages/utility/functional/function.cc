@@ -46,7 +46,16 @@ export template <class Type>
 constexpr inline auto constructor = constructor_t<Type>{};
 
 // Hide `-Wunused-value` warnings
-export auto unused(auto&& /*nothing*/) -> void {}
+export constexpr auto unused(auto&& /*nothing*/) -> void {}
+
+// Invoke the given callable using an explicit and possibly shadowed `operator()()` on a base class,
+// but without erasing the pointer type for deduced `this`. The syntax here is messy, and
+// `InvokeAsType_` can be shadowed by the base class. Also, clang has some really spooky behavior
+// which is resolved by breaking out invocations to deduced-this instances.
+export template <class InvokeAsType_>
+constexpr auto invoke_as(auto&& func, auto&&... args) -> decltype(auto) {
+	return std::forward<decltype(func)>(func).InvokeAsType_::operator()(std::forward<decltype(args)>(args)...);
+}
 
 // Captures the given parameters in way such that empty objects yield an empty invocable. See:
 //   static_assert(std::is_empty_v<decltype([]() {})>);

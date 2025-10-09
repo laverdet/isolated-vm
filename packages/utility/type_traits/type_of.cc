@@ -1,13 +1,13 @@
 module;
+#include <type_traits>
 export module ivm.utility:type_traits.type_of;
 
 namespace util {
 
 // Metaprogramming helper
-export template <class Type>
-struct type_of {
-		using type = Type;
-
+// nb: Intentionally not exported, it should only be used via the `type` variable template.
+template <class Type>
+struct type_of : std::type_identity<Type> {
 		// equality
 		consteval auto operator==(type_of /*op*/) const -> bool { return true; }
 

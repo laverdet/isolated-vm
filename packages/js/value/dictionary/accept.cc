@@ -82,7 +82,7 @@ struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
 				std::from_range,
 				util::into_range(std::forward<decltype(dictionary)>(dictionary)) |
 					std::views::transform([ & ](auto&& entry) -> Entry {
-						return accept_type::operator()(visit, std::forward<decltype(entry)>(entry));
+						return util::invoke_as<accept_type>(*this, visit, std::forward<decltype(entry)>(entry));
 					})
 			};
 		}
@@ -96,7 +96,7 @@ struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
 			const auto [... indices ] = util::sequence<Size>;
 			return vector_of<Tag, Entry>{
 				std::in_place,
-				accept_type::operator()(std::get<indices>(visit), std::forward<decltype(subject)>(subject))...,
+				util::invoke_as<accept_type>(*this, std::get<indices>(visit), std::forward<decltype(subject)>(subject))...,
 			};
 		}
 };

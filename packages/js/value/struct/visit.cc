@@ -46,7 +46,7 @@ struct visit_getter : visit<Meta, typename Getter::type> {
 				getter{std::move(getter)} {}
 
 		constexpr auto operator()(const auto& value, auto& accept) const -> decltype(auto) {
-			return visit_type::operator()(getter(value), accept);
+			return util::invoke_as<visit_type>(*this, getter(value), accept);
 		}
 
 	private:
