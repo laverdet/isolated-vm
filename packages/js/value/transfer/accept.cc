@@ -1,5 +1,6 @@
 module;
-#include <ranges>
+#include <algorithm>
+#include <string>
 #include <utility>
 export module isolated_js:accept;
 import :transfer.types;
@@ -72,7 +73,7 @@ struct accept_property_value<Meta, Key, Type, void> {
 				second{transfer} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, const auto& dictionary) {
-			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) {
+			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) -> bool {
 				return visit.first(entry.first, first) == Key;
 			});
 			if (it == dictionary.end()) {

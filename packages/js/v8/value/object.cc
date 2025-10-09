@@ -30,6 +30,7 @@ auto object::get(v8::Local<v8::Value> key) -> v8::Local<v8::Value> {
 }
 
 auto object::into_range() -> range_type {
+	// NOLINTNEXTLINE(cppcoreguidelines-slicing)
 	return keys() | std::views::transform(iterator_transform{*this, context()});
 }
 

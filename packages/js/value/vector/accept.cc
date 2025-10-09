@@ -1,10 +1,10 @@
 module;
 #include <array>
-#include <functional>
 #include <ranges>
 #include <vector>
 export module isolated_js:vector.accept;
 import :transfer;
+import ivm.utility;
 
 namespace js {
 
@@ -24,26 +24,20 @@ struct accept<Meta, std::array<Type, Size>> : accept_next<Meta, Type> {
 		constexpr auto operator()(vector_n_tag<VectorSize> /*tag*/, const auto& visit, auto&& list) -> std::array<Type, Size> {
 			accept_type& acceptor = *this;
 			auto iterator = std::forward<decltype(list)>(list).begin();
-			return std::invoke(
-				[ & ]<std::size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
-					return std::array<Type, Size>{invoke(std::integral_constant<std::size_t, Index>{})...};
-				},
-				[ & ]<std::size_t Index>(std::integral_constant<std::size_t, Index> /*index*/) constexpr {
-					return visit(*iterator++, acceptor);
-				},
-				std::make_index_sequence<Size>{}
-			);
+			const auto [... indices ] = util::sequence<Size>;
+			return std::array<Type, Size>{
+				// nb: Comma operator trick
+				(util::unused(indices), visit(*iterator++, acceptor))...
+			};
 		}
 
 		template <std::size_t TupleSize>
 		constexpr auto operator()(tuple_tag<TupleSize> /*tag*/, const auto& visit, auto&& tuple) -> std::array<Type, Size> {
 			accept_type& acceptor = *this;
-			return std::invoke(
-				[ & ]<std::size_t... Index>(std::index_sequence<Index...> /*indices*/) constexpr {
-					return std::array<Type, Size>{visit(std::integral_constant<std::size_t, Index>{}, std::forward<decltype(tuple)>(tuple), acceptor)...};
-				},
-				std::make_index_sequence<Size>{}
-			);
+			const auto [... indices ] = util::sequence<TupleSize>;
+			return std::array<Type, Size>{
+				visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(tuple)>(tuple), acceptor)...,
+			};
 		}
 };
 
@@ -78,15 +72,11 @@ struct accept<Meta, std::vector<Type>> : accept_next<Meta, Type> {
 		template <std::size_t Size>
 		constexpr auto operator()(tuple_tag<Size> /*tag*/, const auto& visit, auto&& tuple) -> std::vector<Type> {
 			accept_type& acceptor = *this;
-			return std::invoke(
-				[ & ]<std::size_t... Index>(std::index_sequence<Index...> /*indices*/) constexpr {
-					std::vector<Type> result;
-					result.reserve(Size);
-					(result.emplace_back(visit(std::integral_constant<std::size_t, Index>{}, std::forward<decltype(tuple)>(tuple), acceptor)), ...);
-					return result;
-				},
-				std::make_index_sequence<Size>{}
-			);
+			std::vector<Type> result;
+			result.reserve(Size);
+			const auto [... indices ] = util::sequence<Size>;
+			(..., result.emplace_back(visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(tuple)>(tuple), acceptor)));
+			return result;
 		}
 };
 

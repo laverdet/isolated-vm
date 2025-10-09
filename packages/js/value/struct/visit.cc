@@ -1,5 +1,4 @@
 module;
-#include <functional>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -82,16 +81,13 @@ struct visit_struct_properties<Meta, Type, std::tuple<Property...>> {
 
 	public:
 		explicit constexpr visit_struct_properties(auto* transfer) :
-				properties{std::invoke(
-					[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
-						return properties_type{util::elide{invoke, std::integral_constant<size_t, Index>{}}...};
-					},
-					[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
-						using property_type = Property...[ Index ];
-						return visit_object_property<Meta, property_type>{transfer, std::get<Index>(struct_properties<Type>::properties)};
-					},
-					std::make_index_sequence<sizeof...(Property)>{}
-				)} {}
+				properties{[ & ]() constexpr -> properties_type {
+					const auto [... indices ] = util::sequence<sizeof...(Property)>;
+					return properties_type{util::elide{[ & ]() constexpr {
+						using property_type = Property...[ indices ];
+						return visit_object_property<Meta, property_type>{transfer, std::get<indices>(struct_properties<Type>::properties)};
+					}}...};
+				}()} {}
 
 		constexpr auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
 			return invoke_accept(accept, struct_tag<sizeof...(Property)>{}, properties, std::forward<decltype(value)>(value));

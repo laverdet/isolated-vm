@@ -1,7 +1,6 @@
 module;
 #include <functional>
 #include <ranges>
-#include <type_traits>
 #include <utility>
 export module isolated_js:dictionary.accept;
 import :dictionary.helpers;
@@ -89,21 +88,16 @@ struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
 		}
 
 		template <std::size_t Size>
-			requires(type<dictionary_tag> == type<Tag>)
+			requires(type<Tag> == type<dictionary_tag>)
 		constexpr auto operator()(struct_tag<Size> /*tag*/, const auto& visit, auto&& dictionary) -> vector_of<Tag, Entry> {
 			// nb: The value category of `dictionary` is forwarded to *each* visitor. Move operations
 			// should keep this in mind and only move one member at time.
 			auto&& subject = accept_type::make_struct_subject(std::forward<decltype(dictionary)>(dictionary));
-			return std::invoke(
-				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) constexpr {
-					return vector_of<Tag, Entry>{std::in_place, invoke(std::integral_constant<size_t, Index>{})...};
-				},
-				[ & ]<std::size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
-					const auto& visit_n = std::get<Index>(visit);
-					return accept_type::operator()(visit_n, std::forward<decltype(subject)>(subject));
-				},
-				std::make_index_sequence<Size>{}
-			);
+			const auto [... indices ] = util::sequence<Size>;
+			return vector_of<Tag, Entry>{
+				std::in_place,
+				accept_type::operator()(std::get<indices>(visit), std::forward<decltype(subject)>(subject))...,
+			};
 		}
 };
 

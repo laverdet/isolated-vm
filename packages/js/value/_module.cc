@@ -6,7 +6,6 @@ export import :enum_.types;
 export import :function;
 export import :property;
 export import :struct_.types;
-export import :tag;
 export import :transfer;
 export import :tuple.accept; // for `rest`
 export import :union_.types;

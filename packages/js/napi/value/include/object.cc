@@ -1,6 +1,4 @@
 module;
-#include <cstddef>
-#include <functional>
 #include <tuple>
 #include <utility>
 export module napi_js:object;
@@ -56,20 +54,15 @@ class bound_value<date_tag>
 template <class... Entries>
 auto value<object_tag>::assign(auto_environment auto& env, std::tuple<Entries...> entries) -> void {
 	bound_value value{env, *this};
-	std::invoke(
-		[ & ]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) {
-			return (invoke(std::integral_constant<size_t, Index>{}), ...);
-		},
-		[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) -> void {
-			auto& entry_ref = std::get<Index>(entries);
-			auto entry_js_val = js::transfer_in_strict<std::array<napi_value, 2>>(
-				std::tuple{std::move(entry_ref.first), std::move(entry_ref.second)},
-				env
-			);
-			value.set(entry_js_val[ 0 ], entry_js_val[ 1 ]);
-		},
-		std::index_sequence_for<Entries...>{}
-	);
+	const auto [... indices ] = util::sequence<sizeof...(Entries)>;
+	(..., [ & ]() constexpr {
+		auto& entry_ref = std::get<indices>(entries);
+		auto entry_js_val = js::transfer_in_strict<std::array<napi_value, 2>>(
+			std::tuple{std::move(entry_ref.first), std::move(entry_ref.second)},
+			env
+		);
+		value.set(entry_js_val[ 0 ], entry_js_val[ 1 ]);
+	}());
 }
 
 } // namespace js::napi

@@ -18,10 +18,10 @@ struct visit<Meta, std::variant<Types...>> : visit<Meta, Types>... {
 		constexpr explicit visit(auto* transfer) :
 				visit<Meta, Types>{transfer}... {}
 
-		template <class Accept>
-		constexpr auto operator()(auto&& value, Accept& accept) const -> accept_target_t<Accept> {
+		constexpr auto operator()(auto&& value, auto& accept) const -> accept_target_t<decltype(accept)> {
+			using target_type = accept_target_t<decltype(accept)>;
 			const auto visit_alternative =
-				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr -> accept_target_t<Accept> {
+				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr -> target_type {
 				using variant_visit_type = visit<Meta, Types...[ Index ]>;
 				return this->variant_visit_type::operator()(std::get<Index>(std::forward<decltype(value)>(value)), accept);
 			};
@@ -33,7 +33,7 @@ struct visit<Meta, std::variant<Types...>> : visit<Meta, Types>... {
 				util::sequence<sizeof...(Types)>,
 				util::overloaded{
 					visit_alternative,
-					[ & ]() -> accept_target_t<Accept> {
+					[ & ]() -> target_type {
 						std::unreachable();
 						return visit_alternative(std::integral_constant<size_t, 0>{});
 					},

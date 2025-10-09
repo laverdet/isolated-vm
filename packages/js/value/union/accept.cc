@@ -1,6 +1,5 @@
 module;
 #include <format>
-#include <functional>
 #include <stdexcept>
 #include <tuple>
 #include <type_traits>
@@ -56,19 +55,14 @@ struct accept<Meta, std::variant<Types...>> {
 	private:
 		template <class Value, class Visit>
 		consteval static auto make_discriminant_map() {
-			return std::invoke(
-				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) consteval {
-					return util::sealed_map{
-						std::in_place,
-						invoke(std::integral_constant<size_t, Index>{})...
-					};
-				},
-				[]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) consteval {
-					const auto& alternative = std::get<Index>(descriptor_type::alternatives);
-					return std::pair{util::djb2_hash(alternative.discriminant), &accept_value<Index, Visit, Value>};
-				},
-				std::index_sequence_for<Types...>{}
-			);
+			const auto [... indices ] = util::sequence<sizeof...(Types)>;
+			return util::sealed_map{
+				std::in_place,
+				[ & ]() constexpr {
+					const auto& alternative = std::get<indices>(descriptor_type::alternatives);
+					return std::pair{util::djb2_hash(alternative.discriminant), &accept_value<indices, Visit, Value>};
+				}()...,
+			};
 		}
 
 		template <std::size_t Index, class Visit, class Value>

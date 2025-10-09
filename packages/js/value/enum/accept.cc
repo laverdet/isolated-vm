@@ -1,5 +1,4 @@
 module;
-#include <functional>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
@@ -24,19 +23,14 @@ struct accept<void, Enum> {
 		}
 
 		consteval static auto make_enum_map() {
-			return std::invoke(
-				[]<size_t... Index>(const auto& invoke, std::index_sequence<Index...> /*indices*/) consteval {
-					return util::sealed_map{
-						std::in_place,
-						invoke(std::integral_constant<size_t, Index>{})...
-					};
-				},
-				[]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr {
-					const auto& value = std::get<Index>(enum_values<Enum>::values);
+			const auto [... indices ] = util::sequence<enum_values<Enum>::values.size()>;
+			return util::sealed_map{
+				std::in_place,
+				[ & ]() constexpr {
+					const auto& value = std::get<indices>(enum_values<Enum>::values);
 					return std::pair{util::djb2_hash(std::string_view{value.first}), value.second};
-				},
-				std::make_index_sequence<enum_values<Enum>::values.size()>{}
-			);
+				}()...,
+			};
 		}
 };
 

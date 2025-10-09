@@ -3,6 +3,7 @@ module;
 #include <utility>
 export module ivm.utility:functional;
 import :tuple;
+import :type_traits;
 
 namespace util {
 
@@ -44,6 +45,9 @@ struct constructor_t {
 export template <class Type>
 constexpr inline auto constructor = constructor_t<Type>{};
 
+// Hide `-Wunused-value` warnings
+export auto unused(auto&& /*nothing*/) -> void {}
+
 // Captures the given parameters in way such that empty objects yield an empty invocable. See:
 //   static_assert(std::is_empty_v<decltype([]() {})>);
 //   static_assert(!std::is_empty_v<decltype([ a = std::monostate{} ]() {})>);
@@ -60,12 +64,8 @@ class bind_parameters {
 
 		constexpr auto operator()(auto&&... args) -> decltype(auto)
 			requires std::invocable<Invocable&, Params&..., decltype(args)...> {
-			return std::invoke(
-				[ & ]<size_t... Index>(std::index_sequence<Index...> /*indices*/) constexpr -> decltype(auto) {
-					return invocable_(get<Index>(params_)..., std::forward<decltype(args)>(args)...);
-				},
-				std::make_index_sequence<sizeof...(Params)>{}
-			);
+			const auto [... indices ] = util::sequence<sizeof...(Params)>;
+			return invocable_(get<indices>(params_)..., std::forward<decltype(args)>(args)...);
 		}
 
 	private:

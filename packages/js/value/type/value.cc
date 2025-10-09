@@ -11,11 +11,11 @@ import :tag;
 
 namespace js {
 
+// Any utf16 (canonical) or latin1 (optimized) string
+export using string_t = std::variant<std::u16string, std::string>;
+
 // Any (cloneable) object key
 export using key_t = std::variant<int32_t, std::u16string, std::string>;
-
-// Any latin1 or utf16 string
-export using string_t = std::variant<std::u16string, std::string>;
 
 export using value_t = boost::make_recursive_variant<
 	// `undefined`

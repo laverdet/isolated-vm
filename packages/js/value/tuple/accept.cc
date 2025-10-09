@@ -17,9 +17,10 @@ export struct rest {};
 // Normal parameter
 template <class Meta, class Type>
 struct accept_tuple_param : accept_next<Meta, Type> {
-		constexpr accept_tuple_param() : accept_next<Meta, Type>{this} {}
+		using accept_type = accept_next<Meta, Type>;
+		constexpr accept_tuple_param() : accept_type{this} {}
 
-		constexpr auto range(const auto& visit, auto& iterator, auto& end) -> decltype(auto) {
+		constexpr auto visit_and_advance(const auto& visit, auto& iterator, auto& end) -> accept_target_t<accept_type> {
 			if (iterator == end) {
 				return (*this)(undefined_in_tag{}, visit, std::monostate{});
 			} else {
@@ -30,7 +31,7 @@ struct accept_tuple_param : accept_next<Meta, Type> {
 
 // Rest placeholder
 struct accept_tuple_rest_placeholder {
-		constexpr auto range(auto& /*iterator*/, auto& /*end*/, const visit_holder /*visit*/) const -> rest {
+		constexpr auto visit_and_advance(auto& /*iterator*/, auto& /*end*/, const visit_holder /*visit*/) const -> rest {
 			return {};
 		}
 };
@@ -38,9 +39,10 @@ struct accept_tuple_rest_placeholder {
 // Rest parameter
 template <class Meta, class Type>
 struct accept_tuple_rest_spread : accept_next<Meta, Type> {
-		constexpr accept_tuple_rest_spread() : accept_next<Meta, Type>{this} {}
+		using accept_type = accept_next<Meta, Type>;
+		constexpr accept_tuple_rest_spread() : accept_type{this} {}
 
-		constexpr auto range(const auto& visit, auto& iterator, auto& end) -> decltype(auto) {
+		constexpr auto visit_and_advance(const auto& visit, auto& iterator, auto& end) -> accept_target_t<accept_type> {
 			return (*this)(vector_tag{}, std::ranges::subrange{iterator, end}, visit);
 		}
 };
@@ -49,7 +51,7 @@ struct accept_tuple_rest_spread : accept_next<Meta, Type> {
 template <class Meta, class... Types>
 consteval auto make_tuple_acceptor_types() {
 	constexpr auto size = sizeof...(Types);
-	constexpr auto rest_param = []() consteval {
+	constexpr auto rest_param = []() consteval -> size_t {
 		if constexpr (size >= 2) {
 			return type<Types...[ size - 2 ]> == type<rest> ? size - 1 : size;
 		} else {
@@ -92,7 +94,7 @@ struct accept<Meta, std::tuple<Types...>> {
 			auto range = util::into_range(std::forward<decltype(value)>(value));
 			auto it = std::begin(range);
 			auto end = std::end(range);
-			return {std::get<indices>(accept_).range(visit, it, end)...};
+			return {std::get<indices>(accept_).visit_and_advance(visit, it, end)...};
 		}
 
 	private:

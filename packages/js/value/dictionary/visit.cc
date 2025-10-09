@@ -8,18 +8,18 @@ import ivm.utility;
 
 namespace js {
 
-// Non-recursive member visitor
+// Default visitor for non-pair values
 template <class Meta, class Type>
-struct visit_entry_value : visit<Meta, Type> {
+struct visit_vector_value : visit<Meta, Type> {
 		using visit<Meta, Type>::visit;
 };
 
 // Recursive member
 template <class Meta, class Type>
 	requires is_recursive_v<Type>
-struct visit_entry_value<Meta, Type> {
+struct visit_vector_value<Meta, Type> {
 	public:
-		constexpr explicit visit_entry_value(auto* transfer) :
+		constexpr explicit visit_vector_value(auto* transfer) :
 				visit_{*transfer} {}
 
 		constexpr auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
@@ -30,12 +30,6 @@ struct visit_entry_value<Meta, Type> {
 		std::reference_wrapper<const visit<Meta, typename Meta::visit_subject_type>> visit_;
 };
 
-// Default visitor for non-pair values
-template <class Meta, class Type>
-struct visit_vector_value : visit_entry_value<Meta, Type> {
-		using visit_entry_value<Meta, Type>::visit_entry_value;
-};
-
 // Special case for pairs
 template <class Meta, class Key, class Value>
 struct visit_vector_value<Meta, std::pair<Key, Value>> {
@@ -44,7 +38,7 @@ struct visit_vector_value<Meta, std::pair<Key, Value>> {
 				second{transfer} {}
 
 		visit<Meta, Key> first;
-		visit_entry_value<Meta, Value> second;
+		visit_vector_value<Meta, Value> second;
 };
 
 // Entrypoint for `vector_of` visitor. Probably `Entry` is a `std::pair` though maybe it's not

@@ -21,8 +21,8 @@ class referenceable_value {
 		explicit constexpr referenceable_value(referenceable_value<From> value) :
 				value_{*std::move(value)} {}
 
-		auto operator*() const& -> const Type& { return value_; }
-		auto operator*() && -> Type { return std::move(value_); }
+		constexpr auto operator*() const& -> const Type& { return value_; }
+		constexpr auto operator*() && -> Type { return std::move(value_); }
 
 	private:
 		Type value_;
@@ -40,7 +40,7 @@ class deferred_receiver : public referenceable_value<Type> {
 				referenceable_value<Type>{std::move(value)},
 				dispatch_{dispatch} {}
 
-		auto operator()(Args... args) && -> void { dispatch_(**this, std::forward<Args>(args)...); }
+		constexpr auto operator()(Args... args) && -> void { dispatch_(**this, std::forward<Args>(args)...); }
 
 	private:
 		dispatch_type* dispatch_;

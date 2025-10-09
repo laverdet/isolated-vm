@@ -133,7 +133,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 				napi::value<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{self}, Size)),
 				[](napi::value<vector_tag> array, auto& self, const auto& visit, auto /*&&*/ tuple) -> void {
 					const auto [... indices ] = util::sequence<Size>;
-					(..., [ & ]() {
+					(..., [ & ]() -> void {
 						// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
 						// reference members one at a time.
 						auto* element = napi_value{visit(indices, std::forward<decltype(tuple)>(tuple), self)};
@@ -208,7 +208,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 				[](napi::value<dictionary_tag> object, auto& self, const auto& visit, auto /*&&*/ dictionary) -> void {
 					std::array<napi_property_descriptor, Size> properties;
 					const auto [... indices ] = util::sequence<Size>;
-					(..., [ & ]() {
+					(..., [ & ]() -> void {
 						const auto& visit_n = std::get<indices>(visit);
 						properties[ indices ] = {
 							.utf8name{},

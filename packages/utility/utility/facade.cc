@@ -15,11 +15,11 @@ class arithmetic_facade {
 		using difference_type = difference_type_;
 
 		// Type -= difference_type
-		auto operator-=(this auto& self, difference_type offset) -> decltype(auto) { return self += -offset; }
+		auto operator-=(this auto& self, difference_type offset) -> auto& { return self += -offset; }
 
 		// ++Type / --Type
-		auto operator++(this auto& self) -> decltype(auto) { return self += 1; }
-		auto operator--(this auto& self) -> decltype(auto) { return self -= 1; }
+		auto operator++(this auto& self) -> auto& { return self += 1; }
+		auto operator--(this auto& self) -> auto& { return self -= 1; }
 
 		// Type++ / Type--
 		auto operator++(this auto& self, int) {
@@ -70,7 +70,7 @@ class array_facade {
  */
 export class pointer_facade {
 	public:
-		auto operator->(this auto&& self) -> auto* {
+		constexpr auto operator->(this auto&& self) -> auto* {
 			return std::addressof(*std::forward<decltype(self)>(self));
 		}
 };

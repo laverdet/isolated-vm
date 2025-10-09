@@ -102,22 +102,25 @@ constexpr auto transfer_with(
 	std::tuple<AcceptArgs...> accept_args
 ) -> Type {
 	using subject_type = std::decay_t<decltype(value)>;
+	using visit_subject_type = visit_subject_for<subject_type>::type;
+
 	using target_type = std::decay_t<Type>;
+	using accept_target_type = accept_target_for<target_type>::type;
 
 	// compose accept type
 	using accept_context_type = select_transferee_environment_t<std::remove_cvref_t<AcceptArgs>...>;
 	using accept_meta_type = accept_meta_holder<
 		Wrap,
 		accept_context_type,
-		accept_property_subject_t<typename visit_subject_for<subject_type>::type>>;
+		accept_property_subject_t<visit_subject_type>>;
 	using accept_type = accept_next<accept_meta_type, Type>;
 
 	// compose visit type
 	using visit_context_type = select_transferee_environment_t<std::remove_cvref_t<VisitArgs>...>;
 	using visit_meta_type = visit_meta_holder<
 		visit_context_type,
-		typename visit_subject_for<subject_type>::type,
-		accept_property_subject_t<typename accept_target_for<target_type>::type>,
+		visit_subject_type,
+		accept_property_subject_t<accept_target_type>,
 		typename accept_reference_type<accept_type>::type>;
 	using visit_type = visit<visit_meta_type, subject_type>;
 

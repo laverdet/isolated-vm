@@ -10,7 +10,7 @@
     "#backend-v8": "./backend_v8.cjs"
   },
   "scripts": {
-    "test": "node --enable-source-maps --test-reporter=spec --test dist/test/*.js"
+    "test": "${NODE-node} --enable-source-maps --test-reporter=spec --test dist/test/*.js"
   },
   "description": "JavaScript sandbox",
   "author": "https://github.com/laverdet/",

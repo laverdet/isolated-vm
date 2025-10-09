@@ -84,16 +84,17 @@ class materializable {
 // Extract the target type from an `accept`-like type. This is used to know what to cast the result
 // of `accept()` to.
 template <class Type>
-struct accept_target;
+struct accept_target_by;
 
 export template <class Type>
-using accept_target_t = accept_target<Type>::type;
+using accept_target_t = accept_target_by<std::remove_cvref_t<Type>>::type;
 
 template <class Accept>
-struct accept_target : std::type_identity<typename Accept::accept_target_type> {};
+	requires requires { typename Accept::accept_target_type; }
+struct accept_target_by<Accept> : std::type_identity<typename Accept::accept_target_type> {};
 
 template <class Meta, class Type>
-struct accept_target<accept<Meta, Type>> : std::type_identity<Type> {};
+struct accept_target_by<accept<Meta, Type>> : std::type_identity<Type> {};
 
 // Invoked by `visit` implementations which don't use a reference map. It unwraps internal
 // references types and casts the result of `accept(...)` to the appropriate type. For example
@@ -140,13 +141,13 @@ struct reference_map_provider {
 				map_{std::forward<decltype(args)>(args)...} {}
 
 		template <class Accept>
-		constexpr auto lookup_or_visit(Accept& /*accept*/, auto subject, auto visit) const -> accept_target_t<Accept> {
+		constexpr auto lookup_or_visit(Accept& accept, auto subject, auto visit) const -> accept_target_t<Accept> {
 			using value_type = accept_target_t<Accept>;
 			auto it = map_.find(subject);
 			if (it == map_.end()) {
 				return visit();
 			} else {
-				return Accept::reaccept(std::type_identity<value_type>{}, it->second);
+				return accept.reaccept(std::type_identity<value_type>{}, it->second);
 			}
 		}
 
@@ -160,13 +161,13 @@ struct reference_map_provider {
 				[ & ]<class Type>(js::referenceable_value<Type> value) -> value_type {
 					auto [ iterator, inserted ] = map_.try_emplace(subject, *value);
 					assert(inserted);
-					return Accept::reaccept(std::type_identity<value_type>{}, iterator->second);
+					return accept.reaccept(std::type_identity<value_type>{}, iterator->second);
 				},
 				[ & ]<class Type, class... Args>(js::deferred_receiver<Type, Args...> receiver) -> value_type {
 					auto [ iterator, inserted ] = map_.try_emplace(subject, *receiver);
 					assert(inserted);
 					std::move(receiver)(accept, visit, std::forward<decltype(subject)>(subject));
-					return Accept::reaccept(std::type_identity<value_type>{}, iterator->second);
+					return accept.reaccept(std::type_identity<value_type>{}, iterator->second);
 				},
 			};
 			return unwrap(accept(tag, visit, std::forward<decltype(subject)>(subject)));

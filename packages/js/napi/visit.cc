@@ -61,7 +61,9 @@ template <class Environment, class Target>
 struct visit_napi_value;
 
 template <class Meta>
-using visit_napi_value_with = visit_napi_value<typename Meta::visit_context_type, typename Meta::accept_reference_type>;
+using visit_napi_value_with = visit_napi_value<
+	typename Meta::visit_context_type,
+	typename Meta::accept_reference_type>;
 
 template <class Environment, class Target>
 struct visit_napi_value
