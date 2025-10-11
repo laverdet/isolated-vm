@@ -5,6 +5,7 @@ module;
 #include <utility>
 export module isolated_js:visit;
 import :deferred_receiver;
+import :recursive_value;
 import :tag;
 import :transfer.types;
 import ivm.utility;
@@ -38,6 +39,35 @@ struct visit<void, forward<Type>> {
 		constexpr auto operator()(auto&& value, const auto& /*accept*/) const {
 			return *std::forward<decltype(value)>(value);
 		}
+};
+
+// `visit` delegated to a sub class passed down from the constructor
+export template <class Visit>
+struct visit_delegated {
+	public:
+		using visit_type = Visit;
+		constexpr explicit visit_delegated(auto* transfer) : visit_{*transfer} {}
+
+		constexpr auto operator()(auto&& subject, auto& accept) const -> decltype(auto) {
+			return visit_(std::forward<decltype(subject)>(subject), accept);
+		}
+
+	private:
+		std::reference_wrapper<const visit_type> visit_;
+};
+
+// `visit` a possibly recursive subject
+export template <class Meta, class Type>
+struct visit_recursive : visit<Meta, Type> {
+		using visit_type = visit<Meta, Type>;
+		using visit_type::visit_type;
+};
+
+template <class Meta, class Type>
+	requires is_recursive_value<Type>
+struct visit_recursive<Meta, Type> : visit_delegated<visit<Meta, Type>> {
+		using visit_type = visit_delegated<visit<Meta, Type>>;
+		using visit_type::visit_type;
 };
 
 // Unfold `Subject` through container visitors.
@@ -84,17 +114,16 @@ class materializable {
 // Extract the target type from an `accept`-like type. This is used to know what to cast the result
 // of `accept()` to.
 template <class Type>
-struct accept_target_by;
+struct accept_target_of;
 
 export template <class Type>
-using accept_target_t = accept_target_by<std::remove_cvref_t<Type>>::type;
+using accept_target_t = accept_target_of<std::remove_cvref_t<Type>>::type;
 
 template <class Accept>
-	requires requires { typename Accept::accept_target_type; }
-struct accept_target_by<Accept> : std::type_identity<typename Accept::accept_target_type> {};
+struct accept_target_of : std::type_identity<typename Accept::accept_target_type> {};
 
 template <class Meta, class Type>
-struct accept_target_by<accept<Meta, Type>> : std::type_identity<Type> {};
+struct accept_target_of<accept<Meta, Type>> : std::type_identity<Type> {};
 
 // Recursively invoke single-argument `accept` calls until a non-`accept`'able type is returned. `referenceable_value`'s
 // are unwrapped and passed to `store`.

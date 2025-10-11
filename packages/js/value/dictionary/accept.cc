@@ -1,46 +1,18 @@
 module;
-#include <functional>
 #include <ranges>
 #include <utility>
 export module isolated_js:dictionary.accept;
-import :dictionary.helpers;
 import :dictionary.vector_of;
 import :transfer;
 import ivm.utility;
 
 namespace js {
 
-// If the container is not recursive then it will own its own entry acceptor. Otherwise it accepts
-// a reference to an existing one.
-template <class Meta, class Type>
-struct accept_entry_value : accept_next<Meta, Type> {
-		using accept_target_type = Type;
-		using accept_next<Meta, Type>::accept_next;
-};
-
-template <class Meta, class Type>
-	requires is_recursive_v<Type>
-struct accept_entry_value<Meta, Type> {
-	public:
-		using accept_target_type = Type;
-		using accept_type = accept_next<Meta, Type>;
-
-		explicit constexpr accept_entry_value(auto* transfer) :
-				accept_{*transfer} {}
-
-		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> Type
-			requires std::invocable<accept_type&, decltype(tag), decltype(visit), decltype(value)> {
-			return accept_(tag, visit, std::forward<decltype(value)>(value));
-		}
-
-	private:
-		std::reference_wrapper<accept_type> accept_;
-};
-
 // Default acceptor for non-pair values
 template <class Meta, class Type>
-struct accept_vector_value : accept_entry_value<Meta, Type> {
-		using accept_entry_value<Meta, Type>::accept_entry_value;
+struct accept_vector_value : accept_recursive_next<Meta, Type> {
+		using accept_type = accept_recursive_next<Meta, Type>;
+		using accept_type::accept_type;
 
 		constexpr auto make_struct_subject(auto&& entry) {
 			return std::forward<decltype(entry)>(entry);
@@ -68,7 +40,7 @@ struct accept_vector_value<Meta, std::pair<Key, Value>> {
 		}
 
 		accept_next<Meta, Key> first;
-		accept_entry_value<Meta, Value> second;
+		accept_recursive_next<Meta, Value> second;
 };
 
 // Dictionary's acceptor manages the recursive acceptor for the entry key/value types

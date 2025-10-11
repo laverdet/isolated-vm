@@ -3,6 +3,7 @@ module;
 #include <string>
 #include <utility>
 export module isolated_js:accept;
+import :recursive_value;
 import :transfer.types;
 import :visit;
 import ivm.utility;
@@ -38,9 +39,51 @@ struct accept<void, forward<Type, Tag>> {
 		}
 };
 
+// `accept` delegated to a sub class passed down from the constructor
+export template <class Accept>
+struct accept_delegated {
+	public:
+		using accept_target_type = accept_target_t<Accept>;
+		using accept_type = Accept;
+		constexpr explicit accept_delegated(auto* transfer) : accept_{*transfer} {}
+
+		constexpr auto operator()(auto tag, const auto& visit, auto&& value) const -> accept_target_type
+			requires std::invocable<accept_type&, decltype(tag), decltype(visit), decltype(value)> {
+			return accept_(tag, visit, std::forward<decltype(value)>(value));
+		}
+
+	private:
+		std::reference_wrapper<accept_type> accept_;
+};
+
 // `accept` with transfer wrapping
 export template <class Meta, class Type>
-using accept_next = Meta::accept_wrap_type::template accept<accept<Meta, Type>>;
+struct accept_next;
+
+template <class Meta, class Type>
+struct accept_target_of<accept_next<Meta, Type>> : std::type_identity<Type> {};
+
+template <class Meta, class Type>
+struct accept_next : Meta::accept_wrap_type::template accept<accept<Meta, Type>> {
+		using accept_type = Meta::accept_wrap_type::template accept<accept<Meta, Type>>;
+		using accept_type::accept_type;
+};
+
+// `accept` possibly a possible recursive target
+export template <class Meta, class Type>
+struct accept_recursive_next : accept_next<Meta, Type> {
+		using accept_target_type = accept_target_t<accept_next<Meta, Type>>;
+		using accept_type = accept_next<Meta, Type>;
+		using accept_type::accept_type;
+};
+
+template <class Meta, class Type>
+	requires is_recursive_value<Type>
+struct accept_recursive_next<Meta, Type> : accept_delegated<accept_next<Meta, Type>> {
+		using accept_target_type = Type;
+		using accept_type = accept_delegated<accept_next<Meta, Type>>;
+		using accept_type::accept_type;
+};
 
 // Specialized by certain containers to map `Target` to the first meaningful acceptor. This is
 // specifically used with `accept_property_subject_type` in relation to property names.

@@ -34,23 +34,4 @@ struct accept<Meta, std::variant<Types...>> : accept_covariant<Meta, Types, std:
 		using accept_covariant<Meta, Types, std::variant<Types...>>::operator()...;
 };
 
-// Recursive `boost::variant` acceptor
-template <class Meta, class Variant>
-struct accept_recursive_variant;
-
-template <class Meta, class Variant, class... Types>
-struct accept_recursive_variant<Meta, variant_of<Variant, Types...>>
-		: accept_covariant<Meta, substitute_recursive<Variant, Types>, Variant>... {
-		explicit constexpr accept_recursive_variant(auto* transfer) :
-				accept_covariant<Meta, substitute_recursive<Variant, Types>, Variant>{transfer}... {}
-		using accept_covariant<Meta, substitute_recursive<Variant, Types>, Variant>::operator()...;
-};
-
-// `accept` entry for `boost::make_recursive_variant`
-template <class Meta, class First, class... Rest>
-struct accept<Meta, recursive_variant<First, Rest...>>
-		: accept_recursive_variant<Meta, variant_of<recursive_variant<First, Rest...>, First, Rest...>> {
-		using accept_recursive_variant<Meta, variant_of<recursive_variant<First, Rest...>, First, Rest...>>::accept_recursive_variant;
-};
-
 } // namespace js

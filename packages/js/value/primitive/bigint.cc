@@ -16,6 +16,9 @@ export class bigint {
 
 		bigint() = default;
 
+		explicit constexpr bigint(int number) :
+				bigint{int64_t{number}} {}
+
 		explicit constexpr bigint(uint64_t number) :
 				words_{std::from_range, std::array{number}} {}
 

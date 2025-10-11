@@ -5,7 +5,6 @@ target_sources(value_js
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		dictionary/accept.cc
-		dictionary/helpers.cc
 		dictionary/vector_of.cc
 		dictionary/visit.cc
 		enum/accept.cc
@@ -14,6 +13,9 @@ target_sources(value_js
 		primitive/bigint.cc
 		primitive/date.cc
 		primitive/visit.cc
+		reference/accept.cc
+		reference/recursive_value.cc
+		reference/visit.cc
 		struct/accept.cc
 		struct/helpers.cc
 		struct/types.cc

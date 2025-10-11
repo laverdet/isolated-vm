@@ -33,6 +33,13 @@ constexpr auto string_variant = std::variant<std::string>{"hello"};
 constexpr auto visited_string = transfer<std::variant<std::monostate, std::string>>(string_variant);
 static_assert(variant_is_equal_to(visited_string, "hello"s));
 
+// Recursive variants
+static_assert(variant_is_equal_to(transfer<value_t>(bigint{1'234}), bigint{1'234}));
+static_assert(variant_is_equal_to(transfer_strict<value_t>(bigint{1'234}), bigint{1'234}));
+// static_assert(variant_is_equal_to(transfer<value_t>(value_t{bigint{1'234}}), bigint{1'234}));
+// static_assert(variant_is_equal_to(transfer_strict<value_t>(value_t{bigint{1'234}}), bigint{1'234}));
+static_assert(transfer<bigint>(value_t{bigint{1'234}}) == bigint{1'234});
+
 // Optional
 constexpr auto optional_value = transfer<std::optional<int>>(std::monostate{});
 static_assert(optional_value == std::nullopt);

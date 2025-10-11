@@ -58,9 +58,6 @@
 				"kind": "build",
 				"isDefault": true
 			},
-			"runOptions": {
-				"runOn": "folderOpen",
-			},
 			"dependsOn": [ "tsc: watch", "ninja: build" ],
 			"icon": { "id": "plug" },
 		},

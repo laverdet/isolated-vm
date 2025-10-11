@@ -5,6 +5,7 @@ export import :dictionary.vector_of;
 export import :enum_.types;
 export import :function;
 export import :property;
+export import :recursive_value;
 export import :struct_.types;
 export import :transfer;
 export import :tuple.accept; // for `rest`
@@ -15,6 +16,8 @@ import :dictionary.visit;
 import :enum_.accept;
 import :primitive.accept;
 import :primitive.visit;
+import :reference.accept;
+import :reference.visit;
 import :struct_.accept;
 import :struct_.visit;
 import :tuple.visit;
