@@ -1,6 +1,7 @@
 module;
 #include <concepts>
 #include <string_view>
+#include <tuple>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -116,6 +117,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			-> js::deferred_receiver<napi::value<vector_tag>, decltype(self), decltype(visit), decltype(list)> {
 			return {
 				napi::value<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{self}, list.size())),
+				std::forward_as_tuple(self, visit, std::forward<decltype(list)>(list)),
 				[](napi::value<vector_tag> array, auto& self, const auto& visit, auto /*&&*/ list) -> void {
 					int ii = 0;
 					for (auto&& value : util::into_range(std::forward<decltype(list)>(list))) {
@@ -131,6 +133,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			-> js::deferred_receiver<napi::value<vector_tag>, decltype(self), decltype(visit), decltype(tuple)> {
 			return {
 				napi::value<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{self}, Size)),
+				std::forward_as_tuple(self, visit, std::forward<decltype(tuple)>(tuple)),
 				[](napi::value<vector_tag> array, auto& self, const auto& visit, auto /*&&*/ tuple) -> void {
 					const auto [... indices ] = util::sequence<Size>;
 					(..., [ & ]() -> void {
@@ -148,6 +151,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			-> js::deferred_receiver<napi::value<list_tag>, decltype(self), decltype(visit), decltype(list)> {
 			return {
 				napi::value<list_tag>::from(napi::invoke(napi_create_array, napi_env{self})),
+				std::forward_as_tuple(self, visit, std::forward<decltype(list)>(list)),
 				[](napi::value<list_tag> array, auto& self, const auto& visit, auto /*&&*/ list) -> void {
 					std::vector<napi_property_descriptor> properties;
 					properties.reserve(std::size(list));
@@ -175,6 +179,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			-> js::deferred_receiver<napi::value<dictionary_tag>, decltype(self), decltype(visit), decltype(dictionary)> {
 			return {
 				napi::value<dictionary_tag>::from(napi::invoke(napi_create_object, napi_env{self})),
+				std::forward_as_tuple(self, visit, std::forward<decltype(dictionary)>(dictionary)),
 				[](napi::value<dictionary_tag> object, auto& self, const auto& visit, auto /*&&*/ dictionary) -> void {
 					std::vector<napi_property_descriptor> properties;
 					auto&& range = util::into_range(std::forward<decltype(dictionary)>(dictionary));
@@ -205,6 +210,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			-> js::deferred_receiver<napi::value<dictionary_tag>, decltype(self), decltype(visit), decltype(dictionary)> {
 			return {
 				napi::value<dictionary_tag>::from(napi::invoke(napi_create_object, napi_env{self})),
+				std::forward_as_tuple(self, visit, std::forward<decltype(dictionary)>(dictionary)),
 				[](napi::value<dictionary_tag> object, auto& self, const auto& visit, auto /*&&*/ dictionary) -> void {
 					std::array<napi_property_descriptor, Size> properties;
 					const auto [... indices ] = util::sequence<Size>;

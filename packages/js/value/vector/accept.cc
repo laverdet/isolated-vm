@@ -50,7 +50,7 @@ struct accept<Meta, std::vector<Type>> : accept_next<Meta, Type> {
 		constexpr auto operator()(list_tag /*tag*/, const auto& visit, auto&& list) -> std::vector<Type> {
 			// nb: This doesn't check for string keys, so like `Object.assign([ 1 ], { foo: 2 })` might
 			// yield `[ 1, 2 ]`
-			accept_next<Meta, Type>& acceptor = *this;
+			accept_type& acceptor = *this;
 			auto range =
 				std::forward<decltype(list)>(list) |
 				std::views::transform([ & ](auto&& value) -> Type {
@@ -60,7 +60,7 @@ struct accept<Meta, std::vector<Type>> : accept_next<Meta, Type> {
 		}
 
 		constexpr auto operator()(vector_tag /*tag*/, const auto& visit, auto&& list) -> std::vector<Type> {
-			accept_next<Meta, Type>& acceptor = *this;
+			accept_type& acceptor = *this;
 			auto range =
 				std::forward<decltype(list)>(list) |
 				std::views::transform([ & ](auto&& value) -> Type {

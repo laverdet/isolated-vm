@@ -46,7 +46,7 @@ export template <class Type>
 constexpr inline auto constructor = constructor_t<Type>{};
 
 // Hide `-Wunused-value` warnings
-export constexpr auto unused(auto&& /*nothing*/) -> void {}
+export constexpr auto unused = [](auto&& /*nothing*/) -> void {};
 
 // Invoke the given callable using an explicit and possibly shadowed `operator()()` on a base class,
 // but without erasing the pointer type for deduced `this`. The syntax here is messy, and

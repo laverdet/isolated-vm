@@ -96,25 +96,39 @@ struct accept_target_by<Accept> : std::type_identity<typename Accept::accept_tar
 template <class Meta, class Type>
 struct accept_target_by<accept<Meta, Type>> : std::type_identity<Type> {};
 
-// Invoked by `visit` implementations which don't use a reference map. It unwraps internal
-// references types and casts the result of `accept(...)` to the appropriate type. For example
-// `v8::Local<v8::String>` -> `v8::Local<v8::Value>`.
+// Recursively invoke single-argument `accept` calls until a non-`accept`'able type is returned. `referenceable_value`'s
+// are unwrapped and passed to `store`.
+constexpr auto consume_accept(auto& accept, auto&& value, const auto& /*store*/)
+	-> accept_target_t<decltype(accept)> {
+	using value_type = accept_target_t<decltype(accept)>;
+	return value_type(std::forward<decltype(value)>(value));
+}
+
+constexpr auto consume_accept(auto& accept, auto&& value, const auto& store)
+	-> accept_target_t<decltype(accept)>
+	requires requires { accept(std::declval<decltype(value)>()); } {
+	return consume_accept(accept, accept(std::forward<decltype(value)>(value)), store);
+}
+
+template <class Type>
+constexpr auto consume_accept(auto& accept, js::referenceable_value<Type> value, const auto& store)
+	-> accept_target_t<decltype(accept)> {
+	store(*value);
+	return consume_accept(accept, *std::move(value), store);
+}
+
+template <class Type, class... Args>
+constexpr auto consume_accept(auto& accept, js::deferred_receiver<Type, Args...> receiver, const auto& store)
+	-> accept_target_t<decltype(accept)> {
+	store(*receiver);
+	std::move(receiver)();
+	return consume_accept(accept, *std::move(receiver), store);
+}
+
+// TODO: It will be removed
 export template <class Accept>
 constexpr auto invoke_accept(Accept& accept, auto tag, const auto& visit, auto&& subject) -> accept_target_t<Accept> {
-	using value_type = accept_target_t<Accept>;
-	const auto unwrap = util::overloaded{
-		[](auto&& result) constexpr -> value_type {
-			return value_type(std::forward<decltype(result)>(result));
-		},
-		[]<class Type>(js::referenceable_value<Type> value) -> value_type {
-			return value_type(*value);
-		},
-		[ & ]<class Type, class... Args>(js::deferred_receiver<Type, Args...> receiver) -> value_type {
-			std::move(receiver)(accept, visit, std::forward<decltype(subject)>(subject));
-			return value_type(*receiver);
-		},
-	};
-	return unwrap(accept(tag, visit, std::forward<decltype(subject)>(subject)));
+	return consume_accept(accept, accept(tag, visit, std::forward<decltype(subject)>(subject)), util::unused);
 }
 
 // Reference map for visitors whose acceptors don't define a `accept_reference_type`
@@ -122,13 +136,17 @@ struct null_reference_map {
 		explicit null_reference_map(auto&&... /*args*/) {}
 
 		template <class Accept>
-		constexpr auto lookup_or_visit(Accept& /*accept*/, auto /*subject*/, auto visit) const -> accept_target_t<Accept> {
-			return visit();
+		constexpr auto lookup_or_visit(Accept& /*accept*/, auto /*subject*/, auto dispatch) const -> accept_target_t<Accept> {
+			return dispatch();
 		}
 
 		template <class Accept>
 		constexpr auto try_emplace(Accept& accept, auto tag, const auto& visit, auto&& subject) const -> accept_target_t<Accept> {
-			return invoke_accept(accept, tag, visit, std::forward<decltype(subject)>(subject));
+			return consume_accept(
+				accept,
+				accept(tag, visit, std::forward<decltype(subject)>(subject)),
+				util::unused
+			);
 		}
 };
 
@@ -141,11 +159,11 @@ struct reference_map_provider {
 				map_{std::forward<decltype(args)>(args)...} {}
 
 		template <class Accept>
-		constexpr auto lookup_or_visit(Accept& accept, auto subject, auto visit) const -> accept_target_t<Accept> {
+		constexpr auto lookup_or_visit(Accept& accept, auto subject, auto dispatch) const -> accept_target_t<Accept> {
 			using value_type = accept_target_t<Accept>;
 			auto it = map_.find(subject);
 			if (it == map_.end()) {
-				return visit();
+				return dispatch();
 			} else {
 				return accept.reaccept(std::type_identity<value_type>{}, it->second);
 			}
@@ -153,24 +171,14 @@ struct reference_map_provider {
 
 		template <class Accept>
 		constexpr auto try_emplace(Accept& accept, auto tag, const auto& visit, auto&& subject) const -> accept_target_t<Accept> {
-			using value_type = accept_target_t<Accept>;
-			const auto unwrap = util::overloaded{
-				[](auto&& result) -> value_type {
-					return value_type(std::forward<decltype(result)>(result));
-				},
-				[ & ]<class Type>(js::referenceable_value<Type> value) -> value_type {
-					auto [ iterator, inserted ] = map_.try_emplace(subject, *value);
+			return consume_accept(
+				accept,
+				accept(tag, visit, std::forward<decltype(subject)>(subject)),
+				[ & ](auto&& value) -> void {
+					auto [ iterator, inserted ] = map_.try_emplace(subject, std::forward<decltype(value)>(value));
 					assert(inserted);
-					return accept.reaccept(std::type_identity<value_type>{}, iterator->second);
-				},
-				[ & ]<class Type, class... Args>(js::deferred_receiver<Type, Args...> receiver) -> value_type {
-					auto [ iterator, inserted ] = map_.try_emplace(subject, *receiver);
-					assert(inserted);
-					std::move(receiver)(accept, visit, std::forward<decltype(subject)>(subject));
-					return accept.reaccept(std::type_identity<value_type>{}, iterator->second);
-				},
-			};
-			return unwrap(accept(tag, visit, std::forward<decltype(subject)>(subject)));
+				}
+			);
 		}
 
 	private:

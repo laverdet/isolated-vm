@@ -2,6 +2,7 @@ module;
 #include <concepts>
 #include <utility>
 export module isolated_js:deferred_receiver;
+import ivm.utility;
 
 namespace js {
 
@@ -36,14 +37,19 @@ class deferred_receiver : public referenceable_value<Type> {
 		using dispatch_type = auto(Type, Args...) -> void;
 
 	public:
-		constexpr deferred_receiver(Type value, dispatch_type* dispatch) :
+		constexpr deferred_receiver(Type value, std::tuple<Args&&...> args, dispatch_type* dispatch) :
 				referenceable_value<Type>{std::move(value)},
-				dispatch_{dispatch} {}
+				dispatch_{dispatch},
+				args_{std::move(args)} {}
 
-		constexpr auto operator()(Args... args) && -> void { dispatch_(**this, std::forward<Args>(args)...); }
+		constexpr auto operator()() && -> void {
+			const auto [... indices ] = util::sequence<sizeof...(Args)>;
+			dispatch_(*std::move(*this), std::get<indices>(std::move(args_))...);
+		}
 
 	private:
 		dispatch_type* dispatch_;
+		std::tuple<Args&&...> args_;
 };
 
 } // namespace js

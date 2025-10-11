@@ -6,6 +6,7 @@ module;
 #include <concepts>
 #include <cstdint>
 #include <string_view>
+#include <tuple>
 #include <utility>
 export module v8_js:accept;
 import :date;
@@ -115,6 +116,7 @@ struct accept_v8_value : accept_v8_primitive {
 			-> js::deferred_receiver<v8::Local<v8::Array>, decltype(self), decltype(visit), decltype(list)> {
 			return {
 				v8::Array::New(self.isolate()),
+				std::forward_as_tuple(self, visit, std::forward<decltype(list)>(list)),
 				[](v8::Local<v8::Array> array, auto& self, const auto& visit, auto /*&&*/ list) -> void {
 					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(list)>(list))) {
 						auto result = array->Set(
@@ -133,6 +135,7 @@ struct accept_v8_value : accept_v8_primitive {
 			-> js::deferred_receiver<v8::Local<v8::Object>, decltype(self), decltype(visit), decltype(dictionary)> {
 			return {
 				v8::Object::New(self.isolate()),
+				std::forward_as_tuple(self, visit, std::forward<decltype(dictionary)>(dictionary)),
 				[](v8::Local<v8::Object> object, auto& self, const auto& visit, auto /*&&*/ dictionary) -> void {
 					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(dictionary)>(dictionary))) {
 						auto result = object->Set(
