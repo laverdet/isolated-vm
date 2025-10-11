@@ -63,9 +63,6 @@ using visit_flat_v8_value_with = visit_flat_v8_value<typename Meta::accept_refer
 
 template <class Target>
 struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
-	protected:
-		struct skip_lookup {};
-
 	public:
 		using reference_map_type = reference_map_t<Target, v8_reference_map_type>;
 		using reference_map_type::lookup_or_visit;
@@ -76,12 +73,12 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 
 		[[nodiscard]] auto lock_witness() const -> auto& { return isolate_lock_; }
 
-		// If the protected `skip_lookup` operation is defined: this public operation will first perform
-		// a reference map lookup, then delegate to the protected operation if not found.
+		// If the protected `immediate` operation is defined: this public operation will first
+		// perform a reference map lookup, then delegate to the protected operation if not found.
 		auto operator()(this const auto& self, auto subject, auto& accept) -> decltype(auto)
-			requires requires { self(skip_lookup{}, subject, accept); } {
+			requires requires { self.immediate(subject, accept); } {
 			return self.lookup_or_visit(accept, subject, [ & ]() -> decltype(auto) {
-				return self(skip_lookup{}, subject, accept);
+				return self.immediate(subject, accept);
 			});
 		}
 
@@ -102,7 +99,7 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 
 	protected:
 		// primitives
-		auto operator()(skip_lookup skip, v8::Local<v8::Primitive> subject, auto& accept) const -> decltype(auto) {
+		auto immediate(v8::Local<v8::Primitive> subject, auto& accept) const -> decltype(auto) {
 			if (subject->IsNullOrUndefined()) {
 				if (subject->IsNull()) {
 					null_ = subject;
@@ -114,26 +111,26 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 			} else if (subject->IsNumber()) {
 				return (*this)(subject.As<v8::Number>(), accept);
 			} else if (subject->IsName()) {
-				return (*this)(skip, subject.As<v8::Name>(), accept);
+				return immediate(subject.As<v8::Name>(), accept);
 			} else if (subject->IsBoolean()) {
 				return (*this)(subject.As<v8::Boolean>(), accept);
 			} else if (subject->IsBigInt()) {
-				return (*this)(skip, subject.As<v8::BigInt>(), accept);
+				return immediate(subject.As<v8::BigInt>(), accept);
 			} else {
 				std::unreachable();
 			}
 		}
 
 		// names
-		auto operator()(skip_lookup skip, v8::Local<v8::Name> subject, auto& accept) const -> decltype(auto) {
+		auto immediate(v8::Local<v8::Name> subject, auto& accept) const -> decltype(auto) {
 			if (subject->IsString()) {
-				return (*this)(skip, subject.As<v8::String>(), accept);
+				return immediate(subject.As<v8::String>(), accept);
 			} else {
-				return (*this)(skip, subject.As<v8::Symbol>(), accept);
+				return immediate(subject.As<v8::Symbol>(), accept);
 			}
 		}
 
-		auto operator()(skip_lookup /*skip*/, v8::Local<v8::String> subject, auto& accept) const -> decltype(auto) {
+		auto immediate(v8::Local<v8::String> subject, auto& accept) const -> decltype(auto) {
 			auto string = iv8::string{lock_witness(), subject};
 			if (subject->IsOneByte()) {
 				return try_emplace(accept, string_tag_of<char>{}, *this, string);
@@ -142,12 +139,12 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 			}
 		}
 
-		auto operator()(skip_lookup /*skip*/, v8::Local<v8::Symbol> subject, auto& accept) const -> decltype(auto) {
+		auto immediate(v8::Local<v8::Symbol> subject, auto& accept) const -> decltype(auto) {
 			return invoke_accept(accept, symbol_tag{}, *this, subject);
 		}
 
 		// bigint
-		auto operator()(skip_lookup /*skip*/, v8::Local<v8::BigInt> subject, auto& accept) const -> decltype(auto) {
+		auto immediate(v8::Local<v8::BigInt> subject, auto& accept) const -> decltype(auto) {
 			bool lossless{};
 			auto u64 = subject->Uint64Value(&lossless);
 			if (lossless) {
@@ -158,17 +155,17 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 		}
 
 		// date
-		auto operator()(this const auto& self, skip_lookup /*skip*/, v8::Local<v8::Date> subject, auto& accept) -> decltype(auto) {
+		auto immediate(this const auto& self, v8::Local<v8::Date> subject, auto& accept) -> decltype(auto) {
 			return self.try_emplace(accept, date_tag{}, self, iv8::date{subject});
 		}
 
 		// external
-		auto operator()(this const auto& self, skip_lookup /*skip*/, v8::Local<v8::External> subject, auto& accept) -> decltype(auto) {
+		auto immediate(this const auto& self, v8::Local<v8::External> subject, auto& accept) -> decltype(auto) {
 			return self.try_emplace(accept, external_tag{}, self, iv8::external{subject});
 		}
 
 		// promise
-		auto operator()(this const auto& self, skip_lookup /*skip*/, v8::Local<v8::Promise> subject, auto& accept) -> decltype(auto) {
+		auto immediate(this const auto& self, v8::Local<v8::Promise> subject, auto& accept) -> decltype(auto) {
 			return self.try_emplace(accept, promise_tag{}, self, subject);
 		}
 
@@ -190,11 +187,9 @@ using visit_v8_value_with = visit_v8_value<typename Meta::accept_reference_type>
 
 template <class Target>
 struct visit_v8_value : visit_flat_v8_value<Target> {
-	private:
-		using visit_type = visit_flat_v8_value<Target>;
-		using skip_lookup = visit_type::skip_lookup;
-
 	public:
+		using visit_type = visit_flat_v8_value<Target>;
+		using visit_type::immediate;
 		using visit_type::lookup_or_visit;
 		using visit_type::operator();
 
@@ -215,24 +210,24 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 			// Check the reference map, and check type
 			return self.lookup_or_visit(accept, subject, [ & ]() -> decltype(auto) {
 				if (subject->IsObject()) {
-					return self(skip_lookup{}, subject.As<v8::Object>(), accept);
+					return self.immediate(subject.As<v8::Object>(), accept);
 				} else {
-					return self(skip_lookup{}, subject.As<v8::Primitive>(), accept);
+					return self.immediate(subject.As<v8::Primitive>(), accept);
 				}
 			});
 		}
 
 	protected:
 		// object
-		auto operator()(this const auto& self, skip_lookup skip, v8::Local<v8::Object> subject, auto& accept) -> decltype(auto) {
+		auto immediate(this const auto& self, v8::Local<v8::Object> subject, auto& accept) -> decltype(auto) {
 			if (subject->IsArray()) {
-				return self(skip, subject.As<v8::Array>(), accept);
+				return self.immediate(subject.As<v8::Array>(), accept);
 			} else if (subject->IsExternal()) {
-				return self(skip, subject.As<v8::External>(), accept);
+				return self.immediate(subject.As<v8::External>(), accept);
 			} else if (subject->IsDate()) {
-				return self(skip, subject.As<v8::Date>(), accept);
+				return self.immediate(subject.As<v8::Date>(), accept);
 			} else if (subject->IsPromise()) {
-				return self(skip, subject.As<v8::Promise>(), accept);
+				return self.immediate(subject.As<v8::Promise>(), accept);
 			} else {
 				auto visit_entry = std::pair<visit_v8_property_name<visit_v8_value>, const visit_v8_value&>{self, self};
 				return self.try_emplace(accept, dictionary_tag{}, visit_entry, iv8::object{self.lock_witness(), subject.As<v8::Object>()});
@@ -240,7 +235,7 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 		}
 
 		// array
-		auto operator()(this const auto& self, skip_lookup /*skip*/, v8::Local<v8::Array> subject, auto& accept) -> decltype(auto) {
+		auto immediate(this const auto& self, v8::Local<v8::Array> subject, auto& accept) -> decltype(auto) {
 			auto visit_entry = std::pair<visit_v8_property_name<visit_v8_value>, const visit_v8_value&>{self, self};
 			return self.try_emplace(accept, list_tag{}, visit_entry, iv8::object{self.lock_witness(), subject.As<v8::Object>()});
 		}

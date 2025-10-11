@@ -69,9 +69,6 @@ template <class Environment, class Target>
 struct visit_napi_value
 		: napi::environment_scope<Environment>,
 			reference_map_t<Target, napi_reference_map_type> {
-	private:
-		struct skip_lookup {};
-
 	public:
 		using reference_map_type = reference_map_t<Target, napi_reference_map_type>;
 		using reference_map_type::lookup_or_visit;
@@ -82,13 +79,13 @@ struct visit_napi_value
 				reference_map_type{env},
 				equal_{env} {}
 
-		// If the private `skip_lookup` operation is defined: this public operation will first perform a
-		// reference map lookup, then delegate to the private operation if not found.
+		// If the private `immediate` operation is defined: this public operation will first
+		// perform a reference map lookup, then delegate to the private operation if not found.
 		template <auto_tag Tag>
 		auto operator()(this const auto& self, value<Tag> subject, auto& accept) -> decltype(auto)
-			requires requires { self(skip_lookup{}, subject, accept); } {
+			requires requires { self.immediate(subject, accept); } {
 			return self.lookup_or_visit(accept, subject, [ & ]() -> decltype(auto) {
-				return self(skip_lookup{}, subject, accept);
+				return self.immediate(subject, accept);
 			});
 		}
 
@@ -137,58 +134,58 @@ struct visit_napi_value
 					case napi_number:
 						return (*this)(napi::value<number_tag>::from(value), accept);
 					case napi_string:
-						return (*this)(skip_lookup{}, napi::value<string_tag>::from(value), accept);
+						return immediate(napi::value<string_tag>::from(value), accept);
 					case napi_symbol:
 						return (*this)(napi::value<symbol_tag>::from(value), accept);
 					case napi_object:
 						{
 							if (napi::invoke(napi_is_array, napi_env{*this}, value)) {
-								return (*this)(skip_lookup{}, napi::value<list_tag>::from(value), accept);
+								return immediate(napi::value<list_tag>::from(value), accept);
 							} else if (napi::invoke(napi_is_date, napi_env{*this}, value)) {
-								return (*this)(skip_lookup{}, napi::value<date_tag>::from(value), accept);
+								return immediate(napi::value<date_tag>::from(value), accept);
 							} else if (napi::invoke(napi_is_promise, napi_env{*this}, value)) {
-								return (*this)(skip_lookup{}, napi::value<promise_tag>::from(value), accept);
+								return immediate(napi::value<promise_tag>::from(value), accept);
 							}
-							return (*this)(skip_lookup{}, napi::value<object_tag>::from(value), accept);
+							return immediate(napi::value<object_tag>::from(value), accept);
 						}
 					case napi_function:
-						return (*this)(skip_lookup{}, napi::value<function_tag>::from(value), accept);
+						return immediate(napi::value<function_tag>::from(value), accept);
 					case napi_external:
-						return (*this)(skip_lookup{}, napi::value<external_tag>::from(value), accept);
+						return immediate(napi::value<external_tag>::from(value), accept);
 					case napi_bigint:
-						return (*this)(skip_lookup{}, napi::value<bigint_tag>::from(value), accept);
+						return immediate(napi::value<bigint_tag>::from(value), accept);
 				}
 			});
 		}
 
 	private:
 		// Private visit operations for refable types
-		auto operator()(skip_lookup /*skip*/, value<string_tag> value, auto& accept) const -> decltype(auto) {
+		auto immediate(value<string_tag> value, auto& accept) const -> decltype(auto) {
 			return accept_tagged(napi::value<string_tag_of<char16_t>>::from(value), accept);
 		}
 
-		auto operator()(skip_lookup /*skip*/, value<date_tag> value, auto& accept) const -> decltype(auto) {
+		auto immediate(value<date_tag> value, auto& accept) const -> decltype(auto) {
 			return accept_tagged(value, accept);
 		}
 
-		auto operator()(skip_lookup /*skip*/, value<promise_tag> value, auto& accept) const -> decltype(auto) {
+		auto immediate(value<promise_tag> value, auto& accept) const -> decltype(auto) {
 			return accept_tagged(value, accept);
 		}
 
-		auto operator()(skip_lookup /*skip*/, value<external_tag> value, auto& accept) const -> decltype(auto) {
+		auto immediate(value<external_tag> value, auto& accept) const -> decltype(auto) {
 			return accept_tagged(value, accept);
 		}
 
-		auto operator()(skip_lookup /*skip*/, value<function_tag> value, auto& accept) const -> decltype(auto) {
+		auto immediate(value<function_tag> value, auto& accept) const -> decltype(auto) {
 			return accept_tagged(value, accept);
 		}
 
-		auto operator()(skip_lookup /*skip*/, value<bigint_tag> value, auto& accept) const -> decltype(auto) {
+		auto immediate(value<bigint_tag> value, auto& accept) const -> decltype(auto) {
 			return accept_tagged(napi::value<bigint_tag_of<bigint>>::from(value), accept);
 		}
 
 		template <class Visit>
-		auto operator()(this const Visit& self, skip_lookup /*skip*/, value<list_tag> subject, auto& accept) -> decltype(auto) {
+		auto immediate(this const Visit& self, value<list_tag> subject, auto& accept) -> decltype(auto) {
 			// nb: It is intentional that `dictionary_tag` is bound. It handles sparse arrays.
 			auto value = napi::bound_value{napi_env{self}, napi::value<dictionary_tag>::from(subject)};
 			auto visit_entry = std::pair<visit_napi_property_name<Visit>, const Visit&>{self, self};
@@ -196,7 +193,7 @@ struct visit_napi_value
 		}
 
 		template <class Visit>
-		auto operator()(this const Visit& self, skip_lookup /*skip*/, value<object_tag> subject, auto& accept) -> decltype(auto) {
+		auto immediate(this const Visit& self, value<object_tag> subject, auto& accept) -> decltype(auto) {
 			auto value = napi::bound_value{napi_env{self}, napi::value<dictionary_tag>::from(subject)};
 			auto visit_entry = std::pair<visit_napi_property_name<Visit>, const Visit&>{self, self};
 			return self.try_emplace(accept, dictionary_tag{}, visit_entry, value);
