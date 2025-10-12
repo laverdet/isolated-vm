@@ -83,7 +83,7 @@ class bind_parameters {
 };
 
 // Invoke the given function with the constant expression matching a runtime value.
-export constexpr auto template_switch(const auto& value, auto case_pack, auto invoke) {
+export constexpr auto template_switch(const auto& value, auto case_pack, auto invoke) -> decltype(auto) {
 	auto dispatch = [ & ](const auto& dispatch, auto case_, auto... cases) -> decltype(auto) {
 		if (value == case_) {
 			return invoke(case_);

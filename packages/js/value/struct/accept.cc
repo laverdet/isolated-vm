@@ -46,18 +46,20 @@ struct accept_object_property {
 				acceptor{transfer},
 				setter{property.value_template} {}
 
-		constexpr auto operator()(const auto& visit, auto&& dictionary, auto& target) -> void {
+		constexpr auto operator()(const auto& visit, auto&& subject, auto& target) -> void {
 			// nb: We `std::forward` the value to *each* setter. This allows the setters to pick an
 			// lvalue object apart member by member if it wants.
-			auto value = acceptor(dictionary_tag{}, visit, std::forward<decltype(dictionary)>(dictionary));
+			auto value = acceptor(dictionary_tag{}, visit, std::forward<decltype(subject)>(subject));
 			if (value) {
 				setter(target, *std::move(value));
-			} else if constexpr (!std::is_invocable_v<decltype(setter), std::nullopt_t>) {
-				// If the setter accepts undefined values then a missing property is allowed. In this
-				// case the setter is not invoked at all, which could in theory be used to distinguish
-				// between `undefined` and missing properties.
-				const std::string_view name{Property::property_name};
-				throw std::logic_error{std::format("Missing required property: {}", name)};
+			} else {
+				if constexpr (!std::is_invocable_v<decltype(setter), std::nullopt_t>) {
+					// If the setter accepts undefined values then a missing property is allowed. In this
+					// case the setter is not invoked at all, which could in theory be used to distinguish
+					// between `undefined` and missing properties.
+					const std::string_view name{Property::property_name};
+					throw std::logic_error{std::format("Missing required property: {}", name)};
+				}
 			}
 		}
 
@@ -90,10 +92,10 @@ struct accept_struct_properties<Meta, Type, std::tuple<Property...>> {
 					)...};
 				}()} {}
 
-		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, auto&& dictionary) -> Type {
+		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, auto&& subject) -> Type {
 			Type target;
 			const auto [... indices ] = util::sequence<sizeof...(Property)>;
-			(..., std::get<indices>(properties)(visit, std::forward<decltype(dictionary)>(dictionary), target));
+			(..., std::get<indices>(properties)(visit, std::forward<decltype(subject)>(subject), target));
 			return target;
 		}
 

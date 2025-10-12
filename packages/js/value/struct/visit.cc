@@ -46,8 +46,8 @@ struct visit_getter : visit<Meta, typename Getter::type> {
 				getter{std::move(getter)} {}
 
 		template <class Accept>
-		constexpr auto operator()(const auto& value, Accept& accept) const -> accept_target_t<Accept> {
-			return util::invoke_as<visit_type>(*this, getter(value), accept);
+		constexpr auto operator()(const auto& subject, Accept& accept) const -> accept_target_t<Accept> {
+			return util::invoke_as<visit_type>(*this, getter(subject), accept);
 		}
 
 	private:
@@ -91,8 +91,8 @@ struct visit_struct_properties<Meta, Type, std::tuple<Property...>> {
 				}()} {}
 
 		template <class Accept>
-		constexpr auto operator()(auto&& value, Accept& accept) const -> accept_target_t<Accept> {
-			return accept(struct_tag<sizeof...(Property)>{}, properties, std::forward<decltype(value)>(value));
+		constexpr auto operator()(auto&& subject, Accept& accept) const -> accept_target_t<Accept> {
+			return accept(struct_tag<sizeof...(Property)>{}, properties, std::forward<decltype(subject)>(subject));
 		}
 
 	private:

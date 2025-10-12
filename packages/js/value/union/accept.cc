@@ -42,14 +42,14 @@ struct accept<Meta, std::variant<Types...>> {
 				second{util::elide{[ & ] constexpr { return accept_value<Meta, Types>{transfer}; }}...},
 				accept_discriminant{transfer} {}
 
-		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, auto&& dictionary) -> accepted_type {
-			auto alternatives = make_discriminant_map<decltype(dictionary), decltype(visit)>();
-			auto discriminant_value = accept_discriminant(dictionary_tag{}, visit, dictionary);
+		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, auto&& subject) -> accepted_type {
+			auto alternatives = make_discriminant_map<decltype(subject), decltype(visit)>();
+			auto discriminant_value = accept_discriminant(dictionary_tag{}, visit, subject);
 			auto accept_alternative = alternatives.find(util::djb2_hash(discriminant_value));
 			if (accept_alternative == nullptr) {
 				throw std::logic_error{std::format("Unknown discriminant: {}", discriminant_value)};
 			}
-			return accept_alternative->second(*this, visit, std::forward<decltype(dictionary)>(dictionary));
+			return accept_alternative->second(*this, visit, std::forward<decltype(subject)>(subject));
 		}
 
 	private:

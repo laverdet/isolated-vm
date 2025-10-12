@@ -13,9 +13,9 @@ namespace js {
 template <class Enum>
 	requires std::is_enum_v<Enum>
 struct accept<void, Enum> {
-		constexpr auto operator()(string_tag_of<char> /*tag*/, visit_holder /*visit*/, auto&& value) const -> Enum {
+		constexpr auto operator()(string_tag_of<char> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> Enum {
 			auto values = accept::make_enum_map();
-			auto result = values.find(util::djb2_hash(std::forward<decltype(value)>(value)));
+			auto result = values.find(util::djb2_hash(std::forward<decltype(subject)>(subject)));
 			if (result == nullptr) {
 				throw std::logic_error{"Invalid enumeration"};
 			}

@@ -52,29 +52,29 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 		}
 
 		// boolean
-		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, std::convertible_to<bool> auto&& value) const -> napi::value<boolean_tag> {
-			return napi::value<boolean_tag>::make(environment(), bool{std::forward<decltype(value)>(value)});
+		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const -> napi::value<boolean_tag> {
+			return napi::value<boolean_tag>::make(environment(), bool{std::forward<decltype(subject)>(subject)});
 		}
 
 		// number
-		auto operator()(number_tag /*tag*/, visit_holder visit, auto&& value) const -> napi::value<number_tag> {
-			return (*this)(number_tag_of<double>{}, visit, std::forward<decltype(value)>(value));
+		auto operator()(number_tag /*tag*/, visit_holder visit, auto&& subject) const -> napi::value<number_tag> {
+			return (*this)(number_tag_of<double>{}, visit, std::forward<decltype(subject)>(subject));
 		}
 
 		template <class Numeric>
-		auto operator()(number_tag_of<Numeric> /*tag*/, visit_holder /*visit*/, auto&& value) const -> napi::value<number_tag> {
-			return napi::value<number_tag>::make(environment(), Numeric{std::forward<decltype(value)>(value)});
+		auto operator()(number_tag_of<Numeric> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> napi::value<number_tag> {
+			return napi::value<number_tag>::make(environment(), Numeric{std::forward<decltype(subject)>(subject)});
 		}
 
 		// bigint
-		auto operator()(bigint_tag /*tag*/, visit_holder visit, auto&& value) const
+		auto operator()(bigint_tag /*tag*/, visit_holder visit, auto&& subject) const
 			-> js::referenceable_value<napi::value<bigint_tag>> {
-			return (*this)(bigint_tag_of<bigint>{}, visit, std::forward<decltype(value)>(value));
+			return (*this)(bigint_tag_of<bigint>{}, visit, std::forward<decltype(subject)>(subject));
 		}
 
-		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, auto&& value) const
+		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, auto&& subject) const
 			-> js::referenceable_value<napi::value<bigint_tag>> {
-			return js::referenceable_value{napi::value<bigint_tag>::make(environment(), bigint{std::forward<decltype(value)>(value)})};
+			return js::referenceable_value{napi::value<bigint_tag>::make(environment(), bigint{std::forward<decltype(subject)>(subject)})};
 		}
 
 		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, const bigint& value) const
@@ -83,45 +83,45 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 		}
 
 		template <class Numeric>
-		auto operator()(bigint_tag_of<Numeric> /*tag*/, visit_holder /*visit*/, auto&& value) const
+		auto operator()(bigint_tag_of<Numeric> /*tag*/, visit_holder /*visit*/, auto&& subject) const
 			-> js::referenceable_value<napi::value<bigint_tag>> {
-			return js::referenceable_value{napi::value<bigint_tag>::make(environment(), Numeric{std::forward<decltype(value)>(value)})};
+			return js::referenceable_value{napi::value<bigint_tag>::make(environment(), Numeric{std::forward<decltype(subject)>(subject)})};
 		}
 
 		// string
-		auto operator()(string_tag /*tag*/, visit_holder visit, auto&& value) const
+		auto operator()(string_tag /*tag*/, visit_holder visit, auto&& subject) const
 			-> js::referenceable_value<napi::value<string_tag>> {
-			return (*this)(string_tag_of<char16_t>{}, visit, std::forward<decltype(value)>(value));
+			return (*this)(string_tag_of<char16_t>{}, visit, std::forward<decltype(subject)>(subject));
 		}
 
 		template <class Char>
-		auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, std::convertible_to<std::basic_string_view<Char>> auto&& value) const
+		auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, std::convertible_to<std::basic_string_view<Char>> auto&& subject) const
 			-> js::referenceable_value<napi::value<string_tag>> {
-			return js::referenceable_value{napi::value<string_tag>::make(environment(), std::basic_string_view<Char>{std::forward<decltype(value)>(value)})};
+			return js::referenceable_value{napi::value<string_tag>::make(environment(), std::basic_string_view<Char>{std::forward<decltype(subject)>(subject)})};
 		}
 
 		template <class Char>
-		auto operator()(string_tag_of<Char> tag, visit_holder visit, auto&& value) const
+		auto operator()(string_tag_of<Char> tag, visit_holder visit, auto&& subject) const
 			-> js::referenceable_value<napi::value<string_tag>> {
-			return (*this)(tag, visit, std::basic_string<Char>{std::forward<decltype(value)>(value)});
+			return (*this)(tag, visit, std::basic_string<Char>{std::forward<decltype(subject)>(subject)});
 		}
 
 		// date
-		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, js_clock::time_point value) const
+		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const
 			-> js::referenceable_value<napi::value<date_tag>> {
-			return js::referenceable_value{napi::value<date_tag>::make(environment(), std::forward<decltype(value)>(value))};
+			return js::referenceable_value{napi::value<date_tag>::make(environment(), js_clock::time_point{std::forward<decltype(subject)>(subject)})};
 		}
 
 		// vectors
-		auto operator()(this auto& self, vector_tag /*tag*/, const auto& visit, auto&& list)
-			-> js::deferred_receiver<napi::value<vector_tag>, decltype(self), decltype(visit), decltype(list)> {
+		auto operator()(this auto& self, vector_tag /*tag*/, const auto& visit, auto&& subject)
+			-> js::deferred_receiver<napi::value<vector_tag>, decltype(self), decltype(visit), decltype(subject)> {
 			return {
-				napi::value<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{self}, list.size())),
-				std::forward_as_tuple(self, visit, std::forward<decltype(list)>(list)),
+				napi::value<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{self}, subject.size())),
+				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](napi::value<vector_tag> array, auto& self, const auto& visit, auto /*&&*/ list) -> void {
 					int ii = 0;
-					for (auto&& value : util::into_range(std::forward<decltype(list)>(list))) {
-						auto* element = napi_value{visit(std::forward<decltype(value)>(value), self)};
+					for (auto&& subject : util::into_range(std::forward<decltype(list)>(list))) {
+						auto* element = napi_value{visit(std::forward<decltype(subject)>(subject), self)};
 						napi::invoke0(napi_set_element, napi_env{self}, napi_value{array}, ii++, element);
 					}
 				},
@@ -129,11 +129,11 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 		}
 
 		template <std::size_t Size>
-		auto operator()(this auto& self, tuple_tag<Size> /*tag*/, const auto& visit, auto&& tuple)
-			-> js::deferred_receiver<napi::value<vector_tag>, decltype(self), decltype(visit), decltype(tuple)> {
+		auto operator()(this auto& self, tuple_tag<Size> /*tag*/, const auto& visit, auto&& subject)
+			-> js::deferred_receiver<napi::value<vector_tag>, decltype(self), decltype(visit), decltype(subject)> {
 			return {
 				napi::value<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{self}, Size)),
-				std::forward_as_tuple(self, visit, std::forward<decltype(tuple)>(tuple)),
+				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](napi::value<vector_tag> array, auto& self, const auto& visit, auto /*&&*/ tuple) -> void {
 					const auto [... indices ] = util::sequence<Size>;
 					(..., [ & ]() -> void {
@@ -147,15 +147,15 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 		}
 
 		// arrays & dictionaries
-		auto operator()(this auto& self, list_tag /*tag*/, const auto& visit, auto&& list)
-			-> js::deferred_receiver<napi::value<list_tag>, decltype(self), decltype(visit), decltype(list)> {
+		auto operator()(this auto& self, list_tag /*tag*/, const auto& visit, auto&& subject)
+			-> js::deferred_receiver<napi::value<list_tag>, decltype(self), decltype(visit), decltype(subject)> {
 			return {
 				napi::value<list_tag>::from(napi::invoke(napi_create_array, napi_env{self})),
-				std::forward_as_tuple(self, visit, std::forward<decltype(list)>(list)),
-				[](napi::value<list_tag> array, auto& self, const auto& visit, auto /*&&*/ list) -> void {
+				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
+				[](napi::value<list_tag> array, auto& self, const auto& visit, auto /*&&*/ subject) -> void {
 					std::vector<napi_property_descriptor> properties;
-					properties.reserve(std::size(list));
-					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(list)>(list))) {
+					properties.reserve(std::size(subject));
+					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(subject)>(subject))) {
 						properties.emplace_back(napi_property_descriptor{
 							.utf8name{},
 							.name = napi_value{visit.first(std::forward<decltype(key)>(key), self)},
@@ -175,14 +175,14 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			};
 		}
 
-		auto operator()(this auto& self, dictionary_tag /*tag*/, const auto& visit, auto&& dictionary)
-			-> js::deferred_receiver<napi::value<dictionary_tag>, decltype(self), decltype(visit), decltype(dictionary)> {
+		auto operator()(this auto& self, dictionary_tag /*tag*/, const auto& visit, auto&& subject)
+			-> js::deferred_receiver<napi::value<dictionary_tag>, decltype(self), decltype(visit), decltype(subject)> {
 			return {
 				napi::value<dictionary_tag>::from(napi::invoke(napi_create_object, napi_env{self})),
-				std::forward_as_tuple(self, visit, std::forward<decltype(dictionary)>(dictionary)),
-				[](napi::value<dictionary_tag> object, auto& self, const auto& visit, auto /*&&*/ dictionary) -> void {
+				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
+				[](napi::value<dictionary_tag> object, auto& self, const auto& visit, auto /*&&*/ subject) -> void {
 					std::vector<napi_property_descriptor> properties;
-					auto&& range = util::into_range(std::forward<decltype(dictionary)>(dictionary));
+					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
 					properties.reserve(std::size(range));
 					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(range)>(range))) {
 						properties.emplace_back(napi_property_descriptor{
@@ -206,12 +206,12 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 
 		// structs
 		template <std::size_t Size>
-		auto operator()(this auto& self, struct_tag<Size> /*tag*/, const auto& visit, auto&& dictionary)
-			-> js::deferred_receiver<napi::value<dictionary_tag>, decltype(self), decltype(visit), decltype(dictionary)> {
+		auto operator()(this auto& self, struct_tag<Size> /*tag*/, const auto& visit, auto&& subject)
+			-> js::deferred_receiver<napi::value<dictionary_tag>, decltype(self), decltype(visit), decltype(subject)> {
 			return {
 				napi::value<dictionary_tag>::from(napi::invoke(napi_create_object, napi_env{self})),
-				std::forward_as_tuple(self, visit, std::forward<decltype(dictionary)>(dictionary)),
-				[](napi::value<dictionary_tag> object, auto& self, const auto& visit, auto /*&&*/ dictionary) -> void {
+				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
+				[](napi::value<dictionary_tag> object, auto& self, const auto& visit, auto /*&&*/ subject) -> void {
 					std::array<napi_property_descriptor, Size> properties;
 					const auto [... indices ] = util::sequence<Size>;
 					(..., [ & ]() -> void {
@@ -225,7 +225,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 							.setter{},
 							// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
 							// reference members one at a time.
-							.value = napi_value{visit_n.second(std::forward<decltype(dictionary)>(dictionary), self)},
+							.value = napi_value{visit_n.second(std::forward<decltype(subject)>(subject), self)},
 
 							// NOLINTNEXTLINE(hicpp-signed-bitwise)
 							.attributes = static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable),

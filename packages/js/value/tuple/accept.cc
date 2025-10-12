@@ -89,9 +89,9 @@ struct accept<Meta, std::tuple<Types...>> {
 					return {util::elide(util::constructor<std::tuple_element_t<indices, acceptors_type>>)...};
 				}()} {}
 
-		constexpr auto operator()(vector_tag /*tag*/, const auto& visit, auto&& value) -> value_type {
+		constexpr auto operator()(vector_tag /*tag*/, const auto& visit, auto&& subject) -> value_type {
 			const auto [... indices ] = util::sequence<sizeof...(Types)>;
-			auto range = util::into_range(std::forward<decltype(value)>(value));
+			auto range = util::into_range(std::forward<decltype(subject)>(subject));
 			auto it = std::begin(range);
 			auto end = std::end(range);
 			return {std::get<indices>(accept_).visit_and_advance(visit, it, end)...};
@@ -111,8 +111,8 @@ struct accept<Meta, std::tuple<rest, Type>> : accept<Meta, Type> {
 		using accept_type = accept<Meta, Type>;
 		using accept_type::accept_type;
 
-		constexpr auto operator()(vector_tag /*tag*/, const auto& visit, auto&& value) -> value_type {
-			return {rest{}, util::invoke_as<accept_type>(*this, vector_tag{}, visit, std::forward<decltype(value)>(value))};
+		constexpr auto operator()(vector_tag /*tag*/, const auto& visit, auto&& subject) -> value_type {
+			return {rest{}, util::invoke_as<accept_type>(*this, vector_tag{}, visit, std::forward<decltype(subject)>(subject))};
 		}
 };
 

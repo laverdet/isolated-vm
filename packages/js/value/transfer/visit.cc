@@ -35,8 +35,8 @@ struct visit<void, Type>;
 // Directly return forwarded value
 template <class Type>
 struct visit<void, forward<Type>> {
-		constexpr auto operator()(auto&& value, const auto& /*accept*/) const {
-			return *std::forward<decltype(value)>(value);
+		constexpr auto operator()(auto&& subject, const auto& /*accept*/) const {
+			return *std::forward<decltype(subject)>(subject);
 		}
 };
 

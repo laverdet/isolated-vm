@@ -16,8 +16,8 @@ namespace js {
 template <class Tag>
 struct visit_value_tagged {
 		template <class Accept>
-		constexpr auto operator()(auto&& value, Accept& accept) const -> accept_target_t<Accept> {
-			return accept(Tag{}, *this, std::forward<decltype(value)>(value));
+		constexpr auto operator()(auto&& subject, Accept& accept) const -> accept_target_t<Accept> {
+			return accept(Tag{}, *this, std::forward<decltype(subject)>(subject));
 		}
 };
 
@@ -67,8 +67,8 @@ struct visit<void, std::basic_string_view<Char>> : visit_value_tagged<string_tag
 template <>
 struct visit<void, const char*> {
 		template <class Accept>
-		constexpr auto operator()(const char* value, Accept& accept) const -> accept_target_t<Accept> {
-			return accept(string_tag_of<char>{}, *this, std::string_view{value});
+		constexpr auto operator()(const char* subject, Accept& accept) const -> accept_target_t<Accept> {
+			return accept(string_tag_of<char>{}, *this, std::string_view{subject});
 		}
 };
 
@@ -76,8 +76,8 @@ struct visit<void, const char*> {
 template <size_t Size>
 struct visit<void, util::string_literal<Size>> {
 		template <class Accept>
-		constexpr auto operator()(const auto& value, Accept& accept) const -> accept_target_t<Accept> {
-			return accept(string_tag_of<char>{}, *this, value.data());
+		constexpr auto operator()(const auto& subject, Accept& accept) const -> accept_target_t<Accept> {
+			return accept(string_tag_of<char>{}, *this, subject.data());
 		}
 };
 
@@ -88,9 +88,9 @@ struct visit<Meta, std::optional<Type>> : visit<Meta, Type> {
 		using visit_type::visit_type;
 
 		template <class Accept>
-		constexpr auto operator()(auto&& value, Accept& accept) const -> accept_target_t<Accept> {
-			if (value) {
-				return util::invoke_as<visit_type>(*this, *std::forward<decltype(value)>(value), accept);
+		constexpr auto operator()(auto&& subject, Accept& accept) const -> accept_target_t<Accept> {
+			if (subject) {
+				return util::invoke_as<visit_type>(*this, *std::forward<decltype(subject)>(subject), accept);
 			} else {
 				return accept(undefined_tag{}, *this, std::monostate{});
 			}

@@ -25,8 +25,8 @@ struct accept_as_constant {
 // Lossless value acceptor
 template <class Tag, class Type>
 struct accept_without_narrowing {
-		constexpr auto operator()(Tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> Type {
-			return Type{std::forward<decltype(value)>(value)};
+		constexpr auto operator()(Tag /*tag*/, visit_holder /*visit*/, auto&& subject) const -> Type {
+			return Type{std::forward<decltype(subject)>(subject)};
 		}
 };
 
@@ -40,29 +40,29 @@ struct accept_coerced {
 		using contravariant_tag_type = covariant_tag_type::tag_type;
 
 	public:
-		constexpr auto operator()(contravariant_tag_type /*tag*/, visit_holder /*visit*/, auto&& value) const -> Type {
-			return coerce(std::type_identity<Canonical>{}, std::forward<decltype(value)>(value));
+		constexpr auto operator()(contravariant_tag_type /*tag*/, visit_holder /*visit*/, auto&& subject) const -> Type {
+			return coerce(std::type_identity<Canonical>{}, std::forward<decltype(subject)>(subject));
 		}
 
 		template <class Subject>
-		constexpr auto operator()(TagOf<Subject> /*tag*/, visit_holder /*visit*/, auto&& value) const -> Type {
-			return coerce(std::type_identity<Subject>{}, std::forward<decltype(value)>(value));
+		constexpr auto operator()(TagOf<Subject> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> Type {
+			return coerce(std::type_identity<Subject>{}, std::forward<decltype(subject)>(subject));
 		}
 
-		constexpr auto operator()(covariant_tag<covariant_tag_type> tag, visit_holder visit, auto&& value) const -> Type {
-			return (*this)(*tag, visit, std::forward<decltype(value)>(value));
+		constexpr auto operator()(covariant_tag<covariant_tag_type> tag, visit_holder visit, auto&& subject) const -> Type {
+			return (*this)(*tag, visit, std::forward<decltype(subject)>(subject));
 		}
 
 	private:
-		constexpr auto coerce(std::type_identity<Type> /*tag*/, auto&& value) const -> Type {
-			return Type{std::forward<decltype(value)>(value)};
+		constexpr auto coerce(std::type_identity<Type> /*tag*/, auto&& subject) const -> Type {
+			return Type{std::forward<decltype(subject)>(subject)};
 		}
 
 		template <class Subject>
-		constexpr auto coerce(std::type_identity<Subject> /*tag*/, auto&& value) const -> Type {
-			auto subject = static_cast<Subject>(std::forward<decltype(value)>(value));
-			auto result = static_cast<Type>(subject);
-			if (static_cast<Subject>(result) != subject) {
+		constexpr auto coerce(std::type_identity<Subject> /*tag*/, auto&& subject) const -> Type {
+			auto coerced = static_cast<Subject>(std::forward<decltype(subject)>(subject));
+			auto result = static_cast<Type>(coerced);
+			if (static_cast<Subject>(result) != coerced) {
 				throw std::range_error{"Failed to losslessly coerce value"};
 			}
 			return result;
@@ -110,17 +110,17 @@ struct accept<void, std::basic_string<Char>> {
 		using tag_type = string_tag_of<Char>;
 		using value_type = std::basic_string<Char>;
 
-		constexpr auto operator()(string_tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> value_type
-			requires std::constructible_from<value_type, decltype(value)> {
-			return value_type{std::forward<decltype(value)>(value)};
+		constexpr auto operator()(string_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const -> value_type
+			requires std::constructible_from<value_type, decltype(subject)> {
+			return value_type{std::forward<decltype(subject)>(subject)};
 		}
 
-		constexpr auto operator()(tag_type /*tag*/, visit_holder /*visit*/, auto&& value) const -> value_type {
-			return value_type{std::forward<decltype(value)>(value)};
+		constexpr auto operator()(tag_type /*tag*/, visit_holder /*visit*/, auto&& subject) const -> value_type {
+			return value_type{std::forward<decltype(subject)>(subject)};
 		}
 
-		constexpr auto operator()(covariant_tag<tag_type> tag, const auto& visit, auto&& value) const -> value_type {
-			return (*this)(*tag, visit, std::forward<decltype(value)>(value));
+		constexpr auto operator()(covariant_tag<tag_type> tag, const auto& visit, auto&& subject) const -> value_type {
+			return (*this)(*tag, visit, std::forward<decltype(subject)>(subject));
 		}
 };
 
@@ -145,9 +145,9 @@ struct accept<Meta, std::expected<Type, undefined_in_tag>> : accept<Meta, Type> 
 		using value_type = std::expected<Type, undefined_in_tag>;
 		using accept_type::accept_type;
 
-		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& value) -> value_type
-			requires std::invocable<accept_type&, decltype(tag), decltype(visit), decltype(value)> {
-			return value_type{std::in_place, util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(value)>(value))};
+		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& subject) -> value_type
+			requires std::invocable<accept_type&, decltype(tag), decltype(visit), decltype(subject)> {
+			return value_type{std::in_place, util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(subject)>(subject))};
 		}
 
 		constexpr auto operator()(undefined_in_tag tag, visit_holder /*visit*/, const auto& /*value*/) const -> value_type {

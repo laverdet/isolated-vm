@@ -42,8 +42,8 @@ struct accept<void, Type>;
 // Accept into a forwarded value
 template <class Type, class Tag>
 struct accept<void, forward<Type, Tag>> {
-		constexpr auto operator()(Tag /*tag*/, visit_holder /*visit*/, std::convertible_to<Type> auto&& value) const -> forward<Type, Tag> {
-			return forward<Type, Tag>{std::forward<decltype(value)>(value)};
+		constexpr auto operator()(Tag /*tag*/, visit_holder /*visit*/, std::convertible_to<Type> auto&& subject) const -> forward<Type, Tag> {
+			return forward<Type, Tag>{std::forward<decltype(subject)>(subject)};
 		}
 };
 
@@ -55,9 +55,9 @@ struct accept_delegated {
 		using accept_type = Accept;
 		constexpr explicit accept_delegated(auto* transfer) : accept_{*transfer} {}
 
-		constexpr auto operator()(auto tag, const auto& visit, auto&& value) const -> accept_target_type
-			requires std::invocable<accept_type&, decltype(tag), decltype(visit), decltype(value)> {
-			return accept_(tag, visit, std::forward<decltype(value)>(value));
+		constexpr auto operator()(auto tag, const auto& visit, auto&& subject) const -> accept_target_type
+			requires std::invocable<accept_type&, decltype(tag), decltype(visit), decltype(subject)> {
+			return accept_(tag, visit, std::forward<decltype(subject)>(subject));
 		}
 
 	private:

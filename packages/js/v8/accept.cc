@@ -46,34 +46,34 @@ struct accept_v8_primitive {
 		}
 
 		// boolean
-		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> v8::Local<v8::Boolean> {
-			return v8::Boolean::New(isolate_, std::forward<decltype(value)>(value));
+		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const -> v8::Local<v8::Boolean> {
+			return v8::Boolean::New(isolate_, std::forward<decltype(subject)>(subject));
 		}
 
 		// number
-		auto operator()(number_tag /*tag*/, visit_holder /*visit*/, std::convertible_to<double> auto&& value) const -> v8::Local<v8::Number> {
-			return v8::Number::New(isolate_, double{std::forward<decltype(value)>(value)});
+		auto operator()(number_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const -> v8::Local<v8::Number> {
+			return v8::Number::New(isolate_, double{std::forward<decltype(subject)>(subject)});
 		}
 
-		auto operator()(number_tag_of<int32_t> /*tag*/, visit_holder /*visit*/, std::convertible_to<int32_t> auto&& value) const -> v8::Local<v8::Number> {
-			return v8::Int32::New(isolate_, int32_t{std::forward<decltype(value)>(value)});
+		auto operator()(number_tag_of<int32_t> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> v8::Local<v8::Number> {
+			return v8::Int32::New(isolate_, int32_t{std::forward<decltype(subject)>(subject)});
 		}
 
-		auto operator()(number_tag_of<uint32_t> /*tag*/, visit_holder /*visit*/, std::convertible_to<uint32_t> auto&& value) const -> v8::Local<v8::Number> {
-			return v8::Int32::NewFromUnsigned(isolate_, uint32_t{std::forward<decltype(value)>(value)});
+		auto operator()(number_tag_of<uint32_t> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> v8::Local<v8::Number> {
+			return v8::Int32::NewFromUnsigned(isolate_, uint32_t{std::forward<decltype(subject)>(subject)});
 		}
 
 		// string
 		template <class Char>
-		auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, std::convertible_to<std::basic_string_view<Char>> auto&& value) const
+		auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, std::convertible_to<std::basic_string_view<Char>> auto&& subject) const
 			-> js::referenceable_value<v8::Local<v8::String>> {
-			return js::referenceable_value{iv8::string::make(isolate_, std::basic_string_view<Char>{std::forward<decltype(value)>(value)})};
+			return js::referenceable_value{iv8::string::make(isolate_, std::basic_string_view<Char>{std::forward<decltype(subject)>(subject)})};
 		}
 
 		template <class Char>
-		auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, auto&& value) const
+		auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, auto&& subject) const
 			-> js::referenceable_value<v8::Local<v8::String>> {
-			return js::referenceable_value{iv8::string::make(isolate_, std::basic_string<Char>{std::forward<decltype(value)>(value)})};
+			return js::referenceable_value{iv8::string::make(isolate_, std::basic_string<Char>{std::forward<decltype(subject)>(subject)})};
 		}
 
 	private:
@@ -104,21 +104,21 @@ struct accept_v8_value : accept_v8_primitive {
 		}
 
 		// date
-		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, std::convertible_to<js_clock::time_point> auto&& value) const
+		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const
 			-> js::referenceable_value<v8::Local<v8::Date>> {
 			return js::referenceable_value<v8::Local<v8::Date>>{
-				iv8::date::make(context_, js_clock::time_point{std::forward<decltype(value)>(value)}),
+				iv8::date::make(context_, js_clock::time_point{std::forward<decltype(subject)>(subject)}),
 			};
 		}
 
 		// array
-		auto operator()(this auto& self, list_tag /*tag*/, const auto& visit, auto&& list)
-			-> js::deferred_receiver<v8::Local<v8::Array>, decltype(self), decltype(visit), decltype(list)> {
+		auto operator()(this auto& self, list_tag /*tag*/, const auto& visit, auto&& subject)
+			-> js::deferred_receiver<v8::Local<v8::Array>, decltype(self), decltype(visit), decltype(subject)> {
 			return {
 				v8::Array::New(self.isolate()),
-				std::forward_as_tuple(self, visit, std::forward<decltype(list)>(list)),
-				[](v8::Local<v8::Array> array, auto& self, const auto& visit, auto /*&&*/ list) -> void {
-					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(list)>(list))) {
+				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
+				[](v8::Local<v8::Array> array, auto& self, const auto& visit, auto /*&&*/ subject) -> void {
+					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(subject)>(subject))) {
 						auto result = array->Set(
 							self.context_,
 							visit.first(std::forward<decltype(key)>(key), self),
@@ -131,13 +131,13 @@ struct accept_v8_value : accept_v8_primitive {
 		}
 
 		// object
-		auto operator()(this auto& self, dictionary_tag /*tag*/, const auto& visit, auto&& dictionary)
-			-> js::deferred_receiver<v8::Local<v8::Object>, decltype(self), decltype(visit), decltype(dictionary)> {
+		auto operator()(this auto& self, dictionary_tag /*tag*/, const auto& visit, auto&& subject)
+			-> js::deferred_receiver<v8::Local<v8::Object>, decltype(self), decltype(visit), decltype(subject)> {
 			return {
 				v8::Object::New(self.isolate()),
-				std::forward_as_tuple(self, visit, std::forward<decltype(dictionary)>(dictionary)),
-				[](v8::Local<v8::Object> object, auto& self, const auto& visit, auto /*&&*/ dictionary) -> void {
-					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(dictionary)>(dictionary))) {
+				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
+				[](v8::Local<v8::Object> object, auto& self, const auto& visit, auto /*&&*/ subject) -> void {
+					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(subject)>(subject))) {
 						auto result = object->Set(
 							self.context_,
 							visit.first(std::forward<decltype(key)>(key), self),
@@ -203,9 +203,9 @@ struct accept<void, v8::ReturnValue<v8::Value>> : accept<void, v8::Local<v8::Val
 			return return_value_;
 		}
 
-		auto operator()(auto_tag auto tag, const auto& visit, auto&& value) -> value_type
-			requires std::invocable<accept_type&, decltype(visit), decltype(tag), decltype(value)> {
-			return_value_.Set(util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(value)>(value)));
+		auto operator()(auto_tag auto tag, const auto& visit, auto&& subject) -> value_type
+			requires std::invocable<accept_type&, decltype(visit), decltype(tag), decltype(subject)> {
+			return_value_.Set(util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(subject)>(subject)));
 			return return_value_;
 		}
 
