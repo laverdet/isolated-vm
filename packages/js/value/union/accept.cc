@@ -68,8 +68,7 @@ struct accept<Meta, std::variant<Types...>> {
 		template <std::size_t Index, class Visit, class Value>
 		// clang bug?
 		/*constexpr*/ static auto accept_alternative(accept& self, Visit visit, Value value) -> accepted_type {
-			auto& acceptor = std::get<Index>(self.second);
-			return acceptor(dictionary_tag{}, visit, std::forward<Value>(value));
+			return std::get<Index>(self.second)(dictionary_tag{}, visit, std::forward<Value>(value));
 		}
 
 		std::tuple<accept_value<Meta, Types>...> second;

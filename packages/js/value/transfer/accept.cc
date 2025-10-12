@@ -69,7 +69,7 @@ export template <class Meta, class Type>
 struct accept_value;
 
 template <class Meta, class Type>
-struct accept_target_of<accept_value<Meta, Type>> : std::type_identity<Type> {};
+struct accept_target<accept_value<Meta, Type>> : std::type_identity<Type> {};
 
 template <class Meta, class Type>
 struct accept_value : Meta::accept_wrap_type::template accept<accept<Meta, Type>> {

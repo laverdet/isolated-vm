@@ -33,8 +33,9 @@ struct visit_v8_property_name {
 
 		[[nodiscard]] auto lock_witness() const -> auto& { return visit_.lock_witness(); }
 
-		auto operator()(v8::Local<v8::Primitive> subject, auto& accept) const -> decltype(auto) {
-			return visit_.get().lookup_or_visit(accept, subject, [ & ]() -> decltype(auto) {
+		template <class Accept>
+		auto operator()(v8::Local<v8::Primitive> subject, Accept& accept) const -> accept_target_t<Accept> {
+			return visit_.get().lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
 				if (subject->IsNumber()) {
 					return visit_(subject.As<v8::Number>(), accept);
 				} else if (subject->IsName()) {
@@ -75,15 +76,17 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 
 		// If the protected `immediate` operation is defined: this public operation will first
 		// perform a reference map lookup, then delegate to the protected operation if not found.
-		auto operator()(this const auto& self, auto subject, auto& accept) -> decltype(auto)
+		template <class Accept>
+		auto operator()(this const auto& self, auto subject, Accept& accept) -> accept_target_t<Accept>
 			requires requires { self.immediate(subject, accept); } {
-			return self.lookup_or_visit(accept, subject, [ & ]() -> decltype(auto) {
+			return self.lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
 				return self.immediate(subject, accept);
 			});
 		}
 
 		// numbers
-		auto operator()(v8::Local<v8::Number> subject, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto operator()(v8::Local<v8::Number> subject, Accept& accept) const -> accept_target_t<Accept> {
 			auto number = iv8::number{subject};
 			if (subject->IsInt32()) {
 				return accept(number_tag_of<int32_t>{}, *this, number);
@@ -93,13 +96,15 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 		}
 
 		// boolean
-		auto operator()(v8::Local<v8::Boolean> subject, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto operator()(v8::Local<v8::Boolean> subject, Accept& accept) const -> accept_target_t<Accept> {
 			return accept(boolean_tag{}, *this, iv8::boolean{subject.As<v8::Boolean>()});
 		}
 
 	protected:
 		// primitives
-		auto immediate(v8::Local<v8::Primitive> subject, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto immediate(v8::Local<v8::Primitive> subject, Accept& accept) const -> accept_target_t<Accept> {
 			if (subject->IsNullOrUndefined()) {
 				if (subject->IsNull()) {
 					null_ = subject;
@@ -122,7 +127,8 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 		}
 
 		// names
-		auto immediate(v8::Local<v8::Name> subject, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto immediate(v8::Local<v8::Name> subject, Accept& accept) const -> accept_target_t<Accept> {
 			if (subject->IsString()) {
 				return immediate(subject.As<v8::String>(), accept);
 			} else {
@@ -130,7 +136,8 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 			}
 		}
 
-		auto immediate(v8::Local<v8::String> subject, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto immediate(v8::Local<v8::String> subject, Accept& accept) const -> accept_target_t<Accept> {
 			auto string = iv8::string{lock_witness(), subject};
 			if (subject->IsOneByte()) {
 				return try_emplace(accept, string_tag_of<char>{}, *this, string);
@@ -139,12 +146,14 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 			}
 		}
 
-		auto immediate(v8::Local<v8::Symbol> subject, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto immediate(v8::Local<v8::Symbol> subject, Accept& accept) const -> accept_target_t<Accept> {
 			return accept(symbol_tag{}, *this, subject);
 		}
 
 		// bigint
-		auto immediate(v8::Local<v8::BigInt> subject, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto immediate(v8::Local<v8::BigInt> subject, Accept& accept) const -> accept_target_t<Accept> {
 			bool lossless{};
 			auto u64 = subject->Uint64Value(&lossless);
 			if (lossless) {
@@ -155,17 +164,20 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 		}
 
 		// date
-		auto immediate(this const auto& self, v8::Local<v8::Date> subject, auto& accept) -> decltype(auto) {
+		template <class Accept>
+		auto immediate(this const auto& self, v8::Local<v8::Date> subject, Accept& accept) -> accept_target_t<Accept> {
 			return self.try_emplace(accept, date_tag{}, self, iv8::date{subject});
 		}
 
 		// external
-		auto immediate(this const auto& self, v8::Local<v8::External> subject, auto& accept) -> decltype(auto) {
+		template <class Accept>
+		auto immediate(this const auto& self, v8::Local<v8::External> subject, Accept& accept) -> accept_target_t<Accept> {
 			return self.try_emplace(accept, external_tag{}, self, iv8::external{subject});
 		}
 
 		// promise
-		auto immediate(this const auto& self, v8::Local<v8::Promise> subject, auto& accept) -> decltype(auto) {
+		template <class Accept>
+		auto immediate(this const auto& self, v8::Local<v8::Promise> subject, Accept& accept) -> accept_target_t<Accept> {
 			return self.try_emplace(accept, promise_tag{}, self, subject);
 		}
 
@@ -199,7 +211,8 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 
 		[[nodiscard]] auto lock_witness() const -> auto& { return context_lock_; }
 
-		auto operator()(this const auto& self, v8::Local<v8::Value> subject, auto& accept) -> decltype(auto) {
+		template <class Accept>
+		auto operator()(this const auto& self, v8::Local<v8::Value> subject, Accept& accept) -> accept_target_t<Accept> {
 			// Check known address values before the map lookup
 			if (subject == self.null_value_cache()) {
 				return accept(null_tag{}, self, subject);
@@ -208,7 +221,7 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 			}
 
 			// Check the reference map, and check type
-			return self.lookup_or_visit(accept, subject, [ & ]() -> decltype(auto) {
+			return self.lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
 				if (subject->IsObject()) {
 					return self.immediate(subject.As<v8::Object>(), accept);
 				} else {
@@ -219,7 +232,8 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 
 	protected:
 		// object
-		auto immediate(this const auto& self, v8::Local<v8::Object> subject, auto& accept) -> decltype(auto) {
+		template <class Accept>
+		auto immediate(this const auto& self, v8::Local<v8::Object> subject, Accept& accept) -> accept_target_t<Accept> {
 			if (subject->IsArray()) {
 				return self.immediate(subject.As<v8::Array>(), accept);
 			} else if (subject->IsExternal()) {
@@ -235,7 +249,8 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 		}
 
 		// array
-		auto immediate(this const auto& self, v8::Local<v8::Array> subject, auto& accept) -> decltype(auto) {
+		template <class Accept>
+		auto immediate(this const auto& self, v8::Local<v8::Array> subject, Accept& accept) -> accept_target_t<Accept> {
 			auto visit_entry = std::pair<visit_v8_property_name<visit_v8_value>, const visit_v8_value&>{self, self};
 			return self.try_emplace(accept, list_tag{}, visit_entry, iv8::object{self.lock_witness(), subject.As<v8::Object>()});
 		}
@@ -272,7 +287,9 @@ struct visit<Meta, v8::FunctionCallbackInfo<v8::Value>> : visit<Meta, v8::Local<
 		using visit_type::visit_type;
 
 		using visit_type::operator();
-		auto operator()(v8::FunctionCallbackInfo<v8::Value> info, auto& accept) const -> decltype(auto) {
+
+		template <class Accept>
+		auto operator()(v8::FunctionCallbackInfo<v8::Value> info, Accept& accept) const -> accept_target_t<Accept> {
 			return accept(arguments_tag{}, *this, iv8::callback_info{info});
 		}
 };

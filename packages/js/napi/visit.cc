@@ -31,8 +31,9 @@ struct visit_napi_property_name {
 	public:
 		explicit visit_napi_property_name(const Visit& visit) : visit_{visit} {}
 
-		auto operator()(napi_value value, auto& accept) const -> decltype(auto) {
-			return visit_.get().lookup_or_visit(accept, value, [ & ]() -> decltype(auto) {
+		template <class Accept>
+		auto operator()(napi_value value, Accept& accept) const -> accept_target_t<Accept> {
+			return visit_.get().lookup_or_visit(accept, value, [ & ]() -> accept_target_t<Accept> {
 				switch (napi::invoke(napi_typeof, napi_env{visit_.get()}, value)) {
 					case napi_number:
 						return visit_(napi::value<number_tag>::from(value), accept);
@@ -81,39 +82,45 @@ struct visit_napi_value
 
 		// If the private `immediate` operation is defined: this public operation will first
 		// perform a reference map lookup, then delegate to the private operation if not found.
-		template <auto_tag Tag>
-		auto operator()(this const auto& self, value<Tag> subject, auto& accept) -> decltype(auto)
+		template <auto_tag Tag, class Accept>
+		auto operator()(this const auto& self, value<Tag> subject, Accept& accept) -> accept_target_t<Accept>
 			requires requires { self.immediate(subject, accept); } {
-			return self.lookup_or_visit(accept, subject, [ & ]() -> decltype(auto) {
+			return self.lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
 				return self.immediate(subject, accept);
 			});
 		}
 
 		// Visit operations for non-refable types.
-		auto operator()(value<null_tag> value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto operator()(value<null_tag> value, Accept& accept) const -> accept_target_t<Accept> {
 			null_ = value;
 			return accept_tagged(value, accept);
 		}
 
-		auto operator()(value<undefined_tag> value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto operator()(value<undefined_tag> value, Accept& accept) const -> accept_target_t<Accept> {
 			undefined_ = value;
 			return accept_tagged(value, accept);
 		}
 
-		auto operator()(value<boolean_tag> value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto operator()(value<boolean_tag> value, Accept& accept) const -> accept_target_t<Accept> {
 			return accept_tagged(value, accept);
 		}
 
-		auto operator()(value<number_tag> value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto operator()(value<number_tag> value, Accept& accept) const -> accept_target_t<Accept> {
 			return accept_tagged(napi::value<number_tag_of<double>>::from(value), accept);
 		}
 
-		auto operator()(value<symbol_tag> value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto operator()(value<symbol_tag> value, Accept& accept) const -> accept_target_t<Accept> {
 			return accept_tagged(value, accept);
 		}
 
 		// General purpose visit operation which actually performs the type check
-		auto operator()(napi_value value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto operator()(napi_value value, Accept& accept) const -> accept_target_t<Accept> {
 			// Check known address values before the map lookup
 			if (equal_(value, undefined_)) {
 				return (*this)(napi::value<undefined_tag>::from(value), accept);
@@ -122,7 +129,7 @@ struct visit_napi_value
 			}
 
 			// Check the reference map, and lookup type via napi
-			return lookup_or_visit(accept, value, [ & ]() -> decltype(auto) {
+			return lookup_or_visit(accept, value, [ & ]() -> accept_target_t<Accept> {
 				auto typeof = napi::invoke(napi_typeof, napi_env{*this}, value);
 				switch (typeof) {
 					case napi_undefined:
@@ -160,48 +167,54 @@ struct visit_napi_value
 
 	private:
 		// Private visit operations for refable types
-		auto immediate(value<string_tag> value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto immediate(value<string_tag> value, Accept& accept) const -> accept_target_t<Accept> {
 			return accept_tagged(napi::value<string_tag_of<char16_t>>::from(value), accept);
 		}
 
-		auto immediate(value<date_tag> value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto immediate(value<date_tag> value, Accept& accept) const -> accept_target_t<Accept> {
 			return accept_tagged(value, accept);
 		}
 
-		auto immediate(value<promise_tag> value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto immediate(value<promise_tag> value, Accept& accept) const -> accept_target_t<Accept> {
 			return accept_tagged(value, accept);
 		}
 
-		auto immediate(value<external_tag> value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto immediate(value<external_tag> value, Accept& accept) const -> accept_target_t<Accept> {
 			return accept_tagged(value, accept);
 		}
 
-		auto immediate(value<function_tag> value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto immediate(value<function_tag> value, Accept& accept) const -> accept_target_t<Accept> {
 			return accept_tagged(value, accept);
 		}
 
-		auto immediate(value<bigint_tag> value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto immediate(value<bigint_tag> value, Accept& accept) const -> accept_target_t<Accept> {
 			return accept_tagged(napi::value<bigint_tag_of<bigint>>::from(value), accept);
 		}
 
-		template <class Visit>
-		auto immediate(this const Visit& self, value<list_tag> subject, auto& accept) -> decltype(auto) {
+		template <class Visit, class Accept>
+		auto immediate(this const Visit& self, value<list_tag> subject, Accept& accept) -> accept_target_t<Accept> {
 			// nb: It is intentional that `dictionary_tag` is bound. It handles sparse arrays.
 			auto value = napi::bound_value{napi_env{self}, napi::value<dictionary_tag>::from(subject)};
 			auto visit_entry = std::pair<visit_napi_property_name<Visit>, const Visit&>{self, self};
 			return self.try_emplace(accept, list_tag{}, visit_entry, value);
 		}
 
-		template <class Visit>
-		auto immediate(this const Visit& self, value<object_tag> subject, auto& accept) -> decltype(auto) {
+		template <class Visit, class Accept>
+		auto immediate(this const Visit& self, value<object_tag> subject, Accept& accept) -> accept_target_t<Accept> {
 			auto value = napi::bound_value{napi_env{self}, napi::value<dictionary_tag>::from(subject)};
 			auto visit_entry = std::pair<visit_napi_property_name<Visit>, const Visit&>{self, self};
 			return self.try_emplace(accept, dictionary_tag{}, visit_entry, value);
 		}
 
 		// Convenience function which wraps in `napi::bound_value` and invokes `accept`.
-		template <auto_tag Tag>
-		auto accept_tagged(value<Tag> value, auto& accept) const -> decltype(auto) {
+		template <auto_tag Tag, class Accept>
+		auto accept_tagged(value<Tag> value, Accept& accept) const -> accept_target_t<Accept> {
 			return try_emplace(accept, Tag{}, *this, napi::bound_value{napi_env{*this}, value});
 		}
 
@@ -225,7 +238,8 @@ struct visit<Meta, value<value_tag>> : visit_napi_value_with<Meta> {
 template <util::string_literal Key>
 struct visit_key_literal<Key, napi_value> : util::non_moveable {
 	public:
-		[[nodiscard]] auto get_local(const auto& accept_or_visit) const -> napi_value {
+		template <class Accept>
+		[[nodiscard]] auto get_local(const Accept& accept_or_visit) const -> napi_value {
 			if (local_key_ == napi_value{}) {
 				auto& environment = accept_or_visit.environment();
 				auto& storage = environment.global_storage(util::value_constant<Key>{});
@@ -240,7 +254,8 @@ struct visit_key_literal<Key, napi_value> : util::non_moveable {
 			return local_key_;
 		}
 
-		auto operator()(const auto& /*could_be_literally_anything*/, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto operator()(const auto& /*could_be_literally_anything*/, Accept& accept) const -> accept_target_t<Accept> {
 			return accept(string_tag{}, *this, get_local(accept));
 		}
 

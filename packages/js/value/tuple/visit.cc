@@ -20,12 +20,13 @@ struct visit<Meta, std::tuple<Types...>> {
 					return {util::elide(util::constructor<std::tuple_element_t<indices, visitors_type>>, transfer)...};
 				}()} {}
 
-		template <size_t Index>
-		constexpr auto operator()(std::integral_constant<size_t, Index> /*index*/, auto&& value, auto& accept) const -> decltype(auto) {
+		template <size_t Index, class Accept>
+		constexpr auto operator()(std::integral_constant<size_t, Index> /*index*/, auto&& value, Accept& accept) const -> accept_target_t<Accept> {
 			return std::get<Index>(visit_)(std::get<Index>(std::forward<decltype(value)>(value)), accept);
 		}
 
-		constexpr auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		constexpr auto operator()(auto&& value, Accept& accept) const -> accept_target_t<Accept> {
 			return accept(tuple_tag<sizeof...(Types)>{}, *this, std::forward<decltype(value)>(value));
 		}
 

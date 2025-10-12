@@ -23,7 +23,7 @@ struct getter_delegate<struct_accessor<Subject, Type>> : struct_accessor<Subject
 		explicit constexpr getter_delegate(struct_accessor<Subject, Type> accessor) :
 				struct_accessor<Subject, Type>{accessor} {}
 
-		constexpr auto operator()(const Subject& subject) const -> decltype(auto) { return (subject.*this->accessor)(); }
+		constexpr auto operator()(const Subject& subject) const -> const Type& { return (subject.*this->accessor)(); }
 };
 
 // Getter by direct member access
@@ -45,7 +45,8 @@ struct visit_getter : visit<Meta, typename Getter::type> {
 				visit_type{transfer},
 				getter{std::move(getter)} {}
 
-		constexpr auto operator()(const auto& value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		constexpr auto operator()(const auto& value, Accept& accept) const -> accept_target_t<Accept> {
 			return util::invoke_as<visit_type>(*this, getter(value), accept);
 		}
 
@@ -89,7 +90,8 @@ struct visit_struct_properties<Meta, Type, std::tuple<Property...>> {
 					}}...};
 				}()} {}
 
-		constexpr auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		constexpr auto operator()(auto&& value, Accept& accept) const -> accept_target_t<Accept> {
 			return accept(struct_tag<sizeof...(Property)>{}, properties, std::forward<decltype(value)>(value));
 		}
 

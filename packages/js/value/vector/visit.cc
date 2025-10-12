@@ -21,7 +21,8 @@ struct visit<Meta, std::array<Type, Size>> : visit<Meta, Type> {
 		using visit_type = visit<Meta, Type>;
 		using visit_type::visit_type;
 
-		constexpr auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		constexpr auto operator()(auto&& value, Accept& accept) const -> accept_target_t<Accept> {
 			const visit_type& visitor = *this;
 			return accept(vector_n_tag<Size>{}, visitor, std::forward<decltype(value)>(value));
 		}
@@ -32,7 +33,8 @@ struct visit<Meta, std::span<Type>> : visit<Meta, std::remove_cv_t<Type>> {
 		using visit_type = visit<Meta, std::remove_cv_t<Type>>;
 		using visit_type::visit_type;
 
-		constexpr auto operator()(auto value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		constexpr auto operator()(auto value, Accept& accept) const -> accept_target_t<Accept> {
 			const visit_type& visitor = *this;
 			return accept(vector_tag{}, visitor, value);
 		}
@@ -43,7 +45,8 @@ struct visit<Meta, std::vector<Type>> : visit<Meta, std::span<Type>> {
 		using visit_type = visit<Meta, std::span<Type>>;
 		using visit_type::visit_type;
 
-		constexpr auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		constexpr auto operator()(auto&& value, Accept& accept) const -> accept_target_t<Accept> {
 			return util::invoke_as<visit_type>(*this, std::span{value}, accept);
 		}
 };

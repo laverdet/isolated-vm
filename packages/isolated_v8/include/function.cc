@@ -96,7 +96,8 @@ struct visit<Meta, function_template> : visit<Meta, v8::Local<v8::Value>> {
 		using visit_type::try_emplace;
 		using visit_type::visit_type;
 
-		auto operator()(function_template value, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		auto operator()(function_template value, Accept& accept) const -> accept_target_t<Accept> {
 			return try_emplace(accept, function_tag{}, *this, value.make_function(lock_witness()));
 		}
 };

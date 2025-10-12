@@ -47,7 +47,8 @@ struct visit_delegated {
 		using visit_type = Visit;
 		constexpr explicit visit_delegated(auto* transfer) : visit_{*transfer} {}
 
-		constexpr auto operator()(auto&& subject, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		constexpr auto operator()(auto&& subject, Accept& accept) const -> accept_target_t<Accept> {
 			return visit_(std::forward<decltype(subject)>(subject), accept);
 		}
 
@@ -79,34 +80,37 @@ struct visit_key_literal;
 
 template <util::string_literal Key>
 struct visit_key_literal<Key, void> {
-		constexpr auto operator()(const auto& /*could_be_literally_anything*/, auto& accept) const -> decltype(auto) {
+		template <class Accept>
+		constexpr auto operator()(const auto& /*could_be_literally_anything*/, Accept& accept) const -> accept_target_t<Accept> {
 			return accept(string_tag{}, *this, Key);
 		}
 };
 
 // Recursively invoke single-argument `accept` calls until a non-`accept`'able type is returned. `referenceable_value`'s
 // are unwrapped and passed to `store`.
-constexpr auto consume_accept(auto& accept, auto&& value, auto /*store*/)
-	-> accept_target_t<decltype(accept)> {
-	return accept_target_t<decltype(accept)>(std::forward<decltype(value)>(value));
+template <class Accept>
+constexpr auto consume_accept(Accept& /*accept*/, auto&& value, auto /*store*/)
+	-> accept_target_t<Accept> {
+	return accept_target_t<Accept>(std::forward<decltype(value)>(value));
 }
 
-constexpr auto consume_accept(auto& accept, auto&& value, auto /*store*/)
-	-> accept_target_t<decltype(accept)>
+template <class Accept>
+constexpr auto consume_accept(Accept& accept, auto&& value, auto /*store*/)
+	-> accept_target_t<Accept>
 	requires requires { accept(std::declval<decltype(value)>()); } {
 	return consume_accept(accept, accept(std::forward<decltype(value)>(value)), util::unused);
 }
 
-template <class Type>
-constexpr auto consume_accept(auto& accept, js::referenceable_value<Type> value, auto store)
-	-> accept_target_t<decltype(accept)> {
+template <class Accept, class Type>
+constexpr auto consume_accept(Accept& accept, js::referenceable_value<Type> value, auto store)
+	-> accept_target_t<Accept> {
 	store(*value);
 	return consume_accept(accept, *std::move(value), util::unused);
 }
 
-template <class Type, class... Args>
-constexpr auto consume_accept(auto& accept, js::deferred_receiver<Type, Args...> receiver, auto store)
-	-> accept_target_t<decltype(accept)> {
+template <class Accept, class Type, class... Args>
+constexpr auto consume_accept(Accept& accept, js::deferred_receiver<Type, Args...> receiver, auto store)
+	-> accept_target_t<Accept> {
 	store(*receiver);
 	std::move(receiver)();
 	return consume_accept(accept, *std::move(receiver), util::unused);
