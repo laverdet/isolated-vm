@@ -12,12 +12,10 @@ import ivm.utility;
 namespace js::napi {
 
 template <>
-class bound_value<external_tag>
-		: public detail::bound_value_next<external_tag>,
-			public materializable<bound_value<external_tag>> {
+class bound_value<external_tag> : public detail::bound_value_next<external_tag> {
 	public:
 		using detail::bound_value_next<external_tag>::bound_value_next;
-		[[nodiscard]] auto materialize(std::type_identity<void*> tag) const -> void*;
+		[[nodiscard]] explicit operator void*() const;
 };
 
 export template <class Type>
@@ -44,7 +42,7 @@ class untagged_external
 
 // ---
 
-auto bound_value<external_tag>::materialize(std::type_identity<void*> /*tag*/) const -> void* {
+bound_value<external_tag>::operator void*() const {
 	return js::napi::invoke(napi_get_value_external, env(), napi_value{*this});
 }
 

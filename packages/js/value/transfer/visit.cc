@@ -1,6 +1,5 @@
 module;
 #include <cassert>
-#include <concepts>
 #include <type_traits>
 #include <utility>
 export module isolated_js:visit;
@@ -90,24 +89,6 @@ template <util::string_literal Key>
 struct visit_key_literal<Key, void> {
 		constexpr auto operator()(const auto& /*could_be_literally_anything*/, auto& accept) const -> decltype(auto) {
 			return invoke_accept(accept, string_tag{}, *this, Key);
-		}
-};
-
-// Forward cast operators to the underlying method `materialize(std::type_identity<To>, ...)`
-export template <class Type>
-class materializable {
-	protected:
-		friend Type;
-		materializable() = default;
-
-	public:
-		template <class To>
-		// NOLINTNEXTLINE(google-explicit-constructor)
-		[[nodiscard]] operator To(this auto&& self)
-			requires requires {
-				{ self.materialize(std::type_identity<To>{}) } -> std::same_as<To>;
-			} {
-			return self.materialize(std::type_identity<To>{});
 		}
 };
 

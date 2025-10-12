@@ -1,6 +1,5 @@
 module;
 #include <cstdint>
-#include <type_traits>
 export module v8_js:number;
 import :handle;
 import isolated_js;
@@ -8,38 +7,32 @@ import v8;
 
 namespace js::iv8 {
 
-export class number
-		: public v8::Local<v8::Number>,
-			public materializable<number> {
+export class number : public v8::Local<v8::Number> {
 	public:
 		explicit number(v8::Local<v8::Number> handle) :
 				v8::Local<v8::Number>{handle} {}
 
-		[[nodiscard]] auto materialize(std::type_identity<double> tag) const -> double;
-		[[nodiscard]] auto materialize(std::type_identity<int32_t> tag) const -> int32_t;
-		[[nodiscard]] auto materialize(std::type_identity<int64_t> tag) const -> int64_t;
-		[[nodiscard]] auto materialize(std::type_identity<uint32_t> tag) const -> uint32_t;
+		[[nodiscard]] explicit operator double() const;
+		[[nodiscard]] explicit operator int32_t() const;
+		[[nodiscard]] explicit operator int64_t() const;
+		[[nodiscard]] explicit operator uint32_t() const;
 };
 
-export class bigint_n
-		: public v8::Local<v8::BigInt>,
-			public materializable<bigint_n> {
+export class bigint_n : public v8::Local<v8::BigInt> {
 	public:
 		explicit bigint_n(v8::Local<v8::BigInt> handle) :
 				v8::Local<v8::BigInt>{handle} {}
 
-		[[nodiscard]] auto materialize(std::type_identity<bigint> tag) const -> bigint;
+		[[nodiscard]] explicit operator bigint() const;
 };
 
-export class bigint_u64
-		: public v8::Local<v8::BigInt>,
-			public materializable<bigint_u64> {
+export class bigint_u64 : public v8::Local<v8::BigInt> {
 	public:
 		explicit bigint_u64(v8::Local<v8::BigInt> handle, uint64_t value) :
 				v8::Local<v8::BigInt>{handle},
 				value_{value} {}
 
-		[[nodiscard]] auto materialize(std::type_identity<uint64_t> tag) const -> uint64_t;
+		[[nodiscard]] explicit operator uint64_t() const;
 
 	private:
 		uint64_t value_;
@@ -47,23 +40,23 @@ export class bigint_u64
 
 // ---
 
-auto number::materialize(std::type_identity<double> /*tag*/) const -> double {
+number::operator double() const {
 	return (*this)->Value();
 }
 
-auto number::materialize(std::type_identity<int32_t> /*tag*/) const -> int32_t {
+number::operator int32_t() const {
 	return this->As<v8::Int32>()->Value();
 }
 
-auto number::materialize(std::type_identity<int64_t> /*tag*/) const -> int64_t {
+number::operator int64_t() const {
 	return this->As<v8::Integer>()->Value();
 }
 
-auto number::materialize(std::type_identity<uint32_t> /*tag*/) const -> uint32_t {
+number::operator uint32_t() const {
 	return this->As<v8::Uint32>()->Value();
 }
 
-auto bigint_n::materialize(std::type_identity<bigint> /*tag*/) const -> bigint {
+bigint_n::operator bigint() const {
 	auto bigint = js::bigint{};
 	bigint.resize_and_overwrite((*this)->WordCount(), [ & ](auto* words, auto length) {
 		if (length > 0) {
@@ -75,7 +68,7 @@ auto bigint_n::materialize(std::type_identity<bigint> /*tag*/) const -> bigint {
 	return bigint;
 }
 
-auto bigint_u64::materialize(std::type_identity<uint64_t> /*tag*/) const -> uint64_t {
+bigint_u64::operator uint64_t() const {
 	return value_;
 }
 

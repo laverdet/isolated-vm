@@ -42,12 +42,10 @@ class value<boolean_tag> : public detail::value_next<boolean_tag> {
 };
 
 template <>
-class bound_value<boolean_tag>
-		: public detail::bound_value_next<boolean_tag>,
-			public materializable<bound_value<boolean_tag>> {
+class bound_value<boolean_tag> : public detail::bound_value_next<boolean_tag> {
 	public:
 		using detail::bound_value_next<boolean_tag>::bound_value_next;
-		[[nodiscard]] auto materialize(std::type_identity<bool> tag) const -> bool;
+		[[nodiscard]] explicit operator bool() const;
 };
 
 // number
@@ -73,15 +71,13 @@ class value<number_tag_of<Numeric>> : public detail::value_next<number_tag_of<Nu
 };
 
 template <>
-class bound_value<number_tag>
-		: public detail::bound_value_next<number_tag>,
-			public materializable<bound_value<number_tag>> {
+class bound_value<number_tag> : public detail::bound_value_next<number_tag> {
 	public:
 		using detail::bound_value_next<number_tag>::bound_value_next;
-		[[nodiscard]] auto materialize(std::type_identity<double> tag) const -> double;
-		[[nodiscard]] auto materialize(std::type_identity<int32_t> tag) const -> int32_t;
-		[[nodiscard]] auto materialize(std::type_identity<int64_t> tag) const -> int64_t;
-		[[nodiscard]] auto materialize(std::type_identity<uint32_t> tag) const -> uint32_t;
+		[[nodiscard]] explicit operator double() const;
+		[[nodiscard]] explicit operator int32_t() const;
+		[[nodiscard]] explicit operator int64_t() const;
+		[[nodiscard]] explicit operator uint32_t() const;
 };
 
 // bigint
@@ -95,14 +91,12 @@ class value<bigint_tag> : public detail::value_next<bigint_tag> {
 };
 
 template <>
-class bound_value<bigint_tag>
-		: public detail::bound_value_next<bigint_tag>,
-			public materializable<bound_value<bigint_tag>> {
+class bound_value<bigint_tag> : public detail::bound_value_next<bigint_tag> {
 	public:
 		using detail::bound_value_next<bigint_tag>::bound_value_next;
-		[[nodiscard]] auto materialize(std::type_identity<bigint> tag) const -> bigint;
-		[[nodiscard]] auto materialize(std::type_identity<int64_t> tag) const -> int64_t;
-		[[nodiscard]] auto materialize(std::type_identity<uint64_t> tag) const -> uint64_t;
+		[[nodiscard]] explicit operator bigint() const;
+		[[nodiscard]] explicit operator int64_t() const;
+		[[nodiscard]] explicit operator uint64_t() const;
 };
 
 // string
@@ -123,13 +117,11 @@ class value<string_tag> : public detail::value_next<string_tag> {
 };
 
 template <>
-class bound_value<string_tag>
-		: public detail::bound_value_next<string_tag>,
-			public materializable<bound_value<string_tag>> {
+class bound_value<string_tag> : public detail::bound_value_next<string_tag> {
 	public:
 		using detail::bound_value_next<string_tag>::bound_value_next;
-		[[nodiscard]] auto materialize(std::type_identity<std::string> tag) const -> std::string;
-		[[nodiscard]] auto materialize(std::type_identity<std::u16string> tag) const -> std::u16string;
+		[[nodiscard]] explicit operator std::string() const;
+		[[nodiscard]] explicit operator std::u16string() const;
 };
 
 // ---

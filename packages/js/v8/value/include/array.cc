@@ -13,8 +13,7 @@ namespace js::iv8 {
 
 export class array
 		: public v8::Local<v8::Array>,
-			public handle_with_context,
-			public materializable<array> {
+			public handle_with_context {
 	public:
 		class iterator;
 		struct handle_data;

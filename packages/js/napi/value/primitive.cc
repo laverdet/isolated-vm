@@ -24,7 +24,7 @@ auto value<boolean_tag>::make(const environment& env, bool boolean) -> value<boo
 	return value<boolean_tag>::from(js::napi::invoke(napi_get_boolean, napi_env{env}, boolean));
 }
 
-auto bound_value<boolean_tag>::materialize(std::type_identity<bool> /*tag*/) const -> bool {
+bound_value<boolean_tag>::operator bool() const {
 	return js::napi::invoke(napi_get_value_bool, env(), napi_value{*this});
 }
 
@@ -45,19 +45,19 @@ auto value<number_tag>::make(const environment& env, uint32_t number) -> value<n
 	return value<number_tag>::from(napi::invoke(napi_create_uint32, napi_env{env}, number));
 }
 
-auto bound_value<number_tag>::materialize(std::type_identity<double> /*tag*/) const -> double {
+bound_value<number_tag>::operator double() const {
 	return js::napi::invoke(napi_get_value_double, env(), napi_value{*this});
 }
 
-auto bound_value<number_tag>::materialize(std::type_identity<int32_t> /*tag*/) const -> int32_t {
+bound_value<number_tag>::operator int32_t() const {
 	return js::napi::invoke(napi_get_value_int32, env(), napi_value{*this});
 }
 
-auto bound_value<number_tag>::materialize(std::type_identity<int64_t> /*tag*/) const -> int64_t {
+bound_value<number_tag>::operator int64_t() const {
 	return js::napi::invoke(napi_get_value_int64, env(), napi_value{*this});
 }
 
-auto bound_value<number_tag>::materialize(std::type_identity<uint32_t> /*tag*/) const -> uint32_t {
+bound_value<number_tag>::operator uint32_t() const {
 	return js::napi::invoke(napi_get_value_uint32, env(), napi_value{*this});
 }
 
@@ -74,7 +74,7 @@ auto value<bigint_tag>::make(const environment& env, uint64_t number) -> value<b
 	return value<bigint_tag>::from(napi::invoke(napi_create_bigint_uint64, napi_env{env}, number));
 }
 
-auto bound_value<bigint_tag>::materialize(std::type_identity<bigint> /*tag*/) const -> bigint {
+bound_value<bigint_tag>::operator bigint() const {
 	js::bigint value;
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	size_t length;
@@ -88,7 +88,7 @@ auto bound_value<bigint_tag>::materialize(std::type_identity<bigint> /*tag*/) co
 	return value;
 }
 
-auto bound_value<bigint_tag>::materialize(std::type_identity<int64_t> /*tag*/) const -> int64_t {
+bound_value<bigint_tag>::operator int64_t() const {
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	int64_t value;
 	auto lossless = js::napi::invoke(napi_get_value_bigint_int64, env(), napi_value{*this}, &value);
@@ -98,7 +98,7 @@ auto bound_value<bigint_tag>::materialize(std::type_identity<int64_t> /*tag*/) c
 	return value;
 }
 
-auto bound_value<bigint_tag>::materialize(std::type_identity<uint64_t> /*tag*/) const -> uint64_t {
+bound_value<bigint_tag>::operator uint64_t() const {
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	uint64_t value;
 	auto lossless = js::napi::invoke(napi_get_value_bigint_uint64, env(), napi_value{*this}, &value);
@@ -133,7 +133,7 @@ auto value<string_tag>::make_property_name(const environment& env, std::u16strin
 	return value<string_tag_of<char16_t>>::from(napi::invoke(node_api_create_property_key_utf16, napi_env{env}, string.data(), string.length()));
 }
 
-auto bound_value<string_tag>::materialize(std::type_identity<std::string> /*tag*/) const -> std::string {
+bound_value<string_tag>::operator std::string() const {
 	std::string string;
 	auto length = js::napi::invoke(napi_get_value_string_latin1, env(), napi_value{*this}, nullptr, 0);
 	if (length > 0) {
@@ -145,7 +145,7 @@ auto bound_value<string_tag>::materialize(std::type_identity<std::string> /*tag*
 	return string;
 }
 
-auto bound_value<string_tag>::materialize(std::type_identity<std::u16string> /*tag*/) const -> std::u16string {
+bound_value<string_tag>::operator std::u16string() const {
 	// nb: napi requires that the returned string is null-terminated for some reason.
 	std::u16string string;
 	auto length = js::napi::invoke(napi_get_value_string_utf16, env(), napi_value{*this}, nullptr, 0);

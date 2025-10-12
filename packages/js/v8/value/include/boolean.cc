@@ -1,5 +1,3 @@
-module;
-#include <type_traits>
 export module v8_js:boolean;
 import :handle;
 import isolated_js;
@@ -7,19 +5,17 @@ import v8;
 
 namespace js::iv8 {
 
-export class boolean
-		: public v8::Local<v8::Boolean>,
-			public materializable<boolean> {
+export class boolean : public v8::Local<v8::Boolean> {
 	public:
 		explicit boolean(v8::Local<v8::Boolean> handle) :
 				v8::Local<v8::Boolean>{handle} {}
 
-		[[nodiscard]] auto materialize(std::type_identity<bool> /*tag*/) const -> bool;
+		[[nodiscard]] explicit operator bool() const;
 };
 
 // ---
 
-auto boolean::materialize(std::type_identity<bool> /*tag*/) const -> bool {
+boolean::operator bool() const {
 	return (*this)->Value();
 }
 

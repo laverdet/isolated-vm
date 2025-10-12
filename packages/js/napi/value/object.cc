@@ -1,5 +1,3 @@
-module;
-#include <type_traits>
 module napi_js;
 import :api;
 import :bound_value;
@@ -26,7 +24,7 @@ auto value<date_tag>::make(const environment& env, js_clock::time_point date) ->
 	return value<date_tag>::from(napi::invoke(napi_create_date, napi_env{env}, date.time_since_epoch().count()));
 }
 
-auto bound_value<date_tag>::materialize(std::type_identity<js_clock::time_point> /*tag*/) const -> js_clock::time_point {
+bound_value<date_tag>::operator js_clock::time_point() const {
 	return js_clock::time_point{js_clock::duration{napi::invoke(napi_get_date_value, env(), napi_value{*this})}};
 }
 

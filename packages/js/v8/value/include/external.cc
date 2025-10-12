@@ -1,5 +1,4 @@
 module;
-#include <type_traits>
 #include <utility>
 export module v8_js:external;
 import :handle;
@@ -9,14 +8,12 @@ import v8;
 
 namespace js::iv8 {
 
-export class external
-		: public v8::Local<v8::External>,
-			public materializable<external> {
+export class external : public v8::Local<v8::External> {
 	public:
 		explicit external(v8::Local<v8::External> handle) :
 				v8::Local<v8::External>{handle} {}
 
-		[[nodiscard]] auto materialize(std::type_identity<void*> /*tag*/) const -> void*;
+		[[nodiscard]] explicit operator void*() const;
 };
 
 export template <class Type>
@@ -34,7 +31,7 @@ class external_reference
 
 // ---
 
-auto external::materialize(std::type_identity<void*> /*tag*/) const -> void* {
+external::operator void*() const {
 	return (*this)->Value();
 }
 

@@ -1,7 +1,6 @@
 module;
 #include <cstdint>
 #include <string>
-#include <type_traits>
 module v8_js;
 import :handle;
 import v8;
@@ -38,7 +37,7 @@ auto string::make(v8::Isolate* isolate, std::u16string_view view) -> v8::Local<v
 	return string.ToLocalChecked();
 }
 
-auto string::materialize(std::type_identity<std::string> /*tag*/) const -> std::string {
+string::operator std::string() const {
 	std::string string;
 	string.resize_and_overwrite((*this)->Length(), [ this ](char* data, auto length) {
 		if (length > 0) {
@@ -50,7 +49,7 @@ auto string::materialize(std::type_identity<std::string> /*tag*/) const -> std::
 	return string;
 }
 
-auto string::materialize(std::type_identity<std::u8string> /*tag*/) const -> std::u8string {
+string::operator std::u8string() const {
 	std::u8string string;
 	string.resize_and_overwrite((*this)->Utf8LengthV2(isolate()), [ this ](char8_t* data, auto length) {
 		if (length > 0) {
@@ -62,7 +61,7 @@ auto string::materialize(std::type_identity<std::u8string> /*tag*/) const -> std
 	return string;
 }
 
-auto string::materialize(std::type_identity<std::u16string> /*tag*/) const -> std::u16string {
+string::operator std::u16string() const {
 	std::u16string string;
 	string.resize_and_overwrite((*this)->Length(), [ this ](char16_t* data, auto length) {
 		if (length > 0) {

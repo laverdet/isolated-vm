@@ -13,8 +13,7 @@ namespace js::iv8 {
 
 export class object
 		: public v8::Local<v8::Object>,
-			public handle_with_context,
-			public materializable<object> {
+			public handle_with_context {
 	public:
 		using key_type = v8::Local<v8::Primitive>;
 		using mapped_type = v8::Local<v8::Value>;

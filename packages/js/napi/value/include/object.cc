@@ -41,12 +41,10 @@ class value<date_tag> : public detail::value_next<date_tag> {
 };
 
 template <>
-class bound_value<date_tag>
-		: public detail::bound_value_next<date_tag>,
-			public materializable<bound_value<date_tag>> {
+class bound_value<date_tag> : public detail::bound_value_next<date_tag> {
 	public:
 		using detail::bound_value_next<date_tag>::bound_value_next;
-		[[nodiscard]] auto materialize(std::type_identity<js_clock::time_point> tag) const -> js_clock::time_point;
+		[[nodiscard]] explicit operator js_clock::time_point() const;
 };
 
 // ---
