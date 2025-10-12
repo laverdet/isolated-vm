@@ -52,8 +52,8 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 		}
 
 		// boolean
-		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> napi::value<boolean_tag> {
-			return napi::value<boolean_tag>::make(environment(), std::forward<decltype(value)>(value));
+		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, std::convertible_to<bool> auto&& value) const -> napi::value<boolean_tag> {
+			return napi::value<boolean_tag>::make(environment(), bool{std::forward<decltype(value)>(value)});
 		}
 
 		// number
@@ -283,7 +283,7 @@ struct accept_property_value<Meta, Key, Type, napi_value> {
 
 	private:
 		visit_key_literal<Key, napi_value> first;
-		accept_next<Meta, Type> second;
+		accept_value<Meta, Type> second;
 };
 
 } // namespace js

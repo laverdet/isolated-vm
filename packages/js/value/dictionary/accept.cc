@@ -10,11 +10,11 @@ namespace js {
 
 // Default acceptor for non-pair values
 template <class Meta, class Type>
-struct accept_vector_value : accept_recursive_next<Meta, Type> {
-		using accept_type = accept_recursive_next<Meta, Type>;
+struct accept_vector_value : accept_maybe_recursive_value<Meta, Type> {
+		using accept_type = accept_maybe_recursive_value<Meta, Type>;
 		using accept_type::accept_type;
 
-		constexpr auto make_struct_subject(auto&& entry) {
+		constexpr static auto make_struct_subject(auto&& entry) {
 			return std::forward<decltype(entry)>(entry);
 		}
 };
@@ -33,14 +33,14 @@ struct accept_vector_value<Meta, std::pair<Key, Value>> {
 			};
 		}
 
-		constexpr auto make_struct_subject(auto&& entry) const -> std::pair<std::nullptr_t, decltype(entry)> {
+		constexpr static auto make_struct_subject(auto&& entry) -> std::pair<std::nullptr_t, decltype(entry)> {
 			// nb: `nullptr` is used here because this is a "bound" `visit_key_literal::visit` visitor
 			// which simply returns a static string and does not need a value to visit.
 			return {nullptr, std::forward<decltype(entry)>(entry)};
 		}
 
-		accept_next<Meta, Key> first;
-		accept_recursive_next<Meta, Value> second;
+		accept_value<Meta, Key> first;
+		accept_maybe_recursive_value<Meta, Value> second;
 };
 
 // Dictionary's acceptor manages the recursive acceptor for the entry key/value types

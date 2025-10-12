@@ -51,16 +51,16 @@ struct accept_v8_primitive {
 		}
 
 		// number
-		auto operator()(number_tag /*tag*/, visit_holder /*visit*/, auto&& value) const -> v8::Local<v8::Number> {
-			return v8::Number::New(isolate_, std::forward<decltype(value)>(value));
+		auto operator()(number_tag /*tag*/, visit_holder /*visit*/, std::convertible_to<double> auto&& value) const -> v8::Local<v8::Number> {
+			return v8::Number::New(isolate_, double{std::forward<decltype(value)>(value)});
 		}
 
-		auto operator()(number_tag_of<int32_t> /*tag*/, visit_holder /*visit*/, auto&& value) const -> v8::Local<v8::Number> {
-			return v8::Int32::New(isolate_, std::forward<decltype(value)>(value));
+		auto operator()(number_tag_of<int32_t> /*tag*/, visit_holder /*visit*/, std::convertible_to<int32_t> auto&& value) const -> v8::Local<v8::Number> {
+			return v8::Int32::New(isolate_, int32_t{std::forward<decltype(value)>(value)});
 		}
 
-		auto operator()(number_tag_of<uint32_t> /*tag*/, visit_holder /*visit*/, auto&& value) const -> v8::Local<v8::Number> {
-			return v8::Int32::NewFromUnsigned(isolate_, std::forward<decltype(value)>(value));
+		auto operator()(number_tag_of<uint32_t> /*tag*/, visit_holder /*visit*/, std::convertible_to<uint32_t> auto&& value) const -> v8::Local<v8::Number> {
+			return v8::Int32::NewFromUnsigned(isolate_, uint32_t{std::forward<decltype(value)>(value)});
 		}
 
 		// string
@@ -104,10 +104,10 @@ struct accept_v8_value : accept_v8_primitive {
 		}
 
 		// date
-		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, auto&& value) const
+		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, std::convertible_to<js_clock::time_point> auto&& value) const
 			-> js::referenceable_value<v8::Local<v8::Date>> {
 			return js::referenceable_value<v8::Local<v8::Date>>{
-				iv8::date::make(context_, std::forward<decltype(value)>(value)),
+				iv8::date::make(context_, js_clock::time_point{std::forward<decltype(value)>(value)}),
 			};
 		}
 

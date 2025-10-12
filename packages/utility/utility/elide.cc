@@ -1,5 +1,6 @@
 module;
 #include <tuple>
+#include <type_traits>
 #include <utility>
 export module ivm.utility:elide;
 
@@ -10,10 +11,10 @@ namespace util {
 
 // Adapted from discontinued proposal:
 // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3288r0.html
-export template <class Invocable, class... Args>
+export template <class Type, class Invocable, class... Args>
 class elide {
 	public:
-		using result_type = std::invoke_result_t<Invocable, Args...>;
+		using result_type = Type;
 
 		explicit constexpr elide(Invocable invocable, Args... args) :
 				invocable_{std::move(invocable)},
@@ -34,6 +35,6 @@ class elide {
 };
 
 template <class Invocable, class... Args>
-elide(Invocable, Args&&...) -> elide<Invocable, Args&&...>;
+elide(Invocable, Args&&...) -> elide<std::invoke_result_t<Invocable, Args...>, Invocable, Args...>;
 
 } // namespace util

@@ -113,7 +113,7 @@ constexpr auto transfer_with(
 		Wrap,
 		accept_context_type,
 		accept_property_subject_t<visit_subject_type>>;
-	using accept_type = accept_next<accept_meta_type, Type>;
+	using accept_type = accept_value<accept_meta_type, Type>;
 
 	// compose visit type
 	using visit_context_type = select_transferee_environment_t<std::remove_cvref_t<VisitArgs>...>;

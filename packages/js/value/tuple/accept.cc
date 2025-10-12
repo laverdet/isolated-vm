@@ -16,8 +16,8 @@ export struct rest {};
 
 // Normal parameter
 template <class Meta, class Type>
-struct accept_tuple_param : accept_next<Meta, Type> {
-		using accept_type = accept_next<Meta, Type>;
+struct accept_tuple_param : accept_value<Meta, Type> {
+		using accept_type = accept_value<Meta, Type>;
 		constexpr accept_tuple_param() : accept_type{this} {}
 
 		constexpr auto visit_and_advance(const auto& visit, auto& iterator, auto& end) -> accept_target_t<accept_type> {
@@ -38,8 +38,8 @@ struct accept_tuple_rest_placeholder {
 
 // Rest parameter
 template <class Meta, class Type>
-struct accept_tuple_rest_spread : accept_next<Meta, Type> {
-		using accept_type = accept_next<Meta, Type>;
+struct accept_tuple_rest_spread : accept_value<Meta, Type> {
+		using accept_type = accept_value<Meta, Type>;
 		constexpr accept_tuple_rest_spread() : accept_type{this} {}
 
 		constexpr auto visit_and_advance(const auto& visit, auto& iterator, auto& end) -> accept_target_t<accept_type> {

@@ -39,7 +39,7 @@ struct accept<Meta, std::variant<Types...>> {
 
 	public:
 		explicit constexpr accept(auto* transfer) :
-				second{util::elide{[ & ] constexpr { return accept_next<Meta, Types>{transfer}; }}...},
+				second{util::elide{[ & ] constexpr { return accept_value<Meta, Types>{transfer}; }}...},
 				accept_discriminant{transfer} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, auto&& dictionary) -> accepted_type {
@@ -60,19 +60,19 @@ struct accept<Meta, std::variant<Types...>> {
 				std::in_place,
 				[ & ]() constexpr {
 					const auto& alternative = std::get<indices>(descriptor_type::alternatives);
-					return std::pair{util::djb2_hash(alternative.discriminant), &accept_value<indices, Visit, Value>};
+					return std::pair{util::djb2_hash(alternative.discriminant), &accept_alternative<indices, Visit, Value>};
 				}()...,
 			};
 		}
 
 		template <std::size_t Index, class Visit, class Value>
 		// clang bug?
-		/*constexpr*/ static auto accept_value(accept& self, Visit visit, Value value) -> accepted_type {
+		/*constexpr*/ static auto accept_alternative(accept& self, Visit visit, Value value) -> accepted_type {
 			auto& acceptor = std::get<Index>(self.second);
 			return acceptor(dictionary_tag{}, visit, std::forward<Value>(value));
 		}
 
-		std::tuple<accept_next<Meta, Types>...> second;
+		std::tuple<accept_value<Meta, Types>...> second;
 		accept_property_value<Meta, descriptor_type::discriminant, std::string, typename Meta::visit_property_subject_type> accept_discriminant;
 };
 

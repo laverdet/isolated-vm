@@ -18,6 +18,14 @@ struct accept_meta_holder {
 		using visit_property_subject_type = Subject;
 };
 
+// Takes the place of `const auto& /*visit*/` when the visitor is not needed in an acceptor.
+// Therefore a register is not wasted on the address. It's probably optimized out anyway since
+// almost all methods are inlined but being explicit never hurt anyone.
+export struct visit_holder {
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		constexpr visit_holder(const auto& /*visit*/) {}
+};
+
 // Default `accept` swallows `Meta`
 template <class Meta, class Type>
 struct accept : accept<void, Type> {
@@ -58,30 +66,45 @@ struct accept_delegated {
 
 // `accept` with transfer wrapping
 export template <class Meta, class Type>
-struct accept_next;
+struct accept_value;
 
 template <class Meta, class Type>
-struct accept_target_of<accept_next<Meta, Type>> : std::type_identity<Type> {};
+struct accept_target_of<accept_value<Meta, Type>> : std::type_identity<Type> {};
 
 template <class Meta, class Type>
-struct accept_next : Meta::accept_wrap_type::template accept<accept<Meta, Type>> {
+struct accept_value : Meta::accept_wrap_type::template accept<accept<Meta, Type>> {
 		using accept_type = Meta::accept_wrap_type::template accept<accept<Meta, Type>>;
 		using accept_type::accept_type;
+
+		constexpr auto operator*() -> accept_type& { return *this; }
+
+		constexpr auto accept_direct(auto_tag auto tag, const auto& visit, auto&& subject) -> decltype(auto) {
+			return util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(subject)>(subject));
+		}
+
+		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& subject) -> accept_target_t<accept_type> {
+			accept_type& accept = *this;
+			return consume_accept(
+				accept,
+				util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(subject)>(subject)),
+				util::unused
+			);
+		}
 };
 
 // `accept` possibly a possible recursive target
 export template <class Meta, class Type>
-struct accept_recursive_next : accept_next<Meta, Type> {
-		using accept_target_type = accept_target_t<accept_next<Meta, Type>>;
-		using accept_type = accept_next<Meta, Type>;
+struct accept_maybe_recursive_value : accept_value<Meta, Type> {
+		using accept_target_type = accept_target_t<accept_value<Meta, Type>>;
+		using accept_type = accept_value<Meta, Type>;
 		using accept_type::accept_type;
 };
 
 template <class Meta, class Type>
 	requires is_recursive_value<Type>
-struct accept_recursive_next<Meta, Type> : accept_delegated<accept_next<Meta, Type>> {
+struct accept_maybe_recursive_value<Meta, Type> : accept_delegated<accept_value<Meta, Type>> {
 		using accept_target_type = Type;
-		using accept_type = accept_delegated<accept_next<Meta, Type>>;
+		using accept_type = accept_delegated<accept_value<Meta, Type>>;
 		using accept_type::accept_type;
 };
 
@@ -127,8 +150,8 @@ struct accept_property_value<Meta, Key, Type, void> {
 		}
 
 	private:
-		accept_next<Meta, std::string> first;
-		accept_next<Meta, Type> second;
+		accept_value<Meta, std::string> first;
+		accept_value<Meta, Type> second;
 };
 
 } // namespace js

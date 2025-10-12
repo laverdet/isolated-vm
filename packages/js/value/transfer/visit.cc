@@ -57,14 +57,14 @@ struct visit_delegated {
 
 // `visit` a possibly recursive subject
 export template <class Meta, class Type>
-struct visit_recursive : visit<Meta, Type> {
+struct visit_maybe_recursive : visit<Meta, Type> {
 		using visit_type = visit<Meta, Type>;
 		using visit_type::visit_type;
 };
 
 template <class Meta, class Type>
 	requires is_recursive_value<Type>
-struct visit_recursive<Meta, Type> : visit_delegated<visit<Meta, Type>> {
+struct visit_maybe_recursive<Meta, Type> : visit_delegated<visit<Meta, Type>> {
 		using visit_type = visit_delegated<visit<Meta, Type>>;
 		using visit_type::visit_type;
 };
@@ -73,14 +73,6 @@ struct visit_recursive<Meta, Type> : visit_delegated<visit<Meta, Type>> {
 export template <class Subject>
 struct visit_subject_for : std::type_identity<Subject> {};
 
-// Takes the place of `const auto& /*visit*/` when the visitor is not needed in an acceptor.
-// Therefore a register is not wasted on the address. It's probably optimized out anyway since
-// almost all methods are inlined but being explicit never hurt anyone.
-export struct visit_holder {
-		// NOLINTNEXTLINE(google-explicit-constructor)
-		constexpr visit_holder(const auto& /*visit*/) {}
-};
-
 // Returns the key type expected by the delegate (an instance of `visit` or `accept`) target.
 export template <util::string_literal Key, class Subject>
 struct visit_key_literal;
@@ -88,57 +80,36 @@ struct visit_key_literal;
 template <util::string_literal Key>
 struct visit_key_literal<Key, void> {
 		constexpr auto operator()(const auto& /*could_be_literally_anything*/, auto& accept) const -> decltype(auto) {
-			return invoke_accept(accept, string_tag{}, *this, Key);
+			return accept(string_tag{}, *this, Key);
 		}
 };
 
-// Extract the target type from an `accept`-like type. This is used to know what to cast the result
-// of `accept()` to.
-template <class Type>
-struct accept_target_of;
-
-export template <class Type>
-using accept_target_t = accept_target_of<std::remove_cvref_t<Type>>::type;
-
-template <class Accept>
-struct accept_target_of : std::type_identity<typename Accept::accept_target_type> {};
-
-template <class Meta, class Type>
-struct accept_target_of<accept<Meta, Type>> : std::type_identity<Type> {};
-
 // Recursively invoke single-argument `accept` calls until a non-`accept`'able type is returned. `referenceable_value`'s
 // are unwrapped and passed to `store`.
-constexpr auto consume_accept(auto& accept, auto&& value, const auto& /*store*/)
+constexpr auto consume_accept(auto& accept, auto&& value, auto /*store*/)
 	-> accept_target_t<decltype(accept)> {
-	using value_type = accept_target_t<decltype(accept)>;
-	return value_type(std::forward<decltype(value)>(value));
+	return accept_target_t<decltype(accept)>(std::forward<decltype(value)>(value));
 }
 
-constexpr auto consume_accept(auto& accept, auto&& value, const auto& store)
+constexpr auto consume_accept(auto& accept, auto&& value, auto /*store*/)
 	-> accept_target_t<decltype(accept)>
 	requires requires { accept(std::declval<decltype(value)>()); } {
-	return consume_accept(accept, accept(std::forward<decltype(value)>(value)), store);
+	return consume_accept(accept, accept(std::forward<decltype(value)>(value)), util::unused);
 }
 
 template <class Type>
-constexpr auto consume_accept(auto& accept, js::referenceable_value<Type> value, const auto& store)
+constexpr auto consume_accept(auto& accept, js::referenceable_value<Type> value, auto store)
 	-> accept_target_t<decltype(accept)> {
 	store(*value);
-	return consume_accept(accept, *std::move(value), store);
+	return consume_accept(accept, *std::move(value), util::unused);
 }
 
 template <class Type, class... Args>
-constexpr auto consume_accept(auto& accept, js::deferred_receiver<Type, Args...> receiver, const auto& store)
+constexpr auto consume_accept(auto& accept, js::deferred_receiver<Type, Args...> receiver, auto store)
 	-> accept_target_t<decltype(accept)> {
 	store(*receiver);
 	std::move(receiver)();
-	return consume_accept(accept, *std::move(receiver), store);
-}
-
-// TODO: It will be removed
-export template <class Accept>
-constexpr auto invoke_accept(Accept& accept, auto tag, const auto& visit, auto&& subject) -> accept_target_t<Accept> {
-	return consume_accept(accept, accept(tag, visit, std::forward<decltype(subject)>(subject)), util::unused);
+	return consume_accept(accept, *std::move(receiver), util::unused);
 }
 
 // Reference map for visitors whose acceptors don't define a `accept_reference_type`
@@ -182,8 +153,8 @@ struct reference_map_provider {
 		template <class Accept>
 		constexpr auto try_emplace(Accept& accept, auto tag, const auto& visit, auto&& subject) const -> accept_target_t<Accept> {
 			return consume_accept(
-				accept,
-				accept(tag, visit, std::forward<decltype(subject)>(subject)),
+				*accept,
+				accept.accept_direct(tag, visit, std::forward<decltype(subject)>(subject)),
 				[ & ](auto&& value) -> void {
 					auto [ iterator, inserted ] = map_.try_emplace(subject, std::forward<decltype(value)>(value));
 					assert(inserted);

@@ -7,3 +7,7 @@ export import :function;
 export import :module_;
 export import :realm;
 export import :script;
+
+export import v8;
+// NOLINTNEXTLINE(misc-unused-alias-decls)
+export namespace embedded_v8 = v8;

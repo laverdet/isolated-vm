@@ -37,7 +37,7 @@ class deferred_receiver : public referenceable_value<Type> {
 		using dispatch_type = auto(Type, Args...) -> void;
 
 	public:
-		constexpr deferred_receiver(Type value, std::tuple<Args&&...> args, dispatch_type* dispatch) :
+		constexpr deferred_receiver(Type value, std::tuple<Args...> args, dispatch_type* dispatch) :
 				referenceable_value<Type>{std::move(value)},
 				dispatch_{dispatch},
 				args_{std::move(args)} {}
@@ -49,7 +49,7 @@ class deferred_receiver : public referenceable_value<Type> {
 
 	private:
 		dispatch_type* dispatch_;
-		std::tuple<Args&&...> args_;
+		std::tuple<Args...> args_;
 };
 
 } // namespace js

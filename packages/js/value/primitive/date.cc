@@ -18,7 +18,7 @@ export class js_clock {
 		using period = std::milli;
 		using duration = std::chrono::duration<rep, period>;
 		using time_point = std::chrono::time_point<js_clock>;
-		const static bool is_steady = false;
+		constexpr static auto is_steady = false;
 
 		static auto now() noexcept -> time_point;
 };

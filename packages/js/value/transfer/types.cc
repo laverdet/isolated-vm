@@ -31,4 +31,19 @@ struct forward : util::pointer_facade {
 		Type value_;
 };
 
+// Extract the target type from an `accept`-like type. This is used to know what to cast the result
+// of `accept()` to.
+template <class Type>
+struct accept_target_of;
+
+export template <class Type>
+using accept_target_t = accept_target_of<std::remove_cvref_t<Type>>::type;
+
+template <class Accept>
+	requires requires { typename Accept::accept_target_type; }
+struct accept_target_of<Accept> : std::type_identity<typename Accept::accept_target_type> {};
+
+template <class Meta, class Type>
+struct accept_target_of<accept<Meta, Type>> : std::type_identity<Type> {};
+
 } // namespace js

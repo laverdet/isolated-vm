@@ -24,7 +24,7 @@ struct free_function {
 template <class Function>
 struct visit<void, free_function<Function>> {
 		constexpr auto operator()(auto&& function, auto& accept) const -> decltype(auto) {
-			return invoke_accept(accept, function_tag{}, *this, std::forward<decltype(function)>(function));
+			return accept(function_tag{}, *this, std::forward<decltype(function)>(function));
 		}
 };
 

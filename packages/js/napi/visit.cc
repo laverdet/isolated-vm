@@ -241,7 +241,7 @@ struct visit_key_literal<Key, napi_value> : util::non_moveable {
 		}
 
 		auto operator()(const auto& /*could_be_literally_anything*/, auto& accept) const -> decltype(auto) {
-			return invoke_accept(accept, string_tag{}, *this, get_local(accept));
+			return accept(string_tag{}, *this, get_local(accept));
 		}
 
 	private:

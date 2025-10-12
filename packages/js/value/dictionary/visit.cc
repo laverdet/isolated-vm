@@ -10,8 +10,8 @@ namespace js {
 
 // Default visitor for non-pair values
 template <class Meta, class Type>
-struct visit_vector_value : visit_recursive<Meta, Type> {
-		using visit_type = visit_recursive<Meta, Type>;
+struct visit_vector_value : visit_maybe_recursive<Meta, Type> {
+		using visit_type = visit_maybe_recursive<Meta, Type>;
 		using visit_type::visit_type;
 };
 
@@ -23,7 +23,7 @@ struct visit_vector_value<Meta, std::pair<Key, Value>> {
 				second{transfer} {}
 
 		visit<Meta, Key> first;
-		visit_recursive<Meta, Value> second;
+		visit_maybe_recursive<Meta, Value> second;
 };
 
 // Entrypoint for `vector_of` visitor. Probably `Entry` is a `std::pair` though maybe it's not
@@ -35,7 +35,7 @@ struct visit<Meta, vector_of<Tag, Value>> : visit_vector_value<Meta, Value> {
 
 		constexpr auto operator()(auto&& value, auto& accept) const -> decltype(auto) {
 			const visit_type& visitor = *this;
-			return invoke_accept(accept, Tag{}, visitor, std::forward<decltype(value)>(value));
+			return accept(Tag{}, visitor, std::forward<decltype(value)>(value));
 		}
 };
 

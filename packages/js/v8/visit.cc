@@ -86,15 +86,15 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 		auto operator()(v8::Local<v8::Number> subject, auto& accept) const -> decltype(auto) {
 			auto number = iv8::number{subject};
 			if (subject->IsInt32()) {
-				return invoke_accept(accept, number_tag_of<int32_t>{}, *this, number);
+				return accept(number_tag_of<int32_t>{}, *this, number);
 			} else {
-				return invoke_accept(accept, number_tag_of<double>{}, *this, number);
+				return accept(number_tag_of<double>{}, *this, number);
 			}
 		}
 
 		// boolean
 		auto operator()(v8::Local<v8::Boolean> subject, auto& accept) const -> decltype(auto) {
-			return invoke_accept(accept, boolean_tag{}, *this, iv8::boolean{subject.As<v8::Boolean>()});
+			return accept(boolean_tag{}, *this, iv8::boolean{subject.As<v8::Boolean>()});
 		}
 
 	protected:
@@ -103,10 +103,10 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 			if (subject->IsNullOrUndefined()) {
 				if (subject->IsNull()) {
 					null_ = subject;
-					return invoke_accept(accept, null_tag{}, *this, subject);
+					return accept(null_tag{}, *this, subject);
 				} else {
 					undefined_ = subject;
-					return invoke_accept(accept, undefined_tag{}, *this, subject);
+					return accept(undefined_tag{}, *this, subject);
 				}
 			} else if (subject->IsNumber()) {
 				return (*this)(subject.As<v8::Number>(), accept);
@@ -140,7 +140,7 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 		}
 
 		auto immediate(v8::Local<v8::Symbol> subject, auto& accept) const -> decltype(auto) {
-			return invoke_accept(accept, symbol_tag{}, *this, subject);
+			return accept(symbol_tag{}, *this, subject);
 		}
 
 		// bigint
@@ -202,9 +202,9 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 		auto operator()(this const auto& self, v8::Local<v8::Value> subject, auto& accept) -> decltype(auto) {
 			// Check known address values before the map lookup
 			if (subject == self.null_value_cache()) {
-				return invoke_accept(accept, null_tag{}, self, subject);
+				return accept(null_tag{}, self, subject);
 			} else if (subject == self.undefined_value_cache()) {
-				return invoke_accept(accept, undefined_tag{}, self, subject);
+				return accept(undefined_tag{}, self, subject);
 			}
 
 			// Check the reference map, and check type
@@ -273,7 +273,7 @@ struct visit<Meta, v8::FunctionCallbackInfo<v8::Value>> : visit<Meta, v8::Local<
 
 		using visit_type::operator();
 		auto operator()(v8::FunctionCallbackInfo<v8::Value> info, auto& accept) const -> decltype(auto) {
-			return invoke_accept(accept, arguments_tag{}, *this, iv8::callback_info{info});
+			return accept(arguments_tag{}, *this, iv8::callback_info{info});
 		}
 };
 
