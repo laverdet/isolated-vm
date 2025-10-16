@@ -12,7 +12,7 @@ namespace ivm {
 /**
  * CallbackHandle implementation
  */
-static std::unique_ptr<CallbackHandle> CallbackHandle_New_Wrapper(Local<Value> This, Local<Function> fn, MaybeLocal<Object> options) {
+static std::unique_ptr<CallbackHandle> CallbackHandle_New_Wrapper(Local<Function> fn, MaybeLocal<Object> options) {
 	return CallbackHandle::New(fn, options);
 }
 
