@@ -2,7 +2,6 @@ module;
 #include <utility>
 export module isolated_js:dictionary.visit;
 import :dictionary.vector_of;
-import :recursive_value;
 import :transfer;
 import ivm.utility;
 

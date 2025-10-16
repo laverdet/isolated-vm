@@ -37,8 +37,10 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 				napi::environment_scope<Environment>{env} {}
 
 		// reference provider
+		constexpr auto operator()(std::type_identity<napi_value> /*type*/, napi_value value) const -> napi_value { return value; }
+
 		template <class Tag>
-		static auto reaccept(std::type_identity<napi::value<Tag>> /*type*/, napi_value value) -> napi::value<Tag> {
+		constexpr auto operator()(std::type_identity<napi::value<Tag>> /*type*/, napi_value value) const -> napi::value<Tag> {
 			return napi::value<Tag>::from(value);
 		}
 

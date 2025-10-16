@@ -22,9 +22,14 @@ static_assert(transfer_strict<double>(1) == 1.0);
 static_assert(transfer_strict<std::string>("hello"sv) == "hello"s);
 
 // Variants
-template <class Variant, class Type>
-constexpr auto variant_is_equal_to(const Variant& variant, const Type& value) {
+template <class Type>
+constexpr auto variant_is_equal_to(const auto& variant, const Type& value) {
 	return std::holds_alternative<Type>(variant) && std::get<Type>(variant) == value;
+}
+
+template <template <class> class Make, class Type>
+constexpr auto variant_is_equal_to(const recursive_value<Make>& variant, const Type& value) {
+	return variant_is_equal_to(*variant, value);
 }
 
 static_assert(variant_is_equal_to(transfer_strict<std::variant<int, double>>(1.1), 1.1));
@@ -38,7 +43,7 @@ static_assert(variant_is_equal_to(transfer<value_t>(bigint{1'234}), bigint{1'234
 static_assert(variant_is_equal_to(transfer_strict<value_t>(bigint{1'234}), bigint{1'234}));
 // static_assert(variant_is_equal_to(transfer<value_t>(value_t{bigint{1'234}}), bigint{1'234}));
 // static_assert(variant_is_equal_to(transfer_strict<value_t>(value_t{bigint{1'234}}), bigint{1'234}));
-static_assert(transfer<bigint>(value_t{bigint{1'234}}) == bigint{1'234});
+static_assert(transfer<bigint>(value_t{std::in_place, bigint{1'234}}) == bigint{1'234});
 
 // Optional
 constexpr auto optional_value = transfer<std::optional<int>>(std::monostate{});

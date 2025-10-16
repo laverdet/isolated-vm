@@ -32,7 +32,7 @@ struct accept_v8_primitive {
 
 		// reference provider
 		template <class Type>
-		static auto reaccept(std::type_identity<v8::Local<Type>> /*type*/, v8::Local<v8::Value> value) -> v8::Local<Type> {
+		constexpr auto operator()(std::type_identity<v8::Local<Type>> /*type*/, v8::Local<v8::Value> value) const -> v8::Local<Type> {
 			return value.As<Type>();
 		}
 

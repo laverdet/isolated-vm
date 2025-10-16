@@ -10,11 +10,11 @@ namespace js {
 
 // Default acceptor for non-pair values
 template <class Meta, class Type>
-struct accept_vector_value : accept_maybe_recursive_value<Meta, Type> {
-		using accept_type = accept_maybe_recursive_value<Meta, Type>;
+struct accept_vector_value : accept_value_recursive<Meta, Type> {
+		using accept_type = accept_value_recursive<Meta, Type>;
 		using accept_type::accept_type;
 
-		constexpr static auto make_struct_subject(auto&& entry) {
+		constexpr static auto make_struct_subject(auto&& entry) -> decltype(auto) {
 			return std::forward<decltype(entry)>(entry);
 		}
 };
@@ -40,7 +40,7 @@ struct accept_vector_value<Meta, std::pair<Key, Value>> {
 		}
 
 		accept_value<Meta, Key> first;
-		accept_maybe_recursive_value<Meta, Value> second;
+		accept_value_recursive<Meta, Value> second;
 };
 
 // Dictionary's acceptor manages the recursive acceptor for the entry key/value types

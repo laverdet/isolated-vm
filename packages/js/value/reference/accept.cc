@@ -1,5 +1,4 @@
 module;
-#include <type_traits>
 #include <utility>
 export module isolated_js:reference.accept;
 import :recursive_value;
@@ -11,13 +10,17 @@ namespace js {
 // `recursive_value` acceptor delegates to its underlying value acceptor.
 template <class Meta, template <class> class Make>
 struct accept<Meta, recursive_value<Make>> : accept<Meta, typename recursive_value<Make>::value_type> {
+	private:
 		using value_type = recursive_value<Make>;
-		using accept_type = accept<Meta, typename value_type::value_type>;
+		using underlying_value_type = value_type::value_type;
+
+	public:
+		using accept_type = accept<Meta, underlying_value_type>;
 		using accept_type::accept_type;
 
-		constexpr auto operator()(this auto& self, auto tag, const auto& visit, auto&& subject) -> value_type
-			requires std::is_invocable_v<accept_type&, decltype(tag), decltype(visit), decltype(subject)> {
-			return value_type(util::invoke_as<accept_type>(self, tag, visit, std::forward<decltype(subject)>(subject)));
+		using accept_type::operator();
+		constexpr auto operator()(underlying_value_type&& target) -> value_type {
+			return value_type{std::in_place, std::move(target)};
 		}
 };
 

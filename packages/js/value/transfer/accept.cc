@@ -1,9 +1,9 @@
 module;
 #include <algorithm>
 #include <string>
+#include <type_traits>
 #include <utility>
 export module isolated_js:accept;
-import :recursive_value;
 import :transfer.types;
 import :visit;
 import ivm.utility;
@@ -49,39 +49,25 @@ struct accept<void, forward<Type, Tag>> {
 
 // `accept` delegated to a sub class passed down from the constructor
 export template <class Accept>
-struct accept_delegated {
-	public:
-		using accept_target_type = accept_target_t<Accept>;
-		using accept_type = Accept;
-		constexpr explicit accept_delegated(auto* transfer) : accept_{*transfer} {}
-
-		constexpr auto operator()(auto tag, const auto& visit, auto&& subject) const -> accept_target_type
-			requires std::invocable<accept_type&, decltype(tag), decltype(visit), decltype(subject)> {
-			return accept_(tag, visit, std::forward<decltype(subject)>(subject));
-		}
-
-	private:
-		std::reference_wrapper<accept_type> accept_;
+struct accept_delegated_from : std::reference_wrapper<Accept> {
+		constexpr explicit accept_delegated_from(auto* transfer) :
+				std::reference_wrapper<Accept>{*transfer} {}
 };
 
-// `accept` with transfer wrapping
-export template <class Meta, class Type>
-struct accept_value;
+template <class Accept>
+struct accept_target<accept_delegated_from<Accept>> : accept_target<Accept> {};
 
-template <class Meta, class Type>
-struct accept_target<accept_value<Meta, Type>> : std::type_identity<Type> {};
-
-template <class Meta, class Type>
-struct accept_value : Meta::accept_wrap_type::template accept<accept<Meta, Type>> {
-		using accept_type = Meta::accept_wrap_type::template accept<accept<Meta, Type>>;
+// `accept` for use in nested container acceptors (`std::pair`, `std::vector`, `std::tuple`, etc).
+// It automatically handles unwrapping of referenceable and intermediate values.
+template <class Accept>
+struct accept_value_from_direct : Accept {
+		using accept_type = Accept;
 		using accept_type::accept_type;
 
 		constexpr auto operator*() -> accept_type& { return *this; }
 
-		constexpr auto accept_direct(auto_tag auto tag, const auto& visit, auto&& subject) -> decltype(auto) {
-			return util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(subject)>(subject));
-		}
-
+		// nb: `std::invocable<accept_type, ...>` causes a circular requirement. I think it's fine to
+		// leave it out though since `accept_value_from` is a terminal acceptor.
 		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& subject) -> accept_target_t<accept_type> {
 			accept_type& accept = *this;
 			return consume_accept(
@@ -92,21 +78,33 @@ struct accept_value : Meta::accept_wrap_type::template accept<accept<Meta, Type>
 		}
 };
 
-// `accept` possibly a possible recursive target
+template <class Meta, class Accept>
+using accept_value_from = accept_value_from_direct<typename Meta::accept_wrap_type::template accept<Accept>>;
+
 export template <class Meta, class Type>
-struct accept_maybe_recursive_value : accept_value<Meta, Type> {
-		using accept_target_type = accept_target_t<accept_value<Meta, Type>>;
-		using accept_type = accept_value<Meta, Type>;
-		using accept_type::accept_type;
-};
+using accept_value = accept_value_from<Meta, accept<Meta, Type>>;
+
+template <class Accept>
+struct accept_target<accept_value_from_direct<Accept>> : accept_target<Accept> {};
+
+// `accept_value_recursive` is a utility on top of `accept_value` which detects recursive types and
+// uses a delegating acceptor for those.
+template <class Meta, class Type>
+struct accept_value_recursive_type;
+
+export template <class Meta, class Type>
+using accept_value_recursive = accept_value_recursive_type<Meta, Type>::type;
 
 template <class Meta, class Type>
-	requires is_recursive_value<Type>
-struct accept_maybe_recursive_value<Meta, Type> : accept_delegated<accept_value<Meta, Type>> {
-		using accept_target_type = Type;
-		using accept_type = accept_delegated<accept_value<Meta, Type>>;
-		using accept_type::accept_type;
-};
+struct accept_value_recursive_type
+		: std::type_identity<accept_value_from<Meta, accept<Meta, Type>>> {};
+
+template <class Meta, class Type>
+	requires Type::is_recursive_type
+struct accept_value_recursive_type<Meta, Type>
+		: std::type_identity<accept_delegated_from<accept_value_from<Meta, accept<Meta, Type>>>> {};
+// This one seems more correct but would cause an extra instantiation which maybe isn't needed
+// : std::type_identity<accept_value_from<Meta, accept_delegated_from<accept<Meta, Type>>>> {};
 
 // Specialized by certain containers to map `Target` to the first meaningful acceptor. This is
 // specifically used with `accept_property_subject_type` in relation to property names.

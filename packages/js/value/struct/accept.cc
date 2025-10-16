@@ -18,9 +18,6 @@ namespace js {
 template <class Value>
 struct setter_delegate;
 
-template <class Value>
-setter_delegate(Value) -> setter_delegate<Value>;
-
 // Setter by direct member access
 template <class Subject, class Type>
 struct setter_delegate<struct_member<Subject, Type>> : struct_member<Subject, Type> {
@@ -53,7 +50,7 @@ struct accept_object_property {
 			if (value) {
 				setter(target, *std::move(value));
 			} else {
-				if constexpr (!std::is_invocable_v<decltype(setter), std::nullopt_t>) {
+				if constexpr (!std::invocable<decltype(setter), decltype(target), std::nullopt_t>) {
 					// If the setter accepts undefined values then a missing property is allowed. In this
 					// case the setter is not invoked at all, which could in theory be used to distinguish
 					// between `undefined` and missing properties.

@@ -30,8 +30,7 @@ export class bigint {
 
 		[[nodiscard]] constexpr auto operator==(const bigint&) const -> bool = default;
 
-		// NOLINTNEXTLINE(google-explicit-constructor)
-		[[nodiscard]] constexpr operator uint64_t() const {
+		[[nodiscard]] explicit constexpr operator uint64_t() const {
 			if (size() == 0) {
 				return 0;
 			}
@@ -39,8 +38,7 @@ export class bigint {
 			return data()[ 0 ];
 		}
 
-		// NOLINTNEXTLINE(google-explicit-constructor)
-		[[nodiscard]] constexpr operator int64_t() const {
+		[[nodiscard]] explicit constexpr operator int64_t() const {
 			if (size() == 0) {
 				return 0;
 			}
