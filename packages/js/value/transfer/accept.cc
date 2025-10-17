@@ -49,16 +49,78 @@ struct accept<void, forward<Type, Tag>> {
 
 // `accept` delegated to a sub class passed down from the constructor
 export template <class Accept>
+struct accept_delegated_from;
+
+template <class Accept>
+struct accept_target<accept_delegated_from<Accept>> : accept_target<Accept> {};
+
+template <class Accept>
 struct accept_delegated_from : std::reference_wrapper<Accept> {
 		constexpr explicit accept_delegated_from(auto* transfer) :
 				std::reference_wrapper<Accept>{*transfer} {}
 };
 
-template <class Accept>
-struct accept_target<accept_delegated_from<Accept>> : accept_target<Accept> {};
+// Recursively invoke single-argument `accept` calls until a non-`accept`'able type is returned.
+// `referenceable_value`'s are unwrapped and passed to `insert`.
+export template <class Accept, class Insert>
+struct accept_store_unwrapped;
 
-// `accept` for use in nested container acceptors (`std::pair`, `std::vector`, `std::tuple`, etc).
-// It automatically handles unwrapping of referenceable and intermediate values.
+template <class Accept, class Insert>
+struct accept_target<accept_store_unwrapped<Accept, Insert>> : accept_target<Accept> {};
+
+template <class Accept, class Insert>
+struct accept_store_unwrapped {
+	private:
+		using accept_type = std::remove_cvref_t<decltype(*std::declval<Accept&>())>;
+		using target_type = accept_target_t<Accept>;
+
+	public:
+		constexpr accept_store_unwrapped(Accept& accept, Insert insert) :
+				accept_{accept},
+				insert_{std::move(insert)} {}
+
+		constexpr auto operator()(auto tag, const auto& visit, auto&& subject) -> target_type
+			requires std::invocable<accept_type&, decltype(tag), decltype(visit), decltype(subject)> {
+			return consume(util::invoke_as<accept_type>(accept_.get(), tag, visit, std::forward<decltype(subject)>(subject)));
+		}
+
+	private:
+		constexpr auto consume(target_type /*&&*/ value) -> target_type {
+			return std::forward<decltype(value)>(value);
+		}
+
+		constexpr auto consume(auto&& value) -> target_type
+			requires std::invocable<accept_type&, decltype(value)> {
+			return consume((*accept_.get())(std::forward<decltype(value)>(value)));
+		}
+
+		template <class Type>
+		constexpr auto consume(js::referenceable_value<Type> value) -> target_type {
+			insert_(*value);
+			return consume(*std::move(value));
+		}
+
+		template <class Type, class... Args>
+		constexpr auto consume(js::deferred_receiver<Type, Args...> receiver) -> target_type {
+			insert_(*receiver);
+			std::move(receiver)();
+			return consume(*std::move(receiver));
+		}
+
+		std::reference_wrapper<Accept> accept_;
+		Insert insert_;
+};
+
+// `accept` wrapper which is passed to visit instances. It is also used in nested container
+// acceptors (`std::pair`, `std::vector`, `std::tuple`, etc). It automatically handles unwrapping of
+// referenceable and intermediate values, and stores references in the visitors reference map, if
+// there is one defined.
+template <class Accept>
+struct accept_value_from_direct;
+
+template <class Accept>
+struct accept_target<accept_value_from_direct<Accept>> : accept_target<Accept> {};
+
 template <class Accept>
 struct accept_value_from_direct : Accept {
 		using accept_type = Accept;
@@ -66,25 +128,22 @@ struct accept_value_from_direct : Accept {
 
 		constexpr auto operator*() -> accept_type& { return *this; }
 
+		// forward reference provider
+		constexpr auto operator()(auto type, auto&& value) -> type_t<type> {
+			return util::invoke_as<Accept>(*this, type, std::forward<decltype(value)>(value));
+		}
+
 		// nb: `std::invocable<accept_type, ...>` causes a circular requirement. I think it's fine to
 		// leave it out though since `accept_value_from` is a terminal acceptor.
 		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& subject) -> accept_target_t<accept_type> {
-			accept_type& accept = *this;
 			auto insert = [ & ]() {
 				if constexpr (requires { visit.has_reference_map; }) {
-					return [ subject = subject, &visit = visit ](const auto& value) { visit.insert(subject, value); };
-				} else if constexpr (requires { visit.second.has_reference_map; }) {
-					// TODO: This is a very hacky pair check for visitor reference map
-					return [ subject = subject, &visit = visit.second ](const auto& value) { visit.insert(subject, value); };
+					return [ subject = subject, &visit = visit ](const auto& value) { visit.emplace_subject(subject, value); };
 				} else {
 					return util::unused;
 				}
 			}();
-			return consume_accept(
-				accept,
-				util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(subject)>(subject)),
-				insert
-			);
+			return accept_store_unwrapped{*this, insert}(tag, visit, std::forward<decltype(subject)>(subject));
 		}
 };
 
@@ -93,9 +152,6 @@ using accept_value_from = accept_value_from_direct<typename Meta::accept_wrap_ty
 
 export template <class Meta, class Type>
 using accept_value = accept_value_from<Meta, accept<Meta, Type>>;
-
-template <class Accept>
-struct accept_target<accept_value_from_direct<Accept>> : accept_target<Accept> {};
 
 // `accept_value_recursive` is a utility on top of `accept_value` which detects recursive types and
 // uses a delegating acceptor for those.
@@ -113,22 +169,6 @@ template <class Meta, class Type>
 	requires Type::is_recursive_type
 struct accept_value_recursive_type<Meta, Type>
 		: std::type_identity<accept_value_from<Meta, accept_delegated_from<accept<Meta, Type>>>> {};
-
-// Internal utility that can be passed as an acceptor
-template <class Type, class Accept>
-struct accept_with_callback {
-	public:
-		using accept_target_type = Type;
-		constexpr explicit accept_with_callback(std::type_identity<Type> /*type*/, Accept accept) :
-				accept_{std::move(accept)} {}
-
-		constexpr auto operator()(auto tag, const auto& /*visit*/, auto&& subject) const {
-			return accept_(tag, std::forward<decltype(subject)>(subject));
-		}
-
-	private:
-		Accept accept_;
-};
 
 // Specialized by certain containers to map `Target` to the first meaningful acceptor. This is
 // specifically used with `accept_property_subject_type` in relation to property names.

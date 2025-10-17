@@ -84,7 +84,7 @@ class bind_parameters {
 
 // Invoke the given function with the constant expression matching a runtime value.
 export constexpr auto template_switch(const auto& value, auto case_pack, auto invoke) -> decltype(auto) {
-	auto dispatch = [ & ](const auto& dispatch, auto case_, auto... cases) -> decltype(auto) {
+	auto dispatch = [ & ](this const auto& self, auto case_, auto... cases) -> decltype(auto) {
 		if (value == case_) {
 			return invoke(case_);
 		} else {
@@ -92,12 +92,12 @@ export constexpr auto template_switch(const auto& value, auto case_pack, auto in
 				// default
 				return invoke();
 			} else {
-				return dispatch(dispatch, cases...);
+				return self(cases...);
 			}
 		}
 	};
 	const auto [... cases ] = case_pack;
-	return dispatch(dispatch, cases...);
+	return dispatch(cases...);
 }
 
 } // namespace util

@@ -66,8 +66,6 @@ template <class Target>
 struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 	public:
 		using reference_map_type = reference_map_t<Target, v8_reference_map_type>;
-		using reference_map_type::lookup_or_visit;
-		using reference_map_type::try_emplace;
 
 		explicit visit_flat_v8_value(auto* /*transfer*/, const js::iv8::isolate_lock_witness& lock) :
 				isolate_lock_{lock} {}
@@ -140,9 +138,9 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 		auto immediate(v8::Local<v8::String> subject, Accept& accept) const -> accept_target_t<Accept> {
 			auto string = iv8::string{lock_witness(), subject};
 			if (subject->IsOneByte()) {
-				return try_emplace(accept, string_tag_of<char>{}, *this, string);
+				return accept(string_tag_of<char>{}, *this, string);
 			} else {
-				return try_emplace(accept, string_tag_of<char16_t>{}, *this, string);
+				return accept(string_tag_of<char16_t>{}, *this, string);
 			}
 		}
 
@@ -157,28 +155,28 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 			bool lossless{};
 			auto u64 = subject->Uint64Value(&lossless);
 			if (lossless) {
-				return try_emplace(accept, bigint_tag_of<uint64_t>{}, *this, iv8::bigint_u64{subject, u64});
+				return accept(bigint_tag_of<uint64_t>{}, *this, iv8::bigint_u64{subject, u64});
 			} else {
-				return try_emplace(accept, bigint_tag_of<bigint>{}, *this, iv8::bigint_n{subject});
+				return accept(bigint_tag_of<bigint>{}, *this, iv8::bigint_n{subject});
 			}
 		}
 
 		// date
 		template <class Accept>
 		auto immediate(this const auto& self, v8::Local<v8::Date> subject, Accept& accept) -> accept_target_t<Accept> {
-			return self.try_emplace(accept, date_tag{}, self, iv8::date{subject});
+			return accept(date_tag{}, self, iv8::date{subject});
 		}
 
 		// external
 		template <class Accept>
 		auto immediate(this const auto& self, v8::Local<v8::External> subject, Accept& accept) -> accept_target_t<Accept> {
-			return self.try_emplace(accept, external_tag{}, self, iv8::external{subject});
+			return accept(external_tag{}, self, iv8::external{subject});
 		}
 
 		// promise
 		template <class Accept>
 		auto immediate(this const auto& self, v8::Local<v8::Promise> subject, Accept& accept) -> accept_target_t<Accept> {
-			return self.try_emplace(accept, promise_tag{}, self, subject);
+			return accept(promise_tag{}, self, subject);
 		}
 
 		auto null_value_cache() const { return null_; }
@@ -202,7 +200,6 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 	public:
 		using visit_type = visit_flat_v8_value<Target>;
 		using visit_type::immediate;
-		using visit_type::lookup_or_visit;
 		using visit_type::operator();
 
 		explicit visit_v8_value(auto* transfer, const iv8::context_lock_witness& lock) :
@@ -243,16 +240,16 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 			} else if (subject->IsPromise()) {
 				return self.immediate(subject.As<v8::Promise>(), accept);
 			} else {
-				auto visit_entry = std::pair<visit_v8_property_name<visit_v8_value>, const visit_v8_value&>{self, self};
-				return self.try_emplace(accept, dictionary_tag{}, visit_entry, iv8::object{self.lock_witness(), subject.As<v8::Object>()});
+				auto visit_entry = visit_entry_pair<visit_v8_property_name<visit_v8_value>, const visit_v8_value&>{self};
+				return accept(dictionary_tag{}, visit_entry, iv8::object{self.lock_witness(), subject.As<v8::Object>()});
 			}
 		}
 
 		// array
 		template <class Accept>
 		auto immediate(this const auto& self, v8::Local<v8::Array> subject, Accept& accept) -> accept_target_t<Accept> {
-			auto visit_entry = std::pair<visit_v8_property_name<visit_v8_value>, const visit_v8_value&>{self, self};
-			return self.try_emplace(accept, list_tag{}, visit_entry, iv8::object{self.lock_witness(), subject.As<v8::Object>()});
+			auto visit_entry = visit_entry_pair<visit_v8_property_name<visit_v8_value>, const visit_v8_value&>{self};
+			return accept(list_tag{}, visit_entry, iv8::object{self.lock_witness(), subject.As<v8::Object>()});
 		}
 
 	private:

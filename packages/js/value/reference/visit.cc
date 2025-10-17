@@ -17,33 +17,21 @@ struct reference_vector_of {
 		using reference_type = reference_of<Subject>;
 
 	public:
+		constexpr auto emplace_subject(reference_type reference, const auto& value) -> void {
+			assert(values_storage_.size() == reference.id());
+			values_storage_.emplace_back(value);
+		}
+
 		template <class Accept>
 		constexpr auto lookup_or_visit(Accept& accept, reference_type subject, auto dispatch) const
 			-> accept_target_t<Accept> {
 			if (values_storage_.size() == subject.id()) {
 				return dispatch();
 			} else {
-				using value_type = accept_target_t<Accept>;
-				return consume_accept(
-					*accept,
-					(*accept)(std::type_identity<value_type>{}, std::move(values_storage_).at(subject.id())),
-					util::unused
-				);
+				// reaccept from reference
+				const auto type_tag = std::type_identity<accept_target_t<Accept>>{};
+				return accept(type_tag, values_storage_.at(subject.id()));
 			}
-		}
-
-		template <class Accept>
-		constexpr auto try_emplace(Accept& accept, auto tag, const auto& visit, reference_type reference, auto&& subject)
-			-> accept_target_t<Accept> {
-			using accept_direct_type = std::remove_cvref_t<decltype(*accept)>;
-			return consume_accept(
-				*accept,
-				util::invoke_as<accept_direct_type>(accept, tag, visit, std::forward<decltype(subject)>(subject)),
-				[ & ](auto&& value) -> void {
-					assert(values_storage_.size() == reference.id());
-					values_storage_.emplace_back(std::forward<decltype(value)>(value));
-				}
-			);
 		}
 
 		constexpr auto clear_accepted_references() {
@@ -59,20 +47,12 @@ struct reference_vector_of<Subject, void> {
 	public:
 		using reference_type = reference_of<Subject>;
 
+		constexpr auto emplace_subject(reference_type /*reference*/, const auto& /*value*/) -> void {}
+
 		template <class Accept>
 		constexpr auto lookup_or_visit(Accept& /*accept*/, reference_type /*subject*/, auto dispatch) const
 			-> accept_target_t<Accept> {
 			return dispatch();
-		}
-
-		template <class Accept>
-		constexpr auto try_emplace(Accept& accept, auto tag, const auto& visit, reference_type /*reference*/, auto&& subject) const
-			-> accept_target_t<Accept> {
-			return consume_accept(
-				accept,
-				accept(tag, visit, std::forward<decltype(subject)>(subject)),
-				util::unused
-			);
 		}
 
 		constexpr auto clear_accepted_references() const {}
@@ -90,14 +70,9 @@ struct visit_reference_of : visit<Meta, Type> {
 
 		template <class Accept>
 		constexpr auto operator()(reference_of<Type> reference, Accept& accept) const -> accept_target_t<Accept> {
-			using target_type = accept_target_t<Accept>;
-			return values_storage_.lookup_or_visit(accept, reference, [ & ]() constexpr -> target_type {
-				auto accept_ = accept_with_callback{
-					std::type_identity<target_type>{},
-					[ & ](auto tag, auto&& subject) -> target_type {
-						return values_storage_.try_emplace(accept, tag, *this, reference, std::forward<decltype(subject)>(subject));
-					}
-				};
+			return values_storage_.lookup_or_visit(accept, reference, [ & ]() constexpr -> accept_target_t<Accept> {
+				auto insert = [ & ](const auto& value) -> void { values_storage_.emplace_subject(reference, value); };
+				auto accept_ = accept_store_unwrapped{accept, insert};
 				return util::invoke_as<visit_type>(*this, std::move(references_).at(reference), accept_);
 			});
 		}

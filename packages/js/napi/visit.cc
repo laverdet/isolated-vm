@@ -72,8 +72,6 @@ struct visit_napi_value
 			reference_map_t<Target, napi_reference_map_type> {
 	public:
 		using reference_map_type = reference_map_t<Target, napi_reference_map_type>;
-		using reference_map_type::lookup_or_visit;
-		using reference_map_type::try_emplace;
 
 		visit_napi_value(auto* /*transfer*/, Environment& env) :
 				napi::environment_scope<Environment>{env},
@@ -129,7 +127,7 @@ struct visit_napi_value
 			}
 
 			// Check the reference map, and lookup type via napi
-			return lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
+			return this->lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
 				auto typeof = napi::invoke(napi_typeof, napi_env{*this}, subject);
 				switch (typeof) {
 					case napi_undefined:
@@ -201,21 +199,21 @@ struct visit_napi_value
 		auto immediate(this const Visit& self, value<list_tag> subject, Accept& accept) -> accept_target_t<Accept> {
 			// nb: It is intentional that `dictionary_tag` is bound. It handles sparse arrays.
 			auto target = napi::bound_value{napi_env{self}, napi::value<dictionary_tag>::from(subject)};
-			auto visit_entry = std::pair<visit_napi_property_name<Visit>, const Visit&>{self, self};
-			return self.try_emplace(accept, list_tag{}, visit_entry, target);
+			auto visit_entry = visit_entry_pair<visit_napi_property_name<Visit>, const Visit&>{self};
+			return accept(list_tag{}, visit_entry, target);
 		}
 
 		template <class Visit, class Accept>
 		auto immediate(this const Visit& self, value<object_tag> subject, Accept& accept) -> accept_target_t<Accept> {
 			auto target = napi::bound_value{napi_env{self}, napi::value<dictionary_tag>::from(subject)};
-			auto visit_entry = std::pair<visit_napi_property_name<Visit>, const Visit&>{self, self};
-			return self.try_emplace(accept, dictionary_tag{}, visit_entry, target);
+			auto visit_entry = visit_entry_pair<visit_napi_property_name<Visit>, const Visit&>{self};
+			return accept(dictionary_tag{}, visit_entry, target);
 		}
 
 		// Convenience function which wraps in `napi::bound_value` and invokes `accept`.
 		template <auto_tag Tag, class Accept>
 		auto accept_tagged(value<Tag> subject, Accept& accept) const -> accept_target_t<Accept> {
-			return try_emplace(accept, Tag{}, *this, napi::bound_value{napi_env{*this}, subject});
+			return accept(Tag{}, *this, napi::bound_value{napi_env{*this}, subject});
 		}
 
 		napi::address_equal equal_;
