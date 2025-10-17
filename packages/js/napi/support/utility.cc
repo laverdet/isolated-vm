@@ -7,6 +7,10 @@ namespace js::napi {
 
 // See: `v8_enable_direct_handle`.
 
+// Null handle for both direct and indirect handles
+const void* null_value_handle_ = nullptr;
+export auto* const null_value_handle = reinterpret_cast<napi_value>(&null_value_handle_);
+
 // Address equality for underlying napi handles.
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
 export struct virtual_address_equal {
@@ -25,13 +29,9 @@ export struct direct_address_equal final : virtual_address_equal {
 
 export struct indirect_address_equal final : virtual_address_equal {
 		auto operator()(napi_value left, napi_value right) const -> bool final {
-			if (left == nullptr || right == nullptr) {
-				return left == right;
-			} else {
-				auto* indirect_left = std::bit_cast<void**>(left);
-				auto* indirect_right = std::bit_cast<void**>(right);
-				return *indirect_left == *indirect_right;
-			}
+			auto* indirect_left = std::bit_cast<void**>(left);
+			auto* indirect_right = std::bit_cast<void**>(right);
+			return *indirect_left == *indirect_right;
 		}
 };
 
@@ -43,7 +43,6 @@ export struct indirect_address_hash : std::hash<void*> {
 		using std::hash<void*>::operator();
 
 	public:
-		// `value` may NOT be null
 		auto operator()(napi_value value) const -> std::size_t {
 			auto* indirect_handle = std::bit_cast<void**>(value);
 			return (*this)(*indirect_handle);

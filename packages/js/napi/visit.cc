@@ -219,8 +219,8 @@ struct visit_napi_value
 		}
 
 		napi::address_equal equal_;
-		mutable napi_value undefined_{};
-		mutable napi_value null_{};
+		mutable napi_value undefined_{napi::null_value_handle};
+		mutable napi_value null_{napi::null_value_handle};
 };
 
 // Napi value visitor entry
