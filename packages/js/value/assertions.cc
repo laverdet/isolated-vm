@@ -140,7 +140,7 @@ struct accept<void, specialized> {
 template <>
 struct visit<void, specialized> {
 		template <class Accept>
-		constexpr auto operator()(specialized value, Accept& accept) const -> accept_target_t<Accept> {
+		constexpr auto operator()(specialized value, const Accept& accept) const -> accept_target_t<Accept> {
 			return accept(object_tag{}, *this, value);
 		}
 };

@@ -115,12 +115,12 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 		}
 
 		// vectors
-		auto operator()(this auto& self, vector_tag /*tag*/, const auto& visit, auto&& subject)
+		auto operator()(this const auto& self, vector_tag /*tag*/, auto& visit, auto&& subject)
 			-> js::deferred_receiver<napi::value<vector_tag>, decltype(self), decltype(visit), decltype(subject)> {
 			return {
 				napi::value<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{self}, subject.size())),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
-				[](napi::value<vector_tag> array, auto& self, const auto& visit, auto /*&&*/ list) -> void {
+				[](napi::value<vector_tag> array, auto& self, auto& visit, auto /*&&*/ list) -> void {
 					int ii = 0;
 					for (auto&& subject : util::into_range(std::forward<decltype(list)>(list))) {
 						auto* element = napi_value{visit(std::forward<decltype(subject)>(subject), self)};
@@ -131,12 +131,12 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 		}
 
 		template <std::size_t Size>
-		auto operator()(this auto& self, tuple_tag<Size> /*tag*/, const auto& visit, auto&& subject)
+		auto operator()(this const auto& self, tuple_tag<Size> /*tag*/, auto& visit, auto&& subject)
 			-> js::deferred_receiver<napi::value<vector_tag>, decltype(self), decltype(visit), decltype(subject)> {
 			return {
 				napi::value<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{self}, Size)),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
-				[](napi::value<vector_tag> array, auto& self, const auto& visit, auto /*&&*/ tuple) -> void {
+				[](napi::value<vector_tag> array, auto& self, auto& visit, auto /*&&*/ tuple) -> void {
 					const auto [... indices ] = util::sequence<Size>;
 					(..., [ & ]() -> void {
 						// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
@@ -149,12 +149,12 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 		}
 
 		// arrays & dictionaries
-		auto operator()(this auto& self, list_tag /*tag*/, const auto& visit, auto&& subject)
+		auto operator()(this const auto& self, list_tag /*tag*/, auto& visit, auto&& subject)
 			-> js::deferred_receiver<napi::value<list_tag>, decltype(self), decltype(visit), decltype(subject)> {
 			return {
 				napi::value<list_tag>::from(napi::invoke(napi_create_array, napi_env{self})),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
-				[](napi::value<list_tag> array, auto& self, const auto& visit, auto /*&&*/ subject) -> void {
+				[](napi::value<list_tag> array, auto& self, auto& visit, auto /*&&*/ subject) -> void {
 					std::vector<napi_property_descriptor> properties;
 					properties.reserve(std::size(subject));
 					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(subject)>(subject))) {
@@ -177,12 +177,12 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			};
 		}
 
-		auto operator()(this auto& self, dictionary_tag /*tag*/, const auto& visit, auto&& subject)
+		auto operator()(this const auto& self, dictionary_tag /*tag*/, auto& visit, auto&& subject)
 			-> js::deferred_receiver<napi::value<dictionary_tag>, decltype(self), decltype(visit), decltype(subject)> {
 			return {
 				napi::value<dictionary_tag>::from(napi::invoke(napi_create_object, napi_env{self})),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
-				[](napi::value<dictionary_tag> object, auto& self, const auto& visit, auto /*&&*/ subject) -> void {
+				[](napi::value<dictionary_tag> object, auto& self, auto& visit, auto /*&&*/ subject) -> void {
 					std::vector<napi_property_descriptor> properties;
 					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
 					properties.reserve(std::size(range));
@@ -208,16 +208,16 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 
 		// structs
 		template <std::size_t Size>
-		auto operator()(this auto& self, struct_tag<Size> /*tag*/, const auto& visit, auto&& subject)
+		auto operator()(this const auto& self, struct_tag<Size> /*tag*/, auto& visit, auto&& subject)
 			-> js::deferred_receiver<napi::value<dictionary_tag>, decltype(self), decltype(visit), decltype(subject)> {
 			return {
 				napi::value<dictionary_tag>::from(napi::invoke(napi_create_object, napi_env{self})),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
-				[](napi::value<dictionary_tag> object, auto& self, const auto& visit, auto /*&&*/ subject) -> void {
+				[](napi::value<dictionary_tag> object, auto& self, auto& visit, auto /*&&*/ subject) -> void {
 					std::array<napi_property_descriptor, Size> properties;
 					const auto [... indices ] = util::sequence<Size>;
 					(..., [ & ]() -> void {
-						const auto& visit_n = std::get<indices>(visit);
+						auto& visit_n = std::get<indices>(visit);
 						properties[ indices ] = {
 							.utf8name{},
 							.name = napi_value{visit_n.first.get_local(self)},
@@ -263,7 +263,7 @@ struct accept<Meta, napi::value<value_tag>> : accept_napi_value_with<Meta> {
 // Forwarded `napi::value<T>` acceptor
 template <class Tag>
 struct accept<void, js::forward<napi::value<Tag>, value_tag>> {
-		auto operator()(Tag /*tag*/, visit_holder /*visit*/, napi::value<Tag> value) -> js::forward<napi::value<Tag>, value_tag> {
+		auto operator()(Tag /*tag*/, visit_holder /*visit*/, napi::value<Tag> value) const -> js::forward<napi::value<Tag>, value_tag> {
 			return js::forward{napi::value<Tag>{value}, value_tag{}};
 		}
 };
@@ -275,7 +275,7 @@ struct accept_property_value<Meta, Key, Type, napi_value> {
 		explicit constexpr accept_property_value(auto* transfer) :
 				second{transfer} {}
 
-		auto operator()(dictionary_tag /*tag*/, const auto& visit, const auto& object) -> Type {
+		auto operator()(dictionary_tag /*tag*/, auto& visit, const auto& object) const -> Type {
 			if (auto local = first.get_local(visit.first); object.has(local)) {
 				return visit.second(object.get(local), second);
 			} else {
@@ -284,7 +284,7 @@ struct accept_property_value<Meta, Key, Type, napi_value> {
 		}
 
 	private:
-		visit_key_literal<Key, napi_value> first;
+		mutable visit_key_literal<Key, napi_value> first;
 		accept_value<Meta, Type> second;
 };
 

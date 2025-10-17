@@ -21,8 +21,8 @@ struct accept<Meta, std::array<Type, Size>> : accept_value<Meta, Type> {
 		using accept_type::accept_type;
 
 		template <std::size_t VectorSize>
-		constexpr auto operator()(vector_n_tag<VectorSize> /*tag*/, const auto& visit, auto&& subject) -> std::array<Type, Size> {
-			accept_type& accept = *this;
+		constexpr auto operator()(vector_n_tag<VectorSize> /*tag*/, auto& visit, auto&& subject) const -> std::array<Type, Size> {
+			const accept_type& accept = *this;
 			auto iterator = std::forward<decltype(subject)>(subject).begin();
 			const auto [... indices ] = util::sequence<Size>;
 			return std::array<Type, Size>{
@@ -32,8 +32,8 @@ struct accept<Meta, std::array<Type, Size>> : accept_value<Meta, Type> {
 		}
 
 		template <std::size_t TupleSize>
-		constexpr auto operator()(tuple_tag<TupleSize> /*tag*/, const auto& visit, auto&& subject) -> std::array<Type, Size> {
-			accept_type& accept = *this;
+		constexpr auto operator()(tuple_tag<TupleSize> /*tag*/, auto& visit, auto&& subject) const -> std::array<Type, Size> {
+			const accept_type& accept = *this;
 			const auto [... indices ] = util::sequence<TupleSize>;
 			return std::array<Type, Size>{
 				visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(subject)>(subject), accept)...,
@@ -47,10 +47,10 @@ struct accept<Meta, std::vector<Type>> : accept_value<Meta, Type> {
 		using accept_type = accept_value<Meta, Type>;
 		using accept_type::accept_type;
 
-		constexpr auto operator()(list_tag /*tag*/, const auto& visit, auto&& subject) -> std::vector<Type> {
+		constexpr auto operator()(list_tag /*tag*/, auto& visit, auto&& subject) const -> std::vector<Type> {
 			// nb: This doesn't check for string keys, so like `Object.assign([ 1 ], { foo: 2 })` might
 			// yield `[ 1, 2 ]`
-			accept_type& accept = *this;
+			const accept_type& accept = *this;
 			auto range =
 				std::forward<decltype(subject)>(subject) |
 				std::views::transform([ & ](auto&& subject) -> Type {
@@ -59,8 +59,8 @@ struct accept<Meta, std::vector<Type>> : accept_value<Meta, Type> {
 			return {std::from_range, std::move(range)};
 		}
 
-		constexpr auto operator()(vector_tag /*tag*/, const auto& visit, auto&& subject) -> std::vector<Type> {
-			accept_type& accept = *this;
+		constexpr auto operator()(vector_tag /*tag*/, auto& visit, auto&& subject) const -> std::vector<Type> {
+			const accept_type& accept = *this;
 			auto range =
 				std::forward<decltype(subject)>(subject) |
 				std::views::transform([ & ](auto&& subject) -> Type {
@@ -70,8 +70,8 @@ struct accept<Meta, std::vector<Type>> : accept_value<Meta, Type> {
 		}
 
 		template <std::size_t Size>
-		constexpr auto operator()(tuple_tag<Size> /*tag*/, const auto& visit, auto&& subject) -> std::vector<Type> {
-			accept_type& accept = *this;
+		constexpr auto operator()(tuple_tag<Size> /*tag*/, auto& visit, auto&& subject) const -> std::vector<Type> {
+			const accept_type& accept = *this;
 			std::vector<Type> result;
 			result.reserve(Size);
 			const auto [... indices ] = util::sequence<Size>;

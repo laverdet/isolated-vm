@@ -41,9 +41,9 @@ struct visit<void, forward<Type>> {
 
 // `visit` delegated to a sub class passed down from the constructor
 export template <class Visit>
-struct visit_delegated_from : std::reference_wrapper<const Visit> {
+struct visit_delegated_from : std::reference_wrapper<Visit> {
 		constexpr explicit visit_delegated_from(auto* transfer) :
-				std::reference_wrapper<const Visit>{*transfer} {}
+				std::reference_wrapper<Visit>{*transfer} {}
 };
 
 // `visit` a possibly recursive subject
@@ -57,7 +57,7 @@ struct visit_maybe_recursive_type<Meta, Type> : std::type_identity<visit_delegat
 template <class Meta, class Type>
 using visit_maybe_recursive = visit_maybe_recursive_type<Meta, Type>::type;
 
-// Utility to passing oneself as an object entry visitor
+// Utility to pass oneself as an object entry visitor
 export template <class First, class Second>
 struct visit_entry_pair {
 		constexpr static auto has_reference_map = requires { Second::has_reference_map; };
@@ -66,7 +66,7 @@ struct visit_entry_pair {
 				first{self},
 				second{self} {}
 
-		constexpr auto emplace_subject(const auto& subject, const auto& value) const -> void {
+		constexpr auto emplace_subject(const auto& subject, const auto& value) -> void {
 			second.emplace_subject(subject, value);
 		}
 
@@ -85,7 +85,7 @@ struct visit_key_literal;
 template <util::string_literal Key>
 struct visit_key_literal<Key, void> {
 		template <class Accept>
-		constexpr auto operator()(const auto& /*could_be_literally_anything*/, Accept& accept) const -> accept_target_t<Accept> {
+		constexpr auto operator()(const auto& /*could_be_literally_anything*/, const Accept& accept) -> accept_target_t<Accept> {
 			return accept(string_tag{}, *this, Key);
 		}
 };
@@ -95,7 +95,7 @@ struct null_reference_map {
 		explicit null_reference_map(auto&&... /*args*/) {}
 
 		template <class Accept>
-		constexpr auto lookup_or_visit(Accept& /*accept*/, auto /*subject*/, auto dispatch) const -> accept_target_t<Accept> {
+		constexpr auto lookup_or_visit(const Accept& /*accept*/, auto /*subject*/, auto dispatch) const -> accept_target_t<Accept> {
 			return dispatch();
 		}
 };
@@ -110,13 +110,13 @@ struct reference_map_provider {
 		explicit reference_map_provider(auto&&... args) :
 				map_{std::forward<decltype(args)>(args)...} {}
 
-		constexpr auto emplace_subject(const auto& subject, const auto& value) const -> void {
+		constexpr auto emplace_subject(const auto& subject, const auto& value) -> void {
 			auto [ iterator, inserted ] = map_.try_emplace(subject, value);
 			assert(inserted);
 		}
 
 		template <class Accept>
-		constexpr auto lookup_or_visit(Accept& accept, const auto& subject, auto dispatch) const -> accept_target_t<Accept> {
+		constexpr auto lookup_or_visit(const Accept& accept, const auto& subject, auto dispatch) const -> accept_target_t<Accept> {
 			using value_type = accept_target_t<Accept>;
 			auto it = map_.find(subject);
 			if (it == map_.end()) {
@@ -127,7 +127,7 @@ struct reference_map_provider {
 		}
 
 	private:
-		mutable Map map_;
+		Map map_;
 };
 
 // Construct a map to store references to visited values. If the acceptor has no reference type then

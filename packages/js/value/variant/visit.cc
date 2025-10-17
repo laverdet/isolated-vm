@@ -18,7 +18,7 @@ struct visit<Meta, std::variant<Types...>> : visit<Meta, Types>... {
 				visit<Meta, Types>{transfer}... {}
 
 		template <class Accept>
-		constexpr auto operator()(auto&& subject, Accept& accept) const -> accept_target_t<Accept> {
+		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
 			using target_type = accept_target_t<Accept>;
 			const auto visit_alternative =
 				[ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) constexpr -> target_type {

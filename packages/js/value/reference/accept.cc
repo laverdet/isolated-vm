@@ -58,32 +58,30 @@ struct accept_reference_of : accept<Meta, Type> {
 				accept_type{transfer},
 				type_index_{type_index} {}
 
-		constexpr auto operator()(this auto& self, auto tag, const auto& visit, auto&& subject)
+		constexpr auto operator()(this const auto& self, auto tag, auto& visit, auto&& subject)
 			-> js::deferred_receiver<accepted_reference_of<Type>, decltype(self), decltype(tag), decltype(visit), decltype(subject)>
-			requires std::invocable<accept_type&, decltype(tag), decltype(visit), decltype(subject)> {
+			requires std::invocable<const accept_type&, decltype(tag), decltype(visit), decltype(subject)> {
 			return {
 				accepted_reference_of{self.type_index_, self.storage_.allocate()},
 				std::forward_as_tuple(self, tag, visit, std::forward<decltype(subject)>(subject)),
-				[](accepted_reference_of<Type> reference, auto& self, auto tag, const auto& visit, auto /*&&*/ subject) -> void {
-					self.storage_.place_at(
-						reference_type{reference.id()},
-						util::invoke_as<accept_type>(self, tag, visit, std::forward<decltype(subject)>(subject))
-					);
+				[](accepted_reference_of<Type> reference, auto& self, auto tag, auto& visit, auto /*&&*/ subject) -> void {
+					self.storage_.at(reference_type{reference.id()}) =
+						util::invoke_as<accept_type>(self, tag, visit, std::forward<decltype(subject)>(subject));
 				},
 			};
 		}
 
-		constexpr auto operator()(accepted_reference_of<Type> reference) -> reference_type {
+		constexpr auto operator()(accepted_reference_of<Type> reference) const -> reference_type {
 			return reference_type{reference};
 		}
 
 	protected:
-		constexpr auto take_reference_storage() -> storage_type {
+		constexpr auto take_reference_storage() const -> storage_type {
 			return std::exchange(storage_, {});
 		}
 
 	private:
-		storage_type storage_;
+		mutable storage_type storage_;
 		unsigned type_index_;
 };
 
@@ -139,12 +137,12 @@ struct accept_recursive_refs_value<Meta, Value, util::type_pack<Refs...>>
 
 		// delegated reference unwrap
 		template <class Type>
-		constexpr auto operator()(accepted_reference_of<Type> reference) -> reference_of<Type> {
+		constexpr auto operator()(accepted_reference_of<Type> reference) const -> reference_of<Type> {
 			return util::invoke_as<accept_reference_of<Meta, Type>>(*this, reference);
 		}
 
 		// reference provider
-		constexpr auto operator()(std::type_identity<value_type> /*type*/, accepted_reference reference) -> value_type {
+		constexpr auto operator()(std::type_identity<value_type> /*type*/, accepted_reference reference) const -> value_type {
 			const auto reaccept = [ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) -> value_type {
 				using mapped_reference_type = reference_of<Refs...[ Index ]>;
 				return value_type{std::in_place, mapped_reference_type{reference.id()}};
@@ -160,7 +158,7 @@ struct accept_recursive_refs_value<Meta, Value, util::type_pack<Refs...>>
 		}
 
 	protected:
-		constexpr auto take_reference_storage() -> storage_type {
+		constexpr auto take_reference_storage() const -> storage_type {
 			return storage_type{accept_reference_of<Meta, Refs>::take_reference_storage()...};
 		}
 };
@@ -177,13 +175,13 @@ struct accept<Meta, referential_value<Make, Extract>>
 		// reference provider
 		// nb: Unreachable. This only comes up in the case where `lookup_or_visit` finds a reference on the
 		// first visit.
-		constexpr auto operator()(std::type_identity<value_type> /*type*/, accepted_reference /*reference*/) -> value_type {
+		constexpr auto operator()(std::type_identity<value_type> /*type*/, accepted_reference /*reference*/) const -> value_type {
 			std::terminate();
 		}
 
 		// accept as value, moving reference storage along with the value
-		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& subject) -> value_type {
-			accept_type& accept = *this;
+		constexpr auto operator()(auto_tag auto tag, auto& visit, auto&& subject) const -> value_type {
+			const accept_type& accept = *this;
 			return value_type{
 				accept(tag, visit, std::forward<decltype(subject)>(subject)),
 				this->take_reference_storage(),

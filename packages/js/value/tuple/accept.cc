@@ -20,7 +20,7 @@ struct accept_tuple_param : accept_value<Meta, Type> {
 		using accept_type = accept_value<Meta, Type>;
 		constexpr accept_tuple_param() : accept_type{this} {}
 
-		constexpr auto visit_and_advance(const auto& visit, auto& iterator, auto& end) -> accept_target_t<accept_type> {
+		constexpr auto visit_and_advance(auto& visit, auto& iterator, auto& end) const -> accept_target_t<accept_type> {
 			if (iterator == end) {
 				return (*this)(undefined_in_tag{}, visit, std::monostate{});
 			} else {
@@ -42,7 +42,7 @@ struct accept_tuple_rest_spread : accept_value<Meta, Type> {
 		using accept_type = accept_value<Meta, Type>;
 		constexpr accept_tuple_rest_spread() : accept_type{this} {}
 
-		constexpr auto visit_and_advance(const auto& visit, auto& iterator, auto& end) -> accept_target_t<accept_type> {
+		constexpr auto visit_and_advance(auto& visit, auto& iterator, auto& end) const -> accept_target_t<accept_type> {
 			return (*this)(vector_tag{}, std::ranges::subrange{iterator, end}, visit);
 		}
 };
@@ -89,7 +89,7 @@ struct accept<Meta, std::tuple<Types...>> {
 					return {util::elide(util::constructor<std::tuple_element_t<indices, acceptors_type>>)...};
 				}()} {}
 
-		constexpr auto operator()(vector_tag /*tag*/, const auto& visit, auto&& subject) -> value_type {
+		constexpr auto operator()(vector_tag /*tag*/, auto& visit, auto&& subject) const -> value_type {
 			const auto [... indices ] = util::sequence<sizeof...(Types)>;
 			auto range = util::into_range(std::forward<decltype(subject)>(subject));
 			auto it = std::begin(range);
@@ -111,7 +111,7 @@ struct accept<Meta, std::tuple<rest, Type>> : accept<Meta, Type> {
 		using accept_type = accept<Meta, Type>;
 		using accept_type::accept_type;
 
-		constexpr auto operator()(vector_tag /*tag*/, const auto& visit, auto&& subject) -> value_type {
+		constexpr auto operator()(vector_tag /*tag*/, auto& visit, auto&& subject) const -> value_type {
 			return {rest{}, util::invoke_as<accept_type>(*this, vector_tag{}, visit, std::forward<decltype(subject)>(subject))};
 		}
 };

@@ -42,7 +42,7 @@ struct accept<Meta, std::variant<Types...>> {
 				second{util::elide{util::constructor<accept_value<Meta, Types>>, transfer}...},
 				accept_discriminant{transfer} {}
 
-		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, auto&& subject) -> accepted_type {
+		constexpr auto operator()(dictionary_tag /*tag*/, auto& visit, auto&& subject) const -> accepted_type {
 			auto alternatives = make_discriminant_map<decltype(subject), decltype(visit)>();
 			auto discriminant_value = accept_discriminant(dictionary_tag{}, visit, subject);
 			auto accept_alternative = alternatives.find(util::djb2_hash(discriminant_value));
@@ -67,7 +67,7 @@ struct accept<Meta, std::variant<Types...>> {
 
 		template <std::size_t Index, class Visit, class Value>
 		// clang bug?
-		/*constexpr*/ static auto accept_alternative(accept& self, Visit visit, Value value) -> accepted_type {
+		/*constexpr*/ static auto accept_alternative(const accept& self, Visit visit, Value value) -> accepted_type {
 			return std::get<Index>(self.second)(dictionary_tag{}, visit, std::forward<Value>(value));
 		}
 

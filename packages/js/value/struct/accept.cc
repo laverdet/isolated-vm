@@ -43,7 +43,7 @@ struct accept_object_property {
 				acceptor{transfer},
 				setter{property.value_template} {}
 
-		constexpr auto operator()(const auto& visit, auto&& subject, auto& target) -> void {
+		constexpr auto operator()(auto& visit, auto&& subject, auto& target) const -> void {
 			// nb: We `std::forward` the value to *each* setter. This allows the setters to pick an
 			// lvalue object apart member by member if it wants.
 			auto value = acceptor(dictionary_tag{}, visit, std::forward<decltype(subject)>(subject));
@@ -89,7 +89,7 @@ struct accept_struct_properties<Meta, Type, std::tuple<Property...>> {
 					)...};
 				}()} {}
 
-		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, auto&& subject) -> Type {
+		constexpr auto operator()(dictionary_tag /*tag*/, auto& visit, auto&& subject) const -> Type {
 			Type target;
 			const auto [... indices ] = util::sequence<sizeof...(Property)>;
 			(..., std::get<indices>(properties)(visit, std::forward<decltype(subject)>(subject), target));

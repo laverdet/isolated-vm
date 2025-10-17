@@ -119,7 +119,7 @@ struct accept<void, std::basic_string<Char>> {
 			return value_type{std::forward<decltype(subject)>(subject)};
 		}
 
-		constexpr auto operator()(covariant_tag<tag_type> tag, const auto& visit, auto&& subject) const -> value_type {
+		constexpr auto operator()(covariant_tag<tag_type> tag, auto& visit, auto&& subject) const -> value_type {
 			return (*this)(*tag, visit, std::forward<decltype(subject)>(subject));
 		}
 };
@@ -151,7 +151,7 @@ struct accept<Meta, std::expected<Type, undefined_in_tag>> : accept<Meta, Type> 
 			return value_type{std::unexpect, tag};
 		}
 
-		constexpr auto operator()(Type&& target) -> value_type {
+		constexpr auto operator()(Type&& target) const -> value_type {
 			return value_type{std::in_place, std::move(target)};
 		}
 };

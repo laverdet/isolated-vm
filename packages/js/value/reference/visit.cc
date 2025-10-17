@@ -23,7 +23,7 @@ struct reference_vector_of {
 		}
 
 		template <class Accept>
-		constexpr auto lookup_or_visit(Accept& accept, reference_type subject, auto dispatch) const
+		constexpr auto lookup_or_visit(const Accept& accept, reference_type subject, auto dispatch) const
 			-> accept_target_t<Accept> {
 			if (values_storage_.size() == subject.id()) {
 				return dispatch();
@@ -55,7 +55,7 @@ struct reference_vector_of<Subject, void> {
 			return dispatch();
 		}
 
-		constexpr auto clear_accepted_references() const {}
+		constexpr auto clear_accepted_references() {}
 };
 
 // Instantiated by the top `visit<..., referential_value>` visitor. The the top visitor is given a
@@ -69,7 +69,7 @@ struct visit_reference_of : visit<Meta, Type> {
 		using visit_type::visit_type;
 
 		template <class Accept>
-		constexpr auto operator()(reference_of<Type> reference, Accept& accept) const -> accept_target_t<Accept> {
+		constexpr auto operator()(reference_of<Type> reference, const Accept& accept) -> accept_target_t<Accept> {
 			return values_storage_.lookup_or_visit(accept, reference, [ & ]() constexpr -> accept_target_t<Accept> {
 				auto insert = [ & ](const auto& value) -> void { values_storage_.emplace_subject(reference, value); };
 				auto accept_ = accept_store_unwrapped{accept, insert};
@@ -78,7 +78,7 @@ struct visit_reference_of : visit<Meta, Type> {
 		}
 
 	protected:
-		constexpr auto reset_for_visited_value(auto&& subject) const -> void {
+		constexpr auto reset_for_visited_value(auto&& subject) -> void {
 			// Copy or move reference value storage from the subject. For example: a bunch of
 			// `std::string`'s or whatever.
 			references_ = std::forward<decltype(subject)>(subject).references();
@@ -87,8 +87,8 @@ struct visit_reference_of : visit<Meta, Type> {
 		}
 
 	private:
-		mutable reference_storage_of<Type> references_;
-		mutable reference_vector_of<Type, typename Meta::accept_reference_type> values_storage_;
+		reference_storage_of<Type> references_;
+		reference_vector_of<Type, typename Meta::accept_reference_type> values_storage_;
 };
 
 // `reference_of` visitor delegates to `visit_reference_of`
@@ -123,14 +123,14 @@ struct visit_recursive_refs_value<Meta, Value, util::type_pack<Refs...>>
 				visit_reference_of<Meta, Refs>{transfer}... {}
 
 		template <class Accept>
-		constexpr auto operator()(auto&& subject, Accept& accept) const -> accept_target_t<Accept> {
+		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
 			// nb: `invoke_as<visit_type>` cannot be used here since this is the recursive linchpin in the
 			// whole thing
 			return visit_type::operator()(*std::forward<decltype(subject)>(subject), accept);
 		}
 
 	protected:
-		constexpr auto reset_for_visited_value(auto&& subject) const -> void {
+		constexpr auto reset_for_visited_value(auto&& subject) -> void {
 			// Reset accepted values in `reference_of<T>` visitor
 			(..., visit_reference_of<Meta, Refs>::reset_for_visited_value(std::forward<decltype(subject)>(subject)));
 		}
@@ -144,7 +144,7 @@ struct visit<Meta, referential_value<Make, Extract>> : visit<Meta, typename refe
 		using visit_type::visit_type;
 
 		template <class Accept>
-		constexpr auto operator()(auto&& subject, Accept& accept) const -> accept_target_t<Accept> {
+		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
 			// Reset accepted values in `reference_of<T>` visitor
 			this->reset_for_visited_value(std::forward<decltype(subject)>(subject));
 			// Delegate forward to `visit_recursive_refs_value` visitor

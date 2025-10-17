@@ -19,7 +19,7 @@ struct accept_vector_value<Meta, std::pair<Key, Value>> {
 				first{transfer},
 				second{transfer} {}
 
-		constexpr auto operator()(const auto& visit, auto&& entry) -> std::pair<Key, Value> {
+		constexpr auto operator()(auto& visit, auto&& entry) const -> std::pair<Key, Value> {
 			return std::pair{
 				visit.first(std::forward<decltype(entry)>(entry).first, first),
 				visit.second(std::forward<decltype(entry)>(entry).second, second),
@@ -42,7 +42,7 @@ struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
 		using accept_type = accept_vector_value<Meta, Entry>;
 		using accept_type::accept_type;
 
-		constexpr auto operator()(Tag /*tag*/, const auto& visit, auto&& subject) -> vector_of<Tag, Entry> {
+		constexpr auto operator()(Tag /*tag*/, auto& visit, auto&& subject) const -> vector_of<Tag, Entry> {
 			return vector_of<Tag, Entry>{
 				std::from_range,
 				util::into_range(std::forward<decltype(subject)>(subject)) |
@@ -54,7 +54,7 @@ struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
 
 		template <std::size_t Size>
 			requires(type<Tag> == type<dictionary_tag>)
-		constexpr auto operator()(struct_tag<Size> /*tag*/, const auto& visit, auto&& subject) -> vector_of<Tag, Entry> {
+		constexpr auto operator()(struct_tag<Size> /*tag*/, auto& visit, auto&& subject) const -> vector_of<Tag, Entry> {
 			// nb: The value category of `subject` is forwarded to *each* visitor. Move operations should
 			// keep this in mind and only move one member at time.
 			auto&& value = accept_type::make_struct_subject(std::forward<decltype(subject)>(subject));

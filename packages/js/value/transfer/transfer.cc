@@ -35,8 +35,8 @@ struct accept_with_throw::accept_throw : Accept {
 		using Accept::Accept;
 
 		using Accept::operator();
-		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& value) const -> accept_target_type
-			requires(!std::invocable<Accept&, decltype(tag), decltype(visit), decltype(value)>) {
+		constexpr auto operator()(auto_tag auto tag, auto& visit, auto&& value) const -> accept_target_type
+			requires(!std::invocable<const Accept&, decltype(tag), decltype(visit), decltype(value)>) {
 			throw std::logic_error{"Type error"};
 		}
 };
@@ -138,8 +138,8 @@ constexpr auto transfer_with(
 	}()>;
 
 	transfer_holder<visit_type, accept_type> visit_and_accept{std::move(visit_args), std::move(accept_args)};
-	const visit_type& visit = visit_and_accept;
-	accept_type& accept = visit_and_accept;
+	visit_type& visit = visit_and_accept;
+	const accept_type& accept = visit_and_accept;
 	return visit(subject_value_type(std::forward<decltype(value)>(value)), accept);
 }
 

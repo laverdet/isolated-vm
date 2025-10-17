@@ -71,44 +71,44 @@ struct accept_target<accept_store_unwrapped<Accept, Insert>> : accept_target<Acc
 template <class Accept, class Insert>
 struct accept_store_unwrapped {
 	private:
-		using accept_type = std::remove_cvref_t<decltype(*std::declval<Accept&>())>;
+		using accept_type = std::remove_cvref_t<decltype(*std::declval<const Accept&>())>;
 		using target_type = accept_target_t<Accept>;
 
 	public:
-		constexpr accept_store_unwrapped(Accept& accept, Insert insert) :
+		constexpr accept_store_unwrapped(const Accept& accept, Insert insert) :
 				accept_{accept},
 				insert_{std::move(insert)} {}
 
-		constexpr auto operator()(auto tag, const auto& visit, auto&& subject) -> target_type
-			requires std::invocable<accept_type&, decltype(tag), decltype(visit), decltype(subject)> {
+		constexpr auto operator()(auto tag, auto& visit, auto&& subject) const -> target_type
+			requires std::invocable<const accept_type&, decltype(tag), decltype(visit), decltype(subject)> {
 			return consume(util::invoke_as<accept_type>(accept_.get(), tag, visit, std::forward<decltype(subject)>(subject)));
 		}
 
 	private:
-		constexpr auto consume(target_type /*&&*/ value) -> target_type {
+		constexpr auto consume(target_type /*&&*/ value) const -> target_type {
 			return std::forward<decltype(value)>(value);
 		}
 
-		constexpr auto consume(auto&& value) -> target_type
-			requires std::invocable<accept_type&, decltype(value)> {
+		constexpr auto consume(auto&& value) const -> target_type
+			requires std::invocable<const accept_type&, decltype(value)> {
 			return consume((*accept_.get())(std::forward<decltype(value)>(value)));
 		}
 
 		template <class Type>
-		constexpr auto consume(js::referenceable_value<Type> value) -> target_type {
+		constexpr auto consume(js::referenceable_value<Type> value) const -> target_type {
 			insert_(*value);
 			return consume(*std::move(value));
 		}
 
 		template <class Type, class... Args>
-		constexpr auto consume(js::deferred_receiver<Type, Args...> receiver) -> target_type {
+		constexpr auto consume(js::deferred_receiver<Type, Args...> receiver) const -> target_type {
 			insert_(*receiver);
 			std::move(receiver)();
 			return consume(*std::move(receiver));
 		}
 
-		std::reference_wrapper<Accept> accept_;
-		Insert insert_;
+		std::reference_wrapper<const Accept> accept_;
+		[[no_unique_address]] Insert insert_;
 };
 
 // `accept` wrapper which is passed to visit instances. It is also used in nested container
@@ -126,16 +126,16 @@ struct accept_value_from_direct : Accept {
 		using accept_type = Accept;
 		using accept_type::accept_type;
 
-		constexpr auto operator*() -> accept_type& { return *this; }
+		constexpr auto operator*() const -> const accept_type& { return *this; }
 
 		// forward reference provider
-		constexpr auto operator()(auto type, auto&& value) -> type_t<type> {
+		constexpr auto operator()(auto type, auto&& value) const -> type_t<type> {
 			return util::invoke_as<Accept>(*this, type, std::forward<decltype(value)>(value));
 		}
 
 		// nb: `std::invocable<accept_type, ...>` causes a circular requirement. I think it's fine to
 		// leave it out though since `accept_value_from` is a terminal acceptor.
-		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& subject) -> accept_target_t<accept_type> {
+		constexpr auto operator()(auto_tag auto tag, auto& visit, auto&& subject) const -> accept_target_t<accept_type> {
 			auto insert = [ & ]() {
 				if constexpr (requires { visit.has_reference_map; }) {
 					return [ subject = subject, &visit = visit ](const auto& value) { visit.emplace_subject(subject, value); };
@@ -200,7 +200,7 @@ struct accept_property_value<Meta, Key, Type, void> {
 				first{transfer},
 				second{transfer} {}
 
-		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, const auto& dictionary) {
+		constexpr auto operator()(dictionary_tag /*tag*/, auto& visit, const auto& dictionary) const {
 			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) -> bool {
 				return visit.first(entry.first, first) == Key;
 			});

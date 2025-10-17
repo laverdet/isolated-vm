@@ -29,15 +29,12 @@ class reference_storage_of {
 				references_{std::move(value)} {}
 
 		constexpr auto at(reference_type reference) const& -> const Type& { return references_.at(reference.id()); }
+		constexpr auto at(reference_type reference) & -> Type& { return references_.at(reference.id()); }
 		constexpr auto at(reference_type reference) && -> Type { return std::move(references_).at(reference.id()); }
 
 		constexpr auto allocate() -> reference_type {
 			references_.emplace_back();
 			return reference_type{static_cast<unsigned>(references_.size() - 1)};
-		}
-
-		constexpr auto place_at(reference_type reference, auto&& value) -> void {
-			references_.at(reference.id()) = std::forward<decltype(value)>(value);
 		}
 
 	private:

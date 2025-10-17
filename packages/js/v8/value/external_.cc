@@ -53,7 +53,7 @@ struct accept<void, iv8::external_reference<Type>*> : accept<void, iv8::external
 		using accept_type = accept<void, iv8::external_reference<Type>&>;
 		using accept_type::accept_type;
 
-		auto operator()(external_tag tag, const auto& visit, auto&& value) const -> iv8::external_reference<Type>* {
+		auto operator()(external_tag tag, auto& visit, auto&& value) const -> iv8::external_reference<Type>* {
 			return std::addressof(util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(value)>(value)));
 		}
 

@@ -30,8 +30,8 @@ struct visit<Meta, vector_of<Tag, Value>> : visit_vector_value<Meta, Value> {
 		using visit_type::visit_type;
 
 		template <class Accept>
-		constexpr auto operator()(auto&& subject, Accept& accept) const -> accept_target_t<Accept> {
-			const visit_type& visitor = *this;
+		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
+			visit_type& visitor = *this;
 			return accept(Tag{}, visitor, std::forward<decltype(subject)>(subject));
 		}
 };
