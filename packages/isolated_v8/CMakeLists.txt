@@ -18,22 +18,22 @@ target_sources(isolated_v8
 		_module.cc
 		agent/handle_.cc
 		agent/host_.cc
-		evaluation/include/module_action.cc
-		evaluation/include/module.cc
-		evaluation/include/origin.cc
-		evaluation/include/script.cc
-		handle/include/collected_handle.cc
-		handle/include/remote_handle_list.cc
-		handle/include/remote_handle.cc
-		handle/include/remote.cc
+		cluster_.cc
+		evaluation/module_.cc
+		evaluation/module_action_.cc
+		evaluation/origin_.cc
+		evaluation/script_.cc
+		function_.cc
+		handle/collected_handle_.cc
+		handle/remote_.cc
+		handle/remote_handle_.cc
 		handle/remote_handle_fwd_.cc
-		include/cluster.cc
-		include/function.cc
-		include/realm.cc
-		platform/include/clock.cc
-		platform/include/foreground_runner.cc
-		platform/include/platform.cc
-		platform/include/task_runner.cc
+		handle/remote_handle_list_.cc
+		platform/clock_.cc
+		platform/foreground_runner_.cc
+		platform/platform_.cc
+		platform/task_runner_.cc
+		realm_.cc
 		scheduler.cc
 )
 target_link_libraries(isolated_v8 PRIVATE

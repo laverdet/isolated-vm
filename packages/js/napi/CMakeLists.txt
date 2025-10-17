@@ -22,12 +22,12 @@ target_sources(napi_js
 		support/handle_scope.cc
 		support/scheduler.cc
 		support/utility.cc
-		value/include/array.cc
-		value/include/dictionary.cc
-		value/include/external.cc
-		value/include/function.cc
-		value/include/object.cc
-		value/include/primitive.cc
+		value/array_.cc
+		value/dictionary_.cc
+		value/external_.cc
+		value/function_.cc
+		value/object_.cc
+		value/primitive_.cc
 		visit.cc
 )
 target_link_libraries(napi_js PRIVATE

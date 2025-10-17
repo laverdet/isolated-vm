@@ -12,16 +12,16 @@ target_sources(v8_js
 		container/hash.cc
 		container/weak_map.cc
 		lock.cc
-		value/include/array.cc
-		value/include/boolean.cc
-		value/include/callback_info.cc
-		value/include/date.cc
-		value/include/external.cc
-		value/include/fixed_array.cc
-		value/include/handle.cc
-		value/include/number.cc
-		value/include/object.cc
-		value/include/string.cc
+		value/array_.cc
+		value/boolean_.cc
+		value/callback_info_.cc
+		value/date_.cc
+		value/external_.cc
+		value/fixed_array_.cc
+		value/handle_.cc
+		value/number_.cc
+		value/object_.cc
+		value/string_.cc
 		visit.cc
 )
 target_link_libraries(v8_js PUBLIC

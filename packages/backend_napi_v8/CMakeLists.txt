@@ -11,11 +11,11 @@ target_sources(ivm_backend_v8
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		agent_.cc
-		include/environment.cc
-		include/script.cc
+		environment_.cc
 		module_.cc
 		realm_.cc
 		runtime/runtime_.cc
+		script_.cc
 		utility.cc
 )
 target_embed_content(ivm_backend_v8 runtime/dist/interface.js)
