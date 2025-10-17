@@ -60,13 +60,14 @@ class reference_storage : public reference_storage_of<Types>... {
 		template <class Value>
 			requires(... || (type<Value> == type<Types>))
 		constexpr explicit reference_storage(Value value) :
-				reference_storage_of<Types>{util::elide{[ & ]() -> reference_storage_of<Types> {
+				reference_storage_of<Types>{[ & ]() {
+					constexpr auto constructor = util::constructor<reference_storage_of<Types>>;
 					if constexpr (type<Value> == type<Types>) {
-						return reference_storage_of<Types>{std::move(value)};
+						return util::elide{constructor, std::move(value)};
 					} else {
-						return reference_storage_of<Types>{};
+						return util::elide{constructor};
 					}
-				}}}... {}
+				}()}... {}
 
 		using reference_storage_of<Types>::at...;
 };

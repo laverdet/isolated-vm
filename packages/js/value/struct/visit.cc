@@ -84,10 +84,11 @@ struct visit_struct_properties<Meta, Type, std::tuple<Property...>> {
 		explicit constexpr visit_struct_properties(auto* transfer) :
 				properties{[ & ]() constexpr -> properties_type {
 					const auto [... indices ] = util::sequence<sizeof...(Property)>;
-					return properties_type{util::elide{[ & ]() constexpr {
-						using property_type = Property...[ indices ];
-						return visit_object_property<Meta, property_type>{transfer, std::get<indices>(struct_properties<Type>::properties)};
-					}}...};
+					return {util::elide{
+						util::constructor<visit_object_property<Meta, Property...[ indices ]>>,
+						transfer,
+						std::get<indices>(struct_properties<Type>::properties)
+					}...};
 				}()} {}
 
 		template <class Accept>

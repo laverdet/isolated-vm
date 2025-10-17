@@ -39,7 +39,7 @@ struct accept<Meta, std::variant<Types...>> {
 
 	public:
 		explicit constexpr accept(auto* transfer) :
-				second{util::elide{[ & ] constexpr { return accept_value<Meta, Types>{transfer}; }}...},
+				second{util::elide{util::constructor<accept_value<Meta, Types>>, transfer}...},
 				accept_discriminant{transfer} {}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, const auto& visit, auto&& subject) -> accepted_type {
