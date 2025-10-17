@@ -8,16 +8,9 @@ import ivm.utility;
 
 namespace js {
 
-// Default acceptor for non-pair values
+// Default acceptor for non-pair values (unused)
 template <class Meta, class Type>
-struct accept_vector_value : accept_value_recursive<Meta, Type> {
-		using accept_type = accept_value_recursive<Meta, Type>;
-		using accept_type::accept_type;
-
-		constexpr static auto make_struct_subject(auto&& entry) -> decltype(auto) {
-			return std::forward<decltype(entry)>(entry);
-		}
-};
+struct accept_vector_value;
 
 // Special case for pairs
 template <class Meta, class Key, class Value>
@@ -39,7 +32,7 @@ struct accept_vector_value<Meta, std::pair<Key, Value>> {
 			return {nullptr, std::forward<decltype(entry)>(entry)};
 		}
 
-		accept_value<Meta, Key> first;
+		accept_value_recursive<Meta, Key> first;
 		accept_value_recursive<Meta, Value> second;
 };
 

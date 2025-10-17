@@ -14,25 +14,26 @@ struct type_pack {
 
 		template <class... Args>
 		explicit consteval type_pack(Args... /*types*/)
-			requires(sizeof...(Types) > 0 && (... && (type_of<Types>{} == Args{}))) {}
+			requires(sizeof...(Types) > 0 && (... && (type_of<Types>{}.operator==(Args{})))) {}
+
+		// Watch out! The `+` operator performs ADL so uninstantiable types will fail
+		consteval auto operator+(auto right) const { concat(right); }
+
+		// Non-ADL version, which can also accept any number of arguments
+		consteval auto concat() const -> type_pack { return {}; }
 
 		template <class... Right>
-		consteval auto operator+(type_pack<Right...> /*right*/) const -> type_pack<Types..., Right...> {
-			return {};
+		consteval auto concat(type_pack<Right...> /*right*/, auto&&... rest) const {
+			return type_pack<Types..., Right...>{}.concat(rest...);
 		}
 
-		[[nodiscard]] consteval auto size() const -> std::size_t {
-			return sizeof...(Types);
-		}
+		// Structured binding accessor
+		template <std::size_t Index>
+		[[nodiscard]] consteval auto get() const -> std::type_identity<Types... [ Index ]> { return {}; }
 };
 
 template <class... Type>
 type_pack(Type...) -> type_pack<typename Type::type...>;
-
-export template <std::size_t Index, class... Types>
-consteval auto get(type_pack<Types...> /*pack*/) -> std::type_identity<Types... [ Index ]> {
-	return {};
-}
 
 } // namespace util
 
@@ -45,6 +46,8 @@ struct tuple_element<Index, util::type_pack<Types...>> {
 };
 
 template <class... Types>
-struct tuple_size<util::type_pack<Types...>> : std::integral_constant<std::size_t, sizeof...(Types)> {};
+struct tuple_size<util::type_pack<Types...>> {
+		constexpr static auto value = sizeof...(Types);
+};
 
 } // namespace std

@@ -14,7 +14,8 @@ target_sources(value_js
 		primitive/date.cc
 		primitive/visit.cc
 		reference/accept.cc
-		reference/recursive_value.cc
+		reference/reference_of.cc
+		reference/referential_value.cc
 		reference/visit.cc
 		struct/accept.cc
 		struct/helpers.cc

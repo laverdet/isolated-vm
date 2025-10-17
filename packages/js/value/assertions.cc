@@ -28,8 +28,14 @@ constexpr auto variant_is_equal_to(const auto& variant, const Type& value) {
 }
 
 template <template <class> class Make, class Type>
-constexpr auto variant_is_equal_to(const recursive_value<Make>& variant, const Type& value) {
-	return variant_is_equal_to(*variant, value);
+constexpr auto variant_is_equal_to(const referential_variant<Make>& variant, const Type& value) {
+	const auto [... types ] = typename referential_variant<Make>::reference_types{};
+	if constexpr ((... || (type<Type> == types))) {
+		using reference_type = reference_of<Type>;
+		return std::holds_alternative<reference_type>(*variant) && variant.references().at(std::get<reference_type>(*variant)) == value;
+	} else {
+		return variant_is_equal_to(*variant, value);
+	}
 }
 
 static_assert(variant_is_equal_to(transfer_strict<std::variant<int, double>>(1.1), 1.1));
@@ -41,9 +47,9 @@ static_assert(variant_is_equal_to(visited_string, "hello"s));
 // Recursive variants
 static_assert(variant_is_equal_to(transfer<value_t>(bigint{1'234}), bigint{1'234}));
 static_assert(variant_is_equal_to(transfer_strict<value_t>(bigint{1'234}), bigint{1'234}));
-// static_assert(variant_is_equal_to(transfer<value_t>(value_t{bigint{1'234}}), bigint{1'234}));
-// static_assert(variant_is_equal_to(transfer_strict<value_t>(value_t{bigint{1'234}}), bigint{1'234}));
-static_assert(transfer<bigint>(value_t{std::in_place, bigint{1'234}}) == bigint{1'234});
+static_assert(variant_is_equal_to(transfer<value_t>(value_t{bigint{1'234}}), bigint{1'234}));
+static_assert(variant_is_equal_to(transfer_strict<value_t>(value_t{bigint{1'234}}), bigint{1'234}));
+static_assert(transfer<bigint>(value_t{bigint{1'234}}) == bigint{1'234});
 
 // Optional
 constexpr auto optional_value = transfer<std::optional<int>>(std::monostate{});

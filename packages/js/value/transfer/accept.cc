@@ -70,10 +70,20 @@ struct accept_value_from_direct : Accept {
 		// leave it out though since `accept_value_from` is a terminal acceptor.
 		constexpr auto operator()(auto_tag auto tag, const auto& visit, auto&& subject) -> accept_target_t<accept_type> {
 			accept_type& accept = *this;
+			auto insert = [ & ]() {
+				if constexpr (requires { visit.has_reference_map; }) {
+					return [ subject = subject, &visit = visit ](const auto& value) { visit.insert(subject, value); };
+				} else if constexpr (requires { visit.second.has_reference_map; }) {
+					// TODO: This is a very hacky pair check for visitor reference map
+					return [ subject = subject, &visit = visit.second ](const auto& value) { visit.insert(subject, value); };
+				} else {
+					return util::unused;
+				}
+			}();
 			return consume_accept(
 				accept,
 				util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(subject)>(subject)),
-				util::unused
+				insert
 			);
 		}
 };
@@ -102,9 +112,23 @@ struct accept_value_recursive_type
 template <class Meta, class Type>
 	requires Type::is_recursive_type
 struct accept_value_recursive_type<Meta, Type>
-		: std::type_identity<accept_delegated_from<accept_value_from<Meta, accept<Meta, Type>>>> {};
-// This one seems more correct but would cause an extra instantiation which maybe isn't needed
-// : std::type_identity<accept_value_from<Meta, accept_delegated_from<accept<Meta, Type>>>> {};
+		: std::type_identity<accept_value_from<Meta, accept_delegated_from<accept<Meta, Type>>>> {};
+
+// Internal utility that can be passed as an acceptor
+template <class Type, class Accept>
+struct accept_with_callback {
+	public:
+		using accept_target_type = Type;
+		constexpr explicit accept_with_callback(std::type_identity<Type> /*type*/, Accept accept) :
+				accept_{std::move(accept)} {}
+
+		constexpr auto operator()(auto tag, const auto& /*visit*/, auto&& subject) const {
+			return accept_(tag, std::forward<decltype(subject)>(subject));
+		}
+
+	private:
+		Accept accept_;
+};
 
 // Specialized by certain containers to map `Target` to the first meaningful acceptor. This is
 // specifically used with `accept_property_subject_type` in relation to property names.

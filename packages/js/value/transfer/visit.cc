@@ -74,8 +74,8 @@ struct visit_key_literal<Key, void> {
 		}
 };
 
-// Recursively invoke single-argument `accept` calls until a non-`accept`'able type is returned. `referenceable_value`'s
-// are unwrapped and passed to `store`.
+// Recursively invoke single-argument `accept` calls until a non-`accept`'able type is returned.
+// `referenceable_value`'s are unwrapped and passed to `store`.
 template <class Accept>
 constexpr auto consume_accept(Accept& /*accept*/, auto&& value, auto /*store*/) -> accept_target_t<Accept> {
 	return std::forward<decltype(value)>(value);
@@ -102,7 +102,11 @@ constexpr auto consume_accept(Accept& accept, js::deferred_receiver<Type, Args..
 
 // Reference map for visitors whose acceptors don't define a `accept_reference_type`
 struct null_reference_map {
+		constexpr static auto has_reference_map = true;
+
 		explicit null_reference_map(auto&&... /*args*/) {}
+
+		constexpr auto insert(const auto& /*subject*/, const auto& /*value*/) const -> void {}
 
 		template <class Accept>
 		constexpr auto lookup_or_visit(Accept& /*accept*/, auto /*subject*/, auto dispatch) const -> accept_target_t<Accept> {
@@ -120,8 +124,15 @@ struct null_reference_map {
 template <class Map>
 struct reference_map_provider {
 	public:
+		constexpr static auto has_reference_map = true;
+
 		explicit reference_map_provider(auto&&... args) :
 				map_{std::forward<decltype(args)>(args)...} {}
+
+		constexpr auto insert(const auto& subject, const auto& value) const -> void {
+			auto [ iterator, inserted ] = map_.try_emplace(subject, value);
+			assert(inserted);
+		}
 
 		template <class Accept>
 		constexpr auto lookup_or_visit(Accept& accept, auto subject, auto dispatch) const -> accept_target_t<Accept> {
@@ -137,13 +148,11 @@ struct reference_map_provider {
 		template <class Accept>
 		constexpr auto try_emplace(Accept& accept, auto tag, const auto& visit, auto&& subject) const -> accept_target_t<Accept> {
 			using accept_direct_type = std::remove_cvref_t<decltype(*accept)>;
+			const auto insert_ = [ &self = *this, subject = subject ](const auto& value) -> void { self.insert(subject, value); };
 			return consume_accept(
 				*accept,
 				util::invoke_as<accept_direct_type>(accept, tag, visit, std::forward<decltype(subject)>(subject)),
-				[ & ](auto&& value) -> void {
-					auto [ iterator, inserted ] = map_.try_emplace(subject, std::forward<decltype(value)>(value));
-					assert(inserted);
-				}
+				insert_
 			);
 		}
 

@@ -5,12 +5,14 @@ export import :dictionary.vector_of;
 export import :enum_.types;
 export import :function;
 export import :property;
-export import :recursive_value;
+export import :reference_of;
+export import :referential_value;
 export import :struct_.types;
 export import :transfer;
 export import :tuple.accept; // for `rest`
 export import :union_.types;
 export import :value;
+export import :variant.types;
 import :dictionary.accept;
 import :dictionary.visit;
 import :enum_.accept;

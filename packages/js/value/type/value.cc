@@ -6,7 +6,7 @@ export module isolated_js:value;
 export import :bigint;
 export import :date;
 export import :dictionary.vector_of;
-import :recursive_value;
+import :variant.types;
 import :tag;
 
 namespace js {
@@ -14,10 +14,9 @@ namespace js {
 // Any utf16 (canonical) or latin1 (optimized) string
 export using string_t = std::variant<std::u16string, std::string>;
 
-// Any (cloneable) object key
-export using key_t = std::variant<int32_t, std::u16string, std::string>;
-
 // Transferred runtime JS value
+// TODO: `Value` is used at the dictionary `key` type here which means acceptors of these values
+// will have a bunch of unnecessary exception logic for values like `bigint` which cannot be keys.
 template <class Value>
 using variant_value = std::variant<
 	// `undefined`
@@ -27,22 +26,22 @@ using variant_value = std::variant<
 	// boolean
 	bool,
 	// number
-	double,
+	reference_of<double>,
 	int32_t,
 	// bigint
-	bigint,
-	uint64_t,
-	// string
-	std::u16string,
-	std::string,
+	reference_of<bigint>,
+	reference_of<uint64_t>,
+	// strings
+	reference_of<std::u16string>,
+	reference_of<std::string>,
 	// date
-	js_clock::time_point,
+	reference_of<js_clock::time_point>,
 	// object(s)
-	dictionary<list_tag, key_t, Value>,
-	dictionary<dictionary_tag, key_t, Value>
+	reference_of<dictionary<list_tag, Value, Value>>,
+	reference_of<dictionary<dictionary_tag, Value, Value>>
 	// ---
 	>;
 
-export using value_t = recursive_value<variant_value>;
+export using value_t = referential_variant<variant_value>;
 
 } // namespace js

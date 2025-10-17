@@ -7,12 +7,9 @@ import ivm.utility;
 
 namespace js {
 
-// Default visitor for non-pair values
+// Default visitor for non-pair values (unused)
 template <class Meta, class Type>
-struct visit_vector_value : visit_maybe_recursive<Meta, Type> {
-		using visit_type = visit_maybe_recursive<Meta, Type>;
-		using visit_type::visit_type;
-};
+struct visit_vector_value;
 
 // Special case for pairs
 template <class Meta, class Key, class Value>
@@ -21,7 +18,7 @@ struct visit_vector_value<Meta, std::pair<Key, Value>> {
 				first{transfer},
 				second{transfer} {}
 
-		visit<Meta, Key> first;
+		visit_maybe_recursive<Meta, Key> first;
 		visit_maybe_recursive<Meta, Value> second;
 };
 
