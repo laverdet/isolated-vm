@@ -1,5 +1,6 @@
 module;
 #include <optional>
+#include <stop_token>
 #include <tuple>
 #include <utility>
 #include <variant>
@@ -21,13 +22,16 @@ struct compile_script_options {
 		std::optional<source_origin> origin;
 };
 
+struct run_script_options {
+		std::optional<double> timeout;
+};
+
 auto compile_script(
 	environment& env,
 	js::napi::untagged_external<agent_handle>& agent,
 	js::string_t code_string,
-	std::optional<compile_script_options> options_optional
+	compile_script_options options
 ) {
-	auto options = std::move(options_optional).value_or(compile_script_options{});
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](environment& env, isolated_v8::script script) -> expected_value {
@@ -50,7 +54,8 @@ auto compile_script(
 auto run_script(
 	environment& env,
 	js::napi::untagged_external<script>& script,
-	js::napi::untagged_external<realm_handle>& realm
+	js::napi::untagged_external<realm_handle>& realm,
+	run_script_options options
 ) {
 	auto [ dispatch, promise ] = make_promise(
 		env,
@@ -59,18 +64,30 @@ auto run_script(
 		}
 	);
 	realm->agent().schedule(
-		[ dispatch = std::move(dispatch) ](
+		[ options = options,
+			realm = realm->realm(),
+			script = *script ](
 			const agent_handle::lock& agent,
-			isolated_v8::realm realm,
-			isolated_v8::script script
-		) mutable {
+			auto dispatch
+		) -> void {
 			auto result = realm.invoke(agent, [ & ](const isolated_v8::realm::scope& realm) -> js::value_t {
+				auto stop_token =
+					options.timeout.transform([ & ](double timeout) -> util::timer_stop_token {
+						return util::timer_stop_token{js::js_clock::duration{timeout}};
+					});
+				auto timer_callback =
+					stop_token.transform([ & ](util::timer_stop_token& timer) {
+						return std::stop_callback{
+							*timer, [ & ]() {
+								agent->isolate()->TerminateExecution();
+							}
+						};
+					});
 				return script.run(realm);
 			});
 			dispatch(std::move(result));
 		},
-		realm->realm(),
-		*script
+		std::move(dispatch)
 	);
 	return js::forward{promise};
 }
@@ -87,11 +104,21 @@ auto make_run_script(environment& env) -> js::napi::value<js::function_tag> {
 
 namespace js {
 using backend_napi_v8::compile_script_options;
+using backend_napi_v8::run_script_options;
 
 template <>
 struct struct_properties<compile_script_options> {
+		constexpr static auto defaultable = true;
 		constexpr static auto properties = std::tuple{
 			property{"origin"_st, struct_member{&compile_script_options::origin}},
+		};
+};
+
+template <>
+struct struct_properties<run_script_options> {
+		constexpr static auto defaultable = true;
+		constexpr static auto properties = std::tuple{
+			property{"timeout"_st, struct_member{&run_script_options::timeout}},
 		};
 };
 

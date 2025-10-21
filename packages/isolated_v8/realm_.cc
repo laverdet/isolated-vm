@@ -20,7 +20,7 @@ export class realm {
 		realm() = delete;
 		realm(const agent_lock& agent, v8::Local<v8::Context> context);
 
-		auto invoke(const agent_lock& agent, std::invocable<const realm::scope&> auto task);
+		auto invoke(const agent_lock& agent, std::invocable<const realm::scope&> auto task) const;
 
 		[[nodiscard]] static auto get(const agent_lock& agent) -> realm&;
 		[[nodiscard]] static auto get(v8::Local<v8::Context> context, const agent_lock& agent) -> realm&;
@@ -28,7 +28,7 @@ export class realm {
 		[[nodiscard]] static auto make(const agent_lock& agent) -> realm;
 
 	private:
-		[[nodiscard]] auto lock(const agent_lock& agent) -> js::iv8::context_managed_lock;
+		[[nodiscard]] auto lock(const agent_lock& agent) const -> js::iv8::context_managed_lock;
 
 		shared_remote<v8::Context> context_;
 };
@@ -49,7 +49,7 @@ class realm::scope
 
 // ---
 
-auto realm::invoke(const agent_lock& agent, std::invocable<const realm::scope&> auto task) {
+auto realm::invoke(const agent_lock& agent, std::invocable<const realm::scope&> auto task) const {
 	return task(realm::scope{agent, lock(agent)});
 }
 

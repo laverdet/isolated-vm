@@ -76,6 +76,7 @@ using accept_struct_properties_t = accept_struct_properties<Meta, Type, std::dec
 template <class Meta, class Type, class... Property>
 struct accept_struct_properties<Meta, Type, std::tuple<Property...>> {
 	private:
+		using descriptor_type = struct_properties<Type>;
 		using properties_type = std::tuple<accept_object_property<Meta, Property>...>;
 
 	public:
@@ -85,9 +86,15 @@ struct accept_struct_properties<Meta, Type, std::tuple<Property...>> {
 					return {util::elide(
 						util::constructor<accept_object_property<Meta, Property...[ indices ]>>,
 						transfer,
-						std::get<indices>(struct_properties<Type>::properties)
+						std::get<indices>(descriptor_type::properties)
 					)...};
 				}()} {}
+
+		constexpr auto operator()(undefined_tag /*tag*/, auto& /*visit*/, const auto& /*subject*/) const -> Type
+			requires requires { descriptor_type::defaultable; } {
+			static_assert(std::is_default_constructible_v<Type>);
+			return Type{};
+		}
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto& visit, auto&& subject) const -> Type {
 			Type target;

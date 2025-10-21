@@ -78,5 +78,6 @@ CheckOptions:
   hicpp-signed-bitwise.IgnorePositiveIntegerLiterals: true
   misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: true
   modernize-use-trailing-return-type.TransformLambdas: all_except_auto
+  performance-unnecessary-value-param.AllowedTypes: 'std::stop_token'
   readability-identifier-length.MinimumParameterNameLength: 2
   readability-identifier-length.MinimumVariableNameLength: 2

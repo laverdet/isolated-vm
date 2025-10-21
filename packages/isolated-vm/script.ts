@@ -19,6 +19,16 @@ export interface SourceOrigin {
 	location?: Location;
 }
 
+export namespace Script {
+	export interface RunScriptOptions {
+		/**
+		 * Maximum amount of time in milliseconds this script is allowed to run before execution is
+		 * canceled. Default is no timeout.
+		 */
+		timeout?: number;
+	}
+}
+
 export interface CapabilityOrigin extends SourceOrigin {
 	name: string;
 	location?: never;
@@ -37,7 +47,7 @@ export class Script {
 		this.#script = script;
 	}
 
-	run(realm: Realm): Promise<unknown> {
-		return runScript(this.#script, __extractRealm(realm));
+	run(realm: Realm, options?: Script.RunScriptOptions): Promise<unknown> {
+		return runScript(this.#script, __extractRealm(realm), options);
 	}
 }

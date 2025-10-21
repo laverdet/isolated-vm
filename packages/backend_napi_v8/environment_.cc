@@ -25,6 +25,7 @@ constexpr auto string_literals = util::sealed_map{
 	"origin"s,
 	"randomSeed"s,
 	"specifier"s,
+	"timeout"s,
 	"type"s,
 };
 

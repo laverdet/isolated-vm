@@ -17,7 +17,7 @@ export class script {
 		script() = delete;
 		script(const agent_lock& agent, v8::Local<v8::UnboundScript> script);
 
-		auto run(const realm::scope& realm) -> js::value_t;
+		[[nodiscard]] auto run(const realm::scope& realm) const -> js::value_t;
 		static auto compile(const agent_lock& agent, auto&& code_string, source_origin source_origin) -> script;
 
 	private:

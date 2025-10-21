@@ -1,5 +1,7 @@
 add_library(ivm_utility OBJECT)
 target_sources(ivm_utility
+	PRIVATE
+		timer.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		container/sealed_map.cc
@@ -11,6 +13,7 @@ target_sources(ivm_utility
 		memory/memory.cc
 		memory/noinit_allocator.cc
 		ranges.cc
+		timer_.cc
 		tuple.cc
 		type_traits.cc
 		type_traits/traits.cc
@@ -18,6 +21,7 @@ target_sources(ivm_utility
 		type_traits/type_pack.cc
 		utility/elide.cc
 		utility/facade.cc
+		utility/function_ref.cc
 		utility/hash.cc
 		utility/string_literal.cc
 		utility/utility.cc

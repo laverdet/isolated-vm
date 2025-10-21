@@ -17,7 +17,7 @@ auto realm::make(const agent_lock& agent) -> realm {
 	return realm{agent, v8::Context::New(isolate)};
 }
 
-auto realm::lock(const agent_lock& agent) -> js::iv8::context_managed_lock {
+auto realm::lock(const agent_lock& agent) const -> js::iv8::context_managed_lock {
 	return js::iv8::context_managed_lock{agent, context_->deref(agent)};
 }
 

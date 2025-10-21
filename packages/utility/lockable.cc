@@ -112,6 +112,9 @@ class lock_waitable : public Lock {
 				predicate_{std::move(predicate)},
 				cv_{&cv} {}
 
+		auto notify_all() -> void { cv_->notify_one(); }
+		auto notify_one() -> void { cv_->notify_one(); }
+
 		auto wait() -> void {
 			cv_->wait(*this, predicate_);
 		}
@@ -129,7 +132,7 @@ class lock_waitable : public Lock {
 		auto wait(std::stop_token stop_token) -> bool
 			requires(type<Waitable> == type<std::condition_variable_any>) {
 			assert(stop_token.stop_possible());
-			return cv_->wait(*this, stop_token, predicate_) && !stop_token.stop_requested();
+			return cv_->wait(*this, stop_token, predicate_);
 		}
 
 		template <class Rep, class Period>

@@ -17,6 +17,7 @@ declare module "backend_v8.node" {
 	type ImportAttributes = import("./module.ts").ImportAttributes;
 	type ModuleLinker = (specifier: string, referrer: string | undefined, attributes: ImportAttributes | undefined, ...callback: Callback<Module>) => void;
 	type ModuleRequest = import("./module.ts").ModuleRequest;
+	type RunScriptOptions = import("./script.ts").Script.RunScriptOptions;
 
 	/** @internal */
 	const exports: {
@@ -28,7 +29,7 @@ declare module "backend_v8.node" {
 		evaluateModule: (realm: Realm, module: Module) => Promise<unknown>;
 		instantiateRuntime: (realm: Realm) => Promise<Module>;
 		linkModule: (realm: Realm, module: Module, linker: ModuleLinker) => Promise<void>;
-		runScript: (script: Script, realm: Realm) => Promise<unknown>;
+		runScript: (script: Script, realm: Realm, options: RunScriptOptions | undefined) => Promise<unknown>;
 	};
 	export default exports;
 }

@@ -15,7 +15,7 @@ script::script(const agent_lock& agent, v8::Local<v8::UnboundScript> script) :
 		unbound_script_{make_shared_remote(agent, script)} {
 }
 
-auto script::run(const realm::scope& realm) -> js::value_t {
+auto script::run(const realm::scope& realm) const -> js::value_t {
 	auto script = unbound_script_->deref(realm);
 	auto result = script->BindToCurrentContext()->Run(realm.context()).ToLocalChecked();
 	return js::transfer_out<js::value_t>(result, realm);
