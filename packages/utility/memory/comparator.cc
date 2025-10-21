@@ -19,6 +19,11 @@ class pointer_less {
 			return pointer;
 		}
 
+		template <class From>
+		constexpr auto extract(const std::shared_ptr<From>& pointer) const -> const Type* {
+			return pointer.get();
+		}
+
 		template <class From, class Deleter>
 		constexpr auto extract(const std::unique_ptr<From, Deleter>& pointer) const -> const Type* {
 			return pointer.get();

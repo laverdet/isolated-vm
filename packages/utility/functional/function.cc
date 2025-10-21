@@ -2,8 +2,8 @@ module;
 #include <functional>
 #include <utility>
 export module ivm.utility:functional;
+import :utility;
 import :tuple;
-import :type_traits;
 
 namespace util {
 

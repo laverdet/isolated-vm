@@ -1,6 +1,5 @@
 export module ivm.utility;
 export import :autorelease_pool;
-export import :comparator;
 export import :elide;
 export import :facade;
 export import :function_ref;
@@ -15,8 +14,5 @@ export import :string_literal;
 export import :timer;
 export import :tuple;
 export import :type_traits;
-export import :type_traits.traits;
-export import :type_traits.type_of;
-export import :type_traits.type_pack;
 export import :utility;
 export import :virtual_covariant;

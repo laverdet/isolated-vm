@@ -10,7 +10,7 @@ module;
 #include <variant>
 export module ivm.utility:lockable;
 import :facade;
-import :type_traits.type_of;
+import :type_traits;
 
 namespace util {
 

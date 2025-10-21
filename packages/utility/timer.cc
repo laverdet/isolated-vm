@@ -13,7 +13,7 @@ import :facade;
 import :function_ref;
 import :lockable;
 import :timer;
-import :type_traits.type_of;
+import :type_traits;
 import :utility;
 
 namespace util {

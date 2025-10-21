@@ -6,7 +6,6 @@ module;
 #include <type_traits>
 #include <utility>
 export module ivm.utility:sealed_map;
-import :comparator;
 import :type_traits;
 import :utility;
 
@@ -50,15 +49,11 @@ class sealed_map {
 				sealed_map{
 					sorted_unique_t{},
 					std::invoke([ & ]() constexpr {
-						auto map = [](const auto& entry) constexpr { return entry.first; };
-						auto duplicate = std::adjacent_find(
-							values.begin(),
-							values.end(),
-							mapped_comparator{std::equal_to{}, map}
-						);
+						auto projection = [](const auto& entry) constexpr { return entry.first; };
+						auto duplicate = std::ranges::adjacent_find(values, std::equal_to{}, projection);
 						if (duplicate != values.end()) {
 							// This error message can't actually render in constexpr but it's the thought that counts.
-							throw std::logic_error{std::format("Duplicate key {}", map(*duplicate))};
+							throw std::logic_error{std::format("Duplicate key {}", projection(*duplicate))};
 						}
 						// nb: It's not a pessimization because `values` is a capture
 						return std::move(values);
@@ -76,8 +71,8 @@ class sealed_map {
 						for (auto ii = values.begin(); ii != values.end(); ++ii) {
 							*(inserter++) = ii;
 						};
-						auto map = [](const auto& ii) constexpr { return ii->first; };
-						std::sort(sortable.begin(), sortable.end(), mapped_comparator{std::less{}, map});
+						auto projection = [](const auto& ii) constexpr { return ii->first; };
+						std::ranges::sort(sortable, std::less{}, projection);
 						const auto [... indices ] = util::sequence<Size>;
 						return {value_type(std::move(*sortable.at(indices)))...};
 					})

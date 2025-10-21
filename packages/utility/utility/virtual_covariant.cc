@@ -3,8 +3,7 @@ module;
 #include <variant>
 export module ivm.utility:virtual_covariant;
 import :facade;
-import :type_traits.traits;
-import :type_traits.type_of;
+import :type_traits;
 
 namespace util {
 
