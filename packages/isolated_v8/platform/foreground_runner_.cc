@@ -2,10 +2,8 @@ module;
 #include <array>
 #include <cassert>
 #include <concepts>
-#include <condition_variable>
 #include <deque>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <queue>
 #include <stop_token>
@@ -179,7 +177,7 @@ export class foreground_runner
 				std::thread::id thread_id_;
 				bool has_thread_{};
 		};
-		using lockable_storage = util::lockable<storage, std::mutex, std::condition_variable_any>;
+		using lockable_storage = util::lockable_with<storage, { .notifiable = true }>;
 		using write_notify_type = lockable_storage::write_notify_type<bool (storage::*)() const>;
 
 	public:

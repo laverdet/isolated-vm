@@ -1,6 +1,5 @@
 module;
 #include <memory>
-#include <mutex>
 #include <utility>
 module isolated_v8;
 import :platform;
@@ -8,7 +7,7 @@ import ivm.utility;
 
 namespace isolated_v8 {
 
-util::lockable<std::weak_ptr<platform>, std::mutex> shared_platform{};
+util::lockable<std::weak_ptr<platform>> shared_platform{};
 
 platform::handle::handle(std::shared_ptr<platform> platform) :
 		platform_{std::move(platform)} {}

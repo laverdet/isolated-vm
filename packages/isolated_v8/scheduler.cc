@@ -3,11 +3,9 @@ module;
 #include <algorithm>
 #include <cassert>
 #include <concepts>
-#include <condition_variable>
 #include <functional>
 #include <latch>
 #include <memory>
-#include <mutex>
 #include <stop_token>
 #include <thread>
 #include <type_traits>
@@ -42,7 +40,7 @@ class member : util::non_moveable {
 template <class Type>
 class container : util::non_moveable {
 	public:
-		using lockable_type = util::lockable<container, std::mutex, std::condition_variable>;
+		using lockable_type = util::lockable_with<container, { .notifiable = true }>;
 		using list_type = boost::intrusive::list<member<Type>, intrusive_no_size, typename member<Type>::hook_type>;
 
 		~container() { assert(members_.empty()); }

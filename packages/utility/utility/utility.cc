@@ -54,10 +54,10 @@ class regular_return {
 			requires std::invocable<Invoke&, decltype(args)...>
 		{
 			if constexpr (std::invoke_result<Invoke, decltype(args)...>{} == type<void>) {
-				invoke();
+				invoke(std::forward<decltype(args)>(args)...);
 				return std::monostate{};
 			} else {
-				return invoke();
+				return invoke(std::forward<decltype(args)>(args)...);
 			}
 		}
 
