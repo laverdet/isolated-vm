@@ -1,4 +1,5 @@
 import type * as ivm from "./backend.js";
+import type { MaybeCompletionOf } from "backend_v8.node";
 import { runScript } from "./backend.js";
 import { Realm } from "./realm.js";
 
@@ -47,7 +48,7 @@ export class Script {
 		this.#script = script;
 	}
 
-	run(realm: Realm, options?: Script.RunScriptOptions): Promise<unknown> {
+	async run(realm: Realm, options?: Script.RunScriptOptions): Promise<MaybeCompletionOf<unknown>> {
 		return runScript(this.#script, __extractRealm(realm), options);
 	}
 }

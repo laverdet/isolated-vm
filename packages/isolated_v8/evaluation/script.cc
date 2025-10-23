@@ -1,27 +1,23 @@
 module;
+#include <expected>
 #include <utility>
 module isolated_v8;
 import isolated_js;
 import :agent_host;
 import :realm;
 import :remote;
+import :script;
 import v8_js;
 import v8;
 
 namespace isolated_v8 {
 
-// script
-script::script(const agent_lock& agent, v8::Local<v8::UnboundScript> script) :
-		unbound_script_{make_shared_remote(agent, script)} {
-}
-
-auto script::run(const realm::scope& realm) const -> js::value_t {
-	auto script = unbound_script_->deref(realm);
+auto run_script(const realm::scope& realm, script_local_type script) -> std::expected<js::value_t, js::error_value> {
 	auto result = script->BindToCurrentContext()->Run(realm.context()).ToLocalChecked();
 	return js::transfer_out<js::value_t>(result, realm);
 }
 
-auto script::compile(const agent_lock& agent, v8::Local<v8::String> code_string, source_origin source_origin) -> script {
+auto compile_script_direct(const agent_lock& agent, v8::Local<v8::String> code_string, source_origin source_origin) -> std::expected<script_local_type, js::error_value> {
 	// nb: It is undocumented (and even mentions "context independent"), but the script compiler
 	// actually needs a context because it can throw an error and *that* would need a context.
 	js::iv8::context_managed_lock context{agent, agent->scratch_context()};
@@ -32,8 +28,9 @@ auto script::compile(const agent_lock& agent, v8::Local<v8::String> code_string,
 	v8::ScriptOrigin origin{resource_name, location.line, location.column};
 	v8::ScriptCompiler::Source source{code_string, origin};
 	auto* isolate = agent->isolate();
-	auto script_handle = v8::ScriptCompiler::CompileUnboundScript(isolate, &source).ToLocalChecked();
-	return script{agent, script_handle};
+	return js::iv8::unmaybe_one(agent, [ & ] -> v8::MaybeLocal<v8::UnboundScript> {
+		return v8::ScriptCompiler::CompileUnboundScript(isolate, &source);
+	});
 }
 
 } // namespace isolated_v8

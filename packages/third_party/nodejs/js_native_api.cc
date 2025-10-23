@@ -13,16 +13,19 @@ export using ::napi_create_bigint_uint64;
 export using ::napi_create_bigint_words;
 export using ::napi_create_date;
 export using ::napi_create_double;
+export using ::napi_create_error;
 export using ::napi_create_external;
 export using ::napi_create_function;
 export using ::napi_create_int32;
 export using ::napi_create_int64;
 export using ::napi_create_object;
 export using ::napi_create_promise;
+export using ::napi_create_range_error;
 export using ::napi_create_reference;
 export using ::napi_create_string_latin1;
 export using ::napi_create_string_utf16;
 export using ::napi_create_string_utf8;
+export using ::napi_create_type_error;
 export using ::napi_create_uint32;
 export using ::napi_define_properties;
 export using ::napi_delete_reference;
@@ -65,5 +68,6 @@ export using ::napi_typeof;
 export using ::node_api_create_property_key_latin1;
 export using ::node_api_create_property_key_utf16;
 export using ::node_api_create_property_key_utf8;
+export using ::node_api_create_syntax_error;
 
 // NOLINTEND(misc-unused-using-decls)

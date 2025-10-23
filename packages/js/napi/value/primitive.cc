@@ -91,21 +91,13 @@ bound_value<bigint_tag>::operator bigint() const {
 bound_value<bigint_tag>::operator int64_t() const {
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	int64_t value;
-	auto lossless = js::napi::invoke(napi_get_value_bigint_int64, env(), napi_value{*this}, &value);
-	if (!lossless) {
-		throw std::logic_error{"Bigint is too big"};
-	}
-	return value;
+	return js::napi::invoke(napi_get_value_bigint_int64, env(), napi_value{*this}, &value);
 }
 
 bound_value<bigint_tag>::operator uint64_t() const {
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	uint64_t value;
-	auto lossless = js::napi::invoke(napi_get_value_bigint_uint64, env(), napi_value{*this}, &value);
-	if (!lossless) {
-		throw std::logic_error{"Bigint is too big"};
-	}
-	return value;
+	return js::napi::invoke(napi_get_value_bigint_uint64, env(), napi_value{*this}, &value);
 }
 
 // string

@@ -4,9 +4,10 @@ module;
 #include <string>
 #include <string_view>
 #include <variant>
-export module isolated_js:primitive.visit;
+export module isolated_js:builtin.visit;
 import :bigint;
 import :date;
+import :error;
 import :transfer;
 import ivm.utility;
 
@@ -78,6 +79,15 @@ struct visit<void, util::string_literal<Size>> {
 		template <class Accept>
 		constexpr auto operator()(const auto& subject, const Accept& accept) const -> accept_target_t<Accept> {
 			return accept(string_tag_of<char>{}, *this, subject.data());
+		}
+};
+
+// `Error` types
+template <>
+struct visit<void, js::error_value> {
+		template <class Accept>
+		constexpr auto operator()(const js::error_value& subject, const Accept& accept) const -> accept_target_t<Accept> {
+			return accept(error_tag{}, *this, subject);
 		}
 };
 

@@ -114,6 +114,25 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			return js::referenceable_value{napi::value<date_tag>::make(environment(), js_clock::time_point{std::forward<decltype(subject)>(subject)})};
 		}
 
+		// `Error`
+		auto operator()(error_tag /*tag*/, visit_holder /*visit*/, const auto& subject) const
+			-> js::referenceable_value<napi::value<error_tag>> {
+			auto* message = napi_value{napi::value<string_tag>::make(environment(), subject.message())};
+			auto error = [ & ]() -> napi_value {
+				switch (subject.name()) {
+					default:
+						return napi::invoke(napi_create_error, napi_env{*this}, napi_value{}, message);
+					case js::error::name_type::range_error:
+						return napi::invoke(napi_create_range_error, napi_env{*this}, napi_value{}, message);
+					case js::error::name_type::syntax_error:
+						return napi::invoke(node_api_create_syntax_error, napi_env{*this}, napi_value{}, message);
+					case js::error::name_type::type_error:
+						return napi::invoke(napi_create_type_error, napi_env{*this}, napi_value{}, message);
+				}
+			}();
+			return js::referenceable_value{napi::value<error_tag>::from(error)};
+		}
+
 		// vectors
 		auto operator()(this const auto& self, vector_tag /*tag*/, auto& visit, auto&& subject)
 			-> js::deferred_receiver<napi::value<vector_tag>, decltype(self), decltype(visit), decltype(subject)> {

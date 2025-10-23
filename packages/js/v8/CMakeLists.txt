@@ -12,6 +12,7 @@ target_sources(v8_js
 		container/hash.cc
 		container/weak_map.cc
 		lock.cc
+		support/error.cc
 		value/array_.cc
 		value/boolean_.cc
 		value/callback_info_.cc

@@ -1,8 +1,8 @@
 export module isolated_js;
-export import :date;
 export import :deferred_receiver;
 export import :dictionary.vector_of;
 export import :enum_.types;
+export import :error;
 export import :function;
 export import :property;
 export import :reference_of;
@@ -13,11 +13,11 @@ export import :tuple.accept; // for `rest`
 export import :union_.types;
 export import :value;
 export import :variant.types;
+import :builtin.accept;
+import :builtin.visit;
 import :dictionary.accept;
 import :dictionary.visit;
 import :enum_.accept;
-import :primitive.accept;
-import :primitive.visit;
 import :reference.accept;
 import :reference.visit;
 import :struct_.accept;

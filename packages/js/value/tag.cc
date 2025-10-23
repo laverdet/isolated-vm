@@ -50,6 +50,7 @@ template <class Type> struct string_tag_of : con_tag_of<string_tag> {};
 
 // objects
 struct object_tag : tag_of<value_tag> {};
+struct error_tag : tag_of<object_tag> {};
 struct external_tag : tag_of<object_tag> {};
 
 // Continuous packed array-like with integer keys and known (at runtime) length. Generally

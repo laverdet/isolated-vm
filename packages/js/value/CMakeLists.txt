@@ -4,15 +4,17 @@ target_sources(value_js
 		assertions.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
+		builtin/accept.cc
+		builtin/bigint.cc
+		builtin/date.cc
+		builtin/error.cc
+		builtin/value.cc
+		builtin/visit.cc
 		dictionary/accept.cc
 		dictionary/vector_of.cc
 		dictionary/visit.cc
 		enum/accept.cc
 		enum/types.cc
-		primitive/accept.cc
-		primitive/bigint.cc
-		primitive/date.cc
-		primitive/visit.cc
 		reference/accept.cc
 		reference/reference_of.cc
 		reference/referential_value.cc
@@ -31,7 +33,6 @@ target_sources(value_js
 		tuple/visit.cc
 		type/function.cc
 		type/property.cc
-		type/value.cc
 		union/accept.cc
 		union/types.cc
 		variant/accept.cc

@@ -1,6 +1,7 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
 import * as ivm from "isolated-vm";
+import { unwrapCompletion } from "./fixtures.js";
 
 await test("module linker", async () => {
 	await using agent = await ivm.Agent.create();
@@ -12,8 +13,8 @@ await test("module linker", async () => {
 		return right;
 	});
 	await left.evaluate(realm);
-	const script = await agent.compileScript("right();");
-	const result = await script.run(realm);
+	const script = unwrapCompletion(await agent.compileScript("right();"));
+	const result = unwrapCompletion(await script.run(realm));
 	assert.equal(result, "hello");
 });
 

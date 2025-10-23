@@ -8,6 +8,21 @@ declare module "backend_v8.node" {
 		(error: unknown | null, value?: Type) => void,
 	];
 
+	export type CompletionOf<Type> = NormalCompletion<Type> | ThrowCompletion;
+	export type MaybeCompletionOf<Type> = CompletionOf<Type> | undefined;
+
+	export interface NormalCompletion<Type> {
+		complete: true;
+		error?: never;
+		result: Type;
+	}
+
+	export interface ThrowCompletion {
+		complete: false;
+		error: unknown;
+		result?: never;
+	}
+
 	export type { Agent, Module, Realm, Script };
 
 	type CompileModuleOptions = import("./agent.ts").Agent.CompileModuleOptions;
@@ -22,14 +37,14 @@ declare module "backend_v8.node" {
 	/** @internal */
 	const exports: {
 		compileModule: (agent: Agent, code: string, options: CompileModuleOptions | undefined) => Promise<[ Module, ModuleRequest[] ]>;
-		compileScript: (agent: Agent, code: string, options: CompileScriptOptions | undefined) => Promise<Script>;
+		compileScript: (agent: Agent, code: string, options: CompileScriptOptions | undefined) => Promise<MaybeCompletionOf<Script>>;
 		createAgent: (options: CreateAgentOptions | undefined) => Promise<Agent>;
 		createCapability: (agent: Agent, callback: (...args: unknown[]) => void, options: CreateCapabilityOptions) => Promise<Module>;
 		createRealm: (agent: Agent) => Promise<Realm>;
 		evaluateModule: (realm: Realm, module: Module) => Promise<unknown>;
 		instantiateRuntime: (realm: Realm) => Promise<Module>;
 		linkModule: (realm: Realm, module: Module, linker: ModuleLinker) => Promise<void>;
-		runScript: (script: Script, realm: Realm, options: RunScriptOptions | undefined) => Promise<unknown>;
+		runScript: (script: Script, realm: Realm, options: RunScriptOptions | undefined) => Promise<MaybeCompletionOf<unknown>>;
 	};
 	export default exports;
 }

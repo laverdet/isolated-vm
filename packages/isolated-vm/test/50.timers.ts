@@ -2,11 +2,12 @@ import * as assert from "node:assert/strict";
 import { test } from "node:test";
 import * as ivm from "isolated-vm";
 import { makeCompositeLinker, makeFileSystemCompilationLinker, makePreloadedLinker } from "isolated-vm/utility/linker";
+import { unwrapCompletion } from "./fixtures.js";
 
 await test("setTimeout capability", async () => {
 	await using agent = await ivm.Agent.create();
 	const realm = await agent.createRealm();
-	const runTimers = await agent.compileScript("runTimers()");
+	const runTimers = unwrapCompletion(await agent.compileScript("runTimers()"));
 	const resolvers = Promise.withResolvers();
 	const capabilities = makePreloadedLinker(Object.entries({
 		"isolated-vm:capability/timers":

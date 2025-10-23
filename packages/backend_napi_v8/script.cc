@@ -1,4 +1,5 @@
 module;
+#include <expected>
 #include <optional>
 #include <stop_token>
 #include <tuple>
@@ -13,6 +14,7 @@ import isolated_v8;
 import ivm.utility;
 import napi_js;
 import nodejs;
+namespace v8 = embedded_v8;
 using namespace isolated_v8;
 using namespace util::string_literals;
 
@@ -32,10 +34,13 @@ auto compile_script(
 	js::string_t code_string,
 	compile_script_options options
 ) {
+	using expected_type = std::expected<isolated_v8::script_shared_remote_type, js::error_value>;
 	auto [ dispatch, promise ] = make_promise(
 		env,
-		[](environment& env, isolated_v8::script script) -> expected_value {
-			return js::napi::untagged_external<isolated_v8::script>::make(env, std::move(script));
+		[](environment& env, expected_type script) -> expected_value {
+			return make_completion_record(env, std::move(script).transform([ & ](isolated_v8::script_shared_remote_type script) {
+				return js::forward{js::napi::untagged_external<isolated_v8::script_shared_remote_type>::make(env, std::move(script))};
+			}));
 		}
 	);
 	agent->schedule(
@@ -45,7 +50,8 @@ auto compile_script(
 			const agent_handle::lock& agent
 		) mutable -> void {
 			auto origin = std::move(options.origin).value_or(source_origin{});
-			dispatch(isolated_v8::script::compile(agent, std::move(code_string), std::move(origin)));
+			auto local = isolated_v8::compile_script(agent, std::move(code_string), std::move(origin));
+			dispatch(local.transform(transform_shared_remote(agent)));
 		}
 	);
 	return js::forward{promise};
@@ -53,14 +59,15 @@ auto compile_script(
 
 auto run_script(
 	environment& env,
-	js::napi::untagged_external<script>& script,
+	js::napi::untagged_external<isolated_v8::script_shared_remote_type>& script,
 	js::napi::untagged_external<realm_handle>& realm,
 	run_script_options options
 ) {
+	using expected_type = std::expected<js::value_t, js::error_value>;
 	auto [ dispatch, promise ] = make_promise(
 		env,
-		[](environment& env, js::value_t result) -> expected_value {
-			return js::transfer_in_strict<napi_value>(std::move(result), env);
+		[](environment& env, expected_type result) -> expected_value {
+			return make_completion_record(env, std::move(result));
 		}
 	);
 	realm->agent().schedule(
@@ -70,7 +77,7 @@ auto run_script(
 			const agent_handle::lock& agent,
 			auto dispatch
 		) -> void {
-			auto result = realm.invoke(agent, [ & ](const isolated_v8::realm::scope& realm) -> js::value_t {
+			auto result = realm.invoke(agent, [ & ](const isolated_v8::realm::scope& realm) -> expected_type {
 				auto stop_token =
 					options.timeout.transform([ & ](double timeout) -> util::timer_stop_token {
 						return util::timer_stop_token{js::js_clock::duration{timeout}};
@@ -83,7 +90,7 @@ auto run_script(
 							}
 						};
 					});
-				return script.run(realm);
+				return isolated_v8::run_script(realm, script->deref(agent));
 			});
 			dispatch(std::move(result));
 		},

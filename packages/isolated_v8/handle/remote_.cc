@@ -40,9 +40,15 @@ using shared_remote = std::shared_ptr<remote<Type>>;
 export template <class Type>
 using unique_remote = remote<Type>::unique_remote;
 
+export auto transform_shared_remote(const remote_handle_lock& lock) {
+	return [ & ]<class Type>(v8::Local<Type> handle) -> shared_remote<Type> {
+		return remote<Type>::make_shared(lock, handle);
+	};
+}
+
 export template <class Type>
 auto make_shared_remote(const remote_handle_lock& lock, v8::Local<Type> handle) -> shared_remote<Type> {
-	return remote<Type>::make_shared(lock, handle);
+	return transform_shared_remote(lock)(handle);
 }
 
 // ---

@@ -6,7 +6,7 @@ module;
 #include <stdexcept>
 #include <utility>
 #include <variant>
-export module isolated_js:primitive.accept;
+export module isolated_js:builtin.accept;
 import :bigint;
 import :date;
 import :transfer;

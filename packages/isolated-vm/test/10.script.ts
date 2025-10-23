@@ -1,11 +1,11 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
 import * as ivm from "isolated-vm";
-import { unsafeIIFEAsString } from "./fixtures.js";
+import { unsafeIIFEAsString, unwrapCompletion } from "./fixtures.js";
 
 await test("script source origin", async () => {
 	await using agent = await ivm.Agent.create();
-	const script = await agent.compileScript(
+	const script = unwrapCompletion(await agent.compileScript(
 		unsafeIIFEAsString(() => {
 			try {
 				throw new Error();
@@ -20,9 +20,9 @@ await test("script source origin", async () => {
 				location: { line: 100, column: 200 },
 			},
 		},
-	);
+	));
 	const realm = await agent.createRealm();
-	const result = await script.run(realm);
+	const result = unwrapCompletion(await script.run(realm));
 	assert.ok(typeof result === "string");
 	assert.ok(result.includes("file:///test-script:103"));
 });
