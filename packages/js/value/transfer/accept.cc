@@ -188,12 +188,12 @@ template <class Type>
 struct accept_property_subject : std::type_identity<void> {};
 
 // Returns the value corresponding to a key with an accepted object subject.
-export template <class Meta, util::string_literal Key, class Type, class Subject>
+export template <class Meta, auto Key, class Type, class Subject>
 struct accept_property_value;
 
 // Object key lookup for primitive dictionary variants. This should generally only be used for
 // testing, since the subject is basically a C++ heap JSON-ish payload.
-template <class Meta, util::string_literal Key, class Type>
+template <class Meta, auto Key, class Type>
 struct accept_property_value<Meta, Key, Type, void> {
 	public:
 		explicit constexpr accept_property_value(auto* transfer) :
@@ -202,7 +202,9 @@ struct accept_property_value<Meta, Key, Type, void> {
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto& visit, const auto& dictionary) const {
 			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) -> bool {
-				return visit.first(entry.first, first) == Key;
+				using value_type = decltype(Key)::value_type;
+				using character_type = std::remove_extent_t<std::remove_cvref_t<value_type>>;
+				return visit.first(entry.first, first) == std::basic_string_view<character_type>{Key};
 			});
 			if (it == dictionary.end()) {
 				return second(undefined_in_tag{}, visit, std::monostate{});

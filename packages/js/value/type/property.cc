@@ -13,19 +13,19 @@ export struct property_attributes {
 };
 
 // Property descriptor configuration
-export template <class Name, class Value>
+export template <auto Name, class Value>
 struct property {
 		using property_type = Value;
-		constexpr static auto property_name = Name::value;
+		constexpr static auto property_name = util::cw<Name>;
 
-		consteval property(Name /*name*/, Value value_template) :
+		consteval property(util::constant_wrapper<Name> /*name*/, Value value_template) :
 				value_template{value_template} {}
 		Value value_template;
 };
 
 // Value template for struct getter
 export template <class Subject, class Type>
-struct struct_accessor : std::type_identity<std::decay_t<Type>> {
+struct struct_accessor : std::type_identity<std::remove_cvref_t<Type>> {
 		explicit constexpr struct_accessor(Type (Subject::*accessor)() const) :
 				accessor{accessor} {}
 

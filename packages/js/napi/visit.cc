@@ -233,14 +233,14 @@ struct visit<Meta, value<value_tag>> : visit_napi_value_with<Meta> {
 };
 
 // Object key maker via napi
-template <util::string_literal Key>
+template <auto Key>
 struct visit_key_literal<Key, napi_value> : util::non_moveable {
 	public:
 		template <class Accept>
 		[[nodiscard]] auto get_local(const Accept& accept_or_visit) -> napi_value {
 			if (local_key_ == napi_value{}) {
 				auto& environment = accept_or_visit.environment();
-				auto& storage = environment.global_storage(util::value_constant<Key>{});
+				auto& storage = environment.global_storage(Key);
 				if (storage) {
 					local_key_ = storage.get(environment);
 				} else {

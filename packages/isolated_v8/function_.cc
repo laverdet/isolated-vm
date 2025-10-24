@@ -57,7 +57,7 @@ struct invoke_callback<Result(const realm::scope&, Args...)> {
 
 // Bound function factory
 auto function_template::make(const agent_lock& agent, auto function) -> function_template {
-	using function_type = std::decay_t<decltype(function.callback)>;
+	using function_type = std::remove_cvref_t<decltype(function.callback)>;
 	using signature_type = util::function_signature_t<function_type>;
 
 	if constexpr (std::is_empty_v<function_type>) {

@@ -6,7 +6,6 @@ import :runtime;
 import isolated_js;
 import isolated_v8;
 import ivm.utility;
-using namespace util::string_literals;
 
 namespace backend_napi_v8 {
 
@@ -28,8 +27,8 @@ runtime_interface::runtime_interface(const isolated_v8::agent_lock& agent) :
 auto runtime_interface::instantiate(const isolated_v8::realm::scope& realm) -> isolated_v8::js_module {
 	auto make_interface = [ & ]() {
 		return std::tuple{
-			std::pair{"clockTime"_sl, clock_time_},
-			std::pair{"performanceTime"_sl, performance_time_},
+			std::pair{util::cw<"clockTime">, clock_time_},
+			std::pair{util::cw<"performanceTime">, performance_time_},
 		};
 	};
 	auto options = isolated_v8::source_required_name{.name = "isolated-vm://runtime"};

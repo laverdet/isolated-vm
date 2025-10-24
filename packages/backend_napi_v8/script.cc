@@ -15,7 +15,6 @@ import ivm.utility;
 import napi_js;
 import nodejs;
 using namespace isolated_v8;
-using namespace util::string_literals;
 
 namespace backend_napi_v8 {
 
@@ -116,7 +115,7 @@ template <>
 struct struct_properties<compile_script_options> {
 		constexpr static auto defaultable = true;
 		constexpr static auto properties = std::tuple{
-			property{"origin"_st, struct_member{&compile_script_options::origin}},
+			property{util::cw<"origin">, struct_member{&compile_script_options::origin}},
 		};
 };
 
@@ -124,7 +123,7 @@ template <>
 struct struct_properties<run_script_options> {
 		constexpr static auto defaultable = true;
 		constexpr static auto properties = std::tuple{
-			property{"timeout"_st, struct_member{&run_script_options::timeout}},
+			property{util::cw<"timeout">, struct_member{&run_script_options::timeout}},
 		};
 };
 

@@ -40,9 +40,9 @@ export class environment : public napi::environment_of<environment> {
 		auto cluster() -> isolated_v8::cluster& { return cluster_; }
 
 		// Lookup `reference<T>` for the given literal
-		template <util::string_literal Value>
-		auto global_storage(util::value_constant<Value> /*value*/) -> auto& {
-			constexpr auto index = string_literals.lookup(std::string_view{Value});
+		template <auto Value>
+		auto global_storage(util::constant_wrapper<Value> value) -> auto& {
+			constexpr auto index = string_literals.lookup(std::string_view{value});
 			static_assert(index, "String literal is missing in storage");
 			// static_assert(index, std::format("String literal '{}' is missing in storage", Value.data()));
 			return string_literal_storage_.at(index).second;

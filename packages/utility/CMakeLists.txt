@@ -18,11 +18,11 @@ target_sources(ivm_utility
 		type_traits/type_of.cc
 		type_traits/type_pack.cc
 		type_traits/type_traits.cc
+		utility/constant_wrapper.cc
 		utility/elide.cc
 		utility/facade.cc
 		utility/function_ref.cc
 		utility/hash.cc
-		utility/string_literal.cc
 		utility/utility.cc
 		utility/virtual_covariant.cc
 )

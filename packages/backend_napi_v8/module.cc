@@ -16,7 +16,6 @@ import ivm.utility;
 import napi_js;
 import nodejs;
 using namespace isolated_v8;
-using namespace util::string_literals;
 
 namespace backend_napi_v8 {
 
@@ -225,9 +224,9 @@ auto create_capability(
 			create_capability_options options,
 			auto invoke_capability
 		) {
-			auto make_interface = [ & ]() {
+			auto make_interface = [ & ]() -> auto {
 				return std::make_tuple(
-					std::pair{"default"_sl, isolated_v8::function_template::make(lock, std::move(invoke_capability))}
+					std::pair{util::cw<"default">, isolated_v8::function_template::make(lock, std::move(invoke_capability))}
 				);
 			};
 			auto module_ = isolated_v8::js_module::create_synthetic(lock, make_interface(), std::move(options).origin);
@@ -265,14 +264,14 @@ template <>
 struct struct_properties<compile_module_options> {
 		constexpr static auto defaultable = true;
 		constexpr static auto properties = std::tuple{
-			property{"origin"_st, struct_member{&compile_module_options::origin}},
+			property{util::cw<"origin">, struct_member{&compile_module_options::origin}},
 		};
 };
 
 template <>
 struct struct_properties<create_capability_options> {
 		constexpr static auto properties = std::tuple{
-			property{"origin"_st, struct_member{&create_capability_options::origin}},
+			property{util::cw<"origin">, struct_member{&create_capability_options::origin}},
 		};
 };
 

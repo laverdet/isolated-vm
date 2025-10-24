@@ -13,6 +13,19 @@ import ivm.utility;
 
 namespace js {
 
+// `util::cw` visitor
+template <auto Value>
+struct visit<void, util::constant_wrapper<Value>> : visit<void, std::remove_cv_t<typename util::constant_wrapper<Value>::value_type>> {
+		using value_type = std::remove_cvref_t<typename util::constant_wrapper<Value>::value_type>;
+		using visit_type = visit<void, value_type>;
+
+		template <class Accept>
+		constexpr auto operator()(const auto& subject, const Accept& accept) const -> accept_target_t<Accept> {
+			const value_type& subject_value = subject;
+			return util::invoke_as<visit_type>(*this, subject_value, accept);
+		}
+};
+
 // The most basic of visitors which passes along a value with the tag supplied in the template.
 template <class Tag>
 struct visit_value_tagged {
@@ -65,20 +78,13 @@ template <class Char>
 struct visit<void, std::basic_string_view<Char>> : visit_value_tagged<string_tag_of<Char>> {};
 
 // Constant string visitor
-template <>
-struct visit<void, const char*> {
+template <std::integral Char, size_t Extent>
+// NOLINTNEXTLINE(modernize-avoid-c-arrays)
+struct visit<void, Char[ Extent ]> {
 		template <class Accept>
-		constexpr auto operator()(const char* subject, const Accept& accept) const -> accept_target_t<Accept> {
-			return accept(string_tag_of<char>{}, *this, std::string_view{subject});
-		}
-};
-
-// `util::string_literal` is a latin1 string of known size
-template <size_t Size>
-struct visit<void, util::string_literal<Size>> {
-		template <class Accept>
-		constexpr auto operator()(const auto& subject, const Accept& accept) const -> accept_target_t<Accept> {
-			return accept(string_tag_of<char>{}, *this, subject.data());
+		// NOLINTNEXTLINE(modernize-avoid-c-arrays)
+		constexpr auto operator()(const Char (&subject)[ Extent ], const Accept& accept) const -> accept_target_t<Accept> {
+			return accept(string_tag_of<Char>{}, *this, std::basic_string_view<Char>{subject, Extent - 1});
 		}
 };
 

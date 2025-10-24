@@ -27,7 +27,7 @@ thread_local Environment* env_local = nullptr;
 // disposed of in a finalizer.
 export template <class Environment>
 auto make_napi_callback(Environment& env, std::invocable<Environment&, const callback_info&> auto function) {
-	using function_type = std::decay_t<decltype(function)>;
+	using function_type = std::remove_cvref_t<decltype(function)>;
 	if constexpr (std::is_empty_v<function_type>) {
 		// Constant expression function, expressed entirely in the type. `data` is the environment.
 		static_assert(std::is_trivially_constructible_v<function_type>);

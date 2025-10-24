@@ -11,7 +11,6 @@ import isolated_v8;
 import ivm.utility;
 import napi_js;
 using namespace isolated_v8;
-using namespace util::string_literals;
 
 namespace backend_napi_v8 {
 
@@ -87,22 +86,22 @@ using backend_napi_v8::make_agent_options;
 template <>
 struct struct_properties<make_agent_options::clock_deterministic> {
 		constexpr static auto properties = std::tuple{
-			property{"epoch"_st, struct_member{&make_agent_options::clock_deterministic::epoch}},
-			property{"interval"_st, struct_member{&make_agent_options::clock_deterministic::interval}},
+			property{util::cw<"epoch">, struct_member{&make_agent_options::clock_deterministic::epoch}},
+			property{util::cw<"interval">, struct_member{&make_agent_options::clock_deterministic::interval}},
 		};
 };
 
 template <>
 struct struct_properties<make_agent_options::clock_microtask> {
 		constexpr static auto properties = std::tuple{
-			property{"epoch"_st, struct_member{&make_agent_options::clock_microtask::epoch}},
+			property{util::cw<"epoch">, struct_member{&make_agent_options::clock_microtask::epoch}},
 		};
 };
 
 template <>
 struct struct_properties<make_agent_options::clock_realtime> {
 		constexpr static auto properties = std::tuple{
-			property{"epoch"_st, struct_member{&make_agent_options::clock_realtime::epoch}},
+			property{util::cw<"epoch">, struct_member{&make_agent_options::clock_realtime::epoch}},
 		};
 };
 
@@ -113,7 +112,7 @@ struct struct_properties<make_agent_options::clock_system> {
 
 template <>
 struct union_of<make_agent_options::clock_type> {
-		constexpr static auto& discriminant = "type";
+		constexpr static auto& discriminant = util::cw<"type">;
 		constexpr static auto alternatives = std::tuple{
 			alternative<make_agent_options::clock_deterministic>{"deterministic"},
 			alternative<make_agent_options::clock_microtask>{"microtask"},
@@ -125,8 +124,8 @@ struct union_of<make_agent_options::clock_type> {
 template <>
 struct struct_properties<make_agent_options> {
 		constexpr static auto properties = std::tuple{
-			property{"clock"_st, struct_member{&make_agent_options::clock}},
-			property{"randomSeed"_st, struct_member{&make_agent_options::random_seed}},
+			property{util::cw<"clock">, struct_member{&make_agent_options::clock}},
+			property{util::cw<"randomSeed">, struct_member{&make_agent_options::random_seed}},
 		};
 };
 

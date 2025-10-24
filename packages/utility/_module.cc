@@ -1,5 +1,6 @@
 export module ivm.utility;
 export import :autorelease_pool;
+export import :constant_wrapper;
 export import :elide;
 export import :facade;
 export import :function_ref;
@@ -10,7 +11,6 @@ export import :memory;
 export import :noinit_allocator;
 export import :ranges;
 export import :sealed_map;
-export import :string_literal;
 export import :timer;
 export import :tuple;
 export import :type_traits;

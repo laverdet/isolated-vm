@@ -288,7 +288,7 @@ struct accept<void, js::forward<napi::value<Tag>, value_tag>> {
 };
 
 // Object key lookup via napi
-template <class Meta, util::string_literal Key, class Type>
+template <class Meta, auto Key, class Type>
 struct accept_property_value<Meta, Key, Type, napi_value> {
 	public:
 		explicit constexpr accept_property_value(auto* transfer) :

@@ -25,7 +25,7 @@ using maybe_move_only_function = std::function<Signature>;
 
 export template <class Fn>
 auto make_indirect_moveable_function(Fn&& fn) {
-	auto fn_ptr = std::make_shared<std::decay_t<Fn>>(std::forward<Fn>(fn));
+	auto fn_ptr = std::make_shared<std::remove_cvref_t<Fn>>(std::forward<Fn>(fn));
 	return [ = ](auto&&... args) -> decltype(auto) {
 		return (*fn_ptr)(std::forward<decltype(args)>(args)...);
 	};

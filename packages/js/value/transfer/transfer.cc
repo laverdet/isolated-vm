@@ -101,10 +101,10 @@ constexpr auto transfer_with(
 	std::tuple<VisitArgs...> visit_args,
 	std::tuple<AcceptArgs...> accept_args
 ) -> Type {
-	using subject_type = std::decay_t<decltype(value)>;
+	using subject_type = std::remove_cvref_t<decltype(value)>;
 	using visit_subject_type = visit_subject_for<subject_type>::type;
 
-	using target_type = std::decay_t<Type>;
+	using target_type = std::remove_cvref_t<Type>;
 	using accept_target_type = accept_target_for<target_type>::type;
 
 	// compose accept type

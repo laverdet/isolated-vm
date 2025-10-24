@@ -78,7 +78,7 @@ auto value<function_tag>::invoke(auto& env, std::span<napi_value> args) -> Resul
 
 template <class Environment>
 auto value<function_tag>::make(Environment& env, auto function) -> value<function_tag> {
-	using function_type = std::decay_t<decltype(function.callback)>;
+	using function_type = std::remove_cvref_t<decltype(function.callback)>;
 	using signature_type = util::function_signature_t<function_type>;
 	auto trampoline = util::bind_parameters{
 		[](auto& callback, Environment& env, const callback_info& info) -> napi_value {

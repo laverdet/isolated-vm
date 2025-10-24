@@ -73,7 +73,7 @@ template <class Meta, class Type, class Properties>
 struct visit_struct_properties;
 
 template <class Meta, class Type>
-using visit_struct_properties_t = visit_struct_properties<Meta, Type, std::decay_t<decltype(struct_properties<Type>::properties)>>;
+using visit_struct_properties_t = visit_struct_properties<Meta, Type, std::remove_cvref_t<decltype(struct_properties<Type>::properties)>>;
 
 template <class Meta, class Type, class... Property>
 struct visit_struct_properties<Meta, Type, std::tuple<Property...>> {

@@ -1,5 +1,6 @@
 module;
 #include <cassert>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 export module isolated_js:visit;
@@ -79,14 +80,16 @@ export template <class Subject>
 struct visit_subject_for : std::type_identity<Subject> {};
 
 // Returns the key type expected by the delegate (an instance of `visit` or `accept`) target.
-export template <util::string_literal Key, class Subject>
+export template <auto Key, class Subject>
 struct visit_key_literal;
 
-template <util::string_literal Key>
+template <auto Key>
 struct visit_key_literal<Key, void> {
 		template <class Accept>
 		constexpr auto operator()(const auto& /*could_be_literally_anything*/, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(string_tag_of<char>{}, *this, Key);
+			using value_type = decltype(Key)::value_type;
+			using character_type = std::remove_extent_t<std::remove_cvref_t<value_type>>;
+			return accept(string_tag_of<character_type>{}, *this, std::basic_string_view<character_type>{Key});
 		}
 };
 

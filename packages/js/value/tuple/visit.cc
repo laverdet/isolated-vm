@@ -11,7 +11,7 @@ namespace js {
 template <class Meta, class... Types>
 struct visit<Meta, std::tuple<Types...>> {
 	private:
-		using visitors_type = std::tuple<visit<Meta, std::decay_t<Types>>...>;
+		using visitors_type = std::tuple<visit<Meta, std::remove_cvref_t<Types>>...>;
 
 	public:
 		constexpr explicit visit(auto* transfer) :

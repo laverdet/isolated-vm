@@ -71,7 +71,8 @@ template <class Meta, class Type, class Properties>
 struct accept_struct_properties;
 
 template <class Meta, class Type>
-using accept_struct_properties_t = accept_struct_properties<Meta, Type, std::decay_t<decltype(struct_properties<Type>::properties)>>;
+using accept_struct_properties_t =
+	accept_struct_properties<Meta, Type, std::remove_cvref_t<decltype(struct_properties<Type>::properties)>>;
 
 template <class Meta, class Type, class... Property>
 struct accept_struct_properties<Meta, Type, std::tuple<Property...>> {
