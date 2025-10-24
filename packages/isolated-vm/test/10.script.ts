@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
 import * as ivm from "isolated-vm";
-import { unsafeIIFEAsString, unwrapCompletion } from "./fixtures.js";
+import { unsafeIIFEAsString, unwrapCompletion, unwrapThrowCompletion } from "./fixtures.js";
 
 await test("script source origin", async () => {
 	await using agent = await ivm.Agent.create();
@@ -27,8 +27,22 @@ await test("script source origin", async () => {
 	assert.ok(result.includes("file:///test-script:103"));
 });
 
-await test("placeholder module test", async () => {
+await test("script which throws", async () => {
 	await using agent = await ivm.Agent.create();
-	const module = await agent.compileModule("import { foo } from 'bar'");
-	assert.deepEqual(module.requests, [ { specifier: "bar" } ]);
+	const realm = await agent.createRealm();
+	const script = unwrapCompletion(await agent.compileScript("throw new Error('Hello');"));
+	const error = unwrapThrowCompletion(await script.run(realm));
+	// @ts-expect-error
+	const message: unknown = error.message;
+	assert.ok(typeof message === "string");
+	assert.ok(message.includes("Hello"));
+});
+
+await test("script with syntax error", async () => {
+	await using agent = await ivm.Agent.create();
+	const error = unwrapThrowCompletion(await agent.compileScript("}"));
+	// @ts-expect-error
+	const message: unknown = error.message;
+	assert.ok(typeof message === "string");
+	assert.ok(message.includes("Unexpected token '}'"));
 });

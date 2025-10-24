@@ -25,6 +25,7 @@ target_preprocessed_sources(google_v8 v8 ${MODULE_NAME}
 		context.cc
 		data.cc
 		date.cc
+		debug.cc
 		exception.cc
 		external.cc
 		function_callback.cc

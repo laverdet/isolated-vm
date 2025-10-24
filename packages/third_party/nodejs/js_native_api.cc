@@ -29,6 +29,7 @@ export using ::napi_create_type_error;
 export using ::napi_create_uint32;
 export using ::napi_define_properties;
 export using ::napi_delete_reference;
+export using ::napi_get_and_clear_last_exception;
 export using ::napi_get_array_length;
 export using ::napi_get_boolean;
 export using ::napi_get_cb_info;

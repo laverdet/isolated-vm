@@ -86,7 +86,7 @@ template <util::string_literal Key>
 struct visit_key_literal<Key, void> {
 		template <class Accept>
 		constexpr auto operator()(const auto& /*could_be_literally_anything*/, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(string_tag{}, *this, Key);
+			return accept(string_tag_of<char>{}, *this, Key);
 		}
 };
 

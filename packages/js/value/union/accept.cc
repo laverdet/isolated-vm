@@ -1,11 +1,11 @@
 module;
-#include <format>
-#include <stdexcept>
+#include <string>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 #include <variant>
 export module isolated_js:union_.accept;
+import :error;
 import :transfer;
 import :union_.types;
 import :variant.types;
@@ -47,7 +47,8 @@ struct accept<Meta, std::variant<Types...>> {
 			auto discriminant_value = accept_discriminant(dictionary_tag{}, visit, subject);
 			auto accept_alternative = alternatives.find(util::djb2_hash(discriminant_value));
 			if (accept_alternative == nullptr) {
-				throw std::logic_error{std::format("Unknown discriminant: {}", discriminant_value)};
+				auto discriminant_u16 = transfer_strict<std::u16string>(discriminant_value);
+				throw js::type_error{u"Unknown discriminant: '" + discriminant_u16 + u"'"};
 			}
 			return accept_alternative->second(*this, visit, std::forward<decltype(subject)>(subject));
 		}

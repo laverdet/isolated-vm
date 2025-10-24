@@ -2,7 +2,6 @@ add_library(ivm_backend_v8 SHARED)
 target_sources(ivm_backend_v8
 	PRIVATE
 		agent.cc
-		environment.cc
 		main.cc
 		module.cc
 		realm.cc

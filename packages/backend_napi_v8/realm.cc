@@ -17,18 +17,19 @@ auto create_realm(
 ) {
 	auto [ dispatch, promise ] = make_promise(
 		env,
-		[](environment& env, agent_handle agent, isolated_v8::realm realm) -> expected_value {
-			return js::napi::untagged_external<realm_handle>::make(env, std::move(agent), std::move(realm));
+		[](environment& env, agent_handle agent, isolated_v8::realm realm) -> auto {
+			return js::forward{js::napi::untagged_external<realm_handle>::make(env, std::move(agent), std::move(realm))};
 		}
 	);
 	agent->schedule(
-		[ agent = *agent,
-			dispatch = std::move(dispatch) ](
-			const agent_handle::lock& lock
-		) mutable {
+		[ dispatch = std::move(dispatch) ](
+			const agent_handle::lock& lock,
+			agent_handle agent
+		) -> void {
 			auto realm = isolated_v8::realm::make(lock);
 			dispatch(std::move(agent), std::move(realm));
-		}
+		},
+		*agent
 	);
 	return js::forward{promise};
 }
@@ -39,23 +40,22 @@ auto instantiate_runtime(
 ) {
 	auto [ dispatch, promise ] = make_promise(
 		env,
-		[](environment& env, agent_handle agent, isolated_v8::js_module module_) -> expected_value {
-			return js::napi::untagged_external<module_handle>::make(env, std::move(agent), std::move(module_));
+		[](environment& env, agent_handle agent, isolated_v8::js_module module_) -> auto {
+			return js::forward{js::napi::untagged_external<module_handle>::make(env, std::move(agent), std::move(module_))};
 		}
 	);
 	realm->agent().schedule(
-		[ dispatch = std::move(dispatch) ](
+		[ dispatch = std::move(dispatch),
+			realm = realm->realm() ](
 			const agent_handle::lock& lock,
-			agent_handle agent,
-			isolated_v8::realm realm
-		) mutable {
+			agent_handle agent
+		) mutable -> void {
 			auto module_ = realm.invoke(lock, [ & ](const isolated_v8::realm::scope& realm) -> isolated_v8::js_module {
 				return lock->environment().runtime().instantiate(realm);
 			});
 			dispatch(std::move(agent), std::move(module_));
 		},
-		realm->agent(),
-		realm->realm()
+		realm->agent()
 	);
 	return js::forward{promise};
 }

@@ -5,6 +5,7 @@ module;
 export module napi_js:callback_info;
 import :api;
 import :environment;
+import isolated_js;
 import ivm.utility;
 
 namespace js::napi {
@@ -16,7 +17,7 @@ export struct callback_info : util::non_copyable {
 		callback_info(napi_env env, napi_callback_info info) {
 			js::napi::invoke0(napi_get_cb_info, env, info, &count_, storage_.data(), &this_, &data_);
 			if (count_ > storage_.size()) {
-				throw std::runtime_error{"Too many arguments"};
+				throw js::range_error{u"Too many arguments provided for a function call"};
 			}
 		}
 

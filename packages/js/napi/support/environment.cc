@@ -5,13 +5,14 @@ export module napi_js:environment;
 import :api;
 import :finalizer;
 import :utility;
+import :uv_scheduler;
 import ivm.utility;
 
 namespace js::napi {
 
 // A reference to an environment is used as the lock witness. Generally, you should not have an
 // `environment&` unless you're in the napi thread and locked.
-export class environment {
+export class environment : util::non_moveable, public uv_schedulable {
 	public:
 		explicit environment(napi_env env) :
 				env_{env},
@@ -28,7 +29,13 @@ export class environment {
 					} else {
 						throw std::runtime_error{"Exotic napi handle behavior detected"};
 					}
-				}()} {}
+				}()} {
+			scheduler().open(js::napi::invoke(napi_get_uv_event_loop, env));
+		}
+
+		~environment() {
+			scheduler().close();
+		}
 
 		[[nodiscard]] explicit operator napi_env() const { return env_; }
 		[[nodiscard]] auto uses_direct_handles() const -> bool { return uses_direct_handles_; }
@@ -47,6 +54,10 @@ class environment_of : public environment {
 				environment{env} {}
 
 	public:
+		static auto unsafe_get(napi_env env) -> Type& {
+			return *static_cast<Type*>(js::napi::invoke(napi_get_instance_data, env));
+		}
+
 		static auto make(napi_env env, auto&&... args) -> Type&
 			requires std::constructible_from<Type, napi_env, decltype(args)...> {
 			auto instance = std::make_unique<Type>(env, std::forward<decltype(args)>(args)...);

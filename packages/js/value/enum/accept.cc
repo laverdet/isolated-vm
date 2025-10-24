@@ -18,7 +18,7 @@ struct accept<void, Enum> {
 			auto values = accept::make_enum_map();
 			auto result = values.find(util::djb2_hash(std::forward<decltype(subject)>(subject)));
 			if (result == nullptr) {
-				throw std::logic_error{"Invalid enumeration"};
+				throw js::type_error{u"Invalid enumeration"};
 			}
 			return result->second;
 		}

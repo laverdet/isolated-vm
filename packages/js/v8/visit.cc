@@ -20,7 +20,7 @@ import v8;
 
 namespace js {
 
-// Instantiated in the acceptor that corresponds to a napi visitor
+// Instantiated in the acceptor that corresponds to a v8 visitor
 struct v8_reference_map_type {
 		template <class Type>
 		using type = std::unordered_map<v8::Local<v8::Value>, Type, iv8::address_hash>;

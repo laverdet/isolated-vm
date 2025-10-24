@@ -33,13 +33,9 @@ constexpr auto string_literals = util::sealed_map{
 };
 
 // Instance of the `isolated-vm` module, once per nodejs environment.
-export class environment
-		: util::non_moveable,
-			public napi::environment_of<environment>,
-			public napi::uv_schedulable {
+export class environment : public napi::environment_of<environment> {
 	public:
-		explicit environment(napi_env env);
-		~environment();
+		explicit environment(napi_env env) : environment_of{env} {}
 
 		auto cluster() -> isolated_v8::cluster& { return cluster_; }
 
@@ -51,8 +47,6 @@ export class environment
 			// static_assert(index, std::format("String literal '{}' is missing in storage", Value.data()));
 			return string_literal_storage_.at(index).second;
 		}
-
-		static auto get(napi_env env) -> environment&;
 
 	private:
 		isolated_v8::cluster cluster_;

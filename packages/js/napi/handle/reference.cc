@@ -48,7 +48,7 @@ export class reference_handle : util::non_copyable {
 
 		constexpr ~reference_handle() {
 			if (ref_ != nullptr) {
-				js::napi::invoke_dtor(napi_delete_reference, env_, ref_);
+				js::napi::invoke0_noexcept(napi_delete_reference, env_, ref_);
 			}
 		}
 

@@ -79,9 +79,9 @@ bound_value<bigint_tag>::operator bigint() const {
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	size_t length;
 	js::napi::invoke0(napi_get_value_bigint_words, env(), napi_value{*this}, &value.sign_bit(), &length, nullptr);
-	value.resize_and_overwrite(length, [ & ](auto* words, auto length) {
+	value.resize_and_overwrite(length, [ & ](auto* words, auto length) noexcept {
 		if (length > 0) {
-			js::napi::invoke0(napi_get_value_bigint_words, env(), napi_value{*this}, &value.sign_bit(), &length, words);
+			js::napi::invoke0_noexcept(napi_get_value_bigint_words, env(), napi_value{*this}, &value.sign_bit(), &length, words);
 		}
 		return length;
 	});
@@ -91,13 +91,15 @@ bound_value<bigint_tag>::operator bigint() const {
 bound_value<bigint_tag>::operator int64_t() const {
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	int64_t value;
-	return js::napi::invoke(napi_get_value_bigint_int64, env(), napi_value{*this}, &value);
+	js::napi::invoke(napi_get_value_bigint_int64, env(), napi_value{*this}, &value);
+	return value;
 }
 
 bound_value<bigint_tag>::operator uint64_t() const {
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	uint64_t value;
-	return js::napi::invoke(napi_get_value_bigint_uint64, env(), napi_value{*this}, &value);
+	js::napi::invoke(napi_get_value_bigint_uint64, env(), napi_value{*this}, &value);
+	return value;
 }
 
 // string
@@ -129,8 +131,8 @@ bound_value<string_tag>::operator std::string() const {
 	std::string string;
 	auto length = js::napi::invoke(napi_get_value_string_latin1, env(), napi_value{*this}, nullptr, 0);
 	if (length > 0) {
-		string.resize_and_overwrite(length + 1, [ this ](char* data, size_t length) {
-			js::napi::invoke(napi_get_value_string_latin1, env(), napi_value{*this}, data, length);
+		string.resize_and_overwrite(length + 1, [ this ](char* data, size_t length) noexcept {
+			js::napi::invoke_noexcept(napi_get_value_string_latin1, env(), napi_value{*this}, data, length);
 			return length - 1;
 		});
 	}
@@ -142,8 +144,8 @@ bound_value<string_tag>::operator std::u16string() const {
 	std::u16string string;
 	auto length = js::napi::invoke(napi_get_value_string_utf16, env(), napi_value{*this}, nullptr, 0);
 	if (length > 0) {
-		string.resize_and_overwrite(length + 1, [ this ](char16_t* data, size_t length) {
-			js::napi::invoke(napi_get_value_string_utf16, env(), napi_value{*this}, data, length);
+		string.resize_and_overwrite(length + 1, [ this ](char16_t* data, size_t length) noexcept {
+			js::napi::invoke_noexcept(napi_get_value_string_utf16, env(), napi_value{*this}, data, length);
 			return length - 1;
 		});
 	}

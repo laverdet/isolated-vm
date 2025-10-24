@@ -1,7 +1,6 @@
 module;
 #include <cassert>
 #include <concepts>
-#include <stdexcept>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -10,6 +9,7 @@ export import :accept;
 export import :tag;
 export import :transfer.types;
 export import :visit;
+import :error;
 import ivm.utility;
 
 namespace js {
@@ -37,7 +37,7 @@ struct accept_with_throw::accept_throw : Accept {
 		using Accept::operator();
 		constexpr auto operator()(auto_tag auto tag, auto& visit, auto&& value) const -> accept_target_type
 			requires(!std::invocable<const Accept&, decltype(tag), decltype(visit), decltype(value)>) {
-			throw std::logic_error{"Type error"};
+			throw js::type_error{u"Could not accept"};
 		}
 };
 

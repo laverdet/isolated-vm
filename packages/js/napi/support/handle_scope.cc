@@ -12,7 +12,7 @@ export class handle_scope : util::non_moveable {
 				handle_scope_{napi::invoke(napi_open_handle_scope, env)} {}
 
 		~handle_scope() {
-			napi::invoke_dtor(napi_close_handle_scope, env_, handle_scope_);
+			napi::invoke0_noexcept(napi_close_handle_scope, env_, handle_scope_);
 		}
 
 	private:

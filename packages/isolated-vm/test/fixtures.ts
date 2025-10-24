@@ -10,6 +10,13 @@ export function unwrapCompletion<Type>(completion: MaybeCompletionOf<Type>): Typ
 }
 
 /** @internal */
+export function unwrapThrowCompletion(completion: MaybeCompletionOf<unknown>): unknown {
+	assert.ok(completion);
+	assert.ok(!completion.complete);
+	return completion.error;
+}
+
+/** @internal */
 export function unsafeIIFEAsString(
 	code: () => unknown,
 ) {

@@ -13,8 +13,19 @@ import v8;
 namespace isolated_v8 {
 
 auto run_script(const realm::scope& realm, script_local_type script) -> std::expected<js::value_t, js::error_value> {
-	auto result = script->BindToCurrentContext()->Run(realm.context()).ToLocalChecked();
-	return js::transfer_out<js::value_t>(result, realm);
+	using value_type = std::expected<js::value_t, js::error_value>;
+	auto result = js::iv8::unmaybe_one(realm, [ & ] -> v8::MaybeLocal<v8::Value> {
+		return script->BindToCurrentContext()->Run(realm.context());
+	});
+	if (result) {
+		try {
+			return value_type{std::in_place, js::transfer_out<js::value_t>(*result, realm)};
+		} catch (const js::error_value& error) {
+			return value_type{std::unexpect, js::error_value{error}};
+		}
+	} else {
+		return value_type{std::unexpect, std::move(result).error()};
+	}
 }
 
 auto compile_script_direct(const agent_lock& agent, v8::Local<v8::String> code_string, source_origin source_origin) -> std::expected<script_local_type, js::error_value> {

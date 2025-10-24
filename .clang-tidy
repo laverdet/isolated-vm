@@ -27,6 +27,7 @@ Checks: >
   -misc-include-cleaner,
   -misc-use-internal-linkage,
   -readability-else-after-return,
+  -readability-function-cognitive-complexity,
   -readability-magic-numbers,
   -readability-redundant-declaration,
 

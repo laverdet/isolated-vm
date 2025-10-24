@@ -1,14 +1,15 @@
 module;
-#include <concepts>
+#include <algorithm>
 #include <cstdint>
 #include <expected>
 #include <optional>
-#include <stdexcept>
+#include <string>
 #include <utility>
 #include <variant>
 export module isolated_js:builtin.accept;
 import :bigint;
 import :date;
+import :error;
 import :transfer;
 import ivm.utility;
 
@@ -63,7 +64,7 @@ struct accept_coerced {
 			auto coerced = static_cast<Subject>(std::forward<decltype(subject)>(subject));
 			auto result = static_cast<Type>(coerced);
 			if (static_cast<Subject>(result) != coerced) {
-				throw std::range_error{"Failed to losslessly coerce value"};
+				throw js::range_error{u"Could not coerce value"};
 			}
 			return result;
 		}
@@ -104,25 +105,63 @@ struct accept<void, uint64_t> : accept_coerced<bigint_tag_of, bigint, uint64_t> 
 template <>
 struct accept<void, js_clock::time_point> : accept_without_narrowing<date_tag, js_clock::time_point> {};
 
-// `string` types (no character set conversion is implemented)
+// `string` types (no utf8 interpolation is implemented)
 template <class Char>
-struct accept<void, std::basic_string<Char>> {
-		using tag_type = string_tag_of<Char>;
+struct accept_coerced_string {
+	private:
 		using value_type = std::basic_string<Char>;
 
-		constexpr auto operator()(string_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const -> value_type
-			requires std::constructible_from<value_type, decltype(subject)> {
-			return value_type{std::forward<decltype(subject)>(subject)};
+	public:
+		constexpr auto operator()(string_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const -> value_type {
+			return coerce(std::type_identity<char16_t>{}, std::forward<decltype(subject)>(subject));
 		}
 
-		constexpr auto operator()(tag_type /*tag*/, visit_holder /*visit*/, auto&& subject) const -> value_type {
-			return value_type{std::forward<decltype(subject)>(subject)};
+		template <class Subject>
+		constexpr auto operator()(string_tag_of<Subject> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> value_type {
+			return coerce(std::type_identity<Subject>{}, std::forward<decltype(subject)>(subject));
 		}
 
-		constexpr auto operator()(covariant_tag<tag_type> tag, auto& visit, auto&& subject) const -> value_type {
+		constexpr auto operator()(covariant_tag<string_tag_of<Char>> tag, visit_holder visit, auto&& subject) const -> value_type {
 			return (*this)(*tag, visit, std::forward<decltype(subject)>(subject));
 		}
+
+	private:
+		constexpr auto coerce(std::type_identity<Char> /*tag*/, auto&& subject) const -> value_type {
+			return value_type{std::forward<decltype(subject)>(subject)};
+		}
+
+		template <class Subject>
+		constexpr auto coerce(std::type_identity<Subject> /*tag*/, auto&& subject) const -> value_type {
+			constexpr auto max_char = util::overloaded{
+				// latin1
+				[](std::type_identity<char>) constexpr -> int { return 127; },
+				// utf16
+				[](std::type_identity<char16_t>) constexpr -> int { return 65'535; },
+			}(type<Char>);
+
+			// Check string range (since `resize_and_overwrite` may not throw)
+			auto from = std::basic_string<Subject>{std::forward<decltype(subject)>(subject)};
+			auto size = from.size();
+			auto out_of_range = std::ranges::any_of(from, [](Subject ch) { return ch > max_char; });
+			if (out_of_range) {
+				throw js::range_error{u"String character out of range"};
+			}
+
+			// Copy coerced characters
+			value_type result;
+			result.resize_and_overwrite(size, [ & ](Char* data, size_t size) noexcept -> size_t {
+				for (std::size_t ii = 0; ii < size; ++ii) {
+					// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+					data[ ii ] = static_cast<Subject>(from[ ii ]);
+				}
+				return size;
+			});
+			return result;
+		}
 };
+
+template <class Char>
+struct accept<void, std::basic_string<Char>> : accept_coerced_string<Char> {};
 
 // `std::optional` allows `undefined` in addition to the next acceptor
 template <class Meta, class Type>

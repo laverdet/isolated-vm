@@ -20,6 +20,7 @@ target_sources(napi_js
 		support/environment.cc
 		support/finalizer.cc
 		support/handle_scope.cc
+		support/promise.cc
 		support/scheduler.cc
 		support/utility.cc
 		value/array_.cc

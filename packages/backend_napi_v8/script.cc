@@ -14,7 +14,6 @@ import isolated_v8;
 import ivm.utility;
 import napi_js;
 import nodejs;
-namespace v8 = embedded_v8;
 using namespace isolated_v8;
 using namespace util::string_literals;
 
@@ -37,22 +36,24 @@ auto compile_script(
 	using expected_type = std::expected<isolated_v8::script_shared_remote_type, js::error_value>;
 	auto [ dispatch, promise ] = make_promise(
 		env,
-		[](environment& env, expected_type script) -> expected_value {
+		[](environment& env, expected_type script) -> auto {
 			return make_completion_record(env, std::move(script).transform([ & ](isolated_v8::script_shared_remote_type script) {
 				return js::forward{js::napi::untagged_external<isolated_v8::script_shared_remote_type>::make(env, std::move(script))};
 			}));
 		}
 	);
 	agent->schedule(
-		[ code_string = std::move(code_string),
-			options = std::move(options),
-			dispatch = std::move(dispatch) ](
-			const agent_handle::lock& agent
-		) mutable -> void {
+		[ dispatch = std::move(dispatch) ](
+			const agent_handle::lock& agent,
+			js::string_t code_string,
+			compile_script_options options
+		) -> void {
 			auto origin = std::move(options.origin).value_or(source_origin{});
 			auto local = isolated_v8::compile_script(agent, std::move(code_string), std::move(origin));
 			dispatch(local.transform(transform_shared_remote(agent)));
-		}
+		},
+		std::move(code_string),
+		std::move(options)
 	);
 	return js::forward{promise};
 }
@@ -64,12 +65,10 @@ auto run_script(
 	run_script_options options
 ) {
 	using expected_type = std::expected<js::value_t, js::error_value>;
-	auto [ dispatch, promise ] = make_promise(
-		env,
-		[](environment& env, expected_type result) -> expected_value {
+	auto [ dispatch, promise ] =
+		make_promise(env, [](environment& env, expected_type result) -> auto {
 			return make_completion_record(env, std::move(result));
-		}
-	);
+		});
 	realm->agent().schedule(
 		[ options = options,
 			realm = realm->realm(),

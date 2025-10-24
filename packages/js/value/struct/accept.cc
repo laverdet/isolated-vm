@@ -1,12 +1,12 @@
 module;
 #include <expected>
-#include <format>
 #include <optional>
-#include <stdexcept>
+#include <string>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 export module isolated_js:struct_.accept;
+import :error;
 import :property;
 import :struct_.helpers;
 import :transfer;
@@ -54,8 +54,8 @@ struct accept_object_property {
 					// If the setter accepts undefined values then a missing property is allowed. In this
 					// case the setter is not invoked at all, which could in theory be used to distinguish
 					// between `undefined` and missing properties.
-					const std::string_view name{Property::property_name};
-					throw std::logic_error{std::format("Missing required property: {}", name)};
+					auto name_u16 = transfer_strict<std::u16string>(Property::property_name);
+					throw js::type_error{u"Missing required property: '" + name_u16 + u"'"};
 				}
 			}
 		}

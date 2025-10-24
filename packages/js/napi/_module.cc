@@ -7,6 +7,7 @@ export import :external;
 export import :function;
 export import :handle_scope;
 export import :object;
+export import :promise;
 export import :reference;
 export import :remote;
 export import :uv_scheduler;
