@@ -9,7 +9,6 @@ namespace util {
  * `operator+()` and the rest is handled automatically.
  */
 export template <class difference_type_, class wide_size_type = difference_type_>
-// NOLINTNEXTLINE(bugprone-crtp-constructor-accessibility)
 class arithmetic_facade {
 	public:
 		using difference_type = difference_type_;

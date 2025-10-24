@@ -117,7 +117,7 @@ uv_handle_of<Handle, Type>::~uv_handle_of() {
 
 template <class Handle, class Type>
 auto uv_handle_of<Handle, Type>::close() -> void {
-	uv_close(handle(), [](uv_handle_t* handle) {
+	uv_close(handle(), [](uv_handle_t* handle) -> void {
 		delete static_cast<shared_ptr_type*>(std::exchange(handle->data, nullptr));
 	});
 }

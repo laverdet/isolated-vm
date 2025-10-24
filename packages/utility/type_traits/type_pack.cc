@@ -20,10 +20,10 @@ struct type_pack {
 		consteval auto operator+(auto right) const { concat(right); }
 
 		// Non-ADL version, which can also accept any number of arguments
-		consteval auto concat() const -> type_pack { return {}; }
+		[[nodiscard]] consteval auto concat() const -> type_pack { return {}; }
 
 		template <class... Right>
-		consteval auto concat(type_pack<Right...> /*right*/, auto&&... rest) const {
+		[[nodiscard]] consteval auto concat(type_pack<Right...> /*right*/, auto&&... rest) const {
 			return type_pack<Types..., Right...>{}.concat(rest...);
 		}
 

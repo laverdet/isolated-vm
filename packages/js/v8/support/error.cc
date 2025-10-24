@@ -52,7 +52,7 @@ auto invoke_with_unmaybe(isolate_lock_witness lock, Operation operation) {
 		[ & ]<class Type>(std::type_identity<Type> /*tag*/)
 		-> std::expected<Type, js::error_value> {
 		using value_type = std::expected<Type, js::error_value>;
-		v8::TryCatch try_catch{lock.isolate()};
+		const auto try_catch = v8::TryCatch{lock.isolate()};
 		try {
 			return value_type{std::in_place, operation()};
 		} catch (const iv8::pending_error& /*error*/) {
@@ -70,9 +70,9 @@ auto unmaybe_one(isolate_lock_witness lock, Operation operation) {
 		[ & ]<class Type>(std::type_identity<v8::MaybeLocal<Type>> /*tag*/)
 		-> std::expected<v8::Local<Type>, js::error_value> {
 		using value_type = std::expected<v8::Local<Type>, js::error_value>;
-		v8::TryCatch try_catch{lock.isolate()};
-		v8::MaybeLocal<Type> maybe_value = operation();
-		v8::Local<Type> value;
+		const auto try_catch = v8::TryCatch{lock.isolate()};
+		auto maybe_value = v8::MaybeLocal<Type>{operation()};
+		auto value = v8::Local<Type>{};
 		if (maybe_value.ToLocal(&value)) {
 			return value_type{std::in_place, value};
 		} else {
@@ -99,7 +99,7 @@ auto render_frame_line(v8::Local<v8::StackFrame> frame) -> std::u16string {
 auto render_stack_trace(isolate_lock_witness lock, v8::Local<v8::StackTrace> stack_trace) -> std::u16string {
 	std::u16string result;
 	assert(stack_trace.IsEmpty());
-	int size = stack_trace->GetFrameCount();
+	const int size = stack_trace->GetFrameCount();
 	for (int ii = 0; ii < size; ++ii) {
 		result += ii == 0 ? u"    at " : u"\n    at ";
 
@@ -108,7 +108,7 @@ auto render_stack_trace(isolate_lock_witness lock, v8::Local<v8::StackTrace> sta
 		auto script_name = transfer_out_strict<std::u16string>(frame->GetScriptName(), lock);
 		auto has_script_name = !script_name.empty();
 		auto has_fn_name = !fn_name.empty();
-		bool has_name = has_fn_name || has_script_name;
+		const bool has_name = has_fn_name || has_script_name;
 
 		if (frame->IsWasm()) {
 			if (has_name) {

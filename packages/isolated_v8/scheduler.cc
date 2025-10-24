@@ -40,7 +40,7 @@ class member : util::non_moveable {
 template <class Type>
 class container : util::non_moveable {
 	public:
-		using lockable_type = util::lockable_with<container, { .notifiable = true }>;
+		using lockable_type = util::lockable_with<container, {.notifiable = true}>;
 		using list_type = boost::intrusive::list<member<Type>, intrusive_no_size, typename member<Type>::hook_type>;
 
 		~container() { assert(members_.empty()); }
@@ -226,7 +226,7 @@ class runner final : public layer_connected {
 				auto thread_id = std::this_thread::get_id();
 				// The const version of the container can't iterate and I'm already fed up with my
 				// implementation
-				// NOLINT(cppcoreguidelines-pro-type-const-cast)
+				// NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
 				auto& rwcontainer = const_cast<scheduler::container<thread>&>(container);
 				return std::ranges::all_of(rwcontainer.members(), [ & ](const auto& thread) -> bool {
 					return thread.self().thread_id() == thread_id;

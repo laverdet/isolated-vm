@@ -38,7 +38,7 @@ auto deterministic::clock_time() -> utc_clock::time_point {
 
 // microtask
 microtask::microtask(std::optional<js_clock::time_point> maybe_epoch) :
-		offset_{steady_clock_offset(*maybe_epoch.or_else([]() { return std::optional{js_clock::now()}; }))},
+		offset_{steady_clock_offset(*maybe_epoch.or_else([]() -> auto { return std::optional{js_clock::now()}; }))},
 		time_point_{steady_clock::now() + offset_} {}
 
 auto microtask::begin_tick() -> void {
@@ -58,6 +58,7 @@ auto realtime::clock_time() -> steady_clock::time_point {
 }
 
 // system
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 auto system::clock_time() -> system_clock::time_point {
 	return system_clock::now();
 }

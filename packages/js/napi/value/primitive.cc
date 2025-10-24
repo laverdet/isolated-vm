@@ -1,6 +1,5 @@
 module;
 #include <cstdint>
-#include <stdexcept>
 #include <string_view>
 module napi_js;
 import :api;
@@ -131,7 +130,7 @@ bound_value<string_tag>::operator std::string() const {
 	std::string string;
 	auto length = js::napi::invoke(napi_get_value_string_latin1, env(), napi_value{*this}, nullptr, 0);
 	if (length > 0) {
-		string.resize_and_overwrite(length + 1, [ this ](char* data, size_t length) noexcept {
+		string.resize_and_overwrite(length + 1, [ this ](char* data, size_t length) noexcept -> size_t {
 			js::napi::invoke_noexcept(napi_get_value_string_latin1, env(), napi_value{*this}, data, length);
 			return length - 1;
 		});
@@ -144,7 +143,7 @@ bound_value<string_tag>::operator std::u16string() const {
 	std::u16string string;
 	auto length = js::napi::invoke(napi_get_value_string_utf16, env(), napi_value{*this}, nullptr, 0);
 	if (length > 0) {
-		string.resize_and_overwrite(length + 1, [ this ](char16_t* data, size_t length) noexcept {
+		string.resize_and_overwrite(length + 1, [ this ](char16_t* data, size_t length) noexcept -> size_t {
 			js::napi::invoke_noexcept(napi_get_value_string_utf16, env(), napi_value{*this}, data, length);
 			return length - 1;
 		});

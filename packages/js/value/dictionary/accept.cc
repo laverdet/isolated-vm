@@ -22,6 +22,7 @@ struct accept_vector_value<Meta, std::pair<Key, Value>> {
 		constexpr auto operator()(auto& visit, auto&& entry) const -> std::pair<Key, Value> {
 			return std::pair{
 				visit.first(std::forward<decltype(entry)>(entry).first, first),
+				// NOLINTNEXTLINE(bugprone-use-after-move)
 				visit.second(std::forward<decltype(entry)>(entry).second, second),
 			};
 		}
@@ -61,6 +62,7 @@ struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
 			const auto [... indices ] = util::sequence<Size>;
 			return vector_of<Tag, Entry>{
 				std::in_place,
+				// NOLINTNEXTLINE(bugprone-use-after-move)
 				util::invoke_as<accept_type>(*this, std::get<indices>(visit), std::forward<decltype(value)>(value))...,
 			};
 		}

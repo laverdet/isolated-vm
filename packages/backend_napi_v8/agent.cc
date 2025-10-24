@@ -39,7 +39,7 @@ agent_environment::agent_environment(const isolated_v8::agent_lock& lock) :
 auto create_agent(environment& env, std::optional<make_agent_options> options_optional) {
 	auto options = std::move(options_optional).value_or(make_agent_options{});
 	auto& cluster = env.cluster();
-	auto [ dispatch, promise ] = make_promise(env, [](environment& env, agent_handle agent) {
+	auto [ dispatch, promise ] = make_promise(env, [](environment& env, agent_handle agent) -> auto {
 		return js::forward{js::napi::untagged_external<agent_handle>::make(env, std::move(agent))};
 	});
 	auto clock = std::visit(
@@ -61,12 +61,12 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	);
 	agent_handle::make(
 		cluster,
-		[](const agent_handle::lock& lock) { return agent_environment{lock}; },
+		[](const agent_handle::lock& lock) -> auto { return agent_environment{lock}; },
 		{.clock = clock, .random_seed = options.random_seed},
 		[ dispatch = std::move(dispatch) ](
 			const agent_handle::lock& /*lock*/,
 			agent_handle agent
-		) {
+		) -> void {
 			dispatch(std::move(agent));
 		}
 	);

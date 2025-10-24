@@ -138,7 +138,7 @@ auto agent_host::destroy_isolate_callback(auto locked_callback) -> void {
 
 template <class Type>
 agent_host_of<Type>::~agent_host_of() {
-	destroy_isolate_callback([ this ](const js::iv8::isolate_execution_lock& /*lock*/) {
+	destroy_isolate_callback([ this ](const js::iv8::isolate_execution_lock& /*lock*/) -> void {
 		environment_.reset();
 	});
 }

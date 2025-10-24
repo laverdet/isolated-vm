@@ -23,7 +23,7 @@ struct reference_vector_of {
 		}
 
 		template <class Accept>
-		constexpr auto lookup_or_visit(const Accept& accept, reference_type subject, auto dispatch) const
+		[[nodiscard]] constexpr auto lookup_or_visit(const Accept& accept, reference_type subject, auto dispatch) const
 			-> accept_target_t<Accept> {
 			if (values_storage_.size() == subject.id()) {
 				return dispatch();
@@ -50,7 +50,7 @@ struct reference_vector_of<Subject, void> {
 		constexpr auto emplace_subject(reference_type /*reference*/, const auto& /*value*/) -> void {}
 
 		template <class Accept>
-		constexpr auto lookup_or_visit(Accept& /*accept*/, reference_type /*subject*/, auto dispatch) const
+		[[nodiscard]] constexpr auto lookup_or_visit(Accept& /*accept*/, reference_type /*subject*/, auto dispatch) const
 			-> accept_target_t<Accept> {
 			return dispatch();
 		}
@@ -132,6 +132,7 @@ struct visit_recursive_refs_value<Meta, Value, util::type_pack<Refs...>>
 	protected:
 		constexpr auto reset_for_visited_value(auto&& subject) -> void {
 			// Reset accepted values in `reference_of<T>` visitor
+			// NOLINTNEXTLINE(bugprone-use-after-move)
 			(..., visit_reference_of<Meta, Refs>::reset_for_visited_value(std::forward<decltype(subject)>(subject)));
 		}
 };
@@ -148,6 +149,7 @@ struct visit<Meta, referential_value<Make, Extract>> : visit<Meta, typename refe
 			// Reset accepted values in `reference_of<T>` visitor
 			this->reset_for_visited_value(std::forward<decltype(subject)>(subject));
 			// Delegate forward to `visit_recursive_refs_value` visitor
+			// NOLINTNEXTLINE(bugprone-use-after-move)
 			return util::invoke_as<visit_type>(*this, std::forward<decltype(subject)>(subject), accept);
 		}
 };

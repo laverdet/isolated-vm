@@ -55,12 +55,12 @@ struct accept_coerced {
 		}
 
 	private:
-		constexpr auto coerce(std::type_identity<Type> /*tag*/, auto&& subject) const -> Type {
+		[[nodiscard]] constexpr auto coerce(std::type_identity<Type> /*tag*/, auto&& subject) const -> Type {
 			return Type{std::forward<decltype(subject)>(subject)};
 		}
 
 		template <class Subject>
-		constexpr auto coerce(std::type_identity<Subject> /*tag*/, auto&& subject) const -> Type {
+		[[nodiscard]] constexpr auto coerce(std::type_identity<Subject> /*tag*/, auto&& subject) const -> Type {
 			auto coerced = static_cast<Subject>(std::forward<decltype(subject)>(subject));
 			auto result = static_cast<Type>(coerced);
 			if (static_cast<Subject>(result) != coerced) {
@@ -126,12 +126,12 @@ struct accept_coerced_string {
 		}
 
 	private:
-		constexpr auto coerce(std::type_identity<Char> /*tag*/, auto&& subject) const -> value_type {
+		[[nodiscard]] constexpr auto coerce(std::type_identity<Char> /*tag*/, auto&& subject) const -> value_type {
 			return value_type{std::forward<decltype(subject)>(subject)};
 		}
 
 		template <class Subject>
-		constexpr auto coerce(std::type_identity<Subject> /*tag*/, auto&& subject) const -> value_type {
+		[[nodiscard]] constexpr auto coerce(std::type_identity<Subject> /*tag*/, auto&& subject) const -> value_type {
 			constexpr auto max_char = util::overloaded{
 				// latin1
 				[](std::type_identity<char>) constexpr -> int { return 127; },
@@ -142,7 +142,7 @@ struct accept_coerced_string {
 			// Check string range (since `resize_and_overwrite` may not throw)
 			auto from = std::basic_string<Subject>{std::forward<decltype(subject)>(subject)};
 			auto size = from.size();
-			auto out_of_range = std::ranges::any_of(from, [](Subject ch) { return ch > max_char; });
+			auto out_of_range = std::ranges::any_of(from, [](Subject ch) -> bool { return ch > max_char; });
 			if (out_of_range) {
 				throw js::range_error{u"String character out of range"};
 			}

@@ -179,8 +179,8 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 			return accept(promise_tag{}, self, subject);
 		}
 
-		auto null_value_cache() const { return null_; }
-		auto undefined_value_cache() const { return undefined_; }
+		[[nodiscard]] auto is_cached_null(v8::Local<v8::Value> value) const { return value == null_; }
+		[[nodiscard]] auto is_cached_undefined(v8::Local<v8::Value> value) const { return value == undefined_; }
 
 	private:
 		iv8::isolate_lock_witness isolate_lock_;
@@ -211,9 +211,9 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 		template <class Accept>
 		auto operator()(this auto& self, v8::Local<v8::Value> subject, const Accept& accept) -> accept_target_t<Accept> {
 			// Check known address values before the map lookup
-			if (subject == self.null_value_cache()) {
+			if (self.is_cached_null(subject)) {
 				return accept(null_tag{}, self, subject);
-			} else if (subject == self.undefined_value_cache()) {
+			} else if (self.is_cached_undefined(subject)) {
 				return accept(undefined_tag{}, self, subject);
 			}
 

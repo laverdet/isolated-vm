@@ -212,7 +212,7 @@ struct visit_napi_value
 
 		// Convenience function which wraps in `napi::bound_value` and invokes `accept`.
 		template <auto_tag Tag, class Accept>
-		auto accept_tagged(value<Tag> subject, const Accept& accept) const -> accept_target_t<Accept> {
+		[[nodiscard]] auto accept_tagged(value<Tag> subject, const Accept& accept) const -> accept_target_t<Accept> {
 			return accept(Tag{}, *this, napi::bound_value{napi_env{*this}, subject});
 		}
 

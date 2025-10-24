@@ -48,7 +48,7 @@ class sealed_map {
 		explicit consteval sealed_map(sorted_equivalent_t /*tag*/, container_type values) :
 				sealed_map{
 					sorted_unique_t{},
-					std::invoke([ & ]() constexpr {
+					std::invoke([ & ]() constexpr -> auto {
 						auto projection = [](const auto& entry) constexpr { return entry.first; };
 						auto duplicate = std::ranges::adjacent_find(values, std::equal_to{}, projection);
 						if (duplicate != values.end()) {
@@ -66,7 +66,7 @@ class sealed_map {
 					sorted_equivalent_t{},
 					std::invoke([ & ]() constexpr -> container_type {
 						// Sort without invoking `operator()=` which might not exist on the value type
-						std::array<typename container_type::iterator, Size> sortable;
+						auto sortable = std::array<typename container_type::iterator, Size>{};
 						auto inserter = sortable.begin();
 						for (auto ii = values.begin(); ii != values.end(); ++ii) {
 							*(inserter++) = ii;
@@ -80,7 +80,7 @@ class sealed_map {
 
 	public:
 		// Default constructed values
-		explicit consteval sealed_map(std::type_identity<Type> /*default_construct*/, auto... keys)
+		explicit consteval sealed_map(std::type_identity<Type> /*default_construct*/, const auto&... keys)
 			requires std::default_initializable<Type> :
 				sealed_map{unsorted_t{}, container_type{std::pair{keys, Type{}}...}} {}
 

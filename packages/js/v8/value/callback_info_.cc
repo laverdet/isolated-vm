@@ -47,7 +47,7 @@ class callback_info::iterator : public util::random_access_iterator_facade<int> 
 	private:
 		auto operator+() const -> size_type { return index_; }
 
-		const v8::FunctionCallbackInfo<v8::Value>* info_;
+		const v8::FunctionCallbackInfo<v8::Value>* info_{};
 		int index_{};
 };
 

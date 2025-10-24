@@ -49,7 +49,7 @@ auto instantiate_runtime(
 			realm = realm->realm() ](
 			const agent_handle::lock& lock,
 			agent_handle agent
-		) mutable -> void {
+		) -> void {
 			auto module_ = realm.invoke(lock, [ & ](const isolated_v8::realm::scope& realm) -> isolated_v8::js_module {
 				return lock->environment().runtime().instantiate(realm);
 			});

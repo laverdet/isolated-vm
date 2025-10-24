@@ -85,7 +85,7 @@ struct accept_store_unwrapped {
 		}
 
 	private:
-		constexpr auto consume(target_type /*&&*/ value) const -> target_type {
+		[[nodiscard]] constexpr auto consume(target_type /*&&*/ value) const -> target_type {
 			return std::forward<decltype(value)>(value);
 		}
 
@@ -95,13 +95,13 @@ struct accept_store_unwrapped {
 		}
 
 		template <class Type>
-		constexpr auto consume(js::referenceable_value<Type> value) const -> target_type {
+		[[nodiscard]] constexpr auto consume(js::referenceable_value<Type> value) const -> target_type {
 			insert_(*value);
 			return consume(*std::move(value));
 		}
 
 		template <class Type, class... Args>
-		constexpr auto consume(js::deferred_receiver<Type, Args...> receiver) const -> target_type {
+		[[nodiscard]] constexpr auto consume(js::deferred_receiver<Type, Args...> receiver) const -> target_type {
 			insert_(*receiver);
 			std::move(receiver)();
 			return consume(*std::move(receiver));
@@ -136,7 +136,7 @@ struct accept_value_from_direct : Accept {
 		// nb: `std::invocable<accept_type, ...>` causes a circular requirement. I think it's fine to
 		// leave it out though since `accept_value_from` is a terminal acceptor.
 		constexpr auto operator()(auto_tag auto tag, auto& visit, auto&& subject) const -> accept_target_t<accept_type> {
-			auto insert = [ & ]() {
+			auto insert = [ & ]() -> auto {
 				if constexpr (requires { visit.has_reference_map; }) {
 					return [ subject = subject, &visit = visit ](const auto& value) { visit.emplace_subject(subject, value); };
 				} else {

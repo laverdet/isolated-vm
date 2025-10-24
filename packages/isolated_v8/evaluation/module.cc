@@ -94,7 +94,7 @@ auto js_module::compile(const agent_lock& agent, v8::Local<v8::String> source_te
 	v8::Local<v8::String> resource_name{};
 	(void)maybe_resource_name.ToLocal(&resource_name);
 	auto location = source_origin.location.value_or(source_location{});
-	v8::ScriptOrigin origin{
+	const auto origin = v8::ScriptOrigin{
 		resource_name,
 		location.line,
 		location.column,
@@ -107,7 +107,7 @@ auto js_module::compile(const agent_lock& agent, v8::Local<v8::String> source_te
 	};
 	v8::ScriptCompiler::Source source{source_text, origin};
 	auto module_handle = v8::ScriptCompiler::CompileModule(agent->isolate(), &source).ToLocalChecked();
-	v8::Global<v8::Module> module_global{agent->isolate(), module_handle};
+	const auto module_global = v8::Global<v8::Module>{agent->isolate(), module_handle};
 	if (source_origin.name) {
 		agent->weak_module_specifiers().emplace(agent, std::pair{module_handle, *std::move(source_origin.name)});
 	}

@@ -126,7 +126,7 @@ constexpr auto transfer_with(
 
 	// cast subject to `T&&` or `const T&`. otherwise the `auto&&` parameters will accept too many
 	// value categories.
-	using subject_value_type = type_t<[]() consteval {
+	using subject_value_type = type_t<[]() consteval -> auto {
 		using value_type = decltype(value);
 		if constexpr (std::is_rvalue_reference_v<value_type>) {
 			// `T&&`
@@ -137,7 +137,7 @@ constexpr auto transfer_with(
 		}
 	}()>;
 
-	transfer_holder<visit_type, accept_type> visit_and_accept{std::move(visit_args), std::move(accept_args)};
+	auto visit_and_accept = transfer_holder<visit_type, accept_type>{std::move(visit_args), std::move(accept_args)};
 	visit_type& visit = visit_and_accept;
 	const accept_type& accept = visit_and_accept;
 	return visit(subject_value_type(std::forward<decltype(value)>(value)), accept);

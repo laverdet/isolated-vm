@@ -95,7 +95,7 @@ struct null_reference_map {
 		explicit null_reference_map(auto&&... /*args*/) {}
 
 		template <class Accept>
-		constexpr auto lookup_or_visit(const Accept& /*accept*/, auto /*subject*/, auto dispatch) const -> accept_target_t<Accept> {
+		[[nodiscard]] constexpr auto lookup_or_visit(const Accept& /*accept*/, auto /*subject*/, auto dispatch) const -> accept_target_t<Accept> {
 			return dispatch();
 		}
 };

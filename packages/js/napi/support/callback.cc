@@ -71,7 +71,7 @@ auto make_napi_callback(Environment& env, std::invocable<Environment&, const cal
 				return invoke(env, args);
 			});
 		}};
-		void* data{};
+		const void* data{};
 		std::memcpy(&data, &function, sizeof(function_type));
 		auto callback_ptr = std::pair{callback, data};
 		return std::pair{std::move(callback_ptr), nullptr};

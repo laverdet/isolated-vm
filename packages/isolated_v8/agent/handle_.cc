@@ -79,12 +79,12 @@ auto agent_handle<Type>::make(cluster& cluster, auto make_environment, behavior_
 			callback = std::move(callback),
 			params = params ](
 			const std::stop_token& /*stop_token*/
-		) mutable {
+		) mutable -> auto {
 			{
 				auto host = std::make_shared<agent_host_of<Type>>(cluster.scheduler(), runner, params);
 				auto isolate_lock = js::iv8::isolate_execution_lock{host->isolate()};
 				auto agent_lock = lock{isolate_lock, *host};
-				host->initialize_environment([ & ]() {
+				host->initialize_environment([ & ]() -> auto {
 					return std::invoke(std::move(make_environment), agent_lock);
 				});
 				std::invoke(std::move(callback), agent_lock, agent_handle{host, agent_host::acquire_severable(host)});

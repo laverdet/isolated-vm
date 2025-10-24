@@ -28,9 +28,9 @@ class reference_storage_of {
 		constexpr explicit reference_storage_of(Type value) :
 				references_{std::move(value)} {}
 
-		constexpr auto at(reference_type reference) const& -> const Type& { return references_.at(reference.id()); }
-		constexpr auto at(reference_type reference) & -> Type& { return references_.at(reference.id()); }
-		constexpr auto at(reference_type reference) && -> Type { return std::move(references_).at(reference.id()); }
+		[[nodiscard]] constexpr auto at(reference_type reference) const& -> const Type& { return references_.at(reference.id()); }
+		[[nodiscard]] constexpr auto at(reference_type reference) & -> Type& { return references_.at(reference.id()); }
+		[[nodiscard]] constexpr auto at(reference_type reference) && -> Type { return std::move(references_).at(reference.id()); }
 
 		constexpr auto allocate() -> reference_type {
 			references_.emplace_back();
@@ -57,7 +57,7 @@ class reference_storage : public reference_storage_of<Types>... {
 		template <class Value>
 			requires(... || (type<Value> == type<Types>))
 		constexpr explicit reference_storage(Value value) :
-				reference_storage_of<Types>{[ & ]() {
+				reference_storage_of<Types>{[ & ]() -> auto {
 					constexpr auto constructor = util::constructor<reference_storage_of<Types>>;
 					if constexpr (type<Value> == type<Types>) {
 						return util::elide{constructor, std::move(value)};

@@ -29,8 +29,8 @@ export struct direct_address_equal final : virtual_address_equal {
 
 export struct indirect_address_equal final : virtual_address_equal {
 		auto operator()(napi_value left, napi_value right) const -> bool final {
-			auto* indirect_left = std::bit_cast<void**>(left);
-			auto* indirect_right = std::bit_cast<void**>(right);
+			auto* indirect_left = reinterpret_cast<void**>(left);
+			auto* indirect_right = reinterpret_cast<void**>(right);
 			return *indirect_left == *indirect_right;
 		}
 };
@@ -44,7 +44,7 @@ export struct indirect_address_hash : std::hash<void*> {
 
 	public:
 		auto operator()(napi_value value) const -> std::size_t {
-			auto* indirect_handle = std::bit_cast<void**>(value);
+			auto* indirect_handle = reinterpret_cast<void**>(value);
 			return (*this)(*indirect_handle);
 		}
 };

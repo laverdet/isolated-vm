@@ -113,7 +113,7 @@ static_assert(object_numeric.integer == 1);
 
 // Throwable values
 using object_test_variant = std::variant<int, double, std::string>;
-constexpr auto dictionary_values_test = []() {
+constexpr auto dictionary_values_test = []() -> auto {
 	return dictionary{
 		std::in_place,
 		std::pair{"integer"s, object_test_variant{1}},

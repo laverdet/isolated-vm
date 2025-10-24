@@ -7,9 +7,9 @@ FILE="$1"
 shift
 
 replace() {
-	sed -E "s/(\s*#)/__REMOVE_PRE__\1/" | \
+	sed -E -e "s/(\s*#)/__REMOVE_PRE__\1/" -e "s/^\s*\/\/([A-Za-z0-9 ()_\-]+$)/__COMMENT__\1/" | \
 	cpp -E "$@" | \
-	sed -E "s/__REMOVE_PRE__//" | \
+	sed -E -e "s/__REMOVE_PRE__//" -e "s/__COMMENT__/\/\//" | \
 	grep -Ev "^# [01]"
 }
 

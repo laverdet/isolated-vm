@@ -59,7 +59,7 @@ struct accept<Meta, std::variant<Types...>> {
 			const auto [... indices ] = util::sequence<sizeof...(Types)>;
 			return util::sealed_map{
 				std::in_place,
-				[ & ]() constexpr {
+				[ & ]() constexpr -> auto {
 					const auto& alternative = std::get<indices>(descriptor_type::alternatives);
 					return std::pair{util::djb2_hash(alternative.discriminant), &accept_alternative<indices, Visit, Value>};
 				}()...,

@@ -63,7 +63,7 @@ export class js_module {
 
 auto js_module::compile(const agent_lock& agent, auto&& source_text, source_origin source_origin) -> js_module {
 	// nb: Context lock is needed for compilation errors
-	js::iv8::context_managed_lock context_lock{agent, agent->scratch_context()};
+	const auto context_lock = js::iv8::context_managed_lock{agent, agent->scratch_context()};
 	auto local_source_text = js::transfer_in_strict<v8::Local<v8::String>>(std::forward<decltype(source_text)>(source_text), agent);
 	return compile(agent, local_source_text, std::move(source_origin));
 }
@@ -142,7 +142,7 @@ auto js_module::link(const realm::scope& realm, auto callback) -> void {
 			});
 		auto attributes_vector = module_request::attributes_type{std::from_range, std::move(attributes_view)};
 		auto result = std::invoke([ & ]() -> decltype(auto) {
-			js::iv8::isolate_unlock unlocker{realm};
+			const auto unlocker = js::iv8::isolate_unlock{realm};
 			return thread_callback(
 				std::move(specifier_string),
 				std::move(referrer_name),

@@ -1,5 +1,5 @@
 module;
-#include <stdexcept>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 export module isolated_js:enum_.accept;
@@ -27,7 +27,7 @@ struct accept<void, Enum> {
 			const auto [... indices ] = util::sequence<enum_values<Enum>::values.size()>;
 			return util::sealed_map{
 				std::in_place,
-				[ & ]() constexpr {
+				[ & ]() constexpr -> auto {
 					const auto& value = std::get<indices>(enum_values<Enum>::values);
 					return std::pair{util::djb2_hash(std::string_view{value.first}), value.second};
 				}()...,

@@ -50,9 +50,12 @@ template <class Type>
 auto untagged_external<Type>::make(const auto& env, auto&&... args) -> napi_value
 	requires std::constructible_from<Type, decltype(args)...> {
 	auto instance = std::make_unique<untagged_external>(private_constructor{}, std::forward<decltype(args)>(args)...);
-	return js::napi::apply_finalizer(std::move(instance), [ & ](untagged_external* data, napi_finalize finalize, void* hint) {
-		return js::napi::invoke(napi_create_external, napi_env{env}, data, finalize, hint);
-	});
+	return js::napi::apply_finalizer(
+		std::move(instance),
+		[ & ](untagged_external* data, napi_finalize finalize, void* hint) -> auto {
+			return js::napi::invoke(napi_create_external, napi_env{env}, data, finalize, hint);
+		}
+	);
 }
 
 } // namespace js::napi

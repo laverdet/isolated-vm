@@ -119,7 +119,7 @@ auto timer_thread::dispatch(Invocable invocable, auto&&... args) {
 		[ invocable = std::move(invocable),
 			... args = std::forward<decltype(args)>(args) ](
 			timer_queue_type& queue
-		) mutable {
+		) mutable -> void {
 			return invocable(queue, std::forward<decltype(args)>(args)...);
 		}
 	};

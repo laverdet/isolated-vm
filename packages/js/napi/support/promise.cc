@@ -26,7 +26,7 @@ auto make_promise(Environment& env, Accept accept) {
 			auto&&... args
 		) -> void {
 		auto& env = Environment::unsafe_get(env_ptr);
-		js::napi::handle_scope scope{napi_env{env}};
+		const auto scope = js::napi::handle_scope{napi_env{env}};
 		env.scheduler().decrement_ref();
 		try {
 			auto result = js::transfer_in<napi_value>(accept(env, std::forward<decltype(args)>(args)...), env);

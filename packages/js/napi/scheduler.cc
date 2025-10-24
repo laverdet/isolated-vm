@@ -16,7 +16,7 @@ auto uv_scheduler::close() -> void {
 	// always async but I'm not sure of it.
 	assert((*async_)->thread_id == std::this_thread::get_id());
 	[[maybe_unused]] auto abandoned_tasks =
-		std::invoke([ & ]() {
+		std::invoke([ & ]() -> auto {
 			assert((*async_)->thread_id == std::this_thread::get_id());
 			auto lock = (*async_)->shared.write();
 			lock->is_open = false;
@@ -46,7 +46,7 @@ auto uv_scheduler::open(uv_loop_t* loop) -> void {
 	auto& async = *async_;
 	assert(async->thread_id == std::this_thread::get_id());
 	async->shared.write()->is_open = true;
-	async.open(uv_async_init, loop, [](uv_async_t* async_handle) {
+	async.open(uv_async_init, loop, [](uv_async_t* async_handle) -> void {
 		auto& async = *handle_type::unwrap(async_handle);
 		auto tasks = std::exchange(async->shared.write()->tasks, {});
 		for (auto& task : tasks) {

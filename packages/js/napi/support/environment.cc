@@ -17,8 +17,8 @@ export class environment : util::non_moveable, public uv_schedulable {
 		explicit environment(napi_env env) :
 				env_{env},
 				uses_direct_handles_{[ & ]() -> bool {
-					direct_address_equal direct_equal{};
-					indirect_address_equal indirect_equal{};
+					const auto direct_equal = direct_address_equal{};
+					const auto indirect_equal = indirect_address_equal{};
 					auto* array = napi::invoke(napi_create_array_with_length, env, 1);
 					napi::invoke0(napi_set_element, env, array, 0, array);
 					auto* result = napi::invoke(napi_get_element, env, array, 0);
@@ -48,11 +48,13 @@ export class environment : util::non_moveable, public uv_schedulable {
 // CRTP helper to instantiate an environment and attach it to the napi context
 export template <class Type>
 class environment_of : public environment {
-	protected:
 		friend Type;
+
+	private:
 		explicit environment_of(napi_env env) :
 				environment{env} {}
 
+	protected:
 	public:
 		static auto unsafe_get(napi_env env) -> Type& {
 			return *static_cast<Type*>(js::napi::invoke(napi_get_instance_data, env));
@@ -80,7 +82,7 @@ class environment_scope {
 				env_{&env} {}
 
 		explicit operator napi_env() const { return napi_env{*env_}; }
-		auto environment() const -> Type& { return *env_; }
+		[[nodiscard]] auto environment() const -> Type& { return *env_; }
 
 	private:
 		Type* env_;

@@ -205,7 +205,7 @@ auto create_capability(
 			env.scheduler()(
 				[ &env,
 					capability_callback,
-					params = std::move(params) ]() {
+					params = std::move(params) ]() mutable {
 					capability_callback(env, std::move(params));
 				}
 			);
@@ -219,11 +219,11 @@ auto create_capability(
 		}
 	);
 	agent->schedule(
-		[ invoke_capability = std::move(invoke_capability),
-			dispatch = std::move(dispatch) ](
+		[ dispatch = std::move(dispatch) ](
 			const agent_handle::lock& lock,
 			agent_handle agent,
-			create_capability_options options
+			create_capability_options options,
+			auto invoke_capability
 		) {
 			auto make_interface = [ & ]() {
 				return std::make_tuple(
@@ -234,7 +234,8 @@ auto create_capability(
 			dispatch(std::move(agent), std::move(module_));
 		},
 		*agent,
-		std::move(options)
+		std::move(options),
+		std::move(invoke_capability)
 	);
 	return js::forward{promise};
 }
