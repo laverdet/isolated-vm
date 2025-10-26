@@ -5,6 +5,7 @@ export module nodejs:js_native_api;
 
 export using ::napi_add_finalizer;
 export using ::napi_call_function;
+export using ::napi_check_object_type_tag;
 export using ::napi_close_handle_scope;
 export using ::napi_create_array_with_length;
 export using ::napi_create_array;
@@ -65,6 +66,7 @@ export using ::napi_resolve_deferred;
 export using ::napi_set_element;
 export using ::napi_set_instance_data;
 export using ::napi_set_property;
+export using ::napi_type_tag_object;
 export using ::napi_typeof;
 export using ::node_api_create_property_key_latin1;
 export using ::node_api_create_property_key_utf16;

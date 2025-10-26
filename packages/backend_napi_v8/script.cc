@@ -37,7 +37,7 @@ auto compile_script(
 		env,
 		[](environment& env, expected_type script) -> auto {
 			return make_completion_record(env, std::move(script).transform([ & ](isolated_v8::script_shared_remote_type script) {
-				return js::forward{js::napi::untagged_external<isolated_v8::script_shared_remote_type>::make(env, std::move(script))};
+				return js::forward{js::napi::make_tagged_external<isolated_v8::script_shared_remote_type>(env, std::move(script))};
 			}));
 		}
 	);
@@ -59,7 +59,7 @@ auto compile_script(
 
 auto run_script(
 	environment& env,
-	js::napi::untagged_external<isolated_v8::script_shared_remote_type>& script,
+	js::tagged_external_of<isolated_v8::script_shared_remote_type>& script,
 	js::napi::untagged_external<realm_handle>& realm,
 	run_script_options options
 ) {

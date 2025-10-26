@@ -31,6 +31,7 @@ target_sources(value_js
 		transfer/visit.cc
 		tuple/accept.cc
 		tuple/visit.cc
+		type/external.cc
 		type/function.cc
 		type/property.cc
 		union/accept.cc

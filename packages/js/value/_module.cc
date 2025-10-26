@@ -3,6 +3,7 @@ export import :deferred_receiver;
 export import :dictionary.vector_of;
 export import :enum_.types;
 export import :error;
+export import :external;
 export import :function;
 export import :property;
 export import :reference_of;

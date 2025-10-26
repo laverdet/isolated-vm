@@ -1,9 +1,11 @@
 module;
 #include <concepts>
 #include <memory>
+#include <type_traits>
 export module napi_js:external;
 import :api;
 import :bound_value;
+import :callback;
 import :finalizer;
 import :value;
 import isolated_js;
@@ -15,7 +17,11 @@ template <>
 class bound_value<external_tag> : public detail::bound_value_next<external_tag> {
 	public:
 		using detail::bound_value_next<external_tag>::bound_value_next;
+
 		[[nodiscard]] explicit operator void*() const;
+
+		template <class Type>
+		[[nodiscard]] auto contains(std::type_identity<Type> /*type*/) const -> bool;
 };
 
 export template <class Type>
@@ -40,10 +46,33 @@ class untagged_external
 		Type value;
 };
 
+export template <class Type, class... Args>
+auto make_tagged_external(auto& env, Args&&... args) -> value<external_tag>
+	requires std::constructible_from<Type, decltype(args)...> {
+	auto instance = std::make_unique<tagged_external_of<Type>>(std::forward<decltype(args)>(args)...);
+	constexpr auto deleter = [](tagged_external* external) -> void {
+		delete static_cast<tagged_external_of<Type>*>(external);
+	};
+	auto downcast_instance = std::unique_ptr<tagged_external, decltype(deleter)>{instance.release(), deleter};
+	auto external_value = js::napi::apply_finalizer(
+		std::move(downcast_instance),
+		[ & ](tagged_external* data, napi_finalize finalize, void* hint) -> auto {
+			return js::napi::invoke(napi_create_external, napi_env{env}, data, finalize, hint);
+		}
+	);
+	js::napi::invoke0(napi_type_tag_object, napi_env{env}, napi_value{external_value}, &type_tag_for<tagged_external>);
+	return value<external_tag>::from(external_value);
+}
+
 // ---
 
 bound_value<external_tag>::operator void*() const {
 	return js::napi::invoke(napi_get_value_external, env(), napi_value{*this});
+}
+
+template <class Type>
+auto bound_value<external_tag>::contains(std::type_identity<Type> /*type*/) const -> bool {
+	return js::napi::invoke(napi_check_object_type_tag, env(), napi_value{*this}, &type_tag_for<Type>);
 }
 
 template <class Type>

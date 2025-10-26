@@ -21,6 +21,11 @@ template <class Environment>
 thread_local Environment* env_local = nullptr;
 } // namespace
 
+// Common declaration for `napi_type_tag` by type
+// Nb: `std::type_info::hash_code()` is not constexpr
+template <class Type>
+const auto type_tag_for = napi_type_tag{.lower = typeid(Type).hash_code(), .upper = 0};
+
 // Converts any invocable into a `napi_callback` and data pointer for use in napi API calls. The
 // result is a `std::pair` where the first element is another pair of the callback pointer and data
 // pointer. The second element is either a `nullptr` or a `std::unique_ptr<T>` which should be

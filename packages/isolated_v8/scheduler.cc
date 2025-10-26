@@ -26,7 +26,7 @@ class member : util::non_moveable {
 		member() = default;
 
 	public:
-		auto self(this auto& self) -> auto& { return static_cast<util::apply_cv_ref_t<decltype(self), Type>>(self); }
+		auto self(this auto& self) -> auto& { return static_cast<util::apply_cvref_t<decltype(self), Type>>(self); }
 
 	private:
 		intrusive_list_hook hook_;

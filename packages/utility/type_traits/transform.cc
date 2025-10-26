@@ -58,9 +58,9 @@ using apply_cv_t = apply_cv<From, To>::type;
 
 // Copy cv-qualifiers and reference category of `From` to `To`
 export template <class From, class To>
-struct apply_cv_ref : apply_ref<From, apply_cv_t<From, To>> {};
+struct apply_cvref : apply_ref<From, apply_cv_t<From, To>> {};
 
 export template <class From, class To>
-using apply_cv_ref_t = apply_cv_ref<From, To>::type;
+using apply_cvref_t = apply_cvref<From, To>::type;
 
 } // namespace util

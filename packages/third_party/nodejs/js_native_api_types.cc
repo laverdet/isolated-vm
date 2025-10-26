@@ -17,6 +17,7 @@ export using ::napi_callback;
 export using ::napi_extended_error_info;
 export using ::napi_finalize;
 export using ::napi_property_descriptor;
+export using ::napi_type_tag;
 export using ::node_api_basic_finalize;
 export using ::node_api_nogc_finalize;
 

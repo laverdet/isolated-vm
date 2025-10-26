@@ -18,7 +18,7 @@ class virtual_covariant : public pointer_facade {
 				value_{std::move(value)} {}
 
 		constexpr auto operator*(this auto& self) -> auto& {
-			using reference_type = util::apply_cv_ref_t<decltype(self), Type>;
+			using reference_type = util::apply_cvref_t<decltype(self), Type>;
 			if (self.value_.index() == std::variant_npos) {
 				std::unreachable();
 			} else {
