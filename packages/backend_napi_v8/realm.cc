@@ -65,11 +65,11 @@ realm_handle::realm_handle(agent_handle agent, isolated_v8::realm realm) :
 		realm_{std::move(realm)} {}
 
 auto realm_handle::make_create_realm(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::make_static_function<create_realm>());
+	return js::napi::value<js::function_tag>::make(env, js::free_function{create_realm});
 }
 
 auto realm_handle::make_instantiate_runtime(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::make_static_function<instantiate_runtime>());
+	return js::napi::value<js::function_tag>::make(env, js::free_function{instantiate_runtime});
 }
 
 } // namespace backend_napi_v8

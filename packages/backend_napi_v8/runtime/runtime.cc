@@ -20,8 +20,8 @@ auto performance_time(const isolated_v8::realm::scope& /*realm*/) -> double {
 }
 
 runtime_interface::runtime_interface(const isolated_v8::agent_lock& agent) :
-		clock_time_{isolated_v8::function_template::make(agent, js::make_static_function<clock_time>())},
-		performance_time_{isolated_v8::function_template::make(agent, js::make_static_function<performance_time>())} {
+		clock_time_{isolated_v8::function_template::make(agent, js::free_function{clock_time})},
+		performance_time_{isolated_v8::function_template::make(agent, js::free_function{performance_time})} {
 }
 
 auto runtime_interface::instantiate(const isolated_v8::realm::scope& realm) -> isolated_v8::js_module {

@@ -240,19 +240,19 @@ auto create_capability(
 }
 
 auto module_handle::make_compile_module(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::make_static_function<compile_module>());
+	return js::napi::value<js::function_tag>::make(env, js::free_function{compile_module});
 }
 
 auto module_handle::make_create_capability(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::make_static_function<create_capability>());
+	return js::napi::value<js::function_tag>::make(env, js::free_function{create_capability});
 }
 
 auto module_handle::make_evaluate_module(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::make_static_function<evaluate_module>());
+	return js::napi::value<js::function_tag>::make(env, js::free_function{evaluate_module});
 }
 
 auto module_handle::make_link_module(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::make_static_function<link_module>());
+	return js::napi::value<js::function_tag>::make(env, js::free_function{link_module});
 }
 
 } // namespace backend_napi_v8

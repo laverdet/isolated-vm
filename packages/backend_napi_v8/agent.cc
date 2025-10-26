@@ -74,7 +74,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 }
 
 auto make_create_agent(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::make_static_function<create_agent>());
+	return js::napi::value<js::function_tag>::make(env, js::free_function{create_agent});
 }
 
 } // namespace backend_napi_v8

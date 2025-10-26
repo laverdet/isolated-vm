@@ -5,6 +5,8 @@ target_sources(ivm_utility
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		container/sealed_map.cc
+		functional/bind.cc
+		functional/function_constant.cc
 		functional/function.cc
 		lockable.cc
 		memory/autorelease_pool.cc
@@ -14,6 +16,7 @@ target_sources(ivm_utility
 		ranges.cc
 		timer_.cc
 		tuple.cc
+		type_traits/function_traits.cc
 		type_traits/transform.cc
 		type_traits/type_of.cc
 		type_traits/type_pack.cc

@@ -2,8 +2,8 @@ module;
 #include <functional>
 #include <utility>
 export module ivm.utility:functional;
-import :utility;
-import :tuple;
+export import :functional.bind;
+export import :functional.function_constant;
 
 namespace util {
 
@@ -56,31 +56,6 @@ export template <class InvokeAsType_>
 constexpr auto invoke_as(auto&& func, auto&&... args) -> decltype(auto) {
 	return std::forward<decltype(func)>(func).InvokeAsType_::operator()(std::forward<decltype(args)>(args)...);
 }
-
-// Captures the given parameters in way such that empty objects yield an empty invocable. See:
-//   static_assert(std::is_empty_v<decltype([]() {})>);
-//   static_assert(!std::is_empty_v<decltype([ a = std::monostate{} ]() {})>);
-export template <class Invocable, class... Params>
-class bind_parameters;
-
-template <class Invocable, class... Params>
-class bind_parameters {
-	public:
-		bind_parameters() = default;
-		constexpr explicit bind_parameters(Invocable invocable, Params... params) :
-				invocable_{std::move(invocable)},
-				params_{std::move(params)...} {}
-
-		constexpr auto operator()(auto&&... args) -> decltype(auto)
-			requires std::invocable<Invocable&, Params&..., decltype(args)...> {
-			const auto [... indices ] = util::sequence<sizeof...(Params)>;
-			return invocable_(get<indices>(params_)..., std::forward<decltype(args)>(args)...);
-		}
-
-	private:
-		[[no_unique_address]] Invocable invocable_;
-		[[no_unique_address]] flat_tuple<Params...> params_;
-};
 
 // Invoke the given function with the constant expression matching a runtime value.
 export constexpr auto template_switch(const auto& value, auto case_pack, auto invoke) -> decltype(auto) {

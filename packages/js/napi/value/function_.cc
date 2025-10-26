@@ -42,7 +42,7 @@ template <class Signature>
 struct invoke_callback;
 
 template <class Result, class Environment, class... Args>
-struct invoke_callback<Result(Environment, Args...)> {
+struct invoke_callback<auto(Environment, Args...)->Result> {
 		auto operator()(auto& env, const callback_info& info, auto& invocable) {
 			auto run = util::regular_return{[ & ]() -> decltype(auto) {
 				return std::apply(
@@ -80,8 +80,8 @@ template <class Environment>
 auto value<function_tag>::make(Environment& env, auto function) -> value<function_tag> {
 	using function_type = std::remove_cvref_t<decltype(function.callback)>;
 	using signature_type = util::function_signature_t<function_type>;
-	auto trampoline = util::bind_parameters{
-		[](auto& callback, Environment& env, const callback_info& info) -> napi_value {
+	auto trampoline = util::bind{
+		[](function_type& callback, Environment& env, const callback_info& info) -> napi_value {
 			return invoke_callback<signature_type>{}(env, info, callback);
 		},
 		std::move(function.callback)

@@ -1,4 +1,5 @@
 module;
+#include <bit>
 #include <tuple>
 #include <type_traits>
 export module isolated_v8:function;
@@ -34,7 +35,7 @@ template <class Signature>
 struct invoke_callback;
 
 template <class Result, class... Args>
-struct invoke_callback<Result(const realm::scope&, Args...)> {
+struct invoke_callback<auto(const realm::scope&, Args...)->Result> {
 		constexpr static auto length = sizeof...(Args);
 
 		auto operator()(const v8::FunctionCallbackInfo<v8::Value>& info, auto& invocable) -> void {
@@ -70,7 +71,14 @@ auto function_template::make(const agent_lock& agent, auto function) -> function
 		auto fn_template = v8::FunctionTemplate::New(agent.isolate(), callback, {}, {}, invoke_callback<signature_type>::length, v8::ConstructorBehavior::kThrow);
 		return function_template{agent, fn_template};
 	} else if constexpr (sizeof(function_type) == sizeof(void*) && std::is_trivially_destructible_v<function_type>) {
-		static_assert(false, "Not implemented");
+		auto external = v8::External::New(agent.isolate(), std::bit_cast<void*>(function.callback));
+		v8::FunctionCallback callback = [](const v8::FunctionCallbackInfo<v8::Value>& info) {
+			auto callback = std::bit_cast<function_type>(info.Data().As<v8::External>()->Value());
+			invoke_callback<signature_type> invoke{};
+			invoke(info, callback);
+		};
+		auto fn_template = v8::FunctionTemplate::New(agent.isolate(), callback, external, {}, invoke_callback<signature_type>::length, v8::ConstructorBehavior::kThrow);
+		return function_template{agent, fn_template};
 	} else {
 		auto external = make_collected_external<function_type>(agent, agent->autorelease_pool(), std::move(function.callback));
 		v8::FunctionCallback callback = [](const v8::FunctionCallbackInfo<v8::Value>& info) {
