@@ -2,6 +2,7 @@ export module napi_js;
 export import :accept;
 // should be removed
 export import :api;
+export import :class_;
 export import :environment;
 export import :external;
 export import :function;

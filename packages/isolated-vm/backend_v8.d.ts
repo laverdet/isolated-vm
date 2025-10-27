@@ -2,7 +2,10 @@ declare module "backend_v8.node" {
 	class Agent { readonly #private; }
 	class Module { readonly #private; }
 	class Realm { readonly #private; }
-	class Script { readonly #private; }
+
+	class Script {
+		run(realm: Realm, options: RunScriptOptions | undefined): Promise<MaybeCompletionOf<unknown>>;
+	}
 
 	type Callback<Type> = [
 		(error: unknown | null, value?: Type) => void,
@@ -44,7 +47,6 @@ declare module "backend_v8.node" {
 		evaluateModule: (realm: Realm, module: Module) => Promise<unknown>;
 		instantiateRuntime: (realm: Realm) => Promise<Module>;
 		linkModule: (realm: Realm, module: Module, linker: ModuleLinker) => Promise<void>;
-		runScript: (script: Script, realm: Realm, options: RunScriptOptions | undefined) => Promise<MaybeCompletionOf<unknown>>;
 	};
 	export default exports;
 }

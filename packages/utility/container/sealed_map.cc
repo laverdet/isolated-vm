@@ -52,8 +52,12 @@ class sealed_map {
 						auto projection = [](const auto& entry) constexpr { return entry.first; };
 						auto duplicate = std::ranges::adjacent_find(values, std::equal_to{}, projection);
 						if (duplicate != values.end()) {
+							constexpr auto render = util::overloaded{
+								[](const auto& /*value*/) constexpr -> std::string { return "[??]"; },
+								[](std::string value) constexpr -> std::string { return value; },
+							};
 							// This error message can't actually render in constexpr but it's the thought that counts.
-							throw std::logic_error{std::format("Duplicate key {}", projection(*duplicate))};
+							throw std::logic_error{std::format("Duplicate key {}", render(projection(*duplicate)))};
 						}
 						// nb: It's not a pessimization because `values` is a capture
 						return std::move(values);

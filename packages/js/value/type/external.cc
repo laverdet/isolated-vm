@@ -4,7 +4,6 @@ module;
 #include <span>
 #include <typeinfo>
 export module isolated_js:external;
-import ivm.utility;
 
 namespace js {
 
@@ -40,11 +39,6 @@ class tagged_external_of : public tagged_external, public Type {
 			requires std::constructible_from<Type, decltype(args)...> :
 				tagged_external{tags_},
 				Type{std::forward<decltype(args)>(args)...} {}
-
-		template <class Self>
-		constexpr auto operator*(this Self&& self) -> util::apply_cvref_t<Self, Type> {
-			return std::forward<Self>(self);
-		}
 
 	private:
 		constexpr static auto tags_ = std::array{&typeid(Type), &typeid(Rest)...};

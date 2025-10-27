@@ -3,7 +3,6 @@ module;
 #include <utility>
 export module napi_js:reference;
 import :api;
-import :environment;
 import :value;
 import ivm.utility;
 
@@ -71,13 +70,13 @@ class reference : public reference<typename Tag::tag_type> {
 		using value_type = value<Tag>;
 		using reference<typename Tag::tag_type>::reference;
 
-		reference(const environment& env, value_type value) :
+		reference(const auto& env, value_type value) :
 				reference<typename Tag::tag_type>{napi_env{env}, napi_value{value}} {}
 
 		explicit operator bool() const { return detail::reference_handle::operator bool(); }
-		[[nodiscard]] auto get(const environment& env) const -> value_type { return value_type::from(this->get_value(napi_env{env})); }
+		[[nodiscard]] auto get(const auto& env) const -> value_type { return value_type::from(this->get_value(napi_env{env})); }
 
-		auto reset(const environment& env, value_type value) -> void { detail::reference_handle::reset(napi_env{env}, napi_value{value}); }
+		auto reset(const auto& env, value_type value) -> void { detail::reference_handle::reset(napi_env{env}, napi_value{value}); }
 };
 
 template <class Tag>

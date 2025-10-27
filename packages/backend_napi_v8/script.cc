@@ -37,7 +37,7 @@ auto compile_script(
 		env,
 		[](environment& env, expected_type script) -> auto {
 			return make_completion_record(env, std::move(script).transform([ & ](isolated_v8::script_shared_remote_type script) {
-				return js::forward{js::napi::make_tagged_external<isolated_v8::script_shared_remote_type>(env, std::move(script))};
+				return js::forward{script_handle::class_template(env).construct(env, std::move(script))};
 			}));
 		}
 	);
@@ -58,8 +58,8 @@ auto compile_script(
 }
 
 auto run_script(
+	js::tagged_external_of<script_handle>& script_handle,
 	environment& env,
-	js::tagged_external_of<isolated_v8::script_shared_remote_type>& script,
 	js::napi::untagged_external<realm_handle>& realm,
 	run_script_options options
 ) {
@@ -71,7 +71,7 @@ auto run_script(
 	realm->agent().schedule(
 		[ options = options,
 			realm = realm->realm(),
-			script = *script ](
+			script_remote = script_handle.script() ](
 			const agent_handle::lock& agent,
 			auto dispatch
 		) -> void {
@@ -88,7 +88,7 @@ auto run_script(
 							}
 						};
 					});
-				return isolated_v8::run_script(realm, script->deref(agent));
+				return isolated_v8::run_script(realm, script_remote->deref(agent));
 			});
 			dispatch(std::move(result));
 		},
@@ -101,8 +101,14 @@ auto make_compile_script(environment& env) -> js::napi::value<js::function_tag> 
 	return js::napi::value<js::function_tag>::make(env, js::free_function{compile_script});
 }
 
-auto make_run_script(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::free_function{run_script});
+auto script_handle::class_template(environment& env) -> js::napi::value<class_tag_of<script_handle>> {
+	return env.class_template(
+		std::type_identity<script_handle>{},
+		js::class_template{
+			js::class_constructor{util::cw<u8"Script">},
+			js::class_method{util::cw<u8"run">, run_script},
+		}
+	);
 }
 
 } // namespace backend_napi_v8

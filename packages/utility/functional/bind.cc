@@ -1,4 +1,5 @@
 module;
+#include <type_traits>
 #include <utility>
 export module ivm.utility:functional.bind;
 import :type_traits;
@@ -38,12 +39,23 @@ class bind : public bind_with_params_t<Invocable, Params...> {
 
 template <class Invocable, class... Args, bool Nx, class Result, class... Params>
 class bind_with<Invocable, auto(Args...) noexcept(Nx)->Result, Params...> {
+	private:
+		constexpr static auto const_invocable = std::is_invocable_v<const Invocable&, const Params&..., Args...>;
+
 	public:
+		bind_with() = default;
 		constexpr explicit bind_with(Invocable invocable, Params... params) :
 				invocable_{std::move(invocable)},
 				params_{std::move(params)...} {}
 
-		constexpr auto operator()(Args... args) noexcept(Nx) -> Result {
+		constexpr auto operator()(Args... args) noexcept(Nx) -> Result
+			requires(!const_invocable) {
+			const auto [... indices ] = util::sequence<sizeof...(Params)>;
+			return invocable_(get<indices>(params_)..., std::forward<decltype(args)>(args)...);
+		}
+
+		constexpr auto operator()(Args... args) const noexcept(Nx) -> Result
+			requires const_invocable {
 			const auto [... indices ] = util::sequence<sizeof...(Params)>;
 			return invocable_(get<indices>(params_)..., std::forward<decltype(args)>(args)...);
 		}
@@ -55,7 +67,8 @@ class bind_with<Invocable, auto(Args...) noexcept(Nx)->Result, Params...> {
 
 // Strip the first N parameters from the signature
 template <class First, class... Args, bool Nx, class Result, std::size_t Count>
-struct bind_signature<auto(First, Args...) noexcept(Nx)->Result, Count> : std::type_identity<auto(Args...) noexcept(Nx)->Result> {};
+	requires(Count > 0)
+struct bind_signature<auto(First, Args...) noexcept(Nx)->Result, Count> : bind_signature<auto(Args...) noexcept(Nx)->Result, Count - 1> {};
 
 template <class... Args, bool Nx, class Result>
 struct bind_signature<auto(Args...) noexcept(Nx)->Result, 0> : std::type_identity<auto(Args...) noexcept(Nx)->Result> {};

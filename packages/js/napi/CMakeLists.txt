@@ -24,6 +24,7 @@ target_sources(napi_js
 		support/scheduler.cc
 		support/utility.cc
 		value/array_.cc
+		value/class_.cc
 		value/dictionary_.cc
 		value/external_.cc
 		value/function_.cc

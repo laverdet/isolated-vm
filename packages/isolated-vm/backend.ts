@@ -33,4 +33,3 @@ export const createRealm: typeof backend.createRealm = backend.createRealm;
 export const evaluateModule: typeof backend.evaluateModule = backend.evaluateModule;
 export const instantiateRuntime: typeof backend.instantiateRuntime = backend.instantiateRuntime;
 export const linkModule: typeof backend.linkModule = backend.linkModule;
-export const runScript: typeof backend.runScript = backend.runScript;

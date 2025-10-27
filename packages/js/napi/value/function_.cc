@@ -36,27 +36,6 @@ class value<function_tag> : public detail::value_next<function_tag> {
 
 // ---
 
-// Helper specializing against a function signature to transfer out the arguments, and transfer in
-// the result.
-template <class Signature>
-struct invoke_callback;
-
-template <class Result, class Environment, class... Args>
-struct invoke_callback<auto(Environment, Args...)->Result> {
-		auto operator()(auto& env, const callback_info& info, auto& invocable) {
-			auto run = util::regular_return{[ & ]() -> decltype(auto) {
-				return std::apply(
-					invocable,
-					std::tuple_cat(
-						std::forward_as_tuple(env),
-						js::transfer_out<std::tuple<Args...>>(info.arguments(), env)
-					)
-				);
-			}};
-			return js::transfer_in_strict<napi_value>(run(), env);
-		}
-};
-
 template <class Result>
 auto value<function_tag>::apply(auto& env, auto&& args) -> Result {
 	auto arg_values = js::transfer_in_strict<std::vector<napi_value>>(std::forward<decltype(args)>(args), env);
@@ -78,17 +57,9 @@ auto value<function_tag>::invoke(auto& env, std::span<napi_value> args) -> Resul
 
 template <class Environment>
 auto value<function_tag>::make(Environment& env, auto function) -> value<function_tag> {
-	using function_type = std::remove_cvref_t<decltype(function.callback)>;
-	using signature_type = util::function_signature_t<function_type>;
-	auto trampoline = util::bind{
-		[](function_type& callback, Environment& env, const callback_info& info) -> napi_value {
-			return invoke_callback<signature_type>{}(env, info, callback);
-		},
-		std::move(function.callback)
-	};
-	auto [ callback_ptr, finalizer ] = make_napi_callback(env, std::move(trampoline));
+	auto [ callback, data, finalizer ] = make_napi_callback(env, make_free_function<Environment>(std::move(function).callback));
 	const auto make = [ & ]() -> value<function_tag> {
-		return value<function_tag>::from(js::napi::invoke(napi_create_function, napi_env{env}, function.name.data(), function.name.length(), callback_ptr.first, callback_ptr.second));
+		return value<function_tag>::from(js::napi::invoke(napi_create_function, napi_env{env}, function.name.data(), function.name.length(), callback, data));
 	};
 	if constexpr (type<decltype(finalizer)> == type<std::nullptr_t>) {
 		// No finalizer needed

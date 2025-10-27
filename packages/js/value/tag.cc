@@ -52,6 +52,13 @@ template <class Type> struct string_tag_of : con_tag_of<string_tag> {};
 struct object_tag : tag_of<value_tag> {};
 struct error_tag : tag_of<object_tag> {};
 struct external_tag : tag_of<object_tag> {};
+template <class Type>
+struct external_tag_of : tag_of<external_tag> {};
+
+// classes
+struct class_tag : tag_of<object_tag> {};
+template <class Type>
+struct class_tag_of : tag_of<class_tag> {};
 
 // Continuous packed array-like with integer keys and known (at runtime) length. Generally
 // `arguments` or "trusted" arrays.

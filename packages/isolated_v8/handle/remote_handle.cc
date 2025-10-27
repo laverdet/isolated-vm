@@ -19,7 +19,7 @@ remote_handle::remote_handle(v8::Global<v8::Data> handle, std::weak_ptr<reset_ha
 		global_{std::move(handle)},
 		reset_{std::move(reset)} {}
 
-auto remote_handle::deref(const js::iv8::isolate_lock_witness& lock) -> v8::Local<v8::Data> {
+auto remote_handle::deref(const js::iv8::isolate_lock_witness& lock) const -> v8::Local<v8::Data> {
 	return global_.Get(lock.isolate());
 }
 

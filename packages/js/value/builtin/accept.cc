@@ -10,6 +10,7 @@ export module isolated_js:builtin.accept;
 import :bigint;
 import :date;
 import :external;
+import :external;
 import :error;
 import :transfer;
 import ivm.utility;
@@ -167,7 +168,7 @@ struct accept<void, std::basic_string<Char>> : accept_coerced_string<Char> {};
 // `tagged_external` acceptors
 template <>
 struct accept<void, tagged_external&> {
-		constexpr auto operator()(external_tag /*tag*/, visit_holder /*visit*/, auto subject) const -> tagged_external& {
+		constexpr auto operator()(object_tag /*tag*/, visit_holder /*visit*/, auto subject) const -> tagged_external& {
 			if (subject.contains(std::type_identity<tagged_external>{})) {
 				auto* pointer = static_cast<void*>(subject);
 				return *static_cast<tagged_external*>(pointer);
@@ -180,7 +181,7 @@ struct accept<void, tagged_external&> {
 template <class Type>
 struct accept<void, tagged_external_of<Type>&> : accept<void, tagged_external&> {
 		using accept_type = accept<void, tagged_external&>;
-		constexpr auto operator()(external_tag tag, visit_holder visit, auto subject) const -> tagged_external_of<Type>& {
+		constexpr auto operator()(object_tag tag, visit_holder visit, auto subject) const -> tagged_external_of<Type>& {
 			tagged_external& external = util::invoke_as<accept_type>(*this, tag, visit, std::move(subject));
 			if (external.contains(std::type_identity<Type>{})) {
 				return static_cast<tagged_external_of<Type>&>(external);

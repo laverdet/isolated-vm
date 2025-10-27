@@ -5,7 +5,7 @@ export module ivm.utility:function_ref;
 
 namespace util {
 
-template <class Signature>
+export template <class Signature>
 class function_ref;
 
 template <class Result, class... Args>

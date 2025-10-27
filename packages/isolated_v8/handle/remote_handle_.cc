@@ -37,7 +37,7 @@ class remote_handle : util::non_moveable {
 		auto reset(const js::iv8::isolate_lock_witness& lock) -> void;
 
 	protected:
-		auto deref(const js::iv8::isolate_lock_witness& lock) -> v8::Local<v8::Data>;
+		auto deref(const js::iv8::isolate_lock_witness& lock) const -> v8::Local<v8::Data>;
 		static auto expire(expired_remote_type remote) -> void;
 
 	private:

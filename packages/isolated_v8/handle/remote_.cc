@@ -19,7 +19,7 @@ class remote : public remote_handle {
 		using unique_remote = std::unique_ptr<remote, util::function_constant<expire>>;
 		using remote_handle::remote_handle;
 
-		auto deref(const js::iv8::isolate_lock_witness& lock) -> v8::Local<Type>;
+		auto deref(const js::iv8::isolate_lock_witness& lock) const -> v8::Local<Type>;
 
 		static auto make_shared(const remote_handle_lock& lock, v8::Local<Type> handle) -> std::shared_ptr<remote>;
 		static auto make_unique(const remote_handle_lock& lock, v8::Local<Type> handle) -> unique_remote;
@@ -54,7 +54,7 @@ auto make_shared_remote(const remote_handle_lock& lock, v8::Local<Type> handle) 
 // ---
 
 template <class Type>
-auto remote<Type>::deref(const js::iv8::isolate_lock_witness& lock) -> v8::Local<Type> {
+auto remote<Type>::deref(const js::iv8::isolate_lock_witness& lock) const -> v8::Local<Type> {
 	// `handle.As<Type>()` doesn't work because types like `UnboundScript` don't provide a `Cast`
 	// function.
 	return std::bit_cast<v8::Local<Type>>(this->remote_handle::deref(lock));

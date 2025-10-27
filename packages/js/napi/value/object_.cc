@@ -1,8 +1,10 @@
 module;
+#include <array>
 #include <tuple>
 #include <utility>
 export module napi_js:object;
 import :bound_value;
+import :callback_info;
 import :environment;
 import :primitive;
 import :value;
@@ -25,6 +27,11 @@ template <>
 class bound_value<object_tag> : public detail::bound_value_next<object_tag> {
 	public:
 		using detail::bound_value_next<object_tag>::bound_value_next;
+
+		[[nodiscard]] explicit operator void*() const;
+
+		template <class Type>
+		[[nodiscard]] auto contains(std::type_identity<Type> /*type*/) const -> bool;
 
 		[[nodiscard]] auto get(napi_value key) const -> value<value_tag>;
 		[[nodiscard]] auto has(napi_value key) const -> bool;
@@ -61,6 +68,15 @@ auto value<object_tag>::assign(auto_environment auto& env, std::tuple<Entries...
 		);
 		value.set(entry_js_val[ 0 ], entry_js_val[ 1 ]);
 	}());
+}
+
+bound_value<object_tag>::operator void*() const {
+	return js::napi::invoke(napi_unwrap, env(), napi_value{*this});
+}
+
+template <class Type>
+auto bound_value<object_tag>::contains(std::type_identity<Type> /*type*/) const -> bool {
+	return js::napi::invoke(napi_check_object_type_tag, env(), napi_value{*this}, &type_tag_for<Type>);
 }
 
 } // namespace js::napi

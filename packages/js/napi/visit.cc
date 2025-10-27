@@ -232,6 +232,11 @@ struct visit<Meta, value<value_tag>> : visit_napi_value_with<Meta> {
 		using visit_napi_value_with<Meta>::visit_napi_value_with;
 };
 
+template <class Meta>
+struct visit<Meta, value<object_tag>> : visit_napi_value_with<Meta> {
+		using visit_napi_value_with<Meta>::visit_napi_value_with;
+};
+
 // Object key maker via napi
 template <auto Key>
 struct visit_key_literal<Key, napi_value> : util::non_moveable {
