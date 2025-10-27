@@ -3,30 +3,28 @@ module;
 #include <tuple>
 #include <utility>
 export module napi_js:object;
+import :api;
 import :bound_value;
-import :callback_info;
-import :environment;
+import :environment_fwd;
 import :primitive;
-import :value;
-import isolated_js;
-import nodejs;
+import :value_handle;
 
 namespace js::napi {
 
 // object
 template <>
-class value<object_tag> : public detail::value_next<object_tag> {
+class value<object_tag> : public value_next<object_tag> {
 	public:
-		using detail::value_next<object_tag>::value_next;
+		using value_next<object_tag>::value_next;
 
 		template <class... Entries>
 		auto assign(auto_environment auto& env, std::tuple<Entries...> entries) -> void;
 };
 
 template <>
-class bound_value<object_tag> : public detail::bound_value_next<object_tag> {
+class bound_value<object_tag> : public bound_value_next<object_tag> {
 	public:
-		using detail::bound_value_next<object_tag>::bound_value_next;
+		using bound_value_next<object_tag>::bound_value_next;
 
 		[[nodiscard]] explicit operator void*() const;
 
@@ -41,16 +39,16 @@ class bound_value<object_tag> : public detail::bound_value_next<object_tag> {
 
 // date
 template <>
-class value<date_tag> : public detail::value_next<date_tag> {
+class value<date_tag> : public value_next<date_tag> {
 	public:
-		using detail::value_next<date_tag>::value_next;
+		using value_next<date_tag>::value_next;
 		static auto make(const environment& env, js_clock::time_point date) -> value<date_tag>;
 };
 
 template <>
-class bound_value<date_tag> : public detail::bound_value_next<date_tag> {
+class bound_value<date_tag> : public bound_value_next<date_tag> {
 	public:
-		using detail::bound_value_next<date_tag>::bound_value_next;
+		using bound_value_next<date_tag>::bound_value_next;
 		[[nodiscard]] explicit operator js_clock::time_point() const;
 };
 
@@ -71,12 +69,12 @@ auto value<object_tag>::assign(auto_environment auto& env, std::tuple<Entries...
 }
 
 bound_value<object_tag>::operator void*() const {
-	return js::napi::invoke(napi_unwrap, env(), napi_value{*this});
+	return napi::invoke(napi_unwrap, env(), napi_value{*this});
 }
 
 template <class Type>
 auto bound_value<object_tag>::contains(std::type_identity<Type> /*type*/) const -> bool {
-	return js::napi::invoke(napi_check_object_type_tag, env(), napi_value{*this}, &type_tag_for<Type>);
+	return napi::invoke(napi_check_object_type_tag, env(), napi_value{*this}, &type_tag_for<Type>);
 }
 
 } // namespace js::napi

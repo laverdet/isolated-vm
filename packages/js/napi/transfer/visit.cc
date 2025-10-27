@@ -4,15 +4,10 @@ module;
 #include <utility>
 export module napi_js:visit;
 import :api;
-import :bound_value;
 import :container;
-import :dictionary;
-import :environment;
-import :external;
-import :function;
-import :primitive;
-import :value;
-import isolated_js;
+import :dictionary; // ?? (`:value` should import it)
+import :environment_fwd;
+import :utility;
 import ivm.utility;
 
 namespace js {
@@ -58,7 +53,7 @@ struct visit_napi_property_name {
 // Base napi visitor implementing all functionality. Napi doesn't give us granular information like
 // "is this a latin1 string" and all checks must be made at once. So it's structured it great deal
 // differently than the v8 visitor.
-template <class Environment, class Target>
+template <auto_environment Environment, class Target>
 struct visit_napi_value;
 
 template <class Meta>
@@ -66,7 +61,7 @@ using visit_napi_value_with = visit_napi_value<
 	typename Meta::visit_context_type,
 	typename Meta::accept_reference_type>;
 
-template <class Environment, class Target>
+template <auto_environment Environment, class Target>
 struct visit_napi_value
 		: napi::environment_scope<Environment>,
 			reference_map_t<Target, napi_reference_map_type> {

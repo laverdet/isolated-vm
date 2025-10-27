@@ -4,7 +4,7 @@ module;
 export module napi_js:array;
 import :bound_value;
 import :object;
-import :value;
+import :value_handle;
 import isolated_js;
 import ivm.utility;
 import nodejs;
@@ -12,10 +12,10 @@ import nodejs;
 namespace js::napi {
 
 template <>
-class bound_value<vector_tag> : public detail::bound_value_next<vector_tag> {
+class bound_value<vector_tag> : public bound_value_next<vector_tag> {
 	public:
 		class iterator;
-		using detail::bound_value_next<vector_tag>::bound_value_next;
+		using bound_value_next<vector_tag>::bound_value_next;
 		using value_type = value<value_tag>;
 
 		[[nodiscard]] auto begin() const -> iterator;

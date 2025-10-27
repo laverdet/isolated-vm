@@ -4,7 +4,6 @@ module;
 #include <utility>
 export module napi_js:promise;
 import :api;
-import :handle_scope;
 import ivm.utility;
 
 namespace js::napi {
@@ -16,7 +15,7 @@ auto make_promise(Environment& env, Accept accept) {
 	napi_deferred deferred;
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	napi_value promise;
-	js::napi::invoke0(napi_create_promise, napi_env{env}, &deferred, &promise);
+	napi::invoke0(napi_create_promise, napi_env{env}, &deferred, &promise);
 
 	// Invoked in napi environment and resolves the deferred
 	auto resolve =
@@ -30,13 +29,13 @@ auto make_promise(Environment& env, Accept accept) {
 		env.scheduler().decrement_ref();
 		try {
 			auto result = js::transfer_in<napi_value>(accept(env, std::forward<decltype(args)>(args)...), env);
-			js::napi::invoke0(napi_resolve_deferred, napi_env{env}, deferred, result);
+			napi::invoke0(napi_resolve_deferred, napi_env{env}, deferred, result);
 		} catch (const napi::pending_error& /*error*/) {
-			auto* exception = js::napi::invoke(napi_get_and_clear_last_exception, napi_env{env});
-			js::napi::invoke0(napi_reject_deferred, napi_env{env}, deferred, exception);
+			auto* exception = napi::invoke(napi_get_and_clear_last_exception, napi_env{env});
+			napi::invoke0(napi_reject_deferred, napi_env{env}, deferred, exception);
 		} catch (const js::error& error) {
-			auto exception = js::transfer_in<napi_value>(accept(env, std::forward<decltype(args)>(args)...), env);
-			js::napi::invoke0(napi_reject_deferred, napi_env{env}, deferred, exception);
+			auto exception = js::transfer_in_strict<napi_value>(error, env);
+			napi::invoke0(napi_reject_deferred, napi_env{env}, deferred, exception);
 		}
 	};
 

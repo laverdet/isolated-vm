@@ -3,9 +3,6 @@ module;
 #include <functional>
 #include <thread>
 #include <utility>
-#include <vector>
-import ivm.utility;
-import nodejs;
 module napi_js;
 
 namespace js::napi {

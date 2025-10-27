@@ -97,6 +97,14 @@ struct visit<void, js::error_value> {
 		}
 };
 
+template <>
+struct visit<void, js::error> : visit<void, js::error_value> {
+		template <class Accept>
+		constexpr auto operator()(const js::error& subject, const Accept& accept) const -> accept_target_t<Accept> {
+			return accept(error_tag{}, *this, js::error_value{subject});
+		}
+};
+
 // `std::optional` visitor may yield `undefined`
 template <class Meta, class Type>
 struct visit<Meta, std::optional<Type>> : visit<Meta, Type> {

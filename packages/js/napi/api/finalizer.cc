@@ -1,7 +1,7 @@
 module;
 #include <concepts>
 #include <memory>
-export module napi_js:finalizer;
+export module napi_js:api.finalizer;
 import ivm.utility;
 import nodejs;
 

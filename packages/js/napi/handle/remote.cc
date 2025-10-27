@@ -4,13 +4,11 @@ module;
 #include <type_traits>
 #include <utility>
 export module napi_js:remote;
+import :api;
 import :environment;
-import :handle_scope;
 import :reference;
-import :uv_scheduler;
-import :value;
+import :value_handle;
 import ivm.utility;
-import nodejs;
 
 namespace js::napi {
 
@@ -21,7 +19,7 @@ concept remote_handle_environment =
 
 // Thread safe persistent value reference
 export template <class Tag>
-class remote : protected detail::reference_handle {
+class remote : protected reference_handle {
 	private:
 		struct private_constructor {
 				explicit private_constructor() = default;
@@ -31,7 +29,7 @@ class remote : protected detail::reference_handle {
 	public:
 		using unique_remote = std::unique_ptr<remote, util::function_constant<expire>>;
 
-		remote(private_constructor /*private*/, const napi::environment& env, value<Tag> value, uv_scheduler scheduler) :
+		remote(private_constructor /*private*/, const environment& env, value<Tag> value, uv_scheduler scheduler) :
 				reference_handle{napi_env{env}, napi_value{value}},
 				scheduler_{std::move(scheduler)} {}
 

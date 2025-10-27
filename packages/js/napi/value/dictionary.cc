@@ -4,7 +4,6 @@ module;
 module napi_js;
 import :api;
 import :array;
-import isolated_js;
 import ivm.utility;
 
 namespace js::napi {
@@ -19,7 +18,7 @@ auto dictionary_like::size() const -> std::size_t {
 
 auto dictionary_like::keys() const -> const keys_type& {
 	if (!keys_) {
-		auto* property_names = js::napi::invoke(napi_get_property_names, env(), *this);
+		auto* property_names = napi::invoke(napi_get_property_names, env(), *this);
 		keys_ = keys_type{env(), js::napi::value<vector_tag>::from(property_names)};
 	}
 	return keys_;

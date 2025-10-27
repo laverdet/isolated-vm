@@ -7,14 +7,10 @@ module;
 #include <vector>
 export module napi_js:accept;
 import :api;
-import :bound_value;
 import :container;
-import :dictionary;
-import :environment;
-import :function;
-import :primitive;
+import :dictionary; // ?? (`:value` should import it)
+import :environment_fwd;
 import :value;
-import isolated_js;
 import ivm.utility;
 
 namespace js {

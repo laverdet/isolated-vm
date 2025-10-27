@@ -3,12 +3,10 @@ module;
 export module napi_js:dictionary;
 import :array;
 import :bound_value;
-import :environment;
 import :object;
-import :value;
+import :value_handle;
 import isolated_js;
 import ivm.utility;
-import nodejs;
 
 namespace js::napi {
 

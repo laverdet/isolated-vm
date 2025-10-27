@@ -16,7 +16,7 @@ auto bound_value<vector_tag>::end() const -> iterator {
 
 auto bound_value<vector_tag>::size() const -> uint32_t {
 	if (size_ == 0) {
-		size_ = js::napi::invoke(napi_get_array_length, env(), napi_value{*this}) + 1;
+		size_ = napi::invoke(napi_get_array_length, env(), napi_value{*this}) + 1;
 	}
 	return size_ - 1;
 }
@@ -26,7 +26,7 @@ bound_value<vector_tag>::iterator::iterator(bound_value subject, size_type index
 		index{index} {}
 
 auto bound_value<vector_tag>::iterator::operator*() const -> value_type {
-	return value_type::from(js::napi::invoke(napi_get_element, subject_.env(), napi_value{subject_}, index));
+	return value_type::from(napi::invoke(napi_get_element, subject_.env(), napi_value{subject_}, index));
 }
 
 } // namespace js::napi

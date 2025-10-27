@@ -1,10 +1,9 @@
 module;
 #include <memory>
 #include <stdexcept>
-#include <thread>
 #include <type_traits>
 #include <utility>
-export module napi_js:uv_scheduler;
+export module napi_js:api.uv_handle;
 import ivm.utility;
 import nodejs;
 
@@ -20,12 +19,12 @@ class uv_typed_handle {
 		operator Handle*() { return static_cast<Handle*>(&handle_); }
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		operator uv_handle_t*() { return reinterpret_cast<uv_handle_t*>(&handle_); }
-		// Returns data lvalue
+		// (non-const) returns data lvalue
 		auto data() -> Type& {
 			void* ptr = static_cast<void*>(&handle_.data);
 			return *static_cast<Type*>(ptr);
 		}
-		// Returns data rvalue
+		// (const) returns data rvalue
 		[[nodiscard]] auto data() const -> Type { return static_cast<Type>(handle_.data); }
 		[[nodiscard]] auto loop() const -> uv_loop_t* { return handle_.loop; }
 		[[nodiscard]] auto type() const -> uv_handle_type { return handle_.type; }
@@ -36,7 +35,7 @@ class uv_typed_handle {
 
 // `uv_handle_t` subtype wrapper with uv-owned shared memory. An open handle must be closed before
 // the handle is destroyed or it is UB.
-template <class Handle, class Type>
+export template <class Handle, class Type>
 class uv_handle_of : public util::pointer_facade {
 	private:
 		struct private_constructor {
@@ -59,9 +58,9 @@ class uv_handle_of : public util::pointer_facade {
 		uv_handle_of(const uv_handle_of&) = delete;
 		auto operator=(const uv_handle_of&) -> uv_handle_of& = delete;
 
-		auto operator*(this auto& self) -> auto& { return self.value_; }
+		auto operator*() -> auto& { return value_; }
 		auto close() -> void;
-		auto handle(this auto& self) -> auto& { return self.handle_; }
+		auto handle() -> auto& { return handle_; }
 		auto open(const auto& init, uv_loop_t* loop, auto&&... args) -> void;
 
 		static auto make(auto&&... args) -> shared_ptr_type;
@@ -70,42 +69,6 @@ class uv_handle_of : public util::pointer_facade {
 	private:
 		uv_typed_handle<Handle, shared_or_weak_ptr> handle_;
 		Type value_;
-};
-
-// Shareable libuv scheduler
-export class uv_scheduler {
-	private:
-		using task_type = util::maybe_move_only_function<auto()->void>;
-
-	public:
-		auto close() -> void;
-		auto decrement_ref() -> void;
-		auto increment_ref() -> void;
-		auto open(uv_loop_t* loop) -> void;
-		auto operator()(task_type task) const -> void;
-
-	private:
-		struct locked_storage {
-				std::vector<task_type> tasks;
-				bool is_open{};
-		};
-		struct storage {
-				storage() = default;
-				util::lockable<locked_storage> shared;
-				std::thread::id thread_id{std::this_thread::get_id()};
-				int refs{};
-		};
-		using handle_type = uv_handle_of<uv_async_t, storage>;
-		std::shared_ptr<handle_type> async_{handle_type::make()};
-};
-
-// An environment with an uv loop and scheduler
-export class uv_schedulable {
-	public:
-		auto scheduler(this auto& self) -> auto& { return self.uv_scheduler_; }
-
-	private:
-		uv_scheduler uv_scheduler_;
 };
 
 // ---

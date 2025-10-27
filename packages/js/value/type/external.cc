@@ -17,12 +17,16 @@ export class tagged_external {
 		explicit constexpr tagged_external(tag_span_type tags) : tag_span_{tags} {}
 
 	public:
-		template <class Type>
-		[[nodiscard]] constexpr auto contains(std::type_identity<Type> /*tag*/) const -> bool {
+		[[nodiscard]] constexpr auto contains(const std::type_info& typeinfo) const -> bool {
 			constexpr auto projection = [](const std::type_info* info) -> const std::type_info& {
 				return *info;
 			};
-			return std::ranges::contains(tag_span_, typeid(Type), projection);
+			return std::ranges::contains(tag_span_, typeinfo, projection);
+		}
+
+		template <class Type>
+		[[nodiscard]] constexpr auto contains(std::type_identity<Type> /*tag*/) const -> bool {
+			return contains(typeid(Type));
 		}
 
 	private:

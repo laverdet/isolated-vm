@@ -1,36 +1,45 @@
 add_library(napi_js OBJECT)
 target_sources(napi_js
 	PRIVATE
-		scheduler.cc
+		api/uv_scheduler.cc
+		support/environment.cc
 		value/array.cc
 		value/dictionary.cc
 		value/object.cc
 		value/primitive.cc
-	PUBLIC FILE_SET CXX_MODULES FILES
+		PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
-		accept.cc
+		api/api.cc
+		api/callback_info.cc
+		api/finalizer.cc
+		api/handle_scope.cc
+		api/invoke.cc
+		api/uv_handle.cc
+		api/uv_scheduler_.cc
 		handle/bound_value.cc
 		handle/reference.cc
 		handle/remote.cc
 		handle/value.cc
-		support/api.cc
-		support/callback_info.cc
+		support/callback_storage.cc
 		support/callback.cc
 		support/container.cc
-		support/environment.cc
-		support/finalizer.cc
-		support/handle_scope.cc
+		support/environment_.cc
+		support/environment_fwd_.cc
+		support/error_scope.cc
 		support/promise.cc
-		support/scheduler.cc
 		support/utility.cc
+		transfer/accept.cc
+		transfer/visit.cc
 		value/array_.cc
 		value/class_.cc
+		value/class.cc
 		value/dictionary_.cc
 		value/external_.cc
 		value/function_.cc
+		value/function.cc
 		value/object_.cc
 		value/primitive_.cc
-		visit.cc
+		value/value_.cc
 )
 target_link_libraries(napi_js PRIVATE
 	ivm_utility

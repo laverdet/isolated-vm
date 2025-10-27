@@ -8,27 +8,6 @@ import nodejs;
 
 namespace js::napi {
 
-// Equality comparator which respects napi's handle types
-export class address_equal {
-	private:
-		using virtual_equal_type = util::virtual_covariant<virtual_address_equal, direct_address_equal, indirect_address_equal>;
-
-	public:
-		explicit address_equal(const environment& env) :
-				equal_{
-					env.uses_direct_handles()
-						? virtual_equal_type{direct_address_equal{}}
-						: virtual_equal_type{indirect_address_equal{}}
-				} {}
-
-		auto operator()(napi_value left, napi_value right) const -> bool {
-			return (*equal_)(left, right);
-		}
-
-	private:
-		virtual_equal_type equal_;
-};
-
 // Map container for napi values
 template <class Type>
 struct virtual_value_map {

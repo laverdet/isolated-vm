@@ -3,7 +3,7 @@ module;
 #include <exception>
 #include <stdexcept>
 #include <type_traits>
-export module napi_js:api;
+export module napi_js:api.invoke;
 export import nodejs;
 import ivm.utility;
 
@@ -16,16 +16,7 @@ export class pending_error : public std::exception {
 		[[nodiscard]] auto what() const noexcept -> const char* final { return "[pending napi error]"; }
 };
 
-// Catch `napi::pending_error` thrown by `napi::invoke`
-constexpr auto invoke_napi_scope = [](auto implementation) -> napi_value {
-	try {
-		return implementation();
-	} catch (const napi::pending_error& /*error*/) {
-		return napi_value{};
-	}
-};
-
-// Invoke the given napi function and throw if it fails
+// Invoke the given napi function, returning void, and throw if it fails
 export template <class... Params>
 auto invoke0(auto(function)(Params...)->napi_status, auto&&... args) -> void
 	requires std::invocable<decltype(function), decltype(args)...> {
@@ -36,7 +27,7 @@ auto invoke0(auto(function)(Params...)->napi_status, auto&&... args) -> void
 	}
 }
 
-// Invoke the given napi function and terminate if it fails.
+// Invoke the given napi function, returning void, and terminate if it fails.
 export template <class... Params>
 auto invoke0_noexcept(auto(function)(Params...)->napi_status, auto&&... args) noexcept -> void
 	requires std::invocable<decltype(function), decltype(args)...> {
@@ -47,25 +38,27 @@ auto invoke0_noexcept(auto(function)(Params...)->napi_status, auto&&... args) no
 
 // Invokes the given napi function and returns the final "out" argument
 template <class... Params>
-using out_type = Params...[ sizeof...(Params) - 1 ];
+using napi_invoke_out_type = Params...[ sizeof...(Params) - 1 ];
 
+// Invoke the given napi function and terminate if it fails.
 export template <class... Params>
 auto invoke(auto(function)(Params...)->napi_status, auto&&... args)
-	requires std::invocable<decltype(function), decltype(args)..., out_type<Params...>> {
-	using out_pointer_type = out_type<Params...>;
+	requires std::invocable<decltype(function), decltype(args)..., napi_invoke_out_type<Params...>> {
+	using out_pointer_type = napi_invoke_out_type<Params...>;
 	static_assert(std::is_pointer_v<out_pointer_type>);
 	std::remove_pointer_t<out_pointer_type> out_arg;
-	js::napi::invoke0(function, std::forward<decltype(args)>(args)..., &out_arg);
+	napi::invoke0(function, std::forward<decltype(args)>(args)..., &out_arg);
 	return std::move(out_arg);
 }
 
+// Invoke the given napi function and terminate if it fails.
 export template <class... Params>
 auto invoke_noexcept(auto(function)(Params...)->napi_status, auto&&... args) noexcept
-	requires std::invocable<decltype(function), decltype(args)..., out_type<Params...>> {
-	using out_pointer_type = out_type<Params...>;
+	requires std::invocable<decltype(function), decltype(args)..., napi_invoke_out_type<Params...>> {
+	using out_pointer_type = napi_invoke_out_type<Params...>;
 	static_assert(std::is_pointer_v<out_pointer_type>);
 	std::remove_pointer_t<out_pointer_type> out_arg;
-	js::napi::invoke0_noexcept(function, std::forward<decltype(args)>(args)..., &out_arg);
+	napi::invoke0_noexcept(function, std::forward<decltype(args)>(args)..., &out_arg);
 	return std::move(out_arg);
 }
 

@@ -1,10 +1,10 @@
-export module napi_js:handle_scope;
-import :api;
-import isolated_js;
+export module napi_js:api.handle_scope;
+import :api.invoke;
 import ivm.utility;
 
 namespace js::napi {
 
+// RAII napi handle scope
 export class handle_scope : util::non_moveable {
 	public:
 		explicit handle_scope(napi_env env) :

@@ -1,22 +1,22 @@
 module napi_js;
 import :api;
 import :bound_value;
-import :value;
+import :value_handle;
 import ivm.utility;
 
 namespace js::napi {
 
 // object
 auto bound_value<object_tag>::get(napi_value key) const -> value<value_tag> {
-	return value<value_tag>::from(js::napi::invoke(napi_get_property, env(), napi_value{*this}, key));
+	return value<value_tag>::from(napi::invoke(napi_get_property, env(), napi_value{*this}, key));
 }
 
 auto bound_value<object_tag>::has(napi_value key) const -> bool {
-	return js::napi::invoke(napi_has_own_property, env(), napi_value{*this}, key);
+	return napi::invoke(napi_has_own_property, env(), napi_value{*this}, key);
 }
 
 auto bound_value<object_tag>::set(napi_value key, napi_value value) -> void {
-	js::napi::invoke0(napi_set_property, env(), napi_value{*this}, key, value);
+	napi::invoke0(napi_set_property, env(), napi_value{*this}, key, value);
 }
 
 // date

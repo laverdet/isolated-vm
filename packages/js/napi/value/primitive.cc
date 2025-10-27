@@ -4,27 +4,27 @@ module;
 module napi_js;
 import :api;
 import :bound_value;
-import isolated_js;
+import :value_handle;
 
 namespace js::napi {
 
 // undefined
 auto value<undefined_tag>::make(const environment& env) -> value<undefined_tag> {
-	return value<undefined_tag>::from(js::napi::invoke(napi_get_undefined, napi_env{env}));
+	return value<undefined_tag>::from(napi::invoke(napi_get_undefined, napi_env{env}));
 }
 
 // null
 auto value<null_tag>::make(const environment& env) -> value<null_tag> {
-	return value<null_tag>::from(js::napi::invoke(napi_get_null, napi_env{env}));
+	return value<null_tag>::from(napi::invoke(napi_get_null, napi_env{env}));
 }
 
 // boolean
 auto value<boolean_tag>::make(const environment& env, bool boolean) -> value<boolean_tag> {
-	return value<boolean_tag>::from(js::napi::invoke(napi_get_boolean, napi_env{env}, boolean));
+	return value<boolean_tag>::from(napi::invoke(napi_get_boolean, napi_env{env}, boolean));
 }
 
 bound_value<boolean_tag>::operator bool() const {
-	return js::napi::invoke(napi_get_value_bool, env(), napi_value{*this});
+	return napi::invoke(napi_get_value_bool, env(), napi_value{*this});
 }
 
 // number
@@ -45,19 +45,19 @@ auto value<number_tag>::make(const environment& env, uint32_t number) -> value<n
 }
 
 bound_value<number_tag>::operator double() const {
-	return js::napi::invoke(napi_get_value_double, env(), napi_value{*this});
+	return napi::invoke(napi_get_value_double, env(), napi_value{*this});
 }
 
 bound_value<number_tag>::operator int32_t() const {
-	return js::napi::invoke(napi_get_value_int32, env(), napi_value{*this});
+	return napi::invoke(napi_get_value_int32, env(), napi_value{*this});
 }
 
 bound_value<number_tag>::operator int64_t() const {
-	return js::napi::invoke(napi_get_value_int64, env(), napi_value{*this});
+	return napi::invoke(napi_get_value_int64, env(), napi_value{*this});
 }
 
 bound_value<number_tag>::operator uint32_t() const {
-	return js::napi::invoke(napi_get_value_uint32, env(), napi_value{*this});
+	return napi::invoke(napi_get_value_uint32, env(), napi_value{*this});
 }
 
 // bigint
@@ -75,12 +75,15 @@ auto value<bigint_tag>::make(const environment& env, uint64_t number) -> value<b
 
 bound_value<bigint_tag>::operator bigint() const {
 	js::bigint value;
-	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
-	size_t length;
-	js::napi::invoke0(napi_get_value_bigint_words, env(), napi_value{*this}, &value.sign_bit(), &length, nullptr);
+	auto one_word = uint64_t{};
+	auto length = size_t{1};
+	napi::invoke0(napi_get_value_bigint_words, env(), napi_value{*this}, &value.sign_bit(), &length, nullptr);
+	if (value.sign_bit() == 0 && length == 1) {
+		return js::bigint{one_word};
+	}
 	value.resize_and_overwrite(length, [ & ](auto* words, auto length) noexcept {
 		if (length > 0) {
-			js::napi::invoke0_noexcept(napi_get_value_bigint_words, env(), napi_value{*this}, &value.sign_bit(), &length, words);
+			napi::invoke0_noexcept(napi_get_value_bigint_words, env(), napi_value{*this}, &value.sign_bit(), &length, words);
 		}
 		return length;
 	});
@@ -90,14 +93,16 @@ bound_value<bigint_tag>::operator bigint() const {
 bound_value<bigint_tag>::operator int64_t() const {
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	int64_t value;
-	js::napi::invoke(napi_get_value_bigint_int64, env(), napi_value{*this}, &value);
+	// nb: `lossless` error not checked for consistency with `napi_get_value_int32`,
+	// `napi_get_value_string_latin1`, etc which don't return any errors.
+	napi::invoke(napi_get_value_bigint_int64, env(), napi_value{*this}, &value);
 	return value;
 }
 
 bound_value<bigint_tag>::operator uint64_t() const {
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	uint64_t value;
-	js::napi::invoke(napi_get_value_bigint_uint64, env(), napi_value{*this}, &value);
+	napi::invoke(napi_get_value_bigint_uint64, env(), napi_value{*this}, &value);
 	return value;
 }
 
@@ -128,10 +133,10 @@ auto value<string_tag>::make_property_name(const environment& env, std::u16strin
 
 bound_value<string_tag>::operator std::string() const {
 	std::string string;
-	auto length = js::napi::invoke(napi_get_value_string_latin1, env(), napi_value{*this}, nullptr, 0);
+	auto length = napi::invoke(napi_get_value_string_latin1, env(), napi_value{*this}, nullptr, 0);
 	if (length > 0) {
 		string.resize_and_overwrite(length + 1, [ this ](char* data, size_t length) noexcept -> size_t {
-			js::napi::invoke_noexcept(napi_get_value_string_latin1, env(), napi_value{*this}, data, length);
+			napi::invoke_noexcept(napi_get_value_string_latin1, env(), napi_value{*this}, data, length);
 			return length - 1;
 		});
 	}
@@ -141,10 +146,10 @@ bound_value<string_tag>::operator std::string() const {
 bound_value<string_tag>::operator std::u16string() const {
 	// nb: napi requires that the returned string is null-terminated for some reason.
 	std::u16string string;
-	auto length = js::napi::invoke(napi_get_value_string_utf16, env(), napi_value{*this}, nullptr, 0);
+	auto length = napi::invoke(napi_get_value_string_utf16, env(), napi_value{*this}, nullptr, 0);
 	if (length > 0) {
 		string.resize_and_overwrite(length + 1, [ this ](char16_t* data, size_t length) noexcept -> size_t {
-			js::napi::invoke_noexcept(napi_get_value_string_utf16, env(), napi_value{*this}, data, length);
+			napi::invoke_noexcept(napi_get_value_string_utf16, env(), napi_value{*this}, data, length);
 			return length - 1;
 		});
 	}

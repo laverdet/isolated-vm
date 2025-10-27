@@ -1,16 +1,14 @@
 export module napi_js;
-export import :accept;
-// should be removed
-export import :api;
-export import :class_;
+import :accept;
+export import :api; // should be removed
 export import :environment;
 export import :external;
 export import :function;
-export import :handle_scope;
 export import :object;
 export import :promise;
 export import :reference;
 export import :remote;
-export import :uv_scheduler;
 export import :value;
-export import :visit;
+import :visit;
+import :class_definitions;
+import :function_definitions;
