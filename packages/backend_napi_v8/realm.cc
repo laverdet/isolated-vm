@@ -11,17 +11,18 @@ import napi_js;
 
 namespace backend_napi_v8 {
 
-auto create_realm(
-	environment& env,
-	js::napi::untagged_external<agent_handle>& agent
-) {
+realm_handle::realm_handle(agent_handle agent, isolated_v8::realm realm) :
+		agent_{std::move(agent)},
+		realm_{std::move(realm)} {}
+
+auto realm_handle::create(agent_handle& agent, environment& env) -> js::napi::value<js::promise_tag> {
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](environment& env, agent_handle agent, isolated_v8::realm realm) -> auto {
-			return js::forward{js::napi::untagged_external<realm_handle>::make(env, std::move(agent), std::move(realm))};
+			return js::forward{class_template(env).construct(env, std::move(agent), std::move(realm))};
 		}
 	);
-	agent->schedule(
+	agent.schedule(
 		[ dispatch = std::move(dispatch) ](
 			const agent_handle::lock& lock,
 			agent_handle agent
@@ -29,24 +30,21 @@ auto create_realm(
 			auto realm = isolated_v8::realm::make(lock);
 			dispatch(std::move(agent), std::move(realm));
 		},
-		*agent
+		agent
 	);
-	return js::forward{promise};
+	return promise;
 }
 
-auto instantiate_runtime(
-	environment& env,
-	js::napi::untagged_external<realm_handle>& realm
-) {
+auto realm_handle::instantiate_runtime(environment& env) -> js::napi::value<js::promise_tag> {
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](environment& env, agent_handle agent, isolated_v8::js_module module_) -> auto {
-			return js::forward{js::napi::untagged_external<module_handle>::make(env, std::move(agent), std::move(module_))};
+			return js::forward{module_handle::class_template(env).construct(env, std::move(agent), std::move(module_))};
 		}
 	);
-	realm->agent().schedule(
+	agent_.schedule(
 		[ dispatch = std::move(dispatch),
-			realm = realm->realm() ](
+			realm = realm_ ](
 			const agent_handle::lock& lock,
 			agent_handle agent
 		) -> void {
@@ -55,21 +53,19 @@ auto instantiate_runtime(
 			});
 			dispatch(std::move(agent), std::move(module_));
 		},
-		realm->agent()
+		agent_
 	);
-	return js::forward{promise};
+	return promise;
 }
 
-realm_handle::realm_handle(agent_handle agent, isolated_v8::realm realm) :
-		agent_{std::move(agent)},
-		realm_{std::move(realm)} {}
-
-auto realm_handle::make_create_realm(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::free_function{create_realm});
-}
-
-auto realm_handle::make_instantiate_runtime(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::free_function{instantiate_runtime});
+auto realm_handle::class_template(environment& env) -> js::napi::value<class_tag_of<realm_handle>> {
+	return env.class_template(
+		std::type_identity<realm_handle>{},
+		js::class_template{
+			js::class_constructor{util::cw<u8"Realm">},
+			js::class_method{util::cw<u8"instantiateRuntime">, make_forward_callback(util::fn<&realm_handle::instantiate_runtime>)},
+		}
+	);
 }
 
 } // namespace backend_napi_v8

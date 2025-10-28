@@ -15,15 +15,10 @@ NAPI_MODULE_INIT(/*napi_env env, napi_value exports*/) {
 	exports_val.assign(
 		backend_env,
 		std::tuple{
+			std::pair{util::cw<"Agent">, js::forward{agent_class_template(backend_env)}},
+			std::pair{util::cw<"Module">, js::forward{module_handle::class_template(backend_env)}},
+			std::pair{util::cw<"Realm">, js::forward{realm_handle::class_template(backend_env)}},
 			std::pair{util::cw<"Script">, js::forward{script_handle::class_template(backend_env)}},
-			std::pair{util::cw<"compileModule">, js::forward{module_handle::make_compile_module(backend_env)}},
-			std::pair{util::cw<"compileScript">, js::forward{make_compile_script(backend_env)}},
-			std::pair{util::cw<"createAgent">, js::forward{make_create_agent(backend_env)}},
-			std::pair{util::cw<"createCapability">, js::forward{module_handle::make_create_capability(backend_env)}},
-			std::pair{util::cw<"createRealm">, js::forward{realm_handle::make_create_realm(backend_env)}},
-			std::pair{util::cw<"evaluateModule">, js::forward{module_handle::make_evaluate_module(backend_env)}},
-			std::pair{util::cw<"instantiateRuntime">, js::forward{realm_handle::make_instantiate_runtime(backend_env)}},
-			std::pair{util::cw<"linkModule">, js::forward{module_handle::make_link_module(backend_env)}},
 		}
 	);
 

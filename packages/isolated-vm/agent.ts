@@ -1,7 +1,6 @@
 import type { CapabilityOrigin, SourceOrigin } from "./script.js";
 import type { MaybeCompletionOf } from "backend_v8.node";
 import * as ivm from "./backend.js";
-import { compileModule, compileScript, createAgent, createCapability, createRealm } from "./backend.js";
 import { Capability, Module } from "./module.js";
 import { Realm } from "./realm.js";
 import { Script } from "./script.js";
@@ -60,27 +59,27 @@ export class Agent {
 	}
 
 	static async create(options?: Agent.CreateOptions): Promise<Agent> {
-		const agent = await createAgent(options);
+		const agent = await ivm.Agent.create(options);
 		return new Agent(agent);
 	}
 
 	async createCapability(callback: (...args: unknown[]) => void, options: Agent.CreateCapabilityOptions): Promise<Capability> {
-		const module = await createCapability(this.#agent, callback, options);
+		const module = await this.#agent.createCapability(callback, options);
 		return new Capability(module);
 	}
 
 	async createRealm(): Promise<Realm> {
-		const realm = await createRealm(this.#agent);
+		const realm = await this.#agent.createRealm();
 		return new Realm(realm);
 	}
 
 	async compileModule(code: string, options?: Agent.CompileModuleOptions): Promise<Module> {
-		const [ module, requests ] = await compileModule(this.#agent, code, options);
+		const [ module, requests ] = await this.#agent.compileModule(code, options);
 		return new Module(module, requests);
 	}
 
 	async compileScript(code: string, options?: Agent.CompileScriptOptions): Promise<MaybeCompletionOf<Script>> {
-		const result = await compileScript(this.#agent, code, options);
+		const result = await this.#agent.compileScript(code, options);
 		return transformCompletion(result, script => new Script(script));
 	}
 

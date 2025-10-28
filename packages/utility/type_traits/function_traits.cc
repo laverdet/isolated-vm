@@ -90,4 +90,14 @@ template <class Type, class That, class... Args, bool Nx, class Result>
 	requires requires { std::declval<Type>()(std::declval<Args>()...); }
 struct function_signature_operator_impl<Type, auto(That, Args...) noexcept(Nx)->Result> : std::type_identity<auto(Args...) noexcept(Nx)->Result> {};
 
+// Result type of a function signature
+export template <class Type>
+struct signature_result;
+
+export template <class Type>
+using signature_result_t = signature_result<Type>::type;
+
+template <class... Args, bool Nx, class Result>
+struct signature_result<auto(Args...) noexcept(Nx)->Result> : std::type_identity<Result> {};
+
 } // namespace util

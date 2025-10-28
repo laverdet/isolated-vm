@@ -46,36 +46,52 @@ auto value<class_tag_of<Type>>::make(Environment& env, const auto& class_templat
 		make_napi_callback(env, make_constructor_function<Environment, Type>(class_template.constructor.function));
 	static_assert(type<decltype(constructor_finalizer)> == type<std::nullptr_t>);
 
-	// Property descriptor creator for methods
-	const auto make_method_descriptor =
-		[ & ](const auto& property) -> napi_property_descriptor {
-		auto name = std::u8string_view{property.name};
-		auto [ callback, data, finalizer ] = make_napi_callback(env, make_member_function<Environment, Type>(property.function));
-		static_assert(type<decltype(finalizer)> == type<std::nullptr_t>);
-		return {
-			.utf8name = reinterpret_cast<const char*>(name.data()),
-			.name{},
+	// Member function property descriptor
+	const auto make_member_function_descriptor = [ & ]<class Property>(const Property& property) -> napi_property_descriptor
+		requires(Property::scope == class_property_scope::prototype) {
+			auto name = std::u8string_view{property.name};
+			auto [ callback, data, finalizer ] = make_napi_callback(env, make_member_function<Environment, Type>(property.function));
+			static_assert(type<decltype(finalizer)> == type<std::nullptr_t>);
+			return {
+				.utf8name = reinterpret_cast<const char*>(name.data()),
+				.name{},
 
-			.method = callback,
-			.getter{},
-			.setter{},
-			.value{},
+				.method = callback,
+				.getter{},
+				.setter{},
+				.value{},
 
-			// NOLINTNEXTLINE(hicpp-signed-bitwise)
-			.attributes = static_cast<napi_property_attributes>(napi_writable | napi_configurable),
-			.data = data,
+				// NOLINTNEXTLINE(hicpp-signed-bitwise)
+				.attributes = static_cast<napi_property_attributes>(napi_writable | napi_configurable),
+				.data = data,
+			};
 		};
-	};
+
+	// Static function property descriptor
+	const auto make_static_function_descriptor = [ & ]<class Property>(const Property& property) -> napi_property_descriptor
+		requires(Property::scope == class_property_scope::constructor) {
+			auto name = std::u8string_view{property.name};
+			auto [ callback, data, finalizer ] = make_napi_callback(env, make_free_function<Environment>(property.function));
+			static_assert(type<decltype(finalizer)> == type<std::nullptr_t>);
+			return {
+				.utf8name = reinterpret_cast<const char*>(name.data()),
+				.name{},
+
+				.method = callback,
+				.getter{},
+				.setter{},
+				.value{},
+
+				// NOLINTNEXTLINE(hicpp-signed-bitwise)
+				.attributes = static_cast<napi_property_attributes>(napi_static | napi_writable | napi_configurable),
+				.data = data,
+			};
+		};
 
 	// Make class property descriptors
-	const auto make_property_descriptor = [ & ](const auto& property) -> napi_property_descriptor {
-		switch (property.scope) {
-			case class_property_scope::prototype:
-				return make_method_descriptor(property);
-			case class_property_scope::constructor:
-			default:
-				std::unreachable();
-		}
+	const auto make_property_descriptor = util::overloaded{
+		make_member_function_descriptor,
+		make_static_function_descriptor,
 	};
 	const auto [... properties ] = class_template.properties;
 	const auto property_descriptors = std::array<napi_property_descriptor, sizeof...(properties)>{

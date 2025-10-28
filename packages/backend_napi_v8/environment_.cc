@@ -35,6 +35,9 @@ constexpr auto string_literals = util::sealed_map{
 // Storage for class templates
 constexpr auto class_templates = util::sealed_map{
 	std::type_identity<napi::reference<class_tag>>{},
+	u8"Agent"s,
+	u8"Module"s,
+	u8"Realm"s,
 	u8"Script"s,
 };
 

@@ -1,5 +1,4 @@
 import type * as ivm from "./backend.js";
-import { instantiateRuntime } from "./backend.js";
 import { Capability } from "./module.js";
 
 export class Realm {
@@ -16,7 +15,7 @@ export class Realm {
 	}
 
 	async instantiateRuntime(): Promise<Capability> {
-		const module = await instantiateRuntime(this.#realm);
+		const module = await this.#realm.instantiateRuntime();
 		return new Capability(module);
 	}
 }

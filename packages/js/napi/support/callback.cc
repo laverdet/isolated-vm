@@ -1,4 +1,5 @@
 module;
+#include <optional>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -15,78 +16,89 @@ import ivm.utility;
 namespace js::napi {
 namespace {
 
-// Unwrap `this` into the correct tagged external
+// Unwrap `this` into the correct tagged external. Returns `std::nullopt` if there was a type error,
+// and there is a napi exception pending. `nullptr` will not be returned.
 template <class Type>
-constexpr auto unwrap_this = [](auto_environment auto& env, napi_value this_arg) -> tagged_external_of<Type>& {
-	auto object = value<object_tag>::from(napi::invoke(napi_coerce_to_object, napi_env{env}, this_arg));
-	return js::transfer_out<tagged_external_of<Type>&>(object, env);
+constexpr auto unwrap_member_this = [](auto_environment auto& env, napi_value this_arg) noexcept -> std::optional<tagged_external_of<Type>*> {
+	return napi::invoke_maybe(napi_coerce_to_object, napi_env{env}, this_arg)
+		.and_then([ &env ](napi_value coerced_this_arg) -> std::optional<napi_value> {
+			auto has_tag = napi::invoke_maybe(napi_check_object_type_tag, napi_env{env}, coerced_this_arg, &type_tag_for<tagged_external>);
+			if (has_tag) {
+				return coerced_this_arg;
+			} else {
+				// nb: The failure here is "no tag" which means we need to set the napi exception
+				napi::invoke0(napi_throw_type_error, napi_env{env}, nullptr, "Invalid object type");
+				return std::nullopt;
+			}
+		})
+		.and_then([ &env ](napi_value coerced_this_arg) -> std::optional<void*> {
+			return napi::invoke_maybe(napi_unwrap, napi_env{env}, coerced_this_arg);
+		})
+		.and_then([](void* addr) -> std::optional<tagged_external_of<Type>*> {
+			auto& external = *static_cast<tagged_external*>(addr);
+			if (external.contains(std::type_identity<Type>{})) {
+				return static_cast<tagged_external_of<Type>*>(&external);
+			} else {
+				return std::nullopt;
+			}
+		});
 };
 
 // Thunk for most functions including free function, static functions, and constructors. The first
 // `env` parameter is optional for callbacks. This returns a function which always accepts `env`.
 template <auto_environment Environment>
-constexpr auto thunk_free_function = []<class Callback>(Callback callback) -> auto {
-	constexpr auto make = util::overloaded{
-		// With `env` parameter
-		[]<class... Args, bool Nx, class Result>(
-			std::type_identity<auto(Environment&, Args...) noexcept(Nx)->Result> /*signature*/,
-			Callback callback
-		) -> auto {
-			return callback;
-		},
-		[]<class... Args, bool Nx, class Result>(
-			std::type_identity<auto(const Environment&, Args...) noexcept(Nx)->Result> /*signature*/,
-			Callback callback
-		) -> auto {
-			return callback;
-		},
-		// Without `env` parameter
+constexpr auto thunk_free_function = []<class Callback>(Callback callback) constexpr -> auto {
+	constexpr auto make_with_env =
+		[]<class Env, class... Args, bool Nx, class Result>(
+			std::type_identity<auto(Env, Args...) noexcept(Nx)->Result> /*signature*/,
+			auto callback
+		) -> auto
+		requires(std::remove_cvref<Env>{} == type<Environment>) {
+			return std::move(callback);
+		};
+	constexpr auto make_without_env =
 		[]<class... Args, bool Nx, class Result>(
 			std::type_identity<auto(Args...) noexcept(Nx)->Result> /*signature*/,
-			Callback callback
+			auto callback
 		) -> auto {
-			return util::bind{
-				[](Callback& callback, const Environment& /*env*/, Args... args) noexcept(Nx) -> Result {
-					return callback(std::forward<Args>(args)...);
-				},
-				std::move(callback),
-			};
-		},
+		return util::bind{
+			[](Callback& callback, const Environment& /*env*/, Args... args) noexcept(Nx) -> Result {
+				return callback(std::forward<Args>(args)...);
+			},
+			std::move(callback),
+		};
 	};
+
+	constexpr auto make = util::overloaded{make_with_env, make_without_env};
 	return make(std::type_identity<util::function_signature_t<decltype(callback)>>{}, std::move(callback));
 };
 
 // This takes the place of `thunk_free_function` for member functions, where `env` is the second
 // parameter.
 template <auto_environment Environment>
-constexpr auto thunk_member_function = []<class Callback>(Callback callback) -> auto {
-	constexpr auto make = util::overloaded{
-		// With `env` parameter
+constexpr auto thunk_member_function = []<class Callback>(Callback callback) constexpr -> auto {
+	constexpr auto make_with_env =
+		[]<class Type, class Env, class... Args, bool Nx, class Result>(
+			std::type_identity<auto(Type, Env, Args...) noexcept(Nx)->Result> /*signature*/,
+			auto callback
+		) -> auto
+		requires(std::remove_cvref<Env>{} == type<Environment>) {
+			return std::move(callback);
+		};
+	constexpr auto make_without_env =
 		[]<class Type, class... Args, bool Nx, class Result>(
-			std::type_identity<auto(Type&, Environment&, Args...) noexcept(Nx)->Result> /*signature*/,
-			Callback callback
+			std::type_identity<auto(Type, Args...) noexcept(Nx)->Result> /*signature*/,
+			auto callback
 		) -> auto {
-			return callback;
-		},
-		[]<class Type, class... Args, bool Nx, class Result>(
-			std::type_identity<auto(Type&, const Environment&, Args...) noexcept(Nx)->Result> /*signature*/,
-			Callback callback
-		) -> auto {
-			return callback;
-		},
-		// Without `env` parameter
-		[]<class Type, class... Args, bool Nx, class Result>(
-			std::type_identity<auto(Type&, Args...) noexcept(Nx)->Result> /*signature*/,
-			Callback callback
-		) -> auto {
-			return util::bind{
-				[](Callback& callback, Type& that, const Environment& /*env*/, Args... args) noexcept(Nx) -> Result {
-					return callback(that, std::forward<Args>(args)...);
-				},
-				std::move(callback),
-			};
-		},
+		return util::bind{
+			[](Callback& callback, Type that, const Environment& /*env*/, Args... args) noexcept(Nx) -> Result {
+				return callback(that, std::forward<Args>(args)...);
+			},
+			std::move(callback),
+		};
 	};
+
+	constexpr auto make = util::overloaded{make_with_env, make_without_env};
 	return make(std::type_identity<util::function_signature_t<decltype(callback)>>{}, std::move(callback));
 };
 
@@ -98,39 +110,50 @@ using internal_constructor = util::function_ref<auto(napi_value)->napi_value>;
 // Make callback for plain free function
 export template <auto_environment Environment>
 constexpr auto make_free_function(auto function) {
-	auto callback = thunk_free_function<Environment>(std::move(function));
-	using callback_type = decltype(callback);
-
-	constexpr auto make =
-		[]<class... Args, bool Nx, class Result>(
-			std::type_identity<auto(Environment&, Args...) noexcept(Nx)->Result>,
-			callback_type callback
+	constexpr auto make_with_try_catch =
+		[]<class Env, class... Args, bool Nx, class Result>(
+			std::type_identity<auto(Env, Args...) noexcept(Nx)->Result> /*signature*/,
+			auto callback
 		) -> auto {
+		using callback_type = decltype(callback);
 		return util::bind{
 			[](callback_type& callback, Environment& env, const callback_info& info) noexcept(Nx) -> napi_value {
-				if constexpr (Nx && sizeof...(Args) == 0) {
-					static_assert(false);
-					// clang bug? The `false` assert works fine but the code below causes an error because the
-					// arguments don't match.
-					// return js::transfer_in_strict<napi_value>(callback(env), env);
-				} else {
-					return invoke_napi_error_scope(env, [ & ]() -> napi_value {
-						auto run = util::regular_return{[ & ]() -> decltype(auto) {
-							return std::apply(
-								callback,
-								std::tuple_cat(
-									std::forward_as_tuple(env),
-									js::transfer_out<std::tuple<Args...>>(info.arguments(), env)
-								)
-							);
-						}};
-						return js::transfer_in_strict<napi_value>(run(), env);
-					});
-				}
+				return invoke_napi_error_scope(env, [ & ]() -> napi_value {
+					auto run = util::regular_return{[ & ]() -> decltype(auto) {
+						return std::apply(
+							callback,
+							std::tuple_cat(
+								std::forward_as_tuple(env),
+								js::transfer_out<std::tuple<Args...>>(info.arguments(), env)
+							)
+						);
+					}};
+					return js::transfer_in_strict<napi_value>(run(), env);
+				});
 			},
 			std::move(callback),
 		};
 	};
+	constexpr auto make_noexcept =
+		[]<class Env, class Result>(
+			std::type_identity<auto(Env) noexcept -> Result> /*signature*/,
+			auto callback
+		) -> auto {
+		static_assert(false, "untested");
+		using callback_type = decltype(callback);
+		return util::bind{
+			[](callback_type& callback_, Environment& env, const callback_info& /*info*/) noexcept -> napi_value {
+				auto run = util::regular_return{[ & ]() -> decltype(auto) {
+					return callback_(env);
+				}};
+				return js::transfer_in_strict<napi_value>(run(), env);
+			},
+			std::move(callback),
+		};
+	};
+
+	auto callback = thunk_free_function<Environment>(std::move(function));
+	constexpr auto make = util::overloaded{make_with_try_catch, make_noexcept};
 	return make(std::type_identity<util::function_signature_t<decltype(callback)>>{}, std::move(callback));
 }
 
@@ -146,70 +169,101 @@ constexpr auto make_constructor_function(auto constructor) {
 			};
 		},
 		[](auto constructor) -> auto {
-			// None of this is tested.
-			static_assert(false);
-			auto callback = thunk_free_function<Environment>(std::move(constructor));
-			using callback_type = decltype(callback);
+			// These are the last steps, common to both branches
+			constexpr auto wrap = [](auto derived_instance, Environment& env, const callback_info& info) -> napi_value {
+				// Tag the result
+				static_assert(std::is_base_of_v<js::tagged_external, Type>);
+				napi::invoke0(napi_type_tag_object, napi_env{env}, info.this_arg(), &type_tag_for<js::tagged_external>);
+				// Wrap w/ finalizer
+				auto erased_instance = util::safe_pointer_upcast<tagged_external>(std::move(derived_instance));
+				return apply_finalizer(std::move(erased_instance), [ & ](Type* instance, napi_finalize finalize, void* hint) -> napi_value {
+					napi::invoke0(napi_wrap, napi_env{env}, info.this_arg(), instance, finalize, hint, nullptr);
+					return info.this_arg();
+				});
+			};
+			using wrap_type = decltype(wrap);
 
-			constexpr auto make =
-				[]<class... Args, bool Nx, class Result>(
-					std::type_identity<auto(Environment&, Args...) noexcept(Nx)->Result>,
-					callback_type callback
+			constexpr auto make_with_try_catch =
+				[]<class Env, class... Args, bool Nx, class Result>(
+					std::type_identity<auto(Env, Args...) noexcept(Nx)->Result> /*signature*/,
+					auto callback
 				) -> auto {
+				static_assert(false, "untested");
+				using callback_type = decltype(callback);
 				return util::bind{
-					[](callback_type& callback, Environment& env, const callback_info& info) noexcept(Nx) -> napi_value {
-						const auto wrap = [ & ](auto derived_instance) -> napi_value {
-							// Tag the result
-							static_assert(std::is_base_of_v<js::tagged_external, Type>);
-							napi::invoke0(napi_type_tag_object, napi_env{env}, info.this_arg(), &type_tag_for<js::tagged_external>);
-							// Wrap w/ finalizer
-							auto erased_instance = util::safe_pointer_upcast<tagged_external>(std::move(derived_instance));
-							return apply_finalizer(std::move(erased_instance), [ & ](Type* instance, napi_finalize finalize, void* hint) -> napi_value {
-								napi::invoke0(napi_wrap, napi_env{env}, info.this_arg(), instance, finalize, hint, nullptr);
-								return info.this_arg();
-							});
-						};
-						if constexpr (Nx && sizeof...(Args) == 0) {
-							return wrap(callback(env, value<object_tag>::from(info.this_arg())));
-						} else {
-							return invoke_napi_error_scope(env, [ & ]() -> napi_value {
-								auto instance = std::apply(
-									callback,
-									std::tuple_cat(
-										std::forward_as_tuple(env, value<object_tag>::from(info.this_arg())),
-										js::transfer_out<std::tuple<Args...>>(info.arguments(), env)
-									)
-								);
-								return wrap(std::move(instance));
-							});
-						}
+					[](callback_type& callback, wrap_type& wrap, Environment& env, const callback_info& info) noexcept(Nx) -> napi_value {
+						return invoke_napi_error_scope(env, [ & ]() -> napi_value {
+							auto instance = std::apply(
+								callback,
+								std::tuple_cat(
+									std::forward_as_tuple(env, value<object_tag>::from(info.this_arg())),
+									js::transfer_out<std::tuple<Args...>>(info.arguments(), env)
+								)
+							);
+							return wrap(std::move(instance));
+						});
+					},
+					std::move(callback),
+					wrap,
+				};
+			};
+			constexpr auto make_noexcept =
+				[]<class Env, class Result>(
+					std::type_identity<auto(Env) noexcept -> Result> /*signature*/,
+					auto callback
+				) -> auto {
+				static_assert(false, "untested");
+				using callback_type = decltype(callback);
+				return util::bind{
+					[](callback_type& callback, Environment& env, const callback_info& info) noexcept -> napi_value {
+						return wrap(callback(env, value<object_tag>::from(info.this_arg())));
 					},
 					std::move(callback),
 				};
 			};
-			return make(std::type_identity<util::function_signature_t<decltype(callback)>>{}, std::move(callback));
+
+			auto callback = thunk_free_function<Environment>(std::move(constructor));
+			using signature_type = util::function_signature_t<decltype(callback)>;
+			static_assert(util::signature_result<signature_type>{} != type<void>);
+			constexpr auto make = util::overloaded{make_with_try_catch, make_noexcept};
+			return make(std::type_identity<signature_type>{}, std::move(callback));
 		},
 	};
 	auto runtime_constructor = make_invoke_runtime_constructor(std::move(constructor));
 	using runtime_constructor_type = decltype(runtime_constructor);
 
-	// This part is really silly. We want the ability to create runtime host values through private
-	// construction not available to JavaScript. This is done with tagged external values.
+	// This part is really silly. We want the ability to create runtime host values through direct C++
+	// invocation not available to JavaScript. This is done with a tagged external value to a
+	// `util::function_ref`.
 	return util::bind{
 		[](runtime_constructor_type& constructor, Environment& env, const callback_info& info) -> napi_value {
 			auto arguments = info.arguments();
 			if (arguments.size() > 0) {
-				auto* maybe_addr = arguments.at(0);
-				// Check truthy since null or undefined causes `napi_coerce_to_object` to throw
-				if (napi::invoke(napi_coerce_to_bool, napi_env{env}, maybe_addr)) {
-					// Check type tag for `internal_constructor`, which is a `function_ref` to the constructor
-					// we actually want to invoke.
-					maybe_addr = napi::invoke(napi_coerce_to_object, napi_env{env}, maybe_addr);
-					if (napi::invoke(napi_check_object_type_tag, napi_env{env}, maybe_addr, &type_tag_for<internal_constructor>)) {
-						auto* addr = napi::invoke(napi_get_value_external, napi_env{env}, maybe_addr);
-						const auto& constructor = *static_cast<internal_constructor*>(addr);
-						return constructor(info.this_arg());
+				auto maybe_constructor = [ & ]() -> std::optional<internal_constructor*> {
+					try {
+						// Check truthiness since null or undefined causes `napi_coerce_to_object` to throw
+						auto* arg0 = arguments.at(0);
+						if (napi::invoke(napi_coerce_to_bool, napi_env{env}, arg0)) {
+							auto* as_object = napi::invoke(napi_coerce_to_object, napi_env{env}, arg0);
+							auto has_tag = napi::invoke(napi_check_object_type_tag, napi_env{env}, as_object, &type_tag_for<internal_constructor>);
+							if (has_tag) {
+								void* addr = napi::invoke(napi_get_value_external, napi_env{env}, as_object);
+								return static_cast<internal_constructor*>(addr);
+							}
+						}
+						return nullptr;
+					} catch (const napi::pending_error& /*error*/) {
+						return std::nullopt;
 					}
+				}();
+				if (!maybe_constructor) {
+					return nullptr;
+				}
+				if (*maybe_constructor != nullptr) {
+					const auto& constructor = **maybe_constructor;
+					return invoke_napi_error_scope(env, [ & ]() -> napi_value {
+						return constructor(info.this_arg());
+					});
 				}
 			}
 			// Invoke normal constructor
@@ -222,23 +276,24 @@ constexpr auto make_constructor_function(auto constructor) {
 // Make callback for method invocations
 export template <auto_environment Environment, class Type, class Method>
 constexpr auto make_member_function(Method method) {
-	auto callback = thunk_member_function<Environment>(std::move(method));
-	using callback_type = decltype(callback);
-
-	constexpr auto make =
-		[]<class That, class... Args, bool Nx, class Result>(
-			std::type_identity<auto(That&, Environment&, Args...) noexcept(Nx)->Result>,
-			callback_type callback
+	constexpr auto make_with_try_catch =
+		[]<class That, class Env, class... Args, bool Nx, class Result>(
+			std::type_identity<auto(That, Env, Args...) noexcept(Nx)->Result> /*signature*/,
+			auto callback
 		) -> auto {
+		using callback_type = decltype(callback);
 		return util::bind{
 			[](callback_type& callback, Environment& env, const callback_info& info) noexcept(Nx) -> napi_value {
-				// nb: Member functions can always throw, since `this` counts as an argument
+				auto maybe_that = unwrap_member_this<Type>(env, info.this_arg());
+				if (!maybe_that) {
+					return nullptr;
+				}
 				return invoke_napi_error_scope(env, [ & ]() -> napi_value {
 					auto run = util::regular_return{[ & ]() -> decltype(auto) {
 						return std::apply(
 							callback,
 							std::tuple_cat(
-								std::forward_as_tuple(unwrap_this<Type>(env, info.this_arg()), env),
+								std::forward_as_tuple(**maybe_that, env),
 								js::transfer_out<std::tuple<Args...>>(info.arguments(), env)
 							)
 						);
@@ -249,6 +304,30 @@ constexpr auto make_member_function(Method method) {
 			std::move(callback),
 		};
 	};
+	constexpr auto make_noexcept =
+		[]<class That, class Env, class Result>(
+			std::type_identity<auto(That, Env) noexcept -> Result> /*signature*/,
+			auto callback
+		) -> auto {
+		static_assert(false, "untested");
+		using callback_type = decltype(callback);
+		return util::bind{
+			[](callback_type& callback, Environment& env, const callback_info& info) noexcept -> napi_value {
+				auto maybe_that = unwrap_member_this<Type>(env, info.this_arg());
+				if (!maybe_that) {
+					return nullptr;
+				}
+				auto run = util::regular_return{[ & ]() -> decltype(auto) {
+					return callback(**maybe_that, env);
+				}};
+				return js::transfer_in_strict<napi_value>(run(), env);
+			},
+			std::move(callback),
+		};
+	};
+
+	auto callback = thunk_member_function<Environment>(std::move(method));
+	constexpr auto make = util::overloaded{make_with_try_catch, make_noexcept};
 	return make(std::type_identity<util::function_signature_t<decltype(callback)>>{}, std::move(callback));
 };
 

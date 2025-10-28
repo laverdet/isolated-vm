@@ -1,16 +1,19 @@
 module;
 #include <optional>
 #include <tuple>
+#include <utility>
 #include <variant>
 module backend_napi_v8;
 import :agent;
 import :environment;
+import :module_;
+import :realm;
+import :script;
 import :utility;
 import isolated_js;
 import isolated_v8;
 import ivm.utility;
 import napi_js;
-using namespace isolated_v8;
 
 namespace backend_napi_v8 {
 
@@ -36,12 +39,13 @@ agent_environment::agent_environment(const isolated_v8::agent_lock& lock) :
 		runtime_interface_{lock} {}
 
 auto create_agent(environment& env, std::optional<make_agent_options> options_optional) {
+	namespace clock = isolated_v8::clock;
 	auto options = std::move(options_optional).value_or(make_agent_options{});
 	auto& cluster = env.cluster();
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, agent_handle agent) -> auto {
-		return js::forward{js::napi::untagged_external<agent_handle>::make(env, std::move(agent))};
+		return js::forward{agent_class_template(env).construct(env, std::move(agent))};
 	});
-	auto clock = std::visit(
+	auto clock_ = std::visit(
 		util::overloaded{
 			[](const make_agent_options::clock_deterministic& options) -> clock::any_clock {
 				return clock::deterministic{options.epoch, js::js_clock::duration{options.interval}};
@@ -52,7 +56,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 			[](const make_agent_options::clock_realtime& options) -> clock::any_clock {
 				return clock::realtime{options.epoch};
 			},
-			[](const make_agent_options::clock_system& /*clock*/) -> clock::any_clock {
+			[](const make_agent_options::clock_system& /*options*/) -> clock::any_clock {
 				return clock::system{};
 			},
 		},
@@ -61,7 +65,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	agent_handle::make(
 		cluster,
 		[](const agent_handle::lock& lock) -> auto { return agent_environment{lock}; },
-		{.clock = clock, .random_seed = options.random_seed},
+		{.clock = clock_, .random_seed = options.random_seed},
 		[ dispatch = std::move(dispatch) ](
 			const agent_handle::lock& /*lock*/,
 			agent_handle agent
@@ -73,8 +77,18 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	return js::forward{promise};
 }
 
-auto make_create_agent(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::free_function{create_agent});
+auto agent_class_template(environment& env) -> js::napi::value<js::class_tag_of<agent_handle>> {
+	return env.class_template(
+		std::type_identity<agent_handle>{},
+		js::class_template{
+			js::class_constructor{util::cw<u8"Agent">},
+			js::class_method{util::cw<u8"compileModule">, make_forward_callback(module_handle::compile)},
+			js::class_method{util::cw<u8"compileScript">, make_forward_callback(script_handle::compile_script)},
+			js::class_method{util::cw<u8"createCapability">, make_forward_callback(module_handle::create_capability)},
+			js::class_method{util::cw<u8"createRealm">, make_forward_callback(realm_handle::create)},
+			js::class_static{util::cw<u8"create">, create_agent},
+		}
+	);
 }
 
 } // namespace backend_napi_v8

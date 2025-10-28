@@ -4,6 +4,7 @@ module;
 #include <utility>
 export module napi_js:promise;
 import :api;
+import :value;
 import ivm.utility;
 
 namespace js::napi {
@@ -59,7 +60,7 @@ auto make_promise(Environment& env, Accept accept) {
 		};
 
 	// `[ dispatch, promise ]`
-	return std::make_tuple(std::move(dispatch), promise);
+	return std::tuple{std::move(dispatch), value<promise_tag>::from(promise)};
 }
 
 } // namespace js::napi

@@ -68,7 +68,7 @@ class regular_return {
 		constexpr auto operator()(auto&&... args) -> decltype(auto)
 			requires std::invocable<Invoke&, decltype(args)...>
 		{
-			if constexpr (std::invoke_result<Invoke, decltype(args)...>{} == type<void>) {
+			if constexpr (std::invoke_result<Invoke&, decltype(args)...>{} == type<void>) {
 				invoke(std::forward<decltype(args)>(args)...);
 				return std::monostate{};
 			} else {

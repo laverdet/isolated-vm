@@ -19,24 +19,11 @@ using namespace isolated_v8;
 
 namespace backend_napi_v8 {
 
-struct compile_module_options {
-		std::optional<source_origin> origin;
-};
-
-struct create_capability_options {
-		source_required_name origin;
-};
-
 module_handle::module_handle(agent_handle agent, isolated_v8::js_module module) :
 		agent_{std::move(agent)},
 		module_{std::move(module)} {}
 
-auto compile_module(
-	environment& env,
-	js::napi::untagged_external<agent_handle>& agent,
-	js::string_t source_text,
-	compile_module_options options
-) {
+auto module_handle::compile(agent_handle& agent, environment& env, js::string_t source_text, compile_module_options options) -> js::napi::value<promise_tag> {
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](
@@ -45,14 +32,14 @@ auto compile_module(
 			isolated_v8::js_module module_,
 			std::vector<isolated_v8::module_request> requests
 		) -> auto {
-			auto* handle = js::napi::untagged_external<module_handle>::make(env, std::move(agent), std::move(module_));
+			auto handle = module_handle::class_template(env).construct(env, std::move(agent), std::move(module_));
 			return std::tuple{
 				js::forward{handle},
 				std::move(requests),
 			};
 		}
 	);
-	agent->schedule(
+	agent.schedule(
 		[ dispatch = std::move(dispatch) ](
 			const agent_handle::lock& lock,
 			agent_handle agent,
@@ -64,22 +51,74 @@ auto compile_module(
 			auto requests = module.requests(lock);
 			dispatch(std::move(agent), std::move(module), std::move(requests));
 		},
-		*agent,
+		agent,
 		std::move(source_text),
 		std::move(options)
 	);
-	return js::forward{promise};
+	return promise;
 }
 
-auto evaluate_module(
-	environment& env,
-	js::napi::untagged_external<realm_handle>& realm,
-	js::napi::untagged_external<module_handle>& module_
-) {
+auto module_handle::create_capability(agent_handle& agent, environment& env, callback_type capability, create_capability_options options) -> js::napi::value<promise_tag> {
+	// Callback to invoke the capability in the node environment
+	auto capability_callback =
+		[ callback = js::napi::make_shared_remote(env, *capability) ](
+			environment& env,
+			std::vector<js::value_t> params
+		) -> void {
+		js::napi::handle_scope scope{napi_env{env}};
+		callback->get(env).apply<std::monostate>(env, std::move(params));
+	};
+	// Callback passed to isolated v8
+	auto invoke_capability = js::free_function{
+		[ &env,
+			capability_callback = std::move(capability_callback) ](
+			const realm::scope& /*realm*/,
+			js::rest /*rest*/,
+			std::vector<js::value_t> params
+		) -> void {
+			env.scheduler()(
+				[ &env,
+					capability_callback,
+					params = std::move(params) ]() mutable -> void {
+					capability_callback(env, std::move(params));
+				}
+			);
+		}
+	};
+	// Make synthetic module
+	auto [ dispatch, promise ] = make_promise(
+		env,
+		[](environment& env, agent_handle agent, js_module module_) -> auto {
+			return js::forward{module_handle::class_template(env).construct(env, std::move(agent), std::move(module_))};
+		}
+	);
+	agent.schedule(
+		[ dispatch = std::move(dispatch) ](
+			const agent_handle::lock& lock,
+			agent_handle agent,
+			create_capability_options options,
+			auto invoke_capability
+		) {
+			auto make_interface = [ & ]() -> auto {
+				return std::make_tuple(
+					std::pair{util::cw<"default">, isolated_v8::function_template::make(lock, std::move(invoke_capability))}
+				);
+			};
+			auto module_ = isolated_v8::js_module::create_synthetic(lock, make_interface(), std::move(options).origin);
+			dispatch(std::move(agent), std::move(module_));
+		},
+		agent,
+		std::move(options),
+		std::move(invoke_capability)
+	);
+	return promise;
+}
+
+auto module_handle::evaluate(environment& env, realm_handle& realm) -> js::napi::value<promise_tag> {
 	auto [ dispatch, promise ] = make_promise(env, [](environment& /*env*/, js::value_t result) -> js::value_t {
 		return result;
 	});
-	module_->agent().schedule(
+	agent_.schedule(
 		[ dispatch = std::move(dispatch) ](
 			const agent_handle::lock& agent,
 			isolated_v8::realm realm,
@@ -90,18 +129,13 @@ auto evaluate_module(
 			});
 			dispatch(std::move(result));
 		},
-		realm->realm(),
-		module_->module()
+		realm.realm(),
+		module_
 	);
-	return js::forward{promise};
+	return promise;
 }
 
-auto link_module(
-	environment& env,
-	js::napi::untagged_external<realm_handle>& realm,
-	js::napi::untagged_external<module_handle>& module_,
-	js::forward<js::napi::value<js::function_tag>> link_callback
-) {
+auto module_handle::link(environment& env, realm_handle& realm, callback_type link_callback) -> js::napi::value<promise_tag> {
 	using attributes_type = isolated_v8::module_request::attributes_type;
 	auto scheduler = env.scheduler();
 	js::napi::reference link_callback_ref{env, *link_callback};
@@ -121,10 +155,12 @@ auto link_module(
 			[ promise = std::move(promise) ](
 				environment& /*env*/,
 				js::forward<js::napi::value<js::value_tag>> /*error*/,
-				js::napi::untagged_external<module_handle>* module
+				module_handle* module
 			) mutable -> void {
 				if (module) {
-					promise.set_value((*module)->module());
+					promise.set_value(module->module_);
+				} else {
+					throw std::logic_error{"link failure"};
 				}
 			}
 		};
@@ -158,7 +194,7 @@ auto link_module(
 		return future.get();
 	};
 	// Schedule the link operation
-	module_->agent().schedule_async(
+	agent_.schedule_async(
 		[ dispatch = std::move(dispatch) ](
 			const std::stop_token& /*stop_token*/,
 			const agent_handle::lock& agent,
@@ -166,113 +202,27 @@ auto link_module(
 			isolated_v8::js_module module,
 			auto host_link_callback
 		) -> void {
-			realm.invoke(agent, [ & ](const isolated_v8::realm::scope& realm) {
+			realm.invoke(agent, [ & ](const isolated_v8::realm::scope& realm) -> void {
 				module.link(realm, std::move(host_link_callback));
 			});
 			dispatch();
 		},
-		realm->realm(),
-		module_->module(),
+		realm.realm(),
+		module_,
 		std::move(host_link_callback)
 	);
-	return js::forward{promise};
+	return promise;
 }
 
-auto create_capability(
-	environment& env,
-	js::napi::untagged_external<agent_handle>& agent,
-	js::forward<js::napi::value<js::function_tag>> capability,
-	create_capability_options options
-) {
-	// Callback to invoke the capability in the node environment
-	auto capability_callback =
-		[ callback = js::napi::make_shared_remote(env, *capability) ](
-			environment& env,
-			std::vector<js::value_t> params
-		) {
-			js::napi::handle_scope scope{napi_env{env}};
-			callback->get(env).apply<std::monostate>(env, std::move(params));
-		};
-	// Callback passed to isolated v8
-	auto invoke_capability = js::free_function{
-		[ &env,
-			capability_callback = std::move(capability_callback) ](
-			const realm::scope& /*realm*/,
-			js::rest /*rest*/,
-			std::vector<js::value_t> params
-		) {
-			env.scheduler()(
-				[ &env,
-					capability_callback,
-					params = std::move(params) ]() mutable {
-					capability_callback(env, std::move(params));
-				}
-			);
-		}
-	};
-	// Make synthetic module
-	auto [ dispatch, promise ] = make_promise(
-		env,
-		[](environment& env, agent_handle agent, js_module module_) -> auto {
-			return js::forward{js::napi::untagged_external<module_handle>::make(env, std::move(agent), std::move(module_))};
+auto module_handle::class_template(environment& env) -> js::napi::value<class_tag_of<module_handle>> {
+	return env.class_template(
+		std::type_identity<module_handle>{},
+		js::class_template{
+			js::class_constructor{util::cw<u8"Module">},
+			js::class_method{util::cw<u8"evaluate">, make_forward_callback(util::fn<&module_handle::evaluate>)},
+			js::class_method{util::cw<u8"link">, make_forward_callback(util::fn<&module_handle::link>)},
 		}
 	);
-	agent->schedule(
-		[ dispatch = std::move(dispatch) ](
-			const agent_handle::lock& lock,
-			agent_handle agent,
-			create_capability_options options,
-			auto invoke_capability
-		) {
-			auto make_interface = [ & ]() -> auto {
-				return std::make_tuple(
-					std::pair{util::cw<"default">, isolated_v8::function_template::make(lock, std::move(invoke_capability))}
-				);
-			};
-			auto module_ = isolated_v8::js_module::create_synthetic(lock, make_interface(), std::move(options).origin);
-			dispatch(std::move(agent), std::move(module_));
-		},
-		*agent,
-		std::move(options),
-		std::move(invoke_capability)
-	);
-	return js::forward{promise};
-}
-
-auto module_handle::make_compile_module(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::free_function{compile_module});
-}
-
-auto module_handle::make_create_capability(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::free_function{create_capability});
-}
-
-auto module_handle::make_evaluate_module(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::free_function{evaluate_module});
-}
-
-auto module_handle::make_link_module(environment& env) -> js::napi::value<js::function_tag> {
-	return js::napi::value<js::function_tag>::make(env, js::free_function{link_module});
 }
 
 } // namespace backend_napi_v8
-
-namespace js {
-using namespace backend_napi_v8;
-
-template <>
-struct struct_properties<compile_module_options> {
-		constexpr static auto defaultable = true;
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"origin">, struct_member{&compile_module_options::origin}},
-		};
-};
-
-template <>
-struct struct_properties<create_capability_options> {
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"origin">, struct_member{&create_capability_options::origin}},
-		};
-};
-
-} // namespace js

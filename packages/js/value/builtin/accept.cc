@@ -191,6 +191,12 @@ struct accept<void, tagged_external_of<Type>&> : accept<void, tagged_external&> 
 		}
 };
 
+template <class Type>
+	requires requires { typename transfer_type_t<Type>; }
+struct accept<void, Type&> : accept<void, transfer_type_t<Type>&> {
+		using accept<void, transfer_type_t<Type>&>::accept;
+};
+
 // `std::optional` allows `undefined` in addition to the next acceptor
 template <class Meta, class Type>
 struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
@@ -200,6 +206,23 @@ struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
 		using accept_type::operator();
 		constexpr auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*value*/) const -> std::optional<Type> {
 			return std::nullopt;
+		}
+};
+
+// Accepting a pointer uses the reference acceptor, while also accepting `undefined`
+template <class Meta, class Type>
+struct accept<Meta, Type*> : accept<Meta, Type&> {
+		using accept_type = accept<Meta, Type&>;
+		using accept_type::accept_type;
+
+		using accept_type::operator();
+
+		constexpr auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*value*/) const -> Type* {
+			return nullptr;
+		}
+
+		constexpr auto operator()(Type& target) const -> Type* {
+			return std::addressof(target);
 		}
 };
 

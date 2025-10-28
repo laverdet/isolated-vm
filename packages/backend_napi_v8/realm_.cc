@@ -9,13 +9,18 @@ namespace backend_napi_v8 {
 
 export class realm_handle {
 	public:
+		using transfer_type = js::tagged_external_of<realm_handle>;
+
 		realm_handle(agent_handle agent, isolated_v8::realm realm);
 
 		auto agent() -> auto& { return agent_; }
 		auto realm() -> auto& { return realm_; }
 
-		static auto make_create_realm(environment& env) -> js::napi::value<js::function_tag>;
-		static auto make_instantiate_runtime(environment& env) -> js::napi::value<js::function_tag>;
+		auto instantiate_runtime(environment& env) -> js::napi::value<js::promise_tag>;
+
+		static auto create(agent_handle& agent, environment& env) -> js::napi::value<js::promise_tag>;
+
+		static auto class_template(environment& env) -> js::napi::value<class_tag_of<realm_handle>>;
 
 	private:
 		agent_handle agent_;

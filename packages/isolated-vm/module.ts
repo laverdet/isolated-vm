@@ -68,13 +68,12 @@ export class Module extends AbstractModule {
 	}
 
 	evaluate(realm: Realm): Promise<unknown> {
-		return ivm.evaluateModule(__extractRealm(realm), __extractModule(this));
+		return __extractModule(this).evaluate(__extractRealm(realm));
 	}
 
 	link(realm: Realm, linker: ModuleLinker): Promise<void> {
-		return ivm.linkModule(
+		return __extractModule(this).link(
 			__extractRealm(realm),
-			__extractModule(this),
 			(specifier, parentName, attributes, callback) => {
 				void async function() {
 					try {

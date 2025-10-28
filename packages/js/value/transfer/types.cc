@@ -46,4 +46,15 @@ struct accept_target<Accept> : std::type_identity<typename Accept::accept_target
 template <class Meta, class Type>
 struct accept_target<accept<Meta, Type>> : std::type_identity<Type> {};
 
+// Override to delegate transfer behavior for a compatible type
+export template <class Type>
+struct transfer_type;
+
+template <class Type>
+using transfer_type_t = transfer_type<Type>::type;
+
+template <class Type>
+	requires requires { typename Type::transfer_type; }
+struct transfer_type<Type> : std::type_identity<typename Type::transfer_type> {};
+
 } // namespace js

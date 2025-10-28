@@ -105,19 +105,4 @@ struct accept<void, napi::untagged_external<Type>&> {
 		}
 };
 
-// nb: Accepting a pointer allows `undefined` to pass
-template <class Type>
-struct accept<void, napi::untagged_external<Type>*> : accept<void, napi::untagged_external<Type>&> {
-		using accept_type = accept<void, napi::untagged_external<Type>&>;
-		using accept_type::accept_type;
-
-		auto operator()(external_tag tag, auto& visit, auto&& value) const -> napi::untagged_external<Type>* {
-			return std::addressof(util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(value)>(value)));
-		}
-
-		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*value*/) const -> napi::untagged_external<Type>* {
-			return nullptr;
-		}
-};
-
 } // namespace js
