@@ -11,43 +11,29 @@ namespace isolated_v8 {
 export struct source_location {
 		int line{};
 		int column{};
+
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_member{util::cw<"line">, &source_location::line},
+			js::struct_member{util::cw<"column">, &source_location::column},
+		};
 };
 
 export struct source_origin {
 		std::optional<js::string_t> name;
 		std::optional<source_location> location;
+
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_member{util::cw<"name">, &source_origin::name},
+			js::struct_member{util::cw<"location">, &source_origin::location},
+		};
 };
 
 export struct source_required_name {
 		js::string_t name;
+
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_member{util::cw<"name">, &source_required_name::name},
+		};
 };
 
 } // namespace isolated_v8
-
-namespace js {
-using namespace isolated_v8;
-
-template <>
-struct struct_properties<source_location> {
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"line">, struct_member{&source_location::line}},
-			property{util::cw<"column">, struct_member{&source_location::column}},
-		};
-};
-
-template <>
-struct struct_properties<source_origin> {
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"name">, struct_member{&source_origin::name}},
-			property{util::cw<"location">, struct_member{&source_origin::location}},
-		};
-};
-
-template <>
-struct struct_properties<source_required_name> {
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"name">, struct_member{&source_required_name::name}},
-		};
-};
-
-} // namespace js

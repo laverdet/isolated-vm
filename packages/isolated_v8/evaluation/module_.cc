@@ -27,6 +27,10 @@ export class module_request {
 		module_request(js::string_t specifier, attributes_type attributes_);
 		[[nodiscard]] auto specifier() const -> const js::string_t& { return specifier_; }
 
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_accessor{util::cw<"specifier">, util::fn<&module_request::specifier>},
+		};
+
 	private:
 		attributes_type attributes_;
 		js::string_t specifier_;
@@ -154,15 +158,3 @@ auto js_module::link(const realm::scope& realm, auto callback) -> void {
 }
 
 } // namespace isolated_v8
-
-namespace js {
-using isolated_v8::module_request;
-
-template <>
-struct struct_properties<module_request> {
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"specifier">, struct_accessor{&module_request::specifier}},
-		};
-};
-
-} // namespace js

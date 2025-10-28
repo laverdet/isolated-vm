@@ -80,26 +80,20 @@ static_assert(transfer<enum_test>("third"sv) == enum_test::third);
 // Objects
 struct object_literal_one {
 		int integer{};
+
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_member{util::cw<"integer">, &object_literal_one::integer},
+		};
 };
 struct object_literal {
 		int integer{};
 		double number{};
 		std::string string;
-};
 
-template <>
-struct struct_properties<object_literal_one> {
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"integer">, struct_member{&object_literal_one::integer}},
-		};
-};
-
-template <>
-struct struct_properties<object_literal> {
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"integer">, struct_member{&object_literal::integer}},
-			property{util::cw<"number">, struct_member{&object_literal::number}},
-			property{util::cw<"string">, struct_member{&object_literal::string}},
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_member{util::cw<"integer">, &object_literal::integer},
+			js::struct_member{util::cw<"number">, &object_literal::number},
+			js::struct_member{util::cw<"string">, &object_literal::string},
 		};
 };
 
@@ -151,24 +145,18 @@ static_assert(variant_is_equal_to(transfer<std::variant<specialized>>(specialize
 struct union_alternative_one {
 		std::string one;
 		constexpr auto operator==(const union_alternative_one& right) const -> bool { return one == right.one; };
+
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_member{util::cw<"one">, &union_alternative_one::one},
+		};
 };
 
 struct union_alternative_two {
 		std::string two;
 		constexpr auto operator==(const union_alternative_two& right) const -> bool { return two == right.two; };
-};
 
-template <>
-struct struct_properties<union_alternative_one> {
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"one">, struct_member{&union_alternative_one::one}},
-		};
-};
-
-template <>
-struct struct_properties<union_alternative_two> {
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"two">, struct_member{&union_alternative_two::two}},
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_member{util::cw<"two">, &union_alternative_two::two},
 		};
 };
 

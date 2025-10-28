@@ -20,7 +20,6 @@ target_sources(value_js
 		reference/referential_value.cc
 		reference/visit.cc
 		struct/accept.cc
-		struct/helpers.cc
 		struct/types.cc
 		struct/visit.cc
 		tag.cc

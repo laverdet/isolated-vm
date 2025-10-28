@@ -7,9 +7,6 @@ import :visit;
 
 namespace js {
 
-// Holds `this` and arguments vector
-export struct arguments_tag : vector_tag {};
-
 // Non-constructor, non-member function
 export template <class Callback>
 struct free_function {

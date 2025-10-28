@@ -287,7 +287,7 @@ struct visit<Meta, v8::FunctionCallbackInfo<v8::Value>> : visit<Meta, v8::Local<
 
 		template <class Accept>
 		auto operator()(v8::FunctionCallbackInfo<v8::Value> info, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(arguments_tag{}, *this, iv8::callback_info{info});
+			return accept(vector_tag{}, *this, iv8::callback_info{info});
 		}
 };
 

@@ -21,18 +21,38 @@ struct make_agent_options {
 		struct clock_deterministic {
 				js::js_clock::time_point epoch;
 				double interval{};
+
+				constexpr static auto struct_template = js::struct_template{
+					js::struct_member{util::cw<"epoch">, &make_agent_options::clock_deterministic::epoch},
+					js::struct_member{util::cw<"interval">, &make_agent_options::clock_deterministic::interval},
+				};
 		};
 		struct clock_microtask {
 				std::optional<js::js_clock::time_point> epoch;
+
+				constexpr static auto struct_template = js::struct_template{
+					js::struct_member{util::cw<"epoch">, &make_agent_options::clock_microtask::epoch},
+				};
 		};
 		struct clock_realtime {
 				js::js_clock::time_point epoch;
+
+				constexpr static auto struct_template = js::struct_template{
+					js::struct_member{util::cw<"epoch">, &make_agent_options::clock_realtime::epoch},
+				};
 		};
-		struct clock_system {};
+		struct clock_system {
+				constexpr static auto struct_template = js::struct_template{};
+		};
 		using clock_type = std::variant<clock_deterministic, clock_microtask, clock_realtime, clock_system>;
 
 		std::optional<clock_type> clock;
 		std::optional<double> random_seed;
+
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_member{util::cw<"clock">, &make_agent_options::clock},
+			js::struct_member{util::cw<"randomSeed">, &make_agent_options::random_seed},
+		};
 };
 
 agent_environment::agent_environment(const isolated_v8::agent_lock& lock) :
@@ -98,33 +118,6 @@ namespace js {
 using backend_napi_v8::make_agent_options;
 
 template <>
-struct struct_properties<make_agent_options::clock_deterministic> {
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"epoch">, struct_member{&make_agent_options::clock_deterministic::epoch}},
-			property{util::cw<"interval">, struct_member{&make_agent_options::clock_deterministic::interval}},
-		};
-};
-
-template <>
-struct struct_properties<make_agent_options::clock_microtask> {
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"epoch">, struct_member{&make_agent_options::clock_microtask::epoch}},
-		};
-};
-
-template <>
-struct struct_properties<make_agent_options::clock_realtime> {
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"epoch">, struct_member{&make_agent_options::clock_realtime::epoch}},
-		};
-};
-
-template <>
-struct struct_properties<make_agent_options::clock_system> {
-		constexpr static auto properties = std::tuple{};
-};
-
-template <>
 struct union_of<make_agent_options::clock_type> {
 		constexpr static auto& discriminant = util::cw<"type">;
 		constexpr static auto alternatives = std::tuple{
@@ -132,14 +125,6 @@ struct union_of<make_agent_options::clock_type> {
 			alternative<make_agent_options::clock_microtask>{"microtask"},
 			alternative<make_agent_options::clock_realtime>{"realtime"},
 			alternative<make_agent_options::clock_system>{"system"},
-		};
-};
-
-template <>
-struct struct_properties<make_agent_options> {
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"clock">, struct_member{&make_agent_options::clock}},
-			property{util::cw<"randomSeed">, struct_member{&make_agent_options::random_seed}},
 		};
 };
 

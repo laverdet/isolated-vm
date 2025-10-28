@@ -1,6 +1,5 @@
 module;
 #include <optional>
-#include <tuple>
 export module backend_napi_v8:module_;
 import :agent;
 import :environment;
@@ -14,10 +13,20 @@ using namespace isolated_v8;
 
 struct compile_module_options {
 		std::optional<source_origin> origin;
+
+		compile_module_options() = default;
+		explicit compile_module_options(std::nullopt_t /*default*/) noexcept {}
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_member{util::cw<"origin">, &compile_module_options::origin},
+		};
 };
 
 struct create_capability_options {
 		source_required_name origin;
+
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_member{util::cw<"origin">, &create_capability_options::origin},
+		};
 };
 
 export class module_handle {
@@ -42,23 +51,3 @@ export class module_handle {
 };
 
 } // namespace backend_napi_v8
-
-namespace js {
-using namespace backend_napi_v8;
-
-template <>
-struct struct_properties<compile_module_options> {
-		constexpr static auto defaultable = true;
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"origin">, struct_member{&compile_module_options::origin}},
-		};
-};
-
-template <>
-struct struct_properties<create_capability_options> {
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"origin">, struct_member{&create_capability_options::origin}},
-		};
-};
-
-} // namespace js

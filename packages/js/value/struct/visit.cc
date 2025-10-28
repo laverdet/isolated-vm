@@ -4,64 +4,41 @@ module;
 #include <utility>
 export module isolated_js:struct_.visit;
 import :property;
-import :struct_.helpers;
+import :struct_.types;
 import :transfer;
 import ivm.utility;
 
 namespace js {
 
-// Getter delegate for struct property
-template <class Value>
-struct getter_delegate;
-
-template <class Value>
-getter_delegate(Value) -> getter_delegate<Value>;
-
-// Getter by accessor delegate
-template <class Subject, class Type>
-struct getter_delegate<struct_accessor<Subject, Type>> : struct_accessor<Subject, Type> {
-		explicit constexpr getter_delegate(struct_accessor<Subject, Type> accessor) :
-				struct_accessor<Subject, Type>{accessor} {}
-
-		constexpr auto operator()(const Subject& subject) const -> const Type& { return (subject.*this->accessor)(); }
-};
-
-// Getter by direct member access
-template <class Subject, class Type>
-struct getter_delegate<struct_member<Subject, Type>> : struct_member<Subject, Type> {
-		explicit constexpr getter_delegate(struct_member<Subject, Type> member) :
-				struct_member<Subject, Type>{member} {}
-
-		constexpr auto operator()(const Subject& subject) const -> const Type& { return subject.*(this->member); }
-		constexpr auto operator()(Subject&& subject) const -> Type&& { return std::move(subject).*(this->member); }
-};
-
 // Visit a member of a struct via a getter delegate. This gets passed along to whatever acceptor
 // takes the `struct_tag`.
-template <class Meta, class Getter>
-struct visit_getter : visit<Meta, typename Getter::type> {
-		using visit_type = visit<Meta, typename Getter::type>;
-		constexpr visit_getter(auto* transfer, Getter getter) :
+template <class Meta, class Get>
+struct visit_getter : visit<Meta, typename Get::value_type> {
+		constexpr visit_getter(auto* transfer, Get get) :
 				visit_type{transfer},
-				getter{std::move(getter)} {}
+				get_{std::move(get)} {}
 
 		template <class Accept>
 		constexpr auto operator()(const auto& subject, const Accept& accept) -> accept_target_t<Accept> {
-			return util::invoke_as<visit_type>(*this, getter(subject), accept);
+			return util::invoke_as<visit_type>(*this, get_(subject), accept);
 		}
 
 	private:
-		Getter getter;
+		using visit_type = visit<Meta, typename Get::value_type>;
+		Get get_;
 };
 
 // Visitor passed to acceptor for each member
 template <class Meta, class Property>
 struct visit_object_property {
-		using first_type = visit_key_literal<Property::property_name, typename Meta::accept_property_subject_type>;
-		using second_type = visit_getter<Meta, getter_delegate<typename Property::property_type>>;
+	private:
+		using getter_type = decltype(std::declval<Property>().get);
+		using first_type = visit_key_literal<Property::name, typename Meta::accept_property_subject_type>;
+		using second_type = visit_getter<Meta, getter_type>;
 
+	public:
 		constexpr visit_object_property(auto* transfer, Property property) :
-				second{transfer, getter_delegate{property.value_template}} {}
+				second{transfer, property.get} {}
 
 		[[no_unique_address]] first_type first;
 		[[no_unique_address]] second_type second;
@@ -76,7 +53,7 @@ template <class Meta, class Type>
 using visit_struct_properties_t = visit_struct_properties<Meta, Type, std::remove_cvref_t<decltype(struct_properties<Type>::properties)>>;
 
 template <class Meta, class Type, class... Property>
-struct visit_struct_properties<Meta, Type, std::tuple<Property...>> {
+struct visit_struct_properties<Meta, Type, js::struct_template<Property...>> {
 	private:
 		using properties_type = std::tuple<visit_object_property<Meta, Property>...>;
 
@@ -101,8 +78,7 @@ struct visit_struct_properties<Meta, Type, std::tuple<Property...>> {
 };
 
 // Visitor function for C++ object types
-template <class Meta, class Type>
-	requires is_object_struct<Type>
+template <class Meta, transferable_struct Type>
 struct visit<Meta, Type> : visit_struct_properties_t<Meta, Type> {
 		using visit_struct_properties_t<Meta, Type>::visit_struct_properties_t;
 };

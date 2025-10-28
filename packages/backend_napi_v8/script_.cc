@@ -13,10 +13,22 @@ namespace backend_napi_v8 {
 
 struct compile_script_options {
 		std::optional<isolated_v8::source_origin> origin;
+
+		compile_script_options() = default;
+		explicit compile_script_options(std::nullopt_t /*default*/) noexcept {}
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_member{util::cw<"origin">, &compile_script_options::origin},
+		};
 };
 
 struct run_script_options {
 		std::optional<double> timeout;
+
+		run_script_options() = default;
+		explicit run_script_options(std::nullopt_t /*default*/) noexcept {}
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_member{util::cw<"timeout">, &run_script_options::timeout},
+		};
 };
 
 export class script_handle {
@@ -37,24 +49,3 @@ export class script_handle {
 };
 
 } // namespace backend_napi_v8
-
-namespace js {
-using backend_napi_v8::compile_script_options;
-using backend_napi_v8::run_script_options;
-
-template <>
-struct struct_properties<compile_script_options> {
-		constexpr static auto defaultable = true;
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"origin">, struct_member{&compile_script_options::origin}},
-		};
-};
-
-template <>
-struct struct_properties<run_script_options> {
-		constexpr static auto defaultable = true;
-		constexpr static auto properties = std::tuple{
-			property{util::cw<"timeout">, struct_member{&run_script_options::timeout}},
-		};
-};
-} // namespace js

@@ -8,61 +8,45 @@ module;
 export module isolated_js:struct_.accept;
 import :error;
 import :property;
-import :struct_.helpers;
+import :struct_.types;
 import :transfer;
 import ivm.utility;
 
 namespace js {
 
-// Setter delegate for struct property
-template <class Value>
-struct setter_delegate;
-
-// Setter by direct member access
-template <class Subject, class Type>
-struct setter_delegate<struct_member<Subject, Type>> : struct_member<Subject, Type> {
-		explicit constexpr setter_delegate(struct_member<Subject, Type> member) :
-				struct_member<Subject, Type>{member} {}
-
-		constexpr auto operator()(Subject& subject, Type value) const -> void {
-			subject.*(this->member) = std::move(value);
-		}
-};
-
 // Property acceptor and setter delegate for one property entry
 template <class Meta, class Property>
 struct accept_object_property {
-	private:
-		using member_type = Property::property_type::type;
-		using value_type = std::expected<member_type, undefined_in_tag>;
-		using accept_type = accept_property_value<Meta, Property::property_name, value_type, typename Meta::visit_property_subject_type>;
-		using setter_type = setter_delegate<typename Property::property_type>;
-
 	public:
 		constexpr accept_object_property(auto* transfer, Property property) :
-				acceptor{transfer},
-				setter{property.value_template} {}
+				accept_{transfer},
+				set_{property.set} {}
 
 		constexpr auto operator()(auto& visit, auto&& subject, auto& target) const -> void {
 			// nb: We `std::forward` the value to *each* setter. This allows the setters to pick an
 			// lvalue object apart member by member if it wants.
-			auto value = acceptor(dictionary_tag{}, visit, std::forward<decltype(subject)>(subject));
+			auto value = accept_(dictionary_tag{}, visit, std::forward<decltype(subject)>(subject));
 			if (value) {
-				setter(target, *std::move(value));
+				set_(target, *std::move(value));
 			} else {
-				if constexpr (!std::invocable<decltype(setter), decltype(target), std::nullopt_t>) {
-					// If the setter accepts undefined values then a missing property is allowed. In this
-					// case the setter is not invoked at all, which could in theory be used to distinguish
-					// between `undefined` and missing properties.
-					auto name_u16 = transfer_strict<std::u16string>(Property::property_name);
+				if constexpr (!std::is_nothrow_constructible_v<member_type, std::nullopt_t>) {
+					// If the value type can be constructed from `std::nullopt` then a missing property is
+					// allowed. In this case the setter is not invoked at all, which could in theory be used
+					// to distinguish between `undefined` and missing properties.
+					auto name_u16 = transfer_strict<std::u16string>(Property::name);
 					throw js::type_error{u"Missing required property: '" + name_u16 + u"'"};
 				}
 			}
 		}
 
 	private:
-		[[no_unique_address]] accept_type acceptor;
-		[[no_unique_address]] setter_type setter;
+		using setter_type = decltype(std::declval<Property>().set);
+		using member_type = setter_type::value_type;
+		using value_type = std::expected<member_type, undefined_in_tag>;
+		using accept_type = accept_property_value<Meta, Property::name, value_type, typename Meta::visit_property_subject_type>;
+
+		[[no_unique_address]] accept_type accept_;
+		[[no_unique_address]] setter_type set_;
 };
 
 // Helper to unpack `properties` tuple, construct a new target struct, and invoke each instance of
@@ -75,7 +59,7 @@ using accept_struct_properties_t =
 	accept_struct_properties<Meta, Type, std::remove_cvref_t<decltype(struct_properties<Type>::properties)>>;
 
 template <class Meta, class Type, class... Property>
-struct accept_struct_properties<Meta, Type, std::tuple<Property...>> {
+struct accept_struct_properties<Meta, Type, js::struct_template<Property...>> {
 	private:
 		using descriptor_type = struct_properties<Type>;
 		using properties_type = std::tuple<accept_object_property<Meta, Property>...>;
@@ -92,8 +76,7 @@ struct accept_struct_properties<Meta, Type, std::tuple<Property...>> {
 				}()} {}
 
 		constexpr auto operator()(undefined_tag /*tag*/, auto& /*visit*/, const auto& /*subject*/) const -> Type
-			requires requires { descriptor_type::defaultable; } {
-			static_assert(std::is_default_constructible_v<Type>);
+			requires (std::is_default_constructible_v<Type> && descriptor_type::defaultable) {
 			return Type{};
 		}
 
@@ -110,8 +93,7 @@ struct accept_struct_properties<Meta, Type, std::tuple<Property...>> {
 };
 
 // Struct acceptor
-template <class Meta, class Type>
-	requires is_object_struct<Type>
+template <class Meta, transferable_struct Type>
 struct accept<Meta, Type> : accept_struct_properties_t<Meta, Type> {
 		using accept_struct_properties_t<Meta, Type>::accept_struct_properties_t;
 };

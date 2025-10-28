@@ -44,6 +44,7 @@ auto value<class_tag_of<Type>>::make(Environment& env, const auto& class_templat
 	// Make constructor callback
 	auto [ construct_ptr, constructor_data, constructor_finalizer ] =
 		make_napi_callback(env, make_constructor_function<Environment, Type>(class_template.constructor.function));
+	static_assert(std::remove_cvref_t<decltype(class_template.constructor)>::disposition == property_disposition::function);
 	static_assert(type<decltype(constructor_finalizer)> == type<std::nullptr_t>);
 
 	// Member function property descriptor
