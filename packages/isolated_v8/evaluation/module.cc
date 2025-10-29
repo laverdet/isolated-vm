@@ -7,7 +7,6 @@ module isolated_v8;
 import :agent_host;
 import :evaluation_module_action;
 import :realm;
-import :remote;
 import v8_js;
 import isolated_js;
 import v8;
@@ -26,7 +25,7 @@ js_module::js_module(const agent_lock& agent, v8::Local<v8::Module> module_) :
 
 auto js_module::requests(const agent_lock& agent) -> std::vector<module_request> {
 	auto context = agent->scratch_context();
-	auto requests_array = js::iv8::fixed_array{context, module_->deref(agent)->GetModuleRequests()};
+	auto requests_array = js::iv8::fixed_array{context, module_.deref(agent)->GetModuleRequests()};
 	auto requests_view =
 		requests_array |
 		std::views::transform([ & ](v8::Local<v8::Data> value) -> module_request {
@@ -53,7 +52,7 @@ auto js_module::requests(const agent_lock& agent) -> std::vector<module_request>
 }
 
 auto js_module::evaluate(const realm::scope& realm) -> js::value_t {
-	auto module_handle = module_->deref(realm);
+	auto module_handle = module_.deref(realm);
 	auto result = module_handle->Evaluate(realm.context()).ToLocalChecked();
 	auto promise = result.As<v8::Promise>();
 	if (module_handle->IsGraphAsync()) {
@@ -115,7 +114,7 @@ auto js_module::compile(const agent_lock& agent, v8::Local<v8::String> source_te
 }
 
 auto js_module::link(const realm::scope& realm, v8::Module::ResolveModuleCallback callback) -> void {
-	auto module = module_->deref(realm);
+	auto module = module_.deref(realm);
 	module->InstantiateModule(realm.context(), callback).ToChecked();
 }
 

@@ -28,7 +28,7 @@ struct unbound_member_function_signature<Function Type::*> : unbound_member_func
 #define UNBIND_MEMBER_FUNCTION(CV, REF_AS, REF)                                                    \
 	template <class Type, class... Args, bool Nx, class Result>                                      \
 	struct unbound_member_function_signature_impl<Type, auto(Args...) CV REF noexcept(Nx)->Result> { \
-			using type = auto(CV Type REF_AS, Args...) -> Result;                                        \
+			using type = auto(CV Type REF_AS, Args...) noexcept(Nx) -> Result;                           \
 	};
 
 UNBIND_MEMBER_FUNCTION(, &, )

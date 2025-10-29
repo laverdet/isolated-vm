@@ -12,7 +12,6 @@ import :evaluation_module_action;
 import :evaluation_origin;
 import :function;
 import :realm;
-import :remote;
 import :script;
 import v8_js;
 import isolated_js;
@@ -61,7 +60,7 @@ export class js_module {
 
 		auto link(const realm::scope& realm, v8::Module::ResolveModuleCallback callback) -> void;
 
-		shared_remote<v8::Module> module_;
+		js::iv8::shared_remote<v8::Module> module_;
 };
 
 auto js_module::compile(const agent_lock& agent, auto&& source_text, source_origin source_origin) -> js_module {
@@ -152,7 +151,7 @@ auto js_module::link(const realm::scope& realm, auto callback) -> void {
 				std::move(attributes_vector)
 			);
 		});
-		return result.module_->deref(realm);
+		return result.module_.deref(realm);
 	};
 	link(realm, v8_callback);
 }

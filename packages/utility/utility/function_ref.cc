@@ -13,7 +13,7 @@ class function_ref<auto(Args...) noexcept(Nx)->Result> {
 	private:
 		template <class Type>
 		constexpr explicit function_ref(std::type_identity<Type> /*tag*/, void* ptr) :
-				invoke_{[](void* ptr, Args... args) -> Result {
+				invoke_{[](void* ptr, Args... args) noexcept(Nx) -> Result {
 					auto& object = *static_cast<Type*>(ptr);
 					return object(std::forward<Args>(args)...);
 				}},

@@ -5,7 +5,6 @@ module isolated_v8;
 import isolated_js;
 import :agent_host;
 import :realm;
-import :remote;
 import :script;
 import v8_js;
 import v8;

@@ -3,5 +3,6 @@ export import :accept;
 export import :error;
 export import :fixed_array;
 export import :lock;
+export import :remote;
 export import :visit;
 export import :weak_map;

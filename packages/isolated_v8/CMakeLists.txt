@@ -6,8 +6,6 @@ target_sources(isolated_v8
 		evaluation/module.cc
 		evaluation/script.cc
 		function.cc
-		handle/remote_handle_list.cc
-		handle/remote_handle.cc
 		platform/clock.cc
 		platform/foreground_runner.cc
 		platform/handle.cc
@@ -25,10 +23,6 @@ target_sources(isolated_v8
 		evaluation/script_.cc
 		function_.cc
 		handle/collected_handle_.cc
-		handle/remote_.cc
-		handle/remote_handle_.cc
-		handle/remote_handle_fwd_.cc
-		handle/remote_handle_list_.cc
 		platform/clock_.cc
 		platform/foreground_runner_.cc
 		platform/platform_.cc

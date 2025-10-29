@@ -2,7 +2,6 @@ module;
 #include <cassert>
 module isolated_v8;
 import :agent_host;
-import :remote;
 import v8;
 
 namespace isolated_v8 {
@@ -18,7 +17,7 @@ auto realm::make(const agent_lock& agent) -> realm {
 }
 
 auto realm::lock(const agent_lock& agent) const -> js::iv8::context_managed_lock {
-	return js::iv8::context_managed_lock{agent, context_->deref(agent)};
+	return js::iv8::context_managed_lock{agent, context_.deref(agent)};
 }
 
 // realm::scope

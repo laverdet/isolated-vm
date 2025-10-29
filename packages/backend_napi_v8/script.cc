@@ -14,6 +14,7 @@ import ivm.utility;
 import napi_js;
 import nodejs;
 using namespace isolated_v8;
+namespace v8 = embedded_v8;
 
 namespace backend_napi_v8 {
 
@@ -35,7 +36,9 @@ auto script_handle::compile_script(agent_handle& agent, environment& env, js::st
 		) -> void {
 			auto origin = std::move(options.origin).value_or(source_origin{});
 			auto local = isolated_v8::compile_script(agent, std::move(code_string), std::move(origin));
-			dispatch(local.transform(transform_shared_remote(agent)));
+			dispatch(local.transform([ & ](v8::Local<v8::UnboundScript> script) -> auto {
+				return js::iv8::make_shared_remote(agent, script);
+			}));
 		},
 		std::move(code_string),
 		std::move(options)
@@ -69,7 +72,7 @@ auto script_handle::run(environment& env, realm_handle& realm, run_script_option
 							}
 						};
 					});
-				return isolated_v8::run_script(realm, script_remote->deref(agent));
+				return isolated_v8::run_script(realm, script_remote.deref(agent));
 			});
 			dispatch(std::move(result));
 		},

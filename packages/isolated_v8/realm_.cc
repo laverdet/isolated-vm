@@ -3,8 +3,6 @@ module;
 #include <functional>
 export module isolated_v8:realm;
 import :agent_handle;
-import :remote_handle;
-import :remote;
 import ivm.utility;
 import v8_js;
 import v8;
@@ -30,13 +28,13 @@ export class realm {
 	private:
 		[[nodiscard]] auto lock(const agent_lock& agent) const -> js::iv8::context_managed_lock;
 
-		shared_remote<v8::Context> context_;
+		js::iv8::shared_remote<v8::Context> context_;
 };
 
 class realm::scope
 		: util::non_moveable,
 			public js::iv8::context_lock_witness,
-			public remote_handle_lock {
+			public js::iv8::remote_handle_lock {
 
 	public:
 		scope(const agent_lock& agent, const context_lock_witness& lock);

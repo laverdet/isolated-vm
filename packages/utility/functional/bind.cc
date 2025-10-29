@@ -14,8 +14,9 @@ namespace util {
 export template <class Invocable, class... Params>
 class bind;
 
-template <class Invocable, class... Params>
-bind(Invocable, Params...) -> bind<Invocable, Params...>;
+// rvalue (T&&) arguments are stored as values. lvalue (T&) arguments are stored as references.
+template <class Invocable, class... Args>
+bind(Invocable, Args&&...) -> bind<Invocable, util::remove_rvalue_reference_t<Args>...>;
 
 template <class Signature, std::size_t Count>
 struct bind_signature;
@@ -46,7 +47,7 @@ class bind_with<Invocable, auto(Args...) noexcept(Nx)->Result, Params...> {
 		bind_with() = default;
 		constexpr explicit bind_with(Invocable invocable, Params... params) :
 				invocable_{std::move(invocable)},
-				params_{std::move(params)...} {}
+				params_{std::forward<Params>(params)...} {}
 
 		constexpr auto operator()(Args... args) noexcept(Nx) -> Result
 			requires(!const_invocable) {

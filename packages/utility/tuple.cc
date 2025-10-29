@@ -10,10 +10,8 @@ template <std::size_t Index, class Type>
 class flat_tuple_element {
 	public:
 		flat_tuple_element() = default;
-		constexpr explicit flat_tuple_element(Type&& value) :
-				value_{std::move(value)} {}
-		constexpr explicit flat_tuple_element(const Type& value) :
-				value_{value} {}
+		constexpr explicit flat_tuple_element(Type&& value) : value_{std::move(value)} {}
+		constexpr explicit flat_tuple_element(const Type& value) : value_{value} {}
 
 		using index_type = std::integral_constant<std::size_t, Index>;
 		constexpr auto get(index_type /*index*/) & -> Type& { return value_; }
@@ -22,6 +20,22 @@ class flat_tuple_element {
 
 	private:
 		[[no_unique_address]] Type value_;
+};
+
+// Specialization for reference types
+template <std::size_t Index, class Type>
+class flat_tuple_element<Index, Type&> {
+	public:
+		flat_tuple_element() = delete;
+		constexpr explicit flat_tuple_element(Type& value) : value_{&value} {}
+
+		using index_type = std::integral_constant<std::size_t, Index>;
+		constexpr auto get(index_type /*index*/) & -> Type& { return *value_; }
+		constexpr auto get(index_type /*index*/) && -> Type& { return *value_; }
+		[[nodiscard]] constexpr auto get(index_type /*index*/) const& -> const Type& { return *value_; }
+
+	private:
+		[[no_unique_address]] Type* value_;
 };
 
 // Internal `flat_tuple` helper providing access into private `flat_tuple_element` via friend

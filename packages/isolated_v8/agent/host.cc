@@ -6,7 +6,6 @@ module;
 #include <variant>
 module isolated_v8;
 import :foreground_runner;
-import :remote_handle;
 import :scheduler;
 import ivm.utility;
 import v8_js;
@@ -31,7 +30,6 @@ agent_host::agent_host(
 		async_scheduler_{cluster_scheduler},
 		array_buffer_allocator_{v8::ArrayBuffer::Allocator::NewDefaultAllocator()},
 		isolate_{v8::Isolate::Allocate()},
-		remote_expiration_callback_{[ this ](expired_remote_type remote) { reset_remote_handle(std::move(remote)); }},
 		random_seed_{params.random_seed},
 		clock_{params.clock} {
 	isolate_->SetData(0, this);
@@ -82,22 +80,23 @@ auto agent_host::get_current() -> agent_host* {
 	}
 }
 
-auto agent_host::remote_handle_lock() -> isolated_v8::remote_handle_lock {
-	return isolated_v8::remote_handle_lock{
-		remote_handle_list_,
-		std::shared_ptr<reset_handle_type>{shared_from_this(), &remote_expiration_callback_},
-	};
-}
-
-auto agent_host::reset_remote_handle(expired_remote_type remote) -> void {
+auto agent_host::remote_expiration_callback(js::iv8::expired_remote_type remote) noexcept -> void {
 	foreground_runner::schedule_handle_task(
 		foreground_runner_,
-		[ this, remote = std::move(remote) ](const std::stop_token& /*stop_token*/) {
+		[ this, remote = std::move(remote) ](const std::stop_token& /*stop_token*/) -> void {
 			auto lock = js::iv8::isolate_execution_lock{isolate()};
 			remote->reset(lock);
 			remote_handle_list_.erase(*remote);
 		}
 	);
+}
+
+auto agent_host::remote_handle_lock(js::iv8::isolate_lock_witness witness) -> js::iv8::remote_handle_lock {
+	return js::iv8::remote_handle_lock{
+		witness,
+		remote_handle_list_,
+		std::shared_ptr<js::iv8::reset_handle_type>{shared_from_this(), &reset_handle_},
+	};
 }
 
 auto agent_host::take_random_seed() -> std::optional<double> {

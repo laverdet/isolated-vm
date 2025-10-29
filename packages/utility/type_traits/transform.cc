@@ -4,6 +4,19 @@ export module ivm.utility:type_traits.transform;
 
 namespace util {
 
+// T&& -> T
+export template <class Type>
+struct remove_rvalue_reference;
+
+export template <class Type>
+using remove_rvalue_reference_t = remove_rvalue_reference<Type>::type;
+
+template <class Type>
+struct remove_rvalue_reference : std::type_identity<Type> {};
+
+template <class Type>
+struct remove_rvalue_reference<Type&&> : std::type_identity<Type> {};
+
 // Copy reference category of `From` to `To`
 template <class From, class To>
 struct apply_ref_impl : std::type_identity<To> {};

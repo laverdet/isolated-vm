@@ -7,7 +7,6 @@ export module isolated_v8:agent_handle;
 export import :agent_host;
 import :clock;
 import :cluster;
-import :remote_handle;
 import :foreground_runner;
 import ivm.utility;
 import v8_js;
@@ -20,7 +19,7 @@ namespace isolated_v8 {
 export class agent_lock
 		: public util::pointer_facade,
 			public js::iv8::isolate_lock_witness,
-			public remote_handle_lock {
+			public js::iv8::remote_handle_lock {
 	public:
 		agent_lock(js::iv8::isolate_lock_witness witness, agent_host& host);
 		auto operator*() const -> agent_host& { return host_.get(); }

@@ -5,7 +5,6 @@ export module isolated_v8:agent_host;
 import :clock;
 import :evaluation_module_action;
 import :foreground_runner;
-import :remote_handle_list;
 import :scheduler;
 import v8_js;
 import isolated_js;
@@ -33,6 +32,13 @@ export class agent_severable {
 	private:
 		std::atomic<std::shared_ptr<agent_host>> host_;
 };
+
+namespace {
+// Return a bound member function for `remote_handle_lock`.
+constexpr auto make_remote_expiration_callback = []<class Type>(Type* host) -> auto {
+	return util::bind{util::fn<&Type::remote_expiration_callback>, *host};
+};
+} // namespace
 
 // Directly handles the actual isolate. If someone has a reference to this then it probably means
 // the isolate is locked and entered.
@@ -66,7 +72,8 @@ export class agent_host : public std::enable_shared_from_this<agent_host> {
 		auto foreground_runner(this auto& self) -> auto& { return self.foreground_runner_; }
 		auto isolate() -> v8::Isolate* { return isolate_.get(); }
 		auto random_seed_latch() -> util::scope_exit<random_seed_unlatch>;
-		auto remote_handle_lock() -> isolated_v8::remote_handle_lock;
+		auto remote_expiration_callback(js::iv8::expired_remote_type remote) noexcept -> void;
+		auto remote_handle_lock(js::iv8::isolate_lock_witness witness) -> js::iv8::remote_handle_lock;
 		auto remote_handle_list() -> auto& { return remote_handle_list_; }
 		auto scratch_context() -> v8::Local<v8::Context>;
 		auto take_random_seed() -> std::optional<double>;
@@ -82,7 +89,9 @@ export class agent_host : public std::enable_shared_from_this<agent_host> {
 		auto destroy_isolate_callback(auto locked_callback) -> void;
 
 	private:
-		auto reset_remote_handle(expired_remote_type remote) -> void;
+		using reset_handle_callback_type = std::invoke_result_t<decltype(make_remote_expiration_callback), agent_host*>;
+
+		auto reset_remote_handle(js::iv8::expired_remote_type remote) -> void;
 		static auto dispose_isolate(v8::Isolate* isolate) -> void { isolate->Dispose(); }
 
 		util::autorelease_pool autorelease_pool_;
@@ -91,10 +100,11 @@ export class agent_host : public std::enable_shared_from_this<agent_host> {
 		scheduler::runner<{}> async_scheduler_;
 		std::unique_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
 		std::unique_ptr<v8::Isolate, util::function_constant<dispose_isolate>> isolate_;
-		isolated_v8::remote_handle_list remote_handle_list_;
+		js::iv8::remote_handle_list remote_handle_list_;
+		reset_handle_callback_type reset_handle_callback_{make_remote_expiration_callback(this)};
+		js::iv8::reset_handle_type reset_handle_{reset_handle_callback_};
 		weak_modules_actions_type weak_module_actions_;
 		weak_modules_specifiers_type weak_module_specifiers_;
-		reset_handle_type remote_expiration_callback_;
 		v8::Global<v8::Context> scratch_context_;
 
 		bool should_give_seed_{false};
@@ -131,7 +141,7 @@ auto agent_host::destroy_isolate_callback(auto locked_callback) -> void {
 	foreground_runner_->close();
 	auto lock = js::iv8::isolate_execution_lock{isolate_.get()};
 	autorelease_pool_.clear();
-	remote_handle_list_.reset(lock);
+	remote_handle_list_.clear(lock);
 	foreground_runner_->finalize();
 	locked_callback(lock);
 }

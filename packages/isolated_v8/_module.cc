@@ -6,7 +6,6 @@ export import :evaluation_origin;
 export import :function;
 export import :module_;
 export import :realm;
-export import :remote;
 export import :script;
 
 export import v8;

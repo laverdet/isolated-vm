@@ -7,7 +7,6 @@ import isolated_js;
 import :agent_handle;
 import :collected_handle;
 import :realm;
-import :remote;
 import ivm.utility;
 import v8_js;
 import v8;
@@ -24,7 +23,7 @@ export class function_template {
 		static auto make(const agent_lock& agent, auto function) -> function_template;
 
 	private:
-		shared_remote<v8::FunctionTemplate> function_;
+		js::iv8::shared_remote<v8::FunctionTemplate> function_;
 };
 
 // ---
