@@ -19,27 +19,18 @@ namespace {
 // Unwrap `this` into the correct tagged external. Returns `std::nullopt` if there was a type error,
 // and there is a napi exception pending. `nullptr` will not be returned.
 template <class Type>
-constexpr auto unwrap_member_this = [](auto_environment auto& env, napi_value this_arg) noexcept -> std::optional<tagged_external_of<Type>*> {
+constexpr auto unwrap_member_this = [](auto_environment auto& env, napi_value this_arg) noexcept -> std::optional<tagged_external<Type>> {
 	return napi::invoke_maybe(napi_coerce_to_object, napi_env{env}, this_arg)
-		.and_then([ &env ](napi_value coerced_this_arg) -> std::optional<napi_value> {
-			auto has_tag = napi::invoke_maybe(napi_check_object_type_tag, napi_env{env}, coerced_this_arg, &type_tag_for<tagged_external>);
-			if (has_tag) {
-				return coerced_this_arg;
-			} else {
+		.and_then([ &env ](napi_value coerced_this_arg) -> std::optional<tagged_external<Type>> {
+			auto as_object = bound_value{env, value<object_tag>::from(coerced_this_arg)};
+			// Technically `try_cast` can throw but it should only be in catastrophic cases.
+			Type* unwrapped = as_object.try_cast(type<Type>);
+			if (unwrapped == nullptr) {
 				// nb: The failure here is "no tag" which means we need to set the napi exception
 				napi::invoke0(napi_throw_type_error, napi_env{env}, nullptr, "Invalid object type");
 				return std::nullopt;
-			}
-		})
-		.and_then([ &env ](napi_value coerced_this_arg) -> std::optional<void*> {
-			return napi::invoke_maybe(napi_unwrap, napi_env{env}, coerced_this_arg);
-		})
-		.and_then([](void* addr) -> std::optional<tagged_external_of<Type>*> {
-			auto& external = *static_cast<tagged_external*>(addr);
-			if (external.contains(std::type_identity<Type>{})) {
-				return static_cast<tagged_external_of<Type>*>(&external);
 			} else {
-				return std::nullopt;
+				return tagged_external{*unwrapped};
 			}
 		});
 };
@@ -170,13 +161,11 @@ constexpr auto make_constructor_function(auto constructor) {
 		},
 		[](auto constructor) -> auto {
 			// These are the last steps, common to both branches
-			constexpr auto wrap = [](auto derived_instance, Environment& env, const callback_info& info) -> napi_value {
+			constexpr auto wrap = [](auto instance, Environment& env, const callback_info& info) -> napi_value {
 				// Tag the result
-				static_assert(std::is_base_of_v<js::tagged_external, Type>);
-				napi::invoke0(napi_type_tag_object, napi_env{env}, info.this_arg(), &type_tag_for<js::tagged_external>);
+				napi::invoke0(napi_type_tag_object, napi_env{env}, info.this_arg(), &type_tag_for<Type>);
 				// Wrap w/ finalizer
-				auto erased_instance = util::safe_pointer_upcast<tagged_external>(std::move(derived_instance));
-				return apply_finalizer(std::move(erased_instance), [ & ](Type* instance, napi_finalize finalize, void* hint) -> napi_value {
+				return apply_finalizer(std::move(instance), [ & ](Type* instance, napi_finalize finalize, void* hint) -> napi_value {
 					napi::invoke0(napi_wrap, napi_env{env}, info.this_arg(), instance, finalize, hint, nullptr);
 					return info.this_arg();
 				});

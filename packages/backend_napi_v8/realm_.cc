@@ -9,7 +9,7 @@ namespace backend_napi_v8 {
 
 export class realm_handle {
 	public:
-		using transfer_type = js::tagged_external_of<realm_handle>;
+		using transfer_type = js::tagged_external<realm_handle>;
 
 		realm_handle(agent_handle agent, isolated_v8::realm realm);
 

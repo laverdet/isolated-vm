@@ -17,15 +17,14 @@ template <class Type>
 auto value<class_tag_of<Type>>::construct(auto& env, auto&&... args) const -> value<object_tag>
 	requires std::constructible_from<Type, decltype(args)...> {
 	auto construct = [ & ](napi_value this_arg) -> napi_value {
-		// Construct instance through `tagged_external_of<T>` and upcast to `tagged_external`
-		auto derived_instance = std::make_unique<tagged_external_of<Type>>(std::forward<decltype(args)>(args)...);
-		auto erased_instance = util::safe_pointer_upcast<tagged_external>(std::move(derived_instance));
+		// Construct instance through `tagged_external<T>`
+		auto instance = tagged_external<Type>::make(std::forward<decltype(args)>(args)...);
 
 		// Tag the result
-		napi::invoke0(napi_type_tag_object, napi_env{env}, this_arg, &type_tag_for<js::tagged_external>);
+		napi::invoke0(napi_type_tag_object, napi_env{env}, this_arg, &type_tag_for<Type>);
 
 		// Wrap w/ finalizer
-		return apply_finalizer(std::move(erased_instance), [ & ](tagged_external* instance, napi_finalize finalize, void* hint) -> napi_value {
+		return apply_finalizer(std::move(instance), [ & ](Type* instance, napi_finalize finalize, void* hint) -> napi_value {
 			napi::invoke0(napi_wrap, napi_env{env}, this_arg, instance, finalize, hint, nullptr);
 			return this_arg;
 		});
@@ -33,7 +32,7 @@ auto value<class_tag_of<Type>>::construct(auto& env, auto&&... args) const -> va
 
 	// Now this gets passed to JavaScript for a moment and hopefully jumps into `construct`
 	auto construct_ref = internal_constructor{construct};
-	auto* construct_external = napi_value{value<external_tag_of<internal_constructor>>::make(env, &construct_ref)};
+	auto* construct_external = napi_value{value<external_tag>::make(env, &construct_ref)};
 	auto* instance = napi::invoke(napi_new_instance, napi_env{env}, napi_value{*this}, 1, &construct_external);
 	return value<object_tag>::from(instance);
 }

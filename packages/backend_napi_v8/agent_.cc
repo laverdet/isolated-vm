@@ -27,5 +27,5 @@ export auto agent_class_template(environment& env) -> js::napi::value<js::class_
 namespace js {
 using backend_napi_v8::agent_handle;
 template <>
-struct transfer_type<agent_handle> : std::type_identity<js::tagged_external_of<agent_handle>> {};
+struct transfer_type<agent_handle> : std::type_identity<js::tagged_external<agent_handle>> {};
 } // namespace js

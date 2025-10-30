@@ -26,10 +26,8 @@ class bound_value<object_tag> : public bound_value_next<object_tag> {
 	public:
 		using bound_value_next<object_tag>::bound_value_next;
 
-		[[nodiscard]] explicit operator void*() const;
-
 		template <class Type>
-		[[nodiscard]] auto contains(std::type_identity<Type> /*type*/) const -> bool;
+		[[nodiscard]] auto try_cast(std::type_identity<Type> /*type*/) const -> Type*;
 
 		[[nodiscard]] auto get(napi_value key) const -> value<value_tag>;
 		[[nodiscard]] auto has(napi_value key) const -> bool;
@@ -68,13 +66,13 @@ auto value<object_tag>::assign(auto_environment auto& env, std::tuple<Entries...
 	}());
 }
 
-bound_value<object_tag>::operator void*() const {
-	return napi::invoke(napi_unwrap, env(), napi_value{*this});
-}
-
 template <class Type>
-auto bound_value<object_tag>::contains(std::type_identity<Type> /*type*/) const -> bool {
-	return napi::invoke(napi_check_object_type_tag, env(), napi_value{*this}, &type_tag_for<Type>);
+auto bound_value<object_tag>::try_cast(std::type_identity<Type> /*type*/) const -> Type* {
+	if (napi::invoke(napi_check_object_type_tag, env(), napi_value{*this}, &type_tag_for<Type>)) {
+		return static_cast<Type*>(napi::invoke(napi_unwrap, env(), napi_value{*this}));
+	} else {
+		return nullptr;
+	}
 }
 
 } // namespace js::napi

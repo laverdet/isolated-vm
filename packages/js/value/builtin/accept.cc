@@ -166,35 +166,27 @@ template <class Char>
 struct accept<void, std::basic_string<Char>> : accept_coerced_string<Char> {};
 
 // `tagged_external` acceptors
-template <>
-struct accept<void, tagged_external&> {
-		constexpr auto operator()(object_tag /*tag*/, visit_holder /*visit*/, auto subject) const -> tagged_external& {
-			if (subject.contains(std::type_identity<tagged_external>{})) {
-				auto* pointer = static_cast<void*>(subject);
-				return *static_cast<tagged_external*>(pointer);
-			} else {
-				throw js::type_error{u"Invalid object type"};
-			}
-		}
-};
-
 template <class Type>
-struct accept<void, tagged_external_of<Type>&> : accept<void, tagged_external&> {
-		using accept_type = accept<void, tagged_external&>;
-		constexpr auto operator()(object_tag tag, visit_holder visit, auto subject) const -> tagged_external_of<Type>& {
-			tagged_external& external = util::invoke_as<accept_type>(*this, tag, visit, std::move(subject));
-			if (external.contains(std::type_identity<Type>{})) {
-				return static_cast<tagged_external_of<Type>&>(external);
-			} else {
+struct accept<void, tagged_external<Type>> {
+		constexpr auto operator()(object_tag /*tag*/, visit_holder /*visit*/, auto subject) const -> tagged_external<Type> {
+			auto* pointer = subject.try_cast(type<Type>);
+			if (pointer == nullptr) {
 				throw js::type_error{u"Invalid object type"};
+			} else {
+				return tagged_external{*pointer};
 			}
 		}
 };
 
 template <class Type>
 	requires requires { typename transfer_type_t<Type>; }
-struct accept<void, Type&> : accept<void, transfer_type_t<Type>&> {
-		using accept<void, transfer_type_t<Type>&>::accept;
+struct accept<void, Type&> : accept<void, transfer_type_t<Type>> {
+		using accept<void, transfer_type_t<Type>>::accept;
+};
+
+template <class Type>
+struct accept<void, const Type&> : accept<void, Type&> {
+		using accept<void, Type&>::accept;
 };
 
 // `std::optional` allows `undefined` in addition to the next acceptor

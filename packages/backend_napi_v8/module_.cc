@@ -32,7 +32,7 @@ struct create_capability_options {
 export class module_handle {
 	public:
 		using callback_type = js::forward<js::napi::value<js::function_tag>>;
-		using transfer_type = js::tagged_external_of<module_handle>;
+		using transfer_type = js::tagged_external<module_handle>;
 		module_handle(agent_handle agent, isolated_v8::js_module module);
 
 		auto agent() -> auto& { return agent_; }

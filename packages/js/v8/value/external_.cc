@@ -16,19 +16,6 @@ export class external : public v8::Local<v8::External> {
 		[[nodiscard]] explicit operator void*() const;
 };
 
-export template <class Type>
-class external_reference
-		: util::non_moveable,
-			public util::pointer_facade {
-	public:
-		explicit external_reference(auto&&... args) :
-				value{std::forward<decltype(args)>(args)...} {}
-		auto operator*() -> Type& { return value; }
-
-	private:
-		Type value;
-};
-
 // ---
 
 external::operator void*() const {
@@ -36,15 +23,3 @@ external::operator void*() const {
 }
 
 } // namespace js::iv8
-
-namespace js {
-
-template <class Type>
-struct accept<void, iv8::external_reference<Type>&> {
-		auto operator()(external_tag /*tag*/, visit_holder /*visit*/, auto value) const -> iv8::external_reference<Type>& {
-			auto* void_ptr = static_cast<void*>(value);
-			return *static_cast<iv8::external_reference<Type>*>(void_ptr);
-		}
-};
-
-} // namespace js
