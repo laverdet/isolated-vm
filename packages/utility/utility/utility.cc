@@ -3,7 +3,7 @@ module;
 #include <utility>
 #include <variant>
 export module ivm.utility:utility;
-import :type_traits;
+import :type_traits.type_of;
 
 namespace util {
 

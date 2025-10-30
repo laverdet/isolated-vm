@@ -16,10 +16,7 @@ constexpr bool is_variant_v = is_variant<Types...>::value;
 
 // Extract `std::variant` types for `reference_value`
 constexpr auto variant_types_from =
-	[]<class... Types>(std::type_identity<std::variant<Types...>> /*type*/) constexpr
-	-> util::type_pack<Types...> {
-	return {};
-};
+	[]<class... Types>(std::type_identity<std::variant<Types...>> /*type*/) constexpr { return util::type_pack{type<Types>...}; };
 
 // Instantiate a `referential_value` type which holds a `std::variant` with circular reference
 // storage.

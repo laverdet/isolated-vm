@@ -114,7 +114,7 @@ struct reference_map_provider {
 				map_{std::forward<decltype(args)>(args)...} {}
 
 		constexpr auto emplace_subject(const auto& subject, const auto& value) -> void {
-			auto [ iterator, inserted ] = map_.try_emplace(subject, value);
+			[[maybe_unused]] auto [ iterator, inserted ] = map_.try_emplace(subject, value);
 			assert(inserted);
 		}
 

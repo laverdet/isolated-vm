@@ -197,3 +197,6 @@ add_subdirectory(packages/third_party/nodejs)
 # nodejs require-able module
 add_subdirectory(packages/js/napi ivm_jsnapi)
 add_subdirectory(packages/backend_napi_v8)
+
+# Playground
+add_subdirectory(playground)

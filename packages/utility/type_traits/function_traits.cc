@@ -59,7 +59,7 @@ struct function_signature_operator_impl;
 
 // Struct type with `operator()` (lambda, etc)
 template <class Function>
-	requires std::is_class_v<Function>
+	requires requires { &Function::operator(); }
 struct function_signature<Function> : function_signature_operator_impl<Function, unbound_member_function_signature_t<decltype(&Function::operator())>> {};
 
 // Function type
@@ -76,7 +76,7 @@ struct function_signature<Function*> : function_signature_function_impl<Function
 
 // Member function pointer
 template <class Type, class Function>
-struct function_signature<Function Type::*> : unbound_member_function_signature_impl<Type, Function> {};
+struct function_signature<Function Type::*> : unbound_member_function_signature<Function Type::*> {};
 
 // This is the same as the `function_signature` specialization. It's split out to avoid the
 // pointer-to-function specialization from stripping off a ref qualifier on an invocable object type

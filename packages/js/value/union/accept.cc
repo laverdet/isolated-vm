@@ -68,6 +68,7 @@ struct accept<Meta, std::variant<Types...>> {
 
 		template <std::size_t Index, class Visit, class Value>
 		// clang bug?
+		// maybe: https://github.com/llvm/llvm-project/issues/73232
 		/*constexpr*/ static auto accept_alternative(const accept& self, Visit visit, Value value) -> accepted_type {
 			return std::get<Index>(self.second)(dictionary_tag{}, visit, std::forward<Value>(value));
 		}

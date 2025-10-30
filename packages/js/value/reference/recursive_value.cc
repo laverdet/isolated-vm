@@ -17,7 +17,7 @@ class in_place_value_holder : public util::pointer_facade {
 		constexpr in_place_value_holder(std::in_place_t /*tag*/, Type&& value)
 			requires std::move_constructible<value_type> :
 				value_{std::move(value)} {}
-		constexpr in_place_value_holder(std::in_place_t /*tag*/, auto&&... args)
+		explicit constexpr in_place_value_holder(std::in_place_t /*tag*/, auto&&... args)
 			requires std::constructible_from<value_type, decltype(args)...> :
 				value_{std::forward<decltype(args)>(args)...} {}
 

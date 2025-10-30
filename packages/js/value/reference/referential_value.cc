@@ -8,17 +8,12 @@ import :reference_of;
 namespace js {
 
 // Filters `reference_of<T>` types from the given parameter pack.
-constexpr auto reference_types_from = [](auto types_pack) consteval {
-	constexpr auto filter = util::overloaded{
-		[]<class Type>(std::type_identity<reference_of<Type>> /*type*/) constexpr {
-			return util::type_pack{type<Type>};
-		},
-		[]<class Type>(std::type_identity<Type> /*type*/) constexpr {
-			return util::type_pack{};
-		},
+constexpr auto reference_types_from = [](auto types) consteval {
+	constexpr auto transform = util::overloaded{
+		[]<class Type>(std::type_identity<reference_of<Type>> /*type*/) { return util::type_pack{type<Type>}; },
+		[]<class Type>(std::type_identity<Type> /*type*/) { return util::type_pack{}; },
 	};
-	const auto [... types ] = types_pack;
-	return util::type_pack{}.concat(filter(types)...);
+	return util::pack_transform(types, transform);
 };
 
 // Makes the `reference_storage` type.
