@@ -46,15 +46,14 @@ export class js_module {
 
 		static auto compile(const agent_lock& agent, auto&& source_text, source_origin source_origin) -> js_module;
 
-		template <class... Name, class... Function>
-		static auto create_synthetic(const agent_lock& agent, std::tuple<std::pair<Name, Function>...> exports, source_required_name source_origin) -> js_module;
+		static auto create_synthetic(const realm::scope& realm, auto module_interface, js::string_t origin) -> js_module;
 
 	private:
 		static auto compile(const agent_lock& agent, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module;
 		static auto create_synthetic(
 			const agent_lock& agent,
 			std::span<const v8::Local<v8::String>> export_names,
-			source_required_name source_origin,
+			js::string_t origin,
 			synthetic_module_action_type action
 		) -> js_module;
 
@@ -70,33 +69,23 @@ auto js_module::compile(const agent_lock& agent, auto&& source_text, source_orig
 	return compile(agent, local_source_text, std::move(source_origin));
 }
 
-template <class... Name, class... Function>
-auto js_module::create_synthetic(const agent_lock& agent, std::tuple<std::pair<Name, Function>...> exports, source_required_name source_origin) -> js_module {
-	return std::invoke(
-		[ & ]<size_t... Index>(std::index_sequence<Index...> /*indices*/) {
-			auto name_values = std::tuple{std::get<Index>(std::move(exports)).first...};
-			const auto name_locals = js::transfer_in_strict<std::array<v8::Local<v8::String>, sizeof...(Index)>>(std::move(name_values), agent);
-			auto name_persistents = std::array<v8::Global<v8::String>, sizeof...(Index)>{v8::Global<v8::String>{agent->isolate(), std::get<Index>(name_locals)}...};
-			// nb: This assumes that all exports are of the same type, probably a function template. The
-			// `std::tuple` visitor cannot accept an environment because it can't be sure that all members
-			// are compatible.
-			auto export_values = std::array{std::get<Index>(std::move(exports)).second...};
-			synthetic_module_action_type action =
-				[ name_persistents = std::move(name_persistents),
-					export_values = std::move(export_values) ](
-					v8::Local<v8::Context> context,
-					v8::Local<v8::Module> module
-				) mutable {
-					auto& host = *agent_host::get_current();
-					auto agent = agent_lock{js::iv8::isolate_execution_lock::make_witness(host.isolate()), host};
-					auto realm = realm::scope{agent, js::iv8::context_lock_witness::make_witness(agent, context)};
-					const auto export_locals = js::transfer_strict<std::array<v8::Local<v8::Value>, sizeof...(Index)>>(std::move(export_values), std::forward_as_tuple(realm), std::forward_as_tuple(realm));
-					(module->SetSyntheticModuleExport(agent->isolate(), name_persistents[ Index ].Get(agent.isolate()), std::get<Index>(std::move(export_locals))).ToChecked(), ...);
-				};
-			return create_synthetic(agent, std::span{name_locals}, std::move(source_origin), std::move(action));
-		},
-		std::make_index_sequence<sizeof...(Name)>{}
-	);
+auto js_module::create_synthetic(const realm::scope& realm, auto module_interface, js::string_t origin) -> js_module {
+	auto name_locals = std::vector<v8::Local<v8::String>>{};
+	auto export_locals = std::vector<v8::Local<v8::Value>>{};
+	for (auto [ key, value ] : std::move(module_interface)) {
+		name_locals.push_back(js::transfer_in_strict<v8::Local<v8::String>>(key, realm));
+		export_locals.push_back(js::transfer_strict<v8::Local<v8::Value>>(value, std::forward_as_tuple(realm), std::forward_as_tuple(realm)));
+	}
+	synthetic_module_action_type action =
+		[ & ](v8::Local<v8::Context> /*context*/, v8::Local<v8::Module> module) {
+			for (const auto& [ key, value ] : std::views::zip(name_locals, export_locals)) {
+				js::iv8::unmaybe(module->SetSyntheticModuleExport(realm.isolate(), key, value));
+			}
+		};
+	auto module_record = create_synthetic(realm.agent(), std::span{name_locals}, std::move(origin), std::move(action));
+	module_record.link(realm, [](auto&&...) -> js_module& { std::unreachable(); });
+	module_record.evaluate(realm);
+	return module_record;
 }
 
 auto js_module::link(const realm::scope& realm, auto callback) -> void {

@@ -28,12 +28,4 @@ export struct source_origin {
 		};
 };
 
-export struct source_required_name {
-		js::string_t name;
-
-		constexpr static auto struct_template = js::struct_template{
-			js::struct_member{util::cw<"name">, &source_required_name::name},
-		};
-};
-
 } // namespace isolated_v8

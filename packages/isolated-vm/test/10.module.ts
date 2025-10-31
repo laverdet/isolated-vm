@@ -30,14 +30,15 @@ await test("synthetic module capability", async () => {
 	const capabilityName = "isolated-vm:///capability";
 	let didInvoke = false;
 	const realm = await agent.createRealm();
-	const capability = await agent.createCapability(
-		(value1: unknown, value2: unknown) => {
-			didInvoke = true;
-			assert.equal(value1, "hello");
-			assert.equal(value2, "world");
-		},
-		{ origin: { name: capabilityName } },
-	);
+	const capability = await realm.createCapability(
+		() => ({
+			default: (value1: unknown, value2: unknown) => {
+				didInvoke = true;
+				assert.equal(value1, "hello");
+				assert.equal(value2, "world");
+			},
+		}),
+		{ origin: capabilityName });
 	const left = await agent.compileModule(`
 		import capability from ${JSON.stringify(capabilityName)};
 		capability("hello", "world");

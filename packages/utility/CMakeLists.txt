@@ -27,6 +27,7 @@ target_sources(ivm_utility
 		utility/function_ref.cc
 		utility/hash.cc
 		utility/utility.cc
+		utility/variant.cc
 		utility/virtual_covariant.cc
 )
 target_link_libraries(ivm_utility PRIVATE Boost::boost)

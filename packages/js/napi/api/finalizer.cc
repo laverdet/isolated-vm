@@ -1,27 +1,50 @@
 module;
 #include <concepts>
 #include <memory>
+#include <type_traits>
 export module napi_js:api.finalizer;
 import ivm.utility;
 import nodejs;
 
 namespace js::napi {
+using arst = std::void_t<int>;
 
 // Finalizer for basic unique_ptr
 export template <class Type, class Deleter>
-auto apply_finalizer(std::unique_ptr<Type, Deleter> ptr, std::invocable<Type*, napi_finalize, void*> auto accept) -> decltype(auto)
+auto apply_finalizer(std::unique_ptr<Type, Deleter> unique, std::invocable<Type*, napi_finalize, void*> auto accept) -> decltype(auto)
 	requires std::is_empty_v<Deleter> {
+	// Finalizer uses a default-constructed deleter
 	const napi_finalize finalize = [](napi_env /*env*/, void* data, void* /*hint*/) -> void {
 		Deleter deleter{};
 		deleter(static_cast<Type*>(data));
 	};
-	void* const hint = nullptr;
-	if constexpr (std::invoke_result<decltype(accept), Type*, napi_finalize, void*>{} == type<void>) {
-		accept(ptr.get(), finalize, hint);
-		ptr.release();
-	} else {
-		auto result = accept(ptr.get(), finalize, hint);
-		ptr.release();
+	using result_type = std::invoke_result_t<decltype(accept), Type*, napi_finalize, void*>;
+	auto result = util::regular_return{[ & ]() -> result_type {
+		return accept(unique.get(), finalize, nullptr);
+	}}();
+	unique.release();
+	if constexpr (type<result_type> != type<void>) {
+		return result;
+	}
+}
+
+// Finalizer for shared_ptr
+export template <class Type>
+auto apply_finalizer(std::shared_ptr<Type> shared, std::invocable<Type*, napi_finalize, void*> auto accept) -> decltype(auto) {
+	// unique_ptr<shared_ptr<T>> is passed as the finalizer hint. The shared_ptr keeps the underlying
+	// pointer alive.
+	using shared_ptr_type = std::shared_ptr<Type>;
+	auto* ptr = shared.get();
+	auto ptr_ptr = std::make_unique<shared_ptr_type>(std::move(shared));
+	const napi_finalize finalize = [](napi_env /*env*/, void* /*data*/, void* hint) -> void {
+		delete static_cast<shared_ptr_type*>(hint);
+	};
+	using result_type = std::invoke_result_t<decltype(accept), Type*, napi_finalize, void*>;
+	auto result = util::regular_return{[ & ]() -> result_type {
+		return accept(ptr, finalize, ptr_ptr.get());
+	}}();
+	ptr_ptr.release();
+	if constexpr (type<result_type> != type<void>) {
 		return result;
 	}
 }

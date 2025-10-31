@@ -32,3 +32,4 @@ export type Realm = ivm.Realm;
 export const Realm: typeof ivm.Realm = backend.Realm;
 export type Script = ivm.Script;
 export const Script: typeof ivm.Script = backend.Script;
+export type SubscriberCapability = ivm.SubscriberCapability;

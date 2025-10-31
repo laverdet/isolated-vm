@@ -66,7 +66,7 @@ auto js_module::evaluate(const realm::scope& realm) -> js::value_t {
 auto js_module::create_synthetic(
 	const agent_lock& agent,
 	std::span<const v8::Local<v8::String>> export_names,
-	source_required_name source_origin,
+	js::string_t source_origin,
 	synthetic_module_action_type action
 ) -> js_module {
 	v8::Module::SyntheticModuleEvaluationSteps evaluation_steps =
@@ -80,7 +80,7 @@ auto js_module::create_synthetic(
 	};
 	auto* const isolate = agent->isolate();
 	const auto v8_export_names = v8::MemorySpan<const v8::Local<v8::String>>{export_names.begin(), export_names.end()};
-	const auto module_name = js::transfer_in_strict<v8::Local<v8::String>>(std::move(source_origin).name, agent);
+	const auto module_name = js::transfer_in_strict<v8::Local<v8::String>>(std::move(source_origin), agent);
 	const auto module_handle = v8::Module::CreateSyntheticModule(isolate, module_name, v8_export_names, evaluation_steps);
 	[[maybe_unused]] const auto insertion_result =
 		agent->weak_module_actions().emplace(agent, std::pair{module_handle, std::move(action)});

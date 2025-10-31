@@ -47,7 +47,7 @@ class agent_handle {
 	public:
 		using lock = agent_lock_of<Type>;
 
-		auto schedule(auto task, auto... args) -> void
+		auto schedule(auto task, auto... args) const -> void
 			requires std::invocable<decltype(task), lock, decltype(args)...>;
 		auto schedule_async(auto task, auto... args) -> void
 			requires std::invocable<decltype(task), const std::stop_token&, lock, decltype(args)...>;
@@ -96,7 +96,7 @@ auto agent_handle<Type>::make(cluster& cluster, auto make_environment, behavior_
 }
 
 template <class Type>
-auto agent_handle<Type>::schedule(auto task, auto... args) -> void
+auto agent_handle<Type>::schedule(auto task, auto... args) const -> void
 	requires std::invocable<decltype(task), lock, decltype(args)...> {
 	auto host = host_.lock();
 	if (host) {

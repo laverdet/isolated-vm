@@ -17,7 +17,7 @@ export class uv_scheduler {
 		auto decrement_ref() -> void;
 		auto increment_ref() -> void;
 		auto open(uv_loop_t* loop) -> void;
-		auto operator()(task_type task) const -> void;
+		auto operator()(auto task, auto&&... args) const -> void;
 
 	private:
 		struct locked_storage {
@@ -42,5 +42,21 @@ export class uv_schedulable {
 	private:
 		uv_scheduler uv_scheduler_;
 };
+
+// ---
+
+auto uv_scheduler::operator()(auto task, auto&&... args) const -> void {
+	auto& async = *async_;
+	auto shared = async->shared.write();
+	if (shared->is_open) {
+		shared->tasks.push_back(
+			[ task = std::move(task),
+				... args = std::forward<decltype(args)>(args) ]() mutable -> void {
+				task(std::forward<decltype(args)>(args)...);
+			}
+		);
+		uv_async_send(async.handle());
+	}
+}
 
 } // namespace js::napi

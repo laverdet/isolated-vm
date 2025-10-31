@@ -29,11 +29,6 @@ export namespace Script {
 	}
 }
 
-export interface CapabilityOrigin extends SourceOrigin {
-	name: string;
-	location?: never;
-}
-
 export interface Location {
 	line: number;
 	column: number;

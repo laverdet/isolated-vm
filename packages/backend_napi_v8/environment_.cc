@@ -1,5 +1,5 @@
 module;
-#include <string>
+#include <string_view>
 #include <type_traits>
 export module backend_napi_v8:environment;
 import isolated_js;
@@ -8,37 +8,38 @@ import ivm.utility;
 import napi_js;
 import nodejs;
 using namespace js;
-using namespace std::string_literals;
+using namespace std::string_view_literals;
 
 namespace backend_napi_v8 {
 
 // Storage for string literals used in this module
 constexpr auto string_literals = util::sealed_map{
 	std::type_identity<napi::reference<string_tag>>{},
-	"clock"s,
-	"column"s,
-	"complete"s,
-	"epoch"s,
-	"error"s,
-	"interval"s,
-	"line"s,
-	"location"s,
-	"name"s,
-	"origin"s,
-	"randomSeed"s,
-	"result"s,
-	"specifier"s,
-	"timeout"s,
-	"type"s,
+	"clock"sv,
+	"column"sv,
+	"complete"sv,
+	"epoch"sv,
+	"error"sv,
+	"interval"sv,
+	"line"sv,
+	"location"sv,
+	"name"sv,
+	"origin"sv,
+	"randomSeed"sv,
+	"result"sv,
+	"specifier"sv,
+	"timeout"sv,
+	"type"sv,
 };
 
 // Storage for class templates
 constexpr auto class_templates = util::sealed_map{
 	std::type_identity<napi::reference<class_tag>>{},
-	u8"Agent"s,
-	u8"Module"s,
-	u8"Realm"s,
-	u8"Script"s,
+	u8"Agent"sv,
+	u8"Module"sv,
+	u8"Realm"sv,
+	u8"Script"sv,
+	u8"SubscriberCapability"sv,
 };
 
 // Instance of the `isolated-vm` module, once per nodejs environment.

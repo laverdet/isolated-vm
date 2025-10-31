@@ -179,6 +179,12 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 			return accept(promise_tag{}, self, subject);
 		}
 
+		// function
+		template <class Accept>
+		auto immediate(this auto& self, v8::Local<v8::Function> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(function_tag{}, self, subject);
+		}
+
 		[[nodiscard]] auto is_cached_null(v8::Local<v8::Value> value) const { return value == null_; }
 		[[nodiscard]] auto is_cached_undefined(v8::Local<v8::Value> value) const { return value == undefined_; }
 
@@ -239,6 +245,8 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 				return self.immediate(subject.As<v8::Date>(), accept);
 			} else if (subject->IsPromise()) {
 				return self.immediate(subject.As<v8::Promise>(), accept);
+			} else if (subject->IsFunction()) {
+				return self.immediate(subject.As<v8::Function>(), accept);
 			} else {
 				auto visit_entry = visit_entry_pair<visit_v8_property_name<visit_v8_value>, visit_v8_value&>{self};
 				return accept(dictionary_tag{}, visit_entry, iv8::object{self.lock_witness(), subject.As<v8::Object>()});

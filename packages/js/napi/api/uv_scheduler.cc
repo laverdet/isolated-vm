@@ -53,13 +53,4 @@ auto uv_scheduler::open(uv_loop_t* loop) -> void {
 	uv_unref(async.handle());
 }
 
-auto uv_scheduler::operator()(task_type task) const -> void {
-	auto& async = *async_;
-	auto shared = async->shared.write();
-	if (shared->is_open) {
-		shared->tasks.push_back(std::move(task));
-		uv_async_send(async.handle());
-	}
-}
-
 } // namespace js::napi

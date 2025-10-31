@@ -3,7 +3,9 @@ module;
 #include <type_traits>
 #include <utility>
 export module ivm.utility:type_traits.type_pack;
+import :constant_wrapper;
 import :functional.function_constant;
+import :type_traits.type_of;
 import :utility;
 
 namespace util {
@@ -18,6 +20,8 @@ struct type_pack {
 		explicit consteval type_pack(Args... /*types*/)
 			requires(sizeof...(Types) > 0 && (... && std::same_as<typename Args::type, Types>)) {}
 
+	[[nodiscard]] consteval auto at(auto index) const  { return get<index>(); }
+
 		// Structured binding accessor
 		// Explicit return type causes error:
 		// "candidate template ignored: substitution failure [with Index = 0]: invalid index 0 for pack 'Types' of size 0"
@@ -27,6 +31,8 @@ struct type_pack {
 			// return {};
 			return std::type_identity<Types... [ Index ]> {};
 		}
+
+		[[nodiscard]] consteval auto size() const -> std::size_t { return sizeof...(Types); }
 };
 
 // Prevent `type_pack{type_pack{}}` from flattening itself via copy construction
@@ -78,6 +84,21 @@ export constexpr auto pack_partition = util::overloaded{
 		const auto right = pack_filter(pack, not_fn);
 		return pack_concat(pack_partition(left), pack_partition(right, predicates...));
 	},
+};
+
+// Return unique types from the pack
+export constexpr auto pack_unique = [](auto pack) consteval -> auto {
+	constexpr auto transform = [ = ](auto index) {
+		constexpr auto subject = pack.at(index);
+		const auto [... indices ] = util::sequence<index>;
+		if constexpr ((... || std::same_as<type_t<subject>, type_t<pack.at(indices)>>)) {
+			return type_pack{};
+		} else {
+			return type_pack{subject};
+		}
+	};
+	const auto [... indices ] = util::sequence<pack.size()>;
+	return pack_concat(transform(indices)...);
 };
 
 } // namespace util

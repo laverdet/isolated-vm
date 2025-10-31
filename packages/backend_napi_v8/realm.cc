@@ -63,6 +63,7 @@ auto realm_handle::class_template(environment& env) -> js::napi::value<class_tag
 		std::type_identity<realm_handle>{},
 		js::class_template{
 			js::class_constructor{util::cw<u8"Realm">},
+			js::class_method{util::cw<u8"createCapability">, make_forward_callback(module_handle::create_capability)},
 			js::class_method{util::cw<u8"instantiateRuntime">, make_forward_callback(util::fn<&realm_handle::instantiate_runtime>)},
 		}
 	);

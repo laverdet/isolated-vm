@@ -61,7 +61,7 @@ using visit_maybe_recursive = visit_maybe_recursive_type<Meta, Type>::type;
 // Utility to pass oneself as an object entry visitor
 export template <class First, class Second>
 struct visit_entry_pair {
-		constexpr static auto has_reference_map = requires { Second::has_reference_map; };
+		constexpr static auto has_reference_map = js::has_reference_map(type<Second>);
 
 		explicit constexpr visit_entry_pair(auto& self) :
 				first{self},

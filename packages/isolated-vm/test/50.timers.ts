@@ -10,16 +10,20 @@ await test("setTimeout capability", async () => {
 	const runTimers = unwrapCompletion(await agent.compileScript("runTimers()"));
 	const resolvers = Promise.withResolvers();
 	const capabilities = makePreloadedLinker(Object.entries({
-		"isolated-vm:capability/timers":
-			await agent.createCapability((/*timeout*/) => {
-				void async function() {
-					await runTimers.run(realm);
-				}();
-			}, { origin: { name: "isolated-vm:capability/timers" } }),
-		"notify-test":
-			await agent.createCapability((message: unknown) => {
-				resolvers.resolve(message);
-			}, { origin: { name: "notify-test" } }),
+		"isolated-vm:capability/timers": await realm.createCapability(
+			() => ({
+				default: (/*timeout*/) => {
+					void async function() {
+						await runTimers.run(realm);
+					}();
+				},
+			}),
+			{ origin: "isolated-vm:capability/timers" }),
+		"notify-test": await realm.createCapability(
+			() => ({
+				default: (message: unknown) => { resolvers.resolve(message); },
+			}),
+			{ origin: "notify-test" }),
 	}));
 	// eslint-disable-next-line @typescript-eslint/unbound-method
 	const runtime = makeFileSystemCompilationLinker(agent, import.meta.resolve);

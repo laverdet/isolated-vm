@@ -65,6 +65,7 @@ class specific_error_value : public error {
 };
 
 // Error which can be thrown from C++
+export using runtime_error = specific_error_value<error_value::name_type::error>;
 export using range_error = specific_error_value<error_value::name_type::range_error>;
 export using type_error = specific_error_value<error_value::name_type::type_error>;
 

@@ -3,16 +3,17 @@ module;
 #include <concepts>
 #include <format>
 #include <functional>
+#include <ranges>
 #include <type_traits>
 #include <utility>
 export module ivm.utility:sealed_map;
+import :elide;
 import :type_traits;
 import :utility;
 
 namespace util {
 
 struct sorted_equivalent_t {};
-struct sorted_unique_t {};
 struct unsorted_t {};
 
 export template <class Key, class Type, size_t Size>
@@ -38,48 +39,34 @@ class sealed_map {
 				size_t index_;
 		};
 
-		explicit consteval sealed_map(sorted_unique_t /*tag*/, container_type values) :
-				values_{std::invoke([ & ]() -> container_type {
-					const auto [... indices ] = util::sequence<Size>;
-					return {value_type(std::move(values.at(indices)))...};
-				})} {}
-
 		// Check for duplicates
 		explicit consteval sealed_map(sorted_equivalent_t /*tag*/, container_type values) :
-				sealed_map{
-					sorted_unique_t{},
-					std::invoke([ & ]() constexpr -> auto {
-						auto projection = [](const auto& entry) constexpr { return entry.first; };
-						auto duplicate = std::ranges::adjacent_find(values, std::equal_to{}, projection);
-						if (duplicate != values.end()) {
-							constexpr auto render = util::overloaded{
-								[](const auto& /*value*/) constexpr -> std::string { return "[??]"; },
-								[](std::string value) constexpr -> std::string { return value; },
-							};
-							// This error message can't actually render in constexpr but it's the thought that counts.
-							throw std::logic_error{std::format("Duplicate key {}", render(projection(*duplicate)))};
-						}
-						// nb: It's not a pessimization because `values` is a capture
-						return std::move(values);
-					})
-				} {}
+				values_{std::move(values)} {
+			const auto projection = [](const auto& entry) { return entry.first; };
+			const auto duplicate = std::ranges::adjacent_find(values, std::equal_to{}, projection);
+			if (duplicate != values.end()) {
+				constexpr auto render = util::overloaded{
+					[](const auto& /*value*/) -> std::string { return "[??]"; },
+					[](std::string value) -> std::string { return value; },
+				};
+				// This error message can't actually render in constexpr but it's the thought that counts.
+				throw std::logic_error{std::format("Duplicate key {}", render(projection(*duplicate)))};
+			}
+		}
 
 		// Sort inputs
 		explicit consteval sealed_map(unsorted_t /*tag*/, container_type values) :
 				sealed_map{
 					sorted_equivalent_t{},
-					std::invoke([ & ]() constexpr -> container_type {
+					util::elide{[ & ]() -> container_type {
 						// Sort without invoking `operator()=` which might not exist on the value type
-						auto sortable = std::array<typename container_type::iterator, Size>{};
-						auto inserter = sortable.begin();
-						for (auto ii = values.begin(); ii != values.end(); ++ii) {
-							*(inserter++) = ii;
-						};
-						auto projection = [](const auto& ii) constexpr { return ii->first; };
-						std::ranges::sort(sortable, std::less{}, projection);
-						const auto [... indices ] = util::sequence<Size>;
-						return {value_type(std::move(*sortable.at(indices)))...};
-					})
+						auto indices = std::array<size_t, Size>{};
+						std::ranges::copy(std::ranges::iota_view{size_t{0}, Size}, indices.begin());
+						const auto projection = [ & ](size_t ii) -> const auto& { return values.at(ii).first; };
+						std::ranges::sort(indices, std::less{}, projection);
+						const auto [... sorted_indices ] = indices;
+						return {value_type(std::move(values).at(sorted_indices))...};
+					}},
 				} {}
 
 	public:
@@ -92,21 +79,21 @@ class sealed_map {
 		explicit consteval sealed_map(std::in_place_t /*tag*/, auto&&... values) :
 				sealed_map{unsorted_t{}, container_type{std::forward<decltype(values)>(values)...}} {}
 
-		[[nodiscard]] constexpr auto begin(this auto&& self) { return self.values_.begin(); }
-		[[nodiscard]] constexpr auto end(this auto&& self) { return self.values_.end(); }
+		[[nodiscard]] constexpr auto begin(this auto&& self) { return std::forward<decltype(self)>(self).values_.begin(); }
+		[[nodiscard]] constexpr auto end(this auto&& self) { return std::forward<decltype(self)>(self).values_.end(); }
 
 		// Returns a reference to the value at the key previously found by `lookup`.
 		[[nodiscard]] constexpr auto at(this auto&& self, key_for index) -> auto& {
 			if (!index) {
 				throw std::out_of_range{"Key not found"};
 			}
-			return *std::next(self.values_.begin(), *index);
+			return *std::next(std::forward<decltype(self)>(self).values_.begin(), *index);
 		}
 
 		// Find the given key in the map and return a nullable pointer to the value.
-		[[nodiscard]] constexpr auto find(this auto&& self, const auto& key) {
+		[[nodiscard]] constexpr auto find(this auto&& self, const auto& key) -> auto* {
 			const auto index = self.lookup(key);
-			return index ? std::next(self.values_.begin(), *index) : nullptr;
+			return index ? std::next(std::forward<decltype(self)>(self).values_.begin(), *index) : nullptr;
 		}
 
 		// Return an opaque index type which can be used with `at`. Generally should be used in a

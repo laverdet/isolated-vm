@@ -45,6 +45,17 @@ auto unmaybe(v8::MaybeLocal<Type> maybe_value) -> v8::Local<Type> {
 	}
 }
 
+// Unwrap a `Maybe`, or throw `iv8::pending_error` on failure
+export template <class Type>
+auto unmaybe(v8::Maybe<Type> maybe) -> Type {
+	Type value;
+	if (maybe.To(&value)) {
+		return value;
+	} else {
+		throw iv8::pending_error{};
+	}
+}
+
 // Set up try/catch block for use with `unmaybe`
 export template <class Operation>
 auto invoke_with_unmaybe(isolate_lock_witness lock, Operation operation) {

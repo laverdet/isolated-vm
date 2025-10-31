@@ -1,5 +1,6 @@
 module;
 #include <span>
+#include <variant>
 export module napi_js:function;
 import :environment_fwd;
 import :primitive;
@@ -13,9 +14,10 @@ class value<function_tag> : public value_next<function_tag> {
 	public:
 		using value_next<function_tag>::value_next;
 
-		template <class Result>
+		template <class Result = std::monostate>
 		auto apply(auto_environment auto& env, auto&& args) -> Result;
-		template <class Result>
+
+		template <class Result = std::monostate>
 		auto call(auto_environment auto& env, auto&&... args) -> Result;
 
 		template <auto_environment Environment>

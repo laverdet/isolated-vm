@@ -1,7 +1,7 @@
-import type { CapabilityOrigin, SourceOrigin } from "./script.js";
+import type { SourceOrigin } from "./script.js";
 import type { MaybeCompletionOf } from "backend_v8.node";
 import * as ivm from "./backend.js";
-import { Capability, Module } from "./module.js";
+import { Module } from "./module.js";
 import { Realm } from "./realm.js";
 import { Script } from "./script.js";
 import { transformCompletion } from "./utility/completion.js";
@@ -32,10 +32,6 @@ export namespace Agent {
 		}
 	}
 
-	export interface CreateCapabilityOptions {
-		origin: CapabilityOrigin;
-	}
-
 	export interface CreateOptions {
 		clock?: CreateOptions.Clock | undefined;
 		randomSeed?: number | undefined;
@@ -61,11 +57,6 @@ export class Agent {
 	static async create(options?: Agent.CreateOptions): Promise<Agent> {
 		const agent = await ivm.Agent.create(options);
 		return new Agent(agent);
-	}
-
-	async createCapability(callback: (...args: unknown[]) => void, options: Agent.CreateCapabilityOptions): Promise<Capability> {
-		const module = await this.#agent.createCapability(callback, options);
-		return new Capability(module);
 	}
 
 	async createRealm(): Promise<Realm> {

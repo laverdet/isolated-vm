@@ -1,5 +1,6 @@
 declare module "backend_v8.node" {
 	type Callback<Type> = (error: unknown | null, value?: Type) => void;
+	type CapabilityMake = import("./realm.ts").Realm.CapabilityMake;
 	type CompileModuleOptions = import("./agent.ts").Agent.CompileModuleOptions;
 	type CompileScriptOptions = import("./agent.ts").Agent.CompileScriptOptions;
 	type CreateAgentOptions = import("./agent.ts").Agent.CreateOptions;
@@ -13,7 +14,6 @@ declare module "backend_v8.node" {
 		readonly #private;
 		compileModule(code: string, options: CompileModuleOptions | undefined): Promise<[ Module, ModuleRequest[] ]>;
 		compileScript(code: string, options: CompileScriptOptions | undefined): Promise<MaybeCompletionOf<Script>>;
-		createCapability(callback: (...args: unknown[]) => void, options: CreateCapabilityOptions): Promise<Module>;
 		createRealm(): Promise<Realm>;
 		static create(options: CreateAgentOptions | undefined): Promise<Agent>;
 	}
@@ -26,12 +26,18 @@ declare module "backend_v8.node" {
 
 	export class Realm {
 		readonly #private;
+		createCapability(make: CapabilityMake, options: CreateCapabilityOptions): Promise<Module>;
 		instantiateRuntime(): Promise<Module>;
 	}
 
 	export class Script {
 		readonly #private;
 		run(realm: Realm, options: RunScriptOptions | undefined): Promise<MaybeCompletionOf<unknown>>;
+	}
+
+	export class SubscriberCapability {
+		readonly #private;
+		send(message: unknown): Promise<boolean>;
 	}
 
 	export type CompletionOf<Type> = NormalCompletion<Type> | ThrowCompletion;
