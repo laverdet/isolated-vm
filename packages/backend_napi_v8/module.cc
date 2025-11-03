@@ -48,7 +48,7 @@ auto module_handle::compile(agent_handle& agent, environment& env, js::string_t 
 			js::string_t source_text,
 			compile_module_options options
 		) -> void {
-			auto origin = std::move(options).origin.value_or(source_origin{});
+			auto origin = std::move(options.origin).value_or(source_origin{});
 			auto module = isolated_v8::js_module::compile(lock, std::move(source_text), std::move(origin));
 			auto requests = module.requests(lock);
 			dispatch(std::move(agent), std::move(module), std::move(requests));
@@ -199,7 +199,7 @@ auto module_handle::create_capability(
 					}),
 			};
 			auto module_ = realm.invoke(lock, [ & ](const isolated_v8::realm::scope& realm) mutable -> auto {
-				return isolated_v8::js_module::create_synthetic(realm, std::move(capability_interface), std::move(options).origin);
+				return isolated_v8::js_module::create_synthetic(realm, std::move(capability_interface), std::move(options.origin));
 			});
 			dispatch(std::move(agent), std::move(module_));
 		},

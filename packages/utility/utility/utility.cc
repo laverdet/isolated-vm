@@ -1,17 +1,16 @@
 module;
 #include <concepts>
 #include <utility>
-#include <variant>
 export module ivm.utility:utility;
-import :type_traits.type_of;
+export import :utility.constant_wrapper;
+export import :utility.covariant_value;
+export import :utility.facade;
+export import :utility.hash;
+export import :utility.ranges;
+// export import :utility.variant;
+import :type_traits;
 
 namespace util {
-
-// https://en.cppreference.com/w/cpp/utility/variant/visit
-export template <class... Visitors>
-struct overloaded : Visitors... {
-		using Visitors::operator()...;
-};
 
 // `boost::noncopyable` actually prevents moving too
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
@@ -57,28 +56,13 @@ struct copy_of : Type {
 				Type(Value) {}
 };
 
-// Wraps the given invocable. When invoked if it returns `void` then `std::monostate{}` will be
-// returned instead.
-export template <class Invoke>
-class regular_return {
-	public:
-		constexpr explicit regular_return(Invoke invoke) :
-				invoke{std::move(invoke)} {}
-
-		constexpr auto operator()(auto&&... args) -> decltype(auto)
-			requires std::invocable<Invoke&, decltype(args)...>
-		{
-			if constexpr (std::invoke_result<Invoke&, decltype(args)...>{} == type<void>) {
-				invoke(std::forward<decltype(args)>(args)...);
-				return std::monostate{};
-			} else {
-				return invoke(std::forward<decltype(args)>(args)...);
-			}
-		}
-
-	private:
-		Invoke invoke;
-};
+// Forward a value with the cvref qualifiers from another type.
+// `util::forward_from<decltype(self)>(self.property)`.
+export template <class Type>
+constexpr auto forward_from(auto&& value) -> auto&& {
+	using forward_type = util::apply_cvref_t<Type, std::remove_cvref_t<decltype(value)>>;
+	return std::forward<forward_type>(value);
+}
 
 // https://en.cppreference.com/w/cpp/experimental/scope_exit
 export template <class Invoke>

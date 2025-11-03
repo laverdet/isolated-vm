@@ -60,7 +60,8 @@ struct member_getter_delegate {
 		explicit constexpr member_getter_delegate(Type Subject::* member) : member_{member} {}
 
 		constexpr auto operator()(const Subject& subject) const -> const Type& { return subject.*(this->member_); }
-		constexpr auto operator()(Subject&& subject) const -> Type&& { return std::move(subject).*(this->member_); }
+		// NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
+		constexpr auto operator()(Subject&& subject) const -> Type&& { return std::move(subject.*(this->member_)); }
 
 	private:
 		Type Subject::* member_;
@@ -155,7 +156,7 @@ export template <class... Properties>
 struct struct_template : std::tuple<Properties...> {
 		explicit constexpr struct_template(Properties... properties) :
 				std::tuple<Properties...>{std::move(properties)...} {}
-		static constexpr auto is_struct_template = true;
+		constexpr static auto is_struct_template = true;
 };
 
 // Holder for class name & constructor

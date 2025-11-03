@@ -119,7 +119,7 @@ constexpr auto make_free_function(auto function) {
 							)
 						);
 					}};
-					return js::transfer_in_strict<napi_value>(run(), env);
+					return js::transfer_in_strict<napi_value>(run().value_or(std::monostate{}), env);
 				});
 			},
 			std::move(callback),
@@ -137,7 +137,7 @@ constexpr auto make_free_function(auto function) {
 				auto run = util::regular_return{[ & ]() -> decltype(auto) {
 					return callback_(env);
 				}};
-				return js::transfer_in_strict<napi_value>(run(), env);
+				return js::transfer_in_strict<napi_value>(run().value_or(std::monostate{}), env);
 			},
 			std::move(callback),
 		};
@@ -287,7 +287,7 @@ constexpr auto make_member_function(Method method) {
 							)
 						);
 					}};
-					return js::transfer_in_strict<napi_value>(run(), env);
+					return js::transfer_in_strict<napi_value>(run().value_or(std::monostate{}), env);
 				});
 			},
 			std::move(callback),
@@ -309,7 +309,7 @@ constexpr auto make_member_function(Method method) {
 				auto run = util::regular_return{[ & ]() -> decltype(auto) {
 					return callback(**maybe_that, env);
 				}};
-				return js::transfer_in_strict<napi_value>(run(), env);
+				return js::transfer_in_strict<napi_value>(run().value_or(std::monostate{}), env);
 			},
 			std::move(callback),
 		};

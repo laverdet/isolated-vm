@@ -3,7 +3,7 @@ module;
 #include <memory>
 #include <type_traits>
 #include <utility>
-export module ivm.utility:noinit_allocator;
+export module ivm.utility:memory.noinit_allocator;
 
 namespace util {
 

@@ -52,7 +52,7 @@ class value_map {
 	private:
 		using direct_map_type = concrete_value_map<std::unordered_map<napi_value, Type, direct_address_hash, direct_address_equal>>;
 		using indirect_map_type = concrete_value_map<std::unordered_map<napi_value, Type, indirect_address_hash, indirect_address_equal>>;
-		using virtual_map_type = util::virtual_covariant<virtual_value_map<Type>, direct_map_type, indirect_map_type>;
+		using virtual_map_type = util::covariant_value<virtual_value_map<Type>, direct_map_type, indirect_map_type>;
 
 	public:
 		using container_type = virtual_value_map<Type>;

@@ -9,12 +9,10 @@ module;
 #include <utility>
 #include <vector>
 module ivm.utility;
-import :facade;
-import :function_ref;
+import :functional;
 import :lockable;
 import :timer;
 import :type_traits;
-import :utility;
 
 namespace util {
 
@@ -129,7 +127,7 @@ auto timer_thread::dispatch(Invocable invocable, auto&&... args) {
 		result = implementation(queue);
 	};
 	dispatch(request_type{request});
-	return std::move(result).value_or(util::elide{[]() -> result_type {
+	return *std::move(result).value_or(util::elide{[]() -> result_type {
 		std::unreachable();
 	}});
 }

@@ -1,7 +1,6 @@
-
 module;
 #include <algorithm>
-export module ivm.utility:constant_wrapper;
+export module ivm.utility:utility.constant_wrapper;
 
 // Lifted from P2781R8:
 // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2781r8.html

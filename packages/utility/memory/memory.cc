@@ -3,6 +3,9 @@ module;
 #include <functional>
 #include <memory>
 export module ivm.utility:memory;
+export import :memory.autorelease_pool;
+export import :memory.comparator;
+export import :memory.noinit_allocator;
 
 namespace util {
 

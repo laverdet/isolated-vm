@@ -1,7 +1,7 @@
 module;
 #include <type_traits>
 #include <utility>
-export module ivm.utility:tuple;
+export module ivm.utility:functional.flat_tuple;
 
 namespace util {
 
@@ -48,6 +48,9 @@ constexpr auto flat_tuple_get(auto index, auto&& tuple) -> auto&& {
 template <class Indices, class... Types>
 class flat_tuple_storage;
 
+template <class... Types>
+using flat_tuple_storage_t = flat_tuple_storage<std::make_index_sequence<sizeof...(Types)>, Types...>;
+
 template <std::size_t... Index, class... Type>
 class flat_tuple_storage<std::index_sequence<Index...>, Type...> : private flat_tuple_element<Index, Type>... {
 	public:
@@ -63,12 +66,8 @@ class flat_tuple_storage<std::index_sequence<Index...>, Type...> : private flat_
 // Simple replacement for `std::tuple` which is trivially copyable in the case its members are.
 // See: `static_assert(!std::is_trivially_copyable_v<std::tuple<int>>);`
 export template <class... Types>
-class flat_tuple;
-
-template <class... Types>
-class flat_tuple : public flat_tuple_storage<std::make_index_sequence<sizeof...(Types)>, Types...> {
-	public:
-		using flat_tuple_storage<std::make_index_sequence<sizeof...(Types)>, Types...>::flat_tuple_storage;
+struct flat_tuple : flat_tuple_storage_t<Types...> {
+		using flat_tuple_storage_t<Types...>::flat_tuple_storage_t;
 };
 
 // `std::get` replacement for `flat_tuple`

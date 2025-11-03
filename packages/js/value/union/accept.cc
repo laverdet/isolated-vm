@@ -45,7 +45,7 @@ struct accept<Meta, std::variant<Types...>> {
 		constexpr auto operator()(dictionary_tag /*tag*/, auto& visit, auto&& subject) const -> accepted_type {
 			auto alternatives = make_discriminant_map<decltype(subject), decltype(visit)>();
 			auto discriminant_value = accept_discriminant(dictionary_tag{}, visit, subject);
-			auto accept_alternative = alternatives.find(util::djb2_hash(discriminant_value));
+			auto accept_alternative = alternatives.find(util::fnv1a_hash(std::basic_string_view{discriminant_value}));
 			if (accept_alternative == nullptr) {
 				auto discriminant_u16 = transfer_strict<std::u16string>(discriminant_value);
 				throw js::type_error{u"Unknown discriminant: '" + discriminant_u16 + u"'"};
@@ -61,7 +61,7 @@ struct accept<Meta, std::variant<Types...>> {
 				std::in_place,
 				[ & ]() constexpr -> auto {
 					const auto& alternative = std::get<indices>(descriptor_type::alternatives);
-					return std::pair{util::djb2_hash(alternative.discriminant), &accept_alternative<indices, Visit, Value>};
+					return std::pair{util::fnv1a_hash(std::basic_string_view{alternative.discriminant}), &accept_alternative<indices, Visit, Value>};
 				}()...,
 			};
 		}

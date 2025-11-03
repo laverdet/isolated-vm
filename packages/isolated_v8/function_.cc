@@ -2,6 +2,7 @@ module;
 #include <bit>
 #include <tuple>
 #include <type_traits>
+#include <variant>
 export module isolated_v8:function;
 import isolated_js;
 import :agent_handle;
@@ -51,7 +52,7 @@ struct invoke_callback<auto(const realm::scope&, Args...)->Result> {
 					)
 				);
 			}};
-			js::transfer_in_strict<v8::ReturnValue<v8::Value>>(run(), realm, info.GetReturnValue());
+			js::transfer_in_strict<v8::ReturnValue<v8::Value>>(run().value_or(std::monostate{}), realm, info.GetReturnValue());
 		}
 };
 

@@ -25,7 +25,7 @@ struct forward : util::pointer_facade {
 		explicit forward(Type&& value, Tag /*tag*/ = {}) :
 				value_{std::move(value)} {}
 
-		constexpr auto operator*(this auto&& self) -> auto&& { return std::forward<decltype(self)>(self).value_; }
+		constexpr auto operator*(this auto&& self) -> auto&& { return util::forward_from<decltype(self)>(self.value_); }
 
 	private:
 		Type value_;

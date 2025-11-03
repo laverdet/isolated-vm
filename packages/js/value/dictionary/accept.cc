@@ -21,13 +21,12 @@ struct accept_vector_value<Meta, std::pair<Key, Value>> {
 
 		constexpr auto operator()(auto& visit, auto&& entry) const -> std::pair<Key, Value> {
 			return std::pair{
-				visit.first(std::forward<decltype(entry)>(entry).first, first),
-				// NOLINTNEXTLINE(bugprone-use-after-move)
-				visit.second(std::forward<decltype(entry)>(entry).second, second),
+				visit.first(util::forward_from<decltype(entry)>(entry.first), first),
+				visit.second(util::forward_from<decltype(entry)>(entry.second), second),
 			};
 		}
 
-		constexpr static auto make_struct_subject(auto&& entry) -> std::pair<std::nullptr_t, decltype(entry)> {
+		constexpr static auto make_struct_subject(auto&& entry) -> std::pair<std::nullptr_t, std::remove_cvref_t<decltype(entry)>> {
 			// nb: `nullptr` is used here because this is a "bound" `visit_key_literal::visit` visitor
 			// which simply returns a static string and does not need a value to visit.
 			return {nullptr, std::forward<decltype(entry)>(entry)};

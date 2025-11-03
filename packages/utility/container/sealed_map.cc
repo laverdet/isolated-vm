@@ -2,19 +2,17 @@ module;
 #include <algorithm>
 #include <concepts>
 #include <format>
-#include <functional>
 #include <ranges>
 #include <type_traits>
 #include <utility>
 export module ivm.utility:sealed_map;
-import :elide;
+import :functional;
 import :type_traits;
 import :utility;
 
 namespace util {
 
 struct sorted_equivalent_t {};
-struct unsorted_t {};
 
 export template <class Key, class Type, size_t Size>
 class sealed_map {
@@ -54,46 +52,51 @@ class sealed_map {
 			}
 		}
 
-		// Sort inputs
-		explicit consteval sealed_map(unsorted_t /*tag*/, container_type values) :
+	public:
+		// Default constructed values
+		explicit consteval sealed_map(std::type_identity<Type> /*default_construct*/, auto... keys)
+			requires std::default_initializable<Type> :
 				sealed_map{
 					sorted_equivalent_t{},
 					util::elide{[ & ]() -> container_type {
-						// Sort without invoking `operator()=` which might not exist on the value type
-						auto indices = std::array<size_t, Size>{};
-						std::ranges::copy(std::ranges::iota_view{size_t{0}, Size}, indices.begin());
-						const auto projection = [ & ](size_t ii) -> const auto& { return values.at(ii).first; };
-						std::ranges::sort(indices, std::less{}, projection);
-						const auto [... sorted_indices ] = indices;
-						return {value_type(std::move(values).at(sorted_indices))...};
-					}},
+						auto keys_array = std::array<key_type, Size>{std::move(keys)...};
+						std::ranges::sort(keys_array);
+						auto [... sorted_keys ] = std::move(keys_array);
+						return {value_type{std::move(sorted_keys), Type{}}...};
+					}}
 				} {}
 
-	public:
-		// Default constructed values
-		explicit consteval sealed_map(std::type_identity<Type> /*default_construct*/, const auto&... keys)
-			requires std::default_initializable<Type> :
-				sealed_map{unsorted_t{}, container_type{std::pair{keys, Type{}}...}} {}
-
 		// Keys & values provided
-		explicit consteval sealed_map(std::in_place_t /*tag*/, auto&&... values) :
-				sealed_map{unsorted_t{}, container_type{std::forward<decltype(values)>(values)...}} {}
+		explicit consteval sealed_map(std::in_place_t /*tag*/, auto... pairs) :
+				sealed_map{
+					sorted_equivalent_t{},
+					util::elide{[ & ]() -> container_type {
+						// Sort without invoking `operator()=`, which might not exist on the value type
+						auto entries = std::array<value_type, Size>{std::move(pairs)...};
+						auto indices = std::array<size_t, Size>{};
+						std::ranges::copy(std::ranges::iota_view{size_t{0}, Size}, indices.begin());
+						const auto projection = [ & ](size_t ii) -> const auto& { return entries.at(ii).first; };
+						std::ranges::sort(indices, std::less{}, projection);
+						const auto [... sorted_indices ] = indices;
+						return {value_type(std::move(entries.at(sorted_indices)))...};
+					}}
+				} {}
 
-		[[nodiscard]] constexpr auto begin(this auto&& self) { return std::forward<decltype(self)>(self).values_.begin(); }
-		[[nodiscard]] constexpr auto end(this auto&& self) { return std::forward<decltype(self)>(self).values_.end(); }
+		[[nodiscard]] constexpr auto begin(this auto& self) { return self.values_.begin(); }
+		[[nodiscard]] constexpr auto end(this auto& self) { return self.values_.end(); }
 
 		// Returns a reference to the value at the key previously found by `lookup`.
-		[[nodiscard]] constexpr auto at(this auto&& self, key_for index) -> auto& {
+		[[nodiscard]] constexpr auto at(this auto& self, key_for index) -> auto& {
 			if (!index) {
 				throw std::out_of_range{"Key not found"};
 			}
-			return *std::next(std::forward<decltype(self)>(self).values_.begin(), *index);
+			return *std::next(self.values_.begin(), *index);
 		}
 
 		// Find the given key in the map and return a nullable pointer to the value.
-		[[nodiscard]] constexpr auto find(this auto&& self, const auto& key) -> auto* {
-			const auto index = self.lookup(key);
-			return index ? std::next(std::forward<decltype(self)>(self).values_.begin(), *index) : nullptr;
+		[[nodiscard]] constexpr auto find(const auto& key) const -> auto* {
+			const auto index = lookup(key);
+			return index ? std::addressof(at(index)) : nullptr;
 		}
 
 		// Return an opaque index type which can be used with `at`. Generally should be used in a

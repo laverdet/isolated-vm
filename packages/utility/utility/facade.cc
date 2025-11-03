@@ -1,6 +1,7 @@
 module;
+#include <memory>
 #include <utility>
-export module ivm.utility:facade;
+export module ivm.utility:utility.facade;
 
 namespace util {
 

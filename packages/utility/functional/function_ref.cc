@@ -1,7 +1,7 @@
 module;
 #include <concepts>
 #include <utility>
-export module ivm.utility:function_ref;
+export module ivm.utility:functional.function_ref;
 
 namespace util {
 
@@ -26,13 +26,15 @@ class function_ref<auto(Args...) noexcept(Nx)->Result> {
 		constexpr function_ref(signature_type* function) :
 				function_ref{std::type_identity<signature_type>{}, static_cast<void*>(function)} {}
 
-		template <std::invocable<Args...> Object>
+		template <class Object>
+			requires std::invocable<Object&, Args...>
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		constexpr function_ref(Object& object) :
 				function_ref{std::type_identity<Object>{}, static_cast<void*>(&object)} {}
 
 		// Explicit to avoid automatic binding to temporary objects
-		template <std::invocable<Args...> Object>
+		template <class Object>
+			requires std::invocable<const Object&, Args...>
 		constexpr explicit function_ref(const Object& object) :
 				// NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
 				function_ref{std::type_identity<const Object>{}, const_cast<void*>(static_cast<const void*>(&object))} {}

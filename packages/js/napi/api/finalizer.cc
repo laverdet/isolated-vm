@@ -18,14 +18,11 @@ auto apply_finalizer(std::unique_ptr<Type, Deleter> unique, std::invocable<Type*
 		Deleter deleter{};
 		deleter(static_cast<Type*>(data));
 	};
-	using result_type = std::invoke_result_t<decltype(accept), Type*, napi_finalize, void*>;
-	auto result = util::regular_return{[ & ]() -> result_type {
+	auto result = util::regular_return{[ & ]() -> decltype(auto) {
 		return accept(unique.get(), finalize, nullptr);
 	}}();
 	unique.release();
-	if constexpr (type<result_type> != type<void>) {
-		return result;
-	}
+	return *std::move(result);
 }
 
 // Finalizer for shared_ptr
@@ -39,14 +36,11 @@ auto apply_finalizer(std::shared_ptr<Type> shared, std::invocable<Type*, napi_fi
 	const napi_finalize finalize = [](napi_env /*env*/, void* /*data*/, void* hint) -> void {
 		delete static_cast<shared_ptr_type*>(hint);
 	};
-	using result_type = std::invoke_result_t<decltype(accept), Type*, napi_finalize, void*>;
-	auto result = util::regular_return{[ & ]() -> result_type {
+	auto result = util::regular_return{[ & ]() -> decltype(auto) {
 		return accept(ptr, finalize, ptr_ptr.get());
 	}}();
 	ptr_ptr.release();
-	if constexpr (type<result_type> != type<void>) {
-		return result;
-	}
+	return *std::move(result);
 }
 
 } // namespace js::napi

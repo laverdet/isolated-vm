@@ -1,7 +1,6 @@
 module;
 #include <array>
 #include <span>
-#include <typeinfo>
 export module napi_js:api.callback_info;
 import :api.invoke;
 import isolated_js;
@@ -32,8 +31,7 @@ export struct callback_info : util::non_copyable {
 };
 
 // Common declaration for `napi_type_tag` by type
-// Nb: `std::type_info::hash_code()` is not constexpr
 export template <class Type>
-const auto type_tag_for = napi_type_tag{.lower = typeid(Type).hash_code(), .upper = 0};
+constexpr auto type_tag_for = napi_type_tag{.lower = util::type_hash<Type>, .upper = 0};
 
 } // namespace js::napi

@@ -23,11 +23,11 @@ struct accept<Meta, std::array<Type, Size>> : accept_value<Meta, Type> {
 		template <std::size_t VectorSize>
 		constexpr auto operator()(vector_n_tag<VectorSize> /*tag*/, auto& visit, auto&& subject) const -> std::array<Type, Size> {
 			const accept_type& accept = *this;
-			auto iterator = std::forward<decltype(subject)>(subject).begin();
+			auto iterator = subject.begin();
 			const auto [... indices ] = util::sequence<Size>;
 			return std::array<Type, Size>{
 				// nb: Comma operator trick
-				(util::unused(indices), visit(*iterator++, accept))...
+				(util::unused(indices), visit(util::forward_from<decltype(subject)>(*iterator++), accept))...
 			};
 		}
 
@@ -52,9 +52,9 @@ struct accept<Meta, std::vector<Type>> : accept_value<Meta, Type> {
 			// yield `[ 1, 2 ]`
 			const accept_type& accept = *this;
 			auto range =
-				std::forward<decltype(subject)>(subject) |
-				std::views::transform([ & ](auto&& subject) -> Type {
-					return visit(std::forward<decltype(subject)>(subject).second, accept);
+				subject |
+				std::views::transform([ & ](auto&& entry) -> Type {
+					return visit(util::forward_from<decltype(subject)>(entry.second), accept);
 				});
 			return {std::from_range, std::move(range)};
 		}
@@ -62,9 +62,9 @@ struct accept<Meta, std::vector<Type>> : accept_value<Meta, Type> {
 		constexpr auto operator()(vector_tag /*tag*/, auto& visit, auto&& subject) const -> std::vector<Type> {
 			const accept_type& accept = *this;
 			auto range =
-				std::forward<decltype(subject)>(subject) |
-				std::views::transform([ & ](auto&& subject) -> Type {
-					return visit(std::forward<decltype(subject)>(subject), accept);
+				subject |
+				std::views::transform([ & ](auto&& entry) -> Type {
+					return visit(util::forward_from<decltype(subject)>(entry), accept);
 				});
 			return {std::from_range, std::move(range)};
 		}

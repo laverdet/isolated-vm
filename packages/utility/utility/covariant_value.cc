@@ -1,8 +1,8 @@
 module;
 #include <utility>
 #include <variant>
-export module ivm.utility:virtual_covariant;
-import :facade;
+export module ivm.utility:utility.covariant_value;
+import :utility.facade;
 import :type_traits;
 
 namespace util {
@@ -10,11 +10,11 @@ namespace util {
 // Allows passing around virtual classes by value, by enumerating all derived types.
 export template <class Type, class... Types>
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
-class virtual_covariant : public pointer_facade {
+class covariant_value : public pointer_facade {
 	public:
 		template <class Derived>
 			requires(... || (type<Derived> == type<Types>))
-		constexpr explicit virtual_covariant(Derived value) :
+		constexpr explicit covariant_value(Derived value) :
 				value_{std::move(value)} {}
 
 		constexpr auto operator*(this auto& self) -> auto& {

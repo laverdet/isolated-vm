@@ -3,9 +3,18 @@ module;
 #include <utility>
 export module ivm.utility:functional;
 export import :functional.bind;
+export import :functional.elide;
 export import :functional.function_constant;
+export import :functional.function_ref;
+export import :functional.regular_return;
 
 namespace util {
+
+// https://en.cppreference.com/w/cpp/utility/variant/visit
+export template <class... Visitors>
+struct overloaded : Visitors... {
+		using Visitors::operator()...;
+};
 
 // Holder for functions in libc++ which doesn't support std::move_only_function
 #if defined(__cpp_lib_move_only_function) && !defined(DEBUG)
@@ -32,18 +41,6 @@ auto make_indirect_moveable_function(Fn&& fn) {
 }
 
 #endif
-
-// `constructor<T>` adapts a constructible type into a callable object
-template <class Type>
-struct constructor_t {
-		constexpr auto operator()(auto&&... args) const -> Type
-			requires std::constructible_from<Type, decltype(args)...> {
-			return Type(std::forward<decltype(args)>(args)...);
-		}
-};
-
-export template <class Type>
-constexpr inline auto constructor = constructor_t<Type>{};
 
 // Hide `-Wunused-value` warnings
 export constexpr auto unused = [](auto&& /*nothing*/) -> void {};

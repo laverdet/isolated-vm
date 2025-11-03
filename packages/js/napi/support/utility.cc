@@ -40,7 +40,7 @@ export struct indirect_address_equal final : virtual_address_equal {
 // Equality comparator which respects napi's handle types
 export class address_equal {
 	private:
-		using virtual_equal_type = util::virtual_covariant<virtual_address_equal, direct_address_equal, indirect_address_equal>;
+		using virtual_equal_type = util::covariant_value<virtual_address_equal, direct_address_equal, indirect_address_equal>;
 
 	public:
 		explicit address_equal(const environment& env) :

@@ -1,8 +1,8 @@
 module;
 #include <tuple>
-#include <type_traits>
 #include <utility>
-export module ivm.utility:elide;
+export module ivm.utility:functional.elide;
+import :utility;
 
 namespace util {
 
@@ -16,17 +16,14 @@ class elide {
 	public:
 		using result_type = Type;
 
-		explicit constexpr elide(Invocable invocable, Args... args) :
+		explicit constexpr elide(Invocable invocable, Args /*&&*/... args) :
 				invocable_{std::move(invocable)},
 				args_{std::forward<decltype(args)>(args)...} {}
 
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		constexpr operator result_type() && {
-			return *std::move(*this);
-		}
-
-		constexpr auto operator*() && -> result_type {
-			return std::apply(std::move(invocable_), std::move(args_));
+			const auto [... indices ] = util::sequence<sizeof...(Args)>;
+			return std::move(invocable_)(get<indices>(std::move(args_))...);
 		}
 
 	private:
@@ -36,5 +33,18 @@ class elide {
 
 template <class Invocable, class... Args>
 elide(Invocable, Args&&...) -> elide<std::invoke_result_t<Invocable, Args...>, Invocable, Args...>;
+
+// `util::constructor<T>` adapts a constructible type into a callable object. Great for use with
+// `util::elide`.
+template <class Type>
+struct constructor_t {
+		constexpr auto operator()(auto&&... args) const -> Type
+			requires std::constructible_from<Type, decltype(args)...> {
+			return Type(std::forward<decltype(args)>(args)...);
+		}
+};
+
+export template <class Type>
+constexpr inline auto constructor = constructor_t<Type>{};
 
 } // namespace util
