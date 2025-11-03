@@ -33,7 +33,7 @@ auto value<function_tag>::invoke(auto_environment auto& env, std::span<napi_valu
 
 template <auto_environment Environment>
 auto value<function_tag>::make(Environment& env, auto function) -> value<function_tag> {
-	auto [ callback, data, finalizer ] = make_napi_callback(env, make_free_function<Environment>(std::move(function.callback)));
+	auto [ callback, data, finalizer ] = make_callback_storage(env, make_free_function<Environment>(std::move(function.callback)));
 	const auto make = [ & ]() -> value<function_tag> {
 		return value<function_tag>::from(napi::invoke(napi_create_function, napi_env{env}, function.name.data(), function.name.length(), callback, data));
 	};

@@ -21,9 +21,9 @@ thread_local Environment* env_local = nullptr;
 // Converts any invocable into a `napi_callback` and data pointer for use in napi API calls. The
 // result is a `std::tuple` with `{ callback_ptr, data_ptr, finalizer }`. Finalizer is either a
 // `nullptr` or a `std::unique_ptr<T>` which should be disposed of in a finalizer.
-export template <auto_environment Environment>
-auto make_napi_callback(Environment& env, std::invocable<Environment&, const callback_info&> auto function) {
-	using function_type = std::remove_cvref_t<decltype(function)>;
+template <auto_environment Environment>
+auto make_callback_storage(Environment& env, std::invocable<Environment&, const callback_info&> auto function) {
+	using function_type = decltype(function);
 	if constexpr (std::is_empty_v<function_type>) {
 		// Constant expression function, expressed entirely in the type. `data` is the environment.
 		static_assert(std::is_trivially_constructible_v<function_type>);
@@ -48,7 +48,7 @@ auto make_napi_callback(Environment& env, std::invocable<Environment&, const cal
 	} else if constexpr (sizeof(function_type) <= sizeof(void*) && std::is_trivially_copyable_v<function_type>) {
 		// This branch is currently unused but works fine. The assertion is here because it's probably a
 		// mistake to have a function like this.
-		static_assert(false);
+		static_assert(false, "untested");
 		// Trivial function type which is non-empty, but smaller than a pointer. I would imagine that
 		// this compiles down to the same thing as the branch above, which uses `std::bit_cast` instead
 		// of `std::memcpy`.

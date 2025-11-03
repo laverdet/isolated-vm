@@ -22,6 +22,7 @@ target_sources(value_js
 		struct/accept.cc
 		struct/types.cc
 		struct/visit.cc
+		support/functional.cc
 		tag.cc
 		transfer/accept.cc
 		transfer/deferred_receiver.cc

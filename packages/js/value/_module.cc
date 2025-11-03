@@ -5,6 +5,7 @@ export import :enum_.types;
 export import :error;
 export import :external;
 export import :function;
+export import :functional;
 export import :property;
 export import :reference_of;
 export import :referential_value;

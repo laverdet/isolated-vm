@@ -35,64 +35,6 @@ constexpr auto unwrap_member_this = [](auto_environment auto& env, napi_value th
 		});
 };
 
-// Thunk for most functions including free function, static functions, and constructors. The first
-// `env` parameter is optional for callbacks. This returns a function which always accepts `env`.
-template <auto_environment Environment>
-constexpr auto thunk_free_function = []<class Callback>(Callback callback) constexpr -> auto {
-	constexpr auto make_with_env =
-		[]<class Env, class... Args, bool Nx, class Result>(
-			std::type_identity<auto(Env, Args...) noexcept(Nx)->Result> /*signature*/,
-			auto callback
-		) -> auto
-		requires(std::remove_cvref<Env>{} == type<Environment>) {
-			return std::move(callback);
-		};
-	constexpr auto make_without_env =
-		[]<class... Args, bool Nx, class Result>(
-			std::type_identity<auto(Args...) noexcept(Nx)->Result> /*signature*/,
-			auto callback
-		) -> auto {
-		return util::bind{
-			[](Callback& callback, const Environment& /*env*/, Args... args) noexcept(Nx) -> Result {
-				return callback(std::forward<Args>(args)...);
-			},
-			std::move(callback),
-		};
-	};
-
-	constexpr auto make = util::overloaded{make_with_env, make_without_env};
-	return make(std::type_identity<util::function_signature_t<decltype(callback)>>{}, std::move(callback));
-};
-
-// This takes the place of `thunk_free_function` for member functions, where `env` is the second
-// parameter.
-template <auto_environment Environment>
-constexpr auto thunk_member_function = []<class Callback>(Callback callback) constexpr -> auto {
-	constexpr auto make_with_env =
-		[]<class Type, class Env, class... Args, bool Nx, class Result>(
-			std::type_identity<auto(Type, Env, Args...) noexcept(Nx)->Result> /*signature*/,
-			auto callback
-		) -> auto
-		requires(std::remove_cvref<Env>{} == type<Environment>) {
-			return std::move(callback);
-		};
-	constexpr auto make_without_env =
-		[]<class Type, class... Args, bool Nx, class Result>(
-			std::type_identity<auto(Type, Args...) noexcept(Nx)->Result> /*signature*/,
-			auto callback
-		) -> auto {
-		return util::bind{
-			[](Callback& callback, Type that, const Environment& /*env*/, Args... args) noexcept(Nx) -> Result {
-				return callback(that, std::forward<Args>(args)...);
-			},
-			std::move(callback),
-		};
-	};
-
-	constexpr auto make = util::overloaded{make_with_env, make_without_env};
-	return make(std::type_identity<util::function_signature_t<decltype(callback)>>{}, std::move(callback));
-};
-
 } // namespace
 
 // Function type for internal host object construction
@@ -109,7 +51,7 @@ constexpr auto make_free_function(auto function) {
 		using callback_type = decltype(callback);
 		return util::bind{
 			[](callback_type& callback, Environment& env, const callback_info& info) noexcept(Nx) -> napi_value {
-				return invoke_napi_error_scope(env, [ & ]() -> napi_value {
+				return invoke_with_error_scope(env, [ & ]() -> napi_value {
 					auto run = util::regular_return{[ & ]() -> decltype(auto) {
 						return std::apply(
 							callback,
@@ -143,7 +85,7 @@ constexpr auto make_free_function(auto function) {
 		};
 	};
 
-	auto callback = thunk_free_function<Environment>(std::move(function));
+	auto callback = js::functional::thunk_free_function<Environment>(std::move(function));
 	constexpr auto make = util::overloaded{make_with_try_catch, make_noexcept};
 	return make(std::type_identity<util::function_signature_t<decltype(callback)>>{}, std::move(callback));
 }
@@ -181,7 +123,7 @@ constexpr auto make_constructor_function(auto constructor) {
 				using callback_type = decltype(callback);
 				return util::bind{
 					[](callback_type& callback, wrap_type& wrap, Environment& env, const callback_info& info) noexcept(Nx) -> napi_value {
-						return invoke_napi_error_scope(env, [ & ]() -> napi_value {
+						return invoke_with_error_scope(env, [ & ]() -> napi_value {
 							auto instance = std::apply(
 								callback,
 								std::tuple_cat(
@@ -211,7 +153,7 @@ constexpr auto make_constructor_function(auto constructor) {
 				};
 			};
 
-			auto callback = thunk_free_function<Environment>(std::move(constructor));
+			auto callback = js::functional::thunk_free_function<Environment>(std::move(constructor));
 			using signature_type = util::function_signature_t<decltype(callback)>;
 			static_assert(util::signature_result<signature_type>{} != type<void>);
 			constexpr auto make = util::overloaded{make_with_try_catch, make_noexcept};
@@ -250,7 +192,7 @@ constexpr auto make_constructor_function(auto constructor) {
 				}
 				if (*maybe_constructor != nullptr) {
 					const auto& constructor = **maybe_constructor;
-					return invoke_napi_error_scope(env, [ & ]() -> napi_value {
+					return invoke_with_error_scope(env, [ & ]() -> napi_value {
 						return constructor(info.this_arg());
 					});
 				}
@@ -277,7 +219,7 @@ constexpr auto make_member_function(Method method) {
 				if (!maybe_that) {
 					return nullptr;
 				}
-				return invoke_napi_error_scope(env, [ & ]() -> napi_value {
+				return invoke_with_error_scope(env, [ & ]() -> napi_value {
 					auto run = util::regular_return{[ & ]() -> decltype(auto) {
 						return std::apply(
 							callback,
@@ -315,7 +257,7 @@ constexpr auto make_member_function(Method method) {
 		};
 	};
 
-	auto callback = thunk_member_function<Environment>(std::move(method));
+	auto callback = js::functional::thunk_member_function<Environment>(std::move(method));
 	constexpr auto make = util::overloaded{make_with_try_catch, make_noexcept};
 	return make(std::type_identity<util::function_signature_t<decltype(callback)>>{}, std::move(callback));
 };
