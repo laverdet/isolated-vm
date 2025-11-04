@@ -20,14 +20,4 @@ auto realm::lock(const agent_lock& agent) const -> js::iv8::context_managed_lock
 	return js::iv8::context_managed_lock{agent, context_.deref(agent)};
 }
 
-// realm::scope
-realm::scope::scope(const agent_lock& agent, const context_lock_witness& lock) :
-		context_lock_witness{lock},
-		remote_handle_lock{util::slice_cast<remote_handle_lock>(agent)},
-		agent_lock_{agent} {}
-
-auto realm::scope::agent() const -> const agent_lock& {
-	return agent_lock_;
-}
-
 } // namespace isolated_v8

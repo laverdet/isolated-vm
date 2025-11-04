@@ -19,7 +19,7 @@ module_request::module_request(js::string_t specifier, attributes_type attribute
 		specifier_{std::move(specifier)} {}
 
 // js_module
-js_module::js_module(const agent_lock& agent, v8::Local<v8::Module> module_) :
+js_module::js_module(const js::iv8::remote_handle_lock& agent, v8::Local<v8::Module> module_) :
 		module_{make_shared_remote(agent, module_)} {
 }
 
@@ -64,7 +64,7 @@ auto js_module::evaluate(const realm::scope& realm) -> js::value_t {
 }
 
 auto js_module::create_synthetic(
-	const agent_lock& agent,
+	const realm::scope& realm,
 	std::span<const v8::Local<v8::String>> export_names,
 	js::string_t source_origin,
 	synthetic_module_action_type action
@@ -78,18 +78,17 @@ auto js_module::create_synthetic(
 		resolver->Resolve(context, v8::Undefined(host.isolate())).ToChecked();
 		return resolver->GetPromise();
 	};
-	auto* const isolate = agent->isolate();
 	const auto v8_export_names = v8::MemorySpan<const v8::Local<v8::String>>{export_names.begin(), export_names.end()};
-	const auto module_name = js::transfer_in_strict<v8::Local<v8::String>>(std::move(source_origin), agent);
-	const auto module_handle = v8::Module::CreateSyntheticModule(isolate, module_name, v8_export_names, evaluation_steps);
+	const auto module_name = js::transfer_in_strict<v8::Local<v8::String>>(std::move(source_origin), realm);
+	const auto module_handle = v8::Module::CreateSyntheticModule(realm.isolate(), module_name, v8_export_names, evaluation_steps);
 	[[maybe_unused]] const auto insertion_result =
-		agent->weak_module_actions().emplace(agent, std::pair{module_handle, std::move(action)});
+		realm->weak_module_actions().emplace(realm, std::pair{module_handle, std::move(action)});
 	assert(insertion_result);
-	return js_module{agent, module_handle};
+	return js_module{realm, module_handle};
 }
 
-auto js_module::compile(const agent_lock& agent, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module {
-	auto maybe_resource_name = js::transfer_in_strict<v8::MaybeLocal<v8::String>>(source_origin.name, agent);
+auto js_module::compile(const realm::scope& realm, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module {
+	auto maybe_resource_name = js::transfer_in_strict<v8::MaybeLocal<v8::String>>(source_origin.name, realm);
 	v8::Local<v8::String> resource_name{};
 	(void)maybe_resource_name.ToLocal(&resource_name);
 	auto location = source_origin.location.value_or(source_location{});
@@ -105,12 +104,12 @@ auto js_module::compile(const agent_lock& agent, v8::Local<v8::String> source_te
 		true,
 	};
 	v8::ScriptCompiler::Source source{source_text, origin};
-	auto module_handle = v8::ScriptCompiler::CompileModule(agent->isolate(), &source).ToLocalChecked();
-	const auto module_global = v8::Global<v8::Module>{agent->isolate(), module_handle};
+	auto module_handle = v8::ScriptCompiler::CompileModule(realm.isolate(), &source).ToLocalChecked();
+	const auto module_global = v8::Global<v8::Module>{realm.isolate(), module_handle};
 	if (source_origin.name) {
-		agent->weak_module_specifiers().emplace(agent, std::pair{module_handle, *std::move(source_origin.name)});
+		realm->weak_module_specifiers().emplace(realm, std::pair{module_handle, *std::move(source_origin.name)});
 	}
-	return js_module{agent, module_handle};
+	return js_module{realm, module_handle};
 }
 
 auto js_module::link(const realm::scope& realm, v8::Module::ResolveModuleCallback callback) -> void {

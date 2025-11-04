@@ -111,6 +111,28 @@ struct accept_v8_value : accept_v8_primitive {
 			};
 		}
 
+		// error
+		auto operator()(error_tag /*tag*/, visit_holder /*visit*/, const auto& subject) const
+			-> js::referenceable_value<v8::Local<v8::Object>> {
+			auto message = iv8::string::make(isolate(), subject.message());
+			auto error = v8::Local<v8::Value>{[ & ]() -> v8::Local<v8::Value> {
+				switch (subject.name()) {
+					// These functions don't need an isolate somehow?
+					default:
+						return v8::Exception::Error(message);
+					case js::error::name_type::range_error:
+						return v8::Exception::RangeError(message);
+					case js::error::name_type::reference_error:
+						return v8::Exception::ReferenceError(message);
+					case js::error::name_type::syntax_error:
+						return v8::Exception::SyntaxError(message);
+					case js::error::name_type::type_error:
+						return v8::Exception::TypeError(message);
+				}
+			}()};
+			return js::referenceable_value{error.As<v8::Object>()};
+		}
+
 		// array
 		auto operator()(this const auto& self, list_tag /*tag*/, auto& visit, auto&& subject)
 			-> js::deferred_receiver<v8::Local<v8::Array>, decltype(self), decltype(visit), decltype(subject)> {

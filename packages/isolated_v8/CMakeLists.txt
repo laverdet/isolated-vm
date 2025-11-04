@@ -22,7 +22,6 @@ target_sources(isolated_v8
 		evaluation/origin_.cc
 		evaluation/script_.cc
 		function_.cc
-		handle/collected_handle_.cc
 		platform/clock_.cc
 		platform/foreground_runner_.cc
 		platform/platform_.cc

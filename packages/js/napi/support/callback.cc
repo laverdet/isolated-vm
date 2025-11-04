@@ -75,9 +75,9 @@ constexpr auto make_free_function(auto function) {
 		static_assert(false, "untested");
 		using callback_type = decltype(callback);
 		return util::bind{
-			[](callback_type& callback_, Environment& env, const callback_info& /*info*/) noexcept -> napi_value {
+			[](callback_type& callback, Environment& env, const callback_info& /*info*/) noexcept -> napi_value {
 				auto run = util::regular_return{[ & ]() -> decltype(auto) {
-					return callback_(env);
+					return callback(env);
 				}};
 				return js::transfer_in_strict<napi_value>(run().value_or(std::monostate{}), env);
 			},

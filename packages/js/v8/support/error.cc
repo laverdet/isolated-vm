@@ -6,6 +6,7 @@ module;
 #include <string>
 #include <type_traits>
 export module v8_js:error;
+import :accept;
 import :lock;
 import :visit;
 import isolated_js;
@@ -56,22 +57,29 @@ auto unmaybe(v8::Maybe<Type> maybe) -> Type {
 	}
 }
 
-// Set up try/catch block for use with `unmaybe`
-export template <class Operation>
-auto invoke_with_unmaybe(isolate_lock_witness lock, Operation operation) {
-	const auto dispatch =
-		[ & ]<class Type>(std::type_identity<Type> /*tag*/)
-		-> std::expected<Type, js::error_value> {
-		using value_type = std::expected<Type, js::error_value>;
-		const auto try_catch = v8::TryCatch{lock.isolate()};
-		try {
-			return value_type{std::in_place, operation()};
-		} catch (const iv8::pending_error& /*error*/) {
-			assert(try_catch.HasCaught());
-			return value_type{std::unexpect, transfer_error_value(lock, try_catch.Message())};
-		}
-	};
-	return dispatch(std::type_identity<std::invoke_result_t<Operation>>{});
+// Catch `iv8::pending_error` or `js::error`, converting to thrown runtime error.
+auto invoke_with_error_scope(context_lock_witness lock, auto operation) -> v8::Local<v8::Value> {
+	try {
+		return operation();
+	} catch (const iv8::pending_error& /*error*/) {
+		return v8::Local<v8::Value>{};
+	} catch (const js::error& error) {
+		auto exception = js::transfer_in_strict<v8::Local<v8::Value>>(error, lock);
+		lock.isolate()->ThrowException(exception);
+		return v8::Local<v8::Value>{};
+	}
+};
+
+// Set up try/catch block for use with `unmaybe`. `std::expected<T, js::error_value>` is returned.
+export auto invoke_with_unmaybe(isolate_lock_witness lock, auto operation) {
+	using value_type = std::expected<type_t<type<decltype(operation)>()>, js::error_value>;
+	const auto try_catch = v8::TryCatch{lock.isolate()};
+	try {
+		return value_type{std::in_place, operation()};
+	} catch (const iv8::pending_error& /*error*/) {
+		assert(try_catch.HasCaught());
+		return value_type{std::unexpect, transfer_error_value(lock, try_catch.Message())};
+	}
 }
 
 // Return `std::expected` from a single throwable v8 operation

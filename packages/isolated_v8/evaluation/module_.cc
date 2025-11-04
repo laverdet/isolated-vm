@@ -38,20 +38,21 @@ export class module_request {
 export class js_module {
 	public:
 		js_module() = delete;
-		js_module(const agent_lock& agent, v8::Local<v8::Module> module_);
+		js_module(const js::iv8::remote_handle_lock& agent, v8::Local<v8::Module> module_);
 
 		auto evaluate(const realm::scope& realm_scope) -> js::value_t;
 		auto link(const realm::scope& realm, auto callback) -> void;
 		auto requests(const agent_lock& agent) -> std::vector<module_request>;
 
+		static auto compile(const realm::scope& agent, auto&& source_text, source_origin source_origin) -> js_module;
 		static auto compile(const agent_lock& agent, auto&& source_text, source_origin source_origin) -> js_module;
 
 		static auto create_synthetic(const realm::scope& realm, auto module_interface, js::string_t origin) -> js_module;
 
 	private:
-		static auto compile(const agent_lock& agent, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module;
+		static auto compile(const realm::scope& agent, v8::Local<v8::String> source_text, source_origin source_origin) -> js_module;
 		static auto create_synthetic(
-			const agent_lock& agent,
+			const realm::scope& realm,
 			std::span<const v8::Local<v8::String>> export_names,
 			js::string_t origin,
 			synthetic_module_action_type action
@@ -65,8 +66,12 @@ export class js_module {
 auto js_module::compile(const agent_lock& agent, auto&& source_text, source_origin source_origin) -> js_module {
 	// nb: Context lock is needed for compilation errors
 	const auto context_lock = js::iv8::context_managed_lock{agent, agent->scratch_context()};
-	auto local_source_text = js::transfer_in_strict<v8::Local<v8::String>>(std::forward<decltype(source_text)>(source_text), agent);
-	return compile(agent, local_source_text, std::move(source_origin));
+	return compile(realm::scope{context_lock, *agent}, std::forward<decltype(source_text)>(source_text), std::move(source_origin));
+}
+
+auto js_module::compile(const realm::scope& realm, auto&& source_text, source_origin source_origin) -> js_module {
+	auto local_source_text = js::transfer_in_strict<v8::Local<v8::String>>(std::forward<decltype(source_text)>(source_text), realm);
+	return compile(realm, local_source_text, std::move(source_origin));
 }
 
 auto js_module::create_synthetic(const realm::scope& realm, auto module_interface, js::string_t origin) -> js_module {
@@ -82,7 +87,7 @@ auto js_module::create_synthetic(const realm::scope& realm, auto module_interfac
 				js::iv8::unmaybe(module->SetSyntheticModuleExport(realm.isolate(), key, value));
 			}
 		};
-	auto module_record = create_synthetic(realm.agent(), std::span{name_locals}, std::move(origin), std::move(action));
+	auto module_record = create_synthetic(realm, std::span{name_locals}, std::move(origin), std::move(action));
 	module_record.link(realm, [](auto&&...) -> js_module& { std::unreachable(); });
 	module_record.evaluate(realm);
 	return module_record;
@@ -109,7 +114,7 @@ auto js_module::link(const realm::scope& realm, auto callback) -> void {
 		auto& thread_callback = *thread_callback_local;
 		auto specifier_string = js::transfer_out_strict<js::string_t>(specifier, realm);
 		auto referrer_name = std::invoke([ & ]() -> std::optional<js::string_t> {
-			auto& weak_module_specifiers = realm.agent()->weak_module_specifiers();
+			auto& weak_module_specifiers = realm->weak_module_specifiers();
 			const auto* referrer_name = weak_module_specifiers.find(referrer);
 			if (referrer_name == nullptr) {
 				return std::nullopt;

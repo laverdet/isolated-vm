@@ -13,7 +13,7 @@ class realm_lock;
 
 export class realm {
 	public:
-		class scope;
+		using scope = js::iv8::context_lock_witness_of<agent_host, agent_remote_handle_lock, agent_collected_handle_lock>;
 
 		realm() = delete;
 		realm(const agent_lock& agent, v8::Local<v8::Context> context);
@@ -31,24 +31,10 @@ export class realm {
 		js::iv8::shared_remote<v8::Context> context_;
 };
 
-class realm::scope
-		: util::non_moveable,
-			public js::iv8::context_lock_witness,
-			public js::iv8::remote_handle_lock {
-
-	public:
-		scope(const agent_lock& agent, const context_lock_witness& lock);
-
-		[[nodiscard]] auto agent() const -> const agent_lock&;
-
-	private:
-		std::reference_wrapper<const agent_lock> agent_lock_;
-};
-
 // ---
 
 auto realm::invoke(const agent_lock& agent, std::invocable<const realm::scope&> auto task) const {
-	return task(realm::scope{agent, lock(agent)});
+	return task(realm::scope{lock(agent), *agent});
 }
 
 } // namespace isolated_v8

@@ -260,6 +260,12 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 			return accept(list_tag{}, visit_entry, iv8::object{self.lock_witness(), subject.As<v8::Object>()});
 		}
 
+		// function template
+		template <class Accept>
+		auto immediate(this auto& self, v8::Local<v8::FunctionTemplate> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(function_tag{}, self, subject->GetFunction(self.context_lock_.context()));
+		}
+
 	private:
 		js::iv8::context_lock_witness context_lock_;
 };

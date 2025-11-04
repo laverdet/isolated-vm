@@ -110,7 +110,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			return js::referenceable_value{napi::value<date_tag>::make(environment(), js_clock::time_point{std::forward<decltype(subject)>(subject)})};
 		}
 
-		// `Error`
+		// error
 		auto operator()(error_tag /*tag*/, visit_holder /*visit*/, const auto& subject) const
 			-> js::referenceable_value<napi::value<error_tag>> {
 			auto* message = napi_value{napi::value<string_tag>::make(environment(), subject.message())};

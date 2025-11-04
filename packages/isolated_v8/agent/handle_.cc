@@ -14,19 +14,21 @@ import v8;
 
 namespace isolated_v8 {
 
+// `isolate_lock_witness_of` adapters
+class agent_remote_handle_lock : public js::iv8::remote_handle_lock {
+	public:
+		agent_remote_handle_lock(js::iv8::isolate_lock_witness lock, agent_host& agent);
+};
+
+class agent_collected_handle_lock : public js::iv8::collected_handle_lock {
+	public:
+		agent_collected_handle_lock(js::iv8::isolate_lock_witness lock, agent_host& agent);
+};
+
 // An `agent_lock` is a simple holder for an `agent_host` which proves that we are executing in the
 // isolate context.
-export class agent_lock
-		: public util::pointer_facade,
-			public js::iv8::isolate_lock_witness,
-			public js::iv8::remote_handle_lock {
-	public:
-		agent_lock(js::iv8::isolate_lock_witness witness, agent_host& host);
-		auto operator*() const -> agent_host& { return host_.get(); }
-
-	private:
-		std::reference_wrapper<agent_host> host_;
-};
+export using agent_lock =
+	js::iv8::isolate_lock_witness_of<agent_host, agent_remote_handle_lock, agent_collected_handle_lock>;
 
 export template <class Type>
 class agent_lock_of : public agent_lock {

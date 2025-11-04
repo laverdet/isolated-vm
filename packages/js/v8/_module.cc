@@ -1,5 +1,6 @@
 export module v8_js;
 export import :accept;
+export import :collected_handle;
 export import :error;
 export import :fixed_array;
 export import :lock;
