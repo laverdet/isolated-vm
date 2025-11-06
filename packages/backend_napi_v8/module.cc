@@ -191,11 +191,11 @@ auto module_handle::create_capability(
 						auto [ key, value ] = std::move(pair);
 						auto fn_template = std::visit(
 							[ & ](auto capability) -> auto {
-								return isolated_v8::function_template::make(lock, std::move(capability));
+								return js::iv8::function_template::make(lock, std::move(capability));
 							},
 							std::move(value)
 						);
-						return std::pair{std::move(key), fn_template};
+						return std::pair{std::move(key), std::move(fn_template)};
 					}),
 			};
 			auto module_ = realm.invoke(lock, [ & ](const isolated_v8::realm::scope& realm) mutable -> auto {

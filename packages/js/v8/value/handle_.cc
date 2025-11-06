@@ -10,7 +10,7 @@ export class handle_with_isolate {
 		// nb: It is default-constructible. So instead of copying the lock witness (which is not
 		// default-constructible), the isolate is stored.
 		handle_with_isolate() = default;
-		explicit handle_with_isolate(const isolate_lock_witness& lock) :
+		explicit handle_with_isolate(isolate_lock_witness lock) :
 				isolate_{lock.isolate()} {}
 
 		[[nodiscard]] auto isolate() const -> v8::Isolate* { return isolate_; }
@@ -26,7 +26,7 @@ export class handle_with_isolate {
 export class handle_with_context : public handle_with_isolate {
 	public:
 		handle_with_context() = default;
-		explicit handle_with_context(const context_lock_witness& lock) :
+		explicit handle_with_context(context_lock_witness lock) :
 				handle_with_isolate{lock},
 				context_{lock.context()} {}
 

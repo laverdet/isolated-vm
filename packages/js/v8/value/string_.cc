@@ -12,7 +12,7 @@ export class string
 		: public v8::Local<v8::String>,
 			public handle_with_isolate {
 	public:
-		explicit string(const isolate_lock_witness& lock, v8::Local<v8::String> handle) :
+		explicit string(isolate_lock_witness lock, v8::Local<v8::String> handle) :
 				v8::Local<v8::String>{handle},
 				handle_with_isolate{lock} {}
 

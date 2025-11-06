@@ -5,7 +5,6 @@ target_sources(isolated_v8
 		agent/host.cc
 		evaluation/module.cc
 		evaluation/script.cc
-		function.cc
 		platform/clock.cc
 		platform/foreground_runner.cc
 		platform/handle.cc
@@ -21,7 +20,6 @@ target_sources(isolated_v8
 		evaluation/module_action_.cc
 		evaluation/origin_.cc
 		evaluation/script_.cc
-		function_.cc
 		platform/clock_.cc
 		platform/foreground_runner_.cc
 		platform/platform_.cc

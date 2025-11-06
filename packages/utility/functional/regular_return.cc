@@ -1,8 +1,8 @@
 module;
 #include <utility>
 export module ivm.utility:functional.regular_return;
-import :utility;
 import :type_traits;
+import :utility;
 
 namespace util {
 

@@ -46,17 +46,17 @@ template <class Type>
 template <class Environment>
 auto value<class_tag_of<Type>>::make(Environment& env, const auto& class_template) -> value<class_tag_of<Type>> {
 	// Make constructor callback
-	auto [ construct_ptr, constructor_data, constructor_finalizer ] =
+	auto [ construct_ptr, constructor_data ] =
 		make_callback_storage(env, make_constructor_function<Environment, Type>(class_template.constructor.function));
 	static_assert(std::remove_cvref_t<decltype(class_template.constructor)>::disposition == property_disposition::function);
-	static_assert(type<decltype(constructor_finalizer)> == type<std::nullptr_t>);
+	static_assert(!requires { typename decltype(constructor_data)::element_type; });
 
 	// Member function property descriptor
 	const auto make_member_function_descriptor = [ & ]<class Property>(const Property& property) -> napi_property_descriptor
 		requires(Property::scope == class_property_scope::prototype) {
 			auto name = std::u8string_view{property.name};
-			auto [ callback, data, finalizer ] = make_callback_storage(env, make_member_function<Environment, Type>(property.function));
-			static_assert(type<decltype(finalizer)> == type<std::nullptr_t>);
+			auto [ callback, data ] = make_callback_storage(env, make_member_function<Environment, Type>(property.function));
+			static_assert(!requires { typename decltype(data)::element_type; });
 			return {
 				.utf8name = reinterpret_cast<const char*>(name.data()),
 				.name{},
@@ -76,8 +76,8 @@ auto value<class_tag_of<Type>>::make(Environment& env, const auto& class_templat
 	const auto make_static_function_descriptor = [ & ]<class Property>(const Property& property) -> napi_property_descriptor
 		requires(Property::scope == class_property_scope::constructor) {
 			auto name = std::u8string_view{property.name};
-			auto [ callback, data, finalizer ] = make_callback_storage(env, make_free_function<Environment>(property.function));
-			static_assert(type<decltype(finalizer)> == type<std::nullptr_t>);
+			auto [ callback, data ] = make_callback_storage(env, make_free_function<Environment>(property.function));
+			static_assert(!requires { typename decltype(data)::element_type; });
 			return {
 				.utf8name = reinterpret_cast<const char*>(name.data()),
 				.name{},

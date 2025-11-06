@@ -16,7 +16,7 @@ constexpr auto thunk_free_function = []<class Callback>(Callback callback) const
 			std::type_identity<auto(Type, Args...) noexcept(Nx)->Result> /*signature*/,
 			auto callback
 		) -> auto
-		requires(std::remove_cvref<Type>{} == type<Realm>) {
+		requires std::is_convertible_v<Realm, Type> {
 			return std::move(callback);
 		};
 	constexpr auto make_without_realm =
@@ -45,7 +45,7 @@ constexpr auto thunk_member_function = []<class Callback>(Callback callback) con
 			std::type_identity<auto(That, Type, Args...) noexcept(Nx)->Result> /*signature*/,
 			auto callback
 		) -> auto
-		requires(std::remove_cvref<Type>{} == type<Realm>) {
+		requires std::is_convertible_v<Realm, Type> {
 			return std::move(callback);
 		};
 	constexpr auto make_without_realm =

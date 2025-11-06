@@ -14,6 +14,7 @@ import :lock;
 import :number;
 import :object;
 import :string;
+import :unmaybe;
 import isolated_js;
 import ivm.utility;
 import v8;
@@ -23,7 +24,7 @@ namespace js {
 // Instantiated in the acceptor that corresponds to a v8 visitor
 struct v8_reference_map_type {
 		template <class Type>
-		using type = std::unordered_map<v8::Local<v8::Value>, Type, iv8::address_hash>;
+		using type = std::unordered_map<v8::Local<v8::Data>, Type, iv8::address_hash>;
 };
 
 template <class Visit>
@@ -54,26 +55,12 @@ struct visit_v8_property_name {
 		std::reference_wrapper<Visit> visit_;
 };
 
-// Primitive-ish value visitor. These only need an isolate, so they are separated from the other
-// visitor. Also, none of these are recursive.
-template <class Target>
-struct visit_flat_v8_value;
+// Implements `Visit`'s non-caching `immediate()` function as a caching visit operation.
+template <class Visit>
+struct visit_cached_immediate : Visit {
+		using Visit::Visit;
+		using Visit::operator();
 
-template <class Meta>
-using visit_flat_v8_value_with = visit_flat_v8_value<typename Meta::accept_reference_type>;
-
-template <class Target>
-struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
-	public:
-		using reference_map_type = reference_map_t<Target, v8_reference_map_type>;
-
-		explicit visit_flat_v8_value(auto* /*transfer*/, const js::iv8::isolate_lock_witness& lock) :
-				isolate_lock_{lock} {}
-
-		[[nodiscard]] auto lock_witness() const -> auto& { return isolate_lock_; }
-
-		// If the protected `immediate` operation is defined: this public operation will first
-		// perform a reference map lookup, then delegate to the protected operation if not found.
 		template <class Accept>
 		auto operator()(this auto& self, auto subject, const Accept& accept) -> accept_target_t<Accept>
 			requires requires { self.immediate(subject, accept); } {
@@ -81,6 +68,23 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 				return self.immediate(subject, accept);
 			});
 		}
+};
+
+// Primitive-ish value visitor. These only need an isolate, so they are separated from the other
+// visitor. Also, none of these are recursive.
+template <class Target>
+struct visit_flat_v8_value;
+
+template <class Meta>
+using visit_flat_v8_value_with = visit_cached_immediate<visit_flat_v8_value<typename Meta::accept_reference_type>>;
+
+template <class Target>
+struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
+	public:
+		explicit visit_flat_v8_value(auto* /*transfer*/, iv8::isolate_lock_witness lock) :
+				isolate_lock_{lock} {}
+
+		[[nodiscard]] auto lock_witness() const -> auto& { return isolate_lock_; }
 
 		// numbers
 		template <class Accept>
@@ -199,16 +203,17 @@ template <class Target>
 struct visit_v8_value;
 
 template <class Meta>
-using visit_v8_value_with = visit_v8_value<typename Meta::accept_reference_type>;
+using visit_v8_value_with = visit_cached_immediate<visit_v8_value<typename Meta::accept_reference_type>>;
 
 template <class Target>
 struct visit_v8_value : visit_flat_v8_value<Target> {
 	public:
+		friend struct visit_flat_v8_value<Target>;
 		using visit_type = visit_flat_v8_value<Target>;
 		using visit_type::immediate;
 		using visit_type::operator();
 
-		explicit visit_v8_value(auto* transfer, const iv8::context_lock_witness& lock) :
+		explicit visit_v8_value(auto* transfer, iv8::context_lock_witness lock) :
 				visit_type{transfer, lock},
 				context_lock_{lock} {}
 
@@ -263,11 +268,11 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 		// function template
 		template <class Accept>
 		auto immediate(this auto& self, v8::Local<v8::FunctionTemplate> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(function_tag{}, self, subject->GetFunction(self.context_lock_.context()));
+			return accept(function_tag{}, self, iv8::unmaybe(subject->GetFunction(self.context_lock_.context())));
 		}
 
 	private:
-		js::iv8::context_lock_witness context_lock_;
+		iv8::context_lock_witness context_lock_;
 };
 
 // Name visitor (string + symbol)
@@ -285,6 +290,12 @@ struct visit<Meta, v8::Local<v8::String>> : visit_flat_v8_value_with<Meta> {
 // Generic visitor
 template <class Meta>
 struct visit<Meta, v8::Local<v8::Value>> : visit_v8_value_with<Meta> {
+		using visit_v8_value_with<Meta>::visit_v8_value_with;
+};
+
+// Function visitor
+template <class Meta>
+struct visit<Meta, v8::Local<v8::FunctionTemplate>> : visit_v8_value_with<Meta> {
 		using visit_v8_value_with<Meta>::visit_v8_value_with;
 };
 

@@ -133,10 +133,13 @@ struct accept_value_from_direct : Accept {
 			return util::invoke_as<Accept>(*this, type, std::forward<decltype(value)>(value));
 		}
 
-		// nb: `std::invocable<accept_type, ...>` causes a circular requirement. I think it's fine to
-		// leave it out though since `accept_value_from` is a terminal acceptor.
 		template <class Visit>
 		constexpr auto operator()(auto_tag auto tag, Visit& visit, auto&& subject) const -> accept_target_t<accept_type> {
+			// nb: A `static_assert` is more correct and helpful than a requirement check, since there
+			// will be no other acceptors which could do better; if you are invoking an instance of
+			// `accept_value_from_direct` then you expect it to succeed. If the assert fails then
+			// something has gone totally off the rails.
+			static_assert(std::invocable<accept_type, decltype(tag), decltype(visit), decltype(subject)>);
 			auto insert = [ & ]() -> auto {
 				if constexpr (has_reference_map(type<Visit>)) {
 					return [ subject = subject, &visit = visit ](const auto& value) { visit.emplace_subject(subject, value); };

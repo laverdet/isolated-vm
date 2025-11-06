@@ -10,7 +10,6 @@ export module isolated_v8:module_;
 import :agent_host;
 import :evaluation_module_action;
 import :evaluation_origin;
-import :function;
 import :realm;
 import :script;
 import v8_js;
@@ -77,9 +76,9 @@ auto js_module::compile(const realm::scope& realm, auto&& source_text, source_or
 auto js_module::create_synthetic(const realm::scope& realm, auto module_interface, js::string_t origin) -> js_module {
 	auto name_locals = std::vector<v8::Local<v8::String>>{};
 	auto export_locals = std::vector<v8::Local<v8::Value>>{};
-	for (auto [ key, value ] : std::move(module_interface)) {
-		name_locals.push_back(js::transfer_in_strict<v8::Local<v8::String>>(key, realm));
-		export_locals.push_back(js::transfer_strict<v8::Local<v8::Value>>(value, std::forward_as_tuple(realm), std::forward_as_tuple(realm)));
+	for (auto& [ key, value ] : module_interface) {
+		name_locals.push_back(js::transfer_in_strict<v8::Local<v8::String>>(std::move(key), realm));
+		export_locals.push_back(js::transfer_strict<v8::Local<v8::Value>>(std::move(value), std::forward_as_tuple(realm), std::forward_as_tuple(realm)));
 	}
 	synthetic_module_action_type action =
 		[ & ](v8::Local<v8::Context> /*context*/, v8::Local<v8::Module> module) {

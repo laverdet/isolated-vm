@@ -66,11 +66,9 @@ struct visit_napi_value
 		: napi::environment_scope<Environment>,
 			reference_map_t<Target, napi_reference_map_type> {
 	public:
-		using reference_map_type = reference_map_t<Target, napi_reference_map_type>;
-
 		visit_napi_value(auto* /*transfer*/, Environment& env) :
 				napi::environment_scope<Environment>{env},
-				reference_map_type{env},
+				reference_map_t<Target, napi_reference_map_type>{env},
 				equal_{env} {}
 
 		// If the private `immediate` operation is defined: this public operation will first

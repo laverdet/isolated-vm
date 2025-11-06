@@ -3,7 +3,6 @@ export import :agent_handle;
 export import :clock;
 export import :cluster;
 export import :evaluation_origin;
-export import :function;
 export import :module_;
 export import :realm;
 export import :script;

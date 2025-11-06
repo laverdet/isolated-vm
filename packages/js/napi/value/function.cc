@@ -33,20 +33,20 @@ auto value<function_tag>::invoke(auto_environment auto& env, std::span<napi_valu
 
 template <auto_environment Environment>
 auto value<function_tag>::make(Environment& env, auto function) -> value<function_tag> {
-	auto [ callback, data, finalizer ] = make_callback_storage(env, make_free_function<Environment>(std::move(function.callback)));
-	const auto make = [ & ]() -> value<function_tag> {
+	auto [ callback, data ] = make_callback_storage(env, make_free_function<Environment>(std::move(function.callback)));
+	auto make = [ & ](void* data) -> value<function_tag> {
 		return value<function_tag>::from(napi::invoke(napi_create_function, napi_env{env}, function.name.data(), function.name.length(), callback, data));
 	};
-	if constexpr (type<decltype(finalizer)> == type<std::nullptr_t>) {
-		// No finalizer needed
-		return make();
-	} else {
+	if constexpr (requires { typename decltype(data)::element_type; }) {
 		// Function requires finalizer
-		return apply_finalizer(std::move(finalizer), [ & ](auto* data, napi_finalize finalize, void* hint) -> value<function_tag> {
-			auto js_function = make();
-			napi::invoke0(napi_add_finalizer, napi_env{env}, js_function, data, finalize, hint, nullptr);
-			return js_function;
+		auto function = make(data.get());
+		return apply_finalizer(std::move(data), [ & ](auto* data, napi_finalize finalize, void* hint) -> value<function_tag> {
+			napi::invoke0(napi_add_finalizer, napi_env{env}, function, data, finalize, hint, nullptr);
+			return function;
 		});
+	} else {
+		// No finalizer needed
+		return make(data);
 	}
 }
 

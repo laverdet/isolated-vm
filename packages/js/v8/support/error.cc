@@ -8,6 +8,7 @@ module;
 export module v8_js:error;
 import :accept;
 import :lock;
+import :unmaybe;
 import :visit;
 import isolated_js;
 import v8;
@@ -15,13 +16,6 @@ import v8;
 namespace js::iv8 {
 
 auto render_stack_trace(isolate_lock_witness lock, v8::Local<v8::StackTrace> stack_trace) -> std::u16string;
-
-// Thrown from `unmaybe` to indicate that a v8 operation failed and there is an exception waiting on
-// the JS stack.
-export class pending_error : public std::exception {
-	public:
-		[[nodiscard]] auto what() const noexcept -> const char* final { return "[pending v8 error]"; }
-};
 
 // Transfer a v8 exception message into `js::error_value`, hopefully without throwing again.
 auto transfer_error_value(isolate_lock_witness lock, v8::Local<v8::Message> message) -> js::error_value {
@@ -35,44 +29,23 @@ auto transfer_error_value(isolate_lock_witness lock, v8::Local<v8::Message> mess
 	};
 }
 
-// Unwrap a `MaybeLocal`, or throw `iv8::pending_error` on failure
-export template <class Type>
-auto unmaybe(v8::MaybeLocal<Type> maybe_value) -> v8::Local<Type> {
-	v8::Local<Type> value;
-	if (maybe_value.ToLocal(&value)) {
-		return value;
-	} else {
-		throw iv8::pending_error{};
-	}
-}
-
-// Unwrap a `Maybe`, or throw `iv8::pending_error` on failure
-export template <class Type>
-auto unmaybe(v8::Maybe<Type> maybe) -> Type {
-	Type value;
-	if (maybe.To(&value)) {
-		return value;
-	} else {
-		throw iv8::pending_error{};
-	}
-}
-
 // Catch `iv8::pending_error` or `js::error`, converting to thrown runtime error.
-auto invoke_with_error_scope(context_lock_witness lock, auto operation) -> v8::Local<v8::Value> {
+auto invoke_with_error_scope(context_lock_witness lock, auto operation) {
+	using value_type = std::optional<decltype(operation())>;
 	try {
-		return operation();
+		return value_type{std::in_place, operation()};
 	} catch (const iv8::pending_error& /*error*/) {
-		return v8::Local<v8::Value>{};
+		return value_type{std::nullopt};
 	} catch (const js::error& error) {
 		auto exception = js::transfer_in_strict<v8::Local<v8::Value>>(error, lock);
 		lock.isolate()->ThrowException(exception);
-		return v8::Local<v8::Value>{};
+		return value_type{std::nullopt};
 	}
 };
 
 // Set up try/catch block for use with `unmaybe`. `std::expected<T, js::error_value>` is returned.
 export auto invoke_with_unmaybe(isolate_lock_witness lock, auto operation) {
-	using value_type = std::expected<type_t<type<decltype(operation)>()>, js::error_value>;
+	using value_type = std::expected<decltype(operation()), js::error_value>;
 	const auto try_catch = v8::TryCatch{lock.isolate()};
 	try {
 		return value_type{std::in_place, operation()};

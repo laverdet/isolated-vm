@@ -35,7 +35,8 @@ class collected_handle
 				value_{std::forward<decltype(args)>(args)...} {}
 
 		auto operator*() -> Type& { return value_; }
-		static auto make(const collected_handle_lock& lock, auto&&... args) -> unique_ptr;
+		static auto make(const collected_handle_lock& lock, auto&&... args) -> unique_ptr
+			requires std::constructible_from<Type, decltype(args)...>;
 		static auto reset(const collected_handle_lock& lock, unique_ptr handle, v8::Local<Value> value) -> void;
 
 	private:
@@ -51,7 +52,8 @@ using collected_external_of = collected_handle<v8::External, Type>;
 // ---
 
 template <class Value, class Type>
-auto collected_handle<Value, Type>::make(const collected_handle_lock& lock, auto&&... args) -> unique_ptr {
+auto collected_handle<Value, Type>::make(const collected_handle_lock& lock, auto&&... args) -> unique_ptr
+	requires std::constructible_from<Type, decltype(args)...> {
 	return lock.pool().make_unique<collected_handle>(lock.pool(), std::forward<decltype(args)>(args)...);
 }
 

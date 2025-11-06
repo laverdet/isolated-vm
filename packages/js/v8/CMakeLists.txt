@@ -16,14 +16,18 @@ target_sources(v8_js
 		handle/collected_handle.cc
 		handle/remote_handle.h.cc
 		handle/remote.cc
+		support/callback_storage.cc
+		support/callback.cc
 		support/error.cc
 		support/lock.h.cc
+		support/unmaybe.cc
 		value/array_.cc
 		value/boolean_.cc
 		value/callback_info_.cc
 		value/date_.cc
 		value/external_.cc
 		value/fixed_array_.cc
+		value/function.cc
 		value/handle_.cc
 		value/number_.cc
 		value/object_.cc

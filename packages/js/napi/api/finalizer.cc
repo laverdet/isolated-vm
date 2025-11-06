@@ -28,8 +28,7 @@ auto apply_finalizer(std::unique_ptr<Type, Deleter> unique, std::invocable<Type*
 // Finalizer for shared_ptr
 export template <class Type>
 auto apply_finalizer(std::shared_ptr<Type> shared, std::invocable<Type*, napi_finalize, void*> auto accept) -> decltype(auto) {
-	// unique_ptr<shared_ptr<T>> is passed as the finalizer hint. The shared_ptr keeps the underlying
-	// pointer alive.
+	// `shared_ptr<T>*` is passed as the finalizer hint
 	using shared_ptr_type = std::shared_ptr<Type>;
 	auto* ptr = shared.get();
 	auto ptr_ptr = std::make_unique<shared_ptr_type>(std::move(shared));

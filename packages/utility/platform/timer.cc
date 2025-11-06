@@ -12,7 +12,6 @@ module ivm.utility;
 import :functional;
 import :lockable;
 import :timer;
-import :type_traits;
 
 namespace util {
 

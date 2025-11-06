@@ -39,7 +39,7 @@ auto string::make(v8::Isolate* isolate, std::u16string_view view) -> v8::Local<v
 
 string::operator std::string() const {
 	std::string string;
-	string.resize_and_overwrite((*this)->Length(), [ this ](char* data, auto length) {
+	string.resize_and_overwrite((*this)->Length(), [ this ](char* data, size_t length) -> size_t {
 		if (length > 0) {
 			auto* data_uint8 = reinterpret_cast<uint8_t*>(data);
 			(*this)->WriteOneByteV2(isolate(), 0, length, data_uint8, v8::String::WriteOptions::NO_NULL_TERMINATION);
@@ -51,7 +51,7 @@ string::operator std::string() const {
 
 string::operator std::u8string() const {
 	std::u8string string;
-	string.resize_and_overwrite((*this)->Utf8LengthV2(isolate()), [ this ](char8_t* data, auto length) {
+	string.resize_and_overwrite((*this)->Utf8LengthV2(isolate()), [ this ](char8_t* data, size_t length) -> size_t {
 		if (length > 0) {
 			auto* data_char = reinterpret_cast<char*>(data);
 			(*this)->WriteUtf8V2(isolate(), data_char, length, v8::String::WriteOptions::NO_NULL_TERMINATION);
@@ -63,7 +63,7 @@ string::operator std::u8string() const {
 
 string::operator std::u16string() const {
 	std::u16string string;
-	string.resize_and_overwrite((*this)->Length(), [ this ](char16_t* data, auto length) {
+	string.resize_and_overwrite((*this)->Length(), [ this ](char16_t* data, size_t length) -> size_t {
 		if (length > 0) {
 			auto* data_uint16 = reinterpret_cast<uint16_t*>(data);
 			(*this)->WriteV2(isolate(), 0, length, data_uint16, v8::String::WriteOptions::NO_NULL_TERMINATION);

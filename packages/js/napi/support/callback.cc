@@ -85,7 +85,7 @@ constexpr auto make_free_function(auto function) {
 		};
 	};
 
-	auto callback = js::functional::thunk_free_function<Environment>(std::move(function));
+	auto callback = js::functional::thunk_free_function<Environment&>(std::move(function));
 	constexpr auto make = util::overloaded{make_with_try_catch, make_noexcept};
 	return make(std::type_identity<util::function_signature_t<decltype(callback)>>{}, std::move(callback));
 }
@@ -153,7 +153,7 @@ constexpr auto make_constructor_function(auto constructor) {
 				};
 			};
 
-			auto callback = js::functional::thunk_free_function<Environment>(std::move(constructor));
+			auto callback = js::functional::thunk_free_function<Environment&>(std::move(constructor));
 			using signature_type = util::function_signature_t<decltype(callback)>;
 			static_assert(util::signature_result<signature_type>{} != type<void>);
 			constexpr auto make = util::overloaded{make_with_try_catch, make_noexcept};
@@ -257,7 +257,7 @@ constexpr auto make_member_function(Method method) {
 		};
 	};
 
-	auto callback = js::functional::thunk_member_function<Environment>(std::move(method));
+	auto callback = js::functional::thunk_member_function<Environment&>(std::move(method));
 	constexpr auto make = util::overloaded{make_with_try_catch, make_noexcept};
 	return make(std::type_identity<util::function_signature_t<decltype(callback)>>{}, std::move(callback));
 };

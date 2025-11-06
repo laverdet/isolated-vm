@@ -7,8 +7,6 @@ module;
 #include <utility>
 export module ivm.utility:sealed_map;
 import :functional;
-import :type_traits;
-import :utility;
 
 namespace util {
 
