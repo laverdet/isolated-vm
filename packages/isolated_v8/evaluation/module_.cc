@@ -144,7 +144,7 @@ auto js_module::link(const realm::scope& realm, auto callback) -> void {
 				std::move(attributes_vector)
 			);
 		});
-		return result.module_.deref(realm);
+		return result.module_->deref(realm);
 	};
 	link(realm, v8_callback);
 }

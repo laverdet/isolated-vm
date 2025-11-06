@@ -2,7 +2,7 @@ add_library(v8_js OBJECT)
 
 target_sources(v8_js
 	PRIVATE
-		handle/remote_handle.cc
+		handle/remote.cc
 		support/lock.cc
 		value/array.cc
 		value/fixed_array.cc
@@ -14,8 +14,7 @@ target_sources(v8_js
 		container/hash.cc
 		container/weak_map.cc
 		handle/collected_handle.cc
-		handle/remote_handle.h.cc
-		handle/remote.cc
+		handle/remote.h.cc
 		support/callback_storage.cc
 		support/callback.cc
 		support/error.cc

@@ -2,12 +2,32 @@ module;
 #include <concepts>
 #include <functional>
 #include <memory>
+#include <type_traits>
 export module ivm.utility:memory;
 export import :memory.autorelease_pool;
 export import :memory.comparator;
 export import :memory.noinit_allocator;
 
 namespace util {
+
+// Deleter object for base class which does not have a virtual destructor
+export template <class Type>
+class derived_delete {
+	public:
+		template <std::derived_from<Type> As>
+		explicit constexpr derived_delete(std::type_identity<As> /*type*/) noexcept :
+				delete_{[](Type* pointer) noexcept -> void {
+					delete static_cast<As*>(pointer);
+				}} {}
+
+		constexpr auto operator()(Type* value) const noexcept {
+			delete_(value);
+		}
+
+	private:
+		using function_type = auto(Type*) noexcept -> void;
+		function_type* delete_;
+};
 
 export template <class Type, class Deleter>
 auto move_pointer_operation(

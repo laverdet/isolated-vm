@@ -27,8 +27,8 @@ runtime_interface::runtime_interface(const isolated_v8::agent_lock& agent) :
 auto runtime_interface::instantiate(const isolated_v8::realm::scope& realm) -> isolated_v8::js_module {
 	auto make_interface = [ & ]() {
 		return std::vector{
-			std::pair{std::string{"clockTime"}, clock_time_.deref(realm)},
-			std::pair{std::string{"performanceTime"}, performance_time_.deref(realm)},
+			std::pair{std::string{"clockTime"}, clock_time_->deref(realm)},
+			std::pair{std::string{"performanceTime"}, performance_time_->deref(realm)},
 		};
 	};
 	auto options = js::string_t{"isolated-vm://runtime"};

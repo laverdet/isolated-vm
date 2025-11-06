@@ -72,7 +72,7 @@ auto script_handle::run(environment& env, realm_handle& realm, run_script_option
 							}
 						};
 					});
-				return isolated_v8::run_script(realm, script_remote.deref(agent));
+				return isolated_v8::run_script(realm, script_remote->deref(agent));
 			});
 			dispatch(std::move(result));
 		},

@@ -143,7 +143,7 @@ auto module_handle::create_capability(
 							message = std::move(message) ](
 							const realm::scope& lock
 						) -> void {
-							auto callback = callback_remote.deref(lock);
+							auto callback = callback_remote->deref(lock);
 							auto argv = js::transfer_in<v8::Local<v8::Value>>(std::move(message), lock);
 							js::iv8::unmaybe(callback->Call(lock.context(), v8::Undefined(lock.isolate()), 1, &argv));
 						}
