@@ -7,7 +7,7 @@ target_sources(napi_js
 		value/dictionary.cc
 		value/object.cc
 		value/primitive.cc
-		PUBLIC FILE_SET CXX_MODULES FILES
+	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		api/api.cc
 		api/callback_info.cc
@@ -15,7 +15,7 @@ target_sources(napi_js
 		api/handle_scope.cc
 		api/invoke.cc
 		api/uv_handle.cc
-		api/uv_scheduler_.cc
+		api/uv_scheduler.h.cc
 		handle/bound_value.cc
 		handle/reference.cc
 		handle/remote.cc
@@ -23,23 +23,23 @@ target_sources(napi_js
 		support/callback_storage.cc
 		support/callback.cc
 		support/container.cc
-		support/environment_.cc
-		support/environment_fwd_.cc
+		support/environment_fwd.cc
+		support/environment.h.cc
 		support/error_scope.cc
 		support/promise.cc
 		support/utility.cc
 		transfer/accept.cc
 		transfer/visit.cc
-		value/array_.cc
-		value/class_.cc
+		value/array.h.cc
 		value/class.cc
-		value/dictionary_.cc
-		value/external_.cc
-		value/function_.cc
+		value/class.h.cc
+		value/dictionary.h.cc
+		value/external.cc
 		value/function.cc
-		value/object_.cc
-		value/primitive_.cc
-		value/value_.cc
+		value/function.h.cc
+		value/object.h.cc
+		value/primitive.h.cc
+		value/value.cc
 )
 target_link_libraries(napi_js PRIVATE
 	ivm_utility

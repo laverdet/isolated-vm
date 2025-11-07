@@ -13,18 +13,18 @@ target_sources(isolated_v8
 		realm.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
-		agent/handle_.cc
-		agent/host_.cc
-		cluster_.cc
-		evaluation/module_.cc
-		evaluation/module_action_.cc
-		evaluation/origin_.cc
-		evaluation/script_.cc
-		platform/clock_.cc
-		platform/foreground_runner_.cc
-		platform/platform_.cc
-		platform/task_runner_.cc
-		realm_.cc
+		agent/handle.h.cc
+		agent/host.h.cc
+		cluster.cc
+		evaluation/module_action.cc
+		evaluation/module.h.cc
+		evaluation/origin.cc
+		evaluation/script.h.cc
+		platform/clock.h.cc
+		platform/foreground_runner.h.cc
+		platform/platform.h.cc
+		platform/task_runner.cc
+		realm.h.cc
 		scheduler.cc
 )
 target_link_libraries(isolated_v8 PRIVATE

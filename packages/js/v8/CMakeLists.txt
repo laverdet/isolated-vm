@@ -20,17 +20,17 @@ target_sources(v8_js
 		support/error.cc
 		support/lock.h.cc
 		support/unmaybe.cc
-		value/array_.cc
-		value/boolean_.cc
-		value/callback_info_.cc
-		value/date_.cc
-		value/external_.cc
-		value/fixed_array_.cc
+		value/array.h.cc
+		value/boolean.cc
+		value/callback_info.cc
+		value/date.cc
+		value/external.cc
+		value/fixed_array.h.cc
 		value/function.cc
-		value/handle_.cc
-		value/number_.cc
-		value/object_.cc
-		value/string_.cc
+		value/handle.cc
+		value/number.cc
+		value/object.h.cc
+		value/string.h.cc
 		visit.cc
 )
 target_link_libraries(v8_js PUBLIC
