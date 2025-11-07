@@ -7,7 +7,7 @@ target_sources(v8_js
 		value/array.cc
 		value/fixed_array.cc
 		value/object.cc
-		value/string.cc
+		value/primitive.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		accept.cc
@@ -21,16 +21,12 @@ target_sources(v8_js
 		support/lock.h.cc
 		support/unmaybe.cc
 		value/array.h.cc
-		value/boolean.cc
 		value/callback_info.cc
-		value/date.cc
-		value/external.cc
 		value/fixed_array.h.cc
 		value/function.cc
 		value/handle.cc
-		value/number.cc
 		value/object.h.cc
-		value/string.h.cc
+		value/primitive.h.cc
 		visit.cc
 )
 target_link_libraries(v8_js PUBLIC

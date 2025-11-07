@@ -4,16 +4,12 @@ module;
 #include <utility>
 export module v8_js:visit;
 import :array;
-import :boolean;
 import :callback_info;
-import :date;
-import :external;
 import :handle;
 import :hash;
 import :lock;
-import :number;
 import :object;
-import :string;
+import :primitive;
 import :unmaybe;
 import isolated_js;
 import ivm.utility;
@@ -161,7 +157,7 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 			if (lossless) {
 				return accept(bigint_tag_of<uint64_t>{}, *this, iv8::bigint_u64{subject, u64});
 			} else {
-				return accept(bigint_tag_of<bigint>{}, *this, iv8::bigint_n{subject});
+				return accept(bigint_tag_of<bigint>{}, *this, iv8::bigint{subject});
 			}
 		}
 

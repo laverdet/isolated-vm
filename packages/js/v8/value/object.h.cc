@@ -4,7 +4,7 @@ export module v8_js:object;
 import :array;
 import :handle;
 import :lock;
-import :string;
+import :primitive;
 import isolated_js;
 import ivm.utility;
 import v8;

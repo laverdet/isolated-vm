@@ -3,10 +3,51 @@ module;
 #include <string>
 module v8_js;
 import :handle;
+import :primitive;
 import v8;
 
 namespace js::iv8 {
 
+// `boolean`
+boolean::operator bool() const {
+	return (*this)->Value();
+}
+
+// `number`
+number::operator double() const {
+	return (*this)->Value();
+}
+
+number::operator int32_t() const {
+	return this->As<v8::Int32>()->Value();
+}
+
+number::operator int64_t() const {
+	return this->As<v8::Integer>()->Value();
+}
+
+number::operator uint32_t() const {
+	return this->As<v8::Uint32>()->Value();
+}
+
+// `bigint`
+bigint::operator js::bigint() const {
+	auto bigint = js::bigint{};
+	bigint.resize_and_overwrite((*this)->WordCount(), [ & ](auto* words, auto length) {
+		if (length > 0) {
+			auto int_length = static_cast<int>(length);
+			(*this)->ToWordsArray(&bigint.sign_bit(), &int_length, words);
+		}
+		return length;
+	});
+	return bigint;
+}
+
+bigint_u64::operator uint64_t() const {
+	return value_;
+}
+
+// `string`
 auto string::make(v8::Isolate* isolate, std::string_view view) -> v8::Local<v8::String> {
 	auto string = v8::String::NewFromOneByte(
 		isolate,
@@ -71,6 +112,20 @@ string::operator std::u16string() const {
 		return length;
 	});
 	return string;
+}
+
+// `date`
+auto date::make(v8::Local<v8::Context> context, js_clock::time_point date) -> v8::Local<v8::Date> {
+	return v8::Date::New(context, date.time_since_epoch().count()).ToLocalChecked().As<v8::Date>();
+}
+
+date::operator js_clock::time_point() const {
+	return js_clock::time_point{js_clock::duration{(*this)->ValueOf()}};
+}
+
+// `external`
+external::operator void*() const {
+	return (*this)->Value();
 }
 
 } // namespace js::iv8

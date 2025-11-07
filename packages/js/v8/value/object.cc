@@ -5,7 +5,7 @@ module v8_js;
 import :array;
 import :handle;
 import :lock;
-import :string;
+import :primitive;
 import ivm.utility;
 import v8;
 

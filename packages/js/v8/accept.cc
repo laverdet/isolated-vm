@@ -9,10 +9,9 @@ module;
 #include <tuple>
 #include <utility>
 export module v8_js:accept;
-import :date;
 import :hash;
 import :lock;
-import :string;
+import :primitive;
 import isolated_js;
 import ivm.utility;
 import v8;
