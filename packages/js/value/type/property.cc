@@ -1,10 +1,17 @@
 module;
 #include <cstdint>
+#include <optional>
 #include <tuple>
 export module isolated_js:property;
 import ivm.utility;
 
 namespace js {
+
+// Initializers which are required for `accept<T>` to allow `undefined_tag{}`
+export struct optional_constructible {
+		optional_constructible() = default;
+		explicit optional_constructible(std::nullopt_t /*default*/) noexcept {};
+};
 
 // Properties are either accessors or values
 export enum class property_disposition : uint8_t {

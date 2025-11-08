@@ -6,6 +6,7 @@ import :runtime;
 import isolated_js;
 import isolated_v8;
 import ivm.utility;
+namespace v8 = embedded_v8;
 
 namespace backend_napi_v8 {
 
@@ -24,20 +25,20 @@ runtime_interface::runtime_interface(const isolated_v8::agent_lock& agent) :
 		performance_time_{js::iv8::make_unique_remote(agent, js::iv8::function_template::make(agent, js::free_function{performance_time}))} {
 }
 
-auto runtime_interface::instantiate(const isolated_v8::realm::scope& realm) -> isolated_v8::js_module {
-	auto make_interface = [ & ]() {
+auto runtime_interface::instantiate(const isolated_v8::realm::scope& realm) -> v8::Local<v8::Module> {
+	auto make_interface = [ & ]() -> auto {
 		return std::vector{
 			std::pair{std::string{"clockTime"}, clock_time_->deref(realm)},
 			std::pair{std::string{"performanceTime"}, performance_time_->deref(realm)},
 		};
 	};
-	auto options = js::string_t{"isolated-vm://runtime"};
-	auto interface = isolated_v8::js_module::create_synthetic(realm, make_interface(), std::move(options));
-	auto runtime = isolated_v8::js_module::compile(realm, runtime_dist_interface_js, isolated_v8::source_origin{});
-	runtime.link(realm, [ & ](auto&&...) -> isolated_v8::js_module& {
+	auto origin = std::u16string{u"isolated-vm://runtime"};
+	auto interface = js::iv8::module_record::create_synthetic(realm, make_interface(), std::move(origin));
+	auto runtime = js::iv8::module_record::compile(realm, std::string_view{runtime_dist_interface_js}, js::iv8::source_origin{}).value();
+	js::iv8::module_record::link(realm, runtime, [ & ](auto&&...) -> v8::Local<v8::Module> {
 		return interface;
 	});
-	runtime.evaluate(realm);
+	js::iv8::module_record::evaluate(realm, runtime);
 	return runtime;
 }
 

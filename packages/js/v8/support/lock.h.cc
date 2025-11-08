@@ -1,4 +1,5 @@
 module;
+#include <concepts>
 #include <functional>
 export module v8_js:lock;
 import ivm.utility;
@@ -19,18 +20,31 @@ export class isolate_lock_witness {
 		v8::Isolate* isolate_;
 };
 
+// Helper which does not instantiate `Implements` in the case it requires a context lock instead of
+// an isolate lock. We still need these "implements" types to carry forward from function templates
+// to call signature, through `context_lock_witness_of`.
+template <class Agent, class Implements>
+struct isolate_lock_implements {
+		isolate_lock_implements(isolate_lock_witness& /*witness*/, Agent& /*agent*/) {}
+};
+
+template <class Agent, std::constructible_from<isolate_lock_witness, Agent&> Implements>
+struct isolate_lock_implements<Agent, Implements> : Implements {
+		isolate_lock_implements(isolate_lock_witness& witness, Agent& agent) : Implements{witness, agent} {}
+};
+
 // Isolate lock witness with backing agent host reference
 export template <class Agent, class... Implements>
 class isolate_lock_witness_of
 		: public util::pointer_facade,
 			public isolate_lock_witness,
-			public Implements... {
+			public isolate_lock_implements<Agent, Implements>... {
 	public:
 		using isolate_lock_witness::isolate;
 
-		explicit isolate_lock_witness_of(isolate_lock_witness witness, Agent& agent) :
+		isolate_lock_witness_of(isolate_lock_witness& witness, Agent& agent) :
 				isolate_lock_witness{witness},
-				Implements{witness, agent}...,
+				isolate_lock_implements<Agent, Implements>{witness, agent}...,
 				agent_{agent} {}
 
 		[[nodiscard]] auto operator*() const -> Agent& { return agent_; }
@@ -81,7 +95,7 @@ export class isolate_unlock {
 // Context lock witness
 export class context_lock_witness : public isolate_lock_witness {
 	private:
-		explicit context_lock_witness(isolate_lock_witness lock, v8::Local<v8::Context> context) :
+		context_lock_witness(isolate_lock_witness& lock, v8::Local<v8::Context> context) :
 				isolate_lock_witness{lock},
 				context_{context} {}
 
@@ -102,7 +116,7 @@ class context_lock_witness_of
 	public:
 		using context_lock_witness::isolate;
 
-		explicit context_lock_witness_of(context_lock_witness witness, Agent& agent) :
+		context_lock_witness_of(context_lock_witness& witness, Agent& agent) :
 				context_lock_witness{witness},
 				Implements{witness, agent}...,
 				agent_{agent} {}

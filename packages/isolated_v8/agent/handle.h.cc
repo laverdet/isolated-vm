@@ -25,10 +25,15 @@ class agent_collected_handle_lock : public js::iv8::collected_handle_lock {
 		agent_collected_handle_lock(js::iv8::isolate_lock_witness lock, agent_host& agent);
 };
 
+class agent_module_specifiers_lock : public js::iv8::module_specifiers_lock {
+	public:
+		agent_module_specifiers_lock(js::iv8::context_lock_witness lock, agent_host& agent);
+};
+
 // An `agent_lock` is a simple holder for an `agent_host` which proves that we are executing in the
 // isolate context.
 export using agent_lock =
-	js::iv8::isolate_lock_witness_of<agent_host, agent_remote_handle_lock, agent_collected_handle_lock>;
+	js::iv8::isolate_lock_witness_of<agent_host, agent_remote_handle_lock, agent_collected_handle_lock, agent_module_specifiers_lock>;
 
 export template <class Type>
 class agent_lock_of : public agent_lock {

@@ -80,8 +80,19 @@ class scope_exit : non_copyable {
 
 // Explicitly annotate desired struct slicing: cppcoreguidelines-slicing
 export template <class Type>
-auto slice_cast(const std::derived_from<Type> auto& value) -> const Type& {
-	return static_cast<const Type&>(value);
-}
+struct slice_cast {
+	public:
+		explicit slice_cast(Type& value) : value_{value} {}
+
+		template <class As>
+			requires std::derived_from<std::remove_cv_t<Type>, As>
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		constexpr operator As() const {
+			return As{value_};
+		}
+
+	private:
+		std::reference_wrapper<Type> value_;
+};
 
 } // namespace util

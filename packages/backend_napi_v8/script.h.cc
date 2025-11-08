@@ -11,21 +11,19 @@ namespace v8 = embedded_v8;
 
 namespace backend_napi_v8 {
 
-struct compile_script_options {
-		std::optional<isolated_v8::source_origin> origin;
+struct compile_script_options : js::optional_constructible {
+		using js::optional_constructible::optional_constructible;
+		std::optional<js::iv8::source_origin> origin;
 
-		compile_script_options() = default;
-		explicit compile_script_options(std::nullopt_t /*default*/) noexcept {}
 		constexpr static auto struct_template = js::struct_template{
 			js::struct_member{util::cw<"origin">, &compile_script_options::origin},
 		};
 };
 
-struct run_script_options {
+struct run_script_options : js::optional_constructible {
+		using js::optional_constructible::optional_constructible;
 		std::optional<double> timeout;
 
-		run_script_options() = default;
-		explicit run_script_options(std::nullopt_t /*default*/) noexcept {}
 		constexpr static auto struct_template = js::struct_template{
 			js::struct_member{util::cw<"timeout">, &run_script_options::timeout},
 		};

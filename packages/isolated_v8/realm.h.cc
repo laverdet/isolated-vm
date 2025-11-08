@@ -1,6 +1,5 @@
 module;
 #include <concepts>
-#include <functional>
 export module isolated_v8:realm;
 import :agent_handle;
 import ivm.utility;
@@ -13,7 +12,7 @@ class realm_lock;
 
 export class realm {
 	public:
-		using scope = js::iv8::context_lock_witness_of<agent_host, agent_remote_handle_lock, agent_collected_handle_lock>;
+		using scope = js::iv8::context_lock_witness_of<agent_host, agent_remote_handle_lock, agent_collected_handle_lock, agent_module_specifiers_lock>;
 
 		realm() = delete;
 		realm(const agent_lock& agent, v8::Local<v8::Context> context);
@@ -34,7 +33,8 @@ export class realm {
 // ---
 
 auto realm::invoke(const agent_lock& agent, std::invocable<const realm::scope&> auto task) const {
-	return task(realm::scope{lock(agent), *agent});
+	auto context_lock = lock(agent);
+	return task(realm::scope{context_lock, *agent});
 }
 
 } // namespace isolated_v8

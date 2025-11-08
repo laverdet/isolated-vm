@@ -75,6 +75,11 @@ auto unmaybe_one(isolate_lock_witness lock, Operation operation) {
 	return dispatch(std::type_identity<std::invoke_result_t<Operation>>{});
 }
 
+export template <class Operation>
+auto unmaybe_one(context_lock_witness lock, Operation operation) {
+	return unmaybe_one(isolate_lock_witness{lock}, std::move(operation));
+}
+
 // Render the stack trace in a similar manner as `Error.prototype.stack`
 auto render_frame_line(v8::Local<v8::StackFrame> frame) -> std::u16string {
 	if (auto line = frame->GetLineNumber(); line != -1) {

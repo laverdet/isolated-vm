@@ -8,6 +8,7 @@ import :utility;
 import isolated_js;
 import isolated_v8;
 import napi_js;
+namespace v8 = embedded_v8;
 
 namespace backend_napi_v8 {
 
@@ -38,8 +39,8 @@ auto realm_handle::create(agent_handle& agent, environment& env) -> js::napi::va
 auto realm_handle::instantiate_runtime(environment& env) -> js::napi::value<js::promise_tag> {
 	auto [ dispatch, promise ] = make_promise(
 		env,
-		[](environment& env, agent_handle agent, isolated_v8::js_module module_) -> auto {
-			return js::forward{module_handle::class_template(env).construct(env, std::move(agent), std::move(module_))};
+		[](environment& env, agent_handle agent, js::iv8::shared_remote<v8::Module> module_record) -> auto {
+			return js::forward{module_handle::class_template(env).construct(env, std::move(agent), std::move(module_record))};
 		}
 	);
 	agent_.schedule(
@@ -48,10 +49,10 @@ auto realm_handle::instantiate_runtime(environment& env) -> js::napi::value<js::
 			const agent_handle::lock& lock,
 			agent_handle agent
 		) -> void {
-			auto module_ = realm.invoke(lock, [ & ](const isolated_v8::realm::scope& realm) -> isolated_v8::js_module {
-				return lock->environment().runtime().instantiate(realm);
+			auto module_record = realm.invoke(lock, [ & ](const isolated_v8::realm::scope& realm) -> auto {
+				return js::iv8::make_shared_remote(lock, lock->environment().runtime().instantiate(realm));
 			});
-			dispatch(std::move(agent), std::move(module_));
+			dispatch(std::move(agent), module_record);
 		},
 		agent_
 	);

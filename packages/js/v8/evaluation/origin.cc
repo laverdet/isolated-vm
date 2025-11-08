@@ -1,12 +1,11 @@
 module;
 #include <optional>
-#include <tuple>
-export module isolated_v8:evaluation_origin;
+#include <string>
+export module v8_js:evaluation.origin;
 import isolated_js;
 import ivm.utility;
-import v8;
 
-namespace isolated_v8 {
+namespace js::iv8 {
 
 export struct source_location {
 		int line{};
@@ -19,7 +18,7 @@ export struct source_location {
 };
 
 export struct source_origin {
-		std::optional<js::string_t> name;
+		std::optional<std::u16string> name;
 		std::optional<source_location> location;
 
 		constexpr static auto struct_template = js::struct_template{
@@ -28,4 +27,4 @@ export struct source_origin {
 		};
 };
 
-} // namespace isolated_v8
+} // namespace js::iv8

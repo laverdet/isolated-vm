@@ -15,6 +15,7 @@ namespace backend_napi_v8 {
 // Storage for string literals used in this module
 constexpr auto string_literals = util::sealed_map{
 	std::type_identity<napi::reference<string_tag>>{},
+	"attributes"sv,
 	"clock"sv,
 	"column"sv,
 	"complete"sv,

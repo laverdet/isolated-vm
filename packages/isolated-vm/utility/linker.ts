@@ -51,7 +51,11 @@ export function makeFileSystemCompilationLinker(agent: Agent, resolve: ImportRes
 		if (path !== undefined) {
 			const origin = { name: path };
 			const sourceText = await fs.readFile(new URL(path), "utf8");
-			return agent.compileModule(sourceText, { origin });
+			const result = await agent.compileModule(sourceText, { origin });
+			if (!result?.complete) {
+				throw new SyntaxError(`Module compilation incomplete for ${specifier} at ${path}`, { cause: result?.error });
+			}
+			return result.result;
 		}
 	});
 }

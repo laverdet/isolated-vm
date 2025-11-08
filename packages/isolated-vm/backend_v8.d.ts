@@ -12,7 +12,7 @@ declare module "backend_v8.node" {
 
 	export class Agent {
 		readonly #private;
-		compileModule(code: string, options: CompileModuleOptions | undefined): Promise<[ Module, ModuleRequest[] ]>;
+		compileModule(code: string, options: CompileModuleOptions | undefined): Promise<MaybeCompletionOf<[ Module, ModuleRequest[] ]>>;
 		compileScript(code: string, options: CompileScriptOptions | undefined): Promise<MaybeCompletionOf<Script>>;
 		createRealm(): Promise<Realm>;
 		static create(options: CreateAgentOptions | undefined): Promise<Agent>;

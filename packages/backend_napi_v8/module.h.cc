@@ -9,22 +9,22 @@ import :realm;
 import isolated_js;
 import isolated_v8;
 import napi_js;
+namespace v8 = embedded_v8;
 
 namespace backend_napi_v8 {
 using namespace isolated_v8;
 
-struct compile_module_options {
-		std::optional<source_origin> origin;
+struct compile_module_options : js::optional_constructible {
+		using js::optional_constructible::optional_constructible;
+		std::optional<js::iv8::source_origin> origin;
 
-		compile_module_options() = default;
-		explicit compile_module_options(std::nullopt_t /*default*/) noexcept {}
 		constexpr static auto struct_template = js::struct_template{
 			js::struct_member{util::cw<"origin">, &compile_module_options::origin},
 		};
 };
 
 struct create_capability_options {
-		js::string_t origin;
+		std::u16string origin;
 
 		constexpr static auto struct_template = js::struct_template{
 			js::struct_member{util::cw<"origin">, &create_capability_options::origin},
@@ -39,7 +39,7 @@ export class module_handle {
 
 	public:
 		using transfer_type = js::tagged_external<module_handle>;
-		module_handle(agent_handle agent, isolated_v8::js_module module);
+		module_handle(agent_handle agent, js::iv8::shared_remote<v8::Module> module);
 
 		auto agent() -> auto& { return agent_; }
 
@@ -53,7 +53,7 @@ export class module_handle {
 
 	private:
 		agent_handle agent_;
-		isolated_v8::js_module module_;
+		js::iv8::shared_remote<v8::Module> module_;
 };
 
 export class subscriber_capability {

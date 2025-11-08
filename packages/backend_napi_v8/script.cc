@@ -13,17 +13,18 @@ import isolated_v8;
 import ivm.utility;
 import napi_js;
 import nodejs;
+import v8_js;
 using namespace isolated_v8;
 namespace v8 = embedded_v8;
 
 namespace backend_napi_v8 {
 
 auto script_handle::compile_script(agent_handle& agent, environment& env, js::string_t code_string, compile_script_options options) -> js::napi::value<promise_tag> {
-	using expected_type = std::expected<isolated_v8::script_shared_remote_type, js::error_value>;
+	using expected_type = std::expected<js::iv8::shared_remote<v8::UnboundScript>, js::error_value>;
 	auto [ dispatch, promise ] = make_promise(
 		env,
 		[](environment& env, expected_type script) -> auto {
-			return make_completion_record(env, std::move(script).transform([ & ](isolated_v8::script_shared_remote_type script) -> auto {
+			return make_completion_record(env, std::move(script).transform([ & ](js::iv8::shared_remote<v8::UnboundScript> script) -> auto {
 				return js::forward{script_handle::class_template(env).construct(env, std::move(script))};
 			}));
 		}
@@ -34,8 +35,10 @@ auto script_handle::compile_script(agent_handle& agent, environment& env, js::st
 			js::string_t code_string,
 			compile_script_options options
 		) -> void {
-			auto origin = std::move(options.origin).value_or(source_origin{});
-			auto local = isolated_v8::compile_script(agent, std::move(code_string), std::move(origin));
+			auto origin = std::move(options.origin).value_or(js::iv8::source_origin{});
+			auto context = agent->scratch_context();
+			auto lock = js::iv8::context_managed_lock{agent, context};
+			auto local = js::iv8::script::compile(util::slice_cast{lock}, std::move(code_string), std::move(origin));
 			dispatch(local.transform([ & ](v8::Local<v8::UnboundScript> script) -> auto {
 				return js::iv8::make_shared_remote(agent, script);
 			}));
@@ -72,7 +75,7 @@ auto script_handle::run(environment& env, realm_handle& realm, run_script_option
 							}
 						};
 					});
-				return isolated_v8::run_script(realm, script_remote->deref(agent));
+				return js::iv8::script::run(realm, script_remote->deref(agent));
 			});
 			dispatch(std::move(result));
 		},

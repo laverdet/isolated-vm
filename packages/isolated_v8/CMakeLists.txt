@@ -3,8 +3,6 @@ target_sources(isolated_v8
 	PRIVATE
 		agent/handle.cc
 		agent/host.cc
-		evaluation/module.cc
-		evaluation/script.cc
 		platform/clock.cc
 		platform/foreground_runner.cc
 		platform/handle.cc
@@ -16,10 +14,6 @@ target_sources(isolated_v8
 		agent/handle.h.cc
 		agent/host.h.cc
 		cluster.cc
-		evaluation/module_action.cc
-		evaluation/module.h.cc
-		evaluation/origin.cc
-		evaluation/script.h.cc
 		platform/clock.h.cc
 		platform/foreground_runner.h.cc
 		platform/platform.h.cc

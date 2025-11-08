@@ -6,8 +6,8 @@ import { unwrapCompletion } from "./fixtures.js";
 await test("module linker", async () => {
 	await using agent = await ivm.Agent.create();
 	const realm = await agent.createRealm();
-	const left = await agent.compileModule('import { right } from "right"; globalThis.right = right;');
-	const right = await agent.compileModule('export function right() { return "hello"; }');
+	const left = unwrapCompletion(await agent.compileModule('import { right } from "right"; globalThis.right = right;'));
+	const right = unwrapCompletion(await agent.compileModule('export function right() { return "hello"; }'));
 	await left.link(realm, specifier => {
 		assert.equal(specifier, "right");
 		return right;
@@ -21,8 +21,8 @@ await test("module linker", async () => {
 await test("nested compilation in module linker", async () => {
 	await using agent = await ivm.Agent.create();
 	const realm = await agent.createRealm();
-	const left = await agent.compileModule('import "right";');
-	await left.link(realm, () => agent.compileModule("export {};"));
+	const left = unwrapCompletion(await agent.compileModule('import "right";'));
+	await left.link(realm, async () => unwrapCompletion(await agent.compileModule("export {};")));
 });
 
 await test("synthetic module capability", async () => {
@@ -39,10 +39,10 @@ await test("synthetic module capability", async () => {
 			},
 		}),
 		{ origin: capabilityName });
-	const left = await agent.compileModule(`
+	const left = unwrapCompletion(await agent.compileModule(`
 		import capability from ${JSON.stringify(capabilityName)};
 		capability("hello", "world");
-	`);
+	`));
 	const cache = new Map([
 		[ capabilityName, capability ],
 	]);

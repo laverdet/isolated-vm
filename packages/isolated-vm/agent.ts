@@ -64,9 +64,9 @@ export class Agent {
 		return new Realm(realm);
 	}
 
-	async compileModule(code: string, options?: Agent.CompileModuleOptions): Promise<Module> {
-		const [ module, requests ] = await this.#agent.compileModule(code, options);
-		return new Module(module, requests);
+	async compileModule(code: string, options?: Agent.CompileModuleOptions): Promise<MaybeCompletionOf<Module>> {
+		const result = await this.#agent.compileModule(code, options);
+		return transformCompletion(result, ([ module, requests ]) => new Module(module, requests));
 	}
 
 	async compileScript(code: string, options?: Agent.CompileScriptOptions): Promise<MaybeCompletionOf<Script>> {

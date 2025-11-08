@@ -3,7 +3,6 @@ module;
 #include <optional>
 export module isolated_v8:agent_host;
 import :clock;
-import :evaluation_module_action;
 import :foreground_runner;
 import :scheduler;
 import v8_js;
@@ -46,9 +45,6 @@ export class agent_host : public std::enable_shared_from_this<agent_host> {
 	private:
 		template <class Type> friend class agent_host_of;
 
-		using weak_modules_actions_type = js::iv8::weak_map<v8::Module, synthetic_module_action_type>;
-		using weak_modules_specifiers_type = js::iv8::weak_map<v8::Module, js::string_t>;
-
 		struct random_seed_unlatch : util::non_copyable {
 				explicit random_seed_unlatch(bool& latch);
 				auto operator()() const -> void;
@@ -78,8 +74,7 @@ export class agent_host : public std::enable_shared_from_this<agent_host> {
 		auto scratch_context() -> v8::Local<v8::Context>;
 		auto take_random_seed() -> std::optional<double>;
 		auto task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner>;
-		auto weak_module_actions() -> weak_modules_actions_type& { return weak_module_actions_; }
-		auto weak_module_specifiers() -> weak_modules_specifiers_type& { return weak_module_specifiers_; }
+		auto weak_module_specifiers() -> js::iv8::module_specifiers_lock::weak_modules_specifiers_type& { return weak_module_specifiers_; }
 
 		static auto acquire_severable(const std::shared_ptr<agent_host>& self) -> std::shared_ptr<agent_severable>;
 		static auto get_current() -> agent_host*;
@@ -103,8 +98,7 @@ export class agent_host : public std::enable_shared_from_this<agent_host> {
 		js::iv8::remote_handle_list remote_handle_list_;
 		reset_handle_callback_type reset_handle_callback_{make_remote_expiration_callback(this)};
 		js::iv8::reset_handle_type reset_handle_{reset_handle_callback_};
-		weak_modules_actions_type weak_module_actions_;
-		weak_modules_specifiers_type weak_module_specifiers_;
+		js::iv8::module_specifiers_lock::weak_modules_specifiers_type weak_module_specifiers_;
 		v8::Global<v8::Context> scratch_context_;
 
 		bool should_give_seed_{false};
@@ -141,7 +135,7 @@ auto agent_host::destroy_isolate_callback(auto locked_callback) -> void {
 	foreground_runner_->close();
 	auto lock = js::iv8::isolate_execution_lock{isolate_.get()};
 	autorelease_pool_.clear();
-	remote_handle_list_.clear(lock);
+	remote_handle_list_.clear(util::slice_cast{lock});
 	foreground_runner_->finalize();
 	locked_callback(lock);
 }

@@ -28,11 +28,11 @@ await test("setTimeout capability", async () => {
 	// eslint-disable-next-line @typescript-eslint/unbound-method
 	const runtime = makeFileSystemCompilationLinker(agent, import.meta.resolve);
 	const linker = makeCompositeLinker(capabilities, runtime);
-	const module = await agent.compileModule(`
+	const module = unwrapCompletion(await agent.compileModule(`
 		import "isolated-vm/host/html/timers";
 		import hello from "notify-test";
 		setTimeout(hello, 0, "hello");
-	`);
+	`));
 	await module.link(realm, linker);
 	await module.evaluate(realm);
 	setTimeout(resolvers.resolve, 100);

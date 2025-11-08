@@ -2,10 +2,13 @@ add_library(v8_js OBJECT)
 
 target_sources(v8_js
 	PRIVATE
+		evaluation/module.cc
+		evaluation/script.cc
 		handle/remote.cc
 		support/lock.cc
 		value/array.cc
 		value/fixed_array.cc
+		value/function.cc
 		value/object.cc
 		value/primitive.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
@@ -13,6 +16,9 @@ target_sources(v8_js
 		accept.cc
 		container/hash.cc
 		container/weak_map.cc
+		evaluation/module.h.cc
+		evaluation/origin.cc
+		evaluation/script.h.cc
 		handle/collected_handle.cc
 		handle/remote.h.cc
 		support/callback_storage.cc
@@ -23,7 +29,7 @@ target_sources(v8_js
 		value/array.h.cc
 		value/callback_info.cc
 		value/fixed_array.h.cc
-		value/function.cc
+		value/function.h.cc
 		value/handle.cc
 		value/object.h.cc
 		value/primitive.h.cc
