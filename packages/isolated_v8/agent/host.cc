@@ -5,8 +5,6 @@ module;
 #include <utility>
 #include <variant>
 module isolated_v8;
-import :foreground_runner;
-import :scheduler;
 import ivm.utility;
 import v8_js;
 
@@ -22,12 +20,12 @@ auto agent_severable::sever() -> void {
 
 // agent_host
 agent_host::agent_host(
-	scheduler::layer<{}>& cluster_scheduler,
-	std::shared_ptr<isolated_v8::foreground_runner> foreground_runner,
+	cluster& cluster,
+	std::shared_ptr<js::iv8::platform::foreground_runner> foreground_runner,
 	behavior_params params
 ) :
+		cluster_{cluster},
 		foreground_runner_{std::move(foreground_runner)},
-		async_scheduler_{cluster_scheduler},
 		array_buffer_allocator_{v8::ArrayBuffer::Allocator::NewDefaultAllocator()},
 		isolate_{v8::Isolate::Allocate()},
 		random_seed_{params.random_seed},
@@ -81,11 +79,10 @@ auto agent_host::get_current() -> agent_host* {
 }
 
 auto agent_host::remote_expiration_callback(js::iv8::expired_remote_type remote) noexcept -> void {
-	foreground_runner::schedule_handle_task(
-		foreground_runner_,
-		[ this, remote = std::move(remote) ](const std::stop_token& /*stop_token*/) -> void {
+	foreground_runner_->schedule_handle_task(
+		[ this, remote = std::move(remote) ](std::stop_token /*stop_token*/) -> void {
 			auto lock = js::iv8::isolate_execution_lock{isolate()};
-			remote->reset(lock);
+			remote->reset(util::slice{lock});
 			remote_handle_list_.erase(*remote);
 		}
 	);
@@ -108,7 +105,7 @@ auto agent_host::take_random_seed() -> std::optional<double> {
 }
 
 auto agent_host::task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner> {
-	return foreground_runner::get_for_priority(foreground_runner_, priority);
+	return js::iv8::platform::foreground_runner::get_for_priority(foreground_runner_, priority);
 }
 
 // agent_host::random_seed_unlatch

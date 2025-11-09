@@ -38,7 +38,7 @@ auto script_handle::compile_script(agent_handle& agent, environment& env, js::st
 			auto origin = std::move(options.origin).value_or(js::iv8::source_origin{});
 			auto context = agent->scratch_context();
 			auto lock = js::iv8::context_managed_lock{agent, context};
-			auto local = js::iv8::script::compile(util::slice_cast{lock}, std::move(code_string), std::move(origin));
+			auto local = js::iv8::script::compile(util::slice{lock}, std::move(code_string), std::move(origin));
 			dispatch(local.transform([ & ](v8::Local<v8::UnboundScript> script) -> auto {
 				return js::iv8::make_shared_remote(agent, script);
 			}));

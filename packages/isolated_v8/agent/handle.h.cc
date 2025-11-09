@@ -1,13 +1,12 @@
 module;
-#include <functional>
 #include <memory>
 #include <stop_token>
+#include <utility>
 #include <variant>
 export module isolated_v8:agent_handle;
 export import :agent_host;
 import :clock;
 import :cluster;
-import :foreground_runner;
 import ivm.utility;
 import v8_js;
 import v8;
@@ -76,29 +75,26 @@ agent_handle<Type>::agent_handle(const std::shared_ptr<host_type>& host, std::sh
 
 template <class Type>
 auto agent_handle<Type>::make(cluster& cluster, auto make_environment, behavior_params params, std::invocable<lock, agent_handle> auto callback) -> void {
-	auto runner = std::make_shared<foreground_runner>(cluster.scheduler());
-	foreground_runner::schedule_client_task(
-		runner,
-		[ &cluster, // I *think* this is safe because if `cluster` is destroyed the lambda won't be invoked
-			runner,
-			make_environment = std::move(make_environment),
-			callback = std::move(callback),
-			params = params ](
-			const std::stop_token& /*stop_token*/
-		) mutable -> auto {
-			{
-				auto host = std::make_shared<agent_host_of<Type>>(cluster.scheduler(), runner, params);
-				auto isolate_lock = js::iv8::isolate_execution_lock{host->isolate()};
-				auto agent_lock = lock{isolate_lock, *host};
-				host->initialize_environment([ & ]() -> auto {
-					return std::invoke(std::move(make_environment), agent_lock);
-				});
-				std::invoke(std::move(callback), agent_lock, agent_handle{host, agent_host::acquire_severable(host)});
-			}
-			// nb: `runner` contains the scheduler so it must be allowed to escape up the stack to
-			// be released later.
-			return std::move(runner);
-		}
+	auto runner_handle = cluster.acquire_runner();
+	auto& runner = *runner_handle;
+	runner.schedule_client_task(
+		[ &cluster, params ](
+			std::stop_token /*stop_token*/,
+			std::shared_ptr<js::iv8::platform::foreground_runner> runner,
+			auto callback,
+			auto make_environment
+		) -> auto {
+			auto host = std::make_shared<agent_host_of<Type>>(cluster, std::move(runner), params);
+			auto isolate_lock = js::iv8::isolate_execution_lock{host->isolate()};
+			auto agent_lock = lock{isolate_lock, *host};
+			host->initialize_environment([ & ]() -> auto {
+				return make_environment(agent_lock);
+			});
+			callback(agent_lock, agent_handle{std::move(host), agent_host::acquire_severable(host)});
+		},
+		std::move(runner_handle),
+		std::move(callback),
+		std::move(make_environment)
 	);
 }
 
@@ -107,17 +103,17 @@ auto agent_handle<Type>::schedule(auto task, auto... args) const -> void
 	requires std::invocable<decltype(task), lock, decltype(args)...> {
 	auto host = host_.lock();
 	if (host) {
-		auto task_with_lock =
-			[ host,
-				task = std::move(task),
-				... args = std::move(args) ](
-				const std::stop_token& /*stop_token*/
-			) mutable {
+		auto& scheduler = *host->foreground_runner();
+		scheduler.schedule_client_task(
+			[](std::stop_token /*stop_token*/, auto host, auto task, auto... args) {
 				auto isolate_lock = js::iv8::isolate_execution_lock{host->isolate()};
 				std::visit([](auto& clock) -> void { clock.begin_tick(); }, host->clock());
 				task(lock{isolate_lock, *host}, std::move(args)...);
-			};
-		foreground_runner::schedule_client_task(host->foreground_runner(), std::move(task_with_lock));
+			},
+			std::move(host),
+			std::move(task),
+			std::move(args)...
+		);
 	}
 }
 
@@ -127,13 +123,8 @@ auto agent_handle<Type>::schedule_async(auto task, auto... args) -> void
 	auto host = host_.lock();
 	if (host) {
 		auto& scheduler = host->async_scheduler();
-		scheduler(
-			[](
-				const std::stop_token& stop_token,
-				const std::shared_ptr<host_type>& host,
-				auto task,
-				auto&&... args
-			) {
+		scheduler.schedule_client_task(
+			[](std::stop_token stop_token, auto host, auto task, auto... args) {
 				auto isolate_lock = js::iv8::isolate_execution_lock{host->isolate()};
 				task(stop_token, lock{isolate_lock, *host}, std::move(args)...);
 			},

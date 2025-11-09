@@ -80,9 +80,9 @@ class scope_exit : non_copyable {
 
 // Explicitly annotate desired struct slicing: cppcoreguidelines-slicing
 export template <class Type>
-struct slice_cast {
+struct slice {
 	public:
-		explicit slice_cast(Type& value) : value_{value} {}
+		explicit slice(Type& value) : value_{value} {}
 
 		template <class As>
 			requires std::derived_from<std::remove_cv_t<Type>, As>

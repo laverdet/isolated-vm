@@ -1,7 +1,6 @@
 module isolated_v8;
 import :agent_handle;
 import :cluster;
-import :foreground_runner;
 import ivm.utility;
 import v8_js;
 import v8;

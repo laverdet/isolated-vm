@@ -76,11 +76,8 @@ export class system : public base_clock {
 	public:
 		system() = default;
 		auto clock_time() -> system_clock::time_point;
-		auto foo() -> void;
 };
 
 export using any_clock = std::variant<deterministic, microtask, realtime, system>;
 
 } // namespace isolated_v8::clock
-
-;

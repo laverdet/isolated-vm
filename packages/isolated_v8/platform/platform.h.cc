@@ -2,7 +2,6 @@ module;
 #include <memory>
 #include <thread>
 export module isolated_v8:platform;
-import :scheduler;
 import ivm.utility;
 import v8;
 
@@ -40,11 +39,9 @@ export class job_handle : public v8::JobHandle, public v8::JobDelegate {
 export class platform final : util::non_moveable, public v8::Platform {
 	public:
 		class handle;
-		using platform_scheduler = scheduler::layer<{.root = true}>;
 
 		platform();
 		~platform() final;
-		auto scheduler() -> platform_scheduler& { return scheduler_; }
 
 		auto GetTracingController() -> v8::TracingController* final;
 		auto GetPageAllocator() -> v8::PageAllocator* final;
@@ -54,34 +51,17 @@ export class platform final : util::non_moveable, public v8::Platform {
 		auto CurrentClockTimeMilliseconds() -> int64_t final;
 		auto CurrentClockTimeMillis() -> double final;
 
-		auto GetForegroundTaskRunner(
-			v8::Isolate* isolate,
-			v8::TaskPriority priority
-		) -> std::shared_ptr<v8::TaskRunner> final;
+		auto GetForegroundTaskRunner(v8::Isolate* isolate, v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner> final;
 
 	protected:
-		auto CreateJobImpl(
-			v8::TaskPriority priority,
-			std::unique_ptr<v8::JobTask> job_task,
-			const v8::SourceLocation& location
-		) -> std::unique_ptr<v8::JobHandle> final;
-		auto PostTaskOnWorkerThreadImpl(
-			v8::TaskPriority priority,
-			std::unique_ptr<v8::Task> task,
-			const v8::SourceLocation& location
-		) -> void final;
-		auto PostDelayedTaskOnWorkerThreadImpl(
-			v8::TaskPriority priority,
-			std::unique_ptr<v8::Task> task,
-			double delay_in_seconds,
-			const v8::SourceLocation& location
-		) -> void final;
+		auto CreateJobImpl(v8::TaskPriority priority, std::unique_ptr<v8::JobTask> job_task, const v8::SourceLocation& location) -> std::unique_ptr<v8::JobHandle> final;
+		auto PostTaskOnWorkerThreadImpl(v8::TaskPriority priority, std::unique_ptr<v8::Task> task, const v8::SourceLocation& location) -> void final;
+		auto PostDelayedTaskOnWorkerThreadImpl(v8::TaskPriority priority, std::unique_ptr<v8::Task> task, double delay_in_seconds, const v8::SourceLocation& location) -> void final;
 
 	private:
 		static auto fill_random_bytes(unsigned char* buffer, size_t length) -> bool;
 
 		std::unique_ptr<v8::Platform> default_platform_{v8::platform::NewDefaultPlatform()};
-		platform_scheduler scheduler_;
 };
 
 // Responsible for initializing v8 and creating one `platform` per process. When the last handle is

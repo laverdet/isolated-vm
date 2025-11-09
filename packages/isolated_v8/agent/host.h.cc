@@ -3,8 +3,7 @@ module;
 #include <optional>
 export module isolated_v8:agent_host;
 import :clock;
-import :foreground_runner;
-import :scheduler;
+import :cluster;
 import v8_js;
 import isolated_js;
 import ivm.utility;
@@ -35,7 +34,7 @@ export class agent_severable {
 namespace {
 // Return a bound member function for `remote_handle_lock`.
 constexpr auto make_remote_expiration_callback = []<class Type>(Type* host) -> auto {
-	return util::bind{util::fn<&Type::remote_expiration_callback>, *host};
+	return util::bind{util::fn<&Type::remote_expiration_callback>, std::ref(*host)};
 };
 } // namespace
 
@@ -53,8 +52,8 @@ export class agent_host : public std::enable_shared_from_this<agent_host> {
 
 	public:
 		explicit agent_host(
-			scheduler::layer<{}>& cluster_scheduler,
-			std::shared_ptr<isolated_v8::foreground_runner> foreground_runner,
+			cluster& cluster,
+			std::shared_ptr<js::iv8::platform::foreground_runner> foreground_runner,
 			behavior_params params
 		);
 		// This should be protected but that breaks `std::make_shared`. `destroy_isolate_callback` must
@@ -89,10 +88,11 @@ export class agent_host : public std::enable_shared_from_this<agent_host> {
 		auto reset_remote_handle(js::iv8::expired_remote_type remote) -> void;
 		static auto dispose_isolate(v8::Isolate* isolate) -> void { isolate->Dispose(); }
 
+		std::reference_wrapper<cluster> cluster_;
 		util::autorelease_pool autorelease_pool_;
 		std::weak_ptr<agent_severable> severable_;
-		std::shared_ptr<isolated_v8::foreground_runner> foreground_runner_;
-		scheduler::runner<{}> async_scheduler_;
+		std::shared_ptr<js::iv8::platform::foreground_runner> foreground_runner_;
+		js::iv8::platform::foreground_runner async_scheduler_;
 		std::unique_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
 		std::unique_ptr<v8::Isolate, util::function_constant<dispose_isolate>> isolate_;
 		js::iv8::remote_handle_list remote_handle_list_;
@@ -132,11 +132,14 @@ class agent_host_of : public agent_host {
 // ---
 
 auto agent_host::destroy_isolate_callback(auto locked_callback) -> void {
-	foreground_runner_->close();
+	cluster_.get().release_runner(foreground_runner_);
+	foreground_runner_->terminate();
+	async_scheduler_.terminate();
 	auto lock = js::iv8::isolate_execution_lock{isolate_.get()};
 	autorelease_pool_.clear();
-	remote_handle_list_.clear(util::slice_cast{lock});
+	remote_handle_list_.clear(util::slice{lock});
 	foreground_runner_->finalize();
+	async_scheduler_.finalize();
 	locked_callback(lock);
 }
 

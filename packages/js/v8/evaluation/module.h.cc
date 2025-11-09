@@ -48,7 +48,7 @@ export class module_request {
 // not provide an easier means to do this.
 export class module_specifiers_lock {
 	public:
-		using weak_modules_specifiers_type = js::iv8::weak_map<v8::Module, std::u16string>;
+		using weak_modules_specifiers_type = weak_map<v8::Module, std::u16string>;
 		explicit module_specifiers_lock(context_lock_witness witness, weak_modules_specifiers_type& weak_module_specifiers) :
 				weak_module_specifiers_{weak_module_specifiers},
 				witness_{witness} {}
@@ -108,7 +108,7 @@ auto module_record::create_synthetic(context_lock_witness lock, auto module_inte
 
 	auto callback = [ & ](context_lock_witness lock, v8::Local<v8::Module> module) -> void {
 		for (const auto& [ key, value ] : std::views::zip(name_locals, export_locals)) {
-			js::iv8::unmaybe(module->SetSyntheticModuleExport(lock.isolate(), key, value));
+			unmaybe(module->SetSyntheticModuleExport(lock.isolate(), key, value));
 		}
 	};
 

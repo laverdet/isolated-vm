@@ -45,7 +45,7 @@ auto make_callback_storage(const isolate_lock_witness_of<Agent, Implements...>& 
 					auto lock = revive_lock_of<Agent, Implements...>(isolate, &agent);
 					invoke(lock, info);
 				},
-				*lock,
+				std::ref(*lock),
 				function,
 			};
 			using trampoline_type = decltype(trampoline);

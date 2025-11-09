@@ -19,7 +19,7 @@ thread_local module_record::module_link_action_type* tl_link_action;
 } // namespace
 
 auto module_record::requests(context_lock_witness lock, v8::Local<v8::Module> module) -> std::vector<module_request> {
-	auto requests_array = js::iv8::fixed_array{lock.context(), module->GetModuleRequests()};
+	auto requests_array = fixed_array{lock.context(), module->GetModuleRequests()};
 	auto requests_view =
 		requests_array |
 		std::views::transform([ & ](v8::Local<v8::Data> value) -> module_request {
@@ -28,7 +28,7 @@ auto module_record::requests(context_lock_witness lock, v8::Local<v8::Module> mo
 			auto specifier = js::transfer_out_strict<std::u16string>(specifier_handle, lock);
 			auto attributes_view =
 				// [ key, value, location, ...[] ]
-				js::iv8::fixed_array{lock.context(), request->GetImportAttributes()} |
+				fixed_array{lock.context(), request->GetImportAttributes()} |
 				std::views::chunk(3) |
 				std::views::transform([ & ](const auto& triplet) {
 					auto entry = js::transfer_out_strict<std::array<std::u16string, 2>>(
@@ -50,7 +50,7 @@ auto module_record::compile(const module_specifiers_lock& lock, v8::Local<v8::St
 	v8::Local<v8::String> resource_name{};
 	// nb: Empty handle is ok for `v8::ScriptOrigin`
 	(void)maybe_resource_name.ToLocal(&resource_name);
-	auto location = origin.location.value_or(js::iv8::source_location{});
+	auto location = origin.location.value_or(source_location{});
 	const auto script_origin = v8::ScriptOrigin{
 		resource_name,
 		location.line,
@@ -67,7 +67,7 @@ auto module_record::compile(const module_specifiers_lock& lock, v8::Local<v8::St
 		return v8::ScriptCompiler::CompileModule(lock.witness().isolate(), &source);
 	});
 	if (maybe_module && origin.name) {
-		lock.weak_module_specifiers().emplace(lock.witness(), std::pair{maybe_module.value(), *std::move(origin.name)});
+		lock.weak_module_specifiers().emplace(util::slice{lock.witness()}, std::pair{maybe_module.value(), *std::move(origin.name)});
 	}
 	return maybe_module;
 }
@@ -123,7 +123,7 @@ auto module_record::link(const module_specifiers_lock& lock, v8::Local<v8::Modul
 			}
 		}();
 		auto attributes_view =
-			js::iv8::fixed_array{context, attributes} |
+			fixed_array{context, attributes} |
 			// [ key, value, ...[] ]
 			std::views::chunk(2) |
 			std::views::transform([ & ](const auto& pair) -> auto {
@@ -137,9 +137,9 @@ auto module_record::link(const module_specifiers_lock& lock, v8::Local<v8::Modul
 				return std::pair{std::move(entry[ 0 ]), std::move(entry[ 1 ])};
 			});
 		auto attributes_vector = module_request::attributes_type{std::from_range, std::move(attributes_view)};
-		const auto unlocker = js::iv8::isolate_unlock{util::slice_cast{lock.witness()}};
+		const auto unlocker = isolate_unlock{util::slice{lock.witness()}};
 		return action(
-			util::slice_cast{lock.witness()},
+			util::slice{lock.witness()},
 			std::move(referrer_name),
 			module_request{std::move(specifier_string), std::move(attributes_vector)}
 		);

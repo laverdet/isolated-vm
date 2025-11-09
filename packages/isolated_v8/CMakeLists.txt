@@ -4,7 +4,6 @@ target_sources(isolated_v8
 		agent/handle.cc
 		agent/host.cc
 		platform/clock.cc
-		platform/foreground_runner.cc
 		platform/handle.cc
 		platform/job_handle.cc
 		platform/platform.cc
@@ -13,13 +12,10 @@ target_sources(isolated_v8
 		_module.cc
 		agent/handle.h.cc
 		agent/host.h.cc
-		cluster.cc
+		cluster.h.cc
 		platform/clock.h.cc
-		platform/foreground_runner.h.cc
 		platform/platform.h.cc
-		platform/task_runner.cc
 		realm.h.cc
-		scheduler.cc
 )
 target_link_libraries(isolated_v8 PRIVATE
 	Boost::boost
