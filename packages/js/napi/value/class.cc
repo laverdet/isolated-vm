@@ -3,6 +3,7 @@ module;
 #include <concepts>
 #include <memory>
 #include <string_view>
+#include <tuple>
 #include <utility>
 export module napi_js:class_definitions;
 import :api;
@@ -14,14 +15,28 @@ import ivm.utility;
 namespace js::napi {
 
 template <class Type>
-auto value<class_tag_of<Type>>::construct(auto& env, auto&&... args) const -> value<object_tag>
-	requires std::constructible_from<Type, decltype(args)...> {
-	auto instance = std::make_unique<Type>(std::forward<decltype(args)>(args)...);
-	return transfer(env, std::move(instance));
+template <class... Args>
+auto value<class_tag_of<Type>>::construct(auto& env, Args&&... args) const -> value<object_tag>
+	requires std::constructible_from<Type, Args...> {
+	return runtime_construct(env, std::forward_as_tuple(std::forward<Args>(args)...), std::tuple{});
 }
 
 template <class Type>
-auto value<class_tag_of<Type>>::transfer(auto& env, auto instance) const -> value<object_tag> {
+template <class... HostArgs, class... RuntimeArgs>
+auto value<class_tag_of<Type>>::runtime_construct(
+	auto& env,
+	std::tuple<HostArgs...> host_args,
+	std::tuple<RuntimeArgs...> runtime_args
+) const -> value<object_tag>
+	requires std::constructible_from<Type, HostArgs...> {
+	const auto [... indices ] = util::sequence<sizeof...(HostArgs)>;
+	auto instance = std::make_unique<Type>(std::get<indices>(std::forward<decltype(host_args)>(host_args))...);
+	return transfer_construct(env, std::move(instance), std::move(runtime_args));
+}
+
+template <class Type>
+template <class... Args>
+auto value<class_tag_of<Type>>::transfer_construct(auto& env, auto instance, std::tuple<Args...> runtime_args) const -> value<object_tag> {
 	using element_type = decltype(instance)::element_type;
 	auto construct = [ & ](napi_value this_arg) mutable -> napi_value {
 		// Tag `this_arg`
@@ -38,7 +53,9 @@ auto value<class_tag_of<Type>>::transfer(auto& env, auto instance) const -> valu
 	// hopefully it jumps into `construct`
 	auto construct_ref = internal_constructor{construct};
 	auto* construct_external = napi_value{value<external_tag>::make(env, &construct_ref)};
-	auto* this_arg = napi::invoke(napi_new_instance, napi_env{env}, napi_value{*this}, 1, &construct_external);
+	auto [... runtime_arg_values ] = js::transfer_in_strict<std::array<napi_value, sizeof...(Args)>>(std::move(runtime_args), env);
+	auto arg_vector = std::array{construct_external, runtime_arg_values...};
+	auto* this_arg = napi::invoke(napi_new_instance, napi_env{env}, napi_value{*this}, arg_vector.size(), arg_vector.data());
 	return value<object_tag>::from(this_arg);
 }
 

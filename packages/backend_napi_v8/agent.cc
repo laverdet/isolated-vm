@@ -58,12 +58,13 @@ struct make_agent_options {
 agent_environment::agent_environment(const isolated_v8::agent_lock& lock) :
 		runtime_interface_{lock} {}
 
-auto create_agent(environment& env, std::optional<make_agent_options> options_optional) {
+auto create_agent(environment& env, js::forward<js::napi::value<function_tag>, function_tag> constructor, std::optional<make_agent_options> options_optional) {
 	namespace clock = isolated_v8::clock;
 	auto options = std::move(options_optional).value_or(make_agent_options{});
 	auto& cluster = env.cluster();
-	auto [ dispatch, promise ] = make_promise(env, [](environment& env, agent_handle agent) -> auto {
-		return js::forward{agent_class_template(env).construct(env, std::move(agent))};
+	auto [ dispatch, promise ] = make_promise(env, [](environment& env, agent_handle agent, js::napi::unique_remote<function_tag> constructor) -> auto {
+		auto class_template = js::napi::value<class_tag_of<agent_handle>>::from(constructor->deref(env));
+		return js::forward{class_template.construct(env, std::move(agent))};
 	});
 	auto clock_ = std::visit(
 		util::overloaded{
@@ -86,11 +87,12 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 		cluster,
 		[](const agent_handle::lock& lock) -> auto { return agent_environment{lock}; },
 		{.clock = clock_, .random_seed = options.random_seed},
-		[ dispatch = std::move(dispatch) ](
+		[ dispatch = std::move(dispatch),
+			constructor = js::napi::make_unique_remote(env, *constructor) ](
 			const agent_handle::lock& /*lock*/,
 			agent_handle agent
-		) -> void {
-			dispatch(std::move(agent));
+		) mutable -> void {
+			dispatch(std::move(agent), std::move(constructor));
 		}
 	);
 
@@ -102,10 +104,10 @@ auto agent_class_template(environment& env) -> js::napi::value<js::class_tag_of<
 		std::type_identity<agent_handle>{},
 		js::class_template{
 			js::class_constructor{util::cw<u8"Agent">},
-			js::class_method{util::cw<u8"compileModule">, make_forward_callback(module_handle::compile)},
+			js::class_method{util::cw<u8"_compileModule">, make_forward_callback(module_handle::compile)},
 			js::class_method{util::cw<u8"compileScript">, make_forward_callback(script_handle::compile_script)},
 			js::class_method{util::cw<u8"createRealm">, make_forward_callback(realm_handle::create)},
-			js::class_static{util::cw<u8"create">, create_agent},
+			js::class_static{util::cw<u8"_create">, create_agent},
 		}
 	);
 }

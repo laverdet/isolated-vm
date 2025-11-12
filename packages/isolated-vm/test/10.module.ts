@@ -1,28 +1,28 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
 import * as ivm from "isolated-vm";
-import { unwrapCompletion } from "./fixtures.js";
+import { expectComplete } from "./fixtures.js";
 
 await test("module linker", async () => {
 	await using agent = await ivm.Agent.create();
 	const realm = await agent.createRealm();
-	const left = unwrapCompletion(await agent.compileModule('import { right } from "right"; globalThis.right = right;'));
-	const right = unwrapCompletion(await agent.compileModule('export function right() { return "hello"; }'));
+	const left = expectComplete(await agent.compileModule('import { right } from "right"; globalThis.right = right;'));
+	const right = expectComplete(await agent.compileModule('export function right() { return "hello"; }'));
 	await left.link(realm, specifier => {
 		assert.equal(specifier, "right");
 		return right;
 	});
 	await left.evaluate(realm);
-	const script = unwrapCompletion(await agent.compileScript("right();"));
-	const result = unwrapCompletion(await script.run(realm));
+	const script = expectComplete(await agent.compileScript("right();"));
+	const result = expectComplete(await script.run(realm));
 	assert.equal(result, "hello");
 });
 
 await test("nested compilation in module linker", async () => {
 	await using agent = await ivm.Agent.create();
 	const realm = await agent.createRealm();
-	const left = unwrapCompletion(await agent.compileModule('import "right";'));
-	await left.link(realm, async () => unwrapCompletion(await agent.compileModule("export {};")));
+	const left = expectComplete(await agent.compileModule('import "right";'));
+	await left.link(realm, async () => expectComplete(await agent.compileModule("export {};")));
 });
 
 await test("synthetic module capability", async () => {
@@ -39,7 +39,7 @@ await test("synthetic module capability", async () => {
 			},
 		}),
 		{ origin: capabilityName });
-	const left = unwrapCompletion(await agent.compileModule(`
+	const left = expectComplete(await agent.compileModule(`
 		import capability from ${JSON.stringify(capabilityName)};
 		capability("hello", "world");
 	`));

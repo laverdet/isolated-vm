@@ -1,4 +1,4 @@
-import type { AbstractModule, Agent, ModuleLinker } from "isolated-vm";
+import type { AbstractModule, Agent, Module } from "isolated-vm";
 import * as fs from "node:fs/promises";
 import { mappedComparator, selectKey, stringComparator } from "./comparator.js";
 
@@ -9,8 +9,8 @@ function cacheKeyFor(specifier: string, attributes: ImportAttributes | undefined
 	return `${specifier}#${JSON.stringify(sortedAttributes)}`;
 }
 
-export function makeCachedLinker(linker: ModuleLinker): ModuleLinker {
-	const modules = new Map<string, ReturnType<ModuleLinker>>();
+export function makeCachedLinker(linker: Module.Linker): Module.Linker {
+	const modules = new Map<string, ReturnType<Module.Linker>>();
 	return (specifier, origin, attributes) => {
 		const cacheKey = cacheKeyFor(specifier, attributes);
 		const cached = modules.get(cacheKey);
@@ -30,7 +30,7 @@ export function makeCachedLinker(linker: ModuleLinker): ModuleLinker {
 	};
 }
 
-export function makeCompositeLinker(...linkers: ModuleLinker[]): ModuleLinker {
+export function makeCompositeLinker(...linkers: Module.Linker[]): Module.Linker {
 	return async (specifier, origin, attributes) => {
 		for (const linker of linkers) {
 			const module = await linker(specifier, origin, attributes);
@@ -41,7 +41,7 @@ export function makeCompositeLinker(...linkers: ModuleLinker[]): ModuleLinker {
 	};
 }
 
-export function makeFileSystemCompilationLinker(agent: Agent, resolve: ImportResolve): ModuleLinker {
+export function makeFileSystemCompilationLinker(agent: Agent, resolve: ImportResolve): Module.Linker {
 	return makeCachedLinker(async (specifier, parentName) => {
 		const path = function() {
 			try {
@@ -60,7 +60,7 @@ export function makeFileSystemCompilationLinker(agent: Agent, resolve: ImportRes
 	});
 }
 
-export function makePreloadedLinker(preloadedModules: Iterable<[ string, AbstractModule ]>): ModuleLinker {
+export function makePreloadedLinker(preloadedModules: Iterable<[ string, AbstractModule ]>): Module.Linker {
 	const modules = new Map(preloadedModules);
 	return specifier => modules.get(specifier);
 }

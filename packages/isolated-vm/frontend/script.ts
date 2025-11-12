@@ -1,8 +1,9 @@
-import type * as ivm from "./backend.js";
-import type { MaybeCompletionOf } from "backend_v8.node";
-import { Realm } from "./realm.js";
+export { Script } from "#backend_v8";
 
-const { __extractRealm } = Realm;
+export interface Location {
+	line: number;
+	column: number;
+}
 
 export interface SourceOrigin {
 	/**
@@ -26,23 +27,5 @@ export namespace Script {
 		 * canceled. Default is no timeout.
 		 */
 		timeout?: number;
-	}
-}
-
-export interface Location {
-	line: number;
-	column: number;
-}
-
-export class Script {
-	readonly #script;
-
-	/** @internal */
-	constructor(script: ivm.Script) {
-		this.#script = script;
-	}
-
-	async run(realm: Realm, options?: Script.RunScriptOptions): Promise<MaybeCompletionOf<unknown>> {
-		return this.#script.run(__extractRealm(realm), options);
 	}
 }

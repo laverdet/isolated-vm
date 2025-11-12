@@ -33,7 +33,7 @@ class remote : protected reference_handle {
 				reference_handle{napi_env{env}, napi_value{value}},
 				scheduler_{std::move(scheduler)} {}
 
-		auto get(const environment& env) const -> value<Tag>;
+		auto deref(const environment& env) const -> value<Tag>;
 
 		static auto make_shared(remote_handle_environment auto& env, value<Tag> value) -> std::shared_ptr<remote>;
 		static auto make_unique(remote_handle_environment auto& env, value<Tag> value) -> unique_remote;
@@ -75,7 +75,7 @@ auto remote<Tag>::expire(remote* ptr) -> void {
 }
 
 template <class Tag>
-auto remote<Tag>::get(const environment& env) const -> value<Tag> {
+auto remote<Tag>::deref(const environment& env) const -> value<Tag> {
 	return value<Tag>::from(get_value(napi_env{env}));
 }
 

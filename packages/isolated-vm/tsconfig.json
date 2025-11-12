@@ -3,6 +3,7 @@
 	"compilerOptions": {
 		"lib": [ "dom", "esnext" ],
 		"types": [ "node" ],
+		"skipLibCheck": false,
 	}
 }
 

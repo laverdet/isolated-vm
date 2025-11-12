@@ -7,7 +7,10 @@
     "./*":"./dist/*.js"
   },
   "imports": {
-    "#backend-v8": "./backend_v8.cjs"
+    "#backend_v8": {
+      "import": "./backend_v8.js",
+      "types": "./backend_v8.d.ts"
+    }
   },
   "scripts": {
     "test": "${NODE-node} --enable-source-maps --test-reporter=spec --test dist/test/*.js"

@@ -2,12 +2,12 @@ import * as assert from "node:assert/strict";
 import { test } from "node:test";
 import * as ivm from "isolated-vm";
 import { makeCompositeLinker, makeFileSystemCompilationLinker, makePreloadedLinker } from "isolated-vm/utility/linker";
-import { unwrapCompletion } from "./fixtures.js";
+import { expectComplete } from "./fixtures.js";
 
 await test("setTimeout capability", async () => {
 	await using agent = await ivm.Agent.create();
 	const realm = await agent.createRealm();
-	const runTimers = unwrapCompletion(await agent.compileScript("runTimers()"));
+	const runTimers = expectComplete(await agent.compileScript("runTimers()"));
 	const resolvers = Promise.withResolvers();
 	const capabilities = makePreloadedLinker(Object.entries({
 		"isolated-vm:capability/timers": await realm.createCapability(
@@ -28,7 +28,7 @@ await test("setTimeout capability", async () => {
 	// eslint-disable-next-line @typescript-eslint/unbound-method
 	const runtime = makeFileSystemCompilationLinker(agent, import.meta.resolve);
 	const linker = makeCompositeLinker(capabilities, runtime);
-	const module = unwrapCompletion(await agent.compileModule(`
+	const module = expectComplete(await agent.compileModule(`
 		import "isolated-vm/host/html/timers";
 		import hello from "notify-test";
 		setTimeout(hello, 0, "hello");

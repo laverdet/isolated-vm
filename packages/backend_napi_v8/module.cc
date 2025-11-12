@@ -26,17 +26,22 @@ module_handle::module_handle(agent_handle agent, js::iv8::shared_remote<v8::Modu
 		agent_{std::move(agent)},
 		module_{std::move(module)} {}
 
-auto module_handle::compile(agent_handle& agent, environment& env, js::string_t source_text, compile_module_options options) -> js::napi::value<promise_tag> {
+auto module_handle::compile(
+	agent_handle& agent,
+	environment& env,
+	js::forward<js::napi::value<function_tag>, function_tag> constructor,
+	js::string_t source_text,
+	compile_module_options options
+) -> js::napi::value<promise_tag> {
 	using value_type = std::tuple<js::iv8::shared_remote<v8::Module>, std::vector<js::iv8::module_request>>;
 	using expected_type = std::expected<value_type, js::error_value>;
 	auto [ dispatch, promise ] = make_promise(
 		env,
-		[](environment& env, agent_handle agent, expected_type maybe_module) -> auto {
+		[](environment& env, agent_handle agent, js::napi::unique_remote<function_tag> constructor, expected_type maybe_module) -> auto {
 			return make_completion_record(env, std::move(maybe_module).transform([ & ](value_type module_data) -> auto {
-				return std::tuple{
-					js::forward{module_handle::class_template(env).construct(env, std::move(agent), std::get<0>(module_data))},
-					std::get<1>(std::move(module_data)),
-				};
+				auto class_template = js::napi::value<class_tag_of<module_handle>>::from(constructor->deref(env));
+				auto [ shared_module, requests ] = std::move(module_data);
+				return js::forward{class_template.runtime_construct(env, std::tuple{std::move(agent), std::move(shared_module)}, std::tuple{std::move(requests)})};
 			}));
 		}
 	);
@@ -44,6 +49,7 @@ auto module_handle::compile(agent_handle& agent, environment& env, js::string_t 
 		[ dispatch = std::move(dispatch) ](
 			const agent_handle::lock& lock,
 			agent_handle agent,
+			js::napi::unique_remote<function_tag> constructor,
 			js::string_t source_text,
 			compile_module_options options
 		) -> void {
@@ -51,12 +57,13 @@ auto module_handle::compile(agent_handle& agent, environment& env, js::string_t 
 			auto context_lock = js::iv8::context_managed_lock{lock, lock->scratch_context()};
 			auto context_lock_of = realm::scope{context_lock, *lock};
 			auto maybe_module = js::iv8::module_record::compile(context_lock_of, std::move(source_text), std::move(origin));
-			dispatch(std::move(agent), maybe_module.transform([ & ](v8::Local<v8::Module> module_record) -> value_type {
+			dispatch(std::move(agent), std::move(constructor), maybe_module.transform([ & ](v8::Local<v8::Module> module_record) -> value_type {
 				auto shared_module = js::iv8::make_shared_remote(lock, module_record);
 				return {shared_module, js::iv8::module_record::requests(context_lock_of, module_record)};
 			}));
 		},
 		agent,
+		js::napi::make_unique_remote(env, *constructor),
 		std::move(source_text),
 		std::move(options)
 	);
@@ -84,7 +91,7 @@ auto module_handle::create_capability(
 				std::vector<js::value_t> params
 			) -> void {
 			js::napi::handle_scope scope{napi_env{env}};
-			callback->get(env).apply(env, std::move(params));
+			callback->deref(env).apply(env, std::move(params));
 		};
 		// Invoked in the isolate thread
 		return js::free_function{
@@ -320,8 +327,8 @@ auto module_handle::class_template(environment& env) -> js::napi::value<class_ta
 		std::type_identity<module_handle>{},
 		js::class_template{
 			js::class_constructor{util::cw<u8"Module">},
+			js::class_method{util::cw<u8"_link">, make_forward_callback(util::fn<&module_handle::link>)},
 			js::class_method{util::cw<u8"evaluate">, make_forward_callback(util::fn<&module_handle::evaluate>)},
-			js::class_method{util::cw<u8"link">, make_forward_callback(util::fn<&module_handle::link>)},
 		}
 	);
 }
@@ -351,7 +358,7 @@ auto subscriber_capability::send(js::value_t message) -> bool {
 auto subscriber_capability::make(environment& env) -> js::napi::value<js::object_tag> {
 	auto capability = std::make_shared<subscriber_capability>(private_constructor{});
 	capability->subscriber_ = std::make_shared<subscriber>(capability);
-	return class_template(env).transfer(env, std::move(capability));
+	return class_template(env).transfer_construct(env, std::move(capability), std::tuple{});
 }
 
 auto subscriber_capability::class_template(environment& env) -> js::napi::value<js::class_tag_of<subscriber_capability>> {

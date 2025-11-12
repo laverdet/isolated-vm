@@ -1,11 +1,11 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
 import * as ivm from "isolated-vm";
-import { unsafeIIFEAsString, unwrapCompletion, unwrapThrowCompletion } from "./fixtures.js";
+import { expectComplete, expectThrow, unsafeIIFEAsString } from "./fixtures.js";
 
 await test("script source origin", async () => {
 	await using agent = await ivm.Agent.create();
-	const script = unwrapCompletion(await agent.compileScript(
+	const script = expectComplete(await agent.compileScript(
 		unsafeIIFEAsString(() => {
 			try {
 				throw new Error();
@@ -22,7 +22,7 @@ await test("script source origin", async () => {
 		},
 	));
 	const realm = await agent.createRealm();
-	const result = unwrapCompletion(await script.run(realm));
+	const result = expectComplete(await script.run(realm));
 	assert.ok(typeof result === "string");
 	assert.ok(result.includes("file:///test-script:103"));
 });
@@ -30,8 +30,8 @@ await test("script source origin", async () => {
 await test("script which throws", async () => {
 	await using agent = await ivm.Agent.create();
 	const realm = await agent.createRealm();
-	const script = unwrapCompletion(await agent.compileScript("throw new Error('Hello');"));
-	const error = unwrapThrowCompletion(await script.run(realm));
+	const script = expectComplete(await agent.compileScript("throw new Error('Hello');"));
+	const error = expectThrow(await script.run(realm));
 	// @ts-expect-error
 	const message: unknown = error.message;
 	assert.ok(typeof message === "string");
@@ -40,7 +40,7 @@ await test("script which throws", async () => {
 
 await test("script with syntax error", async () => {
 	await using agent = await ivm.Agent.create();
-	const error = unwrapThrowCompletion(await agent.compileScript("}"));
+	const error = expectThrow(await agent.compileScript("}"));
 	// @ts-expect-error
 	const message: unknown = error.message;
 	assert.ok(typeof message === "string");

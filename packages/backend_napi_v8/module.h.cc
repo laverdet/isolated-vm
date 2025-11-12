@@ -46,7 +46,14 @@ export class module_handle {
 		auto evaluate(environment& env, realm_handle& realm) -> js::napi::value<promise_tag>;
 		auto link(environment& env, realm_handle& realm, callback_type link_callback) -> js::napi::value<promise_tag>;
 
-		static auto compile(agent_handle& agent, environment& env, js::string_t source_text, compile_module_options options) -> js::napi::value<promise_tag>;
+		static auto compile(
+			agent_handle& agent,
+			environment& env,
+			js::forward<js::napi::value<function_tag>, function_tag> constructor,
+			js::string_t source_text,
+			compile_module_options options
+		) -> js::napi::value<promise_tag>;
+
 		static auto create_capability(realm_handle& realm, environment& env, callback_type make_capability, create_capability_options options) -> js::napi::value<promise_tag>;
 
 		static auto class_template(environment& env) -> js::napi::value<class_tag_of<module_handle>>;

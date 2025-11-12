@@ -1,5 +1,5 @@
-export type { ImportAttributes, ModuleRequest, ModuleLinker } from "./module.js";
-export { Agent } from "./agent.js";
-export { AbstractModule, Module, Capability } from "./module.js";
-export { Realm } from "./realm.js";
-export { Script } from "./script.js";
+export * from "./frontend/agent.js";
+export * from "./frontend/module.js";
+export * from "./frontend/realm.js";
+export * from "./frontend/script.js";
+export * from "./utility/completion.js";
