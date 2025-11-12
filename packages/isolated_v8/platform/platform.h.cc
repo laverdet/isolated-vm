@@ -1,38 +1,13 @@
 module;
 #include <memory>
-#include <thread>
 export module isolated_v8:platform;
 import ivm.utility;
+import v8_js;
 import v8;
 
 // See: /v8/src/libplatform/default-job.cc
 
 namespace isolated_v8 {
-
-export class job_handle : public v8::JobHandle, public v8::JobDelegate {
-	public:
-		explicit job_handle(std::unique_ptr<v8::JobTask> job_task);
-		~job_handle() override = default;
-
-		// JobHandle
-		auto Cancel() -> void override;
-		auto CancelAndDetach() -> void override;
-		auto IsActive() -> bool override;
-		auto IsValid() -> bool final;
-		auto Join() -> void override;
-		auto NotifyConcurrencyIncrease() -> void override;
-		auto UpdatePriority(v8::TaskPriority new_priority) -> void final;
-		[[nodiscard]] auto UpdatePriorityEnabled() const -> bool final;
-
-		// JobDelegate
-		auto GetTaskId() -> uint8_t override;
-		[[nodiscard]] auto IsJoiningThread() const -> bool override;
-		auto ShouldYield() -> bool override;
-
-	private:
-		std::unique_ptr<v8::JobTask> job_task;
-		std::thread thread;
-};
 
 // Once per process, performs initialization of v8. Process-wide shared state is managed in this
 // class.
@@ -61,7 +36,8 @@ export class platform final : util::non_moveable, public v8::Platform {
 	private:
 		static auto fill_random_bytes(unsigned char* buffer, size_t length) -> bool;
 
-		std::unique_ptr<v8::Platform> default_platform_{v8::platform::NewDefaultPlatform()};
+		v8::TracingController tracing_controller_;
+		js::iv8::platform::worker_runner worker_runner_;
 };
 
 // Responsible for initializing v8 and creating one `platform` per process. When the last handle is

@@ -12,6 +12,7 @@ export import :platform.foreground_runner;
 export import :platform.scheduler;
 export import :platform.task_queue;
 export import :platform.task_runner;
+export import :platform.worker_runner;
 export import :remote;
 export import :unmaybe;
 export import :visit;

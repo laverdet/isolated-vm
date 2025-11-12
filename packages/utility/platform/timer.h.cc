@@ -2,7 +2,7 @@ module;
 #include <chrono>
 #include <memory>
 #include <stop_token>
-export module ivm.utility:timer;
+export module ivm.utility:platform.timer;
 
 namespace util {
 
@@ -25,7 +25,8 @@ export class timer_stop_token {
 		auto operator=(const timer_stop_token&) -> timer_stop_token& = delete;
 		auto operator=(timer_stop_token&&) -> timer_stop_token& = delete;
 
-		auto operator*() const -> std::stop_token;
+		[[nodiscard]] auto get_source() const -> const std::stop_source&;
+		[[nodiscard]] auto get_token() const -> std::stop_token;
 
 	private:
 		std::shared_ptr<timer_thread> thread_;

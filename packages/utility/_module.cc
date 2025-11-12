@@ -1,10 +1,14 @@
 export module ivm.utility;
+export import :container.mutable_priority_queue;
+export import :container.sealed_map;
+export import :container.segmented_priority_queue;
+export import :container.tinker_queue;
 export import :functional;
-export import :lockable;
 export import :memory;
 export import :meta.algorithm;
-export import :sealed_map;
-export import :timer;
+export import :platform.lockable;
+export import :platform.stop_token;
+export import :platform.timer;
 export import :type_traits;
 export import :utility;
 export import :utility.variant;

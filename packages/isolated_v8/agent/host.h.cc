@@ -135,11 +135,11 @@ auto agent_host::destroy_isolate_callback(auto locked_callback) -> void {
 	cluster_.get().release_runner(foreground_runner_);
 	foreground_runner_->terminate();
 	async_scheduler_.terminate();
+	foreground_runner_->finalize();
+	async_scheduler_.finalize();
 	auto lock = js::iv8::isolate_execution_lock{isolate_.get()};
 	autorelease_pool_.clear();
 	remote_handle_list_.clear(util::slice{lock});
-	foreground_runner_->finalize();
-	async_scheduler_.finalize();
 	locked_callback(lock);
 }
 

@@ -1,92 +1,107 @@
 module;
-#include <algorithm>
 #include <cassert>
 #include <chrono>
-#include <memory>
-#include <queue>
-#include <utility>
-module v8_js;
-import :platform.task_queue;
+#include <compare>
+export module v8_js:platform.task_queue;
+export import :platform.task;
+import ivm.utility;
+import v8;
 using std::chrono::steady_clock;
 
 namespace js::iv8::platform {
 
-// delayed_task_entry
-auto delayed_task_entry::operator<=>(const delayed_task_entry& right) const -> std::strong_ordering {
-	return timeout <=> right.timeout;
+// Utilities to cast back and forth from enum type <-> numeric type
+using priority_numeric_type = std::underlying_type_t<v8::TaskPriority>;
+
+constexpr auto priority_numeric_from(v8::TaskPriority priority) -> priority_numeric_type {
+	return static_cast<priority_numeric_type>(v8::TaskPriority::kMaxPriority) - static_cast<priority_numeric_type>(priority);
 }
 
-auto delayed_task_entry::operator<=>(steady_clock::time_point right) const -> std::strong_ordering {
-	return timeout <=> right;
+constexpr auto priority_enum_from(priority_numeric_type priority) -> v8::TaskPriority {
+	return static_cast<v8::TaskPriority>(static_cast<priority_numeric_type>(v8::TaskPriority::kMaxPriority) - priority);
 }
 
-// task_queue
-auto task_queue::clear() -> void {
-	tasks_.clear();
+constexpr auto priority_count = static_cast<priority_numeric_type>(v8::TaskPriority::kMaxPriority) + 1;
+
+// Boolean nestability enum sugar
+enum class nestability : bool {
+	non_nestable,
+	nestable
+};
+
+// Holder of task entry & nestability
+template <class Task>
+struct nestable_entry : Task {
+		nestable_entry() = default;
+		explicit nestable_entry(nestability nestable, auto&&... rest) :
+				Task{std::forward<decltype(rest)>(rest)...},
+				nestable{nestable} {}
+
+		auto operator<=>(const Task& right) const -> std::partial_ordering
+			requires std::three_way_comparable<Task> {
+			return static_cast<const Task&>(*this) <=> right;
+		}
+
+		nestability nestable{};
+};
+
+// Holder of task entry & timeout
+template <class Task>
+struct delayed_entry : Task {
+		using clock_type = steady_clock;
+
+		explicit delayed_entry(clock_type::time_point timeout, auto&&... rest) :
+				Task{std::forward<decltype(rest)>(rest)...},
+				timeout{timeout} {}
+
+		auto operator<=>(const delayed_entry& right) const -> std::partial_ordering {
+			return timeout <=> right.timeout;
+		}
+
+		auto operator<=>(clock_type::time_point right) const -> std::partial_ordering {
+			return timeout <=> right;
+		}
+
+		clock_type::time_point timeout;
+};
+
+// Queue of delayed tasks
+template <class Task>
+class delayed_task_queue : public util::mutable_priority_queue<delayed_entry<Task>> {
+	private:
+		using queue_type = util::mutable_priority_queue<delayed_entry<Task>>;
+
+	public:
+		using value_type = queue_type::value_type;
+		using clock_type = value_type::clock_type;
+
+		[[nodiscard]] auto timeout() const -> clock_type::time_point;
+		auto flush(auto& receiver, clock_type::time_point timeout) -> clock_type::time_point;
+
+	private:
+		queue_type tasks_;
+};
+
+// ---
+
+// `delayed_task_queue`
+template <class Task>
+auto delayed_task_queue<Task>::timeout() const -> clock_type::time_point {
+	return tasks_.empty() ? steady_clock::time_point::max() : tasks_.top().timeout;
 }
 
-auto task_queue::empty() const -> bool {
-	return tasks_.size() - empty_tasks_ == 0;
-}
-
-auto task_queue::pop() -> task_type {
-	assert(!empty());
-	while (true) {
-		auto result = std::move(tasks_.front().task);
-		tasks_.pop_front();
-		if (result) {
-			return result;
+template <class Entry>
+auto delayed_task_queue<Entry>::flush(auto& receiver, clock_type::time_point timeout) -> clock_type::time_point {
+	while (!tasks_.empty()) {
+		auto& top = tasks_.top();
+		if (top <= timeout) {
+			receiver.emplace(std::move(top));
+			tasks_.pop();
 		} else {
-			--empty_tasks_;
+			return top.timeout;
 		}
 	}
-}
-
-auto task_queue::pop_nestable() -> task_type {
-	assert(!empty());
-	auto it = std::ranges::find_if(tasks_, [](const auto& task) {
-		return task.nestability == task_entry::nestability::nestable && task.task;
-	});
-	if (it != tasks_.end()) {
-		auto result = std::move(it->task);
-		if (it == tasks_.begin()) {
-			tasks_.pop_front();
-		} else {
-			++empty_tasks_;
-		}
-		return result;
-	}
-	return {};
-}
-
-auto task_queue::push(task_entry task) -> void {
-	assert(task.task);
-	tasks_.emplace_back(std::move(task));
-}
-
-// delayed_task_queue
-auto delayed_task_queue::clear() -> void {
-	tasks_ = {};
-}
-
-auto delayed_task_queue::empty() const -> bool {
-	return tasks_.empty();
-}
-
-auto delayed_task_queue::pop_if(steady_clock::time_point time) -> std::optional<task_entry> {
-	assert(!empty());
-	const auto& top = tasks_.top();
-	if (top <= time) {
-		auto result = task_entry{.task = std::move(top.task), .nestability = top.nestability};
-		tasks_.pop();
-		return result;
-	}
-	return {};
-}
-
-auto delayed_task_queue::push(delayed_task_entry task) -> void {
-	assert(task.task);
-	tasks_.emplace(std::move(task));
+	return clock_type::time_point::max();
 }
 
 } // namespace js::iv8::platform

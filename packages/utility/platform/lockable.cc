@@ -8,7 +8,7 @@ module;
 #include <stop_token>
 #include <utility>
 #include <variant>
-export module ivm.utility:lockable;
+export module ivm.utility:platform.lockable;
 import :type_traits;
 import :utility;
 

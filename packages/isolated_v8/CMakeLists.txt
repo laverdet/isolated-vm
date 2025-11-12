@@ -5,7 +5,6 @@ target_sources(isolated_v8
 		agent/host.cc
 		platform/clock.cc
 		platform/handle.cc
-		platform/job_handle.cc
 		platform/platform.cc
 		realm.cc
 	PUBLIC FILE_SET CXX_MODULES FILES

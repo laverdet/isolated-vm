@@ -9,93 +9,227 @@ import ivm.utility;
 
 namespace js::iv8::platform {
 
-// Storage for `scheduler`, wrapped in `util::lockable`
-template <class Queue, auto Acquire, auto Predicate>
-class scheduler_unlocked_storage {
+// Manager of one foreground thread. This outlives `controller`.
+class scheduler_foreground_thread {
 	public:
-		using queue_type = Queue;
+		class controller;
+		[[nodiscard]] auto is_this_thread() const -> bool;
 
-		static_assert(requires(Queue storage, std::stop_token stop_token) {
-			{ Predicate(storage) } -> std::same_as<bool>;
-			{ bool(Acquire(storage)) } -> std::same_as<bool>;
-			{ Acquire(storage)(stop_token) } -> std::same_as<void>;
-		});
-
-		[[nodiscard]] auto acquire() -> auto { return Acquire(queue_); }
-		[[nodiscard]] auto predicate() const -> bool { return Predicate(queue_); }
-		[[nodiscard]] auto queue() & -> auto& { return queue_; };
-		[[nodiscard]] auto thread() & -> auto& { return thread_; };
+	protected:
+		template <class Storage>
+		auto signal_thread(std::stop_token termination_stop_token, Storage& unlocked_storage, Storage::resource_type& storage) -> void;
 
 	private:
-		Queue queue_;
+		std::atomic<std::thread::id> thread_id_;
+};
+
+// Locked storage for `scheduler_foreground_thread`
+class scheduler_foreground_thread::controller {
+	public:
+		// TODO: Messy
+		auto take() -> std::jthread { return std::move(thread_); };
+
+		template <class Storage>
+		auto signal(std::stop_token termination_stop_token, Storage& unlocked_storage) -> std::thread::id;
+
+	private:
+		template <class Storage>
+		static auto run(std::stop_token stop_token, std::stop_token termination_stop_token, Storage& storage) -> void;
+
 		std::jthread thread_;
 };
 
-// Implementation of `scheduler`
-template <class Storage>
-class scheduler_with : util::non_copyable {
+// Manager of multiple background threads.
+class scheduler_background_threads {
 	public:
-		using queue_type = Storage::queue_type;
+		class controller;
 
-		[[nodiscard]] auto is_this_thread() const -> bool;
-
-		auto mutate(std::invocable<queue_type&> auto operation) -> auto;
-
-		template <class... Args>
-		auto signal(std::invocable<queue_type&, Args...> auto operation, Args&&... args) -> void;
-
-		auto terminate() -> void;
-
-	private:
-		static auto run(std::stop_token stop_token, scheduler_with& self) -> void;
-
-		std::atomic<std::thread::id> thread_id_;
-		util::lockable_with<Storage, {.interuptable = true, .notifiable = true}> storage_;
+	protected:
+		template <class Storage>
+		auto signal_thread(std::stop_token termination_stop_token, Storage& unlocked_storage, Storage::resource_type& storage) -> void;
 };
 
-// Scheduler, delegating to `scheduler_with`
-export template <class Queue, auto Acquire, auto Predicate>
-class scheduler : public scheduler_with<scheduler_unlocked_storage<Queue, Acquire, Predicate>> {};
+// Locked storage for `scheduler_background_threads`
+class scheduler_background_threads::controller {
+	public:
+		template <class Storage>
+		auto signal(std::stop_token termination_stop_token, Storage& unlocked_storage) -> void;
+
+	private:
+		template <class Storage>
+		static auto run(std::stop_token stop_token, std::stop_token termination_stop_token, Storage& storage) -> void;
+
+		std::array<std::jthread, 2> threads_;
+		bool initialized_ = false;
+};
+
+// Accepts a thread controller and task queue types, and manages dispatch of events to threads.
+template <class Thread, class Queue>
+class scheduler : public Thread {
+	private:
+		using Thread::signal_thread;
+
+		struct storage {
+				using queue_type = Queue;
+
+				Thread::controller controller;
+				Queue queue;
+		};
+
+	public:
+		// TODO: Messy
+		auto invoke(std::invocable<typename Thread::controller&> auto operation) -> auto;
+
+		// Perform `operation` on the queue
+		auto mutate(std::invocable<Queue&> auto operation) -> auto;
+
+		// Perform `operation` on the queue, and signal the controller if `!empty()`
+		template <class... Args>
+		auto signal(std::invocable<Queue&, Args...> auto operation) -> void;
+
+		// Request immediate termination
+		auto terminate() -> void { termination_stop_source_.request_stop(); }
+
+	private:
+		util::lockable_with<storage, {.interuptable = true, .notifiable = true}> storage_;
+		util::scope_stop_source termination_stop_source_;
+};
 
 // ---
 
-template <class Storage>
-auto scheduler_with<Storage>::is_this_thread() const -> bool {
+// `scheduler_foreground_thread`
+auto scheduler_foreground_thread::is_this_thread() const -> bool {
 	return std::this_thread::get_id() == thread_id_.load(std::memory_order_relaxed);
 }
 
 template <class Storage>
-auto scheduler_with<Storage>::mutate(std::invocable<queue_type&> auto operation) -> auto {
-	return operation(storage_.write()->queue());
+auto scheduler_foreground_thread::signal_thread(
+	std::stop_token termination_stop_token,
+	Storage& unlocked_storage,
+	Storage::resource_type& storage
+) -> void {
+	if (auto id = storage.controller.signal(std::move(termination_stop_token), unlocked_storage); id != std::thread::id{}) {
+		thread_id_.store(id, std::memory_order_relaxed);
+	}
 }
 
+// `scheduler_foreground_thread::controller`
 template <class Storage>
-template <class... Args>
-auto scheduler_with<Storage>::signal(std::invocable<queue_type&, Args...> auto operation, Args&&... args) -> void {
-	auto lock = storage_.write_notify(&Storage::predicate);
-	operation(lock->queue(), std::forward<Args>(args)...);
-	if (!lock->thread().joinable()) {
-		lock->thread() = std::jthread{&scheduler_with::run, std::ref(*this)};
-		thread_id_.store(lock->thread().get_id(), std::memory_order_relaxed);
+auto scheduler_foreground_thread::controller::signal(
+	std::stop_token termination_stop_token,
+	Storage& unlocked_storage
+) -> std::thread::id {
+	if (thread_.joinable()) {
+		return {};
+	} else {
+		thread_ = std::jthread{&controller::run<Storage>, std::move(termination_stop_token), std::ref(unlocked_storage)};
+		return thread_.get_id();
 	}
 }
 
 template <class Storage>
-auto scheduler_with<Storage>::run(std::stop_token stop_token, scheduler_with& self) -> void {
-	auto lock = self.storage_.write_waitable(&Storage::predicate);
-	while (lock.wait(stop_token)) {
-		auto task = lock->acquire();
-		lock.unlock();
-		if (task) {
-			task(stop_token);
+auto scheduler_foreground_thread::controller::run(
+	// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+	std::stop_token stop_token,
+	std::stop_token termination_stop_token,
+	Storage& storage
+) -> void {
+	using queue_type = Storage::resource_type::queue_type;
+	auto lock = storage.write_waitable([](const Storage::resource_type& storage) -> bool {
+		return !storage.queue.empty();
+	});
+	util::composite_stop_token any_stop_token{std::move(stop_token), termination_stop_token};
+	while (!any_stop_token.stop_requested()) {
+		auto [... timeout ] = [ & ]() {
+			if constexpr (requires { typename queue_type::clock_type; }) {
+				return std::tuple{lock->queue.flush(queue_type::clock_type::now())};
+			} else {
+				return std::tuple{};
+			}
+		}();
+		while (lock.wait(any_stop_token, timeout...)) {
+			auto task = std::move(lock->queue.front());
+			lock->queue.pop();
+			lock.unlock();
+			task(termination_stop_token);
+			lock.lock();
 		}
-		lock.lock();
+	}
+}
+
+// `scheduler_background_threads`
+template <class Storage>
+auto scheduler_background_threads::signal_thread(
+	std::stop_token termination_stop_token,
+	Storage& unlocked_storage,
+	Storage::resource_type& storage
+) -> void {
+	storage.controller.signal(std::move(termination_stop_token), unlocked_storage);
+}
+
+// `scheduler_background_threads::controller`
+template <class Storage>
+auto scheduler_background_threads::controller::signal(
+	std::stop_token termination_stop_token,
+	Storage& unlocked_storage
+) -> void {
+	if (!initialized_) {
+		initialized_ = true;
+		for (auto& thread : threads_) {
+			thread = std::jthread{&controller::run<Storage>, termination_stop_token, std::ref(unlocked_storage)};
+		}
 	}
 }
 
 template <class Storage>
-auto scheduler_with<Storage>::terminate() -> void {
-	auto thread = std::exchange(storage_.write()->thread(), {});
+auto scheduler_background_threads::controller::run(
+	// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+	std::stop_token stop_token,
+	std::stop_token termination_stop_token,
+	Storage& storage
+) -> void {
+	using queue_type = Storage::resource_type::queue_type;
+	auto lock = storage.write_waitable([](const Storage::resource_type& storage) -> bool {
+		return !storage.queue.empty();
+	});
+	util::composite_stop_token any_stop_token{std::move(stop_token), termination_stop_token};
+	while (!any_stop_token.stop_requested()) {
+		auto [... timeout ] = [ & ]() {
+			if constexpr (requires { typename queue_type::clock_type; }) {
+				return std::tuple{lock->queue.flush(queue_type::clock_type::now())};
+			} else {
+				return std::tuple{};
+			}
+		}();
+		while (lock.wait(any_stop_token, timeout...)) {
+			auto task = std::move(lock->queue.front());
+			lock->queue.pop();
+			lock.unlock();
+			task(termination_stop_token);
+			lock.lock();
+		}
+	}
+}
+
+// `scheduler`
+template <class Thread, class Queue>
+auto scheduler<Thread, Queue>::invoke(std::invocable<typename Thread::controller&> auto operation) -> auto {
+	return operation(storage_.write()->controller);
+}
+
+template <class Thread, class Queue>
+auto scheduler<Thread, Queue>::mutate(std::invocable<Queue&> auto operation) -> auto {
+	return operation(storage_.write()->queue);
+}
+
+template <class Thread, class Queue>
+template <class... Args>
+auto scheduler<Thread, Queue>::signal(std::invocable<Queue&, Args...> auto operation) -> void {
+	auto lock = storage_.write_notify([](const storage& storage) -> bool {
+		return !storage.queue.empty();
+	});
+	operation(lock->queue);
+	signal_thread(termination_stop_source_.get_token(), storage_, *lock);
 }
 
 } // namespace js::iv8::platform

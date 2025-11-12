@@ -70,7 +70,7 @@ auto script_handle::run(environment& env, realm_handle& realm, run_script_option
 				auto timer_callback =
 					stop_token.transform([ & ](util::timer_stop_token& timer) {
 						return std::stop_callback{
-							*timer, [ & ]() {
+							timer.get_token(), [ & ]() {
 								agent->isolate()->TerminateExecution();
 							}
 						};

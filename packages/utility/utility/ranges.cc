@@ -1,6 +1,4 @@
 module;
-#include <algorithm>
-#include <iterator>
 #include <ranges>
 export module ivm.utility:utility.ranges;
 
@@ -17,31 +15,5 @@ export constexpr auto into_range(auto&& range)
 	requires requires { range.into_range(); } {
 	return std::forward<decltype(range)>(range).into_range();
 }
-
-// Subrange which expands or contracts to include or possibly exclude the given members.
-export template <class Type>
-class subrange_ratchet : public std::ranges::subrange<Type> {
-	public:
-		using subrange_type = std::ranges::subrange<Type>;
-		using subrange_type::begin;
-		using subrange_type::end;
-		using subrange_type::subrange_type;
-
-		auto insert(Type iterator) -> void {
-			*this = {
-				std::min(iterator, begin()),
-				std::max(std::next(iterator), end())
-			};
-		}
-
-		auto remove(Type iterator) -> void {
-			auto next = std::next(iterator);
-			if (end() == next) {
-				*this = {begin(), iterator};
-			} else if (begin() == iterator) {
-				*this = {next, end()};
-			}
-		}
-};
 
 } // namespace util

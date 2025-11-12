@@ -29,11 +29,11 @@ export struct identity_hash : std::hash<int> {
 		using std::hash<int>::operator();
 
 		template <identity_hashable Type>
-		auto operator()(v8::Local<Type> local) const -> std::size_t {
+		auto operator()(v8::Local<Type> local) const noexcept -> std::size_t {
 			return (*this)(local->GetIdentityHash());
 		}
 
-		auto operator()(const identity_hashable auto& hashable) const -> std::size_t {
+		auto operator()(const identity_hashable auto& hashable) const noexcept -> std::size_t {
 			return (*this)(hashable.GetIdentityHash());
 		}
 };

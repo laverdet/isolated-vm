@@ -10,8 +10,8 @@ module;
 #include <vector>
 module ivm.utility;
 import :functional;
-import :lockable;
-import :timer;
+import :platform.lockable;
+import :platform.timer;
 
 namespace util {
 
@@ -160,7 +160,11 @@ timer_stop_token::timer_stop_token(clock_type::duration duration) :
 	thread_->insert(stop_source_, duration);
 }
 
-auto timer_stop_token::operator*() const -> std::stop_token {
+auto timer_stop_token::get_source() const -> const std::stop_source& {
+	return stop_source_;
+}
+
+auto timer_stop_token::get_token() const -> std::stop_token {
 	return stop_source_.get_token();
 }
 

@@ -9,6 +9,7 @@ AllowShortCaseLabelsOnASingleLine: true
 AllowShortEnumsOnASingleLine: true
 # nb: Causes unconditional break on short initializers
 AllowShortFunctionsOnASingleLine: Inline
+AllowShortLoopsOnASingleLine: true
 BinPackArguments: false
 BinPackParameters: false
 # nb: Causes unconditional break on short initializers

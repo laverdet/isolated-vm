@@ -6,7 +6,7 @@ target_sources(v8_js
 		evaluation/script.cc
 		handle/remote.cc
 		platform/foreground_runner.cc
-		platform/task_queue.cc
+		platform/worker_runner.cc
 		support/lock.cc
 		value/array.cc
 		value/fixed_array.cc
@@ -25,9 +25,10 @@ target_sources(v8_js
 		handle/remote.h.cc
 		platform/foreground_runner.h.cc
 		platform/scheduler.cc
-		platform/task_queue.h.cc
+		platform/task_queue.cc
 		platform/task_runner.cc
 		platform/task.cc
+		platform/worker_runner.h.cc
 		support/callback_storage.cc
 		support/callback.cc
 		support/error.cc

@@ -66,7 +66,7 @@ export struct indirect_address_hash : std::hash<void*> {
 		using std::hash<void*>::operator();
 
 	public:
-		auto operator()(napi_value value) const -> std::size_t {
+		auto operator()(napi_value value) const noexcept -> std::size_t {
 			auto* indirect_handle = reinterpret_cast<void**>(value);
 			return (*this)(*indirect_handle);
 		}

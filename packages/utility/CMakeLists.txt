@@ -4,7 +4,10 @@ target_sources(ivm_utility
 		platform/timer.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
+		container/mutable_priority_queue.cc
 		container/sealed_map.cc
+		container/segmented_priority_queue.cc
+		container/tinker_queue.cc
 		functional/bind.cc
 		functional/elide.cc
 		functional/flat_tuple.cc
@@ -18,6 +21,7 @@ target_sources(ivm_utility
 		memory/noinit_allocator.cc
 		meta/algorithm.cc
 		platform/lockable.cc
+		platform/stop_token.cc
 		platform/timer.h.cc
 		type_traits/function_traits.cc
 		type_traits/transform.cc

@@ -14,18 +14,19 @@ inline thread_local std::stop_token* thread_stop_token;
 using idle_task = std::unique_ptr<v8::IdleTask>;
 using task_type = std::unique_ptr<v8::Task>;
 
-// Adapter for `std::unique_ptr<v8::Task>` which is invocable and boolable
-struct invocable_task_type {
+// Adapter for `std::unique_ptr<v8::Task>` which is invocable and boolable. Also it stashes
+// `stop_token` in the thread local above.
+class invocable_task {
 	public:
-		invocable_task_type() = default;
-		explicit invocable_task_type(task_type task) : task_{std::move(task)} {}
+		invocable_task() = default;
+		explicit invocable_task(task_type task) : task_{std::move(task)} {}
 
 		auto operator()(std::stop_token stop_token) -> void {
 			thread_stop_token = &stop_token;
 			task_->Run();
 		}
 
-		explicit operator bool() const { return static_cast<bool>(task_); }
+		explicit operator bool() const { return bool{task_}; }
 
 	private:
 		task_type task_;
