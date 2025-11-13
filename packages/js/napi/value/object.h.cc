@@ -59,7 +59,7 @@ auto value<object_tag>::assign(auto_environment auto& env, std::tuple<Entries...
 	(..., [ & ]() constexpr {
 		auto& entry_ref = std::get<indices>(entries);
 		auto entry_js_val = js::transfer_in_strict<std::array<napi_value, 2>>(
-			std::tuple{std::move(entry_ref.first), std::move(entry_ref.second)},
+			std::tuple{std::move(entry_ref).first, std::move(entry_ref).second},
 			env
 		);
 		value.set(entry_js_val[ 0 ], entry_js_val[ 1 ]);

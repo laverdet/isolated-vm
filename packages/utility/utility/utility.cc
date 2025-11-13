@@ -56,14 +56,6 @@ struct copy_of : Type {
 				Type(Value) {}
 };
 
-// Forward a value with the cvref qualifiers from another type.
-// `util::forward_from<decltype(self)>(self.property)`.
-export template <class Type>
-constexpr auto forward_from(auto&& value) -> auto&& {
-	using forward_type = util::apply_cvref_t<Type, std::remove_cvref_t<decltype(value)>>;
-	return std::forward<forward_type>(value);
-}
-
 // https://en.cppreference.com/w/cpp/experimental/scope_exit
 export template <class Invoke>
 class scope_exit : non_copyable {

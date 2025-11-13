@@ -85,7 +85,7 @@ class lock_notify {
 		lock_notify(const lock_notify&) = delete;
 		lock_notify(lock_notify&& that) noexcept :
 				cv_{std::exchange(that.cv_, nullptr)},
-				lock_{std::move(that.lock_)} {};
+				lock_{std::move(that).lock_} {};
 
 		~lock_notify() {
 			if (cv_ != nullptr && predicate_()) {

@@ -21,8 +21,8 @@ struct accept_vector_value<Meta, std::pair<Key, Value>> {
 
 		constexpr auto operator()(auto& visit, auto&& entry) const -> std::pair<Key, Value> {
 			return std::pair{
-				visit.first(util::forward_from<decltype(entry)>(entry.first), first),
-				visit.second(util::forward_from<decltype(entry)>(entry.second), second),
+				visit.first(std::forward<decltype(entry)>(entry).first, first),
+				visit.second(std::forward<decltype(entry)>(entry).second, second),
 			};
 		}
 
@@ -43,9 +43,10 @@ struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
 		using accept_type::accept_type;
 
 		constexpr auto operator()(Tag /*tag*/, auto& visit, auto&& subject) const -> vector_of<Tag, Entry> {
+			auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
 			return vector_of<Tag, Entry>{
 				std::from_range,
-				util::into_range(std::forward<decltype(subject)>(subject)) |
+				util::forward_range(std::forward<decltype(range)>(range)) |
 					std::views::transform([ & ](auto&& entry) -> Entry {
 						return util::invoke_as<accept_type>(*this, visit, std::forward<decltype(entry)>(entry));
 					})

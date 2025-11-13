@@ -135,9 +135,10 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			return {
 				napi::value<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{self}, subject.size())),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
-				[](napi::value<vector_tag> array, auto& self, auto& visit, auto /*&&*/ list) -> void {
+				[](napi::value<vector_tag> array, auto& self, auto& visit, auto /*&&*/ subject) -> void {
 					int ii = 0;
-					for (auto&& subject : util::into_range(std::forward<decltype(list)>(list))) {
+					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
+					for (auto&& subject : util::forward_range(std::forward<decltype(range)>(range))) {
 						auto* element = napi_value{visit(std::forward<decltype(subject)>(subject), self)};
 						napi::invoke0(napi_set_element, napi_env{self}, napi_value{array}, ii++, element);
 					}
@@ -171,8 +172,9 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](napi::value<list_tag> array, auto& self, auto& visit, auto /*&&*/ subject) -> void {
 					std::vector<napi_property_descriptor> properties;
-					properties.reserve(std::size(subject));
-					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(subject)>(subject))) {
+					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
+					properties.reserve(std::size(range));
+					for (auto&& [ key, value ] : util::forward_range(std::forward<decltype(range)>(range))) {
 						properties.emplace_back(napi_property_descriptor{
 							.utf8name{},
 							.name = napi_value{visit.first(std::forward<decltype(key)>(key), self)},
@@ -201,7 +203,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 					std::vector<napi_property_descriptor> properties;
 					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
 					properties.reserve(std::size(range));
-					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(range)>(range))) {
+					for (auto&& [ key, value ] : util::forward_range(std::forward<decltype(range)>(range))) {
 						properties.emplace_back(napi_property_descriptor{
 							.utf8name{},
 							.name = napi_value{visit.first(std::forward<decltype(key)>(key), self)},

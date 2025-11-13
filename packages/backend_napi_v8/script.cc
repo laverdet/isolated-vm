@@ -35,7 +35,7 @@ auto script_handle::compile_script(agent_handle& agent, environment& env, js::st
 			js::string_t code_string,
 			compile_script_options options
 		) -> void {
-			auto origin = std::move(options.origin).value_or(js::iv8::source_origin{});
+			auto origin = std::move(options).origin.value_or(js::iv8::source_origin{});
 			auto context = agent->scratch_context();
 			auto lock = js::iv8::context_managed_lock{agent, context};
 			auto local = js::iv8::script::compile(util::slice{lock}, std::move(code_string), std::move(origin));

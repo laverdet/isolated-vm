@@ -78,8 +78,8 @@ template <identity_hashable Key, class Value>
 auto weak_map<Key, Value>::emplace(isolate_lock_witness lock, std::pair<v8::Local<Key>, Value> entry) -> bool {
 	auto result = map_.emplace(
 		std::piecewise_construct,
-		std::forward_as_tuple(lock.isolate(), *this, std::move(entry.first)),
-		std::tuple{std::move(entry.second)}
+		std::forward_as_tuple(lock.isolate(), *this, std::move(entry).first),
+		std::tuple{std::move(entry).second}
 	);
 	return result.second;
 }

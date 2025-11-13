@@ -144,7 +144,8 @@ struct accept_v8_value : accept_v8_primitive {
 				v8::Array::New(self.isolate()),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](v8::Local<v8::Array> array, auto& self, auto& visit, auto /*&&*/ subject) -> void {
-					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(subject)>(subject))) {
+					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
+					for (auto&& [ key, value ] : util::forward_range(std::forward<decltype(range)>(range))) {
 						auto result = array->Set(
 							self.context_,
 							visit.first(std::forward<decltype(key)>(key), self),
@@ -163,7 +164,8 @@ struct accept_v8_value : accept_v8_primitive {
 				v8::Object::New(self.isolate()),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](v8::Local<v8::Object> object, auto& self, auto& visit, auto /*&&*/ subject) -> void {
-					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(subject)>(subject))) {
+					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
+					for (auto&& [ key, value ] : util::forward_range(std::forward<decltype(range)>(range))) {
 						auto result = object->Set(
 							self.context_,
 							visit.first(std::forward<decltype(key)>(key), self),

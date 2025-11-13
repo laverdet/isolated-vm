@@ -68,7 +68,7 @@ struct member_getter_delegate {
 
 		constexpr auto operator()(const Subject& subject) const -> const Type& { return subject.*(this->member_); }
 		// NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
-		constexpr auto operator()(Subject&& subject) const -> Type&& { return std::move(subject.*(this->member_)); }
+		constexpr auto operator()(Subject&& subject) const -> Type&& { return std::move(subject).*(this->member_); }
 
 	private:
 		Type Subject::* member_;

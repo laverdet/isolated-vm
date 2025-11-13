@@ -53,7 +53,7 @@ auto module_handle::compile(
 			js::string_t source_text,
 			compile_module_options options
 		) -> void {
-			auto origin = std::move(options.origin).value_or(js::iv8::source_origin{});
+			auto origin = std::move(options).origin.value_or(js::iv8::source_origin{});
 			auto context_lock = js::iv8::context_managed_lock{lock, lock->scratch_context()};
 			auto context_lock_of = realm::scope{context_lock, *lock};
 			auto maybe_module = js::iv8::module_record::compile(context_lock_of, std::move(source_text), std::move(origin));
@@ -209,7 +209,7 @@ auto module_handle::create_capability(
 					}),
 			};
 			auto module_ = realm.invoke(lock, [ & ](const isolated_v8::realm::scope& realm) mutable -> auto {
-				return js::iv8::module_record::create_synthetic(realm, std::move(capability_interface), std::move(options.origin));
+				return js::iv8::module_record::create_synthetic(realm, std::move(capability_interface), std::move(options).origin);
 			});
 			dispatch(std::move(agent), js::iv8::make_shared_remote(lock, std::move(module_)));
 		},

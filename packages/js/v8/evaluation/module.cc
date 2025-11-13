@@ -67,7 +67,7 @@ auto module_record::compile(const module_specifiers_lock& lock, v8::Local<v8::St
 		return v8::ScriptCompiler::CompileModule(lock.witness().isolate(), &source);
 	});
 	if (maybe_module && origin.name) {
-		lock.weak_module_specifiers().emplace(util::slice{lock.witness()}, std::pair{maybe_module.value(), *std::move(origin.name)});
+		lock.weak_module_specifiers().emplace(util::slice{lock.witness()}, std::pair{maybe_module.value(), *std::move(origin).name});
 	}
 	return maybe_module;
 }

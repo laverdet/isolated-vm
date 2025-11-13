@@ -41,10 +41,10 @@ class regular_return {
 			-> regular_value<std::invoke_result_t<util::apply_cvref_t<decltype(self), Type>, decltype(args)...>> {
 			using result_type = std::invoke_result_t<util::apply_cvref_t<decltype(self), Type>, decltype(args)...>;
 			if constexpr (std::is_void_v<result_type>) {
-				util::forward_from<decltype(self)>(self.invoke_)(std::forward<decltype(args)>(args)...);
+				std::forward<decltype(self)>(self).invoke_(std::forward<decltype(args)>(args)...);
 				return regular_value<void>{};
 			} else {
-				return regular_value<result_type>{util::forward_from<decltype(self)>(self.invoke_)(std::forward<decltype(args)>(args)...)};
+				return regular_value<result_type>{std::forward<decltype(self)>(self).invoke_(std::forward<decltype(args)>(args)...)};
 			}
 		}
 
