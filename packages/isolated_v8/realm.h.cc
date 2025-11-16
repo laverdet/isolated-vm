@@ -12,7 +12,7 @@ class realm_lock;
 
 export class realm {
 	public:
-		using scope = js::iv8::context_lock_witness_of<agent_host, agent_remote_handle_lock, agent_collected_handle_lock, agent_module_specifiers_lock>;
+		using scope = js::iv8::context_lock_witness_of<agent_host, agent_remote_handle_lock, agent_collected_handle_lock>;
 
 		realm() = delete;
 		realm(const agent_lock& agent, v8::Local<v8::Context> context);

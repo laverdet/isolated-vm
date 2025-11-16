@@ -35,9 +35,11 @@ auto runtime_interface::instantiate(const isolated_v8::realm::scope& realm) -> v
 	auto origin = std::u16string{u"isolated-vm://runtime"};
 	auto interface = js::iv8::module_record::create_synthetic(realm, make_interface(), std::move(origin));
 	auto runtime = js::iv8::module_record::compile(realm, std::string_view{runtime_dist_interface_js}, js::iv8::source_origin{}).value();
-	js::iv8::module_record::link(realm, runtime, [ & ](auto&&...) -> v8::Local<v8::Module> {
-		return interface;
-	});
+	auto link_record = js::iv8::module_link_record{
+		.modules = {runtime, interface},
+		.payload = {1, 1, 0},
+	};
+	js::iv8::module_record::link(realm, runtime, std::move(link_record));
 	js::iv8::module_record::evaluate(realm, runtime);
 	return runtime;
 }

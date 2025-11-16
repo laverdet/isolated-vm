@@ -1,7 +1,6 @@
 module;
 #include <expected>
 #include <functional>
-#include <optional>
 #include <ranges>
 #include <span>
 #include <string>
@@ -11,6 +10,7 @@ module;
 export module v8_js:evaluation.module_record;
 import :evaluation.origin;
 import :fixed_array;
+import :hash;
 import :lock;
 import :unmaybe;
 import :weak_map;
@@ -44,21 +44,12 @@ export class module_request {
 		};
 };
 
-// Lock type which manages a weak map of modules to their specifiers, since v8 for some reason does
-// not provide an easier means to do this.
-export class module_specifiers_lock {
-	public:
-		using weak_modules_specifiers_type = weak_map<v8::Module, std::u16string>;
-		explicit module_specifiers_lock(context_lock_witness witness, weak_modules_specifiers_type& weak_module_specifiers) :
-				weak_module_specifiers_{weak_module_specifiers},
-				witness_{witness} {}
-
-		[[nodiscard]] auto weak_module_specifiers() const -> weak_modules_specifiers_type& { return weak_module_specifiers_; }
-		[[nodiscard]] auto witness() const -> const context_lock_witness& { return witness_; }
-
-	private:
-		std::reference_wrapper<weak_modules_specifiers_type> weak_module_specifiers_;
-		context_lock_witness witness_;
+// Information needed to link module record
+export struct module_link_record {
+		// I guess actually these could be `std::span<T>` but they're coming from a vector anyway.
+		std::vector<v8::Local<v8::Module>> modules;
+		/** [[ count, module... ]... ] */
+		std::vector<unsigned> payload;
 };
 
 // `v8::Module` utilities
@@ -67,7 +58,6 @@ export class module_record
 			public handle_with_context {
 	public:
 		using expected_module_type = std::expected<v8::Local<v8::Module>, js::error_value>;
-		using module_link_action_type = auto (*)(isolate_lock_witness, std::optional<std::u16string>, module_request) -> v8::Local<v8::Module>;
 		using synthetic_module_action_type = auto (*)(context_lock_witness, v8::Local<v8::Module>) -> void;
 
 		explicit module_record(context_lock_witness lock, v8::Local<v8::Module> handle) :
@@ -75,25 +65,24 @@ export class module_record
 				handle_with_context{lock} {}
 
 		static auto evaluate(context_lock_witness lock, v8::Local<v8::Module> module) -> void;
-		static auto link(const module_specifiers_lock& lock, v8::Local<v8::Module> module, auto callback) -> void;
+		static auto link(context_lock_witness lock, v8::Local<v8::Module> module, module_link_record link_record) -> void;
+		static auto link(context_lock_witness lock, v8::Local<v8::Module> module) -> void;
 		static auto requests(context_lock_witness lock, v8::Local<v8::Module> module) -> std::vector<module_request>;
 
-		static auto compile(const module_specifiers_lock& lock, auto source_text, iv8::source_origin origin) -> expected_module_type;
+		static auto compile(context_lock_witness lock, auto source_text, iv8::source_origin origin) -> expected_module_type;
 		static auto create_synthetic(context_lock_witness lock, auto module_interface, auto origin) -> v8::Local<v8::Module>;
 
 	private:
 		using string_span = std::span<const v8::Local<v8::String>>;
 
-		static auto link(const module_specifiers_lock& lock, v8::Local<v8::Module> module, module_link_action_type callback) -> void;
-
-		static auto compile(const module_specifiers_lock& lock, v8::Local<v8::String> source_text, iv8::source_origin origin) -> expected_module_type;
+		static auto compile(context_lock_witness lock, v8::Local<v8::String> source_text, iv8::source_origin origin) -> expected_module_type;
 		static auto create_synthetic(context_lock_witness lock, string_span export_names, synthetic_module_action_type action, v8::Local<v8::String> module_name) -> v8::Local<v8::Module>;
 };
 
 // ---
 
-auto module_record::compile(const module_specifiers_lock& lock, auto source_text, iv8::source_origin origin) -> expected_module_type {
-	auto local_source_text = js::transfer_in_strict<v8::Local<v8::String>>(std::move(source_text), lock.witness());
+auto module_record::compile(context_lock_witness lock, auto source_text, iv8::source_origin origin) -> expected_module_type {
+	auto local_source_text = js::transfer_in_strict<v8::Local<v8::String>>(std::move(source_text), lock);
 	return compile(lock, local_source_text, std::move(origin));
 }
 
@@ -121,25 +110,6 @@ auto module_record::create_synthetic(context_lock_witness lock, auto module_inte
 		callback(lock, module);
 	};
 	return create_synthetic(lock, std::span{name_locals}, action, origin_local);
-}
-
-auto module_record::link(const module_specifiers_lock& lock, v8::Local<v8::Module> module, auto callback) -> void {
-	using callback_type = decltype(callback);
-	thread_local callback_type* tl_callback;
-	tl_callback = &callback;
-
-	module_link_action_type link_callback =
-		[](isolate_lock_witness lock, std::optional<std::u16string> referrer_name, module_request request) -> v8::Local<v8::Module> {
-		auto& callback = *tl_callback;
-		return callback(
-			lock,
-			std::move(request).specifier(),
-			std::move(referrer_name),
-			std::move(request).attributes()
-		);
-	};
-
-	link(lock, module, link_callback);
 }
 
 } // namespace js::iv8

@@ -2,6 +2,7 @@ module;
 #include <cassert>
 #include <ranges>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 module v8_js;
@@ -11,12 +12,6 @@ import isolated_js;
 import v8;
 
 namespace js::iv8 {
-namespace {
-thread_local v8::Isolate* tl_isolate;
-thread_local const module_specifiers_lock* tl_module_lock;
-thread_local module_record::synthetic_module_action_type* tl_synthetic_action;
-thread_local module_record::module_link_action_type* tl_link_action;
-} // namespace
 
 auto module_record::requests(context_lock_witness lock, v8::Local<v8::Module> module) -> std::vector<module_request> {
 	auto requests_array = fixed_array{lock.context(), module->GetModuleRequests()};
@@ -45,8 +40,8 @@ auto module_record::requests(context_lock_witness lock, v8::Local<v8::Module> mo
 	return {std::from_range, std::move(requests_view)};
 }
 
-auto module_record::compile(const module_specifiers_lock& lock, v8::Local<v8::String> source_text, iv8::source_origin origin) -> expected_module_type {
-	auto maybe_resource_name = js::transfer_in_strict<v8::MaybeLocal<v8::String>>(origin.name, lock.witness());
+auto module_record::compile(context_lock_witness lock, v8::Local<v8::String> source_text, iv8::source_origin origin) -> expected_module_type {
+	auto maybe_resource_name = js::transfer_in_strict<v8::MaybeLocal<v8::String>>(origin.name, lock);
 	v8::Local<v8::String> resource_name{};
 	// nb: Empty handle is ok for `v8::ScriptOrigin`
 	(void)maybe_resource_name.ToLocal(&resource_name);
@@ -63,16 +58,15 @@ auto module_record::compile(const module_specifiers_lock& lock, v8::Local<v8::St
 		true,
 	};
 	v8::ScriptCompiler::Source source{source_text, script_origin};
-	auto maybe_module = unmaybe_one(lock.witness(), [ & ] -> v8::MaybeLocal<v8::Module> {
-		return v8::ScriptCompiler::CompileModule(lock.witness().isolate(), &source);
+	auto maybe_module = unmaybe_one(lock, [ & ] -> v8::MaybeLocal<v8::Module> {
+		return v8::ScriptCompiler::CompileModule(lock.isolate(), &source);
 	});
-	if (maybe_module && origin.name) {
-		lock.weak_module_specifiers().emplace(util::slice{lock.witness()}, std::pair{maybe_module.value(), *std::move(origin).name});
-	}
 	return maybe_module;
 }
 
 auto module_record::create_synthetic(context_lock_witness lock, string_span export_names, synthetic_module_action_type action, v8::Local<v8::String> module_name) -> v8::Local<v8::Module> {
+	thread_local v8::Isolate* tl_isolate;
+	thread_local synthetic_module_action_type* tl_synthetic_action;
 	tl_isolate = lock.isolate();
 	tl_synthetic_action = &action;
 
@@ -98,53 +92,53 @@ auto module_record::create_synthetic(context_lock_witness lock, string_span expo
 	return module_record;
 }
 
-auto module_record::link(const module_specifiers_lock& lock, v8::Local<v8::Module> module, module_link_action_type callback) -> void {
-	tl_module_lock = &lock;
-	tl_link_action = &callback;
+auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module, module_link_record link_record) -> void {
+	// Initialize link state
+	auto module_specifier_map = std::unordered_map<v8::Local<v8::Module>, unsigned, address_hash>{};
+	auto module_id = 0U;
+	for (auto ii = 0UZ; ii < link_record.payload.size();) {
+		auto count = link_record.payload.at(ii);
+		module_specifier_map.emplace(link_record.modules.at(module_id), static_cast<unsigned>(ii) + 1);
+		ii += count + 1;
+		++module_id;
+	}
 
-	// Linker callback implementation
+	// Linker implementation. We simply assume that module link requests for the same module go in the
+	// same order as `GetModuleRequests()`
+	auto linker = [ & ](v8::Local<v8::Module> referrer) -> v8::Local<v8::Module> {
+		auto it = module_specifier_map.find(referrer);
+		if (it == module_specifier_map.end()) {
+			throw js::runtime_error{u"Referrer module not found in link record"};
+		}
+		return link_record.modules.at(link_record.payload.at(it->second++));
+	};
+	thread_local auto* linker_ptr = &linker;
+
+	// v8 linker callback
 	v8::Module::ResolveModuleCallback v8_callback =
 		[](
-			v8::Local<v8::Context> context,
-			v8::Local<v8::String> specifier,
-			v8::Local<v8::FixedArray> attributes,
+			v8::Local<v8::Context> /*context*/,
+			v8::Local<v8::String> /*specifier*/,
+			v8::Local<v8::FixedArray> /*attributes*/,
 			v8::Local<v8::Module> referrer
 		) -> v8::MaybeLocal<v8::Module> {
-		const auto& lock = *tl_module_lock;
-		auto& action = *tl_link_action;
-		auto specifier_string = js::transfer_out_strict<std::u16string>(specifier, lock.witness());
-		auto referrer_name = [ & ]() -> std::optional<std::u16string> {
-			auto& weak_module_specifiers = lock.weak_module_specifiers();
-			const auto* referrer_name = weak_module_specifiers.find(referrer);
-			if (referrer_name == nullptr) {
-				return std::nullopt;
-			} else {
-				return *referrer_name;
-			}
-		}();
-		auto attributes_view =
-			fixed_array{context, attributes} |
-			// [ key, value, ...[] ]
-			std::views::chunk(2) |
-			std::views::transform([ & ](const auto& pair) -> auto {
-				auto entry = js::transfer_out_strict<std::array<std::u16string, 2>>(
-					std::array{
-						pair[ 0 ].template As<v8::String>(),
-						pair[ 1 ].template As<v8::String>()
-					},
-					lock.witness()
-				);
-				return std::pair{std::move(entry[ 0 ]), std::move(entry[ 1 ])};
-			});
-		auto attributes_vector = module_request::attributes_type{std::from_range, std::move(attributes_view)};
-		const auto unlocker = isolate_unlock{util::slice{lock.witness()}};
-		return action(
-			util::slice{lock.witness()},
-			std::move(referrer_name),
-			module_request{std::move(specifier_string), std::move(attributes_vector)}
-		);
+		return (*linker_ptr)(referrer);
 	};
-	unmaybe(module->InstantiateModule(lock.witness().context(), v8_callback));
+	unmaybe(module->InstantiateModule(lock.context(), v8_callback));
+}
+
+auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module) -> void {
+	// Probably a synthetic module
+	v8::Module::ResolveModuleCallback v8_callback =
+		[](
+			v8::Local<v8::Context> /*context*/,
+			v8::Local<v8::String> /*specifier*/,
+			v8::Local<v8::FixedArray> /*attributes*/,
+			v8::Local<v8::Module> /*referrer*/
+		) -> v8::MaybeLocal<v8::Module> {
+		std::terminate();
+	};
+	unmaybe(module->InstantiateModule(lock.context(), v8_callback));
 }
 
 auto module_record::evaluate(context_lock_witness lock, v8::Local<v8::Module> module) -> void {

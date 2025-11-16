@@ -60,7 +60,6 @@ export class agent_host : public std::enable_shared_from_this<agent_host> {
 		// be called before destruction but this invariant isn't enforced statically.
 		~agent_host() = default;
 
-		auto async_scheduler(this auto& self) -> auto& { return self.async_scheduler_; }
 		auto autorelease_pool() -> util::autorelease_pool& { return autorelease_pool_; }
 		auto clock(this auto& self) -> auto& { return self.clock_; }
 		auto clock_time_ms() -> int64_t;
@@ -73,7 +72,6 @@ export class agent_host : public std::enable_shared_from_this<agent_host> {
 		auto scratch_context() -> v8::Local<v8::Context>;
 		auto take_random_seed() -> std::optional<double>;
 		auto task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner>;
-		auto weak_module_specifiers() -> js::iv8::module_specifiers_lock::weak_modules_specifiers_type& { return weak_module_specifiers_; }
 
 		static auto acquire_severable(const std::shared_ptr<agent_host>& self) -> std::shared_ptr<agent_severable>;
 		static auto get_current() -> agent_host*;
@@ -92,13 +90,11 @@ export class agent_host : public std::enable_shared_from_this<agent_host> {
 		util::autorelease_pool autorelease_pool_;
 		std::weak_ptr<agent_severable> severable_;
 		std::shared_ptr<js::iv8::platform::foreground_runner> foreground_runner_;
-		js::iv8::platform::foreground_runner async_scheduler_;
 		std::unique_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
 		std::unique_ptr<v8::Isolate, util::function_constant<dispose_isolate>> isolate_;
 		js::iv8::remote_handle_list remote_handle_list_;
 		reset_handle_callback_type reset_handle_callback_{make_remote_expiration_callback(this)};
 		js::iv8::reset_handle_type reset_handle_{reset_handle_callback_};
-		js::iv8::module_specifiers_lock::weak_modules_specifiers_type weak_module_specifiers_;
 		v8::Global<v8::Context> scratch_context_;
 
 		bool should_give_seed_{false};
@@ -134,9 +130,7 @@ class agent_host_of : public agent_host {
 auto agent_host::destroy_isolate_callback(auto locked_callback) -> void {
 	cluster_.get().release_runner(foreground_runner_);
 	foreground_runner_->terminate();
-	async_scheduler_.terminate();
 	foreground_runner_->finalize();
-	async_scheduler_.finalize();
 	auto lock = js::iv8::isolate_execution_lock{isolate_.get()};
 	autorelease_pool_.clear();
 	remote_handle_list_.clear(util::slice{lock});

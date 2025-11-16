@@ -57,7 +57,7 @@ struct accept<Meta, std::vector<Type>> : accept_value<Meta, Type> {
 				std::from_range,
 				util::forward_range(std::forward<decltype(range)>(range)) |
 					std::views::transform([ & ](auto&& entry) -> Type {
-						return visit(std::forward<decltype(entry)>(entry).second, accept);
+						return visit.second(std::forward<decltype(entry)>(entry).second, accept);
 					})
 			};
 		}

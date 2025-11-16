@@ -29,7 +29,7 @@ module_handle::module_handle(agent_handle agent, js::iv8::shared_remote<v8::Modu
 auto module_handle::compile(
 	agent_handle& agent,
 	environment& env,
-	js::forward<js::napi::value<function_tag>, function_tag> constructor,
+	js::forward<js::napi::value<function_tag>> constructor,
 	js::string_t source_text,
 	compile_module_options options
 ) -> js::napi::value<promise_tag> {
@@ -37,11 +37,21 @@ auto module_handle::compile(
 	using expected_type = std::expected<value_type, js::error_value>;
 	auto [ dispatch, promise ] = make_promise(
 		env,
-		[](environment& env, agent_handle agent, js::napi::unique_remote<function_tag> constructor, expected_type maybe_module) -> auto {
+		[](
+			environment& env,
+			agent_handle agent,
+			js::napi::unique_remote<function_tag> constructor,
+			std::optional<std::u16string> specifier,
+			expected_type maybe_module
+		) -> auto {
 			return make_completion_record(env, std::move(maybe_module).transform([ & ](value_type module_data) -> auto {
 				auto class_template = js::napi::value<class_tag_of<module_handle>>::from(constructor->deref(env));
 				auto [ shared_module, requests ] = std::move(module_data);
-				return js::forward{class_template.runtime_construct(env, std::tuple{std::move(agent), std::move(shared_module)}, std::tuple{std::move(requests)})};
+				return js::forward{class_template.runtime_construct(
+					env,
+					std::tuple{std::move(agent), std::move(shared_module)},
+					std::tuple{std::move(specifier), std::move(requests)}
+				)};
 			}));
 		}
 	);
@@ -54,13 +64,19 @@ auto module_handle::compile(
 			compile_module_options options
 		) -> void {
 			auto origin = std::move(options).origin.value_or(js::iv8::source_origin{});
+			auto specifier = origin.name;
 			auto context_lock = js::iv8::context_managed_lock{lock, lock->scratch_context()};
 			auto context_lock_of = realm::scope{context_lock, *lock};
 			auto maybe_module = js::iv8::module_record::compile(context_lock_of, std::move(source_text), std::move(origin));
-			dispatch(std::move(agent), std::move(constructor), maybe_module.transform([ & ](v8::Local<v8::Module> module_record) -> value_type {
-				auto shared_module = js::iv8::make_shared_remote(lock, module_record);
-				return {shared_module, js::iv8::module_record::requests(context_lock_of, module_record)};
-			}));
+			dispatch(
+				std::move(agent),
+				std::move(constructor),
+				std::move(specifier),
+				maybe_module.transform([ & ](v8::Local<v8::Module> module_record) -> value_type {
+					auto shared_module = js::iv8::make_shared_remote(lock, module_record);
+					return {shared_module, js::iv8::module_record::requests(context_lock_of, module_record)};
+				})
+			);
 		},
 		agent,
 		js::napi::make_unique_remote(env, *constructor),
@@ -242,82 +258,54 @@ auto module_handle::evaluate(environment& env, realm_handle& realm) -> js::napi:
 	return promise;
 }
 
-auto module_handle::link(environment& env, realm_handle& realm, callback_type link_callback) -> js::napi::value<promise_tag> {
-	using attributes_type = js::iv8::module_request::attributes_type;
+// Deref `remote<v8::Module>` into `v8::Module`
+auto deref_remote_link_record(js::iv8::isolate_lock_witness lock, remote_module_link_record&& link_record) -> js::iv8::module_link_record {
+	return {
+		.modules = std::vector{
+			std::from_range,
+			link_record.modules |
+				std::views::transform([ & ](auto& remote_module) {
+					return remote_module->deref(lock);
+				}),
+		},
+		.payload = std::move(link_record.payload),
+	};
+};
+
+auto module_handle::link(environment& env, realm_handle& realm, module_handle_link_record link_record) -> js::napi::value<promise_tag> {
 	auto scheduler = env.scheduler();
-	js::napi::reference link_callback_ref{env, *link_callback};
 	auto [ dispatch, promise ] = make_promise(env, [](environment& /*env*/) -> bool { return true; });
-	// Invoke the passed link callback in response to v8 link callback. This is invoked in the node
-	// environment.
-	auto clink_link_callback =
-		[ &env,
-			link_callback_ref = std::move(link_callback_ref) ](
-			std::promise<js::iv8::shared_remote<v8::Module>> promise,
-			js::string_t specifier,
-			std::optional<js::string_t> referrer,
-			attributes_type attributes
-		) -> void {
-		js::napi::handle_scope scope{napi_env{env}};
-		auto callback = js::free_function{
-			[ promise = std::move(promise) ](
-				environment& /*env*/,
-				js::forward<js::napi::value<js::value_tag>> /*error*/,
-				module_handle* module
-			) mutable -> void {
-				if (module) {
-					promise.set_value(module->module_);
-				} else {
-					throw std::logic_error{"link failure"};
-				}
-			}
-		};
-		auto callback_fn = js::napi::value<js::function_tag>::make(env, std::move(callback));
-		link_callback_ref.get(env).call(
-			env,
-			std::move(specifier),
-			std::move(referrer),
-			std::move(attributes),
-			js::forward{callback_fn}
-		);
+
+	// Convert `module_handle` to `remote<v8::Module>`
+	auto remote_link_record = remote_module_link_record{
+		.modules = std::vector{
+			std::from_range,
+			link_record.modules |
+				std::views::transform([ & ](auto& module) {
+					return module->module_;
+				}),
+		},
+		.payload = std::move(link_record.payload),
 	};
-	// Invoked by v8 to resolve a module link.
-	auto host_link_callback =
-		[ scheduler = std::move(scheduler),
-			clink_link_callback = std::move(clink_link_callback) ](
-			js::iv8::isolate_lock_witness lock,
-			js::string_t specifier,
-			std::optional<js::string_t> referrer,
-			attributes_type attributes
-		) -> v8::Local<v8::Module> {
-		std::promise<js::iv8::shared_remote<v8::Module>> promise;
-		auto future = promise.get_future();
-		scheduler([ & ]() -> void {
-			clink_link_callback(
-				std::move(promise),
-				std::move(specifier),
-				std::move(referrer),
-				std::move(attributes)
-			);
-		});
-		return future.get()->deref(lock);
-	};
+
 	// Schedule the link operation
-	agent_.schedule_async(
+	agent_.schedule(
 		[ dispatch = std::move(dispatch) ](
-			const std::stop_token& /*stop_token*/,
 			const agent_handle::lock& agent,
 			const isolated_v8::realm& realm,
 			js::iv8::shared_remote<v8::Module> module,
-			auto host_link_callback
+			remote_module_link_record link_record
 		) -> void {
-			realm.invoke(agent, [ & ](const isolated_v8::realm::scope& realm) -> void {
-				js::iv8::module_record::link(realm, module->deref(realm), std::move(host_link_callback));
+			auto module_local = module->deref(agent);
+			auto local_link_record = deref_remote_link_record(agent, std::move(link_record));
+			realm.invoke(agent, [ & ](const isolated_v8::realm::scope& lock) -> void {
+				js::iv8::module_record::link(lock, module_local, std::move(local_link_record));
 			});
 			dispatch();
 		},
 		realm.realm(),
 		module_,
-		std::move(host_link_callback)
+		std::move(remote_link_record)
 	);
 	return promise;
 }

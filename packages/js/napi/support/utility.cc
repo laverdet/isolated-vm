@@ -10,6 +10,7 @@ namespace js::napi {
 // See: `v8_enable_direct_handle`.
 
 // Null handle for both direct and indirect handles
+// Note: 1 -> 0x1'0000'0000
 const void* null_value_handle_ = nullptr;
 export auto* const null_value_handle = reinterpret_cast<napi_value>(&null_value_handle_);
 

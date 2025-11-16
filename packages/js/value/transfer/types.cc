@@ -17,7 +17,13 @@ struct visit;
 
 // Allows the subject or target of `transfer` to pass through a value directly without invoking
 // `visit` or `accept`. For example, as a directly created element of an array.
-export template <class Type, class Tag = value_tag>
+export template <class Type>
+struct forward_tag_for : std::type_identity<value_tag> {};
+
+template <class Type>
+using forward_tag_for_t = forward_tag_for<Type>::type;
+
+export template <class Type, class Tag = forward_tag_for_t<Type>>
 struct forward : util::pointer_facade {
 	public:
 		explicit forward(const Type& value, Tag /*tag*/ = {}) :

@@ -13,6 +13,7 @@ namespace v8 = embedded_v8;
 
 namespace backend_napi_v8 {
 using namespace isolated_v8;
+export class module_handle;
 
 struct compile_module_options : js::optional_constructible {
 		using js::optional_constructible::optional_constructible;
@@ -31,6 +32,21 @@ struct create_capability_options {
 		};
 };
 
+struct module_handle_link_record {
+		std::vector<js::tagged_external<module_handle>> modules;
+		std::vector<unsigned> payload;
+
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_member{util::cw<"modules">, &module_handle_link_record::modules},
+			js::struct_member{util::cw<"payload">, &module_handle_link_record::payload},
+		};
+};
+
+struct remote_module_link_record {
+		std::vector<js::iv8::shared_remote<v8::Module>> modules;
+		std::vector<unsigned> payload;
+};
+
 export class subscriber_capability;
 
 export class module_handle {
@@ -44,12 +60,12 @@ export class module_handle {
 		auto agent() -> auto& { return agent_; }
 
 		auto evaluate(environment& env, realm_handle& realm) -> js::napi::value<promise_tag>;
-		auto link(environment& env, realm_handle& realm, callback_type link_callback) -> js::napi::value<promise_tag>;
+		auto link(environment& env, realm_handle& realm, module_handle_link_record link_record) -> js::napi::value<promise_tag>;
 
 		static auto compile(
 			agent_handle& agent,
 			environment& env,
-			js::forward<js::napi::value<function_tag>, function_tag> constructor,
+			js::forward<js::napi::value<function_tag>> constructor,
 			js::string_t source_text,
 			compile_module_options options
 		) -> js::napi::value<promise_tag>;

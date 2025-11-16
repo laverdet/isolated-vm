@@ -24,15 +24,10 @@ class agent_collected_handle_lock : public js::iv8::collected_handle_lock {
 		agent_collected_handle_lock(js::iv8::isolate_lock_witness lock, agent_host& agent);
 };
 
-class agent_module_specifiers_lock : public js::iv8::module_specifiers_lock {
-	public:
-		agent_module_specifiers_lock(js::iv8::context_lock_witness lock, agent_host& agent);
-};
-
 // An `agent_lock` is a simple holder for an `agent_host` which proves that we are executing in the
 // isolate context.
 export using agent_lock =
-	js::iv8::isolate_lock_witness_of<agent_host, agent_remote_handle_lock, agent_collected_handle_lock, agent_module_specifiers_lock>;
+	js::iv8::isolate_lock_witness_of<agent_host, agent_remote_handle_lock, agent_collected_handle_lock>;
 
 export template <class Type>
 class agent_lock_of : public agent_lock {
@@ -55,8 +50,6 @@ class agent_handle {
 
 		auto schedule(auto task, auto... args) const -> void
 			requires std::invocable<decltype(task), lock, decltype(args)...>;
-		auto schedule_async(auto task, auto... args) -> void
-			requires std::invocable<decltype(task), const std::stop_token&, lock, decltype(args)...>;
 
 		static auto make(cluster& cluster, auto make_environment, behavior_params params, std::invocable<lock, agent_handle> auto callback) -> void;
 
@@ -109,24 +102,6 @@ auto agent_handle<Type>::schedule(auto task, auto... args) const -> void
 				auto isolate_lock = js::iv8::isolate_execution_lock{host->isolate()};
 				std::visit([](auto& clock) -> void { clock.begin_tick(); }, host->clock());
 				task(lock{isolate_lock, *host}, std::move(args)...);
-			},
-			std::move(host),
-			std::move(task),
-			std::move(args)...
-		);
-	}
-}
-
-template <class Type>
-auto agent_handle<Type>::schedule_async(auto task, auto... args) -> void
-	requires std::invocable<decltype(task), const std::stop_token&, lock, decltype(args)...> {
-	auto host = host_.lock();
-	if (host) {
-		auto& scheduler = host->async_scheduler();
-		scheduler.schedule_client_task(
-			[](std::stop_token stop_token, auto host, auto task, auto... args) {
-				auto isolate_lock = js::iv8::isolate_execution_lock{host->isolate()};
-				task(stop_token, lock{isolate_lock, *host}, std::move(args)...);
 			},
 			std::move(host),
 			std::move(task),

@@ -279,9 +279,9 @@ struct accept<Meta, napi::value<value_tag>> : accept_napi_value_with<Meta> {
 
 // Forwarded `napi::value<T>` acceptor
 template <class Tag>
-struct accept<void, js::forward<napi::value<Tag>, value_tag>> {
-		auto operator()(Tag /*tag*/, visit_holder /*visit*/, napi::value<Tag> value) const -> js::forward<napi::value<Tag>, value_tag> {
-			return js::forward{napi::value<Tag>{value}, value_tag{}};
+struct accept<void, js::forward<napi::value<Tag>, Tag>> {
+		auto operator()(Tag /*tag*/, visit_holder /*visit*/, napi::value<Tag> value) const -> js::forward<napi::value<Tag>, Tag> {
+			return js::forward{napi::value<Tag>{value}, Tag{}};
 		}
 };
 

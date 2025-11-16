@@ -113,11 +113,12 @@ struct visit_napi_value
 		template <class Accept>
 		auto operator()(napi_value subject, const Accept& accept) -> accept_target_t<Accept> {
 			// Check known address values before the map lookup
-			if (equal_(subject, undefined_)) {
-				return (*this)(napi::value<undefined_tag>::from(subject), accept);
-			} else if (equal_(subject, null_)) {
-				return (*this)(napi::value<null_tag>::from(subject), accept);
-			}
+			// TODO: Fix it
+			// if (equal_(subject, undefined_)) {
+			// 	return (*this)(napi::value<undefined_tag>::from(subject), accept);
+			// } else if (equal_(subject, null_)) {
+			// 	return (*this)(napi::value<null_tag>::from(subject), accept);
+			// }
 
 			// Check the reference map, and lookup type via napi
 			return this->lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {

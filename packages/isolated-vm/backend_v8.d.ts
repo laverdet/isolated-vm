@@ -1,13 +1,11 @@
 declare module "#backend_v8" {
-	type Callback<Type> = (error: unknown | null, value?: Type) => void;
 	type CapabilityMake = import("./frontend/realm.ts").Realm.CapabilityMake;
 	type CompileModuleOptions = import("./frontend/agent.ts").Agent.CompileModuleOptions;
 	type CompileScriptOptions = import("./frontend/agent.ts").Agent.CompileScriptOptions;
 	type CreateAgentOptions = import("./frontend/agent.ts").Agent.CreateOptions;
 	type CreateCapabilityOptions = import("./frontend/realm.ts").Realm.CreateCapabilityOptions;
-	type ImportAttributes = import("./frontend/module.ts").Module.ImportAttributes;
 	type MaybeCompletionOf<T> = import("./utility/completion.ts").MaybeCompletionOf<T>;
-	type ModuleLinker = (specifier: string, referrer: string | undefined, attributes: ImportAttributes | undefined, callback: Callback<Module>) => void;
+	type ModuleLinkRecord = import("./frontend/module.ts").Module.LinkRecord;
 	type RunScriptOptions = import("./frontend/script.ts").Script.RunScriptOptions;
 
 	const Secret: unique symbol;
@@ -26,7 +24,7 @@ declare module "#backend_v8" {
 	export class Module {
 		readonly #private;
 		constructor(secret: Secret, ...args: unknown[]);
-		/** @internal */ _link(realm: Realm, linker: ModuleLinker): Promise<void>;
+		/** @internal */ _link(realm: Realm, linker: ModuleLinkRecord): Promise<void>;
 		evaluate(realm: Realm): Promise<unknown>;
 	}
 

@@ -15,8 +15,4 @@ agent_remote_handle_lock::agent_remote_handle_lock(js::iv8::isolate_lock_witness
 agent_collected_handle_lock::agent_collected_handle_lock(js::iv8::isolate_lock_witness lock, agent_host& agent) :
 		collected_handle_lock{lock, agent.autorelease_pool()} {};
 
-// `agent_module_specifiers_lock`
-agent_module_specifiers_lock::agent_module_specifiers_lock(js::iv8::context_lock_witness lock, agent_host& agent) :
-		module_specifiers_lock{lock, agent.weak_module_specifiers()} {};
-
 } // namespace isolated_v8

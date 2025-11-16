@@ -2,11 +2,19 @@ module;
 #include <concepts>
 export module napi_js:value_handle;
 import nodejs;
+import isolated_js;
 
-namespace js::napi {
-
+namespace js {
 // Forward declaration
+namespace napi {
 export template <class Tag> class value;
+}
+
+// Specialize for `js::forward<napi::value<Tag>>`
+template <class Tag>
+struct forward_tag_for<napi::value<Tag>> : std::type_identity<Tag> {};
+
+namespace napi {
 
 // `value_handle` is the base class of `value<T>`, and `bound_value<T>`.
 class value_handle {
@@ -54,4 +62,5 @@ class value<void> : public value_handle {
 		using value_handle::value_handle;
 };
 
-} // namespace js::napi
+} // namespace napi
+} // namespace js

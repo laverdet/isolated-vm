@@ -58,7 +58,7 @@ struct make_agent_options {
 agent_environment::agent_environment(const isolated_v8::agent_lock& lock) :
 		runtime_interface_{lock} {}
 
-auto create_agent(environment& env, js::forward<js::napi::value<function_tag>, function_tag> constructor, std::optional<make_agent_options> options_optional) {
+auto create_agent(environment& env, js::forward<js::napi::value<function_tag>> constructor, std::optional<make_agent_options> options_optional) {
 	namespace clock = isolated_v8::clock;
 	auto options = std::move(options_optional).value_or(make_agent_options{});
 	auto& cluster = env.cluster();
