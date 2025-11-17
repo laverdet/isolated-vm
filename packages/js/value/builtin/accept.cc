@@ -7,11 +7,10 @@ module;
 #include <utility>
 #include <variant>
 export module isolated_js:builtin.accept;
-import :bigint;
-import :date;
-import :external;
-import :external;
-import :error;
+import :intrinsics.bigint;
+import :intrinsics.date;
+import :intrinsics.error;
+import :intrinsics.external;
 import :transfer;
 import ivm.utility;
 

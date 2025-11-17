@@ -4,7 +4,7 @@ module;
 #include <utility>
 #include <variant>
 export module isolated_js:variant.accept;
-import :external;
+import :intrinsics.external;
 import :transfer;
 import :variant.types;
 import ivm.utility;

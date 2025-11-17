@@ -3,8 +3,8 @@ module;
 #include <type_traits>
 #include <utility>
 export module isolated_js:enum_.accept;
-import :error;
 import :enum_.types;
+import :intrinsics.error;
 import :transfer;
 import ivm.utility;
 

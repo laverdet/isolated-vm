@@ -3,9 +3,9 @@ module;
 #include <string>
 #include <variant>
 export module isolated_js:value;
-export import :bigint;
-export import :date;
 export import :dictionary.vector_of;
+export import :intrinsics.bigint;
+export import :intrinsics.date;
 import :variant.types;
 import :tag;
 

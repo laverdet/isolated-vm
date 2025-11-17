@@ -5,6 +5,7 @@ target_sources(v8_js
 		evaluation/module.cc
 		evaluation/script.cc
 		handle/remote.cc
+		isolated/clock.cc
 		platform/foreground_runner.cc
 		platform/worker_runner.cc
 		support/lock.cc
@@ -23,6 +24,7 @@ target_sources(v8_js
 		evaluation/script.h.cc
 		handle/collected_handle.cc
 		handle/remote.h.cc
+		isolated/clock.h.cc
 		platform/foreground_runner.h.cc
 		platform/scheduler.cc
 		platform/task_queue.cc

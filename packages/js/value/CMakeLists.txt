@@ -5,9 +5,6 @@ target_sources(value_js
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		builtin/accept.cc
-		builtin/bigint.cc
-		builtin/date.cc
-		builtin/error.cc
 		builtin/value.cc
 		builtin/visit.cc
 		dictionary/accept.cc
@@ -15,6 +12,10 @@ target_sources(value_js
 		dictionary/visit.cc
 		enum/accept.cc
 		enum/types.cc
+		intrinsics/bigint.cc
+		intrinsics/date.cc
+		intrinsics/error.cc
+		intrinsics/external.cc
 		reference/accept.cc
 		reference/reference_of.cc
 		reference/referential_value.cc
@@ -31,7 +32,6 @@ target_sources(value_js
 		transfer/visit.cc
 		tuple/accept.cc
 		tuple/visit.cc
-		type/external.cc
 		type/function.cc
 		type/property.cc
 		union/accept.cc

@@ -5,7 +5,7 @@ module;
 #include <utility>
 #include <variant>
 export module isolated_js:union_.accept;
-import :error;
+import :intrinsics.error;
 import :transfer;
 import :union_.types;
 import :variant.types;

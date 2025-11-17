@@ -6,7 +6,7 @@ module;
 #include <type_traits>
 #include <utility>
 export module isolated_js:struct_.accept;
-import :error;
+import :intrinsics.error;
 import :property;
 import :struct_.types;
 import :transfer;
@@ -76,7 +76,7 @@ struct accept_struct_properties<Meta, Type, js::struct_template<Property...>> {
 				}()} {}
 
 		constexpr auto operator()(undefined_tag /*tag*/, auto& /*visit*/, const auto& /*subject*/) const -> Type
-			requires (std::is_default_constructible_v<Type> && descriptor_type::defaultable) {
+			requires(std::is_default_constructible_v<Type> && descriptor_type::defaultable) {
 			return Type{};
 		}
 

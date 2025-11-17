@@ -10,6 +10,7 @@ import :agent_host;
 import :platform;
 import ivm.utility;
 import v8;
+using namespace std::chrono;
 
 namespace isolated_v8 {
 
@@ -27,7 +28,6 @@ platform::~platform() {
 
 auto platform::MonotonicallyIncreasingTime() -> double {
 	// I think this is only used for internal instrumentation, so no need to delegate to the agent
-	using namespace std::chrono;
 	auto duration = steady_clock::now().time_since_epoch();
 	return static_cast<double>(duration_cast<seconds>(duration).count());
 }

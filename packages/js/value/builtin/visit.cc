@@ -5,9 +5,9 @@ module;
 #include <string_view>
 #include <variant>
 export module isolated_js:builtin.visit;
-import :bigint;
-import :date;
-import :error;
+import :intrinsics.error;
+import :intrinsics.bigint;
+import :intrinsics.date;
 import :transfer;
 import ivm.utility;
 

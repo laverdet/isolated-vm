@@ -2,7 +2,7 @@ module;
 #include <cstdint>
 #include <exception>
 #include <string>
-export module isolated_js:error;
+export module isolated_js:intrinsics.error;
 
 namespace js {
 

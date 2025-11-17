@@ -9,7 +9,7 @@ export import :accept;
 export import :tag;
 export import :transfer.types;
 export import :visit;
-import :error;
+import :intrinsics.error;
 import ivm.utility;
 
 namespace js {

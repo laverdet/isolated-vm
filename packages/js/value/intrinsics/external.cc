@@ -1,4 +1,4 @@
-export module isolated_js:external;
+export module isolated_js:intrinsics.external;
 import ivm.utility;
 
 namespace js {

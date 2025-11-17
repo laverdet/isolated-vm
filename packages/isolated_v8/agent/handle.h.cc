@@ -5,7 +5,6 @@ module;
 #include <variant>
 export module isolated_v8:agent_handle;
 export import :agent_host;
-import :clock;
 import :cluster;
 import ivm.utility;
 import v8_js;

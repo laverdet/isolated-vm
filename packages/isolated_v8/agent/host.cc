@@ -1,4 +1,5 @@
 module;
+#include <chrono>
 #include <memory>
 #include <optional>
 #include <stop_token>
@@ -46,7 +47,15 @@ auto agent_host::acquire_severable(const std::shared_ptr<agent_host>& self) -> s
 }
 
 auto agent_host::clock_time_ms() -> int64_t {
-	return std::visit([](auto&& clock) -> int64_t { return clock.clock_time_ms(); }, clock_);
+	using namespace std::chrono;
+	return std::visit(
+		[](auto& clock) -> int64_t {
+			auto unix_time = system_clock::time_point{clock.clock_time()};
+			auto ms_time = duration_cast<milliseconds>(unix_time.time_since_epoch());
+			return static_cast<int64_t>(ms_time.count());
+		},
+		clock_
+	);
 }
 
 // v8 uses the same entropy source for `Math.random()` and also memory page randomization. We want

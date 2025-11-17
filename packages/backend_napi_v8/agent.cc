@@ -59,7 +59,7 @@ agent_environment::agent_environment(const isolated_v8::agent_lock& lock) :
 		runtime_interface_{lock} {}
 
 auto create_agent(environment& env, js::forward<js::napi::value<function_tag>> constructor, std::optional<make_agent_options> options_optional) {
-	namespace clock = isolated_v8::clock;
+	using namespace js::iv8::isolated;
 	auto options = std::move(options_optional).value_or(make_agent_options{});
 	auto& cluster = env.cluster();
 	auto [ dispatch, promise ] = make_promise(env, [](environment& env, agent_handle agent, js::napi::unique_remote<function_tag> constructor) -> auto {

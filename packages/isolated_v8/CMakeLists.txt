@@ -3,7 +3,6 @@ target_sources(isolated_v8
 	PRIVATE
 		agent/handle.cc
 		agent/host.cc
-		platform/clock.cc
 		platform/handle.cc
 		platform/platform.cc
 		realm.cc
@@ -12,7 +11,6 @@ target_sources(isolated_v8
 		agent/handle.h.cc
 		agent/host.h.cc
 		cluster.h.cc
-		platform/clock.h.cc
 		platform/platform.h.cc
 		realm.h.cc
 )

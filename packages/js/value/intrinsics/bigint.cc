@@ -3,9 +3,7 @@ module;
 #include <concepts>
 #include <cstdint>
 #include <vector>
-export module isolated_js:bigint;
-import :date;
-import :tag;
+export module isolated_js:intrinsics.bigint;
 import ivm.utility;
 
 namespace js {

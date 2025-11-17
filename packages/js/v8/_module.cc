@@ -7,6 +7,7 @@ export import :evaluation.origin;
 export import :evaluation.script;
 export import :fixed_array;
 export import :function;
+export import :isolated.clock;
 export import :lock;
 export import :platform.foreground_runner;
 export import :platform.scheduler;

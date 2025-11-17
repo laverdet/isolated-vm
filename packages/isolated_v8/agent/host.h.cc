@@ -2,12 +2,12 @@ module;
 #include <memory>
 #include <optional>
 export module isolated_v8:agent_host;
-import :clock;
 import :cluster;
 import v8_js;
 import isolated_js;
 import ivm.utility;
 import v8;
+using namespace js::iv8::isolated;
 
 namespace isolated_v8 {
 
