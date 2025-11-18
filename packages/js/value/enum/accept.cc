@@ -24,12 +24,11 @@ struct accept<void, Enum> {
 		}
 
 		consteval static auto make_enum_map() {
-			const auto [... indices ] = util::sequence<enum_values<Enum>::values.size()>;
+			const auto& [... values ] = enum_values<Enum>::values;
 			return util::sealed_map{
 				std::in_place,
 				[ & ]() constexpr -> auto {
-					const auto& value = std::get<indices>(enum_values<Enum>::values);
-					return std::pair{util::fnv1a_hash(std::string_view{value.first}), value.second};
+					return std::pair{util::fnv1a_hash(std::string_view{values.first}), values.second};
 				}()...,
 			};
 		}

@@ -2,7 +2,6 @@ module;
 #include <tuple>
 #include <utility>
 export module ivm.utility:functional.elide;
-import :utility;
 
 namespace util {
 
@@ -22,8 +21,8 @@ class elide {
 
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		constexpr operator result_type() && {
-			const auto [... indices ] = util::sequence<sizeof...(Args)>;
-			return std::move(invocable_)(get<indices>(std::move(args_))...);
+			auto [... args ] = std::move(args_);
+			return std::move(invocable_)(std::move(args)...);
 		}
 
 	private:

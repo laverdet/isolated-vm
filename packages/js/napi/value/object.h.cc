@@ -55,14 +55,13 @@ class bound_value<date_tag> : public bound_value_next<date_tag> {
 template <class... Entries>
 auto value<object_tag>::assign(auto_environment auto& env, std::tuple<Entries...> entries) -> void {
 	bound_value value{env, *this};
-	const auto [... indices ] = util::sequence<sizeof...(Entries)>;
+	auto& [... entries_n ] = entries;
 	(..., [ & ]() constexpr {
-		auto& entry_ref = std::get<indices>(entries);
-		auto entry_js_val = js::transfer_in_strict<std::array<napi_value, 2>>(
-			std::tuple{std::move(entry_ref).first, std::move(entry_ref).second},
+		auto [ first, second ] = js::transfer_in_strict<std::array<napi_value, 2>>(
+			std::tuple{std::move(entries_n).first, std::move(entries_n).second},
 			env
 		);
-		value.set(entry_js_val[ 0 ], entry_js_val[ 1 ]);
+		value.set(first, second);
 	}());
 }
 

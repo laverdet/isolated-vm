@@ -82,9 +82,9 @@ struct accept_struct_properties<Meta, Type, js::struct_template<Property...>> {
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto& visit, auto&& subject) const -> Type {
 			Type target;
-			const auto [... indices ] = util::sequence<sizeof...(Property)>;
+			const auto& [... properties_n ] = properties;
 			// NOLINTNEXTLINE(bugprone-use-after-move)
-			(..., std::get<indices>(properties)(visit, std::forward<decltype(subject)>(subject), target));
+			(..., properties_n(visit, std::forward<decltype(subject)>(subject), target));
 			return target;
 		}
 

@@ -59,11 +59,10 @@ struct accept<Meta, vector_of<Tag, Entry>> : accept_vector_value<Meta, Entry> {
 			// nb: The value category of `subject` is forwarded to *each* visitor. Move operations should
 			// keep this in mind and only move one member at time.
 			auto&& value = accept_type::make_struct_subject(std::forward<decltype(subject)>(subject));
-			const auto [... indices ] = util::sequence<Size>;
+			auto& [... visit_n ] = visit;
 			return vector_of<Tag, Entry>{
 				std::in_place,
-				// NOLINTNEXTLINE(bugprone-use-after-move)
-				util::invoke_as<accept_type>(*this, std::get<indices>(visit), std::forward<decltype(value)>(value))...,
+				util::invoke_as<accept_type>(*this, visit_n, std::forward<decltype(value)>(value))...,
 			};
 		}
 };
