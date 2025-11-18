@@ -7,6 +7,10 @@ import v8;
 
 namespace js::iv8 {
 
+// Forward declaration
+export template <class Agent, class... Implements>
+class context_lock_witness_of;
+
 // Isolate lock witness. Provides some assurance that the given isolate is locked in this thread.
 export class isolate_lock_witness {
 	private:
@@ -121,11 +125,17 @@ class context_lock_witness_of
 				Implements{witness, agent}...,
 				agent_{agent} {}
 
+		context_lock_witness_of(context_lock_witness& witness, const isolate_lock_witness_of<Agent, Implements...>& lock) :
+				context_lock_witness_of{witness, *lock} {}
+
 		[[nodiscard]] auto operator*() const -> Agent& { return agent_; }
 
 	private:
 		std::reference_wrapper<Agent> agent_;
 };
+
+template <class Agent, class... Implements>
+context_lock_witness_of(context_lock_witness&, const isolate_lock_witness_of<Agent, Implements...>&) -> context_lock_witness_of<Agent, Implements...>;
 
 // Enters the context.
 export class context_managed_lock : public context_lock_witness {
@@ -135,5 +145,18 @@ export class context_managed_lock : public context_lock_witness {
 	private:
 		v8::Context::Scope context_scope_;
 };
+
+// Invoke an operation within a context
+export auto context_scope_operation(isolate_lock_witness lock, v8::Local<v8::Context> context, auto operation) -> decltype(auto) {
+	auto context_lock = context_managed_lock{lock, context};
+	return operation(context_lock);
+}
+
+export template <class Agent, class... Implements>
+auto context_scope_operation(const isolate_lock_witness_of<Agent, Implements...>& lock, v8::Local<v8::Context> context, auto operation) -> decltype(auto) {
+	auto context_lock = context_managed_lock{lock, context};
+	auto witness = context_lock_witness_of{context_lock, lock};
+	return operation(witness);
+}
 
 } // namespace js::iv8

@@ -11,7 +11,7 @@ export class realm_handle {
 	public:
 		using transfer_type = js::tagged_external<realm_handle>;
 
-		realm_handle(agent_handle agent, isolated_v8::realm realm);
+		realm_handle(agent_handle agent, js::iv8::shared_remote<v8::Context> realm);
 
 		auto agent() -> auto& { return agent_; }
 		auto realm() -> auto& { return realm_; }
@@ -24,7 +24,7 @@ export class realm_handle {
 
 	private:
 		agent_handle agent_;
-		isolated_v8::realm realm_;
+		js::iv8::shared_remote<v8::Context> realm_;
 };
 
 } // namespace backend_napi_v8

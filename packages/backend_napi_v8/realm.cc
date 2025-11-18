@@ -12,14 +12,14 @@ namespace v8 = embedded_v8;
 
 namespace backend_napi_v8 {
 
-realm_handle::realm_handle(agent_handle agent, isolated_v8::realm realm) :
+realm_handle::realm_handle(agent_handle agent, js::iv8::shared_remote<v8::Context> realm) :
 		agent_{std::move(agent)},
 		realm_{std::move(realm)} {}
 
 auto realm_handle::create(agent_handle& agent, environment& env) -> js::napi::value<js::promise_tag> {
 	auto [ dispatch, promise ] = make_promise(
 		env,
-		[](environment& env, agent_handle agent, isolated_v8::realm realm) -> auto {
+		[](environment& env, agent_handle agent, js::iv8::shared_remote<v8::Context> realm) -> auto {
 			return js::forward{class_template(env).construct(env, std::move(agent), std::move(realm))};
 		}
 	);
@@ -28,7 +28,7 @@ auto realm_handle::create(agent_handle& agent, environment& env) -> js::napi::va
 			const agent_handle::lock& lock,
 			agent_handle agent
 		) -> void {
-			auto realm = isolated_v8::realm::make(lock);
+			auto realm = make_shared_remote(lock, lock->make_context());
 			dispatch(std::move(agent), std::move(realm));
 		},
 		agent
@@ -49,8 +49,8 @@ auto realm_handle::instantiate_runtime(environment& env) -> js::napi::value<js::
 			const agent_handle::lock& lock,
 			agent_handle agent
 		) -> void {
-			auto module_record = realm.invoke(lock, [ & ](const isolated_v8::realm::scope& realm) -> auto {
-				return js::iv8::make_shared_remote(lock, lock->environment().runtime().instantiate(realm));
+			auto module_record = context_scope_operation(lock, realm->deref(lock), [ & ](const isolated_v8::realm_scope& realm) -> auto {
+				return make_shared_remote(lock, lock->environment().runtime().instantiate(realm));
 			});
 			dispatch(std::move(agent), module_record);
 		},

@@ -27,6 +27,8 @@ class agent_collected_handle_lock : public js::iv8::collected_handle_lock {
 // isolate context.
 export using agent_lock =
 	js::iv8::isolate_lock_witness_of<agent_host, agent_remote_handle_lock, agent_collected_handle_lock>;
+export using realm_scope =
+	js::iv8::context_lock_witness_of<agent_host, agent_remote_handle_lock, agent_collected_handle_lock>;
 
 export template <class Type>
 class agent_lock_of : public agent_lock {

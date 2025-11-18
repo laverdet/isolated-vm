@@ -44,12 +44,6 @@ export class agent_host : public std::enable_shared_from_this<agent_host> {
 	private:
 		template <class Type> friend class agent_host_of;
 
-		struct random_seed_unlatch : util::non_copyable {
-				explicit random_seed_unlatch(bool& latch);
-				auto operator()() const -> void;
-				bool* latch;
-		};
-
 	public:
 		explicit agent_host(
 			cluster& cluster,
@@ -65,7 +59,7 @@ export class agent_host : public std::enable_shared_from_this<agent_host> {
 		auto clock_time_ms() -> int64_t;
 		auto foreground_runner(this auto& self) -> auto& { return self.foreground_runner_; }
 		auto isolate() -> v8::Isolate* { return isolate_.get(); }
-		auto random_seed_latch() -> util::scope_exit<random_seed_unlatch>;
+		auto make_context() -> v8::Local<v8::Context>;
 		auto remote_expiration_callback(js::iv8::expired_remote_type remote) noexcept -> void;
 		auto remote_handle_lock(js::iv8::isolate_lock_witness witness) -> js::iv8::remote_handle_lock;
 		auto remote_handle_list() -> auto& { return remote_handle_list_; }

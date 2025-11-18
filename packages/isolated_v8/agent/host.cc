@@ -58,18 +58,21 @@ auto agent_host::clock_time_ms() -> int64_t {
 	);
 }
 
-// v8 uses the same entropy source for `Math.random()` and also memory page randomization. We want
-// to control the `Math.random()` seed without giving up memory randomness. Anyway it seems like the
-// generator is initialized on context creation, so we just control the randomness in that one case.
-auto agent_host::random_seed_latch() -> util::scope_exit<random_seed_unlatch> {
+auto agent_host::make_context() -> v8::Local<v8::Context> {
+	// v8 uses the same entropy source for `Math.random()` and also memory page randomization. We want
+	// to control the `Math.random()` seed without giving up memory randomness. Anyway it seems like
+	// the generator is initialized on context creation, so we just control the randomness in that one
+	// case.
 	should_give_seed_ = true;
-	return util::scope_exit{random_seed_unlatch{should_give_seed_}};
+	auto unlatch = util::scope_exit{[ & ]() -> void {
+		should_give_seed_ = false;
+	}};
+	return v8::Context::New(isolate_.get());
 }
 
 auto agent_host::scratch_context() -> v8::Local<v8::Context> {
 	if (scratch_context_.IsEmpty()) {
-		auto latch = random_seed_latch();
-		auto context = v8::Context::New(isolate_.get());
+		auto context = make_context();
 		scratch_context_.Reset(isolate_.get(), context);
 		scratch_context_.SetWeak();
 		return context;
@@ -115,14 +118,6 @@ auto agent_host::take_random_seed() -> std::optional<double> {
 
 auto agent_host::task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner> {
 	return js::iv8::platform::foreground_runner::get_for_priority(foreground_runner_, priority);
-}
-
-// agent_host::random_seed_unlatch
-agent_host::random_seed_unlatch::random_seed_unlatch(bool& latch) :
-		latch{&latch} {};
-
-auto agent_host::random_seed_unlatch::operator()() const -> void {
-	*latch = false;
 }
 
 } // namespace isolated_v8

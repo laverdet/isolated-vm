@@ -36,12 +36,13 @@ auto script_handle::compile_script(agent_handle& agent, environment& env, js::st
 			compile_script_options options
 		) -> void {
 			auto origin = std::move(options).origin.value_or(js::iv8::source_origin{});
-			auto context = agent->scratch_context();
-			auto lock = js::iv8::context_managed_lock{agent, context};
-			auto local = js::iv8::script::compile(util::slice{lock}, std::move(code_string), std::move(origin));
-			dispatch(local.transform([ & ](v8::Local<v8::UnboundScript> script) -> auto {
-				return js::iv8::make_shared_remote(agent, script);
-			}));
+			auto maybe_script = context_scope_operation(agent, agent->scratch_context(), [ & ](const isolated_v8::realm_scope& lock) -> auto {
+				auto maybe_script = js::iv8::script::compile(util::slice{lock}, std::move(code_string), std::move(origin));
+				return maybe_script.transform([ & ](v8::Local<v8::UnboundScript> script) -> auto {
+					return make_shared_remote(lock, script);
+				});
+			});
+			dispatch(std::move(maybe_script));
 		},
 		std::move(code_string),
 		std::move(options)
@@ -59,10 +60,10 @@ auto script_handle::run(environment& env, realm_handle& realm, run_script_option
 		[ options = options,
 			realm = realm.realm(),
 			script_remote = script_ ](
-			const agent_handle::lock& agent,
+			const agent_handle::lock& lock,
 			const auto& dispatch
 		) -> void {
-			auto result = realm.invoke(agent, [ & ](const isolated_v8::realm::scope& realm) -> expected_type {
+			auto result = context_scope_operation(lock, realm->deref(lock), [ & ](const isolated_v8::realm_scope& realm) -> expected_type {
 				auto stop_token =
 					options.timeout.transform([ & ](double timeout) -> util::timer_stop_token {
 						return util::timer_stop_token{js::js_clock::duration{timeout}};
@@ -71,11 +72,11 @@ auto script_handle::run(environment& env, realm_handle& realm, run_script_option
 					stop_token.transform([ & ](util::timer_stop_token& timer) {
 						return std::stop_callback{
 							timer.get_token(), [ & ]() {
-								agent->isolate()->TerminateExecution();
+								lock->isolate()->TerminateExecution();
 							}
 						};
 					});
-				return js::iv8::script::run(realm, script_remote->deref(agent));
+				return js::iv8::script::run(realm, script_remote->deref(lock));
 			});
 			dispatch(std::move(result));
 		},
