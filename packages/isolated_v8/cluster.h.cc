@@ -3,7 +3,7 @@ module;
 #include <list>
 #include <memory>
 export module isolated_v8:cluster;
-import :platform;
+import :isolated_platform;
 import ivm.utility;
 import v8_js;
 import v8;
@@ -15,13 +15,13 @@ namespace isolated_v8 {
 export class cluster : util::non_moveable {
 	public:
 		cluster() :
-				platform_handle_{platform::handle::acquire()} {}
+				platform_handle_{isolated_platform::acquire()} {}
 
 		auto acquire_runner() -> std::shared_ptr<js::iv8::platform::foreground_runner>;
 		auto release_runner(const std::shared_ptr<js::iv8::platform::foreground_runner>& runner) -> void;
 
 	private:
-		platform::handle platform_handle_;
+		js::iv8::platform::platform_handle platform_handle_;
 		util::lockable<std::list<std::shared_ptr<js::iv8::platform::foreground_runner>>> storage_;
 };
 

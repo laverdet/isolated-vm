@@ -39,6 +39,7 @@ export class worker_runner {
 	public:
 		auto post_delayed(task_type task, steady_clock::duration duration) -> void;
 		auto post(v8::TaskPriority priority, task_type task) -> void;
+		auto thread_count() const -> size_t { return scheduler_.thread_count(); }
 
 	private:
 		scheduler_type scheduler_;

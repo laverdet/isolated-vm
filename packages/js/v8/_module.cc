@@ -9,6 +9,7 @@ export import :fixed_array;
 export import :function;
 export import :isolated.clock;
 export import :lock;
+export import :platform.delegate;
 export import :platform.foreground_runner;
 export import :platform.scheduler;
 export import :platform.task_queue;

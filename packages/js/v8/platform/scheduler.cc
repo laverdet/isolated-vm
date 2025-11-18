@@ -44,6 +44,9 @@ class scheduler_background_threads {
 	public:
 		class controller;
 
+		// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+		[[nodiscard]] auto thread_count() const -> size_t { return 2; }
+
 	protected:
 		template <class Storage>
 		auto signal_thread(std::stop_token termination_stop_token, Storage& unlocked_storage, Storage::resource_type& storage) -> void;

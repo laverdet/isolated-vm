@@ -60,6 +60,6 @@
 	},
 	"clangd.arguments": [
 		"--compile-commands-dir=build",
-		"--experimental-modules-support",
+		// `--experimental-modules-support` makes it crash less, but often it gets stuck at like 1200% CPU
 	],
 }
