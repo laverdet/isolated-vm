@@ -1,3 +1,4 @@
+import { afterEach } from "node:test";
 import { Agent, Realm } from "isolated-vm";
 import { expectComplete } from "isolated-vm/utility/completion";
 
@@ -30,3 +31,8 @@ export async function unsafeEvalAsStringInRealm<Type, Args extends unknown[]>(
 	const script = expectComplete(await agent.compileScript(`(${String(code)})(${args.map(arg => JSON.stringify(arg)).join(",")})`));
 	return expectComplete(await script.run(realm)) as Type;
 }
+
+// Run garbage collection after each test. This cleans up internal napi externals.
+afterEach(() => {
+	global.gc?.();
+});

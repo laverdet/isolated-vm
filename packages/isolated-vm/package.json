@@ -13,7 +13,7 @@
     }
   },
   "scripts": {
-    "test": "${NODE-node} --enable-source-maps --test-reporter=spec --test dist/test/*.js"
+    "test": "${NODE-node} --enable-source-maps --expose-gc --test-reporter=spec --test dist/test/*.js"
   },
   "description": "JavaScript sandbox",
   "author": "https://github.com/laverdet/",

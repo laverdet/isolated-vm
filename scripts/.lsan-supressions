@@ -1,2 +1,1 @@
-leak:napi_module_register
 leak:v8impl::ExternalWrapper::New
