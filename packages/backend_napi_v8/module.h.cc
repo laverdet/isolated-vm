@@ -7,12 +7,10 @@ import :agent;
 import :environment;
 import :realm;
 import isolated_js;
-import isolated_v8;
 import napi_js;
-namespace v8 = embedded_v8;
+import v8_js;
 
 namespace backend_napi_v8 {
-using namespace isolated_v8;
 export class module_handle;
 
 struct compile_module_options : js::optional_constructible {

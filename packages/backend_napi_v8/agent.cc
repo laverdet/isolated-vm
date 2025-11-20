@@ -11,9 +11,9 @@ import :realm;
 import :script;
 import :utility;
 import isolated_js;
-import isolated_v8;
 import ivm.utility;
 import napi_js;
+import v8_js;
 
 namespace backend_napi_v8 {
 
@@ -55,7 +55,7 @@ struct make_agent_options {
 		};
 };
 
-agent_environment::agent_environment(const isolated_v8::agent_lock& lock) :
+agent_environment::agent_environment(const js::iv8::isolated::agent_lock& lock) :
 		runtime_interface_{lock} {}
 
 auto create_agent(environment& env, js::forward<js::napi::value<function_tag>> constructor, std::optional<make_agent_options> options_optional) {
@@ -83,9 +83,8 @@ auto create_agent(environment& env, js::forward<js::napi::value<function_tag>> c
 		},
 		options.clock.value_or(make_agent_options::clock_system{})
 	);
-	agent_handle::make(
-		cluster,
-		[](const agent_handle::lock& lock) -> auto { return agent_environment{lock}; },
+	cluster.make_agent(
+		[](const js::iv8::isolated::agent_handle::lock& lock) -> auto { return agent_environment{lock}; },
 		{.clock = clock_, .random_seed = options.random_seed},
 		[ dispatch = std::move(dispatch),
 			constructor = js::napi::make_unique_remote(env, *constructor) ](

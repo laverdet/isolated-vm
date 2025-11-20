@@ -1,7 +1,10 @@
 module;
 #include <concepts>
+#include <type_traits>
 #include <utility>
 export module ivm.utility:functional.function_ref;
+import :functional.elide;
+import :type_traits;
 
 namespace util {
 
@@ -26,20 +29,30 @@ class function_ref<auto(Args...) noexcept(Nx)->Result> {
 		constexpr function_ref(signature_type* function) :
 				function_ref{std::type_identity<signature_type>{}, static_cast<void*>(function)} {}
 
-		template <class Object>
-			requires std::invocable<Object&, Args...>
+		template <std::invocable<Args...> Object>
+			requires(type<Object> != type<function_ref>)
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		constexpr function_ref(Object& object) :
 				function_ref{std::type_identity<Object>{}, static_cast<void*>(&object)} {}
 
 		// Explicit to avoid automatic binding to temporary objects
-		template <class Object>
-			requires std::invocable<const Object&, Args...>
+		template <std::invocable<Args...> Object>
+			requires(type<Object> != type<function_ref>)
 		constexpr explicit function_ref(const Object& object) :
 				// NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
 				function_ref{std::type_identity<const Object>{}, const_cast<void*>(static_cast<const void*>(&object))} {}
 
-		auto operator==(const function_ref&) const -> bool = default;
+		// Bound function constant
+		template <class Object, std::invocable<Object&, Args...> Function>
+			requires std::is_empty_v<Function>
+		constexpr explicit function_ref(Function /*function*/, Object& bound) :
+				invoke_{[](void* ptr, Args... args) noexcept(Nx) -> Result {
+					auto& object = *static_cast<Object*>(ptr);
+					constexpr auto function = Function{};
+					return function(object, std::forward<Args>(args)...);
+				}},
+				// NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
+				ptr_{const_cast<void*>(static_cast<const void*>(&bound))} {}
 
 		constexpr auto operator()(Args... args) const noexcept(Nx) -> Result {
 			return invoke_(ptr_, std::forward<Args>(args)...);

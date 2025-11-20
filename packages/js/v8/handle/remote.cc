@@ -31,7 +31,7 @@ auto remote_handle::expire::dispatch(remote_handle* pointer, util::derived_delet
 
 // remote_handle_list
 auto remote_handle_list::erase(remote_handle& handle) -> void {
-	list_.write()->erase(list_type::s_iterator_to(handle));
+	list_.write()->erase(handle_list_type::s_iterator_to(handle));
 }
 
 auto remote_handle_list::insert(remote_handle& handle) -> void {

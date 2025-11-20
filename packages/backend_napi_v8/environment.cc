@@ -3,10 +3,10 @@ module;
 #include <type_traits>
 export module backend_napi_v8:environment;
 import isolated_js;
-import isolated_v8;
 import ivm.utility;
 import napi_js;
 import nodejs;
+import v8_js;
 using namespace js;
 using namespace std::string_view_literals;
 
@@ -50,7 +50,7 @@ export class environment : public napi::environment_of<environment> {
 	public:
 		explicit environment(napi_env env) : environment_of{env} {}
 
-		auto cluster() -> isolated_v8::cluster& { return cluster_; }
+		auto cluster() -> js::iv8::isolated::cluster& { return cluster_; }
 
 		// Lookup `reference<T>` for the given class template
 		template <class Type>
@@ -77,7 +77,7 @@ export class environment : public napi::environment_of<environment> {
 		}
 
 	private:
-		isolated_v8::cluster cluster_;
+		js::iv8::isolated::cluster cluster_;
 		util::copy_of<class_templates> class_template_storage_;
 		util::copy_of<string_literals> string_literal_storage_;
 };

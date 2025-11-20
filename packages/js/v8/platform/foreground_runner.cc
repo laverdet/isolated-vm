@@ -11,49 +11,48 @@ import :platform.foreground_runner;
 namespace js::iv8::platform {
 
 // `foreground_task_queue`
+foreground_task_queue::foreground_task_queue(foreground_task_queue&& other) :
+		tasks_{std::move(other.tasks_)},
+		delayed_tasks_{std::move(other.delayed_tasks_)},
+		finalized_{other.finalized_} {
+	other.finalized_ = true;
+}
+
 auto foreground_task_queue::flush(clock_type::time_point now) -> clock_type::time_point {
 	// nb: As far as I can tell all delayed tasks are posted with `kUserVisible`. I'm not even sure
 	// what a high priority delayed task would mean.
 	return delayed_tasks_.flush(tasks_.at(priority_numeric_from(v8::TaskPriority::kUserVisible)), now);
 }
 
-auto foreground_task_queue::front() -> task_entry_type& {
-	return std::ranges::find_if_not(tasks_.containers(), &queue_type::empty)->front();
-}
-
-auto foreground_task_queue::pop_all() -> void {
+auto foreground_task_queue::finalize() -> void {
+	finalized_ = true;
+	auto& handle_tasks = tasks_.at(priority_numeric_from(v8::TaskPriority::kUserBlocking));
+	while (!handle_tasks.empty()) {
+		auto& task = tasks_.front();
+		task(std::stop_token{});
+		tasks_.pop();
+	};
 	while (!tasks_.empty()) tasks_.pop();
 	while (!delayed_tasks_.empty()) delayed_tasks_.pop();
 }
 
+auto foreground_task_queue::front() -> task_entry_type& {
+	return std::ranges::find_if_not(tasks_.containers(), &queue_type::empty)->front();
+}
+
 auto foreground_task_queue::push_delayed(delayed_entry_type task) -> void {
-	delayed_tasks_.emplace(std::move(task));
+	if (!finalized_) {
+		delayed_tasks_.emplace(std::move(task));
+	}
 }
 
 auto foreground_task_queue::push(v8::TaskPriority priority, task_entry_type task) -> void {
-	tasks_.emplace(priority_numeric_from(priority), std::move(task));
+	if (!finalized_) {
+		tasks_.emplace(priority_numeric_from(priority), std::move(task));
+	}
 }
 
 // `foreground_runner`
-auto foreground_runner::finalize() -> void {
-	// TODO: Messy
-	auto foreground_thread = scheduler_.invoke([](auto& controller) -> auto {
-		return controller.take();
-	});
-	if (foreground_thread.joinable()) {
-		if (foreground_thread.get_id() == std::this_thread::get_id()) {
-			foreground_thread.detach();
-		} else {
-			foreground_thread.join();
-		}
-	}
-
-	auto storage = scheduler_.mutate([ & ](foreground_task_queue& storage) -> auto {
-		return std::move(storage);
-	});
-	while (!storage.empty()) storage.pop();
-}
-
 auto foreground_runner::terminate() -> void {
 	scheduler_.terminate();
 }

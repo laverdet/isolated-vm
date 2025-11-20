@@ -11,14 +11,14 @@ namespace backend_napi_v8 {
 // This storage is managed by the external isolate, not napi.
 export class agent_environment {
 	public:
-		explicit agent_environment(const isolated_v8::agent_lock& lock);
+		explicit agent_environment(const js::iv8::isolated::agent_lock& lock);
 		auto runtime() -> auto& { return runtime_interface_; }
 
 	private:
 		runtime_interface runtime_interface_;
 };
 
-using agent_handle = isolated_v8::agent_handle<agent_environment>;
+using agent_handle = js::iv8::isolated::agent_handle_of<agent_environment>;
 
 export auto agent_class_template(environment& env) -> js::napi::value<js::class_tag_of<agent_handle>>;
 

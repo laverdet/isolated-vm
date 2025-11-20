@@ -6,16 +6,14 @@ module;
 #include <variant>
 module backend_napi_v8;
 import :environment;
+import :lock;
 import :realm;
 import :utility;
 import isolated_js;
-import isolated_v8;
 import ivm.utility;
 import napi_js;
 import nodejs;
 import v8_js;
-using namespace isolated_v8;
-namespace v8 = embedded_v8;
 
 namespace backend_napi_v8 {
 
@@ -36,7 +34,7 @@ auto script_handle::compile_script(agent_handle& agent, environment& env, js::st
 			compile_script_options options
 		) -> void {
 			auto origin = std::move(options).origin.value_or(js::iv8::source_origin{});
-			auto maybe_script = context_scope_operation(agent, agent->scratch_context(), [ & ](const isolated_v8::realm_scope& lock) -> auto {
+			auto maybe_script = context_scope_operation(agent, agent->scratch_context(), [ & ](const realm_scope& lock) -> auto {
 				auto maybe_script = js::iv8::script::compile(util::slice{lock}, std::move(code_string), std::move(origin));
 				return maybe_script.transform([ & ](v8::Local<v8::UnboundScript> script) -> auto {
 					return make_shared_remote(lock, script);
@@ -63,7 +61,7 @@ auto script_handle::run(environment& env, realm_handle& realm, run_script_option
 			const agent_handle::lock& lock,
 			const auto& dispatch
 		) -> void {
-			auto result = context_scope_operation(lock, realm->deref(lock), [ & ](const isolated_v8::realm_scope& realm) -> expected_type {
+			auto result = context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) -> expected_type {
 				auto stop_token =
 					options.timeout.transform([ & ](double timeout) -> util::timer_stop_token {
 						return util::timer_stop_token{js::js_clock::duration{timeout}};

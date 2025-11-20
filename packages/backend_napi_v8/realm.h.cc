@@ -2,8 +2,8 @@ export module backend_napi_v8:realm;
 import :agent;
 import :environment;
 import isolated_js;
-import isolated_v8;
 import napi_js;
+import v8_js;
 
 namespace backend_napi_v8 {
 

@@ -3,12 +3,12 @@ module;
 module backend_napi_v8;
 import :agent;
 import :environment;
+import :lock;
 import :module_;
 import :utility;
 import isolated_js;
-import isolated_v8;
 import napi_js;
-namespace v8 = embedded_v8;
+import v8_js;
 
 namespace backend_napi_v8 {
 
@@ -49,7 +49,7 @@ auto realm_handle::instantiate_runtime(environment& env) -> js::napi::value<js::
 			const agent_handle::lock& lock,
 			agent_handle agent
 		) -> void {
-			auto module_record = context_scope_operation(lock, realm->deref(lock), [ & ](const isolated_v8::realm_scope& realm) -> auto {
+			auto module_record = context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) -> auto {
 				return make_shared_remote(lock, lock->environment().runtime().instantiate(realm));
 			});
 			dispatch(std::move(agent), module_record);

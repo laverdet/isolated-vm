@@ -1,3 +1,2 @@
 packages:
   - packages/isolated-vm
-  - packages/isolated_v8/runtime

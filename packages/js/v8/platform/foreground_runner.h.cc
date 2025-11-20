@@ -23,10 +23,16 @@ class foreground_task_queue {
 		using delayed_queue_type = delayed_task_queue<task_entry_type>;
 		using delayed_entry_type = delayed_queue_type::value_type;
 
+		foreground_task_queue() = default;
+		foreground_task_queue(foreground_task_queue&& other);
+		foreground_task_queue(const foreground_task_queue&) = delete;
+		auto operator=(const foreground_task_queue&) -> foreground_task_queue& = delete;
+		auto operator=(foreground_task_queue&&) -> foreground_task_queue& = delete;
+
 		[[nodiscard]] auto empty() const -> bool { return tasks_.empty(); }
+		auto finalize() -> void;
 		auto flush(clock_type::time_point now) -> clock_type::time_point;
 		auto front() -> task_entry_type&;
-		auto pop_all() -> void;
 		auto pop() -> void { tasks_.pop(); }
 		auto push_delayed(delayed_entry_type task) -> void;
 		auto push(v8::TaskPriority priority, task_entry_type task) -> void;
@@ -34,6 +40,7 @@ class foreground_task_queue {
 	private:
 		util::segmented_priority_queue<queue_type, priority_count> tasks_;
 		delayed_queue_type delayed_tasks_;
+		bool finalized_ = false;
 };
 
 // Foreground task runner. Combines scheduler and task queue.
@@ -73,8 +80,7 @@ export class foreground_runner : public foreground_runner_for_each_priority {
 		using scheduler_type = scheduler<scheduler_foreground_thread, foreground_task_queue>;
 
 	public:
-		// clears all tasks w/o executing them
-		auto finalize() -> void;
+		auto scheduler() -> scheduler_type& { return scheduler_; }
 
 		// schedule non-nestable with `kUserVisible` priority
 		template <class... Args>
@@ -92,8 +98,6 @@ export class foreground_runner : public foreground_runner_for_each_priority {
 		static auto get_for_priority(std::shared_ptr<foreground_runner> self, v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner>;
 
 	private:
-		auto scheduler() -> scheduler_type& { return scheduler_; }
-
 		scheduler_type scheduler_;
 };
 

@@ -24,10 +24,10 @@ class remote_handle : util::non_copyable {
 		using intrusive_list_hook = boost::intrusive::list_member_hook<intrusive_safe_mode>;
 
 		v8::Global<v8::Data> global_;
-		intrusive_list_hook hook_;
+		intrusive_list_hook list_hook_;
 
 	public:
-		using hook_type = boost::intrusive::member_hook<remote_handle, intrusive_list_hook, &remote_handle::hook_>;
+		using intrusive_hook = boost::intrusive::member_hook<remote_handle, intrusive_list_hook, &remote_handle::list_hook_>;
 };
 
 // Required types for `remote_handle_lock`
@@ -53,7 +53,7 @@ class remote_handle::expire {
 export class remote_handle_list {
 	private:
 		using intrusive_no_size = boost::intrusive::constant_time_size<false>;
-		using list_type = boost::intrusive::list<remote_handle, intrusive_no_size, remote_handle::hook_type>;
+		using handle_list_type = boost::intrusive::list<remote_handle, intrusive_no_size, remote_handle::intrusive_hook>;
 
 	public:
 		auto clear(isolate_lock_witness lock) -> void;
@@ -61,7 +61,7 @@ export class remote_handle_list {
 		auto insert(remote_handle& handle) -> void;
 
 	private:
-		util::lockable<list_type> list_;
+		util::lockable<handle_list_type> list_;
 };
 
 // Lock interface required to create `remote<T>` handles.

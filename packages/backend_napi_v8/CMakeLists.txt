@@ -11,6 +11,7 @@ target_sources(ivm_backend_v8
 		_module.cc
 		agent.h.cc
 		environment.cc
+		lock.cc
 		module.h.cc
 		realm.h.cc
 		runtime/runtime.h.cc
@@ -22,11 +23,11 @@ target_include_directories(ivm_backend_v8 SYSTEM PRIVATE
 	${NODE_DIST_DIR}/include/node
 )
 target_link_libraries(ivm_backend_v8 PUBLIC
-	isolated_v8
 	ivm_utility
 	napi_js
 	nodejs
 	value_js
+	v8_js
 )
 
 # Windows linking

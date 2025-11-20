@@ -15,8 +15,8 @@ namespace js::iv8 {
 export template <class Lock>
 constexpr auto make_free_function(auto function) {
 	constexpr auto make_with_try_catch =
-		[]<class... Args, bool Nx, class Result>(
-			std::type_identity<auto(Lock, Args...) noexcept(Nx)->Result> /*signature*/,
+		[]<std::constructible_from<Lock> LockAs, class... Args, bool Nx, class Result>(
+			std::type_identity<auto(LockAs, Args...) noexcept(Nx)->Result> /*signature*/,
 			auto callback
 		) -> auto {
 		using callback_type = decltype(callback);
@@ -42,8 +42,8 @@ constexpr auto make_free_function(auto function) {
 		};
 	};
 	constexpr auto make_noexcept =
-		[]<class Result>(
-			std::type_identity<auto(Lock) noexcept -> Result> /*signature*/,
+		[]<std::constructible_from<Lock> LockAs, class Result>(
+			std::type_identity<auto(LockAs) noexcept -> Result> /*signature*/,
 			auto callback
 		) -> auto {
 		static_assert(false, "untested");

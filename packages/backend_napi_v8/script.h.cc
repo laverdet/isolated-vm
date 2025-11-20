@@ -7,7 +7,6 @@ import :environment;
 import :realm;
 import isolated_js;
 import napi_js;
-namespace v8 = embedded_v8;
 
 namespace backend_napi_v8 {
 

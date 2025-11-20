@@ -94,12 +94,12 @@ auto platform_handle::acquire() -> platform_handle {
 
 template <class Delegate>
 auto platform_entropy_delegate<Delegate>::entropy_source(unsigned char* buffer, size_t length) -> bool {
-	auto* isolate = v8::Isolate::TryGetCurrent();
-	if (isolate == nullptr) {
-		return fill_random_bytes(buffer, length);
-	} else {
-		return Delegate::fill_random_bytes_for_isolate(isolate, buffer, length);
+	if (auto* isolate = v8::Isolate::TryGetCurrent()) {
+		if (Delegate::fill_random_bytes_for_isolate(isolate, buffer, length)) {
+			return true;
+		}
 	}
+	return fill_random_bytes(buffer, length);
 }
 
 } // namespace js::iv8::platform

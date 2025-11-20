@@ -1,5 +1,6 @@
 module;
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -104,8 +105,11 @@ auto timer_thread::loop(std::stop_token stop_token) -> void {
 
 auto timer_thread::dispatch(request_type request) -> void {
 	requests_.write_notify()->push_back(request);
+	constexpr auto cast = [](const request_type& item) -> auto {
+		return std::bit_cast<std::array<std::byte, sizeof(request_type)>>(item);
+	};
 	auto does_not_contain = [ & ](const auto& queue) -> bool {
-		return !std::ranges::contains(queue, request);
+		return !std::ranges::contains(queue, cast(request), cast);
 	};
 	requests_.read_waitable(does_not_contain).wait();
 }

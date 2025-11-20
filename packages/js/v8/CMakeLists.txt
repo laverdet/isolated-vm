@@ -5,7 +5,10 @@ target_sources(v8_js
 		evaluation/module.cc
 		evaluation/script.cc
 		handle/remote.cc
+		isolated/agent.cc
 		isolated/clock.cc
+		isolated/cluster.cc
+		isolated/platform.cc
 		platform/delegate.cc
 		platform/foreground_runner.cc
 		platform/worker_runner.cc
@@ -25,7 +28,10 @@ target_sources(v8_js
 		evaluation/script.h.cc
 		handle/collected_handle.cc
 		handle/remote.h.cc
+		isolated/agent.h.cc
 		isolated/clock.h.cc
+		isolated/cluster.h.cc
+		isolated/platform.h.cc
 		platform/delegate.h.cc
 		platform/foreground_runner.h.cc
 		platform/scheduler.cc
@@ -48,6 +54,7 @@ target_sources(v8_js
 		visit.cc
 )
 target_link_libraries(v8_js PUBLIC
+	Boost::boost
 	google_v8
 	ivm_utility
 	value_js
