@@ -1,5 +1,5 @@
-add_library(ivm_utility OBJECT)
-target_sources(ivm_utility
+add_library(utility OBJECT)
+target_sources(utility
 	PRIVATE
 		platform/timer.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
@@ -36,4 +36,4 @@ target_sources(ivm_utility
 		utility/utility.cc
 		utility/variant.cc
 )
-target_link_libraries(ivm_utility PRIVATE Boost::boost)
+target_link_libraries(utility PRIVATE Boost::boost)

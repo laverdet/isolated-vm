@@ -1,10 +1,10 @@
 #include <node_api.h>
 #include <tuple>
-import napi_js;
+import auto_js;
 import backend_napi_v8;
-import isolated_js;
-import ivm.utility;
+import napi_js;
 import nodejs;
+import util;
 using namespace backend_napi_v8;
 
 NAPI_MODULE_INIT(/*napi_env env, napi_value exports*/) {

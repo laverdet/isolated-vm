@@ -1,7 +1,7 @@
 module;
 #include <type_traits>
 #include <utility>
-export module ivm.utility:functional.bind;
+export module util:functional.bind;
 import :functional.flat_tuple;
 import :type_traits;
 import :utility;

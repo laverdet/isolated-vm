@@ -3,7 +3,7 @@ module;
 #include <functional>
 #include <memory>
 #include <type_traits>
-export module ivm.utility:memory;
+export module util:memory;
 export import :memory.autorelease_pool;
 export import :memory.comparator;
 export import :memory.noinit_allocator;

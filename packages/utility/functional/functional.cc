@@ -1,7 +1,7 @@
 module;
 #include <functional>
 #include <utility>
-export module ivm.utility:functional;
+export module util:functional;
 export import :functional.bind;
 export import :functional.elide;
 export import :functional.function_constant;

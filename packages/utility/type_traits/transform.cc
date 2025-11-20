@@ -1,6 +1,6 @@
 module;
 #include <type_traits>
-export module ivm.utility:type_traits.transform;
+export module util:type_traits.transform;
 
 namespace util {
 

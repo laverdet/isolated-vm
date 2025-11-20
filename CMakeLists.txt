@@ -180,19 +180,19 @@ endfunction()
 add_subdirectory(packages/utility)
 
 # JavaScript adjacent code which is not specific to v8 or nodejs
-add_subdirectory(packages/js/value)
+add_subdirectory(packages/auto_js/js)
 
 # Embedded v8
 set(IVM_V8_EMBEDDED ON)
 set(IVM_V8_TRICKSHOT ON)
-add_subdirectory(packages/js/v8)
+add_subdirectory(packages/auto_js/v8)
 add_subdirectory(packages/third_party/v8)
 
 # Napi shim
 add_subdirectory(packages/third_party/nodejs)
 
 # nodejs require-able module
-add_subdirectory(packages/js/napi ivm_jsnapi)
+add_subdirectory(packages/auto_js/napi)
 add_subdirectory(packages/backend_napi_v8)
 
 # Playground

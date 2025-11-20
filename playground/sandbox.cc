@@ -29,7 +29,7 @@
 #include <utility>			 // IWYU pragma: keep
 #include <variant>			 // IWYU pragma: keep
 #include <vector>				 // IWYU pragma: keep
-import ivm.utility;
+import util;
 
 auto main() -> int {
 	return 0;

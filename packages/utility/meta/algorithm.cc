@@ -1,6 +1,6 @@
 module;
 #include <type_traits>
-export module ivm.utility:meta.algorithm;
+export module util:meta.algorithm;
 import :functional;
 import :utility;
 

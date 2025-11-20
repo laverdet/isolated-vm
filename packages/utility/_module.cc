@@ -1,4 +1,4 @@
-export module ivm.utility;
+export module util;
 export import :container.mutable_priority_queue;
 export import :container.sealed_map;
 export import :container.segmented_priority_queue;

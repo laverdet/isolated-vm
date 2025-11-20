@@ -4,7 +4,7 @@ module;
 #include <cstdint>
 #include <source_location>
 #include <string_view>
-export module ivm.utility:utility.hash;
+export module util:utility.hash;
 
 namespace util {
 

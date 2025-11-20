@@ -2,7 +2,7 @@ module;
 #include <concepts>
 #include <type_traits>
 #include <utility>
-export module ivm.utility:functional.function_ref;
+export module util:functional.function_ref;
 import :functional.elide;
 import :type_traits;
 

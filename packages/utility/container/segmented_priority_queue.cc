@@ -5,7 +5,7 @@ module;
 #include <iterator>
 #include <span>
 #include <utility>
-export module ivm.utility:container.segmented_priority_queue;
+export module util:container.segmented_priority_queue;
 
 namespace util {
 

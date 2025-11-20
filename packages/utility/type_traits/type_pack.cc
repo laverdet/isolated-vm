@@ -1,7 +1,7 @@
 module;
 #include <tuple>
 #include <type_traits>
-export module ivm.utility:type_traits.type_pack;
+export module util:type_traits.type_pack;
 import :type_traits.type_of;
 
 namespace util {

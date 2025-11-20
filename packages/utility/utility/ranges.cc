@@ -1,7 +1,7 @@
 module;
 #include <ranges>
 #include <utility>
-export module ivm.utility:utility.ranges;
+export module util:utility.ranges;
 
 namespace util {
 

@@ -4,9 +4,9 @@ module;
 #include <utility>
 export module backend_napi_v8:utility;
 import :environment;
-import isolated_js;
-import ivm.utility;
+import auto_js;
 import napi_js;
+import util;
 
 namespace backend_napi_v8 {
 using namespace js;

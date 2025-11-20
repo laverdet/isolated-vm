@@ -1,6 +1,6 @@
 module;
 #include <utility>
-export module ivm.utility:functional.function_constant;
+export module util:functional.function_constant;
 import :type_traits;
 
 namespace util {

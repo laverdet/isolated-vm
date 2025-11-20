@@ -1,7 +1,7 @@
 module;
 #include <type_traits>
 #include <utility>
-export module ivm.utility:functional.flat_tuple;
+export module util:functional.flat_tuple;
 
 namespace util {
 

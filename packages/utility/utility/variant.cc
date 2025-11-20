@@ -1,7 +1,7 @@
 module;
 #include <utility>
 #include <variant>
-export module ivm.utility:utility.variant;
+export module util:utility.variant;
 import :meta.algorithm;
 import :type_traits;
 

@@ -9,7 +9,7 @@ module;
 #include <thread>
 #include <utility>
 #include <vector>
-module ivm.utility;
+module util;
 import :functional;
 import :platform.lockable;
 import :platform.timer;

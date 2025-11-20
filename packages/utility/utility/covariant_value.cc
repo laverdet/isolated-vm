@@ -1,7 +1,7 @@
 module;
 #include <utility>
 #include <variant>
-export module ivm.utility:utility.covariant_value;
+export module util:utility.covariant_value;
 import :utility.facade;
 import :type_traits;
 

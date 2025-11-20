@@ -3,7 +3,7 @@ module;
 #include <flat_set>
 #include <memory>
 #include <utility>
-export module ivm.utility:memory.autorelease_pool;
+export module util:memory.autorelease_pool;
 import :memory.comparator;
 import :utility;
 

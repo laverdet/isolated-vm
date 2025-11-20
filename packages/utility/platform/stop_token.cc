@@ -1,7 +1,7 @@
 module;
 #include <stop_token>
 #include <utility>
-export module ivm.utility:platform.stop_token;
+export module util:platform.stop_token;
 import :functional;
 import :utility;
 

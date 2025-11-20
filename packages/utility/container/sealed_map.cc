@@ -5,7 +5,7 @@ module;
 #include <ranges>
 #include <type_traits>
 #include <utility>
-export module ivm.utility:container.sealed_map;
+export module util:container.sealed_map;
 import :functional;
 
 namespace util {

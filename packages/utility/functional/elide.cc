@@ -1,7 +1,7 @@
 module;
 #include <tuple>
 #include <utility>
-export module ivm.utility:functional.elide;
+export module util:functional.elide;
 
 namespace util {
 

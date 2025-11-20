@@ -1,6 +1,6 @@
 module;
 #include <utility>
-export module ivm.utility:functional.regular_return;
+export module util:functional.regular_return;
 import :type_traits;
 import :utility;
 

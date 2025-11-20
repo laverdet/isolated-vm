@@ -6,7 +6,7 @@ export module backend_napi_v8:module_;
 import :agent;
 import :environment;
 import :realm;
-import isolated_js;
+import auto_js;
 import napi_js;
 import v8_js;
 

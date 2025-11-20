@@ -2,10 +2,10 @@ module;
 #include <string_view>
 #include <type_traits>
 export module backend_napi_v8:environment;
-import isolated_js;
-import ivm.utility;
+import auto_js;
 import napi_js;
 import nodejs;
+import util;
 import v8_js;
 using namespace js;
 using namespace std::string_view_literals;

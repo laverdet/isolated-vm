@@ -9,10 +9,10 @@ import :environment;
 import :lock;
 import :realm;
 import :utility;
-import isolated_js;
-import ivm.utility;
+import auto_js;
 import napi_js;
 import nodejs;
+import util;
 import v8_js;
 
 namespace backend_napi_v8 {

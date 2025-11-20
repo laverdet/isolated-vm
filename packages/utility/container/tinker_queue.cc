@@ -4,7 +4,7 @@ module;
 #include <concepts>
 #include <deque>
 #include <utility>
-export module ivm.utility:container.tinker_queue;
+export module util:container.tinker_queue;
 
 namespace util {
 

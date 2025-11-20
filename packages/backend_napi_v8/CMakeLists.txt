@@ -23,7 +23,7 @@ target_include_directories(ivm_backend_v8 SYSTEM PRIVATE
 	${NODE_DIST_DIR}/include/node
 )
 target_link_libraries(ivm_backend_v8 PUBLIC
-	ivm_utility
+	utility
 	napi_js
 	nodejs
 	value_js

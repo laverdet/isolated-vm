@@ -1,7 +1,7 @@
 module;
 #include <concepts>
 #include <utility>
-export module ivm.utility:utility;
+export module util:utility;
 export import :utility.constant_wrapper;
 export import :utility.covariant_value;
 export import :utility.facade;

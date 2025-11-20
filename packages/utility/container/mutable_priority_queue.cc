@@ -2,7 +2,7 @@ module;
 #include <concepts>
 #include <queue>
 #include <utility>
-export module ivm.utility:container.mutable_priority_queue;
+export module util:container.mutable_priority_queue;
 
 namespace util {
 

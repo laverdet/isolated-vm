@@ -4,8 +4,8 @@ module;
 module backend_napi_v8;
 import :lock;
 import :runtime;
-import isolated_js;
-import ivm.utility;
+import auto_js;
+import util;
 import v8_js;
 
 namespace backend_napi_v8 {

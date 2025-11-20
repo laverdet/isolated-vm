@@ -2,7 +2,7 @@ module;
 #include <chrono>
 #include <memory>
 #include <stop_token>
-export module ivm.utility:platform.timer;
+export module util:platform.timer;
 
 namespace util {
 

@@ -6,7 +6,7 @@ import :environment;
 import :lock;
 import :module_;
 import :utility;
-import isolated_js;
+import auto_js;
 import napi_js;
 import v8_js;
 

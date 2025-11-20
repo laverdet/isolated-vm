@@ -1,6 +1,6 @@
 module;
 #include <type_traits>
-export module ivm.utility:type_traits.type_of;
+export module util:type_traits.type_of;
 
 // "ADL firewall"
 // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2538r0.html#solution
