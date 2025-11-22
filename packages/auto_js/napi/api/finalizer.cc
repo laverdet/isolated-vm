@@ -7,7 +7,6 @@ import nodejs;
 import util;
 
 namespace js::napi {
-using arst = std::void_t<int>;
 
 // Finalizer for basic unique_ptr
 export template <class Type, class Deleter>

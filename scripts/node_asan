@@ -1,5 +1,9 @@
 #!/bin/sh
-SUPPRESSIONS=$(dirname "$(realpath "$0")")/.lsan-supressions
+SUPPRESSIONS_PATH=$(dirname "$(realpath "$0")")
+LSAN_SUPPRESSIONS="$SUPPRESSIONS_PATH/.lsan-supressions"
+UBSAN_SUPPRESSIONS="$SUPPRESSIONS_PATH/.ubsan-supressions"
 LD_PRELOAD=libclang_rt.asan-aarch64.so \
-LSAN_OPTIONS=suppressions=$SUPPRESSIONS \
+ASAN_OPTIONS=detect_leaks=1:detect_stack_use_after_return=1:check_initialization_order=1:strict_init_order=1 \
+LSAN_OPTIONS=suppressions=$LSAN_SUPPRESSIONS \
+UBSAN_OPTIONS=suppressions=$UBSAN_SUPPRESSIONS \
 exec node "$@"

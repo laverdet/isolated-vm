@@ -21,6 +21,7 @@ class ratchet_span : public std::span<Type> {
 
 		auto erase(auto it) -> void;
 		auto insert(auto it) -> void;
+		static auto make_iterator(auto it) -> iterator;
 };
 
 // N number of queues, which tracks which ones currently may have elements
@@ -51,20 +52,30 @@ class segmented_priority_queue {
 // `ratchet_span`
 template <class Type>
 auto ratchet_span<Type>::erase(auto it) -> void {
-	auto next = std::next(iterator{it});
+	auto local_it = make_iterator(it);
+	auto next = std::next(local_it);
 	if (end() == next) {
-		*this = {begin(), iterator{it}};
-	} else if (begin() == iterator{it}) {
+		*this = {begin(), local_it};
+	} else if (begin() == local_it) {
 		*this = {next, end()};
 	}
 }
 
 template <class Type>
 auto ratchet_span<Type>::insert(auto it) -> void {
+	auto local_it = make_iterator(it);
 	*this = {
-		std::min(iterator{it}, begin()),
-		std::max(std::next(iterator{it}), end())
+		std::min(local_it, begin()),
+		std::max(std::next(local_it), end())
 	};
+}
+
+template <class Type>
+auto ratchet_span<Type>::make_iterator(auto it) -> iterator {
+	// `std::span<Type>::iterator` is implementation-defined, and in libc++ the constructor is
+	// private.
+	auto span = std::span<Type>{it, it};
+	return span.begin();
 }
 
 // `segmented_priority_queue`

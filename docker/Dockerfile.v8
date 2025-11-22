@@ -55,6 +55,7 @@ RUN <<DONE
 		git \
 		libglib2.0-dev \
 		lld-$LLVM_VERSION \
+		llvm-$LLVM_VERSION \
 		ninja-build \
 		pkg-config \
 	;

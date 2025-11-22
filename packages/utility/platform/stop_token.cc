@@ -15,7 +15,7 @@ class composite_stop_token : private std::stop_source, public std::stop_token {
 		static auto make_callback(std::stop_source stop_source) {
 			// I wonder what's better: copying the stop state into each callback, or using function
 			// pointer..
-			return [ stop_source = std::move(stop_source) ]() -> void { stop_source.request_stop(); };
+			return [ stop_source = std::move(stop_source) ]() mutable -> void { stop_source.request_stop(); };
 		}
 
 		using callback_type = decltype(make_callback(std::declval<std::stop_source>()));

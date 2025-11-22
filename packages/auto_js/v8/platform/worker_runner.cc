@@ -1,4 +1,5 @@
 module;
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 module v8_js;

@@ -30,6 +30,21 @@ auto js_clock::now() noexcept -> time_point {
 namespace std::chrono {
 using namespace js;
 
+// libc++ polyfill
+// https://github.com/llvm/llvm-project/issues/166050
+#ifdef _LIBCPP_VERSION
+export template <class To, class From>
+struct clock_time_conversion;
+
+export template <class To, class From, class Duration>
+auto clock_cast(std::chrono::time_point<From, Duration> time_point) {
+	clock_time_conversion<To, From> convert{};
+	return convert(time_point);
+}
+#endif
+
+// ---
+
 template <>
 struct clock_time_conversion<system_clock, js_clock> {
 		constexpr auto operator()(js_clock::time_point time) -> system_clock::time_point {

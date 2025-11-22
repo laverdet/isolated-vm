@@ -1,5 +1,6 @@
 module;
 #include <cassert>
+#include <exception>
 #include <ranges>
 #include <string>
 #include <unordered_map>
@@ -85,7 +86,9 @@ auto module_record::create_synthetic(context_lock_witness lock, string_span expo
 	auto module_record = v8::Module::CreateSyntheticModule(lock.isolate(), module_name, v8_export_names, evaluation_steps);
 
 	// "Link" the module, which is a no-op
-	unmaybe(module_record->InstantiateModule(lock.context(), nullptr));
+	// auto null_callback = v8::Module::ResolveModuleByIndexCallback{nullptr};
+	auto null_callback = v8::Module::ResolveModuleCallback{nullptr};
+	unmaybe(module_record->InstantiateModule(lock.context(), null_callback));
 
 	// `Evaluate` invokes `evaluation_steps` above
 	unmaybe(module_record->Evaluate(lock.context()));
@@ -124,11 +127,29 @@ auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module
 		) -> v8::MaybeLocal<v8::Module> {
 		return (*linker_ptr)(referrer);
 	};
+	// auto v8_callback = v8::Module::ResolveModuleByIndexCallback{
+	// 	[](
+	// 		v8::Local<v8::Context> /*context*/,
+	// 		size_t /*module_request_index*/,
+	// 		v8::Local<v8::Module> referrer
+	// 	) -> v8::MaybeLocal<v8::Module> {
+	// 		return (*linker_ptr)(referrer);
+	// 	}
+	// };
 	unmaybe(module->InstantiateModule(lock.context(), v8_callback));
 }
 
 auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module) -> void {
 	// Probably a synthetic module
+	// auto v8_callback = v8::Module::ResolveModuleByIndexCallback{
+	// 	[](
+	// 		v8::Local<v8::Context> /*context*/,
+	// 		size_t /*module_request_index*/,
+	// 		v8::Local<v8::Module> /*referrer*/
+	// 	) -> v8::MaybeLocal<v8::Module> {
+	// 		std::terminate();
+	// 	}
+	// };
 	v8::Module::ResolveModuleCallback v8_callback =
 		[](
 			v8::Local<v8::Context> /*context*/,

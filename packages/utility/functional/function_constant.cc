@@ -1,4 +1,5 @@
 module;
+#include <concepts>
 #include <utility>
 export module util:functional.function_constant;
 import :type_traits;

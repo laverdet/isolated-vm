@@ -1,11 +1,14 @@
 # Environment variables for ASAN / -fsanitize. Since isolated-vm is loaded into a non-ASAN process
 # via dlopen, ASAN must be preloaded.
 env LD_PRELOAD=libclang_rt.asan-aarch64.so
+env ASAN_OPTIONS=detect_leaks=1:detect_stack_use_after_return=1:check_initialization_order=1:strict_init_order=1
 env LSAN_OPTIONS=suppressions=./scripts/.lsan-supressions
+env UBSAN_OPTIONS=suppressions=./scripts/.ubsan-supressions
 
 # Map v8 sources
-settings set target.source-map ../../../include /v8/include
-settings set target.source-map ../../../src /v8/src
+settings append target.source-map ../../../include /v8/include
+settings append target.source-map ../../../third_party /v8/third_party
+settings append target.source-map ../../../src /v8/src
 
 # Show full path: `line.file.basename -> line.file.fullpath`. Otherwise it is the same string as the
 # default `settings show frame-format`
@@ -14,3 +17,6 @@ settings set frame-format "frame #${frame.index}: ${ansi.fg.yellow}${frame.pc}${
 # Faster symbol lookup? Idk
 settings set symbols.enable-lldb-index-cache true
 settings set symbols.load-on-demand true
+
+# This thing is annoying
+settings set show-statusline false

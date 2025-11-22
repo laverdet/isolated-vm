@@ -1,6 +1,7 @@
 module;
 #include <atomic>
 #include <concepts>
+#include <functional>
 #include <stop_token>
 #include <thread>
 #include <utility>

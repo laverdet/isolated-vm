@@ -24,7 +24,7 @@ class foreground_task_queue {
 		using delayed_entry_type = delayed_queue_type::value_type;
 
 		foreground_task_queue() = default;
-		foreground_task_queue(foreground_task_queue&& other);
+		foreground_task_queue(foreground_task_queue&& other) noexcept;
 		foreground_task_queue(const foreground_task_queue&) = delete;
 		auto operator=(const foreground_task_queue&) -> foreground_task_queue& = delete;
 		auto operator=(foreground_task_queue&&) -> foreground_task_queue& = delete;

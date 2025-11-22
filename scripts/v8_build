@@ -5,11 +5,12 @@ TARGET=$(basename "$1")
 
 # Docs:
 # https://v8.dev/docs/build-gn
-# https://v8.dev/docs/compile-arm64#system_clang_gcc
+# https://v8.dev/docs/compile-arm64
 
 # Note: libc++ is (basically) required to build v8 on clang. On clang `libstdc++` can't inline
 # unaligned 64-bit atomic struct operations. So you'd need to link against libatomic which I don't
 # want to do because you don't need to.
+# https://github.com/llvm/llvm-project/issues/44400
 # ---
 # #include <atomic>
 # struct foo_t { uint32_t left, right; };
@@ -32,14 +33,30 @@ PLATFORM=${TUPLE[${#TUPLE[@]} - 3]:-} # linux-gnu, linux-musl, windows, darwin
 ARCH=${TUPLE[${#TUPLE[@]} - 2]} # x64, arm64
 CONFIG=${TUPLE[${#TUPLE[@]} - 1]} # release, debug, optdebug
 
+# `use_custom_libcxx=false`
+# Use the system default c++ standard library. The v8 maintainers really won't like you if you do
+# this.
+
+# `use_lld=true` (default)
+# Use `lld` (llvm linker). This enables CREL ELF relocation tables on Linux, so LLD must be also
+# used to build isolated-vm.
+
+# `v8_enable_conservative_stack_scanning=true`
+# Required with `v8_enable_direct_handle`. This flag is removed and default in v8 v13.7.
+
+# `v8_enable_temporal_support=false`
+# Disables Temporal, which requires a Rust x86 toolchain for some reason.
+# https://issues.chromium.org/issues/425709639
+
 GN_ARGS=(
 	clang_use_chrome_plugins=false
 	treat_warnings_as_errors=false
+	use_clang_modules=false
 	use_custom_libcxx=false
-	v8_enable_backtrace=true
 	v8_enable_conservative_stack_scanning=true
 	v8_enable_direct_handle=true
 	v8_enable_sandbox=true
+	v8_enable_temporal_support=false
 	v8_use_external_startup_data=false
 );
 if [ ${CLANG_BASE_PATH+-} ]; then
@@ -56,59 +73,59 @@ fi
 
 # Platform flags
 case "$PLATFORM" in
-	darwin)
-		GN_ARGS+=(use_lld=false)
-		;;
-
 	linux-musl)
 		GN_ARGS+=(
 			use_glib=false
-			use_lld=false
 			use_sysroot=false
 		)
 		;;
 esac
 
-# Debug flags
+# Optimization & diagnostic flags
 case "$CONFIG" in
 	debug|optdebug)
 		GN_ARGS+=(
 			is_debug=true
+			symbol_level=2
+			v8_enable_backtrace=true
+			v8_enable_disassembler=true
 			v8_enable_fast_mksnapshot=true
+			v8_enable_object_print=true
+			v8_enable_slow_dchecks=true
+			v8_enable_verify_heap=true
 		)
-		V8_LIBRARY_TYPE=shared
-		V8_TARGETS=(v8 v8_libbase v8_libplatform)
+		GN_ARGS+=(v8_optimized_debug=false)
+		if [ "$CONFIG" = debug ]; then
+			# Default is `true`
+			GN_ARGS+=(v8_optimized_debug=false)
+		fi
 		;;
 	release)
 		GN_ARGS+=(
 			dcheck_always_on=false
-			is_component_build=false
 			is_debug=false
-			v8_enable_disassembler=true
-			v8_enable_object_print=true
-			v8_enable_verify_heap=true
-			v8_monolithic=true
 		)
-		V8_LIBRARY_TYPE=static
-		V8_TARGETS=(v8_monolith)
 		;;
 esac
 
-# Optimization flags
+# Static vs shared library build
 case "$CONFIG" in
 	debug)
-		GN_ARGS+=(
-			symbol_level=2
-			v8_enable_slow_dchecks=true
-			v8_optimized_debug=false
-		)
+		V8_LIBRARY_TYPE=shared
+		V8_TARGETS=(v8 v8_libbase v8_libplatform)
 		;;
-	optdebug)
+	optdebug|release)
 		GN_ARGS+=(
-			symbol_level=1
-			v8_enable_verify_heap=true
-			v8_optimized_debug=true
+			is_component_build=false
+			v8_monolithic_for_shared_library=true
+			v8_monolithic=true
 		)
+		if [ "$CONFIG" = optdebug ]; then
+			# Don't split debug
+			GN_ARGS+=(use_debug_fission=false)
+		fi
+		V8_LIBRARY_TYPE=static
+		V8_TARGETS=(v8_monolith)
 		;;
 esac
 

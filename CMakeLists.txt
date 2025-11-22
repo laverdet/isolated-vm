@@ -44,12 +44,19 @@ set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Global compiler flags
+set(CMAKE_LINKER_TYPE LLD)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # No warnings allowed in release
 if (CMAKE_BUILD_TYPE STREQUAL Release)
 	set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 endif()
+
+# Check libc++ / libstdc++
+# https://stackoverflow.com/questions/42593022/cmake-detect-which-library-libc-or-libstdc-is-configured-to-be-used-against
+include(CheckCXXSymbolExists)
+check_cxx_symbol_exists(__GLIBCXX__ version GLIBCXX)
+check_cxx_symbol_exists(_LIBCPP_VERSION version LIBCPP)
 
 # Apple dylib flags
 if (APPLE)
@@ -98,22 +105,17 @@ endif()
 
 # Clang feature flags
 if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
-	# `std::stop_token` and maybe others
-	add_compile_definitions(_LIBCPP_ENABLE_EXPERIMENTAL)
-	# This enables `#include <expected>` somehow. This can be removed in Clang 19.1.0.
-	if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 20)
-		add_compile_options(-D__cpp_concepts=202002L -Wno-builtin-macro-redefined)
-	endif()
-
 	# Debug / Release configuration flags
 	if (CMAKE_BUILD_TYPE STREQUAL Debug)
-		# Enable ASAN / LSAN
-		add_compile_options(-fsanitize=address)
-		add_link_options(-fsanitize=address -shared-libasan)
+		# Enable (A|L|UB)SAN
+		add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fsanitize=address,undefined>)
+		add_link_options(-fsanitize=address,undefined -shared-libasan)
 	else()
 		# clang-18 complains about `std::aligned_storage` within `std::shared_ptr` compiling against
 		# libstdc++
 		add_compile_options(-Wno-deprecated-declarations)
+		# Unused parameters in assert(..)
+		add_compile_options(-Wno-unused-parameter)
 	endif()
 endif()
 
@@ -179,20 +181,20 @@ endfunction()
 # Generic abstract C++ utilities
 add_subdirectory(packages/utility)
 
-# JavaScript adjacent code which is not specific to v8 or nodejs
-add_subdirectory(packages/auto_js/js)
+# Napi shim
+add_subdirectory(packages/third_party/nodejs)
 
 # Embedded v8
 set(IVM_V8_EMBEDDED ON)
 set(IVM_V8_TRICKSHOT ON)
-add_subdirectory(packages/auto_js/v8)
 add_subdirectory(packages/third_party/v8)
 
-# Napi shim
-add_subdirectory(packages/third_party/nodejs)
+# auto_js packages
+add_subdirectory(packages/auto_js/js)
+add_subdirectory(packages/auto_js/napi)
+add_subdirectory(packages/auto_js/v8)
 
 # nodejs require-able module
-add_subdirectory(packages/auto_js/napi)
 add_subdirectory(packages/backend_napi_v8)
 
 # Playground

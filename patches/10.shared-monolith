@@ -1,0 +1,26 @@
+diff --git a/BUILD.gn b/BUILD.gn
+index 63b22fd6eb4..ce9bab69fa1 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -349,6 +349,10 @@ declare_args() {
+   # Requires use_rtti = true
+   v8_enable_precise_zone_stats = false
+ 
++  # Set this if V8 monolithic static library is going to be linked into
++  # another shared library.
++  v8_monolithic_for_shared_library = false
++
+   # Experimental feature that uses SwissNameDictionary instead of NameDictionary
+   # as the backing store for all dictionary mode objects.
+   v8_enable_swiss_name_dictionary = false
+@@ -1158,6 +1162,10 @@ config("features") {
+     defines += [ "CPPGC_ALLOW_ALLOCATIONS_IN_PREFINALIZERS" ]
+   }
+ 
++  if (v8_monolithic && v8_monolithic_for_shared_library) {
++    defines += [ "V8_TLS_USED_IN_LIBRARY" ]
++  }
++
+   if (v8_enable_pointer_compression &&
+       !v8_enable_pointer_compression_shared_cage) {
+     defines += [ "V8_COMPRESS_POINTERS_IN_MULTIPLE_CAGES" ]

@@ -1,6 +1,7 @@
 module;
 #include <cassert>
 #include <chrono>
+#include <memory>
 #include <random>
 #include <ranges>
 #include <typeinfo>

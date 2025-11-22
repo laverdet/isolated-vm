@@ -1,0 +1,5 @@
+# v8 smi handles are packed into pointers
+null:auto_js/v8/visit.cc
+null:js::iv8::number
+null:z8::Value::IsNullOrUndefined
+null:z8::Value::QuickIsUndefined

@@ -73,6 +73,7 @@ agent_host::agent_host(
 }
 
 agent_host::~agent_host() {
+	// Terminate foreground runner
 	auto& scheduler = storage_->foreground_runner().scheduler();
 	scheduler.terminate();
 	assert(!scheduler.is_this_thread());
@@ -82,13 +83,20 @@ agent_host::~agent_host() {
 		});
 		thread.join();
 	}
-	auto lock = js::iv8::isolate_destructor_lock{isolate_.get()};
-	scheduler.mutate([ & ](platform::foreground_task_queue& queue) -> void {
-		queue.finalize();
-	});
-	remote_handle_list_.clear(lock);
-	autorelease_pool_.clear();
-	destroy_callback_(util::slice{lock});
+	// Destroy isolate and remaining handles
+	{
+		auto lock = js::iv8::isolate_destructor_lock{isolate_.get()};
+		scratch_context_.Reset();
+		scheduler.mutate([ & ](platform::foreground_task_queue& queue) -> void {
+			queue.finalize();
+		});
+		remote_handle_list_.clear(util::slice{lock});
+		autorelease_pool_.clear();
+		destroy_callback_(util::slice{lock});
+	}
+	// Deallocate isolate (before `agent_storage`)
+	isolate_.reset();
+	// Release storage
 	agent_storage::release(std::move(storage_));
 }
 

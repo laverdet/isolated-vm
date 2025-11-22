@@ -16,7 +16,7 @@
         "Release",
         "RelWithDebInfo",
       ],
-      "default": "RelWithDebInfo",
+      "default": "Debug",
     },
     {
       "type": "pickString",
@@ -27,28 +27,36 @@
         "arm64.optdebug",
         "arm64.release",
       ],
-      "default": "arm64.optdebug",
+      "default": "arm64.debug",
     },
     {
       "type": "pickString",
       "id": "v8_version",
       "description": "Which v8 revision to checkout?",
+      // pick from: https://chromiumdash.appspot.com/releases
+      // (click the "i" icon)
       "options": [
-        "12.8.20",
-        "13.5.203",
+        "14.2.231.21",
+        "14.1.146.11",
+        "14.0.365.10",
+        "13.9.205.21",
+        "13.8.258.30",
+        "13.7.152.17",
+        "13.6.233.10",
+        "13.5.212.10",
       ],
-      "default": "13.5.203"
+      "default": "13.5.212.10",
     },
     {
       "type": "pickString",
       "id": "nodejs_version",
       "description": "Which nodejs version to link against? For debug builds of isolated-vm the headers must match the nodejs version.",
       "options": [
-        "18.0.0",
-        "20.0.0",
+        "24.0.0",
         "22.0.0",
+        "20.0.0",
       ],
-      "default": "22.0.0",
+      "default": "24.0.0",
     },
 	],
 	"tasks": [
@@ -127,7 +135,7 @@
 		{
 			"label": "v8: build",
 			"type": "shell",
-			"command": "set -eu; set -a; . $ENV_FILE; export V8_OUT_PATH=$(pwd)/out/$V8_REF/${input:v8_target}; WITHOUT_SYSROOT=1 v8_build $V8_OUT_PATH; ivm_write_env V8_OUT_PATH",
+			"command": "set -eu; set -a; . $ENV_FILE; unset CLANG_BASE_PATH; export V8_OUT_PATH=$(pwd)/out/$V8_REF/${input:v8_target}; WITHOUT_SYSROOT=1 v8_build $V8_OUT_PATH; ivm_write_env V8_OUT_PATH",
 			"options": { "cwd": "/v8" },
 			"problemMatcher": [],
 			"presentation": {

@@ -12,7 +12,6 @@ if (IVM_V8_TRICKSHOT)
 		v8_inspector=z8_inspector
 		v8=z8
 	)
-	target_include_directories(google_v8 SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 else()
 	set(MODULE_NAME v8)
 endif()
@@ -50,6 +49,9 @@ target_preprocessed_sources(google_v8 v8 ${MODULE_NAME}
 		weak_callback_info.cc
 )
 
+# version.h
+target_include_directories(google_v8 SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+
 # v8 headers
 target_include_directories(google_v8 SYSTEM PRIVATE "${V8_INCLUDE_DIR}")
 
@@ -61,6 +63,13 @@ if (IVM_V8_EMBEDDED)
 	if (V8_LIBRARY_TYPE STREQUAL static)
 		target_link_directories(google_v8 PUBLIC "${V8_OUT_PATH}/obj")
 		target_link_libraries(google_v8 PUBLIC v8_monolith)
+
+		# Building v8 against libstdc++ w/ clang requires `-latomic`
+		# TODO(?): We would need to record how v8 was compiled, not which toolchain is compiling *this*
+		# project.
+		# if (GLIBCXX)
+		# 	target_link_libraries(google_v8 PUBLIC atomic)
+		# endif()
 	else()
 		target_link_directories(google_v8 PUBLIC "${V8_OUT_PATH}")
 		target_link_libraries(google_v8 PUBLIC v8 v8_libbase v8_libplatform)

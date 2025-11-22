@@ -2,9 +2,9 @@ name: Build
 on: [ push ]
 
 env:
-  NODE_HEADERS: 22.0.0
+  NODE_HEADERS: 24.0.0
   V8_CONFIGURATION: release
-  V8_REF: 13.5.203
+  V8_REF: 13.5.212.10
 
 jobs:
   # First, check to see if v8 has been built for each target. If not, then a more powerful `runs-on`

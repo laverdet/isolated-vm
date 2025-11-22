@@ -1,4 +1,5 @@
-# export LLVM_VERSION=21 NODE_VERSION=22.14.0 V8_TARGET=arm64.debug V8_VERSION=13.5.203
+# Note: Terminate existing docker containers before building otherwise the build is slow.
+# export LLVM_VERSION=21 NODE_VERSION=24.11.1 V8_TARGET=arm64.debug V8_VERSION=13.5.212.10
 # docker compose --progress=plain build --pull depot_tools v8_sources v8 node_sources node
 # docker compose --progress=plain build development
 

@@ -3,7 +3,7 @@ module;
 #include <cassert>
 #include <chrono>
 #include <memory>
-#include <thread>
+#include <stop_token>
 #include <utility>
 module v8_js;
 import :platform.foreground_runner;
@@ -11,7 +11,7 @@ import :platform.foreground_runner;
 namespace js::iv8::platform {
 
 // `foreground_task_queue`
-foreground_task_queue::foreground_task_queue(foreground_task_queue&& other) :
+foreground_task_queue::foreground_task_queue(foreground_task_queue&& other) noexcept :
 		tasks_{std::move(other.tasks_)},
 		delayed_tasks_{std::move(other.delayed_tasks_)},
 		finalized_{other.finalized_} {
