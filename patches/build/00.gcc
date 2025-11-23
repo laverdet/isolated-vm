@@ -1,10 +1,10 @@
 diff --git a/config/compiler/BUILD.gn b/config/compiler/BUILD.gn
-index 502c2dd2c..c5fe313e7 100644
+index 07e876cab..b424bda45 100644
 --- a/config/compiler/BUILD.gn
 +++ b/config/compiler/BUILD.gn
-@@ -315,6 +315,22 @@ config("compiler") {
-     ":compiler_deterministic",
-   ]
+@@ -362,6 +362,28 @@ config("compiler") {
+     configs -= [ ":clang_warning_suppression" ]
+   }
  
 +  # nodejs team agrees:
 +  # https://github.com/nodejs/node/commit/ee61c2c6d3e97425b16d6821118084a833e52e29
@@ -20,6 +20,12 @@ index 502c2dd2c..c5fe313e7 100644
 +  #       |                                                        int16x8_t
 +  if (!is_clang) {
 +    cflags += [ "-flax-vector-conversions" ]
++  }
++
++  # warning: GCS is required by -z gcs, but this shared library lacks the necessary property note [...]
++  if (!is_clang) {
++    cflags += [ "-Wl,-z,gcs-report-dynamic=none" ]
++    ldflags += [ "-z", "gcs-report-dynamic=none" ]
 +  }
 +
    # Here we enable -fno-delete-null-pointer-checks, which makes various nullptr

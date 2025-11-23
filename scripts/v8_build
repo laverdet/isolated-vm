@@ -160,4 +160,8 @@ V8_OUT_PATH=$(realpath "$OUTDIR/$TARGET")
 EOF
 
 # Build the monolith
-ninja -C "$OUTDIR/$TARGET" v8 "${V8_TARGETS[@]}"
+if ! ninja -C "$OUTDIR/$TARGET" v8 "${V8_TARGETS[@]}"; then
+	for ii in "$(nproc)" 8 4 2; do
+		ninja -j"$ii" -C "$OUTDIR/$TARGET" v8 "${V8_TARGETS[@]}" && break
+	done
+fi

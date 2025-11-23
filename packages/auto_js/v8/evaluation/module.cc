@@ -118,46 +118,28 @@ auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module
 	thread_local auto* linker_ptr = &linker;
 
 	// v8 linker callback
-	v8::Module::ResolveModuleCallback v8_callback =
+	auto v8_callback = v8::Module::ResolveModuleByIndexCallback{
 		[](
 			v8::Local<v8::Context> /*context*/,
-			v8::Local<v8::String> /*specifier*/,
-			v8::Local<v8::FixedArray> /*attributes*/,
+			size_t /*module_request_index*/,
 			v8::Local<v8::Module> referrer
 		) -> v8::MaybeLocal<v8::Module> {
-		return (*linker_ptr)(referrer);
+			return (*linker_ptr)(referrer);
+		}
 	};
-	// auto v8_callback = v8::Module::ResolveModuleByIndexCallback{
-	// 	[](
-	// 		v8::Local<v8::Context> /*context*/,
-	// 		size_t /*module_request_index*/,
-	// 		v8::Local<v8::Module> referrer
-	// 	) -> v8::MaybeLocal<v8::Module> {
-	// 		return (*linker_ptr)(referrer);
-	// 	}
-	// };
 	unmaybe(module->InstantiateModule(lock.context(), v8_callback));
 }
 
 auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module) -> void {
 	// Probably a synthetic module
-	// auto v8_callback = v8::Module::ResolveModuleByIndexCallback{
-	// 	[](
-	// 		v8::Local<v8::Context> /*context*/,
-	// 		size_t /*module_request_index*/,
-	// 		v8::Local<v8::Module> /*referrer*/
-	// 	) -> v8::MaybeLocal<v8::Module> {
-	// 		std::terminate();
-	// 	}
-	// };
-	v8::Module::ResolveModuleCallback v8_callback =
+	auto v8_callback = v8::Module::ResolveModuleByIndexCallback{
 		[](
 			v8::Local<v8::Context> /*context*/,
-			v8::Local<v8::String> /*specifier*/,
-			v8::Local<v8::FixedArray> /*attributes*/,
+			size_t /*module_request_index*/,
 			v8::Local<v8::Module> /*referrer*/
 		) -> v8::MaybeLocal<v8::Module> {
-		std::terminate();
+			std::terminate();
+		}
 	};
 	unmaybe(module->InstantiateModule(lock.context(), v8_callback));
 }
