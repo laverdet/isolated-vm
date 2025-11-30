@@ -1,4 +1,6 @@
 module;
+#include "cxx/chunk_view.h"
+#include <algorithm>
 #include <cassert>
 #include <exception>
 #include <ranges>

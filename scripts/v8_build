@@ -39,10 +39,7 @@ CONFIG=${TUPLE[${#TUPLE[@]} - 1]} # release, debug, optdebug
 
 # `use_lld=true` (default)
 # Use `lld` (llvm linker). This enables CREL ELF relocation tables on Linux, so LLD must be also
-# used to build isolated-vm.
-
-# `v8_enable_conservative_stack_scanning=true`
-# Required with `v8_enable_direct_handle`. This flag is removed and default in v8 v13.7.
+# used to build isolated-vm in that case.
 
 # `v8_enable_temporal_support=false`
 # Disables Temporal, which requires a Rust x86 toolchain for some reason.
@@ -53,19 +50,31 @@ GN_ARGS=(
 	treat_warnings_as_errors=false
 	use_clang_modules=false
 	use_custom_libcxx=false
-	v8_enable_conservative_stack_scanning=true
+	use_lld=false
 	v8_enable_direct_handle=true
+	v8_enable_partition_alloc=false
 	v8_enable_sandbox=true
 	v8_enable_temporal_support=false
 	v8_use_external_startup_data=false
 );
 if [ ${CLANG_BASE_PATH+-} ]; then
-	GN_ARGS+=(clang_base_path="\"$CLANG_BASE_PATH\"")
+	CLANG_VERSION=$("$CLANG_BASE_PATH/bin/clang" --version | sed -nE 's/^.*version ([0-9]+).*$/\1/p')
+	GN_ARGS+=(
+		clang_base_path="\"$CLANG_BASE_PATH\""
+		clang_version="\"$CLANG_VERSION\""
+		is_clang=true
+	)
+elif [ "$PLATFORM" = win32 ]; then
+	# clang-cl is used.
+	GN_ARGS+=(is_clang=true)
 else
 	# v8 drops support for gcc wow
 	# https://groups.google.com/a/chromium.org/g/chromium-dev/c/5haWEDpUK6Y/m/LkM8f4CrDAAJ
 	# https://groups.google.com/g/v8-users/c/-vbS2agi1Kw
-	GN_ARGS+=(is_clang=false)
+	GN_ARGS+=(
+		is_clang=false
+		is_gcc=true
+	)
 fi
 if [ ${WITHOUT_SYSROOT+-} ]; then
 	GN_ARGS+=(use_sysroot=false)
@@ -73,6 +82,21 @@ fi
 
 # Platform flags
 case "$PLATFORM" in
+	darwin)
+		# This lets us link against the system libc++ dylib using the modern llvm headers.
+		mkdir -p "$OUTDIR/$TARGET/obj"
+		cat <<-EOF | clang++ -xc++ - -std=c++20 -mmacos-version-min=12.0 -O3 -c -o "$OUTDIR/$TARGET/obj/std_hash.o"
+			#include <cstddef>
+			#include <string_view>
+			#include <utility>
+			namespace std::inline __1 {
+			auto __hash_memory([[_Clang::__noescape__]] const void* ptr, size_t size) noexcept -> size_t {
+				std::hash<std::string_view> hash{};
+				return hash(std::string_view{static_cast<const char*>(ptr), size});
+			}
+			}
+		EOF
+		;;
 	linux-musl)
 		GN_ARGS+=(
 			use_glib=false
@@ -160,8 +184,4 @@ V8_OUT_PATH=$(realpath "$OUTDIR/$TARGET")
 EOF
 
 # Build the monolith
-if ! ninja -C "$OUTDIR/$TARGET" v8 "${V8_TARGETS[@]}"; then
-	for ii in "$(nproc)" 8 4 2; do
-		ninja -j"$ii" -C "$OUTDIR/$TARGET" v8 "${V8_TARGETS[@]}" && break
-	done
-fi
+ninja -C "$OUTDIR/$TARGET" v8 "${V8_TARGETS[@]}"

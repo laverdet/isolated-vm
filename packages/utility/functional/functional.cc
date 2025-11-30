@@ -7,6 +7,7 @@ export import :functional.elide;
 export import :functional.function_constant;
 export import :functional.function_ref;
 export import :functional.regular_return;
+import :type_traits;
 
 namespace util {
 
@@ -30,7 +31,7 @@ auto make_indirect_moveable_function(Fn fn) {
 #else
 
 export template <class Signature>
-using maybe_move_only_function = std::function<Signature>;
+using maybe_move_only_function = std::function<remove_function_cvref_t<Signature>>;
 
 export template <class Fn>
 auto make_indirect_moveable_function(Fn&& fn) {

@@ -1,8 +1,22 @@
+diff --git a/config/BUILDCONFIG.gn b/config/BUILDCONFIG.gn
+index 24a1d1439..92a423c08 100644
+--- a/config/BUILDCONFIG.gn
++++ b/config/BUILDCONFIG.gn
+@@ -142,6 +142,9 @@ declare_args() {
+               current_cpu != "mips" && current_cpu != "mips64" &&
+               current_cpu != "riscv64")
+ 
++  # :)
++  is_gcc = false
++
+   # Allows the path to a custom target toolchain to be injected as a single
+   # argument, and set as the default toolchain.
+   custom_toolchain = ""
 diff --git a/config/compiler/BUILD.gn b/config/compiler/BUILD.gn
-index 07e876cab..b424bda45 100644
+index 7bf4f2d63..9be6a1d8a 100644
 --- a/config/compiler/BUILD.gn
 +++ b/config/compiler/BUILD.gn
-@@ -362,6 +362,28 @@ config("compiler") {
+@@ -362,6 +362,30 @@ config("compiler") {
      configs -= [ ":clang_warning_suppression" ]
    }
  
@@ -18,14 +32,16 @@ index 07e876cab..b424bda45 100644
 +  #       |                                                        ^
 +  #       |                                                        |
 +  #       |                                                        int16x8_t
-+  if (!is_clang) {
++  if (is_gcc) {
 +    cflags += [ "-flax-vector-conversions" ]
 +  }
 +
 +  # warning: GCS is required by -z gcs, but this shared library lacks the necessary property note [...]
-+  if (!is_clang) {
-+    cflags += [ "-Wl,-z,gcs-report-dynamic=none" ]
-+    ldflags += [ "-z", "gcs-report-dynamic=none" ]
++  if (current_cpu == "arm64") {
++    if (is_gcc) {
++      cflags += [ "-Wl,-z,gcs-report-dynamic=none" ]
++      ldflags += [ "-z", "gcs-report-dynamic=none" ]
++    }
 +  }
 +
    # Here we enable -fno-delete-null-pointer-checks, which makes various nullptr

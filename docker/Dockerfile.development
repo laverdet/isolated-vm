@@ -21,6 +21,7 @@ RUN <<DONE
 		git \
 		jq \
 		libboost-all-dev \
+		libc++-$LLVM_VERSION-dev \
 		libglib2.0-dev \
 		lld-$LLVM_VERSION \
 		lldb-$LLVM_VERSION \

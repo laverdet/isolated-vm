@@ -16,16 +16,24 @@ jobs:
     strategy:
       matrix:
         host:
-          - runs-on: ubuntu-latest
+          - runs-on: ubuntu-24.04-arm
+            platform: linux-gnu
+            arch: arm64
+          - runs-on: ubuntu-24.04
             platform: linux-gnu
             arch: x64
-          - runs-on: ubuntu-latest
+          - runs-on: ubuntu-24.04-arm
+            platform: linux-musl
+            arch: arm64
+          - runs-on: ubuntu-24.04
             platform: linux-musl
             arch: x64
     name: configure / ${{ matrix.host.platform }} ${{ matrix.host.arch }}
     runs-on: ${{ matrix.host.runs-on }}
     outputs:
+      linux-gnu-arm64: ${{ steps.output.outputs.linux-gnu-arm64 }}
       linux-gnu-x64: ${{ steps.output.outputs.linux-gnu-x64 }}
+      linux-musl-arm64: ${{ steps.output.outputs.linux-musl-arm64 }}
       linux-musl-x64: ${{ steps.output.outputs.linux-musl-x64 }}
     steps:
       - uses: actions/cache/restore@v4
@@ -45,8 +53,11 @@ jobs:
             echo "$HOST=$RUNS_ON" >> "$GITHUB_OUTPUT"
           else
             case "$RUNS_ON" in
-              ubuntu-latest)
+              ubuntu-24.04)
                 echo "$HOST=runs-on,runner=32cpu-linux-x64,run-id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+                ;;
+              ubuntu-24.04-arm)
+                echo "$HOST=runs-on,runner=32cpu-linux-arm64,run-id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
                 ;;
               windows-latest)
                 echo "$HOST=runs-on,image=windows22-base-x64,family=m7i,run-id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
@@ -61,23 +72,32 @@ jobs:
       fail-fast: false
       matrix:
         host:
+          - runs-on: macos-15
+            platform: darwin
+            arch: arm64
+          - runs-on: macos-15-intel
+            platform: darwin
+            arch: x64
+          - runs-on: ${{ needs.configure.outputs.linux-gnu-arm64 }}
+            container: debian:forky
+            platform: linux-gnu
+            arch: arm64
           - runs-on: ${{ needs.configure.outputs.linux-gnu-x64 }}
-            container: debian:trixie
+            container: debian:forky
             platform: linux-gnu
             arch: x64
+          # Error: JavaScript Actions in Alpine containers are only supported on x64 Linux runners. Detected Linux Arm64
+          # - runs-on: ${{ needs.configure.outputs.linux-musl-arm64 }}
+          #   container: alpine:edge
+          #   platform: linux-musl
+          #   arch: arm64
           - runs-on: ${{ needs.configure.outputs.linux-musl-x64 }}
             container: alpine:edge
             platform: linux-musl
             arch: x64
-          - runs-on: macos-latest
-            platform: darwin
-            arch: arm64
-          - runs-on: macos-13
-            platform: darwin
-            arch: x64
-          - runs-on: windows-latest
-            platform: win32
-            arch: x64
+          # - runs-on: windows-latest
+          #   platform: win32
+          #   arch: x64
     name: build / ${{ matrix.host.platform }} ${{ matrix.host.arch }}
     runs-on: ${{ matrix.host.runs-on }}
     container: ${{ matrix.host.container }}
@@ -90,10 +110,78 @@ jobs:
         run: echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
 
       # GNU `tar` & `zstd` is needed for `actions/cache`
-      - uses: laverdet/install@v0.0.6
+      - uses: laverdet/install@v0.0.8
         if: startsWith(matrix.host.platform, 'linux-')
         with:
           packages: tar zstd
+
+      # Install toolchain
+      - name: Sources [Debian]
+        if: matrix.host.platform == 'linux-gnu'
+        run: apt-get -qq install --no-install-recommends -y curl; curl -kfsSL https://deb.nodesource.com/setup_24.x | bash -
+      - name: Toolchain [Linux]
+        uses: laverdet/install@v0.0.8
+        if: startsWith(matrix.host.platform, 'linux-')
+        with:
+          packages: |
+            build-essential
+            clang-21
+            clang-tools-21
+            cmake
+            curl
+            libboost-all-dev
+            ninja-build
+            nodejs
+            xxd
+            alpine#npm
+      - name: Toolchain [macOS]
+        if: matrix.host.platform == 'darwin'
+        run: |
+          brew install boost cmake llvm ninja node
+          # Clever workaround for clang-scan-deps issues
+          # /opt/homebrew/opt/llvm/bin/../include/c++/v1/__locale_dir/support/bsd_like.h:21:10: fatal error: 'time.h' file not found
+          # https://github.com/Homebrew/homebrew-core/issues/221782#issuecomment-3245658786
+          ln -s $(brew --prefix)/etc/clang ~/.config/clang
+      # On Windows, the POSIX shell in GitHub actions is Git Bash. This runs in an isolated MSYS2
+      # installation under `C:/Program Files/Git`. The runner comes with another MSYS2 installation
+      # in `C:/msys64`. This action adds the root MSYS2 installation higher up in $PATH so we can
+      # use `pacman`, and consume binaries installed by `pacman`.
+      # nb: Do not be confused by the `/msys64` directory which exists in the default GitHub shell!
+      # It is not the same as `C:/msys64`.
+      # nb: LLVM uses MSVC stdlib, so incomplete c++23 suport. Unofficial LLVM uses libc/UCRT but
+      # is not supported by v8. Cross-build via Linux may be the only way.
+      - name: Toolchain [Windows]
+        if: matrix.host.platform == 'win32'
+        shell: sh
+        run: |
+          echo ::group::Toolchain
+          # Install updated llvm
+          winget install --accept-source-agreements --silent -e --id=LLVM.LLVM
+          # This is the UCRT LLVM build. It seems better but v8's build system is heavily geared for clang-cl.
+          # winget install --accept-source-agreements --silent -e --id=MartinStorsjo.LLVM-MinGW.UCRT
+          # ls -d /c/Users/runneradmin/AppData/Local/Microsoft/WinGet/Packages/MartinStorsjo.LLVM-MinGW.UCRT_Microsoft.*/llvm-mingw-*-ucrt-*/bin >> "$GITHUB_PATH"
+
+          # You want the mingw version of ninja, not the msys version. The msys version uses
+          # `CMD.EXE` and does not work with the cmake Ninja generator.
+          /c/msys64/usr/bin/pacman -S --noconfirm \
+            mingw-w64-x86_64-boost \
+            mingw64/mingw-w64-x86_64-cmake \
+            mingw64/mingw-w64-x86_64-ninja \
+          ;
+          echo "/c/msys64/mingw64/bin" >> "$GITHUB_PATH"
+          echo "/c/msys64/usr/bin" >> "$GITHUB_PATH"
+          echo ::endgroup::
+          echo ::group::Dependency Walker
+          mkdir -p "$RUNNER_TOOL_CACHE/depwalker"
+          cd "$RUNNER_TOOL_CACHE/depwalker"
+          # `--ssl-no-revoke`: curl: (35) schannel: next InitializeSecurityContext failed:
+          # CRYPT_E_REVOCATION_OFFLINE (0x80092013) - The revocation function was unable to check
+          # revocation because the revocation server was offline.
+          curl -fsSL --ssl-no-revoke -o depwalker.zip https://github.com/lucasg/Dependencies/releases/download/v1.11.1/Dependencies_x64_Release.zip
+          unzip depwalker.zip
+          rm depwalker.zip
+          echo "$PWD" >> "$GITHUB_PATH"
+          echo ::endgroup::
 
       # Restore previously built v8
       - uses: actions/cache/restore@v4
@@ -118,59 +206,7 @@ jobs:
           key: ${{ steps.v8-cache.outputs.cache-primary-key }}
           path: ./deps/v8/out
 
-      # Install toolchain
-      - name: Toolchain [Linux]
-        uses: laverdet/install@v0.0.6
-        if: startsWith(matrix.host.platform, 'linux-')
-        with:
-          packages: |
-            build-essential
-            clang-18
-            clang-tools-18
-            cmake
-            curl
-            libboost-all-dev
-            lld
-            ninja-build
-            nodejs
-            npm
-            xxd
-      - name: Toolchain [macOS]
-        if: matrix.host.platform == 'darwin'
-        run: brew install boost cmake llvm ninja node
-      # On Windows, the POSIX shell in GitHub actions is Git Bash. This runs in an isolated MSYS2
-      # installation under `C:/Program Files/Git`. The runner comes with another MSYS2 installation
-      # in `C:/msys64`. This action adds the root MSYS2 installation higher up in $PATH so we can
-      # use `pacman`, and consume binaries installed by `pacman`.
-      # nb: Do not be confused by the `/msys64` directory which exists in the default GitHub shell!
-      # It is not the same as `C:/msys64`.
-      - name: Toolchain [Windows]
-        if: matrix.host.platform == 'win32'
-        shell: sh
-        run: |
-          echo ::group::Toolchain
-          # You want the mingw version of ninja, not the msys version. The msys version uses
-          # `CMD.EXE` and does not work with the cmake Ninja generator.
-          /c/msys64/usr/bin/pacman -S --noconfirm \
-            mingw-w64-x86_64-boost \
-            mingw64/mingw-w64-x86_64-ninja \
-          ;
-          echo "/c/msys64/mingw64/bin" >> "$GITHUB_PATH"
-          echo "/c/msys64/usr/bin" >> "$GITHUB_PATH"
-          echo ::endgroup::
-          echo ::group::Dependency Walker
-          mkdir -p "$RUNNER_TOOL_CACHE/depwalker"
-          cd "$RUNNER_TOOL_CACHE/depwalker"
-          # `--ssl-no-revoke`: curl: (35) schannel: next InitializeSecurityContext failed:
-          # CRYPT_E_REVOCATION_OFFLINE (0x80092013) - The revocation function was unable to check
-          # revocation because the revocation server was offline.
-          curl -fsSL --ssl-no-revoke -o depwalker.zip https://github.com/lucasg/Dependencies/releases/download/v1.11.1/Dependencies_x64_Release.zip
-          unzip depwalker.zip
-          rm depwalker.zip
-          echo "$PWD" >> "$GITHUB_PATH"
-          echo ::endgroup::
-
-      # Install node & npm dependencies
+      # Install nodejs & npm dependencies
       - uses: pnpm/action-setup@v4
       - name: Install
         run: pnpm install --frozen-lockfile
@@ -215,14 +251,13 @@ jobs:
               CMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++
               ;;
             linux-*)
-              CMAKE_C_COMPILER=$(realpath "$(which clang-18)")
-              CMAKE_CXX_COMPILER=$(realpath "$(which clang++-18)")
+              CMAKE_C_COMPILER=$(realpath "$(which clang-21)")
+              CMAKE_CXX_COMPILER=$(realpath "$(which clang++-21)")
               ;;
             win32)
-              CMAKE_C_COMPILER="C:/Program Files/LLVM/bin/clang.exe"
-              CMAKE_CXX_COMPILER="C:/Program Files/LLVM/bin/clang++.exe"
-              # I do not know why cmake cannot find ninja without explicitly being told where it is.
-              CMAKE_MAKE_PROGRAM=$(which ninja)
+              CMAKE_C_COMPILER=$(which clang.exe)
+              CMAKE_CXX_COMPILER=$(which clang++.exe)
+              CMAKE_MAKE_PROGRAM=$(which ninja.exe)
               CMAKE_PREFIX_PATH=C:/msys64/mingw64/lib/cmake
               ;;
           esac
@@ -285,31 +320,35 @@ jobs:
       fail-fast: false
       matrix:
         host:
+          - runs-on: macos-latest
+            platform: darwin
+            arch: arm64
+          - runs-on: macos-15-intel
+            platform: darwin
+            arch: x64
+          - runs-on: ubuntu-24.04-arm
+            container: debian:forky
+            platform: linux-gnu
+            arch: arm64
           - runs-on: ubuntu-latest
-            container: debian:trixie
+            container: debian:forky
             platform: linux-gnu
             arch: x64
+          - runs-on: ubuntu-24.04-arm
+            container: alpine:edge
+            platform: linux-musl
+            arch: arm64
           - runs-on: ubuntu-latest
             container: alpine:edge
             platform: linux-musl
             arch: x64
-          - runs-on: macos-latest
-            platform: darwin
-            arch: arm64
-          - runs-on: macos-13
-            platform: darwin
-            arch: x64
-          - runs-on: windows-latest
-            platform: win32
-            arch: x64
+          # - runs-on: windows-latest
+          #   platform: win32
+          #   arch: x64
         node:
-          - 18
-          - 20
           - 22
+          - 24
         exclude:
-          - host:
-              platform: win32
-            node: 20
           - host:
               platform: win32
             node: 22
@@ -336,15 +375,14 @@ jobs:
           echo https://dl-cdn.alpinelinux.org/alpine/edge/community/ >> /etc/apk/repositories
           echo https://dl-cdn.alpinelinux.org/alpine/edge/testing/ >> /etc/apk/repositories
           case "$NODE_VERSION" in
-            22) echo "package=nodejs-current" >> "$GITHUB_OUTPUT" ;;
-            20) echo "package=nodejs" >> "$GITHUB_OUTPUT" ;;
-            18) echo "package=nodejs18" >> "$GITHUB_OUTPUT" ;;
+            24) echo "package=nodejs-current" >> "$GITHUB_OUTPUT" ;;
+            22) echo "package=nodejs" >> "$GITHUB_OUTPUT" ;;
             *)
               echo "Unknown node version: $NODE_VERSION" 1>&2
               exit 1
               ;;
           esac
-      - uses: laverdet/install@v0.0.6
+      - uses: laverdet/install@v0.0.8
         if: steps.configure-musl.outcome == 'success'
         with:
           packages: alpine#${{ steps.configure-musl.outputs.package }} npm

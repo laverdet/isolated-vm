@@ -4,5 +4,5 @@
 		{ "path": "./packages/backend_napi_v8/runtime/tsconfig.json" },
 		{ "path": "./packages/isolated-vm/tsconfig.json" },
 	],
-	"files": [],
+	"include": [],
 }

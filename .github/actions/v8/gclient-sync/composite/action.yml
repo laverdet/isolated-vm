@@ -1,6 +1,15 @@
 runs:
   using: composite
   steps:
+    - shell: sh
+      run: |
+        # Fixes *fatal* error from `depot_tools` about "optimal Chromium development". `touch
+        # ~/.gitconfig` will also fix it but you still get the snarky message. These people spend
+        # all day smelling their own farts.
+        git config --global core.autocrlf false
+        git config --global core.filemode false
+        git config --global core.fscache true
+        git config --global core.preloadindex true
     - uses: newkdev/setup-depot-tools@v1.0.1
     - shell: sh
       run: |

@@ -1,8 +1,17 @@
 diff --git a/config/compiler/BUILD.gn b/config/compiler/BUILD.gn
-index e49ed9efd..605a09deb 100644
+index a18beaecb..8046f41d0 100644
 --- a/config/compiler/BUILD.gn
 +++ b/config/compiler/BUILD.gn
-@@ -2131,6 +2131,23 @@ config("default_warnings") {
+@@ -2100,6 +2100,8 @@ config("default_warnings") {
+       # https://swiftshader-review.googlesource.com/c/SwiftShader/+/57968 has
+       # rolled into angle.
+       cflags += [ "/wd4244" ]
++    } else {
++      cflags += [ "-Wno-deprecated-declarations" ]
+     }
+   } else {
+     if (is_apple || is_android) {
+@@ -2136,6 +2138,23 @@ config("default_warnings") {
          "-Wno-class-memaccess",
        ]
  
@@ -26,7 +35,7 @@ index e49ed9efd..605a09deb 100644
        # -Wunused-local-typedefs is broken in gcc,
        # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=63872
        cflags += [ "-Wno-unused-local-typedefs" ]
-@@ -2149,6 +2166,15 @@ config("default_warnings") {
+@@ -2154,6 +2173,15 @@ config("default_warnings") {
        # -Wpacked-not-aligned complains all generated mojom-shared-internal.h
        # files.
        cflags += [ "-Wno-packed-not-aligned" ]

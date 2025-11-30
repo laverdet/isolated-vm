@@ -37,8 +37,8 @@ class reference_handle : util::non_copyable {
 
 	public:
 		consteval reference_handle(const reference_handle& /*right*/) {
-			static_assert(std::is_constant_evaluated());
-		}
+			// consteval no-op!
+		};
 
 		constexpr reference_handle(reference_handle&& right) noexcept :
 				env_{right.env_},

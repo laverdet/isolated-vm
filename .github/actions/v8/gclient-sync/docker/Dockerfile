@@ -7,6 +7,8 @@ RUN <<DONE
 		git \
 		python3 \
 	;
+	# Otherwise `git config --list --global` fails, which `gclient sync` uses.
+	touch ~/.gitconfig
 	mkdir -p ~/.config/depot_tools
 	echo '{"is-googler":false,"countdown":10,"opt-in":null,"version":3}' > ~/.config/depot_tools/metrics.cfg
 	git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git --depth 1

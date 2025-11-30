@@ -1,5 +1,5 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index 52a9c860841..4ae72160fd8 100644
+index 52a9c860841..d8f4854d1a6 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
 @@ -1480,7 +1480,7 @@ config("toolchain") {
@@ -7,7 +7,7 @@ index 52a9c860841..4ae72160fd8 100644
    visibility = [ "./*" ]
  
 -  defines = []
-+  defines = [ "v8=z8", "v8_inspector=z8_inspector", "v8_crdtp=z8_crdtp", "V8_Dcheck=Z8_Dcheck", "V8_Fatal=Z8_Fatal", "cppgc=zppgc", "unibrow=znibrow" ]
++  defines = [ "v8=z8", "v8_inspector=z8_inspector", "v8_crdtp=z8_crdtp", "V8_Dcheck=Z8_Dcheck", "V8_Fatal=Z8_Fatal", "absl=zbsl", "cppgc=zppgc", "unibrow=znibrow" ]
    cflags = []
    ldflags = []
  
@@ -15,7 +15,7 @@ index 52a9c860841..4ae72160fd8 100644
      defines = [ "BUILDING_V8_BASE_SHARED" ]
    }
  
-+  defines += [ "v8=z8", "v8_inspector=z8_inspector", "v8_crdtp=z8_crdtp", "V8_Dcheck=Z8_Dcheck", "V8_Fatal=Z8_Fatal", "cppgc=zppgc", "unibrow=znibrow" ]
++  defines += [ "v8=z8", "v8_inspector=z8_inspector", "v8_crdtp=z8_crdtp", "V8_Dcheck=Z8_Dcheck", "V8_Fatal=Z8_Fatal", "absl=zbsl", "cppgc=zppgc", "unibrow=znibrow" ]
 +
    if (is_posix || is_fuchsia) {
      sources += [

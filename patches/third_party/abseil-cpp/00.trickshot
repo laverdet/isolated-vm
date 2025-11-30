@@ -1,0 +1,13 @@
+diff --git a/BUILD.gn b/BUILD.gn
+index 23b44f3..cbea975 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -202,7 +202,7 @@ config("absl_include_config") {
+ }
+ 
+ config("absl_define_config") {
+-  defines = [ "ABSL_ALLOCATOR_NOTHROW=1" ]
++  defines = [ "ABSL_ALLOCATOR_NOTHROW=1", "absl=zbsl" ]
+ 
+   if (is_win && !use_custom_libcxx) {
+     defines += [

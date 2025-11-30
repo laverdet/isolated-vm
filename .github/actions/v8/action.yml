@@ -19,7 +19,7 @@ runs:
   using: composite
   steps:
     # Install dependencies
-    - uses: laverdet/install@v0.0.6
+    - uses: laverdet/install@v0.0.8
       if: startsWith(matrix.host.platform, 'linux-')
       with:
         packages: |
@@ -86,7 +86,7 @@ runs:
         echo ::group::Build v8
         case "$PLATFORM" in
           darwin)
-            export CLANG_BASE_PATH=$(brew --cellar llvm)/$(brew list --versions llvm | cut -d' ' -f2 | sort -V | head -n1)
+            export CLANG_BASE_PATH="$(brew --cellar llvm)/$(brew list --versions llvm | cut -d' ' -f2 | sort -V | head -n1)"
             ;;
           win32)
             export DEPOT_TOOLS_WIN_TOOLCHAIN=0

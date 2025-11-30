@@ -1,6 +1,7 @@
 module;
 #include <expected>
 #include <future>
+#include <memory>
 #include <optional>
 #include <ranges>
 #include <stop_token>
@@ -209,7 +210,7 @@ auto module_handle::create_capability(
 			auto realm,
 			create_capability_options options,
 			auto external_capability_interface
-		) {
+		) -> void {
 			auto capability_interface = std::vector{
 				std::from_range,
 				std::move(external_capability_interface) |

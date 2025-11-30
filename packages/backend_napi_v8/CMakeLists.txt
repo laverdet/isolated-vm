@@ -32,7 +32,7 @@ target_link_libraries(ivm_backend_v8 PUBLIC
 
 # Windows linking
 if (WIN32)
-	target_link_directories(ivm_backend_v8 PUBLIC ${NODE_DIST_DIR}/node/windows/${IVM_HOST_ARCH})
+	target_link_directories(ivm_backend_v8 PUBLIC ${NODE_DIST_DIR}/windows/${IVM_HOST_ARCH})
 	target_link_libraries(ivm_backend_v8 PUBLIC node dbghelp winmm)
 endif()
 

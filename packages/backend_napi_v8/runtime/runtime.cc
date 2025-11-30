@@ -11,7 +11,7 @@ import v8_js;
 namespace backend_napi_v8 {
 
 auto clock_time(js::iv8::context_lock_witness /*lock*/) -> double {
-	auto now = std::chrono::utc_clock::now();
+	auto now = std::chrono::steady_clock::now();
 	return duration_cast<js_clock::duration>(now.time_since_epoch()).count();
 }
 

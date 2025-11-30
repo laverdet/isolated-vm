@@ -44,7 +44,6 @@ set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Global compiler flags
-set(CMAKE_LINKER_TYPE LLD)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # No warnings allowed in release
@@ -58,10 +57,14 @@ include(CheckCXXSymbolExists)
 check_cxx_symbol_exists(__GLIBCXX__ version GLIBCXX)
 check_cxx_symbol_exists(_LIBCPP_VERSION version LIBCPP)
 
+# Build with libc++ if you want
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+# set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
+
 # Apple dylib flags
 if (APPLE)
+	set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0")
 	set(CMAKE_SHARED_LINKER_FLAGS "-dynamiclib -undefined dynamic_lookup")
-	set(CMAKE_OSX_DEPLOYMENT_TARGET 10.12)
 endif()
 
 # Microsoft Visual C++. It can't actually compile the templates in `js`, but this would be required
@@ -105,6 +108,8 @@ endif()
 
 # Clang feature flags
 if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
+	# Ignore warnings from `expand_def` using gnu c-preprocessor against clang compiler.
+	add_compile_options(-Wno-gnu-line-marker)
 	# Debug / Release configuration flags
 	if (CMAKE_BUILD_TYPE STREQUAL Debug)
 		# Enable (A|L|UB)SAN
@@ -134,7 +139,7 @@ function(target_embed_content TARGET)
 		add_custom_command(
 			DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}"
 			OUTPUT "${GEN_DIR}/${FILE}.c" "${GEN_DIR}/${FILE}.h"
-			COMMAND "${PROJECT_SOURCE_DIR}/embed.sh" "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}" "${GEN_DIR}/${FILE}" ${IDENTIFIER}
+			COMMAND sh -C "${PROJECT_SOURCE_DIR}/embed.sh" "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}" "${GEN_DIR}/${FILE}" ${IDENTIFIER}
 		)
 		set_source_files_properties("${GEN_DIR}/${FILE}.c" PROPERTIES GENERATED TRUE)
 		target_sources(${TARGET} PRIVATE "${GEN_DIR}/${FILE}.c")
@@ -170,13 +175,16 @@ function(target_preprocessed_sources TARGET SEARCH REPLACE)
 			add_custom_command(
 				DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}"
 				OUTPUT "${GEN_DIR}/${FILE}"
-				COMMAND "${PROJECT_SOURCE_DIR}/scripts/cmake/expand_def" "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}" "-D${SEARCH}=${REPLACE}" > "${GEN_DIR}/${FILE}"
+				COMMAND sh -C "${PROJECT_SOURCE_DIR}/scripts/cmake/expand_def" "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}" "-D${SEARCH}=${REPLACE}" > "${GEN_DIR}/${FILE}"
 			)
 			set_source_files_properties("${GEN_DIR}/${FILE}" PROPERTIES GENERATED TRUE)
 			target_sources(${TARGET} ${SCOPE} "${GEN_DIR}/${FILE}")
 		endforeach()
 	endif()
 endfunction()
+
+# Setup `#include "cxx/shims"`
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/packages")
 
 # Generic abstract C++ utilities
 add_subdirectory(packages/utility)
