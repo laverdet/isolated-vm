@@ -31,10 +31,10 @@ template <class Type>
 concept meta_range = requires(Type range) { range.into_range(); };
 
 export constexpr auto into_range(std::ranges::range auto&& range) -> auto&& {
-	return range;
+	return std::forward<decltype(range)>(range);
 }
 
-export constexpr auto into_range(meta_range auto range) {
+export constexpr auto into_range(meta_range auto&& range) {
 	return std::forward<decltype(range)>(range).into_range();
 }
 
