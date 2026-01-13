@@ -235,8 +235,8 @@ jobs:
       - name: Configure
         shell: sh
         env:
-          IVM_HOST_ARCH: ${{ matrix.host.arch }}
-          IVM_HOST_PLATFORM: ${{ matrix.host.platform }}
+          HOST_ARCH: ${{ matrix.host.arch }}
+          HOST_PLATFORM: ${{ matrix.host.platform }}
           NODE_DIST_DIR: deps/nodejs/${{ env.NODE_HEADERS }}
           V8_REF: ${{ env.V8_REF }}
           V8_TARGET: ${{ matrix.host.platform }}.${{ matrix.host.arch }}.${{ env.V8_CONFIGURATION }}
@@ -245,7 +245,7 @@ jobs:
           V8_REF_PATH=$PWD/deps/v8/out/$V8_REF
           CMAKE_MAKE_PROGRAM=ninja
           CMAKE_PREFIX_PATH=
-          case "$IVM_HOST_PLATFORM" in
+          case "$HOST_PLATFORM" in
             darwin)
               CMAKE_C_COMPILER=$(brew --prefix llvm)/bin/clang
               CMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++
@@ -267,13 +267,10 @@ jobs:
             -DCMAKE_CXX_COMPILER="$CMAKE_CXX_COMPILER" \
             -DCMAKE_MAKE_PROGRAM="$CMAKE_MAKE_PROGRAM" \
             -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
-            -DIVM_HOST_ARCH="$IVM_HOST_ARCH"\
-            -DIVM_HOST_PLATFORM="$IVM_HOST_PLATFORM" \
-            -DNODE_DIST_DIR="$NODE_DIST_DIR" \
             -DV8_INCLUDE_DIR="$V8_REF_PATH/include" \
             -DV8_INCLUDE_GN_FILE="$V8_REF_PATH/$V8_TARGET/include/v8-gn.h" \
             -DV8_LIBRARY_TYPE=static \
-            -DV8_OUT_PATH="$V8_REF_PATH/$V8_TARGET" \
+            -DV8_LIBRARY_PATH="$V8_REF_PATH/$V8_TARGET" \
             -B build \
             -G Ninja \
           ;
@@ -334,10 +331,11 @@ jobs:
             container: debian:forky
             platform: linux-gnu
             arch: x64
-          - runs-on: ubuntu-24.04-arm
-            container: alpine:edge
-            platform: linux-musl
-            arch: arm64
+          # Error: JavaScript Actions in Alpine containers are only supported on x64 Linux runners. Detected Linux Arm64
+          # - runs-on: ubuntu-24.04-arm
+          #   container: alpine:edge
+          #   platform: linux-musl
+          #   arch: arm64
           - runs-on: ubuntu-latest
             container: alpine:edge
             platform: linux-musl

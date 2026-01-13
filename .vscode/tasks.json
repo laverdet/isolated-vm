@@ -96,7 +96,7 @@
 		{
 			"label": "cmake: configure",
 			"type": "shell",
-			"command": "set -eu; set -a; . $ENV_FILE; . $V8_OUT_PATH/env; cmake -DCMAKE_BUILD_TYPE=${input:ivm_target} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DIVM_HOST_PLATFORM=linux-gnu -DIVM_HOST_ARCH=\"$(uname -m)\" -DV8_INCLUDE_DIR=\"$V8_INCLUDE_DIR\" -DV8_INCLUDE_GN_FILE=\"$V8_INCLUDE_GN_FILE\" -DV8_OUT_PATH=\"$V8_OUT_PATH\" -DV8_LIBRARY_TYPE=\"$V8_LIBRARY_TYPE\" -DCMAKE_CXX_COMPILER=\"$CLANG_BASE_PATH/bin/clang++\" -DNODE_DIST_DIR=\"$NODE_DIST_DIR\" -G Ninja -B build",
+			"command": "set -eu; set -a; source $ENV_FILE; source $V8_LIBRARY_PATH/env; cmake -DCMAKE_BUILD_TYPE=${input:ivm_target} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G Ninja -B build",
 			"dependsOn": [ "cmake: clean" ],
 			"problemMatcher": [],
 			"presentation": {
@@ -135,7 +135,7 @@
 		{
 			"label": "v8: build",
 			"type": "shell",
-			"command": "set -eu; set -a; . $ENV_FILE; unset CLANG_BASE_PATH; export V8_OUT_PATH=$(pwd)/out/$V8_REF/${input:v8_target}; WITHOUT_SYSROOT=1 v8_build $V8_OUT_PATH; ivm_write_env V8_OUT_PATH",
+			"command": "set -eu; set -a; source $ENV_FILE; unset CLANG_BASE_PATH; export V8_LIBRARY_PATH=$(pwd)/out/$V8_REF/${input:v8_target}; WITHOUT_SYSROOT=1 v8_build $V8_LIBRARY_PATH; ivm_write_env V8_LIBRARY_PATH",
 			"options": { "cwd": "/v8" },
 			"problemMatcher": [],
 			"presentation": {

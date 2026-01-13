@@ -1,5 +1,6 @@
 #!/bin/sh
 # ./embed.sh <source> <target> <variable>
+set -eu
 SIZE=$(($(cat "$1" | wc -c) + 1))
 
 cat <<EOF > "$2.h"

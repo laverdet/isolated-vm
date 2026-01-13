@@ -1,37 +1,47 @@
 cmake_minimum_required(VERSION 3.30.0 FATAL_ERROR)
 
-# Variables
-if (NOT DEFINED IVM_HOST_PLATFORM)
-	message(FATAL_ERROR "IVM_HOST_PLATFORM is not set")
+# Location of nodejs header files
+if(NOT DEFINED NODE_DIST_DIR)
+	set(NODE_DIST_DIR $ENV{NODE_DIST_DIR})
 endif()
-if (NOT DEFINED IVM_HOST_ARCH)
-	message(FATAL_ERROR "IVM_HOST_ARCH is not set")
-elseif(IVM_HOST_ARCH STREQUAL aarch64)
-	set(IVM_HOST_ARCH arm64)
+if(NOT EXISTS "${NODE_DIST_DIR}/include/node/node.h")
+	message(FATAL_ERROR "Missing ${NODE_DIST_DIR}/include/node/node.h")
 endif()
 
-if (NOT DEFINED NODE_DIST_DIR)
-	message(FATAL_ERROR "NODE_DIST_DIR is not set")
+# Location of v8 header files
+if(NOT DEFINED V8_INCLUDE_DIR)
+	set(V8_INCLUDE_DIR $ENV{V8_INCLUDE_DIR})
+endif()
+if(NOT EXISTS "${V8_INCLUDE_DIR}/v8.h")
+	message(FATAL_ERROR "Missing ${V8_INCLUDE_DIR}/v8.h")
 endif()
 
-if (NOT DEFINED V8_INCLUDE_DIR)
-	message(FATAL_ERROR "V8_INCLUDE_DIR is not set")
+# Location of v8-gn.h, build configuration
+if(NOT DEFINED V8_INCLUDE_GN_FILE)
+	set(V8_INCLUDE_GN_FILE $ENV{V8_INCLUDE_GN_FILE})
 endif()
-if (NOT DEFINED V8_INCLUDE_GN_FILE)
-	message(FATAL_ERROR "V8_INCLUDE_GN_FILE is not set")
+if(NOT EXISTS "${V8_INCLUDE_GN_FILE}")
+	message(FATAL_ERROR "Missing v8-gn.h")
 endif()
-if (NOT DEFINED V8_LIBRARY_TYPE)
-	message(FATAL_ERROR "V8_LIBRARY_TYPE is not set")
+
+# v8 library type (static, shared)
+if(NOT DEFINED V8_LIBRARY_TYPE)
+	set(V8_LIBRARY_TYPE $ENV{V8_LIBRARY_TYPE})
 endif()
-if (NOT DEFINED V8_OUT_PATH)
-	message(FATAL_ERROR "V8_OUT_PATH is not set")
+
+# v8 pre-built library location
+if(NOT DEFINED V8_LIBRARY_PATH)
+	set(V8_LIBRARY_PATH $ENV{V8_LIBRARY_PATH})
+endif()
+if(NOT EXISTS "${V8_LIBRARY_PATH}")
+	message(FATAL_ERROR "Missing v8 library")
 endif()
 
 # Ensure absolute path for variables used in subdirectories
 cmake_path(ABSOLUTE_PATH NODE_DIST_DIR BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
 cmake_path(ABSOLUTE_PATH V8_INCLUDE_DIR BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
 cmake_path(ABSOLUTE_PATH V8_INCLUDE_GN_FILE BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
-cmake_path(ABSOLUTE_PATH V8_OUT_PATH BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
+cmake_path(ABSOLUTE_PATH V8_LIBRARY_PATH BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 # Project config
 project(isolated_vm LANGUAGES C CXX)
@@ -39,7 +49,7 @@ project(isolated_vm LANGUAGES C CXX)
 # Boost requirement
 find_package(Boost 1.83 REQUIRED)
 
-# C++26 environment w/ `import std`
+# C++26 environment
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -47,7 +57,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # No warnings allowed in release
-if (CMAKE_BUILD_TYPE STREQUAL Release)
+if(CMAKE_BUILD_TYPE STREQUAL Release)
 	set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 endif()
 
@@ -62,14 +72,14 @@ check_cxx_symbol_exists(_LIBCPP_VERSION version LIBCPP)
 # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
 
 # Apple dylib flags
-if (APPLE)
+if(APPLE)
 	set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0")
 	set(CMAKE_SHARED_LINKER_FLAGS "-dynamiclib -undefined dynamic_lookup")
 endif()
 
 # Microsoft Visual C++. It can't actually compile the templates in `js`, but this would be required
 # if it could.
-if (MSVC)
+if(MSVC)
 	# Lmfao: "After 20+ years, we’re finally able to set the value for “__cplusplus” macro forward in
 	# the MSVC compiler."
 	# https://developercommunity.visualstudio.com/t/msvc-incorrectly-defines-cplusplus/139261#T-N223868
@@ -78,26 +88,26 @@ if (MSVC)
 endif()
 
 # Windows flags. You want /MT and not /MD
-if (WIN32 AND NOT CMAKE_BUILD_TYPE STREQUAL Debug)
+if(WIN32 AND NOT CMAKE_BUILD_TYPE STREQUAL Debug)
 	set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreaded)
 endif()
 
 # Windows Clang flags
-if (WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL Clang)
+if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL Clang)
 	# error: unknown attribute 'no_unique_address' ignored [-Werror,-Wunknown-attributes]
 	# [[no_unique_address]] Predicate predicate;
 	add_compile_options(-Wno-unknown-attributes)
 endif()
 
 # Clang & GCC diagnostic flags. GCC can't compile this project right now but I am hopeful.
-if (CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 	add_compile_options(
 		-fdiagnostics-color
 		-Wall
 		-Wextra
 		-Wpedantic
 	)
-	if (NOT CMAKE_BUILD_TYPE STREQUAL Debug)
+	if(NOT CMAKE_BUILD_TYPE STREQUAL Debug)
 		# Soften common development warnings
 		add_compile_options(
 			-Wno-unused-but-set-variable
@@ -107,11 +117,11 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 endif()
 
 # Clang feature flags
-if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
+if(CMAKE_CXX_COMPILER_ID STREQUAL Clang)
 	# Ignore warnings from `expand_def` using gnu c-preprocessor against clang compiler.
 	add_compile_options(-Wno-gnu-line-marker)
 	# Debug / Release configuration flags
-	if (CMAKE_BUILD_TYPE STREQUAL Debug)
+	if(CMAKE_BUILD_TYPE STREQUAL Debug)
 		# Enable (A|L|UB)SAN
 		add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fsanitize=address,undefined>)
 		add_link_options(-fsanitize=address,undefined -shared-libasan)

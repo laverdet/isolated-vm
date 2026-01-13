@@ -49,7 +49,6 @@ GN_ARGS=(
 	clang_use_chrome_plugins=false
 	treat_warnings_as_errors=false
 	use_clang_modules=false
-	use_custom_libcxx=false
 	use_lld=false
 	v8_enable_direct_handle=true
 	v8_enable_partition_alloc=false
@@ -63,6 +62,7 @@ if [ ${CLANG_BASE_PATH+-} ]; then
 		clang_base_path="\"$CLANG_BASE_PATH\""
 		clang_version="\"$CLANG_VERSION\""
 		is_clang=true
+		use_custom_libcxx=false
 	)
 elif [ "$PLATFORM" = win32 ]; then
 	# clang-cl is used.
@@ -85,17 +85,7 @@ case "$PLATFORM" in
 	darwin)
 		# This lets us link against the system libc++ dylib using the modern llvm headers.
 		mkdir -p "$OUTDIR/$TARGET/obj"
-		cat <<-EOF | clang++ -xc++ - -std=c++20 -mmacos-version-min=12.0 -O3 -c -o "$OUTDIR/$TARGET/obj/std_hash.o"
-			#include <cstddef>
-			#include <string_view>
-			#include <utility>
-			namespace std::inline __1 {
-			auto __hash_memory([[_Clang::__noescape__]] const void* ptr, size_t size) noexcept -> size_t {
-				std::hash<std::string_view> hash{};
-				return hash(std::string_view{static_cast<const char*>(ptr), size});
-			}
-			}
-		EOF
+		clang++ -xc++ - -std=c++20 -mmacos-version-min=12.0 -O3 -c -o "$OUTDIR/$TARGET/obj/std_hash.o" < "$(dirname "$0")/../packages/utility/platform/shim/darwin.cc"
 		;;
 	linux-musl)
 		GN_ARGS+=(
@@ -180,7 +170,7 @@ cat <<EOF > "$OUTDIR/$TARGET/env"
 V8_INCLUDE_GN_FILE=$(realpath "$OUTDIR/$TARGET/include/v8-gn.h")
 V8_INCLUDE_DIR=$(realpath "$OUTDIR/include")
 V8_LIBRARY_TYPE=$V8_LIBRARY_TYPE
-V8_OUT_PATH=$(realpath "$OUTDIR/$TARGET")
+V8_LIBRARY_PATH=$(realpath "$OUTDIR/$TARGET")
 EOF
 
 # Build the monolith

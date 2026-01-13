@@ -31,14 +31,22 @@ target_link_libraries(ivm_backend_v8 PUBLIC
 )
 
 # Windows linking
-if (WIN32)
-	target_link_directories(ivm_backend_v8 PUBLIC ${NODE_DIST_DIR}/windows/${IVM_HOST_ARCH})
+if(WIN32)
+	string(TOLOWER CMAKE_HOST_SYSTEM_PROCESSOR NODE_ARCH)
+	target_link_directories(ivm_backend_v8 PUBLIC ${NODE_DIST_DIR}/windows/${NODE_ARCH})
 	target_link_libraries(ivm_backend_v8 PUBLIC node dbghelp winmm)
 endif()
 
 # Copy out to ./dist
+execute_process(
+	COMMAND sh -C "${CMAKE_SOURCE_DIR}/scripts/cmake/host_platform"
+	OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE HOST_PLATFORM
+	RESULT_VARIABLE RESULT)
+if(NOT RESULT STREQUAL 0)
+	message(FATAL_ERROR "Unknown host platform." )
+endif()
 add_custom_command(TARGET ivm_backend_v8 POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy
 		$<TARGET_FILE:ivm_backend_v8>
-		${CMAKE_SOURCE_DIR}/packages/isolated-vm/dist/backend_v8/${IVM_HOST_PLATFORM}-${IVM_HOST_ARCH}/backend_v8.node
+		${CMAKE_SOURCE_DIR}/packages/isolated-vm/dist/backend_v8/${HOST_PLATFORM}/backend_v8.node
 )

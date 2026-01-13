@@ -1,7 +1,7 @@
 add_library(google_v8 STATIC)
 
 # Preprocessor macros which enable dual v8 in the same process
-if (IVM_V8_TRICKSHOT)
+if(IVM_V8_TRICKSHOT)
 	set(MODULE_NAME z8)
 	target_compile_definitions(google_v8 PUBLIC
 		cppgc=zppgc
@@ -55,24 +55,26 @@ target_include_directories(google_v8 SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}
 # v8 headers
 target_include_directories(google_v8 SYSTEM PRIVATE "${V8_INCLUDE_DIR}")
 
-if (IVM_V8_EMBEDDED)
+if(IVM_V8_EMBEDDED)
 	# Include v8-gn.h
 	target_compile_options(google_v8 PRIVATE -include "${V8_INCLUDE_GN_FILE}")
 
 	# Link against v8, which is built elsewhere
-	if (V8_LIBRARY_TYPE STREQUAL static)
-		target_link_directories(google_v8 PUBLIC "${V8_OUT_PATH}/obj")
+	if(V8_LIBRARY_TYPE STREQUAL static)
+		target_link_directories(google_v8 PUBLIC "${V8_LIBRARY_PATH}/obj")
 		target_link_libraries(google_v8 PUBLIC v8_monolith)
 
 		# Building v8 against libstdc++ w/ clang requires `-latomic`
 		# TODO(?): We would need to record how v8 was compiled, not which toolchain is compiling *this*
 		# project.
-		# if (GLIBCXX)
+		# if(GLIBCXX)
 		# 	target_link_libraries(google_v8 PUBLIC atomic)
 		# endif()
-	else()
-		target_link_directories(google_v8 PUBLIC "${V8_OUT_PATH}")
+	elseif(V8_LIBRARY_TYPE STREQUAL shared)
+		target_link_directories(google_v8 PUBLIC "${V8_LIBRARY_PATH}")
 		target_link_libraries(google_v8 PUBLIC v8 v8_libbase v8_libplatform)
+	else()
+		message(FATAL_ERROR "Unknown v8 library type")
 	endif()
 else()
 	# Prevents deeper v8 headers from being included from nodejs
