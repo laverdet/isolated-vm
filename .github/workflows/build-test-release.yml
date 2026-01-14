@@ -415,17 +415,23 @@ jobs:
     strategy:
       matrix:
         host:
-          - runs-on: ubuntu-latest
-            platform: linux-gnu
-            arch: x64
-          - runs-on: ubuntu-latest
-            platform: linux-musl
-            arch: x64
           - runs-on: macos-latest
             platform: darwin
             arch: arm64
-          - runs-on: macos-13
+          - runs-on: macos-15-intel
             platform: darwin
+            arch: x64
+          - runs-on: ubuntu-24.04-arm
+            platform: linux-gnu
+            arch: arm64
+          - runs-on: ubuntu-latest
+            platform: linux-gnu
+            arch: x64
+          - runs-on: ubuntu-24.04-arm
+            platform: linux-musl
+            arch: arm64
+          - runs-on: ubuntu-latest
+            platform: linux-musl
             arch: x64
           - runs-on: windows-latest
             platform: win32
@@ -439,7 +445,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.host.platform }}-${{ matrix.host.arch }}
-          path: ./packages/isolated-vm/dist/backend_v
+          path: ./packages/isolated-vm/dist/backend_v8
 
       # Save tar
       - name: tar
