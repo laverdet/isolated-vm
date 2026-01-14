@@ -49,6 +49,7 @@ GN_ARGS=(
 	clang_use_chrome_plugins=false
 	treat_warnings_as_errors=false
 	use_clang_modules=false
+	use_custom_libcxx=false
 	use_lld=false
 	v8_enable_direct_handle=true
 	v8_enable_partition_alloc=false
@@ -62,7 +63,6 @@ if [ ${CLANG_BASE_PATH+-} ]; then
 		clang_base_path="\"$CLANG_BASE_PATH\""
 		clang_version="\"$CLANG_VERSION\""
 		is_clang=true
-		use_custom_libcxx=false
 	)
 elif [ "$PLATFORM" = win32 ]; then
 	# clang-cl is used.
@@ -145,7 +145,14 @@ esac
 
 # Configure gn / ninja
 echo gn gen "$OUTDIR/$TARGET" --args=\'"${GN_ARGS[*]}"\'
-gn gen "$OUTDIR/$TARGET" --args="${GN_ARGS[*]}"
+if ! gn gen "$OUTDIR/$TARGET" --args="${GN_ARGS[*]}"; then
+	# Weird failure from gn on linux-musl arm64, but it still generates the ninja files
+	if [ "$PLATFORM" = linux-musl ]; then
+		echo "Ignoring gn error code of $? on linux-musl"
+	else
+		exit 1
+	fi
+fi
 
 # Make v8-gn.h
 mkdir -p "$OUTDIR/$TARGET/include"

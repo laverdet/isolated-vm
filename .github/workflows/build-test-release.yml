@@ -86,11 +86,10 @@ jobs:
             container: debian:forky
             platform: linux-gnu
             arch: x64
-          # Error: JavaScript Actions in Alpine containers are only supported on x64 Linux runners. Detected Linux Arm64
-          # - runs-on: ${{ needs.configure.outputs.linux-musl-arm64 }}
-          #   container: alpine:edge
-          #   platform: linux-musl
-          #   arch: arm64
+          - runs-on: ${{ needs.configure.outputs.linux-musl-arm64 }}
+            container: alpine:edge
+            platform: linux-musl
+            arch: arm64
           - runs-on: ${{ needs.configure.outputs.linux-musl-x64 }}
             container: alpine:edge
             platform: linux-musl
@@ -103,6 +102,9 @@ jobs:
     container: ${{ matrix.host.container }}
     concurrency: ${{ matrix.host.platform }} ${{ matrix.host.arch }}
     steps:
+      - uses: laverdet/alpine-arm64@v1
+        if: matrix.host.platform == 'linux-musl' && matrix.host.arch == 'arm64'
+
       # GitHub checkout
       - uses: actions/checkout@v4
       - name: Scripts
@@ -331,11 +333,10 @@ jobs:
             container: debian:forky
             platform: linux-gnu
             arch: x64
-          # Error: JavaScript Actions in Alpine containers are only supported on x64 Linux runners. Detected Linux Arm64
-          # - runs-on: ubuntu-24.04-arm
-          #   container: alpine:edge
-          #   platform: linux-musl
-          #   arch: arm64
+          - runs-on: ubuntu-24.04-arm
+            container: alpine:edge
+            platform: linux-musl
+            arch: arm64
           - runs-on: ubuntu-latest
             container: alpine:edge
             platform: linux-musl
@@ -354,6 +355,9 @@ jobs:
     runs-on: ${{ matrix.host.runs-on }}
     container: ${{ matrix.host.container }}
     steps:
+      - uses: laverdet/alpine-arm64@v1
+        if: matrix.host.platform == 'linux-musl' && matrix.host.arch == 'arm64'
+
       # GitHub checkout
       - uses: actions/checkout@v4
 
