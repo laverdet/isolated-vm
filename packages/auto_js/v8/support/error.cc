@@ -1,8 +1,8 @@
 module;
 #include <cassert>
-#include <exception>
 #include <expected>
 #include <format>
+#include <optional>
 #include <string>
 #include <type_traits>
 export module v8_js:error;

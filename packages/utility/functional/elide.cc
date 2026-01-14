@@ -1,4 +1,5 @@
 module;
+#include "shim/macro.h"
 #include <concepts>
 #include <tuple>
 #include <utility>
@@ -27,8 +28,8 @@ class elide {
 		}
 
 	private:
-		[[no_unique_address]] Invocable invocable_;
-		[[no_unique_address]] std::tuple<Args...> args_;
+		NO_UNIQUE_ADDRESS Invocable invocable_;
+		NO_UNIQUE_ADDRESS std::tuple<Args...> args_;
 };
 
 template <class Invocable, class... Args>

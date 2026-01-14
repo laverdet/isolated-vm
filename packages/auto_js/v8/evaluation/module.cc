@@ -1,9 +1,10 @@
 module;
-#include "cxx/chunk_view.h"
+#include "shim/cxx/chunk_view.h"
 #include <algorithm>
 #include <cassert>
 #include <exception>
 #include <ranges>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>

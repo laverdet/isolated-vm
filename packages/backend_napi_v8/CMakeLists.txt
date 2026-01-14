@@ -32,7 +32,10 @@ target_link_libraries(ivm_backend_v8 PUBLIC
 
 # Windows linking
 if(WIN32)
-	string(TOLOWER CMAKE_HOST_SYSTEM_PROCESSOR NODE_ARCH)
+	string(TOLOWER ${CMAKE_HOST_SYSTEM_PROCESSOR} NODE_ARCH)
+	if(NODE_ARCH STREQUAL amd64)
+		set(NODE_ARCH x64)
+	endif()
 	target_link_directories(ivm_backend_v8 PUBLIC ${NODE_DIST_DIR}/windows/${NODE_ARCH})
 	target_link_libraries(ivm_backend_v8 PUBLIC node dbghelp winmm)
 endif()

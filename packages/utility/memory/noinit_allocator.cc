@@ -1,4 +1,5 @@
 module;
+#include "shim/macro.h"
 #include <concepts>
 #include <memory>
 #include <type_traits>
@@ -57,7 +58,7 @@ class noinit_allocator {
 		}
 
 	private:
-		[[no_unique_address]] Allocator allocator_;
+		NO_UNIQUE_ADDRESS Allocator allocator_;
 };
 
 } // namespace util

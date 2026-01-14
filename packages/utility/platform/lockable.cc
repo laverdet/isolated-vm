@@ -1,4 +1,5 @@
 module;
+#include "shim/macro.h"
 #include <cassert>
 #include <concepts>
 #include <condition_variable>
@@ -54,7 +55,7 @@ class resource_predicate {
 
 	private:
 		std::reference_wrapper<const Resource> resource_;
-		[[no_unique_address]] Predicate predicate_;
+		NO_UNIQUE_ADDRESS Predicate predicate_;
 };
 
 // This is the return value of `read`, `write`, etc
@@ -226,7 +227,7 @@ class lockable {
 	private:
 		mutex_type mutex_;
 		Resource resource_;
-		[[no_unique_address]] ConditionVariable condition_variable_;
+		NO_UNIQUE_ADDRESS ConditionVariable condition_variable_;
 };
 
 // Preset lockable types

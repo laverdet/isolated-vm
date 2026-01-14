@@ -1,4 +1,5 @@
 module;
+#include "shim/macro.h"
 #include <type_traits>
 #include <utility>
 export module util:functional.bind;
@@ -30,8 +31,8 @@ struct bind_storage {
 				invocable_{std::move(invocable)},
 				params_{std::forward<Bound>(params)...} {}
 
-		[[no_unique_address]] Invocable invocable_;
-		[[no_unique_address]] flat_tuple<Bound...> params_;
+		NO_UNIQUE_ADDRESS Invocable invocable_;
+		NO_UNIQUE_ADDRESS flat_tuple<Bound...> params_;
 };
 
 // Overloaded signature `util::bind`
@@ -143,5 +144,4 @@ template <class Invocable, class... Bound>
 class bind<Invocable, Bound...> : public bind_explicit_params_t<Invocable, Bound...> {
 		using bind_explicit_params_t<Invocable, Bound...>::bind_explicit_params_t;
 };
-
 } // namespace util

@@ -1,4 +1,5 @@
 module;
+#include "shim/macro.h"
 #include <algorithm>
 #include <string>
 #include <type_traits>
@@ -108,7 +109,7 @@ struct accept_store_unwrapped {
 		}
 
 		std::reference_wrapper<const Accept> accept_;
-		[[no_unique_address]] Insert insert_;
+		NO_UNIQUE_ADDRESS Insert insert_;
 };
 
 // `accept` wrapper which is passed to visit instances. It is also used in nested container

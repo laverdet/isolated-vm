@@ -5,7 +5,13 @@ SIZE=$(($(cat "$1" | wc -c) + 1))
 
 cat <<EOF > "$2.h"
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern const char $3[$SIZE];
+#ifdef __cplusplus
+}
+#endif
 EOF
 
 cat <<EOF > "$2.c"

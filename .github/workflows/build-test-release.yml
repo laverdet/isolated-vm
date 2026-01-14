@@ -94,9 +94,9 @@ jobs:
             container: alpine:edge
             platform: linux-musl
             arch: x64
-          # - runs-on: windows-latest
-          #   platform: win32
-          #   arch: x64
+          - runs-on: windows-latest
+            platform: win32
+            arch: x64
     name: build / ${{ matrix.host.platform }} ${{ matrix.host.arch }}
     runs-on: ${{ matrix.host.runs-on }}
     container: ${{ matrix.host.container }}
@@ -150,19 +150,15 @@ jobs:
       # use `pacman`, and consume binaries installed by `pacman`.
       # nb: Do not be confused by the `/msys64` directory which exists in the default GitHub shell!
       # It is not the same as `C:/msys64`.
-      # nb: LLVM uses MSVC stdlib, so incomplete c++23 suport. Unofficial LLVM uses libc/UCRT but
+      # nb: LLVM uses MSVC stdlib, so incomplete c++23 support. Unofficial LLVM uses libc/UCRT but
       # is not supported by v8. Cross-build via Linux may be the only way.
       - name: Toolchain [Windows]
         if: matrix.host.platform == 'win32'
         shell: sh
         run: |
           echo ::group::Toolchain
-          # Install updated llvm
+          # Install updated LLVM
           winget install --accept-source-agreements --silent -e --id=LLVM.LLVM
-          # This is the UCRT LLVM build. It seems better but v8's build system is heavily geared for clang-cl.
-          # winget install --accept-source-agreements --silent -e --id=MartinStorsjo.LLVM-MinGW.UCRT
-          # ls -d /c/Users/runneradmin/AppData/Local/Microsoft/WinGet/Packages/MartinStorsjo.LLVM-MinGW.UCRT_Microsoft.*/llvm-mingw-*-ucrt-*/bin >> "$GITHUB_PATH"
-
           # You want the mingw version of ninja, not the msys version. The msys version uses
           # `CMD.EXE` and does not work with the cmake Ninja generator.
           /c/msys64/usr/bin/pacman -S --noconfirm \
@@ -341,16 +337,12 @@ jobs:
             container: alpine:edge
             platform: linux-musl
             arch: x64
-          # - runs-on: windows-latest
-          #   platform: win32
-          #   arch: x64
+          - runs-on: windows-latest
+            platform: win32
+            arch: x64
         node:
           - 22
           - 24
-        exclude:
-          - host:
-              platform: win32
-            node: 22
     name: test / ${{ matrix.host.platform }} ${{ matrix.host.arch }} nodejs ${{ matrix.node }}
     runs-on: ${{ matrix.host.runs-on }}
     container: ${{ matrix.host.container }}

@@ -1,4 +1,5 @@
 module;
+#include "shim/macro.h"
 #include <type_traits>
 #include <utility>
 export module util:functional.flat_tuple;
@@ -19,7 +20,7 @@ class flat_tuple_element {
 		[[nodiscard]] constexpr auto get(index_type /*index*/) const& -> const Type& { return value_; }
 
 	private:
-		[[no_unique_address]] Type value_;
+		NO_UNIQUE_ADDRESS Type value_;
 };
 
 // Specialization for reference types
@@ -35,7 +36,7 @@ class flat_tuple_element<Index, Type&> {
 		[[nodiscard]] constexpr auto get(index_type /*index*/) const& -> const Type& { return *value_; }
 
 	private:
-		[[no_unique_address]] Type* value_;
+		NO_UNIQUE_ADDRESS Type* value_;
 };
 
 // Internal `flat_tuple` helper providing access into private `flat_tuple_element` via friend

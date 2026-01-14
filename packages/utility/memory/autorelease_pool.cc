@@ -1,6 +1,7 @@
 module;
+#include "shim/macro.h"
+#include <boost/container/flat_set.hpp>
 #include <cassert>
-#include <flat_set>
 #include <memory>
 #include <utility>
 export module util:memory.autorelease_pool;
@@ -161,7 +162,7 @@ export class autorelease_pool : util::non_copyable {
 
 		using allocator_type = std::allocator<void>;
 		using releasable_type = releasable<allocator_type>;
-		using container_type = std::flat_set<releasable_type::unique_pointer_type, pointer_less<releasable_type>>;
+		using container_type = boost::container::flat_set<releasable_type::unique_pointer_type, pointer_less<releasable_type>>;
 
 	public:
 		template <class> class allocator;
@@ -220,7 +221,7 @@ export class autorelease_pool : util::non_copyable {
 
 	private:
 		container_type releasables_;
-		[[no_unique_address]] allocator_type allocator_;
+		NO_UNIQUE_ADDRESS allocator_type allocator_;
 };
 
 // Allocator which allocates in the underlying autorelease pool.

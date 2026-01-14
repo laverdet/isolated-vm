@@ -1,5 +1,6 @@
 module;
 #include <cstdint>
+#include <string>
 #include <string_view>
 module napi_js;
 import :api;

@@ -1,5 +1,6 @@
 module;
 #include <boost/intrusive/list.hpp>
+#include <bit>
 #include <functional>
 #include <memory>
 export module v8_js:remote;

@@ -1,6 +1,7 @@
 module;
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <string_view>
 #include <variant>
 export module napi_js:primitive;

@@ -173,7 +173,9 @@ constexpr auto make_constructor_function(auto constructor) {
 				auto maybe_constructor = [ & ]() -> std::optional<internal_constructor*> {
 					try {
 						// Check truthiness since null or undefined causes `napi_coerce_to_object` to throw
-						auto* arg0 = arguments.at(0);
+						auto* arg0 = arguments[ 0 ];
+						// c++26, not included in MS STL
+						// auto* arg0 = arguments.at(0);
 						if (napi::invoke(napi_coerce_to_bool, napi_env{env}, arg0)) {
 							auto* as_object = napi::invoke(napi_coerce_to_object, napi_env{env}, arg0);
 							auto has_tag = napi::invoke(napi_check_object_type_tag, napi_env{env}, as_object, &type_tag_for<internal_constructor>);

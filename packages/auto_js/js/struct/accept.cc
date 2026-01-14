@@ -1,4 +1,5 @@
 module;
+#include "shim/macro.h"
 #include <expected>
 #include <optional>
 #include <string>
@@ -45,8 +46,8 @@ struct accept_object_property {
 		using value_type = std::expected<member_type, undefined_in_tag>;
 		using accept_type = accept_property_value<Meta, Property::name, value_type, typename Meta::visit_property_subject_type>;
 
-		[[no_unique_address]] accept_type accept_;
-		[[no_unique_address]] setter_type set_;
+		NO_UNIQUE_ADDRESS accept_type accept_;
+		NO_UNIQUE_ADDRESS setter_type set_;
 };
 
 // Helper to unpack `properties` tuple, construct a new target struct, and invoke each instance of

@@ -1,7 +1,8 @@
 module;
-#include <functional>
 #include <memory>
 #include <optional>
+#include <string>
+#include <vector>
 export module backend_napi_v8:module_;
 import :agent;
 import :environment;

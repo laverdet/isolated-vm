@@ -1,4 +1,5 @@
 module;
+#include "shim/macro.h"
 #include <cstdint>
 #include <optional>
 #include <tuple>
@@ -29,7 +30,7 @@ export enum class class_property_scope : uint8_t {
 template <class Name>
 struct property_name_template {
 		explicit constexpr property_name_template(Name name) : name{std::move(name)} {}
-		[[no_unique_address]] Name name;
+		NO_UNIQUE_ADDRESS Name name;
 };
 
 template <auto Name>
@@ -45,8 +46,8 @@ struct property_accessor_template {
 				set{std::move(set)} {}
 
 		constexpr static auto disposition = property_disposition::accessor;
-		[[no_unique_address]] Get get;
-		[[no_unique_address]] Set set;
+		NO_UNIQUE_ADDRESS Get get;
+		NO_UNIQUE_ADDRESS Set set;
 };
 
 template <class Name, class Function>
@@ -56,7 +57,7 @@ struct property_function_template : property_name_template<Name> {
 				function{std::move(function)} {}
 
 		constexpr static auto disposition = property_disposition::function;
-		[[no_unique_address]] Function function;
+		NO_UNIQUE_ADDRESS Function function;
 };
 
 // Getter delegate for `struct_member`
@@ -206,8 +207,8 @@ struct class_template {
 				constructor{std::move(constructor)},
 				properties{std::move(properties)...} {}
 
-		[[no_unique_address]] Constructor constructor;
-		[[no_unique_address]] std::tuple<Properties...> properties;
+		NO_UNIQUE_ADDRESS Constructor constructor;
+		NO_UNIQUE_ADDRESS std::tuple<Properties...> properties;
 };
 
 } // namespace js

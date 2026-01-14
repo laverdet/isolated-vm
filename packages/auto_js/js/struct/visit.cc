@@ -1,4 +1,5 @@
 module;
+#include "shim/macro.h"
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -40,8 +41,8 @@ struct visit_object_property {
 		constexpr visit_object_property(auto* transfer, Property property) :
 				second{transfer, property.get} {}
 
-		[[no_unique_address]] first_type first;
-		[[no_unique_address]] second_type second;
+		NO_UNIQUE_ADDRESS first_type first;
+		NO_UNIQUE_ADDRESS second_type second;
 };
 
 // Helper to unpack `properties` tuple, construct individual property visitors, and forward struct

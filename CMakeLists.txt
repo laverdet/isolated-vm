@@ -193,7 +193,7 @@ function(target_preprocessed_sources TARGET SEARCH REPLACE)
 	endif()
 endfunction()
 
-# Setup `#include "cxx/shims"`
+# Setup `#include "shim/[..]"`
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/packages")
 
 # Generic abstract C++ utilities

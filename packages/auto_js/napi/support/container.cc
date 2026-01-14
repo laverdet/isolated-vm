@@ -1,4 +1,5 @@
 module;
+#include <bit>
 #include <unordered_map>
 export module napi_js:container;
 import :environment;
