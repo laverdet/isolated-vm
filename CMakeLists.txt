@@ -149,7 +149,7 @@ function(target_embed_content TARGET)
 		add_custom_command(
 			DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}"
 			OUTPUT "${GEN_DIR}/${FILE}.c" "${GEN_DIR}/${FILE}.h"
-			COMMAND sh -C "${PROJECT_SOURCE_DIR}/embed.sh" "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}" "${GEN_DIR}/${FILE}" ${IDENTIFIER}
+			COMMAND sh -c "${PROJECT_SOURCE_DIR}/embed.sh ${CMAKE_CURRENT_SOURCE_DIR}/${FILE} ${GEN_DIR}/${FILE} ${IDENTIFIER}"
 		)
 		set_source_files_properties("${GEN_DIR}/${FILE}.c" PROPERTIES GENERATED TRUE)
 		target_sources(${TARGET} PRIVATE "${GEN_DIR}/${FILE}.c")
@@ -185,7 +185,7 @@ function(target_preprocessed_sources TARGET SEARCH REPLACE)
 			add_custom_command(
 				DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}"
 				OUTPUT "${GEN_DIR}/${FILE}"
-				COMMAND sh -C "${PROJECT_SOURCE_DIR}/scripts/cmake/expand_def" "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}" "-D${SEARCH}=${REPLACE}" > "${GEN_DIR}/${FILE}"
+				COMMAND sh -c "${PROJECT_SOURCE_DIR}/scripts/cmake/expand_def ${CMAKE_CURRENT_SOURCE_DIR}/${FILE} -D${SEARCH}=${REPLACE} >${GEN_DIR}/${FILE}"
 			)
 			set_source_files_properties("${GEN_DIR}/${FILE}" PROPERTIES GENERATED TRUE)
 			target_sources(${TARGET} ${SCOPE} "${GEN_DIR}/${FILE}")

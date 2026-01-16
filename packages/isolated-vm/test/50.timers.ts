@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import * as ivm from "isolated-vm";
-import { makeCompositeLinker, makeFileSystemCompilationLinker, makePreloadedLinker } from "isolated-vm/utility/linker";
+import * as ivm from "@isolated-vm/experimental";
+import { makeCompositeLinker, makeFileSystemCompilationLinker, makePreloadedLinker } from "@isolated-vm/experimental/utility/linker";
 import { expectComplete } from "./fixtures.js";
 
 await test("setTimeout capability", async () => {
@@ -29,7 +29,7 @@ await test("setTimeout capability", async () => {
 	const runtime = makeFileSystemCompilationLinker(agent, import.meta.resolve);
 	const linker = makeCompositeLinker(capabilities, runtime);
 	const module = expectComplete(await agent.compileModule(`
-		import "isolated-vm/host/html/timers";
+		import "@isolated-vm/experimental/host/html/timers";
 		import hello from "notify-test";
 		setTimeout(hello, 0, "hello");
 	`));

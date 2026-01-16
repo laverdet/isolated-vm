@@ -1,7 +1,7 @@
 // https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-settimeout-dev
-import type { Comparator } from "isolated-vm/utility/comparator";
-import { ArrayIndexOf, ArrayShift, ArraySplice, DateNow, FunctionConstructor, GlobalIsNaN, MapConstructor, MapDelete, MapGet, MapSet, NumberConstructor, StringConstructor } from "isolated-vm/host/intrinsics";
-import { arrayLowerBound } from "isolated-vm/utility/algorithm";
+import type { Comparator } from "@isolated-vm/experimental/utility/comparator";
+import { ArrayIndexOf, ArrayShift, ArraySplice, DateNow, FunctionConstructor, GlobalIsNaN, MapConstructor, MapDelete, MapGet, MapSet, NumberConstructor, StringConstructor } from "@isolated-vm/experimental/host/intrinsics";
+import { arrayLowerBound } from "@isolated-vm/experimental/utility/algorithm";
 import schedule from "isolated-vm:capability/timers";
 
 interface Timer {

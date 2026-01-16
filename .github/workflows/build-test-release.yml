@@ -1,9 +1,8 @@
-name: Build
+name: Build, Test, Release
 on: [ push ]
 
 env:
   NODE_HEADERS: 24.0.0
-  V8_CONFIGURATION: release
   V8_REF: 14.2.231.21
 
 jobs:
@@ -17,115 +16,108 @@ jobs:
       matrix:
         host:
           - runs-on: ubuntu-24.04-arm
-            platform: linux-gnu
-            arch: arm64
-          - runs-on: ubuntu-24.04
-            platform: linux-gnu
-            arch: x64
+            triplet: aarch64-alpine-linux-musl
           - runs-on: ubuntu-24.04-arm
-            platform: linux-musl
-            arch: arm64
+            triplet: aarch64-unknown-linux-gnu
           - runs-on: ubuntu-24.04
-            platform: linux-musl
-            arch: x64
-    name: configure / ${{ matrix.host.platform }} ${{ matrix.host.arch }}
+            triplet: x86_64-alpine-linux-musl
+          - runs-on: ubuntu-24.04
+            triplet: x86_64-unknown-linux-gnu
+    name: Configure [${{ matrix.host.triplet }}]
     runs-on: ${{ matrix.host.runs-on }}
     outputs:
-      linux-gnu-arm64: ${{ steps.output.outputs.linux-gnu-arm64 }}
-      linux-gnu-x64: ${{ steps.output.outputs.linux-gnu-x64 }}
-      linux-musl-arm64: ${{ steps.output.outputs.linux-musl-arm64 }}
-      linux-musl-x64: ${{ steps.output.outputs.linux-musl-x64 }}
+      aarch64-alpine-linux-musl: ${{ steps.output.outputs.aarch64-alpine-linux-musl }}
+      aarch64-unknown-linux-gnu: ${{ steps.output.outputs.aarch64-unknown-linux-gnu }}
+      x86_64-alpine-linux-musl: ${{ steps.output.outputs.x86_64-alpine-linux-musl }}
+      x86_64-unknown-linux-gnu: ${{ steps.output.outputs.x86_64-unknown-linux-gnu }}
     steps:
       - uses: actions/cache/restore@v4
         id: cache
         with:
-          key: v8/${{ env.V8_REF }}/${{ matrix.host.platform }}.${{ matrix.host.arch }}.${{ env.V8_CONFIGURATION }}
+          key: v8/${{ env.V8_REF }}/${{ matrix.host.triplet }}
           lookup-only: true
-          path: ./deps/v8/out
+          path: deps/v8/out
       - shell: sh
         id: output
         env:
           CACHE_HIT: ${{ steps.cache.outputs.cache-hit }}
-          HOST: ${{ matrix.host.platform }}-${{ matrix.host.arch }}
+          TRIPLET: ${{ matrix.host.triplet }}
           RUNS_ON: ${{ matrix.host.runs-on }}
         run: |
+          set -ux
           if [ "$CACHE_HIT" = true ]; then
-            echo "$HOST=$RUNS_ON" >> "$GITHUB_OUTPUT"
+            echo "$TRIPLET=$RUNS_ON" >> "$GITHUB_OUTPUT"
           else
             case "$RUNS_ON" in
               ubuntu-24.04)
-                echo "$HOST=runs-on,runner=32cpu-linux-x64,run-id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+                echo "$TRIPLET=runs-on,runner=32cpu-linux-x64,run-id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
                 ;;
               ubuntu-24.04-arm)
-                echo "$HOST=runs-on,runner=32cpu-linux-arm64,run-id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+                echo "$TRIPLET=runs-on,runner=32cpu-linux-arm64,run-id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
                 ;;
-              windows-latest)
-                echo "$HOST=runs-on,image=windows22-base-x64,family=m7i,run-id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+              windows-2025)
+                echo "$TRIPLET=runs-on,image=windows22-base-x64,family=m7i,run-id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
                 ;;
             esac
           fi
 
   # Build isolated-vm
   build:
+    name: Build [${{ matrix.host.triplet }}]
     needs: configure
     strategy:
       fail-fast: false
       matrix:
         host:
+          - runs-on: ${{ needs.configure.outputs.aarch64-alpine-linux-musl }}
+            container: alpine:edge
+            triplet: aarch64-alpine-linux-musl
           - runs-on: macos-15
-            platform: darwin
-            arch: arm64
+            triplet: aarch64-apple-darwin
+          - runs-on: ${{ needs.configure.outputs.aarch64-unknown-linux-gnu }}
+            container: debian:forky
+            triplet: aarch64-unknown-linux-gnu
+          - runs-on: ${{ needs.configure.outputs.x86_64-alpine-linux-musl }}
+            container: alpine:edge
+            triplet: x86_64-alpine-linux-musl
           - runs-on: macos-15-intel
-            platform: darwin
-            arch: x64
-          - runs-on: ${{ needs.configure.outputs.linux-gnu-arm64 }}
+            triplet: x86_64-apple-darwin
+          - runs-on: windows-2025
+            triplet: x86_64-pc-windows
+          - runs-on: ${{ needs.configure.outputs.x86_64-unknown-linux-gnu }}
             container: debian:forky
-            platform: linux-gnu
-            arch: arm64
-          - runs-on: ${{ needs.configure.outputs.linux-gnu-x64 }}
-            container: debian:forky
-            platform: linux-gnu
-            arch: x64
-          - runs-on: ${{ needs.configure.outputs.linux-musl-arm64 }}
-            container: alpine:edge
-            platform: linux-musl
-            arch: arm64
-          - runs-on: ${{ needs.configure.outputs.linux-musl-x64 }}
-            container: alpine:edge
-            platform: linux-musl
-            arch: x64
-          - runs-on: windows-latest
-            platform: win32
-            arch: x64
-    name: build / ${{ matrix.host.platform }} ${{ matrix.host.arch }}
+            triplet: x86_64-unknown-linux-gnu
     runs-on: ${{ matrix.host.runs-on }}
     container: ${{ matrix.host.container }}
-    concurrency: ${{ matrix.host.platform }} ${{ matrix.host.arch }}
+    concurrency: ${{ matrix.host.triplet }}
+    env:
+      TRIPLET: ${{ matrix.host.triplet }}
     steps:
       - uses: laverdet/alpine-arm64@v1
-        if: matrix.host.platform == 'linux-musl' && matrix.host.arch == 'arm64'
+        if: matrix.host.triplet == 'aarch64-alpine-linux-musl'
 
-      # GitHub checkout
+      # Setup
       - uses: actions/checkout@v4
-      - name: Scripts
-        shell: sh
+      - shell: sh
         run: echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
 
       # GNU `tar` & `zstd` is needed for `actions/cache`
       - uses: laverdet/install@v0.0.8
-        if: startsWith(matrix.host.platform, 'linux-')
+        if: runner.os == 'Linux'
         with:
           packages: tar zstd
 
       # Install toolchain
       - name: Sources [Debian]
-        if: matrix.host.platform == 'linux-gnu'
+        if: endsWith(matrix.host.triplet, '-linux-gnu')
         run: apt-get -qq install --no-install-recommends -y curl; curl -kfsSL https://deb.nodesource.com/setup_24.x | bash -
       - name: Toolchain [Linux]
         uses: laverdet/install@v0.0.8
-        if: startsWith(matrix.host.platform, 'linux-')
+        if: runner.os == 'Linux'
         with:
           packages: |
+            bash
+            binutils
             build-essential
             clang-21
             clang-tools-21
@@ -137,8 +129,9 @@ jobs:
             xxd
             alpine#npm
       - name: Toolchain [macOS]
-        if: matrix.host.platform == 'darwin'
+        if: runner.os == 'macOS'
         run: |
+          set -ux
           brew install boost cmake llvm ninja node
           # Clever workaround for clang-scan-deps issues
           # /opt/homebrew/opt/llvm/bin/../include/c++/v1/__locale_dir/support/bsd_like.h:21:10: fatal error: 'time.h' file not found
@@ -152,19 +145,23 @@ jobs:
       # It is not the same as `C:/msys64`.
       # nb: LLVM uses MSVC stdlib, so incomplete c++23 support. Unofficial LLVM uses libc/UCRT but
       # is not supported by v8. Cross-build via Linux may be the only way.
+      # nb: windows-11-arm does *not* have Pacman!
+      # https://github.com/actions/partner-runner-images/blob/main/images/arm-windows-11-image.md
       - name: Toolchain [Windows]
-        if: matrix.host.platform == 'win32'
+        if: runner.os == 'Windows'
         shell: sh
         run: |
+          set -ux
           echo ::group::Toolchain
-          # Install updated LLVM
-          winget install --accept-source-agreements --silent -e --id=LLVM.LLVM
+          # Install updated LLVM (and hide spammy progress bar)
+          winget install --accept-source-agreements --silent -e --id=LLVM.LLVM | tr '\r' '\n' | grep -Ev --line-buffered '^[ -\/|]+$'
           # You want the mingw version of ninja, not the msys version. The msys version uses
           # `CMD.EXE` and does not work with the cmake Ninja generator.
+          ARCH=$(triplet_util %a)
           /c/msys64/usr/bin/pacman -S --noconfirm \
-            mingw-w64-x86_64-boost \
-            mingw64/mingw-w64-x86_64-cmake \
-            mingw64/mingw-w64-x86_64-ninja \
+            mingw-w64-$ARCH-boost \
+            mingw64/mingw-w64-$ARCH-cmake \
+            mingw64/mingw-w64-$ARCH-ninja \
           ;
           echo "/c/msys64/mingw64/bin" >> "$GITHUB_PATH"
           echo "/c/msys64/usr/bin" >> "$GITHUB_PATH"
@@ -185,16 +182,15 @@ jobs:
       - uses: actions/cache/restore@v4
         id: v8-cache
         with:
-          key: v8/${{ env.V8_REF }}/${{ matrix.host.platform }}.${{ matrix.host.arch }}.${{ env.V8_CONFIGURATION }}
-          path: ./deps/v8/out
+          key: v8/${{ env.V8_REF }}/${{ matrix.host.triplet }}
+          path: deps/v8/out
 
       # Build v8 on cache miss
       - uses: ./.github/actions/v8
         name: Build v8
         if: steps.v8-cache.outputs.cache-hit != 'true'
         with:
-          arch: ${{ matrix.host.arch }}
-          platform: ${{ matrix.host.platform }}
+          triplet: ${{ matrix.host.triplet }}
           ref: ${{ env.V8_REF }}
 
       # Cache v8
@@ -202,12 +198,7 @@ jobs:
         if: steps.v8-cache.outputs.cache-hit != 'true'
         with:
           key: ${{ steps.v8-cache.outputs.cache-primary-key }}
-          path: ./deps/v8/out
-
-      # Install nodejs & npm dependencies
-      - uses: pnpm/action-setup@v4
-      - name: Install
-        run: pnpm install --frozen-lockfile
+          path: deps/v8/out
 
       # Download nodejs headers
       - uses: actions/cache/restore@v4
@@ -221,7 +212,7 @@ jobs:
         if: steps.nodejs-headers-cache.outputs.cache-hit != 'true'
         env:
           NODE_HEADERS: ${{ env.NODE_HEADERS }}
-        run: nodejs_select "deps/nodejs/$NODE_HEADERS"
+        run: set -u; nodejs_select "deps/nodejs/$NODE_HEADERS"
       - uses: actions/cache/save@v4
         if: steps.nodejs-headers.outcome == 'success'
         with:
@@ -230,29 +221,32 @@ jobs:
           path: deps/nodejs
 
       # Build isolated-vm
+      - uses: pnpm/action-setup@v4
+      - shell: sh
+        run: |
+          set -ux
+          pnpm install --frozen-lockfile
+          npx tsc -b
       - name: Configure
         shell: sh
         env:
-          HOST_ARCH: ${{ matrix.host.arch }}
-          HOST_PLATFORM: ${{ matrix.host.platform }}
           NODE_DIST_DIR: deps/nodejs/${{ env.NODE_HEADERS }}
           V8_REF: ${{ env.V8_REF }}
-          V8_TARGET: ${{ matrix.host.platform }}.${{ matrix.host.arch }}.${{ env.V8_CONFIGURATION }}
         run: |
-          set -u
+          set -ux
           V8_REF_PATH=$PWD/deps/v8/out/$V8_REF
           CMAKE_MAKE_PROGRAM=ninja
           CMAKE_PREFIX_PATH=
-          case "$HOST_PLATFORM" in
-            darwin)
+          case "$TRIPLET" in
+            *-darwin)
               CMAKE_C_COMPILER=$(brew --prefix llvm)/bin/clang
               CMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++
               ;;
-            linux-*)
+            *-linux-gnu|*-linux-musl)
               CMAKE_C_COMPILER=$(realpath "$(which clang-21)")
               CMAKE_CXX_COMPILER=$(realpath "$(which clang++-21)")
               ;;
-            win32)
+            *-windows)
               CMAKE_C_COMPILER=$(which clang.exe)
               CMAKE_CXX_COMPILER=$(which clang++.exe)
               CMAKE_MAKE_PROGRAM=$(which ninja.exe)
@@ -266,106 +260,99 @@ jobs:
             -DCMAKE_MAKE_PROGRAM="$CMAKE_MAKE_PROGRAM" \
             -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
             -DV8_INCLUDE_DIR="$V8_REF_PATH/include" \
-            -DV8_INCLUDE_GN_FILE="$V8_REF_PATH/$V8_TARGET/include/v8-gn.h" \
+            -DV8_INCLUDE_GN_FILE="$V8_REF_PATH/$TRIPLET.release/include/v8-gn.h" \
             -DV8_LIBRARY_TYPE=static \
-            -DV8_LIBRARY_PATH="$V8_REF_PATH/$V8_TARGET" \
+            -DV8_LIBRARY_PATH="$V8_REF_PATH/$TRIPLET.release" \
+            -DIVM_INSTALL=copy \
             -B build \
             -G Ninja \
           ;
       - name: Build
         shell: sh
-        run: |
-          npx tsc -b
-          ninja -C build ivm_backend_v8
+        run: ninja -C build backend_napi_v8
       - name: Sanity Check
         shell: sh
-        working-directory: packages/isolated-vm
-        env:
-          ARCH: ${{ matrix.host.arch }}
-          PLATFORM: ${{ matrix.host.platform }}
-        run: node -e 'require("./dist/backend_v8/${{ matrix.host.platform }}-${{ matrix.host.arch }}/backend_v8.node")'
+        run: node -e "require('./build/packages/backend_napi_v8/artifacts/$(triplet_util -t "$TRIPLET" %p)')"
 
       # Diagnostics
       - name: Symbols [Linux]
-        if: startsWith(matrix.host.platform, 'linux-')
-        working-directory: packages/isolated-vm
+        if: runner.os == 'Linux'
         run: |
-          set +x
-          ldd "dist/backend_v8/${{ matrix.host.platform }}-${{ matrix.host.arch }}/backend_v8.node" 2>&1 | grep -v 'Error relocating'
-          nm -guC "dist/backend_v8/${{ matrix.host.platform }}-${{ matrix.host.arch }}/backend_v8.node"
+          set -ux
+          ldd build/packages/backend_napi_v8/libbackend_napi_v8.so 2>&1 | grep -v 'Error relocating'
+          nm -guC build/packages/backend_napi_v8/libbackend_napi_v8.so
       - name: Symbols [Windows]
-        if: matrix.host.platform == 'win32'
+        if: runner.os == 'Windows'
         shell: sh
-        working-directory: packages/isolated-vm
         run: |
-          set +x
-          dependencies.exe -imports "dist/backend_v8/${{ matrix.host.platform }}-${{ matrix.host.arch }}/backend_v8.node"
+          set -ux
+          dependencies.exe -imports build/packages/backend_napi_v8/backend_napi_v8.lib
 
       # Upload build artifacts
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.host.platform }}-${{ matrix.host.arch }}
-          path: ./packages/isolated-vm/dist/backend_v8
+          name: ${{ matrix.host.triplet }}
+          path: build/packages/backend_napi_v8/artifacts
           if-no-files-found: error
 
   # Run tests
   test:
+    name: Test [${{ matrix.host.container || matrix.host.runs-on }} ${{ endsWith(matrix.host.runs-on, '-arm' && 'arm64') || (endsWith(matrix.host.runs-on, '-intel') && 'x64') || (startsWith(matrix.host.runs-on, 'macos') && 'arm64') || 'x64' }} node:${{ matrix.node }}]
     needs: build
     strategy:
       fail-fast: false
       matrix:
         host:
-          - runs-on: macos-latest
-            platform: darwin
-            arch: arm64
+          - runs-on: ubuntu-24.04-arm
+            container: alpine:edge
+          - runs-on: macos-15
+          - runs-on: ubuntu-24.04-arm
+            container: debian:forky
+          - runs-on: ubuntu-24.04
+            container: alpine:edge
           - runs-on: macos-15-intel
-            platform: darwin
-            arch: x64
-          - runs-on: ubuntu-24.04-arm
+          - runs-on: windows-2025
+          - runs-on: ubuntu-24.04
             container: debian:forky
-            platform: linux-gnu
-            arch: arm64
-          - runs-on: ubuntu-latest
-            container: debian:forky
-            platform: linux-gnu
-            arch: x64
-          - runs-on: ubuntu-24.04-arm
-            container: alpine:edge
-            platform: linux-musl
-            arch: arm64
-          - runs-on: ubuntu-latest
-            container: alpine:edge
-            platform: linux-musl
-            arch: x64
-          - runs-on: windows-latest
-            platform: win32
-            arch: x64
         node:
           - 22
           - 24
-    name: test / ${{ matrix.host.platform }} ${{ matrix.host.arch }} nodejs ${{ matrix.node }}
     runs-on: ${{ matrix.host.runs-on }}
     container: ${{ matrix.host.container }}
     steps:
       - uses: laverdet/alpine-arm64@v1
-        if: matrix.host.platform == 'linux-musl' && matrix.host.arch == 'arm64'
+        if: matrix.host.container == 'alpine:edge'
+      - uses: laverdet/install@v0.0.8
+        if: matrix.host.container == 'alpine:edge'
+        with:
+          packages: bash
 
-      # GitHub checkout
+      # Setup
       - uses: actions/checkout@v4
+      - shell: sh
+        run: echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
+
+      # Get triplet information and make package.json for module
+      - shell: sh
+        id: platform
+        run: |
+          echo "platform=$(triplet_util %p)" >> "$GITHUB_OUTPUT"
+          echo "triplet=$(triplet_util %t)" >> "$GITHUB_OUTPUT"
 
       # Receive artifacts
       - uses: actions/download-artifact@v4
         with:
-          name: ${{ matrix.host.platform }}-${{ matrix.host.arch }}
-          path: ./packages/isolated-vm/dist/backend_v8
+          name: ${{ steps.platform.outputs.triplet }}
+          path: build/packages/backend_napi_v8/artifacts
 
       # Install nodejs [musl]
       - shell: sh
-        id: configure-musl
-        if: matrix.host.platform == 'linux-musl'
+        id: musl
+        if: endsWith(steps.platform.outputs.triplet, '-linux-musl')
         env:
           NODE_VERSION: ${{ matrix.node }}
         run: |
+          set -ux
           echo https://dl-cdn.alpinelinux.org/alpine/edge/community/ >> /etc/apk/repositories
           echo https://dl-cdn.alpinelinux.org/alpine/edge/testing/ >> /etc/apk/repositories
           case "$NODE_VERSION" in
@@ -377,84 +364,81 @@ jobs:
               ;;
           esac
       - uses: laverdet/install@v0.0.8
-        if: steps.configure-musl.outcome == 'success'
+        if: steps.musl.outcome == 'success'
         with:
-          packages: alpine#${{ steps.configure-musl.outputs.package }} npm
+          packages: alpine#${{ steps.musl.outputs.package }} npm
 
       # Install nodejs [others]
       - uses: actions/setup-node@v4
-        if: matrix.host.platform != 'linux-musl'
+        if: steps.musl.outcome == 'skipped'
         with:
           node-version: ${{ matrix.node }}
 
-      # Check linked binary sanity
-      - name: Sanity Check
-        shell: sh
-        env:
-          ARCH: ${{ matrix.host.arch }}
-          PLATFORM: ${{ matrix.host.platform }}
-        run: node -e 'require("./packages/isolated-vm/dist/backend_v8/${{ matrix.host.platform }}-${{ matrix.host.arch }}/backend_v8.node")'
-
-      # Install npm dependencies and build TypeScript
+      # Install npm dependencies, build TypeScript, check module sanity
       - uses: pnpm/action-setup@v4
       - name: Install
-        run: pnpm install --frozen-lockfile
-      - name: npm
         shell: sh
+        env:
+          PLATFORM: ${{ steps.platform.outputs.platform }}
         run: |
+          set -ux
+          npm config set script-shell /bin/sh
+          pnpm install --frozen-lockfile
           npx tsc -b
-          npm config set script-shell "$SHELL"
-
+          mkdir -p node_modules/@isolated-vm
+          mv build/packages/backend_napi_v8/artifacts/$PLATFORM node_modules/@isolated-vm/experimental-$PLATFORM
+          node -e "require('@isolated-vm/experimental-$PLATFORM')"
       # Run tests
       - name: Test
-        run: npm run -S test
+        run: pnpm run -s test
 
   release:
+    name: Release
     needs: test
-    if: startsWith(github.ref, 'refs/tags/')
-    strategy:
-      matrix:
-        host:
-          - runs-on: ubuntu-latest
-            platform: linux-gnu
-            arch: x64
-          - runs-on: ubuntu-latest
-            platform: linux-musl
-            arch: x64
-          - runs-on: macos-latest
-            platform: darwin
-            arch: arm64
-          - runs-on: macos-13
-            platform: darwin
-            arch: x64
-          - runs-on: windows-latest
-            platform: win32
-            arch: x64
-    name: release / ${{ matrix.host.platform }} ${{ matrix.host.arch }}
-    runs-on: ${{ matrix.host.runs-on }}
+    if: "startsWith(github.event.head_commit.message, 'release: v')"
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      # Setup
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v4
+      - name: Setup
+        shell: sh
+        id: setup
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -ux
+          pnpm install --frozen-lockfile
+          npx tsc -b
+          echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
+          VERSION=$(echo "$COMMIT_MESSAGE" | head -n1 | cut -c11-)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
       # Receive artifacts
       - uses: actions/download-artifact@v4
+        id: artifacts
         with:
-          name: ${{ matrix.host.platform }}-${{ matrix.host.arch }}
-          path: ./packages/isolated-vm/dist/backend_v
+          path: packages/isolated-vm/artifacts
 
-      # Save tar
-      - name: tar
-        id: tar
+      # Assemble & publish releases
+      - name: Publish
         shell: sh
+        working-directory: packages/isolated-vm
         env:
-          PLATFORM_NAME: ${{ matrix.host.platform }}-${{ matrix.host.arch }}
+          ARTIFACTS: ${{ steps.artifacts.outputs.download-path }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ steps.setup.outputs.version }}
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
-          TAR_FILE="isolated-vm-node-$TAG-$PLATFORM_NAME.tar.gz"
-          tar czf "$TAR_FILE" packages/isolated-vm/dist/backend_v8
-          echo "tar=$PWD/$TAR_FILE" >> "$GITHUB_OUTPUT"
-
-      # Release
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: ${{ steps.tar.outputs.tar }}
+          set -ux
+          npm config set --location user //registry.npmjs.org/:_authToken=$NPM_TOKEN
+          npm config set --location user access=public
+          npm version $VERSION --no-git-tag-version
+          npx napi create-npm-dirs
+          npx napi artifacts
+          npx napi prepublish --no-gh-release
+          rm -f *.node *.tar.gz
+          rm -rf npm
+          npm publish

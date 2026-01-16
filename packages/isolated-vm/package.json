@@ -1,10 +1,9 @@
 {
-  "name": "isolated-vm",
+  "name": "@isolated-vm/experimental",
   "type": "module",
-  "version": "0.0.0",
   "exports": {
-    ".":"./dist/isolated-vm.js",
-    "./*":"./dist/*.js"
+    ".": "./dist/isolated-vm.js",
+    "./*": "./dist/*.js"
   },
   "imports": {
     "#backend_v8": {
@@ -15,6 +14,25 @@
   "scripts": {
     "test": "${NODE-node} --enable-source-maps --expose-gc --test-reporter=spec --test dist/test/*.js"
   },
+  "napi": {
+    "binaryName": "backend_napi_v8",
+    "targets": [
+      "aarch64-alpine-linux-musl",
+      "aarch64-apple-darwin",
+      "aarch64-unknown-linux-gnu",
+      "x86_64-alpine-linux-musl",
+      "x86_64-apple-darwin",
+      "x86_64-pc-windows",
+      "x86_64-unknown-linux-gnu"
+    ]
+  },
+  "dependencies": {
+    "tslib": "^2.7.0"
+  },
+  "devDependencies": {
+    "@isolated-vm/experimental": "workspace:*",
+    "@types/node": "^22.1.0"
+  },
   "description": "JavaScript sandbox",
   "author": "https://github.com/laverdet/",
   "homepage": "https://github.com/laverdet/isolated-vm#readme",
@@ -23,11 +41,5 @@
     "type": "git",
     "url": "git+https://github.com/laverdet/isolated-vm.git"
   },
-  "devDependencies": {
-    "@types/node": "^22.1.0",
-    "isolated-vm": "workspace:*"
-  },
-  "dependencies": {
-    "tslib": "^2.7.0"
-  }
+  "optionalDependencies": {}
 }

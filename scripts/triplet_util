@@ -1,0 +1,119 @@
+#!/bin/bash
+set -eu
+
+# triplet_util [-t <triplet>] <format>
+
+# %v = vendor [unknown, apple, pc, alpine]
+# %o = os [linux, windows]
+# %q = os short [linux, win32]
+# %e = abi/env suffix [-gnu, -musl, '']
+
+# %a = arch [x86_64, aarch64]
+# %b = arch short [x64, arm64]
+
+# %p = platform [darwin-x64, linux-arm64-gnu, win32-x64]
+# %t = triplet [x86_64-unknown-linux-gnu]
+
+while [ $# -gt 0 ]; do
+	case $1 in
+		-t)
+			TRIPLET=$2
+			shift
+			;;
+		*)
+			FORMAT=$1
+			;;
+	esac
+	shift
+done
+
+if [ -z "${TRIPLET:-}" ]; then
+	# Use host triplet
+	case $(uname -m) in
+		aarch64|arm64) ARCH=aarch64 ;;
+		amd64|x86_64) ARCH=x86_64 ;;
+		*)
+			echo "Unsupported architecture: $(uname -m)" >&2
+			exit 1
+	esac
+
+	ENV=
+	case $(uname -o) in
+		Darwin)
+			OS=darwin
+			VENDOR=apple
+			;;
+		GNU/Linux)
+			ENV=-gnu
+			OS=linux
+			VENDOR=unknown
+			;;
+		Linux)
+			OS=linux
+			if [ -f /etc/alpine-release ]; then
+				ENV=-musl
+				VENDOR=alpine
+			else
+				echo "Unknown Linux distribution" >&2
+				exit 1
+			fi
+			;;
+		Msys)
+			OS=windows
+			VENDOR=pc
+			;;
+	esac
+else
+	# Otherwise, parse provided triplet
+	# shellcheck disable=SC2206
+	TRIPLET=(${TRIPLET//-/ })
+
+	# arch
+	ARCH=${TRIPLET[0]}
+	case $ARCH in
+		aarch64|x86_64) ;;
+		*)
+			echo "Unsupported architecture: $ARCH" >&2
+			exit 1
+	esac
+
+	# vendor
+	II=1
+	VENDOR=${TRIPLET[II]}
+	case "$VENDOR" in
+		alpine|apple|pc|unknown) II=$((II + 1)) ;;
+		*) VENDOR=unknown ;;
+	esac
+
+	# os
+	OS=${TRIPLET[II]}
+	case "$OS" in
+		darwin|linux|windows) II=$((II + 1)) ;;
+		*)
+			echo "Unsupported OS: $OS" >&2
+			exit 1
+	esac
+
+	# abi
+	ENV=${TRIPLET[II]:-}
+	case "$ENV" in
+		'') ;;
+		gnu|musl) ENV=-$ENV ;;
+		*)
+			echo "Unsupported API / toolchain: $ABI" >&2
+			exit 1
+	esac
+fi
+
+case "$ARCH" in
+	aarch64) ARCHS=arm64 ;;
+	x86_64) ARCHS=x64 ;;
+	*) ARCHS=$ARCH ;;
+esac
+case "$OS" in
+	windows) OSS=win32 ;;
+	*) OSS=$OS ;;
+esac
+
+# print custom format string
+echo "$FORMAT" | sed "s#%p#%q-%b%e#; s#%t#%a-%v-%o%e#; s#%v#$VENDOR#; s#%o#$OS#; s#%q#$OSS#; s#%e#$ENV#; s#%a#$ARCH#; s#%b#$ARCHS#;"

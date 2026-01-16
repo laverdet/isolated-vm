@@ -23,11 +23,11 @@
       "id": "v8_target",
       "description": "Which v8 target to build?",
       "options": [
-        "arm64.debug",
-        "arm64.optdebug",
-        "arm64.release",
+        "debug",
+        "optdebug",
+        "release",
       ],
-      "default": "arm64.debug",
+      "default": "debug",
     },
     {
       "type": "pickString",
@@ -96,7 +96,9 @@
 		{
 			"label": "cmake: configure",
 			"type": "shell",
-			"command": "set -eu; set -a; source $ENV_FILE; source $V8_LIBRARY_PATH/env; cmake -DCMAKE_BUILD_TYPE=${input:ivm_target} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G Ninja -B build",
+			// nb: `-DENV=$ENV` used to "burn in" environment variables at configure time. So when the
+			// build configuration changes, ninja can reconfigure correctly.
+			"command": "set -eu; set -a; source $ENV_FILE; source $V8_LIBRARY_PATH/env; cmake -DCMAKE_BUILD_TYPE=${input:ivm_target} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DIVM_INSTALL=link -DNODE_DIST_DIR=\"$NODE_DIST_DIR\" -DV8_INCLUDE_DIR=\"$V8_INCLUDE_DIR\" -DV8_INCLUDE_GN_FILE=\"$V8_INCLUDE_GN_FILE\" -DV8_LIBRARY_TYPE=\"$V8_LIBRARY_TYPE\" -DV8_LIBRARY_PATH=\"$V8_LIBRARY_PATH\" -G Ninja -B build",
 			"dependsOn": [ "cmake: clean" ],
 			"problemMatcher": [],
 			"presentation": {
@@ -110,7 +112,7 @@
 		{
 			"label": "ninja: build",
 			"type": "shell",
-			"command": "ninja -C build ivm_backend_v8",
+			"command": "set -eu; ninja -C build backend_napi_v8",
 			"problemMatcher": "$gcc",
 			"presentation": {
 				"clear": true,
@@ -135,7 +137,7 @@
 		{
 			"label": "v8: build",
 			"type": "shell",
-			"command": "set -eu; set -a; source $ENV_FILE; unset CLANG_BASE_PATH; export V8_LIBRARY_PATH=$(pwd)/out/$V8_REF/${input:v8_target}; WITHOUT_SYSROOT=1 v8_build $V8_LIBRARY_PATH; ivm_write_env V8_LIBRARY_PATH",
+			"command": "unset CLANG_BASE_PATH; set -eu; set -a; source $ENV_FILE; TARGET=$(triplet_util %t.${input:v8_target}); export V8_LIBRARY_PATH=\"$(pwd)/out/$V8_REF/$TARGET\"; WITHOUT_SYSROOT=1 v8_build \"$V8_LIBRARY_PATH\"; ivm_write_env V8_LIBRARY_PATH",
 			"options": { "cwd": "/v8" },
 			"problemMatcher": [],
 			"presentation": {

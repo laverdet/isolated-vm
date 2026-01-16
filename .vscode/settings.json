@@ -50,6 +50,7 @@
 	"search.exclude": {
 		"pnpm-lock.yaml": true,
 	},
+	"shellcheck.customArgs": [ "--external-sources" ],
 	"terminal.integrated.defaultProfile.linux": "bash",
   "terminal.integrated.profiles.linux": {
     "bash": {

@@ -13,6 +13,7 @@ runs:
     - uses: newkdev/setup-depot-tools@v1.0.1
     - shell: sh
       run: |
+        set -ux
         mkdir -p ~/.config/depot_tools
         echo '{"is-googler":false,"countdown":10,"opt-in":null,"version":3}' > ~/.config/depot_tools/metrics.cfg
         "$GITHUB_ACTION_PATH/../docker/sync"

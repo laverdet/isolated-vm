@@ -1,5 +1,5 @@
 import type { SourceOrigin } from "./script.js";
-import type { MaybeCompletionOf } from "isolated-vm/utility/completion";
+import type { MaybeCompletionOf } from "@isolated-vm/experimental/utility/completion";
 import * as backend from "#backend_v8";
 import { Module } from "./module.js";
 

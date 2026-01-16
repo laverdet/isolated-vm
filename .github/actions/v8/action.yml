@@ -1,17 +1,11 @@
 description: Build v8
 
 inputs:
-  # linux-gnu, linux-musl, windows, darwin
-  platform:
+  triplet:
     required: true
-  # x64, arm64
-  arch:
-    required: true
-  # debug, optdebug, release
+  # "debug", "optdebug", "release"
   configuration:
-    required: true
     default: release
-  # v8 ref
   ref:
     required: true
 
@@ -20,7 +14,7 @@ runs:
   steps:
     # Install dependencies
     - uses: laverdet/install@v0.0.8
-      if: startsWith(matrix.host.platform, 'linux-')
+      if: runner.os == 'Linux'
       with:
         packages: |
           bash
@@ -38,13 +32,13 @@ runs:
           debian#ca-certificates
           debian#libglib2.0-dev
     - shell: sh
-      if: matrix.host.platform == 'darwin'
+      if: runner.os == 'macOS'
       run: brew install llvm
 
     # Install `gn`
     - uses: ./.github/actions/v8/gn
       with:
-        platform: ${{ inputs.platform }}
+        triplet: ${{ inputs.triplet }}
 
     # Checkout and sync v8
     - uses: actions/checkout@v4
@@ -58,18 +52,18 @@ runs:
       env:
         REF: ${{ inputs.ref }}
       run: |
-        SKIP_SYNC=thanks PATCH_DIR="$GITHUB_WORKSPACE/patches" \
-          v8_select "$REF"
+        set -ux
+        SKIP_SYNC=thanks PATCH_DIR="$GITHUB_WORKSPACE/patches" v8_select "$REF"
 
     # Linux builds require sysroot for libc version compatibility
     - shell: sh
-      if: inputs.platform == 'linux-gnu'
+      if: endsWith(inputs.triplet, '-linux-gnu')
       env:
-        ARCH: ${{ inputs.arch }}
+        TRIPLET: ${{ inputs.triplet }}
       run: |
-        set -u
+        set -ux
         echo ::group::Linux sysroot
-        # https://github.com/frida/v8-build/blob/1a249a81b0979f9495ddfca55b1f7846a5247890/detect_host_arch.py
+        ARCH=$(triplet_util -t "$TRIPLET" %b)
         deps/v8/build/linux/sysroot_scripts/install-sysroot.py --arch "$ARCH"
         echo ::endgroup::
 
@@ -77,18 +71,17 @@ runs:
     - shell: sh
       working-directory: deps/v8
       env:
-        DARWIN: ${{ inputs.platform == 'darwin' }}
         REF: ${{ inputs.ref }}
-        PLATFORM: ${{ inputs.platform }}
-        TARGET: ${{ inputs.platform }}.${{ inputs.arch }}.${{ inputs.configuration }}
+        TARGET: ${{ inputs.triplet }}.${{ inputs.configuration }}
+        TRIPLET: ${{ inputs.triplet }}
       run: |
-        set -u
+        set -ux
         echo ::group::Build v8
-        case "$PLATFORM" in
+        case $(triplet_util -t "$TRIPLET" %o) in
           darwin)
             export CLANG_BASE_PATH="$(brew --cellar llvm)/$(brew list --versions llvm | cut -d' ' -f2 | sort -V | head -n1)"
             ;;
-          win32)
+          windows)
             export DEPOT_TOOLS_WIN_TOOLCHAIN=0
             ;;
         esac

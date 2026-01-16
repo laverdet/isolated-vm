@@ -1,6 +1,6 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import * as ivm from "isolated-vm";
+import * as ivm from "@isolated-vm/experimental";
 import { expectComplete, expectThrow, unsafeIIFEAsString } from "./fixtures.js";
 
 await test("script source origin", async () => {

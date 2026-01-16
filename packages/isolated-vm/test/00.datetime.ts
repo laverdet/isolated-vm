@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
 import { setTimeout } from "node:timers/promises";
-import * as ivm from "isolated-vm";
+import * as ivm from "@isolated-vm/experimental";
 import { unsafeEvalAsString, unsafeEvalAsStringInRealm } from "./fixtures.js";
 
 const y2k = new Date("2000-01-01T00:00:00Z");

@@ -1,19 +1,19 @@
 // @ts-check
 import * as fs from "node:fs";
 import { createRequire } from "node:module";
-import { platform } from "node:process";
+import { arch, platform } from "node:process";
 
 // Detect libc version
 const backendPlatform = function() {
 	if (platform === "linux") {
 		try {
 			if (fs.readFileSync("/usr/bin/ldd", "latin1").includes("ld-musl-")) {
-				return "linux-musl";
+				return `linux-${arch}-musl`;
 			}
 		} catch {}
-		return "linux-gnu";
+		return `linux-${arch}-gnu`;
 	} else {
-		return platform;
+		return `${platform}-${arch}`;
 	}
 }();
 
@@ -21,7 +21,7 @@ const backendPlatform = function() {
 const require = createRequire(import.meta.url);
 
 /** @type {typeof import("#backend_v8")} */
-const cjs = require(`./dist/backend_v8/${backendPlatform}-${process.arch}/backend_v8.node`);
+const cjs = require(`@isolated-vm/experimental-${backendPlatform}`);
 
 // Exports must be enumerated because this imports from the native module which cannot declare ESM
 // exports.

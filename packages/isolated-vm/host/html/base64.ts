@@ -1,6 +1,6 @@
 // https://html.spec.whatwg.org/multipage/webappapis.html#atob
-import { DOMException } from "isolated-vm/host/html/exception";
-import { GlobalIsNaN, StringCharCodeAt, StringConstructor, StringFromCharCode } from "isolated-vm/host/intrinsics";
+import { DOMException } from "@isolated-vm/experimental/host/html/exception";
+import { GlobalIsNaN, StringCharCodeAt, StringConstructor, StringFromCharCode } from "@isolated-vm/experimental/host/intrinsics";
 
 // https://datatracker.ietf.org/doc/html/rfc4648#section-4
 const alphabet = [

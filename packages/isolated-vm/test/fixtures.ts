@@ -1,8 +1,8 @@
 import { afterEach } from "node:test";
-import { Agent, Realm } from "isolated-vm";
-import { expectComplete } from "isolated-vm/utility/completion";
+import { Agent, Realm } from "@isolated-vm/experimental";
+import { expectComplete } from "@isolated-vm/experimental/utility/completion";
 
-export { expectComplete, expectThrow } from "isolated-vm/utility/completion";
+export { expectComplete, expectThrow } from "@isolated-vm/experimental/utility/completion";
 
 /** @internal */
 export function unsafeIIFEAsString(

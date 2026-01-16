@@ -1,6 +1,6 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import * as ivm from "isolated-vm";
+import * as ivm from "@isolated-vm/experimental";
 import { unsafeEvalAsStringInRealm } from "./fixtures.js";
 
 async function check(agent: ivm.Agent, realm: ivm.Realm, fn: () => unknown) {

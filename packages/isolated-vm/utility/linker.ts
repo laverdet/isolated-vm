@@ -1,4 +1,4 @@
-import type { AbstractModule, Agent, Module } from "isolated-vm";
+import type { AbstractModule, Agent, Module } from "@isolated-vm/experimental";
 import * as fs from "node:fs/promises";
 import { mappedComparator, selectKey, stringComparator } from "./comparator.js";
 

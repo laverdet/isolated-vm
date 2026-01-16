@@ -1,6 +1,6 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import * as ivm from "isolated-vm";
+import * as ivm from "@isolated-vm/experimental";
 import { unsafeEvalAsString } from "./fixtures.js";
 
 const makeAgentRandom =	async (randomSeed?: number) => {

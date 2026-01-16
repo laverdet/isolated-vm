@@ -1,7 +1,7 @@
 description: Setup `gn` tool on this runner
 
 inputs:
-  platform:
+  triplet:
     required: true
 
 runs:
@@ -10,8 +10,9 @@ runs:
     # Just install depot_tools if not musl. The rest is skipped on non-container non-linux platforms
     # because `newkdev/setup-depot-tools` is invoked in the v8 action.
     - shell: sh
-      if: inputs.platform == 'linux-gnu'
+      if: endsWith(inputs.triplet, '-linux-gnu')
       run: |
+        set -ux
         DEPOT_TOOLS=$RUNNER_TOOL_CACHE/depot_tools
         mkdir -p ~/.config/depot_tools
         echo '{"is-googler":false,"countdown":10,"opt-in":null,"version":3}' > ~/.config/depot_tools/metrics.cfg
@@ -22,16 +23,16 @@ runs:
 
     # GNU `tar` & `zstd` is needed for `actions/cache`. Also, clang, for building.
     - uses: laverdet/install@v0.0.8
-      if: inputs.platform == 'linux-musl'
+      if: endsWith(inputs.triplet, '-linux-musl')
       with:
         packages: clang tar zstd
 
     # Restore musl cache
     - uses: actions/cache/restore@v4
       id: cache
-      if: inputs.platform == 'linux-musl'
+      if: endsWith(inputs.triplet, '-linux-musl')
       with:
-        key: gn/${{ runner.arch }}.${{ inputs.platform }}
+        key: gn/${{ inputs.triplet }}
         path: ./deps/gn
 
     # Build musl gn on cache miss
@@ -40,6 +41,7 @@ runs:
         steps.cache.outcome == 'success' &&
         steps.cache.outputs.cache-hit != 'true'
       run: |
+        set -ux
         git clone https://gn.googlesource.com/gn deps/gn
         cd deps/gn
         CFLAGS=-D_LARGEFILE64_SOURCE build/gen.py
@@ -57,5 +59,4 @@ runs:
     # Add musl gn to PATH
     - shell: sh
       if: steps.cache.outcome == 'success'
-      run: |
-        echo "$PWD/deps/gn/out" >> "$GITHUB_PATH"
+      run: echo "$PWD/deps/gn/out" >> "$GITHUB_PATH"

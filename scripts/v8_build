@@ -28,10 +28,9 @@ TARGET=$(basename "$1")
 # clang++: error: linker command failed with exit code 1 (use -v to see invocation)
 
 # shellcheck disable=SC2206
-TUPLE=(${TARGET//./ })
-PLATFORM=${TUPLE[${#TUPLE[@]} - 3]:-} # linux-gnu, linux-musl, windows, darwin
-ARCH=${TUPLE[${#TUPLE[@]} - 2]} # x64, arm64
-CONFIG=${TUPLE[${#TUPLE[@]} - 1]} # release, debug, optdebug
+PLATFORM_CONFIG_PAIR=(${TARGET//./ })
+OS=$("$(dirname "$0")/triplet_util" -t "${PLATFORM_CONFIG_PAIR[0]}" %o%e)
+CONFIG=${PLATFORM_CONFIG_PAIR[1]} # debug, optdebug, release
 
 # `use_custom_libcxx=false`
 # Use the system default c++ standard library. The v8 maintainers really won't like you if you do
@@ -64,7 +63,7 @@ if [ ${CLANG_BASE_PATH+-} ]; then
 		clang_version="\"$CLANG_VERSION\""
 		is_clang=true
 	)
-elif [ "$PLATFORM" = win32 ]; then
+elif [ "$OS" = windows ]; then
 	# clang-cl is used.
 	GN_ARGS+=(is_clang=true)
 else
@@ -81,7 +80,7 @@ if [ ${WITHOUT_SYSROOT+-} ]; then
 fi
 
 # Platform flags
-case "$PLATFORM" in
+case "$OS" in
 	darwin)
 		# This lets us link against the system libc++ dylib using the modern llvm headers.
 		mkdir -p "$OUTDIR/$TARGET/obj"
@@ -146,9 +145,10 @@ esac
 # Configure gn / ninja
 echo gn gen "$OUTDIR/$TARGET" --args=\'"${GN_ARGS[*]}"\'
 if ! gn gen "$OUTDIR/$TARGET" --args="${GN_ARGS[*]}"; then
+	RESULT=$?
 	# Weird failure from gn on linux-musl arm64, but it still generates the ninja files
 	if [ "$PLATFORM" = linux-musl ]; then
-		echo "Ignoring gn error code of $? on linux-musl"
+		echo "Ignoring gn error code of $RESULT on linux-musl"
 	else
 		exit 1
 	fi
@@ -181,4 +181,5 @@ V8_LIBRARY_PATH=$(realpath "$OUTDIR/$TARGET")
 EOF
 
 # Build the monolith
-ninja -C "$OUTDIR/$TARGET" v8 "${V8_TARGETS[@]}"
+NINJA_ARGS=(-C "$OUTDIR/$TARGET" v8 "${V8_TARGETS[@]}")
+ninja "${NINJA_ARGS[@]}" || ninja -j2 "${NINJA_ARGS[@]}"

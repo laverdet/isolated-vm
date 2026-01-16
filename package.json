@@ -2,7 +2,6 @@
   "name": "@isolated-vm/workspace",
   "type": "module",
   "private": true,
-  "version": "0.0.0",
   "packageManager": "pnpm@9.15.2",
   "scripts": {
     "clang-format": "find packages -name '*.cc' -exec clang-format -i {} \\;",
@@ -12,12 +11,13 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.8.0",
+    "@isolated-vm/experimental": "workspace:*",
+    "@napi-rs/cli": "^3.5.1",
     "@stylistic/eslint-plugin": "^2.6.2",
     "@typescript-eslint/eslint-plugin": "^8.0.1",
     "@typescript-eslint/parser": "^8.0.1",
     "eslint": "^9.17.0",
     "eslint-plugin-import": "^2.29.1",
-    "isolated-vm": "workspace:*",
     "typescript": "^5.5.4"
   },
   "dependencies": {
