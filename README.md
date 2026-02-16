@@ -185,6 +185,9 @@ contains can represent quite a large chunk of memory though you may want to expl
     are totally unrecoverable. If you receive this error you should log the error, stop serving
     requests, finish outstanding work, and end the process by calling `process.abort()`.
 
+*NOTE*: `snapshot` contains compiled machine code. That means you should not accept `snapshot`
+payloads from a user, otherwise they may be able to run arbitrary code.
+
 ##### `ivm.Isolate.createSnapshot(scripts, warmup_script)`
 * `scripts` *[array]*
 	* `code` *[string]* - Source code to set up this snapshot
