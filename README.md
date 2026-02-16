@@ -752,7 +752,7 @@ should not be using this module. This is a low-level module which is just one pi
 complicated problem. If your goal is to run code from untrusted sources then you *must* have a very
 comprehensive understanding of JavaScript. You should know where the ECMAScript specification ends
 and where the HTML, DOM, and other web specifications begin. You should be a security-focused
-hacker, otherwise you will almost certain make a company-ending mistake. This is not a module for
+hacker, otherwise you will almost certainly make a company-ending mistake. This is not a module for
 the faint of heart. Turn back now!
 
 
