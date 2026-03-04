@@ -206,6 +206,15 @@ export class autorelease_pool : util::non_copyable {
 
 		template <class Type>
 		auto emplace() -> releasable_type* {
+			// Workaround for boost error on clang 22.1.0. Probably more module visibility issues.
+
+			// /usr/include/boost/container/allocator_traits.hpp:94:4: error: no matching function for call to 'operator new'
+			//    94 |    ::new(const_cast<void*>(static_cast<const volatile void*>(p)), boost_container_new_t()) T(::boost::forward<Args>(args)...);
+			//       |    ^~
+			// NOLINTNEXTLINE(readability-simplify-boolean-expr)
+			if constexpr (false) {
+				new (nullptr, boost_container_new_t{}) int{};
+			}
 			return releasables_.emplace(releasable_type::allocate<Type>(allocator_)).first->get();
 		}
 
