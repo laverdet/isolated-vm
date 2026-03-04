@@ -21,6 +21,9 @@ export class pending_error : public std::exception {
 export template <class... Params>
 auto invoke0(auto(function)(Params...)->napi_status, auto&&... args) -> void
 	requires std::invocable<decltype(function), decltype(args)...> {
+	// nb: Don't lint on something like:
+	// `napi::invoke0(napi_throw_type_error, napi_env{env}, nullptr, "Illegal constructor");`
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 	switch (function(std::forward<decltype(args)>(args)...)) {
 		case napi_ok: return;
 		case napi_pending_exception: throw napi::pending_error{};

@@ -152,7 +152,7 @@ struct accept_coerced_string {
 			value_type result;
 			result.resize_and_overwrite(size, [ & ](Char* data, size_t size) noexcept -> size_t {
 				for (std::size_t ii = 0; ii < size; ++ii) {
-					// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+					// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,cppcoreguidelines-pro-bounds-pointer-arithmetic)
 					data[ ii ] = static_cast<Subject>(from[ ii ]);
 				}
 				return size;

@@ -61,7 +61,7 @@ class releasable {
 			// dtor is initialized to destroy<releasable> + dealloc<resource>. `releasable()` ctor won't
 			// throw so this is correct.
 			releasable* ptr = resource_alloc_traits::allocate(resource_alloc, 1);
-			dtor_type dtor = &releasable::destroy_and_deallocate<Type, releasable>;
+			const auto dtor = dtor_type{&releasable::destroy_and_deallocate<Type, releasable>};
 			allocator_traits::construct(alloc, ptr, dtor);
 			return unique_pointer_type{ptr, deleter{alloc}};
 		}
@@ -74,7 +74,7 @@ class releasable {
 			// "destroy" the releasable which should be trivial anyway
 			allocator_traits::destroy(alloc, this);
 			// construct resource on top of the existing allocated memory
-			dtor_type dtor = &releasable::deallocate<Type>;
+			const auto dtor = dtor_type{&releasable::deallocate<Type>};
 			auto* resource_ptr = static_cast<resource_type*>(this);
 			// dtor is initialized first, so if `Type` throws then dtor will be deallocate<releasable>
 			allocator_traits::construct(alloc, resource_ptr, dtor, std::forward<decltype(args)>(args)...);

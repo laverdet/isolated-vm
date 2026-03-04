@@ -27,6 +27,8 @@ struct accept_v8_primitive {
 		accept_v8_primitive() = delete;
 		explicit accept_v8_primitive(iv8::isolate_lock_witness lock) :
 				isolate_{lock.isolate()} {}
+		explicit accept_v8_primitive(const std::convertible_to<iv8::isolate_lock_witness> auto& lock) :
+				accept_v8_primitive{iv8::isolate_lock_witness{util::slice(lock)}} {}
 
 		[[nodiscard]] auto isolate() const -> v8::Isolate* { return isolate_; }
 
@@ -88,8 +90,7 @@ struct accept_v8_primitive {
 // Explicit string acceptor
 template <>
 struct accept<void, v8::Local<v8::String>> : accept_v8_primitive {
-		explicit accept(iv8::isolate_lock_witness lock) :
-				accept_v8_primitive{lock} {}
+		using accept_v8_primitive::accept_v8_primitive;
 };
 
 // Generic acceptor for most values. These require a context lock.
@@ -99,11 +100,14 @@ struct accept_v8_value : accept_v8_primitive {
 		explicit accept_v8_value(iv8::context_lock_witness lock) :
 				accept_type{lock},
 				context_{lock.context()} {}
+		explicit accept_v8_value(const std::convertible_to<iv8::context_lock_witness> auto& lock) :
+				accept_v8_value{iv8::context_lock_witness{util::slice(lock)}} {}
 
 		// accept all primitives
 		using accept_type::operator();
 
 		// hacky function template acceptor
+		// NOLINTNEXTLINE(bugprone-derived-method-shadowing-base-method)
 		auto operator()(function_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::Function> value) const -> v8::Local<v8::Function> {
 			return value;
 		}
@@ -184,8 +188,7 @@ struct accept_v8_value : accept_v8_primitive {
 
 template <>
 struct accept<void, v8::Local<v8::Value>> : accept_v8_value {
-		explicit constexpr accept(iv8::context_lock_witness lock) :
-				accept_v8_value{lock} {}
+		using accept_v8_value::accept_v8_value;
 };
 
 // A `MaybeLocal` also accepts `undefined`, similar to `std::optional`.
@@ -210,6 +213,8 @@ struct accept<void, v8::ReturnValue<v8::Value>> : accept<void, v8::Local<v8::Val
 		accept(iv8::context_lock_witness lock, value_type return_value) :
 				accept_type{lock},
 				return_value_{return_value} {}
+		explicit accept(const std::convertible_to<iv8::context_lock_witness> auto& lock, value_type return_value) :
+				accept{iv8::context_lock_witness{util::slice(lock)}, return_value} {}
 
 		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, const auto& value) const -> value_type {
 			return_value_.Set(bool{value});

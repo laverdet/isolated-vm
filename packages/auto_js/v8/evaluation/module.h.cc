@@ -1,6 +1,5 @@
 module;
 #include <expected>
-#include <functional>
 #include <ranges>
 #include <span>
 #include <string>
@@ -109,7 +108,9 @@ auto module_record::create_synthetic(context_lock_witness lock, auto module_inte
 		auto& callback = *tl_callback;
 		callback(lock, module);
 	};
-	return create_synthetic(lock, std::span{name_locals}, action, origin_local);
+	auto module_ = create_synthetic(lock, std::span{name_locals}, action, origin_local);
+	tl_callback = nullptr;
+	return module_;
 }
 
 } // namespace js::iv8

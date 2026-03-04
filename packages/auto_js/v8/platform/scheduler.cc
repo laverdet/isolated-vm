@@ -142,16 +142,16 @@ auto scheduler_foreground_thread::controller::run(
 	auto lock = storage.write_waitable([](const Storage::resource_type& storage) -> bool {
 		return !storage.queue.empty();
 	});
-	util::composite_stop_token any_stop_token{std::move(stop_token), termination_stop_token};
+	const auto any_stop_token = util::composite_stop_token{std::move(stop_token), termination_stop_token};
 	while (!any_stop_token.stop_requested()) {
-		auto [... timeout ] = [ & ]() {
+		auto [... timeout ] = [ & ]() -> auto {
 			if constexpr (requires { typename queue_type::clock_type; }) {
 				return std::tuple{lock->queue.flush(queue_type::clock_type::now())};
 			} else {
 				return std::tuple{};
 			}
 		}();
-		while (lock.wait(any_stop_token, timeout...)) {
+		while (lock.wait(util::slice(any_stop_token), timeout...)) {
 			auto task = std::move(lock->queue.front());
 			lock->queue.pop();
 			lock.unlock();
@@ -196,16 +196,16 @@ auto scheduler_background_threads::controller::run(
 	auto lock = storage.write_waitable([](const Storage::resource_type& storage) -> bool {
 		return !storage.queue.empty();
 	});
-	util::composite_stop_token any_stop_token{std::move(stop_token), termination_stop_token};
+	const auto any_stop_token = util::composite_stop_token{std::move(stop_token), termination_stop_token};
 	while (!any_stop_token.stop_requested()) {
-		auto [... timeout ] = [ & ]() {
+		auto [... timeout ] = [ & ]() -> auto {
 			if constexpr (requires { typename queue_type::clock_type; }) {
 				return std::tuple{lock->queue.flush(queue_type::clock_type::now())};
 			} else {
 				return std::tuple{};
 			}
 		}();
-		while (lock.wait(any_stop_token, timeout...)) {
+		while (lock.wait(util::slice(any_stop_token), timeout...)) {
 			auto task = std::move(lock->queue.front());
 			lock->queue.pop();
 			lock.unlock();

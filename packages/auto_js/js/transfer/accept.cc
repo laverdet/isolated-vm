@@ -104,7 +104,9 @@ struct accept_store_unwrapped {
 		template <class Type, class... Args>
 		[[nodiscard]] constexpr auto consume(js::deferred_receiver<Type, Args...> receiver) const -> target_type {
 			insert_(*receiver);
+			// NOLINTNEXTLINE(bugprone-use-after-move)
 			std::move(receiver)();
+			// NOLINTNEXTLINE(bugprone-use-after-move)
 			return consume(*std::move(receiver));
 		}
 
@@ -207,9 +209,7 @@ struct accept_property_value<Meta, Key, Type, void> {
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto& visit, const auto& dictionary) const {
 			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) -> bool {
-				using value_type = decltype(Key)::value_type;
-				using character_type = std::remove_extent_t<std::remove_cvref_t<value_type>>;
-				return visit.first(entry.first, first) == std::basic_string_view<character_type>{Key};
+				return visit.first(entry.first, first) == util::make_string_view(Key);
 			});
 			if (it == dictionary.end()) {
 				return second(undefined_in_tag{}, visit, std::monostate{});

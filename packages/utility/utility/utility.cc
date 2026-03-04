@@ -1,5 +1,7 @@
 module;
 #include <concepts>
+#include <stdexcept>
+#include <string_view>
 #include <utility>
 export module util:utility;
 export import :utility.constant_wrapper;
@@ -49,12 +51,33 @@ constexpr auto sequence = []() consteval -> auto {
 	}(std::make_index_sequence<Size>());
 }();
 
+// Checked container / range access for types which don't have `.at()`
+export auto at(auto&& range, std::size_t index) -> decltype(auto) {
+	if (range.size() <= index) {
+		throw std::out_of_range{"Index out of range"};
+	}
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,cppcoreguidelines-pro-bounds-constant-array-index)
+	return std::forward<decltype(range)>(range)[ index ];
+}
+
 // Allocates storage for a copy of a constant expression value and initializes it with the value.
 export template <const auto& Value, class Type = std::remove_cvref_t<decltype(Value)>>
 struct copy_of : Type {
 		constexpr copy_of() :
 				Type(Value) {}
 };
+
+// Create a `std::string_view` without decaying an array
+export template <class Char, std::size_t Size>
+// NOLINTNEXTLINE(modernize-avoid-c-arrays)
+constexpr auto make_string_view(const Char (&string)[ Size ]) noexcept -> std::basic_string_view<Char> {
+	return std::basic_string_view<Char>(static_cast<const Char*>(string), Size - 1);
+}
+
+export template <auto String>
+constexpr auto make_string_view(util::constant_wrapper<String> /*cw*/) noexcept {
+	return make_string_view(String.value);
+}
 
 // https://en.cppreference.com/w/cpp/experimental/scope_exit
 export template <class Invoke>
@@ -71,20 +94,28 @@ class scope_exit : non_copyable {
 };
 
 // Explicitly annotate desired struct slicing: cppcoreguidelines-slicing
-export template <class Type>
-struct slice {
+template <class Type>
+struct slice_t;
+
+template <class Type>
+struct slice_t<const Type> {
 	public:
-		explicit slice(Type& value) : value_{value} {}
+		explicit slice_t(const Type& value) : value_{value} {}
 
 		template <class As>
-			requires std::derived_from<std::remove_cv_t<Type>, As>
 		// NOLINTNEXTLINE(google-explicit-constructor)
-		constexpr operator As() const {
-			return As{value_};
+		operator const As&() &&
+			requires(std::convertible_to<Type&, As&> && type<Type> != type<As>) {
+			return static_cast<const As&>(value_.get());
 		}
 
 	private:
-		std::reference_wrapper<Type> value_;
+		std::reference_wrapper<const Type> value_;
 };
+
+export template <class Type>
+constexpr auto slice(Type& value) {
+	return slice_t<const Type>{value};
+}
 
 } // namespace util

@@ -170,6 +170,7 @@ function(target_preprocessed_sources TARGET SEARCH REPLACE)
 		# Generated sources with macro replacement
 		set(GEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.${REPLACE}")
 		file(MAKE_DIRECTORY "${GEN_DIR}")
+		file(WRITE "${GEN_DIR}/.clang-tidy" "Checks: '-*'")
 		set(SCOPE)
 		set(NEXT_SCOPE)
 		foreach(FILE ${FILE_SET})

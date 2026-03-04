@@ -231,11 +231,13 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 				napi::value<dictionary_tag>::from(napi::invoke(napi_create_object, napi_env{self})),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](napi::value<dictionary_tag> object, auto& self, auto& visit, auto /*&&*/ subject) -> void {
+					// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 					std::array<napi_property_descriptor, Size> properties;
 					const auto [... indices ] = util::sequence<Size>;
 					(..., [ & ]() -> void {
+						// NOLINTNEXTLINE(modernize-type-traits)
 						auto& visit_n = std::get<indices>(visit);
-						properties[ indices ] = {
+						properties.at(indices) = {
 							.utf8name{},
 							.name = napi_value{visit_n.first.get_local(self)},
 

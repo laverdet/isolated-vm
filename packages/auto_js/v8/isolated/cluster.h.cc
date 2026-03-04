@@ -44,7 +44,8 @@ auto cluster::make_agent(auto make_environment, behavior_params params, auto cal
 			host->emplace_environment(util::elide{[ & ]() -> environment_type {
 				return make_environment(agent_lock{isolate_lock, *host});
 			}});
-			callback(agent_lock_of{isolate_lock, *host}, agent_handle_of{std::move(host)});
+			auto lock = agent_lock_of{isolate_lock, *host};
+			callback(lock, agent_handle_of{std::move(host)});
 		},
 		std::move(storage),
 		std::move(make_environment),

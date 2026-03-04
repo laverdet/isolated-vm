@@ -18,6 +18,8 @@ Checks: >
   portability-*,
   readability-*,
 
+  -I_DONT_CARE_FOR_THESE,
+  -bugprone-std-namespace-modification,
   -cppcoreguidelines-avoid-magic-numbers,-readability-magic-numbers,
   -cppcoreguidelines-avoid-non-const-global-variables,
   -cppcoreguidelines-owning-memory,
@@ -26,14 +28,20 @@ Checks: >
   -google-build-using-namespace,
   -google-global-names-in-headers,
   -google-readability-todo,
-  -misc-include-cleaner,
+  -misc-multiple-inheritance,
   -misc-use-internal-linkage,
   -portability-avoid-pragma-once,
   -readability-else-after-return,
   -readability-function-cognitive-complexity,
 
+  -THESE_ARE_THE_BUGGY_ONES,
+  -misc-include-cleaner,
+  -performance-trivially-destructible,
+  -readability-misleading-indentation,
+  -readability-named-parameter,
   -readability-redundant-declaration,
 
+  -CANONICALIZED_CHECKS,
   -cppcoreguidelines-avoid-c-arrays, +modernize-avoid-c-arrays,
   -cppcoreguidelines-c-copy-assignment-signature, +misc-unconventional-assign-operator,
   -cppcoreguidelines-explicit-virtual-functions, +modernize-use-override,
@@ -73,6 +81,7 @@ Checks: >
 
 HeaderFilterRegex: 'packages/*'
 CheckOptions:
+  bugprone-unchecked-optional-access.IgnoreValueCalls: true
   bugprone-unused-return-value.AllowCastToVoid: true
   cppcoreguidelines-avoid-non-const-global-variables.AllowInternalLinkage: true
   cppcoreguidelines-special-member-functions.AllowImplicitlyDeletedCopyOrMove: true

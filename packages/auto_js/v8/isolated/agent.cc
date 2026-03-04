@@ -18,6 +18,7 @@ agent_collected_handle_lock::agent_collected_handle_lock(isolate_lock_witness lo
 		collected_handle_lock{lock, agent.autorelease_pool()} {};
 
 // `agent_storage`
+// NOLINTNEXTLINE(performance-unnecessary-value-param)
 auto agent_storage::release(std::shared_ptr<agent_storage> storage) -> void {
 	storage->cluster_.get().release_agent_storage(std::move(storage));
 }
@@ -90,9 +91,9 @@ agent_host::~agent_host() {
 		scheduler.mutate([ & ](platform::foreground_task_queue& queue) -> void {
 			queue.finalize();
 		});
-		remote_handle_list_.clear(util::slice{lock});
+		remote_handle_list_.clear(util::slice(lock));
 		autorelease_pool_.clear();
-		destroy_callback_(util::slice{lock});
+		destroy_callback_(util::slice(lock));
 	}
 	// Deallocate isolate (before `agent_storage`)
 	isolate_.reset();
@@ -120,7 +121,7 @@ auto agent_host::remote_expiration_callback(expired_remote_type remote) noexcept
 	storage_->foreground_runner().schedule_handle_task(
 		[ this, remote = std::move(remote) ](std::stop_token /*stop_token*/) -> void {
 			auto lock = isolate_execution_lock{isolate()};
-			remote->reset(util::slice{lock});
+			remote->reset(util::slice(lock));
 			remote_handle_list_.erase(*remote);
 		}
 	);

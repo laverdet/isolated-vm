@@ -84,7 +84,7 @@ struct visit<void, Char[ Extent ]> {
 		template <class Accept>
 		// NOLINTNEXTLINE(modernize-avoid-c-arrays)
 		constexpr auto operator()(const Char (&subject)[ Extent ], const Accept& accept) const -> accept_target_t<Accept> {
-			return accept(string_tag_of<Char>{}, *this, std::basic_string_view<Char>{subject, Extent - 1});
+			return accept(string_tag_of<Char>{}, *this, util::make_string_view(subject));
 		}
 };
 

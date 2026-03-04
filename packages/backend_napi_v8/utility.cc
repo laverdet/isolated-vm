@@ -1,6 +1,5 @@
 module;
 #include <expected>
-#include <string_view>
 #include <utility>
 export module backend_napi_v8:utility;
 import :environment;
@@ -32,13 +31,12 @@ auto make_forward_callback(Function function) {
 	return make(std::type_identity<signature>{}, std::move(function));
 }
 
-template <auto Key>
-auto make_property_key(util::constant_wrapper<Key> key, environment& env) {
+auto make_property_key(auto key, environment& env) {
 	auto& storage = env.global_storage(key);
 	if (storage) {
 		return napi_value{storage.get(env)};
 	} else {
-		auto value = napi::value<string_tag>::make_property_name(env, std::string_view{key});
+		auto value = napi::value<string_tag>::make_property_name(env, util::make_string_view(key));
 		storage.reset(env, value);
 		return napi_value{value};
 	}

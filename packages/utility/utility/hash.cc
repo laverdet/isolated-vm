@@ -11,8 +11,8 @@ namespace util {
 // `constexpr` hash for property lookup
 export template <class Char>
 constexpr auto fnv1a_hash(std::basic_string_view<Char> view) -> uint32_t {
+	constexpr uint32_t prime = 0x100'0193;
 	uint32_t hash = 0x811c'9dc5;
-	uint32_t prime = 0x100'0193;
 	for (auto character : view) {
 		auto bytes = std::bit_cast<std::array<uint8_t, sizeof(Char)>>(character);
 		for (auto byte : bytes) {

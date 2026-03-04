@@ -27,10 +27,11 @@ export class handle_with_context : public handle_with_isolate {
 	public:
 		handle_with_context() = default;
 		explicit handle_with_context(context_lock_witness lock) :
-				handle_with_isolate{lock},
+				handle_with_isolate{util::slice(lock)},
 				context_{lock.context()} {}
 
 		[[nodiscard]] auto context() const -> v8::Local<v8::Context> { return context_; }
+		// NOLINTNEXTLINE(bugprone-derived-method-shadowing-base-method)
 		[[nodiscard]] auto witness() const -> context_lock_witness {
 			return context_lock_witness::make_witness(handle_with_isolate::witness(), context_);
 		}

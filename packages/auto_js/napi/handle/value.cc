@@ -29,9 +29,6 @@ class value_handle {
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		operator napi_value() const { return value_; }
 
-		// Check for empty value
-		explicit operator bool() const { return value_ != nullptr; }
-
 	private:
 		napi_value value_{};
 };

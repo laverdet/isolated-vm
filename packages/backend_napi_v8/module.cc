@@ -1,10 +1,8 @@
 module;
 #include <expected>
-#include <future>
 #include <memory>
 #include <optional>
 #include <ranges>
-#include <stop_token>
 #include <tuple>
 #include <utility>
 #include <variant>
@@ -107,7 +105,7 @@ auto module_handle::create_capability(
 				environment& env,
 				std::vector<js::value_t> params
 			) -> void {
-			js::napi::handle_scope scope{napi_env{env}};
+			const auto scope = js::napi::handle_scope{napi_env{env}};
 			callback->deref(env).apply(env, std::move(params));
 		};
 		// Invoked in the isolate thread
@@ -142,7 +140,7 @@ auto module_handle::create_capability(
 			agent.schedule(
 				[](
 					const agent_handle::lock& lock,
-					js::iv8::shared_remote<v8::Context> realm,
+					const js::iv8::shared_remote<v8::Context>& realm,
 					auto dispatch
 				) -> void {
 					context_scope_operation(lock, realm->deref(lock), [ dispatch = std::move(dispatch) ](const realm_scope& realm) mutable -> void {
@@ -169,7 +167,7 @@ auto module_handle::create_capability(
 						[ callback_remote,
 							message = std::move(message) ](
 							const realm_scope& lock
-						) -> void {
+						) mutable -> void {
 							auto callback = callback_remote->deref(lock);
 							auto argv = js::transfer_in<v8::Local<v8::Value>>(std::move(message), lock);
 							js::iv8::unmaybe(callback->Call(lock.context(), v8::Undefined(lock.isolate()), 1, &argv));
@@ -207,7 +205,7 @@ auto module_handle::create_capability(
 		[ dispatch = std::move(dispatch) ](
 			const agent_handle::lock& lock,
 			agent_handle agent,
-			auto realm,
+			const auto& realm,
 			create_capability_options options,
 			auto external_capability_interface
 		) -> void {
@@ -245,7 +243,7 @@ auto module_handle::evaluate(environment& env, realm_handle& realm) -> js::napi:
 	agent_.schedule(
 		[ dispatch = std::move(dispatch) ](
 			const agent_handle::lock& agent,
-			js::iv8::shared_remote<v8::Context> realm,
+			const js::iv8::shared_remote<v8::Context>& realm,
 			js::iv8::shared_remote<v8::Module> module_record
 		) -> void {
 			context_scope_operation(agent, realm->deref(agent), [ & ](const realm_scope& realm) -> void {
@@ -269,7 +267,7 @@ auto deref_remote_link_record(js::iv8::isolate_lock_witness lock, remote_module_
 					return remote_module->deref(lock);
 				}),
 		},
-		.payload = std::move(link_record.payload),
+		.payload = std::move(link_record).payload,
 	};
 };
 
@@ -294,7 +292,7 @@ auto module_handle::link(environment& env, realm_handle& realm, module_handle_li
 		[ dispatch = std::move(dispatch) ](
 			const agent_handle::lock& agent,
 			const js::iv8::shared_remote<v8::Context>& realm,
-			js::iv8::shared_remote<v8::Module> module,
+			const js::iv8::shared_remote<v8::Module>& module,
 			remote_module_link_record link_record
 		) -> void {
 			auto module_local = module->deref(agent);

@@ -28,6 +28,7 @@ struct accept<void, Enum> {
 			return util::sealed_map{
 				std::in_place,
 				[ & ]() constexpr -> auto {
+					// NOLINTNEXTLINE(modernize-type-traits)
 					return std::pair{util::fnv1a_hash(std::string_view{values.first}), values.second};
 				}()...,
 			};

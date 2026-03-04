@@ -26,6 +26,7 @@ class foreground_task_queue {
 		foreground_task_queue() = default;
 		foreground_task_queue(foreground_task_queue&& other) noexcept;
 		foreground_task_queue(const foreground_task_queue&) = delete;
+		~foreground_task_queue() = default;
 		auto operator=(const foreground_task_queue&) -> foreground_task_queue& = delete;
 		auto operator=(foreground_task_queue&&) -> foreground_task_queue& = delete;
 

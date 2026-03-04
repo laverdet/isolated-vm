@@ -70,6 +70,7 @@ export constexpr auto template_switch(const auto& value, auto case_pack, auto in
 		}
 	};
 	const auto [... cases ] = case_pack;
+	// NOLINTNEXTLINE(clang-analyzer-core.CallAndMessage)
 	return dispatch(cases...);
 }
 

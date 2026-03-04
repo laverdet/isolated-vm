@@ -29,7 +29,7 @@ class mutable_priority_queue : public std::priority_queue<mutable_entry<Value>> 
 		using value_type = Value;
 
 		auto top() -> value_type& { return *priority_queue::top(); }
-		auto top() const -> const value_type& { return *priority_queue::top(); }
+		[[nodiscard]] auto top() const -> const value_type& { return *priority_queue::top(); }
 };
 
 } // namespace util

@@ -52,6 +52,7 @@ auto make_callback_storage(const isolate_lock_witness_of<Agent, Implements...>& 
 			auto string_data =
 				unmaybe(v8::String::NewFromOneByte(lock.isolate(), reinterpret_cast<const uint8_t*>(&trampoline), v8::NewStringType::kNormal, sizeof(trampoline)));
 			const auto callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
+				// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 				std::array<std::byte, sizeof(trampoline_type)> data;
 				auto* isolate = info.GetIsolate();
 				info.Data().As<v8::String>()->WriteOneByteV2(isolate, 0, data.size(), reinterpret_cast<uint8_t*>(data.data()), v8::String::WriteFlags::kNone);

@@ -75,9 +75,8 @@ auto unmaybe_one(isolate_lock_witness lock, Operation operation) {
 	return dispatch(std::type_identity<std::invoke_result_t<Operation>>{});
 }
 
-export template <class Operation>
-auto unmaybe_one(context_lock_witness lock, Operation operation) {
-	return unmaybe_one(isolate_lock_witness{lock}, std::move(operation));
+auto unmaybe_one(context_lock_witness lock, auto operation) {
+	return unmaybe_one(isolate_lock_witness{util::slice(lock)}, operation);
 }
 
 // Render the stack trace in a similar manner as `Error.prototype.stack`

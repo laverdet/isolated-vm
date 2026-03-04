@@ -1,6 +1,5 @@
 module;
 #include <cassert>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 export module auto_js:visit;
@@ -70,7 +69,9 @@ struct visit_entry_pair {
 			second.emplace_subject(subject, value);
 		}
 
+		// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
 		First first;
+		// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
 		Second second;
 };
 
@@ -86,9 +87,9 @@ template <auto Key>
 struct visit_key_literal<Key, void> {
 		template <class Accept>
 		constexpr auto operator()(const auto& /*could_be_literally_anything*/, const Accept& accept) -> accept_target_t<Accept> {
-			using value_type = decltype(Key)::value_type;
-			using character_type = std::remove_extent_t<std::remove_cvref_t<value_type>>;
-			return accept(string_tag_of<character_type>{}, *this, std::basic_string_view<character_type>{Key});
+			auto key_view = util::make_string_view(Key);
+			using character_type = decltype(key_view)::value_type;
+			return accept(string_tag_of<character_type>{}, *this, key_view);
 		}
 };
 
@@ -113,6 +114,7 @@ struct reference_map_provider {
 				map_{std::forward<decltype(args)>(args)...} {}
 
 		constexpr auto emplace_subject(const auto& subject, const auto& value) -> void {
+			// NOLINTNEXTLINE(cppcoreguidelines-slicing)
 			[[maybe_unused]] auto [ iterator, inserted ] = map_.try_emplace(subject, value);
 			assert(inserted);
 		}

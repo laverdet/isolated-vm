@@ -56,8 +56,9 @@ template <class... Entries>
 auto value<object_tag>::assign(auto_environment auto& env, std::tuple<Entries...> entries) -> void {
 	bound_value value{env, *this};
 	auto& [... entries_n ] = entries;
-	(..., [ & ]() constexpr {
+	(..., [ & ]() constexpr -> auto {
 		auto [ first, second ] = js::transfer_in_strict<std::array<napi_value, 2>>(
+			// NOLINTNEXTLINE(bugprone-use-after-move,modernize-type-traits)
 			std::tuple{std::move(entries_n).first, std::move(entries_n).second},
 			env
 		);

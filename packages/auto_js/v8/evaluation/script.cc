@@ -10,11 +10,11 @@ import v8;
 namespace js::iv8 {
 
 auto script::compile(context_lock_witness lock, v8::Local<v8::String> code_string, source_origin source_origin) -> expected_script_type {
+	auto location = source_origin.location.value_or(source_location{});
 	auto maybe_resource_name = js::transfer_in_strict<v8::MaybeLocal<v8::String>>(std::move(source_origin).name, lock);
 	v8::Local<v8::String> resource_name{};
 	// nb: Empty handle is ok for `v8::ScriptOrigin`
 	(void)maybe_resource_name.ToLocal(&resource_name);
-	auto location = source_origin.location.value_or(source_location{});
 	v8::ScriptOrigin origin{resource_name, location.line, location.column};
 	v8::ScriptCompiler::Source source{code_string, origin};
 	return unmaybe_one(lock, [ & ] -> v8::MaybeLocal<v8::UnboundScript> {

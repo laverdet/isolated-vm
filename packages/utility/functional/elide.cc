@@ -24,6 +24,7 @@ class elide {
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		constexpr operator result_type() && {
 			auto [... args ] = std::move(args_);
+			// NOLINTNEXTLINE(clang-analyzer-core.CallAndMessage)
 			return std::move(invocable_)(std::move(args)...);
 		}
 

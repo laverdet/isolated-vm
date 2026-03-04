@@ -16,7 +16,7 @@ auto dictionary_like::size() const -> std::size_t {
 }
 
 auto dictionary_like::keys() const -> const keys_type& {
-	if (!keys_) {
+	if (napi_value{keys_} == nullptr) {
 		auto* property_names = napi::invoke(napi_get_property_names, env(), *this);
 		keys_ = keys_type{env(), js::napi::value<vector_tag>::from(property_names)};
 	}

@@ -61,7 +61,9 @@ class bind_overloaded : private bind_storage<Invocable, Bound...> {
 	private:
 		constexpr auto invoke(this auto&& self, auto&&... args) -> decltype(auto) {
 			const auto [... indices ] = util::sequence<sizeof...(Bound)>;
+			// NOLINTNEXTLINE(bugprone-use-after-move)
 			return std::forward<decltype(self)>(self).invocable_(
+				// NOLINTNEXTLINE(bugprone-use-after-move)
 				get<indices>(std::forward<decltype(self)>(self).params_)...,
 				std::forward<decltype(args)>(args)...
 			);
@@ -105,7 +107,9 @@ class bind_explicit<Invocable, auto(Args...) noexcept(Nx)->Result, Bound...> : p
 	private:
 		constexpr auto invoke(this auto&& self, Args /*&&*/... args) noexcept(Nx) -> Result {
 			const auto [... indices ] = util::sequence<sizeof...(Bound)>;
+			// NOLINTNEXTLINE(bugprone-use-after-move)
 			return std::forward<this_type>(self).invocable_(
+				// NOLINTNEXTLINE(bugprone-use-after-move)
 				get<indices>(std::forward<this_type>(self).params_)...,
 				std::forward<decltype(args)>(args)...
 			);

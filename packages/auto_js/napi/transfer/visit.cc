@@ -1,6 +1,5 @@
 module;
 #include <functional>
-#include <string_view>
 #include <utility>
 export module napi_js:visit;
 import :api;
@@ -243,7 +242,7 @@ struct visit_key_literal<Key, napi_value> : util::non_moveable {
 				if (storage) {
 					local_key_ = storage.get(environment);
 				} else {
-					auto value = napi::value<string_tag>::make_property_name(environment, std::string_view{Key});
+					auto value = napi::value<string_tag>::make_property_name(environment, util::make_string_view(Key));
 					storage.reset(environment, value);
 					local_key_ = napi_value{value};
 				}

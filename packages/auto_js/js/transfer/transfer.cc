@@ -53,7 +53,9 @@ struct transfer_holder : Visit, Accept {
 			std::index_sequence<AcceptIndex...> /*accept_index*/,
 			auto accept_args
 		) :
+				// NOLINTNEXTLINE(bugprone-use-after-move)
 				Visit{this, std::get<VisitIndex>(std::move(visit_args))...},
+				// NOLINTNEXTLINE(bugprone-use-after-move)
 				Accept{this, std::get<AcceptIndex>(std::move(accept_args))...} {}
 
 	public:
@@ -138,6 +140,7 @@ constexpr auto transfer_with(
 	}()>;
 
 	auto visit_and_accept = transfer_holder<visit_type, accept_type>{std::move(visit_args), std::move(accept_args)};
+	// NOLINTNEXTLINE(misc-const-correctness)
 	visit_type& visit = visit_and_accept;
 	const accept_type& accept = visit_and_accept;
 	return visit(subject_value_type(std::forward<decltype(value)>(value)), accept);

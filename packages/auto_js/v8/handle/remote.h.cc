@@ -17,8 +17,10 @@ class remote_handle : util::non_copyable {
 		class expire;
 		explicit remote_handle(isolate_lock_witness lock, v8::Local<v8::Data> handle);
 
-		[[nodiscard]] auto deref(isolate_lock_witness lock) const -> v8::Local<v8::Data>;
 		auto reset(isolate_lock_witness lock) -> void;
+
+	protected:
+		[[nodiscard]] auto deref(isolate_lock_witness lock) const -> v8::Local<v8::Data>;
 
 	private:
 		using intrusive_safe_mode = boost::intrusive::link_mode<boost::intrusive::safe_link>;
@@ -91,6 +93,7 @@ class remote : public remote_handle {
 
 	public:
 		explicit remote(private_constructor /*private*/, isolate_lock_witness lock, v8::Local<Type> local);
+		// NOLINTNEXTLINE(bugprone-derived-method-shadowing-base-method)
 		[[nodiscard]] auto deref(isolate_lock_witness lock) const -> v8::Local<Type>;
 		static auto make(const remote_handle_lock& lock, v8::Local<Type> local) -> std::unique_ptr<remote, expire>;
 };

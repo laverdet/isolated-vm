@@ -5,7 +5,7 @@
   "packageManager": "pnpm@9.15.2",
   "scripts": {
     "clang-format": "find packages -name '*.cc' -exec clang-format -i {} \\;",
-    "lint:cc": "run-clang-tidy -p build",
+    "lint:cc": "run-clang-tidy -allow-no-checks -p build",
     "lint:js": "eslint --fix packages",
     "test": "pnpm run --recursive --silent test"
   },

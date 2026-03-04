@@ -17,5 +17,7 @@ replace() {
 # after that.
 CONTENT=$(cat "$FILE")
 echo "$CONTENT" | head -n1 | replace "$@"
+echo "// NOLINTBEGIN(google-readability-namespace-comments)"
 echo "#line 2 \"$FILE\""
 echo "$CONTENT" | tail -n+2 | replace "$@"
+echo "// NOLINTEND(google-readability-namespace-comments)"

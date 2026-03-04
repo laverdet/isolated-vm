@@ -122,7 +122,7 @@ class context_lock_witness_of
 
 		context_lock_witness_of(context_lock_witness& witness, Agent& agent) :
 				context_lock_witness{witness},
-				Implements{witness, agent}...,
+				Implements{util::slice(witness), agent}...,
 				agent_{agent} {}
 
 		context_lock_witness_of(context_lock_witness& witness, const isolate_lock_witness_of<Agent, Implements...>& lock) :
@@ -154,7 +154,7 @@ export auto context_scope_operation(isolate_lock_witness lock, v8::Local<v8::Con
 
 export template <class Agent, class... Implements>
 auto context_scope_operation(const isolate_lock_witness_of<Agent, Implements...>& lock, v8::Local<v8::Context> context, auto operation) -> decltype(auto) {
-	auto context_lock = context_managed_lock{lock, context};
+	auto context_lock = context_managed_lock{util::slice(lock), context};
 	auto witness = context_lock_witness_of{context_lock, lock};
 	return operation(witness);
 }

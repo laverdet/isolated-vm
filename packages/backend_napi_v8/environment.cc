@@ -55,7 +55,7 @@ export class environment : public napi::environment_of<environment> {
 		// Lookup `reference<T>` for the given class template
 		template <class Type>
 		auto class_template(std::type_identity<Type> /*type*/, const auto& class_template) {
-			constexpr auto index = class_templates.lookup(std::u8string_view{class_template.constructor.name});
+			constexpr auto index = class_templates.lookup(util::make_string_view(class_template.constructor.name));
 			static_assert(index, "Class template is missing in storage");
 			auto reference = class_template_storage_.at(index).second;
 			using value_type = js::napi::value<class_tag_of<Type>>;
@@ -70,7 +70,7 @@ export class environment : public napi::environment_of<environment> {
 
 		// Lookup `reference<T>` for the given literal
 		auto global_storage(const auto& string_value) -> auto& {
-			constexpr auto index = string_literals.lookup(std::string_view{string_value});
+			constexpr auto index = string_literals.lookup(util::make_string_view(string_value));
 			static_assert(index, "String literal is missing in storage");
 			// static_assert(index, std::format("String literal '{}' is missing in storage", Value.data()));
 			return string_literal_storage_.at(index).second;

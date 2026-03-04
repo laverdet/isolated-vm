@@ -35,7 +35,7 @@ auto script_handle::compile_script(agent_handle& agent, environment& env, js::st
 		) -> void {
 			auto origin = std::move(options).origin.value_or(js::iv8::source_origin{});
 			auto maybe_script = context_scope_operation(agent, agent->scratch_context(), [ & ](const realm_scope& lock) -> auto {
-				auto maybe_script = js::iv8::script::compile(util::slice{lock}, std::move(code_string), std::move(origin));
+				auto maybe_script = js::iv8::script::compile(util::slice(lock), std::move(code_string), std::move(origin));
 				return maybe_script.transform([ & ](v8::Local<v8::UnboundScript> script) -> auto {
 					return make_shared_remote(lock, script);
 				});
@@ -67,9 +67,9 @@ auto script_handle::run(environment& env, realm_handle& realm, run_script_option
 						return util::timer_stop_token{js::js_clock::duration{timeout}};
 					});
 				auto timer_callback =
-					stop_token.transform([ & ](util::timer_stop_token& timer) {
+					stop_token.transform([ & ](util::timer_stop_token& timer) -> auto {
 						return std::stop_callback{
-							timer.get_token(), [ & ]() {
+							timer.get_token(), [ & ]() -> auto {
 								lock->isolate()->TerminateExecution();
 							}
 						};

@@ -1,3 +1,4 @@
+# shellcheck disable=all
 # Environment variables for ASAN / -fsanitize. Since isolated-vm is loaded into a non-ASAN process
 # via dlopen, ASAN must be preloaded.
 env LD_PRELOAD=libclang_rt.asan-aarch64.so

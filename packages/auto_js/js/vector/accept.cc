@@ -28,6 +28,7 @@ struct accept<Meta, std::array<Type, Size>> : accept_value<Meta, Type> {
 			const auto [... indices ] = util::sequence<Size>;
 			return std::array<Type, Size>{
 				// nb: Comma operator trick
+				// NOLINTNEXTLINE(clang-analyzer-core.CallAndMessage)
 				(util::unused(indices), visit(*iterator++, accept))...
 			};
 		}
@@ -37,6 +38,7 @@ struct accept<Meta, std::array<Type, Size>> : accept_value<Meta, Type> {
 			const accept_type& accept = *this;
 			const auto [... indices ] = util::sequence<TupleSize>;
 			return std::array<Type, Size>{
+				// NOLINTNEXTLINE(bugprone-use-after-move)
 				visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(subject)>(subject), accept)...,
 			};
 		}

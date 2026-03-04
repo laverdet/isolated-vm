@@ -13,6 +13,7 @@ module v8_js;
 import :evaluation.module_record;
 import :fixed_array;
 import auto_js;
+import util;
 import v8;
 
 namespace js::iv8 {
@@ -32,12 +33,12 @@ auto module_record::requests(context_lock_witness lock, v8::Local<v8::Module> mo
 				std::views::transform([ & ](const auto& triplet) {
 					auto entry = js::transfer_out_strict<std::array<std::u16string, 2>>(
 						std::array{
-							triplet[ 0 ].template As<v8::String>(),
-							triplet[ 1 ].template As<v8::String>()
+							util::at(triplet, 0).template As<v8::String>(),
+							util::at(triplet, 1).template As<v8::String>()
 						},
 						lock
 					);
-					return std::pair{std::move(entry[ 0 ]), std::move(entry[ 1 ])};
+					return std::pair{std::move(util::at(entry, 0)), std::move(util::at(entry, 1))};
 				});
 			return {specifier, module_request::attributes_type{std::from_range, attributes_view}};
 		});
@@ -45,11 +46,11 @@ auto module_record::requests(context_lock_witness lock, v8::Local<v8::Module> mo
 }
 
 auto module_record::compile(context_lock_witness lock, v8::Local<v8::String> source_text, iv8::source_origin origin) -> expected_module_type {
-	auto maybe_resource_name = js::transfer_in_strict<v8::MaybeLocal<v8::String>>(origin.name, lock);
+	auto location = origin.location.value_or(source_location{});
+	auto maybe_resource_name = js::transfer_in_strict<v8::MaybeLocal<v8::String>>(std::move(origin).name, lock);
 	v8::Local<v8::String> resource_name{};
 	// nb: Empty handle is ok for `v8::ScriptOrigin`
 	(void)maybe_resource_name.ToLocal(&resource_name);
-	auto location = origin.location.value_or(source_location{});
 	const auto script_origin = v8::ScriptOrigin{
 		resource_name,
 		location.line,
@@ -95,6 +96,7 @@ auto module_record::create_synthetic(context_lock_witness lock, string_span expo
 
 	// `Evaluate` invokes `evaluation_steps` above
 	unmaybe(module_record->Evaluate(lock.context()));
+	tl_synthetic_action = nullptr;
 	return module_record;
 }
 
@@ -131,6 +133,7 @@ auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module
 		}
 	};
 	unmaybe(module->InstantiateModule(lock.context(), v8_callback));
+	linker_ptr = nullptr;
 }
 
 auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module) -> void {

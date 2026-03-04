@@ -2,6 +2,8 @@ module;
 #include <type_traits>
 export module util:type_traits.type_of;
 
+namespace util {
+
 // "ADL firewall"
 // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2538r0.html#solution
 template <class Type>
@@ -19,13 +21,17 @@ using hidden_t = hidden<Type>::of;
 template <class Hidden>
 struct type_of;
 
+} // namespace util
+
 // `util::type_of<Type>{}` alias
 export template <class Type>
-constexpr auto type = type_of<hidden_t<Type>>{};
+constexpr auto type = util::type_of<util::hidden_t<Type>>{};
 
 // Extract the `type` of a value metatype
 export template <auto Type>
 using type_t = decltype(Type)::type;
+
+namespace util {
 
 // `type_of`
 template <class Hidden>
@@ -35,10 +41,6 @@ struct type_of : std::type_identity<typename Hidden::type> {
 		template <class Type>
 			requires std::is_same_v<typename Type::type, typename Hidden::type>
 		explicit consteval type_of(Type /*type*/){};
-
-		consteval auto remove_cvref() const {
-			return type<std::remove_cvref_t<typename Hidden::type>>;
-		}
 
 		// Equality operators
 		consteval auto operator==(type_of /*op*/) const -> bool { return true; }
@@ -61,3 +63,10 @@ struct type_of : std::type_identity<typename Hidden::type> {
 			}
 		}
 };
+
+export template <class Type>
+consteval auto remove_cvref(Type /*type*/) {
+	return type<std::remove_cvref_t<typename Type::type>>;
+}
+
+} // namespace util

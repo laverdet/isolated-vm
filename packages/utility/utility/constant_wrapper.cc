@@ -33,7 +33,7 @@ struct constant_wrapper;
 
 template <fixed_value Value>
 struct constant_wrapper {
-		using value_type = typename decltype(Value)::type;
+		using value_type = decltype(Value)::type;
 		using type = constant_wrapper;
 
 		constexpr static auto& value = Value.value;

@@ -176,7 +176,7 @@ class lockable {
 		using waitable_type = lock_waitable<resource_predicate<resource_type, Predicate>, Lock, ConditionVariable>;
 
 	public:
-		explicit lockable(auto&&... args) :
+		explicit lockable(auto&&... args) noexcept :
 				resource_{std::forward<decltype(args)>(args)...} {}
 
 		// `read`

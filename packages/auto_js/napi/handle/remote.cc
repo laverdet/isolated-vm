@@ -66,8 +66,8 @@ auto remote<Tag>::expire(remote* ptr) -> void {
 	std::unique_ptr<remote> self{ptr};
 	ptr->scheduler_(
 		util::make_indirect_moveable_function(
-			[ self = std::move(self) ] mutable {
-				handle_scope scope{self->env()};
+			[ self = std::move(self) ] mutable -> auto {
+				const auto scope = handle_scope{self->env()};
 				self.reset();
 			}
 		)

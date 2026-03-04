@@ -2,8 +2,8 @@ module;
 #include <array>
 #include <concepts>
 #include <memory>
-#include <string_view>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 export module napi_js:class_definitions;
 import :api;
@@ -18,6 +18,12 @@ template <class Type>
 template <class... Args>
 auto value<class_tag_of<Type>>::construct(auto& env, Args&&... args) const -> value<object_tag>
 	requires std::constructible_from<Type, Args...> {
+	// NOLINTNEXTLINE(readability-simplify-boolean-expr)
+	if (false) {
+		// nb: Fixes invalid `performance-unnecessary-value-param` lint errors when invoking this function
+		[[maybe_unused]] auto nothing = std::tuple<std::remove_cvref_t<Args>...>{std::forward<Args>(args)...};
+	}
+	// NOLINTNEXTLINE(bugprone-use-after-move)
 	return runtime_construct(env, std::forward_as_tuple(std::forward<Args>(args)...), std::tuple{});
 }
 
@@ -30,7 +36,8 @@ auto value<class_tag_of<Type>>::runtime_construct(
 ) const -> value<object_tag>
 	requires std::constructible_from<Type, HostArgs...> {
 	const auto [... indices ] = util::sequence<sizeof...(HostArgs)>;
-	auto instance = std::make_unique<Type>(std::get<indices>(std::forward<decltype(host_args)>(host_args))...);
+	// NOLINTNEXTLINE(bugprone-use-after-move)
+	auto instance = std::make_unique<Type>(std::get<indices>(std::move(host_args))...);
 	return transfer_construct(env, std::move(instance), std::move(runtime_args));
 }
 
@@ -71,7 +78,7 @@ auto value<class_tag_of<Type>>::make(Environment& env, const auto& class_templat
 	// Member function property descriptor
 	const auto make_member_function_descriptor = [ & ]<class Property>(const Property& property) -> napi_property_descriptor
 		requires(Property::scope == class_property_scope::prototype) {
-			auto name = std::u8string_view{property.name};
+			auto name = util::make_string_view(property.name);
 			auto [ callback, data ] = make_callback_storage(env, make_member_function<Environment, Type>(property.function));
 			static_assert(!requires { typename decltype(data)::element_type; });
 			return {
@@ -92,7 +99,7 @@ auto value<class_tag_of<Type>>::make(Environment& env, const auto& class_templat
 	// Static function property descriptor
 	const auto make_static_function_descriptor = [ & ]<class Property>(const Property& property) -> napi_property_descriptor
 		requires(Property::scope == class_property_scope::constructor) {
-			auto name = std::u8string_view{property.name};
+			auto name = util::make_string_view(property.name);
 			auto [ callback, data ] = make_callback_storage(env, make_free_function<Environment>(property.function));
 			static_assert(!requires { typename decltype(data)::element_type; });
 			return {
@@ -104,8 +111,9 @@ auto value<class_tag_of<Type>>::make(Environment& env, const auto& class_templat
 				.setter{},
 				.value{},
 
-				// NOLINTNEXTLINE(hicpp-signed-bitwise)
+				// NOLINTBEGIN(hicpp-signed-bitwise)
 				.attributes = static_cast<napi_property_attributes>(napi_static | napi_writable | napi_configurable),
+				// NOLINTEND(hicpp-signed-bitwise)
 				.data = data,
 			};
 		};
@@ -117,11 +125,12 @@ auto value<class_tag_of<Type>>::make(Environment& env, const auto& class_templat
 	};
 	const auto [... properties ] = class_template.properties;
 	const auto property_descriptors = std::array<napi_property_descriptor, sizeof...(properties)>{
+		// NOLINTNEXTLINE(clang-analyzer-core.CallAndMessage)
 		make_property_descriptor(properties)...
 	};
 
 	// Finally, define the class
-	auto name = std::u8string_view{class_template.constructor.name};
+	auto name = util::make_string_view(class_template.constructor.name);
 	auto result = napi::invoke(
 		napi_define_class,
 		napi_env{env},

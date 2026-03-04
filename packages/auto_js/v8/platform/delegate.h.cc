@@ -63,6 +63,7 @@ class entropy_delegate_initializer : util::non_copyable {
 export template <class Delegate>
 class platform_entropy_delegate : public entropy_delegate_initializer {
 	public:
+		// NOLINTNEXTLINE(bugprone-crtp-constructor-accessibility)
 		platform_entropy_delegate() : entropy_delegate_initializer{entropy_source} {}
 
 	private:

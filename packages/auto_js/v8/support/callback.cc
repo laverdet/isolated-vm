@@ -23,7 +23,7 @@ constexpr auto make_free_function(auto function) {
 		using callback_type = decltype(callback);
 		return util::bind{
 			[](callback_type& callback, Lock lock, const v8::FunctionCallbackInfo<v8::Value>& info) noexcept(Nx) -> void {
-				auto result = invoke_with_error_scope(lock, [ & ]() {
+				auto result = invoke_with_error_scope(util::slice(lock), [ & ]() -> auto {
 					auto run = util::regular_return{[ & ]() -> decltype(auto) {
 						return std::apply(
 							callback,

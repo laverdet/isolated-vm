@@ -76,7 +76,7 @@ export class agent_handle {
 	public:
 		using lock = agent_lock;
 		explicit agent_handle(std::shared_ptr<agent_host> host);
-		agent_handle(const agent_handle&);
+		agent_handle(const agent_handle& /*handle*/);
 		agent_handle(agent_handle&&) = default;
 		~agent_handle();
 		auto operator=(const agent_handle&) -> agent_handle& = delete;
@@ -114,8 +114,8 @@ class agent_host_environment : util::non_copyable {
 
 		auto destroy() noexcept -> void { instance_.reset(); }
 		auto emplace(std::convertible_to<Type> auto instance) -> void { instance_.emplace(std::move(instance)); }
-		auto operator*() -> auto& { return *instance_; }
-		auto operator*() const -> auto& { return *instance_; }
+		auto operator*() -> auto& { return instance_.value(); }
+		auto operator*() const -> auto& { return instance_.value(); }
 
 	private:
 		std::optional<Type> instance_;
@@ -196,10 +196,10 @@ auto agent_handle_of<Type>::schedule(Task task, Args... args) const -> void {
 	if (auto host = lock_host()) {
 		auto& scheduler = host->storage()->foreground_runner();
 		scheduler.schedule_client_task(
-			[](std::stop_token /*stop_token*/, auto host, auto task, auto... args) -> void {
+			[](std::stop_token /*stop_token*/, const auto& host, const auto& task, auto&&... args) -> void {
 				auto isolate_lock = isolate_execution_lock{host->isolate()};
 				std::visit([](auto& clock) -> void { clock.begin_tick(); }, host->clock());
-				task(lock{isolate_lock, static_cast<agent_host_of<Type>&>(*host)}, std::move(args)...);
+				task(lock{isolate_lock, static_cast<agent_host_of<Type>&>(*host)}, std::forward<decltype(args)>(args)...);
 			},
 			std::move(host),
 			std::move(task),

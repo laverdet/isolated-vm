@@ -19,6 +19,7 @@ namespace {
 // Unwrap `this` into the correct tagged external. Returns `std::nullopt` if there was a type error,
 // and there is a napi exception pending. `nullptr` will not be returned.
 template <class Type>
+// NOLINTNEXTLINE(bugprone-exception-escape)
 constexpr auto unwrap_member_this = [](auto_environment auto& env, napi_value this_arg) noexcept -> std::optional<tagged_external<Type>> {
 	return napi::invoke_maybe(napi_coerce_to_object, napi_env{env}, this_arg)
 		.and_then([ &env ](napi_value coerced_this_arg) -> std::optional<tagged_external<Type>> {
@@ -169,13 +170,11 @@ constexpr auto make_constructor_function(auto constructor) {
 	return util::bind{
 		[](runtime_constructor_type& constructor, Environment& env, const callback_info& info) -> napi_value {
 			auto arguments = info.arguments();
-			if (arguments.size() > 0) {
+			if (!arguments.empty()) {
 				auto maybe_constructor = [ & ]() -> std::optional<internal_constructor*> {
 					try {
 						// Check truthiness since null or undefined causes `napi_coerce_to_object` to throw
-						auto* arg0 = arguments[ 0 ];
-						// c++26, not included in MS STL
-						// auto* arg0 = arguments.at(0);
+						auto* arg0 = util::at(arguments, 0);
 						if (napi::invoke(napi_coerce_to_bool, napi_env{env}, arg0)) {
 							auto* as_object = napi::invoke(napi_coerce_to_object, napi_env{env}, arg0);
 							auto has_tag = napi::invoke(napi_check_object_type_tag, napi_env{env}, as_object, &type_tag_for<internal_constructor>);

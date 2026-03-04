@@ -36,6 +36,7 @@ class callback_info::iterator : public util::random_access_iterator_facade<int> 
 				info_{&info},
 				index_{index} {}
 
+		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		auto operator*() const -> value_type { return (*info_)[ index_ ]; }
 		auto operator+=(difference_type offset) -> iterator& {
 			index_ += offset;

@@ -1,16 +1,17 @@
 module;
 #include <cstdint>
 module v8_js;
+import util;
 import v8;
 
 namespace js::iv8 {
 
 auto array::begin() const -> iterator {
-	return iterator{*this, context(), 0};
+	return iterator{util::slice(*this), context(), 0};
 }
 
 auto array::end() const -> iterator {
-	return iterator{*this, context(), size()};
+	return iterator{util::slice(*this), context(), size()};
 }
 
 auto array::size() const -> uint32_t {

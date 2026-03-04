@@ -24,6 +24,7 @@ class invocable_task {
 		auto operator()(std::stop_token stop_token) -> void {
 			thread_stop_token = &stop_token;
 			task_->Run();
+			thread_stop_token = nullptr;
 		}
 
 		explicit operator bool() const { return bool{task_}; }

@@ -78,6 +78,8 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 	public:
 		explicit visit_flat_v8_value(auto* /*transfer*/, iv8::isolate_lock_witness lock) :
 				isolate_lock_{lock} {}
+		explicit visit_flat_v8_value(auto* transfer, const std::convertible_to<iv8::isolate_lock_witness> auto& lock) :
+				visit_flat_v8_value{transfer, iv8::isolate_lock_witness{util::slice(lock)}} {}
 
 		[[nodiscard]] auto lock_witness() const -> auto& { return isolate_lock_; }
 
@@ -211,6 +213,8 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 		explicit visit_v8_value(auto* transfer, iv8::context_lock_witness lock) :
 				visit_type{transfer, lock},
 				context_lock_{lock} {}
+		explicit visit_v8_value(auto* transfer, const std::convertible_to<iv8::context_lock_witness> auto& lock) :
+				visit_v8_value{transfer, iv8::context_lock_witness{util::slice(lock)}} {}
 
 		[[nodiscard]] auto lock_witness() const -> auto& { return context_lock_; }
 

@@ -70,7 +70,7 @@ namespace std {
 // `util::type_pack` destructuring specializations
 template <std::size_t Index, class... Types>
 struct tuple_element<Index, util::type_pack<Types...>> {
-		using type = type_of<hidden_t<Types...[ Index ]>>;
+		using type = util::type_of<util::hidden_t<Types...[ Index ]>>;
 };
 
 template <class... Types>
