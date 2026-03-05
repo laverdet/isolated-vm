@@ -18,7 +18,7 @@ realm_handle::realm_handle(agent_handle agent, js::iv8::shared_remote<v8::Contex
 		realm_{std::move(realm)} {}
 
 auto realm_handle::create(agent_handle& agent, environment& env) -> js::napi::value<js::promise_tag> {
-	auto [ dispatch, promise ] = make_promise(
+	auto [ promise, dispatch ] = make_promise(
 		env,
 		[](environment& env, agent_handle agent, js::iv8::shared_remote<v8::Context> realm) -> auto {
 			return js::forward{class_template(env).construct(env, std::move(agent), std::move(realm))};
@@ -38,7 +38,7 @@ auto realm_handle::create(agent_handle& agent, environment& env) -> js::napi::va
 }
 
 auto realm_handle::acquire_global_object(environment& env) -> js::napi::value<js::promise_tag> {
-	auto [ dispatch, promise ] = make_promise(
+	auto [ promise, dispatch ] = make_promise(
 		env,
 		[](environment& env, reference_handle reference) -> auto {
 			return js::forward{reference_handle::class_template(env).construct(env, std::move(reference))};
@@ -61,7 +61,7 @@ auto realm_handle::acquire_global_object(environment& env) -> js::napi::value<js
 }
 
 auto realm_handle::instantiate_runtime(environment& env) -> js::napi::value<js::promise_tag> {
-	auto [ dispatch, promise ] = make_promise(
+	auto [ promise, dispatch ] = make_promise(
 		env,
 		[](environment& env, agent_handle agent, js::iv8::shared_remote<v8::Module> module_record) -> auto {
 			return js::forward{module_handle::class_template(env).construct(env, std::move(agent), std::move(module_record))};

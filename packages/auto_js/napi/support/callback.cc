@@ -52,7 +52,7 @@ constexpr auto make_free_function(auto function) {
 		using callback_type = decltype(callback);
 		return util::bind{
 			[](callback_type& callback, Environment& env, const callback_info& info) noexcept(Nx) -> napi_value {
-				return invoke_with_error_scope(env, [ & ]() -> napi_value {
+				return invoke_internal_error_scope(env, [ & ]() -> napi_value {
 					auto run = util::regular_return{[ & ]() -> decltype(auto) {
 						return std::apply(
 							callback,
@@ -124,7 +124,7 @@ constexpr auto make_constructor_function(auto constructor) {
 				using callback_type = decltype(callback);
 				return util::bind{
 					[](callback_type& callback, wrap_type& wrap, Environment& env, const callback_info& info) noexcept(Nx) -> napi_value {
-						return invoke_with_error_scope(env, [ & ]() -> napi_value {
+						return invoke_internal_error_scope(env, [ & ]() -> napi_value {
 							auto instance = std::apply(
 								callback,
 								std::tuple_cat(
@@ -193,7 +193,7 @@ constexpr auto make_constructor_function(auto constructor) {
 				}
 				if (*maybe_constructor != nullptr) {
 					const auto& constructor = **maybe_constructor;
-					return invoke_with_error_scope(env, [ & ]() -> napi_value {
+					return invoke_internal_error_scope(env, [ & ]() -> napi_value {
 						return constructor(info.this_arg());
 					});
 				}
@@ -220,7 +220,7 @@ constexpr auto make_member_function(Method method) {
 				if (!maybe_that) {
 					return nullptr;
 				}
-				return invoke_with_error_scope(env, [ & ]() -> napi_value {
+				return invoke_internal_error_scope(env, [ & ]() -> napi_value {
 					auto run = util::regular_return{[ & ]() -> decltype(auto) {
 						return std::apply(
 							callback,

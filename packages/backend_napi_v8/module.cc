@@ -33,7 +33,7 @@ auto module_handle::compile(
 ) -> js::napi::value<promise_tag> {
 	using value_type = std::tuple<js::iv8::shared_remote<v8::Module>, std::vector<js::iv8::module_request>>;
 	using expected_type = std::expected<value_type, js::error_value>;
-	auto [ dispatch, promise ] = make_promise(
+	auto [ promise, dispatch ] = make_promise(
 		env,
 		[](
 			environment& env,
@@ -195,7 +195,7 @@ auto module_handle::create_capability(
 	};
 
 	// Make synthetic module
-	auto [ dispatch, promise ] = make_promise(
+	auto [ promise, dispatch ] = make_promise(
 		env,
 		[](environment& env, agent_handle agent, js::iv8::shared_remote<v8::Module> module_record) -> auto {
 			return js::forward{module_handle::class_template(env).construct(env, std::move(agent), std::move(module_record))};
@@ -237,7 +237,7 @@ auto module_handle::create_capability(
 };
 
 auto module_handle::evaluate(environment& env, realm_handle& realm) -> js::napi::value<promise_tag> {
-	auto [ dispatch, promise ] = make_promise(env, [](environment& /*env*/) -> std::monostate {
+	auto [ promise, dispatch ] = make_promise(env, [](environment& /*env*/) -> std::monostate {
 		return std::monostate{};
 	});
 	agent_.schedule(
@@ -273,7 +273,7 @@ auto deref_remote_link_record(js::iv8::isolate_lock_witness lock, remote_module_
 
 auto module_handle::link(environment& env, realm_handle& realm, module_handle_link_record link_record) -> js::napi::value<promise_tag> {
 	auto scheduler = env.scheduler();
-	auto [ dispatch, promise ] = make_promise(env, [](environment& /*env*/) -> bool { return true; });
+	auto [ promise, dispatch ] = make_promise(env, [](environment& /*env*/) -> bool { return true; });
 
 	// Convert `module_handle` to `remote<v8::Module>`
 	auto remote_link_record = remote_module_link_record{

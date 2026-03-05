@@ -63,10 +63,9 @@ auto module_record::compile(context_lock_witness lock, v8::Local<v8::String> sou
 		true,
 	};
 	v8::ScriptCompiler::Source source{source_text, script_origin};
-	auto maybe_module = unmaybe_one(lock, [ & ] -> v8::MaybeLocal<v8::Module> {
+	return unmaybe_one(lock, [ & ] -> v8::MaybeLocal<v8::Module> {
 		return v8::ScriptCompiler::CompileModule(lock.isolate(), &source);
 	});
-	return maybe_module;
 }
 
 auto module_record::create_synthetic(context_lock_witness lock, string_span export_names, synthetic_module_action_type action, v8::Local<v8::String> module_name) -> v8::Local<v8::Module> {

@@ -62,7 +62,7 @@ auto create_agent(environment& env, js::forward<js::napi::value<function_tag>> c
 	using namespace js::iv8::isolated;
 	auto options = std::move(options_optional).value_or(make_agent_options{});
 	auto& cluster = env.cluster();
-	auto [ dispatch, promise ] = make_promise(env, [](environment& env, agent_handle agent, js::napi::unique_remote<function_tag> constructor) -> auto {
+	auto [ promise, dispatch ] = make_promise(env, [](environment& env, agent_handle agent, js::napi::unique_remote<function_tag> constructor) -> auto {
 		auto class_template = js::napi::value<class_tag_of<agent_handle>>::from(constructor->deref(env));
 		return js::forward{class_template.construct(env, std::move(agent))};
 	});

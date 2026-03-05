@@ -60,7 +60,7 @@ auto make_promise(Environment& env, Accept accept) {
 		};
 
 	// `[ dispatch, promise ]`
-	return std::tuple{std::move(dispatch), value<promise_tag>::from(promise)};
+	return std::tuple{value<promise_tag>::from(promise), std::move(dispatch)};
 }
 
 } // namespace js::napi

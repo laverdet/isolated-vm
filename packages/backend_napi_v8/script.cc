@@ -19,7 +19,7 @@ namespace backend_napi_v8 {
 
 auto script_handle::compile_script(agent_handle& agent, environment& env, js::string_t code_string, compile_script_options options) -> js::napi::value<promise_tag> {
 	using expected_type = std::expected<js::iv8::shared_remote<v8::UnboundScript>, js::error_value>;
-	auto [ dispatch, promise ] = make_promise(
+	auto [ promise, dispatch ] = make_promise(
 		env,
 		[](environment& env, expected_type script) -> auto {
 			return make_completion_record(env, std::move(script).transform([ & ](js::iv8::shared_remote<v8::UnboundScript> script) -> auto {
@@ -50,7 +50,7 @@ auto script_handle::compile_script(agent_handle& agent, environment& env, js::st
 
 auto script_handle::run(environment& env, realm_handle& realm, run_script_options options) -> js::napi::value<promise_tag> {
 	using expected_type = std::expected<js::value_t, js::error_value>;
-	auto [ dispatch, promise ] =
+	auto [ promise, dispatch ] =
 		make_promise(env, [](environment& env, expected_type result) -> auto {
 			return make_completion_record(env, std::move(result));
 		});

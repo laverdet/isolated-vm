@@ -1,5 +1,4 @@
 module;
-#include <expected>
 #include <utility>
 module v8_js;
 import :evaluation.script;
@@ -23,18 +22,10 @@ auto script::compile(context_lock_witness lock, v8::Local<v8::String> code_strin
 }
 
 auto script::run(context_lock_witness lock, v8::Local<v8::UnboundScript> script) -> expected_value_type {
-	auto result = unmaybe_one(lock, [ & ] -> v8::MaybeLocal<v8::Value> {
-		return script->BindToCurrentContext()->Run(lock.context());
+	return invoke_externalized_error_scope(lock, [ & ]() -> js::value_t {
+		auto maybe_result = script->BindToCurrentContext()->Run(lock.context());
+		return js::transfer_out<js::value_t>(unmaybe(maybe_result), lock);
 	});
-	if (result) {
-		try {
-			return expected_value_type{std::in_place, js::transfer_out<js::value_t>(*result, lock)};
-		} catch (const js::error_value& error) {
-			return expected_value_type{std::unexpect, js::error_value{error}};
-		}
-	} else {
-		return expected_value_type{std::unexpect, std::move(result).error()};
-	}
 }
 
 } // namespace js::iv8

@@ -23,7 +23,7 @@ constexpr auto make_free_function(auto function) {
 		using callback_type = decltype(callback);
 		return util::bind{
 			[](callback_type& callback, Lock lock, const v8::FunctionCallbackInfo<v8::Value>& info) noexcept(Nx) -> void {
-				auto result = invoke_with_error_scope(util::slice(lock), [ & ]() -> auto {
+				auto result = invoke_internal_error_scope(util::slice(lock), [ & ]() -> auto {
 					auto run = util::regular_return{[ & ]() -> decltype(auto) {
 						return std::apply(
 							callback,
@@ -33,10 +33,10 @@ constexpr auto make_free_function(auto function) {
 							)
 						);
 					}};
-					return run();
+					return run().value_or(std::monostate{});
 				});
 				if (result) {
-					js::transfer_in_strict<v8::ReturnValue<v8::Value>>((*std::move(result)).value_or(std::monostate{}), lock, info.GetReturnValue());
+					js::transfer_in_strict<v8::ReturnValue<v8::Value>>(std::move(result), lock, info.GetReturnValue());
 				}
 			},
 			std::move(callback),

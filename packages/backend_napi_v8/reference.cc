@@ -83,7 +83,7 @@ reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle 
 		}}} {}
 
 auto reference_handle::copy(environment& env) -> js::napi::value<js::promise_tag> {
-	auto [ dispatch, promise ] = make_promise(env, [](environment& /*env*/, js::value_t value) -> auto {
+	auto [ promise, dispatch ] = make_promise(env, [](environment& /*env*/, js::value_t value) -> auto {
 		return value;
 	});
 	switch (typeof_) {
@@ -114,7 +114,7 @@ auto reference_handle::copy(environment& env) -> js::napi::value<js::promise_tag
 }
 
 auto reference_handle::get(environment& env, js::string_t name) -> js::napi::value<js::promise_tag> {
-	auto [ dispatch, promise ] = make_promise(env, [](environment& env, reference_handle reference) -> auto {
+	auto [ promise, dispatch ] = make_promise(env, [](environment& env, reference_handle reference) -> auto {
 		return js::forward{reference_handle::class_template(env).construct(env, std::move(reference))};
 	});
 	switch (typeof_) {

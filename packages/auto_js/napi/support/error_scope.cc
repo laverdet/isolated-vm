@@ -7,7 +7,7 @@ namespace js::napi {
 
 // Catch `napi::pending_error` (thrown by `napi::invoke`) or `js::error`, converting to thrown
 // runtime error.
-auto invoke_with_error_scope(environment& env, auto implementation) -> napi_value {
+[[nodiscard]] auto invoke_internal_error_scope(environment& env, auto implementation) -> napi_value {
 	try {
 		return implementation();
 	} catch (const napi::pending_error& /*error*/) {
