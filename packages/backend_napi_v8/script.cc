@@ -17,7 +17,7 @@ import v8_js;
 
 namespace backend_napi_v8 {
 
-auto script_handle::compile_script(agent_handle& agent, environment& env, js::string_t code_string, compile_script_options options) -> js::napi::value<promise_tag> {
+auto script_handle::compile_script(agent_handle& agent, environment& env, js::string_t code_string, compile_script_options options) -> js::forward<js::napi::value<>> {
 	using expected_type = std::expected<js::iv8::shared_remote<v8::UnboundScript>, js::error_value>;
 	auto [ promise, dispatch ] = make_promise(
 		env,
@@ -46,10 +46,10 @@ auto script_handle::compile_script(agent_handle& agent, environment& env, js::st
 		std::move(code_string),
 		std::move(options)
 	);
-	return promise;
+	return js::forward{promise};
 }
 
-auto script_handle::run(environment& env, realm_handle& realm, run_script_options options) -> js::napi::value<promise_tag> {
+auto script_handle::run(environment& env, realm_handle& realm, run_script_options options) -> js::forward<js::napi::value<>> {
 	using expected_type = std::expected<js::value_t, js::error_value>;
 	auto [ promise, dispatch ] =
 		make_promise(env, [](environment& env, expected_type result) -> auto {
@@ -86,7 +86,7 @@ auto script_handle::run(environment& env, realm_handle& realm, run_script_option
 		},
 		std::move(dispatch)
 	);
-	return promise;
+	return js::forward{promise};
 }
 
 auto script_handle::class_template(environment& env) -> js::napi::value<class_tag_of<script_handle>> {
@@ -94,7 +94,7 @@ auto script_handle::class_template(environment& env) -> js::napi::value<class_ta
 		std::type_identity<script_handle>{},
 		js::class_template{
 			js::class_constructor{util::cw<u8"Script">},
-			js::class_method{util::cw<u8"run">, make_forward_callback(util::fn<&script_handle::run>)},
+			js::class_method{util::cw<u8"run">, util::fn<&script_handle::run>},
 		}
 	);
 }

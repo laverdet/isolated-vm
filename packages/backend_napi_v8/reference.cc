@@ -82,7 +82,7 @@ reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle 
 			return reference_handle{std::move(agent), typeof, std::move(realm), js::iv8::make_shared_remote(lock, value.As<v8::Value>())};
 		}}} {}
 
-auto reference_handle::copy(environment& env) -> js::napi::value<js::promise_tag> {
+auto reference_handle::copy(environment& env) -> js::forward<js::napi::value<>> {
 	auto [ promise, dispatch ] = make_promise(env, [](environment& /*env*/, js::value_t value) -> auto {
 		return value;
 	});
@@ -110,10 +110,10 @@ auto reference_handle::copy(environment& env) -> js::napi::value<js::promise_tag
 			);
 			break;
 	}
-	return promise;
+	return js::forward{promise};
 }
 
-auto reference_handle::get(environment& env, js::string_t name) -> js::napi::value<js::promise_tag> {
+auto reference_handle::get(environment& env, js::string_t name) -> js::forward<js::napi::value<>> {
 	auto [ promise, dispatch ] = make_promise(env, [](environment& env, reference_handle reference) -> auto {
 		return js::forward{reference_handle::class_template(env).construct(env, std::move(reference))};
 	});
@@ -163,7 +163,7 @@ auto reference_handle::get(environment& env, js::string_t name) -> js::napi::val
 			break;
 	}
 
-	return promise;
+	return js::forward{promise};
 }
 
 auto reference_handle::class_template(environment& env) -> js::napi::value<class_tag_of<reference_handle>> {
@@ -171,8 +171,8 @@ auto reference_handle::class_template(environment& env) -> js::napi::value<class
 		std::type_identity<reference_handle>{},
 		js::class_template{
 			js::class_constructor{util::cw<u8"Reference">},
-			js::class_method{util::cw<u8"copy">, make_forward_callback(util::fn<&reference_handle::copy>)},
-			js::class_method{util::cw<u8"get">, make_forward_callback(util::fn<&reference_handle::get>)},
+			js::class_method{util::cw<u8"copy">, util::fn<&reference_handle::copy>},
+			js::class_method{util::cw<u8"get">, util::fn<&reference_handle::get>},
 		}
 	);
 }

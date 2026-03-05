@@ -30,7 +30,7 @@ auto module_handle::compile(
 	js::forward<js::napi::value<function_tag>> constructor,
 	js::string_t source_text,
 	compile_module_options options
-) -> js::napi::value<promise_tag> {
+) -> js::forward<js::napi::value<>> {
 	using value_type = std::tuple<js::iv8::shared_remote<v8::Module>, std::vector<js::iv8::module_request>>;
 	using expected_type = std::expected<value_type, js::error_value>;
 	auto [ promise, dispatch ] = make_promise(
@@ -83,7 +83,7 @@ auto module_handle::compile(
 		std::move(source_text),
 		std::move(options)
 	);
-	return promise;
+	return js::forward{promise};
 }
 
 auto module_handle::create_capability(
@@ -91,7 +91,7 @@ auto module_handle::create_capability(
 	environment& env,
 	callback_type make_capability,
 	create_capability_options options
-) -> js::napi::value<promise_tag> {
+) -> js::forward<js::napi::value<>> {
 	// Make the `subscriber_capability` and pass it to the interface maker
 	using capability_type = std::variant<callback_type, js::tagged_external<subscriber_capability>>;
 	using capability_interface_type = js::dictionary<js::dictionary_tag, js::string_t, capability_type>;
@@ -234,10 +234,10 @@ auto module_handle::create_capability(
 		std::move(options),
 		std::move(external_capability_interface)
 	);
-	return promise;
+	return js::forward{promise};
 };
 
-auto module_handle::evaluate(environment& env, realm_handle& realm) -> js::napi::value<promise_tag> {
+auto module_handle::evaluate(environment& env, realm_handle& realm) -> js::forward<js::napi::value<>> {
 	auto [ promise, dispatch ] = make_promise(env, [](environment& /*env*/) -> std::monostate {
 		return std::monostate{};
 	});
@@ -255,7 +255,7 @@ auto module_handle::evaluate(environment& env, realm_handle& realm) -> js::napi:
 		realm.realm(),
 		module_
 	);
-	return promise;
+	return js::forward{promise};
 }
 
 // Deref `remote<v8::Module>` into `v8::Module`
@@ -272,7 +272,7 @@ auto deref_remote_link_record(js::iv8::isolate_lock_witness lock, remote_module_
 	};
 };
 
-auto module_handle::link(environment& env, realm_handle& realm, module_handle_link_record link_record) -> js::napi::value<promise_tag> {
+auto module_handle::link(environment& env, realm_handle& realm, module_handle_link_record link_record) -> js::forward<js::napi::value<>> {
 	auto scheduler = env.scheduler();
 	auto [ promise, dispatch ] = make_promise(env, [](environment& /*env*/) -> bool { return true; });
 
@@ -307,7 +307,7 @@ auto module_handle::link(environment& env, realm_handle& realm, module_handle_li
 		module_,
 		std::move(remote_link_record)
 	);
-	return promise;
+	return js::forward{promise};
 }
 
 auto module_handle::class_template(environment& env) -> js::napi::value<class_tag_of<module_handle>> {
@@ -315,8 +315,8 @@ auto module_handle::class_template(environment& env) -> js::napi::value<class_ta
 		std::type_identity<module_handle>{},
 		js::class_template{
 			js::class_constructor{util::cw<u8"Module">},
-			js::class_method{util::cw<u8"_link">, make_forward_callback(util::fn<&module_handle::link>)},
-			js::class_method{util::cw<u8"evaluate">, make_forward_callback(util::fn<&module_handle::evaluate>)},
+			js::class_method{util::cw<u8"_link">, util::fn<&module_handle::link>},
+			js::class_method{util::cw<u8"evaluate">, util::fn<&module_handle::evaluate>},
 		}
 	);
 }

@@ -7,7 +7,7 @@ import nodejs;
 namespace js {
 // Forward declaration
 namespace napi {
-export template <class Tag> class value;
+export template <class Tag = value_tag> class value;
 }
 
 // Specialize for `js::forward<napi::value<Tag>>`

@@ -10,27 +10,6 @@ import util;
 namespace backend_napi_v8 {
 using namespace js;
 
-// Wrap a function to return `js::forward<Result>`
-// TODO: Move it to `js`
-export template <class Function>
-auto make_forward_callback(Function function) {
-	constexpr auto make =
-		[]<class... Args, bool Nx, class Result>(
-			std::type_identity<auto(Args...) noexcept(Nx)->Result> /*signature*/,
-			auto function
-		) -> auto {
-		using function_type = decltype(function);
-		return util::bind{
-			[](function_type& function, Args... args) noexcept(Nx) -> js::forward<Result> {
-				return js::forward{function(std::forward<Args>(args)...)};
-			},
-			std::move(function),
-		};
-	};
-	using signature = util::function_signature_t<Function>;
-	return make(std::type_identity<signature>{}, std::move(function));
-}
-
 export template <class Type>
 struct normal_completion_record {
 	public:
