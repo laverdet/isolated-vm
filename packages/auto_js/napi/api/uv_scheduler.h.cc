@@ -19,6 +19,7 @@ export class uv_scheduler {
 		auto increment_ref() -> void;
 		auto open(uv_loop_t* loop) -> void;
 		auto operator()(auto task, auto&&... args) const -> void;
+		explicit operator bool() const { return bool{async_}; }
 
 	private:
 		struct locked_storage {
@@ -53,7 +54,7 @@ auto uv_scheduler::operator()(auto task, auto&&... args) const -> void {
 		shared->tasks.push_back(
 			[ task = std::move(task),
 				... args = std::forward<decltype(args)>(args) ]() mutable -> void {
-				task(std::forward<decltype(args)>(args)...);
+				task(std::move(args)...);
 			}
 		);
 		uv_async_send(async.handle());

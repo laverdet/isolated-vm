@@ -84,30 +84,29 @@ reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle 
 		}}} {}
 
 auto reference_handle::copy(environment& env) -> js::forward<js::napi::value<>> {
-	auto [ promise, dispatch ] = make_promise(env, [](environment& /*env*/, js::value_t value) -> auto {
-		return value;
-	});
+	auto [ promise, resolver ] = make_promise(env);
 	switch (typeof_) {
 		case js::typeof_kind::null:
-			dispatch(js::value_t{std::nullptr_t{}});
+			resolver.resolve(js::value_t{std::nullptr_t{}});
 			break;
 
 		case js::typeof_kind::undefined:
-			dispatch(js::value_t{std::monostate{}});
+			resolver.resolve(js::value_t{std::monostate{}});
 			break;
 
 		default:
 			agent_.schedule(
-				[ dispatch = std::move(dispatch),
-					value = value_,
+				[ value = value_,
 					realm = realm_ ](
-					const agent_handle::lock& lock
+					const agent_handle::lock& lock,
+					auto resolver
 				) -> void {
 					auto transferred = context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& lock) -> js::value_t {
 						return js::transfer_out<js::value_t>(value->deref(lock), lock);
 					});
-					dispatch(std::move(transferred));
-				}
+					resolver.resolve(std::move(transferred));
+				},
+				std::move(resolver)
 			);
 			break;
 	}
@@ -115,7 +114,7 @@ auto reference_handle::copy(environment& env) -> js::forward<js::napi::value<>> 
 }
 
 auto reference_handle::get(environment& env, js::string_t name) -> js::forward<js::napi::value<>> {
-	auto [ promise, dispatch ] = make_promise(env, [](environment& env, reference_handle reference) -> auto {
+	auto [ promise, resolver ] = make_promise(env, [](environment& env, reference_handle reference) -> auto {
 		return js::forward{reference_handle::class_template(env).construct(env, std::move(reference))};
 	});
 	switch (typeof_) {
@@ -125,7 +124,7 @@ auto reference_handle::get(environment& env, js::string_t name) -> js::forward<j
 		case js::typeof_kind::number:
 		case js::typeof_kind::string:
 		case js::typeof_kind::symbol:
-			dispatch(reference_handle{js::undefined_tag{}});
+			resolver(reference_handle{js::undefined_tag{}});
 			break;
 
 		// `null` & `undefined` throw
@@ -139,8 +138,9 @@ auto reference_handle::get(environment& env, js::string_t name) -> js::forward<j
 		case js::typeof_kind::object:
 		case js::typeof_kind::function:
 			agent_.schedule(
-				[ dispatch = std::move(dispatch), value = value_ ](
+				[ value = value_ ](
 					const agent_handle::lock& agent_lock,
+					auto resolver,
 					js::string_t name,
 					agent_handle agent,
 					js::iv8::shared_remote<v8::Context> realm
@@ -155,8 +155,9 @@ auto reference_handle::get(environment& env, js::string_t name) -> js::forward<j
 							return reference_handle{js::undefined_tag{}};
 						}
 					});
-					dispatch(std::move(reference));
+					resolver(std::move(reference));
 				},
+				std::move(resolver),
 				std::move(name),
 				agent_,
 				realm_

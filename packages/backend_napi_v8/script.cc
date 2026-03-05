@@ -17,19 +17,20 @@ import v8_js;
 namespace backend_napi_v8 {
 
 auto script_handle::compile_script(agent_handle& agent, environment& env, js::string_t code_string, compile_script_options options) -> js::forward<js::napi::value<>> {
-	using expected_type = std::expected<js::iv8::shared_remote<v8::UnboundScript>, js::error_value>;
-	auto [ promise, dispatch ] = make_promise(
+	using expected_type = std::expected<script_handle, js::error_value>;
+	auto [ promise, resolver ] = make_promise(
 		env,
 		[](environment& env, expected_type script) -> auto {
-			auto expected = std::move(script).transform([ & ](js::iv8::shared_remote<v8::UnboundScript> script) -> auto {
+			auto expected = script.transform([ & ](script_handle& script) -> auto {
 				return js::forward{script_handle::class_template(env).construct(env, std::move(script))};
 			});
 			return make_completion_record(env, std::move(expected));
 		}
 	);
 	agent.schedule(
-		[ dispatch = std::move(dispatch) ](
+		[](
 			const agent_handle::lock& agent,
+			auto resolver,
 			js::string_t code_string,
 			compile_script_options options
 		) -> void {
@@ -37,11 +38,12 @@ auto script_handle::compile_script(agent_handle& agent, environment& env, js::st
 			auto maybe_script = context_scope_operation(agent, agent->scratch_context(), [ & ](const realm_scope& lock) -> auto {
 				auto maybe_script = js::iv8::script::compile(util::slice(lock), std::move(code_string), std::move(origin));
 				return maybe_script.transform([ & ](v8::Local<v8::UnboundScript> script) -> auto {
-					return make_shared_remote(lock, script);
+					return script_handle{make_shared_remote(lock, script)};
 				});
 			});
-			dispatch(std::move(maybe_script));
+			resolver(std::move(maybe_script));
 		},
+		std::move(resolver),
 		std::move(code_string),
 		std::move(options)
 	);
@@ -50,11 +52,11 @@ auto script_handle::compile_script(agent_handle& agent, environment& env, js::st
 
 auto script_handle::run(environment& env, realm_handle& realm, run_script_options options) -> js::forward<js::napi::value<>> {
 	using expected_type = std::expected<js::value_t, js::error_value>;
-	auto [ promise, dispatch ] =
+	auto [ promise, resolver ] =
 		make_promise(env, [](environment& env, expected_type result) -> auto {
 			// nb: The `transfer` machinery cannot transfer nested `js::value_t`, so it must be
 			// transferred here first.
-			auto expected = result.transform([ & ](js::value_t value) -> auto {
+			auto expected = result.transform([ & ](js::value_t& value) -> auto {
 				return js::forward{js::transfer_in_strict<napi_value>(std::move(value), env)};
 			});
 			return make_completion_record(env, std::move(expected));
@@ -64,7 +66,7 @@ auto script_handle::run(environment& env, realm_handle& realm, run_script_option
 			realm = realm.realm(),
 			script_remote = script_ ](
 			const agent_handle::lock& lock,
-			const auto& dispatch
+			auto resolver
 		) -> void {
 			auto result = context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) -> expected_type {
 				auto stop_token =
@@ -81,9 +83,9 @@ auto script_handle::run(environment& env, realm_handle& realm, run_script_option
 					});
 				return js::iv8::script::run(realm, script_remote->deref(lock));
 			});
-			dispatch(std::move(result));
+			resolver(std::move(result));
 		},
-		std::move(dispatch)
+		std::move(resolver)
 	);
 	return js::forward{promise};
 }

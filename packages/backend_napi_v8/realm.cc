@@ -18,42 +18,46 @@ realm_handle::realm_handle(agent_handle agent, js::iv8::shared_remote<v8::Contex
 		realm_{std::move(realm)} {}
 
 auto realm_handle::create(agent_handle& agent, environment& env) -> js::forward<js::napi::value<>> {
-	auto [ promise, dispatch ] = make_promise(
+	auto [ promise, resolver ] = make_promise(
 		env,
 		[](environment& env, agent_handle agent, js::iv8::shared_remote<v8::Context> realm) -> auto {
 			return js::forward{class_template(env).construct(env, std::move(agent), std::move(realm))};
 		}
 	);
 	agent.schedule(
-		[ dispatch = std::move(dispatch) ](
+		[](
 			const agent_handle::lock& lock,
+			auto resolver,
 			agent_handle agent
 		) -> void {
 			auto realm = make_shared_remote(lock, lock->make_context());
-			dispatch(std::move(agent), std::move(realm));
+			resolver(std::move(agent), std::move(realm));
 		},
+		std::move(resolver),
 		agent
 	);
 	return js::forward{promise};
 }
 
 auto realm_handle::acquire_global_object(environment& env) -> js::forward<js::napi::value<>> {
-	auto [ promise, dispatch ] = make_promise(
+	auto [ promise, resolver ] = make_promise(
 		env,
 		[](environment& env, reference_handle reference) -> auto {
 			return js::forward{reference_handle::class_template(env).construct(env, std::move(reference))};
 		}
 	);
 	agent_.schedule(
-		[ dispatch = std::move(dispatch) ](
+		[](
 			const agent_handle::lock& lock,
+			auto resolver,
 			agent_handle agent,
 			js::iv8::shared_remote<v8::Context> realm_remote
 		) -> void {
 			auto realm_local = realm_remote->deref(lock);
 			auto global = realm_local->Global();
-			dispatch(reference_handle{lock, std::move(agent), std::move(realm_remote), global});
+			resolver(reference_handle{lock, std::move(agent), std::move(realm_remote), global});
 		},
+		std::move(resolver),
 		agent_,
 		realm_
 	);
@@ -61,23 +65,24 @@ auto realm_handle::acquire_global_object(environment& env) -> js::forward<js::na
 }
 
 auto realm_handle::instantiate_runtime(environment& env) -> js::forward<js::napi::value<>> {
-	auto [ promise, dispatch ] = make_promise(
+	auto [ promise, resolver ] = make_promise(
 		env,
 		[](environment& env, agent_handle agent, js::iv8::shared_remote<v8::Module> module_record) -> auto {
 			return js::forward{module_handle::class_template(env).construct(env, std::move(agent), std::move(module_record))};
 		}
 	);
 	agent_.schedule(
-		[ dispatch = std::move(dispatch),
-			realm = realm_ ](
+		[ realm = realm_ ](
 			const agent_handle::lock& lock,
+			auto resolver,
 			agent_handle agent
 		) -> void {
 			auto module_record = context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) -> auto {
 				return make_shared_remote(lock, lock->environment().runtime().instantiate(realm));
 			});
-			dispatch(std::move(agent), module_record);
+			resolver(std::move(agent), module_record);
 		},
+		std::move(resolver),
 		agent_
 	);
 	return js::forward{promise};

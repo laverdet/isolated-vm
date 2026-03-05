@@ -62,7 +62,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	using namespace js::iv8::isolated;
 	auto options = std::move(options_optional).value_or(make_agent_options{});
 	auto& cluster = env.cluster();
-	auto [ promise, dispatch ] = make_promise(env, [](environment& env, agent_handle agent) -> auto {
+	auto [ promise, resolver ] = make_promise(env, [](environment& env, agent_handle agent) -> auto {
 		auto class_template = js::napi::value<class_tag_of<agent_handle>>::from(env.agent_class());
 		return js::forward{class_template.construct(env, std::move(agent))};
 	});
@@ -86,7 +86,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	cluster.make_agent(
 		[](const js::iv8::isolated::agent_handle::lock& lock) -> auto { return agent_environment{lock}; },
 		{.clock = clock_, .random_seed = options.random_seed},
-		[ dispatch = std::move(dispatch) ](
+		[ dispatch = std::move(resolver) ](
 			const agent_handle::lock& /*lock*/,
 			agent_handle agent
 		) mutable -> void {
