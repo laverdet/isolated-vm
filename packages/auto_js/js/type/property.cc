@@ -60,6 +60,19 @@ struct property_function_template : property_name_template<Name> {
 		NO_UNIQUE_ADDRESS Function function;
 };
 
+// Constant delegate for `struct_constant`
+template <class Type>
+struct constant_getter_delegate {
+	public:
+		using value_type = Type;
+		explicit constexpr constant_getter_delegate(Type value) : value_{value} {}
+
+		constexpr auto operator()(auto&& /*subject*/) const -> const Type& { return value_; }
+
+	private:
+		Type value_;
+};
+
 // Getter delegate for `struct_member`
 template <class Subject, class Type>
 struct member_getter_delegate {
@@ -89,18 +102,6 @@ struct member_setter_delegate {
 		Type Subject::* member_;
 };
 
-// Property template via direct member access
-export template <class Name, class Subject, class Type>
-struct struct_member
-		: property_name_template<Name>,
-			property_accessor_template<member_getter_delegate<Subject, Type>, member_setter_delegate<Subject, Type>> {
-		constexpr struct_member(Name name, Type Subject::* member) :
-				property_name_template<Name>{std::move(name)},
-				property_accessor_template<member_getter_delegate<Subject, Type>, member_setter_delegate<Subject, Type>>{
-					member_getter_delegate<Subject, Type>{member},
-					member_setter_delegate<Subject, Type>{member}
-				} {}
-};
 
 // Getter delegate for `struct_accessor`
 template <class Get>
@@ -117,6 +118,11 @@ struct accessor_getter_delegate : Get, accessor_getter_signature<util::function_
 
 template <class Subject, class Type, bool Nx>
 struct accessor_getter_signature<auto(const Subject&) noexcept(Nx)->Type> {
+		using value_type = std::remove_cvref_t<Type>;
+};
+
+template <class Subject, class Type, bool Nx>
+struct accessor_getter_signature<auto(Subject&&) noexcept(Nx)->Type> {
 		using value_type = std::remove_cvref_t<Type>;
 };
 
@@ -143,6 +149,20 @@ struct accessor_setter_signature<auto(Subject&, Type) noexcept(Nx)->void> {
 		using value_type = std::remove_cvref_t<Type>;
 };
 
+// Property template via direct member access
+export template <class Name, class Subject, class Type>
+struct struct_member
+		: property_name_template<Name>,
+			property_accessor_template<member_getter_delegate<Subject, Type>, member_setter_delegate<Subject, Type>> {
+		constexpr struct_member(Name name, Type Subject::* member) :
+				property_name_template<Name>{std::move(name)},
+				property_accessor_template<member_getter_delegate<Subject, Type>, member_setter_delegate<Subject, Type>>{
+					member_getter_delegate<Subject, Type>{member},
+					member_setter_delegate<Subject, Type>{member}
+				} {}
+};
+
+
 // Property template through getter & setter
 export template <class Name, class Get, class Set>
 struct struct_accessor
@@ -158,6 +178,19 @@ struct struct_accessor
 
 template <class Name, class Get>
 struct_accessor(Name, Get) -> struct_accessor<Name, Get, std::nullptr_t>;
+
+// Constant struct member property
+export template <class Name, class Value>
+struct struct_constant
+		: property_name_template<Name>,
+			property_accessor_template<constant_getter_delegate<Value>, accessor_setter_delegate<std::nullptr_t>> {
+		constexpr struct_constant(Name name, Value value) :
+				property_name_template<Name>{std::move(name)},
+				property_accessor_template<constant_getter_delegate<Value>, accessor_setter_delegate<std::nullptr_t>>{
+					constant_getter_delegate<Value>{std::move(value)},
+					accessor_setter_delegate<std::nullptr_t>{nullptr},
+				} {}
+};
 
 // Struct template holder
 export template <class... Properties>

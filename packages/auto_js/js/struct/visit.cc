@@ -20,8 +20,8 @@ struct visit_getter : visit<Meta, typename Get::value_type> {
 				get_{std::move(get)} {}
 
 		template <class Accept>
-		constexpr auto operator()(const auto& subject, const Accept& accept) -> accept_target_t<Accept> {
-			return util::invoke_as<visit_type>(*this, get_(subject), accept);
+		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
+			return util::invoke_as<visit_type>(*this, get_(std::forward<decltype(subject)>(subject)), accept);
 		}
 
 	private:

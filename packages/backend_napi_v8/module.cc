@@ -42,7 +42,7 @@ auto module_handle::compile(
 			std::optional<std::u16string> specifier,
 			expected_type maybe_module
 		) -> auto {
-			return make_completion_record(env, std::move(maybe_module).transform([ & ](value_type module_data) -> auto {
+			auto expected = std::move(maybe_module).transform([ & ](value_type module_data) -> auto {
 				auto class_template = js::napi::value<class_tag_of<module_handle>>::from(constructor->deref(env));
 				auto [ shared_module, requests ] = std::move(module_data);
 				return js::forward{class_template.runtime_construct(
@@ -50,7 +50,8 @@ auto module_handle::compile(
 					std::tuple{std::move(agent), std::move(shared_module)},
 					std::tuple{std::move(specifier), std::move(requests)}
 				)};
-			}));
+			});
+			return make_completion_record(env, std::move(expected));
 		}
 	);
 	agent.schedule(

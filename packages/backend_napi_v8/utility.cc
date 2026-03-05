@@ -31,31 +31,43 @@ auto make_forward_callback(Function function) {
 	return make(std::type_identity<signature>{}, std::move(function));
 }
 
-auto make_property_key(auto key, environment& env) {
-	auto& storage = env.global_storage(key);
-	if (storage) {
-		return napi_value{storage.get(env)};
-	} else {
-		auto value = napi::value<string_tag>::make_property_name(env, util::make_string_view(key));
-		storage.reset(env, value);
-		return napi_value{value};
-	}
-}
+export template <class Type>
+struct normal_completion_record {
+	public:
+		explicit normal_completion_record(Type result) : result_{std::move(result)} {}
 
-export template <class Expect, class Unexpect>
-auto make_completion_record(environment& env, std::expected<Expect, Unexpect> result) {
-	auto* record = napi::invoke(napi_create_object, napi_env{env});
-	auto* completed_key = make_property_key(util::cw<"complete">, env);
+		[[nodiscard]] auto value() && -> Type { return std::move(result_); }
+
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_constant{util::cw<"complete">, true},
+			js::struct_accessor{util::cw<"result">, util::fn<&normal_completion_record::value>},
+		};
+
+	private:
+		Type result_;
+};
+
+export struct throw_completion_record {
+	public:
+		explicit throw_completion_record(js::error_value error) : error_{std::move(error)} {}
+		[[nodiscard]] auto error() && -> js::error_value { return std::move(error_); }
+
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_constant{util::cw<"complete">, false},
+			js::struct_accessor{util::cw<"error">, util::fn<&throw_completion_record::error>},
+		};
+
+	private:
+		js::error_value error_;
+};
+
+export template <class Expect>
+auto make_completion_record(environment& env, std::expected<Expect, js::error_value> result) {
 	if (result) {
-		js::napi::invoke0(napi_set_property, napi_env{env}, record, completed_key, js::napi::invoke(napi_get_boolean, napi_env{env}, true));
-		auto* result_key = make_property_key(util::cw<"result">, env);
-		js::napi::invoke0(napi_set_property, napi_env{env}, record, result_key, js::transfer_in<napi_value>(*std::move(result), env));
+		return js::forward{js::transfer_in<napi_value>(normal_completion_record{*std::move(result)}, env)};
 	} else {
-		js::napi::invoke0(napi_set_property, napi_env{env}, record, completed_key, js::napi::invoke(napi_get_boolean, napi_env{env}, false));
-		auto* error_key = make_property_key(util::cw<"error">, env);
-		js::napi::invoke0(napi_set_property, napi_env{env}, record, error_key, js::transfer_in<napi_value>(std::move(result).error(), env));
+		return js::forward{js::transfer_in<napi_value>(throw_completion_record{std::move(result).error()}, env)};
 	}
-	return js::forward{record};
 }
 
 } // namespace backend_napi_v8

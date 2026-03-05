@@ -22,9 +22,10 @@ auto script_handle::compile_script(agent_handle& agent, environment& env, js::st
 	auto [ promise, dispatch ] = make_promise(
 		env,
 		[](environment& env, expected_type script) -> auto {
-			return make_completion_record(env, std::move(script).transform([ & ](js::iv8::shared_remote<v8::UnboundScript> script) -> auto {
+			auto expected = std::move(script).transform([ & ](js::iv8::shared_remote<v8::UnboundScript> script) -> auto {
 				return js::forward{script_handle::class_template(env).construct(env, std::move(script))};
-			}));
+			});
+			return make_completion_record(env, std::move(expected));
 		}
 	);
 	agent.schedule(
@@ -52,7 +53,12 @@ auto script_handle::run(environment& env, realm_handle& realm, run_script_option
 	using expected_type = std::expected<js::value_t, js::error_value>;
 	auto [ promise, dispatch ] =
 		make_promise(env, [](environment& env, expected_type result) -> auto {
-			return make_completion_record(env, std::move(result));
+			// nb: The `transfer` machinery cannot transfer nested `js::value_t`, so it must be
+			// transferred here first.
+			auto expected = result.transform([ & ](js::value_t value) -> auto {
+				return js::forward{js::transfer_in_strict<napi_value>(std::move(value), env)};
+			});
+			return make_completion_record(env, std::move(expected));
 		});
 	realm.agent().schedule(
 		[ options = options,
