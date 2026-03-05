@@ -5,6 +5,7 @@ target_sources(backend_napi_v8
 		main.cc
 		module.cc
 		realm.cc
+		reference.cc
 		runtime/runtime.cc
 		script.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
@@ -14,6 +15,7 @@ target_sources(backend_napi_v8
 		lock.cc
 		module.h.cc
 		realm.h.cc
+		reference.h.cc
 		runtime/runtime.h.cc
 		script.h.cc
 		utility.cc

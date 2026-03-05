@@ -5,6 +5,7 @@ import :agent;
 import :environment;
 import :lock;
 import :module_;
+import :reference;
 import :utility;
 import auto_js;
 import napi_js;
@@ -32,6 +33,29 @@ auto realm_handle::create(agent_handle& agent, environment& env) -> js::napi::va
 			dispatch(std::move(agent), std::move(realm));
 		},
 		agent
+	);
+	return promise;
+}
+
+auto realm_handle::acquire_global_object(environment& env) -> js::napi::value<js::promise_tag> {
+	auto [ dispatch, promise ] = make_promise(
+		env,
+		[](environment& env, reference_handle reference) -> auto {
+			return js::forward{reference_handle::class_template(env).construct(env, std::move(reference))};
+		}
+	);
+	agent_.schedule(
+		[ dispatch = std::move(dispatch) ](
+			const agent_handle::lock& lock,
+			agent_handle agent,
+			js::iv8::shared_remote<v8::Context> realm_remote
+		) -> void {
+			auto realm_local = realm_remote->deref(lock);
+			auto global = realm_local->Global();
+			dispatch(reference_handle{lock, std::move(agent), std::move(realm_remote), global});
+		},
+		agent_,
+		realm_
 	);
 	return promise;
 }
@@ -64,6 +88,7 @@ auto realm_handle::class_template(environment& env) -> js::napi::value<class_tag
 		std::type_identity<realm_handle>{},
 		js::class_template{
 			js::class_constructor{util::cw<u8"Realm">},
+			js::class_method{util::cw<u8"acquireGlobalObject">, make_forward_callback(util::fn<&realm_handle::acquire_global_object>)},
 			js::class_method{util::cw<u8"createCapability">, make_forward_callback(module_handle::create_capability)},
 			js::class_method{util::cw<u8"instantiateRuntime">, make_forward_callback(util::fn<&realm_handle::instantiate_runtime>)},
 		}

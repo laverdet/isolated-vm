@@ -16,6 +16,7 @@ export class realm_handle {
 		auto agent() -> auto& { return agent_; }
 		auto realm() -> auto& { return realm_; }
 
+		auto acquire_global_object(environment& env) -> js::napi::value<js::promise_tag>;
 		auto instantiate_runtime(environment& env) -> js::napi::value<js::promise_tag>;
 
 		static auto create(agent_handle& agent, environment& env) -> js::napi::value<js::promise_tag>;

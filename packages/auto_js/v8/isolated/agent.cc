@@ -26,7 +26,7 @@ auto agent_storage::release(std::shared_ptr<agent_storage> storage) -> void {
 // `agent_handle`
 agent_handle::agent_handle(std::shared_ptr<agent_host> host) :
 		host_{host} {
-	if (host->handle_count_.fetch_add(1, std::memory_order_relaxed) == 0) {
+	if (host && host->handle_count_.fetch_add(1, std::memory_order_relaxed) == 0) {
 		*host->self_handle_.write() = std::move(host);
 	}
 }

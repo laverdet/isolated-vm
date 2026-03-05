@@ -19,8 +19,10 @@ constexpr auto string_literals = util::sealed_map{
 	"clock"sv,
 	"column"sv,
 	"complete"sv,
+	"copy"sv,
 	"epoch"sv,
 	"error"sv,
+	"get"sv,
 	"interval"sv,
 	"line"sv,
 	"location"sv,
@@ -41,6 +43,7 @@ constexpr auto class_templates = util::sealed_map{
 	u8"Agent"sv,
 	u8"Module"sv,
 	u8"Realm"sv,
+	u8"Reference"sv,
 	u8"Script"sv,
 	u8"SubscriberCapability"sv,
 };

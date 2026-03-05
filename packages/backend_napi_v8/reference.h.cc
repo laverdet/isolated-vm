@@ -1,0 +1,32 @@
+export module backend_napi_v8:reference;
+import :agent;
+import :environment;
+import :lock;
+import auto_js;
+import napi_js;
+import v8_js;
+
+namespace backend_napi_v8 {
+
+export class reference_handle {
+	public:
+		using transfer_type = js::tagged_external<reference_handle>;
+
+		explicit reference_handle(js::null_tag /*tag*/);
+		explicit reference_handle(js::undefined_tag /*tag*/);
+		reference_handle(agent_handle agent, js::typeof_kind typeof, js::iv8::shared_remote<v8::Context> realm, js::iv8::shared_remote<v8::Value> value);
+		reference_handle(const agent_handle::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm, v8::Local<v8::Value> value);
+		reference_handle(const agent_handle::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm, v8::Local<v8::Object> value);
+		auto copy(environment& env) -> js::napi::value<js::promise_tag>;
+		auto get(environment& env, js::string_t name) -> js::napi::value<js::promise_tag>;
+
+		static auto class_template(environment& env) -> js::napi::value<class_tag_of<reference_handle>>;
+
+	private:
+		agent_handle agent_;
+		js::iv8::shared_remote<v8::Context> realm_;
+		js::iv8::shared_remote<v8::Value> value_;
+		js::typeof_kind typeof_;
+};
+
+} // namespace backend_napi_v8

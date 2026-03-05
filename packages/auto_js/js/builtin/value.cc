@@ -11,6 +11,21 @@ import :tag;
 
 namespace js {
 
+// Result of `typeof` operator
+// nb: If you name it `typeof`, which is a totally valid C++ identifier, then clang-tidy can't
+// handle it and puts spaces everywhere.
+export enum class typeof_kind : uint8_t {
+	bigint,
+	boolean,
+	function,
+	null,
+	number,
+	object,
+	string,
+	symbol,
+	undefined,
+};
+
 // Any utf16 (canonical) or latin1 (optimized) string
 export using string_t = std::variant<std::u16string, std::string>;
 

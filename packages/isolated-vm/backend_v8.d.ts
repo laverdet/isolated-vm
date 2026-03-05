@@ -31,8 +31,16 @@ declare module "#backend_v8" {
 	export class Realm {
 		readonly #private;
 		constructor(secret: Secret, ...args: unknown[]);
+		acquireGlobalObject(): Promise<Reference>;
 		createCapability(make: CapabilityMake, options: CreateCapabilityOptions): Promise<Module>;
 		instantiateRuntime(): Promise<Module>;
+	}
+
+	export class Reference {
+		readonly #private;
+		constructor(secret: Secret, ...args: unknown[]);
+		copy(): Promise<unknown>;
+		get(property: string): Promise<Reference>;
 	}
 
 	export class Script {
