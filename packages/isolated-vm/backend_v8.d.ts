@@ -7,6 +7,15 @@ declare module "#backend_v8" {
 	type MaybeCompletionOf<T> = import("./utility/completion.ts").MaybeCompletionOf<T>;
 	type ModuleLinkRecord = import("./frontend/module.ts").Module.LinkRecord;
 	type RunScriptOptions = import("./frontend/script.ts").Script.RunScriptOptions;
+	type _Agent = import("./frontend/agent.ts").Agent;
+	type _Module = import("./frontend/module.ts").Module;
+
+	interface InheritedClasses {
+		Agent: object;
+		Module: object;
+	}
+
+	export const initialize: (inherited: InheritedClasses) => void;
 
 	const Secret: unique symbol;
 	/** @internal */
@@ -15,10 +24,10 @@ declare module "#backend_v8" {
 	export class Agent {
 		readonly #private;
 		constructor(secret: Secret, ...args: unknown[]);
-		/** @internal */ _compileModule<As extends typeof Module>(as: As, code: string, options?: CompileModuleOptions | undefined): Promise<MaybeCompletionOf<InstanceType<As>>>;
-		/** @internal */ static _create<As extends typeof Agent>(as: As, options?: CreateAgentOptions | undefined): Promise<InstanceType<As>>;
+		compileModule(code: string, options?: CompileModuleOptions | undefined): Promise<MaybeCompletionOf<_Module>>;
 		compileScript(code: string, options?: CompileScriptOptions | undefined): Promise<MaybeCompletionOf<Script>>;
 		createRealm(): Promise<Realm>;
+		static create(options?: CreateAgentOptions | undefined): Promise<_Agent>;
 	}
 
 	export class Module {
@@ -57,6 +66,7 @@ declare module "#backend_v8" {
 
 	/** @internal */
 	const exports: {
+		initialize: typeof initialize;
 		Agent: typeof Agent;
 		Module: typeof Module;
 		Realm: typeof Realm;

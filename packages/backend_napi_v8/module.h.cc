@@ -64,7 +64,6 @@ export class module_handle {
 		static auto compile(
 			agent_handle& agent,
 			environment& env,
-			js::forward<js::napi::value<function_tag>> constructor,
 			js::string_t source_text,
 			compile_module_options options
 		) -> js::forward<js::napi::value<>>;

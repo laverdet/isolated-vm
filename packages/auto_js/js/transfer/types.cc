@@ -26,6 +26,8 @@ using forward_tag_for_t = forward_tag_for<Type>::type;
 export template <class Type, class Tag = forward_tag_for_t<Type>>
 struct forward : util::pointer_facade {
 	public:
+		forward() = default;
+
 		template <class From, std::convertible_to<Tag> FromTag>
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		forward(forward<From, FromTag> from) :

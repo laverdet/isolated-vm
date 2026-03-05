@@ -14,7 +14,6 @@ import :realm;
 import :utility;
 import auto_js;
 import napi_js;
-import nodejs;
 import util;
 import v8_js;
 
@@ -27,7 +26,6 @@ module_handle::module_handle(agent_handle agent, js::iv8::shared_remote<v8::Modu
 auto module_handle::compile(
 	agent_handle& agent,
 	environment& env,
-	js::forward<js::napi::value<function_tag>> constructor,
 	js::string_t source_text,
 	compile_module_options options
 ) -> js::forward<js::napi::value<>> {
@@ -38,12 +36,11 @@ auto module_handle::compile(
 		[](
 			environment& env,
 			agent_handle agent,
-			js::napi::unique_remote<function_tag> constructor,
 			std::optional<std::u16string> specifier,
 			expected_type maybe_module
 		) -> auto {
 			auto expected = std::move(maybe_module).transform([ & ](value_type module_data) -> auto {
-				auto class_template = js::napi::value<class_tag_of<module_handle>>::from(constructor->deref(env));
+				auto class_template = js::napi::value<class_tag_of<module_handle>>::from(env.module_class());
 				auto [ shared_module, requests ] = std::move(module_data);
 				return js::forward{class_template.runtime_construct(
 					env,
@@ -58,7 +55,6 @@ auto module_handle::compile(
 		[ dispatch = std::move(dispatch) ](
 			const agent_handle::lock& lock,
 			agent_handle agent,
-			js::napi::unique_remote<function_tag> constructor,
 			js::string_t source_text,
 			compile_module_options options
 		) -> void {
@@ -73,13 +69,11 @@ auto module_handle::compile(
 			});
 			dispatch(
 				std::move(agent),
-				std::move(constructor),
 				std::move(specifier),
 				std::move(maybe_module)
 			);
 		},
 		agent,
-		js::napi::make_unique_remote(env, *constructor),
 		std::move(source_text),
 		std::move(options)
 	);

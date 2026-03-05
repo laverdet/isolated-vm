@@ -11,7 +11,6 @@ import :realm;
 import :utility;
 import auto_js;
 import napi_js;
-import nodejs;
 import util;
 import v8_js;
 

@@ -25,6 +25,7 @@ const cjs = require(`@isolated-vm/experimental-${backendPlatform}`);
 
 // Exports must be enumerated because this imports from the native module which cannot declare ESM
 // exports.
+export const initialize = cjs.initialize;
 export const Agent = cjs.Agent;
 export const Module = cjs.Module;
 export const Realm = cjs.Realm;

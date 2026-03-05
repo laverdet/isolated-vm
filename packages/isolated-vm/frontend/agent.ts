@@ -1,5 +1,4 @@
 import type { SourceOrigin } from "./script.js";
-import type { MaybeCompletionOf } from "@isolated-vm/experimental/utility/completion";
 import * as backend from "#backend_v8";
 import { Module } from "./module.js";
 
@@ -45,13 +44,15 @@ export namespace Agent {
 	}
 }
 
-export class Agent extends backend.Agent {
-	static create(options?: Agent.CreateOptions): Promise<Agent> {
-		return backend.Agent._create(Agent, options);
-	}
+let didInitialize = false;
 
-	async compileModule(code: string, options?: Agent.CompileModuleOptions): Promise<MaybeCompletionOf<Module>> {
-		return this._compileModule(Module, code, options);
+export class Agent extends backend.Agent {
+	static override create(options?: Agent.CreateOptions): Promise<Agent> {
+		if (!didInitialize) {
+			backend.initialize({ Agent, Module });
+			didInitialize	= true;
+		}
+		return backend.Agent.create(options);
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await

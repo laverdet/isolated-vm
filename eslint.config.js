@@ -245,6 +245,7 @@ const typeScriptRules = acceptTypeScriptRules({
 	// TypeScript rules which supersede an eslint rule
 	"@typescript-eslint/naming-convention": [ "warn", {
 		format: [ "PascalCase" ],
+		leadingUnderscore: "allow",
 		selector: "typeLike",
 	} ],
 	"@typescript-eslint/no-unused-expressions": [ "warn", {

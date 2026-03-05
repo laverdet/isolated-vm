@@ -51,7 +51,11 @@ class reference_handle : util::non_copyable {
 		}
 
 		auto operator=(const reference_handle&) = delete;
-		auto operator=(reference_handle&&) = delete;
+		auto operator=(reference_handle&& right) noexcept -> reference_handle& {
+			env_ = right.env_;
+			ref_ = std::exchange(right.ref_, nullptr);
+			return *this;
+		};
 
 		explicit operator bool() const { return ref_ != nullptr; }
 
@@ -67,6 +71,7 @@ class reference : public reference<typename Tag::tag_type> {
 		using value_type = value<Tag>;
 		using reference<typename Tag::tag_type>::reference;
 
+		reference() = default;
 		reference(napi_env env, value_type value) :
 				reference<typename Tag::tag_type>{env, napi_value{value}} {}
 

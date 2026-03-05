@@ -2,6 +2,7 @@ add_library(backend_napi_v8 SHARED)
 target_sources(backend_napi_v8
 	PRIVATE
 		agent.cc
+		environment.cc
 		main.cc
 		module.cc
 		realm.cc
@@ -11,7 +12,7 @@ target_sources(backend_napi_v8
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		agent.h.cc
-		environment.cc
+		environment.h.cc
 		lock.cc
 		module.h.cc
 		realm.h.cc

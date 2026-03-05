@@ -58,12 +58,12 @@ struct make_agent_options {
 agent_environment::agent_environment(const js::iv8::isolated::agent_lock& lock) :
 		runtime_interface_{lock} {}
 
-auto create_agent(environment& env, js::forward<js::napi::value<function_tag>> constructor, std::optional<make_agent_options> options_optional) {
+auto create_agent(environment& env, std::optional<make_agent_options> options_optional) {
 	using namespace js::iv8::isolated;
 	auto options = std::move(options_optional).value_or(make_agent_options{});
 	auto& cluster = env.cluster();
-	auto [ promise, dispatch ] = make_promise(env, [](environment& env, agent_handle agent, js::napi::unique_remote<function_tag> constructor) -> auto {
-		auto class_template = js::napi::value<class_tag_of<agent_handle>>::from(constructor->deref(env));
+	auto [ promise, dispatch ] = make_promise(env, [](environment& env, agent_handle agent) -> auto {
+		auto class_template = js::napi::value<class_tag_of<agent_handle>>::from(env.agent_class());
 		return js::forward{class_template.construct(env, std::move(agent))};
 	});
 	auto clock_ = std::visit(
@@ -86,12 +86,11 @@ auto create_agent(environment& env, js::forward<js::napi::value<function_tag>> c
 	cluster.make_agent(
 		[](const js::iv8::isolated::agent_handle::lock& lock) -> auto { return agent_environment{lock}; },
 		{.clock = clock_, .random_seed = options.random_seed},
-		[ dispatch = std::move(dispatch),
-			constructor = js::napi::make_unique_remote(env, *constructor) ](
+		[ dispatch = std::move(dispatch) ](
 			const agent_handle::lock& /*lock*/,
 			agent_handle agent
 		) mutable -> void {
-			dispatch(std::move(agent), std::move(constructor));
+			dispatch(std::move(agent));
 		}
 	);
 
@@ -103,10 +102,10 @@ auto agent_class_template(environment& env) -> js::napi::value<js::class_tag_of<
 		std::type_identity<agent_handle>{},
 		js::class_template{
 			js::class_constructor{util::cw<u8"Agent">},
-			js::class_method{util::cw<u8"_compileModule">, module_handle::compile},
+			js::class_method{util::cw<u8"compileModule">, module_handle::compile},
 			js::class_method{util::cw<u8"compileScript">, script_handle::compile_script},
 			js::class_method{util::cw<u8"createRealm">, realm_handle::create},
-			js::class_static{util::cw<u8"_create">, create_agent},
+			js::class_static{util::cw<u8"create">, create_agent},
 		}
 	);
 }
