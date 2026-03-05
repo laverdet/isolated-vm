@@ -43,9 +43,9 @@ export struct throw_completion_record {
 export template <class Expect>
 auto make_completion_record(environment& env, std::expected<Expect, js::error_value> result) {
 	if (result) {
-		return js::forward{js::transfer_in<napi_value>(normal_completion_record{*std::move(result)}, env)};
+		return js::forward{js::transfer_in_strict<napi_value>(normal_completion_record{*std::move(result)}, env)};
 	} else {
-		return js::forward{js::transfer_in<napi_value>(throw_completion_record{std::move(result).error()}, env)};
+		return js::forward{js::transfer_in_strict<napi_value>(throw_completion_record{std::move(result).error()}, env)};
 	}
 }
 

@@ -145,7 +145,7 @@ auto reference_handle::get(environment& env, js::string_t name) -> js::forward<j
 					agent_handle agent,
 					js::iv8::shared_remote<v8::Context> realm
 				) -> void {
-					auto name_local = js::transfer_in<v8::Local<v8::String>>(std::move(name), agent_lock);
+					auto name_local = js::transfer_in_strict<v8::Local<v8::String>>(std::move(name), agent_lock);
 					auto reference = context_scope_operation(agent_lock, realm->deref(agent_lock), [ & ](const realm_scope& lock) -> reference_handle {
 						auto local = value->deref(lock).As<v8::Object>();
 						if (js::iv8::unmaybe(local->HasRealNamedProperty(lock.context(), name_local))) {

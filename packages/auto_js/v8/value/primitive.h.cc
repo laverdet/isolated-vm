@@ -34,6 +34,10 @@ export class bigint : public v8::Local<v8::BigInt> {
 				v8::Local<v8::BigInt>{handle} {}
 
 		[[nodiscard]] explicit operator js::bigint() const;
+
+		static auto make(context_lock_witness lock, int64_t value) -> v8::Local<v8::BigInt>;
+		static auto make(context_lock_witness lock, uint64_t value) -> v8::Local<v8::BigInt>;
+		static auto make(context_lock_witness lock, js::bigint value) -> v8::Local<v8::BigInt>;
 };
 
 export class bigint_u64 : public bigint {

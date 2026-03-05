@@ -13,6 +13,7 @@ export module v8_js:accept;
 import :hash;
 import :lock;
 import :primitive;
+import :unmaybe;
 import auto_js;
 import util;
 import v8;
@@ -106,10 +107,31 @@ struct accept_v8_value : accept_v8_primitive {
 		// accept all primitives
 		using accept_type::operator();
 
+		[[nodiscard]] auto witness() const -> iv8::context_lock_witness {
+			auto isolate_lock = iv8::isolate_lock_witness::make_witness(isolate());
+			return iv8::context_lock_witness::make_witness(isolate_lock, context_);
+		}
+
 		// hacky function template acceptor
 		// NOLINTNEXTLINE(bugprone-derived-method-shadowing-base-method)
 		auto operator()(function_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::Function> value) const -> v8::Local<v8::Function> {
 			return value;
+		}
+
+		// bigint (why does `NewFromWords` need a context?)
+		auto operator()(bigint_tag /*tag*/, visit_holder visit, auto&& subject) const
+			-> js::referenceable_value<v8::Local<v8::BigInt>> {
+			return (*this)(bigint_tag_of<bigint>{}, visit, bigint{std::forward<decltype(subject)>(subject)});
+		}
+
+		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, auto&& subject) const
+			-> js::referenceable_value<v8::Local<v8::BigInt>> {
+			return js::referenceable_value{iv8::bigint::make(witness(), std::forward<decltype(subject)>(subject))};
+		}
+
+		template <class Numeric>
+		auto operator()(bigint_tag_of<Numeric> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> v8::Local<v8::BigInt> {
+			return iv8::bigint::make(witness(), Numeric{std::forward<decltype(subject)>(subject)});
 		}
 
 		// date

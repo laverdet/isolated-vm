@@ -72,12 +72,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 
 		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, auto&& subject) const
 			-> js::referenceable_value<napi::value<bigint_tag>> {
-			return js::referenceable_value{napi::value<bigint_tag>::make(environment(), bigint{std::forward<decltype(subject)>(subject)})};
-		}
-
-		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, const bigint& value) const
-			-> js::referenceable_value<napi::value<bigint_tag>> {
-			return js::referenceable_value{napi::value<bigint_tag>::make(environment(), value)};
+			return js::referenceable_value{napi::value<bigint_tag>::make(environment(), std::forward<decltype(subject)>(subject))};
 		}
 
 		template <class Numeric>

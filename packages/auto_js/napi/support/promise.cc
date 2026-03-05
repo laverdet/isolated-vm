@@ -29,7 +29,7 @@ auto make_promise(Environment& env, Accept accept) {
 		const auto scope = js::napi::handle_scope{napi_env{env}};
 		env.scheduler().decrement_ref();
 		try {
-			auto result = js::transfer_in<napi_value>(accept(env, std::forward<decltype(args)>(args)...), env);
+			auto result = js::transfer_in_strict<napi_value>(accept(env, std::forward<decltype(args)>(args)...), env);
 			napi::invoke0(napi_resolve_deferred, napi_env{env}, deferred, result);
 		} catch (const napi::pending_error& /*error*/) {
 			auto* exception = napi::invoke(napi_get_and_clear_last_exception, napi_env{env});

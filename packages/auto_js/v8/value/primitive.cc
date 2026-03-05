@@ -43,6 +43,18 @@ bigint::operator js::bigint() const {
 	return bigint;
 }
 
+auto bigint::make(context_lock_witness lock, int64_t value) -> v8::Local<v8::BigInt> {
+	return v8::BigInt::New(lock.isolate(), value);
+}
+
+auto bigint::make(context_lock_witness lock, uint64_t value) -> v8::Local<v8::BigInt> {
+	return v8::BigInt::NewFromUnsigned(lock.isolate(), value);
+}
+
+auto bigint::make(context_lock_witness lock, js::bigint value) -> v8::Local<v8::BigInt> {
+	return unmaybe(v8::BigInt::NewFromWords(lock.context(), value.sign_bit(), static_cast<int>(value.size()), value.data()));
+}
+
 bigint_u64::operator uint64_t() const {
 	return value_;
 }
