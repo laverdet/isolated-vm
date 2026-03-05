@@ -3,6 +3,7 @@ module;
 #include <memory>
 #include <optional>
 #include <ranges>
+#include <string>
 #include <tuple>
 #include <utility>
 #include <variant>

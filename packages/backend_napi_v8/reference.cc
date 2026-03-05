@@ -1,5 +1,6 @@
 module;
 #include <utility>
+#include <variant>
 module backend_napi_v8;
 import :agent;
 import :environment;
