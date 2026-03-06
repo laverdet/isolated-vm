@@ -1,8 +1,4 @@
 module;
-#ifdef _LIBCPP_VERSION
-// nb: Symbol visibility hack
-#include <__iterator/wrap_iter.h>
-#endif
 #include <concepts>
 #include <cstdint>
 #include <string>

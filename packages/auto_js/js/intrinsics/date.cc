@@ -32,7 +32,7 @@ using namespace js;
 
 // libc++ polyfill
 // https://github.com/llvm/llvm-project/issues/166050
-#ifdef _LIBCPP_VERSION
+#if _LIBCPP_VERSION
 export template <class To, class From>
 struct clock_time_conversion;
 

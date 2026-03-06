@@ -46,6 +46,7 @@ CONFIG=${PLATFORM_CONFIG_PAIR[1]} # debug, optdebug, release
 
 GN_ARGS=(
 	clang_use_chrome_plugins=false
+	mac_deployment_target=\"13.3\"
 	treat_warnings_as_errors=false
 	use_clang_modules=false
 	use_custom_libcxx=false
@@ -84,7 +85,7 @@ case "$OS" in
 	darwin)
 		# This lets us link against the system libc++ dylib using the modern llvm headers.
 		mkdir -p "$OUTDIR/$TARGET/obj"
-		clang++ -xc++ - -std=c++20 -mmacos-version-min=12.0 -O3 -c -o "$OUTDIR/$TARGET/obj/std_hash.o" < "$(dirname "$0")/../packages/utility/platform/shim/darwin.cc"
+		clang++ -xc++ - -std=c++20 -mmacos-version-min=13.3 -O3 -c -o "$OUTDIR/$TARGET/obj/std_hash.o" < "$(dirname "$0")/../packages/utility/platform/shim/darwin.cc"
 		;;
 	linux-musl)
 		GN_ARGS+=(
@@ -147,7 +148,7 @@ echo gn gen "$OUTDIR/$TARGET" --args=\'"${GN_ARGS[*]}"\'
 if ! gn gen "$OUTDIR/$TARGET" --args="${GN_ARGS[*]}"; then
 	RESULT=$?
 	# Weird failure from gn on linux-musl arm64, but it still generates the ninja files
-	if [ "$PLATFORM" = linux-musl ]; then
+	if [ "${PLATFORM:-}" = linux-musl ]; then
 		echo "Ignoring gn error code of $RESULT on linux-musl"
 	else
 		exit 1

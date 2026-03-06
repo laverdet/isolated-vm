@@ -3,6 +3,15 @@ module;
 #include <utility>
 export module util:utility.ranges;
 
+#if _LIBCPP_VERSION
+// clang 22.1.0 w/ -stdlib=libc++
+// /workspace/packages/utility/utility/ranges.cc:25:10: error: invalid operands to binary expression [...]
+//    25 |        range | std::views::transform([...]);
+export {
+	using std::ranges::operator|;
+}
+#endif
+
 namespace util {
 
 // Forward value category of a range to the iterated elements.

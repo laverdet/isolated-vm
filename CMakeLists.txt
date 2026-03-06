@@ -73,7 +73,7 @@ check_cxx_symbol_exists(_LIBCPP_VERSION version LIBCPP)
 
 # Apple dylib flags
 if(APPLE)
-	set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0")
+	set(CMAKE_OSX_DEPLOYMENT_TARGET "13.3")
 	set(CMAKE_SHARED_LINKER_FLAGS "-dynamiclib -undefined dynamic_lookup")
 endif()
 

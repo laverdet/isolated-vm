@@ -13,6 +13,15 @@ import :struct_.types;
 import :transfer;
 import util;
 
+#if _LIBCPP_VERSION
+// clang 22.1.0 w/ -stdlib=libc++
+// /workspace/packages/auto_js/js/struct/accept.cc:38:59: error: invalid operands to binary expression ('const char16_t[29]' and 'std::__1::basic_string<char16_t>')
+//  38 |    throw js::type_error{u"Missing required property: '" + name_u16 + u"'"};
+export {
+	using std::operator+;
+}
+#endif
+
 namespace js {
 
 // Property acceptor and setter delegate for one property entry
