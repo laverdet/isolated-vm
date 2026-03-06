@@ -1,3 +1,5 @@
+module;
+#include <vector>
 export module backend_napi_v8:reference;
 import :agent;
 import :environment;
@@ -19,6 +21,7 @@ export class reference_handle {
 		reference_handle(const agent_handle::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm, v8::Local<v8::Object> value);
 		auto copy(environment& env) -> js::forward<js::napi::value<>>;
 		auto get(environment& env, js::string_t name) -> js::forward<js::napi::value<>>;
+		auto invoke(environment& env, std::vector<js::value_t> params) -> js::forward<js::napi::value<>>;
 
 		static auto class_template(environment& env) -> js::napi::value<class_tag_of<reference_handle>>;
 

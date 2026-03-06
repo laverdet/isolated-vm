@@ -58,10 +58,16 @@ auto materialize_error_value(isolate_lock_witness lock, v8::Local<v8::Message> m
 // Catch pending js errors and externalize them as `js::error_value`. `std::expected<T,
 // js::error_value>` is returned.
 export [[nodiscard]] auto invoke_externalized_error_scope(isolate_lock_witness lock, auto operation) {
-	using value_type = std::expected<decltype(operation()), js::error_value>;
+	using result_type = decltype(operation());
+	using value_type = std::expected<result_type, js::error_value>;
 	const auto try_catch = v8::TryCatch{lock.isolate()};
 	try {
-		return value_type{std::in_place, operation()};
+		if constexpr (type<result_type> == type<void>) {
+			operation();
+			return value_type{std::in_place};
+		} else {
+			return value_type{std::in_place, operation()};
+		}
 	} catch (const iv8::pending_error& /*error*/) {
 		assert(try_catch.HasCaught());
 		return value_type{std::unexpect, materialize_error_value(lock, try_catch.Message())};

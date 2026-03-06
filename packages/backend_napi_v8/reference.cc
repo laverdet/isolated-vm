@@ -1,6 +1,8 @@
 module;
+#include <expected>
 #include <utility>
 #include <variant>
+#include <vector>
 module backend_napi_v8;
 import :agent;
 import :environment;
@@ -128,11 +130,12 @@ auto reference_handle::get(environment& env, js::string_t name) -> js::forward<j
 			break;
 
 		// `null` & `undefined` throw
-		// TODO: They should throw from the promise
 		case js::typeof_kind::undefined:
-			throw js::type_error{u"Cannot read properties of undefined"};
+			resolver.reject(js::error_value{js::type_error{u"Cannot read properties of undefined"}});
+			break;
 		case js::typeof_kind::null:
-			throw js::type_error{u"Cannot read properties of null"};
+			resolver.reject(js::error_value{js::type_error{u"Cannot read properties of null"}});
+			break;
 
 		// `get` only does something on these object types
 		case js::typeof_kind::object:
@@ -168,6 +171,44 @@ auto reference_handle::get(environment& env, js::string_t name) -> js::forward<j
 	return js::forward{promise};
 }
 
+auto reference_handle::invoke(environment& env, std::vector<js::value_t> params) -> js::forward<js::napi::value<>> {
+	using expected_type = std::expected<js::value_t, js::error_value>;
+	auto [ promise, resolver ] = make_promise(env, [](environment& env, expected_type result) -> auto {
+		// nb: The `transfer` machinery cannot transfer nested `js::value_t`, so it must be
+		// transferred here first.
+		auto expected = result.transform([ & ](js::value_t& value) -> auto {
+			return js::forward{js::transfer_in_strict<napi_value>(std::move(value), env)};
+		});
+		return make_completion_record(env, std::move(expected));
+	});
+	if (typeof_ == js::typeof_kind::function) {
+		agent_.schedule(
+			[ value = value_ ](
+				const agent_handle::lock& agent_lock,
+				auto resolver,
+				js::iv8::shared_remote<v8::Context> realm,
+				std::vector<js::value_t> params
+			) -> void {
+				auto maybe_result = iv8::invoke_externalized_error_scope(agent_lock, [ & ]() -> js::value_t {
+					return context_scope_operation(agent_lock, realm->deref(agent_lock), [ & ](const realm_scope& lock) -> js::value_t {
+						auto local = value->deref(lock).As<v8::Function>();
+						auto arg_values = js::transfer_in_strict<std::vector<v8::Local<v8::Value>>>(std::move(params), lock);
+						auto result = iv8::unmaybe(local->Call(lock.isolate(), lock.context(), v8::Undefined(lock.isolate()), static_cast<int>(arg_values.size()), arg_values.data()));
+						return js::transfer_out<js::value_t>(result, lock);
+					});
+				});
+				resolver(std::move(maybe_result));
+			},
+			std::move(resolver),
+			realm_,
+			std::move(params)
+		);
+	} else {
+		resolver.reject(js::error_value{js::type_error{u"Reference is not a function"}});
+	}
+	return js::forward{promise};
+}
+
 auto reference_handle::class_template(environment& env) -> js::napi::value<class_tag_of<reference_handle>> {
 	return env.class_template(
 		std::type_identity<reference_handle>{},
@@ -175,6 +216,7 @@ auto reference_handle::class_template(environment& env) -> js::napi::value<class
 			js::class_constructor{util::cw<u8"Reference">},
 			js::class_method{util::cw<u8"copy">, util::fn<&reference_handle::copy>},
 			js::class_method{util::cw<u8"get">, util::fn<&reference_handle::get>},
+			js::class_method{util::cw<u8"invoke">, util::fn<&reference_handle::invoke>},
 		}
 	);
 }
