@@ -7,9 +7,6 @@ target_sources(value_js
 		builtin/accept.cc
 		builtin/value.cc
 		builtin/visit.cc
-		dictionary/accept.cc
-		dictionary/vector_of.cc
-		dictionary/visit.cc
 		enum/accept.cc
 		enum/types.cc
 		intrinsics/bigint.cc
@@ -40,6 +37,7 @@ target_sources(value_js
 		variant/types.cc
 		variant/visit.cc
 		vector/accept.cc
+		vector/vector_of.cc
 		vector/visit.cc
 )
 target_link_libraries(value_js PRIVATE

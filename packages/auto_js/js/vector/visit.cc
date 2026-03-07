@@ -4,6 +4,7 @@ module;
 #include <vector>
 export module auto_js:vector.visit;
 import :transfer;
+import :vector.vector_of;
 
 namespace js {
 
@@ -48,6 +49,18 @@ struct visit<Meta, std::vector<Type>> : visit<Meta, std::span<Type>> {
 		template <class Accept>
 		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
 			return util::invoke_as<visit_type>(*this, std::span{subject}, accept);
+		}
+};
+
+template <class Meta, class Tag, class Value>
+struct visit<Meta, vector_of<Tag, Value>> : visit<Meta, Value> {
+		using visit_type = visit<Meta, Value>;
+		using visit_type::visit_type;
+
+		template <class Accept>
+		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
+			visit_type& visitor = *this;
+			return accept(Tag{}, visitor, std::forward<decltype(subject)>(subject));
 		}
 };
 

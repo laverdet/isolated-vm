@@ -51,7 +51,10 @@ export constexpr auto unused = [](auto&& /*nothing*/) -> void {};
 // `InvokeAsType_` can be shadowed by the base class. Also, clang has some really spooky behavior
 // which is resolved by breaking out invocations to deduced-this instances.
 export template <class InvokeAsType_>
-constexpr auto invoke_as(auto&& func, auto&&... args) -> decltype(auto) {
+constexpr auto invoke_as(auto&& func, auto&&... args)
+	// This is functionally the same as ` -> decltype(auto)` but works around the error:
+	// 'invoke_as<...>' with deduced return type cannot be used before it is defined
+	-> decltype(std::declval<decltype(func)>().InvokeAsType_::operator()(std::declval<decltype(args)>()...)) {
 	return std::forward<decltype(func)>(func).InvokeAsType_::operator()(std::forward<decltype(args)>(args)...);
 }
 

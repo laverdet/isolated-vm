@@ -53,6 +53,21 @@ struct type_pack : std::type_identity<type_pack<Types...>> {
 			return type<Types...[ Index ]>;
 		}
 
+		// Find the index of the given type, or `size()` if not found
+		template <class Type>
+		[[nodiscard]] consteval auto find(std::type_identity<Type> subject) const -> std::size_t {
+			constexpr auto type_switch = [ = ]<std::size_t Index>(this const auto& self, std::integral_constant<std::size_t, Index> /*index*/) -> std::size_t {
+				if constexpr (Index == sizeof...(Types)) {
+					return sizeof...(Types);
+				} else if constexpr (type<Types...[ Index ]> == subject) {
+					return Index;
+				} else {
+					return self(std::integral_constant<std::size_t, Index + 1>{});
+				}
+			};
+			return type_switch(std::integral_constant<std::size_t, 0>{});
+		}
+
 		[[nodiscard]] consteval auto size() const -> std::size_t { return sizeof...(Types); }
 
 		// Concatenate two `type_pack`s (into a `type_pack_of`)
@@ -60,6 +75,17 @@ struct type_pack : std::type_identity<type_pack<Types...>> {
 		[[nodiscard]] consteval auto operator+(type_pack<Right...> /*right*/) const
 			-> type_pack_of<hidden_t<Types>..., hidden_t<Right>...> {
 			return {};
+		}
+
+		template <class... Right>
+		[[nodiscard]] consteval auto operator==(type_pack<Right...> /*right*/) const -> bool {
+			if constexpr (sizeof...(Types) == 0 && sizeof...(Right) == 0) {
+				return true;
+			} else if constexpr (sizeof...(Types) != sizeof...(Right)) {
+				return false;
+			} else {
+				return ((type<Types> == type<Right>) && ...);
+			}
 		}
 };
 

@@ -36,31 +36,29 @@ struct visit<void, forward<Type>> {
 		constexpr auto operator()(auto&& subject, const auto& /*accept*/) const {
 			return *std::forward<decltype(subject)>(subject);
 		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
 // `visit` delegated to a sub class passed down from the constructor
 export template <class Visit>
-struct visit_delegated_from : std::reference_wrapper<Visit> {
-		constexpr explicit visit_delegated_from(auto* transfer) :
-				std::reference_wrapper<Visit>{*transfer} {}
+struct visit_delegated : std::reference_wrapper<Visit> {
+		constexpr explicit visit_delegated(auto* transfer) :
+				// nb: Casting through pointer is very intentional. Since we inherit from
+				// `std::reference_wrapper<T>` casting through a reference might invoke `operator T&` and
+				// cause confusing compile-time or run-time errors.
+				std::reference_wrapper<Visit>{*static_cast<Visit*>(transfer)} {}
+
+		constexpr auto emplace_subject(auto reference, const auto& value) -> void {
+			this->get().emplace_subject(reference, value);
+		}
+
+		consteval static auto has_reference_map() -> bool { return js::has_reference_map(type<Visit>); }
 };
-
-// `visit` a possibly recursive subject
-template <class Meta, class Type>
-struct visit_maybe_recursive_type : std::type_identity<visit<Meta, Type>> {};
-
-template <class Meta, class Type>
-	requires Type::is_recursive_type
-struct visit_maybe_recursive_type<Meta, Type> : std::type_identity<visit_delegated_from<visit<Meta, Type>>> {};
-
-template <class Meta, class Type>
-using visit_maybe_recursive = visit_maybe_recursive_type<Meta, Type>::type;
 
 // Utility to pass oneself as an object entry visitor
 export template <class First, class Second>
 struct visit_entry_pair {
-		constexpr static auto has_reference_map = js::has_reference_map(type<Second>);
-
 		explicit constexpr visit_entry_pair(auto& self) :
 				first{self},
 				second{self} {}
@@ -68,6 +66,8 @@ struct visit_entry_pair {
 		constexpr auto emplace_subject(const auto& subject, const auto& value) -> void {
 			second.emplace_subject(subject, value);
 		}
+
+		consteval static auto has_reference_map() -> bool { return js::has_reference_map(type<Second>); }
 
 		// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
 		First first;
@@ -85,6 +85,8 @@ struct visit_key_literal;
 
 template <auto Key>
 struct visit_key_literal<Key, void> {
+		explicit constexpr visit_key_literal(auto* /*transfer*/) {}
+
 		template <class Accept>
 		constexpr auto operator()(const auto& /*could_be_literally_anything*/, const Accept& accept) -> accept_target_t<Accept> {
 			auto key_view = util::make_string_view(Key);
@@ -108,8 +110,6 @@ struct null_reference_map {
 template <class Map>
 struct reference_map_provider {
 	public:
-		constexpr static auto has_reference_map = true;
-
 		explicit reference_map_provider(auto&&... args) :
 				map_{std::forward<decltype(args)>(args)...} {}
 
@@ -129,6 +129,8 @@ struct reference_map_provider {
 				return (*accept)(std::type_identity<value_type>{}, it->second);
 			}
 		}
+
+		consteval static auto has_reference_map() -> bool { return true; }
 
 	private:
 		Map map_;

@@ -33,9 +33,13 @@ struct visit<Meta, std::variant<Types...>> : visit<Meta, Types>... {
 				util::sequence<sizeof...(Types)>,
 				util::overloaded{
 					visit_alternative,
-					[ & ]() -> target_type { std::unreachable(); },
+					[]() -> target_type { std::unreachable(); },
 				}
 			);
+		}
+
+		consteval static auto types(auto recursive) -> auto {
+			return util::pack_concat(visit<Meta, Types>::types(recursive)...);
 		}
 };
 

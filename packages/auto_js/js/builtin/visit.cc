@@ -33,6 +33,8 @@ struct visit_value_tagged {
 		constexpr auto operator()(auto&& subject, const Accept& accept) const -> accept_target_t<Accept> {
 			return accept(Tag{}, *this, std::forward<decltype(subject)>(subject));
 		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
 // `undefined` & `null`
@@ -86,6 +88,8 @@ struct visit<void, Char[ Extent ]> {
 		constexpr auto operator()(const Char (&subject)[ Extent ], const Accept& accept) const -> accept_target_t<Accept> {
 			return accept(string_tag_of<Char>{}, *this, util::make_string_view(subject));
 		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
 // `Error` types
@@ -95,6 +99,8 @@ struct visit<void, js::error_value> {
 		constexpr auto operator()(const js::error_value& subject, const Accept& accept) const -> accept_target_t<Accept> {
 			return accept(error_tag{}, *this, subject);
 		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
 template <>
@@ -119,6 +125,21 @@ struct visit<Meta, std::optional<Type>> : visit<Meta, Type> {
 				return accept(undefined_tag{}, *this, std::monostate{});
 			}
 		}
+};
+
+// `std::pair` uses `first` & `second` visitors
+template <class Meta, class Key, class Value>
+struct visit<Meta, std::pair<Key, Value>> {
+		constexpr explicit visit(auto* transfer) :
+				first{transfer},
+				second{transfer} {}
+
+		consteval static auto types(auto recursive) -> auto {
+			return visit<Meta, Key>::types(recursive) + visit<Meta, Value>::types(recursive);
+		}
+
+		visit<Meta, Key> first;
+		visit<Meta, Value> second;
 };
 
 } // namespace js

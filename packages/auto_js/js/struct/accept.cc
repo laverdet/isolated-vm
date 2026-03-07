@@ -33,8 +33,6 @@ struct accept_object_property {
 				set_{property.set} {}
 
 		constexpr auto operator()(auto& visit, auto&& subject, auto& target) const -> void {
-			// nb: We `std::forward` the value to *each* setter. This allows the setters to pick an
-			// lvalue object apart member by member if it wants.
 			auto value = accept_(dictionary_tag{}, visit, std::forward<decltype(subject)>(subject));
 			if (value) {
 				set_(target, *std::move(value));
@@ -47,6 +45,10 @@ struct accept_object_property {
 					throw js::type_error{u"Missing required property: '" + name_u16 + u"'"};
 				}
 			}
+		}
+
+		consteval static auto types(auto recursive) -> auto {
+			return accept<Meta, value_type>::types(recursive);
 		}
 
 	private:
@@ -76,7 +78,7 @@ struct accept_struct_properties<Meta, Type, js::struct_template<Property...>> {
 
 	public:
 		explicit constexpr accept_struct_properties(auto* transfer) :
-				properties{[ & ]() -> properties_type {
+				properties{[ = ]() -> properties_type {
 					const auto [... indices ] = util::sequence<sizeof...(Property)>;
 					return {util::elide(
 						util::constructor<accept_object_property<Meta, Property...[ indices ]>>,
@@ -93,9 +95,16 @@ struct accept_struct_properties<Meta, Type, js::struct_template<Property...>> {
 		constexpr auto operator()(dictionary_tag /*tag*/, auto& visit, auto&& subject) const -> Type {
 			Type target;
 			const auto& [... properties_n ] = properties;
+			// nb: We `std::forward` the value to *each* setter. This allows the setters to pick an
+			// lvalue object apart member by member if it wants.
 			// NOLINTNEXTLINE(bugprone-use-after-move)
 			(..., properties_n(visit, std::forward<decltype(subject)>(subject), target));
 			return target;
+		}
+
+		consteval static auto types(auto recursive) -> auto {
+			const auto [... properties ] = descriptor_type::properties.as_tuple();
+			return util::pack_concat(accept_object_property<Meta, decltype(properties)>::types(recursive)...);
 		}
 
 	private:

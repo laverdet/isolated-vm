@@ -18,7 +18,7 @@ export struct rest {};
 template <class Meta, class Type>
 struct accept_tuple_param : accept_value<Meta, Type> {
 		using accept_type = accept_value<Meta, Type>;
-		constexpr accept_tuple_param() : accept_type{this} {}
+		using accept_type::accept_type;
 
 		constexpr auto visit_and_advance(auto& visit, auto& iterator, auto& end) const -> accept_target_t<accept_type> {
 			if (iterator == end) {
@@ -31,6 +31,8 @@ struct accept_tuple_param : accept_value<Meta, Type> {
 
 // Rest placeholder
 struct accept_tuple_rest_placeholder {
+		explicit constexpr accept_tuple_rest_placeholder(auto* /*transfer*/) {}
+
 		constexpr auto visit_and_advance(auto& /*iterator*/, auto& /*end*/, const visit_holder /*visit*/) const -> rest {
 			return {};
 		}
@@ -40,7 +42,7 @@ struct accept_tuple_rest_placeholder {
 template <class Meta, class Type>
 struct accept_tuple_rest_spread : accept_value<Meta, Type> {
 		using accept_type = accept_value<Meta, Type>;
-		constexpr accept_tuple_rest_spread() : accept_type{this} {}
+		using accept_type::accept_type;
 
 		constexpr auto visit_and_advance(auto& visit, auto& iterator, auto& end) const -> accept_target_t<accept_type> {
 			return (*this)(vector_tag{}, std::ranges::subrange{iterator, end}, visit);
@@ -83,10 +85,10 @@ struct accept<Meta, std::tuple<Types...>> {
 		using acceptors_type = type_t<make_tuple_acceptor_types<Meta, Types...>()>;
 
 	public:
-		explicit constexpr accept(auto* /*transfer*/) :
-				accept_{[ & ]() constexpr -> acceptors_type {
+		explicit constexpr accept(auto* transfer) :
+				accept_{[ = ]() constexpr -> acceptors_type {
 					const auto [... indices ] = util::sequence<std::tuple_size_v<acceptors_type>>;
-					return {util::elide(util::constructor<std::tuple_element_t<indices, acceptors_type>>)...};
+					return {util::elide(util::constructor<std::tuple_element_t<indices, acceptors_type>>, transfer)...};
 				}()} {}
 
 		constexpr auto operator()(vector_tag /*tag*/, auto& visit, auto&& subject) const -> value_type {
@@ -96,6 +98,10 @@ struct accept<Meta, std::tuple<Types...>> {
 			auto end = std::end(forward_range);
 			const auto& [... accept_n ] = accept_;
 			return {accept_n.visit_and_advance(visit, it, end)...};
+		}
+
+		consteval static auto types(auto recursive) -> auto {
+			return util::pack_concat(accept<Meta, Types>::types(recursive)...);
 		}
 
 	private:

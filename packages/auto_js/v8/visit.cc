@@ -100,6 +100,9 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 			return accept(boolean_tag{}, *this, iv8::boolean{subject.As<v8::Boolean>()});
 		}
 
+		// no required types
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+
 	protected:
 		// primitives
 		template <class Accept>

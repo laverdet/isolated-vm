@@ -48,9 +48,9 @@ class in_place_value_holder : public util::pointer_facade {
 // Recursive value type used by `referential_value`. The reference types used by this value types
 // are stored within the type and made available to acceptors.
 template <template <class> class Make, auto Extract>
-class recursive_refs_value : public in_place_value_holder<Make<recursive_refs_value<Make, Extract>>> {
+class referential_value_of : public in_place_value_holder<Make<referential_value_of<Make, Extract>>> {
 	private:
-		using holder_type = in_place_value_holder<Make<recursive_refs_value<Make, Extract>>>;
+		using holder_type = in_place_value_holder<Make<referential_value_of<Make, Extract>>>;
 
 	public:
 		using holder_type::holder_type;
@@ -59,11 +59,11 @@ class recursive_refs_value : public in_place_value_holder<Make<recursive_refs_va
 		constexpr static auto is_recursive_type = true;
 };
 
-// Stores value and references corresponding to `recursive_refs_value`
+// Stores value and references corresponding to `referential_value_of`
 export template <template <class> class Make, auto Extract>
-class referential_value : public recursive_refs_value<Make, Extract> {
+class referential_value : public referential_value_of<Make, Extract> {
 	public:
-		using value_type = recursive_refs_value<Make, Extract>;
+		using value_type = referential_value_of<Make, Extract>;
 		using typename value_type::reference_types;
 
 	private:

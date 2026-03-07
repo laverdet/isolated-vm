@@ -27,7 +27,7 @@ constexpr auto collect_alternatives_by_type = []<class Meta>(std::type_identity<
 
 } // namespace
 
-// Box variant alternative with `accept_value_from` interface
+// Box variant alternative with `accept_value` interface
 template <class Variant, class Type>
 struct accept_with_variant {
 		constexpr auto operator()(Type&& target) const -> Variant {
@@ -72,6 +72,10 @@ struct accept_object_covariants : accept_object_covariant<Meta, Variant, Types>.
 		// Ensure that this class has an `operator()` for the `using <...>::operator()` declarations
 		auto operator()() const -> void
 			requires false;
+
+		consteval static auto types(auto recursive) -> auto {
+			return util::pack_concat(accept_object_covariant<Meta, Variant, Types>::types(recursive)...);
+		}
 };
 
 // Perform runtime checking of external types
@@ -84,7 +88,7 @@ struct accept_external_covariants<Meta, Variant, js::tagged_external<Types>...> 
 		constexpr auto operator()(object_tag /*tag*/, visit_holder /*visit*/, const auto& subject) const -> std::optional<Variant> {
 			using result_type = std::optional<Variant>;
 			auto try_accept = util::overloaded{
-				[ & ]() -> result_type { return std::nullopt; },
+				[]() -> result_type { return std::nullopt; },
 				[ & ](this const auto& try_accept, auto type, auto... types) -> result_type {
 					auto* external = subject.try_cast(type);
 					if (external == nullptr) {
@@ -96,6 +100,10 @@ struct accept_external_covariants<Meta, Variant, js::tagged_external<Types>...> 
 			};
 			const auto [... types ] = util::type_pack{type<Types>...};
 			return try_accept(types...);
+		}
+
+		consteval static auto types(auto /*recursive*/) -> auto {
+			return util::type_pack{};
 		}
 };
 
@@ -131,6 +139,13 @@ struct accept_object_and_host_covariants<Meta, Variant, util::type_pack<Objects.
 				}
 			}
 		}
+
+		consteval static auto types(auto recursive) -> auto {
+			return (
+				accept_object_covariants<Meta, Variant, Objects...>::types(recursive) +
+				accept_external_covariants<Meta, Variant, Externals...>::types(recursive)
+			);
+		}
 };
 
 // Delegate to `accept_primitive_covariant` and `accept_object_and_host_covariants`
@@ -149,6 +164,13 @@ struct accept_covariants<Meta, Variant, util::type_pack<util::type_pack<Primitiv
 				accept_object_and_host_covariants<Meta, Variant, Objects, Externals>{transfer} {}
 		using accept_primitive_covariant<Meta, Variant, Primitives>::operator()...;
 		using accept_object_and_host_covariants<Meta, Variant, Objects, Externals>::operator();
+
+		consteval static auto types(auto recursive) -> auto {
+			return util::pack_concat(
+				accept_primitive_covariant<Meta, Variant, Primitives>::types(recursive)...,
+				accept_object_and_host_covariants<Meta, Variant, Objects, Externals>::types(recursive)
+			);
+		}
 };
 
 // Unpack `std::variant` alternative types and pass forward to `accept_covariants`

@@ -43,8 +43,8 @@ struct accept_with_throw::accept_throw : Accept {
 
 // Instantiates `visit` and `accept` and automatically pass the `this` pointer as the first
 // constructor argument.
-template <class Visit, class Accept>
-struct transfer_holder : Visit, Accept {
+template <class Visit, class Accept, class... Types>
+struct transfer_holder : Types..., Visit, Accept {
 	private:
 		template <std::size_t... VisitIndex, std::size_t... AcceptIndex>
 		explicit constexpr transfer_holder(
@@ -53,6 +53,7 @@ struct transfer_holder : Visit, Accept {
 			std::index_sequence<AcceptIndex...> /*accept_index*/,
 			auto accept_args
 		) :
+				Types{this}...,
 				// NOLINTNEXTLINE(bugprone-use-after-move)
 				Visit{this, std::get<VisitIndex>(std::move(visit_args))...},
 				// NOLINTNEXTLINE(bugprone-use-after-move)
@@ -139,7 +140,13 @@ constexpr auto transfer_with(
 		}
 	}()>;
 
-	auto visit_and_accept = transfer_holder<visit_type, accept_type>{std::move(visit_args), std::move(accept_args)};
+	// extract shared types from `accept` & `visit`. this allows acceptors to share, for example,
+	// multiple same-named key property getters accessed from different unrelated acceptors.
+	const auto [... accept_types ] = accept_type::types(util::type_pack{});
+	const auto [... visit_types ] = visit_type::types(util::type_pack{});
+	const auto [... unique_types ] = util::pack_unique(accept_types..., visit_types...);
+
+	auto visit_and_accept = transfer_holder<visit_type, accept_type, type_t<unique_types>...>{std::move(visit_args), std::move(accept_args)};
 	// NOLINTNEXTLINE(misc-const-correctness)
 	visit_type& visit = visit_and_accept;
 	const accept_type& accept = visit_and_accept;

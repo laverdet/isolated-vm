@@ -15,7 +15,7 @@ struct visit<Meta, std::tuple<Types...>> {
 
 	public:
 		constexpr explicit visit(auto* transfer) :
-				visit_{[ & ]() constexpr -> visitors_type {
+				visit_{[ = ]() constexpr -> visitors_type {
 					const auto [... indices ] = util::sequence<std::tuple_size_v<visitors_type>>;
 					return {util::elide(util::constructor<std::tuple_element_t<indices, visitors_type>>, transfer)...};
 				}()} {}
@@ -28,6 +28,11 @@ struct visit<Meta, std::tuple<Types...>> {
 		template <class Accept>
 		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept(tuple_tag<sizeof...(Types)>{}, *this, std::forward<decltype(subject)>(subject));
+		}
+
+		consteval static auto types(auto recursive) -> auto {
+			const auto [... types ] = util::make_type_pack(type<visitors_type>);
+			return util::pack_concat(type_t<types>::types(recursive)...);
 		}
 
 	private:

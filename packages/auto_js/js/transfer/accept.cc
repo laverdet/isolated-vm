@@ -46,37 +46,42 @@ struct accept<void, forward<Type, Tag>> {
 		constexpr auto operator()(Tag /*tag*/, visit_holder /*visit*/, std::convertible_to<Type> auto&& subject) const -> forward<Type, Tag> {
 			return forward<Type, Tag>{std::forward<decltype(subject)>(subject)};
 		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
 // `accept` delegated to a sub class passed down from the constructor
 export template <class Accept>
-struct accept_delegated_from;
+struct accept_delegated;
 
 template <class Accept>
-struct accept_target<accept_delegated_from<Accept>> : accept_target<Accept> {};
+struct accept_target<accept_delegated<Accept>> : accept_target<Accept> {};
 
 template <class Accept>
-struct accept_delegated_from : std::reference_wrapper<Accept> {
-		constexpr explicit accept_delegated_from(auto* transfer) :
-				std::reference_wrapper<Accept>{*transfer} {}
+struct accept_delegated : std::reference_wrapper<Accept> {
+		constexpr explicit accept_delegated(auto* transfer) :
+				// nb: Casting through pointer is very intentional. Since we inherit from
+				// `std::reference_wrapper<T>` casting through a reference might invoke `operator T&` and
+				// cause confusing compile-time or run-time errors.
+				std::reference_wrapper<Accept>{*static_cast<Accept*>(transfer)} {}
 };
 
 // Recursively invoke single-argument `accept` calls until a non-`accept`'able type is returned.
 // `referenceable_value`'s are unwrapped and passed to `insert`.
 export template <class Accept, class Insert>
-struct accept_store_unwrapped;
+struct accept_value_direct;
 
 template <class Accept, class Insert>
-struct accept_target<accept_store_unwrapped<Accept, Insert>> : accept_target<Accept> {};
+struct accept_target<accept_value_direct<Accept, Insert>> : accept_target<Accept> {};
 
 template <class Accept, class Insert>
-struct accept_store_unwrapped {
+struct accept_value_direct {
 	private:
 		using accept_type = std::remove_cvref_t<decltype(*std::declval<const Accept&>())>;
 		using target_type = accept_target_t<Accept>;
 
 	public:
-		constexpr accept_store_unwrapped(const Accept& accept, Insert insert) :
+		constexpr accept_value_direct(const Accept& accept, Insert insert) :
 				accept_{accept},
 				insert_{std::move(insert)} {}
 
@@ -119,13 +124,13 @@ struct accept_store_unwrapped {
 // referenceable and intermediate values, and stores references in the visitors reference map, if
 // there is one defined.
 template <class Accept>
-struct accept_value_from_direct;
+struct accept_value_stored;
 
 template <class Accept>
-struct accept_target<accept_value_from_direct<Accept>> : accept_target<Accept> {};
+struct accept_target<accept_value_stored<Accept>> : accept_target<Accept> {};
 
 template <class Accept>
-struct accept_value_from_direct : Accept {
+struct accept_value_stored : Accept {
 		using accept_type = Accept;
 		using accept_type::accept_type;
 
@@ -140,42 +145,29 @@ struct accept_value_from_direct : Accept {
 		constexpr auto operator()(auto_tag auto tag, Visit& visit, auto&& subject) const -> accept_target_t<accept_type> {
 			// nb: A `static_assert` is more correct and helpful than a requirement check, since there
 			// will be no other acceptors which could do better; if you are invoking an instance of
-			// `accept_value_from_direct` then you expect it to succeed. If the assert fails then
-			// something has gone totally off the rails.
+			// `accept_value_stored` then you expect it to succeed. If the assert fails then something has
+			// gone totally off the rails.
 			static_assert(std::invocable<accept_type, decltype(tag), decltype(visit), decltype(subject)>);
 			auto insert = [ & ]() -> auto {
-				if constexpr (has_reference_map(type<Visit>)) {
-					return [ subject = subject, &visit = visit ](const auto& value) { visit.emplace_subject(subject, value); };
+				if constexpr (js::has_reference_map(type<Visit>)) {
+					return [ subject, &visit = visit ](const auto& value) { visit.emplace_subject(subject, value); };
 				} else {
 					return util::unused;
 				}
 			}();
-			return accept_store_unwrapped{*this, insert}(tag, visit, std::forward<decltype(subject)>(subject));
+			return accept_value_direct{*this, insert}(tag, visit, std::forward<decltype(subject)>(subject));
 		}
 };
 
+// Wraps the passed `Accept` and instantiates `accept_value_stored`. Note that the argument here is
+// `Accept` and not `Type`.
 template <class Meta, class Accept>
-using accept_value_from = accept_value_from_direct<typename Meta::accept_wrap_type::template accept<Accept>>;
+using accept_value_from = accept_value_stored<typename Meta::accept_wrap_type::template accept<Accept>>;
 
+// `accept_value` is the main utility used by nested containers. See `accept_value_stored` notes
+// above.
 export template <class Meta, class Type>
 using accept_value = accept_value_from<Meta, accept<Meta, Type>>;
-
-// `accept_value_recursive` is a utility on top of `accept_value` which detects recursive types and
-// uses a delegating acceptor for those.
-template <class Meta, class Type>
-struct accept_value_recursive_type;
-
-export template <class Meta, class Type>
-using accept_value_recursive = accept_value_recursive_type<Meta, Type>::type;
-
-template <class Meta, class Type>
-struct accept_value_recursive_type
-		: std::type_identity<accept_value_from<Meta, accept<Meta, Type>>> {};
-
-template <class Meta, class Type>
-	requires Type::is_recursive_type
-struct accept_value_recursive_type<Meta, Type>
-		: std::type_identity<accept_value_from<Meta, accept_delegated_from<accept<Meta, Type>>>> {};
 
 // Specialized by certain containers to map `Target` to the first meaningful acceptor. This is
 // specifically used with `accept_property_subject_type` in relation to property names.

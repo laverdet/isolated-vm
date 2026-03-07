@@ -3,9 +3,9 @@ module;
 #include <string>
 #include <variant>
 export module auto_js:value;
-export import :dictionary.vector_of;
 export import :intrinsics.bigint;
 export import :intrinsics.date;
+export import :vector.vector_of;
 import :variant.types;
 import :tag;
 

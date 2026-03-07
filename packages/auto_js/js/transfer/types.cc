@@ -73,8 +73,8 @@ struct transfer_type<Type> : std::type_identity<typename Type::transfer_type> {}
 // Check if the given type has a reference map
 constexpr auto has_reference_map = []<class Type>(std::type_identity<Type> /*type*/) consteval {
 	using visit_type = std::remove_cvref_t<Type>;
-	if constexpr (requires { visit_type::has_reference_map; }) {
-		return visit_type::has_reference_map;
+	if constexpr (requires { visit_type::has_reference_map(); }) {
+		return visit_type::has_reference_map();
 	} else {
 		return false;
 	}

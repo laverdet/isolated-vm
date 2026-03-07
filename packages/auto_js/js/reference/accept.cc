@@ -43,7 +43,7 @@ struct accepted_reference_of : accepted_reference {
 		}
 };
 
-// Instantiated by `recursive_refs_value` acceptor. This stashes the underlying value in storage
+// Instantiated by `referential_value_of` acceptor. This stashes the underlying value in storage
 // which is managed by this class. It also serves as the `reference_of<T>` acceptor delegate.
 template <class Meta, class Type>
 struct accept_reference_of : accept<Meta, Type> {
@@ -76,7 +76,6 @@ struct accept_reference_of : accept<Meta, Type> {
 			return reference_type{reference};
 		}
 
-	protected:
 		constexpr auto take_reference_storage() const -> storage_type {
 			return std::exchange(storage_, {});
 		}
@@ -88,51 +87,70 @@ struct accept_reference_of : accept<Meta, Type> {
 
 // `reference_of` acceptor delegates to `accept_reference_of`.
 template <class Meta, class Type>
-struct accept<Meta, reference_of<Type>> : accept_delegated_from<accept_reference_of<Meta, Type>> {
-		using accept_type = accept_delegated_from<accept_reference_of<Meta, Type>>;
+struct accept<Meta, reference_of<Type>> : accept_delegated<accept_reference_of<Meta, Type>> {
+		using accept_type = accept_delegated<accept_reference_of<Meta, Type>>;
 		using accept_type::accept_type;
+
+		consteval static auto types(auto recursive) -> auto {
+			return accept<Meta, Type>::types(recursive);
+		}
 };
 
-// `recursive_refs_value` acceptor delegates to its underlying value acceptor. It also instantiates
+// `referential_value_of` acceptor delegates to its underlying value acceptor. It also instantiates
 // `accept_reference_of` instances for each reference type.
 template <class Meta, class Value, class Refs>
-struct accept_recursive_refs_value;
+struct accept_referential_value_of;
 
 template <class Meta, class Value>
-using accept_recursive_refs_value_with = accept_recursive_refs_value<Meta, Value, typename Value::reference_types>;
+using accept_referential_value_of_from = accept_referential_value_of<Meta, Value, typename Value::reference_types>;
 
 template <class Meta, template <class> class Make, auto Extract>
-struct accept<Meta, recursive_refs_value<Make, Extract>> : accept_recursive_refs_value_with<Meta, recursive_refs_value<Make, Extract>> {
-		using accept_type = accept_recursive_refs_value_with<Meta, recursive_refs_value<Make, Extract>>;
+struct accept<Meta, referential_value_of<Make, Extract>>
+		: accept_delegated<accept_referential_value_of_from<Meta, referential_value_of<Make, Extract>>> {
+	private:
+		using delegated_type = accept_referential_value_of_from<Meta, referential_value_of<Make, Extract>>;
+		using accept_type = accept_delegated<delegated_type>;
+
+	public:
+		// nb: This marks this acceptor as referential!
+		using accept_reference_type = accepted_reference;
+
 		using accept_type::accept_type;
+
+		consteval static auto types(auto recursive) -> auto {
+			return util::type_pack{type<delegated_type>} + delegated_type::types(recursive);
+		}
+
+	protected:
+		constexpr auto take_reference_storage() const {
+			return this->get().take_reference_storage();
+		}
 };
 
 template <class Meta, class Value, class... Refs>
-struct accept_recursive_refs_value<Meta, Value, util::type_pack<Refs...>>
+struct accept_referential_value_of<Meta, Value, util::type_pack<Refs...>>
 		: accept<Meta, typename Value::value_type>,
 			accept_reference_of<Meta, Refs>... {
 	private:
 		using value_type = Value;
-		using underlying_value_type = value_type::value_type;
+		using value_of_type = value_type::value_type;
 		using storage_type = reference_storage<Refs...>;
-		using accept_type = accept<Meta, underlying_value_type>;
+		using accept_type = accept<Meta, value_of_type>;
 
 		template <size_t... Indices>
-		constexpr explicit accept_recursive_refs_value(auto* transfer, std::index_sequence<Indices...> /*indices*/) :
+		constexpr explicit accept_referential_value_of(auto* transfer, std::index_sequence<Indices...> /*indices*/) :
 				accept_type{transfer},
 				accept_reference_of<Meta, Refs>{transfer, Indices}... {}
 
 	public:
-		using accept_reference_type = accepted_reference;
-
-		explicit constexpr accept_recursive_refs_value(auto* transfer) :
-				accept_recursive_refs_value{transfer, std::make_index_sequence<sizeof...(Refs)>{}} {}
+		explicit constexpr accept_referential_value_of(auto* transfer) :
+				accept_referential_value_of{transfer, std::make_index_sequence<sizeof...(Refs)>{}} {}
 
 		// forward underlying acceptor
 		using accept_type::operator();
 
 		// wrap into `value_type`
-		constexpr auto operator()(underlying_value_type&& value) const -> value_type {
+		constexpr auto operator()(value_of_type&& value) const -> value_type {
 			return value_type{std::in_place, std::move(value)};
 		}
 
@@ -144,7 +162,7 @@ struct accept_recursive_refs_value<Meta, Value, util::type_pack<Refs...>>
 
 		// reference provider
 		constexpr auto operator()(std::type_identity<value_type> /*type*/, accepted_reference reference) const -> value_type {
-			const auto reaccept = [ & ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) -> value_type {
+			const auto reaccept = [ = ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) -> value_type {
 				using mapped_reference_type = reference_of<Refs...[ Index ]>;
 				return value_type{std::in_place, mapped_reference_type{reference.id()}};
 			};
@@ -153,12 +171,23 @@ struct accept_recursive_refs_value<Meta, Value, util::type_pack<Refs...>>
 				util::sequence<sizeof...(Refs)>,
 				util::overloaded{
 					reaccept,
-					[ & ]() -> value_type { std::unreachable(); },
+					[]() -> value_type { std::unreachable(); },
 				}
 			);
 		}
 
-	protected:
+		// Infinite recursion check. The failure case is actually just `'types<...>' with deduced return
+		// type cannot be used before it is defined'`
+		template <class... Seen>
+		consteval static auto types(util::type_pack<Seen...> recursive)
+			requires((type<Seen> != type<value_type>) && ...) {
+			return accept_type::types(recursive + util::type_pack{type<value_type>});
+		}
+
+		consteval static auto types(auto /*recursive*/) {
+			return util::type_pack{};
+		}
+
 		constexpr auto take_reference_storage() const -> storage_type {
 			return storage_type{accept_reference_of<Meta, Refs>::take_reference_storage()...};
 		}

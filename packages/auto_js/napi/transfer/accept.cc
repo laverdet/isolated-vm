@@ -26,8 +26,10 @@ using accept_napi_value_with = accept_napi_value<typename Meta::accept_context_t
 template <class Environment>
 struct accept_napi_value : napi::environment_scope<Environment> {
 	public:
-		using napi::environment_scope<Environment>::environment;
+		// nb: This marks this acceptor as referential!
 		using accept_reference_type = napi_value;
+
+		using napi::environment_scope<Environment>::environment;
 
 		explicit accept_napi_value(auto* /*transfer*/, auto& env) :
 				napi::environment_scope<Environment>{env} {}
@@ -72,7 +74,12 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 
 		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, auto&& subject) const
 			-> js::referenceable_value<napi::value<bigint_tag>> {
-			return js::referenceable_value{napi::value<bigint_tag>::make(environment(), std::forward<decltype(subject)>(subject))};
+			return js::referenceable_value{napi::value<bigint_tag>::make(environment(), js::bigint{std::forward<decltype(subject)>(subject)})};
+		}
+
+		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, const js::bigint& subject) const
+			-> js::referenceable_value<napi::value<bigint_tag>> {
+			return js::referenceable_value{napi::value<bigint_tag>::make(environment(), subject)};
 		}
 
 		template <class Numeric>
@@ -252,6 +259,9 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 				}
 			};
 		}
+
+		// no required types
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
 // Plain napi_value acceptor
@@ -280,6 +290,8 @@ struct accept<void, js::forward<napi::value<Tag>, Tag>> {
 		auto operator()(Tag /*tag*/, visit_holder /*visit*/, napi::value<Tag> value) const -> js::forward<napi::value<Tag>, Tag> {
 			return js::forward{napi::value<Tag>{value}, Tag{}};
 		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
 // Object key lookup via napi
@@ -287,6 +299,7 @@ template <class Meta, auto Key, class Type>
 struct accept_property_value<Meta, Key, Type, napi_value> {
 	public:
 		explicit constexpr accept_property_value(auto* transfer) :
+				first{transfer},
 				second{transfer} {}
 
 		auto operator()(dictionary_tag /*tag*/, auto& visit, const auto& object) const -> Type {

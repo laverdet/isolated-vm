@@ -14,6 +14,7 @@ namespace js {
 template <class Enum>
 	requires std::is_enum_v<Enum>
 struct accept<void, Enum> {
+	public:
 		constexpr auto operator()(string_tag_of<char> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> Enum {
 			auto values = accept::make_enum_map();
 			auto result = values.find(util::fnv1a_hash(std::forward<decltype(subject)>(subject)));
@@ -23,6 +24,9 @@ struct accept<void, Enum> {
 			return result->second;
 		}
 
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+
+	private:
 		consteval static auto make_enum_map() {
 			const auto& [... values ] = enum_values<Enum>::values;
 			return util::sealed_map{

@@ -1,7 +1,7 @@
 module;
 #include <ranges>
 #include <vector>
-export module auto_js:dictionary.vector_of;
+export module auto_js:vector.vector_of;
 import :tag;
 
 namespace js {

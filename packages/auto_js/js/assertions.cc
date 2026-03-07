@@ -1,3 +1,4 @@
+// ninja -C build value_js
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -129,6 +130,7 @@ struct specialized {
 template <>
 struct accept<void, specialized> {
 		constexpr auto operator()(object_tag /*tag*/, visit_holder /*visit*/, auto value) const -> specialized { return value; }
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
 template <>
@@ -137,6 +139,8 @@ struct visit<void, specialized> {
 		constexpr auto operator()(specialized value, const Accept& accept) const -> accept_target_t<Accept> {
 			return accept(object_tag{}, *this, value);
 		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
 static_assert(transfer<specialized>(specialized{}) == specialized{});

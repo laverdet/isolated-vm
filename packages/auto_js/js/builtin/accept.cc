@@ -22,6 +22,8 @@ struct accept_as_constant {
 		constexpr auto operator()(Tag /*tag*/, visit_holder /*visit*/, const auto& /*value*/) const -> decltype(Value) {
 			return Value;
 		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
 // Lossless value acceptor
@@ -30,6 +32,8 @@ struct accept_without_narrowing {
 		constexpr auto operator()(Tag /*tag*/, visit_holder /*visit*/, auto&& subject) const -> Type {
 			return Type{std::forward<decltype(subject)>(subject)};
 		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
 // Generic coercing acceptor
@@ -54,6 +58,8 @@ struct accept_coerced {
 		constexpr auto operator()(covariant_tag<covariant_tag_type> tag, visit_holder visit, auto&& subject) const -> Type {
 			return (*this)(*tag, visit, std::forward<decltype(subject)>(subject));
 		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 
 	private:
 		[[nodiscard]] constexpr auto coerce(std::type_identity<Type> /*tag*/, auto&& subject) const -> Type {
@@ -126,6 +132,8 @@ struct accept_coerced_string {
 			return (*this)(*tag, visit, std::forward<decltype(subject)>(subject));
 		}
 
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+
 	private:
 		[[nodiscard]] constexpr auto coerce(std::type_identity<Char> /*tag*/, auto&& subject) const -> value_type {
 			return value_type{std::forward<decltype(subject)>(subject)};
@@ -175,6 +183,8 @@ struct accept<void, tagged_external<Type>> {
 				return tagged_external{*pointer};
 			}
 		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
 template <class Type>
@@ -198,6 +208,36 @@ struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
 		constexpr auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*value*/) const -> std::optional<Type> {
 			return std::nullopt;
 		}
+};
+
+// `std::pair` uses `first` & `second` acceptors. This corresponds to "entries" in a vector / array.
+template <class Meta, class Key, class Value>
+struct accept<Meta, std::pair<Key, Value>> {
+		explicit constexpr accept(auto* transfer) :
+				first{transfer},
+				second{transfer} {}
+
+		constexpr auto operator()(auto& visit, auto&& entry) const -> std::pair<Key, Value> {
+			return std::pair{
+				// NOLINTNEXTLINE(bugprone-use-after-move)
+				visit.first(std::forward<decltype(entry)>(entry).first, first),
+				// NOLINTNEXTLINE(bugprone-use-after-move)
+				visit.second(std::forward<decltype(entry)>(entry).second, second),
+			};
+		}
+
+		constexpr static auto make_struct_subject(auto&& entry) -> std::pair<std::nullptr_t, std::remove_cvref_t<decltype(entry)>> {
+			// nb: `nullptr` is used here because this is a "bound" `visit_key_literal::visit` visitor
+			// which simply returns a static string and does not need a value to visit.
+			return {nullptr, std::forward<decltype(entry)>(entry)};
+		}
+
+		consteval static auto types(auto recursive) -> auto {
+			return accept<Meta, Key>::types(recursive) + accept<Meta, Value>::types(recursive);
+		}
+
+		accept_value<Meta, Key> first;
+		accept_value<Meta, Value> second;
 };
 
 // Accepting a pointer uses the reference acceptor, while also accepting `undefined`

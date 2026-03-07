@@ -102,7 +102,6 @@ struct member_setter_delegate {
 		Type Subject::* member_;
 };
 
-
 // Getter delegate for `struct_accessor`
 template <class Get>
 struct accessor_getter_delegate;
@@ -162,7 +161,6 @@ struct struct_member
 				} {}
 };
 
-
 // Property template through getter & setter
 export template <class Name, class Get, class Set>
 struct struct_accessor
@@ -197,6 +195,8 @@ export template <class... Properties>
 struct struct_template : std::tuple<Properties...> {
 		explicit constexpr struct_template(Properties... properties) :
 				std::tuple<Properties...>{std::move(properties)...} {}
+		// nb: Allows structured binding of the underlying `std::tuple<...>`
+		constexpr auto as_tuple() const -> const std::tuple<Properties...>& { return *this; }
 		constexpr static auto is_struct_template = true;
 };
 

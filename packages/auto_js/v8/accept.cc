@@ -19,6 +19,7 @@ namespace js {
 // Base class for primitive acceptors. These require only an isolate lock.
 struct accept_v8_primitive {
 	public:
+		// nb: This marks this acceptor as referential!
 		using accept_reference_type = v8::Local<v8::Value>;
 
 		accept_v8_primitive() = delete;
@@ -80,6 +81,9 @@ struct accept_v8_primitive {
 			return subject;
 		}
 
+		// no required types
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+
 	private:
 		v8::Isolate* isolate_;
 };
@@ -122,7 +126,12 @@ struct accept_v8_value : accept_v8_primitive {
 
 		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, auto&& subject) const
 			-> js::referenceable_value<v8::Local<v8::BigInt>> {
-			return js::referenceable_value{iv8::bigint::make(witness(), std::forward<decltype(subject)>(subject))};
+			return js::referenceable_value{iv8::bigint::make(witness(), js::bigint{std::forward<decltype(subject)>(subject)})};
+		}
+
+		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, const js::bigint& subject) const
+			-> js::referenceable_value<v8::Local<v8::BigInt>> {
+			return js::referenceable_value{iv8::bigint::make(witness(), subject)};
 		}
 
 		template <class Numeric>

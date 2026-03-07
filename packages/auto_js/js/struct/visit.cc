@@ -30,6 +30,7 @@ struct visit_getter : visit<Meta, typename Get::value_type> {
 };
 
 // Visitor passed to acceptor for each member
+// TODO: Lift key storage up to top `transfer_holder`
 template <class Meta, class Property>
 struct visit_object_property {
 	private:
@@ -39,7 +40,12 @@ struct visit_object_property {
 
 	public:
 		constexpr visit_object_property(auto* transfer, Property property) :
+				first{transfer},
 				second{transfer, property.get} {}
+
+		consteval static auto types(auto recursive) -> auto {
+			return visit<Meta, typename getter_type::value_type>::types(recursive);
+		}
 
 		NO_UNIQUE_ADDRESS first_type first;
 		NO_UNIQUE_ADDRESS second_type second;
@@ -56,22 +62,28 @@ using visit_struct_properties_t = visit_struct_properties<Meta, Type, std::remov
 template <class Meta, class Type, class... Property>
 struct visit_struct_properties<Meta, Type, js::struct_template<Property...>> {
 	private:
+		using descriptor_type = struct_properties<Type>;
 		using properties_type = std::tuple<visit_object_property<Meta, Property>...>;
 
 	public:
 		explicit constexpr visit_struct_properties(auto* transfer) :
-				properties{[ & ]() constexpr -> properties_type {
+				properties{[ = ]() constexpr -> properties_type {
 					const auto [... indices ] = util::sequence<sizeof...(Property)>;
 					return {util::elide{
 						util::constructor<visit_object_property<Meta, Property...[ indices ]>>,
 						transfer,
-						std::get<indices>(struct_properties<Type>::properties)
+						std::get<indices>(descriptor_type::properties)
 					}...};
 				}()} {}
 
 		template <class Accept>
 		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept(struct_tag<sizeof...(Property)>{}, properties, std::forward<decltype(subject)>(subject));
+		}
+
+		consteval static auto types(auto recursive) -> auto {
+			const auto [... properties ] = descriptor_type::properties.as_tuple();
+			return util::pack_concat(visit_object_property<Meta, decltype(properties)>::types(recursive)...);
 		}
 
 	private:

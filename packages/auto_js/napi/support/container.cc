@@ -17,8 +17,8 @@ struct virtual_value_map {
 		using iterator = container_type::iterator;
 		using mapped_type = container_type::mapped_type;
 
-		virtual auto end() -> iterator = 0;
-		virtual auto find(napi_value key) -> iterator = 0;
+		virtual auto end() const -> iterator = 0;
+		virtual auto find(napi_value key) const -> iterator = 0;
 		virtual auto try_emplace(napi_value key, Type value) -> std::pair<iterator, bool> = 0;
 };
 
@@ -31,11 +31,11 @@ struct concrete_value_map final : virtual_value_map<typename Map::mapped_type> {
 		using iterator = virtual_value_map<typename Map::mapped_type>::iterator;
 		using mapped_type = container_type::mapped_type;
 
-		virtual auto end() -> iterator {
+		virtual auto end() const -> iterator {
 			return std::bit_cast<iterator>(map_.end());
 		}
 
-		virtual auto find(napi_value key) -> iterator {
+		virtual auto find(napi_value key) const -> iterator {
 			return std::bit_cast<iterator>(map_.find(key));
 		}
 
@@ -67,8 +67,8 @@ class value_map {
 						: virtual_map_type{indirect_map_type{}}
 				} {}
 
-		auto end() -> iterator { return map_->end(); }
-		auto find(napi_value key) -> iterator { return map_->find(key); }
+		auto end() const -> iterator { return map_->end(); }
+		auto find(napi_value key) const -> iterator { return map_->find(key); }
 		auto try_emplace(napi_value key, mapped_type value) -> std::pair<iterator, bool> { return map_->try_emplace(key, std::move(value)); }
 
 	private:

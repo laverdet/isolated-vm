@@ -26,7 +26,7 @@ struct visit_napi_property_name {
 		explicit visit_napi_property_name(Visit& visit) : visit_{visit} {}
 
 		template <class Accept>
-		auto operator()(napi_value subject, const Accept& accept) const -> accept_target_t<Accept> {
+		auto operator()(napi_value subject, const Accept& accept) -> accept_target_t<Accept> {
 			return visit_.get().lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
 				switch (napi::invoke(napi_typeof, napi_env{visit_.get()}, subject)) {
 					case napi_number:
@@ -156,6 +156,9 @@ struct visit_napi_value
 			});
 		}
 
+		// no required types
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+
 	private:
 		// Private visit operations for refable types
 		template <class Accept>
@@ -205,7 +208,7 @@ struct visit_napi_value
 
 		// Convenience function which wraps in `napi::bound_value` and invokes `accept`.
 		template <auto_tag Tag, class Accept>
-		[[nodiscard]] auto accept_tagged(value<Tag> subject, const Accept& accept) const -> accept_target_t<Accept> {
+		[[nodiscard]] auto accept_tagged(value<Tag> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept(Tag{}, *this, napi::bound_value{napi_env{*this}, subject});
 		}
 
@@ -234,6 +237,8 @@ struct visit<Meta, value<object_tag>> : visit_napi_value_with<Meta> {
 template <auto Key>
 struct visit_key_literal<Key, napi_value> : util::non_moveable {
 	public:
+		explicit constexpr visit_key_literal(auto* /*transfer*/) {}
+
 		template <class Accept>
 		[[nodiscard]] auto get_local(const Accept& accept_or_visit) -> napi_value {
 			if (local_key_ == napi_value{}) {

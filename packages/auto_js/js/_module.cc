@@ -1,6 +1,5 @@
 export module auto_js;
 export import :deferred_receiver;
-export import :dictionary.vector_of;
 export import :enum_.types;
 export import :function;
 export import :functional;
@@ -15,10 +14,9 @@ export import :tuple.accept; // for `rest`
 export import :union_.types;
 export import :value;
 export import :variant.types;
+export import :vector.vector_of;
 import :builtin.accept;
 import :builtin.visit;
-import :dictionary.accept;
-import :dictionary.visit;
 import :enum_.accept;
 import :reference.accept;
 import :reference.visit;

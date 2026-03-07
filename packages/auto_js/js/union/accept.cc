@@ -53,13 +53,17 @@ struct accept<Meta, std::variant<Types...>> {
 			return accept_alternative->second(*this, visit, std::forward<decltype(subject)>(subject));
 		}
 
+		consteval static auto types(auto recursive) -> auto {
+			return (accept_value<Meta, Types>::types(recursive) + ...);
+		}
+
 	private:
 		template <class Value, class Visit>
 		consteval static auto make_discriminant_map() {
 			const auto [... indices ] = util::sequence<sizeof...(Types)>;
 			return util::sealed_map{
 				std::in_place,
-				[ & ]() constexpr -> auto {
+				[ = ]() constexpr -> auto {
 					// NOLINTNEXTLINE(modernize-type-traits)
 					const auto& alternative = std::get<indices>(descriptor_type::alternatives);
 					return std::pair{util::fnv1a_hash(std::basic_string_view{alternative.discriminant}), &accept_alternative<indices, Visit, Value>};
