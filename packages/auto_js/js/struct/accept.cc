@@ -13,8 +13,8 @@ import :struct_.types;
 import :transfer;
 import util;
 
-#if _LIBCPP_VERSION
-// clang 22.1.0 w/ -stdlib=libc++
+#if _LIBCPP_VERSION || _MSVC_STL_UPDATE
+// clang 22.1.0 w/ -stdlib=libc++ (and also MS STL)
 // /workspace/packages/auto_js/js/struct/accept.cc:38:59: error: invalid operands to binary expression ('const char16_t[29]' and 'std::__1::basic_string<char16_t>')
 //  38 |    throw js::type_error{u"Missing required property: '" + name_u16 + u"'"};
 export {

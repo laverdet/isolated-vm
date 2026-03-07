@@ -10,6 +10,11 @@ export module util:utility.ranges;
 export {
 	using std::ranges::operator|;
 }
+#elif _MSVC_STL_UPDATE
+// Haha, also with MS STL wow
+export {
+	using std::ranges::_Pipe::operator|;
+}
 #endif
 
 namespace util {
