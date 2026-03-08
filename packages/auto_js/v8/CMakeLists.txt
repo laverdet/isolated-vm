@@ -1,5 +1,6 @@
-add_library(v8_js OBJECT)
+find_package(Boost 1.83 REQUIRED)
 
+add_library(v8_js OBJECT)
 target_sources(v8_js
 	PRIVATE
 		evaluation/module.cc

@@ -40,7 +40,4 @@ target_sources(value_js
 		vector/vector_of.cc
 		vector/visit.cc
 )
-target_link_libraries(value_js PRIVATE
-	Boost::boost
-	utility
-)
+target_link_libraries(value_js PRIVATE utility)

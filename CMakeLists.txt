@@ -46,9 +46,6 @@ cmake_path(ABSOLUTE_PATH V8_LIBRARY_PATH BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
 # Project config
 project(isolated_vm LANGUAGES C CXX)
 
-# Boost requirement
-find_package(Boost 1.83 REQUIRED)
-
 # C++26 environment
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_EXTENSIONS OFF)

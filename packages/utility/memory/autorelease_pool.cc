@@ -1,9 +1,10 @@
 module;
 #include "shim/macro.h"
-#include <boost/container/flat_set.hpp>
+#include <algorithm>
 #include <cassert>
 #include <memory>
 #include <utility>
+#include <vector>
 export module util:memory.autorelease_pool;
 import :memory.comparator;
 import :utility;
@@ -162,7 +163,7 @@ export class autorelease_pool : util::non_copyable {
 
 		using allocator_type = std::allocator<void>;
 		using releasable_type = releasable<allocator_type>;
-		using container_type = boost::container::flat_set<releasable_type::unique_pointer_type, pointer_less<releasable_type>>;
+		using container_type = std::vector<releasable_type::unique_pointer_type>;
 
 	public:
 		template <class> class allocator;
@@ -206,24 +207,15 @@ export class autorelease_pool : util::non_copyable {
 
 		template <class Type>
 		auto emplace() -> releasable_type* {
-			// Workaround for boost error on clang 22.1.0. Probably more module visibility issues.
-
-			// /usr/include/boost/container/allocator_traits.hpp:94:4: error: no matching function for call to 'operator new'
-			//    94 |    ::new(const_cast<void*>(static_cast<const volatile void*>(p)), boost_container_new_t()) T(::boost::forward<Args>(args)...);
-			//       |    ^~
-			// NOLINTNEXTLINE(readability-simplify-boolean-expr)
-			if constexpr (false) {
-				new (nullptr, boost_container_new_t{}) int{};
-			}
-			return releasables_.emplace(releasable_type::allocate<Type>(allocator_)).first->get();
+			return releasables_.emplace_back(releasable_type::allocate<Type>(allocator_)), releasables_.back().get();
 		}
 
 		auto erase(releasable_type* ptr) -> void {
-			releasables_.erase(find(ptr));
+			util::swap_and_pop(releasables_, find(ptr));
 		}
 
-		auto find(releasable_type* ptr) const -> container_type::const_iterator {
-			auto iterator = releasables_.find(ptr);
+		auto find(releasable_type* ptr) -> container_type::iterator {
+			auto iterator = std::ranges::find(releasables_, ptr, util::pointer_projection<releasable_type>{});
 			assert(iterator != releasables_.end());
 			return iterator;
 		}

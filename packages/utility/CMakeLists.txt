@@ -39,5 +39,3 @@ target_sources(utility
 if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
 	target_sources(utility PRIVATE platform/shim/darwin.cc)
 endif()
-
-target_link_libraries(utility PRIVATE Boost::boost)

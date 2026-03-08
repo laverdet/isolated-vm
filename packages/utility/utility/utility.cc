@@ -79,6 +79,14 @@ constexpr auto make_string_view(util::constant_wrapper<String> /*cw*/) noexcept 
 	return make_string_view(String.value);
 }
 
+// Remove an element from a (probably) `std::vector` by swap and popping
+export auto swap_and_pop(auto& container, auto iterator) -> void {
+	if (std::next(iterator) != container.end()) {
+		std::swap(*iterator, container.back());
+	}
+	container.pop_back();
+}
+
 // Deref'able holder which always contains a value
 export template <class Type>
 class just : public pointer_facade {
