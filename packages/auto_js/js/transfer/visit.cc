@@ -42,12 +42,12 @@ struct visit<void, forward<Type>> {
 
 // `visit` delegated to a sub class passed down from the constructor
 export template <class Visit>
-struct visit_delegated : std::reference_wrapper<Visit> {
+struct visit_delegated : util::reference_wrapper<Visit> {
 		constexpr explicit visit_delegated(auto* transfer) :
 				// nb: Casting through pointer is very intentional. Since we inherit from
 				// `std::reference_wrapper<T>` casting through a reference might invoke `operator T&` and
 				// cause confusing compile-time or run-time errors.
-				std::reference_wrapper<Visit>{*static_cast<Visit*>(transfer)} {}
+				util::reference_wrapper<Visit>{*static_cast<Visit*>(transfer)} {}
 
 		constexpr auto emplace_subject(auto reference, const auto& value) -> void {
 			this->get().emplace_subject(reference, value);

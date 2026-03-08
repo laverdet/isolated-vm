@@ -58,12 +58,12 @@ template <class Accept>
 struct accept_target<accept_delegated<Accept>> : accept_target<Accept> {};
 
 template <class Accept>
-struct accept_delegated : std::reference_wrapper<Accept> {
+struct accept_delegated : util::reference_wrapper<Accept> {
 		constexpr explicit accept_delegated(auto* transfer) :
 				// nb: Casting through pointer is very intentional. Since we inherit from
 				// `std::reference_wrapper<T>` casting through a reference might invoke `operator T&` and
 				// cause confusing compile-time or run-time errors.
-				std::reference_wrapper<Accept>{*static_cast<Accept*>(transfer)} {}
+				util::reference_wrapper<Accept>{*static_cast<Accept*>(transfer)} {}
 };
 
 // Recursively invoke single-argument `accept` calls until a non-`accept`'able type is returned.
@@ -85,19 +85,22 @@ struct accept_value_direct {
 				accept_{accept},
 				insert_{std::move(insert)} {}
 
-		constexpr auto operator()(auto tag, auto& visit, auto&& subject) const -> target_type
-			requires std::invocable<const accept_type&, decltype(tag), decltype(visit), decltype(subject)> {
+		constexpr auto operator()(auto tag, auto& visit, auto&& subject) const -> target_type {
+			// nb: A `static_assert` is more correct and helpful than a requirement check, since there
+			// will be no other acceptors which could do better; if you are invoking an instance of
+			// `accept_value_stored` then you expect it to succeed. If the assert fails then something has
+			// gone totally off the rails.
+			static_assert(std::invocable<accept_type, decltype(tag), decltype(visit), decltype(subject)>);
 			return consume(util::invoke_as<accept_type>(accept_.get(), tag, visit, std::forward<decltype(subject)>(subject)));
 		}
 
 	private:
-		[[nodiscard]] constexpr auto consume(target_type /*&&*/ value) const -> target_type {
-			return std::forward<decltype(value)>(value);
-		}
-
-		constexpr auto consume(auto&& value) const -> target_type
-			requires std::invocable<const accept_type&, decltype(value)> {
-			return consume((*accept_.get())(std::forward<decltype(value)>(value)));
+		constexpr auto consume(auto&& value) const -> target_type {
+			if constexpr (std::invocable<const accept_type&, decltype(value)>) {
+				return consume((*accept_.get())(std::forward<decltype(value)>(value)));
+			} else {
+				return std::forward<decltype(value)>(value);
+			}
 		}
 
 		template <class Type>
@@ -115,7 +118,7 @@ struct accept_value_direct {
 			return consume(*std::move(receiver));
 		}
 
-		std::reference_wrapper<const Accept> accept_;
+		util::reference_wrapper<const Accept> accept_;
 		NO_UNIQUE_ADDRESS Insert insert_;
 };
 
@@ -143,11 +146,6 @@ struct accept_value_stored : Accept {
 
 		template <class Visit>
 		constexpr auto operator()(auto_tag auto tag, Visit& visit, auto&& subject) const -> accept_target_t<accept_type> {
-			// nb: A `static_assert` is more correct and helpful than a requirement check, since there
-			// will be no other acceptors which could do better; if you are invoking an instance of
-			// `accept_value_stored` then you expect it to succeed. If the assert fails then something has
-			// gone totally off the rails.
-			static_assert(std::invocable<accept_type, decltype(tag), decltype(visit), decltype(subject)>);
 			auto insert = [ & ]() -> auto {
 				if constexpr (js::has_reference_map(type<Visit>)) {
 					return [ subject, &visit = visit ](const auto& value) { visit.emplace_subject(subject, value); };

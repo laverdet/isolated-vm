@@ -17,7 +17,7 @@ class vector_of : public std::vector<Value> {
 			(..., this->emplace_back(std::forward<decltype(args)>(args)));
 		}
 
-		constexpr explicit vector_of(std::from_range_t from_range, std::ranges::range auto&& range) :
+		constexpr explicit vector_of(std::from_range_t from_range, auto&& range) :
 				std::vector<Value>{from_range, std::forward<decltype(range)>(range)} {}
 
 		// For testing / assertions

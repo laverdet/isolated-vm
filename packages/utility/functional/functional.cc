@@ -77,4 +77,23 @@ export constexpr auto template_switch(const auto& value, auto case_pack, auto in
 	return dispatch(cases...);
 }
 
+// libc++'s `std::reference_wrapper` causes a template instantiation while looking for
+// `result_type`. That breaks our transfer machinery.
+export template <class Type>
+class reference_wrapper {
+	public:
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		constexpr reference_wrapper(Type& value) : value_{&value} {}
+
+		constexpr auto operator()(auto&&... args) const
+			-> decltype(std::declval<Type&>()(std::declval<decltype(args)>()...)) {
+			return (*value_)(std::forward<decltype(args)>(args)...);
+		}
+
+		constexpr auto get() const -> Type& { return *value_; }
+
+	private:
+		Type* value_;
+};
+
 } // namespace util
