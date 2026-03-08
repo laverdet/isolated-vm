@@ -243,13 +243,18 @@ struct visit_key_literal<Key, napi_value> : util::non_moveable {
 		[[nodiscard]] auto get_local(const Accept& accept_or_visit) -> napi_value {
 			if (local_key_ == napi_value{}) {
 				auto& environment = accept_or_visit.environment();
-				auto& storage = environment.global_storage(Key);
+				auto storage = environment.string_table_storage(Key);
 				if (storage) {
-					local_key_ = storage.get(environment);
+					auto& reference = *storage;
+					if (reference) {
+						local_key_ = reference.get(environment);
+					} else {
+						auto value = napi::value<string_tag>::make_property_name(environment, util::make_string_view(Key));
+						reference.reset(environment, value);
+						local_key_ = napi_value{value};
+					}
 				} else {
-					auto value = napi::value<string_tag>::make_property_name(environment, util::make_string_view(Key));
-					storage.reset(environment, value);
-					local_key_ = napi_value{value};
+					return napi::value<string_tag>::make_property_name(environment, util::make_string_view(Key));
 				}
 			}
 			return local_key_;

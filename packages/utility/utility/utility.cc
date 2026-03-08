@@ -79,6 +79,38 @@ constexpr auto make_string_view(util::constant_wrapper<String> /*cw*/) noexcept 
 	return make_string_view(String.value);
 }
 
+// Deref'able holder which always contains a value
+export template <class Type>
+class just : public pointer_facade {
+	public:
+		explicit constexpr just(const Type& value) : value_{value} {}
+		explicit constexpr just(Type&& value) : value_{std::move(value)} {}
+		explicit constexpr operator bool() const { return true; }
+		constexpr auto operator*(this auto&& self) { return std::forward<decltype(self)>(self).value_; }
+
+	private:
+		Type value_;
+};
+
+export template <class Type>
+class just<Type&> : public pointer_facade {
+	public:
+		explicit constexpr just(Type& value) : value_{&value} {}
+		explicit constexpr operator bool() const { return true; }
+		constexpr auto operator*() const -> Type& { return *value_; }
+
+	private:
+		Type* value_;
+};
+
+// Like `just<T>` but never contains a value
+export template <class Type>
+class nothing : public pointer_facade {
+	public:
+		explicit constexpr operator bool() const { return false; }
+		constexpr auto operator*() const -> Type { std::unreachable(); }
+};
+
 // https://en.cppreference.com/w/cpp/experimental/scope_exit
 export template <class Invoke>
 class scope_exit : non_copyable {

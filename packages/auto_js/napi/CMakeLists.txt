@@ -27,6 +27,7 @@ target_sources(napi_js
 		support/environment.h.cc
 		support/error_scope.cc
 		support/promise.cc
+		support/string_table.cc
 		support/utility.cc
 		transfer/accept.cc
 		transfer/visit.cc

@@ -11,9 +11,8 @@ using namespace std::string_view_literals;
 
 namespace backend_napi_v8 {
 
-// Storage for string literals used in this module
-constexpr auto string_literals = util::sealed_map{
-	std::type_identity<napi::reference<string_tag>>{},
+// String literals used in this module
+constexpr auto string_literals = std::tuple{
 	"Agent"sv,
 	"attributes"sv,
 	"clock"sv,
@@ -51,7 +50,9 @@ constexpr auto class_templates = util::sealed_map{
 };
 
 // Instance of the `isolated-vm` module, once per nodejs environment.
-export class environment : public napi::environment_of<environment> {
+export class environment
+		: public napi::environment_of<environment>,
+			public napi::string_table<string_literals> {
 	public:
 		explicit environment(napi_env env) : environment_of{env} {}
 
@@ -75,14 +76,6 @@ export class environment : public napi::environment_of<environment> {
 			}
 		}
 
-		// Lookup `reference<T>` for the given literal
-		auto global_storage(const auto& string_value) -> auto& {
-			constexpr auto index = string_literals.lookup(util::make_string_view(string_value));
-			static_assert(index, "String literal is missing in storage");
-			// static_assert(index, std::format("String literal '{}' is missing in storage", Value.data()));
-			return string_literal_storage_.at(index).second;
-		}
-
 		auto make_initialize() -> napi::value<function_tag>;
 
 	private:
@@ -90,7 +83,6 @@ export class environment : public napi::environment_of<environment> {
 		napi::reference<function_tag> agent_class_;
 		napi::reference<function_tag> module_class_;
 		util::copy_of<class_templates> class_template_storage_;
-		util::copy_of<string_literals> string_literal_storage_;
 };
 
 } // namespace backend_napi_v8
