@@ -92,10 +92,10 @@ auto realm_handle::class_template(environment& env) -> js::napi::value<class_tag
 	return env.class_template(
 		std::type_identity<realm_handle>{},
 		js::class_template{
-			js::class_constructor{util::cw<u8"Realm">},
-			js::class_method{util::cw<u8"acquireGlobalObject">, util::fn<&realm_handle::acquire_global_object>},
-			js::class_method{util::cw<u8"createCapability">, util::fn<&module_handle::create_capability>},
-			js::class_method{util::cw<u8"instantiateRuntime">, util::fn<&realm_handle::instantiate_runtime>},
+			js::class_constructor{util::cw<"Realm">},
+			js::class_method{util::cw<"acquireGlobalObject">, util::fn<&realm_handle::acquire_global_object>},
+			js::class_method{util::cw<"createCapability">, util::fn<&module_handle::create_capability>},
+			js::class_method{util::cw<"instantiateRuntime">, util::fn<&realm_handle::instantiate_runtime>},
 		}
 	);
 }

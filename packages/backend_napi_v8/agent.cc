@@ -101,11 +101,11 @@ auto agent_class_template(environment& env) -> js::napi::value<js::class_tag_of<
 	return env.class_template(
 		std::type_identity<agent_handle>{},
 		js::class_template{
-			js::class_constructor{util::cw<u8"Agent">},
-			js::class_method{util::cw<u8"compileModule">, module_handle::compile},
-			js::class_method{util::cw<u8"compileScript">, script_handle::compile_script},
-			js::class_method{util::cw<u8"createRealm">, realm_handle::create},
-			js::class_static{util::cw<u8"create">, create_agent},
+			js::class_constructor{util::cw<"Agent">},
+			js::class_method{util::cw<"compileModule">, module_handle::compile},
+			js::class_method{util::cw<"compileScript">, script_handle::compile_script},
+			js::class_method{util::cw<"createRealm">, realm_handle::create},
+			js::class_static{util::cw<"create">, create_agent},
 		}
 	);
 }

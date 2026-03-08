@@ -85,8 +85,8 @@ auto script_handle::class_template(environment& env) -> js::napi::value<class_ta
 	return env.class_template(
 		std::type_identity<script_handle>{},
 		js::class_template{
-			js::class_constructor{util::cw<u8"Script">},
-			js::class_method{util::cw<u8"run">, util::fn<&script_handle::run>},
+			js::class_constructor{util::cw<"Script">},
+			js::class_method{util::cw<"run">, util::fn<&script_handle::run>},
 		}
 	);
 }

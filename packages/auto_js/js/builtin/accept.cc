@@ -112,7 +112,7 @@ struct accept<void, uint64_t> : accept_coerced<bigint_tag_of, bigint, uint64_t> 
 template <>
 struct accept<void, js_clock::time_point> : accept_without_narrowing<date_tag, js_clock::time_point> {};
 
-// `string` types (no utf8 interpolation is implemented)
+// `string` types. utf8 string interpolation is not implemented, so non-latin1 characters will throw
 template <class Char>
 struct accept_coerced_string {
 	private:
@@ -144,6 +144,8 @@ struct accept_coerced_string {
 			constexpr auto max_char = util::overloaded{
 				// latin1
 				[](std::type_identity<char>) constexpr -> int { return 127; },
+				// utf8
+				[](std::type_identity<char8_t>) constexpr -> int { return 127; },
 				// utf16
 				[](std::type_identity<char16_t>) constexpr -> int { return 65'535; },
 			}(type<Char>);

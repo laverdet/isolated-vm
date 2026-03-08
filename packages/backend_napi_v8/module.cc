@@ -307,9 +307,9 @@ auto module_handle::class_template(environment& env) -> js::napi::value<class_ta
 	return env.class_template(
 		std::type_identity<module_handle>{},
 		js::class_template{
-			js::class_constructor{util::cw<u8"Module">},
-			js::class_method{util::cw<u8"_link">, util::fn<&module_handle::link>},
-			js::class_method{util::cw<u8"evaluate">, util::fn<&module_handle::evaluate>},
+			js::class_constructor{util::cw<"Module">},
+			js::class_method{util::cw<"_link">, util::fn<&module_handle::link>},
+			js::class_method{util::cw<"evaluate">, util::fn<&module_handle::evaluate>},
 		}
 	);
 }
@@ -346,8 +346,8 @@ auto subscriber_capability::class_template(environment& env) -> js::napi::value<
 	return env.class_template(
 		std::type_identity<subscriber_capability>{},
 		js::class_template{
-			js::class_constructor{util::cw<u8"SubscriberCapability">},
-			js::class_method{util::cw<u8"send">, util::fn<&subscriber_capability::send>},
+			js::class_constructor{util::cw<"SubscriberCapability">},
+			js::class_method{util::cw<"send">, util::fn<&subscriber_capability::send>},
 		}
 	);
 }

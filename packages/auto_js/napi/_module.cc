@@ -4,6 +4,7 @@ import :accept;
 import :visit;
 // Before these:
 export import :api; // should be removed
+export import :class_template_storage;
 export import :environment;
 export import :external;
 export import :function;

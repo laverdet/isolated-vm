@@ -22,6 +22,7 @@ target_sources(napi_js
 		handle/value.cc
 		support/callback_storage.cc
 		support/callback.cc
+		support/class_template_storage.cc
 		support/container.cc
 		support/environment_fwd.cc
 		support/environment.h.cc

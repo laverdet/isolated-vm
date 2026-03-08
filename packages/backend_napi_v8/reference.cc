@@ -204,10 +204,10 @@ auto reference_handle::class_template(environment& env) -> js::napi::value<class
 	return env.class_template(
 		std::type_identity<reference_handle>{},
 		js::class_template{
-			js::class_constructor{util::cw<u8"Reference">},
-			js::class_method{util::cw<u8"copy">, util::fn<&reference_handle::copy>},
-			js::class_method{util::cw<u8"get">, util::fn<&reference_handle::get>},
-			js::class_method{util::cw<u8"invoke">, util::fn<&reference_handle::invoke>},
+			js::class_constructor{util::cw<"Reference">},
+			js::class_method{util::cw<"copy">, util::fn<&reference_handle::copy>},
+			js::class_method{util::cw<"get">, util::fn<&reference_handle::get>},
+			js::class_method{util::cw<"invoke">, util::fn<&reference_handle::invoke>},
 		}
 	);
 }

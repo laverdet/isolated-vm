@@ -9,6 +9,7 @@ import :environment;
 import :realm;
 import auto_js;
 import napi_js;
+import util;
 import v8_js;
 
 namespace backend_napi_v8 {
