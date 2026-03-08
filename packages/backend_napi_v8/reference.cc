@@ -1,5 +1,4 @@
 module;
-#include <expected>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -172,21 +171,13 @@ auto reference_handle::get(environment& env, js::string_t name) -> js::forward<j
 }
 
 auto reference_handle::invoke(environment& env, std::vector<js::value_t> params) -> js::forward<js::napi::value<>> {
-	using expected_type = std::expected<js::value_t, js::error_value>;
-	auto [ promise, resolver ] = make_promise(env, [](environment& env, expected_type result) -> auto {
-		// nb: The `transfer` machinery cannot transfer nested `js::value_t`, so it must be
-		// transferred here first.
-		auto expected = result.transform([ & ](js::value_t& value) -> auto {
-			return js::forward{js::transfer_in_strict<napi_value>(std::move(value), env)};
-		});
-		return make_completion_record(env, std::move(expected));
-	});
+	auto [ promise, resolver ] = make_promise(env);
 	if (typeof_ == js::typeof_kind::function) {
 		agent_.schedule(
 			[ value = value_ ](
 				const agent_handle::lock& agent_lock,
 				auto resolver,
-				js::iv8::shared_remote<v8::Context> realm,
+				const js::iv8::shared_remote<v8::Context>& realm,
 				std::vector<js::value_t> params
 			) -> void {
 				auto maybe_result = iv8::invoke_externalized_error_scope(agent_lock, [ & ]() -> js::value_t {
@@ -197,7 +188,7 @@ auto reference_handle::invoke(environment& env, std::vector<js::value_t> params)
 						return js::transfer_out<js::value_t>(result, lock);
 					});
 				});
-				resolver(std::move(maybe_result));
+				resolver.resolve(completion_record{std::move(maybe_result)});
 			},
 			std::move(resolver),
 			realm_,

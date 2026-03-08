@@ -35,7 +35,7 @@ auto module_handle::compile(
 	auto [ promise, resolver ] = make_promise(
 		env,
 		[](environment& env, expected_type result) -> auto {
-			return make_completion_record(env, result.transform([ & ](value_type& module_data) -> auto {
+			return completion_record{result.transform([ & ](value_type& module_data) -> auto {
 				auto& [ module_, specifier, requests ] = module_data;
 				auto class_template = js::napi::value<class_tag_of<module_handle>>::from(env.module_class());
 				return js::forward{class_template.runtime_construct(
@@ -43,7 +43,7 @@ auto module_handle::compile(
 					std::tuple{std::move(module_)},
 					std::tuple{std::move(specifier), std::move(requests)}
 				)};
-			}));
+			})};
 		}
 	);
 	agent.schedule(

@@ -10,12 +10,12 @@ import util;
 namespace backend_napi_v8 {
 using namespace js;
 
-export template <class Type>
+template <class Expected>
 struct normal_completion_record {
 	public:
-		explicit normal_completion_record(Type result) : result_{std::move(result)} {}
+		explicit normal_completion_record(Expected result) : result_{std::move(result)} {}
 
-		[[nodiscard]] auto value() && -> Type { return std::move(result_); }
+		[[nodiscard]] auto value() && -> Expected { return std::move(result_); }
 
 		constexpr static auto struct_template = js::struct_template{
 			js::struct_constant{util::cw<"complete">, true},
@@ -23,10 +23,10 @@ struct normal_completion_record {
 		};
 
 	private:
-		Type result_;
+		Expected result_;
 };
 
-export struct throw_completion_record {
+struct throw_completion_record {
 	public:
 		explicit throw_completion_record(js::error_value error) : error_{std::move(error)} {}
 		[[nodiscard]] auto error() && -> js::error_value { return std::move(error_); }
@@ -40,13 +40,46 @@ export struct throw_completion_record {
 		js::error_value error_;
 };
 
-export template <class Expect>
-auto make_completion_record(environment& env, std::expected<Expect, js::error_value> result) {
-	if (result) {
-		return js::forward{js::transfer_in_strict<napi_value>(normal_completion_record{*std::move(result)}, env)};
-	} else {
-		return js::forward{js::transfer_in_strict<napi_value>(throw_completion_record{std::move(result).error()}, env)};
-	}
-}
+export template <class Expected>
+struct completion_record : std::expected<normal_completion_record<Expected>, throw_completion_record> {
+		using std::expected<normal_completion_record<Expected>, throw_completion_record>::expected;
+};
+
+template <class Expected>
+completion_record(std::expected<Expected, js::error_value>) -> completion_record<Expected>;
 
 } // namespace backend_napi_v8
+
+namespace js {
+using namespace backend_napi_v8;
+
+// TODO: Allow `bool` to be a union discriminant, `std::expected` to be a variant, and unions to be
+// visitable. In place of those features, a quick custom visitor is used.
+template <class Meta, class Expected>
+struct visit<Meta, completion_record<Expected>>
+		: visit<Meta, normal_completion_record<Expected>>,
+			visit<Meta, throw_completion_record> {
+	private:
+		using visit_expected_type = visit<Meta, normal_completion_record<Expected>>;
+		using visit_throw_type = visit<Meta, throw_completion_record>;
+
+	public:
+		explicit constexpr visit(auto* transfer) :
+				visit_expected_type{transfer},
+				visit_throw_type{transfer} {}
+
+		template <class Accept>
+		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
+			if (subject) {
+				return visit_expected_type::operator()(*std::forward<decltype(subject)>(subject), accept);
+			} else {
+				return visit_throw_type::operator()(std::forward<decltype(subject)>(subject).error(), accept);
+			}
+		}
+
+		consteval static auto types(auto recursive) {
+			return visit_expected_type::types(recursive) + visit_throw_type::types(recursive);
+		}
+};
+
+} // namespace js
