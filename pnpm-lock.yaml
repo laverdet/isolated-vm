@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@auto_js/js':
+        specifier: workspace:*
+        version: link:packages/auto_js/js
       tslib:
         specifier: ^2.7.0
         version: 2.8.1
@@ -40,6 +43,36 @@ importers:
         specifier: ^5.5.4
         version: 5.7.2
 
+  packages/auto_js/js:
+    dependencies:
+      '@auto_js/utility':
+        specifier: workspace:*
+        version: link:../../utility
+
+  packages/auto_js/napi:
+    dependencies:
+      '@auto_js/js':
+        specifier: workspace:*
+        version: link:../js
+      '@auto_js/napi_exports':
+        specifier: workspace:*
+        version: link:../../third_party/nodejs
+
+  packages/auto_js/v8:
+    dependencies:
+      '@auto_js/js':
+        specifier: workspace:*
+        version: link:../js
+
+  packages/backend_napi_v8:
+    dependencies:
+      '@auto_js/napi':
+        specifier: workspace:*
+        version: link:../auto_js/napi
+      '@auto_js/v8':
+        specifier: workspace:*
+        version: link:../auto_js/v8
+
   packages/isolated-vm:
     dependencies:
       tslib:
@@ -52,6 +85,10 @@ importers:
       '@types/node':
         specifier: ^22.1.0
         version: 22.10.5
+
+  packages/third_party/nodejs: {}
+
+  packages/utility: {}
 
 packages:
 

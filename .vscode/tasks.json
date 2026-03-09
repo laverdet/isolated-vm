@@ -98,7 +98,7 @@
 			"type": "shell",
 			// nb: `-DENV=$ENV` used to "burn in" environment variables at configure time. So when the
 			// build configuration changes, ninja can reconfigure correctly.
-			"command": "set -eu; set -a; source $ENV_FILE; source $V8_LIBRARY_PATH/env; cmake -DCMAKE_BUILD_TYPE=${input:ivm_target} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DIVM_INSTALL=link -DNODE_DIST_DIR=\"$NODE_DIST_DIR\" -DV8_INCLUDE_DIR=\"$V8_INCLUDE_DIR\" -DV8_INCLUDE_GN_FILE=\"$V8_INCLUDE_GN_FILE\" -DV8_LIBRARY_TYPE=\"$V8_LIBRARY_TYPE\" -DV8_LIBRARY_PATH=\"$V8_LIBRARY_PATH\" -G Ninja -B build",
+			"command": "set -eu; set -a; source $ENV_FILE; source $V8_LIBRARY_PATH/env; cmake -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) -DCMAKE_BUILD_TYPE=${input:ivm_target} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DIVM_INSTALL=link -DNODE_DIST_DIR=\"$NODE_DIST_DIR\" -DV8_INCLUDE_DIR=\"$V8_INCLUDE_DIR\" -DV8_INCLUDE_GN_FILE=\"$V8_INCLUDE_GN_FILE\" -DV8_LIBRARY_TYPE=\"$V8_LIBRARY_TYPE\" -DV8_LIBRARY_PATH=\"$V8_LIBRARY_PATH\" -G Ninja -B build",
 			"dependsOn": [ "cmake: clean" ],
 			"problemMatcher": [],
 			"presentation": {

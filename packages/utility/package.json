@@ -1,0 +1,10 @@
+{
+  "name": "@auto_js/utility",
+  "author": "https://github.com/laverdet/",
+  "homepage": "https://github.com/laverdet/isolated-vm/tree/experimental/packages/utility",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/laverdet/isolated-vm.git"
+  }
+}

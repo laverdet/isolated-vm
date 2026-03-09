@@ -1,3 +1,7 @@
+set(NAPI_VERSION 10)
+find_package_from_npm(@auto_js/napi)
+find_package_from_npm(@auto_js/v8)
+
 add_library(backend_napi_v8 SHARED)
 target_sources(backend_napi_v8
 	PRIVATE
@@ -26,11 +30,11 @@ target_include_directories(backend_napi_v8 SYSTEM PRIVATE
 	${NODE_DIST_DIR}/include/node
 )
 target_link_libraries(backend_napi_v8 PUBLIC
+	auto_js
 	napi_js
 	nodejs
-	utility
+	utility_js
 	v8_js
-	value_js
 )
 
 # Windows linking

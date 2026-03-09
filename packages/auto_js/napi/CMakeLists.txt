@@ -1,4 +1,11 @@
+find_package_from_npm(@auto_js/js)
+find_package_from_npm(@auto_js/napi_exports)
+
 add_library(napi_js OBJECT)
+target_compile_features(napi_js PUBLIC cxx_std_23)
+target_include_directories(napi_js INTERFACE include)
+target_link_libraries(napi_js PRIVATE auto_js nodejs utility_js)
+
 target_sources(napi_js
 	PRIVATE
 		api/uv_scheduler.cc
@@ -42,9 +49,4 @@ target_sources(napi_js
 		value/object.h.cc
 		value/primitive.h.cc
 		value/value.cc
-)
-target_link_libraries(napi_js PRIVATE
-	utility
-	nodejs
-	value_js
 )

@@ -191,24 +191,14 @@ function(target_preprocessed_sources TARGET SEARCH REPLACE)
 	endif()
 endfunction()
 
-# Setup `#include "shim/[..]"`
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/packages")
 
-# Generic abstract C++ utilities
-add_subdirectory(packages/utility)
-
-# Napi shim
-add_subdirectory(packages/third_party/nodejs)
+# `find_package_from_npm` from `@auto_js/js`
+include(FindNpmPackage)
 
 # Embedded v8
 set(IVM_V8_EMBEDDED ON)
 set(IVM_V8_TRICKSHOT ON)
 add_subdirectory(packages/third_party/v8)
-
-# auto_js packages
-add_subdirectory(packages/auto_js/js)
-add_subdirectory(packages/auto_js/napi)
-add_subdirectory(packages/auto_js/v8)
 
 # nodejs require-able module
 add_subdirectory(packages/backend_napi_v8)

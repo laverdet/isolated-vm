@@ -1,0 +1,11 @@
+{
+  "name": "@auto_js/napi_exports",
+  "description": "C++ module exports for nodejs & n-api",
+  "author": "https://github.com/laverdet/",
+  "homepage": "https://github.com/laverdet/isolated-vm/tree/experimental/packages/third_party/nodejs",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/laverdet/isolated-vm.git"
+  }
+}

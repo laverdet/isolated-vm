@@ -7,6 +7,16 @@ import auto_js;
 import util;
 using namespace std::string_literals;
 
+#if _LIBCPP_VERSION || _MSVC_STL_UPDATE
+// clang 22.1.0 w/ -stdlib=libc++ (and also MS STL)
+// /workspace/packages/auto_js/napi/support/class_template_storage.cc:28:45: error: invalid operands
+// to binary expression ('basic_string<char>' and 'const std::basic_string_view<char>')
+// 28 |                         static_assert(index, "Class template '"s + name_sv + "' is missing in storage"s);
+export {
+	using std::operator+;
+}
+#endif
+
 namespace js::napi {
 
 // Given a pack of strings it returns a static reference to a `util::sealed_map` of napi object

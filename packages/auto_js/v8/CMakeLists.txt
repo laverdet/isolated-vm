@@ -1,6 +1,9 @@
 find_package(Boost 1.83 REQUIRED)
+find_package_from_npm(@auto_js/js)
 
 add_library(v8_js OBJECT)
+target_link_libraries(v8_js PUBLIC Boost::boost auto_js google_v8 utility_js)
+
 target_sources(v8_js
 	PRIVATE
 		evaluation/module.cc
@@ -53,10 +56,4 @@ target_sources(v8_js
 		value/object.h.cc
 		value/primitive.h.cc
 		visit.cc
-)
-target_link_libraries(v8_js PUBLIC
-	Boost::boost
-	google_v8
-	utility
-	value_js
 )

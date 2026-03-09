@@ -1,0 +1,13 @@
+{
+  "name": "@auto_js/v8",
+  "author": "https://github.com/laverdet/",
+  "homepage": "https://github.com/laverdet/isolated-vm/tree/experimental/packages/auto_js/v8",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/laverdet/isolated-vm.git"
+  },
+  "dependencies": {
+    "@auto_js/js": "workspace:*"
+  }
+}

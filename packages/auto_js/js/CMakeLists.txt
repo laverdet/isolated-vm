@@ -1,5 +1,10 @@
-add_library(value_js OBJECT)
-target_sources(value_js
+find_package_from_npm(@auto_js/utility)
+
+add_library(auto_js OBJECT)
+target_compile_features(auto_js PUBLIC cxx_std_23)
+target_link_libraries(auto_js PUBLIC utility_js)
+
+target_sources(auto_js
 	PRIVATE
 		assertions.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
@@ -40,4 +45,3 @@ target_sources(value_js
 		vector/vector_of.cc
 		vector/visit.cc
 )
-target_link_libraries(value_js PRIVATE utility)

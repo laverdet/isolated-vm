@@ -1,5 +1,5 @@
 module;
-#include "shim/cxx/chunk_view.h"
+#include "auto_js/chunk_view.h"
 #include <algorithm>
 #include <cassert>
 #include <exception>

@@ -1,4 +1,4 @@
-// ninja -C build value_js
+// ninja -C build auto_js
 #include <array>
 #include <cstdint>
 #include <optional>

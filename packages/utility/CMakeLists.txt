@@ -1,5 +1,10 @@
-add_library(utility OBJECT)
-target_sources(utility
+add_library(utility_js OBJECT)
+target_compile_features(utility_js PUBLIC cxx_std_23)
+
+# Setup `#include "auto_js/[..]"`
+target_include_directories(utility_js PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+
+target_sources(utility_js
 	PRIVATE
 		platform/timer.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
@@ -36,6 +41,3 @@ target_sources(utility
 		utility/utility.cc
 		utility/variant.cc
 )
-if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
-	target_sources(utility PRIVATE platform/shim/darwin.cc)
-endif()

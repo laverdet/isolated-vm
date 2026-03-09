@@ -1,7 +1,10 @@
 module;
+#include <algorithm>
 #include <array>
 #include <concepts>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>

@@ -1,0 +1,9 @@
+{
+  "name": "@isolated-vm/backend_napi_v8",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@auto_js/napi": "workspace:*",
+    "@auto_js/v8": "workspace:*"
+  }
+}
