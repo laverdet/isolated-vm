@@ -102,7 +102,7 @@ jobs:
         run: echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
 
       # GNU `tar` & `zstd` is needed for `actions/cache`
-      - uses: laverdet/install@v0.0.8
+      - uses: laverdet/install@v0
         if: runner.os == 'Linux'
         with:
           packages: tar zstd
@@ -112,7 +112,7 @@ jobs:
         if: endsWith(matrix.host.triplet, '-linux-gnu')
         run: apt-get -qq install --no-install-recommends -y curl; curl -kfsSL https://deb.nodesource.com/setup_24.x | bash -
       - name: Toolchain [Linux]
-        uses: laverdet/install@v0.0.8
+        uses: laverdet/install@v0
         if: runner.os == 'Linux'
         with:
           packages: |
@@ -324,7 +324,7 @@ jobs:
     steps:
       - uses: laverdet/alpine-arm64@v1
         if: matrix.host.container == 'alpine:edge'
-      - uses: laverdet/install@v0.0.8
+      - uses: laverdet/install@v0
         if: matrix.host.container == 'alpine:edge'
         with:
           packages: bash
@@ -365,7 +365,7 @@ jobs:
               exit 1
               ;;
           esac
-      - uses: laverdet/install@v0.0.8
+      - uses: laverdet/install@v0
         if: steps.musl.outcome == 'success'
         with:
           packages: alpine#${{ steps.musl.outputs.package }} npm

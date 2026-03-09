@@ -22,7 +22,7 @@ runs:
         echo "$DEPOT_TOOLS" >> "$GITHUB_PATH"
 
     # GNU `tar` & `zstd` is needed for `actions/cache`. Also, clang, for building.
-    - uses: laverdet/install@v0.0.8
+    - uses: laverdet/install@v0
       if: endsWith(inputs.triplet, '-linux-musl')
       with:
         packages: clang tar zstd

@@ -13,7 +13,7 @@ runs:
   using: composite
   steps:
     # Install dependencies
-    - uses: laverdet/install@v0.0.8
+    - uses: laverdet/install@v0
       if: runner.os == 'Linux'
       with:
         packages: |
