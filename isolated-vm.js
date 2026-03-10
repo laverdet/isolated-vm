@@ -1,1 +1,1 @@
-module.exports = require('./out/isolated_vm').ivm;
+module.exports = require('node-gyp-build')(__dirname).ivm;

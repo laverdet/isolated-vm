@@ -116,14 +116,5 @@
 				'src/isolate/allocator_nortti.cc',
 			],
 		},
-		{
-			'target_name': 'action_after_build',
-			'type': 'none',
-			'dependencies': [ 'isolated_vm' ],
-			'copies': [ {
-				'files': [ '<(PRODUCT_DIR)/isolated_vm.node' ],
-				'destination': 'out',
-			} ],
-		},
 	],
 }
