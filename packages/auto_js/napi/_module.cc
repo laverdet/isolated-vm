@@ -8,6 +8,7 @@ export import :class_template_storage;
 export import :environment;
 export import :external;
 export import :function;
+export import :initialize;
 export import :object;
 export import :promise;
 export import :reference;

@@ -5,6 +5,7 @@ module;
 #include <utility>
 export module napi_js:promise;
 import :api;
+import :environment;
 import :value;
 import util;
 
@@ -74,7 +75,7 @@ class resolver {
 			auto scheduler = std::move(scheduler_);
 			scheduler(
 				[](napi_env env, napi_deferred deferred, auto operation, auto&&... args) {
-					auto& environment = Environment::unsafe_get(env);
+					auto& environment = napi::environment::unsafe_get_environment_as<Environment>(env);
 					environment.scheduler().decrement_ref();
 					const auto scope = js::napi::handle_scope{env};
 					try {

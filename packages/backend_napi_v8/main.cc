@@ -1,4 +1,4 @@
-#include <node_api.h>
+#include <napi_js_initialize.h>
 #include <tuple>
 import auto_js;
 import backend_napi_v8;
@@ -21,21 +21,16 @@ auto check_transfer(
 		js::transfer<v8::Local<v8::Value>>(napi_local, std::forward_as_tuple(napi_lock), std::forward_as_tuple(v8_lock));
 }
 
-NAPI_MODULE_INIT(/*napi_env env, napi_value exports*/) {
-	// Initialize isolated-vm environment for this nodejs context
-	auto& backend_env = environment::make(env);
-
-	auto exports_val = js::napi::value<js::dictionary_tag>::from(exports);
-	exports_val.assign(
-		backend_env,
-		std::tuple{
-			std::pair{util::cw<"initialize">, js::forward{backend_env.make_initialize()}},
-			std::pair{util::cw<"Agent">, js::forward{agent_class_template(backend_env)}},
-			std::pair{util::cw<"Module">, js::forward{module_handle::class_template(backend_env)}},
-			std::pair{util::cw<"Realm">, js::forward{realm_handle::class_template(backend_env)}},
-			std::pair{util::cw<"Script">, js::forward{script_handle::class_template(backend_env)}},
-		}
-	);
-
-	return exports;
-}
+// Initialize this module
+js::napi::napi_js_module module_namespace{
+	std::type_identity<environment>{},
+	[](environment& env) -> auto {
+		return std::tuple{
+			std::pair{util::cw<"initialize">, js::forward{env.make_initialize()}},
+			std::pair{util::cw<"Agent">, js::forward{agent_class_template(env)}},
+			std::pair{util::cw<"Module">, js::forward{module_handle::class_template(env)}},
+			std::pair{util::cw<"Realm">, js::forward{realm_handle::class_template(env)}},
+			std::pair{util::cw<"Script">, js::forward{script_handle::class_template(env)}},
+		};
+	}
+};

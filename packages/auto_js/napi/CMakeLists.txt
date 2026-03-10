@@ -10,6 +10,7 @@ target_sources(napi_js
 	PRIVATE
 		api/uv_scheduler.cc
 		support/environment.cc
+		support/initialize.cc
 		value/array.cc
 		value/dictionary.cc
 		value/object.cc
@@ -34,6 +35,7 @@ target_sources(napi_js
 		support/environment_fwd.cc
 		support/environment.h.cc
 		support/error_scope.cc
+		support/initialize.h.cc
 		support/promise.cc
 		support/string_table.cc
 		support/utility.cc

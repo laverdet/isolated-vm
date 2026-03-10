@@ -173,25 +173,7 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 				napi::value<list_tag>::from(napi::invoke(napi_create_array, napi_env{self})),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](napi::value<list_tag> array, auto& self, auto& visit, auto /*&&*/ subject) -> void {
-					std::vector<napi_property_descriptor> properties;
-					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
-					properties.reserve(std::size(range));
-					for (auto&& [ key, value ] : util::forward_range(std::forward<decltype(range)>(range))) {
-						properties.emplace_back(napi_property_descriptor{
-							.utf8name{},
-							.name = napi_value{visit.first(std::forward<decltype(key)>(key), self)},
-
-							.method{},
-							.getter{},
-							.setter{},
-							.value = napi_value{visit.second(std::forward<decltype(value)>(value), self)},
-
-							// NOLINTNEXTLINE(hicpp-signed-bitwise)
-							.attributes = static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable),
-							.data{},
-						});
-					}
-					napi::invoke0(napi_define_properties, napi_env{self}, napi_value{array}, properties.size(), properties.data());
+					self.accept_entry_pair_vector(visit, array, std::forward<decltype(subject)>(subject));
 				}
 			};
 		}
@@ -202,27 +184,31 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 				napi::value<dictionary_tag>::from(napi::invoke(napi_create_object, napi_env{self})),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](napi::value<dictionary_tag> object, auto& self, auto& visit, auto /*&&*/ subject) -> void {
-					std::vector<napi_property_descriptor> properties;
-					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
-					properties.reserve(std::size(range));
-					for (auto&& [ key, value ] : util::forward_range(std::forward<decltype(range)>(range))) {
-						properties.emplace_back(napi_property_descriptor{
-							.utf8name{},
-							.name = napi_value{visit.first(std::forward<decltype(key)>(key), self)},
-
-							.method{},
-							.getter{},
-							.setter{},
-							.value = napi_value{visit.second(std::forward<decltype(value)>(value), self)},
-
-							// NOLINTNEXTLINE(hicpp-signed-bitwise)
-							.attributes = static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable),
-							.data{},
-						});
-					}
-					napi::invoke0(napi_define_properties, napi_env{self}, napi_value{object}, properties.size(), properties.data());
+					self.accept_entry_pair_vector(visit, object, std::forward<decltype(subject)>(subject));
 				}
 			};
+		}
+
+		auto accept_entry_pair_vector(this const auto& self, auto& visit, value<object_tag> target, auto&& subject) -> void {
+			std::vector<napi_property_descriptor> properties;
+			auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
+			properties.reserve(std::size(range));
+			for (auto&& [ key, value ] : util::forward_range(std::forward<decltype(range)>(range))) {
+				properties.emplace_back(napi_property_descriptor{
+					.utf8name{},
+					.name = napi_value{visit.first(std::forward<decltype(key)>(key), self)},
+
+					.method{},
+					.getter{},
+					.setter{},
+					.value = napi_value{visit.second(std::forward<decltype(value)>(value), self)},
+
+					// NOLINTNEXTLINE(hicpp-signed-bitwise)
+					.attributes = static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable),
+					.data{},
+				});
+			}
+			napi::invoke0(napi_define_properties, napi_env{self}, napi_value{target}, properties.size(), properties.data());
 		}
 
 		// structs
@@ -233,30 +219,37 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 				napi::value<dictionary_tag>::from(napi::invoke(napi_create_object, napi_env{self})),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](napi::value<dictionary_tag> object, auto& self, auto& visit, auto /*&&*/ subject) -> void {
-					auto accept_entry = accept_entry_pair<decltype(self), decltype(self)>{self};
-					// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-					std::array<napi_property_descriptor, Size> properties;
-					const auto [... indices ] = util::sequence<Size>;
-					(..., [ & ]() -> void {
-						// NOLINTNEXTLINE(modernize-type-traits)
-						auto entry = visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(subject)>(subject), accept_entry);
-						properties.at(indices) = {
-							.utf8name{},
-							.name = entry.first,
-
-							.method{},
-							.getter{},
-							.setter{},
-							.value = entry.second,
-
-							// NOLINTNEXTLINE(hicpp-signed-bitwise)
-							.attributes = static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable),
-							.data{},
-						};
-					}());
-					napi::invoke0(napi_define_properties, napi_env{self}, napi_value{object}, properties.size(), properties.data());
+					self.template accept_entry_pair_struct<Size>(visit, object, std::forward<decltype(subject)>(subject));
 				}
 			};
+		}
+
+		template <std::size_t Size>
+		auto accept_entry_pair_struct(this const auto& self, auto& visit, value<object_tag> target, auto&& subject) -> void {
+			// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
+			std::array<napi_property_descriptor, Size> properties;
+			const auto [... indices ] = util::sequence<Size>;
+			(..., [ & ]() -> void {
+				// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
+				// reference members one at a time.
+				auto accept_entry = accept_entry_pair<decltype(self), decltype(self)>{self};
+				auto entry = visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(subject)>(subject), accept_entry);
+				// NOLINTNEXTLINE(modernize-type-traits)
+				properties.at(indices) = {
+					.utf8name{},
+					.name = entry.first,
+
+					.method{},
+					.getter{},
+					.setter{},
+					.value = entry.second,
+
+					// NOLINTNEXTLINE(hicpp-signed-bitwise)
+					.attributes = static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable),
+					.data{},
+				};
+			}());
+			napi::invoke0(napi_define_properties, napi_env{self}, napi_value{target}, properties.size(), properties.data());
 		}
 
 		// no required types
@@ -313,5 +306,39 @@ struct accept_property_value<Meta, Key, Type, napi_value> {
 		mutable visit_key_literal<Key, napi_value> first;
 		accept_value<Meta, Type> second;
 };
+
+// `value<object_tag>{}.assign(...)` implementation
+struct object_assign_delegate {
+	public:
+		explicit object_assign_delegate(value<object_tag> object) : object_{object} {}
+		auto operator*() const { return object_; }
+
+	private:
+		value<object_tag> object_;
+};
+
+template <class Meta>
+struct accept<Meta, object_assign_delegate> {
+	public:
+		accept(auto* transfer, auto& env, object_assign_delegate object) :
+				accept_{transfer, env},
+				object_{object} {}
+
+		template <std::size_t Size>
+		auto operator()(this const auto& self, tuple_tag<Size> /*tag*/, auto& visit, auto&& subject) -> object_assign_delegate {
+			self.accept_.template accept_entry_pair_struct<Size>(visit, *self.object_, std::forward<decltype(subject)>(subject));
+			return self.object_;
+		}
+
+		consteval static auto types(auto recursive) { return accept<Meta, napi_value>::types(recursive); }
+
+	private:
+		accept_value<Meta, napi_value> accept_;
+		object_assign_delegate object_;
+};
+
+auto value<object_tag>::assign(auto_environment auto& env, auto source) -> void {
+	js::transfer_in<object_assign_delegate>(std::move(source), env, object_assign_delegate{*this});
+}
 
 } // namespace js

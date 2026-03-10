@@ -17,8 +17,7 @@ class value<object_tag> : public value_next<object_tag> {
 	public:
 		using value_next<object_tag>::value_next;
 
-		template <class... Entries>
-		auto assign(auto_environment auto& env, std::tuple<Entries...> entries) -> void;
+		auto assign(auto_environment auto& env, auto source) -> void;
 };
 
 template <>
@@ -51,20 +50,6 @@ class bound_value<date_tag> : public bound_value_next<date_tag> {
 };
 
 // ---
-
-template <class... Entries>
-auto value<object_tag>::assign(auto_environment auto& env, std::tuple<Entries...> entries) -> void {
-	bound_value value{env, *this};
-	auto& [... entries_n ] = entries;
-	(..., [ & ]() constexpr -> auto {
-		auto [ first, second ] = js::transfer_in_strict<std::array<napi_value, 2>>(
-			// NOLINTNEXTLINE(bugprone-use-after-move,modernize-type-traits)
-			std::tuple{std::move(entries_n).first, std::move(entries_n).second},
-			env
-		);
-		value.set(first, second);
-	}());
-}
 
 template <class Type>
 auto bound_value<object_tag>::try_cast(std::type_identity<Type> /*type*/) const -> Type* {

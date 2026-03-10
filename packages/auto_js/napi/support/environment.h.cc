@@ -33,24 +33,8 @@ export class environment : util::non_moveable, public uv_schedulable {
 		[[nodiscard]] operator napi_env() const { return env_; }
 		[[nodiscard]] auto uses_direct_handles() const -> bool { return uses_direct_handles_; }
 
-	private:
-		napi_env env_;
-		bool uses_direct_handles_;
-};
-
-// CRTP helper to instantiate an environment and attach it to the napi context
-export template <class Type>
-class environment_of : public environment {
-	private:
-		friend Type;
-		explicit environment_of(napi_env env) : environment{env} {}
-
-	public:
-		static auto unsafe_get(napi_env env) -> Type& {
-			return *static_cast<Type*>(napi::invoke(napi_get_instance_data, env));
-		}
-
-		static auto make(napi_env env, auto&&... args) -> Type&
+		template <class Type>
+		static auto make_and_set_environment(napi_env env, auto&&... args) -> Type&
 			requires std::constructible_from<Type, napi_env, decltype(args)...> {
 			auto instance = std::make_unique<Type>(env, std::forward<decltype(args)>(args)...);
 			return *apply_finalizer(std::move(instance), [ & ](Type* instance, napi_finalize finalize, void* hint) -> Type* {
@@ -58,6 +42,15 @@ class environment_of : public environment {
 				return instance;
 			});
 		}
+
+		template <class Type>
+		static auto unsafe_get_environment_as(napi_env env) -> Type& {
+			return *static_cast<Type*>(napi::invoke(napi_get_instance_data, env));
+		}
+
+	private:
+		napi_env env_;
+		bool uses_direct_handles_;
 };
 
 } // namespace js::napi

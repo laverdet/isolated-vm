@@ -48,11 +48,11 @@ constexpr auto class_names = std::tuple{
 
 // Instance of the `isolated-vm` module, once per nodejs environment.
 export class environment
-		: public napi::environment_of<environment>,
+		: public napi::environment,
 			public napi::string_table<string_literals>,
 			public napi::class_template_references<class_names> {
 	public:
-		explicit environment(napi_env env) : environment_of{env} {}
+		using napi::environment::environment;
 
 		auto agent_class() -> napi::value<function_tag> { return agent_class_.get(*this); }
 		auto cluster() -> js::iv8::isolated::cluster& { return cluster_; }
