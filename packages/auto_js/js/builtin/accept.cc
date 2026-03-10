@@ -213,6 +213,8 @@ struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
 };
 
 // `std::pair` uses `first` & `second` acceptors. This corresponds to "entries" in a vector / array.
+// TODO: Revisit whether or not `first` & `second` make sense or if `operator()` should be the only
+// way to do this.
 template <class Meta, class Key, class Value>
 struct accept<Meta, std::pair<Key, Value>> {
 		explicit constexpr accept(auto* transfer) :
@@ -226,12 +228,6 @@ struct accept<Meta, std::pair<Key, Value>> {
 				// NOLINTNEXTLINE(bugprone-use-after-move)
 				visit.second(std::forward<decltype(entry)>(entry).second, second),
 			};
-		}
-
-		constexpr static auto make_struct_subject(auto&& entry) -> std::pair<std::nullptr_t, std::remove_cvref_t<decltype(entry)>> {
-			// nb: `nullptr` is used here because this is a "bound" `visit_key_literal::visit` visitor
-			// which simply returns a static string and does not need a value to visit.
-			return {nullptr, std::forward<decltype(entry)>(entry)};
 		}
 
 		consteval static auto types(auto recursive) -> auto {

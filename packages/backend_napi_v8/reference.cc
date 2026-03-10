@@ -88,7 +88,7 @@ auto reference_handle::copy(environment& env) -> js::forward<js::napi::value<>> 
 	auto [ promise, resolver ] = make_promise(env);
 	switch (typeof_) {
 		case js::typeof_kind::null:
-			resolver.resolve(js::value_t{std::nullptr_t{}});
+			resolver.resolve(js::value_t{nullptr});
 			break;
 
 		case js::typeof_kind::undefined:

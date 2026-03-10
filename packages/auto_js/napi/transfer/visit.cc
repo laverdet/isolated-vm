@@ -239,8 +239,7 @@ struct visit_key_literal<Key, napi_value> : util::non_moveable {
 	public:
 		explicit constexpr visit_key_literal(auto* /*transfer*/) {}
 
-		template <class Accept>
-		[[nodiscard]] auto get_local(const Accept& accept_or_visit) -> napi_value {
+		auto operator()(const auto& /*could_be_literally_anything*/, const auto& accept_or_visit) -> napi_value {
 			if (local_key_ == napi_value{}) {
 				auto& environment = accept_or_visit.environment();
 				auto storage = environment.string_table_storage(Key);
@@ -258,11 +257,6 @@ struct visit_key_literal<Key, napi_value> : util::non_moveable {
 				}
 			}
 			return local_key_;
-		}
-
-		template <class Accept>
-		auto operator()(const auto& /*could_be_literally_anything*/, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(string_tag{}, *this, get_local(accept));
 		}
 
 	private:

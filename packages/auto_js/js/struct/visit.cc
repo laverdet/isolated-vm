@@ -29,7 +29,7 @@ struct visit_getter : visit<Meta, typename Get::value_type> {
 		Get get_;
 };
 
-// Visitor passed to acceptor for each member
+// Visitor simulating `visit<M, std::pair<T, U>>`
 // TODO: Lift key storage up to top `transfer_holder`
 template <class Meta, class Property>
 struct visit_object_property {
@@ -42,6 +42,14 @@ struct visit_object_property {
 		constexpr visit_object_property(auto* transfer, Property property) :
 				first{transfer},
 				second{transfer, property.get} {}
+
+		template <class Accept>
+		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
+			return {
+				first(std::type_identity<void>{}, accept.first),
+				second(std::forward<decltype(subject)>(subject), accept.second),
+			};
+		}
 
 		consteval static auto types(auto recursive) -> auto {
 			return visit<Meta, typename getter_type::value_type>::types(recursive);
@@ -76,9 +84,14 @@ struct visit_struct_properties<Meta, Type, js::struct_template<Property...>> {
 					}...};
 				}()} {}
 
+		template <std::size_t Index, class Accept>
+		constexpr auto operator()(std::integral_constant<std::size_t, Index> /*index*/, auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
+			return std::get<Index>(properties)(std::forward<decltype(subject)>(subject), accept);
+		}
+
 		template <class Accept>
 		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(struct_tag<sizeof...(Property)>{}, properties, std::forward<decltype(subject)>(subject));
+			return accept(struct_tag<sizeof...(Property)>{}, *this, std::forward<decltype(subject)>(subject));
 		}
 
 		consteval static auto types(auto recursive) -> auto {

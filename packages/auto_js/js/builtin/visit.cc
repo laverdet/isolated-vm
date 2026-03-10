@@ -128,11 +128,21 @@ struct visit<Meta, std::optional<Type>> : visit<Meta, Type> {
 };
 
 // `std::pair` uses `first` & `second` visitors
+// TODO: Revisit whether or not `first` & `second` make sense or if `operator()` should be the only
+// way to do this.
 template <class Meta, class Key, class Value>
 struct visit<Meta, std::pair<Key, Value>> {
 		constexpr explicit visit(auto* transfer) :
 				first{transfer},
 				second{transfer} {}
+
+		template <class Accept>
+		constexpr auto operator()(auto&& subject, const Accept& accept) const -> accept_target_t<Accept> {
+			return {
+				first(std::forward<decltype(subject)>(subject).first, accept.first),
+				second(std::forward<decltype(subject)>(subject).second, accept.second),
+			};
+		}
 
 		consteval static auto types(auto recursive) -> auto {
 			return visit<Meta, Key>::types(recursive) + visit<Meta, Value>::types(recursive);

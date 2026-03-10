@@ -91,9 +91,12 @@ struct accept<Meta, std::vector<Type>> : accept_value<Meta, Type> {
 
 // Dictionary's accepts a properly-tagged subject or maybe even a struct
 template <class Meta, class Tag, class Entry>
-struct accept<Meta, vector_of<Tag, Entry>> : accept<Meta, Entry> {
+struct accept<Meta, vector_of<Tag, Entry>> {
+	private:
 		using accept_type = accept<Meta, Entry>;
-		using accept_type::accept_type;
+
+	public:
+		explicit constexpr accept(auto* transfer) : accept_{transfer} {}
 
 		constexpr auto operator()(Tag /*tag*/, auto& visit, auto&& subject) const -> vector_of<Tag, Entry> {
 			auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
@@ -101,7 +104,7 @@ struct accept<Meta, vector_of<Tag, Entry>> : accept<Meta, Entry> {
 				std::from_range,
 				util::forward_range(std::forward<decltype(range)>(range)) |
 					std::views::transform([ & ](auto&& entry) -> Entry {
-						return util::invoke_as<accept_type>(*this, visit, std::forward<decltype(entry)>(entry));
+						return accept_(visit, std::forward<decltype(entry)>(entry));
 					})
 			};
 		}
@@ -111,14 +114,18 @@ struct accept<Meta, vector_of<Tag, Entry>> : accept<Meta, Entry> {
 		constexpr auto operator()(struct_tag<Size> /*tag*/, auto& visit, auto&& subject) const -> vector_of<Tag, Entry> {
 			// nb: The value category of `subject` is forwarded to *each* visitor. Move operations should
 			// keep this in mind and only move one member at time.
-			auto&& value = accept_type::make_struct_subject(std::forward<decltype(subject)>(subject));
-			auto& [... visit_n ] = visit;
+			auto& [... indices ] = util::sequence<Size>;
 			return vector_of<Tag, Entry>{
 				std::in_place,
 				// NOLINTNEXTLINE(bugprone-use-after-move)
-				util::invoke_as<accept_type>(*this, visit_n, std::forward<decltype(value)>(value))...,
+				visit(std::integral_constant<size_t, indices>{}, std::forward<decltype(subject)>(subject), accept_)...,
 			};
 		}
+
+		consteval static auto types(auto recursive) { return accept_type::types(recursive); }
+
+	private:
+		accept_type accept_;
 };
 
 } // namespace js

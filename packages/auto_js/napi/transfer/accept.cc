@@ -233,22 +233,21 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 				napi::value<dictionary_tag>::from(napi::invoke(napi_create_object, napi_env{self})),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](napi::value<dictionary_tag> object, auto& self, auto& visit, auto /*&&*/ subject) -> void {
+					auto accept_entry = accept_entry_pair<decltype(self), decltype(self)>{self};
 					// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 					std::array<napi_property_descriptor, Size> properties;
 					const auto [... indices ] = util::sequence<Size>;
 					(..., [ & ]() -> void {
 						// NOLINTNEXTLINE(modernize-type-traits)
-						auto& visit_n = std::get<indices>(visit);
+						auto entry = visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(subject)>(subject), accept_entry);
 						properties.at(indices) = {
 							.utf8name{},
-							.name = napi_value{visit_n.first.get_local(self)},
+							.name = entry.first,
 
 							.method{},
 							.getter{},
 							.setter{},
-							// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
-							// reference members one at a time.
-							.value = napi_value{visit_n.second(std::forward<decltype(subject)>(subject), self)},
+							.value = entry.second,
 
 							// NOLINTNEXTLINE(hicpp-signed-bitwise)
 							.attributes = static_cast<napi_property_attributes>(napi_writable | napi_enumerable | napi_configurable),
@@ -303,7 +302,7 @@ struct accept_property_value<Meta, Key, Type, napi_value> {
 				second{transfer} {}
 
 		auto operator()(dictionary_tag /*tag*/, auto& visit, const auto& object) const -> Type {
-			if (auto local = first.get_local(visit.first); object.has(local)) {
+			if (auto local = first(std::type_identity<void>{}, visit.first); object.has(local)) {
 				return visit.second(object.get(local), second);
 			} else {
 				return second(undefined_in_tag{}, visit.second, std::monostate{});

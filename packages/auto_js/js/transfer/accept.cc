@@ -167,6 +167,25 @@ using accept_value_from = accept_value_stored<typename Meta::accept_wrap_type::t
 export template <class Meta, class Type>
 using accept_value = accept_value_from<Meta, accept<Meta, Type>>;
 
+// Utility to pass oneself as an object entry acceptor
+export template <class First, class Second>
+struct accept_entry_pair {
+		explicit constexpr accept_entry_pair(auto& self) :
+				first{self},
+				second{self} {}
+
+		// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
+		First first;
+		// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
+		Second second;
+};
+
+template <class First, class Second>
+struct accept_target<accept_entry_pair<First, Second>>
+		: std::type_identity<std::pair<
+				accept_target_t<std::remove_cvref_t<First>>,
+				accept_target_t<std::remove_cvref_t<Second>>>> {};
+
 // Specialized by certain containers to map `Target` to the first meaningful acceptor. This is
 // specifically used with `accept_property_subject_type` in relation to property names.
 export template <class Target>
