@@ -63,10 +63,12 @@ jobs:
           name: prebuilds-${{ matrix.os }}-${{ matrix.arch }}
           path: prebuilds
 
-  package:
-    name: Assemble npm package
+  publish:
+    name: Publish npm package
     runs-on: ubuntu-latest
     needs: [prebuild, prebuild-linux]
+    permissions:
+      id-token: write
     steps:
       - uses: actions/checkout@v6
       - name: Use nodejs
@@ -90,3 +92,6 @@ jobs:
         with:
           name: npm-package
           path: '*.tgz'
+      - name: Publish
+        if: github.repository_owner == 'laverdet'
+        run: npm publish
