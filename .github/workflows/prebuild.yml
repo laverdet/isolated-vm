@@ -1,4 +1,4 @@
-name: Add native binaries to release
+name: Build prebuildify binaries
 
 on:
   push:
@@ -30,12 +30,12 @@ jobs:
           npm install --ignore-scripts
       - name: Build
         run: |
-          npx -y prebuild
-      - name: Upload
-        run: |
-          npx -y prebuild --upload-all ${{ secrets.UPLOAD_TOKEN }}
-        env:
-          MAKEFLAGS: -j4
+          npm run prebuild
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: prebuilds-${{ matrix.os }}
+          path: prebuilds
 
   prebuild-linux:
     strategy:
@@ -57,6 +57,36 @@ jobs:
       - name: Build
         run: |
           docker build . -f Dockerfile.${{ matrix.os }} --output prebuilds
-      - name: Upload
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: prebuilds-${{ matrix.os }}-${{ matrix.arch }}
+          path: prebuilds
+
+  package:
+    name: Assemble npm package
+    runs-on: ubuntu-latest
+    needs: [prebuild, prebuild-linux]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Use nodejs
+        uses: actions/setup-node@v6
+        with:
+          node-version: latest
+      - name: Download all prebuild artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: prebuilds-*
+          merge-multiple: true
+          path: prebuilds
+      - name: Verify bundled prebuilds
         run: |
-          npx -y prebuild --upload-all ${{ secrets.UPLOAD_TOKEN }}
+          find prebuilds -type f -name '*.node' | sort
+      - name: Pack npm tarball
+        run: |
+          npm pack
+      - name: Upload npm tarball
+        uses: actions/upload-artifact@v7
+        with:
+          name: npm-package
+          path: '*.tgz'
