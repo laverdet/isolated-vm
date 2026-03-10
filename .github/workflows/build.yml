@@ -12,9 +12,9 @@ jobs:
         node: [ 22, 24 ]
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Use Node.js ${{ matrix.node }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
       - name: Add msbuild to PATH
@@ -44,7 +44,7 @@ jobs:
       fail-fast: false
     container: node:${{ matrix.node }}-alpine
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: install build deps
         run: |
           apk add g++ make python3
