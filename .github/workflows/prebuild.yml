@@ -13,9 +13,9 @@ jobs:
       matrix:
         os: [ macos-latest, windows-latest ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Use nodejs
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: latest
       - name: Add msbuild to PATH
@@ -44,15 +44,15 @@ jobs:
       matrix:
         os: [ debian, alpine ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Use nodejs
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: latest
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
       - name: Build
         run: |
           docker buildx build --platform linux/amd64,linux/arm64 . -f Dockerfile.${{ matrix.os }} --output prebuilds

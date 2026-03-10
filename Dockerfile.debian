@@ -1,4 +1,4 @@
-FROM node:22-bullseye-slim AS build
+FROM node:22-trixie-slim AS build
 WORKDIR /isolated-vm
 RUN apt-get update && \
   apt-get install -y --no-install-recommends \
