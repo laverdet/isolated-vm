@@ -43,7 +43,7 @@ jobs:
         arch: [ x64, arm64 ]
         os: [ debian, alpine ]
     name: ${{ matrix.os }}-${{ matrix.arch }}
-    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-22.04-arm' || 'ubuntu-22.04' }}
     steps:
       - uses: actions/checkout@v6
       - name: Use nodejs
