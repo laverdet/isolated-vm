@@ -297,6 +297,10 @@ jobs:
           path: build/packages/backend_napi_v8/artifacts
           if-no-files-found: error
 
+      # Console on failure
+      - uses: laverdet/console@v1
+        if: failure()
+
   # Run tests
   test:
     name: Test [${{ matrix.host.container || matrix.host.runs-on }} ${{ endsWith(matrix.host.runs-on, '-arm' && 'arm64') || (endsWith(matrix.host.runs-on, '-intel') && 'x64') || (startsWith(matrix.host.runs-on, 'macos') && 'arm64') || 'x64' }} node:${{ matrix.node }}]
