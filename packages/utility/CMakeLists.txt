@@ -6,6 +6,7 @@ target_include_directories(utility_js PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/includ
 
 target_sources(utility_js
 	PRIVATE
+		assertions.cc
 		platform/timer.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
@@ -38,6 +39,7 @@ target_sources(utility_js
 		utility/facade.cc
 		utility/hash.cc
 		utility/ranges.cc
+		utility/string.cc
 		utility/utility.cc
 		utility/variant.cc
 )

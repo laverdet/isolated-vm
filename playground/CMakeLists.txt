@@ -4,4 +4,4 @@ target_sources(sandbox
 	PRIVATE
 		sandbox.cc
 )
-target_link_libraries(sandbox PUBLIC utility stdc++)
+target_link_libraries(sandbox PUBLIC utility_js stdc++)

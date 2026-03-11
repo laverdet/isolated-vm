@@ -3,8 +3,6 @@ module;
 #include <array>
 #include <concepts>
 #include <memory>
-#include <string>
-#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -16,21 +14,6 @@ import :external;
 import util;
 
 namespace js::napi {
-
-// TODO: Whatever this is
-constexpr auto to_utf8(auto value) -> std::u8string_view {
-	constexpr auto length = js::transfer<std::u8string>(value).length();
-	// nb: napi, being a C api, expects utf-8 strings to be `char*` but in C++ they are `char8_t`. So
-	//  you'll have to cast later.
-	using data_type = std::array<char8_t, length + 1>;
-	constexpr static auto data = [ = ]() -> data_type {
-		data_type data;
-		std::ranges::copy(js::transfer<std::u8string>(value), data.begin());
-		data[ length ] = 0;
-		return data;
-	}();
-	return std::u8string_view{data};
-}
 
 template <class Type>
 template <class... Args>
@@ -96,11 +79,11 @@ auto value<class_tag_of<Type>>::make(Environment& env, const auto& class_templat
 	// Member function property descriptor
 	const auto make_member_function_descriptor = [ & ]<class Property>(const Property& property) -> napi_property_descriptor
 		requires(Property::scope == class_property_scope::prototype) {
-			constexpr auto u8_name = to_utf8(property.name);
+			constexpr auto u8_name = util::consteval_string_view{util::interpolate_string<char>(property.name)};
 			auto [ callback, data ] = make_callback_storage(env, make_member_function<Environment, Type>(property.function));
 			static_assert(!requires { typename decltype(data)::element_type; });
 			return {
-				.utf8name = reinterpret_cast<const char*>(u8_name.data()),
+				.utf8name = u8_name.data(),
 				.name{},
 
 				.method = callback,
@@ -117,11 +100,11 @@ auto value<class_tag_of<Type>>::make(Environment& env, const auto& class_templat
 	// Static function property descriptor
 	const auto make_static_function_descriptor = [ & ]<class Property>(const Property& property) -> napi_property_descriptor
 		requires(Property::scope == class_property_scope::constructor) {
-			constexpr auto u8_name = to_utf8(property.name);
+			constexpr auto u8_name = util::consteval_string_view{util::interpolate_string<char>(property.name)};
 			auto [ callback, data ] = make_callback_storage(env, make_free_function<Environment>(property.function));
 			static_assert(!requires { typename decltype(data)::element_type; });
 			return {
-				.utf8name = reinterpret_cast<const char*>(u8_name.data()),
+				.utf8name = u8_name.data(),
 				.name{},
 
 				.method = callback,
@@ -129,9 +112,8 @@ auto value<class_tag_of<Type>>::make(Environment& env, const auto& class_templat
 				.setter{},
 				.value{},
 
-				// NOLINTBEGIN(hicpp-signed-bitwise)
+				// NOLINTNEXTLINE(hicpp-signed-bitwise)
 				.attributes = static_cast<napi_property_attributes>(napi_static | napi_writable | napi_configurable),
-				// NOLINTEND(hicpp-signed-bitwise)
 				.data = data,
 			};
 		};
@@ -148,11 +130,11 @@ auto value<class_tag_of<Type>>::make(Environment& env, const auto& class_templat
 	};
 
 	// Finally, define the class
-	constexpr auto u8_name = to_utf8(class_template.constructor.name);
+	constexpr auto u8_name = util::consteval_string_view{util::interpolate_string<char>(class_template.constructor.name)};
 	auto result = napi::invoke(
 		napi_define_class,
 		napi_env{env},
-		reinterpret_cast<const char*>(u8_name.data()),
+		u8_name.data(),
 		u8_name.length(),
 		construct_ptr,
 		constructor_data,

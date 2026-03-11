@@ -27,7 +27,7 @@ export template <const auto& Strings, string_table_options Options = {}>
 class string_table {
 	public:
 		auto string_table_storage(const auto& string_value) {
-			constexpr auto string_sv = util::make_string_view(string_value);
+			constexpr auto string_sv = util::consteval_string_view{string_value};
 			constexpr auto index = string_table_of<Strings>.lookup(string_sv);
 			if constexpr (index) {
 				return util::just<napi::reference<string_tag>&>{string_literal_storage_.at(index).second};

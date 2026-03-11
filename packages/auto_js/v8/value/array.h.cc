@@ -34,7 +34,6 @@ export class array
 
 class array::iterator : public util::random_access_iterator_facade<int32_t, int64_t> {
 	public:
-		friend arithmetic_facade;
 		using arithmetic_facade::operator+;
 		using difference_type = random_access_iterator_facade::difference_type;
 		using size_type = uint32_t;

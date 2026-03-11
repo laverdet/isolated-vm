@@ -89,7 +89,7 @@ struct visit_key_literal<Key, void> {
 
 		template <class Accept>
 		constexpr auto operator()(const auto& /*could_be_literally_anything*/, const Accept& accept) -> accept_target_t<Accept> {
-			auto key_view = util::make_string_view(Key);
+			auto key_view = util::consteval_string_view{Key};
 			using character_type = decltype(key_view)::value_type;
 			return accept(string_tag_of<character_type>{}, *this, key_view);
 		}

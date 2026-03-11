@@ -79,6 +79,9 @@ struct visit<void, std::basic_string<Char>> : visit_value_tagged<string_tag_of<C
 template <class Char>
 struct visit<void, std::basic_string_view<Char>> : visit_value_tagged<string_tag_of<Char>> {};
 
+template <class Char, std::size_t Size>
+struct visit<void, util::consteval_string_view<Char, Size>> : visit_value_tagged<string_tag_of<Char>> {};
+
 // Constant string visitor
 template <std::integral Char, size_t Extent>
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
@@ -86,7 +89,7 @@ struct visit<void, Char[ Extent ]> {
 		template <class Accept>
 		// NOLINTNEXTLINE(modernize-avoid-c-arrays)
 		constexpr auto operator()(const Char (&subject)[ Extent ], const Accept& accept) const -> accept_target_t<Accept> {
-			return accept(string_tag_of<Char>{}, *this, util::make_string_view(subject));
+			return accept(string_tag_of<Char>{}, *this, util::consteval_string_view{subject});
 		}
 
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }

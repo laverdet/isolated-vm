@@ -28,7 +28,6 @@ class bound_value<vector_tag> : public bound_value_next<vector_tag> {
 
 class bound_value<vector_tag>::iterator : public util::random_access_iterator_facade<int32_t, int64_t> {
 	public:
-		friend arithmetic_facade;
 		using arithmetic_facade::operator+;
 		using difference_type = arithmetic_facade::difference_type;
 		using size_type = uint32_t;

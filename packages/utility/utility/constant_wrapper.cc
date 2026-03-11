@@ -31,8 +31,16 @@ fixed_value(const Type (&)[ Extent ]) -> fixed_value<Type[ Extent ]>;
 export template <fixed_value Value>
 struct constant_wrapper;
 
+template <class Value>
+concept constexpr_param = requires { typename constant_wrapper<Value::value>; };
+
+struct cw_operators {
+		template <constexpr_param Left, constexpr_param Right>
+		constexpr friend auto operator==(Left, Right) noexcept -> constant_wrapper<(Left::value == Right::value)> { return {}; }
+};
+
 template <fixed_value Value>
-struct constant_wrapper {
+struct constant_wrapper : cw_operators {
 		using value_type = decltype(Value)::type;
 		using type = constant_wrapper;
 

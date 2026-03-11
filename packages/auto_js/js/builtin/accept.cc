@@ -119,55 +119,39 @@ struct accept_coerced_string {
 		using value_type = std::basic_string<Char>;
 
 	public:
-		constexpr auto operator()(string_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const -> value_type {
-			return coerce(std::type_identity<char16_t>{}, std::forward<decltype(subject)>(subject));
+		constexpr auto operator()(string_tag /*tag*/, visit_holder visit, auto&& subject) const -> value_type {
+			return (*this)(string_tag_of<char16_t>{}, visit, std::forward<decltype(subject)>(subject));
+		}
+
+		constexpr auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> value_type {
+			return value_type{std::forward<decltype(subject)>(subject)};
+		}
+
+		constexpr auto operator()(covariant_tag<string_tag_of<Char>> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> value_type {
+			return value_type{std::forward<decltype(subject)>(subject)};
 		}
 
 		template <class Subject>
 		constexpr auto operator()(string_tag_of<Subject> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> value_type {
-			return coerce(std::type_identity<Subject>{}, std::forward<decltype(subject)>(subject));
-		}
-
-		constexpr auto operator()(covariant_tag<string_tag_of<Char>> tag, visit_holder visit, auto&& subject) const -> value_type {
-			return (*this)(*tag, visit, std::forward<decltype(subject)>(subject));
+			return coerce<Subject>(std::forward<decltype(subject)>(subject));
 		}
 
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 
 	private:
-		[[nodiscard]] constexpr auto coerce(std::type_identity<Char> /*tag*/, auto&& subject) const -> value_type {
-			return value_type{std::forward<decltype(subject)>(subject)};
+		template <class Subject>
+		constexpr auto coerce(auto&& subject) const -> value_type {
+			return coerce(std::basic_string_view{std::basic_string<Subject>{std::forward<decltype(subject)>(subject)}});
 		}
 
 		template <class Subject>
-		[[nodiscard]] constexpr auto coerce(std::type_identity<Subject> /*tag*/, auto&& subject) const -> value_type {
-			constexpr auto max_char = util::overloaded{
-				// latin1
-				[](std::type_identity<char>) constexpr -> int { return 127; },
-				// utf8
-				[](std::type_identity<char8_t>) constexpr -> int { return 127; },
-				// utf16
-				[](std::type_identity<char16_t>) constexpr -> int { return 65'535; },
-			}(type<Char>);
+		constexpr auto coerce(std::basic_string_view<Subject> subject) const -> value_type {
+			return util::interpolate_string<Char>(subject);
+		}
 
-			// Check string range (since `resize_and_overwrite` may not throw)
-			auto from = std::basic_string<Subject>{std::forward<decltype(subject)>(subject)};
-			auto size = from.size();
-			auto out_of_range = std::ranges::any_of(from, [](Subject ch) -> bool { return ch > max_char; });
-			if (out_of_range) {
-				throw js::range_error{u"String character out of range"};
-			}
-
-			// Copy coerced characters
-			value_type result;
-			result.resize_and_overwrite(size, [ & ](Char* data, size_t size) noexcept -> size_t {
-				for (std::size_t ii = 0; ii < size; ++ii) {
-					// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,cppcoreguidelines-pro-bounds-pointer-arithmetic)
-					data[ ii ] = static_cast<Subject>(from[ ii ]);
-				}
-				return size;
-			});
-			return result;
+		template <class Subject, auto Value>
+		constexpr auto coerce(util::constant_wrapper<Value> subject) const -> value_type {
+			return util::interpolate_string<Char>(subject);
 		}
 };
 

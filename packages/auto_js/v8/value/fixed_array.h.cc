@@ -28,7 +28,6 @@ export class fixed_array {
 
 class fixed_array::iterator : public util::random_access_iterator_facade<int> {
 	public:
-		friend arithmetic_facade;
 		using arithmetic_facade::operator+;
 		using difference_type = arithmetic_facade::difference_type;
 		using size_type = int;
@@ -38,13 +37,12 @@ class fixed_array::iterator : public util::random_access_iterator_facade<int> {
 		iterator(v8::Local<v8::FixedArray> array, v8::Local<v8::Context> context, int index);
 
 		auto operator*() const -> value_type;
+		auto operator+() const -> size_type { return index_; }
 		auto operator+=(difference_type offset) -> iterator&;
-		auto operator==(const iterator& right) const -> bool { return index_ == right.index_; }
 		auto operator<=>(const iterator& right) const -> std::strong_ordering { return index_ <=> right.index_; }
+		auto operator==(const iterator& right) const -> bool { return index_ == right.index_; }
 
 	private:
-		auto operator+() const -> size_type { return index_; }
-
 		v8::Local<v8::FixedArray> array_;
 		v8::Local<v8::Context> context_;
 		int index_{};

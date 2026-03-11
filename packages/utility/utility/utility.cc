@@ -9,6 +9,7 @@ export import :utility.covariant_value;
 export import :utility.facade;
 export import :utility.hash;
 export import :utility.ranges;
+export import :utility.string;
 // export import :utility.variant;
 import :type_traits;
 
@@ -66,18 +67,6 @@ struct copy_of : Type {
 		constexpr copy_of() :
 				Type(Value) {}
 };
-
-// Create a `std::string_view` without decaying an array
-export template <class Char, std::size_t Size>
-// NOLINTNEXTLINE(modernize-avoid-c-arrays)
-constexpr auto make_string_view(const Char (&string)[ Size ]) noexcept -> std::basic_string_view<Char> {
-	return std::basic_string_view<Char>(static_cast<const Char*>(string), Size - 1);
-}
-
-export template <auto String>
-constexpr auto make_string_view(util::constant_wrapper<String> /*cw*/) noexcept {
-	return make_string_view(String.value);
-}
 
 // Remove an element from a (probably) `std::vector` by swap and popping
 export auto swap_and_pop(auto& container, auto iterator) -> void {

@@ -25,7 +25,6 @@ export class callback_info {
 
 class callback_info::iterator : public util::random_access_iterator_facade<int> {
 	public:
-		friend arithmetic_facade;
 		using arithmetic_facade::operator+;
 		using difference_type = arithmetic_facade::difference_type;
 		using size_type = int;

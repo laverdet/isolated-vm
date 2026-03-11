@@ -1,5 +1,5 @@
 module;
-#include <string>
+#include <string> // IWYU pragma: keep
 #include <type_traits>
 export module napi_js:class_template_storage;
 import :reference;
@@ -33,7 +33,7 @@ class class_template_references {
 	public:
 		template <class Type>
 		auto class_template(this auto& self, std::type_identity<Type> /*type*/, const auto& class_template) -> napi::value<class_tag_of<Type>> {
-			constexpr auto name_sv = util::make_string_view(class_template.constructor.name);
+			constexpr auto name_sv = util::consteval_string_view{class_template.constructor.name};
 			constexpr auto index = class_template_references_of<Strings>.lookup(name_sv);
 			if constexpr (!index) {
 				// nb: This fails while linking against STL for some reason. So the `constexpr` if works

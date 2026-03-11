@@ -218,7 +218,7 @@ struct accept_property_value<Meta, Key, Type, void> {
 
 		constexpr auto operator()(dictionary_tag /*tag*/, auto& visit, const auto& dictionary) const {
 			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) -> bool {
-				return visit.first(entry.first, first) == util::make_string_view(Key);
+				return visit.first(entry.first, first) == util::consteval_string_view{Key};
 			});
 			if (it == dictionary.end()) {
 				return second(undefined_in_tag{}, visit, std::monostate{});
