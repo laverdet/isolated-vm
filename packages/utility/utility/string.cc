@@ -1,12 +1,46 @@
 module;
+#include <algorithm>
 #include <array>
-#include <cstddef>
+#include <bit>
+#include <cstdint>
 #include <limits>
 #include <stdexcept>
 #include <string>
 #include <utility>
 export module util:utility.string;
 import :utility.constant_wrapper;
+
+#if _LIBCPP_VERSION
+template <>
+struct std::char_traits<unsigned char> {
+		using char_type = unsigned char;
+
+		constexpr static void assign(char_type& c1, const char_type& c2) noexcept { c1 = c2; }
+		constexpr static auto eq(const char_type& c1, const char_type& c2) noexcept -> bool { return c1 == c2; }
+		constexpr static auto lt(const char_type& c1, const char_type& c2) noexcept -> bool { return c1 < c2; }
+		constexpr static auto compare(const char_type* s1, const char_type* s2, std::size_t n) noexcept -> int {
+			for (std::size_t ii = 0; ii < n; ++ii) {
+				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+				if (!eq(s1[ ii ], s2[ ii ])) {
+					// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+					return lt(s1[ ii ], s2[ ii ]) ? -1 : 1;
+				}
+			}
+			return 0;
+		}
+		// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+		constexpr static auto find(const char_type* ptr, std::size_t count, const char_type& ch) noexcept -> const char_type* {
+			for (std::size_t ii = 0; ii < count; ++ii) {
+				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+				if (eq(ptr[ ii ], ch)) {
+					// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+					return ptr + ii;
+				}
+			}
+			return nullptr;
+		}
+};
+#endif
 
 namespace util {
 
@@ -17,6 +51,7 @@ struct consteval_string_view : public std::basic_string_view<Char> {
 };
 
 template <class Char, std::size_t Size>
+// NOLINTNEXTLINE(modernize-avoid-c-arrays)
 consteval_string_view(const Char (&string)[ Size ]) -> consteval_string_view<Char, Size - 1>;
 
 template <class Char, std::size_t Extent, fixed_value<Char[ Extent ]> Value>
@@ -67,23 +102,26 @@ class codepoint_utf8_range : public codepoint_char_container<Char, 4> {
 		constexpr static char32_t max = std::numeric_limits<char32_t>::max();
 
 		explicit constexpr codepoint_utf8_range(char32_t codepoint) {
+			constexpr auto to = [](unsigned segment) -> Char {
+				return std::bit_cast<Char>(static_cast<Char>(segment));
+			};
 			if (codepoint < 0x80) {
-				data()[ 0 ] = static_cast<Char>(codepoint);
+				data()[ 0 ] = to(codepoint);
 				data()[ 1 ] = 0;
 			} else if (codepoint < 0x800) {
-				data()[ 0 ] = static_cast<Char>((codepoint >> 6) + 0xc0);
-				data()[ 1 ] = static_cast<Char>((codepoint & 0x3f) + 0x80);
+				data()[ 0 ] = to((codepoint >> 6) + 0xc0);
+				data()[ 1 ] = to((codepoint & 0x3f) + 0x80);
 				data()[ 2 ] = 0;
 			} else if (codepoint < 0x1'0000) {
-				data()[ 0 ] = static_cast<Char>((codepoint >> 12) + 0xe0);
-				data()[ 1 ] = static_cast<Char>(((codepoint >> 6) & 0x3f) + 0x80);
-				data()[ 2 ] = static_cast<Char>((codepoint & 0x3f) + 0x80);
+				data()[ 0 ] = to((codepoint >> 12) + 0xe0);
+				data()[ 1 ] = to(((codepoint >> 6) & 0x3f) + 0x80);
+				data()[ 2 ] = to((codepoint & 0x3f) + 0x80);
 				data()[ 3 ] = 0;
 			} else if (codepoint < 0x11'0000) {
-				data()[ 0 ] = static_cast<Char>((codepoint >> 18) + 0xf0);
-				data()[ 1 ] = static_cast<Char>(((codepoint >> 12) & 0x3f) + 0x80);
-				data()[ 2 ] = static_cast<Char>(((codepoint >> 6) & 0x3f) + 0x80);
-				data()[ 3 ] = static_cast<Char>((codepoint & 0x3f) + 0x80);
+				data()[ 0 ] = to((codepoint >> 18) + 0xf0);
+				data()[ 1 ] = to(((codepoint >> 12) & 0x3f) + 0x80);
+				data()[ 2 ] = to(((codepoint >> 6) & 0x3f) + 0x80);
+				data()[ 3 ] = to((codepoint & 0x3f) + 0x80);
 			} else {
 				std::unreachable();
 			}
@@ -112,8 +150,15 @@ class codepoint_char_range<char16_t> : public codepoint_char_container<char16_t,
 				data()[ 1 ] = 0;
 			} else if (codepoint < 0x11'0000) {
 				auto twenty_bits = codepoint - 0x1'0000;
-				data()[ 0 ] = static_cast<char16_t>((twenty_bits / 0x400) + 0xd800);
-				data()[ 1 ] = static_cast<char16_t>((twenty_bits % 0x400) + 0xdc00);
+				// /usr/include/c++/v1/__type_traits/promote.h:38:1: error: redefinition of '__promote_t' as different kind of symbol
+				//    38 | using __promote_t _LIBCPP_NODEBUG =
+				//       | ^
+				// /usr/include/c++/v1/__type_traits/promote.h:38:1: note: previous definition is here
+				//    38 | using __promote_t _LIBCPP_NODEBUG =
+				// nb: `twenty_bits >> 10` == `twenty_bits / 0x400`
+				data()[ 0 ] = static_cast<char16_t>((twenty_bits >> 10) + 0xd800);
+				// nb:  `twenty_bits & 0x3ff` == `twenty_bits % 0x400`
+				data()[ 1 ] = static_cast<char16_t>((twenty_bits & 0x3ff) + 0xdc00);
 			} else {
 				std::unreachable();
 			}
@@ -138,6 +183,9 @@ codepoint_forward_view(std::basic_string_view<Char>) -> codepoint_forward_view<C
 // Latin-1 and UTF-32 can just read the string one character at a time.
 template <class Char>
 class codepoint_char_forward_view {
+	private:
+		using iterator_type = std::basic_string_view<Char>::const_iterator;
+
 	public:
 		explicit constexpr codepoint_char_forward_view(std::basic_string_view<Char> view) :
 				pos_{view.begin()},
@@ -148,8 +196,8 @@ class codepoint_char_forward_view {
 		constexpr auto read() -> char32_t { return static_cast<char32_t>(*pos_++); }
 
 	private:
-		const Char* pos_;
-		const Char* end_;
+		iterator_type pos_;
+		iterator_type end_;
 };
 
 template <>
@@ -165,6 +213,9 @@ class codepoint_forward_view<char32_t> : public codepoint_char_forward_view<char
 // UTF-8 forward iterator reader
 template <class Char>
 class codepoint_utf8_forward_view {
+	private:
+		using iterator_type = std::basic_string_view<Char>::const_iterator;
+
 	public:
 		explicit constexpr codepoint_utf8_forward_view(std::basic_string_view<Char> view) :
 				pos_{view.begin()},
@@ -174,13 +225,14 @@ class codepoint_utf8_forward_view {
 		constexpr auto read() -> char32_t {
 			// Check the expected length of the byte sequence from the leading byte's bit pattern
 			auto sequence_length = [ & ]() -> unsigned {
-				if (*pos_ < 0x80) {
+				auto byte0 = std::bit_cast<uint8_t>(*pos_);
+				if (byte0 < 0x80) {
 					return 1;
-				} else if (*pos_ < 0xe0) {
+				} else if (byte0 < 0xe0) {
 					return 2;
-				} else if (*pos_ < 0xf0) {
+				} else if (byte0 < 0xf0) {
 					return 3;
-				} else if (*pos_ < 0xf8) {
+				} else if (byte0 < 0xf8) {
 					return 4;
 				} else {
 					std::unreachable();
@@ -195,13 +247,10 @@ class codepoint_utf8_forward_view {
 			}
 
 			// Dump bytes
-			std::array<Char, 4> bytes{};
-			std::ranges::copy_n(pos_, sequence_length, bytes.begin());
+			std::array<Char, 4> characters{};
+			std::ranges::copy_n(pos_, sequence_length, characters.begin());
 			pos_ += sequence_length;
-			unsigned byte0 = bytes[ 0 ];
-			unsigned byte1 = bytes[ 1 ];
-			unsigned byte2 = bytes[ 2 ];
-			unsigned byte3 = bytes[ 3 ];
+			auto [ byte0, byte1, byte2, byte3 ] = std::bit_cast<std::array<uint8_t, 4>>(characters);
 
 			// Convert byte sequence to codepoint
 			switch (sequence_length) {
@@ -213,8 +262,8 @@ class codepoint_utf8_forward_view {
 		}
 
 	private:
-		const Char* pos_;
-		const Char* end_;
+		iterator_type pos_;
+		iterator_type end_;
 };
 
 template <>
@@ -230,6 +279,9 @@ class codepoint_forward_view<char8_t> : public codepoint_utf8_forward_view<char8
 // UTF-16 forward reader
 template <>
 class codepoint_forward_view<char16_t> {
+	private:
+		using iterator_type = std::basic_string_view<char16_t>::const_iterator;
+
 	public:
 		explicit constexpr codepoint_forward_view(std::basic_string_view<char16_t> view) :
 				pos_{view.begin()},
@@ -261,8 +313,8 @@ class codepoint_forward_view<char16_t> {
 		}
 
 	private:
-		const char16_t* pos_;
-		const char16_t* end_;
+		iterator_type pos_;
+		iterator_type end_;
 };
 
 // Interpolate the given character range to a `std::basic_string<Char>`. If the requested character
