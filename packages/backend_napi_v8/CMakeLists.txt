@@ -26,9 +26,6 @@ target_sources(backend_napi_v8
 		utility.cc
 )
 target_embed_content(backend_napi_v8 runtime/dist/interface.js)
-target_include_directories(backend_napi_v8 SYSTEM PRIVATE
-	${NODE_DIST_DIR}/include/node
-)
 target_link_libraries(backend_napi_v8 PUBLIC
 	auto_js
 	napi_js

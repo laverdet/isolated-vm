@@ -1,48 +1,5 @@
 cmake_minimum_required(VERSION 3.30.0 FATAL_ERROR)
 
-# Location of nodejs header files
-if(NOT DEFINED NODE_DIST_DIR)
-	set(NODE_DIST_DIR $ENV{NODE_DIST_DIR})
-endif()
-if(NOT EXISTS "${NODE_DIST_DIR}/include/node/node.h")
-	message(FATAL_ERROR "Missing ${NODE_DIST_DIR}/include/node/node.h")
-endif()
-
-# Location of v8 header files
-if(NOT DEFINED V8_INCLUDE_DIR)
-	set(V8_INCLUDE_DIR $ENV{V8_INCLUDE_DIR})
-endif()
-if(NOT EXISTS "${V8_INCLUDE_DIR}/v8.h")
-	message(FATAL_ERROR "Missing ${V8_INCLUDE_DIR}/v8.h")
-endif()
-
-# Location of v8-gn.h, build configuration
-if(NOT DEFINED V8_INCLUDE_GN_FILE)
-	set(V8_INCLUDE_GN_FILE $ENV{V8_INCLUDE_GN_FILE})
-endif()
-if(NOT EXISTS "${V8_INCLUDE_GN_FILE}")
-	message(FATAL_ERROR "Missing v8-gn.h")
-endif()
-
-# v8 library type (static, shared)
-if(NOT DEFINED V8_LIBRARY_TYPE)
-	set(V8_LIBRARY_TYPE $ENV{V8_LIBRARY_TYPE})
-endif()
-
-# v8 pre-built library location
-if(NOT DEFINED V8_LIBRARY_PATH)
-	set(V8_LIBRARY_PATH $ENV{V8_LIBRARY_PATH})
-endif()
-if(NOT EXISTS "${V8_LIBRARY_PATH}")
-	message(FATAL_ERROR "Missing v8 library")
-endif()
-
-# Ensure absolute path for variables used in subdirectories
-cmake_path(ABSOLUTE_PATH NODE_DIST_DIR BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
-cmake_path(ABSOLUTE_PATH V8_INCLUDE_DIR BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
-cmake_path(ABSOLUTE_PATH V8_INCLUDE_GN_FILE BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
-cmake_path(ABSOLUTE_PATH V8_LIBRARY_PATH BASE_DIRECTORY ${CMAKE_SOURCE_DIR})
-
 # Project config
 project(isolated_vm LANGUAGES C CXX)
 
@@ -50,12 +7,23 @@ project(isolated_vm LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Use lld (for LTO), and also gc-sections
+set(CMAKE_LINKER_TYPE LLD)
+add_compile_options(-fdata-sections -ffunction-sections)
+if(LINUX)
+	# Not supported in ld64 [darwin], or lld-link [windows]
+	add_link_options(-Wl,--gc-sections)
+endif()
+
 # Global compiler flags
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# No warnings allowed in release
+# Release flags
 if(CMAKE_BUILD_TYPE STREQUAL Release)
 	set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+	set(CMAKE_C_VISIBILITY_PRESET hidden)
+	set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+	set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
 
 # Check libc++ / libstdc++

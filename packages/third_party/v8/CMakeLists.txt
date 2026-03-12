@@ -1,5 +1,44 @@
 add_library(google_v8 STATIC)
 
+# Header files
+if(NOT DEFINED V8_INCLUDE_DIR)
+	set(V8_INCLUDE_DIR "$ENV{V8_BUNDLE_PATH}/../include")
+	cmake_path(ABSOLUTE_PATH V8_INCLUDE_DIR BASE_DIRECTORY "${CMAKE_SOURCE_DIR}")
+	set(V8_INCLUDE_DIR "${V8_INCLUDE_DIR}" CACHE STRING "")
+endif()
+if(NOT EXISTS "${V8_INCLUDE_DIR}/v8.h")
+	message(FATAL_ERROR "Missing ${V8_INCLUDE_DIR}/v8.h")
+endif()
+message(STATUS "Using v8 headers from '${V8_INCLUDE_DIR}'")
+
+# v8-gn.h, build configuration
+if(NOT DEFINED V8_INCLUDE_GN_FILE)
+	set(V8_INCLUDE_GN_FILE "$ENV{V8_BUNDLE_PATH}/include/v8-gn.h")
+	cmake_path(ABSOLUTE_PATH V8_INCLUDE_GN_FILE BASE_DIRECTORY "${CMAKE_SOURCE_DIR}")
+	set(V8_INCLUDE_GN_FILE "${V8_INCLUDE_GN_FILE}" CACHE STRING "")
+endif()
+if(NOT EXISTS "${V8_INCLUDE_GN_FILE}")
+	message(FATAL_ERROR "Missing v8-gn.h")
+endif()
+message(STATUS "Using v8-gn.h from '${V8_INCLUDE_GN_FILE}'")
+
+# v8 pre-built library
+if(NOT DEFINED V8_LIBRARY_PATH)
+	set(V8_LIBRARY_PATH "$ENV{V8_BUNDLE_PATH}")
+	cmake_path(ABSOLUTE_PATH V8_LIBRARY_PATH BASE_DIRECTORY "${CMAKE_SOURCE_DIR}")
+	set(V8_LIBRARY_PATH "${V8_LIBRARY_PATH}" CACHE STRING "")
+endif()
+if(NOT EXISTS "${V8_LIBRARY_PATH}")
+	message(FATAL_ERROR "Missing v8 library")
+endif()
+message(STATUS "Using v8 library path '${V8_LIBRARY_PATH}'")
+
+# v8 library type (static, shared)
+if(NOT DEFINED V8_LIBRARY_TYPE)
+	set(V8_LIBRARY_TYPE "$ENV{V8_LIBRARY_TYPE}" CACHE STRING "")
+endif()
+message(STATUS "Using v8 library type '${V8_LIBRARY_TYPE}'")
+
 # Preprocessor macros which enable dual v8 in the same process
 if(IVM_V8_TRICKSHOT)
 	set(MODULE_NAME z8)

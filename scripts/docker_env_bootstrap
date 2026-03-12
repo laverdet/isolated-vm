@@ -1,7 +1,8 @@
 #!/bin/sh
 rm .env
 cat <<-EOF > .env
+	CC=$CLANG_BASE_PATH/bin/clang"
 	CXX=$CLANG_BASE_PATH/bin/clang++"
 	NODE_DIST_DIR=/opt
-	V8_LIBRARY_PATH=$(dirname "$(find /v8/out -name env | head -n1)")
+	V8_BUNDLE_PATH=$(dirname "$(find /v8/out -name env | head -n1)")
 EOF

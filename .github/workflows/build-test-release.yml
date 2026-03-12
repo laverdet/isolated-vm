@@ -124,6 +124,8 @@ jobs:
             cmake
             curl
             libboost-all-dev
+            lld-21
+            llvm-21
             ninja-build
             nodejs
             xxd
@@ -132,7 +134,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           set -ux
-          brew install boost cmake llvm ninja node
+          brew install boost cmake lld llvm ninja node
           # Clever workaround for clang-scan-deps issues
           # /opt/homebrew/opt/llvm/bin/../include/c++/v1/__locale_dir/support/bsd_like.h:21:10: fatal error: 'time.h' file not found
           # https://github.com/Homebrew/homebrew-core/issues/221782#issuecomment-3245658786
