@@ -10,6 +10,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Use lld (for LTO), and also gc-sections
 set(CMAKE_LINKER_TYPE LLD)
 add_compile_options(-fdata-sections -ffunction-sections)
+add_link_options(-Wl,--icf=all)
 if(LINUX)
 	# Not supported in ld64 [darwin], or lld-link [windows]
 	add_link_options(-Wl,--gc-sections)
