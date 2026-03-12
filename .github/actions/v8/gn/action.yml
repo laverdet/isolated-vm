@@ -28,7 +28,7 @@ runs:
         packages: clang tar zstd
 
     # Restore musl cache
-    - uses: actions/cache/restore@v4
+    - uses: actions/cache/restore@v5
       id: cache
       if: endsWith(inputs.triplet, '-linux-musl')
       with:
@@ -48,7 +48,7 @@ runs:
         ninja -C out
 
     # Save musl cache
-    - uses: actions/cache/save@v4
+    - uses: actions/cache/save@v5
       if: |
         steps.cache.outcome == 'success' &&
         steps.cache.outputs.cache-hit != 'true'

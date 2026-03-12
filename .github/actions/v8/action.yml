@@ -41,7 +41,7 @@ runs:
         triplet: ${{ inputs.triplet }}
 
     # Checkout and sync v8
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         path: ./deps/v8
         ref: ${{ inputs.ref }}

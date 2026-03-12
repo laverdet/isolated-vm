@@ -31,7 +31,7 @@ jobs:
       x86_64-alpine-linux-musl: ${{ steps.output.outputs.x86_64-alpine-linux-musl }}
       x86_64-unknown-linux-gnu: ${{ steps.output.outputs.x86_64-unknown-linux-gnu }}
     steps:
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v5
         id: cache
         with:
           key: v8/${{ env.V8_REF }}/${{ matrix.host.triplet }}
@@ -97,7 +97,7 @@ jobs:
         if: matrix.host.triplet == 'aarch64-alpine-linux-musl'
 
       # Setup
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - shell: sh
         run: echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
 
@@ -182,7 +182,7 @@ jobs:
           echo ::endgroup::
 
       # Restore previously built v8
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v5
         id: v8-cache
         with:
           key: v8/${{ env.V8_REF }}/${{ matrix.host.triplet }}
@@ -197,14 +197,14 @@ jobs:
           ref: ${{ env.V8_REF }}
 
       # Cache v8
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v5
         if: steps.v8-cache.outputs.cache-hit != 'true'
         with:
           key: ${{ steps.v8-cache.outputs.cache-primary-key }}
           path: deps/v8/out
 
       # Download nodejs headers
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v5
         id: nodejs-headers-cache
         with:
           enableCrossOsArchive: true
@@ -216,7 +216,7 @@ jobs:
         env:
           NODE_HEADERS: ${{ env.NODE_HEADERS }}
         run: set -u; nodejs_select "deps/nodejs/$NODE_HEADERS"
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v5
         if: steps.nodejs-headers.outcome == 'success'
         with:
           enableCrossOsArchive: true
@@ -340,7 +340,7 @@ jobs:
           packages: bash
 
       # Setup
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - shell: sh
         run: echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
 
@@ -381,7 +381,7 @@ jobs:
           packages: alpine#${{ steps.musl.outputs.package }} npm
 
       # Install nodejs [others]
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         if: steps.musl.outcome == 'skipped'
         with:
           node-version: ${{ matrix.node }}
@@ -413,8 +413,8 @@ jobs:
       contents: write
     steps:
       # Setup
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
       - uses: pnpm/action-setup@v4
       - name: Setup
         shell: sh
