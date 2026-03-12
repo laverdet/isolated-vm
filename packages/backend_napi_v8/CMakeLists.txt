@@ -44,7 +44,10 @@ if(WIN32)
 	target_link_libraries(backend_napi_v8 PUBLIC node dbghelp winmm)
 endif()
 
-# Copy to `.node` for require (must be copy, not symlink, otherwise node will try to load it as a script)
+# Emit `xx.node` instead of `libxx.so`
+set_target_properties(backend_napi_v8 PROPERTIES PREFIX "" SUFFIX ".node")
+
+# `triplet_util` for host platform [darwin, win32, linux]
 execute_process(
 	COMMAND sh -c "${CMAKE_SOURCE_DIR}/scripts/triplet_util %p"
 	OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE HOST_PLATFORM
@@ -52,18 +55,22 @@ execute_process(
 if(NOT RESULT STREQUAL 0)
 	message(FATAL_ERROR "Unknown host platform." )
 endif()
-set(LOCAL_BACKEND_PACKAGE ${CMAKE_CURRENT_BINARY_DIR}/artifacts/${HOST_PLATFORM})
-add_custom_command(
-		TARGET backend_napi_v8 POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-		$<TARGET_FILE:backend_napi_v8>
-		${LOCAL_BACKEND_PACKAGE}/backend_napi_v8.${HOST_PLATFORM}.node)
-file(WRITE ${LOCAL_BACKEND_PACKAGE}/package.json "{\"main\":\"backend_napi_v8.${HOST_PLATFORM}.node\"}\n")
 
-# Link to `node_modules` for development
-set(HOST_BACKEND_PACKAGE ${CMAKE_SOURCE_DIR}/packages/isolated-vm/node_modules/@isolated-vm/experimental-${HOST_PLATFORM})
+# Install
 if(IVM_INSTALL STREQUAL link)
+	# Setup development package
+	set(LOCAL_BACKEND_PACKAGE "${CMAKE_CURRENT_BINARY_DIR}")
 	add_custom_command(
 		TARGET backend_napi_v8 POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink
-		${LOCAL_BACKEND_PACKAGE}
-		${HOST_BACKEND_PACKAGE})
+		"${CMAKE_CURRENT_BINARY_DIR}"
+		"${CMAKE_SOURCE_DIR}/packages/isolated-vm/node_modules/@isolated-vm/experimental-${HOST_PLATFORM}")
+	file(WRITE "${LOCAL_BACKEND_PACKAGE}/package.json" "{\"main\":\"backend_napi_v8.node\"}\n")
+else()
+	# Copy to `artifacts`. `napi-rs` will generate `package.json` later
+	set(LOCAL_BACKEND_PACKAGE "${CMAKE_CURRENT_BINARY_DIR}/artifacts/${HOST_PLATFORM}")
+	add_custom_command(
+		TARGET backend_napi_v8 POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
+		"$<TARGET_FILE:backend_napi_v8>"
+		"${LOCAL_BACKEND_PACKAGE}/backend_napi_v8.${HOST_PLATFORM}.node")
+	file(WRITE "${LOCAL_BACKEND_PACKAGE}/package.json" "{\"main\":\"backend_napi_v8.${HOST_PLATFORM}.node\"}\n")
 endif()

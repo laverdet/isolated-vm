@@ -283,18 +283,18 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           set -ux
-          ls -la build/packages/backend_napi_v8/libbackend_napi_v8.so
-          ls -lah build/packages/backend_napi_v8/libbackend_napi_v8.so
-          ldd build/packages/backend_napi_v8/libbackend_napi_v8.so 2>&1 | grep -v 'Error relocating'
-          nm -guC build/packages/backend_napi_v8/libbackend_napi_v8.so
+          ls -la build/packages/backend_napi_v8/backend_napi_v8.node
+          ls -lah build/packages/backend_napi_v8/backend_napi_v8.node
+          ldd build/packages/backend_napi_v8/backend_napi_v8.node 2>&1 | grep -v 'Error relocating'
+          nm -guC build/packages/backend_napi_v8/backend_napi_v8.node
       - name: Symbols [Windows]
         if: runner.os == 'Windows'
         shell: sh
         run: |
           set -ux
-          ls -la build/packages/backend_napi_v8/backend_napi_v8.lib
-          ls -lah build/packages/backend_napi_v8/backend_napi_v8.lib
-          dependencies.exe -imports build/packages/backend_napi_v8/backend_napi_v8.lib
+          ls -la build/packages/backend_napi_v8/backend_napi_v8.node
+          ls -lah build/packages/backend_napi_v8/backend_napi_v8.node
+          dependencies.exe -imports build/packages/backend_napi_v8/backend_napi_v8.node
 
       # Upload build artifacts
       - uses: actions/upload-artifact@v4
