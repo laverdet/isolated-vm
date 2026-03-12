@@ -38,6 +38,7 @@
 	},
 	"files.exclude": {
 		".cache": true,
+		".vscode/tasks.json": true,
 		"**/.z8_js": true,
 		"**/.z8": true,
 		"**/dist": true,

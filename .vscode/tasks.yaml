@@ -1,0 +1,187 @@
+# Regenerate with: `tasks.yaml: watch`
+# Icons: https://code.visualstudio.com/api/references/icons-in-labels
+version: 2.0.0
+options:
+  env:
+    ENV_FILE: ${workspaceFolder}/.env
+    PATH: ${workspaceFolder}/scripts:${env:PATH}
+inputs:
+  - type: pickString
+    id: ivm_target
+    description: Which ivm target configuration?
+    options:
+      - Debug
+      - Release
+      - RelWithDebInfo
+    default: Debug
+  - type: pickString
+    id: v8_target
+    description: Which v8 target to build?
+    options:
+      - debug
+      - optdebug
+      - release
+    default: debug
+  - type: pickString
+    id: v8_version
+    description: Which v8 revision to checkout?
+    # pick from: https://chromiumdash.appspot.com/releases
+    # (click the "i" icon)
+    options:
+      - 14.2.231.21
+      - 14.1.146.11
+      - 14.0.365.10
+      - 13.9.205.21
+      - 13.8.258.30
+      - 13.7.152.17
+      - 13.6.233.10
+      - 13.5.212.10
+    default: 14.2.231.21
+  - type: pickString
+    id: nodejs_version
+    description:
+      Which nodejs version to link against? For debug builds of isolated-vm the headers must match
+      the nodejs version.
+    options:
+      - 24.0.0
+      - 22.0.0
+      - 20.0.0
+    default: 24.0.0
+tasks:
+  # Default meta-build task
+  - label: 'isolated-vm: build'
+    group:
+      kind: build
+      isDefault: true
+    dependsOn:
+      - 'tasks.yaml: watch'
+      - 'tsc: watch'
+      - 'ninja: build'
+    icon:
+      id: plug
+
+  # Watcher which converts this file to `tasks.json`
+  # In case you mess it up: `yq < .vscode/tasks.yaml > .vscode/tasks.json`
+  - label: 'tasks.yaml: watch'
+    type: shell
+    command: |
+      set -eu
+      export COMMENT="// This file is generated from tasks.yaml. Don't edit it!"
+      export TASKS_JSON=.vscode/tasks.json
+      export TASKS_YAML=.vscode/tasks.yaml
+      echo "$TASKS_YAML" | \
+      entr -n sh -c 'echo "$COMMENT" > $TASKS_JSON; yq < $TASKS_YAML >> $TASKS_JSON'
+    isBackground: true
+    presentation:
+      panel: dedicated
+      reveal: never
+    group: build
+    icon:
+      id: eye
+
+  # TypeScript watcher
+  - label: 'tsc: watch'
+    type: shell
+    command: npx tsc --build --watch
+    problemMatcher: $tsc-watch
+    isBackground: true
+    presentation:
+      panel: dedicated
+      reveal: never
+    group: build
+    icon:
+      id: zap
+
+  # cmake: clean
+  - label: 'cmake: clean'
+    type: shell
+    command: rm -rf build
+    problemMatcher: []
+    presentation:
+      close: true
+      reveal: never
+    icon:
+      id: jersey
+
+  # cmake: configure
+  - label: 'cmake: configure'
+    type: shell
+    command: |
+      set -eu; set -a; source $ENV_FILE; source $V8_BUNDLE_PATH/env
+      cmake \
+        -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \
+        -DCMAKE_BUILD_TYPE=${input:ivm_target} \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DIVM_INSTALL=link \
+        -G Ninja -B build
+    dependsOn:
+      - 'cmake: clean'
+    problemMatcher: []
+    presentation:
+      clear: true
+      panel: dedicated
+      reveal: silent
+      showReuseMessage: false
+    icon:
+      id: wrench
+
+  # ninja: build
+  - label: 'ninja: build'
+    type: shell
+    command: set -eu; ninja -C build backend_napi_v8
+    problemMatcher: $gcc
+    presentation:
+      clear: true
+      panel: dedicated
+      reveal: never
+      showReuseMessage: false
+    group: build
+    icon:
+      id: flame
+
+  # Select v8 version & apply patches
+  - label: 'v8: select'
+    type: shell
+    command: |
+      set -eu
+      export V8_REF=$(PATCH_DIR=${workspaceFolder}/patches v8_select ${input:v8_version})
+      ivm_write_env V8_REF
+    options:
+      cwd: /v8
+    problemMatcher: []
+    presentation:
+      reveal: silent
+    icon:
+      id: versions
+
+  # Build v8 at /v8
+  - label: 'v8: build'
+    type: shell
+    command: |
+      unset CLANG_BASE_PATH; set -eu; set -a; source $ENV_FILE
+      TARGET=$(triplet_util %t.${input:v8_target})
+      export V8_BUNDLE_PATH="$(pwd)/out/$V8_REF/$TARGET"
+      WITHOUT_SYSROOT=1 v8_build "$V8_BUNDLE_PATH"
+      ivm_write_env V8_BUNDLE_PATH
+    options:
+      cwd: /v8
+    problemMatcher: []
+    presentation:
+      reveal: always
+    icon:
+      id: library
+
+  # Download nodejs headers
+  - label: 'nodejs: select'
+    type: shell
+    command: |
+      set -eu
+      export NODE_DIST_DIR=$(nodejs_select ~/local/nodejs/${input:nodejs_version})
+      ivm_write_env NODE_DIST_DIR
+    options:
+      cwd: ${userHome}
+    problemMatcher: []
+    presentation:
+      reveal: silent
+    icon:
+      id: versions
