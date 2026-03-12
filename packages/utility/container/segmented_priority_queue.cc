@@ -44,7 +44,7 @@ class segmented_priority_queue {
 
 	private:
 		queues_type queues_;
-		mutable ratchet_span<container_type> not_empty_{queues_.end(), queues_.end()};
+		ratchet_span<container_type> not_empty_{queues_.end(), queues_.end()};
 };
 
 // ---
