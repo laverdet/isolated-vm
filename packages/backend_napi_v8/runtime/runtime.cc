@@ -1,5 +1,5 @@
 module;
-#include "runtime/dist/interface.js.h"
+#include "runtime_dist_interface_js.h"
 #include <chrono>
 module backend_napi_v8;
 import :lock;

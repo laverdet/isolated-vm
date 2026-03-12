@@ -87,6 +87,6 @@ runs:
         esac
         v8_build "out/$REF/$TARGET"
         rm -rf "out/$REF/$TARGET/gen"
-        find out -type f ! -name '*.a' ! -name '*.h' ! -name '*.lib' -delete
+        find out -type f ! -name env ! -name args.gn ! -name '*.a' ! -name '*.h' ! -name '*.lib' ! -name icudtl.dat -delete -print
         find out -type d -empty -delete
         echo ::endgroup::

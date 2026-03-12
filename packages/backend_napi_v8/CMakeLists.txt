@@ -25,7 +25,7 @@ target_sources(backend_napi_v8
 		script.h.cc
 		utility.cc
 )
-target_embed_content(backend_napi_v8 runtime/dist/interface.js)
+target_embed_content(backend_napi_v8 runtime/dist/interface.js runtime_dist_interface_js)
 target_link_libraries(backend_napi_v8 PUBLIC
 	auto_js
 	napi_js

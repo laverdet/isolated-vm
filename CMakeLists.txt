@@ -100,25 +100,20 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL Clang)
 endif()
 
 # Convert file into a binary blob and embed it into a C++ source file.
-function(target_embed_content TARGET)
-	set(FILE_SET ${ARGV})
-	list(POP_FRONT FILE_SET)
+function(target_embed_content TARGET FILE IDENTIFIER)
 	set(GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/embed")
+	set(OUT_FILE "${GEN_DIR}/${IDENTIFIER}")
 	file(MAKE_DIRECTORY "${GEN_DIR}")
 	target_include_directories(${TARGET} PRIVATE "${GEN_DIR}")
-	foreach(FILE ${FILE_SET})
-		set(IDENTIFIER "${FILE}")
-		string(REPLACE . _ IDENTIFIER "${IDENTIFIER}")
-		string(REPLACE / _ IDENTIFIER "${IDENTIFIER}")
-		message(STATUS "Embedding ${FILE} as ${IDENTIFIER}")
-		add_custom_command(
-			DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}"
-			OUTPUT "${GEN_DIR}/${FILE}.c" "${GEN_DIR}/${FILE}.h"
-			COMMAND sh -c "${PROJECT_SOURCE_DIR}/embed.sh ${CMAKE_CURRENT_SOURCE_DIR}/${FILE} ${GEN_DIR}/${FILE} ${IDENTIFIER}"
-		)
-		set_source_files_properties("${GEN_DIR}/${FILE}.c" PROPERTIES GENERATED TRUE)
-		target_sources(${TARGET} PRIVATE "${GEN_DIR}/${FILE}.c")
-	endforeach()
+
+	message(STATUS "Embedding ${FILE} as ${IDENTIFIER}")
+	add_custom_command(
+		DEPENDS "${FILE}"
+		OUTPUT "${OUT_FILE}.c" "${OUT_FILE}.h"
+		COMMAND sh -c "${PROJECT_SOURCE_DIR}/embed.sh ${CMAKE_CURRENT_SOURCE_DIR}/${FILE} ${OUT_FILE} ${IDENTIFIER}"
+	)
+	set_source_files_properties("${OUT_FILE}.c" PROPERTIES GENERATED TRUE)
+	target_sources(${TARGET} PRIVATE "${OUT_FILE}.c")
 endfunction()
 
 # Generate lightly preprocessed C++ source files, to workaround P3034R1

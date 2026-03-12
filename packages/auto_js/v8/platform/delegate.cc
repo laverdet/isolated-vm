@@ -1,4 +1,5 @@
 module;
+#include "v8_icudtl_dat.h"
 #include <algorithm>
 #include <cassert>
 #include <chrono>
@@ -8,6 +9,11 @@ module;
 #include <typeinfo>
 module v8_js;
 import :platform.delegate;
+
+extern "C" {
+// #include "unicode/udata.h"
+void udata_setCommonData_74(const void* data, int* err);
+}
 
 namespace js::iv8::platform {
 
@@ -45,7 +51,8 @@ platform_handle::~platform_handle() {
 
 // `initialization_delegate`
 initialization_delegate::initialization_delegate(v8::Platform* implementation) {
-	v8::V8::InitializeICU();
+	int err = 0;
+	udata_setCommonData_74(&v8_icudtl_dat, &err);
 	v8::V8::InitializePlatform(implementation);
 	v8::V8::Initialize();
 }

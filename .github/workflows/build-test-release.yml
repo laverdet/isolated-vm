@@ -283,6 +283,8 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           set -ux
+          ls -la build/packages/backend_napi_v8/libbackend_napi_v8.so
+          ls -lah build/packages/backend_napi_v8/libbackend_napi_v8.so
           ldd build/packages/backend_napi_v8/libbackend_napi_v8.so 2>&1 | grep -v 'Error relocating'
           nm -guC build/packages/backend_napi_v8/libbackend_napi_v8.so
       - name: Symbols [Windows]
@@ -290,6 +292,8 @@ jobs:
         shell: sh
         run: |
           set -ux
+          ls -la build/packages/backend_napi_v8/backend_napi_v8.lib
+          ls -lah build/packages/backend_napi_v8/backend_napi_v8.lib
           dependencies.exe -imports build/packages/backend_napi_v8/backend_napi_v8.lib
 
       # Upload build artifacts
