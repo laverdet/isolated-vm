@@ -1,37 +1,18 @@
 module;
 #include <concepts>
+#include <type_traits>
 export module napi_js:value_handle;
+import :handle.types;
 import auto_js;
 import nodejs;
 
-namespace js {
-// Forward declaration
-namespace napi {
-export template <class Tag = value_tag> class value;
-}
+namespace js::napi {
 
-// Specialize for `js::forward<napi::value<Tag>>`
-template <class Tag>
-struct forward_tag_for<napi::value<Tag>> : std::type_identity<Tag> {};
-
-namespace napi {
-
-// `value_handle` is the base class of `value<T>`, and `bound_value<T>`.
-class value_handle {
-	protected:
-		explicit value_handle(napi_value value) :
-				value_{value} {}
-
-	public:
-		value_handle() = default;
-
-		// Implicit cast back to a `napi_value`
-		// NOLINTNEXTLINE(google-explicit-constructor)
-		operator napi_value() const { return value_; }
-
-	private:
-		napi_value value_{};
-};
+// Heirarchy:
+// value<object_tag> ->
+// value_for_object ->
+// value_next<object_tag> ->
+// value<value_tag> -> ...
 
 // Details applied to each level of the `value<T>` hierarchy.
 template <class Tag>
@@ -48,16 +29,24 @@ class value_next : public value<typename Tag::tag_type> {
 };
 
 // Tagged napi_value
-template <class Tag>
-class value : public value_next<Tag> {
+export template <class Tag>
+class value : public value_specialization<Tag>::value_type {
 	public:
-		using value_next<Tag>::value_next;
+		using value_specialization<Tag>::value_type::value_type;
 };
 
+// Sentinel instantiation
 template <>
 class value<void> : public value_handle {
+	public:
 		using value_handle::value_handle;
 };
 
-} // namespace napi
+} // namespace js::napi
+
+// Specialize for `js::forward`. Makes `js::forward{napi::value<Tag>}` infer
+// `js::forward<Tag, ...>`.
+namespace js {
+template <class Tag>
+struct js::forward_tag_for<napi::value<Tag>> : std::type_identity<Tag> {};
 } // namespace js

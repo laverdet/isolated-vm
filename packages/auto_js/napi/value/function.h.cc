@@ -9,8 +9,7 @@ import util;
 
 namespace js::napi {
 
-template <>
-class value<function_tag> : public value_next<function_tag> {
+class value_for_function : public value_next<function_tag> {
 	public:
 		using value_next<function_tag>::value_next;
 

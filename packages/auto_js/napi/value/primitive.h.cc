@@ -13,8 +13,7 @@ import :value_handle;
 namespace js::napi {
 
 // undefined
-template <>
-class value<undefined_tag> : public value_next<undefined_tag> {
+class value_for_undefined : public value_next<undefined_tag> {
 	public:
 		using value_next<undefined_tag>::value_next;
 		static auto make(const environment& env) -> value<undefined_tag>;
@@ -22,8 +21,7 @@ class value<undefined_tag> : public value_next<undefined_tag> {
 };
 
 // null
-template <>
-class value<null_tag> : public value_next<null_tag> {
+class value_for_null : public value_next<null_tag> {
 	public:
 		using value_next<null_tag>::value_next;
 		static auto make(const environment& env) -> value<null_tag>;
@@ -31,23 +29,20 @@ class value<null_tag> : public value_next<null_tag> {
 };
 
 // boolean
-template <>
-class value<boolean_tag> : public value_next<boolean_tag> {
+class value_for_boolean : public value_next<boolean_tag> {
 	public:
 		using value_next<boolean_tag>::value_next;
 		static auto make(const environment& env, bool boolean) -> value<boolean_tag>;
 };
 
-template <>
-class bound_value<boolean_tag> : public bound_value_next<boolean_tag> {
+class bound_value_for_boolean : public bound_value_next<boolean_tag> {
 	public:
 		using bound_value_next<boolean_tag>::bound_value_next;
 		[[nodiscard]] explicit operator bool() const;
 };
 
 // number
-template <>
-class value<number_tag> : public value_next<number_tag> {
+class value_for_number : public value_next<number_tag> {
 	public:
 		using value_next<number_tag>::value_next;
 		static auto make(const environment& env, double number) -> value<number_tag>;
@@ -58,17 +53,7 @@ class value<number_tag> : public value_next<number_tag> {
 		static auto make_property_name(const environment& env, int32_t number) -> value<number_tag> { return make(env, number); }
 };
 
-template <class Numeric>
-class value<number_tag_of<Numeric>> : public value_next<number_tag_of<Numeric>> {
-	public:
-		using value_next<number_tag_of<Numeric>>::value_next;
-		static auto make(const environment& env, Numeric number) -> value<number_tag_of<Numeric>> {
-			return value<number_tag>::make(env, number).cast(number_tag_of<Numeric>{});
-		}
-};
-
-template <>
-class bound_value<number_tag> : public bound_value_next<number_tag> {
+class bound_value_for_number : public bound_value_next<number_tag> {
 	public:
 		using bound_value_next<number_tag>::bound_value_next;
 		[[nodiscard]] explicit operator double() const;
@@ -78,8 +63,7 @@ class bound_value<number_tag> : public bound_value_next<number_tag> {
 };
 
 // bigint
-template <>
-class value<bigint_tag> : public value_next<bigint_tag> {
+class value_for_bigint : public value_next<bigint_tag> {
 	public:
 		using value_next<bigint_tag>::value_next;
 		static auto make(const environment& env, const bigint& number) -> value<bigint_tag>;
@@ -87,8 +71,7 @@ class value<bigint_tag> : public value_next<bigint_tag> {
 		static auto make(const environment& env, uint64_t number) -> value<bigint_tag>;
 };
 
-template <>
-class bound_value<bigint_tag> : public bound_value_next<bigint_tag> {
+class bound_value_for_bigint : public bound_value_next<bigint_tag> {
 	public:
 		using bound_value_next<bigint_tag>::bound_value_next;
 		[[nodiscard]] explicit operator bigint() const;
@@ -97,8 +80,7 @@ class bound_value<bigint_tag> : public bound_value_next<bigint_tag> {
 };
 
 // string
-template <>
-class value<string_tag> : public value_next<string_tag> {
+class value_for_string : public value_next<string_tag> {
 	public:
 		using value_next<string_tag>::value_next;
 		static auto make(const environment& env, std::string_view string) -> value<string_tag>;
@@ -109,8 +91,7 @@ class value<string_tag> : public value_next<string_tag> {
 		static auto make_property_name(const environment& env, std::u16string_view string) -> value<string_tag>;
 };
 
-template <>
-class bound_value<string_tag> : public bound_value_next<string_tag> {
+class bound_value_for_string : public bound_value_next<string_tag> {
 	public:
 		using bound_value_next<string_tag>::bound_value_next;
 		[[nodiscard]] explicit operator std::string() const;

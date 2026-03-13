@@ -8,7 +8,6 @@ module;
 export module napi_js:accept;
 import :api;
 import :container;
-import :dictionary; // ?? (`:value` should import it)
 import :environment_fwd;
 import :value;
 import util;
@@ -337,8 +336,8 @@ struct accept<Meta, object_assign_delegate> {
 		object_assign_delegate object_;
 };
 
-auto value<object_tag>::assign(auto_environment auto& env, auto source) -> void {
-	js::transfer_in<object_assign_delegate>(std::move(source), env, object_assign_delegate{*this});
+auto value_for_object::assign(this value<object_tag> self, auto_environment auto& env, auto source) -> void {
+	js::transfer_in<object_assign_delegate>(std::move(source), env, object_assign_delegate{self});
 }
 
 } // namespace js

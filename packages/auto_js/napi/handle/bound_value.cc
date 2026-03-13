@@ -1,13 +1,10 @@
 module;
 #include <concepts>
 export module napi_js:bound_value;
-import :value_handle;
+import :handle.types;
 import nodejs;
 
 namespace js::napi {
-
-// Forward declaration
-template <class Tag> class bound_value;
 
 // Details applied to each level of the `bound_value<T>` hierarchy.
 template <class Tag>
@@ -27,9 +24,9 @@ class bound_value_next : public bound_value<typename Tag::tag_type> {
 // might make sense to have the environment specified by a template parameter. Then you would use
 // `bound_value<T>` or something instead of passing the environment to each `value<T>` method.
 template <class Tag>
-class bound_value : public bound_value_next<Tag> {
+class bound_value : public value_specialization<Tag>::bound_type {
 	public:
-		using bound_value_next<Tag>::bound_value_next;
+		using value_specialization<Tag>::bound_type::bound_type;
 };
 
 template <class Tag>

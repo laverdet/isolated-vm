@@ -12,16 +12,14 @@ import :value_handle;
 namespace js::napi {
 
 // object
-template <>
-class value<object_tag> : public value_next<object_tag> {
+class value_for_object : public value_next<object_tag> {
 	public:
 		using value_next<object_tag>::value_next;
 
-		auto assign(auto_environment auto& env, auto source) -> void;
+		auto assign(this value<object_tag> self, auto_environment auto& env, auto source) -> void;
 };
 
-template <>
-class bound_value<object_tag> : public bound_value_next<object_tag> {
+class bound_value_for_object : public bound_value_next<object_tag> {
 	public:
 		using bound_value_next<object_tag>::bound_value_next;
 
@@ -35,15 +33,13 @@ class bound_value<object_tag> : public bound_value_next<object_tag> {
 };
 
 // date
-template <>
-class value<date_tag> : public value_next<date_tag> {
+class value_for_date : public value_next<date_tag> {
 	public:
 		using value_next<date_tag>::value_next;
 		static auto make(const environment& env, js_clock::time_point date) -> value<date_tag>;
 };
 
-template <>
-class bound_value<date_tag> : public bound_value_next<date_tag> {
+class bound_value_for_date : public bound_value_next<date_tag> {
 	public:
 		using bound_value_next<date_tag>::bound_value_next;
 		[[nodiscard]] explicit operator js_clock::time_point() const;
@@ -52,7 +48,7 @@ class bound_value<date_tag> : public bound_value_next<date_tag> {
 // ---
 
 template <class Type>
-auto bound_value<object_tag>::try_cast(std::type_identity<Type> /*type*/) const -> Type* {
+auto bound_value_for_object::try_cast(std::type_identity<Type> /*type*/) const -> Type* {
 	if (napi::invoke(napi_check_object_type_tag, env(), napi_value{*this}, &type_tag_for<Type>)) {
 		return static_cast<Type*>(napi::invoke(napi_unwrap, env(), napi_value{*this}));
 	} else {

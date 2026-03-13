@@ -43,14 +43,12 @@ class dictionary_like : public bound_value<object_tag> {
 		mutable keys_type keys_;
 };
 
-template <>
-class bound_value<list_tag> : public dictionary_like {
+class bound_value_for_list : public dictionary_like {
 	public:
 		using dictionary_like::dictionary_like;
 };
 
-template <>
-class bound_value<dictionary_tag> : public dictionary_like {
+class bound_value_for_dictionary : public dictionary_like {
 	public:
 		using dictionary_like::dictionary_like;
 };

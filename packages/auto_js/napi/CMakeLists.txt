@@ -27,6 +27,7 @@ target_sources(napi_js
 		handle/bound_value.cc
 		handle/reference.cc
 		handle/remote.cc
+		handle/types.cc
 		handle/value.cc
 		support/callback_storage.cc
 		support/callback.cc

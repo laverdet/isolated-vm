@@ -11,8 +11,7 @@ import util;
 
 namespace js::napi {
 
-template <>
-class bound_value<vector_tag> : public bound_value_next<vector_tag> {
+class bound_value_for_vector : public bound_value_next<vector_tag> {
 	public:
 		class iterator;
 		using bound_value_next<vector_tag>::bound_value_next;
@@ -26,31 +25,31 @@ class bound_value<vector_tag> : public bound_value_next<vector_tag> {
 		mutable uint32_t size_{};
 };
 
-class bound_value<vector_tag>::iterator : public util::random_access_iterator_facade<int32_t, int64_t> {
+class bound_value_for_vector::iterator : public util::random_access_iterator_facade<int32_t, int64_t> {
 	public:
 		using arithmetic_facade::operator+;
 		using difference_type = arithmetic_facade::difference_type;
 		using size_type = uint32_t;
-		using value_type = bound_value::value_type;
+		using value_type = bound_value_for_vector::value_type;
 
 		iterator() = default;
-		iterator(bound_value subject, size_type index);
+		iterator(bound_value_for_vector subject, size_type index);
 
 		auto operator*() const -> value_type;
 
 		auto operator+=(difference_type offset) -> iterator& {
-			index += offset;
+			index_ += offset;
 			return *this;
 		}
 
-		auto operator==(const iterator& right) const -> bool { return index == right.index; }
-		auto operator<=>(const iterator& right) const -> std::strong_ordering { return index <=> right.index; }
+		auto operator==(const iterator& right) const -> bool { return index_ == right.index_; }
+		auto operator<=>(const iterator& right) const -> std::strong_ordering { return index_ <=> right.index_; }
 
 	private:
-		auto operator+() const -> size_type { return index; }
+		auto operator+() const -> size_type { return index_; }
 
-		bound_value<vector_tag> subject_;
-		size_type index{};
+		bound_value_for_vector subject_;
+		size_type index_{};
 };
 
 } // namespace js::napi

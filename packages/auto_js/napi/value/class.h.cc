@@ -8,7 +8,7 @@ import :object;
 namespace js::napi {
 
 template <class Type>
-class value<class_tag_of<Type>> : public value_next<class_tag_of<Type>> {
+class value_for_class_of : public value_next<class_tag_of<Type>> {
 	public:
 		using value_next<class_tag_of<Type>>::value_next;
 

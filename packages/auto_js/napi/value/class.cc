@@ -17,7 +17,7 @@ namespace js::napi {
 
 template <class Type>
 template <class... Args>
-auto value<class_tag_of<Type>>::construct(auto& env, Args&&... args) const -> value<object_tag>
+auto value_for_class_of<Type>::construct(auto& env, Args&&... args) const -> value<object_tag>
 	requires std::constructible_from<Type, Args...> {
 	// NOLINTNEXTLINE(readability-simplify-boolean-expr)
 	if (false) {
@@ -30,7 +30,7 @@ auto value<class_tag_of<Type>>::construct(auto& env, Args&&... args) const -> va
 
 template <class Type>
 template <class... HostArgs, class... RuntimeArgs>
-auto value<class_tag_of<Type>>::runtime_construct(
+auto value_for_class_of<Type>::runtime_construct(
 	auto& env,
 	std::tuple<HostArgs...> host_args,
 	std::tuple<RuntimeArgs...> runtime_args
@@ -44,7 +44,7 @@ auto value<class_tag_of<Type>>::runtime_construct(
 
 template <class Type>
 template <class... Args>
-auto value<class_tag_of<Type>>::transfer_construct(auto& env, auto instance, std::tuple<Args...> runtime_args) const -> value<object_tag> {
+auto value_for_class_of<Type>::transfer_construct(auto& env, auto instance, std::tuple<Args...> runtime_args) const -> value<object_tag> {
 	using element_type = decltype(instance)::element_type;
 	auto construct = [ & ](napi_value this_arg) mutable -> napi_value {
 		// Tag `this_arg`
@@ -69,7 +69,7 @@ auto value<class_tag_of<Type>>::transfer_construct(auto& env, auto instance, std
 
 template <class Type>
 template <class Environment>
-auto value<class_tag_of<Type>>::make(Environment& env, const auto& class_template) -> value<class_tag_of<Type>> {
+auto value_for_class_of<Type>::make(Environment& env, const auto& class_template) -> value<class_tag_of<Type>> {
 	// Make constructor callback
 	auto [ construct_ptr, constructor_data ] =
 		make_callback_storage(env, make_constructor_function<Environment, Type>(class_template.constructor.function));

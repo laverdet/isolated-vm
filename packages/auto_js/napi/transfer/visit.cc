@@ -4,9 +4,9 @@ module;
 export module napi_js:visit;
 import :api;
 import :container;
-import :dictionary; // ?? (`:value` should import it)
 import :environment_fwd;
 import :utility;
+import :value;
 import util;
 
 namespace js {
