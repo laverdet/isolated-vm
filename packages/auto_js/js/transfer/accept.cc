@@ -30,10 +30,14 @@ export struct visit_holder {
 // Default `accept` swallows `Meta`
 template <class Meta, class Type>
 struct accept : accept<void, Type> {
-		using accept<void, Type>::accept;
+	private:
+		using accept_type = accept<void, Type>;
+
+	public:
+		using accept_type::accept_type;
 		// Swallow `transfer` argument on behalf of non-meta acceptors
 		explicit constexpr accept(auto* /*transfer*/, auto&&... args) :
-				accept<void, Type>{std::forward<decltype(args)>(args)...} {}
+				accept_type{std::forward<decltype(args)>(args)...} {}
 };
 
 // Prevent instantiation of non-specialized void-Meta `accept` (better error messages)
@@ -66,38 +70,55 @@ struct accept_delegated : util::reference_wrapper<Accept> {
 				util::reference_wrapper<Accept>{*static_cast<Accept*>(transfer)} {}
 };
 
+// `accept_value_from` is the implementation of `accept_value`. It is an `accept` wrapper which most
+// visit instances will see. It is also used in nested container acceptors (`std::pair`,
+// `std::vector`, `std::tuple`, etc). It automatically handles unwrapping of referenceable and
+// intermediate values, and stores references in the visitors reference map, if there is one
+// defined.
+template <class Accept>
+struct accept_value_from;
+
+template <class Accept>
+struct accept_target<accept_value_from<Accept>> : accept_target<Accept> {};
+
 // Recursively invoke single-argument `accept` calls until a non-`accept`'able type is returned.
-// `referenceable_value`'s are unwrapped and passed to `insert`.
+// `referenceable_value`'s are unwrapped and passed to `insert`. This is tightly coupled to
+// `accept_value_from` but split out so that the `reference_of<T>` acceptor can use the consumption
+// logic.
 export template <class Accept, class Insert>
 struct accept_value_direct;
 
 template <class Accept, class Insert>
 struct accept_target<accept_value_direct<Accept, Insert>> : accept_target<Accept> {};
 
+// `accept_value_direct`
 template <class Accept, class Insert>
 struct accept_value_direct {
 	private:
-		using accept_type = std::remove_cvref_t<decltype(*std::declval<const Accept&>())>;
+		using accept_type = accept_value_from<Accept>;
 		using target_type = accept_target_t<Accept>;
 
 	public:
-		constexpr accept_value_direct(const Accept& accept, Insert insert) :
+		constexpr accept_value_direct(const accept_type& accept, Insert insert) :
 				accept_{accept},
 				insert_{std::move(insert)} {}
 
 		constexpr auto operator()(auto tag, auto& visit, auto&& subject) const -> target_type {
 			// nb: A `static_assert` is more correct and helpful than a requirement check, since there
 			// will be no other acceptors which could do better; if you are invoking an instance of
-			// `accept_value_stored` then you expect it to succeed. If the assert fails then something has
-			// gone totally off the rails.
-			static_assert(std::invocable<accept_type, decltype(tag), decltype(visit), decltype(subject)>);
-			return consume(util::invoke_as<accept_type>(accept_.get(), tag, visit, std::forward<decltype(subject)>(subject)));
+			// `accept_value` then you expect it to succeed. If the assert fails then something has gone
+			// totally off the rails.
+			static_assert(std::invocable<const Accept&, decltype(tag), decltype(visit), decltype(subject)>);
+			// The `invoke_this_as` call is used by the `js::deferred_receiver`-returning acceptors. They
+			// take a `this const auto& self` parameter which must be the `accept_value_from` type and not
+			// their own type.
+			return consume(util::invoke_this_as<Accept>(accept_.get(), tag, visit, std::forward<decltype(subject)>(subject)));
 		}
 
 	private:
 		constexpr auto consume(auto&& value) const -> target_type {
-			if constexpr (std::invocable<const accept_type&, decltype(value)>) {
-				return consume((*accept_.get())(std::forward<decltype(value)>(value)));
+			if constexpr (std::invocable<const Accept&, decltype(value)>) {
+				return consume(util::invoke_as<Accept>(accept_.get(), std::forward<decltype(value)>(value)));
 			} else {
 				return std::forward<decltype(value)>(value);
 			}
@@ -112,36 +133,24 @@ struct accept_value_direct {
 		template <class Type, class... Args>
 		[[nodiscard]] constexpr auto consume(js::deferred_receiver<Type, Args...> receiver) const -> target_type {
 			insert_(*receiver);
-			// NOLINTNEXTLINE(bugprone-use-after-move)
 			std::move(receiver)();
 			// NOLINTNEXTLINE(bugprone-use-after-move)
 			return consume(*std::move(receiver));
 		}
 
-		util::reference_wrapper<const Accept> accept_;
+		util::reference_wrapper<const accept_type> accept_;
 		NO_UNIQUE_ADDRESS Insert insert_;
 };
 
-// `accept` wrapper which is passed to visit instances. It is also used in nested container
-// acceptors (`std::pair`, `std::vector`, `std::tuple`, etc). It automatically handles unwrapping of
-// referenceable and intermediate values, and stores references in the visitors reference map, if
-// there is one defined.
+// `accept_value_from`
 template <class Accept>
-struct accept_value_stored;
-
-template <class Accept>
-struct accept_target<accept_value_stored<Accept>> : accept_target<Accept> {};
-
-template <class Accept>
-struct accept_value_stored : Accept {
+struct accept_value_from : Accept {
 		using accept_type = Accept;
 		using accept_type::accept_type;
 
-		constexpr auto operator*() const -> const accept_type& { return *this; }
-
 		// forward reference provider
 		constexpr auto operator()(auto type, auto&& value) const -> type_t<type> {
-			return util::invoke_as<Accept>(*this, type, std::forward<decltype(value)>(value));
+			return util::invoke_as<accept_type>(*this, type, std::forward<decltype(value)>(value));
 		}
 
 		template <class Visit>
@@ -157,15 +166,10 @@ struct accept_value_stored : Accept {
 		}
 };
 
-// Wraps the passed `Accept` and instantiates `accept_value_stored`. Note that the argument here is
-// `Accept` and not `Type`.
-template <class Meta, class Accept>
-using accept_value_from = accept_value_stored<typename Meta::accept_wrap_type::template accept<Accept>>;
-
-// `accept_value` is the main utility used by nested containers. See `accept_value_stored` notes
+// `accept_value` is the main utility used by nested containers. See `accept_value_from` notes
 // above.
 export template <class Meta, class Type>
-using accept_value = accept_value_from<Meta, accept<Meta, Type>>;
+using accept_value = accept_value_from<typename Meta::accept_wrap_type::template accept<accept<Meta, Type>>>;
 
 // Utility to pass oneself as an object entry acceptor
 export template <class First, class Second>

@@ -149,9 +149,7 @@ struct visit_referential_value_of<Meta, Value, util::type_pack<Refs...>>
 
 		template <class Accept>
 		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
-			// nb: `invoke_as<visit_type>` cannot be used here since this is the recursive linchpin in the
-			// whole thing
-			return visit_type::operator()(*std::forward<decltype(subject)>(subject), accept);
+			return util::invoke_as<visit_type>(*this, *std::forward<decltype(subject)>(subject), accept);
 		}
 
 		// Infinite recursion check.

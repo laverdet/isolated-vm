@@ -10,13 +10,13 @@ import util;
 
 namespace js {
 
+// `std::array` can only accept a tuple of statically known size
+template <class Meta, std::size_t Size, class Type>
+struct accept<Meta, std::array<Type, Size>>;
+
 template <class Type, size_t Size>
 struct accept_target_for<std::array<Type, Size>> : accept_target_for<Type> {};
 
-template <class Type>
-struct accept_target_for<std::vector<Type>> : accept_target_for<Type> {};
-
-// `std::array` can only accept a tuple of statically known size
 template <class Meta, std::size_t Size, class Type>
 struct accept<Meta, std::array<Type, Size>> : accept_value<Meta, Type> {
 		using accept_type = accept_value<Meta, Type>;
@@ -47,6 +47,12 @@ struct accept<Meta, std::array<Type, Size>> : accept_value<Meta, Type> {
 };
 
 // `std::vector` can accept all kinds of lists
+template <class Meta, class Type>
+struct accept<Meta, std::vector<Type>>;
+
+template <class Type>
+struct accept_target_for<std::vector<Type>> : accept_target_for<Type> {};
+
 template <class Meta, class Type>
 struct accept<Meta, std::vector<Type>> : accept_value<Meta, Type> {
 		using accept_type = accept_value<Meta, Type>;

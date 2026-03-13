@@ -65,6 +65,8 @@ struct visit_napi_value
 		: napi::environment_scope<Environment>,
 			reference_map_t<Target, napi_reference_map_type> {
 	public:
+		using reference_map_t<Target, napi_reference_map_type>::lookup_or_visit;
+
 		visit_napi_value(auto* /*transfer*/, Environment& env) :
 				napi::environment_scope<Environment>{env},
 				reference_map_t<Target, napi_reference_map_type>{env},
@@ -73,10 +75,10 @@ struct visit_napi_value
 		// If the private `immediate` operation is defined: this public operation will first
 		// perform a reference map lookup, then delegate to the private operation if not found.
 		template <auto_tag Tag, class Accept>
-		auto operator()(this auto& self, value<Tag> subject, const Accept& accept) -> accept_target_t<Accept>
-			requires requires { self.immediate(subject, accept); } {
-			return self.lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
-				return self.immediate(subject, accept);
+		auto operator()(value<Tag> subject, const Accept& accept) -> accept_target_t<Accept>
+			requires requires { immediate(subject, accept); } {
+			return lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
+				return immediate(subject, accept);
 			});
 		}
 
@@ -191,18 +193,18 @@ struct visit_napi_value
 			return accept_tagged(napi::value<bigint_tag_of<bigint>>::from(subject), accept);
 		}
 
-		template <class Visit, class Accept>
-		auto immediate(this Visit& self, value<list_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
+		template <class Accept>
+		auto immediate(value<list_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
 			// nb: It is intentional that `dictionary_tag` is bound. It handles sparse arrays.
-			auto target = napi::bound_value{napi_env{self}, napi::value<dictionary_tag>::from(subject)};
-			auto visit_entry = visit_entry_pair<visit_napi_property_name<Visit>, Visit&>{self};
+			auto target = napi::bound_value{napi_env{*this}, napi::value<dictionary_tag>::from(subject)};
+			auto visit_entry = visit_entry_pair<visit_napi_property_name<visit_napi_value>, visit_napi_value&>{*this};
 			return accept(list_tag{}, visit_entry, target);
 		}
 
-		template <class Visit, class Accept>
-		auto immediate(this Visit& self, value<object_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
-			auto target = napi::bound_value{napi_env{self}, napi::value<dictionary_tag>::from(subject)};
-			auto visit_entry = visit_entry_pair<visit_napi_property_name<Visit>, Visit&>{self};
+		template <class Accept>
+		auto immediate(value<object_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
+			auto target = napi::bound_value{napi_env{*this}, napi::value<dictionary_tag>::from(subject)};
+			auto visit_entry = visit_entry_pair<visit_napi_property_name<visit_napi_value>, visit_napi_value&>{*this};
 			return accept(dictionary_tag{}, visit_entry, target);
 		}
 

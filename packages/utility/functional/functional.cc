@@ -46,12 +46,20 @@ auto make_indirect_moveable_function(Fn&& fn) {
 // Hide `-Wunused-value` warnings
 export constexpr auto unused = [](auto&& /*nothing*/) -> void {};
 
+// Invoke the given callable as a base class of itself. cvref qualifiers are forwarded, so `Type` is
+// expected to be unqualified.
+export template <class Type, class From>
+constexpr auto invoke_as(From&& func, auto&&... args)
+	-> decltype(std::declval<apply_cvref_t<From, Type>>()(std::declval<decltype(args)>()...)) {
+	return static_cast<apply_cvref_t<From, Type>>(std::forward<decltype(func)>(func))(std::forward<decltype(args)>(args)...);
+}
+
 // Invoke the given callable using an explicit and possibly shadowed `operator()()` on a base class,
 // but without erasing the pointer type for deduced `this`. The syntax here is messy, and
 // `InvokeAsType_` can be shadowed by the base class. Also, clang has some really spooky behavior
 // which is resolved by breaking out invocations to deduced-this instances.
 export template <class InvokeAsType_>
-constexpr auto invoke_as(auto&& func, auto&&... args)
+constexpr auto invoke_this_as(auto&& func, auto&&... args)
 	// This is functionally the same as ` -> decltype(auto)` but works around the error:
 	// 'invoke_as<...>' with deduced return type cannot be used before it is defined
 	-> decltype(std::declval<decltype(func)>().InvokeAsType_::operator()(std::declval<decltype(args)>()...)) {

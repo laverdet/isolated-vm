@@ -59,12 +59,12 @@ struct accept_reference_of : accept<Meta, Type> {
 				accept_type{transfer},
 				type_index_{type_index} {}
 
-		constexpr auto operator()(this const auto& self, auto tag, auto& visit, auto&& subject)
-			-> js::deferred_receiver<accepted_reference_of<Type>, decltype(self), decltype(tag), decltype(visit), decltype(subject)>
+		constexpr auto operator()(auto tag, auto& visit, auto&& subject) const
+			-> js::deferred_receiver<accepted_reference_of<Type>, decltype(*this), decltype(tag), decltype(visit), decltype(subject)>
 			requires std::invocable<const accept_type&, decltype(tag), decltype(visit), decltype(subject)> {
 			return {
-				accepted_reference_of{self.type_index_, self.storage_.allocate()},
-				std::forward_as_tuple(self, tag, visit, std::forward<decltype(subject)>(subject)),
+				accepted_reference_of{type_index_, storage_.allocate()},
+				std::forward_as_tuple(*this, tag, visit, std::forward<decltype(subject)>(subject)),
 				[](accepted_reference_of<Type> reference, auto& self, auto tag, auto& visit, auto /*&&*/ subject) -> void {
 					self.storage_.at(reference_type{reference.id()}) =
 						util::invoke_as<accept_type>(self, tag, visit, std::forward<decltype(subject)>(subject));
@@ -193,13 +193,13 @@ struct accept_referential_value_of<Meta, Value, util::type_pack<Refs...>>
 		}
 };
 
-// `referential_value` top acceptor. It delegates through `accept_value_from` in order to forward
-// the underlying reference storage to the final value.
+// `referential_value` top acceptor. It delegates through `accept_value` in order to forward the
+// underlying reference storage to the final value.
 template <class Meta, template <class> class Make, auto Extract>
 struct accept<Meta, referential_value<Make, Extract>>
-		: accept_value_from<Meta, accept<Meta, typename referential_value<Make, Extract>::value_type>> {
+		: accept_value<Meta, typename referential_value<Make, Extract>::value_type> {
 		using value_type = referential_value<Make, Extract>;
-		using accept_type = accept_value_from<Meta, accept<Meta, typename referential_value<Make, Extract>::value_type>>;
+		using accept_type = accept_value<Meta, typename referential_value<Make, Extract>::value_type>;
 		using accept_type::accept_type;
 
 		// reference provider
@@ -211,9 +211,8 @@ struct accept<Meta, referential_value<Make, Extract>>
 
 		// accept as value, moving reference storage along with the value
 		constexpr auto operator()(auto_tag auto tag, auto& visit, auto&& subject) const -> value_type {
-			const accept_type& accept = *this;
 			return value_type{
-				accept(tag, visit, std::forward<decltype(subject)>(subject)),
+				util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(subject)>(subject)),
 				this->take_reference_storage(),
 			};
 		}

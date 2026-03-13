@@ -53,14 +53,16 @@ struct visit_v8_property_name {
 // Implements `Visit`'s non-caching `immediate()` function as a caching visit operation.
 template <class Visit>
 struct visit_cached_immediate : Visit {
-		using Visit::Visit;
+		using Visit::immediate;
+		using Visit::lookup_or_visit;
 		using Visit::operator();
+		using Visit::Visit;
 
 		template <class Accept>
-		auto operator()(this auto& self, auto subject, const Accept& accept) -> accept_target_t<Accept>
-			requires requires { self.immediate(subject, accept); } {
-			return self.lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
-				return self.immediate(subject, accept);
+		auto operator()(auto subject, const Accept& accept) -> accept_target_t<Accept>
+			requires requires { immediate(subject, accept); } {
+			return lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
+				return immediate(subject, accept);
 			});
 		}
 };
@@ -167,26 +169,26 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 
 		// date
 		template <class Accept>
-		auto immediate(this auto& self, v8::Local<v8::Date> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(date_tag{}, self, iv8::date{subject});
+		auto immediate(v8::Local<v8::Date> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(date_tag{}, *this, iv8::date{subject});
 		}
 
 		// external
 		template <class Accept>
-		auto immediate(this auto& self, v8::Local<v8::External> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(external_tag{}, self, iv8::external{subject});
+		auto immediate(v8::Local<v8::External> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(external_tag{}, *this, iv8::external{subject});
 		}
 
 		// promise
 		template <class Accept>
-		auto immediate(this auto& self, v8::Local<v8::Promise> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(promise_tag{}, self, subject);
+		auto immediate(v8::Local<v8::Promise> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(promise_tag{}, *this, subject);
 		}
 
 		// function
 		template <class Accept>
-		auto immediate(this auto& self, v8::Local<v8::Function> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(function_tag{}, self, subject);
+		auto immediate(v8::Local<v8::Function> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(function_tag{}, *this, subject);
 		}
 
 		[[nodiscard]] auto is_cached_null(v8::Local<v8::Value> value) const { return value == null_; }
@@ -211,6 +213,10 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 		friend struct visit_flat_v8_value<Target>;
 		using visit_type = visit_flat_v8_value<Target>;
 		using visit_type::immediate;
+		using visit_type::is_cached_null;
+		using visit_type::is_cached_undefined;
+		using visit_type::lock_witness;
+		using visit_type::lookup_or_visit;
 		using visit_type::operator();
 
 		explicit visit_v8_value(auto* transfer, iv8::context_lock_witness lock) :
@@ -222,20 +228,20 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 		[[nodiscard]] auto lock_witness() const -> auto& { return context_lock_; }
 
 		template <class Accept>
-		auto operator()(this auto& self, v8::Local<v8::Value> subject, const Accept& accept) -> accept_target_t<Accept> {
+		auto operator()(v8::Local<v8::Value> subject, const Accept& accept) -> accept_target_t<Accept> {
 			// Check known address values before the map lookup
-			if (self.is_cached_null(subject)) {
-				return accept(null_tag{}, self, subject);
-			} else if (self.is_cached_undefined(subject)) {
-				return accept(undefined_tag{}, self, subject);
+			if (is_cached_null(subject)) {
+				return accept(null_tag{}, *this, subject);
+			} else if (is_cached_undefined(subject)) {
+				return accept(undefined_tag{}, *this, subject);
 			}
 
 			// Check the reference map, and check type
-			return self.lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
+			return lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
 				if (subject->IsObject()) {
-					return self.immediate(subject.As<v8::Object>(), accept);
+					return immediate(subject.As<v8::Object>(), accept);
 				} else {
-					return self.immediate(subject.As<v8::Primitive>(), accept);
+					return immediate(subject.As<v8::Primitive>(), accept);
 				}
 			});
 		}
@@ -243,34 +249,34 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 	protected:
 		// object
 		template <class Accept>
-		auto immediate(this auto& self, v8::Local<v8::Object> subject, const Accept& accept) -> accept_target_t<Accept> {
+		auto immediate(v8::Local<v8::Object> subject, const Accept& accept) -> accept_target_t<Accept> {
 			if (subject->IsArray()) {
-				return self.immediate(subject.As<v8::Array>(), accept);
+				return immediate(subject.As<v8::Array>(), accept);
 			} else if (subject->IsExternal()) {
-				return self.immediate(subject.As<v8::External>(), accept);
+				return immediate(subject.As<v8::External>(), accept);
 			} else if (subject->IsDate()) {
-				return self.immediate(subject.As<v8::Date>(), accept);
+				return immediate(subject.As<v8::Date>(), accept);
 			} else if (subject->IsPromise()) {
-				return self.immediate(subject.As<v8::Promise>(), accept);
+				return immediate(subject.As<v8::Promise>(), accept);
 			} else if (subject->IsFunction()) {
-				return self.immediate(subject.As<v8::Function>(), accept);
+				return immediate(subject.As<v8::Function>(), accept);
 			} else {
-				auto visit_entry = visit_entry_pair<visit_v8_property_name<visit_v8_value>, visit_v8_value&>{self};
-				return accept(dictionary_tag{}, visit_entry, iv8::object{self.lock_witness(), subject.As<v8::Object>()});
+				auto visit_entry = visit_entry_pair<visit_v8_property_name<visit_v8_value>, visit_v8_value&>{*this};
+				return accept(dictionary_tag{}, visit_entry, iv8::object{lock_witness(), subject.As<v8::Object>()});
 			}
 		}
 
 		// array
 		template <class Accept>
-		auto immediate(this auto& self, v8::Local<v8::Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			auto visit_entry = visit_entry_pair<visit_v8_property_name<visit_v8_value>, visit_v8_value&>{self};
-			return accept(list_tag{}, visit_entry, iv8::object{self.lock_witness(), subject.As<v8::Object>()});
+		auto immediate(v8::Local<v8::Array> subject, const Accept& accept) -> accept_target_t<Accept> {
+			auto visit_entry = visit_entry_pair<visit_v8_property_name<visit_v8_value>, visit_v8_value&>{*this};
+			return accept(list_tag{}, visit_entry, iv8::object{lock_witness(), subject.As<v8::Object>()});
 		}
 
 		// function template
 		template <class Accept>
-		auto immediate(this auto& self, v8::Local<v8::FunctionTemplate> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(function_tag{}, self, iv8::unmaybe(subject->GetFunction(self.context_lock_.context())));
+		auto immediate(v8::Local<v8::FunctionTemplate> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(function_tag{}, *this, iv8::unmaybe(subject->GetFunction(context_lock_.context())));
 		}
 
 	private:

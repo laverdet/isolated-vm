@@ -44,9 +44,9 @@ struct accept_primitive_covariant
 		using accept_type::accept_type;
 
 		using accept_with_variant<Variant, Type>::operator();
-		constexpr auto operator()(this const auto& self, auto_tag auto tag, auto& visit, auto&& subject)
+		constexpr auto operator()(auto_tag auto tag, auto& visit, auto&& subject) const
 			-> std::invoke_result_t<const accept_type&, decltype(covariant_tag{tag}), decltype(visit), decltype(subject)> {
-			return util::invoke_as<accept_type>(self, covariant_tag{tag}, visit, std::forward<decltype(subject)>(subject));
+			return util::invoke_as<accept_type>(*this, covariant_tag{tag}, visit, std::forward<decltype(subject)>(subject));
 		}
 };
 
@@ -70,8 +70,7 @@ struct accept_object_covariants : accept_object_covariant<Meta, Variant, Types>.
 
 		using accept_object_covariant<Meta, Variant, Types>::operator()...;
 		// Ensure that this class has an `operator()` for the `using <...>::operator()` declarations
-		auto operator()() const -> void
-			requires false;
+		auto operator()() = delete;
 
 		consteval static auto types(auto recursive) -> auto {
 			return util::pack_concat(accept_object_covariant<Meta, Variant, Types>::types(recursive)...);
@@ -127,13 +126,13 @@ struct accept_object_and_host_covariants<Meta, Variant, util::type_pack<Objects.
 		using accept_object_type = accept_object_covariants<Meta, Variant, Objects...>;
 		using accept_object_type::accept_object_type;
 
-		constexpr auto operator()(this const auto& self, auto_tag<object_tag> auto tag, auto& visit, auto&& subject) -> Variant {
-			auto maybe_result = util::invoke_as<accept_external_type>(self, tag, visit, std::forward<decltype(subject)>(subject));
+		constexpr auto operator()(auto_tag<object_tag> auto tag, auto& visit, auto&& subject) const -> Variant {
+			auto maybe_result = util::invoke_as<accept_external_type>(*this, tag, visit, std::forward<decltype(subject)>(subject));
 			if (maybe_result) {
 				return *std::move(maybe_result);
 			} else {
 				if constexpr (std::invocable<const accept_object_type&, decltype(tag), decltype(visit), decltype(subject)>) {
-					return Variant{util::invoke_as<accept_object_type>(self, tag, visit, std::forward<decltype(subject)>(subject))};
+					return Variant{util::invoke_as<accept_object_type>(*this, tag, visit, std::forward<decltype(subject)>(subject))};
 				} else {
 					throw js::type_error{u"Invalid object type"};
 				}

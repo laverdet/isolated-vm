@@ -126,7 +126,7 @@ struct reference_map_provider {
 			if (it == map_.end()) {
 				return dispatch();
 			} else {
-				return (*accept)(std::type_identity<value_type>{}, it->second);
+				return accept(std::type_identity<value_type>{}, it->second);
 			}
 		}
 
