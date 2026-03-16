@@ -1,5 +1,6 @@
 {
   "name": "@auto_js/napi_exports",
+  "version": "0.0.1",
   "description": "C++ module exports for nodejs & n-api",
   "author": "https://github.com/laverdet/",
   "homepage": "https://github.com/laverdet/isolated-vm/tree/experimental/packages/third_party/nodejs",

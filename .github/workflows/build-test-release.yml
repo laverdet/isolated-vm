@@ -407,7 +407,6 @@ jobs:
   release:
     name: Release
     needs: test
-    if: "startsWith(github.event.head_commit.message, 'release: v')"
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -423,11 +422,9 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           set -ux
+          npm config set --location user access=public
           pnpm install --frozen-lockfile
           npx tsc -b
-          echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
-          VERSION=$(echo "$COMMIT_MESSAGE" | head -n1 | cut -c11-)
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       # Receive artifacts
       - uses: actions/download-artifact@v4
@@ -435,22 +432,18 @@ jobs:
         with:
           path: packages/isolated-vm/artifacts
 
-      # Assemble & publish releases
-      - name: Publish
+      # Assemble @isolated-vm/experimental
+      - name: Assemble
         shell: sh
         working-directory: packages/isolated-vm
         env:
           ARTIFACTS: ${{ steps.artifacts.outputs.download-path }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          VERSION: ${{ steps.setup.outputs.version }}
         run: |
           set -ux
-          npm config set --location user //registry.npmjs.org/:_authToken=$NPM_TOKEN
-          npm config set --location user access=public
-          npm version $VERSION --no-git-tag-version
           npx napi create-npm-dirs
           npx napi artifacts
-          npx napi prepublish --no-gh-release
-          rm -f *.node *.tar.gz
-          rm -rf npm
-          npm publish
+
+      # Publish
+      - uses: changesets/action@v1
+        with:
+          publish: pnpm publish --recursive --publish-branch experimental --provenance

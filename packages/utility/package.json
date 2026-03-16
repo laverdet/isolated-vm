@@ -1,5 +1,6 @@
 {
   "name": "@auto_js/utility",
+  "version": "0.0.1",
   "author": "https://github.com/laverdet/",
   "homepage": "https://github.com/laverdet/isolated-vm/tree/experimental/packages/utility",
   "license": "ISC",

@@ -1,5 +1,6 @@
 {
   "name": "@auto_js/v8",
+  "private": true,
   "author": "https://github.com/laverdet/",
   "homepage": "https://github.com/laverdet/isolated-vm/tree/experimental/packages/auto_js/v8",
   "license": "ISC",

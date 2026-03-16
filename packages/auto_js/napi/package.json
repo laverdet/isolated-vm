@@ -1,5 +1,6 @@
 {
   "name": "@auto_js/napi",
+  "version": "0.0.1",
   "description": "Automatic JavaScript to N-API bindings",
   "author": "https://github.com/laverdet/",
   "homepage": "https://github.com/laverdet/isolated-vm/tree/experimental/packages/auto_js/napi",

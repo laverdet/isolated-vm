@@ -1,5 +1,6 @@
 {
   "name": "@isolated-vm/experimental",
+  "version": "0.0.1",
   "type": "module",
   "exports": {
     ".": "./dist/isolated-vm.js",
@@ -12,6 +13,7 @@
     }
   },
   "scripts": {
+    "prepublishOnly": "npx napi prepublish --no-gh-release",
     "test": "${NODE-node} --enable-source-maps --expose-gc --test-reporter=spec --test dist/test/*.js"
   },
   "napi": {

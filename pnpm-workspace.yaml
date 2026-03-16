@@ -1,3 +1,4 @@
+publishBranch: experimental
 packages:
   - packages/auto_js/example
   - packages/auto_js/js
