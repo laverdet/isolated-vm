@@ -20,7 +20,8 @@ constexpr auto assert_strings_equal(auto... strings) {
 	// https://en.cppreference.com/w/cpp/language/string_literal.html
 
 	// Quick check of interpolation matrix
-	assert_strings_equal(util::cw<"💖">, util::cw<u8"💖">, util::cw<u"💖">, util::cw<U"💖">);
+	assert_strings_equal(util::cw<u8"💖">, util::cw<u"💖">, util::cw<U"💖">);
+	assert_strings_equal(util::cw<"wow">, util::cw<u8"wow">, util::cw<u"wow">, util::cw<U"wow">);
 
 	// Unpaired utf-16 surrogates
 	constexpr auto one_high_surrogate = util::cw<u"\xd83d">;

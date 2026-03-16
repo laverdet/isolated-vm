@@ -10,38 +10,6 @@ module;
 export module util:utility.string;
 import :utility.constant_wrapper;
 
-#if _LIBCPP_VERSION
-template <>
-struct std::char_traits<unsigned char> {
-		using char_type = unsigned char;
-
-		constexpr static void assign(char_type& c1, const char_type& c2) noexcept { c1 = c2; }
-		constexpr static auto eq(const char_type& c1, const char_type& c2) noexcept -> bool { return c1 == c2; }
-		constexpr static auto lt(const char_type& c1, const char_type& c2) noexcept -> bool { return c1 < c2; }
-		constexpr static auto compare(const char_type* s1, const char_type* s2, std::size_t n) noexcept -> int {
-			for (std::size_t ii = 0; ii < n; ++ii) {
-				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-				if (!eq(s1[ ii ], s2[ ii ])) {
-					// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-					return lt(s1[ ii ], s2[ ii ]) ? -1 : 1;
-				}
-			}
-			return 0;
-		}
-		// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-		constexpr static auto find(const char_type* ptr, std::size_t count, const char_type& ch) noexcept -> const char_type* {
-			for (std::size_t ii = 0; ii < count; ++ii) {
-				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-				if (eq(ptr[ ii ], ch)) {
-					// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-					return ptr + ii;
-				}
-			}
-			return nullptr;
-		}
-};
-#endif
-
 namespace util {
 
 // Helper to make `std::string_view` from a constant_wrapper or string literal
@@ -84,13 +52,13 @@ class codepoint_char_range;
 
 // Latin-1, or "one-byte".
 template <>
-class codepoint_char_range<unsigned char> : public codepoint_char_container<unsigned char, 1> {
+class codepoint_char_range<char> : public codepoint_char_container<char, 1> {
 	public:
 		explicit constexpr codepoint_char_range(char32_t codepoint) {
-			if (codepoint > std::numeric_limits<unsigned char>::max()) {
-				throw std::range_error{"Codepoint out of range for ASCII, 'unsigned char'"};
+			if (codepoint > std::numeric_limits<char>::max()) {
+				throw std::range_error{"Codepoint out of range for ASCII, 'char'"};
 			}
-			data()[ 0 ] = static_cast<unsigned char>(codepoint);
+			data()[ 0 ] = static_cast<char>(codepoint);
 		}
 };
 
@@ -126,11 +94,6 @@ class codepoint_utf8_range : public codepoint_char_container<Char, 4> {
 				std::unreachable();
 			}
 		}
-};
-
-template <>
-class codepoint_char_range<char> : public codepoint_utf8_range<char> {
-		using codepoint_utf8_range<char>::codepoint_utf8_range;
 };
 
 template <>
@@ -201,8 +164,8 @@ class codepoint_char_forward_view {
 };
 
 template <>
-class codepoint_forward_view<unsigned char> : public codepoint_char_forward_view<unsigned char> {
-		using codepoint_char_forward_view<unsigned char>::codepoint_char_forward_view;
+class codepoint_forward_view<char> : public codepoint_char_forward_view<char> {
+		using codepoint_char_forward_view<char>::codepoint_char_forward_view;
 };
 
 template <>
@@ -264,11 +227,6 @@ class codepoint_utf8_forward_view {
 	private:
 		iterator_type pos_;
 		iterator_type end_;
-};
-
-template <>
-class codepoint_forward_view<char> : public codepoint_utf8_forward_view<char> {
-		using codepoint_utf8_forward_view<char>::codepoint_utf8_forward_view;
 };
 
 template <>
