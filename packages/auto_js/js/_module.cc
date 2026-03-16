@@ -18,6 +18,7 @@ export import :vector.vector_of;
 import :builtin.accept;
 import :builtin.visit;
 import :enum_.accept;
+import :enum_.visit;
 import :reference.accept;
 import :reference.visit;
 import :struct_.accept;

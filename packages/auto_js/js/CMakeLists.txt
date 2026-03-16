@@ -14,6 +14,7 @@ target_sources(auto_js
 		builtin/visit.cc
 		enum/accept.cc
 		enum/types.cc
+		enum/visit.cc
 		intrinsics/bigint.cc
 		intrinsics/date.cc
 		intrinsics/error.cc

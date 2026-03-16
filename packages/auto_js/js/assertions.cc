@@ -69,15 +69,15 @@ enum class enum_test : std::int8_t {
 template <>
 struct enum_values<enum_test> {
 		constexpr static auto values = std::array{
-			std::pair{"first", enum_test::first},
-			std::pair{"second", enum_test::second},
-			std::pair{"third", enum_test::third}
+			std::pair{u"first", enum_test::first},
+			std::pair{u"second", enum_test::second},
+			std::pair{u"third", enum_test::third}
 		};
 };
 
-static_assert(transfer<enum_test>("first"sv) == enum_test::first);
-static_assert(transfer<enum_test>("second"sv) == enum_test::second);
-static_assert(transfer<enum_test>("third"sv) == enum_test::third);
+static_assert(transfer<enum_test>(u"first"sv) == enum_test::first);
+static_assert(transfer<enum_test>(u"second"sv) == enum_test::second);
+static_assert(transfer<enum_test>(u"third"sv) == enum_test::third);
 
 // Objects
 struct object_literal_one {
