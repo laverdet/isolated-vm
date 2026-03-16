@@ -1,2 +1,4 @@
+artifacts
 npm
+*.node
 *.tar.gz

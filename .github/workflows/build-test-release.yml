@@ -409,7 +409,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      id-token: write
     steps:
       # Setup
       - uses: actions/checkout@v5
@@ -445,5 +445,8 @@ jobs:
 
       # Publish
       - uses: changesets/action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          publish: pnpm publish --recursive --publish-branch experimental --provenance
+          createGithubReleases: false
+          publish: pnpm publish --no-git-checks --recursive --publish-branch experimental --provenance
