@@ -49,8 +49,8 @@ importers:
   packages/auto_js/example:
     devDependencies:
       '@auto_js/napi':
-        specifier: workspace:*
-        version: link:../napi
+        specifier: 0.0.1
+        version: 0.0.1
 
   packages/auto_js/js:
     dependencies:
@@ -100,6 +100,19 @@ importers:
   packages/utility: {}
 
 packages:
+
+  '@auto_js/js@0.0.1':
+    resolution: {integrity: sha512-CZ/v4tvLJVHHYUKOQaGMMYL0jEnTpcI7R8k6yNjGqQcwZSh7gtW4hjdztQkDBU9sLlFRRSEMaRgTSBB+HG+5AQ==}
+    hasBin: true
+
+  '@auto_js/napi@0.0.1':
+    resolution: {integrity: sha512-pfXuZBasnsxif5+UEgAdNQirTVjsTrr9Fpg6/5UP2lO3HzTDDJYtqfN+axzY8sD5VajS6+2eEISElvwBBVrSvQ==}
+
+  '@auto_js/napi_exports@0.0.1':
+    resolution: {integrity: sha512-hEVippQB4iOSq4TNsT+ohzm5tFxv+Q6TyOdr6K5gLkx/4DFKf5Tqt+PLVOHPozVP9+DdQ9JLaYPPqELxD8WIQQ==}
+
+  '@auto_js/utility@0.0.1':
+    resolution: {integrity: sha512-/nFuFoA08fyjBvsHItizQZPTjQNNb7Z/FAhMbS4vrWuvZkhHYia3fxrda2n8FXEsrMxsygm0vFUualLEdE50Tg==}
 
   '@babel/runtime@7.28.6':
     resolution: {integrity: sha512-05WQkdpL9COIMz4LjTxGpPNCdlpyimKppYNoJ5Di5EUObifl8t4tuLuUBBZEpoLYOmfvIWrsp9fCl0HoPRVTdA==}
@@ -1907,6 +1920,19 @@ packages:
     engines: {node: '>=10'}
 
 snapshots:
+
+  '@auto_js/js@0.0.1':
+    dependencies:
+      '@auto_js/utility': 0.0.1
+
+  '@auto_js/napi@0.0.1':
+    dependencies:
+      '@auto_js/js': 0.0.1
+      '@auto_js/napi_exports': 0.0.1
+
+  '@auto_js/napi_exports@0.0.1': {}
+
+  '@auto_js/utility@0.0.1': {}
 
   '@babel/runtime@7.28.6': {}
 

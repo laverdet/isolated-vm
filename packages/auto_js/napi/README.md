@@ -5,9 +5,13 @@
 `@auto_js` -- Automatic C++ bindings for JavaScript
 ===================================================
 
-<img align="right" width="33%" height="33%" src="upload/macro.jpg">
+<img align="right" width="33%" height="33%" src="https://github.com/laverdet/isolated-vm/raw/experimental/packages/auto_js/napi/upload/macro.jpg">
 
 I made this C++ template thing that converts JavaScript functions and values automatically.
+
+It requires at least clang 21 to build. I think gcc 16, when it is released, would also be able to
+compile it. C++23 modules are used which requires a modern toolchain. It doesn't use reflection but
+it does use C++26 variadic structured bindings which is only recently getting compiler support.
 
 ```c++
 auto log(std::string message) -> void {
@@ -24,6 +28,29 @@ js::napi::napi_js_module module_namespace{
 	}
 };
 ```
+
+## Example module
+
+An example module is located at: [packages/auto_js/example](https://github.com/laverdet/isolated-vm/tree/experimental/packages/auto_js/example).
+
+Instructions for building the demo on macOS:
+
+```
+# all this nonsense is just checking out the example subdirectory
+git clone --branch=experimental --no-checkout --depth=1 https://github.com/laverdet/isolated-vm.git
+cd isolated-vm
+git sparse-checkout set packages/auto_js/example
+git checkout
+cd packages/auto_js/example
+
+# install llvm, npm, configure, then build
+brew install llvm
+npm install
+CXX=$(brew --prefix llvm)/bin/clang npm run configure
+npm run build
+node main.mjs
+```
+
 
 ## It's better than what you're writing by hand
 
