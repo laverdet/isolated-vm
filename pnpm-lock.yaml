@@ -43,6 +43,12 @@ importers:
         specifier: ^5.5.4
         version: 5.7.2
 
+  packages/auto_js/example:
+    devDependencies:
+      '@auto_js/napi':
+        specifier: workspace:*
+        version: link:../napi
+
   packages/auto_js/js:
     dependencies:
       '@auto_js/utility':

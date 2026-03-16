@@ -1,0 +1,13 @@
+{
+  "name": "@auto_js/napi-example",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "configure": "CXX=clang cmake \"-DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include)\"",
+    "clean": "cmake -B build --target clean",
+    "build": "ninja -C build example"
+  },
+  "devDependencies": {
+    "@auto_js/napi": "workspace:*"
+  }
+}

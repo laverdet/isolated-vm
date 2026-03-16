@@ -1,4 +1,5 @@
 packages:
+  - packages/auto_js/example
   - packages/auto_js/js
   - packages/auto_js/napi
   - packages/auto_js/v8
