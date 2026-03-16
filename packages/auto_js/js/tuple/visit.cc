@@ -8,21 +8,21 @@ import util;
 
 namespace js {
 
-template <class Meta, class... Types>
-struct visit<Meta, std::tuple<Types...>> {
+template <class Meta, size_t Offset, class... Types>
+struct visit_tuple_of {
 	private:
 		using visitors_type = std::tuple<visit<Meta, std::remove_cvref_t<Types>>...>;
 
 	public:
-		constexpr explicit visit(auto* transfer) :
+		constexpr explicit visit_tuple_of(auto* transfer) :
 				visit_{[ = ]() constexpr -> visitors_type {
-					const auto [... indices ] = util::sequence<std::tuple_size_v<visitors_type>>;
+					const auto [... indices ] = util::sequence<sizeof...(Types)>;
 					return {util::elide(util::constructor<std::tuple_element_t<indices, visitors_type>>, transfer)...};
 				}()} {}
 
 		template <size_t Index, class Accept>
 		constexpr auto operator()(std::integral_constant<size_t, Index> /*index*/, auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
-			return std::get<Index>(visit_)(std::get<Index>(std::forward<decltype(subject)>(subject)), accept);
+			return std::get<Index>(visit_)(std::get<Index + Offset>(std::forward<decltype(subject)>(subject)), accept);
 		}
 
 		template <class Accept>
@@ -37,6 +37,18 @@ struct visit<Meta, std::tuple<Types...>> {
 
 	private:
 		visitors_type visit_;
+};
+
+template <class Meta, class... Types>
+struct visit<Meta, std::tuple<Types...>> : visit_tuple_of<Meta, 0, Types...> {
+		using visit_tuple_of<Meta, 0, Types...>::visit_tuple_of;
+};
+
+// You can use `std::tuple{std::in_place, ...}` to avoid the stupid `std::pair` constructor that
+// always gets me.
+template <class Meta, class... Types>
+struct visit<Meta, std::tuple<std::in_place_t, Types...>> : visit_tuple_of<Meta, 1, Types...> {
+		using visit_tuple_of<Meta, 1, Types...>::visit_tuple_of;
 };
 
 } // namespace js
