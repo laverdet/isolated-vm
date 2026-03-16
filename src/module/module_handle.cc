@@ -109,7 +109,7 @@ void ModuleHandle::InitializeImportMeta(Local<Context> context, Local<Module> mo
 			detail::RunBarrier([&]() {
 				Local<Value> argv[1];
 				argv[0] = meta;
-				Unmaybe(found->meta_callback.Deref()->Call(context, Undefined(context->GetIsolate()), 1, argv));
+				Unmaybe(found->meta_callback.Deref()->Call(context, Undefined(Isolate::GetCurrent()), 1, argv));
 			});
 		}
 	}

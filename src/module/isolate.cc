@@ -74,7 +74,11 @@ class LibraryHandle : public TransferableHandle {
 
 			// Also freeze this prototype
 			library->SetIntegrityLevel(context, IntegrityLevel::kFrozen);
+#if V8_AT_LEAST(12, 5, 213)
+			library->GetPrototypeV2().As<Object>()->SetIntegrityLevel(context, IntegrityLevel::kFrozen);
+#else
 			library->GetPrototype().As<Object>()->SetIntegrityLevel(context, IntegrityLevel::kFrozen);
+#endif
 			return library;
 		}
 };

@@ -482,7 +482,11 @@ class AccessorRunner : public ThreePhaseTask {
 			if (object->IsProxy()) {
 				return true;
 			} else {
+#if V8_AT_LEAST(12, 5, 213)
+				auto proto = object->GetPrototypeV2();
+#else
 				auto proto = object->GetPrototype();
+#endif
 				if (proto->IsNullOrUndefined()) {
 					return false;
 				} else {
@@ -528,7 +532,11 @@ class GetRunner final : public AccessorRunner {
 								}
 								return Unmaybe(target->GetRealNamedProperty(context, name));
 							}
+#if V8_AT_LEAST(12, 5, 213)
+							auto next = target->GetPrototypeV2();
+#else
 							auto next = target->GetPrototype();
+#endif
 							if (next->IsNullOrUndefined()) {
 								return Undefined(isolate).As<Value>();
 							}
