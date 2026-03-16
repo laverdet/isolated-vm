@@ -78,7 +78,7 @@ bound_value_for_bigint::operator bigint() const {
 	js::bigint value;
 	auto one_word = uint64_t{};
 	auto length = size_t{1};
-	napi::invoke0(napi_get_value_bigint_words, env(), napi_value{*this}, &value.sign_bit(), &length, nullptr);
+	napi::invoke0(napi_get_value_bigint_words, env(), napi_value{*this}, &value.sign_bit(), &length, &one_word);
 	if (value.sign_bit() == 0 && length == 1) {
 		return js::bigint{one_word};
 	}
