@@ -23,6 +23,8 @@ struct visit<void, free_function<Function>> {
 		constexpr auto operator()(auto&& function, const Accept& accept) const -> accept_target_t<Accept> {
 			return accept(function_tag{}, *this, std::forward<decltype(function)>(function));
 		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
 } // namespace js
