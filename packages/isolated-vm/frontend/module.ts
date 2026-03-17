@@ -20,7 +20,7 @@ export namespace Module {
 		/**
 		 * Import attributes of this import: `import {} from "specifier" with { type: 'json' }`
 		 */
-		attributes: ImportAttributes | undefined,
+		attributes?: ImportAttributes,
 	) => AbstractModule | undefined | Promise<AbstractModule | undefined>;
 
 	/** Internal-ish */

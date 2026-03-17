@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
 import * as ivm from "@isolated-vm/experimental";
-import { makeCompositeLinker, makeFileSystemCompilationLinker, makePreloadedLinker } from "@isolated-vm/experimental/utility/linker";
+import { makeCompositeLinker, makeDirectResolver, makeFileSystemCompilationLoader, makeLinker, makeLocalResolver, makeStaticLoader } from "@isolated-vm/experimental/utility/linker";
 import { expectComplete } from "./fixtures.js";
 
 await test("setTimeout capability", async () => {
@@ -9,7 +9,7 @@ await test("setTimeout capability", async () => {
 	const realm = await agent.createRealm();
 	const runTimers = expectComplete(await agent.compileScript("runTimers()"));
 	const resolvers = Promise.withResolvers();
-	const capabilities = makePreloadedLinker(Object.entries({
+	const capabilities = makeStaticLoader({
 		"isolated-vm:capability/timers": await realm.createCapability(
 			() => ({
 				default: (/*timeout*/) => {
@@ -24,10 +24,12 @@ await test("setTimeout capability", async () => {
 				default: (message: unknown) => { resolvers.resolve(message); },
 			}),
 			{ origin: "notify-test" }),
-	}));
-	// eslint-disable-next-line @typescript-eslint/unbound-method
-	const runtime = makeFileSystemCompilationLinker(agent, import.meta.resolve);
-	const linker = makeCompositeLinker(capabilities, runtime);
+	});
+
+	const runtime = makeFileSystemCompilationLoader(agent);
+	const linker = makeCompositeLinker(
+		makeLinker(makeDirectResolver(), capabilities),
+		makeLinker(makeLocalResolver(import.meta), runtime));
 	const module = expectComplete(await agent.compileModule(`
 		import "@isolated-vm/experimental/host/html/timers";
 		import hello from "notify-test";

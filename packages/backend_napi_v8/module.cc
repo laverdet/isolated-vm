@@ -288,12 +288,19 @@ auto module_handle::link(environment& env, realm_handle& realm, module_handle_li
 			const js::iv8::shared_remote<v8::Module>& module,
 			remote_module_link_record link_record
 		) -> void {
-			auto module_local = module->deref(agent);
-			auto local_link_record = deref_remote_link_record(agent, std::move(link_record));
-			context_scope_operation(agent, realm->deref(agent), [ & ](const realm_scope& lock) -> void {
-				js::iv8::module_record::link(lock, module_local, std::move(local_link_record));
+			auto result = iv8::invoke_externalized_error_scope(agent, [ & ] {
+				auto module_local = module->deref(agent);
+				auto local_link_record = deref_remote_link_record(agent, std::move(link_record));
+				context_scope_operation(agent, realm->deref(agent), [ & ](const realm_scope& lock) -> void {
+					js::iv8::module_record::link(lock, module_local, std::move(local_link_record));
+				});
 			});
-			resolver.resolve(true);
+			// TODO: resolver should accept a `std::expected<T, E>`?
+			if (result) {
+				resolver.resolve(true);
+			} else {
+				resolver.reject(std::move(result).error());
+			}
 		},
 		std::move(resolver),
 		realm.realm(),

@@ -110,14 +110,14 @@ auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module
 		++module_id;
 	}
 
-	// Linker implementation. We simply assume that module link requests for the same module go in the
-	// same order as `GetModuleRequests()`
-	auto linker = [ & ](v8::Local<v8::Module> referrer) -> v8::Local<v8::Module> {
+	// Linker implementation. Module link requests for the same module go in the same order as
+	// `GetModuleRequests()`
+	auto linker = [ & ](v8::Local<v8::Module> referrer, size_t index) -> v8::Local<v8::Module> {
 		auto it = module_specifier_map.find(referrer);
 		if (it == module_specifier_map.end()) {
 			throw js::runtime_error{u"Referrer module not found in link record"};
 		}
-		return link_record.modules.at(link_record.payload.at(it->second++));
+		return link_record.modules.at(link_record.payload.at(it->second + index));
 	};
 	thread_local auto* linker_ptr = &linker;
 
@@ -125,10 +125,10 @@ auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module
 	auto v8_callback = v8::Module::ResolveModuleByIndexCallback{
 		[](
 			v8::Local<v8::Context> /*context*/,
-			size_t /*module_request_index*/,
+			size_t module_request_index,
 			v8::Local<v8::Module> referrer
 		) -> v8::MaybeLocal<v8::Module> {
-			return (*linker_ptr)(referrer);
+			return (*linker_ptr)(referrer, module_request_index);
 		}
 	};
 	unmaybe(module->InstantiateModule(lock.context(), v8_callback));

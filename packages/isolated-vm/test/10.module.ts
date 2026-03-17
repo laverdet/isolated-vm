@@ -1,6 +1,7 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
 import * as ivm from "@isolated-vm/experimental";
+import { makeCachedLoader, makeFileSystemCompilationLoader } from "../utility/linker.js";
 import { expectComplete } from "./fixtures.js";
 
 await test("module linker", async () => {
@@ -49,4 +50,21 @@ await test("synthetic module capability", async () => {
 	await left.link(realm, specifier => cache.get(specifier)!);
 	await left.evaluate(realm);
 	assert.ok(didInvoke);
+});
+
+await test("rethrow from linker", async () => {
+	await using agent = await ivm.Agent.create();
+	const realm = await agent.createRealm();
+	const left = expectComplete(await agent.compileModule('import "right";'));
+	await assert.rejects(left.link(realm, () => {
+		throw new Error("linker error");
+	}));
+});
+
+await test("missing imports", async () => {
+	await using agent = await ivm.Agent.create();
+	const realm = await agent.createRealm();
+	const left = expectComplete(await agent.compileModule('import { nothing } from "right";'));
+	await assert.rejects(left.link(realm, async () =>
+		expectComplete(await agent.compileModule("export {};"))));
 });
