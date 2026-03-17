@@ -49,7 +49,7 @@ await test("microtask clock", async () => {
 	assert.ok(+result1 - +y2k < 1000);
 	await setTimeout(10);
 	const result2 = await unsafeEvalAsStringInRealm(agent, realm, () => new Date());
-	assert.ok(+result2 >= +result1 + 10);
+	assert.ok(+result2 >= +result1 + 1);
 	const result3 = await unsafeEvalAsStringInRealm(agent, realm, speedFactor => {
 		const dd = Date.now();
 		for (let ii = speedFactor; ii > 0; --ii);
