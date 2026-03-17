@@ -1,4 +1,5 @@
 module;
+#include <bit>
 #include <concepts>
 #include <type_traits>
 #include <utility>
@@ -54,6 +55,17 @@ class function_ref<auto(Args...) noexcept(Nx)->Result> {
 				// NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
 				ptr_{const_cast<void*>(static_cast<const void*>(&bound))} {}
 
+		template <class Object, std::invocable<Object*, Args...> Function>
+			requires std::is_empty_v<Function>
+		constexpr explicit function_ref(Function /*function*/, Object* bound) :
+				invoke_{[](void* ptr, Args... args) noexcept(Nx) -> Result {
+					auto* object = static_cast<Object*>(ptr);
+					constexpr auto function = Function{};
+					return function(object, std::forward<Args>(args)...);
+				}},
+				// NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
+				ptr_{const_cast<void*>(static_cast<const void*>(bound))} {}
+
 		constexpr auto operator()(Args... args) const noexcept(Nx) -> Result {
 			return invoke_(ptr_, std::forward<Args>(args)...);
 		}
@@ -64,5 +76,17 @@ class function_ref<auto(Args...) noexcept(Nx)->Result> {
 		invoke_type* invoke_;
 		void* ptr_;
 };
+
+// Deduction guide helper for bound object ref
+template <class Signature>
+struct function_ref_deduction_guide;
+
+template <class Result, bool Nx, class Object, class... Args>
+struct function_ref_deduction_guide<auto(Object, Args...) noexcept(Nx)->Result>
+		: std::type_identity<auto(Args...) noexcept(Nx)->Result> {};
+
+export template <class Function>
+function_ref(Function, auto&&)
+	-> function_ref<typename function_ref_deduction_guide<function_signature_t<Function>>::type>;
 
 } // namespace util

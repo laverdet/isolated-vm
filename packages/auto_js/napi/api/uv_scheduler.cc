@@ -1,26 +1,22 @@
 module;
 #include <cassert>
 #include <functional>
-#include <thread>
+#include <thread> // IWYU pragma: keep
 #include <utility>
 module napi_js;
 
 namespace js::napi {
 
-auto uv_scheduler::close() -> void {
-	// nb: It's not safe to dereference `auto& async` like the functions because `.close()` deletes
-	// the underlying memory and would cause a dangling reference. I think `uv_close` is probably
-	// always async but I'm not sure of it.
-	assert((*async_)->thread_id == std::this_thread::get_id());
-	[[maybe_unused]] auto abandoned_tasks =
-		std::invoke([ & ]() -> auto {
-			assert((*async_)->thread_id == std::this_thread::get_id());
-			auto lock = (*async_)->shared.write();
-			lock->is_open = false;
-			auto tasks = std::exchange(lock->tasks, {});
-			async_->close();
-			return tasks;
-		});
+auto uv_scheduler::close(util::function_ref<auto()->void> close_hook) -> void {
+	auto& async = *async_;
+	assert(async->thread_id == std::this_thread::get_id());
+	[[maybe_unused]] auto abandoned_tasks = [ & ] -> auto {
+		auto lock = async->shared.write();
+		lock->is_open = false;
+		auto tasks = std::exchange(lock->tasks, {});
+		async.close(close_hook);
+		return tasks;
+	}();
 }
 
 auto uv_scheduler::decrement_ref() -> void {

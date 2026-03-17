@@ -59,7 +59,7 @@ class uv_handle_of : public util::pointer_facade {
 		auto operator=(const uv_handle_of&) -> uv_handle_of& = delete;
 
 		auto operator*() -> auto& { return value_; }
-		auto close() -> void;
+		auto close(util::function_ref<auto()->void> close_hook) -> void;
 		auto handle() -> auto& { return handle_; }
 		auto open(const auto& init, uv_loop_t* loop, auto&&... args) -> void;
 
@@ -68,6 +68,7 @@ class uv_handle_of : public util::pointer_facade {
 
 	private:
 		uv_typed_handle<Handle, shared_or_weak_ptr> handle_;
+		util::function_ref<auto()->void> close_hook_{[] -> void {}};
 		Type value_;
 };
 
@@ -79,9 +80,12 @@ uv_handle_of<Handle, Type>::~uv_handle_of() {
 }
 
 template <class Handle, class Type>
-auto uv_handle_of<Handle, Type>::close() -> void {
+auto uv_handle_of<Handle, Type>::close(util::function_ref<auto()->void> close_hook) -> void {
+	close_hook_ = close_hook;
 	uv_close(handle(), [](uv_handle_t* handle) -> void {
-		delete static_cast<shared_ptr_type*>(std::exchange(handle->data, nullptr));
+		auto self = std::unique_ptr<shared_ptr_type>(static_cast<shared_ptr_type*>(std::exchange(handle->data, nullptr)));
+		auto& handle_of = **self;
+		handle_of.close_hook_();
 	});
 }
 

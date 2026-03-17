@@ -11,7 +11,7 @@ import util;
 // /usr/lib/llvm-22/bin/../include/c++/v1/__new/allocate.h:39:30: error: no matching function for call to 'operator new'
 //    39 |     return static_cast<_Tp*>(__builtin_operator_new(__size, static_cast<align_val_t>(__align)));
 export {
-  using ::operator new;
+	using ::operator new;
 }
 #endif
 
@@ -23,7 +23,7 @@ export class uv_scheduler {
 		using task_type = util::maybe_move_only_function<auto()->void>;
 
 	public:
-		auto close() -> void;
+		auto close(util::function_ref<auto()->void> close_hook) -> void;
 		auto decrement_ref() -> void;
 		auto increment_ref() -> void;
 		auto open(uv_loop_t* loop) -> void;

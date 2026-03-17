@@ -24,10 +24,17 @@ environment::environment(napi_env env) :
 			}
 		}()} {
 	scheduler().open(napi::invoke(napi_get_uv_event_loop, env));
-}
-
-environment::~environment() {
-	scheduler().close();
+	// nb: `uv_async_t` is closed with an async hook, and not as the finalizer of
+	// `napi_set_instance_data`. `uv_close` is async and since nothing is keeping this shared library
+	// alive, the finalizer code can be unloaded.
+	auto finalizer = [](napi_async_cleanup_hook_handle handle, void* data) -> void {
+		auto& env = *static_cast<environment*>(data);
+		auto finalizer = util::fn<[](napi_async_cleanup_hook_handle handle) -> void {
+			napi::invoke0_noexcept(napi_remove_async_cleanup_hook, handle);
+		}>;
+		env.scheduler().close(util::function_ref{finalizer, handle});
+	};
+	napi::invoke0_noexcept(napi_add_async_cleanup_hook, env, finalizer, this, &cleanup_hook_handle_);
 }
 
 } // namespace js::napi

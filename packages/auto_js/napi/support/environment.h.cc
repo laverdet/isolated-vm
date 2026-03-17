@@ -27,7 +27,6 @@ class environment_scope {
 export class environment : util::non_moveable, public uv_schedulable {
 	public:
 		explicit environment(napi_env env);
-		~environment();
 
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		[[nodiscard]] operator napi_env() const { return env_; }
@@ -50,6 +49,7 @@ export class environment : util::non_moveable, public uv_schedulable {
 
 	private:
 		napi_env env_;
+		napi_async_cleanup_hook_handle cleanup_hook_handle_{};
 		bool uses_direct_handles_;
 };
 
