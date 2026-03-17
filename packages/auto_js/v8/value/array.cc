@@ -28,7 +28,7 @@ array::iterator::iterator(v8::Local<v8::Array> array, v8::Local<v8::Context> con
 		index_{index} {}
 
 auto array::iterator::operator*() const -> value_type {
-	return array_->Get(context_, index_).ToLocalChecked();
+	return iv8::unmaybe(array_->Get(context_, index_));
 }
 
 auto array::iterator::operator+=(difference_type offset) -> iterator& {

@@ -19,13 +19,13 @@ auto object::keys() const -> const array& {
 			v8::IndexFilter::kIncludeIndices,
 			v8::KeyConversionMode::kConvertToString
 		);
-		keys_ = array{witness(), property_names.ToLocalChecked()};
+		keys_ = array{witness(), iv8::unmaybe(property_names)};
 	}
 	return keys_;
 }
 
 auto object::get(v8::Local<v8::Value> key) -> v8::Local<v8::Value> {
-	return (*this)->GetRealNamedProperty(context(), key.As<v8::Name>()).ToLocalChecked();
+	return iv8::unmaybe((*this)->GetRealNamedProperty(context(), key.As<v8::Name>()));
 }
 
 auto object::into_range() -> range_type {
@@ -45,7 +45,7 @@ object::iterator_transform::iterator_transform(
 		context_{context} {}
 
 auto object::iterator_transform::operator()(v8::Local<v8::Value> key) const -> value_type {
-	auto value = object_->GetRealNamedProperty(context_, key.As<v8::Name>()).ToLocalChecked();
+	auto value = iv8::unmaybe(object_->GetRealNamedProperty(context_, key.As<v8::Name>()));
 	return std::pair{key.As<v8::Primitive>(), value};
 }
 

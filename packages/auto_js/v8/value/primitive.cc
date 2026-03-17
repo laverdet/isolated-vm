@@ -67,7 +67,7 @@ auto string::make(v8::Isolate* isolate, std::string_view view) -> v8::Local<v8::
 		v8::NewStringType::kNormal,
 		static_cast<int>(view.size())
 	);
-	return string.ToLocalChecked();
+	return iv8::unmaybe(string);
 }
 
 auto string::make(v8::Isolate* isolate, std::u8string_view view) -> v8::Local<v8::String> {
@@ -77,7 +77,7 @@ auto string::make(v8::Isolate* isolate, std::u8string_view view) -> v8::Local<v8
 		v8::NewStringType::kNormal,
 		static_cast<int>(view.size())
 	);
-	return string.ToLocalChecked();
+	return iv8::unmaybe(string);
 }
 
 auto string::make(v8::Isolate* isolate, std::u16string_view view) -> v8::Local<v8::String> {
@@ -87,7 +87,7 @@ auto string::make(v8::Isolate* isolate, std::u16string_view view) -> v8::Local<v
 		v8::NewStringType::kNormal,
 		static_cast<int>(view.size())
 	);
-	return string.ToLocalChecked();
+	return iv8::unmaybe(string);
 }
 
 string::operator std::string() const {
@@ -128,7 +128,7 @@ string::operator std::u16string() const {
 
 // `date`
 auto date::make(v8::Local<v8::Context> context, js_clock::time_point date) -> v8::Local<v8::Date> {
-	return v8::Date::New(context, date.time_since_epoch().count()).ToLocalChecked().As<v8::Date>();
+	return iv8::unmaybe(v8::Date::New(context, date.time_since_epoch().count())).As<v8::Date>();
 }
 
 date::operator js_clock::time_point() const {

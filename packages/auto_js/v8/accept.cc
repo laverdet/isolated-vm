@@ -183,7 +183,7 @@ struct accept_v8_value : accept_v8_primitive {
 							visit.first(std::forward<decltype(key)>(key), self),
 							visit.second(std::forward<decltype(value)>(value), self)
 						);
-						result.Check();
+						iv8::unmaybe(result);
 					}
 				},
 			};
@@ -203,7 +203,7 @@ struct accept_v8_value : accept_v8_primitive {
 							visit.first(std::forward<decltype(key)>(key), self),
 							visit.second(std::forward<decltype(value)>(value), self)
 						);
-						result.Check();
+						iv8::unmaybe(result);
 					}
 				},
 			};
