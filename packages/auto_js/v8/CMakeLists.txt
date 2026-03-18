@@ -4,15 +4,6 @@ find_package_from_npm(@auto_js/js)
 add_library(v8_js OBJECT)
 target_link_libraries(v8_js PUBLIC Boost::boost auto_js google_v8 utility_js)
 
-# Embed `icudtl.dat`
-if(NOT EXISTS "${V8_LIBRARY_PATH}/icudtl.dat")
-	message(FATAL_ERROR "Missing v8 '${V8_LIBRARY_PATH}/icudtl.dat'")
-endif()
-message(STATUS "Using v8 icu data at '${V8_LIBRARY_PATH}/icudtl.dat'")
-set(V8_ICU_DATA "${V8_LIBRARY_PATH}/icudtl.dat")
-cmake_path(RELATIVE_PATH V8_ICU_DATA)
-target_embed_content(v8_js "${V8_ICU_DATA}" v8_icudtl_dat)
-
 target_sources(v8_js
 	PRIVATE
 		evaluation/module.cc

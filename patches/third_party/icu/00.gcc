@@ -1,0 +1,13 @@
+diff --git a/BUILD.gn b/BUILD.gn
+index dad59595b..f53c70605 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -551,7 +551,7 @@ if (icu_use_data_file) {
+       sources = [ data_assembly ]
+       deps = [ ":make_data_assembly" ]
+       asmflags = []
+-      if (current_cpu == "arm64") {
++      if (current_cpu == "arm64" && is_clang) {
+         import("//build/config/arm.gni")
+         if (arm_control_flow_integrity == "standard" ||
+             arm_control_flow_integrity == "bti+pac") {

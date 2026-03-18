@@ -3,6 +3,12 @@ import { test } from "node:test";
 import * as ivm from "@isolated-vm/experimental";
 import { unsafeEvalAsString } from "./fixtures.js";
 
+await test("localCompare", async () => {
+	await using agent = await ivm.Agent.create();
+	const result = await unsafeEvalAsString(agent, () => "a".localeCompare("b"));
+	assert.equal(result, -1);
+});
+
 await test("i18n locales", async () => {
 	await using agent = await ivm.Agent.create();
 	const supported = await unsafeEvalAsString(agent, () =>

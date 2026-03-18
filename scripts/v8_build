@@ -49,6 +49,7 @@ CONFIG=${PLATFORM_CONFIG_PAIR[1]} # debug, optdebug, release
 
 GN_ARGS=(
 	clang_use_chrome_plugins=false
+	icu_use_data_file=false
 	mac_deployment_target=\"13.3\"
 	treat_warnings_as_errors=false
 	use_clang_modules=false

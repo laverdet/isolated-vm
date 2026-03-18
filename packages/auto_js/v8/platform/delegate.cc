@@ -1,5 +1,4 @@
 module;
-#include "v8_icudtl_dat.h"
 #include <algorithm>
 #include <cassert>
 #include <chrono>
@@ -51,8 +50,7 @@ platform_handle::~platform_handle() {
 
 // `initialization_delegate`
 initialization_delegate::initialization_delegate(v8::Platform* implementation) {
-	int err = 0;
-	udata_setCommonData_74(&v8_icudtl_dat, &err);
+	v8::V8::InitializeICU();
 	v8::V8::InitializePlatform(implementation);
 	v8::V8::Initialize();
 }
