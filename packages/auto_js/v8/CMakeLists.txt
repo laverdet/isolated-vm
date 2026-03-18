@@ -16,6 +16,7 @@ target_sources(v8_js
 		platform/delegate.cc
 		platform/foreground_runner.cc
 		platform/worker_runner.cc
+		support/error.cc
 		support/lock.cc
 		value/array.cc
 		value/fixed_array.cc
@@ -45,7 +46,7 @@ target_sources(v8_js
 		platform/worker_runner.h.cc
 		support/callback_storage.cc
 		support/callback.cc
-		support/error.cc
+		support/error.h.cc
 		support/lock.h.cc
 		support/unmaybe.cc
 		value/array.h.cc

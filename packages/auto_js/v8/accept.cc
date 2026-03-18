@@ -156,13 +156,13 @@ struct accept_v8_value : accept_v8_primitive {
 					// These functions don't need an isolate somehow?
 					default:
 						return v8::Exception::Error(message);
-					case js::error::name_type::range_error:
+					case js::error_name::range_error:
 						return v8::Exception::RangeError(message);
-					case js::error::name_type::reference_error:
+					case js::error_name::reference_error:
 						return v8::Exception::ReferenceError(message);
-					case js::error::name_type::syntax_error:
+					case js::error_name::syntax_error:
 						return v8::Exception::SyntaxError(message);
-					case js::error::name_type::type_error:
+					case js::error_name::type_error:
 						return v8::Exception::TypeError(message);
 				}
 			}()};

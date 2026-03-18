@@ -1,171 +1,47 @@
 module;
 #include <cassert>
-#include <expected>
 #include <format>
-#include <optional>
 #include <string>
-#include <type_traits>
-export module v8_js:error;
-import :accept;
-import :lock;
-import :unmaybe;
-import :visit;
-import auto_js;
-import v8;
+module v8_js;
+import :error;
 
 namespace js::iv8 {
 
-auto render_stack_trace(isolate_lock_witness lock, v8::Local<v8::StackTrace> stack_trace) -> std::u16string;
-
-// Transfer a v8 exception message into `js::error_value`, hopefully without throwing again.
-auto materialize_error_value(isolate_lock_witness lock, v8::Local<v8::Message> message) -> js::error_value {
-	auto stack_trace = message->GetStackTrace();
-	return js::error_value{
-		js::error::name_type::error,
-		transfer_out_strict<std::u16string>(message->Get(), lock),
-		stack_trace.IsEmpty()
-			? u""
-			: render_stack_trace(lock, stack_trace),
-	};
-}
-
-// Catch `iv8::pending_error` or `js::error`, converting to thrown v8 runtime error.
-[[nodiscard]] auto invoke_internal_error_scope(context_lock_witness lock, auto operation) {
-	using result_type = std::invoke_result_t<decltype(operation)>;
-	using value_type = type_t<[]() {
-		if constexpr (type<result_type> == type<void>) {
-			return type<bool>;
-		} else {
-			return type<std::optional<result_type>>;
-		}
-	}()>;
-	try {
-		if constexpr (type<result_type> == type<void>) {
-			operation();
-			return true;
-		} else {
-			return value_type{operation()};
-		}
-	} catch (const iv8::pending_error& /*error*/) {
-		return value_type{};
-	} catch (const js::error& error) {
-		auto exception = js::transfer_in_strict<v8::Local<v8::Value>>(error, lock);
-		lock.isolate()->ThrowException(exception);
-		return value_type{};
+auto take_maybe_string(context_lock_witness lock, v8::Local<v8::Value> value) -> std::u16string {
+	if (value->IsString()) {
+		return transfer_out_strict<std::u16string>(value.As<v8::String>(), lock);
+	} else {
+		return {};
 	}
 };
 
-// Catch pending js errors and externalize them as `js::error_value`. `std::expected<T,
-// js::error_value>` is returned.
-export [[nodiscard]] auto invoke_externalized_error_scope(isolate_lock_witness lock, auto operation) {
-	using result_type = decltype(operation());
-	using value_type = std::expected<result_type, js::error_value>;
-	const auto try_catch = v8::TryCatch{lock.isolate()};
-	try {
-		if constexpr (type<result_type> == type<void>) {
-			operation();
-			return value_type{std::in_place};
-		} else {
-			return value_type{std::in_place, operation()};
-		}
-	} catch (const iv8::pending_error& /*error*/) {
-		assert(try_catch.HasCaught());
-		return value_type{std::unexpect, materialize_error_value(lock, try_catch.Message())};
-	} catch (const js::error& error) {
-		return value_type{std::unexpect, error};
+auto take_maybe_string(context_lock_witness lock, v8::MaybeLocal<v8::Value> value) -> std::u16string {
+	auto as_string = v8::Local<v8::Value>{};
+	if (value.ToLocal(&as_string)) {
+		return take_maybe_string(lock, as_string);
+	} else {
+		return {};
 	}
 }
 
-export [[nodiscard]] auto invoke_externalized_error_scope(context_lock_witness lock, auto operation) {
-	return invoke_externalized_error_scope(isolate_lock_witness{util::slice(lock)}, std::move(operation));
+// Transfer a v8 exception message into `js::error_value`, hopefully without throwing again.
+auto externalize_caught_error(context_lock_witness lock, const v8::TryCatch& try_catch) -> js::error_value {
+	return externalize_caught_error(lock, try_catch.Exception());
 }
 
-// Return `std::expected` from a single throwable v8 operation
-export template <class Operation>
-auto unmaybe_one(isolate_lock_witness lock, Operation operation) {
-	const auto dispatch =
-		[ & ]<class Type>(std::type_identity<v8::MaybeLocal<Type>> /*tag*/)
-		-> std::expected<v8::Local<Type>, js::error_value> {
-		using value_type = std::expected<v8::Local<Type>, js::error_value>;
-		const auto try_catch = v8::TryCatch{lock.isolate()};
-		auto maybe_value = v8::MaybeLocal<Type>{operation()};
-		auto value = v8::Local<Type>{};
-		if (maybe_value.ToLocal(&value)) {
-			return value_type{std::in_place, value};
-		} else {
-			assert(try_catch.HasCaught());
-			return value_type{std::unexpect, materialize_error_value(lock, try_catch.Message())};
-		}
-	};
-	return dispatch(std::type_identity<std::invoke_result_t<Operation>>{});
-}
-
-auto unmaybe_one(context_lock_witness lock, auto operation) {
-	return unmaybe_one(isolate_lock_witness{util::slice(lock)}, std::move(operation));
-}
-
-// Render the stack trace in a similar manner as `Error.prototype.stack`
-auto render_frame_line(v8::Local<v8::StackFrame> frame) -> std::u16string {
-	if (auto line = frame->GetLineNumber(); line != -1) {
-		if (auto column = frame->GetColumn(); column != -1) {
-			return transfer_strict<std::u16string>(std::format("{}:{}", line, column));
-		} else {
-			return transfer_strict<std::u16string>(std::format("{}", line));
-		}
+// Transfer an arbitrary v8 value into `js::error_value`. Probably the result of a promise.
+auto externalize_caught_error(context_lock_witness lock, v8::Local<v8::Value> value) -> js::error_value {
+	if (value->IsObject()) {
+		auto object = value.As<v8::Object>();
+		auto name = js::transfer_out_strict<std::u16string>(object->GetConstructorName(), lock);
+		const auto message_key = js::transfer_in_strict<v8::Local<v8::String>>(util::cw<"message">, lock);
+		auto message = take_maybe_string(lock, unmaybe(object->Get(lock.context(), message_key)));
+		auto stack = take_maybe_string(lock, v8::TryCatch::StackTrace(lock.context(), object));
+		return js::error_value{js::error_name::error, std::move(message), std::move(stack)};
+	} else {
+		auto message = transfer_out_strict<std::u16string>(unmaybe(value->ToString(lock.context())), lock);
+		return js::error_value{js::error_name::error, message};
 	}
-	return {};
-}
-
-// Render the stack trace in a similar manner as `Error.prototype.stack`
-auto render_stack_trace(isolate_lock_witness lock, v8::Local<v8::StackTrace> stack_trace) -> std::u16string {
-	std::u16string result;
-	assert(stack_trace.IsEmpty());
-	const int size = stack_trace->GetFrameCount();
-	for (int ii = 0; ii < size; ++ii) {
-		result += ii == 0 ? u"    at " : u"\n    at ";
-
-		auto frame = stack_trace->GetFrame(lock.isolate(), ii);
-		auto fn_name = transfer_out_strict<std::u16string>(frame->GetFunctionName(), lock);
-		auto script_name = transfer_out_strict<std::u16string>(frame->GetScriptName(), lock);
-		auto has_script_name = !script_name.empty();
-		auto has_fn_name = !fn_name.empty();
-		const bool has_name = has_fn_name || has_script_name;
-
-		if (frame->IsWasm()) {
-			if (has_name) {
-				if (has_script_name) {
-					result += script_name;
-					if (has_fn_name) {
-						result += u".";
-						result += fn_name;
-					}
-				} else {
-					result += fn_name;
-				}
-				result += u" (<WASM>";
-			}
-			result += render_frame_line(frame);
-			if (has_name) {
-				result += u")";
-			}
-		} else {
-			if (frame->IsConstructor()) {
-				result += u"new ";
-			}
-			result += has_fn_name ? fn_name : u"<anonymous>";
-			result += u" (";
-			if (has_script_name) {
-				result += script_name;
-			} else if (frame->IsEval()) {
-				result += u"[eval]";
-			} else {
-				result += u"[unknown]";
-			}
-			result += render_frame_line(frame);
-			result += u")";
-		}
-	}
-	return result;
 }
 
 } // namespace js::iv8

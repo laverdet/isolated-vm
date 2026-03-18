@@ -71,6 +71,8 @@ agent_host::agent_host(
 	auto create_params = v8::Isolate::CreateParams{};
 	create_params.array_buffer_allocator = array_buffer_allocator_.get();
 	v8::Isolate::Initialize(isolate_.get(), create_params);
+
+	isolate_->SetCaptureStackTraceForUncaughtExceptions(true);
 }
 
 agent_host::~agent_host() {

@@ -69,6 +69,7 @@ export using ::napi_reject_deferred;
 export using ::napi_resolve_deferred;
 export using ::napi_set_element;
 export using ::napi_set_instance_data;
+export using ::napi_set_named_property;
 export using ::napi_set_property;
 export using ::napi_throw_type_error;
 export using ::napi_throw;

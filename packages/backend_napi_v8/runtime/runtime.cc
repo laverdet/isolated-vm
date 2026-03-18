@@ -40,7 +40,7 @@ auto runtime_interface::instantiate(js::iv8::context_lock_witness lock) -> v8::L
 		.payload = {1, 1, 0},
 	};
 	js::iv8::module_record::link(lock, runtime, std::move(link_record));
-	js::iv8::module_record::evaluate(lock, runtime);
+	js::iv8::module_record::evaluate(lock, runtime).value();
 	return runtime;
 }
 

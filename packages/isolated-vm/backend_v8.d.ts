@@ -34,7 +34,7 @@ declare module "#backend_v8" {
 		readonly #private;
 		constructor(secret: Secret, ...args: unknown[]);
 		/** @internal */ _link(realm: Realm, linker: ModuleLinkRecord): Promise<void>;
-		evaluate(realm: Realm): Promise<unknown>;
+		evaluate(realm: Realm): Promise<MaybeCompletionOf<unknown>>;
 	}
 
 	export class Realm {

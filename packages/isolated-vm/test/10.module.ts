@@ -1,8 +1,8 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
 import * as ivm from "@isolated-vm/experimental";
-import { makeCachedLoader, makeFileSystemCompilationLoader } from "../utility/linker.js";
-import { expectComplete } from "./fixtures.js";
+import { makeNullLinker } from "../utility/linker.js";
+import { expectComplete, expectThrow } from "./fixtures.js";
 
 await test("module linker", async () => {
 	await using agent = await ivm.Agent.create();
@@ -52,13 +52,23 @@ await test("synthetic module capability", async () => {
 	assert.ok(didInvoke);
 });
 
-await test("rethrow from linker", async () => {
+await test("throw from linker", async () => {
 	await using agent = await ivm.Agent.create();
 	const realm = await agent.createRealm();
 	const left = expectComplete(await agent.compileModule('import "right";'));
 	await assert.rejects(left.link(realm, () => {
 		throw new Error("linker error");
 	}));
+});
+
+await test("throw from evaluation", async () => {
+	await using agent = await ivm.Agent.create();
+	const realm = await agent.createRealm();
+	const module = expectComplete(await agent.compileModule('throw new Error("wow");', { origin: { name: "test:module" } }));
+	await module.link(realm, makeNullLinker());
+	const error = expectThrow(await module.evaluate(realm)) as Error;
+	assert.equal(error.message, "wow");
+	assert.ok(error.stack?.includes("test:module"));
 });
 
 await test("missing imports", async () => {

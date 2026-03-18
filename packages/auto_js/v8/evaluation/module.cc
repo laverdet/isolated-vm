@@ -3,6 +3,7 @@ module;
 #include <algorithm>
 #include <cassert>
 #include <exception>
+#include <expected>
 #include <ranges>
 #include <stdexcept>
 #include <string>
@@ -10,6 +11,7 @@ module;
 #include <utility>
 #include <vector>
 module v8_js;
+import :error;
 import :evaluation.module_record;
 import :fixed_array;
 import auto_js;
@@ -149,10 +151,16 @@ auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module
 	unmaybe(module->InstantiateModule(lock.context(), v8_callback));
 }
 
-auto module_record::evaluate(context_lock_witness lock, v8::Local<v8::Module> module) -> void {
-	unmaybe(module->Evaluate(lock.context()));
+auto module_record::evaluate(context_lock_witness lock, v8::Local<v8::Module> module) -> expected_value_type {
+	auto promise = unmaybe(module->Evaluate(lock.context())).As<v8::Promise>();
 	if (module->IsGraphAsync()) {
 		throw std::runtime_error{"Module is async"};
+	}
+	if (promise->State() == v8::Promise::kRejected) {
+		auto result = promise->Result();
+		return expected_value_type{std::unexpect, externalize_caught_error(lock, result)};
+	} else {
+		return expected_value_type{std::in_place};
 	}
 }
 

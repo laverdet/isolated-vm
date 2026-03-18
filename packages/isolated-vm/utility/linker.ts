@@ -33,6 +33,12 @@ export function makeLinker<Type extends AbstractModule | undefined>(resolver: An
 	};
 }
 
+export function makeNullLinker(): Module.Linker {
+	return specifier => {
+		throw new Error(`Module '${specifier}' not found`);
+	};
+}
+
 export function makeDirectResolver(): ResolverSync<string> {
 	return specifier => specifier;
 }

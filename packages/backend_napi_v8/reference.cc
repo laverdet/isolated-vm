@@ -180,8 +180,8 @@ auto reference_handle::invoke(environment& env, std::vector<js::value_t> params)
 				const js::iv8::shared_remote<v8::Context>& realm,
 				std::vector<js::value_t> params
 			) -> void {
-				auto maybe_result = iv8::invoke_externalized_error_scope(agent_lock, [ & ]() -> js::value_t {
-					return context_scope_operation(agent_lock, realm->deref(agent_lock), [ & ](const realm_scope& lock) -> js::value_t {
+				auto maybe_result = context_scope_operation(agent_lock, realm->deref(agent_lock), [ & ](const realm_scope& lock) -> auto {
+					return iv8::invoke_externalized_error_scope(lock, [ & ]() -> js::value_t {
 						auto local = value->deref(lock).As<v8::Function>();
 						auto arg_values = js::transfer_in_strict<std::vector<v8::Local<v8::Value>>>(std::move(params), lock);
 						auto result = iv8::unmaybe(local->Call(lock.isolate(), lock.context(), v8::Undefined(lock.isolate()), static_cast<int>(arg_values.size()), arg_values.data()));

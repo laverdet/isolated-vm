@@ -30,12 +30,10 @@ await test("script source origin", async () => {
 await test("script which throws", async () => {
 	await using agent = await ivm.Agent.create();
 	const realm = await agent.createRealm();
-	const script = expectComplete(await agent.compileScript("throw new Error('Hello');"));
-	const error = expectThrow(await script.run(realm));
-	// @ts-expect-error
-	const message: unknown = error.message;
-	assert.ok(typeof message === "string");
-	assert.ok(message.includes("Hello"));
+	const script = expectComplete(await agent.compileScript("throw new Error('wow');", { origin: { name: "test:script" } }));
+	const error = expectThrow(await script.run(realm)) as Error;
+	assert.equal(error.message, "wow");
+	assert.ok(error.stack?.includes("test:script"));
 });
 
 await test("script with syntax error", async () => {
