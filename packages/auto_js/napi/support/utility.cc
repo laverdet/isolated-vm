@@ -1,7 +1,8 @@
 module;
+#include "auto_js/no_unique_address.h"
+#include <cstdint>
 #include <functional>
 export module napi_js:utility;
-import :environment;
 import nodejs;
 import util;
 
@@ -11,47 +12,71 @@ namespace js::napi {
 
 // Null handle for both direct and indirect handles
 // Note: 1 -> 0x1'0000'0000
-const void* null_value_handle_ = nullptr;
-export auto* const null_value_handle = reinterpret_cast<napi_value>(&null_value_handle_);
+const uint64_t null_value_handle_data = 0x7f7f'7f7f'7f7f'7f7f;
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
+export auto* const null_value_handle = reinterpret_cast<napi_value>(const_cast<uint64_t*>(&null_value_handle_data));
+
+// Unwrap the v8 address of the napi handle. This points into the v8 heap.
+// NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
+struct virtual_handle_address {
+	protected:
+		~virtual_handle_address() = default;
+
+	public:
+		virtual auto operator()(napi_value value) const noexcept -> void* = 0;
+};
+
+struct direct_handle_address final : virtual_handle_address {
+		auto operator()(napi_value value) const noexcept -> void* final {
+			return value;
+		}
+};
+
+struct indirect_handle_address final : virtual_handle_address {
+		auto operator()(napi_value value) const noexcept -> void* final {
+			return *reinterpret_cast<void**>(value);
+		}
+};
 
 // Address equality for underlying napi handles.
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
-export struct virtual_address_equal {
+struct virtual_address_equal {
 	protected:
 		~virtual_address_equal() = default;
 
 	public:
-		virtual auto operator()(napi_value left, napi_value right) const -> bool = 0;
+		virtual auto operator()(napi_value left, napi_value right) const noexcept -> bool = 0;
 };
 
-export struct direct_address_equal final : virtual_address_equal {
-		auto operator()(napi_value left, napi_value right) const -> bool final {
-			return left == right;
+template <class Address>
+struct virtual_address_equal_of final : virtual_address_equal {
+	public:
+		auto operator()(napi_value left, napi_value right) const noexcept -> bool final {
+			return address_(left) == address_(right);
 		}
+
+	private:
+		NO_UNIQUE_ADDRESS Address address_;
 };
 
-export struct indirect_address_equal final : virtual_address_equal {
-		auto operator()(napi_value left, napi_value right) const -> bool final {
-			auto* indirect_left = reinterpret_cast<void**>(left);
-			auto* indirect_right = reinterpret_cast<void**>(right);
-			return *indirect_left == *indirect_right;
-		}
-};
+export using direct_address_equal = virtual_address_equal_of<direct_handle_address>;
+export using indirect_address_equal = virtual_address_equal_of<indirect_handle_address>;
 
-// Equality comparator which respects napi's handle types
+// Polymorphic address equality operator
 export class address_equal {
 	private:
 		using virtual_equal_type = util::covariant_value<virtual_address_equal, direct_address_equal, indirect_address_equal>;
 
 	public:
-		explicit address_equal(const environment& env) :
+		explicit address_equal(bool uses_direct_handles) :
 				equal_{
-					env.uses_direct_handles()
+					uses_direct_handles
 						? virtual_equal_type{direct_address_equal{}}
 						: virtual_equal_type{indirect_address_equal{}}
 				} {}
 
-		auto operator()(napi_value left, napi_value right) const -> bool {
+		auto operator()(napi_value left, napi_value right) const noexcept -> bool {
+			// NOLINTNEXTLINE(bugprone-exception-escape)
 			return (*equal_)(left, right);
 		}
 
@@ -60,17 +85,19 @@ export class address_equal {
 };
 
 // Address hash for napi value handles.
-export struct direct_address_hash : std::hash<void*> {};
-
-export struct indirect_address_hash : std::hash<void*> {
-	private:
-		using std::hash<void*>::operator();
-
+template <class Address>
+struct address_hash_of final {
 	public:
 		auto operator()(napi_value value) const noexcept -> std::size_t {
-			auto* indirect_handle = reinterpret_cast<void**>(value);
-			return (*this)(*indirect_handle);
+			return hash_(address_(value));
 		}
+
+	private:
+		NO_UNIQUE_ADDRESS Address address_;
+		NO_UNIQUE_ADDRESS std::hash<void*> hash_;
 };
+
+export using direct_address_hash = address_hash_of<direct_handle_address>;
+export using indirect_address_hash = address_hash_of<indirect_handle_address>;
 
 } // namespace js::napi

@@ -69,8 +69,7 @@ struct visit_napi_value
 
 		visit_napi_value(auto* /*transfer*/, Environment& env) :
 				napi::environment_scope<Environment>{env},
-				reference_map_t<Target, napi_reference_map_type>{env},
-				equal_{env} {}
+				reference_map_t<Target, napi_reference_map_type>{env} {}
 
 		// If the private `immediate` operation is defined: this public operation will first
 		// perform a reference map lookup, then delegate to the private operation if not found.
@@ -113,13 +112,6 @@ struct visit_napi_value
 		// General purpose visit operation which actually performs the type check
 		template <class Accept>
 		auto operator()(napi_value subject, const Accept& accept) -> accept_target_t<Accept> {
-			// Check known address values before the map lookup
-			// TODO: Fix it
-			// if (equal_(subject, undefined_)) {
-			// 	return (*this)(napi::value<undefined_tag>::from(subject), accept);
-			// } else if (equal_(subject, null_)) {
-			// 	return (*this)(napi::value<null_tag>::from(subject), accept);
-			// }
 
 			// Check the reference map, and lookup type via napi
 			return this->lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
@@ -145,8 +137,9 @@ struct visit_napi_value
 								return immediate(napi::value<date_tag>::from(subject), accept);
 							} else if (napi::invoke(napi_is_promise, napi_env{*this}, subject)) {
 								return immediate(napi::value<promise_tag>::from(subject), accept);
+							} else {
+								return immediate(napi::value<object_tag>::from(subject), accept);
 							}
-							return immediate(napi::value<object_tag>::from(subject), accept);
 						}
 					case napi_function:
 						return immediate(napi::value<function_tag>::from(subject), accept);
@@ -214,7 +207,6 @@ struct visit_napi_value
 			return accept(Tag{}, *this, napi::bound_value{napi_env{*this}, subject});
 		}
 
-		napi::address_equal equal_;
 		napi_value undefined_{napi::null_value_handle};
 		napi_value null_{napi::null_value_handle};
 };
