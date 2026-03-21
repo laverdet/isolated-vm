@@ -1,12 +1,12 @@
 module;
-#ifndef V8_VIA_NODEJS
+#ifdef INCLUDE_V8_PLATFORM
 #include "libplatform/v8-tracing.h"
 #include "v8-platform.h"
 #include "v8-source-location.h"
 #endif
 export module v8:platform;
 // NOLINTBEGIN(misc-unused-using-decls)
-#ifndef V8_VIA_NODEJS
+#ifdef INCLUDE_V8_PLATFORM
 namespace v8 {
 export using v8::IdleTask;
 export using v8::JobDelegate;

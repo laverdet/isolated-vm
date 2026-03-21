@@ -155,14 +155,19 @@ function(target_preprocessed_sources TARGET SEARCH REPLACE)
 	endif()
 endfunction()
 
-
 # `find_package_from_npm` from `@auto_js/js`
 include(FindNpmPackage)
 
 # Embedded v8
-set(IVM_V8_EMBEDDED ON)
-set(IVM_V8_TRICKSHOT ON)
-add_subdirectory(packages/third_party/v8)
+set(V8_EMBEDDED ON)
+set(V8_TRICKSHOT ON)
+add_subdirectory(packages/third_party/v8 google_v8)
+
+# nodejs v8
+set(V8_VENDOR nodejs)
+set(V8_EMBEDDED OFF)
+set(V8_TRICKSHOT OFF)
+add_subdirectory(packages/third_party/v8 nodejs_v8)
 
 # nodejs require-able module
 add_subdirectory(packages/backend_napi_v8)
