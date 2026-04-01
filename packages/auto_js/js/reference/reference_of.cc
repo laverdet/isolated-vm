@@ -30,7 +30,7 @@ class reference_storage_of {
 
 		[[nodiscard]] constexpr auto at(reference_type reference) const& -> const Type& { return references_.at(reference.id()); }
 		[[nodiscard]] constexpr auto at(reference_type reference) & -> Type& { return references_.at(reference.id()); }
-		[[nodiscard]] constexpr auto at(reference_type reference) && -> Type { return std::move(references_).at(reference.id()); }
+		[[nodiscard]] constexpr auto at(reference_type reference) && -> Type { return std::move(references_.at(reference.id())); }
 
 		constexpr auto allocate() -> reference_type {
 			references_.emplace_back();

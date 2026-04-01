@@ -1,5 +1,6 @@
 export module napi_js:value;
 export import :value_handle;
+import :array_buffer;
 import :array;
 import :bound_value;
 import :class_;

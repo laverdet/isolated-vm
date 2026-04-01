@@ -6,6 +6,7 @@ module;
 #include <utility>
 module v8_js;
 import :isolated.agent;
+import :platform.allocator;
 
 namespace js::iv8::isolated {
 
@@ -61,7 +62,9 @@ agent_host::agent_host(
 	behavior_params params
 ) :
 		storage_{std::move(storage)},
-		array_buffer_allocator_{v8::ArrayBuffer::Allocator::NewDefaultAllocator()},
+		// TODO: v8 holds its own reference to this. I will probably need it later for per-isolate
+		// memory diagnostics though?
+		array_buffer_allocator_{std::make_shared<platform::data_block_allocator>()},
 		isolate_{v8::Isolate::Allocate()},
 		clock_{params.clock},
 		destroy_callback_{destroy_callback},
@@ -69,7 +72,7 @@ agent_host::agent_host(
 		random_seed_{params.random_seed} {
 	isolate_->SetData(0, this);
 	auto create_params = v8::Isolate::CreateParams{};
-	create_params.array_buffer_allocator = array_buffer_allocator_.get();
+	create_params.array_buffer_allocator_shared = array_buffer_allocator_;
 	v8::Isolate::Initialize(isolate_.get(), create_params);
 
 	isolate_->SetCaptureStackTraceForUncaughtExceptions(true);

@@ -86,6 +86,7 @@ CheckOptions:
   cppcoreguidelines-avoid-non-const-global-variables.AllowInternalLinkage: true
   cppcoreguidelines-special-member-functions.AllowImplicitlyDeletedCopyOrMove: true
   cppcoreguidelines-special-member-functions.AllowMissingMoveFunctionsWhenCopyIsDeleted: true
+  cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor: true
   hicpp-signed-bitwise.IgnorePositiveIntegerLiterals: true
   misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: true
   modernize-use-trailing-return-type.TransformLambdas: all_except_auto

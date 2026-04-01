@@ -5,6 +5,7 @@ module;
 #include <string_view>
 #include <variant>
 export module auto_js:builtin.visit;
+import :intrinsics.array_buffer;
 import :intrinsics.error;
 import :intrinsics.bigint;
 import :intrinsics.date;
@@ -113,6 +114,23 @@ struct visit<void, js::error> : visit<void, js::error_value> {
 			return accept(error_tag{}, *this, js::error_value{subject});
 		}
 };
+
+// `ArrayBuffer` & `SharedArrayBuffer` types
+template <class Tag, class Type>
+struct visit_with_data_block {
+		template <class Accept>
+		constexpr auto operator()(auto&& subject, const Accept& accept) const -> accept_target_t<Accept> {
+			return accept(Tag{}, *this, std::forward<decltype(subject)>(subject));
+		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+};
+
+template <>
+struct visit<void, array_buffer> : visit_with_data_block<array_buffer_tag, array_buffer> {};
+
+template <>
+struct visit<void, shared_array_buffer> : visit_with_data_block<shared_array_buffer_tag, shared_array_buffer> {};
 
 // `std::optional` visitor may yield `undefined`
 template <class Meta, class Type>

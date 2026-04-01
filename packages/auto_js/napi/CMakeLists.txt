@@ -11,6 +11,7 @@ target_sources(napi_js
 		api/uv_scheduler.cc
 		support/environment.cc
 		support/initialize.cc
+		value/array_buffer.cc
 		value/array.cc
 		value/dictionary.cc
 		value/object.cc
@@ -42,6 +43,7 @@ target_sources(napi_js
 		support/utility.cc
 		transfer/accept.cc
 		transfer/visit.cc
+		value/array_buffer.h.cc
 		value/array.h.cc
 		value/class.cc
 		value/class.h.cc

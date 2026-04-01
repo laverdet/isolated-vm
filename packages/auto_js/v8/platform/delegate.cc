@@ -9,11 +9,6 @@ module;
 module v8_js;
 import :platform.delegate;
 
-extern "C" {
-// #include "unicode/udata.h"
-void udata_setCommonData_74(const void* data, int* err);
-}
-
 namespace js::iv8::platform {
 
 // `platform_handle`

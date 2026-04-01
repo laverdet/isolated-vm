@@ -3,6 +3,7 @@ module;
 #include <string>
 #include <variant>
 export module auto_js:value;
+export import :intrinsics.array_buffer;
 export import :intrinsics.bigint;
 export import :intrinsics.date;
 export import :vector.vector_of;
@@ -53,7 +54,10 @@ using variant_value = std::variant<
 	reference_of<js_clock::time_point>,
 	// object(s)
 	reference_of<dictionary<list_tag, Value, Value>>,
-	reference_of<dictionary<dictionary_tag, Value, Value>>
+	reference_of<dictionary<dictionary_tag, Value, Value>>,
+	// typed arrays
+	reference_of<array_buffer>,
+	reference_of<shared_array_buffer>
 	// ---
 	>;
 

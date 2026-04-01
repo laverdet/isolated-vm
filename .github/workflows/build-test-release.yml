@@ -404,6 +404,10 @@ jobs:
       - name: Test
         run: pnpm run -s test
 
+      # Console on failure
+      - uses: laverdet/console@v1
+        if: failure()
+
   release:
     name: Release
     needs: test

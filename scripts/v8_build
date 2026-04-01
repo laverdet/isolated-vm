@@ -47,6 +47,10 @@ CONFIG=${PLATFORM_CONFIG_PAIR[1]} # debug, optdebug, release
 # Disables Temporal, which requires a Rust x86 toolchain for some reason.
 # https://issues.chromium.org/issues/425709639
 
+# `v8_enable_sandbox=false`
+# The sandbox requires `SharedArrayBuffer` instances to be located in the isolate group's virtual
+# address memory region.
+
 GN_ARGS=(
 	clang_use_chrome_plugins=false
 	icu_use_data_file=false
@@ -56,7 +60,7 @@ GN_ARGS=(
 	use_lld=false
 	v8_enable_direct_handle=true
 	v8_enable_partition_alloc=false
-	v8_enable_sandbox=true
+	v8_enable_sandbox=false
 	v8_enable_temporal_support=false
 	v8_use_external_startup_data=false
 );

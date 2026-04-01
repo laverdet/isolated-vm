@@ -12,6 +12,12 @@ await test("transfer types", async () => {
 	await using agent = await ivm.Agent.create();
 	const realm = await agent.createRealm();
 
+	// null, undefined, bool
+	await check(agent, realm, () => null);
+	await check(agent, realm, () => undefined);
+	await check(agent, realm, () => true);
+	await check(agent, realm, () => false);
+
 	// string
 	await check(agent, realm, () => "hello world");
 	await check(agent, realm, () => "\u{10ffff}");

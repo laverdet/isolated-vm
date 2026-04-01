@@ -3,6 +3,7 @@ export import :deferred_receiver;
 export import :enum_.types;
 export import :function;
 export import :functional;
+export import :intrinsics.array_buffer;
 export import :intrinsics.error;
 export import :intrinsics.external;
 export import :property;

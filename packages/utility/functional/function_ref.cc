@@ -1,5 +1,4 @@
 module;
-#include <bit>
 #include <concepts>
 #include <type_traits>
 #include <utility>
@@ -88,5 +87,8 @@ struct function_ref_deduction_guide<auto(Object, Args...) noexcept(Nx)->Result>
 export template <class Function>
 function_ref(Function, auto&&)
 	-> function_ref<typename function_ref_deduction_guide<function_signature_t<Function>>::type>;
+
+export template <class Function>
+function_ref(Function) -> function_ref<function_signature_t<Function>>;
 
 } // namespace util

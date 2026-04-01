@@ -87,15 +87,8 @@ struct shared_array_buffer_tag : tag_of<object_tag> {};
 struct data_view_tag : tag_of<object_tag> {};
 struct typed_array_tag : tag_of<object_tag> {};
 
-struct float32_array_tag : tag_of<typed_array_tag> {};
-struct float64_array_tag : tag_of<typed_array_tag> {};
-struct int16_array_tag : tag_of<typed_array_tag> {};
-struct int32_array_tag : tag_of<typed_array_tag> {};
-struct int8_array_tag : tag_of<typed_array_tag> {};
-struct uint16_array_tag : tag_of<typed_array_tag> {};
-struct uint32_array_tag : tag_of<typed_array_tag> {};
-struct uint8_array_tag : tag_of<typed_array_tag> {};
-struct uint8_clamped_array_tag : tag_of<typed_array_tag> {};
+template <class Type>
+struct typed_array_tag_of : tag_of<typed_array_tag> {};
 
 // Covariant helper for `std::variant` types.
 template <class Tag>

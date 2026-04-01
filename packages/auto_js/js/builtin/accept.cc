@@ -7,6 +7,7 @@ module;
 #include <utility>
 #include <variant>
 export module auto_js:builtin.accept;
+import :intrinsics.array_buffer;
 import :intrinsics.bigint;
 import :intrinsics.date;
 import :intrinsics.error;
@@ -157,6 +158,22 @@ struct accept_coerced_string {
 
 template <class Char>
 struct accept<void, std::basic_string<Char>> : accept_coerced_string<Char> {};
+
+// `ArrayBuffer` & `SharedArrayBuffer` types
+template <class Tag, class Type>
+struct accept_with_data_block {
+		constexpr auto operator()(Tag /*tag*/, visit_holder /*visit*/, auto&& subject) const -> Type {
+			return Type{data_block{std::forward<decltype(subject)>(subject)}};
+		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+};
+
+template <>
+struct accept<void, array_buffer> : accept_with_data_block<array_buffer_tag, array_buffer> {};
+
+template <>
+struct accept<void, shared_array_buffer> : accept_with_data_block<shared_array_buffer_tag, shared_array_buffer> {};
 
 // `tagged_external` acceptors
 template <class Type>

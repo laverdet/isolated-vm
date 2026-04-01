@@ -1,6 +1,7 @@
 module;
 #include <concepts>
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -207,6 +208,19 @@ struct accept_v8_value : accept_v8_primitive {
 					}
 				},
 			};
+		}
+
+		// typed arrays
+		auto operator()(array_buffer_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const
+			-> js::referenceable_value<v8::Local<v8::ArrayBuffer>> {
+			auto data = js::data_block{std::forward<decltype(subject)>(subject)};
+			throw std::logic_error{"unimplemented"};
+		}
+
+		auto operator()(shared_array_buffer_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const
+			-> js::referenceable_value<v8::Local<v8::ArrayBuffer>> {
+			auto data = js::data_block{std::forward<decltype(subject)>(subject)};
+			throw std::logic_error{"unimplemented"};
 		}
 
 	private:

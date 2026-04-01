@@ -1,4 +1,5 @@
 module;
+#include <bit>
 #include <functional>
 #include <utility>
 export module napi_js:visit;
@@ -8,6 +9,7 @@ import :environment_fwd;
 import :utility;
 import :value;
 import util;
+import v8;
 
 namespace js {
 using namespace napi;
@@ -137,6 +139,10 @@ struct visit_napi_value
 								return immediate(napi::value<date_tag>::from(subject), accept);
 							} else if (napi::invoke(napi_is_promise, napi_env{*this}, subject)) {
 								return immediate(napi::value<promise_tag>::from(subject), accept);
+							} else if (napi::invoke(napi_is_arraybuffer, napi_env{*this}, subject)) {
+								return immediate(napi::value<array_buffer_tag>::from(subject), accept);
+							} else if (std::bit_cast<v8::Local<v8::Object>>(subject)->IsSharedArrayBuffer()) {
+								return immediate(napi::value<shared_array_buffer_tag>::from(subject), accept);
 							} else {
 								return immediate(napi::value<object_tag>::from(subject), accept);
 							}
@@ -168,6 +174,16 @@ struct visit_napi_value
 
 		template <class Accept>
 		auto immediate(value<promise_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept_tagged(subject, accept);
+		}
+
+		template <class Accept>
+		auto immediate(value<array_buffer_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept_tagged(subject, accept);
+		}
+
+		template <class Accept>
+		auto immediate(value<shared_array_buffer_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept_tagged(subject, accept);
 		}
 
@@ -204,7 +220,7 @@ struct visit_napi_value
 		// Convenience function which wraps in `napi::bound_value` and invokes `accept`.
 		template <auto_tag Tag, class Accept>
 		[[nodiscard]] auto accept_tagged(value<Tag> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(Tag{}, *this, napi::bound_value{napi_env{*this}, subject});
+			return accept(Tag{}, *this, napi::bound_value{this->environment(), subject});
 		}
 
 		napi_value undefined_{napi::null_value_handle};

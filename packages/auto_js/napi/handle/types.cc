@@ -41,6 +41,9 @@ class bound_value;
 template <class Tag>
 class bound_value_next;
 
+template <class Type>
+class bound_value_for_typed_array_of;
+
 // Map of `value<Tag>` / `bound_value<Tag>` to concrete implementation classes.
 template <class Tag>
 struct value_specialization {
@@ -101,6 +104,18 @@ template <>
 struct value_specialization<function_tag> {
 		using value_type = class value_for_function;
 		using bound_type = bound_value_next<function_tag>;
+};
+
+template <>
+struct value_specialization<array_buffer_tag> {
+		using value_type = class value_for_array_buffer;
+		using bound_type = class bound_value_for_array_buffer;
+};
+
+template <>
+struct value_specialization<shared_array_buffer_tag> {
+		using value_type = class value_for_shared_array_buffer;
+		using bound_type = class bound_value_for_shared_array_buffer;
 };
 
 template <class Type>

@@ -4,6 +4,7 @@ module;
 #include <utility>
 export module v8_js:visit;
 import :array;
+import :array_buffer;
 import :callback_info;
 import :handle;
 import :hash;
@@ -173,6 +174,17 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 			return accept(date_tag{}, *this, iv8::date{subject});
 		}
 
+		// typed arrays
+		template <class Accept>
+		auto immediate(v8::Local<v8::ArrayBuffer> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(array_buffer_tag{}, *this, iv8::array_buffer{lock_witness(), subject});
+		}
+
+		template <class Accept>
+		auto immediate(v8::Local<v8::SharedArrayBuffer> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(shared_array_buffer_tag{}, *this, iv8::shared_array_buffer{lock_witness(), subject});
+		}
+
 		// external
 		template <class Accept>
 		auto immediate(v8::Local<v8::External> subject, const Accept& accept) -> accept_target_t<Accept> {
@@ -256,6 +268,10 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 				return immediate(subject.As<v8::External>(), accept);
 			} else if (subject->IsDate()) {
 				return immediate(subject.As<v8::Date>(), accept);
+			} else if (subject->IsArrayBuffer()) {
+				return immediate(subject.As<v8::ArrayBuffer>(), accept);
+			} else if (subject->IsSharedArrayBuffer()) {
+				return immediate(subject.As<v8::SharedArrayBuffer>(), accept);
 			} else if (subject->IsPromise()) {
 				return immediate(subject.As<v8::Promise>(), accept);
 			} else if (subject->IsFunction()) {

@@ -18,6 +18,7 @@ target_sources(v8_js
 		platform/worker_runner.cc
 		support/error.cc
 		support/lock.cc
+		value/array_buffer.cc
 		value/array.cc
 		value/fixed_array.cc
 		value/function.cc
@@ -37,6 +38,7 @@ target_sources(v8_js
 		isolated/clock.h.cc
 		isolated/cluster.h.cc
 		isolated/platform.h.cc
+		platform/allocator.h.cc
 		platform/delegate.h.cc
 		platform/foreground_runner.h.cc
 		platform/scheduler.cc
@@ -49,6 +51,7 @@ target_sources(v8_js
 		support/error.h.cc
 		support/lock.h.cc
 		support/unmaybe.cc
+		value/array_buffer.h.cc
 		value/array.h.cc
 		value/callback_info.cc
 		value/fixed_array.h.cc

@@ -17,7 +17,7 @@ class covariant_value : public pointer_facade {
 		constexpr explicit covariant_value(Derived value) :
 				value_{std::move(value)} {}
 
-		constexpr auto operator*(this auto& self) -> auto& {
+		constexpr auto operator*(this auto& self) noexcept -> auto& {
 			using reference_type = util::apply_cvref_t<decltype(self), Type>;
 			if (self.value_.index() == std::variant_npos) {
 				std::unreachable();

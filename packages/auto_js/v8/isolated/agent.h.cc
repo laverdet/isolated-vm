@@ -152,7 +152,7 @@ export class agent_host
 
 		// Order matters for these members
 		std::shared_ptr<agent_storage> storage_;
-		std::unique_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
+		std::shared_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
 		std::unique_ptr<v8::Isolate, util::function_constant<dispose_isolate>> isolate_;
 
 		// Order doesn't really matter
