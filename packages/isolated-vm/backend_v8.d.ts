@@ -50,6 +50,7 @@ declare module "#backend_v8" {
 		constructor(secret: Secret, ...args: unknown[]);
 		copy(): Promise<unknown>;
 		get(property: string): Promise<Reference>;
+		set(property: string, value: unknown): Promise<void>;
 		invoke(args: unknown[]): Promise<MaybeCompletionOf<unknown>>;
 	}
 

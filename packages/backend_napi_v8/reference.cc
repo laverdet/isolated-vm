@@ -170,6 +170,54 @@ auto reference_handle::get(environment& env, js::string_t name) -> js::forward<j
 	return js::forward{promise};
 }
 
+auto reference_handle::set(environment& env, js::string_t name, js::value_t value) -> js::forward<js::napi::value<>> {
+	auto [ promise, resolver ] = make_promise(env);
+	switch (typeof_) {
+		// Setting any property on these types is a no-op
+		case js::typeof_kind::bigint:
+		case js::typeof_kind::boolean:
+		case js::typeof_kind::number:
+		case js::typeof_kind::string:
+		case js::typeof_kind::symbol:
+			resolver.resolve(true);
+			break;
+
+		// `null` & `undefined` throw
+		case js::typeof_kind::undefined:
+			resolver.reject(js::error_value{js::type_error{u"Cannot set properties of undefined"}});
+			break;
+		case js::typeof_kind::null:
+			resolver.reject(js::error_value{js::type_error{u"Cannot set properties of null"}});
+			break;
+
+		// `set` only does something on these object types
+		case js::typeof_kind::object:
+		case js::typeof_kind::function:
+			agent_.schedule(
+				[ receiver = value_, realm = realm_ ](
+					const agent_handle::lock& agent_lock,
+					auto resolver,
+					js::string_t name,
+					js::value_t value
+				) -> void {
+					auto name_local = js::transfer_in_strict<v8::Local<v8::String>>(std::move(name), agent_lock);
+					auto result = context_scope_operation(agent_lock, realm->deref(agent_lock), [ & ](const realm_scope& lock) -> bool {
+						auto local = receiver->deref(lock).As<v8::Object>();
+						auto transferred = js::transfer_in_strict<v8::Local<v8::Value>>(std::move(value), lock);
+						return js::iv8::unmaybe(local->CreateDataProperty(lock.context(), name_local, transferred));
+					});
+					resolver.resolve(result);
+				},
+				std::move(resolver),
+				std::move(name),
+				std::move(value)
+			);
+			break;
+	}
+
+	return js::forward{promise};
+}
+
 auto reference_handle::invoke(environment& env, std::vector<js::value_t> params) -> js::forward<js::napi::value<>> {
 	auto [ promise, resolver ] = make_promise(env);
 	if (typeof_ == js::typeof_kind::function) {
@@ -207,6 +255,7 @@ auto reference_handle::class_template(environment& env) -> js::napi::value<class
 			js::class_constructor{util::cw<"Reference">},
 			js::class_method{util::cw<"copy">, util::fn<&reference_handle::copy>},
 			js::class_method{util::cw<"get">, util::fn<&reference_handle::get>},
+			js::class_method{util::cw<"set">, util::fn<&reference_handle::set>},
 			js::class_method{util::cw<"invoke">, util::fn<&reference_handle::invoke>},
 		}
 	);
