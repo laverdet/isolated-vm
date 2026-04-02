@@ -118,8 +118,8 @@ struct visit_napi_value
 
 			// Check the reference map, and lookup type via napi
 			return this->lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
-				auto typeof = napi::invoke(napi_typeof, napi_env{*this}, subject);
-				switch (typeof) {
+				auto type_of = napi::invoke(napi_typeof, napi_env{*this}, subject);
+				switch (type_of) {
 					case napi_undefined:
 						return (*this)(napi::value<undefined_tag>::from(subject), accept);
 					case napi_null:

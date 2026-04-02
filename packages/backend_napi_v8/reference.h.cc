@@ -16,7 +16,7 @@ export class reference_handle {
 
 		explicit reference_handle(js::null_tag /*tag*/);
 		explicit reference_handle(js::undefined_tag /*tag*/);
-		reference_handle(agent_handle agent, js::typeof_kind typeof, js::iv8::shared_remote<v8::Context> realm, js::iv8::shared_remote<v8::Value> value);
+		reference_handle(agent_handle agent, js::typeof_kind type_of, js::iv8::shared_remote<v8::Context> realm, js::iv8::shared_remote<v8::Value> value);
 		reference_handle(const agent_handle::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm, v8::Local<v8::Value> value);
 		reference_handle(const agent_handle::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm, v8::Local<v8::Object> value);
 		auto copy(environment& env) -> js::forward<js::napi::value<>>;

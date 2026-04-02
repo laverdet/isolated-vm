@@ -1,11 +1,17 @@
-cmake_minimum_required(VERSION 3.30.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 4.0.0 FATAL_ERROR)
 
 # Project config
+message(STATUS "Cmake version: ${CMAKE_VERSION}")
+if(NOT WINDOWS)
+	set(CMAKE_CXX_EXTENSIONS ON)
+else()
+	set(CMAKE_CXX_EXTENSIONS OFF)
+endif()
 project(isolated_vm LANGUAGES C CXX)
+message(STATUS "Cmake C++ Standard Library: ${CMAKE_CXX_STANDARD_LIBRARY}")
 
 # C++26 environment
 set(CMAKE_CXX_STANDARD 26)
-set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Use lld (for LTO), and also gc-sections
 set(CMAKE_LINKER_TYPE LLD)

@@ -24,21 +24,21 @@ reference_handle::reference_handle(js::undefined_tag /*tag*/) :
 
 reference_handle::reference_handle(
 	agent_handle agent,
-	js::typeof_kind typeof,
+	js::typeof_kind type_of,
 	js::iv8::shared_remote<v8::Context> realm,
 	js::iv8::shared_remote<v8::Value> value
 ) :
 		agent_{std::move(agent)},
 		realm_{std::move(realm)},
 		value_{std::move(value)},
-		typeof_{typeof} {}
+		typeof_{type_of} {}
 
 reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm, v8::Local<v8::Value> value) :
 		reference_handle{util::elide{[ & ]() -> reference_handle {
 			if (value->IsObject()) {
 				return reference_handle{lock, std::move(agent), std::move(realm), value.As<v8::Object>()};
 			} else {
-				const auto typeof = [ & ]() -> js::typeof_kind {
+				const auto type_of = [ & ]() -> js::typeof_kind {
 					if (value->IsNullOrUndefined()) {
 						if (value->IsNull()) {
 							return js::typeof_kind::null;
@@ -61,27 +61,27 @@ reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle 
 						std::unreachable();
 					}
 				}();
-				switch (typeof) {
+				switch (type_of) {
 					case js::typeof_kind::null:
 						return reference_handle{js::null_tag{}};
 					case js::typeof_kind::undefined:
 						return reference_handle{js::undefined_tag{}};
 					default:
-						return reference_handle{std::move(agent), typeof, std::move(realm), js::iv8::make_shared_remote(lock, value)};
+						return reference_handle{std::move(agent), type_of, std::move(realm), js::iv8::make_shared_remote(lock, value)};
 				}
 			}
 		}}} {}
 
 reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm, v8::Local<v8::Object> value) :
 		reference_handle{util::elide{[ & ]() -> reference_handle {
-			const auto typeof = [ & ]() -> js::typeof_kind {
+			const auto type_of = [ & ]() -> js::typeof_kind {
 				if (value->IsFunction()) {
 					return js::typeof_kind::function;
 				} else {
 					return js::typeof_kind::object;
 				}
 			}();
-			return reference_handle{std::move(agent), typeof, std::move(realm), js::iv8::make_shared_remote(lock, value.As<v8::Value>())};
+			return reference_handle{std::move(agent), type_of, std::move(realm), js::iv8::make_shared_remote(lock, value.As<v8::Value>())};
 		}}} {}
 
 auto reference_handle::copy(environment& env) -> js::forward<js::napi::value<>> {
