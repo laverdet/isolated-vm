@@ -12,6 +12,7 @@ import :intrinsics.bigint;
 import :intrinsics.date;
 import :intrinsics.error;
 import :intrinsics.external;
+import :reference.accept;
 import :transfer;
 import util;
 
@@ -166,6 +167,35 @@ struct accept<void, array_buffer> : accept_without_narrowing<array_buffer_tag, a
 template <>
 struct accept<void, shared_array_buffer> : accept_without_narrowing<shared_array_buffer_tag, shared_array_buffer> {};
 
+template <class Meta>
+struct accept<Meta, data_block_variant> : accept<Meta, data_block_variant::value_type> {
+	private:
+		using accept_type = accept<Meta, data_block_variant::value_type>;
+
+	public:
+		explicit constexpr accept(auto* transfer) :
+				accept_type{transfer},
+				array_buffer_index_{accept_reference_of<Meta, array_buffer>::extract_type_index(transfer)},
+				shared_array_buffer_index_{accept_reference_of<Meta, shared_array_buffer>::extract_type_index(transfer)} {}
+
+		using accept_type::operator();
+
+		// reference provider
+		auto operator()(std::type_identity<data_block_variant> /*type*/, accepted_reference reference) const -> data_block_variant {
+			if (reference.type_index() == array_buffer_index_) {
+				return reference_of<array_buffer>{reference.id()};
+			} else if (reference.type_index() == shared_array_buffer_index_) {
+				return reference_of<shared_array_buffer>{reference.id()};
+			} else {
+				std::unreachable();
+			}
+		}
+
+	private:
+		unsigned array_buffer_index_;
+		unsigned shared_array_buffer_index_;
+};
+
 // `TypedArray` and `DataView` types
 template <class Meta, class Tag, class Type>
 struct accept_typed_array {
@@ -179,6 +209,8 @@ struct accept_typed_array {
 		}
 
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+
+	private:
 		accept_value<Meta, data_block_variant> accept_;
 };
 

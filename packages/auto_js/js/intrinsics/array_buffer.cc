@@ -100,7 +100,15 @@ export class shared_array_buffer : public data_block {
 		shared_pointer_type data_;
 };
 
-export using data_block_variant = std::variant<array_buffer, shared_array_buffer>;
+// Any data block type
+export struct data_block_variant : public std::variant<reference_of<array_buffer>, reference_of<shared_array_buffer>> {
+	public:
+		using value_type = std::variant<reference_of<array_buffer>, reference_of<shared_array_buffer>>;
+		using value_type::value_type;
+
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		constexpr data_block_variant(value_type value) : value_type{value} {}
+};
 
 // `Uint8Array`, `Int16Array`, etc.
 // nb: Type:void is `DataView`
@@ -111,11 +119,11 @@ class typed_array {
 
 		// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 		typed_array(data_block_variant buffer, std::size_t byte_offset, std::size_t length) :
-				data_{std::move(buffer)},
+				data_{buffer},
 				byte_offset_{byte_offset},
 				length_{length} {}
 
-		[[nodiscard]] constexpr auto buffer() && -> data_block_variant { return std::move(data_); }
+		[[nodiscard]] constexpr auto buffer() && -> data_block_variant { return data_; }
 		[[nodiscard]] constexpr auto byte_offset() const -> size_t { return byte_offset_; }
 		[[nodiscard]] constexpr auto size() const -> size_t { return length_; }
 

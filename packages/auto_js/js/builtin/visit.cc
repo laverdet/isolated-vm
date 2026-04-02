@@ -124,6 +124,11 @@ struct visit<void, array_buffer> : visit_value_tagged<array_buffer_tag> {};
 template <>
 struct visit<void, shared_array_buffer> : visit_value_tagged<shared_array_buffer_tag> {};
 
+template <class Meta>
+struct visit<Meta, data_block_variant> : visit<Meta, data_block_variant::value_type> {
+		using visit<Meta, data_block_variant::value_type>::visit;
+};
+
 // `TypedArray` and `DataView` types
 template <class Meta, class Tag>
 struct visit_typed_array : visit<Meta, data_block_variant> {

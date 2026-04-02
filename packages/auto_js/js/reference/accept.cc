@@ -38,7 +38,8 @@ struct accepted_reference_of : accepted_reference {
 		constexpr explicit accepted_reference_of(unsigned type_index, reference_of<Type> reference) noexcept :
 				accepted_reference{type_index, reference} {}
 
-		constexpr explicit operator reference_of<Type>() const {
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		constexpr operator reference_of<Type>() const {
 			return reference_of<Type>{id()};
 		}
 };
@@ -78,6 +79,10 @@ struct accept_reference_of : accept<Meta, Type> {
 
 		constexpr auto take_reference_storage() const -> storage_type {
 			return std::exchange(storage_, {});
+		}
+
+		constexpr static auto extract_type_index(accept_reference_of<Meta, Type>* transfer) -> unsigned {
+			return transfer->type_index_;
 		}
 
 	private:

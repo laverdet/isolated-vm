@@ -49,18 +49,16 @@ await test("shared array buffer transfer out", async () => {
 
 await test("typed array transfer out", async () => {
 	await using agent = await ivm.Agent.create();
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const [ uint8, uint8_copy ] = await unsafeEvalAsString(agent, () => {
 		const uint8 = new Uint8Array([ 1, 2, 3 ]);
 		return [ uint8, new Uint8Array(uint8.buffer) ];
 	});
 	assert.deepStrictEqual(uint8, new Uint8Array([ 1, 2, 3 ]));
-	// assert.strictEqual(uint8.buffer, uint8_copy.buffer);
+	assert.strictEqual(uint8.buffer, uint8_copy.buffer);
 });
 
 await test("shared typed array transfer out", async () => {
 	await using agent = await ivm.Agent.create();
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const [ shared_uint8, shared_uint8_copy ] = await unsafeEvalAsString(agent, () => {
 		const sab = new SharedArrayBuffer(3);
 		const uint8 = new Uint8Array(sab);
@@ -69,5 +67,5 @@ await test("shared typed array transfer out", async () => {
 	});
 	assert.ok(shared_uint8.buffer instanceof SharedArrayBuffer);
 	assert.deepStrictEqual(shared_uint8, new Uint8Array([ 1, 2, 3 ]));
-	// assert.strictEqual(shared_uint8.buffer, shared_uint8_copy.buffer);
+	assert.strictEqual(shared_uint8.buffer, shared_uint8_copy.buffer);
 });

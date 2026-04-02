@@ -11,6 +11,7 @@ namespace js {
 export template <class Type>
 class reference_of {
 	public:
+		reference_of() = default;
 		constexpr explicit reference_of(unsigned id) noexcept : id_{id} {}
 		[[nodiscard]] constexpr auto id() const -> unsigned { return id_; }
 

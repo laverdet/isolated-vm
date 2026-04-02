@@ -269,11 +269,9 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 		// calls for all v8 types.
 		template <class Accept>
 		auto operator()(v8::Local<v8::ArrayBuffer> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return immediate(subject, accept);
-			// TODO: This requires a referenceable type
-			// return lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
-			// 	return immediate(subject, accept);
-			// });
+			return lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
+				return immediate(subject, accept);
+			});
 		}
 
 	protected:
