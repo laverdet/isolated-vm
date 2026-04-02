@@ -7,8 +7,8 @@ import :array_buffer;
 namespace js::iv8 {
 
 // `array_buffer`
-array_buffer::operator js::data_block() const {
-	return js::data_block{std::span<std::byte>{*this}};
+array_buffer::operator js::array_buffer() const {
+	return js::array_buffer{std::span<std::byte>{*this}};
 }
 
 array_buffer::operator std::span<std::byte>() const {
@@ -16,11 +16,11 @@ array_buffer::operator std::span<std::byte>() const {
 }
 
 // `shared_array_buffer`
-shared_array_buffer::operator js::data_block() const {
+shared_array_buffer::operator js::shared_array_buffer() const {
 	auto backing_store = (*this)->GetBackingStore();
 	auto* data = reinterpret_cast<std::byte*>(backing_store->Data());
-	auto data_shared_ptr = std::shared_ptr<js::data_block::array_type>{std::move(backing_store), data};
-	return js::data_block{std::move(data_shared_ptr), (*this)->ByteLength()};
+	auto data_shared_ptr = std::shared_ptr<js::shared_array_buffer::array_type>{std::move(backing_store), data};
+	return js::shared_array_buffer{(*this)->ByteLength(), std::move(data_shared_ptr)};
 }
 
 shared_array_buffer::operator std::span<std::byte>() const {

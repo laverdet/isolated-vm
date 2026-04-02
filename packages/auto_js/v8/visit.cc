@@ -174,15 +174,21 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 			return accept(date_tag{}, *this, iv8::date{subject});
 		}
 
-		// typed arrays
+		// data blocks
 		template <class Accept>
 		auto immediate(v8::Local<v8::ArrayBuffer> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(array_buffer_tag{}, *this, iv8::array_buffer{lock_witness(), subject});
+			// ArrayBuffer (from `js::iv8::typed_array<T>{}.buffer()`)
+			// (it could be either kind)
+			if (subject->IsSharedArrayBuffer()) {
+				return immediate(subject.As<v8::SharedArrayBuffer>(), accept);
+			} else {
+				return accept(array_buffer_tag{}, *this, iv8::array_buffer{subject});
+			}
 		}
 
 		template <class Accept>
 		auto immediate(v8::Local<v8::SharedArrayBuffer> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(shared_array_buffer_tag{}, *this, iv8::shared_array_buffer{lock_witness(), subject});
+			return accept(shared_array_buffer_tag{}, *this, iv8::shared_array_buffer{subject});
 		}
 
 		// external
@@ -258,6 +264,18 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 			});
 		}
 
+		// Visitor for `v8::ArrayBuffer` (which is the return value of
+		// `js::iv8::typed_array<T>{}.buffer()`). Otherwise it will attempt to compile the acceptor
+		// calls for all v8 types.
+		template <class Accept>
+		auto operator()(v8::Local<v8::ArrayBuffer> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return immediate(subject, accept);
+			// TODO: This requires a referenceable type
+			// return lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
+			// 	return immediate(subject, accept);
+			// });
+		}
+
 	protected:
 		// object
 		template <class Accept>
@@ -269,9 +287,13 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 			} else if (subject->IsDate()) {
 				return immediate(subject.As<v8::Date>(), accept);
 			} else if (subject->IsArrayBuffer()) {
-				return immediate(subject.As<v8::ArrayBuffer>(), accept);
+				// nb: The `v8::ArrayBuffer` visitor checks for `IsSharedArray()` because the return value
+				// of `v8::TypeArray` is `v8::ArrayBuffer` instead of some shared hidden class.
+				return accept(array_buffer_tag{}, *this, iv8::array_buffer{subject.As<v8::ArrayBuffer>()});
 			} else if (subject->IsSharedArrayBuffer()) {
 				return immediate(subject.As<v8::SharedArrayBuffer>(), accept);
+			} else if (subject->IsArrayBufferView()) {
+				return immediate(subject.As<v8::ArrayBufferView>(), accept);
 			} else if (subject->IsPromise()) {
 				return immediate(subject.As<v8::Promise>(), accept);
 			} else if (subject->IsFunction()) {
@@ -293,6 +315,100 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 		template <class Accept>
 		auto immediate(v8::Local<v8::FunctionTemplate> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept(function_tag{}, *this, iv8::unmaybe(subject->GetFunction(context_lock_.context())));
+		}
+
+		// array buffer view forwarder
+		template <class Accept>
+		auto immediate(v8::Local<v8::ArrayBufferView> subject, const Accept& accept) -> accept_target_t<Accept> {
+			if (subject->IsUint8Array()) {
+				return immediate(subject.As<v8::Uint8Array>(), accept);
+			} else if (subject->IsDataView()) {
+				return immediate(subject.As<v8::DataView>(), accept);
+			} else if (subject->IsInt8Array()) {
+				return immediate(subject.As<v8::Int8Array>(), accept);
+			} else if (subject->IsUint16Array()) {
+				return immediate(subject.As<v8::Uint16Array>(), accept);
+			} else if (subject->IsInt16Array()) {
+				return immediate(subject.As<v8::Int16Array>(), accept);
+			} else if (subject->IsUint32Array()) {
+				return immediate(subject.As<v8::Uint32Array>(), accept);
+			} else if (subject->IsInt32Array()) {
+				return immediate(subject.As<v8::Int32Array>(), accept);
+			} else if (subject->IsFloat32Array()) {
+				return immediate(subject.As<v8::Float32Array>(), accept);
+			} else if (subject->IsFloat64Array()) {
+				return immediate(subject.As<v8::Float64Array>(), accept);
+			} else if (subject->IsBigInt64Array()) {
+				return immediate(subject.As<v8::BigInt64Array>(), accept);
+			} else if (subject->IsBigUint64Array()) {
+				return immediate(subject.As<v8::BigUint64Array>(), accept);
+			} else if (subject->IsUint8ClampedArray()) {
+				return immediate(subject.As<v8::Uint8ClampedArray>(), accept);
+			} else {
+				throw js::type_error{u"Received exotic v8 'ArrayBufferView'"};
+			}
+		}
+
+		// typed arrays
+		template <class Accept>
+		auto immediate(v8::Local<v8::Uint8Array> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(typed_array_tag_of<uint8_t>{}, *this, iv8::array_buffer_view{subject});
+		}
+
+		template <class Accept>
+		auto immediate(v8::Local<v8::Uint8ClampedArray> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(typed_array_tag_of<std::byte>{}, *this, iv8::array_buffer_view{subject});
+		}
+
+		template <class Accept>
+		auto immediate(v8::Local<v8::Uint16Array> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(typed_array_tag_of<uint16_t>{}, *this, iv8::array_buffer_view{subject});
+		}
+
+		template <class Accept>
+		auto immediate(v8::Local<v8::Uint32Array> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(typed_array_tag_of<uint32_t>{}, *this, iv8::array_buffer_view{subject});
+		}
+
+		template <class Accept>
+		auto immediate(v8::Local<v8::Int8Array> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(typed_array_tag_of<int8_t>{}, *this, iv8::array_buffer_view{subject});
+		}
+
+		template <class Accept>
+		auto immediate(v8::Local<v8::Int16Array> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(typed_array_tag_of<int16_t>{}, *this, iv8::array_buffer_view{subject});
+		}
+
+		template <class Accept>
+		auto immediate(v8::Local<v8::Int32Array> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(typed_array_tag_of<int32_t>{}, *this, iv8::array_buffer_view{subject});
+		}
+
+		template <class Accept>
+		auto immediate(v8::Local<v8::Float32Array> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(typed_array_tag_of<float>{}, *this, iv8::array_buffer_view{subject});
+		}
+
+		template <class Accept>
+		auto immediate(v8::Local<v8::Float64Array> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(typed_array_tag_of<double>{}, *this, iv8::array_buffer_view{subject});
+		}
+
+		template <class Accept>
+		auto immediate(v8::Local<v8::BigInt64Array> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(typed_array_tag_of<int64_t>{}, *this, iv8::array_buffer_view{subject});
+		}
+
+		template <class Accept>
+		auto immediate(v8::Local<v8::BigUint64Array> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(typed_array_tag_of<uint64_t>{}, *this, iv8::array_buffer_view{subject});
+		}
+
+		// data view
+		template <class Accept>
+		auto immediate(v8::Local<v8::DataView> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(data_view_tag{}, *this, iv8::array_buffer_view{subject});
 		}
 
 	private:

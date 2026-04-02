@@ -1,4 +1,5 @@
 module;
+// https://nodejs.org/api/n-api.html
 #include <js_native_api.h>
 export module nodejs:js_native_api;
 // NOLINTBEGIN(misc-unused-using-decls)
@@ -15,6 +16,7 @@ export using ::napi_create_arraybuffer;
 export using ::napi_create_bigint_int64;
 export using ::napi_create_bigint_uint64;
 export using ::napi_create_bigint_words;
+export using ::napi_create_dataview;
 export using ::napi_create_date;
 export using ::napi_create_double;
 export using ::napi_create_error;
@@ -30,6 +32,7 @@ export using ::napi_create_string_latin1;
 export using ::napi_create_string_utf16;
 export using ::napi_create_string_utf8;
 export using ::napi_create_type_error;
+export using ::napi_create_typedarray;
 export using ::napi_create_uint32;
 export using ::napi_define_class;
 export using ::napi_define_properties;
@@ -39,6 +42,7 @@ export using ::napi_get_array_length;
 export using ::napi_get_arraybuffer_info;
 export using ::napi_get_boolean;
 export using ::napi_get_cb_info;
+export using ::napi_get_dataview_info;
 export using ::napi_get_date_value;
 export using ::napi_get_element;
 export using ::napi_get_instance_data;

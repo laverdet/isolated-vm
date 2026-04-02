@@ -160,20 +160,37 @@ template <class Char>
 struct accept<void, std::basic_string<Char>> : accept_coerced_string<Char> {};
 
 // `ArrayBuffer` & `SharedArrayBuffer` types
-template <class Tag, class Type>
-struct accept_with_data_block {
-		constexpr auto operator()(Tag /*tag*/, visit_holder /*visit*/, auto&& subject) const -> Type {
-			return Type{data_block{std::forward<decltype(subject)>(subject)}};
+template <>
+struct accept<void, array_buffer> : accept_without_narrowing<array_buffer_tag, array_buffer> {};
+
+template <>
+struct accept<void, shared_array_buffer> : accept_without_narrowing<shared_array_buffer_tag, shared_array_buffer> {};
+
+// `TypedArray` and `DataView` types
+template <class Meta, class Tag, class Type>
+struct accept_typed_array {
+	public:
+		explicit constexpr accept_typed_array(auto* transfer) : accept_{transfer} {}
+
+		constexpr auto operator()(Tag /*tag*/, auto& visit, auto&& subject) const -> Type {
+			auto byte_offset = subject.byte_offset();
+			auto size = subject.size();
+			return Type{visit(std::forward<decltype(subject)>(subject).buffer(), accept_), byte_offset, size};
 		}
 
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+		accept_value<Meta, data_block_variant> accept_;
 };
 
-template <>
-struct accept<void, array_buffer> : accept_with_data_block<array_buffer_tag, array_buffer> {};
+template <class Meta, class Type>
+struct accept<Meta, typed_array<Type>> : accept_typed_array<Meta, typed_array_tag_of<Type>, typed_array<Type>> {
+		using accept_typed_array<Meta, typed_array_tag_of<Type>, typed_array<Type>>::accept_typed_array;
+};
 
-template <>
-struct accept<void, shared_array_buffer> : accept_with_data_block<shared_array_buffer_tag, shared_array_buffer> {};
+template <class Meta>
+struct accept<Meta, typed_array<void>> : accept_typed_array<Meta, data_view_tag, typed_array<void>> {
+		using accept_typed_array<Meta, data_view_tag, typed_array<void>>::accept_typed_array;
+};
 
 // `tagged_external` acceptors
 template <class Type>

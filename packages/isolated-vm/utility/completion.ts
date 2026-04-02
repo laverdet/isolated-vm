@@ -18,8 +18,11 @@ export interface ThrowCompletion {
 
 export function expectComplete<Type>(completion: MaybeCompletionOf<Type>): Type {
 	assert.ok(completion);
-	assert.ok(completion.complete);
-	return completion.result;
+	if (completion.complete) {
+		return completion.result;
+	} else {
+		throw completion.error;
+	}
 }
 
 export function expectThrow(completion: MaybeCompletionOf<unknown>): unknown {

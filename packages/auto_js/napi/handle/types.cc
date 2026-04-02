@@ -34,6 +34,9 @@ class value_next;
 template <class Type>
 class value_for_class_of;
 
+template <class Type>
+class value_for_typed_array_of;
+
 // `bound_value` forward declarations
 export template <class Tag>
 class bound_value;
@@ -116,6 +119,18 @@ template <>
 struct value_specialization<shared_array_buffer_tag> {
 		using value_type = class value_for_shared_array_buffer;
 		using bound_type = class bound_value_for_shared_array_buffer;
+};
+
+template <class Type>
+struct value_specialization<typed_array_tag_of<Type>> {
+		using value_type = value_for_typed_array_of<Type>;
+		using bound_type = bound_value_for_typed_array_of<Type>;
+};
+
+template <>
+struct value_specialization<data_view_tag> {
+		using value_type = class value_for_data_view;
+		using bound_type = class bound_value_for_data_view;
 };
 
 template <class Type>

@@ -16,10 +16,8 @@ auto check_transfer(
 	js::iv8::context_lock_witness v8_lock,
 	v8::Local<v8::Value> v8_local
 ) -> void {
-	[[maybe_unused]] auto v8_to_napi =
-		js::transfer<napi_value>(v8_local, std::forward_as_tuple(v8_lock), std::forward_as_tuple(napi_lock));
-	[[maybe_unused]] auto napi_to_v8 =
-		js::transfer<v8::Local<v8::Value>>(napi_local, std::forward_as_tuple(napi_lock), std::forward_as_tuple(v8_lock));
+	std::ignore = js::transfer<napi_value>(v8_local, std::forward_as_tuple(v8_lock), std::forward_as_tuple(napi_lock));
+	std::ignore = js::transfer<v8::Local<v8::Value>>(napi_local, std::forward_as_tuple(napi_lock), std::forward_as_tuple(v8_lock));
 }
 
 // Initialize this module

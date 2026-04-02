@@ -80,15 +80,24 @@ struct list_tag : tag_of<object_tag> {};
 struct date_tag : tag_of<object_tag> {};
 struct promise_tag : tag_of<object_tag> {};
 
-// typed arrays & data view
+// data blocks
 struct array_buffer_tag : tag_of<object_tag> {};
 struct shared_array_buffer_tag : tag_of<object_tag> {};
 
-struct data_view_tag : tag_of<object_tag> {};
-struct typed_array_tag : tag_of<object_tag> {};
+// `TypedArray` and `DataView` hidden superclass
+struct array_buffer_view_tag : tag_of<object_tag> {};
 
+// `DataView`
+struct data_view_tag : tag_of<array_buffer_view_tag> {};
+
+// `TypeArray` subclasses
+// typed_array_tag_of<uint8_t> = Uint8Array
+// typed_array_tag_of<std::byte> = Uint8ClampedArray;
+// typed_array_tag_of<float> = Float32Array
+// typed_array_tag_of<double> = Float64Array
+// ...etc
 template <class Type>
-struct typed_array_tag_of : tag_of<typed_array_tag> {};
+struct typed_array_tag_of : tag_of<array_buffer_view_tag> {};
 
 // Covariant helper for `std::variant` types.
 template <class Tag>

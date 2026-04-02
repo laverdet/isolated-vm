@@ -24,5 +24,6 @@ export import :primitive;
 export import :promise;
 export import :script;
 export import :template_;
+export import :typed_array;
 export import :value;
 export import :weak_callback_info;

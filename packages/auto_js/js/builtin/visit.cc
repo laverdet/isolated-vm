@@ -3,13 +3,15 @@ module;
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <variant>
 export module auto_js:builtin.visit;
 import :intrinsics.array_buffer;
-import :intrinsics.error;
 import :intrinsics.bigint;
 import :intrinsics.date;
+import :intrinsics.error;
 import :transfer;
+import :variant.visit;
 import util;
 
 namespace js {
@@ -116,21 +118,37 @@ struct visit<void, js::error> : visit<void, js::error_value> {
 };
 
 // `ArrayBuffer` & `SharedArrayBuffer` types
-template <class Tag, class Type>
-struct visit_with_data_block {
-		template <class Accept>
-		constexpr auto operator()(auto&& subject, const Accept& accept) const -> accept_target_t<Accept> {
-			return accept(Tag{}, *this, std::forward<decltype(subject)>(subject));
-		}
+template <>
+struct visit<void, array_buffer> : visit_value_tagged<array_buffer_tag> {};
 
-		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+template <>
+struct visit<void, shared_array_buffer> : visit_value_tagged<shared_array_buffer_tag> {};
+
+// `TypedArray` and `DataView` types
+template <class Meta, class Tag>
+struct visit_typed_array : visit<Meta, data_block_variant> {
+	private:
+		using visit_type = visit<Meta, data_block_variant>;
+
+	public:
+		using visit_type::visit_type;
+
+		template <class Accept>
+		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
+			visit_type& visit_ = *this;
+			return accept(Tag{}, visit_, std::forward<decltype(subject)>(subject));
+		}
 };
 
-template <>
-struct visit<void, array_buffer> : visit_with_data_block<array_buffer_tag, array_buffer> {};
+template <class Meta, class Type>
+struct visit<Meta, typed_array<Type>> : visit_typed_array<Meta, typed_array_tag_of<Type>> {
+		using visit_typed_array<Meta, typed_array_tag_of<Type>>::visit_typed_array;
+};
 
-template <>
-struct visit<void, shared_array_buffer> : visit_with_data_block<shared_array_buffer_tag, shared_array_buffer> {};
+template <class Meta>
+struct visit<Meta, typed_array<void>> : visit_typed_array<Meta, data_view_tag> {
+		using visit_typed_array<Meta, data_view_tag>::visit_typed_array;
+};
 
 // `std::optional` visitor may yield `undefined`
 template <class Meta, class Type>

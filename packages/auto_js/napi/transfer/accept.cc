@@ -138,18 +138,28 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			return js::referenceable_value{napi::value<error_tag>::from(error)};
 		}
 
-		// typed arrays
+		// data blocks
 		auto operator()(array_buffer_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const
 			-> js::referenceable_value<napi::value<array_buffer_tag>> {
-			auto data = js::data_block{std::forward<decltype(subject)>(subject)};
+			auto data = js::array_buffer{std::forward<decltype(subject)>(subject)};
 			// nb: napi cannot import the backing store, so another copy is made
 			return js::referenceable_value{napi::value<array_buffer_tag>::make(environment(), data)};
 		}
 
 		auto operator()(shared_array_buffer_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const
 			-> js::referenceable_value<napi::value<shared_array_buffer_tag>> {
-			auto data = js::data_block{std::forward<decltype(subject)>(subject)};
+			auto data = js::shared_array_buffer{std::forward<decltype(subject)>(subject)};
 			return js::referenceable_value{napi::value<shared_array_buffer_tag>::make(environment(), std::move(data))};
+		}
+
+		// typed arrays & data view
+		template <std::convertible_to<array_buffer_view_tag> Tag>
+		auto operator()(this const auto& self, Tag /*tag*/, auto& visit, auto&& subject)
+			-> js::referenceable_value<napi::value<Tag>> {
+			auto byte_offset = subject.byte_offset();
+			auto length = subject.size();
+			auto buffer = napi::value<object_tag>::from(visit(std::forward<decltype(subject)>(subject).buffer(), self));
+			return js::referenceable_value{napi::value<Tag>::make(self.environment(), buffer, byte_offset, length)};
 		}
 
 		// vectors

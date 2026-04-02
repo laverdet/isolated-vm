@@ -33,7 +33,7 @@ struct accept_tuple_param : accept_value<Meta, Type> {
 struct accept_tuple_rest_placeholder {
 		explicit constexpr accept_tuple_rest_placeholder(auto* /*transfer*/) {}
 
-		constexpr auto visit_and_advance(auto& /*iterator*/, auto& /*end*/, const visit_holder /*visit*/) const -> rest {
+		constexpr auto visit_and_advance(auto& /*iterator*/, auto& /*end*/, visit_holder /*visit*/) const -> rest {
 			return {};
 		}
 };

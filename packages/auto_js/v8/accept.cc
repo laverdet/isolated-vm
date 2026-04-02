@@ -210,16 +210,36 @@ struct accept_v8_value : accept_v8_primitive {
 			};
 		}
 
-		// typed arrays
+		// data blocks
 		auto operator()(array_buffer_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const
 			-> js::referenceable_value<v8::Local<v8::ArrayBuffer>> {
-			auto data = js::data_block{std::forward<decltype(subject)>(subject)};
+			auto data = js::array_buffer{std::forward<decltype(subject)>(subject)};
 			throw std::logic_error{"unimplemented"};
 		}
 
 		auto operator()(shared_array_buffer_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const
-			-> js::referenceable_value<v8::Local<v8::ArrayBuffer>> {
-			auto data = js::data_block{std::forward<decltype(subject)>(subject)};
+			-> js::referenceable_value<v8::Local<v8::SharedArrayBuffer>> {
+			auto data = js::shared_array_buffer{std::forward<decltype(subject)>(subject)};
+			throw std::logic_error{"unimplemented"};
+		}
+
+		// typed arrays
+		template <class Type>
+		auto operator()(this const auto& self, typed_array_tag_of<Type> /*tag*/, auto& visit, auto&& subject)
+			-> js::referenceable_value<v8::Local<v8::ArrayBufferView>> {
+			[[maybe_unused]] auto byte_offset = subject.byte_offset();
+			[[maybe_unused]] auto length = subject.size();
+			[[maybe_unused]] auto buffer = visit(std::forward<decltype(subject)>(subject).buffer(), self);
+			throw std::logic_error{"unimplemented"};
+		}
+
+		// data view
+		template <class Type>
+		auto operator()(this const auto& self, data_view_tag /*tag*/, auto& visit, auto&& subject)
+			-> js::referenceable_value<v8::Local<v8::DataView>> {
+			[[maybe_unused]] auto byte_offset = subject.byte_offset();
+			[[maybe_unused]] auto length = subject.size();
+			[[maybe_unused]] auto buffer = visit(std::forward<decltype(subject)>(subject).buffer(), self);
 			throw std::logic_error{"unimplemented"};
 		}
 

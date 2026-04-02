@@ -131,6 +131,7 @@ target_preprocessed_sources("${NAME}" v8 "${MODULE_NAME}"
 		promise.cc
 		script.cc
 		template.cc
+		typed_array.cc
 		v8.cc
 		value.cc
 		weak_callback_info.cc

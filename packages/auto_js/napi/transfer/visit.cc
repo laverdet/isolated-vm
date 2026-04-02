@@ -1,6 +1,7 @@
 module;
 #include <bit>
 #include <functional>
+#include <stdexcept>
 #include <utility>
 export module napi_js:visit;
 import :api;
@@ -184,6 +185,12 @@ struct visit_napi_value
 
 		template <class Accept>
 		auto immediate(value<shared_array_buffer_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept_tagged(subject, accept);
+		}
+
+		template <class Accept, std::convertible_to<array_buffer_view_tag> Tag>
+		auto immediate(value<Tag> subject, const Accept& accept) -> accept_target_t<Accept> {
+			throw std::logic_error{"unimplemented"};
 			return accept_tagged(subject, accept);
 		}
 

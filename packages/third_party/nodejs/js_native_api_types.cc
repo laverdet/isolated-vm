@@ -43,7 +43,6 @@ export using ::napi_float64_array;
 export using ::napi_int16_array;
 export using ::napi_int32_array;
 export using ::napi_int8_array;
-export using ::napi_typedarray_type;
 export using ::napi_uint16_array;
 export using ::napi_uint32_array;
 export using ::napi_uint8_array;

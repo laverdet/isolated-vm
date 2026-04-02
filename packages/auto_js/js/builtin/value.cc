@@ -55,9 +55,22 @@ using variant_value = std::variant<
 	// object(s)
 	reference_of<dictionary<list_tag, Value, Value>>,
 	reference_of<dictionary<dictionary_tag, Value, Value>>,
-	// typed arrays
+	// data blocks
 	reference_of<array_buffer>,
-	reference_of<shared_array_buffer>
+	reference_of<shared_array_buffer>,
+	// typed arrays & data view
+	reference_of<typed_array<double>>,
+	reference_of<typed_array<float>>,
+	reference_of<typed_array<int16_t>>,
+	reference_of<typed_array<int32_t>>,
+	reference_of<typed_array<int64_t>>,
+	reference_of<typed_array<int8_t>>,
+	reference_of<typed_array<std::byte>>,
+	reference_of<typed_array<uint16_t>>,
+	reference_of<typed_array<uint32_t>>,
+	reference_of<typed_array<uint64_t>>,
+	reference_of<typed_array<uint8_t>>
+	// reference_of<typed_array<void>>
 	// ---
 	>;
 
