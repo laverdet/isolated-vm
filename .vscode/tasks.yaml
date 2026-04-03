@@ -66,11 +66,13 @@ tasks:
     type: shell
     command: |
       set -eu
-      export COMMENT="// This file is generated from tasks.yaml. Don't edit it!"
-      export TASKS_JSON=.vscode/tasks.json
-      export TASKS_YAML=.vscode/tasks.yaml
-      echo "$TASKS_YAML" | \
-      entr -n sh -c 'echo "$COMMENT" > $TASKS_JSON; yq < $TASKS_YAML >> $TASKS_JSON'
+      if [ "$(uname -s)" = Linux ]; then
+        export COMMENT="// This file is generated from tasks.yaml. Don't edit it!"
+        export TASKS_JSON=.vscode/tasks.json
+        export TASKS_YAML=.vscode/tasks.yaml
+        echo "$TASKS_YAML" | \
+        entr -n sh -c 'echo "$COMMENT" > $TASKS_JSON; yq < $TASKS_YAML >> $TASKS_JSON'
+      fi
     isBackground: true
     presentation:
       panel: dedicated

@@ -1,17 +1,41 @@
-cmake_minimum_required(VERSION 4.0.0 FATAL_ERROR)
-
-# Project config
 message(STATUS "Cmake version: ${CMAKE_VERSION}")
-if(NOT WINDOWS)
-	set(CMAKE_CXX_EXTENSIONS ON)
+
+# Mess of `import std` configuration
+if(WIN32)
+	cmake_minimum_required(VERSION 4.3.0 FATAL_ERROR)
+	set(CMAKE_CXX_STDLIB_MODULES_JSON ms-stl.modules.json)
+elseif(APPLE)
+	cmake_minimum_required(VERSION 4.0.0 FATAL_ERROR)
+	execute_process(COMMAND brew --prefix llvm OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE BREW_LLVM_LOCATION RESULT_VARIABLE RESULT)
+	if(NOT RESULT STREQUAL 0)
+		message(FATAL_ERROR "Failed to run brew")
+	endif()
+	set(CMAKE_CXX_STDLIB_MODULES_JSON "${BREW_LLVM_LOCATION}/lib/c++/libc++.modules.json")
 else()
-	set(CMAKE_CXX_EXTENSIONS OFF)
+	cmake_minimum_required(VERSION 4.0.0 FATAL_ERROR)
 endif()
-project(isolated_vm LANGUAGES C CXX)
-message(STATUS "Cmake C++ Standard Library: ${CMAKE_CXX_STANDARD_LIBRARY}")
+add_compile_options(-Wno-include-angled-in-module-purview)
+add_compile_options(-Wno-reserved-module-identifier)
+
+# Build with libc++ if you want
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+# set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
 
 # C++26 environment
 set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_EXTENSIONS OFF)
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "4.3.0")
+	set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
+else()
+	set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
+endif()
+
+# Project config
+project(isolated_vm LANGUAGES C CXX)
+message(STATUS "C++ Standard Library: ${CMAKE_CXX_STANDARD_LIBRARY}")
+
+# import std;
+set(CMAKE_CXX_MODULE_STD ON)
 
 # Use lld (for LTO), and also gc-sections
 set(CMAKE_LINKER_TYPE LLD)
@@ -38,10 +62,6 @@ endif()
 include(CheckCXXSymbolExists)
 check_cxx_symbol_exists(__GLIBCXX__ version GLIBCXX)
 check_cxx_symbol_exists(_LIBCPP_VERSION version LIBCPP)
-
-# Build with libc++ if you want
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-# set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
 
 # Apple dylib flags
 if(APPLE)

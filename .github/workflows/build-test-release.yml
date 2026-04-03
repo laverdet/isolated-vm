@@ -161,14 +161,42 @@ jobs:
           # You want the mingw version of ninja, not the msys version. The msys version uses
           # `CMD.EXE` and does not work with the cmake Ninja generator.
           ARCH=$(triplet_util %a)
-          /c/msys64/usr/bin/pacman -S --noconfirm \
+          /c/msys64/usr/bin/pacman -Sy --noconfirm \
             mingw-w64-$ARCH-boost \
-            mingw64/mingw-w64-$ARCH-cmake \
+            "mingw64/mingw-w64-$ARCH-cmake>=4.3.0" \
             mingw64/mingw-w64-$ARCH-ninja \
           ;
           echo "/c/msys64/mingw64/bin" >> "$GITHUB_PATH"
           echo "/c/msys64/usr/bin" >> "$GITHUB_PATH"
           echo ::endgroup::
+
+          echo ::group::import std hack
+          # /c/Program Files/Microsoft Visual Studio/2022/Enterprise
+          VISUAL_STUDIO_PATH=$(cygpath "$(vswhere | grep installationPath: | cut -c19-)")
+          # /c/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207
+          MSVC_PATH="$VISUAL_STUDIO_PATH/VC/Tools/MSVC/$(ls "$VISUAL_STUDIO_PATH/VC/Tools/MSVC" | sort -V | tail -1)"
+
+          # Make the `import std` interface manifest
+          MODULES_FRAGMENT='{ "logical-name": "std", "source-path": "'"$(cygpath -w "$MSVC_PATH/modules/std.ixx" | sed 's \\ \\\\\\\\ g')"'", "is-std-library": true }'
+          ARGUMENTS_FRAGMENT='"local-arguments": { "system-include-directories": [ "'"$MSVC_PATH/modules"'" ] }'
+          MANIFEST_JSON='{ "version": 1, "revision": 1, "modules": [ '"$MODULES_FRAGMENT"' ], '"$ARGUMENTS_FRAGMENT"' }'
+          echo "$MANIFEST_JSON" > ms-stl.modules.json
+
+          # Patch cmake
+          patch --batch --forward --unified /c/msys64/mingw64/share/cmake/Modules/Compiler/Clang-CXX-CXXImportStd.cmake <<"EOF"
+          @@ -4,8 +4,7 @@
+             elseif (CMAKE_CXX_STANDARD_LIBRARY STREQUAL "libstdc++")
+               set(_clang_modules_json_impl "libstdc++")
+             else ()
+          -    set(CMAKE_CXX_COMPILER_IMPORT_STD_ERROR_MESSAGE "Only `libc++` and `libstdc++` are supported" PARENT_SCOPE)
+          -    return ()
+          +    set(_clang_modules_json_impl "libc++")
+             endif ()
+
+             if (NOT CMAKE_CXX_STDLIB_MODULES_JSON)
+          EOF
+          echo ::endgroup::
+
           echo ::group::Dependency Walker
           mkdir -p "$RUNNER_TOOL_CACHE/depwalker"
           cd "$RUNNER_TOOL_CACHE/depwalker"

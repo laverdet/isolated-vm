@@ -1,16 +1,9 @@
 // demo.cc — showcases all @auto_js/napi features via a minimal "geometry" demo
 // Note: Generated almost entirely by Claude
 #include <napi_js_initialize.h>
-#include <chrono>
-#include <cstdint>
-#include <optional>
-#include <string>
-#include <tuple>
-#include <utility>
-#include <variant>
-#include <vector>
 import auto_js;
 import napi_js;
+import std;
 import util;
 
 using namespace std::string_view_literals;

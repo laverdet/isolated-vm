@@ -77,7 +77,7 @@
     {
       "label": "tasks.yaml: watch",
       "type": "shell",
-      "command": "set -eu\nexport COMMENT=\"// This file is generated from tasks.yaml. Don't edit it!\"\nexport TASKS_JSON=.vscode/tasks.json\nexport TASKS_YAML=.vscode/tasks.yaml\necho \"$TASKS_YAML\" | \\\nentr -n sh -c 'echo \"$COMMENT\" > $TASKS_JSON; yq < $TASKS_YAML >> $TASKS_JSON'\n",
+      "command": "set -eu\nif [ \"$(uname -s)\" = Linux ]; then\n  export COMMENT=\"// This file is generated from tasks.yaml. Don't edit it!\"\n  export TASKS_JSON=.vscode/tasks.json\n  export TASKS_YAML=.vscode/tasks.yaml\n  echo \"$TASKS_YAML\" | \\\n  entr -n sh -c 'echo \"$COMMENT\" > $TASKS_JSON; yq < $TASKS_YAML >> $TASKS_JSON'\nfi\n",
       "isBackground": true,
       "presentation": {
         "panel": "dedicated",

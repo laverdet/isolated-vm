@@ -44,6 +44,9 @@ RUN <<DONE
 	ln -fs /lib/"llvm-$LLVM_VERSION"/bin/* /usr/bin/
 	ln -fs /usr/lib/"llvm-$LLVM_VERSION"/lib/clang/"$LLVM_VERSION"/lib/linux/* /lib/aarch64-linux-gnu/
 
+	# Fix broken libc++ std manifest
+	ln -s "/lib/llvm-$LLVM_VERSION/share/libc++" /lib/share
+
 	# v8 build hack
 	CLANG_LIB_DIR="/lib/llvm-$LLVM_VERSION/lib/clang/$LLVM_VERSION/lib/$(uname -m)-unknown-linux-gnu"
 	mkdir "$CLANG_LIB_DIR"
