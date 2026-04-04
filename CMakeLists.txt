@@ -14,8 +14,11 @@ elseif(APPLE)
 else()
 	cmake_minimum_required(VERSION 4.0.0 FATAL_ERROR)
 endif()
-add_compile_options(-Wno-include-angled-in-module-purview)
-add_compile_options(-Wno-reserved-module-identifier)
+add_compile_options(
+	$<$<CXX_COMPILER_ID:Clang>:-fno-modules-reduced-bmi>
+	$<$<CXX_COMPILER_ID:Clang>:-Wno-include-angled-in-module-purview>
+	$<$<CXX_COMPILER_ID:Clang>:-Wno-reserved-module-identifier>
+)
 
 # Build with libc++ if you want
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")

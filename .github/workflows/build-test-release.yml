@@ -75,7 +75,7 @@ jobs:
           - runs-on: macos-15
             triplet: aarch64-apple-darwin
           - runs-on: ${{ needs.configure.outputs.aarch64-unknown-linux-gnu }}
-            container: debian:forky
+            container: debian:sid
             triplet: aarch64-unknown-linux-gnu
           - runs-on: ${{ needs.configure.outputs.x86_64-alpine-linux-musl }}
             container: alpine:edge
@@ -85,7 +85,7 @@ jobs:
           - runs-on: windows-2025
             triplet: x86_64-pc-windows
           - runs-on: ${{ needs.configure.outputs.x86_64-unknown-linux-gnu }}
-            container: debian:forky
+            container: debian:sid
             triplet: x86_64-unknown-linux-gnu
     runs-on: ${{ matrix.host.runs-on }}
     container: ${{ matrix.host.container }}
@@ -119,13 +119,13 @@ jobs:
             bash
             binutils
             build-essential
-            clang-21
-            clang-tools-21
+            clang-22
+            clang-tools-22
             cmake
             curl
             libboost-all-dev
-            lld-21
-            llvm-21
+            lld-22
+            llvm-22
             ninja-build
             nodejs
             xxd
@@ -156,8 +156,7 @@ jobs:
           set -ux
           echo ::group::Toolchain
           # Install updated LLVM (and hide spammy progress bar)
-          # nb: clang 22 is busted
-          winget install --accept-source-agreements --silent -e --id=LLVM.LLVM --version=21.1.8 | tr '\r' '\n' | grep -Ev --line-buffered '^[ -\/|]+$'
+          winget install --accept-source-agreements --silent -e --id=LLVM.LLVM --version=22.1.2 | tr '\r' '\n' | grep -Ev --line-buffered '^[ -\/|]+$'
           # You want the mingw version of ninja, not the msys version. The msys version uses
           # `CMD.EXE` and does not work with the cmake Ninja generator.
           ARCH=$(triplet_util %a)
@@ -274,8 +273,8 @@ jobs:
               CMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++
               ;;
             *-linux-gnu|*-linux-musl)
-              CMAKE_C_COMPILER=$(realpath "$(which clang-21)")
-              CMAKE_CXX_COMPILER=$(realpath "$(which clang++-21)")
+              CMAKE_C_COMPILER=$(realpath "$(which clang-22)")
+              CMAKE_CXX_COMPILER=$(realpath "$(which clang++-22)")
               ;;
             *-windows)
               CMAKE_C_COMPILER=$(which clang.exe)
