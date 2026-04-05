@@ -251,7 +251,7 @@ jobs:
           path: deps/nodejs
 
       # Build isolated-vm
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
       - shell: sh
         run: |
           set -ux
@@ -324,7 +324,7 @@ jobs:
           dependencies.exe -imports build/packages/backend_napi_v8/backend_napi_v8.node
 
       # Upload build artifacts
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.host.triplet }}
           path: build/packages/backend_napi_v8/artifacts
@@ -379,7 +379,7 @@ jobs:
           echo "triplet=$(triplet_util %t)" >> "$GITHUB_OUTPUT"
 
       # Receive artifacts
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ steps.platform.outputs.triplet }}
           path: build/packages/backend_napi_v8/artifacts
@@ -414,7 +414,7 @@ jobs:
           node-version: ${{ matrix.node }}
 
       # Install npm dependencies, build TypeScript, check module sanity
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
       - name: Install
         shell: sh
         env:
@@ -445,7 +445,7 @@ jobs:
       # Setup
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v6
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
       - name: Setup
         shell: sh
         id: setup
@@ -458,7 +458,7 @@ jobs:
           npx tsc -b
 
       # Receive artifacts
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         id: artifacts
         with:
           path: packages/isolated-vm/artifacts
