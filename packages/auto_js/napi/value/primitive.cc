@@ -1,11 +1,10 @@
 module;
 #include <cstdint>
-#include <string>
-#include <string_view>
 module napi_js;
 import :api;
 import :bound_value;
 import :value_handle;
+import std;
 
 namespace js::napi {
 
@@ -77,7 +76,7 @@ auto value_for_bigint::make(const environment& env, uint64_t number) -> value<bi
 bound_value_for_bigint::operator bigint() const {
 	js::bigint value;
 	auto one_word = uint64_t{};
-	auto length = size_t{1};
+	auto length = std::size_t{1};
 	napi::invoke0(napi_get_value_bigint_words, env(), napi_value{*this}, &value.sign_bit(), &length, &one_word);
 	if (value.sign_bit() == 0 && length == 1) {
 		return js::bigint{one_word};
@@ -136,7 +135,7 @@ bound_value_for_string::operator std::string() const {
 	std::string string;
 	auto length = napi::invoke(napi_get_value_string_latin1, env(), napi_value{*this}, nullptr, 0);
 	if (length > 0) {
-		string.resize_and_overwrite(length + 1, [ this ](char* data, size_t length) noexcept -> size_t {
+		string.resize_and_overwrite(length + 1, [ this ](char* data, std::size_t length) noexcept -> std::size_t {
 			napi::invoke_noexcept(napi_get_value_string_latin1, env(), napi_value{*this}, data, length);
 			return length - 1;
 		});
@@ -149,7 +148,7 @@ bound_value_for_string::operator std::u16string() const {
 	std::u16string string;
 	auto length = napi::invoke(napi_get_value_string_utf16, env(), napi_value{*this}, nullptr, 0);
 	if (length > 0) {
-		string.resize_and_overwrite(length + 1, [ this ](char16_t* data, size_t length) noexcept -> size_t {
+		string.resize_and_overwrite(length + 1, [ this ](char16_t* data, std::size_t length) noexcept -> std::size_t {
 			napi::invoke_noexcept(napi_get_value_string_utf16, env(), napi_value{*this}, data, length);
 			return length - 1;
 		});

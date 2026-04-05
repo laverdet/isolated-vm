@@ -1,10 +1,6 @@
-module;
-#include <memory>
-#include <stdexcept>
-#include <type_traits>
-#include <utility>
 export module napi_js:api.uv_handle;
 import nodejs;
+import std;
 import util;
 
 namespace js::napi {

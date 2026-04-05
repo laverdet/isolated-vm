@@ -1,18 +1,8 @@
-module;
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <functional>
-#include <memory>
-#include <ranges>
-#include <stop_token>
-#include <thread>
-#include <utility>
-#include <vector>
 module util;
 import :functional;
 import :platform.lockable;
 import :platform.timer;
+import std;
 
 namespace util {
 

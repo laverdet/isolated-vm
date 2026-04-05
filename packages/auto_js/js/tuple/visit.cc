@@ -1,9 +1,8 @@
 module;
 #include <cstddef>
-#include <tuple>
-#include <utility>
 export module auto_js:tuple.visit;
 import :transfer;
+import std;
 import util;
 
 namespace js {

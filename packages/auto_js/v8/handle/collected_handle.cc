@@ -1,8 +1,6 @@
-module;
-#include <functional>
-#include <utility>
 export module v8_js:collected_handle;
 import :lock;
+import std;
 import util;
 import v8;
 

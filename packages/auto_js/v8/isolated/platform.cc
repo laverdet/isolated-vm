@@ -1,11 +1,10 @@
 module;
-#include <chrono>
+#include <cstdint>
 #include <cstring>
-#include <memory>
-#include <variant>
 module v8_js;
 import :isolated.agent;
 import :isolated.platform;
+import std;
 
 namespace js::iv8::isolated {
 
@@ -28,7 +27,7 @@ auto isolated_agent_delegate::CurrentClockTimeMillis() -> double {
 	return static_cast<double>(CurrentClockTimeMilliseconds());
 }
 
-auto isolated_agent_delegate::fill_random_bytes_for_isolate(v8::Isolate* isolate, unsigned char* buffer, size_t length) -> bool {
+auto isolated_agent_delegate::fill_random_bytes_for_isolate(v8::Isolate* isolate, unsigned char* buffer, std::size_t length) -> bool {
 	if (length == sizeof(int64_t)) {
 		auto& host = agent_host::get_current(isolate);
 		auto seed = host.take_random_seed();

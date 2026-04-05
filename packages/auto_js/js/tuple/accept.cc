@@ -1,11 +1,6 @@
-module;
-#include <iterator>
-#include <ranges>
-#include <tuple>
-#include <utility>
-#include <variant>
 export module auto_js:tuple.accept;
 import :transfer;
+import std;
 import util;
 
 namespace js {
@@ -53,7 +48,7 @@ struct accept_tuple_rest_spread : accept_value<Meta, Type> {
 template <class Meta, class... Types>
 consteval auto make_tuple_acceptor_types() {
 	constexpr auto size = sizeof...(Types);
-	constexpr auto rest_param = []() consteval -> size_t {
+	constexpr auto rest_param = []() consteval -> std::size_t {
 		if constexpr (size >= 2) {
 			return type<Types...[ size - 2 ]> == type<rest> ? size - 1 : size;
 		} else {

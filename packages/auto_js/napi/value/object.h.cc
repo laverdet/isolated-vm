@@ -1,13 +1,10 @@
-module;
-#include <array>
-#include <tuple>
-#include <utility>
 export module napi_js:object;
 import :api;
 import :bound_value;
 import :environment_fwd;
 import :primitive;
 import :value_handle;
+import std;
 
 namespace js::napi {
 

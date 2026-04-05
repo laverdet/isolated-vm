@@ -1,7 +1,5 @@
-module;
-#include <type_traits>
-#include <utility>
 export module auto_js:functional;
+import std;
 import util;
 
 namespace js::functional {

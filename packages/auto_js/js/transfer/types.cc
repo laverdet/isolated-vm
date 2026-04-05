@@ -1,7 +1,6 @@
-module;
-#include <utility>
 export module auto_js:transfer.types;
 import :tag;
+import std;
 import util;
 
 namespace js {

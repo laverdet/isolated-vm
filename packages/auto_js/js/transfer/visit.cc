@@ -1,11 +1,10 @@
 module;
 #include <cassert>
-#include <type_traits>
-#include <utility>
 export module auto_js:visit;
 import :deferred_receiver;
 import :tag;
 import :transfer.types;
+import std;
 
 namespace js {
 

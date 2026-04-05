@@ -1,11 +1,5 @@
 module;
-#include <algorithm>
 #include <cstdint>
-#include <expected>
-#include <optional>
-#include <string>
-#include <utility>
-#include <variant>
 export module auto_js:builtin.accept;
 import :intrinsics.array_buffer;
 import :intrinsics.bigint;
@@ -14,6 +8,7 @@ import :intrinsics.error;
 import :intrinsics.external;
 import :reference.accept;
 import :transfer;
+import std;
 import util;
 
 namespace js {

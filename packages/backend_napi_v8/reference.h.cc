@@ -1,11 +1,10 @@
-module;
-#include <vector>
 export module backend_napi_v8:reference;
 import :agent;
 import :environment;
 import :lock;
 import auto_js;
 import napi_js;
+import std;
 import v8_js;
 
 namespace backend_napi_v8 {

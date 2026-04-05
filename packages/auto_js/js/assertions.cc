@@ -1,13 +1,7 @@
 // ninja -C build auto_js
-#include <array>
 #include <cstdint>
-#include <optional>
-#include <string>
-#include <string_view>
-#include <tuple>
-#include <utility>
-#include <variant>
 import auto_js;
+import std;
 import util;
 using namespace std::literals;
 #if __clang_major__ >= 19

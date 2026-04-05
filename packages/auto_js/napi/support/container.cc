@@ -1,10 +1,8 @@
-module;
-#include <bit>
-#include <unordered_map>
 export module napi_js:container;
 import :environment;
 import :utility;
 import nodejs;
+import std;
 import util;
 
 namespace js::napi {

@@ -1,9 +1,8 @@
 module;
 #include <cassert>
-#include <chrono>
-#include <compare>
 export module v8_js:platform.task_queue;
 export import :platform.task;
+import std;
 import util;
 import v8;
 using std::chrono::steady_clock;

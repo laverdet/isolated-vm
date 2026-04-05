@@ -1,7 +1,5 @@
 module;
 #include <cstdint>
-#include <string>
-#include <variant>
 export module auto_js:value;
 export import :intrinsics.array_buffer;
 export import :intrinsics.bigint;
@@ -9,6 +7,7 @@ export import :intrinsics.date;
 export import :vector.vector_of;
 import :variant.types;
 import :tag;
+import std;
 
 namespace js {
 

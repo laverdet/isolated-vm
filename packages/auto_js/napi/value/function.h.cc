@@ -1,10 +1,8 @@
-module;
-#include <span>
-#include <variant>
 export module napi_js:function;
 import :environment_fwd;
 import :primitive;
 import :value_handle;
+import std;
 import util;
 
 namespace js::napi {

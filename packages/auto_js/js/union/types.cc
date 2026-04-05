@@ -1,8 +1,7 @@
-module;
-#include <string>
 export module auto_js:union_.types;
 import :tag;
 import :variant.types;
+import std;
 
 namespace js {
 

@@ -1,8 +1,3 @@
-module;
-#include <optional>
-#include <tuple>
-#include <type_traits>
-#include <utility>
 export module napi_js:callback;
 export import :callback_storage;
 import :api;
@@ -11,6 +6,7 @@ import :environment_fwd;
 import :error_scope;
 import :object;
 import :value_handle;
+import std;
 import util;
 
 namespace js::napi {

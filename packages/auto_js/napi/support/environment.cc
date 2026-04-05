@@ -1,5 +1,3 @@
-module;
-#include <stdexcept>
 module napi_js;
 import :api;
 import :utility;

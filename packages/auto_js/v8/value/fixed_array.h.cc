@@ -1,9 +1,7 @@
-module;
-#include <compare>
-#include <ranges>
 export module v8_js:fixed_array;
 import :handle;
 import :lock;
+import std;
 import util;
 import v8;
 

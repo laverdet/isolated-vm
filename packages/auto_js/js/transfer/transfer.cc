@@ -1,15 +1,12 @@
 module;
 #include <cassert>
-#include <concepts>
-#include <tuple>
-#include <type_traits>
-#include <utility>
 export module auto_js:transfer;
 export import :accept;
 export import :tag;
 export import :transfer.types;
 export import :visit;
 import :intrinsics.error;
+import std;
 import util;
 
 namespace js {

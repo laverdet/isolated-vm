@@ -1,8 +1,7 @@
-module;
-#include <string_view>
 export module backend_napi_v8:environment;
 import auto_js;
 import napi_js;
+import std;
 import v8_js;
 using namespace js;
 using namespace std::string_view_literals;

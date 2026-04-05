@@ -1,10 +1,8 @@
-module;
-#include <concepts>
-#include <type_traits>
 export module napi_js:value_handle;
 import :handle.types;
 import auto_js;
 import nodejs;
+import std;
 
 namespace js::napi {
 

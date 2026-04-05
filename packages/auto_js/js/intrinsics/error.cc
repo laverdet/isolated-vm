@@ -1,9 +1,8 @@
 module;
 #include <cstdint>
-#include <exception>
-#include <string>
 export module auto_js:intrinsics.error;
 import :enum_.types;
+import std;
 import util;
 
 namespace js {

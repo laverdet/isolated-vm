@@ -1,7 +1,7 @@
 module;
 #include <cassert>
-#include <memory>
 module v8_js;
+import std;
 
 namespace js::iv8::isolated {
 

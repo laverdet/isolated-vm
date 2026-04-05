@@ -1,13 +1,8 @@
 module;
-#include <algorithm>
 #include <cassert>
-#include <chrono>
-#include <memory>
-#include <random>
-#include <ranges>
-#include <typeinfo>
 module v8_js;
 import :platform.delegate;
+import std;
 
 namespace js::iv8::platform {
 
@@ -82,7 +77,7 @@ entropy_delegate_initializer::~entropy_delegate_initializer() {
 	v8::V8::SetEntropySource(nullptr);
 }
 
-auto entropy_delegate_initializer::fill_random_bytes(unsigned char* buffer, size_t length) -> bool {
+auto entropy_delegate_initializer::fill_random_bytes(unsigned char* buffer, std::size_t length) -> bool {
 	std::random_device device;
 	auto byte_view =
 		std::views::repeat(std::nullopt) |

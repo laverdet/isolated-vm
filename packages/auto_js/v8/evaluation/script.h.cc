@@ -1,11 +1,9 @@
-module;
-#include <expected>
-#include <utility>
 export module v8_js:evaluation.script;
 import :accept;
 import :evaluation.origin;
 import :lock;
 import auto_js;
+import std;
 import v8;
 
 namespace js::iv8 {

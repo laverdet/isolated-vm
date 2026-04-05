@@ -1,10 +1,9 @@
 module;
 #include <cassert>
 #include <cstddef>
-#include <memory>
-#include <typeinfo>
 export module v8_js:platform.delegate;
 import :platform.worker_runner;
+import std;
 import util;
 import v8;
 

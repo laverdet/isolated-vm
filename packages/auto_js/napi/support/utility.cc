@@ -1,9 +1,9 @@
 module;
 #include "auto_js/no_unique_address.h"
 #include <cstdint>
-#include <functional>
 export module napi_js:utility;
 import nodejs;
+import std;
 import util;
 
 namespace js::napi {

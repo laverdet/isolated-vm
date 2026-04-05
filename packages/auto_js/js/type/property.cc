@@ -1,9 +1,8 @@
 module;
 #include "auto_js/no_unique_address.h"
 #include <cstdint>
-#include <optional>
-#include <tuple>
 export module auto_js:property;
+import std;
 import util;
 
 namespace js {

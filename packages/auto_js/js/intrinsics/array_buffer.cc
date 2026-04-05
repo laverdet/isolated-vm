@@ -1,12 +1,8 @@
 module;
-#include <algorithm>
 #include <cstddef>
-#include <memory>
-#include <span>
-#include <utility>
-#include <variant>
 export module auto_js:intrinsics.array_buffer;
 import :reference_of;
+import std;
 import util;
 
 namespace js {

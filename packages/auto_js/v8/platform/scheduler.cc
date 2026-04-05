@@ -1,11 +1,5 @@
-module;
-#include <atomic>
-#include <concepts>
-#include <functional>
-#include <stop_token>
-#include <thread>
-#include <utility>
 export module v8_js:platform.scheduler;
+import std;
 import util;
 
 namespace js::iv8::platform {
@@ -46,7 +40,7 @@ class scheduler_background_threads {
 		class controller;
 
 		// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-		[[nodiscard]] auto thread_count() const -> size_t { return 2; }
+		[[nodiscard]] auto thread_count() const -> std::size_t { return 2; }
 
 	protected:
 		template <class Storage>

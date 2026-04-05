@@ -1,15 +1,9 @@
-module;
-#include <concepts>
-#include <string_view>
-#include <tuple>
-#include <utility>
-#include <variant>
-#include <vector>
 export module napi_js:accept;
 import :api;
 import :container;
 import :environment_fwd;
 import :value;
+import std;
 import util;
 
 namespace js {

@@ -1,11 +1,7 @@
-module;
-#include <array>
-#include <ranges>
-#include <utility>
-#include <vector>
 export module auto_js:vector.accept;
 import :transfer;
 import :vector.vector_of;
+import std;
 import util;
 
 namespace js {
@@ -14,7 +10,7 @@ namespace js {
 template <class Meta, std::size_t Size, class Type>
 struct accept<Meta, std::array<Type, Size>>;
 
-template <class Type, size_t Size>
+template <class Type, std::size_t Size>
 struct accept_target_for<std::array<Type, Size>> : accept_target_for<Type> {};
 
 template <class Meta, std::size_t Size, class Type>
@@ -124,7 +120,7 @@ struct accept<Meta, vector_of<Tag, Entry>> {
 			return vector_of<Tag, Entry>{
 				std::in_place,
 				// NOLINTNEXTLINE(bugprone-use-after-move)
-				visit(std::integral_constant<size_t, indices>{}, std::forward<decltype(subject)>(subject), accept_)...,
+				visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(subject)>(subject), accept_)...,
 			};
 		}
 

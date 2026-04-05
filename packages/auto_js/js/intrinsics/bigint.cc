@@ -1,9 +1,7 @@
 module;
-#include <array>
-#include <concepts>
 #include <cstdint>
-#include <vector>
 export module auto_js:intrinsics.bigint;
+import std;
 import util;
 
 namespace js {

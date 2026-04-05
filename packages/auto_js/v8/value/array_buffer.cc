@@ -1,8 +1,6 @@
-module;
-#include <memory>
-#include <span>
 module v8_js;
 import :array_buffer;
+import std;
 
 namespace js::iv8 {
 

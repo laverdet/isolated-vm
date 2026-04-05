@@ -1,11 +1,9 @@
-module;
-#include <ranges>
-#include <utility>
 module v8_js;
 import :array;
 import :handle;
 import :lock;
 import :primitive;
+import std;
 import v8;
 
 namespace js::iv8 {

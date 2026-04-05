@@ -1,5 +1,4 @@
-#include <tuple> // IWYU pragma: keep
-#include <type_traits>
+import std;
 import util;
 
 constexpr auto assert_strings_equal(auto... strings) {

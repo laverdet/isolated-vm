@@ -1,13 +1,9 @@
 module;
-#include <concepts>
 #include <cstddef>
-#include <exception>
-#include <limits>
-#include <tuple>
-#include <utility>
 export module auto_js:reference.accept;
 import :referential_value;
 import :transfer;
+import std;
 import util;
 
 namespace js {

@@ -1,8 +1,6 @@
-module;
-#include <ranges>
-#include <vector>
 export module auto_js:vector.vector_of;
 import :tag;
+import std;
 
 namespace js {
 

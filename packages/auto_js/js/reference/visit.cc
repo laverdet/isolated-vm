@@ -1,10 +1,9 @@
 module;
 #include <cassert>
-#include <utility>
-#include <vector>
 export module auto_js:reference.visit;
 import :referential_value;
 import :transfer;
+import std;
 import util;
 
 namespace js {

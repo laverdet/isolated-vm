@@ -1,14 +1,11 @@
-module;
-#include <array>
-#include <span>
-#include <vector>
 export module auto_js:vector.visit;
 import :transfer;
 import :vector.vector_of;
+import std;
 
 namespace js {
 
-template <class Type, size_t Size>
+template <class Type, std::size_t Size>
 struct visit_subject_for<std::array<Type, Size>> : visit_subject_for<Type> {};
 
 template <class Type>
@@ -17,7 +14,7 @@ struct visit_subject_for<std::span<Type>> : visit_subject_for<std::remove_cv_t<T
 template <class Type>
 struct visit_subject_for<std::vector<Type>> : visit_subject_for<Type> {};
 
-template <class Meta, class Type, size_t Size>
+template <class Meta, class Type, std::size_t Size>
 struct visit<Meta, std::array<Type, Size>> : visit<Meta, Type> {
 		using visit_type = visit<Meta, Type>;
 		using visit_type::visit_type;

@@ -1,12 +1,8 @@
-module;
-#include <string>
-#include <string_view>
-#include <type_traits>
-#include <utility>
 export module auto_js:enum_.accept;
 import :enum_.types;
 import :intrinsics.error;
 import :transfer;
+import std;
 import util;
 
 namespace js {

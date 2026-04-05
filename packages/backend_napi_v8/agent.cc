@@ -1,8 +1,3 @@
-module;
-#include <optional>
-#include <tuple>
-#include <utility>
-#include <variant>
 module backend_napi_v8;
 import :agent;
 import :environment;
@@ -12,6 +7,7 @@ import :script;
 import :utility;
 import auto_js;
 import napi_js;
+import std;
 import util;
 import v8_js;
 

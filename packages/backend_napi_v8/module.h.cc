@@ -1,14 +1,10 @@
-module;
-#include <memory>
-#include <optional>
-#include <string>
-#include <vector>
 export module backend_napi_v8:module_;
 import :agent;
 import :environment;
 import :realm;
 import auto_js;
 import napi_js;
+import std;
 import util;
 import v8_js;
 

@@ -1,6 +1,8 @@
 module;
+// nb: libstdc++ doesn't pull in the `clock_time_conversion` override
 #include <chrono>
 export module auto_js:intrinsics.date;
+import std;
 
 namespace js {
 

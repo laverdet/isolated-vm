@@ -1,13 +1,10 @@
 module;
-#include <bit>
-#include <memory>
-#include <tuple>
-#include <type_traits>
-#include <utility>
+#include <cstdint>
 export module v8_js:callback_storage;
 import :collected_handle;
 import :lock;
 import :unmaybe;
+import std;
 import v8;
 
 namespace js::iv8 {

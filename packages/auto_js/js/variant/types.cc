@@ -1,8 +1,6 @@
-module;
-#include <type_traits>
-#include <variant>
 export module auto_js:variant.types;
 import :referential_value;
+import std;
 import util;
 
 namespace js {

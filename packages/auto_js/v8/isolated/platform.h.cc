@@ -1,7 +1,8 @@
 module;
-#include <memory>
+#include <cstdint>
 export module v8_js:isolated.platform;
 import :platform.delegate;
+import std;
 import v8;
 
 namespace js::iv8::isolated {
@@ -16,7 +17,7 @@ class isolated_agent_delegate
 		auto CurrentClockTimeMillis() -> double override;
 		auto GetForegroundTaskRunner(v8::Isolate* isolate, v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner> override;
 
-		static auto fill_random_bytes_for_isolate(v8::Isolate* isolate, unsigned char* buffer, size_t length) -> bool;
+		static auto fill_random_bytes_for_isolate(v8::Isolate* isolate, unsigned char* buffer, std::size_t length) -> bool;
 };
 
 class isolated_platform final

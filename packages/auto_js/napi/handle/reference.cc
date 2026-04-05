@@ -1,9 +1,7 @@
-module;
-#include <stdexcept>
-#include <utility>
 export module napi_js:reference;
 import :api;
 import :value_handle;
+import std;
 import util;
 
 namespace js::napi {

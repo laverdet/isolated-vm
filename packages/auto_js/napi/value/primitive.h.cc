@@ -1,14 +1,11 @@
 module;
-#include <cstddef>
 #include <cstdint>
-#include <string>
-#include <string_view>
-#include <variant>
 export module napi_js:primitive;
 import :api;
 import :bound_value;
 import :environment_fwd;
 import :value_handle;
+import std;
 
 namespace js::napi {
 

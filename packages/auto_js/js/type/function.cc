@@ -1,9 +1,7 @@
-module;
-#include <string_view>
-#include <utility>
 export module auto_js:function;
 import :tag;
 import :visit;
+import std;
 
 namespace js {
 

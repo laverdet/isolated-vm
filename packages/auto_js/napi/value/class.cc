@@ -1,16 +1,9 @@
-module;
-#include <algorithm>
-#include <array>
-#include <concepts>
-#include <memory>
-#include <tuple>
-#include <type_traits>
-#include <utility>
 export module napi_js:class_definitions;
 import :api;
 import :callback;
 import :class_;
 import :external;
+import std;
 import util;
 
 namespace js::napi {

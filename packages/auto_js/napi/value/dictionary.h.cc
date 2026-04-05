@@ -1,11 +1,10 @@
-module;
-#include <ranges>
 export module napi_js:dictionary;
 import :array;
 import :bound_value;
 import :object;
 import :value_handle;
 import auto_js;
+import std;
 
 namespace js::napi {
 

@@ -1,7 +1,5 @@
-module;
-#include <concepts>
-#include <utility>
 export module auto_js:deferred_receiver;
+import std;
 import util;
 
 namespace js {

@@ -6,6 +6,7 @@ import :handle;
 import :lock;
 import :primitive;
 import auto_js;
+import std;
 import v8;
 
 namespace js::iv8 {

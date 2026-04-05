@@ -1,9 +1,7 @@
 module;
 #include <cassert>
-#include <functional>
-#include <thread> // IWYU pragma: keep
-#include <utility>
 module napi_js;
+import std;
 
 namespace js::napi {
 

@@ -1,9 +1,7 @@
-module;
-#include <string> // IWYU pragma: keep
-#include <type_traits>
 export module napi_js:class_template_storage;
 import :reference;
 import auto_js;
+import std;
 import util;
 using namespace std::string_literals;
 

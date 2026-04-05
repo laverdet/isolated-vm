@@ -1,9 +1,6 @@
-module;
-#include <memory>
-#include <thread>
-#include <vector>
 export module napi_js:api.uv_scheduler;
 import :api.uv_handle;
+import std;
 import util;
 
 #if _LIBCPP_VERSION

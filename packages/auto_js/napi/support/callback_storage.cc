@@ -1,10 +1,7 @@
-module;
-#include <memory>
-#include <type_traits>
-#include <utility>
 export module napi_js:callback_storage;
 import :api;
 import :environment_fwd;
+import std;
 
 namespace js::napi {
 

@@ -1,7 +1,5 @@
-module;
-#include <concepts>
-#include <functional>
 export module v8_js:hash;
+import std;
 import v8;
 
 namespace js::iv8 {

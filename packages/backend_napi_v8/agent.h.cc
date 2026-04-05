@@ -1,10 +1,9 @@
-module;
-#include <type_traits>
 export module backend_napi_v8:agent;
 import :environment;
 import :runtime;
 import auto_js;
 import napi_js;
+import std;
 
 namespace backend_napi_v8 {
 

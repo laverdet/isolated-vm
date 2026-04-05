@@ -1,9 +1,6 @@
-module;
-#include <concepts>
-#include <memory>
-#include <type_traits>
 export module napi_js:api.finalizer;
 import nodejs;
+import std;
 import util;
 
 namespace js::napi {

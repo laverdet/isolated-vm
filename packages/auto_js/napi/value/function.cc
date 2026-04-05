@@ -1,13 +1,8 @@
-module;
-#include <array>
-#include <span>
-#include <tuple>
-#include <variant>
-#include <vector>
 export module napi_js:function_definitions;
 import :api;
 import :callback;
 import :function;
+import std;
 
 namespace js::napi {
 

@@ -1,5 +1,3 @@
-module;
-#include <utility>
 module backend_napi_v8;
 import :agent;
 import :environment;
@@ -9,6 +7,7 @@ import :reference;
 import :utility;
 import auto_js;
 import napi_js;
+import std;
 import v8_js;
 
 namespace backend_napi_v8 {

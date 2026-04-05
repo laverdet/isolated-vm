@@ -1,12 +1,8 @@
-module;
-#include <optional>
-#include <type_traits>
-#include <utility>
-#include <variant>
 export module auto_js:variant.accept;
 import :intrinsics.external;
 import :transfer;
 import :variant.types;
+import std;
 import util;
 
 namespace js {

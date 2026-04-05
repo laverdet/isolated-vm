@@ -1,6 +1,4 @@
 module;
-#include <array>
-#include <span>
 #if _LIBCPP_VERSION
 // clang 22.1.0: Without this I get a big horrible ICE in this file
 #include <new>
@@ -8,6 +6,7 @@ module;
 export module napi_js:api.callback_info;
 import :api.invoke;
 import auto_js;
+import std;
 import util;
 
 namespace js::napi {

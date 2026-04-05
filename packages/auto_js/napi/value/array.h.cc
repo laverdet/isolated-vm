@@ -1,5 +1,4 @@
 module;
-#include <compare>
 #include <cstdint>
 export module napi_js:array;
 import :bound_value;

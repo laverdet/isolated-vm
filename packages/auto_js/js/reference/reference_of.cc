@@ -1,8 +1,7 @@
 module;
 #include <cassert>
-#include <utility>
-#include <vector>
 export module auto_js:reference_of;
+import std;
 import util;
 
 namespace js {

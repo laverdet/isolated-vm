@@ -1,13 +1,3 @@
-module;
-#include <expected>
-#include <memory>
-#include <optional>
-#include <ranges>
-#include <string>
-#include <tuple>
-#include <utility>
-#include <variant>
-#include <vector>
 module backend_napi_v8;
 import :environment;
 import :lock;
@@ -15,6 +5,7 @@ import :realm;
 import :utility;
 import auto_js;
 import napi_js;
+import std;
 import util;
 import v8_js;
 

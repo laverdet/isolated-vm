@@ -1,9 +1,8 @@
 module;
-#include <algorithm>
 #include <cassert>
-#include <chrono>
 module v8_js;
 import :platform.worker_runner;
+import std;
 using std::chrono::steady_clock;
 
 namespace js::iv8::platform {

@@ -1,7 +1,5 @@
-module;
-#include <memory>
-#include <utility>
 module v8_js;
+import std;
 import util;
 
 namespace js::iv8 {

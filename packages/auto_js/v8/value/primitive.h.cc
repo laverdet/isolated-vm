@@ -1,10 +1,10 @@
 module;
 #include <cstdint>
-#include <string>
 export module v8_js:primitive;
 import :handle;
 import :lock;
 import auto_js;
+import std;
 import v8;
 
 namespace js::iv8 {

@@ -1,10 +1,8 @@
-module;
-#include <functional>
-#include <memory>
 export module napi_js:environment;
 export import :environment_fwd;
 import :api;
 import :utility;
+import std;
 import util;
 
 namespace js::napi {

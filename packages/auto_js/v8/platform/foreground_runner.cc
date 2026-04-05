@@ -1,12 +1,8 @@
 module;
-#include <algorithm>
 #include <cassert>
-#include <chrono>
-#include <memory>
-#include <stop_token>
-#include <utility>
 module v8_js;
 import :platform.foreground_runner;
+import std;
 
 namespace js::iv8::platform {
 

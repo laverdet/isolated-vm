@@ -1,11 +1,11 @@
 module;
-#include <compare>
 #include <cstdint>
 #include <ranges>
 export module v8_js:array;
 import :handle;
 import :lock;
 import auto_js;
+import std;
 import util;
 import v8;
 

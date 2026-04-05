@@ -1,10 +1,10 @@
 module;
 #include <cstddef>
-#include <span>
 export module v8_js:array_buffer;
 import :handle;
 import :lock;
 import auto_js;
+import std;
 import util;
 import v8;
 

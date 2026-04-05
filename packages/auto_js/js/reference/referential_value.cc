@@ -1,9 +1,6 @@
-module;
-#include <concepts>
-#include <type_traits>
-#include <utility>
 export module auto_js:referential_value;
 import :reference_of;
+import std;
 
 namespace js {
 

@@ -1,9 +1,7 @@
-module;
-#include <ranges>
-#include <utility>
 module napi_js;
 import :api;
 import :array;
+import std;
 
 namespace js::napi {
 

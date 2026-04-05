@@ -1,9 +1,3 @@
-module;
-#include <expected>
-#include <optional>
-#include <stop_token>
-#include <utility>
-#include <variant>
 module backend_napi_v8;
 import :environment;
 import :lock;
@@ -11,6 +5,7 @@ import :realm;
 import :utility;
 import auto_js;
 import napi_js;
+import std;
 import util;
 import v8_js;
 

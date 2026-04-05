@@ -1,10 +1,5 @@
 module;
 #include <cstdint>
-#include <optional>
-#include <string>
-#include <string_view>
-#include <utility>
-#include <variant>
 export module auto_js:builtin.visit;
 import :intrinsics.array_buffer;
 import :intrinsics.bigint;
@@ -12,6 +7,7 @@ import :intrinsics.date;
 import :intrinsics.error;
 import :transfer;
 import :variant.visit;
+import std;
 import util;
 
 namespace js {
@@ -86,7 +82,7 @@ template <class Char, std::size_t Size>
 struct visit<void, util::consteval_string_view<Char, Size>> : visit_value_tagged<string_tag_of<Char>> {};
 
 // Constant string visitor
-template <std::integral Char, size_t Extent>
+template <std::integral Char, std::size_t Extent>
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
 struct visit<void, Char[ Extent ]> {
 		template <class Accept>

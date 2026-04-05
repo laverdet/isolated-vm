@@ -1,11 +1,3 @@
-module;
-#include <expected>
-#include <ranges>
-#include <span>
-#include <string>
-#include <tuple>
-#include <utility>
-#include <vector>
 export module v8_js:evaluation.module_record;
 import :evaluation.origin;
 import :fixed_array;
@@ -14,6 +6,7 @@ import :lock;
 import :unmaybe;
 import :weak_map;
 import auto_js;
+import std;
 import util;
 import v8;
 

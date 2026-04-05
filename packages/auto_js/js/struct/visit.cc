@@ -1,12 +1,10 @@
 module;
 #include "auto_js/no_unique_address.h"
-#include <tuple>
-#include <type_traits>
-#include <utility>
 export module auto_js:struct_.visit;
 import :property;
 import :struct_.types;
 import :transfer;
+import std;
 import util;
 
 namespace js {

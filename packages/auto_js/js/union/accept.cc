@@ -1,14 +1,9 @@
-module;
-#include <string>
-#include <tuple>
-#include <type_traits>
-#include <utility>
-#include <variant>
 export module auto_js:union_.accept;
 import :intrinsics.error;
 import :transfer;
 import :union_.types;
 import :variant.types;
+import std;
 import util;
 
 namespace js {

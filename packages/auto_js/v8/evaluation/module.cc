@@ -1,13 +1,9 @@
 module;
 #include "auto_js/chunk_view.h"
 #include <algorithm>
+#include <array>
 #include <cassert>
-#include <exception>
-#include <expected>
-#include <ranges>
-#include <stdexcept>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 module v8_js;
@@ -114,7 +110,7 @@ auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module
 
 	// Linker implementation. Module link requests for the same module go in the same order as
 	// `GetModuleRequests()`
-	auto linker = [ & ](v8::Local<v8::Module> referrer, size_t index) -> v8::Local<v8::Module> {
+	auto linker = [ & ](v8::Local<v8::Module> referrer, std::size_t index) -> v8::Local<v8::Module> {
 		auto it = module_specifier_map.find(referrer);
 		if (it == module_specifier_map.end()) {
 			throw js::runtime_error{u"Referrer module not found in link record"};
@@ -127,7 +123,7 @@ auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module
 	auto v8_callback = v8::Module::ResolveModuleByIndexCallback{
 		[](
 			v8::Local<v8::Context> /*context*/,
-			size_t module_request_index,
+			std::size_t module_request_index,
 			v8::Local<v8::Module> referrer
 		) -> v8::MaybeLocal<v8::Module> {
 			return (*linker_ptr)(referrer, module_request_index);
@@ -142,7 +138,7 @@ auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module
 	auto v8_callback = v8::Module::ResolveModuleByIndexCallback{
 		[](
 			v8::Local<v8::Context> /*context*/,
-			size_t /*module_request_index*/,
+			std::size_t /*module_request_index*/,
 			v8::Local<v8::Module> /*referrer*/
 		) -> v8::MaybeLocal<v8::Module> {
 			std::terminate();
