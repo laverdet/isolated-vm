@@ -1,5 +1,3 @@
-module;
-#include <concepts>
 export module util:utility;
 export import :utility.constant_wrapper;
 export import :utility.covariant_value;

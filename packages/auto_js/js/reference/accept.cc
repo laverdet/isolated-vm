@@ -1,5 +1,3 @@
-module;
-#include <concepts>
 export module auto_js:reference.accept;
 import :referential_value;
 import :transfer;

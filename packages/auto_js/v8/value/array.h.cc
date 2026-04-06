@@ -1,5 +1,3 @@
-module;
-#include <iterator>
 export module v8_js:array;
 import :handle;
 import :lock;

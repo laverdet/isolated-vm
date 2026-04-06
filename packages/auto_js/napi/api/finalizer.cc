@@ -1,5 +1,3 @@
-module;
-#include <concepts>
 export module napi_js:api.finalizer;
 import nodejs;
 import std;

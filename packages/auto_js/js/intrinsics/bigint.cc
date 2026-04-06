@@ -1,5 +1,3 @@
-module;
-#include <concepts>
 export module auto_js:intrinsics.bigint;
 import std;
 import util;

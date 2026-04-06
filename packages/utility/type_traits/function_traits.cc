@@ -1,5 +1,3 @@
-module;
-#include <concepts>
 export module util:type_traits.function_traits;
 import :type_traits.transform;
 import std;

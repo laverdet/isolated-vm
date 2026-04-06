@@ -1,5 +1,3 @@
-module;
-#include <concepts>
 export module v8_js:accept;
 import :hash;
 import :lock;

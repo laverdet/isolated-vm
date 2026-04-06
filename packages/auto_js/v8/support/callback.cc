@@ -1,5 +1,3 @@
-module;
-#include <concepts>
 export module v8_js:callback;
 export import :callback_storage;
 import :error;

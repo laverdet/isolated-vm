@@ -1,5 +1,3 @@
-module;
-#include <concepts>
 export module v8_js:visit;
 import :array;
 import :array_buffer;

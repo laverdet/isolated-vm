@@ -1,5 +1,3 @@
-module;
-#include <concepts>
 export module util:platform.stop_token;
 import :functional;
 import :utility;

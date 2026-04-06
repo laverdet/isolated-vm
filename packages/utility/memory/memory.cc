@@ -1,5 +1,3 @@
-module;
-#include <concepts>
 export module util:memory;
 export import :memory.autorelease_pool;
 export import :memory.comparator;

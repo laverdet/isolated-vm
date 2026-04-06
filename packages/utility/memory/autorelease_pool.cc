@@ -1,7 +1,6 @@
 module;
 #include "auto_js/no_unique_address.h"
 #include <cassert>
-#include <concepts>
 export module util:memory.autorelease_pool;
 import :memory.comparator;
 import :utility;

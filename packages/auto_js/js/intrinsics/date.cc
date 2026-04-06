@@ -1,8 +1,11 @@
 module;
-// nb: libstdc++ doesn't pull in the `clock_time_conversion` override
-#include <chrono>
+#include <version>
 export module auto_js:intrinsics.date;
 import std;
+#ifndef _LIBCPP_VERSION
+// NOLINTNEXTLINE(misc-unused-using-decls)
+using std::chrono::clock_time_conversion;
+#endif
 
 namespace js {
 

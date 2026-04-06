@@ -1,5 +1,3 @@
-module;
-#include <concepts>
 export module v8_js:platform.foreground_runner;
 import :platform.scheduler;
 import :platform.task_queue;

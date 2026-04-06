@@ -1,8 +1,7 @@
-module;
-#include <concepts>
 export module napi_js:bound_value;
 import :handle.types;
 import nodejs;
+import std;
 
 namespace js::napi {
 

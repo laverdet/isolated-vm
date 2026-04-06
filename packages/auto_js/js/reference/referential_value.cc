@@ -1,5 +1,3 @@
-module;
-#include <concepts>
 export module auto_js:referential_value;
 import :reference_of;
 import std;

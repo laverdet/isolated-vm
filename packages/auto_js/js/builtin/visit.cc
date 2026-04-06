@@ -1,5 +1,3 @@
-module;
-#include <concepts>
 export module auto_js:builtin.visit;
 import :intrinsics.array_buffer;
 import :intrinsics.bigint;

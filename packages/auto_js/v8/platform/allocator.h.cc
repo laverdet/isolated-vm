@@ -1,5 +1,3 @@
-module;
-#include <limits>
 export module v8_js:platform.allocator;
 import std;
 import v8;

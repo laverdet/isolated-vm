@@ -1,5 +1,3 @@
-module;
-#include <concepts>
 export module util:functional.function_ref;
 import :functional.elide;
 import :type_traits;

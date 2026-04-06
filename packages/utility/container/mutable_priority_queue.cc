@@ -1,5 +1,3 @@
-module;
-#include <concepts>
 export module util:container.mutable_priority_queue;
 import std;
 

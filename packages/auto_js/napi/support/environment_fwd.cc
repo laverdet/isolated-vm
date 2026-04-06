@@ -1,6 +1,5 @@
-module;
-#include <concepts>
 export module napi_js:environment_fwd;
+import std;
 
 namespace js::napi {
 
