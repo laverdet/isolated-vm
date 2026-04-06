@@ -1,11 +1,7 @@
 module;
-#include <algorithm>
-#include <array>
-#include <functional>
-#include <iterator>
-#include <span>
-#include <utility>
+#include <cstddef>
 export module util:container.segmented_priority_queue;
+import std;
 
 namespace util {
 

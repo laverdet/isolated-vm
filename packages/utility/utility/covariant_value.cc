@@ -1,9 +1,7 @@
-module;
-#include <utility>
-#include <variant>
 export module util:utility.covariant_value;
-import :utility.facade;
 import :type_traits;
+import :utility.facade;
+import std;
 
 namespace util {
 

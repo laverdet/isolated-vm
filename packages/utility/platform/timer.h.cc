@@ -1,8 +1,5 @@
-module;
-#include <chrono>
-#include <memory>
-#include <stop_token>
 export module util:platform.timer;
+import std;
 
 namespace util {
 

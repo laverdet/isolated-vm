@@ -1,8 +1,6 @@
-module;
-#include <chrono>
-#include <optional>
 module v8_js;
 import auto_js;
+import std;
 using namespace std::chrono;
 
 namespace js::iv8::isolated::clock {

@@ -1,3 +1,5 @@
+module;
+#include <concepts>
 export module napi_js:api.invoke;
 export import nodejs;
 import std;

@@ -1,5 +1,4 @@
 // ninja -C build auto_js
-#include <cstdint>
 import auto_js;
 import std;
 import util;

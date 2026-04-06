@@ -1,8 +1,8 @@
 module;
 #include <concepts>
-#include <type_traits>
 export module util:type_traits.function_traits;
 import :type_traits.transform;
+import std;
 
 namespace util {
 

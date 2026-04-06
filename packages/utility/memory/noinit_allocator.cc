@@ -1,10 +1,8 @@
 module;
 #include "auto_js/no_unique_address.h"
 #include <concepts>
-#include <memory>
-#include <type_traits>
-#include <utility>
 export module util:memory.noinit_allocator;
+import std;
 
 namespace util {
 

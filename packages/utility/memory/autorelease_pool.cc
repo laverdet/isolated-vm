@@ -1,13 +1,11 @@
 module;
 #include "auto_js/no_unique_address.h"
-#include <algorithm>
 #include <cassert>
-#include <memory>
-#include <utility>
-#include <vector>
+#include <concepts>
 export module util:memory.autorelease_pool;
 import :memory.comparator;
 import :utility;
+import std;
 
 namespace util {
 

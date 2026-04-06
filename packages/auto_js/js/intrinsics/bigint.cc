@@ -1,4 +1,5 @@
 module;
+#include <concepts>
 #include <cstdint>
 export module auto_js:intrinsics.bigint;
 import std;

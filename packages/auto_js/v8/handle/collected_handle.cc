@@ -1,3 +1,5 @@
+module;
+#include <concepts>
 export module v8_js:collected_handle;
 import :lock;
 import std;

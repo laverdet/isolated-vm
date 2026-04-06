@@ -1,3 +1,5 @@
+module;
+#include <concepts>
 export module v8_js:lock;
 import std;
 import util;

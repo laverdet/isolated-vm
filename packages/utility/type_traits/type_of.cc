@@ -1,6 +1,5 @@
-module;
-#include <type_traits>
 export module util:type_traits.type_of;
+import std;
 
 namespace util {
 

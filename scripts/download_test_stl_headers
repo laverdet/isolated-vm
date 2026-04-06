@@ -1,0 +1,25 @@
+#!/bin/bash
+set -eu
+# shellcheck disable=SC2164
+cd /root
+mkdir -p windows
+# shellcheck disable=SC2164
+cd windows
+echo '{ "version": 1, "revision": 1, "modules": [ { "logical-name": "std", "source-path": "modules/std.ixx", "is-std-library": true } ], "local-arguments": { "system-include-directories": [ "modules" ] } }' > stl.modules.json
+REMOTE_HOST=$1
+MSVC_PATH='C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\VC\\Tools\\MSVC\\14.44.35207'
+KITS_PATH='C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.26100.0'
+scp -r "$REMOTE_HOST:$MSVC_PATH\\\\modules" ./modules
+scp -r "$REMOTE_HOST:$MSVC_PATH\\\\include" ./include
+scp -r "$REMOTE_HOST:$KITS_PATH\\\\shared" ./shared
+scp -r "$REMOTE_HOST:$KITS_PATH\\\\ucrt" ./ucrt
+scp -r "$REMOTE_HOST:$KITS_PATH\\\\um" ./um
+find . -type f -print0 | xargs -0 dos2unix
+find . -type l -delete
+# shellcheck disable=SC2044
+for ii in $(find . -name '*.h'); do lower=$(echo "$ii" | tr '[:upper:]' '[:lower:]'); if [ "$ii" != "$lower" ]; then ln -s "$(basename "$ii")" "$lower"; echo "$ii"; fi; done
+ln -s driverspecs.h shared/DriverSpecs.h
+ln -s specstrings.h shared/SpecStrings.h
+
+# cmake strips -I/usr/include, even when explicitly listed
+cp -r /usr/include/boost ./include/

@@ -17,7 +17,7 @@ export class array_buffer : public v8::Local<v8::ArrayBuffer> {
 				v8::Local<v8::ArrayBuffer>{handle} {}
 
 		[[nodiscard]] auto data() const -> std::byte* { return static_cast<std::byte*>((*this)->Data()); }
-		[[nodiscard]] auto size() const -> std::size_t { return (*this)->ByteLength(); }
+		[[nodiscard]] auto size() const -> size_t { return (*this)->ByteLength(); }
 		explicit operator js::array_buffer() const;
 		explicit operator std::span<std::byte>() const;
 };
@@ -29,7 +29,7 @@ export class shared_array_buffer : public v8::Local<v8::SharedArrayBuffer> {
 				v8::Local<v8::SharedArrayBuffer>{handle} {}
 
 		[[nodiscard]] auto data() const -> std::byte* { return static_cast<std::byte*>((*this)->Data()); }
-		[[nodiscard]] auto size() const -> std::size_t { return (*this)->ByteLength(); }
+		[[nodiscard]] auto size() const -> size_t { return (*this)->ByteLength(); }
 		explicit operator js::shared_array_buffer() const;
 		explicit operator std::span<std::byte>() const;
 };

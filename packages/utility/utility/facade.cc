@@ -1,8 +1,5 @@
-module;
-#include <memory>
-#include <type_traits>
-#include <utility>
 export module util:utility.facade;
+import std;
 
 namespace util {
 

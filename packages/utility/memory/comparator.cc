@@ -1,6 +1,5 @@
-module;
-#include <memory>
 export module util:memory.comparator;
+import std;
 
 namespace util {
 

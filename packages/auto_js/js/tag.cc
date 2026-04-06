@@ -1,6 +1,5 @@
-module;
-#include <concepts>
 export module auto_js:tag;
+import std;
 
 // Tag heirarchy helpers
 template <class Tag, class Con = Tag>

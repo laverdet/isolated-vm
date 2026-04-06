@@ -127,6 +127,32 @@ tasks:
     icon:
       id: wrench
 
+  - label: 'cmake: configure stdlib compat'
+    type: shell
+    command: |
+      set -eu; set -a; source $ENV_FILE; source $V8_BUNDLE_PATH/env
+      cmake \
+        -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DIVM_INSTALL=link \
+        -G Ninja -B build
+      cmake \
+        -DTEST_STDLIB=stl \
+        -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \
+        -DCMAKE_BUILD_TYPE=Release \
+        -G Ninja -B build/for_stl
+      cmake \
+        -DTEST_STDLIB=libc++ \
+        -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \
+        -DCMAKE_BUILD_TYPE=Release \
+        -G Ninja -B build/for_libcxx
+      echo 'Build with:'
+      echo 'ninja -C build backend_napi_v8 && ninja -C build/for_stl backend_napi_v8 && ninja -C build/for_libcxx backend_napi_v8'
+    problemMatcher: []
+    icon:
+      id: wrench
+
   # ninja: build
   - label: 'ninja: build'
     type: shell

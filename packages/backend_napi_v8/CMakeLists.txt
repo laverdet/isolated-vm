@@ -2,7 +2,11 @@ set(NAPI_VERSION 10)
 find_package_from_npm(@auto_js/napi)
 find_package_from_npm(@auto_js/v8)
 
-add_library(backend_napi_v8 SHARED)
+if(COMPILE_ONLY)
+	add_library(backend_napi_v8 OBJECT)
+else()
+	add_library(backend_napi_v8 SHARED)
+endif()
 target_sources(backend_napi_v8
 	PRIVATE
 		agent.cc
@@ -65,7 +69,7 @@ if(IVM_INSTALL STREQUAL link)
 		"${CMAKE_CURRENT_BINARY_DIR}"
 		"${CMAKE_SOURCE_DIR}/packages/isolated-vm/node_modules/@isolated-vm/experimental-${HOST_PLATFORM}")
 	file(WRITE "${LOCAL_BACKEND_PACKAGE}/package.json" "{\"main\":\"backend_napi_v8.node\"}\n")
-else()
+elseif(IVM_INSTALL STREQUAL copy)
 	# Copy to `artifacts`. `napi-rs` will generate `package.json` later
 	set(LOCAL_BACKEND_PACKAGE "${CMAKE_CURRENT_BINARY_DIR}/artifacts/${HOST_PLATFORM}")
 	add_custom_command(

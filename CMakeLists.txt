@@ -20,13 +20,29 @@ add_compile_options(
 	$<$<CXX_COMPILER_ID:Clang>:-Wno-reserved-module-identifier>
 )
 
-# Build with libc++ if you want
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
-# set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
+if(TEST_STDLIB STREQUAL libc++)
+	# Build with libc++ if you want
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
+elseif(TEST_STDLIB STREQUAL "stl")
+	# Or test compilation against STL
+	# ninja -C build-stl backend_napi_v8
+	add_compile_options(--target=x86_64-pc-windows -Wno-character-conversion -Wno-language-extension-token -Wno-nested-anon-types -Wno-extra-semi -Wno-ignored-attributes)
+	add_definitions(-D_ITERATOR_DEBUG_LEVEL=0)
+	include_directories(/root/windows/include /root/windows/shared /root/windows/ucrt /root/windows/um /root/windows/boost)
+	set(CMAKE_CXX_STDLIB_MODULES_JSON "/root/windows/stl.modules.json")
+	set(COMPILE_ONLY ON)
+elseif(DEFINED TEST_STDLIB)
+	message(FATAL_ERROR "Invalid value for TEST_STDLIB: ${TEST_STDLIB}")
+endif()
 
 # C++26 environment
 set(CMAKE_CXX_STANDARD 26)
-set(CMAKE_CXX_EXTENSIONS OFF)
+if(COMPILE_ONLY)
+	set(CMAKE_CXX_EXTENSIONS OFF)
+else()
+	set(CMAKE_CXX_EXTENSIONS ON)
+endif()
 if (CMAKE_VERSION VERSION_GREATER_EQUAL "4.3.0")
 	set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
 else()
@@ -50,7 +66,9 @@ if(LINUX)
 endif()
 
 # Global compiler flags
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+if(NOT COMPILE_ONLY)
+	set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
 
 # Release flags
 if(CMAKE_BUILD_TYPE STREQUAL Release)
@@ -96,12 +114,10 @@ endif()
 
 # Clang & GCC diagnostic flags. GCC can't compile this project right now but I am hopeful.
 if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-	add_compile_options(
-		-fdiagnostics-color
-		-Wall
-		-Wextra
-		-Wpedantic
-	)
+	add_compile_options(-fdiagnostics-color -Wall -Wextra)
+	if(NOT COMPILE_ONLY)
+		add_compile_options(-Wpedantic)
+	endif()
 	if(NOT CMAKE_BUILD_TYPE STREQUAL Debug)
 		# Soften common development warnings
 		add_compile_options(

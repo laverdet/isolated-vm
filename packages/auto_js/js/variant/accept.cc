@@ -1,3 +1,5 @@
+module;
+#include <concepts>
 export module auto_js:variant.accept;
 import :intrinsics.external;
 import :transfer;

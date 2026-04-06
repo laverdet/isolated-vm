@@ -1,5 +1,3 @@
-module;
-#include <expected>
 export module backend_napi_v8:utility;
 import :environment;
 import auto_js;

@@ -2,16 +2,10 @@ module;
 #include "auto_js/no_unique_address.h"
 #include <cassert>
 #include <concepts>
-#include <condition_variable>
-#include <functional>
-#include <mutex>
-#include <shared_mutex>
-#include <stop_token>
-#include <utility>
-#include <variant>
 export module util:platform.lockable;
 import :type_traits;
 import :utility;
+import std;
 
 namespace util {
 

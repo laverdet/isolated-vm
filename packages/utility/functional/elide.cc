@@ -1,9 +1,8 @@
 module;
 #include "auto_js/no_unique_address.h"
 #include <concepts>
-#include <tuple>
-#include <utility>
 export module util:functional.elide;
+import std;
 
 namespace util {
 

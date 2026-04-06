@@ -1,12 +1,10 @@
 module;
 #include <concepts>
-#include <functional>
-#include <memory>
-#include <type_traits>
 export module util:memory;
 export import :memory.autorelease_pool;
 export import :memory.comparator;
 export import :memory.noinit_allocator;
+import std;
 
 namespace util {
 

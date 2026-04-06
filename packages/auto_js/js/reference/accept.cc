@@ -1,4 +1,5 @@
 module;
+#include <concepts>
 #include <cstddef>
 export module auto_js:reference.accept;
 import :referential_value;

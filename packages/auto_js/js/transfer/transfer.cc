@@ -1,5 +1,6 @@
 module;
 #include <cassert>
+#include <concepts>
 export module auto_js:transfer;
 export import :accept;
 export import :tag;

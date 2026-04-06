@@ -1,10 +1,8 @@
 module;
-#include <algorithm>
 #include <cassert>
 #include <concepts>
-#include <deque>
-#include <utility>
 export module util:container.tinker_queue;
+import std;
 
 namespace util {
 
@@ -19,7 +17,7 @@ class tinker_queue {
 		using value_type = Value;
 
 		[[nodiscard]] auto empty() const -> bool { return size() == 0; }
-		[[nodiscard]] auto size() const -> size_t { return queue_.size() - empty_middle_values_; }
+		[[nodiscard]] auto size() const -> std::size_t { return queue_.size() - empty_middle_values_; }
 		// nb: You don't want a `clear` method here because you want tasks to be destroyed in the order
 		// they were added
 		auto emplace(auto&&... args) -> void;
@@ -29,7 +27,7 @@ class tinker_queue {
 
 	private:
 		container_type queue_;
-		size_t empty_middle_values_{};
+		std::size_t empty_middle_values_{};
 };
 
 // ---

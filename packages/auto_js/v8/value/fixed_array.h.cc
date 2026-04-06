@@ -1,3 +1,5 @@
+module;
+#include <iterator>
 export module v8_js:fixed_array;
 import :handle;
 import :lock;

@@ -114,7 +114,7 @@ class typed_array {
 		typed_array() = default;
 
 		// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-		typed_array(data_block_variant buffer, std::size_t byte_offset, std::size_t length) :
+		typed_array(data_block_variant buffer, size_t byte_offset, size_t length) :
 				data_{buffer},
 				byte_offset_{byte_offset},
 				length_{length} {}
@@ -125,8 +125,8 @@ class typed_array {
 
 	private:
 		data_block_variant data_;
-		std::size_t byte_offset_{};
-		std::size_t length_{};
+		size_t byte_offset_{};
+		size_t length_{};
 };
 
 } // namespace js

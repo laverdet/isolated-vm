@@ -1,12 +1,9 @@
 module;
-#include <algorithm>
 #include <concepts>
-#include <format>
-#include <ranges>
-#include <type_traits>
-#include <utility>
+#include <cstddef>
 export module util:container.sealed_map;
 import :functional;
+import std;
 
 namespace util {
 
@@ -28,7 +25,7 @@ class sealed_map {
 				explicit constexpr key_for(auto index) :
 						index_{static_cast<value_type>(index)} {}
 
-				constexpr auto operator*() const -> std::size_t { return index_; }
+				constexpr auto operator*() const -> size_t { return index_; }
 				explicit constexpr operator bool() const { return index_ != std::numeric_limits<value_type>::max(); }
 
 			private:

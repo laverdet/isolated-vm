@@ -1,6 +1,5 @@
-module;
-#include <type_traits>
 export module util:type_traits.transform;
+import std;
 
 namespace util {
 

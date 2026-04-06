@@ -1,4 +1,5 @@
 module;
+#include <concepts>
 #include <cstdint>
 export module v8_js:accept;
 import :hash;

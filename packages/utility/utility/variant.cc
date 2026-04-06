@@ -1,9 +1,7 @@
-module;
-#include <utility>
-#include <variant>
 export module util:utility.variant;
 import :meta.algorithm;
 import :type_traits;
+import std;
 
 namespace util {
 

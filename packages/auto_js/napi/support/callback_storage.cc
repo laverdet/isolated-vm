@@ -1,3 +1,5 @@
+module;
+#include <concepts>
 export module napi_js:callback_storage;
 import :api;
 import :environment_fwd;

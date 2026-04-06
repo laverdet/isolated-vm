@@ -1,15 +1,15 @@
 module;
-#include <stop_token>
-#include <utility>
+#include <concepts>
 export module util:platform.stop_token;
 import :functional;
 import :utility;
+import std;
 
 namespace util {
 
 // Combine multiple `std::stop_token`s into one `std::stop_token` that is stopped when any of the
 // source tokens is stopped.
-export template <size_t Size>
+export template <std::size_t Size>
 class composite_stop_token : private std::stop_source, public std::stop_token {
 	private:
 		static auto make_callback(std::stop_source stop_source) {

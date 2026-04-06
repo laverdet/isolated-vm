@@ -1,6 +1,5 @@
-module;
-#include <algorithm>
 export module util:utility.constant_wrapper;
+import std;
 
 // Lifted from P2781R8:
 // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2025/p2781r8.html

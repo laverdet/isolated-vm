@@ -1,11 +1,10 @@
 module;
 #include "auto_js/no_unique_address.h"
-#include <type_traits>
-#include <utility>
 export module util:functional.bind;
 import :functional.flat_tuple;
 import :type_traits;
 import :utility;
+import std;
 
 namespace util {
 

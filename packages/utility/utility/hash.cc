@@ -1,10 +1,7 @@
 module;
-#include <array>
-#include <bit>
 #include <cstdint>
-#include <source_location>
-#include <string_view>
 export module util:utility.hash;
+import std;
 
 namespace util {
 

@@ -1,8 +1,7 @@
-module;
-#include <type_traits>
 export module util:meta.algorithm;
 import :functional;
 import :utility;
+import std;
 
 namespace util {
 
