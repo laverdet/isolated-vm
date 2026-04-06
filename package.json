@@ -10,7 +10,7 @@
   "scripts": {
     "install": "node-gyp-build || node-gyp rebuild --release -j max",
     "prebuild": "node scripts/run-prebuild.js",
-    "rebuild": "node-gyp rebuild --release -j max",
+    "rebuild": "node-gyp-build --build-from-source || node-gyp rebuild --release -j max",
     "lint": "find src -name '*.cc' | xargs -n1 clang-tidy",
     "test": "node test.js"
   },
