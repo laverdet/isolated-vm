@@ -1,6 +1,5 @@
 module;
 #include "auto_js/no_unique_address.h"
-#include <cstdint>
 export module napi_js:utility;
 import nodejs;
 import std;
@@ -12,9 +11,9 @@ namespace js::napi {
 
 // Null handle for both direct and indirect handles
 // Note: 1 -> 0x1'0000'0000
-const uint64_t null_value_handle_data = 0x7f7f'7f7f'7f7f'7f7f;
+const std::uint64_t null_value_handle_data = 0x7f7f'7f7f'7f7f'7f7f;
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
-export auto* const null_value_handle = reinterpret_cast<napi_value>(const_cast<uint64_t*>(&null_value_handle_data));
+export auto* const null_value_handle = reinterpret_cast<napi_value>(const_cast<std::uint64_t*>(&null_value_handle_data));
 
 // Unwrap the v8 address of the napi handle. This points into the v8 heap.
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)

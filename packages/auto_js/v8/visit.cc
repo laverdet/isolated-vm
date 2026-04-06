@@ -1,5 +1,5 @@
 module;
-#include <cstdint>
+#include <concepts>
 export module v8_js:visit;
 import :array;
 import :array_buffer;
@@ -90,7 +90,7 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 		auto operator()(v8::Local<v8::Number> subject, const Accept& accept) -> accept_target_t<Accept> {
 			auto number = iv8::number{subject};
 			if (subject->IsInt32()) {
-				return accept(number_tag_of<int32_t>{}, *this, number);
+				return accept(number_tag_of<std::int32_t>{}, *this, number);
 			} else {
 				return accept(number_tag_of<double>{}, *this, number);
 			}
@@ -161,7 +161,7 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 			bool lossless{};
 			auto u64 = subject->Uint64Value(&lossless);
 			if (lossless) {
-				return accept(bigint_tag_of<uint64_t>{}, *this, iv8::bigint_u64{subject, u64});
+				return accept(bigint_tag_of<std::uint64_t>{}, *this, iv8::bigint_u64{subject, u64});
 			} else {
 				return accept(bigint_tag_of<bigint>{}, *this, iv8::bigint{subject});
 			}
@@ -349,7 +349,7 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 		// typed arrays
 		template <class Accept>
 		auto immediate(v8::Local<v8::Uint8Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<uint8_t>{}, *this, iv8::array_buffer_view{subject});
+			return accept(typed_array_tag_of<std::uint8_t>{}, *this, iv8::array_buffer_view{subject});
 		}
 
 		template <class Accept>
@@ -359,27 +359,27 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 
 		template <class Accept>
 		auto immediate(v8::Local<v8::Uint16Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<uint16_t>{}, *this, iv8::array_buffer_view{subject});
+			return accept(typed_array_tag_of<std::uint16_t>{}, *this, iv8::array_buffer_view{subject});
 		}
 
 		template <class Accept>
 		auto immediate(v8::Local<v8::Uint32Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<uint32_t>{}, *this, iv8::array_buffer_view{subject});
+			return accept(typed_array_tag_of<std::uint32_t>{}, *this, iv8::array_buffer_view{subject});
 		}
 
 		template <class Accept>
 		auto immediate(v8::Local<v8::Int8Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<int8_t>{}, *this, iv8::array_buffer_view{subject});
+			return accept(typed_array_tag_of<std::int8_t>{}, *this, iv8::array_buffer_view{subject});
 		}
 
 		template <class Accept>
 		auto immediate(v8::Local<v8::Int16Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<int16_t>{}, *this, iv8::array_buffer_view{subject});
+			return accept(typed_array_tag_of<std::int16_t>{}, *this, iv8::array_buffer_view{subject});
 		}
 
 		template <class Accept>
 		auto immediate(v8::Local<v8::Int32Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<int32_t>{}, *this, iv8::array_buffer_view{subject});
+			return accept(typed_array_tag_of<std::int32_t>{}, *this, iv8::array_buffer_view{subject});
 		}
 
 		template <class Accept>
@@ -394,12 +394,12 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 
 		template <class Accept>
 		auto immediate(v8::Local<v8::BigInt64Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<int64_t>{}, *this, iv8::array_buffer_view{subject});
+			return accept(typed_array_tag_of<std::int64_t>{}, *this, iv8::array_buffer_view{subject});
 		}
 
 		template <class Accept>
 		auto immediate(v8::Local<v8::BigUint64Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<uint64_t>{}, *this, iv8::array_buffer_view{subject});
+			return accept(typed_array_tag_of<std::uint64_t>{}, *this, iv8::array_buffer_view{subject});
 		}
 
 		// data view

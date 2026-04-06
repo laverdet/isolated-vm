@@ -1,6 +1,3 @@
-module;
-#include <cstddef>
-#include <cstdint>
 export module util:utility.string;
 import :utility.constant_wrapper;
 import std;
@@ -8,23 +5,23 @@ import std;
 namespace util {
 
 // Helper to make `std::string_view` from a constant_wrapper or string literal
-export template <class Char, size_t Size>
+export template <class Char, std::size_t Size>
 struct consteval_string_view : public std::basic_string_view<Char> {
 		// NOLINTNEXTLINE(modernize-avoid-c-arrays)
 		constexpr explicit consteval_string_view(const Char (&string)[ Size + 1 ]) noexcept : std::basic_string_view<Char>{string, Size} {}
 };
 
-template <class Char, size_t Size>
+template <class Char, std::size_t Size>
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
 consteval_string_view(const Char (&string)[ Size ]) -> consteval_string_view<Char, Size - 1>;
 
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-template <class Char, size_t Extent, fixed_value<Char[ Extent ]> Value>
+template <class Char, std::size_t Extent, fixed_value<Char[ Extent ]> Value>
 consteval_string_view(util::constant_wrapper<Value>) -> consteval_string_view<Char, Extent - 1>;
 
 // Helper for `codepoint_char_sequence` which stores an array of the most characters it will take to
 // represent a codepoint in a given character type.
-template <class Char, size_t Extent>
+template <class Char, std::size_t Extent>
 class codepoint_char_container {
 	public:
 		using value_type = Char;
@@ -37,7 +34,7 @@ class codepoint_char_container {
 		[[nodiscard]] constexpr auto begin() const -> iterator { return chars_.begin(); }
 		[[nodiscard]] constexpr auto data() -> container_type& { return chars_; }
 		[[nodiscard]] constexpr auto end() const -> iterator { return std::ranges::find(chars_, char32_t{0}); }
-		[[nodiscard]] constexpr auto size() const -> size_t { return end() - begin(); }
+		[[nodiscard]] constexpr auto size() const -> std::size_t { return end() - begin(); }
 
 	private:
 		container_type chars_;
@@ -178,7 +175,7 @@ class codepoint_utf8_forward_view {
 		constexpr auto read() -> char32_t {
 			// Check the expected length of the byte sequence from the leading byte's bit pattern
 			auto sequence_length = [ & ]() -> unsigned {
-				auto byte0 = std::bit_cast<uint8_t>(*pos_);
+				auto byte0 = std::bit_cast<std::uint8_t>(*pos_);
 				if (byte0 < 0x80) {
 					return 1;
 				} else if (byte0 < 0xe0) {
@@ -203,7 +200,7 @@ class codepoint_utf8_forward_view {
 			std::array<Char, 4> characters{};
 			std::ranges::copy_n(pos_, sequence_length, characters.begin());
 			pos_ += sequence_length;
-			auto [ byte0, byte1, byte2, byte3 ] = std::bit_cast<std::array<uint8_t, 4>>(characters);
+			auto [ byte0, byte1, byte2, byte3 ] = std::bit_cast<std::array<std::uint8_t, 4>>(characters);
 
 			// Convert byte sequence to codepoint
 			switch (sequence_length) {
@@ -277,9 +274,9 @@ constexpr auto interpolate_string(std::basic_string_view<From> from) -> std::bas
 	// before.
 	// TODO: It may be worth looking at the generated code for common cases and seeing if it needs
 	// optimization.
-	auto size = [ & ]() -> size_t {
+	auto size = [ & ]() -> std::size_t {
 		auto size_reader = reader;
-		size_t size = 0;
+		std::size_t size = 0;
 		while (!size_reader.eof()) {
 			size += codepoint_char_range<To>{size_reader.read()}.size();
 		}
@@ -287,7 +284,7 @@ constexpr auto interpolate_string(std::basic_string_view<From> from) -> std::bas
 	}();
 
 	// Write string
-	result.resize_and_overwrite(size, [ & ](To* result, size_t /*length*/) -> size_t {
+	result.resize_and_overwrite(size, [ & ](To* result, std::size_t /*length*/) -> std::size_t {
 		auto first = result;
 		while (!reader.eof()) {
 			auto chunk = codepoint_char_range<To>{reader.read()};
@@ -300,7 +297,7 @@ constexpr auto interpolate_string(std::basic_string_view<From> from) -> std::bas
 };
 
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-export template <class To, class From, size_t Extent, fixed_value<From[ Extent ]> Value>
+export template <class To, class From, std::size_t Extent, fixed_value<From[ Extent ]> Value>
 constexpr auto interpolate_string(util::constant_wrapper<Value> /*cw*/) {
 	constexpr auto make = []() { return interpolate_string<To>(std::basic_string_view{Value.value, Extent - 1}); };
 	constexpr auto chars = [ = ]() {
@@ -308,7 +305,7 @@ constexpr auto interpolate_string(util::constant_wrapper<Value> /*cw*/) {
 		std::ranges::copy(make(), result.data());
 		return result;
 	}();
-	return [ = ]<size_t... Indices>(std::index_sequence<Indices...>) {
+	return [ = ]<std::size_t... Indices>(std::index_sequence<Indices...>) {
 		// NOLINTNEXTLINE(modernize-avoid-c-arrays)
 		constexpr To string[ chars.size() + 1 ] = {chars[ Indices ]..., 0};
 		return util::cw<string>;

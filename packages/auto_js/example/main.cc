@@ -37,7 +37,7 @@ class environment
 
 // ── Enum ──────────────────────────────────────────────────────────────────────
 // JavaScript sees string values "north" / "south" / "east" / "west".
-enum class direction : int8_t {
+enum class direction : std::int8_t {
 	north,
 	south,
 	east,
@@ -70,12 +70,12 @@ struct point {
 
 // Accessor-style — getter and setter functions instead of direct access.
 struct color_rgb {
-		uint32_t r{};
-		uint32_t g{};
-		uint32_t b{};
+		std::uint32_t r{};
+		std::uint32_t g{};
+		std::uint32_t b{};
 
-		auto get_r() const -> uint32_t { return r; }
-		auto set_r(uint32_t v) -> void { r = v; }
+		auto get_r() const -> std::uint32_t { return r; }
+		auto set_r(std::uint32_t v) -> void { r = v; }
 
 		constexpr static auto struct_template = js::struct_template{
 			js::struct_accessor{util::cw<"r">, util::fn<&color_rgb::get_r>, util::fn<&color_rgb::set_r>},
@@ -134,7 +134,7 @@ class canvas {
 
 		// Instance methods. The environment& parameter is optional; omit it if unused.
 		auto add(shape s) -> void { shapes_.push_back(std::move(s)); }
-		auto count() const -> int32_t { return static_cast<int32_t>(shapes_.size()); }
+		auto count() const -> std::int32_t { return static_cast<std::int32_t>(shapes_.size()); }
 		auto get_name() const -> std::u8string { return name_; }
 		auto get_created_at() const -> js::js_clock::time_point { return created_at_; }
 
@@ -177,18 +177,18 @@ auto echo_utf16(std::u16string s) -> std::u16string {
 }
 
 // Integrals: coerced from JS number; throws if out of range.
-auto add_ints(int32_t a, int32_t b) -> int32_t {
+auto add_ints(std::int32_t a, std::int32_t b) -> std::int32_t {
 	return a + b;
 }
-auto add_uints(uint32_t a, uint32_t b) -> uint32_t {
+auto add_uints(std::uint32_t a, std::uint32_t b) -> std::uint32_t {
 	return a + b;
 }
 auto negate_bool(bool v) -> bool {
 	return !v;
 }
 
-// Bigints: int64_t / uint64_t accept JS bigint values.
-auto bigint_add(int64_t a, int64_t b) -> int64_t {
+// Bigints: std::int64_t / std::uint64_t accept JS bigint values.
+auto bigint_add(std::int64_t a, std::int64_t b) -> std::int64_t {
 	return a + b;
 }
 

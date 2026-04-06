@@ -1,5 +1,3 @@
-module;
-#include <cstdint>
 export module v8_js:primitive;
 import :handle;
 import :lock;
@@ -23,9 +21,9 @@ export class number : public v8::Local<v8::Number> {
 				v8::Local<v8::Number>{handle} {}
 
 		[[nodiscard]] explicit operator double() const;
-		[[nodiscard]] explicit operator int32_t() const;
-		[[nodiscard]] explicit operator int64_t() const;
-		[[nodiscard]] explicit operator uint32_t() const;
+		[[nodiscard]] explicit operator std::int32_t() const;
+		[[nodiscard]] explicit operator std::int64_t() const;
+		[[nodiscard]] explicit operator std::uint32_t() const;
 };
 
 export class bigint : public v8::Local<v8::BigInt> {
@@ -35,21 +33,21 @@ export class bigint : public v8::Local<v8::BigInt> {
 
 		[[nodiscard]] explicit operator js::bigint() const;
 
-		static auto make(context_lock_witness lock, int64_t value) -> v8::Local<v8::BigInt>;
-		static auto make(context_lock_witness lock, uint64_t value) -> v8::Local<v8::BigInt>;
+		static auto make(context_lock_witness lock, std::int64_t value) -> v8::Local<v8::BigInt>;
+		static auto make(context_lock_witness lock, std::uint64_t value) -> v8::Local<v8::BigInt>;
 		static auto make(context_lock_witness lock, js::bigint value) -> v8::Local<v8::BigInt>;
 };
 
 export class bigint_u64 : public bigint {
 	public:
-		explicit bigint_u64(v8::Local<v8::BigInt> handle, uint64_t value) :
+		explicit bigint_u64(v8::Local<v8::BigInt> handle, std::uint64_t value) :
 				bigint{handle},
 				value_{value} {}
 
-		[[nodiscard]] explicit operator uint64_t() const;
+		[[nodiscard]] explicit operator std::uint64_t() const;
 
 	private:
-		uint64_t value_;
+		std::uint64_t value_;
 };
 
 export class string

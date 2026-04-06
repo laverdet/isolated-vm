@@ -1,5 +1,3 @@
-module;
-#include <cassert>
 export module napi_js:remote;
 import :api;
 import :environment;

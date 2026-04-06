@@ -1,5 +1,3 @@
-module;
-#include <cstdint>
 module napi_js;
 import :api;
 import :bound_value;
@@ -14,7 +12,7 @@ auto bound_value_for_vector::end() const -> iterator {
 	return {*this, size()};
 }
 
-auto bound_value_for_vector::size() const -> uint32_t {
+auto bound_value_for_vector::size() const -> std::uint32_t {
 	if (size_ == 0) {
 		size_ = napi::invoke(napi_get_array_length, env(), napi_value{*this}) + 1;
 	}

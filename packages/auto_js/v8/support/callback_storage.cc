@@ -1,5 +1,3 @@
-module;
-#include <cstdint>
 export module v8_js:callback_storage;
 import :collected_handle;
 import :lock;
@@ -47,12 +45,12 @@ auto make_callback_storage(const isolate_lock_witness_of<Agent, Implements...>& 
 			};
 			using trampoline_type = decltype(trampoline);
 			auto string_data =
-				unmaybe(v8::String::NewFromOneByte(lock.isolate(), reinterpret_cast<const uint8_t*>(&trampoline), v8::NewStringType::kNormal, sizeof(trampoline)));
+				unmaybe(v8::String::NewFromOneByte(lock.isolate(), reinterpret_cast<const std::uint8_t*>(&trampoline), v8::NewStringType::kNormal, sizeof(trampoline)));
 			const auto callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
 				// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 				std::array<std::byte, sizeof(trampoline_type)> data;
 				auto* isolate = info.GetIsolate();
-				info.Data().As<v8::String>()->WriteOneByteV2(isolate, 0, data.size(), reinterpret_cast<uint8_t*>(data.data()), v8::String::WriteFlags::kNone);
+				info.Data().As<v8::String>()->WriteOneByteV2(isolate, 0, data.size(), reinterpret_cast<std::uint8_t*>(data.data()), v8::String::WriteFlags::kNone);
 				std::bit_cast<trampoline_type>(data)(isolate, info);
 			}};
 			return std::tuple{callback, string_data};

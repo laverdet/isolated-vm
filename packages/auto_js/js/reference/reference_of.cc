@@ -1,5 +1,3 @@
-module;
-#include <cassert>
 export module auto_js:reference_of;
 import std;
 import util;

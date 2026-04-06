@@ -1,5 +1,3 @@
-module;
-#include <cstdint>
 export module auto_js:intrinsics.error;
 import :enum_.types;
 import std;
@@ -8,7 +6,7 @@ import util;
 namespace js {
 
 // Specified JavaScript error names
-export enum class error_name : uint8_t {
+export enum class error_name : std::uint8_t {
 	error,
 	eval_error,
 	range_error,

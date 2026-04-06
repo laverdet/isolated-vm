@@ -1,5 +1,3 @@
-module;
-#include <cstdint>
 module v8_js;
 import :handle;
 import :primitive;
@@ -18,15 +16,15 @@ number::operator double() const {
 	return (*this)->Value();
 }
 
-number::operator int32_t() const {
+number::operator std::int32_t() const {
 	return this->As<v8::Int32>()->Value();
 }
 
-number::operator int64_t() const {
+number::operator std::int64_t() const {
 	return this->As<v8::Integer>()->Value();
 }
 
-number::operator uint32_t() const {
+number::operator std::uint32_t() const {
 	return this->As<v8::Uint32>()->Value();
 }
 
@@ -43,11 +41,11 @@ bigint::operator js::bigint() const {
 	return bigint;
 }
 
-auto bigint::make(context_lock_witness lock, int64_t value) -> v8::Local<v8::BigInt> {
+auto bigint::make(context_lock_witness lock, std::int64_t value) -> v8::Local<v8::BigInt> {
 	return v8::BigInt::New(lock.isolate(), value);
 }
 
-auto bigint::make(context_lock_witness lock, uint64_t value) -> v8::Local<v8::BigInt> {
+auto bigint::make(context_lock_witness lock, std::uint64_t value) -> v8::Local<v8::BigInt> {
 	return v8::BigInt::NewFromUnsigned(lock.isolate(), value);
 }
 
@@ -55,7 +53,7 @@ auto bigint::make(context_lock_witness lock, js::bigint value) -> v8::Local<v8::
 	return unmaybe(v8::BigInt::NewFromWords(lock.context(), value.sign_bit(), static_cast<int>(value.size()), value.data()));
 }
 
-bigint_u64::operator uint64_t() const {
+bigint_u64::operator std::uint64_t() const {
 	return value_;
 }
 
@@ -63,7 +61,7 @@ bigint_u64::operator uint64_t() const {
 auto string::make(v8::Isolate* isolate, std::string_view view) -> v8::Local<v8::String> {
 	auto string = v8::String::NewFromOneByte(
 		isolate,
-		reinterpret_cast<const uint8_t*>(view.data()),
+		reinterpret_cast<const std::uint8_t*>(view.data()),
 		v8::NewStringType::kNormal,
 		static_cast<int>(view.size())
 	);
@@ -83,7 +81,7 @@ auto string::make(v8::Isolate* isolate, std::u8string_view view) -> v8::Local<v8
 auto string::make(v8::Isolate* isolate, std::u16string_view view) -> v8::Local<v8::String> {
 	auto string = v8::String::NewFromTwoByte(
 		isolate,
-		reinterpret_cast<const uint16_t*>(view.data()),
+		reinterpret_cast<const std::uint16_t*>(view.data()),
 		v8::NewStringType::kNormal,
 		static_cast<int>(view.size())
 	);
@@ -94,7 +92,7 @@ string::operator std::string() const {
 	std::string string;
 	string.resize_and_overwrite((*this)->Length(), [ this ](char* data, std::size_t length) -> std::size_t {
 		if (length > 0) {
-			auto* data_uint8 = reinterpret_cast<uint8_t*>(data);
+			auto* data_uint8 = reinterpret_cast<std::uint8_t*>(data);
 			(*this)->WriteOneByteV2(isolate(), 0, length, data_uint8, v8::String::WriteOptions::NO_NULL_TERMINATION);
 		}
 		return length;
@@ -118,7 +116,7 @@ string::operator std::u16string() const {
 	std::u16string string;
 	string.resize_and_overwrite((*this)->Length(), [ this ](char16_t* data, std::size_t length) -> std::size_t {
 		if (length > 0) {
-			auto* data_uint16 = reinterpret_cast<uint16_t*>(data);
+			auto* data_uint16 = reinterpret_cast<std::uint16_t*>(data);
 			(*this)->WriteV2(isolate(), 0, length, data_uint16, v8::String::WriteOptions::NO_NULL_TERMINATION);
 		}
 		return length;

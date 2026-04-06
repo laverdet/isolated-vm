@@ -1,5 +1,3 @@
-module;
-#include <cstdint>
 module napi_js;
 import :api;
 import :bound_value;
@@ -32,15 +30,15 @@ auto value_for_number::make(const environment& env, double number) -> value<numb
 	return value<number_tag>::from(napi::invoke(napi_create_double, napi_env{env}, number));
 }
 
-auto value_for_number::make(const environment& env, int32_t number) -> value<number_tag> {
+auto value_for_number::make(const environment& env, std::int32_t number) -> value<number_tag> {
 	return value<number_tag>::from(napi::invoke(napi_create_int32, napi_env{env}, number));
 }
 
-auto value_for_number::make(const environment& env, int64_t number) -> value<number_tag> {
+auto value_for_number::make(const environment& env, std::int64_t number) -> value<number_tag> {
 	return value<number_tag>::from(napi::invoke(napi_create_int64, napi_env{env}, number));
 }
 
-auto value_for_number::make(const environment& env, uint32_t number) -> value<number_tag> {
+auto value_for_number::make(const environment& env, std::uint32_t number) -> value<number_tag> {
 	return value<number_tag>::from(napi::invoke(napi_create_uint32, napi_env{env}, number));
 }
 
@@ -48,15 +46,15 @@ bound_value_for_number::operator double() const {
 	return napi::invoke(napi_get_value_double, env(), napi_value{*this});
 }
 
-bound_value_for_number::operator int32_t() const {
+bound_value_for_number::operator std::int32_t() const {
 	return napi::invoke(napi_get_value_int32, env(), napi_value{*this});
 }
 
-bound_value_for_number::operator int64_t() const {
+bound_value_for_number::operator std::int64_t() const {
 	return napi::invoke(napi_get_value_int64, env(), napi_value{*this});
 }
 
-bound_value_for_number::operator uint32_t() const {
+bound_value_for_number::operator std::uint32_t() const {
 	return napi::invoke(napi_get_value_uint32, env(), napi_value{*this});
 }
 
@@ -65,17 +63,17 @@ auto value_for_bigint::make(const environment& env, const bigint& number) -> val
 	return value<bigint_tag>::from(napi::invoke(napi_create_bigint_words, napi_env{env}, number.sign_bit(), number.size(), number.data()));
 }
 
-auto value_for_bigint::make(const environment& env, int64_t number) -> value<bigint_tag> {
+auto value_for_bigint::make(const environment& env, std::int64_t number) -> value<bigint_tag> {
 	return value<bigint_tag>::from(napi::invoke(napi_create_bigint_int64, napi_env{env}, number));
 }
 
-auto value_for_bigint::make(const environment& env, uint64_t number) -> value<bigint_tag> {
+auto value_for_bigint::make(const environment& env, std::uint64_t number) -> value<bigint_tag> {
 	return value<bigint_tag>::from(napi::invoke(napi_create_bigint_uint64, napi_env{env}, number));
 }
 
 bound_value_for_bigint::operator bigint() const {
 	js::bigint value;
-	auto one_word = uint64_t{};
+	auto one_word = std::uint64_t{};
 	auto length = std::size_t{1};
 	napi::invoke0(napi_get_value_bigint_words, env(), napi_value{*this}, &value.sign_bit(), &length, &one_word);
 	if (value.sign_bit() == 0 && length == 1) {
@@ -90,18 +88,18 @@ bound_value_for_bigint::operator bigint() const {
 	return value;
 }
 
-bound_value_for_bigint::operator int64_t() const {
+bound_value_for_bigint::operator std::int64_t() const {
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
-	int64_t value;
+	std::int64_t value;
 	// nb: `lossless` error not checked for consistency with `napi_get_value_int32`,
 	// `napi_get_value_string_latin1`, etc which don't return any errors.
 	napi::invoke(napi_get_value_bigint_int64, env(), napi_value{*this}, &value);
 	return value;
 }
 
-bound_value_for_bigint::operator uint64_t() const {
+bound_value_for_bigint::operator std::uint64_t() const {
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
-	uint64_t value;
+	std::uint64_t value;
 	napi::invoke(napi_get_value_bigint_uint64, env(), napi_value{*this}, &value);
 	return value;
 }

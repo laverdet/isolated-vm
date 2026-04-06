@@ -1,6 +1,5 @@
 module;
 #include <concepts>
-#include <cstddef>
 export module util:container.sealed_map;
 import :functional;
 import std;
@@ -9,7 +8,7 @@ namespace util {
 
 struct sorted_equivalent_t {};
 
-export template <class Key, class Type, size_t Size>
+export template <class Key, class Type, std::size_t Size>
 class sealed_map {
 	public:
 		using key_type = Key;
@@ -19,17 +18,17 @@ class sealed_map {
 	private:
 		// Holder for consteval'd key into the map
 		struct key_for {
-				using value_type = size_t;
+				using value_type = std::size_t;
 				constexpr key_for() :
 						index_{std::numeric_limits<value_type>::max()} {}
 				explicit constexpr key_for(auto index) :
 						index_{static_cast<value_type>(index)} {}
 
-				constexpr auto operator*() const -> size_t { return index_; }
+				constexpr auto operator*() const -> std::size_t { return index_; }
 				explicit constexpr operator bool() const { return index_ != std::numeric_limits<value_type>::max(); }
 
 			private:
-				size_t index_;
+				std::size_t index_;
 		};
 
 		// Check for duplicates
@@ -68,9 +67,9 @@ class sealed_map {
 					util::elide{[ & ]() -> container_type {
 						// Sort without invoking `operator()=`, which might not exist on the value type
 						auto entries = std::array<value_type, Size>{std::move(pairs)...};
-						auto indices = std::array<size_t, Size>{};
-						std::ranges::copy(std::ranges::iota_view{size_t{0}, Size}, indices.begin());
-						const auto projection = [ & ](size_t ii) -> const auto& { return entries.at(ii).first; };
+						auto indices = std::array<std::size_t, Size>{};
+						std::ranges::copy(std::ranges::iota_view{std::size_t{0}, Size}, indices.begin());
+						const auto projection = [ & ](std::size_t ii) -> const auto& { return entries.at(ii).first; };
 						std::ranges::sort(indices, std::less{}, projection);
 						const auto [... sorted_indices ] = indices;
 						return {value_type(std::move(entries.at(sorted_indices)))...};

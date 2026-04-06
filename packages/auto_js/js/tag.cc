@@ -90,7 +90,7 @@ struct array_buffer_view_tag : tag_of<object_tag> {};
 struct data_view_tag : tag_of<array_buffer_view_tag> {};
 
 // `TypeArray` subclasses
-// typed_array_tag_of<uint8_t> = Uint8Array
+// typed_array_tag_of<std::uint8_t> = Uint8Array
 // typed_array_tag_of<std::byte> = Uint8ClampedArray;
 // typed_array_tag_of<float> = Float32Array
 // typed_array_tag_of<double> = Float64Array

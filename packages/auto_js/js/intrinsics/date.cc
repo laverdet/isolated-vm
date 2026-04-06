@@ -7,8 +7,8 @@ import std;
 namespace js {
 
 // `Clock` implementation for JavaScript time. The point is to avoid casting from `double` to
-// `int64_t` where possible and still be able to use `clock_cast` when needed. The epochs are the
-// same so not much work is needed.
+// `std::int64_t` where possible and still be able to use `clock_cast` when needed. The epochs are
+// the same so not much work is needed.
 export class js_clock {
 	public:
 		using rep = double;

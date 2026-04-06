@@ -1,5 +1,3 @@
-module;
-#include <cstdint>
 export module util:utility.hash;
 import std;
 
@@ -7,11 +5,11 @@ namespace util {
 
 // `constexpr` hash for property lookup
 export template <class Char>
-constexpr auto fnv1a_hash(std::basic_string_view<Char> view) -> uint32_t {
-	constexpr uint32_t prime = 0x100'0193;
-	uint32_t hash = 0x811c'9dc5;
+constexpr auto fnv1a_hash(std::basic_string_view<Char> view) -> std::uint32_t {
+	constexpr std::uint32_t prime = 0x100'0193;
+	std::uint32_t hash = 0x811c'9dc5;
 	for (auto character : view) {
-		auto bytes = std::bit_cast<std::array<uint8_t, sizeof(Char)>>(character);
+		auto bytes = std::bit_cast<std::array<std::uint8_t, sizeof(Char)>>(character);
 		for (auto byte : bytes) {
 			hash = hash ^ byte;
 			hash *= prime;
@@ -22,8 +20,8 @@ constexpr auto fnv1a_hash(std::basic_string_view<Char> view) -> uint32_t {
 
 // constexpr `typeid(Type).hash_code()` replacement
 template <class Type>
-consteval auto make_type_hash() -> uint32_t {
-	// "uint32_t make_type_hash() [Type = int]"
+consteval auto make_type_hash() -> std::uint32_t {
+	// "std::uint32_t make_type_hash() [Type = int]"
 	constexpr auto name = std::source_location::current().function_name();
 	return fnv1a_hash(std::string_view{name});
 }

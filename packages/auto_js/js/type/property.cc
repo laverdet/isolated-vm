@@ -1,6 +1,5 @@
 module;
 #include "auto_js/no_unique_address.h"
-#include <cstdint>
 export module auto_js:property;
 import std;
 import util;
@@ -14,14 +13,14 @@ export struct optional_constructible {
 };
 
 // Properties are either accessors or values
-export enum class property_disposition : uint8_t {
+export enum class property_disposition : std::uint8_t {
 	accessor,
 	function,
 	value,
 };
 
 // Whether a property is static (on the constructor) or on the prototype (instance).
-export enum class class_property_scope : uint8_t {
+export enum class class_property_scope : std::uint8_t {
 	constructor,
 	prototype,
 };

@@ -176,9 +176,10 @@ jobs:
           MSVC_PATH="$VISUAL_STUDIO_PATH/VC/Tools/MSVC/$(ls "$VISUAL_STUDIO_PATH/VC/Tools/MSVC" | sort -V | tail -1)"
 
           # Make the `import std` interface manifest
-          MODULES_FRAGMENT='{ "logical-name": "std", "source-path": "'"$(cygpath -w "$MSVC_PATH/modules/std.ixx" | sed 's \\ \\\\\\\\ g')"'", "is-std-library": true }'
+          MODULES_STD_FRAGMENT='{ "logical-name": "std", "source-path": "'"$(cygpath -w "$MSVC_PATH/modules/std.ixx" | sed 's \\ \\\\\\\\ g')"'", "is-std-library": true }'
+          MODULES_STD_COMPAT_FRAGMENT='{ "logical-name": "std", "source-path": "'"$(cygpath -w "$MSVC_PATH/modules/std.compat.ixx" | sed 's \\ \\\\\\\\ g')"'", "is-std-library": true }'
           ARGUMENTS_FRAGMENT='"local-arguments": { "system-include-directories": [ "'"$MSVC_PATH/modules"'" ] }'
-          MANIFEST_JSON='{ "version": 1, "revision": 1, "modules": [ '"$MODULES_FRAGMENT"' ], '"$ARGUMENTS_FRAGMENT"' }'
+          MANIFEST_JSON='{ "version": 1, "revision": 1, "modules": [ '"$MODULES_STD_FRAGMENT"', '"$MODULES_STD_COMPAT_FRAGMENT"' ], '"$ARGUMENTS_FRAGMENT"' }'
           echo "$MANIFEST_JSON" > ms-stl.modules.json
 
           # Patch cmake

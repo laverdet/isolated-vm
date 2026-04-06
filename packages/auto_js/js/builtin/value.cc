@@ -1,5 +1,3 @@
-module;
-#include <cstdint>
 export module auto_js:value;
 export import :intrinsics.array_buffer;
 export import :intrinsics.bigint;
@@ -14,7 +12,7 @@ namespace js {
 // Result of `typeof` operator
 // nb: If you name it `typeof`, which is a totally valid C++ identifier, then clang-tidy can't
 // handle it and puts spaces everywhere.
-export enum class typeof_kind : uint8_t {
+export enum class typeof_kind : std::uint8_t {
 	bigint,
 	boolean,
 	function,
@@ -42,10 +40,10 @@ using variant_value = std::variant<
 	bool,
 	// number
 	reference_of<double>,
-	int32_t,
+	std::int32_t,
 	// bigint
 	reference_of<bigint>,
-	reference_of<uint64_t>,
+	reference_of<std::uint64_t>,
 	// strings
 	reference_of<std::u16string>,
 	reference_of<std::string>,
@@ -60,15 +58,15 @@ using variant_value = std::variant<
 	// typed arrays & data view
 	reference_of<typed_array<double>>,
 	reference_of<typed_array<float>>,
-	reference_of<typed_array<int16_t>>,
-	reference_of<typed_array<int32_t>>,
-	reference_of<typed_array<int64_t>>,
-	reference_of<typed_array<int8_t>>,
+	reference_of<typed_array<std::int16_t>>,
+	reference_of<typed_array<std::int32_t>>,
+	reference_of<typed_array<std::int64_t>>,
+	reference_of<typed_array<std::int8_t>>,
 	reference_of<typed_array<std::byte>>,
-	reference_of<typed_array<uint16_t>>,
-	reference_of<typed_array<uint32_t>>,
-	reference_of<typed_array<uint64_t>>,
-	reference_of<typed_array<uint8_t>>
+	reference_of<typed_array<std::uint16_t>>,
+	reference_of<typed_array<std::uint32_t>>,
+	reference_of<typed_array<std::uint64_t>>,
+	reference_of<typed_array<std::uint8_t>>
 	// reference_of<typed_array<void>>
 	// ---
 	>;

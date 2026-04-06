@@ -1,5 +1,3 @@
-module;
-#include <cassert>
 module v8_js;
 import :error;
 import std;

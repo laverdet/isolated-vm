@@ -1,6 +1,5 @@
 module;
 #include <concepts>
-#include <cstdint>
 export module v8_js:accept;
 import :hash;
 import :lock;
@@ -52,12 +51,12 @@ struct accept_v8_primitive {
 			return v8::Number::New(isolate_, double{std::forward<decltype(subject)>(subject)});
 		}
 
-		auto operator()(number_tag_of<int32_t> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> v8::Local<v8::Number> {
-			return v8::Int32::New(isolate_, int32_t{std::forward<decltype(subject)>(subject)});
+		auto operator()(number_tag_of<std::int32_t> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> v8::Local<v8::Number> {
+			return v8::Int32::New(isolate_, std::int32_t{std::forward<decltype(subject)>(subject)});
 		}
 
-		auto operator()(number_tag_of<uint32_t> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> v8::Local<v8::Number> {
-			return v8::Int32::NewFromUnsigned(isolate_, uint32_t{std::forward<decltype(subject)>(subject)});
+		auto operator()(number_tag_of<std::uint32_t> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> v8::Local<v8::Number> {
+			return v8::Int32::NewFromUnsigned(isolate_, std::uint32_t{std::forward<decltype(subject)>(subject)});
 		}
 
 		// string

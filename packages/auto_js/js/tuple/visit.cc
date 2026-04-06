@@ -1,5 +1,3 @@
-module;
-#include <cstddef>
 export module auto_js:tuple.visit;
 import :transfer;
 import std;
@@ -7,7 +5,7 @@ import util;
 
 namespace js {
 
-template <class Meta, size_t Offset, class... Types>
+template <class Meta, std::size_t Offset, class... Types>
 struct visit_tuple_of {
 	private:
 		using visitors_type = std::tuple<visit<Meta, std::remove_cvref_t<Types>>...>;
@@ -19,8 +17,8 @@ struct visit_tuple_of {
 					return {util::elide(util::constructor<std::tuple_element_t<indices, visitors_type>>, transfer)...};
 				}()} {}
 
-		template <size_t Index, class Accept>
-		constexpr auto operator()(std::integral_constant<size_t, Index> /*index*/, auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
+		template <std::size_t Index, class Accept>
+		constexpr auto operator()(std::integral_constant<std::size_t, Index> /*index*/, auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
 			return std::get<Index>(visit_)(std::get<Index + Offset>(std::forward<decltype(subject)>(subject)), accept);
 		}
 

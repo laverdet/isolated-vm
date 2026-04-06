@@ -1,5 +1,3 @@
-module;
-#include <cstdint>
 export module v8_js:isolated.platform;
 import :platform.delegate;
 import std;
@@ -13,7 +11,7 @@ class isolated_agent_delegate
 			public platform::instrumentation_delegate,
 			public platform::platform_entropy_delegate<isolated_agent_delegate> {
 	public:
-		auto CurrentClockTimeMilliseconds() -> int64_t override;
+		auto CurrentClockTimeMilliseconds() -> std::int64_t override;
 		auto CurrentClockTimeMillis() -> double override;
 		auto GetForegroundTaskRunner(v8::Isolate* isolate, v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner> override;
 

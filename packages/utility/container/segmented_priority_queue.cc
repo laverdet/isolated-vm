@@ -1,5 +1,3 @@
-module;
-#include <cstddef>
 export module util:container.segmented_priority_queue;
 import std;
 
@@ -21,7 +19,7 @@ class ratchet_span : public std::span<Type> {
 };
 
 // N number of queues, which tracks which ones currently may have elements
-export template <class Queue, size_t Size>
+export template <class Queue, std::size_t Size>
 class segmented_priority_queue {
 	public:
 		using container_type = Queue;
@@ -30,7 +28,7 @@ class segmented_priority_queue {
 
 		[[nodiscard]] auto containers() const -> std::span<const container_type> { return not_empty_; }
 		[[nodiscard]] auto empty() const -> bool { return std::ranges::all_of(containers(), &Queue::empty); }
-		[[nodiscard]] auto size() const -> size_t { return std::ranges::fold_left(containers(), 0UZ, std::plus{}, &Queue::size); }
+		[[nodiscard]] auto size() const -> std::size_t { return std::ranges::fold_left(containers(), 0UZ, std::plus{}, &Queue::size); }
 		auto at(unsigned priority) -> container_type&;
 		auto at(unsigned priority) const -> const container_type& { return queues_.at(priority); }
 		auto containers() -> std::span<container_type> { return not_empty_; }
@@ -75,7 +73,7 @@ auto ratchet_span<Type>::make_iterator(auto it) -> iterator {
 }
 
 // `segmented_priority_queue`
-template <class Queue, size_t Size>
+template <class Queue, std::size_t Size>
 auto segmented_priority_queue<Queue, Size>::at(unsigned priority) -> container_type& {
 	// We don't know what you're about to do with it, so assume that it will gain an element
 	auto& queue = queues_.at(priority);
@@ -83,7 +81,7 @@ auto segmented_priority_queue<Queue, Size>::at(unsigned priority) -> container_t
 	return queue;
 }
 
-template <class Queue, size_t Size>
+template <class Queue, std::size_t Size>
 auto segmented_priority_queue<Queue, Size>::pop() -> void {
 	for (auto& queue : not_empty_) {
 		if (queue.empty()) {

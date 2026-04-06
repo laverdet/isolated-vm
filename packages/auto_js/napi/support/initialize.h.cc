@@ -1,5 +1,3 @@
-module;
-#include <cassert>
 export module napi_js:initialize;
 import :environment;
 import :value;

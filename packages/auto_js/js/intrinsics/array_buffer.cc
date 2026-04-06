@@ -1,5 +1,3 @@
-module;
-#include <cstddef>
 export module auto_js:intrinsics.array_buffer;
 import :reference_of;
 import std;
@@ -15,11 +13,11 @@ class data_block {
 		constexpr static auto max_align_v = 8;
 
 		data_block() = default;
-		explicit data_block(size_t byte_length) : byte_length_{byte_length} {}
-		[[nodiscard]] constexpr auto size() const -> size_t { return byte_length_; }
+		explicit data_block(std::size_t byte_length) : byte_length_{byte_length} {}
+		[[nodiscard]] constexpr auto size() const -> std::size_t { return byte_length_; }
 
 	private:
-		size_t byte_length_{};
+		std::size_t byte_length_{};
 };
 
 // `ArrayBuffer`
@@ -79,7 +77,7 @@ export class shared_array_buffer : public data_block {
 		shared_array_buffer() = default;
 
 		// from existing data block
-		explicit constexpr shared_array_buffer(size_t byte_length, shared_pointer_type data) :
+		explicit constexpr shared_array_buffer(std::size_t byte_length, shared_pointer_type data) :
 				data_block{byte_length},
 				data_{std::move(data)} {}
 
@@ -114,19 +112,19 @@ class typed_array {
 		typed_array() = default;
 
 		// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-		typed_array(data_block_variant buffer, size_t byte_offset, size_t length) :
+		typed_array(data_block_variant buffer, std::size_t byte_offset, std::size_t length) :
 				data_{buffer},
 				byte_offset_{byte_offset},
 				length_{length} {}
 
 		[[nodiscard]] constexpr auto buffer() && -> data_block_variant { return data_; }
-		[[nodiscard]] constexpr auto byte_offset() const -> size_t { return byte_offset_; }
-		[[nodiscard]] constexpr auto size() const -> size_t { return length_; }
+		[[nodiscard]] constexpr auto byte_offset() const -> std::size_t { return byte_offset_; }
+		[[nodiscard]] constexpr auto size() const -> std::size_t { return length_; }
 
 	private:
 		data_block_variant data_;
-		size_t byte_offset_{};
-		size_t length_{};
+		std::size_t byte_offset_{};
+		std::size_t length_{};
 };
 
 } // namespace js

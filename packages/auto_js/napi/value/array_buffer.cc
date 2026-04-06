@@ -1,5 +1,3 @@
-module;
-#include <cstddef>
 module napi_js;
 import :api;
 import :array_buffer;
@@ -31,7 +29,7 @@ bound_value_for_array_buffer::operator std::span<std::byte>() const {
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	void* bytes;
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
-	size_t byte_length;
+	std::size_t byte_length;
 	napi::invoke0(napi_get_arraybuffer_info, env(), napi_value{*this}, &bytes, &byte_length);
 	return std::span<std::byte>{reinterpret_cast<std::byte*>(bytes), byte_length};
 }
@@ -43,7 +41,7 @@ auto value_for_shared_array_buffer::make(const environment& /*env*/, js::shared_
 	auto backing_store = v8::SharedArrayBuffer::NewBackingStore(
 		holder->get(),
 		byte_length,
-		[](void* /*data*/, size_t /*length*/, void* param) -> void {
+		[](void* /*data*/, std::size_t /*length*/, void* param) -> void {
 			delete static_cast<js::shared_array_buffer::shared_pointer_type*>(param);
 		},
 		holder.get()
@@ -59,7 +57,7 @@ bound_value_for_shared_array_buffer::operator js::shared_array_buffer() const {
 }
 
 // `value_for_typed_array`
-auto value_for_typed_array::make(const environment& /*env*/, napi_typedarray_type type_tag, value<object_tag> buffer, size_t byte_offset, size_t length) -> value<object_tag> {
+auto value_for_typed_array::make(const environment& /*env*/, napi_typedarray_type type_tag, value<object_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<object_tag> {
 	const auto make = [ & ]<class Type>(std::type_identity<Type> /*type*/) -> value<object_tag> {
 		auto buffer_local = std::bit_cast<v8::Local<v8::Object>>(napi_value{buffer});
 		auto typed_array_local = [ & ]() -> v8::Local<Type> {
@@ -96,7 +94,7 @@ bound_value_for_typed_array::bound_value_for_typed_array(napi_env env, value<obj
 }
 
 // `value_for_data_view`
-auto value_for_data_view::make(const environment& env, value<object_tag> buffer, size_t byte_offset, size_t length) -> value<data_view_tag> {
+auto value_for_data_view::make(const environment& env, value<object_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<data_view_tag> {
 	return value<data_view_tag>::from(napi::invoke(napi_create_dataview, napi_env{env}, length, napi_value{buffer}, byte_offset));
 }
 

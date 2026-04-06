@@ -1,5 +1,3 @@
-module;
-#include <cstdint>
 export module napi_js:array_buffer;
 import :bound_value;
 import :object;
@@ -57,15 +55,15 @@ class value_for_typed_array_of
 			constexpr auto get_array_buffer_type_tag = util::overloaded{
 				[](std::type_identity<double>) -> napi_typedarray_type { return napi_float64_array; },
 				[](std::type_identity<float>) -> napi_typedarray_type { return napi_float32_array; },
-				[](std::type_identity<int16_t>) -> napi_typedarray_type { return napi_int16_array; },
-				[](std::type_identity<int32_t>) -> napi_typedarray_type { return napi_int32_array; },
-				[](std::type_identity<int64_t>) -> napi_typedarray_type { return napi_bigint64_array; },
-				[](std::type_identity<int8_t>) -> napi_typedarray_type { return napi_int8_array; },
+				[](std::type_identity<std::int16_t>) -> napi_typedarray_type { return napi_int16_array; },
+				[](std::type_identity<std::int32_t>) -> napi_typedarray_type { return napi_int32_array; },
+				[](std::type_identity<std::int64_t>) -> napi_typedarray_type { return napi_bigint64_array; },
+				[](std::type_identity<std::int8_t>) -> napi_typedarray_type { return napi_int8_array; },
 				[](std::type_identity<std::byte>) -> napi_typedarray_type { return napi_uint8_clamped_array; },
-				[](std::type_identity<uint16_t>) -> napi_typedarray_type { return napi_uint16_array; },
-				[](std::type_identity<uint32_t>) -> napi_typedarray_type { return napi_uint32_array; },
-				[](std::type_identity<uint64_t>) -> napi_typedarray_type { return napi_biguint64_array; },
-				[](std::type_identity<uint8_t>) -> napi_typedarray_type { return napi_uint8_array; },
+				[](std::type_identity<std::uint16_t>) -> napi_typedarray_type { return napi_uint16_array; },
+				[](std::type_identity<std::uint32_t>) -> napi_typedarray_type { return napi_uint32_array; },
+				[](std::type_identity<std::uint64_t>) -> napi_typedarray_type { return napi_biguint64_array; },
+				[](std::type_identity<std::uint8_t>) -> napi_typedarray_type { return napi_uint8_array; },
 			};
 			auto type_tag = get_array_buffer_type_tag(type<Type>);
 			return value<typed_array_tag_of<Type>>::from(value_for_typed_array::make(env, type_tag, buffer, byte_offset, length));

@@ -1,6 +1,5 @@
 module;
 #include <concepts>
-#include <cstdint>
 export module auto_js:builtin.visit;
 import :intrinsics.array_buffer;
 import :intrinsics.bigint;
@@ -53,20 +52,20 @@ template <>
 struct visit<void, double> : visit_value_tagged<number_tag_of<double>> {};
 
 template <>
-struct visit<void, int32_t> : visit_value_tagged<number_tag_of<int32_t>> {};
+struct visit<void, std::int32_t> : visit_value_tagged<number_tag_of<std::int32_t>> {};
 
 template <>
-struct visit<void, uint32_t> : visit_value_tagged<number_tag_of<uint32_t>> {};
+struct visit<void, std::uint32_t> : visit_value_tagged<number_tag_of<std::uint32_t>> {};
 
 // `bigint`
 template <>
 struct visit<void, bigint> : visit_value_tagged<bigint_tag_of<bigint>> {};
 
 template <>
-struct visit<void, int64_t> : visit_value_tagged<bigint_tag_of<int64_t>> {};
+struct visit<void, std::int64_t> : visit_value_tagged<bigint_tag_of<std::int64_t>> {};
 
 template <>
-struct visit<void, uint64_t> : visit_value_tagged<bigint_tag_of<uint64_t>> {};
+struct visit<void, std::uint64_t> : visit_value_tagged<bigint_tag_of<std::uint64_t>> {};
 
 // `date`
 template <>

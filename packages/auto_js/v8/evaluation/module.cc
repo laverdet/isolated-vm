@@ -1,6 +1,5 @@
 module;
 #include "auto_js/chunk_view.h"
-#include <cassert>
 module v8_js;
 import :error;
 import :evaluation.module_record;

@@ -1,5 +1,4 @@
 module;
-#include <cstdint>
 #include <iterator>
 export module v8_js:array;
 import :handle;
@@ -26,21 +25,21 @@ export class array
 
 		[[nodiscard]] auto begin() const -> iterator;
 		[[nodiscard]] auto end() const -> iterator;
-		[[nodiscard]] auto size() const -> uint32_t;
+		[[nodiscard]] auto size() const -> std::uint32_t;
 
 	private:
-		mutable uint32_t length_{};
+		mutable std::uint32_t length_{};
 };
 
-class array::iterator : public util::random_access_iterator_facade<int32_t, int64_t> {
+class array::iterator : public util::random_access_iterator_facade<std::int32_t, std::int64_t> {
 	public:
 		using arithmetic_facade::operator+;
 		using difference_type = random_access_iterator_facade::difference_type;
-		using size_type = uint32_t;
+		using size_type = std::uint32_t;
 		using value_type = array::value_type;
 
 		iterator() = default;
-		iterator(v8::Local<v8::Array> array, v8::Local<v8::Context> context, uint32_t index);
+		iterator(v8::Local<v8::Array> array, v8::Local<v8::Context> context, std::uint32_t index);
 
 		auto operator*() const -> value_type;
 		auto operator+=(difference_type offset) -> iterator&;
@@ -52,7 +51,7 @@ class array::iterator : public util::random_access_iterator_facade<int32_t, int6
 
 		v8::Local<v8::Array> array_;
 		v8::Local<v8::Context> context_;
-		uint32_t index_{};
+		std::uint32_t index_{};
 };
 
 static_assert(std::ranges::range<array>);

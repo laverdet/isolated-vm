@@ -1,5 +1,3 @@
-module;
-#include <cstdint>
 export module auto_js:builtin.accept;
 import :intrinsics.array_buffer;
 import :intrinsics.bigint;
@@ -90,20 +88,20 @@ template <>
 struct accept<void, double> : accept_coerced<number_tag_of, double, double> {};
 
 template <>
-struct accept<void, int32_t> : accept_coerced<number_tag_of, double, int32_t> {};
+struct accept<void, std::int32_t> : accept_coerced<number_tag_of, double, std::int32_t> {};
 
 template <>
-struct accept<void, uint32_t> : accept_coerced<number_tag_of, double, uint32_t> {};
+struct accept<void, std::uint32_t> : accept_coerced<number_tag_of, double, std::uint32_t> {};
 
 // `bigint` types
 template <>
 struct accept<void, bigint> : accept_coerced<bigint_tag_of, bigint, bigint> {};
 
 template <>
-struct accept<void, int64_t> : accept_coerced<bigint_tag_of, bigint, int64_t> {};
+struct accept<void, std::int64_t> : accept_coerced<bigint_tag_of, bigint, std::int64_t> {};
 
 template <>
-struct accept<void, uint64_t> : accept_coerced<bigint_tag_of, bigint, uint64_t> {};
+struct accept<void, std::uint64_t> : accept_coerced<bigint_tag_of, bigint, std::uint64_t> {};
 
 // `date`
 template <>

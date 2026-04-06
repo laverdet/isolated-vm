@@ -1,6 +1,5 @@
 module;
 #include <concepts>
-#include <cstddef>
 export module auto_js:reference.accept;
 import :referential_value;
 import :transfer;
@@ -139,7 +138,7 @@ struct accept_referential_value_of<Meta, Value, util::type_pack<Refs...>>
 		using storage_type = reference_storage<Refs...>;
 		using accept_type = accept<Meta, value_of_type>;
 
-		template <size_t... Indices>
+		template <std::size_t... Indices>
 		constexpr explicit accept_referential_value_of(auto* transfer, std::index_sequence<Indices...> /*indices*/) :
 				accept_type{transfer},
 				accept_reference_of<Meta, Refs>{transfer, Indices}... {}
@@ -164,7 +163,7 @@ struct accept_referential_value_of<Meta, Value, util::type_pack<Refs...>>
 
 		// reference provider
 		constexpr auto operator()(std::type_identity<value_type> /*type*/, accepted_reference reference) const -> value_type {
-			const auto reaccept = [ = ]<size_t Index>(std::integral_constant<size_t, Index> /*index*/) -> value_type {
+			const auto reaccept = [ = ]<std::size_t Index>(std::integral_constant<std::size_t, Index> /*index*/) -> value_type {
 				using mapped_reference_type = reference_of<Refs...[ Index ]>;
 				return value_type{std::in_place, mapped_reference_type{reference.id()}};
 			};

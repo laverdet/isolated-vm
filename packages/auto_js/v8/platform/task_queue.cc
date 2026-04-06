@@ -1,5 +1,4 @@
 module;
-#include <cassert>
 #include <compare>
 export module v8_js:platform.task_queue;
 export import :platform.task;

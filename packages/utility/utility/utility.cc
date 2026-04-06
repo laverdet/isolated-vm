@@ -38,7 +38,7 @@ export class non_moveable {
 export template <std::size_t Size>
 constexpr auto sequence = []() consteval -> auto {
 	// With C++26 P2686 we can do constexpr decomposition. So instead of the `tuple` of
-	// `integral_constants` it can be an array of `size_t`.
+	// `integral_constants` it can be an array of `std::size_t`.
 	// https://clang.llvm.org/cxx_status.html
 
 	// std::array<std::size_t, Size> result{};

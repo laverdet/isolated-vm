@@ -1,5 +1,3 @@
-module;
-#include <cstddef>
 export module v8_js:array_buffer;
 import :handle;
 import :lock;
@@ -17,7 +15,7 @@ export class array_buffer : public v8::Local<v8::ArrayBuffer> {
 				v8::Local<v8::ArrayBuffer>{handle} {}
 
 		[[nodiscard]] auto data() const -> std::byte* { return static_cast<std::byte*>((*this)->Data()); }
-		[[nodiscard]] auto size() const -> size_t { return (*this)->ByteLength(); }
+		[[nodiscard]] auto size() const -> std::size_t { return (*this)->ByteLength(); }
 		explicit operator js::array_buffer() const;
 		explicit operator std::span<std::byte>() const;
 };
@@ -29,7 +27,7 @@ export class shared_array_buffer : public v8::Local<v8::SharedArrayBuffer> {
 				v8::Local<v8::SharedArrayBuffer>{handle} {}
 
 		[[nodiscard]] auto data() const -> std::byte* { return static_cast<std::byte*>((*this)->Data()); }
-		[[nodiscard]] auto size() const -> size_t { return (*this)->ByteLength(); }
+		[[nodiscard]] auto size() const -> std::size_t { return (*this)->ByteLength(); }
 		explicit operator js::shared_array_buffer() const;
 		explicit operator std::span<std::byte>() const;
 };
@@ -44,9 +42,9 @@ class array_buffer_view : public v8::Local<Type> {
 		// nb: It could be a `v8::Local<v8::SharedArrayBuffer>` ::shrug::
 		[[nodiscard]] auto buffer() const -> v8::Local<v8::ArrayBuffer> { return (*this)->Buffer(); }
 
-		[[nodiscard]] auto byte_offset() const -> size_t { return (*this)->ByteOffset(); }
+		[[nodiscard]] auto byte_offset() const -> std::size_t { return (*this)->ByteOffset(); }
 
-		[[nodiscard]] auto size() const -> size_t {
+		[[nodiscard]] auto size() const -> std::size_t {
 			if constexpr (type<Type> == type<v8::DataView>) {
 				return (*this)->ByteLength();
 			} else {

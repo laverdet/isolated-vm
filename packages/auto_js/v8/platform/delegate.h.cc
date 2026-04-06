@@ -1,6 +1,3 @@
-module;
-#include <cassert>
-#include <cstddef>
 export module v8_js:platform.delegate;
 import :platform.worker_runner;
 import std;
@@ -56,7 +53,7 @@ class entropy_delegate_initializer : util::non_copyable {
 		explicit entropy_delegate_initializer(v8::EntropySource source);
 		~entropy_delegate_initializer();
 
-		static auto fill_random_bytes(unsigned char* buffer, size_t length) -> bool;
+		static auto fill_random_bytes(unsigned char* buffer, std::size_t length) -> bool;
 };
 
 export template <class Delegate>
@@ -66,7 +63,7 @@ class platform_entropy_delegate : public entropy_delegate_initializer {
 		platform_entropy_delegate() : entropy_delegate_initializer{entropy_source} {}
 
 	private:
-		static auto entropy_source(unsigned char* buffer, size_t length) -> bool;
+		static auto entropy_source(unsigned char* buffer, std::size_t length) -> bool;
 };
 
 // Instrumentation and tracing
@@ -93,7 +90,7 @@ auto platform_handle::acquire() -> platform_handle {
 }
 
 template <class Delegate>
-auto platform_entropy_delegate<Delegate>::entropy_source(unsigned char* buffer, size_t length) -> bool {
+auto platform_entropy_delegate<Delegate>::entropy_source(unsigned char* buffer, std::size_t length) -> bool {
 	if (auto* isolate = v8::Isolate::TryGetCurrent()) {
 		if (Delegate::fill_random_bytes_for_isolate(isolate, buffer, length)) {
 			return true;

@@ -1,5 +1,3 @@
-module;
-#include <cassert>
 export module v8_js:platform.worker_runner;
 import :platform.scheduler;
 import :platform.task_queue;

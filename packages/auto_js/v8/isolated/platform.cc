@@ -1,6 +1,3 @@
-module;
-#include <cstdint>
-#include <cstring>
 module v8_js;
 import :isolated.agent;
 import :isolated.platform;
@@ -12,12 +9,12 @@ auto isolated_agent_delegate::GetForegroundTaskRunner(v8::Isolate* isolate, v8::
 	return agent_host::get_current(isolate).task_runner(priority);
 }
 
-auto isolated_agent_delegate::CurrentClockTimeMilliseconds() -> int64_t {
+auto isolated_agent_delegate::CurrentClockTimeMilliseconds() -> std::int64_t {
 	return std::visit(
-		[](auto& clock) -> int64_t {
+		[](auto& clock) -> std::int64_t {
 			auto unix_time = std::chrono::system_clock::time_point{clock.clock_time()};
 			auto ms_time = duration_cast<milliseconds>(unix_time.time_since_epoch());
-			return static_cast<int64_t>(ms_time.count());
+			return static_cast<std::int64_t>(ms_time.count());
 		},
 		agent_host::get_current(v8::Isolate::GetCurrent()).clock()
 	);
@@ -28,11 +25,11 @@ auto isolated_agent_delegate::CurrentClockTimeMillis() -> double {
 }
 
 auto isolated_agent_delegate::fill_random_bytes_for_isolate(v8::Isolate* isolate, unsigned char* buffer, std::size_t length) -> bool {
-	if (length == sizeof(int64_t)) {
+	if (length == sizeof(std::int64_t)) {
 		auto& host = agent_host::get_current(isolate);
 		auto seed = host.take_random_seed();
 		if (seed) {
-			std::memcpy(buffer, &seed.value(), sizeof(int64_t));
+			std::memcpy(buffer, &seed.value(), sizeof(std::int64_t));
 			return true;
 		}
 	}

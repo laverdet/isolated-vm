@@ -1,5 +1,3 @@
-module;
-#include <cstdint>
 export module napi_js:array;
 import :bound_value;
 import :object;
@@ -18,17 +16,17 @@ class bound_value_for_vector : public bound_value_next<vector_tag> {
 
 		[[nodiscard]] auto begin() const -> iterator;
 		[[nodiscard]] auto end() const -> iterator;
-		[[nodiscard]] auto size() const -> uint32_t;
+		[[nodiscard]] auto size() const -> std::uint32_t;
 
 	private:
-		mutable uint32_t size_{};
+		mutable std::uint32_t size_{};
 };
 
-class bound_value_for_vector::iterator : public util::random_access_iterator_facade<int32_t, int64_t> {
+class bound_value_for_vector::iterator : public util::random_access_iterator_facade<std::int32_t, std::int64_t> {
 	public:
 		using arithmetic_facade::operator+;
 		using difference_type = arithmetic_facade::difference_type;
-		using size_type = uint32_t;
+		using size_type = std::uint32_t;
 		using value_type = bound_value_for_vector::value_type;
 
 		iterator() = default;
