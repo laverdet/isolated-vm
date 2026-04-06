@@ -34,7 +34,7 @@ auto runtime_interface::instantiate(js::iv8::context_lock_witness lock) -> v8::L
 	};
 	auto origin = std::u16string{u"isolated-vm://runtime"};
 	auto interface = js::iv8::module_record::create_synthetic(lock, make_interface(), std::move(origin));
-	auto runtime = js::iv8::module_record::compile(lock, util::consteval_string_view{runtime_dist_interface_js}, js::iv8::source_origin{}).value();
+	auto runtime = js::iv8::module_record::compile(lock, util::make_consteval_string_view(runtime_dist_interface_js), js::iv8::source_origin{}).value();
 	auto link_record = js::iv8::module_link_record{
 		.modules = {runtime, interface},
 		.payload = {1, 1, 0},

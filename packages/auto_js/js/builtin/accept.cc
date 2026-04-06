@@ -141,12 +141,12 @@ struct accept_coerced_string {
 
 		template <class Subject>
 		constexpr auto coerce(std::basic_string_view<Subject> subject) const -> value_type {
-			return util::interpolate_string<Char>(subject);
+			return util::transcode_string<Char>(subject);
 		}
 
 		template <class Subject, auto Value>
 		constexpr auto coerce(util::constant_wrapper<Value> subject) const -> value_type {
-			return util::interpolate_string<Char>(subject);
+			return util::transcode_string<Char>(subject);
 		}
 };
 

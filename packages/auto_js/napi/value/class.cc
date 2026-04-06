@@ -72,7 +72,7 @@ auto value_for_class_of<Type>::make(Environment& env, const auto& class_template
 	// Member function property descriptor
 	const auto make_member_function_descriptor = [ & ]<class Property>(const Property& property) -> napi_property_descriptor
 		requires(Property::scope == class_property_scope::prototype) {
-			constexpr auto u8_name = util::consteval_string_view{util::interpolate_string<char>(property.name)};
+			constexpr auto u8_name = util::make_consteval_string_view(util::transcode_string<char>(property.name));
 			auto [ callback, data ] = make_callback_storage(env, make_member_function<Environment, Type>(property.function));
 			static_assert(!requires { typename decltype(data)::element_type; });
 			return {
@@ -93,7 +93,7 @@ auto value_for_class_of<Type>::make(Environment& env, const auto& class_template
 	// Static function property descriptor
 	const auto make_static_function_descriptor = [ & ]<class Property>(const Property& property) -> napi_property_descriptor
 		requires(Property::scope == class_property_scope::constructor) {
-			constexpr auto u8_name = util::consteval_string_view{util::interpolate_string<char>(property.name)};
+			constexpr auto u8_name = util::make_consteval_string_view(util::transcode_string<char>(property.name));
 			auto [ callback, data ] = make_callback_storage(env, make_free_function<Environment>(property.function));
 			static_assert(!requires { typename decltype(data)::element_type; });
 			return {
@@ -123,7 +123,7 @@ auto value_for_class_of<Type>::make(Environment& env, const auto& class_template
 	};
 
 	// Finally, define the class
-	constexpr auto u8_name = util::consteval_string_view{util::interpolate_string<char>(class_template.constructor.name)};
+	constexpr auto u8_name = util::make_consteval_string_view(util::transcode_string<char>(class_template.constructor.name));
 	auto result = napi::invoke(
 		napi_define_class,
 		napi_env{env},

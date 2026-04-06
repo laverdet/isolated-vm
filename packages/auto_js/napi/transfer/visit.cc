@@ -261,12 +261,12 @@ struct visit_key_literal<Key, napi_value> : util::non_moveable {
 					if (reference) {
 						local_key_ = reference.get(environment);
 					} else {
-						auto value = napi::value<string_tag>::make_property_name(environment, util::consteval_string_view{Key});
+						auto value = napi::value<string_tag>::make_property_name(environment, util::make_consteval_string_view(Key));
 						reference.reset(environment, value);
 						local_key_ = napi_value{value};
 					}
 				} else {
-					return napi::value<string_tag>::make_property_name(environment, util::consteval_string_view{Key});
+					return napi::value<string_tag>::make_property_name(environment, util::make_consteval_string_view(Key));
 				}
 			}
 			return local_key_;

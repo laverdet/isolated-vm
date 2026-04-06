@@ -4,20 +4,17 @@ import std;
 
 namespace util {
 
-// Helper to make `std::string_view` from a constant_wrapper or string literal
 export template <class Char, std::size_t Size>
-struct consteval_string_view : public std::basic_string_view<Char> {
-		// NOLINTNEXTLINE(modernize-avoid-c-arrays)
-		constexpr explicit consteval_string_view(const Char (&string)[ Size + 1 ]) noexcept : std::basic_string_view<Char>{string, Size} {}
-};
-
-template <class Char, std::size_t Size>
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-consteval_string_view(const Char (&string)[ Size ]) -> consteval_string_view<Char, Size - 1>;
+consteval auto make_consteval_string_view(const Char (&string)[ Size ]) -> std::basic_string_view<Char> {
+	return std::basic_string_view{string, Size - 1};
+}
 
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-template <class Char, std::size_t Extent, fixed_value<Char[ Extent ]> Value>
-consteval_string_view(util::constant_wrapper<Value>) -> consteval_string_view<Char, Extent - 1>;
+export template <class Char, std::size_t Size, fixed_value<Char[ Size ]> Value>
+consteval auto make_consteval_string_view(constant_wrapper<Value> /*cw*/) -> std::basic_string_view<Char> {
+	return make_consteval_string_view(constant_wrapper<Value>::value);
+}
 
 // Helper for `codepoint_char_sequence` which stores an array of the most characters it will take to
 // represent a codepoint in a given character type.
@@ -265,7 +262,7 @@ class codepoint_forward_view<char16_t> {
 // Interpolate the given character range to a `std::basic_string<Char>`. If the requested character
 // type is too small to represent a codepoint, a `std::range_error` is thrown.
 export template <class To, class From>
-constexpr auto interpolate_string(std::basic_string_view<From> from) -> std::basic_string<To> {
+constexpr auto transcode_string(std::basic_string_view<From> from) -> std::basic_string<To> {
 	auto reader = codepoint_forward_view{from};
 	std::basic_string<To> result;
 
@@ -298,8 +295,8 @@ constexpr auto interpolate_string(std::basic_string_view<From> from) -> std::bas
 
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
 export template <class To, class From, std::size_t Extent, fixed_value<From[ Extent ]> Value>
-constexpr auto interpolate_string(util::constant_wrapper<Value> /*cw*/) {
-	constexpr auto make = []() { return interpolate_string<To>(std::basic_string_view{Value.value, Extent - 1}); };
+constexpr auto transcode_string(util::constant_wrapper<Value> /*cw*/) {
+	constexpr auto make = []() { return transcode_string<To>(std::basic_string_view{Value.value, Extent - 1}); };
 	constexpr auto chars = [ = ]() {
 		std::array<To, make().size()> result{};
 		std::ranges::copy(make(), result.data());

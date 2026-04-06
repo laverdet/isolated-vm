@@ -9,7 +9,7 @@ constexpr auto assert_strings_equal(auto... strings) {
 			 auto left_string = strings...[ left ];
 			 using char_type = std::remove_extent_t<typename decltype(left_string)::value_type>;
 			 // NOLINTNEXTLINE(modernize-type-traits)
-			 return ((left_string == util::interpolate_string<char_type>(strings...[ right ])) && ...);
+			 return ((left_string == util::transcode_string<char_type>(strings...[ right ])) && ...);
 		 }()) &&
 		 ...)
 	);
@@ -24,8 +24,8 @@ constexpr auto assert_strings_equal(auto... strings) {
 
 	// Unpaired utf-16 surrogates
 	constexpr auto one_high_surrogate = util::cw<u"\xd83d">;
-	static_assert(one_high_surrogate == util::interpolate_string<char16_t>(one_high_surrogate));
+	static_assert(one_high_surrogate == util::transcode_string<char16_t>(one_high_surrogate));
 	constexpr auto two_high_surrogate = util::cw<u"\xd83d\xd83d">;
-	static_assert(two_high_surrogate == util::interpolate_string<char16_t>(two_high_surrogate));
+	static_assert(two_high_surrogate == util::transcode_string<char16_t>(two_high_surrogate));
 	return 0;
 }();
