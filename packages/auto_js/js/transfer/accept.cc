@@ -146,7 +146,8 @@ struct accept_value_from : Accept {
 		using accept_type::accept_type;
 
 		// forward reference provider
-		constexpr auto operator()(auto type, auto&& value) const -> type_t<type> {
+		template <class Type>
+		constexpr auto operator()(std::type_identity<Type> type, auto&& value) const -> Type {
 			return util::invoke_as<accept_type>(*this, type, std::forward<decltype(value)>(value));
 		}
 

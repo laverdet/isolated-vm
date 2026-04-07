@@ -302,7 +302,7 @@ constexpr auto transcode_string(util::constant_wrapper<Value> /*cw*/) {
 		std::ranges::copy(make(), result.data());
 		return result;
 	}();
-	return [ = ]<std::size_t... Indices>(std::index_sequence<Indices...>) {
+	return [ & ]<std::size_t... Indices>(std::index_sequence<Indices...>) {
 		// NOLINTNEXTLINE(modernize-avoid-c-arrays)
 		constexpr To string[ chars.size() + 1 ] = {chars[ Indices ]..., 0};
 		return util::cw<string>;

@@ -7,8 +7,8 @@ namespace util {
 
 // Apply a visitor to a variant and map its result to a new variant type. Repeated types are collapsed.
 export auto map_variant(auto&& variant, auto visit) {
-	constexpr auto result_from = [](auto alternative) {
-		return type<decltype(visit)>(type<util::apply_cvref_t<decltype(variant), type_t<alternative>>>);
+	constexpr auto result_from = []<class Type>(std::type_identity<Type> /*alternative*/) {
+		return type<decltype(visit)>(type<util::apply_cvref_t<decltype(variant), Type>>);
 	};
 	const auto [... alternative_types ] = util::make_type_pack(util::remove_cvref(type<decltype(variant)>));
 	const auto [... result_types ] = util::pack_unique(result_from(alternative_types)...);

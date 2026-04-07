@@ -16,6 +16,23 @@ export import :union_.types;
 export import :value;
 export import :variant.types;
 export import :vector.vector_of;
+#if __GNUC__
+export import :builtin.accept;
+export import :builtin.visit;
+export import :enum_.accept;
+export import :enum_.visit;
+export import :reference.accept;
+export import :reference.visit;
+export import :struct_.accept;
+export import :struct_.visit;
+export import :tuple.visit;
+export import :union_.accept;
+export import :tag;
+export import :variant.accept;
+export import :variant.visit;
+export import :vector.accept;
+export import :vector.visit;
+#else
 import :builtin.accept;
 import :builtin.visit;
 import :enum_.accept;
@@ -30,3 +47,4 @@ import :variant.accept;
 import :variant.visit;
 import :vector.accept;
 import :vector.visit;
+#endif

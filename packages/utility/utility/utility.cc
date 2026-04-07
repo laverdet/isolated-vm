@@ -85,7 +85,7 @@ class just : public pointer_facade {
 		Type value_;
 };
 
-export template <class Type>
+template <class Type>
 class just<Type&> : public pointer_facade {
 	public:
 		explicit constexpr just(Type& value) : value_{&value} {}

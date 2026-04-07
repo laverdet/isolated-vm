@@ -75,7 +75,11 @@ if(CMAKE_BUILD_TYPE STREQUAL Release)
 	set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 	set(CMAKE_C_VISIBILITY_PRESET hidden)
 	set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-	set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+	# LTO broken in gcc
+	# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123970
+	if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+		set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+	endif()
 endif()
 
 # Check libc++ / libstdc++

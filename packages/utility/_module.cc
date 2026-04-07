@@ -12,3 +12,6 @@ export import :platform.timer;
 export import :type_traits;
 export import :utility;
 export import :utility.variant;
+#if __GNUC__
+export import :functional.flat_tuple;
+#endif

@@ -230,8 +230,8 @@ struct lockable_traits {
 		bool shared{};
 };
 
-export template <class Resource, lockable_traits Traits = {}>
-using lockable_with = type_t<[]() consteval {
+template <class Resource, lockable_traits Traits = {}>
+constexpr auto make_lockable_traits = []() consteval {
 	using mutex_type = type_t<[]() {
 		if constexpr (Traits.shared) {
 			return type<std::shared_mutex>;
@@ -249,6 +249,8 @@ using lockable_with = type_t<[]() consteval {
 		}
 	}()>;
 	return type<lockable<Resource, mutex_type, cv_type>>;
-}()>;
+};
+export template <class Resource, lockable_traits Traits = {}>
+using lockable_with = type_t<make_lockable_traits<Resource, Traits>()>;
 
 } // namespace util
