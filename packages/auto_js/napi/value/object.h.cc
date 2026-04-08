@@ -11,8 +11,6 @@ namespace js::napi {
 // object
 class value_for_object : public value_next<object_tag> {
 	public:
-		using value_next<object_tag>::value_next;
-
 		auto assign(this value<object_tag> self, auto_environment auto& env, auto source) -> void;
 };
 
@@ -32,7 +30,6 @@ class bound_value_for_object : public bound_value_next<object_tag> {
 // date
 class value_for_date : public value_next<date_tag> {
 	public:
-		using value_next<date_tag>::value_next;
 		static auto make(const environment& env, js_clock::time_point date) -> value<date_tag>;
 };
 

@@ -70,11 +70,10 @@ template <std::size_t Element> struct tuple_tag : tag_of<object_tag> {};
 // An object whose property keys are known at compile time.
 template <std::size_t Properties> struct struct_tag : tag_of<object_tag> {};
 
-// `{}`
-struct dictionary_tag : tag_of<object_tag> {};
-
-// `[]`
-struct list_tag : tag_of<object_tag> {};
+// `{}` & `[]`
+struct record_tag : tag_of<object_tag> {};
+struct dictionary_tag : tag_of<record_tag> {};
+struct list_tag : tag_of<record_tag> {};
 
 struct date_tag : tag_of<object_tag> {};
 struct promise_tag : tag_of<object_tag> {};

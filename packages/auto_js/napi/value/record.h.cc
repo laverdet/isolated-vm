@@ -1,4 +1,4 @@
-export module napi_js:dictionary;
+export module napi_js:record;
 import :array;
 import :bound_value;
 import :object;
@@ -8,12 +8,9 @@ import std;
 
 namespace js::napi {
 
-// Weird naming here because an object `{}` is a typeof "object", but lots of other things are
-// objects. Also, the object iterator is implemented as transformation on a property names vector
-// (which is also an object). So this needs to be its own class or it is a circular inheritance.
-class dictionary_like : public bound_value<object_tag> {
+class bound_value_for_record : public bound_value_next<record_tag> {
 	public:
-		using bound_value<object_tag>::bound_value;
+		using bound_value_next<record_tag>::bound_value_next;
 		using keys_type = bound_value<vector_tag>;
 		using key_type = value<primitive_tag>;
 		using mapped_type = value<value_tag>;
@@ -22,11 +19,11 @@ class dictionary_like : public bound_value<object_tag> {
 	private:
 		class iterator_transform {
 			public:
-				explicit iterator_transform(const dictionary_like& subject_);
+				explicit iterator_transform(const bound_value_for_record& subject_);
 				auto operator()(value<value_tag> key) const -> value_type;
 
 			private:
-				const dictionary_like* subject_;
+				const bound_value_for_record* subject_;
 		};
 
 	public:
@@ -40,16 +37,6 @@ class dictionary_like : public bound_value<object_tag> {
 		[[nodiscard]] auto keys() const -> const keys_type&;
 
 		mutable keys_type keys_;
-};
-
-class bound_value_for_list : public dictionary_like {
-	public:
-		using dictionary_like::dictionary_like;
-};
-
-class bound_value_for_dictionary : public dictionary_like {
-	public:
-		using dictionary_like::dictionary_like;
 };
 
 } // namespace js::napi

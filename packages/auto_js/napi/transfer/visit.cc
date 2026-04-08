@@ -141,7 +141,7 @@ struct visit_napi_value
 							} else if (std::bit_cast<v8::Local<v8::Object>>(subject)->IsSharedArrayBuffer()) {
 								return immediate(napi::value<shared_array_buffer_tag>::from(subject), accept);
 							} else {
-								return immediate(napi::value<object_tag>::from(subject), accept);
+								return immediate(napi::value<dictionary_tag>::from(subject), accept);
 							}
 						}
 					case napi_function:
@@ -207,14 +207,13 @@ struct visit_napi_value
 
 		template <class Accept>
 		auto immediate(value<list_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
-			// nb: It is intentional that `dictionary_tag` is bound. It handles sparse arrays.
-			auto target = napi::bound_value{napi_env{*this}, napi::value<dictionary_tag>::from(subject)};
+			auto target = napi::bound_value{napi_env{*this}, napi::value<list_tag>::from(subject)};
 			auto visit_entry = visit_entry_pair<visit_napi_property_name<visit_napi_value>, visit_napi_value&>{*this};
 			return accept(list_tag{}, visit_entry, target);
 		}
 
 		template <class Accept>
-		auto immediate(value<object_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
+		auto immediate(value<dictionary_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
 			auto target = napi::bound_value{napi_env{*this}, napi::value<dictionary_tag>::from(subject)};
 			auto visit_entry = visit_entry_pair<visit_napi_property_name<visit_napi_value>, visit_napi_value&>{*this};
 			return accept(dictionary_tag{}, visit_entry, target);
@@ -242,7 +241,7 @@ struct visit<Meta, value<value_tag>> : visit_napi_value_with<Meta> {
 };
 
 template <class Meta>
-struct visit<Meta, value<object_tag>> : visit_napi_value_with<Meta> {
+struct visit<Meta, value<dictionary_tag>> : visit_napi_value_with<Meta> {
 		using visit_napi_value_with<Meta>::visit_napi_value_with;
 };
 

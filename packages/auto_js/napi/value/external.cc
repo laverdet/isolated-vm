@@ -9,8 +9,6 @@ namespace js::napi {
 
 class value_for_external : public value_next<external_tag> {
 	public:
-		using value_next<external_tag>::value_next;
-
 		// untagged
 		static auto make(auto& env, void* pointer) -> value<external_tag>;
 

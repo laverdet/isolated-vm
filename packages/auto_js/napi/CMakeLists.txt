@@ -13,9 +13,9 @@ target_sources(napi_js
 		support/initialize.cc
 		value/array_buffer.cc
 		value/array.cc
-		value/dictionary.cc
 		value/object.cc
 		value/primitive.cc
+		value/record.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		api/api.cc
@@ -47,11 +47,11 @@ target_sources(napi_js
 		value/array.h.cc
 		value/class.cc
 		value/class.h.cc
-		value/dictionary.h.cc
 		value/external.cc
 		value/function.cc
 		value/function.h.cc
 		value/object.h.cc
 		value/primitive.h.cc
+		value/record.h.cc
 		value/value.cc
 )

@@ -14,9 +14,8 @@ class bound_value_next : public bound_value<typename Tag::tag_type> {
 		bound_value_next(napi_env env, value<Tag> value) :
 				bound_value<typename Tag::tag_type>{env, napi_value{value}} {}
 
-		template <std::constructible_from<Tag> To>
 		// NOLINTNEXTLINE(google-explicit-constructor)
-		operator value<To>() const { return value<To>::from(napi_value{*this}); }
+		operator value<Tag>() const { return value<Tag>::from(napi_value{*this}); }
 };
 
 // Member & method implementation for stateful objects. Used internally in visitors. I think it

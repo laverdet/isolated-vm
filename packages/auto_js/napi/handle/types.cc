@@ -49,22 +49,23 @@ class bound_value_for_typed_array_of;
 
 // Map of `value<Tag>` / `bound_value<Tag>` to concrete implementation classes.
 template <class Tag>
-struct value_specialization {
+struct value_defaults {
 		using value_type = value_next<Tag>;
 		using bound_type = bound_value_next<Tag>;
 };
 
+template <class Tag>
+struct value_specialization : value_defaults<Tag> {};
+
 // Typed specializations
 template <>
-struct value_specialization<undefined_tag> {
+struct value_specialization<undefined_tag> : value_defaults<undefined_tag> {
 		using value_type = class value_for_undefined;
-		using bound_type = bound_value_next<undefined_tag>;
 };
 
 template <>
-struct value_specialization<null_tag> {
+struct value_specialization<null_tag> : value_defaults<null_tag> {
 		using value_type = class value_for_null;
-		using bound_type = bound_value_next<null_tag>;
 };
 
 template <>
@@ -104,9 +105,13 @@ struct value_specialization<object_tag> {
 };
 
 template <>
-struct value_specialization<function_tag> {
+struct value_specialization<record_tag> : value_defaults<record_tag> {
+		using bound_type = class bound_value_for_record;
+};
+
+template <>
+struct value_specialization<function_tag> : value_defaults<function_tag> {
 		using value_type = class value_for_function;
-		using bound_type = bound_value_next<function_tag>;
 };
 
 template <>
@@ -134,9 +139,8 @@ struct value_specialization<data_view_tag> {
 };
 
 template <class Type>
-struct value_specialization<class_tag_of<Type>> {
+struct value_specialization<class_tag_of<Type>> : value_defaults<class_tag_of<Type>> {
 		using value_type = value_for_class_of<Type>;
-		using bound_type = bound_value_next<class_tag_of<Type>>;
 };
 
 template <>
@@ -146,21 +150,8 @@ struct value_specialization<external_tag> {
 };
 
 template <>
-struct value_specialization<vector_tag> {
-		using value_type = value_next<vector_tag>;
+struct value_specialization<vector_tag> : value_defaults<vector_tag> {
 		using bound_type = class bound_value_for_vector;
-};
-
-template <>
-struct value_specialization<list_tag> {
-		using value_type = value_next<list_tag>;
-		using bound_type = class bound_value_for_list;
-};
-
-template <>
-struct value_specialization<dictionary_tag> {
-		using value_type = value_next<dictionary_tag>;
-		using bound_type = class bound_value_for_dictionary;
 };
 
 } // namespace js::napi

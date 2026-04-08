@@ -5,15 +5,15 @@ import std;
 
 namespace js::napi {
 
-auto dictionary_like::into_range() const -> range_type {
+auto bound_value_for_record::into_range() const -> range_type {
 	return keys() | std::views::transform(iterator_transform{*this});
 }
 
-auto dictionary_like::size() const -> std::size_t {
+auto bound_value_for_record::size() const -> std::size_t {
 	return keys().size();
 }
 
-auto dictionary_like::keys() const -> const keys_type& {
+auto bound_value_for_record::keys() const -> const keys_type& {
 	if (napi_value{keys_} == nullptr) {
 		auto* property_names = napi::invoke(napi_get_property_names, env(), *this);
 		keys_ = keys_type{env(), js::napi::value<vector_tag>::from(property_names)};
@@ -21,10 +21,10 @@ auto dictionary_like::keys() const -> const keys_type& {
 	return keys_;
 }
 
-dictionary_like::iterator_transform::iterator_transform(const dictionary_like& subject) :
+bound_value_for_record::iterator_transform::iterator_transform(const bound_value_for_record& subject) :
 		subject_{&subject} {}
 
-auto dictionary_like::iterator_transform::operator()(value<value_tag> key) const -> value_type {
+auto bound_value_for_record::iterator_transform::operator()(value<value_tag> key) const -> value_type {
 	return std::pair{key_type::from(key), subject_->get(key)};
 }
 

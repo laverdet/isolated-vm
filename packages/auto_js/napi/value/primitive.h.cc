@@ -10,7 +10,6 @@ namespace js::napi {
 // undefined
 class value_for_undefined : public value_next<undefined_tag> {
 	public:
-		using value_next<undefined_tag>::value_next;
 		static auto make(const environment& env) -> value<undefined_tag>;
 		static auto make(const environment& env, std::monostate /*undefined*/) -> value<undefined_tag> { return make(env); }
 };
@@ -18,7 +17,6 @@ class value_for_undefined : public value_next<undefined_tag> {
 // null
 class value_for_null : public value_next<null_tag> {
 	public:
-		using value_next<null_tag>::value_next;
 		static auto make(const environment& env) -> value<null_tag>;
 		static auto make(const environment& env, std::nullptr_t /*null*/) -> value<null_tag> { return make(env); }
 };
@@ -26,7 +24,6 @@ class value_for_null : public value_next<null_tag> {
 // boolean
 class value_for_boolean : public value_next<boolean_tag> {
 	public:
-		using value_next<boolean_tag>::value_next;
 		static auto make(const environment& env, bool boolean) -> value<boolean_tag>;
 };
 
@@ -39,7 +36,6 @@ class bound_value_for_boolean : public bound_value_next<boolean_tag> {
 // number
 class value_for_number : public value_next<number_tag> {
 	public:
-		using value_next<number_tag>::value_next;
 		static auto make(const environment& env, double number) -> value<number_tag>;
 		static auto make(const environment& env, std::int32_t number) -> value<number_tag>;
 		static auto make(const environment& env, std::int64_t number) -> value<number_tag>;
@@ -60,7 +56,6 @@ class bound_value_for_number : public bound_value_next<number_tag> {
 // bigint
 class value_for_bigint : public value_next<bigint_tag> {
 	public:
-		using value_next<bigint_tag>::value_next;
 		static auto make(const environment& env, const bigint& number) -> value<bigint_tag>;
 		static auto make(const environment& env, std::int64_t number) -> value<bigint_tag>;
 		static auto make(const environment& env, std::uint64_t number) -> value<bigint_tag>;
@@ -77,7 +72,6 @@ class bound_value_for_bigint : public bound_value_next<bigint_tag> {
 // string
 class value_for_string : public value_next<string_tag> {
 	public:
-		using value_next<string_tag>::value_next;
 		static auto make(const environment& env, std::string_view string) -> value<string_tag>;
 		static auto make(const environment& env, std::u8string_view string) -> value<string_tag>;
 		static auto make(const environment& env, std::u16string_view string) -> value<string_tag>;

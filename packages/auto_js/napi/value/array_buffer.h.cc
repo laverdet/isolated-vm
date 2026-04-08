@@ -10,7 +10,6 @@ namespace js::napi {
 // `ArrayBuffer`
 class value_for_array_buffer : public value_next<array_buffer_tag> {
 	public:
-		using value_next<array_buffer_tag>::value_next;
 		static auto make(const environment& env, const js::array_buffer& block) -> value<array_buffer_tag>;
 };
 
@@ -26,7 +25,6 @@ class bound_value_for_array_buffer : public bound_value_next<array_buffer_tag> {
 // `SharedArrayBuffer`
 class value_for_shared_array_buffer : public value_next<shared_array_buffer_tag> {
 	public:
-		using value_next<shared_array_buffer_tag>::value_next;
 		static auto make(const environment& env, js::shared_array_buffer block) -> value<shared_array_buffer_tag>;
 };
 
@@ -49,8 +47,6 @@ class value_for_typed_array_of
 		: public value_next<typed_array_tag_of<Type>>,
 			public value_for_typed_array {
 	public:
-		using value_next<typed_array_tag_of<Type>>::value_next;
-
 		static auto make(const environment& env, value<object_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<typed_array_tag_of<Type>> {
 			constexpr auto get_array_buffer_type_tag = util::overloaded{
 				[](std::type_identity<double>) -> napi_typedarray_type { return napi_float64_array; },
@@ -92,8 +88,6 @@ class bound_value_for_typed_array_of : public bound_value_for_typed_array {
 // `DataView`
 class value_for_data_view : public value_next<data_view_tag> {
 	public:
-		using value_next<data_view_tag>::value_next;
-
 		static auto make(const environment& env, value<object_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<data_view_tag>;
 };
 

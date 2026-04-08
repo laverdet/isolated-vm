@@ -9,8 +9,6 @@ namespace js::napi {
 
 class value_for_function : public value_next<function_tag> {
 	public:
-		using value_next<function_tag>::value_next;
-
 		template <class Result = std::monostate>
 		auto apply(auto_environment auto& env, auto&& args) -> Result;
 

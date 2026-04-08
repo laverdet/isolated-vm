@@ -23,7 +23,7 @@ class value_next : public value<typename Tag::tag_type> {
 		auto cast(To /*tag*/) const -> value<To> { return value<To>::from(*this); }
 
 		// Construct from any `napi_value`. Potentially unsafe.
-		static auto from(napi_value value_) -> value<Tag> { return value<Tag>{value_}; }
+		static auto from(napi_value value_) -> value<Tag> { return std::bit_cast<value<Tag>>(value_); }
 };
 
 // Tagged napi_value

@@ -8,8 +8,6 @@ namespace js::napi {
 template <class Type>
 class value_for_class_of : public value_next<class_tag_of<Type>> {
 	public:
-		using value_next<class_tag_of<Type>>::value_next;
-
 		// Construct a new C++ instance & JavaScript value
 		template <class... Args>
 		auto construct(auto& env, Args&&... args) const -> value<object_tag>
