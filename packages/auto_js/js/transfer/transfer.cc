@@ -102,8 +102,7 @@ constexpr auto transfer_with(
 	using subject_type = std::remove_cvref_t<decltype(value)>;
 	using visit_subject_type = visit_subject_for<subject_type>::type;
 
-	using target_type = std::remove_cvref_t<Type>;
-	using accept_target_type = accept_target_for<target_type>::type;
+	using accept_target_type = accept_target_for<std::remove_cvref_t<Type>>::type;
 
 	// compose accept type
 	using accept_context_type = select_transferee_environment_t<std::remove_cvref_t<AcceptArgs>...>;

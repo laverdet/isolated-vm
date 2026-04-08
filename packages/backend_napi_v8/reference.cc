@@ -167,7 +167,8 @@ auto reference_handle::get(environment& env, js::string_t name) -> js::forward<j
 	return js::forward{promise};
 }
 
-auto reference_handle::set(environment& env, js::string_t name, js::value_t value) -> js::forward<js::napi::value<>> {
+auto reference_handle::set(environment& env, js::string_t name, js::forward<js::napi::value<>> value_local) -> js::forward<js::napi::value<>> {
+	auto value = js::transfer_out<js::value_t>(*value_local, env);
 	auto [ promise, resolver ] = make_promise(env);
 	switch (typeof_) {
 		// Setting any property on these types is a no-op
@@ -215,7 +216,13 @@ auto reference_handle::set(environment& env, js::string_t name, js::value_t valu
 	return js::forward{promise};
 }
 
-auto reference_handle::invoke(environment& env, std::vector<js::value_t> params) -> js::forward<js::napi::value<>> {
+auto reference_handle::invoke(environment& env, std::vector<js::forward<js::napi::value<>>> params_local) -> js::forward<js::napi::value<>> {
+	auto params = std::vector{
+		std::from_range,
+		params_local | std::views::transform([ & ](auto param) {
+			return js::transfer_out<js::value_t>(*param, env);
+		}),
+	};
 	auto [ promise, resolver ] = make_promise(env);
 	if (typeof_ == js::typeof_kind::function) {
 		agent_.schedule(
@@ -228,7 +235,12 @@ auto reference_handle::invoke(environment& env, std::vector<js::value_t> params)
 				auto maybe_result = context_scope_operation(agent_lock, realm->deref(agent_lock), [ & ](const realm_scope& lock) -> auto {
 					return iv8::invoke_externalized_error_scope(lock, [ & ]() -> js::value_t {
 						auto local = value->deref(lock).As<v8::Function>();
-						auto arg_values = js::transfer_in_strict<std::vector<v8::Local<v8::Value>>>(std::move(params), lock);
+						auto arg_values = std::vector{
+							std::from_range,
+							params | std::views::transform([ & ](auto& param) {
+								return js::transfer_in_strict<v8::Local<v8::Value>>(std::move(param), lock);
+							}),
+						};
 						auto result = iv8::unmaybe(local->Call(lock.isolate(), lock.context(), v8::Undefined(lock.isolate()), static_cast<int>(arg_values.size()), arg_values.data()));
 						return js::transfer_out<js::value_t>(result, lock);
 					});

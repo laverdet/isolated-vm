@@ -88,7 +88,7 @@ export class subscriber_capability {
 		explicit subscriber_capability(private_constructor /*private*/) {};
 		auto accept_callback(callback_type callback) -> void;
 		auto take_subscriber() -> std::shared_ptr<subscriber>;
-		auto send(js::value_t message) -> bool;
+		auto send(environment& env, js::forward<napi::value<>> message_local) -> bool;
 		static auto make(environment& env) -> js::napi::value<js::object_tag>;
 
 		static auto class_template(environment& env) -> js::napi::value<js::class_tag_of<subscriber_capability>>;

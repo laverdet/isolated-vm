@@ -50,45 +50,58 @@ template <class Type>
 struct accept_target_for<std::vector<Type>> : accept_target_for<Type> {};
 
 template <class Meta, class Type>
-struct accept<Meta, std::vector<Type>> : accept_value<Meta, Type> {
+struct accept<Meta, std::vector<Type>> {
+	private:
 		using accept_type = accept_value<Meta, Type>;
-		using accept_type::accept_type;
+
+	public:
+		explicit accept(auto* transfer, auto&&... args) :
+				accept_{transfer, std::forward<decltype(args)>(args)...} {}
+
+		// forward reference provider
+		template <class To>
+		constexpr auto operator()(std::type_identity<To> type, auto&& value) const -> To
+			requires std::invocable<const accept_type&, std::type_identity<To>, decltype(value)> {
+			return accept_(type, std::forward<decltype(value)>(value));
+		}
 
 		constexpr auto operator()(list_tag /*tag*/, auto& visit, auto&& subject) const -> std::vector<Type> {
 			// nb: This doesn't check for string keys, so like `Object.assign([ 1 ], { foo: 2 })` might
 			// yield `[ 1, 2 ]`
-			const accept_type& accept = *this;
 			auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
 			return {
 				std::from_range,
 				util::forward_range(std::forward<decltype(range)>(range)) |
 					std::views::transform([ & ](auto&& entry) -> Type {
-						return visit.second(std::forward<decltype(entry)>(entry).second, accept);
+						return visit.second(std::forward<decltype(entry)>(entry).second, accept_);
 					})
 			};
 		}
 
 		constexpr auto operator()(vector_tag /*tag*/, auto& visit, auto&& subject) const -> std::vector<Type> {
-			const accept_type& accept = *this;
 			auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
 			return {
 				std::from_range,
 				util::forward_range(std::forward<decltype(range)>(range)) |
 					std::views::transform([ & ](auto&& entry) -> Type {
-						return visit(std::forward<decltype(entry)>(entry), accept);
+						return visit(std::forward<decltype(entry)>(entry), accept_);
 					})
 			};
 		}
 
 		template <std::size_t Size>
 		constexpr auto operator()(tuple_tag<Size> /*tag*/, auto& visit, auto&& subject) const -> std::vector<Type> {
-			const accept_type& accept = *this;
 			std::vector<Type> result;
 			result.reserve(Size);
 			const auto [... indices ] = util::sequence<Size>;
-			(..., result.emplace_back(visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(subject)>(subject), accept)));
+			(..., result.emplace_back(visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(subject)>(subject), accept_)));
 			return result;
 		}
+
+		consteval static auto types(auto recursive) -> auto { return accept_type::types(recursive); }
+
+	private:
+		accept_type accept_;
 };
 
 // Dictionary's accepts a properly-tagged subject or maybe even a struct

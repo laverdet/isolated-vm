@@ -52,6 +52,62 @@ await test("synthetic module capability", async () => {
 	assert.ok(didInvoke);
 });
 
+// await test("synthetic module with circular reference", async () => {
+// 	await using agent = await ivm.Agent.create();
+// 	const capabilityName = "isolated-vm:///capability";
+// 	const realm = await agent.createRealm();
+// 	const capability = await realm.createCapability(
+// 		() => ({
+// 			default: (value1: unknown) => {
+// 				// @ts-expect-error
+// 				assert.strictEqual(value1.date1, value1.date2);
+// 				// @ts-expect-error
+// 				assert.strictEqual(value1.object, value1);
+// 			},
+// 		}),
+// 		{ origin: capabilityName });
+// 	const left = expectComplete(await agent.compileModule(`
+// 		import capability from ${JSON.stringify(capabilityName)};
+// 		const date = new Date();
+// 		const object = {
+// 			record: {},
+// 			date1: date,
+// 			date2: date,
+// 		};
+// 		object.object = object;
+// 		capability(object);
+// 	`));
+// 	const cache = new Map([
+// 		[ capabilityName, capability ],
+// 	]);
+// 	await left.link(realm, specifier => cache.get(specifier)!);
+// 	await left.evaluate(realm);
+// });
+
+// TODO: This terminates the process. It should probably raise an async error, because there is no
+// promise.
+// await test("throw from synthetic module", async () => {
+// 	await using agent = await ivm.Agent.create();
+// 	const capabilityName = "isolated-vm:///capability";
+// 	const realm = await agent.createRealm();
+// 	const capability = await realm.createCapability(
+// 		() => ({
+// 			default: () => {
+// 				throw new Error("capability error");
+// 			},
+// 		}),
+// 		{ origin: capabilityName });
+// 	const left = expectComplete(await agent.compileModule(`
+// 		import capability from ${JSON.stringify(capabilityName)};
+// 		capability();
+// 	`));
+// 	const cache = new Map([
+// 		[ capabilityName, capability ],
+// 	]);
+// 	await left.link(realm, specifier => cache.get(specifier)!);
+// 	await left.evaluate(realm);
+// });
+
 await test("throw from linker", async () => {
 	await using agent = await ivm.Agent.create();
 	const realm = await agent.createRealm();

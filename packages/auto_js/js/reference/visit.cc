@@ -1,6 +1,7 @@
 module;
 #include <cassert>
 export module auto_js:reference.visit;
+import :intrinsics.error;
 import :referential_value;
 import :transfer;
 import std;
@@ -49,12 +50,20 @@ struct reference_vector_of<Subject, void> {
 		constexpr auto emplace_subject(reference_type /*reference*/, const auto& /*value*/) -> void {}
 
 		template <class Accept>
-		[[nodiscard]] constexpr auto lookup_or_visit(const Accept& /*accept*/, reference_type /*subject*/, auto dispatch) const
+		[[nodiscard]] constexpr auto lookup_or_visit(const Accept& /*accept*/, reference_type subject, auto dispatch) const
 			-> accept_target_t<Accept> {
-			return dispatch();
+			if (count_ == subject.id()) {
+				return dispatch();
+			} else {
+				// TODO: It would be nice if this was a `static_assert`
+				throw js::type_error{u"visited circular value in non-referential acceptor"};
+			}
 		}
 
-		constexpr auto clear_accepted_references() {}
+		constexpr auto clear_accepted_references() { count_ = 0; }
+
+	private:
+		std::size_t count_ = 0;
 };
 
 // Instantiated by the top `visit<..., referential_value>` visitor (actually, instantiated by the

@@ -235,13 +235,8 @@ struct visit<Meta, napi_value> : visit_napi_value_with<Meta> {
 		using visit_napi_value_with<Meta>::visit_napi_value_with;
 };
 
-template <class Meta>
-struct visit<Meta, value<value_tag>> : visit_napi_value_with<Meta> {
-		using visit_napi_value_with<Meta>::visit_napi_value_with;
-};
-
-template <class Meta>
-struct visit<Meta, value<dictionary_tag>> : visit_napi_value_with<Meta> {
+template <class Meta, class Tag>
+struct visit<Meta, value<Tag>> : visit_napi_value_with<Meta> {
 		using visit_napi_value_with<Meta>::visit_napi_value_with;
 };
 

@@ -16,6 +16,29 @@ await test("function reference invoke", async () => {
 	assert.equal(value, "wow");
 });
 
+await test("invoke function reference with circular object", async () => {
+	await using agent = await ivm.Agent.create();
+	const realm = await agent.createRealm();
+	await unsafeEvalAsStringInRealm(agent, realm, () => {
+		// @ts-expect-error
+		globalThis.fn = (value: unknown) => value;
+	});
+	const global = await realm.acquireGlobalObject();
+	const fn = await global.get("fn");
+	const date = new Date();
+	const object: Record<string, any> = {
+		record: {},
+		date1: date,
+		date2: date,
+	};
+	object.object = object;
+	const result = expectComplete(await fn.invoke([ object ]));
+	// @ts-expect-error
+	assert.strictEqual(result.date1, result.date2);
+	// @ts-expect-error
+	assert.strictEqual(result.object, result);
+});
+
 await test("get & set should not invoke proxies", async () => {
 	await using agent = await ivm.Agent.create();
 	const realm = await agent.createRealm();

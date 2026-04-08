@@ -148,7 +148,7 @@ struct accept_value_from : Accept {
 		// forward reference provider
 		template <class Type>
 		constexpr auto operator()(std::type_identity<Type> type, auto&& value) const -> Type {
-			return util::invoke_as<accept_type>(*this, type, std::forward<decltype(value)>(value));
+			return accept_type::operator()(type, std::forward<decltype(value)>(value));
 		}
 
 		template <class Visit>

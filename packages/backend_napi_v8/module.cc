@@ -99,7 +99,14 @@ auto module_handle::create_capability(
 				const realm_scope& /*lock*/,
 				js::rest /*rest*/,
 				std::vector<js::value_t> params
+				// std::vector<js::forward<napi::value<>>> params_local
 			) -> void {
+				// auto params = std::vector{
+				// 	std::from_range,
+				// 	params_local | std::views::transform([ & ](auto param) {
+				// 		return js::transfer_out<js::value_t>(*param, env);
+				// 	}),
+				// };
 				scheduler(
 					[ &env, invoke ](std::vector<js::value_t> params) -> void {
 						invoke(env, std::move(params));
@@ -325,7 +332,8 @@ auto subscriber_capability::take_subscriber() -> std::shared_ptr<subscriber> {
 	}
 }
 
-auto subscriber_capability::send(js::value_t message) -> bool {
+auto subscriber_capability::send(environment& env, js::forward<napi::value<>> message_local) -> bool {
+	auto message = js::transfer_out<js::value_t>(*message_local, env);
 	auto lock = callback_.read();
 	if (*lock) {
 		return (*lock)(std::move(message));
