@@ -126,6 +126,17 @@ struct value_specialization<shared_array_buffer_tag> {
 		using bound_type = class bound_value_for_shared_array_buffer;
 };
 
+template <>
+struct value_specialization<array_buffer_view_tag> : value_defaults<array_buffer_view_tag> {
+		using bound_type = class bound_value_for_array_buffer_view;
+};
+
+template <>
+struct value_specialization<typed_array_tag> {
+		using value_type = class value_for_typed_array;
+		using bound_type = class bound_value_for_typed_array;
+};
+
 template <class Type>
 struct value_specialization<typed_array_tag_of<Type>> {
 		using value_type = value_for_typed_array_of<Type>;

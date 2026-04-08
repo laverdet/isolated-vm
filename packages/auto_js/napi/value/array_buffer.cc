@@ -36,73 +36,112 @@ bound_value_for_array_buffer::operator std::span<std::byte>() const {
 
 // `value_for_shared_array_buffer`
 auto value_for_shared_array_buffer::make(const environment& /*env*/, js::shared_array_buffer block) -> value<shared_array_buffer_tag> {
-	auto byte_length = block.size();
-	auto holder = std::make_unique<js::shared_array_buffer::shared_pointer_type>(std::move(block).acquire_ownership());
-	auto backing_store = v8::SharedArrayBuffer::NewBackingStore(
-		holder->get(),
-		byte_length,
-		[](void* /*data*/, std::size_t /*length*/, void* param) -> void {
-			delete static_cast<js::shared_array_buffer::shared_pointer_type*>(param);
-		},
-		holder.get()
-	);
-	std::ignore = holder.release();
+	auto backing_store = [ & ]() -> auto {
+		auto byte_length = block.size();
+		// v8 does not call the deleter `byte_length` is zero. So the heap-allocated shared_ptr trick
+		// does not work in that case.
+		if (byte_length == 0) {
+			return v8::SharedArrayBuffer::NewBackingStore(nullptr, 0, nullptr, nullptr);
+		} else {
+			auto holder = std::make_unique<js::shared_array_buffer::shared_pointer_type>(std::move(block).acquire_ownership());
+			auto backing_store = v8::SharedArrayBuffer::NewBackingStore(
+				holder->get(),
+				byte_length,
+				[](void* /*data*/, std::size_t /*length*/, void* param) -> void {
+					delete static_cast<js::shared_array_buffer::shared_pointer_type*>(param);
+				},
+				holder.get()
+			);
+			std::ignore = holder.release();
+			return backing_store;
+		}
+	}();
 	auto shared_array_buffer = v8::SharedArrayBuffer::New(v8::Isolate::GetCurrent(), std::move(backing_store));
 	return value<shared_array_buffer_tag>::from(std::bit_cast<napi_value>(shared_array_buffer));
 }
 
 // `bound_value_for_shared_array_buffer`
 bound_value_for_shared_array_buffer::operator js::shared_array_buffer() const {
-	throw std::logic_error{"unimplemented"};
+	auto local = std::bit_cast<v8::Local<v8::SharedArrayBuffer>>(napi_value{*this});
+	auto backing_store = local->GetBackingStore();
+	auto* data = reinterpret_cast<std::byte*>(backing_store->Data());
+	auto data_shared_ptr = std::shared_ptr<js::shared_array_buffer::array_type>{std::move(backing_store), data};
+	return js::shared_array_buffer{local->ByteLength(), std::move(data_shared_ptr)};
+}
+
+bound_value_for_shared_array_buffer::operator std::span<std::byte>() const {
+	auto local = std::bit_cast<v8::Local<v8::SharedArrayBuffer>>(napi_value{*this});
+	return std::span<std::byte>{reinterpret_cast<std::byte*>(local->Data()), local->ByteLength()};
 }
 
 // `value_for_typed_array`
-auto value_for_typed_array::make(const environment& /*env*/, napi_typedarray_type type_tag, value<object_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<object_tag> {
-	const auto make = [ & ]<class Type>(std::type_identity<Type> /*type*/) -> value<object_tag> {
-		auto buffer_local = std::bit_cast<v8::Local<v8::Object>>(napi_value{buffer});
-		auto typed_array_local = [ & ]() -> v8::Local<Type> {
-			if (buffer_local->IsSharedArrayBuffer()) {
-				return Type::New(buffer_local.As<v8::SharedArrayBuffer>(), byte_offset, length);
-			} else {
-				return Type::New(buffer_local.As<v8::ArrayBuffer>(), byte_offset, length);
-			}
-		}();
-		return value<object_tag>::from(std::bit_cast<napi_value>(typed_array_local));
-	};
-	switch (type_tag) {
-		case napi_int8_array: return make(type<v8::Int8Array>);
-		case napi_uint8_array: return make(type<v8::Uint8Array>);
-		case napi_uint8_clamped_array: return make(type<v8::Uint8ClampedArray>);
-		case napi_int16_array: return make(type<v8::Int16Array>);
-		case napi_uint16_array: return make(type<v8::Uint16Array>);
-		case napi_int32_array: return make(type<v8::Int32Array>);
-		case napi_uint32_array: return make(type<v8::Uint32Array>);
-		case napi_float32_array: return make(type<v8::Float32Array>);
-		case napi_float64_array: return make(type<v8::Float64Array>);
-		case napi_bigint64_array: return make(type<v8::BigInt64Array>);
-		case napi_biguint64_array: return make(type<v8::BigUint64Array>);
-	}
-
-	// Imagine my shock when I found out `napi_create_typedarray` doesn't work with shared array buffers!
-	// return value<object_tag>::from(napi::invoke(napi_create_typedarray, napi_env{env}, type, length, napi_value{buffer}, byte_offset));
+auto value_for_typed_array::make(const environment& env, napi_typedarray_type type_tag, value<array_buffer_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<typed_array_tag> {
+	return value<typed_array_tag>::from(napi::invoke(napi_create_typedarray, napi_env{env}, type_tag, length, napi_value{buffer}, byte_offset));
 }
 
 // `bound_value_for_typed_array`
-// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-bound_value_for_typed_array::bound_value_for_typed_array(napi_env env, value<object_tag> typed_array) {
-	napi::invoke0(napi_get_typedarray_info, env, napi_value{typed_array}, nullptr, &length_, nullptr, &array_buffer_, &byte_offset_);
+auto bound_value_for_typed_array::make_bound(const environment& env, value<typed_array_tag> typed_array) -> any_bound_typed_array {
+	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+	napi_typedarray_type type_tag;
+	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+	napi_value array_buffer;
+	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+	std::size_t length;
+	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+	std::size_t byte_offset;
+	napi::invoke0(napi_get_typedarray_info, env, napi_value{typed_array}, &type_tag, &length, nullptr, &array_buffer, &byte_offset);
+	const auto make = [ & ]<class Tag>(Tag /*tag*/) -> any_bound_typed_array {
+		return bound_value<Tag>{env, value<Tag>::from(typed_array), std::tuple{value<data_block_tag>::from(array_buffer), byte_offset, length}};
+	};
+	switch (type_tag) {
+		case napi_bigint64_array: return make(typed_array_tag_of<std::int64_t>{});
+		case napi_biguint64_array: return make(typed_array_tag_of<std::uint64_t>{});
+		case napi_float32_array: return make(typed_array_tag_of<float>{});
+		case napi_float64_array: return make(typed_array_tag_of<double>{});
+		case napi_int16_array: return make(typed_array_tag_of<std::int16_t>{});
+		case napi_int32_array: return make(typed_array_tag_of<std::int32_t>{});
+		case napi_int8_array: return make(typed_array_tag_of<std::int8_t>{});
+		case napi_uint16_array: return make(typed_array_tag_of<std::uint16_t>{});
+		case napi_uint32_array: return make(typed_array_tag_of<std::uint32_t>{});
+		case napi_uint8_array: return make(typed_array_tag_of<std::uint8_t>{});
+		case napi_uint8_clamped_array: return make(typed_array_tag_of<std::byte>{});
+	}
 }
 
 // `value_for_data_view`
-auto value_for_data_view::make(const environment& env, value<object_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<data_view_tag> {
+auto value_for_data_view::make(const environment& env, value<data_block_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<data_view_tag> {
+	if (napi::invoke(napi_is_arraybuffer, napi_env{env}, buffer)) {
+		return make(env, napi::value<array_buffer_tag>::from(buffer), byte_offset, length);
+	} else {
+		return make(env, napi::value<shared_array_buffer_tag>::from(buffer), byte_offset, length);
+	}
+}
+
+auto value_for_data_view::make(const environment& env, value<array_buffer_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<data_view_tag> {
 	return value<data_view_tag>::from(napi::invoke(napi_create_dataview, napi_env{env}, length, napi_value{buffer}, byte_offset));
 }
 
-// `bound_value_for_data_view`
-// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-bound_value_for_data_view::bound_value_for_data_view(napi_env env, value<data_view_tag> data_view) :
-		bound_value_next{env, data_view} {
-	napi::invoke0(napi_get_dataview_info, env, napi_value{data_view}, &length_, nullptr, &array_buffer_, &byte_offset_);
+auto value_for_data_view::make(const environment& /*env*/, value<shared_array_buffer_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<data_view_tag> {
+	auto buffer_local = std::bit_cast<v8::Local<v8::SharedArrayBuffer>>(napi_value{buffer});
+	auto view_local = v8::DataView::New(buffer_local, byte_offset, length);
+	return value<data_view_tag>::from(std::bit_cast<napi_value>(view_local));
 }
+
+// `bound_value_for_data_view`
+bound_value_for_data_view::bound_value_for_data_view(napi_env env, value<data_view_tag> data_view) :
+		bound_value_next{
+			env,
+			data_view,
+			[ & ] -> auto {
+				// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+				napi_value array_buffer;
+				// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+				std::size_t length;
+				// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+				std::size_t byte_offset;
+				napi::invoke0(napi_get_dataview_info, env, napi_value{data_view}, &length, nullptr, &array_buffer, &byte_offset);
+				return std::tuple{value<data_block_tag>::from(array_buffer), byte_offset, length};
+			}(),
+		} {}
 
 } // namespace js::napi

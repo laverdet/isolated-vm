@@ -113,7 +113,7 @@ struct visit_napi_value
 		auto operator()(napi_value subject, const Accept& accept) -> accept_target_t<Accept> {
 
 			// Check the reference map, and lookup type via napi
-			return this->lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
+			return lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
 				auto type_of = napi::invoke(napi_typeof, napi_env{*this}, subject);
 				switch (type_of) {
 					case napi_undefined:
@@ -134,12 +134,16 @@ struct visit_napi_value
 								return immediate(napi::value<list_tag>::from(subject), accept);
 							} else if (napi::invoke(napi_is_date, napi_env{*this}, subject)) {
 								return immediate(napi::value<date_tag>::from(subject), accept);
-							} else if (napi::invoke(napi_is_promise, napi_env{*this}, subject)) {
-								return immediate(napi::value<promise_tag>::from(subject), accept);
-							} else if (napi::invoke(napi_is_arraybuffer, napi_env{*this}, subject)) {
-								return immediate(napi::value<array_buffer_tag>::from(subject), accept);
+							} else if (napi::invoke(napi_is_typedarray, napi_env{*this}, subject)) {
+								return immediate(napi::value<typed_array_tag>::from(subject), accept);
+							} else if (napi::invoke(napi_is_dataview, napi_env{*this}, subject)) {
+								return immediate(napi::value<data_view_tag>::from(subject), accept);
 							} else if (std::bit_cast<v8::Local<v8::Object>>(subject)->IsSharedArrayBuffer()) {
 								return immediate(napi::value<shared_array_buffer_tag>::from(subject), accept);
+							} else if (napi::invoke(napi_is_arraybuffer, napi_env{*this}, subject)) {
+								return immediate(napi::value<array_buffer_tag>::from(subject), accept);
+							} else if (napi::invoke(napi_is_promise, napi_env{*this}, subject)) {
+								return immediate(napi::value<promise_tag>::from(subject), accept);
 							} else {
 								return immediate(napi::value<dictionary_tag>::from(subject), accept);
 							}
@@ -175,6 +179,15 @@ struct visit_napi_value
 		}
 
 		template <class Accept>
+		auto immediate(value<data_block_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
+			if (napi::invoke(napi_is_arraybuffer, napi_env{*this}, subject)) {
+				return immediate(napi::value<array_buffer_tag>::from(subject), accept);
+			} else {
+				return immediate(napi::value<shared_array_buffer_tag>::from(subject), accept);
+			}
+		}
+
+		template <class Accept>
 		auto immediate(value<array_buffer_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept_tagged(subject, accept);
 		}
@@ -184,9 +197,23 @@ struct visit_napi_value
 			return accept_tagged(subject, accept);
 		}
 
-		template <class Accept, std::convertible_to<array_buffer_view_tag> Tag>
-		auto immediate(value<Tag> subject, const Accept& accept) -> accept_target_t<Accept> {
-			throw std::logic_error{"unimplemented"};
+		template <class Accept>
+		auto immediate(value<typed_array_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
+			auto bound_subject_variant = bound_value_for_typed_array::make_bound(this->environment(), subject);
+			if (bound_subject_variant.index() == std::variant_npos) {
+				std::unreachable();
+			} else {
+				return std::visit(
+					[ & ]<class Tag>(bound_value<Tag> value) -> accept_target_t<Accept> {
+						return accept(Tag{}, *this, value);
+					},
+					bound_subject_variant
+				);
+			}
+		}
+
+		template <class Accept>
+		auto immediate(value<data_view_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept_tagged(subject, accept);
 		}
 

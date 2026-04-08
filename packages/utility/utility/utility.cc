@@ -139,7 +139,7 @@ struct slice_t<const Type> {
 };
 
 export template <class Type>
-constexpr auto slice(Type& value) {
+constexpr auto slice(const Type& value) {
 	return slice_t<const Type>{value};
 }
 

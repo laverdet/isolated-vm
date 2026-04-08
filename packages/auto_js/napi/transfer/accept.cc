@@ -19,15 +19,14 @@ using accept_napi_value_with = accept_napi_value<typename Meta::accept_context_t
 template <class Environment>
 struct accept_napi_value : napi::environment_scope<Environment> {
 	public:
-		// nb: This marks this acceptor as referential!
-		using accept_reference_type = napi_value;
-
 		using napi::environment_scope<Environment>::environment;
 
 		explicit accept_napi_value(auto* /*transfer*/, auto& env) :
 				napi::environment_scope<Environment>{env} {}
 
 		// reference provider
+		using accept_reference_type = napi_value;
+
 		constexpr auto operator()(std::type_identity<napi_value> /*type*/, napi_value value) const -> napi_value { return value; }
 
 		template <class Tag>
@@ -152,7 +151,9 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			-> js::referenceable_value<napi::value<Tag>> {
 			auto byte_offset = subject.byte_offset();
 			auto length = subject.size();
-			auto buffer = napi::value<object_tag>::from(visit(std::forward<decltype(subject)>(subject).buffer(), self));
+			// TODO: We accept the nested `buffer` property as a `data_block` which means `make` needs to
+			// invoke `is_arraybuffer` on it again even though we knew what it was a moment ago.
+			auto buffer = napi::value<data_block_tag>::from(visit(std::forward<decltype(subject)>(subject).buffer(), self));
 			return js::referenceable_value{napi::value<Tag>::make(self.environment(), buffer, byte_offset, length)};
 		}
 

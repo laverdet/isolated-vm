@@ -1,8 +1,10 @@
 export module v8_js:accept;
+import :array_buffer;
 import :hash;
 import :lock;
 import :primitive;
 import :unmaybe;
+import :value.tag;
 import auto_js;
 import std;
 import util;
@@ -13,9 +15,6 @@ namespace js {
 // Base class for primitive acceptors. These require only an isolate lock.
 struct accept_v8_primitive {
 	public:
-		// nb: This marks this acceptor as referential!
-		using accept_reference_type = v8::Local<v8::Value>;
-
 		accept_v8_primitive() = delete;
 		explicit accept_v8_primitive(iv8::isolate_lock_witness lock) :
 				isolate_{lock.isolate()} {}
@@ -25,6 +24,8 @@ struct accept_v8_primitive {
 		[[nodiscard]] auto isolate() const -> v8::Isolate* { return isolate_; }
 
 		// reference provider
+		using accept_reference_type = v8::Local<v8::Value>;
+
 		template <class Type>
 		constexpr auto operator()(std::type_identity<v8::Local<Type>> /*type*/, v8::Local<v8::Value> value) const -> v8::Local<Type> {
 			return value.As<Type>();
@@ -207,33 +208,48 @@ struct accept_v8_value : accept_v8_primitive {
 		auto operator()(array_buffer_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const
 			-> js::referenceable_value<v8::Local<v8::ArrayBuffer>> {
 			auto data = js::array_buffer{std::forward<decltype(subject)>(subject)};
-			throw std::logic_error{"unimplemented"};
+			return js::referenceable_value{iv8::array_buffer::make(util::slice(witness()), std::move(data))};
 		}
 
 		auto operator()(shared_array_buffer_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const
 			-> js::referenceable_value<v8::Local<v8::SharedArrayBuffer>> {
 			auto data = js::shared_array_buffer{std::forward<decltype(subject)>(subject)};
-			throw std::logic_error{"unimplemented"};
+			return js::referenceable_value{iv8::shared_array_buffer::make(util::slice(witness()), std::move(data))};
 		}
 
 		// typed arrays
 		template <class Type>
 		auto operator()(this const auto& self, typed_array_tag_of<Type> /*tag*/, auto& visit, auto&& subject)
 			-> js::referenceable_value<v8::Local<v8::ArrayBufferView>> {
-			[[maybe_unused]] auto byte_offset = subject.byte_offset();
-			[[maybe_unused]] auto length = subject.size();
-			[[maybe_unused]] auto buffer = visit(std::forward<decltype(subject)>(subject).buffer(), self);
-			throw std::logic_error{"unimplemented"};
-		}
+			using v8_type = tag_to_v8<typed_array_tag_of<Type>>;
+			auto byte_offset = subject.byte_offset();
+			auto length = subject.size();
+			auto buffer = v8::Local<v8::Value>{visit(std::forward<decltype(subject)>(subject).buffer(), self)};
+			auto view = [ & ]() -> v8::Local<v8_type> {
+				if (buffer->IsSharedArrayBuffer()) {
+					return v8_type::New(buffer.As<v8::SharedArrayBuffer>(), byte_offset, length);
+				} else {
+					return v8_type::New(buffer.As<v8::ArrayBuffer>(), byte_offset, length);
+				}
+			}();
+			return js::referenceable_value<v8::Local<v8::ArrayBufferView>>{view};
+		};
 
 		// data view
 		template <class Type>
 		auto operator()(this const auto& self, data_view_tag /*tag*/, auto& visit, auto&& subject)
-			-> js::referenceable_value<v8::Local<v8::DataView>> {
-			[[maybe_unused]] auto byte_offset = subject.byte_offset();
-			[[maybe_unused]] auto length = subject.size();
-			[[maybe_unused]] auto buffer = visit(std::forward<decltype(subject)>(subject).buffer(), self);
-			throw std::logic_error{"unimplemented"};
+			-> js::referenceable_value<v8::Local<v8::ArrayBufferView>> {
+			auto byte_offset = subject.byte_offset();
+			auto length = subject.size();
+			auto buffer = v8::Local<v8::Object>{visit(std::forward<decltype(subject)>(subject).buffer(), self)};
+			auto view = [ & ]() -> v8::Local<Type> {
+				if (buffer->IsSharedArrayBuffer()) {
+					return v8::DataView::New(buffer.As<v8::SharedArrayBuffer>(), byte_offset, length);
+				} else {
+					return v8::DataView::New(buffer.As<v8::ArrayBuffer>(), byte_offset, length);
+				}
+			}();
+			return js::referenceable_value<v8::Local<v8::ArrayBufferView>>{view};
 		}
 
 	private:

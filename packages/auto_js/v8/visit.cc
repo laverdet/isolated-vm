@@ -173,14 +173,17 @@ struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
 
 		// data blocks
 		template <class Accept>
-		auto immediate(v8::Local<v8::ArrayBuffer> subject, const Accept& accept) -> accept_target_t<Accept> {
-			// ArrayBuffer (from `js::iv8::typed_array<T>{}.buffer()`)
-			// (it could be either kind)
+		auto immediate(iv8::data_block subject, const Accept& accept) -> accept_target_t<Accept> {
 			if (subject->IsSharedArrayBuffer()) {
 				return immediate(subject.As<v8::SharedArrayBuffer>(), accept);
 			} else {
-				return accept(array_buffer_tag{}, *this, iv8::array_buffer{subject});
+				return immediate(subject.As<v8::ArrayBuffer>(), accept);
 			}
+		}
+
+		template <class Accept>
+		auto immediate(v8::Local<v8::ArrayBuffer> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(array_buffer_tag{}, *this, iv8::array_buffer{subject});
 		}
 
 		template <class Accept>
@@ -261,11 +264,10 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 			});
 		}
 
-		// Visitor for `v8::ArrayBuffer` (which is the return value of
-		// `js::iv8::typed_array<T>{}.buffer()`). Otherwise it will attempt to compile the acceptor
-		// calls for all v8 types.
+		// Visitor for `iv8::data_block` (which is the return value of
+		// `js::iv8::typed_array<T>{}.buffer()`).
 		template <class Accept>
-		auto operator()(v8::Local<v8::ArrayBuffer> subject, const Accept& accept) -> accept_target_t<Accept> {
+		auto operator()(iv8::data_block subject, const Accept& accept) -> accept_target_t<Accept> {
 			return lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
 				return immediate(subject, accept);
 			});
@@ -411,6 +413,7 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 };
 
 // Name visitor (string + symbol)
+// TODO: These do not need a reference map!
 template <class Meta>
 struct visit<Meta, v8::Local<v8::Name>> : visit_flat_v8_value_with<Meta> {
 		using visit_flat_v8_value_with<Meta>::visit_flat_v8_value_with;

@@ -59,5 +59,6 @@ target_sources(v8_js
 		value/handle.cc
 		value/object.h.cc
 		value/primitive.h.cc
+		value/tag.h.cc
 		visit.cc
 )
