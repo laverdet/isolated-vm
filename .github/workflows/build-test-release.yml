@@ -357,6 +357,24 @@ jobs:
         node:
           - 22
           - 24
+          - 25
+        exclude:
+          - host:
+              runs-on: ubuntu-24.04-arm
+              container: alpine:edge
+            node: 25
+          - host:
+              runs-on: ubuntu-24.04-arm
+              container: debian:forky
+            node: 25
+          - host:
+              runs-on: ubuntu-24.04
+              container: alpine:edge
+            node: 25
+          - host:
+              runs-on: ubuntu-24.04
+              container: debian:forky
+            node: 25
     runs-on: ${{ matrix.host.runs-on }}
     container: ${{ matrix.host.container }}
     steps:
