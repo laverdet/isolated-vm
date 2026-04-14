@@ -50,4 +50,19 @@ class deferred_receiver : public referenceable_value<Type> {
 		std::tuple<Args...> args_;
 };
 
+// Invoke `js::deferred_receiver`
+constexpr auto dispatch_referenceable = util::overloaded{
+	[]<class Type>(Type&& value) -> Type {
+		return std::forward<decltype(value)>(value);
+	},
+	[]<class Type>(js::referenceable_value<Type> value) -> Type {
+		return *std::move(value);
+	},
+	[]<class Type, class... Args>(js::deferred_receiver<Type, Args...> receiver) -> Type {
+		std::move(receiver)();
+		// NOLINTNEXTLINE(bugprone-use-after-move)
+		return *std::move(receiver);
+	},
+};
+
 } // namespace js

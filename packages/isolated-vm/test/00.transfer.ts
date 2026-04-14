@@ -1,5 +1,5 @@
 import * as assert from "node:assert/strict";
-import { test } from "node:test";
+import { describe, test } from "node:test";
 import * as ivm from "@isolated-vm/experimental";
 import { unsafeEvalAsStringInRealm } from "./fixtures.js";
 
@@ -40,4 +40,13 @@ await test("transfer types", async () => {
 	await check(agent, realm, () => 18_446_744_073_709_551_616n); // uint64 max + 1
 	await check(agent, realm, () => 502_360_950_888_298_027_355_518_043_327_124_471_675_959_709_617_316_205_938_938_264_006_428_765_255_489n); // 256 bit number
 	await check(agent, realm, () => -502_360_950_888_298_027_355_518_043_327_124_471_675_959_709_617_316_205_938_938_264_006_428_765_255_490n); // 256 bit negative
+});
+
+await describe("regressions", async () => {
+	await test("numeric references", async () => {
+		await using agent = await ivm.Agent.create();
+		const realm = await agent.createRealm();
+		const global = await realm.acquireGlobalObject();
+		await global.set("xx", { zero: 0.1, one: 0.2 });
+	});
 });

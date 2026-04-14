@@ -14,6 +14,7 @@ namespace js {
 template <class Subject, class Target>
 struct reference_vector_of {
 	private:
+		static_assert(std::is_trivially_copyable_v<Target>);
 		using reference_type = reference_of<Subject>;
 
 	public:
@@ -47,8 +48,6 @@ struct reference_vector_of<Subject, void> {
 	public:
 		using reference_type = reference_of<Subject>;
 
-		constexpr auto emplace_subject(reference_type /*reference*/, const auto& /*value*/) -> void {}
-
 		template <class Accept>
 		[[nodiscard]] constexpr auto lookup_or_visit(const Accept& /*accept*/, reference_type subject, auto dispatch) const
 			-> accept_target_t<Accept> {
@@ -73,6 +72,9 @@ struct reference_vector_of<Subject, void> {
 // acceptor.
 template <class Meta, class Type>
 struct visit_reference_of : visit<Meta, Type> {
+	private:
+		using accept_reference_type = Meta::accept_reference_type;
+
 	public:
 		using visit_type = visit<Meta, Type>;
 		using visit_type::visit_type;
@@ -80,7 +82,25 @@ struct visit_reference_of : visit<Meta, Type> {
 		template <class Accept>
 		constexpr auto operator()(reference_of<Type> reference, const Accept& accept) -> accept_target_t<Accept> {
 			return values_storage_.lookup_or_visit(accept, reference, [ & ]() constexpr -> accept_target_t<Accept> {
-				auto insert = [ & ](const auto& value) -> void { values_storage_.emplace_subject(reference, value); };
+				auto insert = [ & ] -> auto {
+					if constexpr (type<accept_reference_type> == type<void>) {
+						return [](const auto& /*value*/) -> void {};
+					} else {
+						return util::overloaded{
+							[ &, reference ](const auto& value) -> void {
+								if constexpr (requires { accept_reference_type{value}; }) {
+									values_storage_.emplace_subject(reference, value);
+								}
+							},
+							[ &, reference ]<class Ref>(const js::referenceable_value<Ref>& value) -> void {
+								values_storage_.emplace_subject(reference, *value);
+							},
+							[ &, reference ]<class Ref, class... Args>(const js::deferred_receiver<Ref, Args...>& receiver) -> void {
+								values_storage_.emplace_subject(reference, *receiver);
+							},
+						};
+					}
+				}();
 				auto accept_ = accept_value_direct{accept, insert};
 				return util::invoke_as<visit_type>(*this, std::move(references_).at(reference), accept_);
 			});
@@ -97,7 +117,7 @@ struct visit_reference_of : visit<Meta, Type> {
 
 	private:
 		reference_storage_of<Type> references_;
-		reference_vector_of<Type, typename Meta::accept_reference_type> values_storage_;
+		reference_vector_of<Type, accept_reference_type> values_storage_;
 };
 
 // `reference_of` visitor delegates to `visit_reference_of`

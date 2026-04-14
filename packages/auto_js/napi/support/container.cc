@@ -13,6 +13,7 @@ struct virtual_value_map {
 	public:
 		using container_type = std::unordered_map<napi_value, Type>;
 		using iterator = container_type::iterator;
+		using key_type = container_type::key_type;
 		using mapped_type = container_type::mapped_type;
 
 		virtual auto end() const -> iterator = 0;
@@ -24,16 +25,16 @@ template <class Map>
 struct concrete_value_map final : virtual_value_map<typename Map::mapped_type> {
 	public:
 		using container_type = Map;
-		// nb: The iterator type between `std::unordered_map<int, int, left>` and
-		// `std::unordered_map<int, int, right>` are not technically compatible.
-		using iterator = virtual_value_map<typename Map::mapped_type>::iterator;
-		using mapped_type = container_type::mapped_type;
+		using typename virtual_value_map<typename Map::mapped_type>::mapped_type;
+		using typename virtual_value_map<typename Map::mapped_type>::iterator;
 
 		virtual auto end() const -> iterator {
 			return std::bit_cast<iterator>(map_.end());
 		}
 
 		virtual auto find(napi_value key) const -> iterator {
+			// nb: The iterator type between `std::unordered_map<int, int, left>` and
+			// `std::unordered_map<int, int, right>` are not technically compatible.
 			return std::bit_cast<iterator>(map_.find(key));
 		}
 
@@ -56,6 +57,7 @@ class value_map {
 	public:
 		using container_type = virtual_value_map<Type>;
 		using iterator = container_type::iterator;
+		using key_type = container_type::key_type;
 		using mapped_type = container_type::mapped_type;
 
 		explicit value_map(const environment& env) :
@@ -66,8 +68,8 @@ class value_map {
 				} {}
 
 		auto end() const -> iterator { return map_->end(); }
-		auto find(napi_value key) const -> iterator { return map_->find(key); }
-		auto try_emplace(napi_value key, mapped_type value) -> std::pair<iterator, bool> { return map_->try_emplace(key, std::move(value)); }
+		auto find(key_type key) const -> iterator { return map_->find(key); }
+		auto try_emplace(key_type key, mapped_type value) -> std::pair<iterator, bool> { return map_->try_emplace(key, std::move(value)); }
 
 	private:
 		virtual_map_type map_;

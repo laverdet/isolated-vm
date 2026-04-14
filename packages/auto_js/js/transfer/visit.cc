@@ -108,18 +108,23 @@ struct null_reference_map {
 // acceptor-aware `try_emplace`.
 template <class Map>
 struct reference_map_provider {
+	private:
+		using key_type = Map::key_type;
+		using mapped_type = Map::mapped_type;
+		static_assert(std::is_trivially_copyable_v<key_type>);
+		static_assert(std::is_trivially_copyable_v<mapped_type>);
+
 	public:
 		explicit reference_map_provider(auto&&... args) :
 				map_{std::forward<decltype(args)>(args)...} {}
-
-		constexpr auto emplace_subject(const auto& subject, const auto& value) -> void {
+		constexpr auto emplace_subject(key_type subject, mapped_type value) -> void {
 			// NOLINTNEXTLINE(cppcoreguidelines-slicing)
 			[[maybe_unused]] auto [ iterator, inserted ] = map_.try_emplace(subject, value);
 			assert(inserted);
 		}
 
 		template <class Accept>
-		constexpr auto lookup_or_visit(const Accept& accept, const auto& subject, auto dispatch) const -> accept_target_t<Accept> {
+		constexpr auto lookup_or_visit(const Accept& accept, key_type subject, auto dispatch) const -> accept_target_t<Accept> {
 			using value_type = accept_target_t<Accept>;
 			auto it = map_.find(subject);
 			if (it == map_.end()) {

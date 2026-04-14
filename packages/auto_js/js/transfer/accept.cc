@@ -106,33 +106,28 @@ struct accept_value_direct {
 			// `accept_value` then you expect it to succeed. If the assert fails then something has gone
 			// totally off the rails.
 			static_assert(std::invocable<const Accept&, decltype(tag), decltype(visit), decltype(subject)>);
+
 			// The `invoke_this_as` call is used by the `js::deferred_receiver`-returning acceptors. They
 			// take a `this const auto& self` parameter which must be the `accept_value_from` type and not
 			// their own type.
-			return consume(util::invoke_this_as<Accept>(accept_.get(), tag, visit, std::forward<decltype(subject)>(subject)));
+			auto&& result = util::invoke_this_as<Accept>(accept_.get(), tag, visit, std::forward<decltype(subject)>(subject));
+
+			// Insert received value into reference map
+			insert_(result);
+
+			// Dispatch `js::deferred_receiver` and convert back into `target_type`
+			return make_target(dispatch_referenceable(std::forward<decltype(result)>(result)));
 		}
 
 	private:
-		constexpr auto consume(auto&& value) const -> target_type {
+		constexpr auto make_target(auto&& value) const -> target_type {
+			// Recursively invoke single-argument reference casting operation until `target_type` is
+			// produced.
 			if constexpr (std::invocable<const Accept&, decltype(value)>) {
-				return consume(util::invoke_as<Accept>(accept_.get(), std::forward<decltype(value)>(value)));
+				return make_target(util::invoke_as<Accept>(accept_.get(), std::forward<decltype(value)>(value)));
 			} else {
 				return std::forward<decltype(value)>(value);
 			}
-		}
-
-		template <class Type>
-		[[nodiscard]] constexpr auto consume(js::referenceable_value<Type> value) const -> target_type {
-			insert_(*value);
-			return consume(*std::move(value));
-		}
-
-		template <class Type, class... Args>
-		[[nodiscard]] constexpr auto consume(js::deferred_receiver<Type, Args...> receiver) const -> target_type {
-			insert_(*receiver);
-			std::move(receiver)();
-			// NOLINTNEXTLINE(bugprone-use-after-move)
-			return consume(*std::move(receiver));
 		}
 
 		util::reference_wrapper<const accept_type> accept_;
@@ -153,11 +148,19 @@ struct accept_value_from : Accept {
 
 		template <class Visit>
 		constexpr auto operator()(auto_tag auto tag, Visit& visit, auto&& subject) const -> accept_target_t<accept_type> {
-			auto insert = [ & ]() -> auto {
+			auto insert = [ & ] -> auto {
 				if constexpr (js::has_reference_map(type<Visit>)) {
-					return [ subject, &visit = visit ](const auto& value) { visit.emplace_subject(subject, value); };
+					return util::overloaded{
+						[](const auto& /*value*/) -> void {},
+						[ &, subject ]<class Ref>(js::referenceable_value<Ref> value) -> void {
+							visit.emplace_subject(subject, *value);
+						},
+						[ &, subject ]<class Ref, class... Args>(const js::deferred_receiver<Ref, Args...>& receiver) -> void {
+							visit.emplace_subject(subject, *receiver);
+						},
+					};
 				} else {
-					return util::unused;
+					return [](const auto& /*value*/) -> void {};
 				}
 			}();
 			return accept_value_direct{*this, insert}(tag, visit, std::forward<decltype(subject)>(subject));
