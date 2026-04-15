@@ -105,12 +105,12 @@ jobs:
       - uses: laverdet/install@v0
         if: runner.os == 'Linux'
         with:
-          packages: tar zstd
+          packages: curl tar zstd
 
       # Install toolchain
       - name: Sources [Debian]
         if: endsWith(matrix.host.triplet, '-linux-gnu')
-        run: apt-get -qq install --no-install-recommends -y curl; curl -kfsSL https://deb.nodesource.com/setup_24.x | bash -
+        run: curl -kfsSL https://deb.nodesource.com/setup_24.x | bash -
       - name: Toolchain [Linux]
         uses: laverdet/install@v0
         if: runner.os == 'Linux'
