@@ -58,13 +58,6 @@ struct accept<Meta, std::vector<Type>> : public accept_value<Meta, Type> {
 		explicit accept(auto* transfer, auto&&... args) :
 				accept_type{transfer, std::forward<decltype(args)>(args)...} {}
 
-		// forward reference provider
-		template <class To>
-		constexpr auto operator()(std::type_identity<To> type, auto&& value) const -> To
-			requires std::invocable<const accept_type&, std::type_identity<To>, decltype(value)> {
-			return accept_type::operator()(type, std::forward<decltype(value)>(value));
-		}
-
 		constexpr auto operator()(list_tag /*tag*/, auto& visit, auto&& subject) const -> std::vector<Type> {
 			const accept_type& accept = *this;
 			// nb: This doesn't check for string keys, so like `Object.assign([ 1 ], { foo: 2 })` might

@@ -26,10 +26,10 @@ struct visit_napi_property_name {
 
 		template <class Accept>
 		auto operator()(napi_value subject, const Accept& accept) -> accept_target_t<Accept> {
-			return visit_.get().lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
+			return visit_.get().lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
 				switch (napi::invoke(napi_typeof, napi_env{visit_.get()}, subject)) {
 					case napi_number:
-						return visit_(napi::value<number_tag>::from(subject), accept);
+						return visit_(napi::value<number_tag_of<std::int32_t>>::from(subject), accept);
 					case napi_string:
 						// TODO: This looks up in the reference map twice. This should actually use
 						// `make_property_name`.
@@ -51,7 +51,7 @@ struct visit_napi_property_name {
 // Base napi visitor implementing all functionality. Napi doesn't give us granular information like
 // "is this a latin1 string" and all checks must be made at once. So it's structured it great deal
 // differently than the v8 visitor.
-template <auto_environment Environment, class Target>
+template <auto_environment Environment, class Ref>
 struct visit_napi_value;
 
 template <class Meta>
@@ -59,23 +59,23 @@ using visit_napi_value_with = visit_napi_value<
 	typename Meta::visit_context_type,
 	typename Meta::accept_reference_type>;
 
-template <auto_environment Environment, class Target>
+template <auto_environment Environment, class Reference>
 struct visit_napi_value
 		: napi::environment_scope<Environment>,
-			reference_map_t<Target, napi_reference_map_type> {
+			reference_map_t<Reference, napi_reference_map_type> {
 	public:
-		using reference_map_t<Target, napi_reference_map_type>::lookup_or_visit;
+		using reference_map_t<Reference, napi_reference_map_type>::lookup_or_visit;
 
 		visit_napi_value(auto* /*transfer*/, Environment& env) :
 				napi::environment_scope<Environment>{env},
-				reference_map_t<Target, napi_reference_map_type>{env} {}
+				reference_map_t<Reference, napi_reference_map_type>{env} {}
 
 		// If the private `immediate` operation is defined: this public operation will first
 		// perform a reference map lookup, then delegate to the private operation if not found.
 		template <auto_tag Tag, class Accept>
 		auto operator()(value<Tag> subject, const Accept& accept) -> accept_target_t<Accept>
 			requires requires { immediate(subject, accept); } {
-			return lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
+			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
 				return immediate(subject, accept);
 			});
 		}
@@ -103,6 +103,11 @@ struct visit_napi_value
 			return accept_tagged(napi::value<number_tag_of<double>>::from(subject), accept);
 		}
 
+		template <class Accept, class Type>
+		auto operator()(value<number_tag_of<Type>> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept_tagged(napi::value<number_tag_of<Type>>::from(subject), accept);
+		}
+
 		template <class Accept>
 		auto operator()(value<symbol_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept_tagged(subject, accept);
@@ -113,7 +118,7 @@ struct visit_napi_value
 		auto operator()(napi_value subject, const Accept& accept) -> accept_target_t<Accept> {
 
 			// Check the reference map, and lookup type via napi
-			return lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
+			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
 				auto type_of = napi::invoke(napi_typeof, napi_env{*this}, subject);
 				switch (type_of) {
 					case napi_undefined:

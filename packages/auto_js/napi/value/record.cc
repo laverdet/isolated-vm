@@ -15,7 +15,14 @@ auto bound_value_for_record::size() const -> std::size_t {
 
 auto bound_value_for_record::keys() const -> const keys_type& {
 	if (napi_value{keys_} == nullptr) {
-		auto* property_names = napi::invoke(napi_get_property_names, env(), *this);
+		auto* property_names = napi::invoke(
+			napi_get_all_property_names,
+			env(),
+			*this,
+			napi_key_own_only,
+			static_cast<napi_key_filter>(napi_key_enumerable | napi_key_skip_symbols),
+			napi_key_keep_numbers
+		);
 		keys_ = keys_type{env(), js::napi::value<vector_tag>::from(property_names)};
 	}
 	return keys_;

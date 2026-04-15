@@ -40,8 +40,9 @@ export class object
 		using range_type = std::ranges::transform_view<std::views::all_t<const array&>, iterator_transform>;
 		using iterator = std::ranges::iterator_t<range_type>;
 
-		[[nodiscard]] auto get(v8::Local<v8::Value> key) -> v8::Local<v8::Value>;
-		[[nodiscard]] auto has(v8::Local<v8::Value> key) -> bool;
+		[[nodiscard]] auto get(v8::Local<v8::Name> key) -> v8::Local<v8::Value>;
+		[[nodiscard]] auto get(v8::Local<v8::Number> key) -> v8::Local<v8::Value>;
+		[[nodiscard]] auto get(v8::Local<v8::Primitive> key) -> v8::Local<v8::Value>;
 		[[nodiscard]] auto into_range() -> range_type;
 		[[nodiscard]] auto size() const -> std::size_t;
 

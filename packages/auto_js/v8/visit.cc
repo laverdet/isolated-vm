@@ -29,7 +29,7 @@ struct visit_v8_property_name {
 
 		template <class Accept>
 		auto operator()(v8::Local<v8::Primitive> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return visit_.get().lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
+			return visit_.get().lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
 				if (subject->IsNumber()) {
 					return visit_(subject.As<v8::Number>(), accept);
 				} else if (subject->IsName()) {
@@ -59,7 +59,7 @@ struct visit_cached_immediate : Visit {
 		template <class Accept>
 		auto operator()(auto subject, const Accept& accept) -> accept_target_t<Accept>
 			requires requires { immediate(subject, accept); } {
-			return lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
+			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
 				return immediate(subject, accept);
 			});
 		}
@@ -67,14 +67,14 @@ struct visit_cached_immediate : Visit {
 
 // Primitive-ish value visitor. These only need an isolate, so they are separated from the other
 // visitor. Also, none of these are recursive.
-template <class Target>
+template <class Reference>
 struct visit_flat_v8_value;
 
 template <class Meta>
 using visit_flat_v8_value_with = visit_cached_immediate<visit_flat_v8_value<typename Meta::accept_reference_type>>;
 
-template <class Target>
-struct visit_flat_v8_value : reference_map_t<Target, v8_reference_map_type> {
+template <class Reference>
+struct visit_flat_v8_value : reference_map_t<Reference, v8_reference_map_type> {
 	public:
 		explicit visit_flat_v8_value(auto* /*transfer*/, iv8::isolate_lock_witness lock) :
 				isolate_lock_{lock} {}
@@ -255,7 +255,7 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 			}
 
 			// Check the reference map, and check type
-			return lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
+			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
 				if (subject->IsObject()) {
 					return immediate(subject.As<v8::Object>(), accept);
 				} else {
@@ -268,7 +268,7 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 		// `js::iv8::typed_array<T>{}.buffer()`).
 		template <class Accept>
 		auto operator()(iv8::data_block subject, const Accept& accept) -> accept_target_t<Accept> {
-			return lookup_or_visit(accept, subject, [ & ]() -> accept_target_t<Accept> {
+			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
 				return immediate(subject, accept);
 			});
 		}

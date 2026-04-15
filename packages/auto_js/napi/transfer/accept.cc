@@ -9,6 +9,20 @@ import util;
 namespace js {
 using namespace napi;
 
+// napi reference acceptor
+struct reaccept_napi_value {
+		using reference_type = napi_value;
+
+		constexpr auto operator()(std::type_identity<napi_value> /*type*/, napi_value value) const -> napi_value {
+			return value;
+		}
+
+		template <class Tag>
+		constexpr auto operator()(std::type_identity<napi::value<Tag>> /*type*/, napi_value value) const -> napi::value<Tag> {
+			return napi::value<Tag>::from(value);
+		}
+};
+
 // Generic napi acceptor which accepts all value types.
 template <class Environment>
 struct accept_napi_value;
@@ -24,15 +38,8 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 		explicit accept_napi_value(auto* /*transfer*/, auto& env) :
 				napi::environment_scope<Environment>{env} {}
 
-		// reference provider
-		using accept_reference_type = napi_value;
-
-		constexpr auto operator()(std::type_identity<napi_value> /*type*/, napi_value value) const -> napi_value { return value; }
-
-		template <class Tag>
-		constexpr auto operator()(std::type_identity<napi::value<Tag>> /*type*/, napi_value value) const -> napi::value<Tag> {
-			return napi::value<Tag>::from(value);
-		}
+		// Declare reference provider
+		using accept_reference_type = reaccept_napi_value;
 
 		// undefined & null
 		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> napi::value<undefined_tag> {
@@ -220,9 +227,13 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
 			properties.reserve(std::size(range));
 			for (auto&& [ key, value ] : util::forward_range(std::forward<decltype(range)>(range))) {
+				auto* name = napi_value{visit.first(std::forward<decltype(key)>(key), self)};
 				properties.emplace_back(napi_property_descriptor{
 					.utf8name{},
-					.name = napi_value{visit.first(std::forward<decltype(key)>(key), self)},
+					// TODO: `napi_define_properties` only works with string keys but the nested acceptor will
+					// accept indexed properties as numeric napi values. `visit.first` should be invoked
+					// against something that maybe resolves to `std::variant<int32_t, value<name_tag>>`.
+					.name = napi::invoke(napi_coerce_to_string, napi_env{self}, name),
 
 					.method{},
 					.getter{},

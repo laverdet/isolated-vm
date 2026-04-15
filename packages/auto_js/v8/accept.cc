@@ -12,6 +12,16 @@ import v8;
 
 namespace js {
 
+// Reference acceptor
+struct reaccept_v8_value {
+		using reference_type = v8::Local<v8::Value>;
+
+		template <class Type>
+		constexpr auto operator()(std::type_identity<v8::Local<Type>> /*type*/, v8::Local<v8::Value> value) const -> v8::Local<Type> {
+			return value.As<Type>();
+		}
+};
+
 // Base class for primitive acceptors. These require only an isolate lock.
 struct accept_v8_primitive {
 	public:
@@ -23,13 +33,8 @@ struct accept_v8_primitive {
 
 		[[nodiscard]] auto isolate() const -> v8::Isolate* { return isolate_; }
 
-		// reference provider
-		using accept_reference_type = v8::Local<v8::Value>;
-
-		template <class Type>
-		constexpr auto operator()(std::type_identity<v8::Local<Type>> /*type*/, v8::Local<v8::Value> value) const -> v8::Local<Type> {
-			return value.As<Type>();
-		}
+		// Declare reference provider
+		using accept_reference_type = reaccept_v8_value;
 
 		// undefined & null
 		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> v8::Local<v8::Primitive> {

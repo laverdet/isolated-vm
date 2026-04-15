@@ -27,9 +27,13 @@ export enum class typeof_kind : std::uint8_t {
 // Any utf16 (canonical) or latin1 (optimized) string
 export using string_t = std::variant<std::u16string, std::string>;
 
+// Dictionary key type for `js::value_t`
+using value_key_type = std::variant<
+	std::int32_t,
+	reference_of<std::u16string>,
+	reference_of<std::string>>;
+
 // Transferred runtime JS value
-// TODO: `Value` is used at the dictionary `key` type here which means acceptors of these values
-// will have a bunch of unnecessary exception logic for values like `bigint` which cannot be keys.
 template <class Value>
 using variant_value = std::variant<
 	// `undefined`
@@ -50,8 +54,8 @@ using variant_value = std::variant<
 	// date
 	reference_of<js_clock::time_point>,
 	// object(s)
-	reference_of<dictionary<list_tag, Value, Value>>,
-	reference_of<dictionary<dictionary_tag, Value, Value>>,
+	reference_of<dictionary<list_tag, value_key_type, Value>>,
+	reference_of<dictionary<dictionary_tag, value_key_type, Value>>,
 	// data blocks
 	reference_of<array_buffer>,
 	reference_of<shared_array_buffer>,

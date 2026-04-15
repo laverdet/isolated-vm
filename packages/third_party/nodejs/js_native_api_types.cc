@@ -21,32 +21,32 @@ export using ::napi_type_tag;
 export using ::node_api_basic_finalize;
 export using ::node_api_nogc_finalize;
 
-// napi_valuetype
-export using ::napi_valuetype;
-export using ::napi_bigint;
-export using ::napi_boolean;
-export using ::napi_external;
-export using ::napi_function;
-export using ::napi_null;
-export using ::napi_number;
-export using ::napi_object;
-export using ::napi_string;
-export using ::napi_symbol;
-export using ::napi_undefined;
+// napi_key_collection_mode
+export using ::napi_key_collection_mode;
+export using ::napi_key_include_prototypes;
+export using ::napi_key_own_only;
 
-// napi_typedarray_type
-export using ::napi_typedarray_type;
-export using ::napi_bigint64_array;
-export using ::napi_biguint64_array;
-export using ::napi_float32_array;
-export using ::napi_float64_array;
-export using ::napi_int16_array;
-export using ::napi_int32_array;
-export using ::napi_int8_array;
-export using ::napi_uint16_array;
-export using ::napi_uint32_array;
-export using ::napi_uint8_array;
-export using ::napi_uint8_clamped_array;
+// napi_key_conversion
+export using ::napi_key_conversion;
+export using ::napi_key_keep_numbers;
+export using ::napi_key_numbers_to_strings;
+
+// napi_key_filter
+export using ::napi_key_filter;
+export using ::napi_key_all_properties;
+export using ::napi_key_configurable;
+export using ::napi_key_enumerable;
+export using ::napi_key_skip_strings;
+export using ::napi_key_skip_symbols;
+export using ::napi_key_writable;
+
+// napi_property_attributes
+export using ::napi_property_attributes;
+export using ::napi_default;
+export using ::napi_writable;
+export using ::napi_enumerable;
+export using ::napi_configurable;
+export using ::napi_static;
 
 // napi_status
 export using ::napi_status;
@@ -75,12 +75,31 @@ export using ::napi_queue_full;
 export using ::napi_string_expected;
 export using ::napi_would_deadlock;
 
-// napi_property_attributes
-export using ::napi_property_attributes;
-export using ::napi_default;
-export using ::napi_writable;
-export using ::napi_enumerable;
-export using ::napi_configurable;
-export using ::napi_static;
+// napi_typedarray_type
+export using ::napi_typedarray_type;
+export using ::napi_bigint64_array;
+export using ::napi_biguint64_array;
+export using ::napi_float32_array;
+export using ::napi_float64_array;
+export using ::napi_int16_array;
+export using ::napi_int32_array;
+export using ::napi_int8_array;
+export using ::napi_uint16_array;
+export using ::napi_uint32_array;
+export using ::napi_uint8_array;
+export using ::napi_uint8_clamped_array;
+
+// napi_valuetype
+export using ::napi_valuetype;
+export using ::napi_bigint;
+export using ::napi_boolean;
+export using ::napi_external;
+export using ::napi_function;
+export using ::napi_null;
+export using ::napi_number;
+export using ::napi_object;
+export using ::napi_string;
+export using ::napi_symbol;
+export using ::napi_undefined;
 
 // NOLINTEND(misc-unused-using-decls)

@@ -38,6 +38,39 @@ struct accepted_reference_of : accepted_reference {
 		}
 };
 
+// Reference acceptor for `accepted_reference`
+template <class Refs>
+struct reaccept_accepted_reference;
+
+template <class... Types>
+struct reaccept_accepted_reference<util::type_pack<Types...>> {
+	public:
+		using reference_type = accepted_reference;
+
+		template <class To>
+		constexpr auto operator()(std::type_identity<To> /*type*/, accepted_reference reference) const -> To {
+			const auto reaccept = [ = ]<std::size_t Index>(std::integral_constant<std::size_t, Index> /*index*/) -> To {
+				using mapped_reference_type = reference_of<Types...[ Index ]>;
+				if constexpr (requires(mapped_reference_type ref) { To{ref}; }) {
+					return To{mapped_reference_type{reference.id()}};
+				} else {
+					// This would happen if a runtime visitor (napi, v8) cached a value for a
+					// `reference_of<T>` which was then visited again later with an acceptor whose target
+					// can't construct from the `reference_of<T>`.
+					throw js::type_error{u"Internal acceptor error"};
+				}
+			};
+			return util::template_switch(
+				reference.type_index(),
+				util::sequence<sizeof...(Types)>,
+				util::overloaded{
+					reaccept,
+					[]() -> To { std::unreachable(); },
+				}
+			);
+		}
+};
+
 // Instantiated by `recursive_value_holder` acceptor. This stashes the underlying value in storage
 // which is managed by this class. It also serves as the `reference_of<T>` acceptor delegate.
 template <class Meta, class Type>
@@ -107,9 +140,6 @@ struct accept<Meta, recursive_value_holder<Make, Extract>>
 		using accept_type = accept_delegated<delegated_type>;
 
 	public:
-		// nb: This marks this acceptor as referential!
-		using accept_reference_type = accepted_reference;
-
 		using accept_type::accept_type;
 
 		consteval static auto types(auto recursive) -> auto {
@@ -150,22 +180,6 @@ struct accept_recursive_value_holder<Meta, Value, util::type_pack<Refs...>>
 			return util::invoke_as<accept_reference_of<Meta, Type>>(*this, reference);
 		}
 
-		// reference provider
-		constexpr auto operator()(std::type_identity<value_type> /*type*/, accepted_reference reference) const -> value_type {
-			const auto reaccept = [ = ]<std::size_t Index>(std::integral_constant<std::size_t, Index> /*index*/) -> value_type {
-				using mapped_reference_type = reference_of<Refs...[ Index ]>;
-				return value_type{mapped_reference_type{reference.id()}};
-			};
-			return util::template_switch(
-				reference.type_index(),
-				util::sequence<sizeof...(Refs)>,
-				util::overloaded{
-					reaccept,
-					[]() -> value_type { std::unreachable(); },
-				}
-			);
-		}
-
 		constexpr auto take_reference_storage() const -> storage_type {
 			return storage_type{accept_reference_of<Meta, Refs>::take_reference_storage()...};
 		}
@@ -191,12 +205,8 @@ struct accept<Meta, referential_value<Value, Holder>>
 		using accept_type = accept_value<Meta, typename referential_value<Value, Holder>::value_type>;
 		using accept_type::accept_type;
 
-		// reference provider
-		// nb: Unreachable. This only comes up in the case where `lookup_or_visit` finds a reference on the
-		// first visit.
-		constexpr auto operator()(std::type_identity<value_type> /*type*/, accepted_reference /*reference*/) const -> value_type {
-			std::terminate();
-		}
+		// Declare reference provider
+		using accept_reference_type = reaccept_accepted_reference<typename Holder::reference_types>;
 
 		// accept as value, moving reference storage along with the value
 		constexpr auto operator()(auto_tag auto tag, auto& visit, auto&& subject) const -> value_type {

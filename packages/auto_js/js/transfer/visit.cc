@@ -99,19 +99,19 @@ struct visit_key_literal<Key, void> {
 struct null_reference_map {
 		explicit null_reference_map(auto&&... /*args*/) {}
 
-		template <class Accept>
-		[[nodiscard]] constexpr auto lookup_or_visit(const Accept& /*accept*/, auto /*subject*/, auto dispatch) const -> accept_target_t<Accept> {
+		[[nodiscard]] constexpr auto lookup_or_visit(auto /*subject*/, auto dispatch) const -> decltype(auto) {
 			return dispatch();
 		}
 };
 
 // Wraps the reference map type (for example `std::unordered_map<napi_value, ...>`) with
 // acceptor-aware `try_emplace`.
-template <class Map>
+template <class Reference, class Map>
 struct reference_map_provider {
 	private:
-		using key_type = Map::key_type;
-		using mapped_type = Map::mapped_type;
+		using map_type = Map::template type<typename Reference::reference_type>;
+		using key_type = map_type::key_type;
+		using mapped_type = map_type::mapped_type;
 		static_assert(std::is_trivially_copyable_v<key_type>);
 		static_assert(std::is_trivially_copyable_v<mapped_type>);
 
@@ -124,21 +124,21 @@ struct reference_map_provider {
 			assert(inserted);
 		}
 
-		template <class Accept>
-		constexpr auto lookup_or_visit(const Accept& accept, key_type subject, auto dispatch) const -> accept_target_t<Accept> {
-			using value_type = accept_target_t<Accept>;
+		constexpr auto lookup_or_visit(key_type subject, auto dispatch) const -> decltype(auto) {
+			using target_type = decltype(dispatch());
 			auto it = map_.find(subject);
 			if (it == map_.end()) {
 				return dispatch();
 			} else {
-				return accept(std::type_identity<value_type>{}, it->second);
+				Reference reaccept;
+				return reaccept(std::type_identity<target_type>{}, it->second);
 			}
 		}
 
 		consteval static auto has_reference_map() -> bool { return true; }
 
 	private:
-		Map map_;
+		map_type map_;
 };
 
 // Construct a map to store references to visited values. If the acceptor has no reference type then
@@ -150,7 +150,7 @@ export template <class Reference, class Map>
 using reference_map_t = reference_map<Reference, Map>::type;
 
 template <class Reference, class Map>
-struct reference_map : std::type_identity<reference_map_provider<typename Map::template type<Reference>>> {};
+struct reference_map : std::type_identity<reference_map_provider<Reference, Map>> {};
 
 template <class Map>
 struct reference_map<void, Map> : std::type_identity<null_reference_map> {};
