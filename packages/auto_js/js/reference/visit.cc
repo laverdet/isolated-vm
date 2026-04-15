@@ -125,25 +125,21 @@ template <class Meta, class Type>
 struct visit<Meta, reference_of<Type>> : visit_delegated<visit_reference_of<Meta, Type>> {
 		using visit_type = visit_delegated<visit_reference_of<Meta, Type>>;
 		using visit_type::visit_type;
-
-		consteval static auto types(auto recursive) -> auto {
-			return visit<Meta, Type>::types(recursive);
-		}
 };
 
-// `referential_value_of` visitor delegates to its underlying value visitor through a top `types()`
+// `recursive_value_holder` visitor delegates to its underlying value visitor through a top `types()`
 // instantiation.
 template <class Meta, class Value, class Refs>
-struct visit_referential_value_of;
+struct visit_recursive_value_holder;
 
 template <class Meta, class Value>
-using visit_referential_value_of_from = visit_referential_value_of<Meta, Value, typename Value::reference_types>;
+using visit_recursive_value_holder_from = visit_recursive_value_holder<Meta, Value, typename Value::reference_types>;
 
 template <class Meta, template <class> class Make, auto Extract>
-struct visit<Meta, referential_value_of<Make, Extract>>
-		: visit_delegated<visit_referential_value_of_from<Meta, referential_value_of<Make, Extract>>> {
+struct visit<Meta, recursive_value_holder<Make, Extract>>
+		: visit_delegated<visit_recursive_value_holder_from<Meta, recursive_value_holder<Make, Extract>>> {
 	private:
-		using delegated_type = visit_referential_value_of_from<Meta, referential_value_of<Make, Extract>>;
+		using delegated_type = visit_recursive_value_holder_from<Meta, recursive_value_holder<Make, Extract>>;
 		using visit_type = visit_delegated<delegated_type>;
 
 	public:
@@ -162,7 +158,7 @@ struct visit<Meta, referential_value_of<Make, Extract>>
 // Lifted `types()` instantiation which pulls in the underlying value visitor (probably
 // `std::variant<...>`), and also the `visit_reference_of` instances.
 template <class Meta, class Value, class... Refs>
-struct visit_referential_value_of<Meta, Value, util::type_pack<Refs...>>
+struct visit_recursive_value_holder<Meta, Value, util::type_pack<Refs...>>
 		: visit<Meta, typename Value::value_type>,
 			visit_reference_of<Meta, Refs>... {
 	private:
@@ -171,24 +167,13 @@ struct visit_referential_value_of<Meta, Value, util::type_pack<Refs...>>
 		using visit_type = visit<Meta, value_of_type>;
 
 	public:
-		explicit constexpr visit_referential_value_of(auto* transfer) :
+		explicit constexpr visit_recursive_value_holder(auto* transfer) :
 				visit_type{transfer},
 				visit_reference_of<Meta, Refs>{transfer}... {}
 
 		template <class Accept>
 		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
-			return util::invoke_as<visit_type>(*this, *std::forward<decltype(subject)>(subject), accept);
-		}
-
-		// Infinite recursion check.
-		template <class... Seen>
-		consteval static auto types(util::type_pack<Seen...> recursive) -> auto
-			requires((type<Seen> != type<value_type>) && ...) {
-			return visit_type::types(recursive + util::type_pack{type<value_type>});
-		}
-
-		consteval static auto types(auto /*recursive*/) -> auto {
-			return util::type_pack{};
+			return util::invoke_as<visit_type>(*this, std::forward<decltype(subject)>(subject), accept);
 		}
 
 		constexpr auto reset_for_visited_value(auto&& subject) -> void {
@@ -196,16 +181,26 @@ struct visit_referential_value_of<Meta, Value, util::type_pack<Refs...>>
 			// NOLINTNEXTLINE(bugprone-use-after-move)
 			(..., visit_reference_of<Meta, Refs>::reset_for_visited_value(std::forward<decltype(subject)>(subject)));
 		}
+
+		// Infinite recursion check.
+		template <class... Seen>
+		consteval static auto types(util::type_pack<Seen...> recursive) {
+			if constexpr ((... || (type<Seen> == type<value_type>))) {
+				return util::type_pack{};
+			} else {
+				return visit_type::types(recursive + util::type_pack{type<value_type>});
+			}
+		}
 };
 
 // `referential_value` subject visitor. This is the "top" visitor, and there may be more than one
 // instance of it within the `transfer` inheritance tree. When a value is visited it copies or moves
 // the underlying reference storage into `visit_references_of`. It also delegates back to the
 // underlying visitor.
-template <class Meta, template <class> class Make, auto Extract>
-struct visit<Meta, referential_value<Make, Extract>> : visit<Meta, typename referential_value<Make, Extract>::value_type> {
+template <class Meta, class Value, class Holder>
+struct visit<Meta, referential_value<Value, Holder>> : visit<Meta, typename referential_value<Value, Holder>::value_type> {
 	private:
-		using visit_type = visit<Meta, typename referential_value<Make, Extract>::value_type>;
+		using visit_type = visit<Meta, typename referential_value<Value, Holder>::value_type>;
 		using visit_type::reset_for_visited_value;
 
 	public:
@@ -215,9 +210,9 @@ struct visit<Meta, referential_value<Make, Extract>> : visit<Meta, typename refe
 		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
 			// Reset accepted values in `reference_of<T>` visitor
 			reset_for_visited_value(std::forward<decltype(subject)>(subject));
-			// Delegate forward to `visit_referential_value_of` visitor
+			// Delegate forward to `visit_recursive_value_holder` visitor
 			// NOLINTNEXTLINE(bugprone-use-after-move)
-			return util::invoke_as<visit_type>(*this, std::forward<decltype(subject)>(subject), accept);
+			return util::invoke_as<visit_type>(*this, *std::forward<decltype(subject)>(subject), accept);
 		}
 };
 

@@ -9,8 +9,17 @@ namespace util {
 export constexpr auto make_type_pack = util::overloaded{
 	// nb: Prevent `make_type_pack{type_pack_of{...}}` from turning into a mess of hidden types
 	[]<class... Types>(type_pack_of<Types...> pack) consteval -> auto { return pack; },
-	[]<template <class> class Pack, class... Types>(std::type_identity<Pack<Types...>> /*type*/) consteval -> auto {
+	[]<template <class...> class Pack, class... Types>(std::type_identity<Pack<Types...>> /*type*/) consteval -> auto {
 		return type_pack_of{type<Types>...};
+	},
+};
+
+// Resolves a `Something<T...>` from `SomethingElse<T...>`
+export template <template <class...> class Into>
+constexpr auto spread_type_pack = util::overloaded{
+	[]<class... Hidden>(type_pack_of<Hidden...> /*pack*/) consteval -> auto { return type<Into<typename Hidden::type...>>; },
+	[]<template <class...> class Pack, class... Types>(std::type_identity<Pack<Types...>> /*type*/) consteval -> auto {
+		return type<Into<Types...>>;
 	},
 };
 

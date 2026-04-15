@@ -65,6 +65,8 @@ struct accept_delegated : util::reference_wrapper<Accept> {
 				// `std::reference_wrapper<T>` casting through a reference might invoke `operator T&` and
 				// cause confusing compile-time or run-time errors.
 				util::reference_wrapper<Accept>{*static_cast<Accept*>(transfer)} {}
+
+		consteval static auto types(auto recursive) -> auto { return Accept::types(recursive); }
 };
 
 // `accept_value_from` is the implementation of `accept_value`. It is an `accept` wrapper which most

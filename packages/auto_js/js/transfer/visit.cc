@@ -53,6 +53,7 @@ struct visit_delegated : util::reference_wrapper<Visit> {
 		}
 
 		consteval static auto has_reference_map() -> bool { return js::has_reference_map(type<Visit>); }
+		consteval static auto types(auto recursive) -> auto { return Visit::types(recursive); }
 };
 
 // Utility to pass oneself as an object entry visitor

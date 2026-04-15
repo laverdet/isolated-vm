@@ -16,6 +16,21 @@ await test("function reference invoke", async () => {
 	assert.equal(value, "wow");
 });
 
+await test("invoke function cross-param reference", async () => {
+	await using agent = await ivm.Agent.create();
+	const realm = await agent.createRealm();
+	await unsafeEvalAsStringInRealm(agent, realm, () => {
+		// @ts-expect-error
+		globalThis.fn = (...values: unknown[]) => values;
+	});
+	const global = await realm.acquireGlobalObject();
+	const fn = await global.get("fn");
+	const object = {};
+	// @ts-expect-error
+	const [ left, right ] = expectComplete(await fn.invoke([ object, object ]));
+	assert.strictEqual(left, right);
+});
+
 await test("invoke function reference with circular object", async () => {
 	await using agent = await ivm.Agent.create();
 	const realm = await agent.createRealm();

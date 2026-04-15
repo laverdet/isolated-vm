@@ -19,6 +19,6 @@ constexpr auto variant_types_from =
 // Instantiate a `referential_value` type which holds a `std::variant` with circular reference
 // storage.
 export template <template <class> class Make>
-using referential_variant = referential_value<Make, variant_types_from>;
+using referential_variant = recursive_value_holder<Make, variant_types_from>;
 
 } // namespace js

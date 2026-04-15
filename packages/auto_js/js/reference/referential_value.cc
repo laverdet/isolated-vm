@@ -13,83 +13,56 @@ constexpr auto reference_types_from = [](auto types) consteval {
 	return util::pack_transform(types, transform);
 };
 
-// Makes the `reference_storage` type.
-constexpr auto reference_storage_type_for_values = [](auto types_pack) consteval {
-	const auto [... types ] = types_pack;
-	return type<reference_storage<type_t<types>...>>;
+// Recursive value type used by `referential_value`. This will probably be a `std::variant<T...>`.
+// Values of `reference_of<T>` are stored outside this value in `storage_type`.
+template <template <class> class Make, auto Extract>
+class recursive_value_holder : public Make<recursive_value_holder<Make, Extract>> {
+	public:
+		using value_type = Make<recursive_value_holder<Make, Extract>>;
+		using reference_types = type_t<reference_types_from(Extract(type<value_type>))>;
+		using storage_type = type_t<util::spread_type_pack<reference_storage>(type<reference_types>)>;
+
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		constexpr recursive_value_holder(const value_type& value) : value_type{value} {}
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		constexpr recursive_value_holder(value_type&& value) : value_type{std::move(value)} {}
 };
 
-// Simple value holder implementing inheritable constructors and dereference operators.
-template <class Type>
-class in_place_value_holder : public util::pointer_facade {
-	public:
-		using value_type = Type;
+// Stores value and references corresponding to `recursive_value_holder`
+export template <class Value, class Holder>
+class referential_value : public util::pointer_facade {
+	private:
+		using storage_type = Holder::storage_type;
 
-		explicit constexpr in_place_value_holder(std::in_place_t /*tag*/, const Type& value)
-			requires std::copy_constructible<value_type> :
-				value_{value} {}
-		explicit constexpr in_place_value_holder(std::in_place_t /*tag*/, Type&& value)
-			requires std::move_constructible<value_type> :
-				value_{std::move(value)} {}
-		explicit constexpr in_place_value_holder(std::in_place_t /*tag*/, auto&&... args)
-			requires std::constructible_from<value_type, decltype(args)...> :
-				value_{std::forward<decltype(args)>(args)...} {}
+	public:
+		using value_type = Value;
+
+		// Initialize from a non-`reference_of<T>` value
+		template <class Type>
+		constexpr explicit referential_value(Type&& value)
+			requires std::constructible_from<value_type, Type> :
+				value_{std::forward<Type>(value)} {}
+
+		// Initialize from a `reference_of<T>` value
+		template <class Type>
+		constexpr explicit referential_value(Type value)
+			requires std::constructible_from<value_type, reference_of<Type>> :
+				value_{reference_of<Type>{0}},
+				references_{storage_type{std::move(value)}} {}
+
+		// Initialize from value and reference storage payload
+		constexpr explicit referential_value(value_type&& value, storage_type&& references) :
+				value_{std::move(value)},
+				references_{std::move(references)} {}
 
 		[[nodiscard]] constexpr auto operator*() const -> const value_type& { return value_; }
 		[[nodiscard]] constexpr auto operator*() && -> value_type&& { return std::move(value_); }
+		[[nodiscard]] constexpr auto references() const& -> const storage_type& { return references_; }
+		[[nodiscard]] constexpr auto references() && -> storage_type&& { return std::move(references_); }
 
 	private:
 		value_type value_;
-};
-
-// Recursive value type used by `referential_value`. The reference types used by this value types
-// are stored within the type and made available to acceptors.
-template <template <class> class Make, auto Extract>
-class referential_value_of : public in_place_value_holder<Make<referential_value_of<Make, Extract>>> {
-	private:
-		using holder_type = in_place_value_holder<Make<referential_value_of<Make, Extract>>>;
-
-	public:
-		using holder_type::holder_type;
-		using typename holder_type::value_type;
-		using reference_types = type_t<reference_types_from(Extract(type<value_type>))>;
-		constexpr static auto is_recursive_type = true;
-};
-
-// Stores value and references corresponding to `referential_value_of`
-export template <template <class> class Make, auto Extract>
-class referential_value : public referential_value_of<Make, Extract> {
-	public:
-		using value_type = referential_value_of<Make, Extract>;
-		using typename value_type::reference_types;
-
-	private:
-		using reference_storage_type = type_t<reference_storage_type_for_values(reference_types{})>;
-
-	public:
-		// Initialize from a non-`reference_of<T>` value
-		template <class Value>
-		constexpr explicit referential_value(Value&& value)
-			requires std::constructible_from<value_type, std::in_place_t, Value> :
-				value_type{std::in_place, std::forward<Value>(value)} {}
-
-		// Initialize from a `reference_of<T>` value
-		template <class Value>
-		constexpr explicit referential_value(Value value)
-			requires std::constructible_from<value_type, std::in_place_t, reference_of<Value>> :
-				value_type{std::in_place, reference_of<Value>{0}},
-				references_{std::move(value)} {}
-
-		// Initialize from value and reference storage payload
-		constexpr explicit referential_value(value_type&& value, reference_storage_type&& references) :
-				value_type{std::move(value)},
-				references_{std::move(references)} {}
-
-		[[nodiscard]] constexpr auto references() const -> const reference_storage_type& { return references_; }
-		[[nodiscard]] constexpr auto references() && -> reference_storage_type&& { return std::move(references_); }
-
-	private:
-		reference_storage_type references_;
+		storage_type references_;
 };
 
 } // namespace js

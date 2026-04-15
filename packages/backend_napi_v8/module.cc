@@ -84,7 +84,7 @@ auto module_handle::create_capability(
 		auto invoke =
 			[ callback = js::napi::make_shared_remote(env, *capability) ](
 				environment& env,
-				std::vector<js::value_t> params
+				js::values_vector_t params
 			) -> void {
 			const auto scope = js::napi::handle_scope{napi_env{env}};
 			callback->deref(env).apply(env, std::move(params));
@@ -98,17 +98,10 @@ auto module_handle::create_capability(
 				invoke = std::move(invoke) ](
 				const realm_scope& /*lock*/,
 				js::rest /*rest*/,
-				std::vector<js::value_t> params
-				// std::vector<js::forward<napi::value<>>> params_local
+				js::values_vector_t params
 			) -> void {
-				// auto params = std::vector{
-				// 	std::from_range,
-				// 	params_local | std::views::transform([ & ](auto param) {
-				// 		return js::transfer_out<js::value_t>(*param, env);
-				// 	}),
-				// };
 				scheduler(
-					[ &env, invoke ](std::vector<js::value_t> params) -> void {
+					[ &env, invoke ](js::values_vector_t params) -> void {
 						invoke(env, std::move(params));
 					},
 					std::move(params)

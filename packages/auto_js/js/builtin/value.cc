@@ -71,6 +71,8 @@ using variant_value = std::variant<
 	// ---
 	>;
 
-export using value_t = referential_variant<variant_value>;
+using value_holder_t = referential_variant<variant_value>;
+export using value_t = referential_value<value_holder_t, value_holder_t>;
+export using values_vector_t = referential_value<std::vector<value_holder_t>, value_holder_t>;
 
 } // namespace js

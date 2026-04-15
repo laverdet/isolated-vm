@@ -17,18 +17,18 @@ static_assert(transfer_strict<std::string>("hello"sv) == "hello"s);
 // Variants
 template <class Type>
 constexpr auto variant_is_equal_to(const auto& variant, const Type& value) {
-	return std::holds_alternative<Type>(variant) && std::get<Type>(variant) == value;
-}
-
-template <template <class> class Make, class Type>
-constexpr auto variant_is_equal_to(const referential_variant<Make>& variant, const Type& value) {
-	const auto [... types ] = typename referential_variant<Make>::reference_types{};
-	// NOLINTNEXTLINE(clang-analyzer-core.CallAndMessage)
-	if constexpr ((... || (type<Type> == types))) {
+	const auto& underlying_variant = util::overloaded{
+		[]<class... Types>(const std::variant<Types...>& variant) -> auto& { return variant; },
+		[](const auto& variant) -> auto& { return *variant; },
+	}(variant);
+	const auto [... types ] = []<class... Types>(const std::variant<Types...>& /*variant*/) -> auto {
+		return util::type_pack<Types...>{};
+	}(underlying_variant);
+	if constexpr ((... || (type<reference_of<Type>> == types))) {
 		using reference_type = reference_of<Type>;
-		return std::holds_alternative<reference_type>(*variant) && variant.references().at(std::get<reference_type>(*variant)) == value;
+		return std::holds_alternative<reference_type>(underlying_variant) && variant.references().at(std::get<reference_type>(underlying_variant)) == value;
 	} else {
-		return variant_is_equal_to(*variant, value);
+		return std::holds_alternative<Type>(underlying_variant) && std::get<Type>(underlying_variant) == value;
 	}
 }
 

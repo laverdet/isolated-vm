@@ -38,7 +38,7 @@ struct accepted_reference_of : accepted_reference {
 		}
 };
 
-// Instantiated by `referential_value_of` acceptor. This stashes the underlying value in storage
+// Instantiated by `recursive_value_holder` acceptor. This stashes the underlying value in storage
 // which is managed by this class. It also serves as the `reference_of<T>` acceptor delegate.
 template <class Meta, class Type>
 struct accept_reference_of : accept<Meta, Type> {
@@ -89,25 +89,21 @@ template <class Meta, class Type>
 struct accept<Meta, reference_of<Type>> : accept_delegated<accept_reference_of<Meta, Type>> {
 		using accept_type = accept_delegated<accept_reference_of<Meta, Type>>;
 		using accept_type::accept_type;
-
-		consteval static auto types(auto recursive) -> auto {
-			return accept<Meta, Type>::types(recursive);
-		}
 };
 
-// `referential_value_of` acceptor delegates to its underlying value acceptor. It also instantiates
+// `recursive_value_holder` acceptor delegates to its underlying value acceptor. It also instantiates
 // `accept_reference_of` instances for each reference type.
 template <class Meta, class Value, class Refs>
-struct accept_referential_value_of;
+struct accept_recursive_value_holder;
 
 template <class Meta, class Value>
-using accept_referential_value_of_from = accept_referential_value_of<Meta, Value, typename Value::reference_types>;
+using accept_recursive_value_holder_from = accept_recursive_value_holder<Meta, Value, typename Value::reference_types>;
 
 template <class Meta, template <class> class Make, auto Extract>
-struct accept<Meta, referential_value_of<Make, Extract>>
-		: accept_delegated<accept_referential_value_of_from<Meta, referential_value_of<Make, Extract>>> {
+struct accept<Meta, recursive_value_holder<Make, Extract>>
+		: accept_delegated<accept_recursive_value_holder_from<Meta, recursive_value_holder<Make, Extract>>> {
 	private:
-		using delegated_type = accept_referential_value_of_from<Meta, referential_value_of<Make, Extract>>;
+		using delegated_type = accept_recursive_value_holder_from<Meta, recursive_value_holder<Make, Extract>>;
 		using accept_type = accept_delegated<delegated_type>;
 
 	public:
@@ -127,7 +123,7 @@ struct accept<Meta, referential_value_of<Make, Extract>>
 };
 
 template <class Meta, class Value, class... Refs>
-struct accept_referential_value_of<Meta, Value, util::type_pack<Refs...>>
+struct accept_recursive_value_holder<Meta, Value, util::type_pack<Refs...>>
 		: accept<Meta, typename Value::value_type>,
 			accept_reference_of<Meta, Refs>... {
 	private:
@@ -137,21 +133,16 @@ struct accept_referential_value_of<Meta, Value, util::type_pack<Refs...>>
 		using accept_type = accept<Meta, value_of_type>;
 
 		template <std::size_t... Indices>
-		constexpr explicit accept_referential_value_of(auto* transfer, std::index_sequence<Indices...> /*indices*/) :
+		constexpr explicit accept_recursive_value_holder(auto* transfer, std::index_sequence<Indices...> /*indices*/) :
 				accept_type{transfer},
 				accept_reference_of<Meta, Refs>{transfer, Indices}... {}
 
 	public:
-		explicit constexpr accept_referential_value_of(auto* transfer) :
-				accept_referential_value_of{transfer, std::make_index_sequence<sizeof...(Refs)>{}} {}
+		explicit constexpr accept_recursive_value_holder(auto* transfer) :
+				accept_recursive_value_holder{transfer, std::make_index_sequence<sizeof...(Refs)>{}} {}
 
 		// forward underlying acceptor
 		using accept_type::operator();
-
-		// wrap into `value_type`
-		constexpr auto operator()(value_of_type&& value) const -> value_type {
-			return value_type{std::in_place, std::move(value)};
-		}
 
 		// delegated reference unwrap
 		template <class Type>
@@ -163,7 +154,7 @@ struct accept_referential_value_of<Meta, Value, util::type_pack<Refs...>>
 		constexpr auto operator()(std::type_identity<value_type> /*type*/, accepted_reference reference) const -> value_type {
 			const auto reaccept = [ = ]<std::size_t Index>(std::integral_constant<std::size_t, Index> /*index*/) -> value_type {
 				using mapped_reference_type = reference_of<Refs...[ Index ]>;
-				return value_type{std::in_place, mapped_reference_type{reference.id()}};
+				return value_type{mapped_reference_type{reference.id()}};
 			};
 			return util::template_switch(
 				reference.type_index(),
@@ -175,30 +166,29 @@ struct accept_referential_value_of<Meta, Value, util::type_pack<Refs...>>
 			);
 		}
 
+		constexpr auto take_reference_storage() const -> storage_type {
+			return storage_type{accept_reference_of<Meta, Refs>::take_reference_storage()...};
+		}
+
 		// Infinite recursion check. The failure case is actually just `'types<...>' with deduced return
 		// type cannot be used before it is defined'`
 		template <class... Seen>
-		consteval static auto types(util::type_pack<Seen...> recursive)
-			requires((type<Seen> != type<value_type>) && ...) {
-			return accept_type::types(recursive + util::type_pack{type<value_type>});
-		}
-
-		consteval static auto types(auto /*recursive*/) {
-			return util::type_pack{};
-		}
-
-		constexpr auto take_reference_storage() const -> storage_type {
-			return storage_type{accept_reference_of<Meta, Refs>::take_reference_storage()...};
+		consteval static auto types(util::type_pack<Seen...> recursive) {
+			if constexpr ((... || (type<Seen> == type<value_type>))) {
+				return util::type_pack{};
+			} else {
+				return accept_type::types(recursive + util::type_pack{type<value_type>});
+			}
 		}
 };
 
 // `referential_value` top acceptor. It delegates through `accept_value` in order to forward the
 // underlying reference storage to the final value.
-template <class Meta, template <class> class Make, auto Extract>
-struct accept<Meta, referential_value<Make, Extract>>
-		: accept_value<Meta, typename referential_value<Make, Extract>::value_type> {
-		using value_type = referential_value<Make, Extract>;
-		using accept_type = accept_value<Meta, typename referential_value<Make, Extract>::value_type>;
+template <class Meta, class Value, class Holder>
+struct accept<Meta, referential_value<Value, Holder>>
+		: accept_value<Meta, typename referential_value<Value, Holder>::value_type> {
+		using value_type = referential_value<Value, Holder>;
+		using accept_type = accept_value<Meta, typename referential_value<Value, Holder>::value_type>;
 		using accept_type::accept_type;
 
 		// reference provider

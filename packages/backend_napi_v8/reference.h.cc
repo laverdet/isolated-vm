@@ -21,7 +21,7 @@ export class reference_handle {
 		auto copy(environment& env) -> js::forward<js::napi::value<>>;
 		auto get(environment& env, js::string_t name) -> js::forward<js::napi::value<>>;
 		auto set(environment& env, js::string_t name, js::forward<js::napi::value<>> value_local) -> js::forward<js::napi::value<>>;
-		auto invoke(environment& env, std::vector<js::forward<js::napi::value<>>> params_local) -> js::forward<js::napi::value<>>;
+		auto invoke(environment& env, js::forward<js::napi::value<list_tag>> params_local) -> js::forward<js::napi::value<>>;
 
 		static auto class_template(environment& env) -> js::napi::value<class_tag_of<reference_handle>>;
 
