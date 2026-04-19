@@ -30,7 +30,7 @@ struct accept_with_throw::accept_throw : Accept {
 		using Accept::Accept;
 
 		using Accept::operator();
-		constexpr auto operator()(auto_tag auto tag, auto& visit, auto&& value) const -> accept_target_type
+		constexpr auto operator()(auto tag, auto& visit, auto&& value) const -> accept_target_type
 			requires(!std::invocable<const Accept&, decltype(tag), decltype(visit), decltype(value)>) {
 			throw js::type_error{u"Could not accept"};
 		}

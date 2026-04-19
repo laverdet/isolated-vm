@@ -312,7 +312,7 @@ struct accept<void, v8::ReturnValue<v8::Value>> : accept<void, v8::Local<v8::Val
 			return return_value_;
 		}
 
-		auto operator()(auto_tag auto tag, auto& visit, auto&& subject) const -> value_type
+		auto operator()(auto tag, auto& visit, auto&& subject) const -> value_type
 			requires std::invocable<const accept_type&, decltype(visit), decltype(tag), decltype(subject)> {
 			return_value_.Set(util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(subject)>(subject)));
 			return return_value_;

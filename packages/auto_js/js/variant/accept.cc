@@ -40,7 +40,7 @@ struct accept_primitive_covariant
 		using accept_type::accept_type;
 
 		using accept_with_variant<Variant, Type>::operator();
-		constexpr auto operator()(auto_tag auto tag, auto& visit, auto&& subject) const
+		constexpr auto operator()(auto tag, auto& visit, auto&& subject) const
 			-> std::invoke_result_t<const accept_type&, decltype(covariant_tag{tag}), decltype(visit), decltype(subject)> {
 			return util::invoke_as<accept_type>(*this, covariant_tag{tag}, visit, std::forward<decltype(subject)>(subject));
 		}
@@ -122,7 +122,7 @@ struct accept_object_and_host_covariants<Meta, Variant, util::type_pack<Objects.
 		using accept_object_type = accept_object_covariants<Meta, Variant, Objects...>;
 		using accept_object_type::accept_object_type;
 
-		constexpr auto operator()(auto_tag<object_tag> auto tag, auto& visit, auto&& subject) const -> Variant {
+		constexpr auto operator()(std::convertible_to<object_tag> auto tag, auto& visit, auto&& subject) const -> Variant {
 			auto maybe_result = util::invoke_as<accept_external_type>(*this, tag, visit, std::forward<decltype(subject)>(subject));
 			if (maybe_result) {
 				return *std::move(maybe_result);

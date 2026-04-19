@@ -209,7 +209,7 @@ struct accept<Meta, referential_value<Value, Holder>>
 		using accept_reference_type = reaccept_accepted_reference<typename Holder::reference_types>;
 
 		// accept as value, moving reference storage along with the value
-		constexpr auto operator()(auto_tag auto tag, auto& visit, auto&& subject) const -> value_type {
+		constexpr auto operator()(auto tag, auto& visit, auto&& subject) const -> value_type {
 			return value_type{
 				util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(subject)>(subject)),
 				this->take_reference_storage(),

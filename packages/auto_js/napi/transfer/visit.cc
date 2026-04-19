@@ -72,7 +72,7 @@ struct visit_napi_value
 
 		// If the private `immediate` operation is defined: this public operation will first
 		// perform a reference map lookup, then delegate to the private operation if not found.
-		template <auto_tag Tag, class Accept>
+		template <class Tag, class Accept>
 		auto operator()(value<Tag> subject, const Accept& accept) -> accept_target_t<Accept>
 			requires requires { immediate(subject, accept); } {
 			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
@@ -252,7 +252,7 @@ struct visit_napi_value
 		}
 
 		// Convenience function which wraps in `napi::bound_value` and invokes `accept`.
-		template <auto_tag Tag, class Accept>
+		template <class Tag, class Accept>
 		[[nodiscard]] auto accept_tagged(value<Tag> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept(Tag{}, *this, napi::bound_value{this->environment(), subject});
 		}

@@ -113,9 +113,4 @@ struct covariant_tag<Tag> {
 		constexpr auto operator*() const -> Tag { return {}; }
 };
 
-// `auto` tag which accepts any tag inherited from `value_tag` while maintaining the true type of
-// the tag.
-template <class Type, class Tag = value_tag>
-concept auto_tag = std::convertible_to<Tag, value_tag> && std::convertible_to<Type, Tag>;
-
 } // namespace js

@@ -143,7 +143,7 @@ struct accept_value_from : Accept {
 		using accept_type::accept_type;
 
 		template <class Visit>
-		constexpr auto operator()(auto_tag auto tag, Visit& visit, auto&& subject) const -> accept_target_t<accept_type> {
+		constexpr auto operator()(auto tag, Visit& visit, auto&& subject) const -> accept_target_t<accept_type> {
 			auto insert = [ & ] -> auto {
 				if constexpr (js::has_reference_map(type<Visit>)) {
 					return util::overloaded{
