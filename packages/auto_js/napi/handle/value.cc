@@ -46,5 +46,5 @@ class value<void> : public value_handle {
 // `js::forward<Tag, ...>`.
 namespace js {
 template <class Tag>
-struct js::forward_tag_for<napi::value<Tag>> : std::type_identity<Tag> {};
+struct forward_tag_for<napi::value<Tag>> : std::type_identity<Tag> {};
 } // namespace js
