@@ -63,7 +63,7 @@ class scheduler_background_threads::controller {
 
 // Accepts a thread controller and task queue types, and manages dispatch of events to threads.
 template <class Thread, class Queue>
-class scheduler : public Thread {
+class scheduler_of : public Thread {
 	private:
 		using Thread::signal_thread;
 
@@ -209,20 +209,20 @@ auto scheduler_background_threads::controller::run(
 	}
 }
 
-// `scheduler`
+// `scheduler_of`
 template <class Thread, class Queue>
-auto scheduler<Thread, Queue>::invoke(std::invocable<typename Thread::controller&> auto operation) -> auto {
+auto scheduler_of<Thread, Queue>::invoke(std::invocable<typename Thread::controller&> auto operation) -> auto {
 	return operation(storage_.write()->controller);
 }
 
 template <class Thread, class Queue>
-auto scheduler<Thread, Queue>::mutate(std::invocable<Queue&> auto operation) -> auto {
+auto scheduler_of<Thread, Queue>::mutate(std::invocable<Queue&> auto operation) -> auto {
 	return operation(storage_.write()->queue);
 }
 
 template <class Thread, class Queue>
 template <class... Args>
-auto scheduler<Thread, Queue>::signal(std::invocable<Queue&, Args...> auto operation) -> void {
+auto scheduler_of<Thread, Queue>::signal(std::invocable<Queue&, Args...> auto operation) -> void {
 	auto lock = storage_.write_notify([](const storage& storage) -> bool {
 		return !storage.queue.empty();
 	});

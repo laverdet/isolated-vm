@@ -72,7 +72,7 @@ export class foreground_runner : public foreground_runner_for_each_priority {
 		template <v8::TaskPriority>
 		friend class foreground_runner_of_priority;
 
-		using scheduler_type = scheduler<scheduler_foreground_thread, foreground_task_queue>;
+		using scheduler_type = scheduler_of<scheduler_foreground_thread, foreground_task_queue>;
 
 	public:
 		auto scheduler() -> scheduler_type& { return scheduler_; }

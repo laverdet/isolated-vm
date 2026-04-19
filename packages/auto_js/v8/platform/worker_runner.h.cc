@@ -31,7 +31,7 @@ class workers_task_queue {
 // Foreground task runner. Combines scheduler and task queue.
 export class worker_runner {
 	private:
-		using scheduler_type = scheduler<scheduler_background_threads, workers_task_queue>;
+		using scheduler_type = scheduler_of<scheduler_background_threads, workers_task_queue>;
 
 	public:
 		auto post_delayed(task_type task, steady_clock::duration duration) -> void;
