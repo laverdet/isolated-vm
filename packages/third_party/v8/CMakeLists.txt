@@ -106,33 +106,5 @@ endif()
 # Sources which will be preprocessed by `expand_def`
 target_preprocessed_sources("${NAME}" v8 "${MODULE_NAME}"
 	PUBLIC FILE_SET CXX_MODULES FILES
-		array_buffer.cc
-		container.cc
-		context.cc
-		data.cc
-		date.cc
-		debug.cc
-		exception.cc
-		external.cc
-		function_callback.cc
-		function.cc
-		initialization.cc
-		isolate.cc
-		libplatform.cc
-		local_handle.cc
-		locker.cc
-		maybe.cc
-		memory_span.cc
-		message.cc
-		object.cc
-		persistent_handle.cc
-		platform.cc
-		primitive.cc
-		promise.cc
-		script.cc
-		template.cc
-		typed_array.cc
 		v8.cc
-		value.cc
-		weak_callback_info.cc
 )
