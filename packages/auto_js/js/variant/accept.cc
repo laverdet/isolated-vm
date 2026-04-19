@@ -7,8 +7,6 @@ import util;
 
 namespace js {
 
-namespace {
-
 // Returns a `util::type_pack` of `util::type_pack`'s: { primitives, objects, externals }
 constexpr auto collect_alternatives_by_type = []<class Meta>(std::type_identity<Meta>, auto types) consteval {
 	constexpr auto is_not_object_type = util::fn<[]<class Type>(std::type_identity<Type> /*type*/) -> bool {
@@ -20,8 +18,6 @@ constexpr auto collect_alternatives_by_type = []<class Meta>(std::type_identity<
 	}>;
 	return util::pack_partition(types, is_not_object_type, is_not_tagged_type);
 };
-
-} // namespace
 
 // Box variant alternative with `accept_value` interface
 template <class Variant, class Type>

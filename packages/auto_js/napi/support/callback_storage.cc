@@ -5,13 +5,11 @@ import std;
 
 namespace js::napi {
 
-namespace {
 // Since napi runs each environment in its own thread we can store the environment data pointer
 // here. We could also go through `napi_get_instance_data` but there is no assurance that the
 // pointer type is the same. We assume the environment pointer will outlive the callback.
 template <auto_environment Environment>
-thread_local Environment* env_local = nullptr;
-} // namespace
+thread_local Environment* callback_env_local = nullptr;
 
 // Converts any invocable into a `napi_callback` and data pointer for use in napi API calls. The
 // result is a `std::tuple` with `{ callback_ptr, data_ptr, finalizer }`. Finalizer is either a
@@ -32,13 +30,13 @@ auto make_callback_storage(Environment& env, std::invocable<Environment&, const 
 		} else if constexpr (sizeof(function_type) <= sizeof(void*)) {
 			// Trivial function type containing less than or equal to a pointer size. `data` is the
 			// function and environment is stored in a thread local.
-			env_local<Environment> = &env;
+			callback_env_local<Environment> = &env;
 			auto* data = reinterpret_cast<void*&>(function);
 			const auto callback = napi_callback{[](napi_env nenv, napi_callback_info info) -> napi_value {
 				const auto args = callback_info{nenv, info};
 				auto* data = args.data();
 				auto& invoke = reinterpret_cast<function_type&>(data);
-				auto& env = *env_local<Environment>;
+				auto& env = *callback_env_local<Environment>;
 				return invoke(env, args);
 			}};
 			return std::tuple{callback, data};

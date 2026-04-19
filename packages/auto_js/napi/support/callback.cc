@@ -10,7 +10,6 @@ import std;
 import util;
 
 namespace js::napi {
-namespace {
 
 // Unwrap `this` into the correct tagged external. Returns `std::nullopt` if there was a type error,
 // and there is a napi exception pending. `nullptr` will not be returned.
@@ -31,8 +30,6 @@ constexpr auto unwrap_member_this = [](auto_environment auto& env, napi_value th
 			}
 		});
 };
-
-} // namespace
 
 // Function type for internal host object construction
 using internal_constructor = util::function_ref<auto(napi_value)->napi_value>;
