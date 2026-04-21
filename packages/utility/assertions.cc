@@ -7,7 +7,7 @@ constexpr auto assert_strings_equal(auto... strings) {
 	(..., ([ = ](auto left) -> void {
 		 using char_type = decltype(left)::value_type;
 		 // NOLINTNEXTLINE(modernize-type-traits)
-		 if (((left != util::transcode_string<char_type>(right)) || ...)) {
+		 if ((... || (left != util::transcode_string<char_type>(right)))) {
 			 std::unreachable();
 		 }
 	 }(left)));
@@ -19,6 +19,7 @@ constexpr auto assert_strings_equal(auto... strings) {
 	// Quick check of interpolation matrix
 	assert_strings_equal(u8"💖", u"💖");
 	assert_strings_equal("wow", u8"wow", u"wow", U"wow");
+	assert_strings_equal(std::basic_string_view{"\x00", 1}, std::basic_string_view{u8"\x00", 1}, std::basic_string_view{u"\x00", 1}, std::basic_string_view{U"\x00", 1});
 
 	// Unpaired utf-16 surrogates
 	constexpr auto one_high_surrogate = std::basic_string_view{u"\xd83d"};

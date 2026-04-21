@@ -30,7 +30,7 @@ class codepoint_char_container {
 
 		[[nodiscard]] constexpr auto begin() const -> iterator { return chars_.begin(); }
 		[[nodiscard]] constexpr auto data() -> container_type& { return chars_; }
-		[[nodiscard]] constexpr auto end() const -> iterator { return std::ranges::find(chars_, char32_t{0}); }
+		[[nodiscard]] constexpr auto end() const -> iterator { return std::find(std::next(chars_.begin()), chars_.end(), 0); }
 		[[nodiscard]] constexpr auto size() const -> std::size_t { return end() - begin(); }
 
 	private:
