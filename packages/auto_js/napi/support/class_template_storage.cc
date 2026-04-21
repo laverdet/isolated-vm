@@ -54,7 +54,9 @@ class class_template_references {
 		}
 
 	private:
-		util::copy_of<class_template_references_of<Strings>> class_template_references_;
+		// gcc generates code with a missing symbol with the following declaration
+		// util::copy_of<class_template_references_of<Strings>> class_template_references_;
+		std::remove_cvref_t<decltype(class_template_references_of<Strings>)> class_template_references_{class_template_references_of<Strings>};
 };
 
 } // namespace js::napi

@@ -82,6 +82,14 @@ if(CMAKE_BUILD_TYPE STREQUAL Release)
 	endif()
 endif()
 
+# Broken gcc diagnostic
+# /workspace/packages/auto_js/v8/visit.cc:261:57: error: ‘visit_and_accept’ may be used uninitialized [-Werror=maybe-uninitialized]
+#   261 | return immediate(subject.As<v8::Object>(), accept);
+#       |        ~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+	add_compile_options(-Wno-maybe-uninitialized)
+endif()
+
 # Check libc++ / libstdc++
 # https://stackoverflow.com/questions/42593022/cmake-detect-which-library-libc-or-libstdc-is-configured-to-be-used-against
 include(CheckCXXSymbolExists)

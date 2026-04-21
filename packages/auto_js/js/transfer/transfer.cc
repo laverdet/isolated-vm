@@ -179,8 +179,26 @@ constexpr auto transfer_in_ = [](auto&& value, auto&& accept_env, auto&&... acce
 	);
 };
 
+// gcc 16 chokes on this:
+// /workspace/packages/auto_js/napi/transfer/accept.cc:378:48: internal compiler error: canonical
+// types differ for identical types ‘const js::<lambda(auto:10&&, auto:11&&, auto:12&&
+// ...)>@napi_js’ and ‘const js::<lambda(auto:10&&, auto:11&&, auto:12&& ...)>@napi_js’
+//   378 |         js::transfer_in<object_assign_delegate>(std::move(source), env, object_assign_delegate{self});
+//       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// export template <class Type>
+// constexpr auto transfer_in = transfer_in_<Type, accept_with_throw>;
+
 export template <class Type>
-constexpr auto transfer_in = transfer_in_<Type, accept_with_throw>;
+constexpr auto transfer_in(auto&& value, auto&& accept_env, auto&&... accept_args) -> Type {
+	return transfer_with<Type, accept_with_throw>(
+		std::forward<decltype(value)>(value),
+		std::tuple{},
+		std::forward_as_tuple(
+			std::forward<decltype(accept_env)>(accept_env),
+			std::forward<decltype(accept_args)>(accept_args)...
+		)
+	);
+};
 
 export template <class Type>
 constexpr auto transfer_in_strict = transfer_in_<Type, accept_pass>;

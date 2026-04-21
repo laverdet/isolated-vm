@@ -126,7 +126,7 @@ export class agent_host
 		~agent_host();
 
 		auto autorelease_pool() -> util::autorelease_pool& { return autorelease_pool_; }
-		auto clock(this auto& self) -> auto& { return self.clock_; }
+		auto clock(this auto& self) -> auto& { return self.clock_.at(0); }
 		auto isolate() -> v8::Isolate* { return isolate_.get(); }
 		auto make_context() -> v8::Local<v8::Context>;
 		auto make_remote_handle_lock(isolate_lock_witness lock) -> remote_handle_lock;
@@ -151,11 +151,17 @@ export class agent_host
 
 		// Order doesn't really matter
 		bool should_give_seed_{};
-		clock::any_clock clock_;
+		// `std::array<T, 1>` is workaround for this gcc ICE
+		// /workspace/packages/auto_js/v8/isolated/agent.cc:69:48: internal compiler error: Segmentation fault
+		//    69 |                 random_seed_{params.random_seed} {
+		// [...]
+		// 0x8ddcd8 is_really_empty_class(tree_node*, bool)
+		//         /gcc-out/../gcc/gcc/cp/class.cc:9510
+		std::array<clock::any_clock, 1> clock_;
 		destroy_callback_type destroy_callback_;
 		lockable_handle_type self_handle_;
 		remote_handle_list remote_handle_list_;
-		reset_handle_type reset_handle_callback_;
+		std::array<reset_handle_type, 1> reset_handle_callback_;
 		std::atomic<unsigned> handle_count_;
 		std::optional<double> random_seed_;
 		util::autorelease_pool autorelease_pool_;

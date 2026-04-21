@@ -65,7 +65,7 @@ agent_host::agent_host(
 		isolate_{v8::Isolate::Allocate()},
 		clock_{params.clock},
 		destroy_callback_{destroy_callback},
-		reset_handle_callback_{util::fn<&agent_host::remote_expiration_callback>, *this},
+		reset_handle_callback_{reset_handle_type{util::fn<&agent_host::remote_expiration_callback>, *this}},
 		random_seed_{params.random_seed} {
 	isolate_->SetData(0, this);
 	auto create_params = v8::Isolate::CreateParams{};
@@ -115,7 +115,7 @@ auto agent_host::make_context() -> v8::Local<v8::Context> {
 }
 
 auto agent_host::make_remote_handle_lock(isolate_lock_witness lock) -> remote_handle_lock {
-	auto reset_handle = std::shared_ptr<reset_handle_type>{shared_from_this(), &reset_handle_callback_};
+	auto reset_handle = std::shared_ptr<reset_handle_type>{shared_from_this(), &reset_handle_callback_.at(0)};
 	return remote_handle_lock{lock, remote_handle_list_, reset_handle};
 }
 
