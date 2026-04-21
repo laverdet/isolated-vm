@@ -251,6 +251,7 @@ constexpr auto make_lockable_traits = []() consteval {
 	return type<lockable<Resource, mutex_type, cv_type>>;
 };
 export template <class Resource, lockable_traits Traits = {}>
-using lockable_with = type_t<make_lockable_traits<Resource, Traits>()>;
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=124953
+using lockable_with = decltype(make_lockable_traits<Resource, Traits>())::type;
 
 } // namespace util

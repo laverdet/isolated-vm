@@ -1,6 +1,5 @@
-module;
-#include <boost/intrusive/list.hpp>
 export module v8_js:isolated.cluster;
+import :boost;
 import :isolated.agent;
 import :isolated.platform;
 import std;

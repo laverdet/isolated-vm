@@ -160,6 +160,7 @@ struct visit_napi_value
 					case napi_bigint:
 						return immediate(napi::value<bigint_tag>::from(subject), accept);
 				}
+				std::unreachable();
 			});
 		}
 

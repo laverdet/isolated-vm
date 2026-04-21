@@ -1,3 +1,5 @@
+module;
+#include "auto_js/gcc_abi_tag.h"
 export module v8_js:evaluation.origin;
 import auto_js;
 import std;
@@ -19,7 +21,7 @@ export struct source_origin {
 		std::optional<std::u16string> name;
 		std::optional<source_location> location;
 
-		constexpr static auto struct_template = js::struct_template{
+		GCC_ABI_TAG constexpr static auto struct_template = js::struct_template{
 			js::struct_member{util::cw<"name">, &source_origin::name},
 			js::struct_member{util::cw<"location">, &source_origin::location},
 		};

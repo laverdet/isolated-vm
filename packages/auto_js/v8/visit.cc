@@ -58,7 +58,8 @@ struct visit_cached_immediate : Visit {
 
 		template <class Accept>
 		auto operator()(auto subject, const Accept& accept) -> accept_target_t<Accept>
-			requires requires { immediate(subject, accept); } {
+			// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=124954
+			requires requires { this->immediate(subject, accept); } {
 			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
 				return immediate(subject, accept);
 			});

@@ -1,3 +1,5 @@
+module;
+#include "auto_js/gcc_abi_tag.h"
 export module backend_napi_v8:module_;
 import :agent;
 import :environment;
@@ -23,7 +25,7 @@ struct compile_module_options : js::optional_constructible {
 struct create_capability_options {
 		std::u16string origin;
 
-		constexpr static auto struct_template = js::struct_template{
+		GCC_ABI_TAG constexpr static auto struct_template = js::struct_template{
 			js::struct_member{util::cw<"origin">, &create_capability_options::origin},
 		};
 };

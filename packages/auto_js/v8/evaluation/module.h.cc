@@ -1,3 +1,5 @@
+module;
+#include "auto_js/gcc_abi_tag.h"
 export module v8_js:evaluation.module_record;
 import :evaluation.origin;
 import :fixed_array;
@@ -30,7 +32,7 @@ export class module_request {
 		std::u16string specifier_;
 
 	public:
-		constexpr static auto struct_template = js::struct_template{
+		GCC_ABI_TAG constexpr static auto struct_template = js::struct_template{
 			js::struct_member{util::cw<"attributes">, &module_request::attributes_},
 			js::struct_member{util::cw<"specifier">, &module_request::specifier_},
 		};

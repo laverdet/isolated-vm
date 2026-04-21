@@ -22,3 +22,18 @@ export import :unmaybe;
 export import :visit;
 export import :weak_map;
 export import v8;
+#if __GNUC__
+export import :accept;
+export import :array_buffer;
+export import :array;
+export import :boost;
+export import :callback_info;
+export import :callback_storage;
+export import :callback;
+export import :handle;
+export import :hash;
+export import :isolated.platform;
+export import :object;
+export import :primitive;
+export import :value.tag;
+#endif

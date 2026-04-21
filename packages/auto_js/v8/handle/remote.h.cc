@@ -1,6 +1,5 @@
-module;
-#include <boost/intrusive/list.hpp>
 export module v8_js:remote;
+import :boost;
 import :lock;
 import std;
 import util;

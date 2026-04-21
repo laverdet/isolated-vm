@@ -1,7 +1,7 @@
 module;
-#include <boost/intrusive/list.hpp>
 #include <cassert>
 export module v8_js:isolated.agent;
+import :boost;
 import :collected_handle;
 import :isolated.clock;
 import :lock;

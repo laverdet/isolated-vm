@@ -273,7 +273,13 @@ struct accept<void, v8::MaybeLocal<Type>> : accept<void, v8::Local<Type>> {
 		using accept_type::accept_type;
 
 		using accept_type::operator();
-		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> v8::MaybeLocal<Type> {
+
+		// `requires true` used as a tiebreaker for the regular `v8::Local<v8::Value>` acceptor above.
+		// There seems to be some disagreement about whether or not the specification is ambiguous in
+		// this matter.
+		// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=119859
+		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> v8::MaybeLocal<Type>
+			requires true {
 			return {};
 		}
 };

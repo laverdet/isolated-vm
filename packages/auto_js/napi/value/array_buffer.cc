@@ -1,3 +1,5 @@
+module;
+#include <utility>
 module napi_js;
 import :api;
 import :array_buffer;
@@ -106,6 +108,7 @@ auto bound_value_for_typed_array::make_bound(const environment& env, value<typed
 		case napi_uint8_array: return make(typed_array_tag_of<std::uint8_t>{});
 		case napi_uint8_clamped_array: return make(typed_array_tag_of<std::byte>{});
 	}
+	std::unreachable();
 }
 
 // `value_for_data_view`

@@ -17,3 +17,21 @@ export import :string_table;
 export import :value;
 import :class_definitions;
 import :function_definitions;
+#if __GNUC__
+export import :accept;
+export import :array_buffer;
+export import :array;
+export import :bound_value;
+export import :callback;
+export import :class_;
+export import :class_definitions;
+export import :container;
+export import :error_scope;
+export import :function_definitions;
+export import :handle.types;
+export import :primitive;
+export import :record;
+export import :utility;
+export import :value_handle;
+export import :visit;
+#endif

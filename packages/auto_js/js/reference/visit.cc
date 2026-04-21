@@ -19,7 +19,7 @@ struct reference_vector_of {
 		static_assert(std::is_trivially_copyable_v<target_reference_type>);
 
 	public:
-		constexpr auto emplace_subject(subject_reference_type reference, const auto& value) -> void {
+		constexpr auto emplace_subject([[maybe_unused]] subject_reference_type reference, const auto& value) -> void {
 			assert(values_storage_.size() == reference.id());
 			values_storage_.emplace_back(value);
 		}

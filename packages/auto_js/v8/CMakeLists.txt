@@ -46,6 +46,7 @@ target_sources(v8_js
 		platform/task_runner.cc
 		platform/task.cc
 		platform/worker_runner.h.cc
+		support/boost.h.cc
 		support/callback_storage.cc
 		support/callback.cc
 		support/error.h.cc
