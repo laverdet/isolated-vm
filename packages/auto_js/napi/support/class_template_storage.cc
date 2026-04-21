@@ -54,7 +54,8 @@ class class_template_references {
 		}
 
 	private:
-		// gcc generates code with a missing symbol with the following declaration
+		// gcc 16 (not 15) chokes on this specifically with -O1 or higher
+		// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=124973
 		// util::copy_of<class_template_references_of<Strings>> class_template_references_;
 		std::remove_cvref_t<decltype(class_template_references_of<Strings>)> class_template_references_{class_template_references_of<Strings>};
 };

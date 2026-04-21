@@ -13,7 +13,7 @@ constexpr auto assert_strings_equal(auto... strings) {
 	 }(left)));
 }
 
-[[maybe_unused]] constexpr auto result = []() -> int {
+static_assert([]() -> int {
 	// https://en.cppreference.com/w/cpp/language/string_literal.html
 
 	// Quick check of interpolation matrix
@@ -26,5 +26,5 @@ constexpr auto assert_strings_equal(auto... strings) {
 	static_assert(one_high_surrogate == util::transcode_string<char16_t>(one_high_surrogate));
 	constexpr auto two_high_surrogate = std::basic_string_view{u"\xd83d\xd83d"};
 	static_assert(two_high_surrogate == util::transcode_string<char16_t>(two_high_surrogate));
-	return 0;
-}();
+	return true;
+}());

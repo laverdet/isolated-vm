@@ -27,7 +27,7 @@ struct visit_tuple_of {
 			return accept(tuple_tag<sizeof...(Types)>{}, *this, std::forward<decltype(subject)>(subject));
 		}
 
-		consteval static auto types([[maybe_unused]] auto recursive) -> auto {
+		consteval static auto types(auto recursive) -> auto {
 			const auto [... types ] = util::make_type_pack(type<visitors_type>);
 			return util::pack_concat(type_t<types>::types(recursive)...);
 		}

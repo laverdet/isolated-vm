@@ -57,14 +57,14 @@ struct accept_object_covariant
 // Collect `accept_object_covariant` instantiations
 template <class Meta, class Variant, class... Types>
 struct accept_object_covariants : accept_object_covariant<Meta, Variant, Types>... {
-		constexpr explicit accept_object_covariants([[maybe_unused]] auto* transfer) :
+		constexpr explicit accept_object_covariants(auto* transfer) :
 				accept_object_covariant<Meta, Variant, Types>{transfer}... {}
 
 		using accept_object_covariant<Meta, Variant, Types>::operator()...;
 		// Ensure that this class has an `operator()` for the `using <...>::operator()` declarations
 		auto operator()() = delete;
 
-		consteval static auto types([[maybe_unused]] auto recursive) -> auto {
+		consteval static auto types(auto recursive) -> auto {
 			return util::pack_concat(accept_object_covariant<Meta, Variant, Types>::types(recursive)...);
 		}
 };

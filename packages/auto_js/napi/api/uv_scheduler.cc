@@ -8,7 +8,7 @@ namespace js::napi {
 auto uv_scheduler::close(util::function_ref<auto()->void> close_hook) -> void {
 	auto& async = *async_;
 	assert(async->thread_id == std::this_thread::get_id());
-	[[maybe_unused]] auto abandoned_tasks = [ & ] -> auto {
+	std::ignore = [ & ] -> auto {
 		auto lock = async->shared.write();
 		lock->is_open = false;
 		auto tasks = std::exchange(lock->tasks, {});

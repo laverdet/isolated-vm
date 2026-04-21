@@ -30,7 +30,7 @@ struct accept_with_throw::accept_throw : Accept {
 		using Accept::Accept;
 
 		using Accept::operator();
-		constexpr auto operator()([[maybe_unused]] auto tag, auto& visit, auto&& value) const -> accept_target_type
+		constexpr auto operator()(auto tag, auto& visit, auto&& value) const -> accept_target_type
 			requires(!std::invocable<const Accept&, decltype(tag), decltype(visit), decltype(value)>) {
 			throw js::type_error{u"Could not accept"};
 		}
@@ -44,9 +44,9 @@ struct transfer_holder : Types..., Visit, Accept {
 		template <std::size_t... VisitIndex, std::size_t... AcceptIndex>
 		explicit constexpr transfer_holder(
 			std::index_sequence<VisitIndex...> /*visit_index*/,
-			[[maybe_unused]] auto visit_args,
+			auto visit_args,
 			std::index_sequence<AcceptIndex...> /*accept_index*/,
-			[[maybe_unused]] auto accept_args
+			auto accept_args
 		) :
 				Types{this}...,
 				// NOLINTNEXTLINE(bugprone-use-after-move)

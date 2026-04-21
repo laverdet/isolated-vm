@@ -43,7 +43,7 @@ auto module_record::compile(context_lock_witness lock, v8::Local<v8::String> sou
 	auto maybe_resource_name = js::transfer_in_strict<v8::MaybeLocal<v8::String>>(std::move(origin).name, lock);
 	v8::Local<v8::String> resource_name{};
 	// nb: Empty handle is ok for `v8::ScriptOrigin`
-	(void)maybe_resource_name.ToLocal(&resource_name);
+	std::ignore = maybe_resource_name.ToLocal(&resource_name);
 	const auto script_origin = v8::ScriptOrigin{
 		resource_name,
 		location.line,

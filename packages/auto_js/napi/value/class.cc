@@ -15,7 +15,7 @@ auto value_for_class_of<Type>::construct(auto& env, Args&&... args) const -> val
 	// NOLINTNEXTLINE(readability-simplify-boolean-expr)
 	if (false) {
 		// nb: Fixes invalid `performance-unnecessary-value-param` lint errors when invoking this function
-		[[maybe_unused]] auto nothing = std::tuple<std::remove_cvref_t<Args>...>{std::forward<Args>(args)...};
+		std::ignore = std::tuple<std::remove_cvref_t<Args>...>{std::forward<Args>(args)...};
 	}
 	// NOLINTNEXTLINE(bugprone-use-after-move)
 	return runtime_construct(env, std::forward_as_tuple(std::forward<Args>(args)...), std::tuple{});
