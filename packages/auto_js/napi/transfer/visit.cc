@@ -100,7 +100,11 @@ struct visit_napi_value
 
 		template <class Accept>
 		auto operator()(value<number_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept_tagged(napi::value<number_tag_of<double>>::from(subject), accept);
+			if (std::bit_cast<v8::Local<v8::Number>>(subject)->IsInt32()) {
+				return accept_tagged(napi::value<number_tag_of<std::int32_t>>::from(subject), accept);
+			} else {
+				return accept_tagged(napi::value<number_tag_of<double>>::from(subject), accept);
+			}
 		}
 
 		template <class Accept, class Type>

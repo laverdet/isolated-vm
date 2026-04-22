@@ -109,4 +109,14 @@ await describe("regressions", async () => {
 		// numeric array indices broke as part of a double to int32_t change.
 		await global.set("xx", [ false, true ]);
 	});
+
+	await test("seen index type", async () => {
+		const realm = await agent.createRealm();
+		const global = await realm.acquireGlobalObject();
+		const payload = {
+			number: 0,
+			buffer: [ new Uint8Array(new SharedArrayBuffer(0)) ],
+		};
+		await global.set("xx", [ payload ]);
+	});
 });
