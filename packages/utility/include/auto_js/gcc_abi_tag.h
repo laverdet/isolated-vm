@@ -1,4 +1,4 @@
-#ifdef __GNUC__
+#if __GNUC__ > 14
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=124957
 #define GCC_ABI_TAG [[gnu::abi_tag("cxx11")]]
 #else

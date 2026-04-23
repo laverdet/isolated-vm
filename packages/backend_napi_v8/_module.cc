@@ -4,6 +4,6 @@ export import :environment;
 export import :module_;
 export import :realm;
 export import :script;
-#if __GNUC__
+#if __GNUC__ > 14
 export import :runtime;
 #endif

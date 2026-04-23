@@ -17,7 +17,7 @@ export import :string_table;
 export import :value;
 import :class_definitions;
 import :function_definitions;
-#if __GNUC__
+#if __GNUC__ > 14
 export import :accept;
 export import :array_buffer;
 export import :array;

@@ -24,11 +24,7 @@ struct string_table_options {
 export template <const auto& Strings, string_table_options Options = {}>
 class string_table {
 	public:
-		auto string_table_storage(const auto& string_value) {
-#if __GNUC__
-			std::ignore = string_value;
-			return util::nothing<napi::reference<string_tag>&>{};
-#else
+		auto string_table_storage(auto string_value) {
 			constexpr auto string_sv = util::make_consteval_string_view(string_value);
 			constexpr auto index = string_table_of<Strings>.lookup(string_sv);
 			if constexpr (index) {
@@ -38,13 +34,10 @@ class string_table {
 				static_assert(!Options.strict, "String literal '"s + string_sv + "' is missing in storage"s);
 				return util::nothing<napi::reference<string_tag>&>{};
 			}
-#endif
 		}
 
 	private:
-#if !__GNUC__
 		util::copy_of<string_table_of<Strings>> string_literal_storage_;
-#endif
 };
 
 } // namespace js::napi

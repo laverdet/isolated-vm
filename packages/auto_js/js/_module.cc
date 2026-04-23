@@ -16,7 +16,7 @@ export import :union_.types;
 export import :value;
 export import :variant.types;
 export import :vector.vector_of;
-#if __GNUC__
+#if __GNUC__ > 14
 export import :builtin.accept;
 export import :builtin.visit;
 export import :enum_.accept;

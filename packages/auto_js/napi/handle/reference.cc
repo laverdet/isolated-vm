@@ -34,9 +34,15 @@ class reference_handle : util::non_copyable {
 		}
 
 	public:
+#if __GNUC__ > 14
+		constexpr reference_handle(const reference_handle& /*right*/) {
+			// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=125008
+		};
+#else
 		consteval reference_handle(const reference_handle& /*right*/) {
 			// consteval no-op!
 		};
+#endif
 
 		constexpr reference_handle(reference_handle&& right) noexcept :
 				env_{right.env_},

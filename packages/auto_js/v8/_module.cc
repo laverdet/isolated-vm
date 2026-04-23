@@ -22,7 +22,7 @@ export import :unmaybe;
 export import :visit;
 export import :weak_map;
 export import v8;
-#if __GNUC__
+#if __GNUC__ > 14
 export import :accept;
 export import :array_buffer;
 export import :array;
