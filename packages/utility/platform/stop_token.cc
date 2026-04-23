@@ -10,14 +10,16 @@ namespace util {
 export template <std::size_t Size>
 class composite_stop_token : private std::stop_source, public std::stop_token {
 	private:
-		static auto make_callback(std::stop_source stop_source) {
-			// I wonder what's better: copying the stop state into each callback, or using function
-			// pointer..
-			return [ stop_source = std::move(stop_source) ]() mutable -> void { stop_source.request_stop(); };
-		}
+		class bound_stop_callback {
+			public:
+				explicit bound_stop_callback(std::stop_source source) : stop_source_{std::move(source)} {}
+				auto operator()() const { stop_source_.request_stop(); }
 
-		using callback_type = decltype(make_callback(std::declval<std::stop_source>()));
-		using stop_callback_type = std::stop_callback<callback_type>;
+			private:
+				std::stop_source stop_source_;
+		};
+
+		using stop_callback_type = std::stop_callback<bound_stop_callback>;
 		using callback_pack_type = std::array<stop_callback_type, Size>;
 
 	public:
@@ -74,13 +76,13 @@ class composite_stop_token : private std::stop_source, public std::stop_token {
 						case 0:
 						case 1:
 							{
-								auto callback = make_callback(std::stop_source{});
+								auto callback = bound_stop_callback{std::stop_source{}};
 								return {stop_callback_type{(util::unused(tokens), std::stop_token{}), callback}...};
 							}
 						// Make callback pack
 						default:
 							{
-								auto callback = make_callback(std::move(static_cast<std::stop_source&>(*this)));
+								auto callback = bound_stop_callback{std::move(static_cast<std::stop_source&>(*this))};
 								return {stop_callback_type{std::forward<decltype(tokens)>(tokens), callback}...};
 							}
 					}
