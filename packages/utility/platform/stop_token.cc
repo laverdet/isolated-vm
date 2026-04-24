@@ -13,7 +13,7 @@ class composite_stop_token : private std::stop_source, public std::stop_token {
 		class bound_stop_callback {
 			public:
 				explicit bound_stop_callback(std::stop_source source) : stop_source_{std::move(source)} {}
-				auto operator()() const { stop_source_.request_stop(); }
+				auto operator()() { stop_source_.request_stop(); }
 
 			private:
 				std::stop_source stop_source_;
