@@ -1,3 +1,4 @@
+export type * from "./frontend/reference.js";
 export * from "./frontend/agent.js";
 export * from "./frontend/module.js";
 export * from "./frontend/realm.js";

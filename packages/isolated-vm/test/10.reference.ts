@@ -11,7 +11,7 @@ await test("function reference invoke", async () => {
 		globalThis.fn = () => "wow";
 	});
 	const global = await realm.acquireGlobalObject();
-	const property = await global.get("fn");
+	const property = (await global.get("fn")) as ivm.Reference<() => unknown>;
 	const value = expectComplete(await property.invoke([]));
 	assert.equal(value, "wow");
 });
@@ -39,7 +39,7 @@ await test("invoke function reference with circular object", async () => {
 		globalThis.fn = (value: unknown) => value;
 	});
 	const global = await realm.acquireGlobalObject();
-	const fn = await global.get("fn");
+	const fn = (await global.get("fn")) as ivm.Reference<(value: unknown) => unknown>;
 	const date = new Date();
 	const object: Record<string, any> = {
 		record: {},

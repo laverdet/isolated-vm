@@ -9,6 +9,7 @@ declare module "#backend_v8" {
 	type RunScriptOptions = import("./frontend/script.ts").Script.RunScriptOptions;
 	type _Agent = import("./frontend/agent.ts").Agent;
 	type _Module = import("./frontend/module.ts").Module;
+	type _Reference<T> = import("./frontend/reference.ts").Reference<T>;
 
 	interface InheritedClasses {
 		Agent: object;
@@ -40,7 +41,7 @@ declare module "#backend_v8" {
 	export class Realm {
 		readonly #private;
 		constructor(secret: Secret, ...args: unknown[]);
-		acquireGlobalObject(): Promise<Reference>;
+		acquireGlobalObject(): Promise<_Reference<Record<string, unknown>>>;
 		createCapability(make: CapabilityMake, options: CreateCapabilityOptions): Promise<Module>;
 		instantiateRuntime(): Promise<Module>;
 	}
