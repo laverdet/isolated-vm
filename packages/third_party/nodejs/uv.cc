@@ -7,11 +7,16 @@ export module nodejs:uv;
 export using ::uv_async_t;
 export using ::uv_handle_t;
 export using ::uv_handle_type;
+export using ::uv_lib_t;
 export using ::uv_loop_t;
 
 export using ::uv_async_init;
 export using ::uv_async_send;
 export using ::uv_close;
+export using ::uv_dlclose;
+export using ::uv_dlerror;
+export using ::uv_dlopen;
+export using ::uv_dlsym;
 export using ::uv_is_active;
 export using ::uv_ref;
 export using ::uv_unref;

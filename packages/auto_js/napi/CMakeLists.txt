@@ -8,6 +8,7 @@ target_link_libraries(napi_js PRIVATE auto_js nodejs nodejs_v8 utility_js)
 
 target_sources(napi_js
 	PRIVATE
+		api/uv_dlib.cc
 		api/uv_scheduler.cc
 		support/environment.cc
 		support/initialize.cc
@@ -23,6 +24,7 @@ target_sources(napi_js
 		api/finalizer.cc
 		api/handle_scope.cc
 		api/invoke.cc
+		api/uv_dlib.h.cc
 		api/uv_handle.cc
 		api/uv_scheduler.h.cc
 		handle/bound_value.cc

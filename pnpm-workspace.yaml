@@ -4,6 +4,8 @@ packages:
   - packages/auto_js/js
   - packages/auto_js/napi
   - packages/auto_js/v8
+  - packages/addon
+  - packages/addon_example
   - packages/backend_napi_v8
   - packages/isolated-vm
   - packages/third_party/nodejs

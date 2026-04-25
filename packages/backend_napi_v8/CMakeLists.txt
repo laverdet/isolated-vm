@@ -13,6 +13,7 @@ target_sources(backend_napi_v8
 		environment.cc
 		main.cc
 		module.cc
+		native_module.cc
 		realm.cc
 		reference.cc
 		runtime/runtime.cc
@@ -23,6 +24,7 @@ target_sources(backend_napi_v8
 		environment.h.cc
 		lock.cc
 		module.h.cc
+		native_module.h.cc
 		realm.h.cc
 		reference.h.cc
 		runtime/runtime.h.cc

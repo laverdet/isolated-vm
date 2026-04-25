@@ -235,5 +235,8 @@ add_subdirectory(packages/third_party/v8 nodejs_v8)
 # nodejs require-able module
 add_subdirectory(packages/backend_napi_v8)
 
+# addon api
+add_subdirectory(packages/addon)
+
 # Playground
 add_subdirectory(playground)

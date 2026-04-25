@@ -28,5 +28,6 @@ const cjs = require(`@isolated-vm/experimental-${backendPlatform}`);
 export const initialize = cjs.initialize;
 export const Agent = cjs.Agent;
 export const Module = cjs.Module;
+export const NativeModule = cjs.NativeModule;
 export const Realm = cjs.Realm;
 export const Script = cjs.Script;

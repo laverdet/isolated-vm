@@ -1,0 +1,20 @@
+{
+  "name": "@isolated-vm/addon_example",
+  "type":"module",
+  "private": true,
+  "exports": {
+    ".": "./addon.js"
+  },
+  "scripts": {
+    "configure": "cmake \"-DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include)\" -G Ninja -B build",
+    "clean": "cmake -B build --target clean",
+    "build": "ninja -C build addon_example"
+  },
+  "devDependencies": {
+    "@auto_js/js": "workspace:^",
+    "@isolated-vm/addon": "workspace:^"
+  },
+  "peerDependencies": {
+    "@isolated-vm/experimental": "workspace:^"
+  }
+}

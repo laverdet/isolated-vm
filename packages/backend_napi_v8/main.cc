@@ -28,6 +28,7 @@ js::napi::napi_js_module module_namespace{
 			std::pair{util::cw<"initialize">, js::forward{env.make_initialize()}},
 			std::pair{util::cw<"Agent">, js::forward{agent_class_template(env)}},
 			std::pair{util::cw<"Module">, js::forward{module_handle::class_template(env)}},
+			std::pair{util::cw<"NativeModule">, js::forward{native_module_handle::class_template(env)}},
 			std::pair{util::cw<"Realm">, js::forward{realm_handle::class_template(env)}},
 			std::pair{util::cw<"Script">, js::forward{script_handle::class_template(env)}},
 		};

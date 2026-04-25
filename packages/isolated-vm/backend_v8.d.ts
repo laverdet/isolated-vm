@@ -24,7 +24,7 @@ declare module "#backend_v8" {
 
 	export class Agent {
 		readonly #private;
-		constructor(secret: Secret, ...args: unknown[]);
+		protected constructor(secret: Secret, ...args: unknown[]);
 		compileModule(code: string, options?: CompileModuleOptions | undefined): Promise<MaybeCompletionOf<_Module>>;
 		compileScript(code: string, options?: CompileScriptOptions | undefined): Promise<MaybeCompletionOf<Script>>;
 		createRealm(): Promise<Realm>;
@@ -33,14 +33,20 @@ declare module "#backend_v8" {
 
 	export class Module {
 		readonly #private;
-		constructor(secret: Secret, ...args: unknown[]);
+		protected constructor(secret: Secret, ...args: unknown[]);
 		/** @internal */ _link(realm: Realm, linker: ModuleLinkRecord): Promise<void>;
 		evaluate(realm: Realm): Promise<MaybeCompletionOf<unknown>>;
 	}
 
+	export class NativeModule {
+		readonly #private;
+		protected constructor(secret: Secret, ...args: unknown[]);
+		static create(filename: string): Promise<NativeModule>;
+	}
+
 	export class Realm {
 		readonly #private;
-		constructor(secret: Secret, ...args: unknown[]);
+		protected constructor(secret: Secret, ...args: unknown[]);
 		acquireGlobalObject(): Promise<_Reference<Record<string, unknown>>>;
 		createCapability(make: CapabilityMake, options: CreateCapabilityOptions): Promise<Module>;
 		instantiateRuntime(): Promise<Module>;
@@ -48,7 +54,7 @@ declare module "#backend_v8" {
 
 	export class Reference {
 		readonly #private;
-		constructor(secret: Secret, ...args: unknown[]);
+		protected constructor(secret: Secret, ...args: unknown[]);
 		copy(): Promise<unknown>;
 		get(property: string): Promise<Reference>;
 		set(property: string, value: unknown): Promise<void>;
@@ -57,13 +63,13 @@ declare module "#backend_v8" {
 
 	export class Script {
 		readonly #private;
-		constructor(secret: Secret, ...args: unknown[]);
+		protected constructor(secret: Secret, ...args: unknown[]);
 		run(realm: Realm, options?: RunScriptOptions | undefined): Promise<MaybeCompletionOf<unknown>>;
 	}
 
 	export class SubscriberCapability {
 		readonly #private;
-		constructor(secret: Secret, ...args: unknown[]);
+		protected constructor(secret: Secret, ...args: unknown[]);
 		send(message: unknown): Promise<boolean>;
 	}
 
@@ -72,6 +78,7 @@ declare module "#backend_v8" {
 		initialize: typeof initialize;
 		Agent: typeof Agent;
 		Module: typeof Module;
+		NativeModule: typeof NativeModule;
 		Realm: typeof Realm;
 		Script: typeof Script;
 	};

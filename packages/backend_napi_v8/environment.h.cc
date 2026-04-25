@@ -39,6 +39,7 @@ constexpr auto string_literals = std::tuple{
 constexpr auto class_names = std::tuple{
 	"Agent"sv,
 	"Module"sv,
+	"NativeModule"sv,
 	"Realm"sv,
 	"Reference"sv,
 	"Script"sv,
