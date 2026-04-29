@@ -83,7 +83,8 @@ ExternalCopyString::ExternalCopyString(Local<String> string) :
 		string->WriteOneByteV2(
 			Isolate::GetCurrent(),
 			0, value->size(),
-			reinterpret_cast<uint8_t*>(value->data())
+			reinterpret_cast<uint8_t*>(value->data()),
+			String::WriteOptions::NO_NULL_TERMINATION
 		);
 #else
 		string->WriteOneByte(
@@ -98,7 +99,8 @@ ExternalCopyString::ExternalCopyString(Local<String> string) :
 		string->WriteV2(
 			Isolate::GetCurrent(),
 			0, value->size() >> 1,
-			reinterpret_cast<uint16_t*>(value->data())
+			reinterpret_cast<uint16_t*>(value->data()),
+			String::WriteOptions::NO_NULL_TERMINATION
 		);
 #else
 		string->Write(
