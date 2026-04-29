@@ -178,8 +178,8 @@ auto ExternalCopy::Copy(Local<Value> value, bool transfer_out, ArrayRange transf
 				transfer_out = std::find(transfer_list.begin(), transfer_list.end(), array_buffer) != transfer_list.end();
 			}
 			// Grab byte_offset and byte_length before the transfer because "neutering" the array buffer will null these out
-			size_t byte_offset = view->ByteOffset();
 			size_t byte_length = view->ByteLength();
+			size_t byte_offset = byte_length == 0 ? 0 : view->ByteOffset();
 			std::unique_ptr<ExternalCopyArrayBuffer> external_buffer;
 			if (transfer_out) {
 				external_buffer = ExternalCopyArrayBuffer::Transfer(array_buffer);
