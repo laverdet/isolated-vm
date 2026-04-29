@@ -19,6 +19,7 @@ export import :platform.task_runner;
 export import :platform.worker_runner;
 export import :remote;
 export import :unmaybe;
+export import :value.tag;
 export import :visit;
 export import :weak_map;
 export import v8;

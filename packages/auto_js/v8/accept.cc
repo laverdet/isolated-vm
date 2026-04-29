@@ -10,10 +10,10 @@ import std;
 import util;
 import v8;
 
-namespace js {
+namespace js::iv8 {
 
 // Reference acceptor
-struct reaccept_v8_value {
+struct reaccept_value {
 		using reference_type = v8::Local<v8::Value>;
 
 		template <class Type>
@@ -23,26 +23,26 @@ struct reaccept_v8_value {
 };
 
 // Base class for primitive acceptors. These require only an isolate lock.
-struct accept_v8_primitive {
+struct accept_primitive {
 	public:
-		accept_v8_primitive() = delete;
-		explicit accept_v8_primitive(iv8::isolate_lock_witness lock) :
+		accept_primitive() = delete;
+		explicit accept_primitive(isolate_lock_witness lock) :
 				isolate_{lock.isolate()} {}
-		explicit accept_v8_primitive(const std::convertible_to<iv8::isolate_lock_witness> auto& lock) :
-				accept_v8_primitive{iv8::isolate_lock_witness{util::slice(lock)}} {}
+		explicit accept_primitive(const std::convertible_to<isolate_lock_witness> auto& lock) :
+				accept_primitive{isolate_lock_witness{util::slice(lock)}} {}
 
 		[[nodiscard]] auto isolate() const -> v8::Isolate* { return isolate_; }
 
 		// Declare reference provider
-		using accept_reference_type = reaccept_v8_value;
+		using accept_reference_type = reaccept_value;
 
 		// undefined & null
-		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> v8::Local<v8::Primitive> {
-			return v8::Undefined(isolate());
+		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> v8::Local<iv8::Undefined> {
+			return v8::Undefined(isolate()).As<iv8::Undefined>();
 		}
 
-		auto operator()(null_tag /*tag*/, visit_holder /*visit*/, const auto& /*null*/) const -> v8::Local<v8::Primitive> {
-			return v8::Null(isolate());
+		auto operator()(null_tag /*tag*/, visit_holder /*visit*/, const auto& /*null*/) const -> v8::Local<iv8::Null> {
+			return v8::Null(isolate()).As<iv8::Null>();
 		}
 
 		// boolean
@@ -55,25 +55,34 @@ struct accept_v8_primitive {
 			return v8::Number::New(isolate_, double{std::forward<decltype(subject)>(subject)});
 		}
 
-		auto operator()(number_tag_of<std::int32_t> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> v8::Local<v8::Number> {
-			return v8::Int32::New(isolate_, std::int32_t{std::forward<decltype(subject)>(subject)});
+		auto operator()(number_tag_of<double> /*tag*/, visit_holder visit, auto&& subject) const -> v8::Local<iv8::Double> {
+			return (*this)(number_tag{}, visit, std::forward<decltype(subject)>(subject)).template As<iv8::Double>();
 		}
 
-		auto operator()(number_tag_of<std::uint32_t> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> v8::Local<v8::Number> {
-			return v8::Int32::NewFromUnsigned(isolate_, std::uint32_t{std::forward<decltype(subject)>(subject)});
+		auto operator()(number_tag_of<std::int32_t> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> v8::Local<v8::Int32> {
+			return v8::Integer::New(isolate_, std::int32_t{std::forward<decltype(subject)>(subject)}).As<v8::Int32>();
+		}
+
+		auto operator()(number_tag_of<std::uint32_t> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> v8::Local<v8::Uint32> {
+			return v8::Integer::NewFromUnsigned(isolate_, std::uint32_t{std::forward<decltype(subject)>(subject)}).As<v8::Uint32>();
 		}
 
 		// string
 		template <class Char>
 		auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, std::convertible_to<std::basic_string_view<Char>> auto&& subject) const
 			-> js::referenceable_value<v8::Local<v8::String>> {
-			return js::referenceable_value{iv8::string::make(isolate_, std::basic_string_view<Char>{std::forward<decltype(subject)>(subject)})};
+			return js::referenceable_value{string::make(isolate_, std::basic_string_view<Char>{std::forward<decltype(subject)>(subject)})};
 		}
+
+		// auto operator()(string_tag_of<char> /*tag*/, visit_holder /*visit*/, std::string_view subject) const
+		// 	-> js::referenceable_value<v8::Local<iv8::StringOneByte>> {
+		// 	return js::referenceable_value{string::make(isolate_, std::basic_string<Char>{std::forward<decltype(subject)>(subject)})};
+		// }
 
 		template <class Char>
 		auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, auto&& subject) const
 			-> js::referenceable_value<v8::Local<v8::String>> {
-			return js::referenceable_value{iv8::string::make(isolate_, std::basic_string<Char>{std::forward<decltype(subject)>(subject)})};
+			return js::referenceable_value{string::make(isolate_, std::basic_string<Char>{std::forward<decltype(subject)>(subject)})};
 		}
 
 		// function (instantiated in visitor)
@@ -88,28 +97,22 @@ struct accept_v8_primitive {
 		v8::Isolate* isolate_;
 };
 
-// Explicit string acceptor
-template <>
-struct accept<void, v8::Local<v8::String>> : accept_v8_primitive {
-		using accept_v8_primitive::accept_v8_primitive;
-};
-
 // Generic acceptor for most values. These require a context lock.
-struct accept_v8_value : accept_v8_primitive {
+struct accept_value : accept_primitive {
 	public:
-		using accept_type = accept_v8_primitive;
-		explicit accept_v8_value(iv8::context_lock_witness lock) :
+		using accept_type = accept_primitive;
+		explicit accept_value(context_lock_witness lock) :
 				accept_type{lock},
 				context_{lock.context()} {}
-		explicit accept_v8_value(const std::convertible_to<iv8::context_lock_witness> auto& lock) :
-				accept_v8_value{iv8::context_lock_witness{util::slice(lock)}} {}
+		explicit accept_value(const std::convertible_to<context_lock_witness> auto& lock) :
+				accept_value{context_lock_witness{util::slice(lock)}} {}
 
 		// accept all primitives
 		using accept_type::operator();
 
-		[[nodiscard]] auto witness() const -> iv8::context_lock_witness {
-			auto isolate_lock = iv8::isolate_lock_witness::make_witness(isolate());
-			return iv8::context_lock_witness::make_witness(isolate_lock, context_);
+		[[nodiscard]] auto witness() const -> context_lock_witness {
+			auto isolate_lock = isolate_lock_witness::make_witness(isolate());
+			return context_lock_witness::make_witness(isolate_lock, context_);
 		}
 
 		// hacky function template acceptor
@@ -119,38 +122,46 @@ struct accept_v8_value : accept_v8_primitive {
 		}
 
 		// bigint (why does `NewFromWords` need a context?)
-		auto operator()(bigint_tag /*tag*/, visit_holder visit, auto&& subject) const
+		auto operator()(bigint_tag /*tag*/, visit_holder /*visit*/, const js::bigint& subject) const
 			-> js::referenceable_value<v8::Local<v8::BigInt>> {
-			return (*this)(bigint_tag_of<bigint>{}, visit, bigint{std::forward<decltype(subject)>(subject)});
+			auto value = unmaybe(v8::BigInt::NewFromWords(context_, subject.sign_bit(), static_cast<int>(subject.size()), subject.data()));
+			return js::referenceable_value{value};
 		}
 
-		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, auto&& subject) const
+		auto operator()(bigint_tag tag, visit_holder visit, auto&& subject) const
 			-> js::referenceable_value<v8::Local<v8::BigInt>> {
-			return js::referenceable_value{iv8::bigint::make(witness(), js::bigint{std::forward<decltype(subject)>(subject)})};
+			return (*this)(tag, visit, js::bigint{std::forward<decltype(subject)>(subject)});
 		}
 
-		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, const js::bigint& subject) const
-			-> js::referenceable_value<v8::Local<v8::BigInt>> {
-			return js::referenceable_value{iv8::bigint::make(witness(), subject)};
+		auto operator()(bigint_tag_of<js::bigint> /*tag*/, visit_holder visit, auto&& subject) const
+			-> js::referenceable_value<v8::Local<iv8::BigIntWords>> {
+			auto value = (*this)(bigint_tag{}, visit, std::forward<decltype(subject)>(subject));
+			return js::referenceable_value{value->template As<iv8::BigIntWords>()};
 		}
 
-		template <class Numeric>
-		auto operator()(bigint_tag_of<Numeric> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> v8::Local<v8::BigInt> {
-			return iv8::bigint::make(witness(), Numeric{std::forward<decltype(subject)>(subject)});
+		auto operator()(bigint_tag_of<std::int64_t> /*tag*/, visit_holder /*visit*/, auto&& subject) const
+			-> js::referenceable_value<v8::Local<iv8::BigInt64>> {
+			auto value = v8::BigInt::New(isolate(), std::forward<decltype(subject)>(subject));
+			return js::referenceable_value{value.template As<iv8::BigInt64>()};
+		}
+
+		auto operator()(bigint_tag_of<std::uint64_t> /*tag*/, visit_holder /*visit*/, auto&& subject) const
+			-> js::referenceable_value<v8::Local<iv8::BigIntU64>> {
+			auto value = v8::BigInt::NewFromUnsigned(isolate(), std::forward<decltype(subject)>(subject));
+			return js::referenceable_value{value.template As<iv8::BigIntU64>()};
 		}
 
 		// date
-		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const
+		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, js_clock::time_point subject) const
 			-> js::referenceable_value<v8::Local<v8::Date>> {
-			return js::referenceable_value<v8::Local<v8::Date>>{
-				iv8::date::make(context_, js_clock::time_point{std::forward<decltype(subject)>(subject)}),
-			};
+			auto value = unmaybe(v8::Date::New(context_, subject.time_since_epoch().count())).As<v8::Date>();
+			return js::referenceable_value{value};
 		}
 
 		// error
 		auto operator()(error_tag /*tag*/, visit_holder /*visit*/, const auto& subject) const
 			-> js::referenceable_value<v8::Local<v8::Object>> {
-			auto message = iv8::string::make(isolate(), subject.message());
+			auto message = string::make(isolate(), subject.message());
 			auto error = v8::Local<v8::Value>{[ & ]() -> v8::Local<v8::Value> {
 				switch (subject.name()) {
 					// These functions don't need an isolate somehow?
@@ -183,7 +194,7 @@ struct accept_v8_value : accept_v8_primitive {
 							visit.first(std::forward<decltype(key)>(key), self),
 							visit.second(std::forward<decltype(value)>(value), self)
 						);
-						iv8::unmaybe(result);
+						unmaybe(result);
 					}
 				},
 			};
@@ -203,7 +214,7 @@ struct accept_v8_value : accept_v8_primitive {
 							visit.first(std::forward<decltype(key)>(key), self),
 							visit.second(std::forward<decltype(value)>(value), self)
 						);
-						iv8::unmaybe(result);
+						unmaybe(result);
 					}
 				},
 			};
@@ -213,13 +224,13 @@ struct accept_v8_value : accept_v8_primitive {
 		auto operator()(array_buffer_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const
 			-> js::referenceable_value<v8::Local<v8::ArrayBuffer>> {
 			auto data = js::array_buffer{std::forward<decltype(subject)>(subject)};
-			return js::referenceable_value{iv8::array_buffer::make(util::slice(witness()), std::move(data))};
+			return js::referenceable_value{array_buffer::make(util::slice(witness()), std::move(data))};
 		}
 
 		auto operator()(shared_array_buffer_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const
 			-> js::referenceable_value<v8::Local<v8::SharedArrayBuffer>> {
 			auto data = js::shared_array_buffer{std::forward<decltype(subject)>(subject)};
-			return js::referenceable_value{iv8::shared_array_buffer::make(util::slice(witness()), std::move(data))};
+			return js::referenceable_value{shared_array_buffer::make(util::slice(witness()), std::move(data))};
 		}
 
 		// typed arrays
@@ -261,9 +272,19 @@ struct accept_v8_value : accept_v8_primitive {
 		v8::Local<v8::Context> context_;
 };
 
-template <>
-struct accept<void, v8::Local<v8::Value>> : accept_v8_value {
-		using accept_v8_value::accept_v8_value;
+} // namespace js::iv8
+
+namespace js {
+
+template <class Type>
+	requires std::is_base_of_v<primitive_tag, iv8::v8_to_tag<Type>>
+struct accept<void, v8::Local<Type>> : iv8::accept_primitive {
+		using accept_primitive::accept_primitive;
+};
+
+template <class Type>
+struct accept<void, v8::Local<Type>> : iv8::accept_value {
+		using accept_value::accept_value;
 };
 
 // A `MaybeLocal` also accepts `undefined`, similar to `std::optional`.

@@ -11,7 +11,7 @@ struct default_dispatch {
 // Wrapper for a value which can be referenced, for efficiency (like string), or for correctness
 // (date) but is not a receiver type.
 export template <class Type>
-class referenceable_value {
+class referenceable_value : public util::pointer_facade {
 	public:
 		explicit constexpr referenceable_value(Type value) :
 				value_{std::move(value)} {}

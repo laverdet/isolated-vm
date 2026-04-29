@@ -32,10 +32,6 @@ export class bigint : public v8::Local<v8::BigInt> {
 				v8::Local<v8::BigInt>{handle} {}
 
 		[[nodiscard]] explicit operator js::bigint() const;
-
-		static auto make(context_lock_witness lock, std::int64_t value) -> v8::Local<v8::BigInt>;
-		static auto make(context_lock_witness lock, std::uint64_t value) -> v8::Local<v8::BigInt>;
-		static auto make(context_lock_witness lock, js::bigint value) -> v8::Local<v8::BigInt>;
 };
 
 export class bigint_u64 : public bigint {
@@ -73,8 +69,6 @@ export class date : public v8::Local<v8::Date> {
 				v8::Local<v8::Date>{handle} {}
 
 		[[nodiscard]] explicit operator js_clock::time_point() const;
-
-		static auto make(v8::Local<v8::Context> context, js_clock::time_point date) -> v8::Local<v8::Date>;
 };
 
 export class external : public v8::Local<v8::External> {

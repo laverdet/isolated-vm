@@ -41,18 +41,6 @@ bigint::operator js::bigint() const {
 	return bigint;
 }
 
-auto bigint::make(context_lock_witness lock, std::int64_t value) -> v8::Local<v8::BigInt> {
-	return v8::BigInt::New(lock.isolate(), value);
-}
-
-auto bigint::make(context_lock_witness lock, std::uint64_t value) -> v8::Local<v8::BigInt> {
-	return v8::BigInt::NewFromUnsigned(lock.isolate(), value);
-}
-
-auto bigint::make(context_lock_witness lock, js::bigint value) -> v8::Local<v8::BigInt> {
-	return unmaybe(v8::BigInt::NewFromWords(lock.context(), value.sign_bit(), static_cast<int>(value.size()), value.data()));
-}
-
 bigint_u64::operator std::uint64_t() const {
 	return value_;
 }
@@ -125,10 +113,6 @@ string::operator std::u16string() const {
 }
 
 // `date`
-auto date::make(v8::Local<v8::Context> context, js_clock::time_point date) -> v8::Local<v8::Date> {
-	return iv8::unmaybe(v8::Date::New(context, date.time_since_epoch().count())).As<v8::Date>();
-}
-
 date::operator js_clock::time_point() const {
 	return js_clock::time_point{js_clock::duration{(*this)->ValueOf()}};
 }
