@@ -57,10 +57,6 @@ export class string
 		[[nodiscard]] explicit operator std::string() const;
 		[[nodiscard]] explicit operator std::u8string() const;
 		[[nodiscard]] explicit operator std::u16string() const;
-
-		static auto make(v8::Isolate* isolate, std::string_view view) -> v8::Local<v8::String>;
-		static auto make(v8::Isolate* isolate, std::u8string_view view) -> v8::Local<v8::String>;
-		static auto make(v8::Isolate* isolate, std::u16string_view view) -> v8::Local<v8::String>;
 };
 
 export class date : public v8::Local<v8::Date> {

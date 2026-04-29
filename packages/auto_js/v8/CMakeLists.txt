@@ -18,6 +18,7 @@ target_sources(v8_js
 		platform/worker_runner.cc
 		support/error.cc
 		support/lock.cc
+		transfer/accept.cc
 		value/array_buffer.cc
 		value/array.cc
 		value/fixed_array.cc

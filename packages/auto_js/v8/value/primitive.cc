@@ -46,36 +46,6 @@ bigint_u64::operator std::uint64_t() const {
 }
 
 // `string`
-auto string::make(v8::Isolate* isolate, std::string_view view) -> v8::Local<v8::String> {
-	auto string = v8::String::NewFromOneByte(
-		isolate,
-		reinterpret_cast<const std::uint8_t*>(view.data()),
-		v8::NewStringType::kNormal,
-		static_cast<int>(view.size())
-	);
-	return iv8::unmaybe(string);
-}
-
-auto string::make(v8::Isolate* isolate, std::u8string_view view) -> v8::Local<v8::String> {
-	auto string = v8::String::NewFromUtf8(
-		isolate,
-		reinterpret_cast<const char*>(view.data()),
-		v8::NewStringType::kNormal,
-		static_cast<int>(view.size())
-	);
-	return iv8::unmaybe(string);
-}
-
-auto string::make(v8::Isolate* isolate, std::u16string_view view) -> v8::Local<v8::String> {
-	auto string = v8::String::NewFromTwoByte(
-		isolate,
-		reinterpret_cast<const std::uint16_t*>(view.data()),
-		v8::NewStringType::kNormal,
-		static_cast<int>(view.size())
-	);
-	return iv8::unmaybe(string);
-}
-
 string::operator std::string() const {
 	std::string string;
 	string.resize_and_overwrite((*this)->Length(), [ this ](char* data, std::size_t length) -> std::size_t {

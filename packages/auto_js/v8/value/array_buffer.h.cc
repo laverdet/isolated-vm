@@ -27,8 +27,6 @@ export class array_buffer : public v8::Local<v8::ArrayBuffer> {
 		[[nodiscard]] auto size() const -> std::size_t { return (*this)->ByteLength(); }
 		explicit operator js::array_buffer() const;
 		explicit operator std::span<std::byte>() const;
-
-		static auto make(isolate_lock_witness lock, js::array_buffer block) -> v8::Local<v8::ArrayBuffer>;
 };
 
 export class shared_array_buffer : public v8::Local<v8::SharedArrayBuffer> {
@@ -41,8 +39,6 @@ export class shared_array_buffer : public v8::Local<v8::SharedArrayBuffer> {
 		[[nodiscard]] auto size() const -> std::size_t { return (*this)->ByteLength(); }
 		explicit operator js::shared_array_buffer() const;
 		explicit operator std::span<std::byte>() const;
-
-		static auto make(isolate_lock_witness lock, js::shared_array_buffer block) -> v8::Local<v8::SharedArrayBuffer>;
 };
 
 export template <class Type>
