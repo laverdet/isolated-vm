@@ -26,7 +26,6 @@ target_sources(v8_js
 		value/primitive.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
-		accept.cc
 		container/hash.cc
 		container/weak_map.cc
 		evaluation/module.h.cc
@@ -52,6 +51,8 @@ target_sources(v8_js
 		support/error.h.cc
 		support/lock.h.cc
 		support/unmaybe.cc
+		transfer/accept.h.cc
+		transfer/visit.cc
 		value/array_buffer.h.cc
 		value/array.h.cc
 		value/callback_info.cc
@@ -61,5 +62,4 @@ target_sources(v8_js
 		value/object.h.cc
 		value/primitive.h.cc
 		value/tag.cc
-		visit.cc
 )
