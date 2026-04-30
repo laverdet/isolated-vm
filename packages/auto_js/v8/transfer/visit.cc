@@ -31,20 +31,26 @@ struct visit_property_name {
 		template <class Accept>
 		auto operator()(v8::Local<v8::Primitive> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return visit_.get().lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
+				auto accept_as = [ & ]<class Tag>(Tag tag) -> auto {
+					auto value = value_of{witness(), subject.As<tag_to_v8<Tag>>()};
+					return accept(tag, *this, value);
+				};
 				if (subject->IsNumber()) {
-					return visit_(subject.As<v8::Number>(), accept);
-				} else if (subject->IsName()) {
-					// TODO: This looks up in the reference map twice. This needs to use an internalized
-					// string factory.
-					return visit_(subject.As<v8::Name>(), accept);
+					return accept_as(number_tag_of<std::int32_t>{});
+				} else if (subject->IsString()) {
+					if (subject.As<v8::String>()->IsOneByte()) {
+						return accept_as(string_tag_of<char>{});
+					} else {
+						return accept_as(string_tag_of<char16_t>{});
+					}
 				} else {
-					std::unreachable();
+					return accept_as(symbol_tag{});
 				}
 			});
 		}
 
 		[[nodiscard]] auto environment() const -> auto& { return visit_.get().environment(); }
-		[[nodiscard]] auto witness() const -> auto { return visit_.witness(); }
+		[[nodiscard]] auto witness() const -> auto { return visit_.get().witness(); }
 
 	private:
 		std::reference_wrapper<Visit> visit_;
@@ -68,6 +74,21 @@ struct visit_cached_immediate : Visit {
 		}
 };
 
+// Forwards `Visit`'s non-caching `immediate()` as a visit operation
+template <class Visit>
+struct visit_uncached_immediate : Visit {
+		using Visit::immediate;
+		using Visit::operator();
+		using Visit::Visit;
+
+		template <class Accept>
+		auto operator()(auto subject, const Accept& accept) -> accept_target_t<Accept>
+			// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=124954
+			requires requires { this->immediate(subject, accept); } {
+			return immediate(subject, accept);
+		}
+};
+
 // Primitive-ish value visitor. These only need an isolate, so they are separated from the other
 // visitor. Also, none of these are recursive.
 template <class Reference>
@@ -75,6 +96,9 @@ struct visit_flat_value;
 
 template <class Meta>
 using visit_flat_value_with = visit_cached_immediate<visit_flat_value<typename Meta::accept_reference_type>>;
+
+template <class Meta>
+using visit_uncached_flat_value_with = visit_uncached_immediate<visit_flat_value<void>>;
 
 template <class Reference>
 struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
@@ -87,19 +111,20 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 		template <class Accept>
 		auto operator()(v8::Local<v8::Number> subject, const Accept& accept) -> accept_target_t<Accept> {
 			if (subject->IsInt32()) {
-				return accept(number_tag_of<std::int32_t>{}, *this, value_of{witness(), subject});
+				return immediate(subject.As<v8::Int32>(), accept);
 			} else {
-				return accept(number_tag_of<double>{}, *this, value_of{witness(), subject});
+				return immediate(subject.As<iv8::Double>(), accept);
 			}
 		}
 
 		// boolean
 		template <class Accept>
 		auto operator()(v8::Local<v8::Boolean> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(boolean_tag{}, *this, value_of{witness(), subject});
+			return immediate(subject, accept);
 		}
 
-		// no required types
+		// extras
+		[[nodiscard]] auto witness() const -> auto { return isolate_lock_; }
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 
 	protected:
@@ -130,7 +155,7 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 		template <class Accept, class Type>
 			requires std::is_base_of_v<primitive_tag, iv8::v8_to_tag<Type>>
 		auto immediate(v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(iv8::v8_to_tag<Type>{}, *this, value_of{witness(), subject});
+			return accept_tagged(subject, accept);
 		}
 
 		// names
@@ -152,11 +177,6 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 			}
 		}
 
-		template <class Accept>
-		auto immediate(v8::Local<v8::Symbol> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(symbol_tag{}, *this, subject);
-		}
-
 		// bigint
 		template <class Accept>
 		auto immediate(v8::Local<v8::BigInt> subject, const Accept& accept) -> accept_target_t<Accept> {
@@ -172,7 +192,7 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 		// date
 		template <class Accept>
 		auto immediate(v8::Local<v8::Date> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(date_tag{}, *this, value_of{witness(), subject});
+			return accept_tagged(subject, accept);
 		}
 
 		// data blocks
@@ -188,13 +208,13 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 		template <class Accept, class Type>
 			requires std::is_base_of_v<data_block_tag, iv8::v8_to_tag<Type>>
 		auto immediate(v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(iv8::v8_to_tag<Type>{}, *this, value_of{witness(), subject});
+			return accept_tagged(subject, accept);
 		}
 
 		// external
 		template <class Accept>
 		auto immediate(v8::Local<v8::External> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(external_tag{}, *this, value_of{witness(), subject});
+			return accept_tagged(subject, accept);
 		}
 
 		// promise
@@ -209,9 +229,14 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 			return accept(function_tag{}, *this, subject);
 		}
 
+		// Convenience function which wraps in `iv8::value_of` and invokes `accept`.
+		template <class Type, class Accept>
+		[[nodiscard]] auto accept_tagged(v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(iv8::v8_to_tag<Type>{}, *this, value_of{witness(), subject});
+		}
+
 		[[nodiscard]] auto is_cached_null(v8::Local<v8::Value> value) const { return value == null_; }
 		[[nodiscard]] auto is_cached_undefined(v8::Local<v8::Value> value) const { return value == undefined_; }
-		[[nodiscard]] auto witness() const -> auto { return isolate_lock_; }
 
 	private:
 		isolate_lock_witness isolate_lock_;
@@ -269,6 +294,9 @@ struct visit_value : visit_flat_value<Target> {
 				return immediate(subject, accept);
 			});
 		}
+
+		// extras
+		[[nodiscard]] auto witness() const -> auto& { return context_lock_; }
 
 	protected:
 		// object
@@ -347,8 +375,6 @@ struct visit_value : visit_flat_value<Target> {
 			return accept(v8_to_tag<Type>{}, *this, value_of{witness(), subject});
 		}
 
-		[[nodiscard]] auto witness() const -> auto& { return context_lock_; }
-
 	private:
 		context_lock_witness context_lock_;
 };
@@ -358,11 +384,10 @@ struct visit_value : visit_flat_value<Target> {
 namespace js {
 
 // Name visitor (string + symbol)
-// TODO: These do not need a reference map!
 template <class Meta, class Type>
 	requires std::is_base_of_v<primitive_tag, iv8::v8_to_tag<Type>>
-struct visit<Meta, v8::Local<Type>> : iv8::visit_flat_value_with<Meta> {
-		using iv8::visit_flat_value_with<Meta>::visit_flat_value_with;
+struct visit<Meta, v8::Local<Type>> : iv8::visit_uncached_flat_value_with<Meta> {
+		using iv8::visit_uncached_flat_value_with<Meta>::visit_uncached_flat_value_with;
 };
 
 // Value visitor

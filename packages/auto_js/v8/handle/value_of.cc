@@ -31,6 +31,9 @@ template <>
 struct value_specialization<string_tag> : std::type_identity<class value_for_string> {};
 
 template <>
+struct value_specialization<symbol_tag> : std::type_identity<class value_for_symbol> {};
+
+template <>
 struct value_specialization<bigint_tag> : std::type_identity<class value_for_bigint> {};
 
 template <>

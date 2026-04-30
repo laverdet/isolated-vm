@@ -97,7 +97,7 @@ struct accept_primitive {
 			return subject;
 		}
 
-		// no required types
+		// extras
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 
 	private:

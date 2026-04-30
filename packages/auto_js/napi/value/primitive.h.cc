@@ -33,13 +33,6 @@ class bound_value_for_bigint : public bound_value_next<bigint_tag> {
 };
 
 // string
-class value_for_string : public value_next<string_tag> {
-	public:
-		static auto make_property_name(const environment& env, std::string_view string) -> value_of<string_tag>;
-		static auto make_property_name(const environment& env, std::u8string_view string) -> value_of<string_tag>;
-		static auto make_property_name(const environment& env, std::u16string_view string) -> value_of<string_tag>;
-};
-
 class bound_value_for_string : public bound_value_next<string_tag> {
 	public:
 		using bound_value_next<string_tag>::bound_value_next;

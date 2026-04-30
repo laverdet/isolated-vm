@@ -43,10 +43,14 @@ class value_for_bigint_i64 : public value_for_bigint {
 class value_for_string : public handle_with_isolate<v8::String> {
 	public:
 		using handle_with_isolate<v8::String>::handle_with_isolate;
-
 		[[nodiscard]] explicit operator std::string() const;
 		[[nodiscard]] explicit operator std::u8string() const;
 		[[nodiscard]] explicit operator std::u16string() const;
+};
+
+class value_for_symbol : public handle_without_lock<v8::Symbol> {
+	public:
+		using handle_without_lock<v8::Symbol>::handle_without_lock;
 };
 
 class value_for_date : public v8::Local<v8::Date> {

@@ -139,7 +139,7 @@ struct accept_basic_napi_value {
 			return js::referenceable_value{value_of<Tag>::make(self.environment(), buffer, byte_offset, length)};
 		}
 
-		// utilities
+		// extras
 		[[nodiscard]] auto environment() const -> environment& { return env_; }
 		explicit operator napi_env() const { return napi_env{env_.get()}; }
 
@@ -292,11 +292,11 @@ struct accept_napi_value : accept_basic_napi_value {
 			napi::invoke0(napi_define_properties, napi_env{self}, napi_value{target}, properties.size(), properties.data());
 		}
 
+		// extras
 		[[nodiscard]] auto environment() const -> Environment& {
 			return static_cast<Environment&>(accept_basic_napi_value::environment());
 		}
 
-		// no required types
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 

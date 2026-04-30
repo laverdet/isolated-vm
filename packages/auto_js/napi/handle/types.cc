@@ -74,8 +74,7 @@ struct value_specialization<bigint_tag> : value_defaults<bigint_tag> {
 };
 
 template <>
-struct value_specialization<string_tag> {
-		using value_type = class value_for_string;
+struct value_specialization<string_tag> : value_defaults<string_tag> {
 		using bound_type = class bound_value_for_string;
 };
 
