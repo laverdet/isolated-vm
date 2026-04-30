@@ -43,7 +43,7 @@ target_sources(napi_js
 		support/promise.cc
 		support/string_table.cc
 		support/utility.cc
-		transfer/accept.cc
+		transfer/accept.h.cc
 		transfer/visit.cc
 		value/array_buffer.h.cc
 		value/array.h.cc
