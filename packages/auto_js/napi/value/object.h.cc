@@ -28,11 +28,6 @@ class bound_value_for_object : public bound_value_next<object_tag> {
 };
 
 // date
-class value_for_date : public value_next<date_tag> {
-	public:
-		static auto make(const environment& env, js_clock::time_point date) -> value<date_tag>;
-};
-
 class bound_value_for_date : public bound_value_next<date_tag> {
 	public:
 		using bound_value_next<date_tag>::bound_value_next;

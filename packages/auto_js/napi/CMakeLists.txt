@@ -12,6 +12,7 @@ target_sources(napi_js
 		api/uv_scheduler.cc
 		support/environment.cc
 		support/initialize.cc
+		transfer/accept.cc
 		value/array_buffer.cc
 		value/array.cc
 		value/object.cc

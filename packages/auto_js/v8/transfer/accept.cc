@@ -29,7 +29,7 @@ auto accept_primitive::operator()(number_tag_of<std::uint32_t> /*tag*/, visit_ho
 }
 
 // string
-auto accept_primitive::operator()(string_tag_of<char> /*tag*/, visit_holder /*visit*/, std::basic_string_view<char> subject) const
+auto accept_primitive::operator()(string_tag_of<char> /*tag*/, visit_holder /*visit*/, std::string_view subject) const
 	-> js::referenceable_value<v8::Local<iv8::StringOneByte>> {
 	const auto* data = reinterpret_cast<const std::uint8_t*>(subject.data());
 	auto size = static_cast<int>(subject.size());
@@ -37,7 +37,7 @@ auto accept_primitive::operator()(string_tag_of<char> /*tag*/, visit_holder /*vi
 	return js::referenceable_value{value};
 }
 
-auto accept_primitive::operator()(string_tag_of<char8_t> /*tag*/, visit_holder /*visit*/, std::basic_string_view<char8_t> subject) const
+auto accept_primitive::operator()(string_tag_of<char8_t> /*tag*/, visit_holder /*visit*/, std::u8string_view subject) const
 	-> js::referenceable_value<v8::Local<v8::String>> {
 	const auto* data = reinterpret_cast<const char*>(subject.data());
 	auto size = static_cast<int>(subject.size());
@@ -45,7 +45,7 @@ auto accept_primitive::operator()(string_tag_of<char8_t> /*tag*/, visit_holder /
 	return js::referenceable_value{value};
 }
 
-auto accept_primitive::operator()(string_tag_of<char16_t> /*tag*/, visit_holder /*visit*/, std::basic_string_view<char16_t> subject) const
+auto accept_primitive::operator()(string_tag_of<char16_t> /*tag*/, visit_holder /*visit*/, std::u16string_view subject) const
 	-> js::referenceable_value<v8::Local<iv8::StringTwoByte>> {
 	const auto* data = reinterpret_cast<const std::uint16_t*>(subject.data());
 	auto size = static_cast<int>(subject.size());
@@ -70,6 +70,12 @@ auto accept_value::operator()(bigint_tag_of<js::bigint> /*tag*/, visit_holder /*
 	-> js::referenceable_value<v8::Local<iv8::BigIntWords>> {
 	auto value = unmaybe(v8::BigInt::NewFromWords(context_, subject.sign_bit(), static_cast<int>(subject.size()), subject.data())).As<iv8::BigIntWords>();
 	return js::referenceable_value{value};
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
+auto accept_value::operator()(bigint_tag_of<js::bigint> tag, visit_holder visit, js::bigint&& subject) const
+	-> js::referenceable_value<v8::Local<iv8::BigIntWords>> {
+	return (*this)(tag, visit, static_cast<const js::bigint&>(subject));
 }
 
 // date

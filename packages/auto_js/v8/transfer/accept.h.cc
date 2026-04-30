@@ -67,11 +67,11 @@ struct accept_primitive {
 		}
 
 		// string
-		auto operator()(string_tag_of<char> tag, visit_holder visit, std::basic_string_view<char> subject) const
+		auto operator()(string_tag_of<char> tag, visit_holder visit, std::string_view subject) const
 			-> js::referenceable_value<v8::Local<iv8::StringOneByte>>;
-		auto operator()(string_tag_of<char8_t> tag, visit_holder visit, std::basic_string_view<char8_t> subject) const
+		auto operator()(string_tag_of<char8_t> tag, visit_holder visit, std::u8string_view subject) const
 			-> js::referenceable_value<v8::Local<v8::String>>;
-		auto operator()(string_tag_of<char16_t> tag, visit_holder visit, std::basic_string_view<char16_t> subject) const
+		auto operator()(string_tag_of<char16_t> tag, visit_holder visit, std::u16string_view subject) const
 			-> js::referenceable_value<v8::Local<iv8::StringTwoByte>>;
 
 		auto operator()(string_tag /*tag*/, visit_holder visit, auto&& subject) const
@@ -134,6 +134,8 @@ struct accept_value : accept_primitive {
 		auto operator()(bigint_tag_of<std::uint64_t> tag, visit_holder visit, std::uint64_t subject) const
 			-> js::referenceable_value<v8::Local<iv8::BigIntU64>>;
 		auto operator()(bigint_tag_of<js::bigint> tag, visit_holder visit, const js::bigint& subject) const
+			-> js::referenceable_value<v8::Local<iv8::BigIntWords>>;
+		auto operator()(bigint_tag_of<js::bigint> tag, visit_holder visit, js::bigint&& subject) const
 			-> js::referenceable_value<v8::Local<iv8::BigIntWords>>;
 
 		auto operator()(bigint_tag /*tag*/, visit_holder visit, auto&& subject) const

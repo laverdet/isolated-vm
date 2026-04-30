@@ -18,6 +18,10 @@ await test("transfer types", async () => {
 	await check(agent, realm, () => true);
 	await check(agent, realm, () => false);
 
+	// boolean
+	await check(agent, realm, () => true);
+	await check(agent, realm, () => false);
+
 	// string
 	await check(agent, realm, () => "hello world");
 	await check(agent, realm, () => "\u{10ffff}");

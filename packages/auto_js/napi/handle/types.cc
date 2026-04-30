@@ -59,30 +59,17 @@ struct value_specialization : value_defaults<Tag> {};
 
 // Typed specializations
 template <>
-struct value_specialization<undefined_tag> : value_defaults<undefined_tag> {
-		using value_type = class value_for_undefined;
-};
-
-template <>
-struct value_specialization<null_tag> : value_defaults<null_tag> {
-		using value_type = class value_for_null;
-};
-
-template <>
-struct value_specialization<boolean_tag> {
-		using value_type = class value_for_boolean;
+struct value_specialization<boolean_tag> : value_defaults<boolean_tag> {
 		using bound_type = class bound_value_for_boolean;
 };
 
 template <>
-struct value_specialization<number_tag> {
-		using value_type = class value_for_number;
+struct value_specialization<number_tag> : value_defaults<number_tag> {
 		using bound_type = class bound_value_for_number;
 };
 
 template <>
-struct value_specialization<bigint_tag> {
-		using value_type = class value_for_bigint;
+struct value_specialization<bigint_tag> : value_defaults<bigint_tag> {
 		using bound_type = class bound_value_for_bigint;
 };
 
@@ -93,8 +80,7 @@ struct value_specialization<string_tag> {
 };
 
 template <>
-struct value_specialization<date_tag> {
-		using value_type = class value_for_date;
+struct value_specialization<date_tag> : value_defaults<date_tag> {
 		using bound_type = class bound_value_for_date;
 };
 
@@ -115,14 +101,12 @@ struct value_specialization<function_tag> : value_defaults<function_tag> {
 };
 
 template <>
-struct value_specialization<array_buffer_tag> {
-		using value_type = class value_for_array_buffer;
+struct value_specialization<array_buffer_tag> : value_defaults<array_buffer_tag> {
 		using bound_type = class bound_value_for_array_buffer;
 };
 
 template <>
-struct value_specialization<shared_array_buffer_tag> {
-		using value_type = class value_for_shared_array_buffer;
+struct value_specialization<shared_array_buffer_tag> : value_defaults<shared_array_buffer_tag> {
 		using bound_type = class bound_value_for_shared_array_buffer;
 };
 

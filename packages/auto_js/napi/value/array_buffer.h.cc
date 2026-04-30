@@ -10,11 +10,6 @@ import v8;
 namespace js::napi {
 
 // `ArrayBuffer`
-class value_for_array_buffer : public value_next<array_buffer_tag> {
-	public:
-		static auto make(const environment& env, const js::array_buffer& block) -> value<array_buffer_tag>;
-};
-
 class bound_value_for_array_buffer : public bound_value_next<array_buffer_tag> {
 	public:
 		using bound_value_next<array_buffer_tag>::bound_value_next;
@@ -24,11 +19,6 @@ class bound_value_for_array_buffer : public bound_value_next<array_buffer_tag> {
 };
 
 // `SharedArrayBuffer`
-class value_for_shared_array_buffer : public value_next<shared_array_buffer_tag> {
-	public:
-		static auto make(const environment& env, js::shared_array_buffer block) -> value<shared_array_buffer_tag>;
-};
-
 class bound_value_for_shared_array_buffer : public bound_value_next<shared_array_buffer_tag> {
 	public:
 		using bound_value_next<shared_array_buffer_tag>::bound_value_next;

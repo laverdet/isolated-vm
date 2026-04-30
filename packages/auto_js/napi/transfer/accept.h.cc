@@ -6,8 +6,7 @@ import :value;
 import std;
 import util;
 
-namespace js {
-using namespace napi;
+namespace js::napi {
 
 // napi reference acceptor
 struct reaccept_napi_value {
@@ -23,134 +22,110 @@ struct reaccept_napi_value {
 		}
 };
 
-// Generic napi acceptor which accepts all value types.
-template <class Environment>
-struct accept_napi_value;
-
-template <class Meta>
-using accept_napi_value_with = accept_napi_value<typename Meta::accept_context_type>;
-
-template <class Environment>
-struct accept_napi_value : napi::environment_scope<Environment> {
+// Napi acceptor which does not need specialized environment type
+struct accept_basic_napi_value {
 	public:
-		using napi::environment_scope<Environment>::environment;
-
-		explicit accept_napi_value(auto* /*transfer*/, auto& env) :
-				napi::environment_scope<Environment>{env} {}
+		explicit accept_basic_napi_value(auto* /*transfer*/, auto& env) : env_{env} {}
 
 		// Declare reference provider
 		using accept_reference_type = reaccept_napi_value;
 
 		// undefined & null
-		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> napi::value<undefined_tag> {
-			return napi::value<undefined_tag>::make(environment(), std::monostate{});
+		auto operator()(undefined_tag tag, visit_holder visit, std::monostate subject) const -> napi::value<undefined_tag>;
+		auto operator()(undefined_tag tag, visit_holder visit, const auto& /*subject*/) const -> napi::value<undefined_tag> {
+			return (*this)(tag, visit, std::monostate{});
 		}
 
-		auto operator()(null_tag /*tag*/, visit_holder /*visit*/, const auto& /*null*/) const -> napi::value<null_tag> {
-			return napi::value<null_tag>::make(environment(), nullptr);
+		auto operator()(null_tag tag, visit_holder visit, std::nullptr_t subject) const -> napi::value<null_tag>;
+		auto operator()(null_tag tag, visit_holder visit, const auto& /*null*/) const -> napi::value<null_tag> {
+			return (*this)(tag, visit, nullptr);
 		}
 
 		// boolean
-		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const -> napi::value<boolean_tag> {
-			return napi::value<boolean_tag>::make(environment(), bool{std::forward<decltype(subject)>(subject)});
-		}
+		auto operator()(boolean_tag tag, visit_holder visit, bool subject) const -> napi::value<boolean_tag>;
 
 		// number
+		auto operator()(number_tag_of<double> tag, visit_holder visit, double subject) const -> napi::value<number_tag_of<double>>;
+		auto operator()(number_tag_of<std::int32_t> tag, visit_holder visit, std::int32_t) const -> napi::value<number_tag_of<std::int32_t>>;
+		auto operator()(number_tag_of<std::uint32_t> tag, visit_holder visit, std::uint32_t) const -> napi::value<number_tag_of<std::uint32_t>>;
+
 		auto operator()(number_tag /*tag*/, visit_holder visit, auto&& subject) const -> napi::value<number_tag> {
-			return (*this)(number_tag_of<double>{}, visit, std::forward<decltype(subject)>(subject));
+			return (*this)(number_tag_of<double>{}, visit, double{std::forward<decltype(subject)>(subject)});
 		}
 
-		template <class Numeric>
-		auto operator()(number_tag_of<Numeric> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> napi::value<number_tag> {
-			return napi::value<number_tag>::make(environment(), Numeric{std::forward<decltype(subject)>(subject)});
-		}
-
-		// bigint
-		auto operator()(bigint_tag /*tag*/, visit_holder visit, auto&& subject) const
-			-> js::referenceable_value<napi::value<bigint_tag>> {
-			return (*this)(bigint_tag_of<bigint>{}, visit, std::forward<decltype(subject)>(subject));
-		}
-
-		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, auto&& subject) const
-			-> js::referenceable_value<napi::value<bigint_tag>> {
-			return js::referenceable_value{napi::value<bigint_tag>::make(environment(), js::bigint{std::forward<decltype(subject)>(subject)})};
-		}
-
-		auto operator()(bigint_tag_of<bigint> /*tag*/, visit_holder /*visit*/, const js::bigint& subject) const
-			-> js::referenceable_value<napi::value<bigint_tag>> {
-			return js::referenceable_value{napi::value<bigint_tag>::make(environment(), subject)};
-		}
-
-		template <class Numeric>
-		auto operator()(bigint_tag_of<Numeric> /*tag*/, visit_holder /*visit*/, auto&& subject) const
-			-> js::referenceable_value<napi::value<bigint_tag>> {
-			return js::referenceable_value{napi::value<bigint_tag>::make(environment(), Numeric{std::forward<decltype(subject)>(subject)})};
+		template <class Type>
+		auto operator()(number_tag_of<Type> tag, visit_holder visit, auto&& subject) const -> napi::value<number_tag_of<Type>> {
+			return (*this)(tag, visit, Type{std::forward<decltype(subject)>(subject)});
 		}
 
 		// string
+		auto operator()(string_tag_of<char> tag, visit_holder visit, std::string_view subject) const
+			-> js::referenceable_value<napi::value<string_tag_of<char>>>;
+		auto operator()(string_tag_of<char8_t> tag, visit_holder visit, std::u8string_view subject) const
+			-> js::referenceable_value<napi::value<string_tag_of<char8_t>>>;
+		auto operator()(string_tag_of<char16_t> tag, visit_holder visit, std::u16string_view subject) const
+			-> js::referenceable_value<napi::value<string_tag_of<char16_t>>>;
+
 		auto operator()(string_tag /*tag*/, visit_holder visit, auto&& subject) const
 			-> js::referenceable_value<napi::value<string_tag>> {
-			return (*this)(string_tag_of<char16_t>{}, visit, std::forward<decltype(subject)>(subject));
+			auto value = (*this)(string_tag_of<char16_t>{}, visit, std::u16string_view{std::forward<decltype(subject)>(subject)});
+			return js::referenceable_value{napi::value<string_tag>{*value}};
 		}
 
 		template <class Char>
-		auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, std::convertible_to<std::basic_string_view<Char>> auto&& subject) const
-			-> js::referenceable_value<napi::value<string_tag>> {
-			return js::referenceable_value{napi::value<string_tag>::make(environment(), std::basic_string_view<Char>{std::forward<decltype(subject)>(subject)})};
+		auto operator()(string_tag_of<Char> tag, visit_holder visit, std::convertible_to<std::basic_string_view<Char>> auto&& subject) const
+			-> js::referenceable_value<napi::value<string_tag_of<Char>>> {
+			return (*this)(tag, visit, std::basic_string_view<Char>{std::forward<decltype(subject)>(subject)});
 		}
 
 		template <class Char>
 		auto operator()(string_tag_of<Char> tag, visit_holder visit, auto&& subject) const
-			-> js::referenceable_value<napi::value<string_tag>> {
+			-> js::referenceable_value<napi::value<string_tag_of<Char>>> {
 			return (*this)(tag, visit, std::basic_string<Char>{std::forward<decltype(subject)>(subject)});
 		}
 
-		// date
-		auto operator()(date_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const
-			-> js::referenceable_value<napi::value<date_tag>> {
-			return js::referenceable_value{napi::value<date_tag>::make(environment(), js_clock::time_point{std::forward<decltype(subject)>(subject)})};
+		// bigint
+		auto operator()(bigint_tag_of<std::int64_t> tag, visit_holder visit, std::int64_t subject) const
+			-> js::referenceable_value<napi::value<bigint_tag_of<std::int64_t>>>;
+		auto operator()(bigint_tag_of<std::uint64_t> tag, visit_holder visit, std::uint64_t subject) const
+			-> js::referenceable_value<napi::value<bigint_tag_of<std::uint64_t>>>;
+		auto operator()(bigint_tag_of<js::bigint> tag, visit_holder visit, const js::bigint& subject) const
+			-> js::referenceable_value<napi::value<bigint_tag_of<js::bigint>>>;
+		auto operator()(bigint_tag_of<js::bigint> tag, visit_holder visit, js::bigint&& subject) const
+			-> js::referenceable_value<napi::value<bigint_tag_of<js::bigint>>>;
+
+		auto operator()(bigint_tag /*tag*/, visit_holder visit, auto&& subject) const
+			-> js::referenceable_value<napi::value<bigint_tag>> {
+			auto value = (*this)(bigint_tag_of<js::bigint>{}, visit, js::bigint{std::forward<decltype(subject)>(subject)});
+			return js::referenceable_value{napi::value<bigint_tag>{*value}};
 		}
 
-		// function
-		template <class Callback>
-		auto operator()(function_tag /*tag*/, visit_holder /*visit*/, js::free_function<Callback> subject) const -> napi::value<function_tag> {
-			return napi::value<function_tag>::make(environment(), std::forward<decltype(subject)>(subject));
+		template <class Type>
+		auto operator()(bigint_tag_of<Type> tag, visit_holder visit, auto&& subject) const
+			-> js::referenceable_value<napi::value<bigint_tag_of<Type>>> {
+			return (*this)(tag, visit, Type{std::forward<decltype(subject)>(subject)});
 		}
+
+		// date
+		auto operator()(date_tag tag, visit_holder /*visit*/, js_clock::time_point subject) const
+			-> js::referenceable_value<napi::value<date_tag>>;
 
 		// error
-		auto operator()(error_tag /*tag*/, visit_holder visit, const auto& subject) const
+		auto operator()(error_tag /*tag*/, visit_holder visit, const js::error_value& subject) const
+			-> js::referenceable_value<napi::value<error_tag>>;
+
+		auto operator()(error_tag tag, visit_holder visit, const auto& subject) const
 			-> js::referenceable_value<napi::value<error_tag>> {
-			auto* message = napi_value{napi::value<string_tag>::make(environment(), subject.message())};
-			auto error = [ & ] -> napi_value {
-				switch (subject.name()) {
-					default:
-						return napi::invoke(napi_create_error, napi_env{*this}, napi_value{}, message);
-					case js::error_name::range_error:
-						return napi::invoke(napi_create_range_error, napi_env{*this}, napi_value{}, message);
-					case js::error_name::syntax_error:
-						return napi::invoke(node_api_create_syntax_error, napi_env{*this}, napi_value{}, message);
-					case js::error_name::type_error:
-						return napi::invoke(napi_create_type_error, napi_env{*this}, napi_value{}, message);
-				}
-			}();
-			auto stack = (*this)(string_tag{}, visit, subject.stack());
-			napi::invoke0(napi_set_named_property, napi_env{*this}, error, "stack", *std::move(stack));
-			return js::referenceable_value{napi::value<error_tag>::from(error)};
+			return (*this)(tag, visit, js::error_value{subject});
 		}
 
-		// data blocks
-		auto operator()(array_buffer_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const
-			-> js::referenceable_value<napi::value<array_buffer_tag>> {
-			auto data = js::array_buffer{std::forward<decltype(subject)>(subject)};
-			// nb: napi cannot import the backing store, so another copy is made
-			return js::referenceable_value{napi::value<array_buffer_tag>::make(environment(), data)};
-		}
-
-		auto operator()(shared_array_buffer_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const
-			-> js::referenceable_value<napi::value<shared_array_buffer_tag>> {
-			auto data = js::shared_array_buffer{std::forward<decltype(subject)>(subject)};
-			return js::referenceable_value{napi::value<shared_array_buffer_tag>::make(environment(), std::move(data))};
-		}
+		// data blocks (array buffer, shared array buffer)
+		auto operator()(array_buffer_tag tag, visit_holder visit, const js::array_buffer& subject) const
+			-> js::referenceable_value<napi::value<array_buffer_tag>>;
+		auto operator()(shared_array_buffer_tag tag, visit_holder visit, js::shared_array_buffer&& subject) const
+			-> js::referenceable_value<napi::value<shared_array_buffer_tag>>;
+		auto operator()(shared_array_buffer_tag tag, visit_holder visit, const js::shared_array_buffer& subject) const
+			-> js::referenceable_value<napi::value<shared_array_buffer_tag>>;
 
 		// typed arrays & data view
 		template <std::convertible_to<array_buffer_view_tag> Tag>
@@ -162,6 +137,34 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			// invoke `is_arraybuffer` on it again even though we knew what it was a moment ago.
 			auto buffer = napi::value<data_block_tag>::from(visit(std::forward<decltype(subject)>(subject).buffer(), self));
 			return js::referenceable_value{napi::value<Tag>::make(self.environment(), buffer, byte_offset, length)};
+		}
+
+		// utilities
+		[[nodiscard]] auto environment() const -> environment& { return env_; }
+		explicit operator napi_env() const { return napi_env{env_.get()}; }
+
+	private:
+		std::reference_wrapper<napi::environment> env_;
+};
+
+// Generic napi acceptor which accepts all value types.
+template <class Environment>
+struct accept_napi_value;
+
+template <class Meta>
+using accept_napi_value_with = accept_napi_value<typename Meta::accept_context_type>;
+
+template <class Environment>
+struct accept_napi_value : accept_basic_napi_value {
+	public:
+		explicit accept_napi_value(auto* transfer, auto& env) :
+				accept_basic_napi_value{transfer, env} {}
+		using accept_basic_napi_value::operator();
+
+		// function
+		template <class Callback>
+		auto operator()(function_tag /*tag*/, visit_holder /*visit*/, js::free_function<Callback> subject) const -> napi::value<function_tag> {
+			return napi::value<function_tag>::make(environment(), std::forward<decltype(subject)>(subject));
 		}
 
 		// vectors
@@ -289,17 +292,39 @@ struct accept_napi_value : napi::environment_scope<Environment> {
 			napi::invoke0(napi_define_properties, napi_env{self}, napi_value{target}, properties.size(), properties.data());
 		}
 
+		[[nodiscard]] auto environment() const -> Environment& {
+			return static_cast<Environment&>(accept_basic_napi_value::environment());
+		}
+
 		// no required types
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
+
+// `value<object_tag>{}.assign(...)` implementation
+struct object_assign_delegate {
+	public:
+		explicit object_assign_delegate(value<object_tag> object) : object_{object} {}
+		auto operator*() const { return object_; }
+
+	private:
+		value<object_tag> object_;
+};
+
+auto value_for_object::assign(this value<object_tag> self, auto_environment auto& env, auto source) -> void {
+	js::transfer_in<object_assign_delegate>(std::move(source), env, object_assign_delegate{self});
+}
+
+} // namespace js::napi
+
+namespace js {
 
 // Plain napi_value acceptor
 template <>
 struct accept_property_subject<napi_value> : std::type_identity<napi_value> {};
 
 template <class Meta>
-struct accept<Meta, napi_value> : accept_napi_value_with<Meta> {
-		using accept_type = accept_napi_value_with<Meta>;
+struct accept<Meta, napi_value> : napi::accept_napi_value_with<Meta> {
+		using accept_type = napi::accept_napi_value_with<Meta>;
 		using accept_type::accept_type;
 };
 
@@ -307,9 +332,9 @@ struct accept<Meta, napi_value> : accept_napi_value_with<Meta> {
 template <>
 struct accept_property_subject<napi::value<value_tag>> : std::type_identity<napi_value> {};
 
-template <class Meta>
-struct accept<Meta, napi::value<value_tag>> : accept_napi_value_with<Meta> {
-		using accept_type = accept_napi_value_with<Meta>;
+template <class Meta, class Tag>
+struct accept<Meta, napi::value<Tag>> : napi::accept_napi_value_with<Meta> {
+		using accept_type = napi::accept_napi_value_with<Meta>;
 		using accept_type::accept_type;
 };
 
@@ -344,25 +369,15 @@ struct accept_property_value<Meta, Key, Type, napi_value> {
 		accept_value<Meta, Type> second;
 };
 
-// `value<object_tag>{}.assign(...)` implementation
-struct object_assign_delegate {
-	public:
-		explicit object_assign_delegate(value<object_tag> object) : object_{object} {}
-		auto operator*() const { return object_; }
-
-	private:
-		value<object_tag> object_;
-};
-
 template <class Meta>
-struct accept<Meta, object_assign_delegate> {
+struct accept<Meta, napi::object_assign_delegate> {
 	public:
-		accept(auto* transfer, auto& env, object_assign_delegate object) :
+		accept(auto* transfer, auto& env, napi::object_assign_delegate object) :
 				accept_{transfer, env},
 				object_{object} {}
 
 		template <std::size_t Size>
-		auto operator()(this const auto& self, tuple_tag<Size> /*tag*/, auto& visit, auto&& subject) -> object_assign_delegate {
+		auto operator()(this const auto& self, tuple_tag<Size> /*tag*/, auto& visit, auto&& subject) -> napi::object_assign_delegate {
 			self.accept_.template accept_entry_pair_struct<Size>(visit, *self.object_, std::forward<decltype(subject)>(subject));
 			return self.object_;
 		}
@@ -371,11 +386,7 @@ struct accept<Meta, object_assign_delegate> {
 
 	private:
 		accept_value<Meta, napi_value> accept_;
-		object_assign_delegate object_;
+		napi::object_assign_delegate object_;
 };
-
-auto value_for_object::assign(this value<object_tag> self, auto_environment auto& env, auto source) -> void {
-	js::transfer_in<object_assign_delegate>(std::move(source), env, object_assign_delegate{self});
-}
 
 } // namespace js

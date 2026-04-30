@@ -19,10 +19,6 @@ auto bound_value_for_object::set(napi_value key, napi_value value) -> void {
 }
 
 // date
-auto value_for_date::make(const environment& env, js_clock::time_point date) -> value<date_tag> {
-	return value<date_tag>::from(napi::invoke(napi_create_date, napi_env{env}, date.time_since_epoch().count()));
-}
-
 bound_value_for_date::operator js_clock::time_point() const {
 	return js_clock::time_point{js_clock::duration{napi::invoke(napi_get_date_value, env(), napi_value{*this})}};
 }

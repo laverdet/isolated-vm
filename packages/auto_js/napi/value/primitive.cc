@@ -6,42 +6,12 @@ import std;
 
 namespace js::napi {
 
-// undefined
-auto value_for_undefined::make(const environment& env) -> value<undefined_tag> {
-	return value<undefined_tag>::from(napi::invoke(napi_get_undefined, napi_env{env}));
-}
-
-// null
-auto value_for_null::make(const environment& env) -> value<null_tag> {
-	return value<null_tag>::from(napi::invoke(napi_get_null, napi_env{env}));
-}
-
 // boolean
-auto value_for_boolean::make(const environment& env, bool boolean) -> value<boolean_tag> {
-	return value<boolean_tag>::from(napi::invoke(napi_get_boolean, napi_env{env}, boolean));
-}
-
 bound_value_for_boolean::operator bool() const {
 	return napi::invoke(napi_get_value_bool, env(), napi_value{*this});
 }
 
 // number
-auto value_for_number::make(const environment& env, double number) -> value<number_tag> {
-	return value<number_tag>::from(napi::invoke(napi_create_double, napi_env{env}, number));
-}
-
-auto value_for_number::make(const environment& env, std::int32_t number) -> value<number_tag> {
-	return value<number_tag>::from(napi::invoke(napi_create_int32, napi_env{env}, number));
-}
-
-auto value_for_number::make(const environment& env, std::int64_t number) -> value<number_tag> {
-	return value<number_tag>::from(napi::invoke(napi_create_int64, napi_env{env}, number));
-}
-
-auto value_for_number::make(const environment& env, std::uint32_t number) -> value<number_tag> {
-	return value<number_tag>::from(napi::invoke(napi_create_uint32, napi_env{env}, number));
-}
-
 bound_value_for_number::operator double() const {
 	return napi::invoke(napi_get_value_double, env(), napi_value{*this});
 }
@@ -59,18 +29,6 @@ bound_value_for_number::operator std::uint32_t() const {
 }
 
 // bigint
-auto value_for_bigint::make(const environment& env, const bigint& number) -> value<bigint_tag> {
-	return value<bigint_tag>::from(napi::invoke(napi_create_bigint_words, napi_env{env}, number.sign_bit(), number.size(), number.data()));
-}
-
-auto value_for_bigint::make(const environment& env, std::int64_t number) -> value<bigint_tag> {
-	return value<bigint_tag>::from(napi::invoke(napi_create_bigint_int64, napi_env{env}, number));
-}
-
-auto value_for_bigint::make(const environment& env, std::uint64_t number) -> value<bigint_tag> {
-	return value<bigint_tag>::from(napi::invoke(napi_create_bigint_uint64, napi_env{env}, number));
-}
-
 bound_value_for_bigint::operator bigint() const {
 	js::bigint value;
 	auto one_word = std::uint64_t{};
@@ -105,18 +63,6 @@ bound_value_for_bigint::operator std::uint64_t() const {
 }
 
 // string
-auto value_for_string::make(const environment& env, std::string_view string) -> value<string_tag> {
-	return value<string_tag>::from(napi::invoke(napi_create_string_latin1, napi_env{env}, string.data(), string.length()));
-}
-
-auto value_for_string::make(const environment& env, std::u8string_view string) -> value<string_tag> {
-	return value<string_tag>::from(napi::invoke(napi_create_string_utf8, napi_env{env}, reinterpret_cast<const char*>(string.data()), string.length()));
-}
-
-auto value_for_string::make(const environment& env, std::u16string_view string) -> value<string_tag> {
-	return value<string_tag>::from(napi::invoke(napi_create_string_utf16, napi_env{env}, string.data(), string.length()));
-}
-
 auto value_for_string::make_property_name(const environment& env, std::string_view string) -> value<string_tag> {
 	return value<string_tag>::from(napi::invoke(node_api_create_property_key_latin1, napi_env{env}, reinterpret_cast<const char*>(string.data()), string.length()));
 }
