@@ -36,6 +36,10 @@ isolate_unlock::isolate_unlock(isolate_lock_witness lock) :
 		unlocker_{lock.isolate()} {}
 
 // `context_lock_witness`
+auto context_lock_witness::from_isolate(isolate_lock_witness lock) -> context_lock_witness {
+	return context_lock_witness{lock, lock.isolate()->GetCurrentContext()};
+}
+
 auto context_lock_witness::make_witness(isolate_lock_witness lock, v8::Local<v8::Context> context) -> context_lock_witness {
 	return context_lock_witness{lock, context};
 }

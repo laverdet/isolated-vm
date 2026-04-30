@@ -41,6 +41,7 @@ declare module "#backend_v8" {
 	export class NativeModule {
 		readonly #private;
 		protected constructor(secret: Secret, ...args: unknown[]);
+		instantiate(agent: Agent): Promise<unknown>;
 		static create(filename: string): Promise<NativeModule>;
 	}
 

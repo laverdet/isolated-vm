@@ -51,7 +51,7 @@ class deferred_receiver : public referenceable_value<Type> {
 };
 
 // Invoke `js::deferred_receiver`
-constexpr auto dispatch_referenceable = util::overloaded{
+constexpr inline auto dispatch_referenceable = util::overloaded{
 	[]<class Type>(Type&& value) -> Type {
 		return std::forward<decltype(value)>(value);
 	},

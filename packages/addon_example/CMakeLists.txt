@@ -23,12 +23,16 @@ endif()
 
 # napi configuration
 include(FindNpmPackage)
-find_package_from_npm(@isolated-vm/addon)
+find_package_from_npm(@isolated-vm/experimental)
 
 # target
 add_library(addon_example SHARED)
 set_target_properties(addon_example PROPERTIES PREFIX "")
 target_link_libraries(addon_example PUBLIC isolated_vm)
+
+# TODO!!
+target_link_directories(addon_example PUBLIC /workspace/packages/isolated-vm/node_modules/@isolated-vm/experimental-linux-arm64-gnu)
+target_link_libraries(addon_example PRIVATE :backend_napi_v8.node)
 
 # sources
 target_sources(addon_example

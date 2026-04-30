@@ -1,16 +1,16 @@
 {
   "name": "@auto_js/napi",
   "version": "0.0.1",
-  "description": "Automatic JavaScript to N-API bindings",
   "author": "https://github.com/laverdet/",
+  "description": "Automatic JavaScript to N-API bindings",
   "homepage": "https://github.com/laverdet/isolated-vm/tree/experimental/packages/auto_js/napi",
   "license": "ISC",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/laverdet/isolated-vm.git"
-  },
   "dependencies": {
     "@auto_js/js": "workspace:*",
     "@auto_js/napi_exports": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/laverdet/isolated-vm.git"
   }
 }

@@ -221,6 +221,9 @@ endfunction()
 # `find_package_from_npm` from `@auto_js/js`
 include(FindNpmPackage)
 
+# Mark exported symbols as exported
+add_definitions(-DEXPORT_IS_EXPORT)
+
 # Embedded v8
 set(V8_EMBEDDED ON)
 set(V8_TRICKSHOT ON)
@@ -232,11 +235,11 @@ set(V8_EMBEDDED OFF)
 set(V8_TRICKSHOT OFF)
 add_subdirectory(packages/third_party/v8 nodejs_v8)
 
+# addon api
+add_subdirectory(packages/isolated-vm/addon)
+
 # nodejs require-able module
 add_subdirectory(packages/backend_napi_v8)
-
-# addon api
-add_subdirectory(packages/addon)
 
 # Playground
 add_subdirectory(playground)

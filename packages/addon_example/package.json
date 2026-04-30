@@ -7,14 +7,11 @@
   },
   "scripts": {
     "configure": "cmake \"-DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include)\" -G Ninja -B build",
-    "clean": "cmake -B build --target clean",
+    "clean": "rm -rf build",
     "build": "ninja -C build addon_example"
   },
-  "devDependencies": {
-    "@auto_js/js": "workspace:^",
-    "@isolated-vm/addon": "workspace:^"
-  },
   "peerDependencies": {
+    "@auto_js/js": "workspace:^",
     "@isolated-vm/experimental": "workspace:^"
   }
 }

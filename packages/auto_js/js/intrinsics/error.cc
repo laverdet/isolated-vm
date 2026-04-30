@@ -1,3 +1,5 @@
+module;
+#include "auto_js/export_tag.h"
 export module auto_js:intrinsics.error;
 import :enum_.types;
 import std;
@@ -17,7 +19,7 @@ export enum class error_name : std::uint8_t {
 };
 
 // Base transferred JavaScript -> C++ error type. This can be caught.
-export class error : public std::exception {
+export class EXPORT error : public std::exception {
 	public:
 		explicit error(error_name name) : name_{name} {}
 

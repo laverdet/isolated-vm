@@ -7,11 +7,11 @@
   "bin": {
     "auto_js_cmake_include": "cmake/cmake_include.mjs"
   },
+  "dependencies": {
+    "@auto_js/utility": "workspace:*"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/laverdet/isolated-vm.git"
-  },
-  "dependencies": {
-    "@auto_js/utility": "workspace:*"
   }
 }

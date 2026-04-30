@@ -31,13 +31,21 @@ target_sources(backend_napi_v8
 		script.h.cc
 		utility.cc
 )
+
 target_embed_content(backend_napi_v8 runtime/dist/interface.js runtime_dist_interface_js)
-target_link_libraries(backend_napi_v8 PUBLIC
-	auto_js
-	napi_js
-	nodejs
-	utility_js
-	v8_js
+target_link_libraries(backend_napi_v8 PUBLIC auto_js isolated_vm napi_js nodejs utility_js v8_js)
+
+# Addon 'isolated_vm' module is built with additional sources
+target_link_libraries(isolated_vm PRIVATE v8_js)
+target_sources(isolated_vm
+	PRIVATE
+		api/value/accept.cc
+		api/value/primitive.cc
+		api/value/value.cc
+	PUBLIC FILE_SET CXX_MODULES BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/api" FILES
+		api/support/cast.cc
+		api/support/environment.cc
+		api/support/initialize.cc
 )
 
 # Windows linking

@@ -1,5 +1,3 @@
-module;
-#include <utility>
 module napi_js;
 import :api;
 import :array_buffer;

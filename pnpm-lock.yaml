@@ -46,20 +46,14 @@ importers:
         specifier: ^5.5.4
         version: 5.7.2
 
-  packages/addon: {}
-
   packages/addon_example:
     dependencies:
-      '@isolated-vm/experimental':
-        specifier: workspace:^
-        version: link:../isolated-vm
-    devDependencies:
       '@auto_js/js':
         specifier: workspace:^
         version: link:../auto_js/js
-      '@isolated-vm/addon':
+      '@isolated-vm/experimental':
         specifier: workspace:^
-        version: link:../addon
+        version: link:../isolated-vm
 
   packages/auto_js/example:
     devDependencies:

@@ -7,14 +7,14 @@ import v8;
 namespace js::iv8 {
 
 // These helper classes are provided to avoid extra visit inspections on tagged values
-class BigInt64 : public v8::BigInt {};
-class BigIntU64 : public v8::BigInt {};
-class BigIntWords : public v8::BigInt {};
-class Double : public v8::Number {};
-class Null : public v8::Primitive {};
-class StringOneByte : public v8::String {};
-class StringTwoByte : public v8::String {};
-class Undefined : public v8::Primitive {};
+export class BigInt64 : public v8::BigInt {};
+export class BigIntU64 : public v8::BigInt {};
+export class BigIntWords : public v8::BigInt {};
+export class Double : public v8::Number {};
+export class Null : public v8::Primitive {};
+export class StringOneByte : public v8::String {};
+export class StringTwoByte : public v8::String {};
+export class Undefined : public v8::Primitive {};
 
 // `v8::Local<v8::ArrayBuffer>{}->Buffer()` returns a `v8::Local<v8::ArrayBuffer>`, even in the case
 // it has a `SharedArrayBuffer`. In this case `buffer->IsArrayBuffer()` will return false. This is a
@@ -74,8 +74,10 @@ constexpr auto v8_to_tag_fn = util::overloaded{
 	[](std::type_identity<iv8::BigIntU64> /*type*/) -> bigint_tag_of<std::uint64_t> { return {}; },
 	[](std::type_identity<iv8::BigIntWords> /*type*/) -> bigint_tag_of<bigint> { return {}; },
 	[](std::type_identity<iv8::Double> /*type*/) -> number_tag_of<double> { return {}; },
+	[](std::type_identity<iv8::Null> /*type*/) -> null_tag { return {}; },
 	[](std::type_identity<iv8::StringOneByte> /*type*/) -> string_tag_of<char> { return {}; },
 	[](std::type_identity<iv8::StringTwoByte> /*type*/) -> string_tag_of<char16_t> { return {}; },
+	[](std::type_identity<iv8::Undefined> /*type*/) -> undefined_tag { return {}; },
 	[](std::type_identity<v8::BigInt> /*type*/) -> bigint_tag { return {}; },
 	[](std::type_identity<v8::Boolean> /*type*/) -> boolean_tag { return {}; },
 	[](std::type_identity<v8::Int32> /*type*/) -> number_tag_of<std::int32_t> { return {}; },
@@ -84,6 +86,7 @@ constexpr auto v8_to_tag_fn = util::overloaded{
 	[](std::type_identity<v8::Primitive> /*type*/) -> primitive_tag { return {}; },
 	[](std::type_identity<v8::String> /*type*/) -> string_tag { return {}; },
 	[](std::type_identity<v8::Symbol> /*type*/) -> symbol_tag { return {}; },
+	[](std::type_identity<v8::Uint32> /*type*/) -> number_tag_of<std::uint32_t> { return {}; },
 
 	// objects
 	[](std::type_identity<v8::Array> /*type*/) -> list_tag { return {}; },
