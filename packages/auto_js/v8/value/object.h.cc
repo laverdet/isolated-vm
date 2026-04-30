@@ -9,17 +9,12 @@ import v8;
 
 namespace js::iv8 {
 
-export class object
-		: public v8::Local<v8::Object>,
-			public handle_with_context {
+class value_for_object : public handle_with_context<v8::Object> {
 	public:
 		using key_type = v8::Local<v8::Primitive>;
 		using mapped_type = v8::Local<v8::Value>;
 		using value_type = std::pair<key_type, mapped_type>;
-
-		explicit object(context_lock_witness lock, v8::Local<v8::Object> handle) :
-				v8::Local<v8::Object>{handle},
-				handle_with_context{lock} {}
+		using handle_with_context<v8::Object>::handle_with_context;
 
 	private:
 		// We use `array` as the base iteration, over the keys of this object, and transform that into
@@ -34,10 +29,10 @@ export class object
 				v8::Local<v8::Context> context_;
 		};
 
-		[[nodiscard]] auto keys() const -> const array&;
+		[[nodiscard]] auto keys() const -> const value_for_array&;
 
 	public:
-		using range_type = std::ranges::transform_view<std::views::all_t<const array&>, iterator_transform>;
+		using range_type = std::ranges::transform_view<std::views::all_t<const value_for_array&>, iterator_transform>;
 		using iterator = std::ranges::iterator_t<range_type>;
 
 		[[nodiscard]] auto get(v8::Local<v8::Name> key) -> v8::Local<v8::Value>;
@@ -47,10 +42,10 @@ export class object
 		[[nodiscard]] auto size() const -> std::size_t;
 
 	private:
-		mutable array keys_;
+		mutable value_for_array keys_;
 };
 
-static_assert(std::ranges::range<object::range_type>);
-static_assert(std::random_access_iterator<object::iterator>);
+static_assert(std::ranges::range<value_for_object::range_type>);
+static_assert(std::random_access_iterator<value_for_object::iterator>);
 
 } // namespace js::iv8

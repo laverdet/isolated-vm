@@ -5,7 +5,7 @@ import v8;
 
 namespace js::iv8 {
 
-export class callback_info {
+class callback_info {
 	public:
 		class iterator;
 		using value_type = v8::Local<v8::Value>;

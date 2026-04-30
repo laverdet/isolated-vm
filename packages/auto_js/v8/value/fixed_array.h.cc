@@ -7,7 +7,7 @@ import v8;
 
 namespace js::iv8 {
 
-export class fixed_array {
+class fixed_array {
 	public:
 		class iterator;
 		using value_type = v8::Local<v8::Data>;

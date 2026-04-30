@@ -1,6 +1,7 @@
 export module v8_js:array_buffer;
 import :handle;
 import :lock;
+import :value.tag;
 import auto_js;
 import std;
 import util;
@@ -8,47 +9,32 @@ import v8;
 
 namespace js::iv8 {
 
-// `v8::Local<v8::ArrayBuffer>{}->Buffer()` returns a `v8::Local<v8::ArrayBuffer>`, even in the case
-// it has a `SharedArrayBuffer`. In this case `buffer->IsArrayBuffer()` will return false. This is a
-// wrapper to denote that there is a data block but we do not know what kind it is.
-export class data_block : public v8::Local<v8::Object> {
+class value_for_array_buffer : public handle_without_lock<v8::ArrayBuffer> {
 	public:
-		explicit data_block(v8::Local<v8::Object> handle) :
-				v8::Local<v8::Object>{handle} {}
-};
-
-export class array_buffer : public v8::Local<v8::ArrayBuffer> {
-	public:
-		array_buffer() = default;
-		explicit array_buffer(v8::Local<v8::ArrayBuffer> handle) :
-				v8::Local<v8::ArrayBuffer>{handle} {}
-
+		using handle_without_lock<v8::ArrayBuffer>::handle_without_lock;
 		[[nodiscard]] auto data() const -> std::byte* { return static_cast<std::byte*>((*this)->Data()); }
 		[[nodiscard]] auto size() const -> std::size_t { return (*this)->ByteLength(); }
 		explicit operator js::array_buffer() const;
 		explicit operator std::span<std::byte>() const;
 };
 
-export class shared_array_buffer : public v8::Local<v8::SharedArrayBuffer> {
+class value_for_shared_array_buffer : public handle_without_lock<v8::SharedArrayBuffer> {
 	public:
-		shared_array_buffer() = default;
-		explicit shared_array_buffer(v8::Local<v8::SharedArrayBuffer> handle) :
-				v8::Local<v8::SharedArrayBuffer>{handle} {}
-
+		using handle_without_lock<v8::SharedArrayBuffer>::handle_without_lock;
 		[[nodiscard]] auto data() const -> std::byte* { return static_cast<std::byte*>((*this)->Data()); }
 		[[nodiscard]] auto size() const -> std::size_t { return (*this)->ByteLength(); }
 		explicit operator js::shared_array_buffer() const;
 		explicit operator std::span<std::byte>() const;
 };
 
-export template <class Type>
-class array_buffer_view : public v8::Local<Type> {
+template <class Type>
+class value_for_array_buffer_view : public handle_without_lock<Type> {
 	public:
-		array_buffer_view() = default;
-		explicit array_buffer_view(v8::Local<Type> handle) :
-				v8::Local<Type>{handle} {}
+		using handle_without_lock<Type>::handle_without_lock;
 
-		[[nodiscard]] auto buffer() const -> iv8::data_block { return iv8::data_block{(*this)->Buffer()}; }
+		[[nodiscard]] auto buffer() const -> v8::Local<iv8::DataBlock> {
+			return (*this)->Buffer().template As<iv8::DataBlock>();
+		}
 
 		[[nodiscard]] auto byte_offset() const -> std::size_t { return (*this)->ByteOffset(); }
 

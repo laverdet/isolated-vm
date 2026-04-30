@@ -8,18 +8,12 @@ import v8;
 
 namespace js::iv8 {
 
-export class array
-		: public v8::Local<v8::Array>,
-			public handle_with_context {
+class value_for_array : public handle_with_context<v8::Array> {
 	public:
 		class iterator;
 		struct handle_data;
 		using value_type = v8::Local<v8::Value>;
-
-		array() = default;
-		explicit array(context_lock_witness lock, v8::Local<v8::Array> handle) :
-				v8::Local<v8::Array>{handle},
-				handle_with_context{lock} {}
+		using handle_with_context<v8::Array>::handle_with_context;
 
 		[[nodiscard]] auto begin() const -> iterator;
 		[[nodiscard]] auto end() const -> iterator;
@@ -29,12 +23,12 @@ export class array
 		mutable std::uint32_t length_{};
 };
 
-class array::iterator : public util::random_access_iterator_facade<std::int32_t, std::int64_t> {
+class value_for_array::iterator : public util::random_access_iterator_facade<std::int32_t, std::int64_t> {
 	public:
 		using arithmetic_facade::operator+;
 		using difference_type = random_access_iterator_facade::difference_type;
 		using size_type = std::uint32_t;
-		using value_type = array::value_type;
+		using value_type = value_for_array::value_type;
 
 		iterator() = default;
 		iterator(v8::Local<v8::Array> array, v8::Local<v8::Context> context, std::uint32_t index);
@@ -52,7 +46,7 @@ class array::iterator : public util::random_access_iterator_facade<std::int32_t,
 		std::uint32_t index_{};
 };
 
-static_assert(std::ranges::range<array>);
-static_assert(std::random_access_iterator<array::iterator>);
+static_assert(std::ranges::range<value_for_array>);
+static_assert(std::random_access_iterator<value_for_array::iterator>);
 
 } // namespace js::iv8

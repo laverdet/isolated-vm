@@ -7,69 +7,59 @@ import v8;
 
 namespace js::iv8 {
 
-export class boolean : public v8::Local<v8::Boolean> {
+class value_for_boolean : public handle_without_lock<v8::Boolean> {
 	public:
-		explicit boolean(v8::Local<v8::Boolean> handle) :
-				v8::Local<v8::Boolean>{handle} {}
-
+		using handle_without_lock<v8::Boolean>::handle_without_lock;
 		[[nodiscard]] explicit operator bool() const;
 };
 
-export class number : public v8::Local<v8::Number> {
+class value_for_number : public handle_without_lock<v8::Number> {
 	public:
-		explicit number(v8::Local<v8::Number> handle) :
-				v8::Local<v8::Number>{handle} {}
-
+		using handle_without_lock<v8::Number>::handle_without_lock;
 		[[nodiscard]] explicit operator double() const;
 		[[nodiscard]] explicit operator std::int32_t() const;
 		[[nodiscard]] explicit operator std::int64_t() const;
 		[[nodiscard]] explicit operator std::uint32_t() const;
 };
 
-export class bigint : public v8::Local<v8::BigInt> {
+class value_for_bigint : public handle_without_lock<v8::BigInt> {
 	public:
-		explicit bigint(v8::Local<v8::BigInt> handle) :
-				v8::Local<v8::BigInt>{handle} {}
-
+		using handle_without_lock<v8::BigInt>::handle_without_lock;
 		[[nodiscard]] explicit operator js::bigint() const;
 };
 
-export class bigint_u64 : public bigint {
+class value_for_bigint_i64 : public value_for_bigint {
 	public:
-		explicit bigint_u64(v8::Local<v8::BigInt> handle, std::uint64_t value) :
-				bigint{handle},
+		explicit value_for_bigint_i64(null_lock_witness lock, v8::Local<v8::BigInt> handle, std::int64_t value) :
+				value_for_bigint{lock, handle},
 				value_{value} {}
 
-		[[nodiscard]] explicit operator std::uint64_t() const;
+		[[nodiscard]] explicit operator std::int64_t() const;
 
 	private:
-		std::uint64_t value_;
+		std::int64_t value_;
 };
 
-export class string
-		: public v8::Local<v8::String>,
-			public handle_with_isolate {
+class value_for_string : public handle_with_isolate<v8::String> {
 	public:
-		explicit string(isolate_lock_witness lock, v8::Local<v8::String> handle) :
-				v8::Local<v8::String>{handle},
-				handle_with_isolate{lock} {}
+		using handle_with_isolate<v8::String>::handle_with_isolate;
 
 		[[nodiscard]] explicit operator std::string() const;
 		[[nodiscard]] explicit operator std::u8string() const;
 		[[nodiscard]] explicit operator std::u16string() const;
 };
 
-export class date : public v8::Local<v8::Date> {
+class value_for_date : public v8::Local<v8::Date> {
 	public:
-		explicit date(v8::Local<v8::Date> handle) :
+		explicit value_for_date(null_lock_witness /*witness*/, v8::Local<v8::Date> handle) :
 				v8::Local<v8::Date>{handle} {}
 
 		[[nodiscard]] explicit operator js_clock::time_point() const;
 };
 
-export class external : public v8::Local<v8::External> {
+class value_for_external : public v8::Local<v8::External> {
 	public:
-		explicit external(v8::Local<v8::External> handle) :
+		explicit value_for_external(null_lock_witness /*witness*/, v8::Local<v8::External> handle) :
 				v8::Local<v8::External>{handle} {}
 
 		[[nodiscard]] explicit operator void*() const;

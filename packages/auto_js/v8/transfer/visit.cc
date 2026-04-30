@@ -1,31 +1,32 @@
 export module v8_js:visit;
-import :array;
 import :array_buffer;
+import :array;
 import :callback_info;
 import :handle;
+import :handle.value;
 import :hash;
 import :lock;
 import :object;
 import :primitive;
 import :unmaybe;
+import :value.tag;
 import auto_js;
 import std;
 import v8;
 
-namespace js {
+namespace js::iv8 {
 
 // Instantiated in the acceptor that corresponds to a v8 visitor
-struct v8_reference_map_type {
+struct visit_reference_map_type {
 		template <class Type>
-		using type = std::unordered_map<v8::Local<v8::Data>, Type, iv8::address_hash>;
+		using type = std::unordered_map<v8::Local<v8::Data>, Type, address_hash>;
 };
 
+// Visitor adaptor which internalized property keys instead of values
 template <class Visit>
-struct visit_v8_property_name {
+struct visit_property_name {
 	public:
-		explicit visit_v8_property_name(Visit& visit) : visit_{visit} {}
-
-		[[nodiscard]] auto lock_witness() const -> auto& { return visit_.lock_witness(); }
+		explicit visit_property_name(Visit& visit) : visit_{visit} {}
 
 		template <class Accept>
 		auto operator()(v8::Local<v8::Primitive> subject, const Accept& accept) -> accept_target_t<Accept> {
@@ -43,6 +44,7 @@ struct visit_v8_property_name {
 		}
 
 		[[nodiscard]] auto environment() const -> auto& { return visit_.get().environment(); }
+		[[nodiscard]] auto witness() const -> auto { return visit_.witness(); }
 
 	private:
 		std::reference_wrapper<Visit> visit_;
@@ -69,36 +71,32 @@ struct visit_cached_immediate : Visit {
 // Primitive-ish value visitor. These only need an isolate, so they are separated from the other
 // visitor. Also, none of these are recursive.
 template <class Reference>
-struct visit_flat_v8_value;
+struct visit_flat_value;
 
 template <class Meta>
-using visit_flat_v8_value_with = visit_cached_immediate<visit_flat_v8_value<typename Meta::accept_reference_type>>;
+using visit_flat_value_with = visit_cached_immediate<visit_flat_value<typename Meta::accept_reference_type>>;
 
 template <class Reference>
-struct visit_flat_v8_value : reference_map_t<Reference, v8_reference_map_type> {
+struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 	public:
-		explicit visit_flat_v8_value(auto* /*transfer*/, iv8::isolate_lock_witness lock) :
-				isolate_lock_{lock} {}
-		explicit visit_flat_v8_value(auto* transfer, const std::convertible_to<iv8::isolate_lock_witness> auto& lock) :
-				visit_flat_v8_value{transfer, iv8::isolate_lock_witness{util::slice(lock)}} {}
-
-		[[nodiscard]] auto lock_witness() const -> auto& { return isolate_lock_; }
+		explicit visit_flat_value(auto* /*transfer*/, isolate_lock_witness lock) : isolate_lock_{lock} {}
+		explicit visit_flat_value(auto* transfer, const auto& lock) :
+				visit_flat_value{transfer, isolate_lock_witness{util::slice(lock)}} {}
 
 		// numbers
 		template <class Accept>
 		auto operator()(v8::Local<v8::Number> subject, const Accept& accept) -> accept_target_t<Accept> {
-			auto number = iv8::number{subject};
 			if (subject->IsInt32()) {
-				return accept(number_tag_of<std::int32_t>{}, *this, number);
+				return accept(number_tag_of<std::int32_t>{}, *this, value_of{witness(), subject});
 			} else {
-				return accept(number_tag_of<double>{}, *this, number);
+				return accept(number_tag_of<double>{}, *this, value_of{witness(), subject});
 			}
 		}
 
 		// boolean
 		template <class Accept>
 		auto operator()(v8::Local<v8::Boolean> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(boolean_tag{}, *this, iv8::boolean{subject.As<v8::Boolean>()});
+			return accept(boolean_tag{}, *this, value_of{witness(), subject});
 		}
 
 		// no required types
@@ -129,6 +127,12 @@ struct visit_flat_v8_value : reference_map_t<Reference, v8_reference_map_type> {
 			}
 		}
 
+		template <class Accept, class Type>
+			requires std::is_base_of_v<primitive_tag, iv8::v8_to_tag<Type>>
+		auto immediate(v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(iv8::v8_to_tag<Type>{}, *this, value_of{witness(), subject});
+		}
+
 		// names
 		template <class Accept>
 		auto immediate(v8::Local<v8::Name> subject, const Accept& accept) -> accept_target_t<Accept> {
@@ -141,11 +145,10 @@ struct visit_flat_v8_value : reference_map_t<Reference, v8_reference_map_type> {
 
 		template <class Accept>
 		auto immediate(v8::Local<v8::String> subject, const Accept& accept) -> accept_target_t<Accept> {
-			auto string = iv8::string{lock_witness(), subject};
 			if (subject->IsOneByte()) {
-				return accept(string_tag_of<char>{}, *this, string);
+				return immediate(subject.As<iv8::StringOneByte>(), accept);
 			} else {
-				return accept(string_tag_of<char16_t>{}, *this, string);
+				return immediate(subject.As<iv8::StringTwoByte>(), accept);
 			}
 		}
 
@@ -158,23 +161,23 @@ struct visit_flat_v8_value : reference_map_t<Reference, v8_reference_map_type> {
 		template <class Accept>
 		auto immediate(v8::Local<v8::BigInt> subject, const Accept& accept) -> accept_target_t<Accept> {
 			bool lossless{};
-			auto u64 = subject->Uint64Value(&lossless);
+			auto i64 = subject->Int64Value(&lossless);
 			if (lossless) {
-				return accept(bigint_tag_of<std::uint64_t>{}, *this, iv8::bigint_u64{subject, u64});
+				return accept(bigint_tag_of<std::int64_t>{}, *this, value_of{witness(), subject.As<iv8::BigInt64>(), i64});
 			} else {
-				return accept(bigint_tag_of<bigint>{}, *this, iv8::bigint{subject});
+				return immediate(subject.As<iv8::BigIntWords>(), accept);
 			}
 		}
 
 		// date
 		template <class Accept>
 		auto immediate(v8::Local<v8::Date> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(date_tag{}, *this, iv8::date{subject});
+			return accept(date_tag{}, *this, value_of{witness(), subject});
 		}
 
 		// data blocks
 		template <class Accept>
-		auto immediate(iv8::data_block subject, const Accept& accept) -> accept_target_t<Accept> {
+		auto immediate(v8::Local<iv8::DataBlock> subject, const Accept& accept) -> accept_target_t<Accept> {
 			if (subject->IsSharedArrayBuffer()) {
 				return immediate(subject.As<v8::SharedArrayBuffer>(), accept);
 			} else {
@@ -182,20 +185,16 @@ struct visit_flat_v8_value : reference_map_t<Reference, v8_reference_map_type> {
 			}
 		}
 
-		template <class Accept>
-		auto immediate(v8::Local<v8::ArrayBuffer> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(array_buffer_tag{}, *this, iv8::array_buffer{subject});
-		}
-
-		template <class Accept>
-		auto immediate(v8::Local<v8::SharedArrayBuffer> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(shared_array_buffer_tag{}, *this, iv8::shared_array_buffer{subject});
+		template <class Accept, class Type>
+			requires std::is_base_of_v<data_block_tag, iv8::v8_to_tag<Type>>
+		auto immediate(v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(iv8::v8_to_tag<Type>{}, *this, value_of{witness(), subject});
 		}
 
 		// external
 		template <class Accept>
 		auto immediate(v8::Local<v8::External> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(external_tag{}, *this, iv8::external{subject});
+			return accept(external_tag{}, *this, value_of{witness(), subject});
 		}
 
 		// promise
@@ -212,39 +211,38 @@ struct visit_flat_v8_value : reference_map_t<Reference, v8_reference_map_type> {
 
 		[[nodiscard]] auto is_cached_null(v8::Local<v8::Value> value) const { return value == null_; }
 		[[nodiscard]] auto is_cached_undefined(v8::Local<v8::Value> value) const { return value == undefined_; }
+		[[nodiscard]] auto witness() const -> auto { return isolate_lock_; }
 
 	private:
-		iv8::isolate_lock_witness isolate_lock_;
+		isolate_lock_witness isolate_lock_;
 		v8::Local<v8::Primitive> null_;
 		v8::Local<v8::Primitive> undefined_;
 };
 
 // Primary visitor w/ `context_lock_witness`
 template <class Target>
-struct visit_v8_value;
+struct visit_value;
 
 template <class Meta>
-using visit_v8_value_with = visit_cached_immediate<visit_v8_value<typename Meta::accept_reference_type>>;
+using visit_value_with = visit_cached_immediate<visit_value<typename Meta::accept_reference_type>>;
 
 template <class Target>
-struct visit_v8_value : visit_flat_v8_value<Target> {
+struct visit_value : visit_flat_value<Target> {
 	public:
-		friend struct visit_flat_v8_value<Target>;
-		using visit_type = visit_flat_v8_value<Target>;
+		friend struct visit_flat_value<Target>;
+		using visit_type = visit_flat_value<Target>;
 		using visit_type::immediate;
 		using visit_type::is_cached_null;
 		using visit_type::is_cached_undefined;
-		using visit_type::lock_witness;
 		using visit_type::lookup_or_visit;
+		using visit_type::witness;
 		using visit_type::operator();
 
-		explicit visit_v8_value(auto* transfer, iv8::context_lock_witness lock) :
+		explicit visit_value(auto* transfer, context_lock_witness lock) :
 				visit_type{transfer, lock},
 				context_lock_{lock} {}
-		explicit visit_v8_value(auto* transfer, const std::convertible_to<iv8::context_lock_witness> auto& lock) :
-				visit_v8_value{transfer, iv8::context_lock_witness{util::slice(lock)}} {}
-
-		[[nodiscard]] auto lock_witness() const -> auto& { return context_lock_; }
+		explicit visit_value(auto* transfer, const auto& lock) :
+				visit_value{transfer, context_lock_witness{util::slice(lock)}} {}
 
 		template <class Accept>
 		auto operator()(v8::Local<v8::Value> subject, const Accept& accept) -> accept_target_t<Accept> {
@@ -265,10 +263,8 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 			});
 		}
 
-		// Visitor for `iv8::data_block` (which is the return value of
-		// `js::iv8::typed_array<T>{}.buffer()`).
 		template <class Accept>
-		auto operator()(iv8::data_block subject, const Accept& accept) -> accept_target_t<Accept> {
+		auto operator()(v8::Local<iv8::DataBlock> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
 				return immediate(subject, accept);
 			});
@@ -285,9 +281,7 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 			} else if (subject->IsDate()) {
 				return immediate(subject.As<v8::Date>(), accept);
 			} else if (subject->IsArrayBuffer()) {
-				// nb: The `v8::ArrayBuffer` visitor checks for `IsSharedArray()` because the return value
-				// of `v8::TypeArray` is `v8::ArrayBuffer` instead of some shared hidden class.
-				return accept(array_buffer_tag{}, *this, iv8::array_buffer{subject.As<v8::ArrayBuffer>()});
+				return immediate(subject.As<v8::ArrayBuffer>(), accept);
 			} else if (subject->IsSharedArrayBuffer()) {
 				return immediate(subject.As<v8::SharedArrayBuffer>(), accept);
 			} else if (subject->IsArrayBufferView()) {
@@ -297,25 +291,25 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 			} else if (subject->IsFunction()) {
 				return immediate(subject.As<v8::Function>(), accept);
 			} else {
-				auto visit_entry = visit_entry_pair<visit_v8_property_name<visit_v8_value>, visit_v8_value&>{*this};
-				return accept(dictionary_tag{}, visit_entry, iv8::object{lock_witness(), subject.As<v8::Object>()});
+				auto visit_entry = visit_entry_pair<visit_property_name<visit_value>, visit_value&>{*this};
+				return accept(dictionary_tag{}, visit_entry, value_of{witness(), subject.As<v8::Object>()});
 			}
 		}
 
 		// array
 		template <class Accept>
 		auto immediate(v8::Local<v8::Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			auto visit_entry = visit_entry_pair<visit_v8_property_name<visit_v8_value>, visit_v8_value&>{*this};
-			return accept(list_tag{}, visit_entry, iv8::object{lock_witness(), subject.As<v8::Object>()});
+			auto visit_entry = visit_entry_pair<visit_property_name<visit_value>, visit_value&>{*this};
+			return accept(list_tag{}, visit_entry, value_of{witness(), subject.As<v8::Object>()});
 		}
 
 		// function template
 		template <class Accept>
 		auto immediate(v8::Local<v8::FunctionTemplate> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(function_tag{}, *this, iv8::unmaybe(subject->GetFunction(context_lock_.context())));
+			return accept(function_tag{}, *this, unmaybe(subject->GetFunction(context_lock_.context())));
 		}
 
-		// array buffer view forwarder
+		// array buffer views (typed arrays, data view)
 		template <class Accept>
 		auto immediate(v8::Local<v8::ArrayBufferView> subject, const Accept& accept) -> accept_target_t<Accept> {
 			if (subject->IsUint8Array()) {
@@ -347,95 +341,34 @@ struct visit_v8_value : visit_flat_v8_value<Target> {
 			}
 		}
 
-		// typed arrays
-		template <class Accept>
-		auto immediate(v8::Local<v8::Uint8Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<std::uint8_t>{}, *this, iv8::array_buffer_view{subject});
+		template <class Accept, class Type>
+			requires std::is_base_of_v<array_buffer_view_tag, v8_to_tag<Type>>
+		auto immediate(v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(v8_to_tag<Type>{}, *this, value_of{witness(), subject});
 		}
 
-		template <class Accept>
-		auto immediate(v8::Local<v8::Uint8ClampedArray> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<std::byte>{}, *this, iv8::array_buffer_view{subject});
-		}
-
-		template <class Accept>
-		auto immediate(v8::Local<v8::Uint16Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<std::uint16_t>{}, *this, iv8::array_buffer_view{subject});
-		}
-
-		template <class Accept>
-		auto immediate(v8::Local<v8::Uint32Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<std::uint32_t>{}, *this, iv8::array_buffer_view{subject});
-		}
-
-		template <class Accept>
-		auto immediate(v8::Local<v8::Int8Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<std::int8_t>{}, *this, iv8::array_buffer_view{subject});
-		}
-
-		template <class Accept>
-		auto immediate(v8::Local<v8::Int16Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<std::int16_t>{}, *this, iv8::array_buffer_view{subject});
-		}
-
-		template <class Accept>
-		auto immediate(v8::Local<v8::Int32Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<std::int32_t>{}, *this, iv8::array_buffer_view{subject});
-		}
-
-		template <class Accept>
-		auto immediate(v8::Local<v8::Float32Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<float>{}, *this, iv8::array_buffer_view{subject});
-		}
-
-		template <class Accept>
-		auto immediate(v8::Local<v8::Float64Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<double>{}, *this, iv8::array_buffer_view{subject});
-		}
-
-		template <class Accept>
-		auto immediate(v8::Local<v8::BigInt64Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<std::int64_t>{}, *this, iv8::array_buffer_view{subject});
-		}
-
-		template <class Accept>
-		auto immediate(v8::Local<v8::BigUint64Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(typed_array_tag_of<std::uint64_t>{}, *this, iv8::array_buffer_view{subject});
-		}
-
-		// data view
-		template <class Accept>
-		auto immediate(v8::Local<v8::DataView> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(data_view_tag{}, *this, iv8::array_buffer_view{subject});
-		}
+		[[nodiscard]] auto witness() const -> auto& { return context_lock_; }
 
 	private:
-		iv8::context_lock_witness context_lock_;
+		context_lock_witness context_lock_;
 };
+
+} // namespace js::iv8
+
+namespace js {
 
 // Name visitor (string + symbol)
 // TODO: These do not need a reference map!
-template <class Meta>
-struct visit<Meta, v8::Local<v8::Name>> : visit_flat_v8_value_with<Meta> {
-		using visit_flat_v8_value_with<Meta>::visit_flat_v8_value_with;
+template <class Meta, class Type>
+	requires std::is_base_of_v<primitive_tag, iv8::v8_to_tag<Type>>
+struct visit<Meta, v8::Local<Type>> : iv8::visit_flat_value_with<Meta> {
+		using iv8::visit_flat_value_with<Meta>::visit_flat_value_with;
 };
 
-// String visitor
-template <class Meta>
-struct visit<Meta, v8::Local<v8::String>> : visit_flat_v8_value_with<Meta> {
-		using visit_flat_v8_value_with<Meta>::visit_flat_v8_value_with;
-};
-
-// Generic visitor
-template <class Meta>
-struct visit<Meta, v8::Local<v8::Value>> : visit_v8_value_with<Meta> {
-		using visit_v8_value_with<Meta>::visit_v8_value_with;
-};
-
-// Function visitor
-template <class Meta>
-struct visit<Meta, v8::Local<v8::FunctionTemplate>> : visit_v8_value_with<Meta> {
-		using visit_v8_value_with<Meta>::visit_v8_value_with;
+// Value visitor
+template <class Meta, class Type>
+struct visit<Meta, v8::Local<Type>> : iv8::visit_value_with<Meta> {
+		using iv8::visit_value_with<Meta>::visit_value_with;
 };
 
 // `arguments` visitor

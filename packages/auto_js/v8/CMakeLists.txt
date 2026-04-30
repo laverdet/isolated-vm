@@ -34,6 +34,7 @@ target_sources(v8_js
 		evaluation/script.h.cc
 		handle/collected_handle.cc
 		handle/remote.h.cc
+		handle/value_of.cc
 		isolated/agent.h.cc
 		isolated/clock.h.cc
 		isolated/cluster.h.cc

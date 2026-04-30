@@ -47,7 +47,7 @@ using variant_value = std::variant<
 	std::int32_t,
 	// bigint
 	reference_of<bigint>,
-	reference_of<std::uint64_t>,
+	reference_of<std::int64_t>,
 	// strings
 	reference_of<std::u16string>,
 	reference_of<std::string>,

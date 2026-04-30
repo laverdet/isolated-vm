@@ -47,17 +47,12 @@ export struct module_link_record {
 };
 
 // `v8::Module` utilities
-export class module_record
-		: public v8::Local<v8::Module>,
-			public handle_with_context {
+export class module_record : public handle_with_context<v8::Module> {
 	public:
 		using expected_module_type = std::expected<v8::Local<v8::Module>, js::error_value>;
 		using expected_value_type = std::expected<std::monostate, js::error_value>;
 		using synthetic_module_action_type = auto (*)(context_lock_witness, v8::Local<v8::Module>) -> void;
-
-		explicit module_record(context_lock_witness lock, v8::Local<v8::Module> handle) :
-				v8::Local<v8::Module>{handle},
-				handle_with_context{lock} {}
+		using handle_with_context<v8::Module>::handle_with_context;
 
 		static auto evaluate(context_lock_witness lock, v8::Local<v8::Module> module) -> expected_value_type;
 		static auto link(context_lock_witness lock, v8::Local<v8::Module> module, module_link_record link_record) -> void;

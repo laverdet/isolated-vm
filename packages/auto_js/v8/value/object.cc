@@ -28,8 +28,8 @@ constexpr auto get_property(v8::Local<v8::Context> context, v8::Local<v8::Object
 	}
 }
 
-auto object::keys() const -> const array& {
-	if (keys_ == array{}) {
+auto value_for_object::keys() const -> const value_for_array& {
+	if (keys_ == value_for_array{}) {
 		auto property_names = (*this)->GetPropertyNames(
 			context(),
 			v8::KeyCollectionMode::kOwnOnly,
@@ -37,40 +37,40 @@ auto object::keys() const -> const array& {
 			v8::IndexFilter::kIncludeIndices,
 			v8::KeyConversionMode::kKeepNumbers
 		);
-		keys_ = array{witness(), iv8::unmaybe(property_names)};
+		keys_ = value_for_array{witness(), unmaybe(property_names)};
 	}
 	return keys_;
 }
 
-auto object::get(v8::Local<v8::Name> key) -> v8::Local<v8::Value> {
+auto value_for_object::get(v8::Local<v8::Name> key) -> v8::Local<v8::Value> {
 	return get_property(context(), util::slice(*this), key);
 }
 
-auto object::get(v8::Local<v8::Number> key) -> v8::Local<v8::Value> {
+auto value_for_object::get(v8::Local<v8::Number> key) -> v8::Local<v8::Value> {
 	return get_property(context(), util::slice(*this), key);
 }
 
-auto object::get(v8::Local<v8::Primitive> key) -> v8::Local<v8::Value> {
+auto value_for_object::get(v8::Local<v8::Primitive> key) -> v8::Local<v8::Value> {
 	return get_property(context(), util::slice(*this), key);
 }
 
-auto object::into_range() -> range_type {
+auto value_for_object::into_range() -> range_type {
 	// NOLINTNEXTLINE(cppcoreguidelines-slicing)
 	return keys() | std::views::transform(iterator_transform{*this, context()});
 }
 
-auto object::size() const -> std::size_t {
+auto value_for_object::size() const -> std::size_t {
 	return keys().size();
 }
 
-object::iterator_transform::iterator_transform(
+value_for_object::iterator_transform::iterator_transform(
 	v8::Local<v8::Object> object,
 	v8::Local<v8::Context> context
 ) :
 		object_{object},
 		context_{context} {}
 
-auto object::iterator_transform::operator()(v8::Local<v8::Value> key) const -> value_type {
+auto value_for_object::iterator_transform::operator()(v8::Local<v8::Value> key) const -> value_type {
 	auto value = get_property(context_, object_, key.As<v8::Primitive>());
 	return std::pair{key.As<v8::Primitive>(), value};
 }

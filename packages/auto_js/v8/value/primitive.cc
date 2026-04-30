@@ -6,30 +6,30 @@ import v8;
 
 namespace js::iv8 {
 
-// `boolean`
-boolean::operator bool() const {
+// `value_for_boolean`
+value_for_boolean::operator bool() const {
 	return (*this)->Value();
 }
 
-// `number`
-number::operator double() const {
+// `value_for_number`
+value_for_number::operator double() const {
 	return (*this)->Value();
 }
 
-number::operator std::int32_t() const {
+value_for_number::operator std::int32_t() const {
 	return this->As<v8::Int32>()->Value();
 }
 
-number::operator std::int64_t() const {
+value_for_number::operator std::int64_t() const {
 	return this->As<v8::Integer>()->Value();
 }
 
-number::operator std::uint32_t() const {
+value_for_number::operator std::uint32_t() const {
 	return this->As<v8::Uint32>()->Value();
 }
 
-// `bigint`
-bigint::operator js::bigint() const {
+// `value_for_bigint`
+value_for_bigint::operator js::bigint() const {
 	auto bigint = js::bigint{};
 	bigint.resize_and_overwrite((*this)->WordCount(), [ & ](auto* words, auto length) {
 		if (length > 0) {
@@ -41,12 +41,12 @@ bigint::operator js::bigint() const {
 	return bigint;
 }
 
-bigint_u64::operator std::uint64_t() const {
+value_for_bigint_i64::operator std::int64_t() const {
 	return value_;
 }
 
-// `string`
-string::operator std::string() const {
+// `value_for_string`
+value_for_string::operator std::string() const {
 	std::string string;
 	string.resize_and_overwrite((*this)->Length(), [ this ](char* data, std::size_t length) -> std::size_t {
 		if (length > 0) {
@@ -58,7 +58,7 @@ string::operator std::string() const {
 	return string;
 }
 
-string::operator std::u8string() const {
+value_for_string::operator std::u8string() const {
 	std::u8string string;
 	string.resize_and_overwrite((*this)->Utf8LengthV2(isolate()), [ this ](char8_t* data, std::size_t length) -> std::size_t {
 		if (length > 0) {
@@ -70,7 +70,7 @@ string::operator std::u8string() const {
 	return string;
 }
 
-string::operator std::u16string() const {
+value_for_string::operator std::u16string() const {
 	std::u16string string;
 	string.resize_and_overwrite((*this)->Length(), [ this ](char16_t* data, std::size_t length) -> std::size_t {
 		if (length > 0) {
@@ -82,13 +82,13 @@ string::operator std::u16string() const {
 	return string;
 }
 
-// `date`
-date::operator js_clock::time_point() const {
+// `value_for_date`
+value_for_date::operator js_clock::time_point() const {
 	return js_clock::time_point{js_clock::duration{(*this)->ValueOf()}};
 }
 
-// `external`
-external::operator void*() const {
+// `value_for_external`
+value_for_external::operator void*() const {
 	return (*this)->Value();
 }
 

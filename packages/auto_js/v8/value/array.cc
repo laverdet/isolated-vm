@@ -4,15 +4,15 @@ import v8;
 
 namespace js::iv8 {
 
-auto array::begin() const -> iterator {
+auto value_for_array::begin() const -> iterator {
 	return iterator{util::slice(*this), context(), 0};
 }
 
-auto array::end() const -> iterator {
+auto value_for_array::end() const -> iterator {
 	return iterator{util::slice(*this), context(), size()};
 }
 
-auto array::size() const -> std::uint32_t {
+auto value_for_array::size() const -> std::uint32_t {
 	// nb: `0` means "uninitialized", `length + 1` is stored
 	if (length_ == 0) {
 		length_ = (*this)->Length() + 1;
@@ -20,16 +20,16 @@ auto array::size() const -> std::uint32_t {
 	return length_ - 1;
 }
 
-array::iterator::iterator(v8::Local<v8::Array> array, v8::Local<v8::Context> context, std::uint32_t index) :
+value_for_array::iterator::iterator(v8::Local<v8::Array> array, v8::Local<v8::Context> context, std::uint32_t index) :
 		array_{array},
 		context_{context},
 		index_{index} {}
 
-auto array::iterator::operator*() const -> value_type {
+auto value_for_array::iterator::operator*() const -> value_type {
 	return iv8::unmaybe(array_->Get(context_, index_));
 }
 
-auto array::iterator::operator+=(difference_type offset) -> iterator& {
+auto value_for_array::iterator::operator+=(difference_type offset) -> iterator& {
 	index_ += offset;
 	return *this;
 }

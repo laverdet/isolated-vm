@@ -8,14 +8,10 @@ import v8;
 
 namespace js::iv8 {
 
-export struct function_template
-		: public v8::Local<v8::FunctionTemplate>,
-			public handle_with_context {
-		explicit function_template(context_lock_witness lock, v8::Local<v8::FunctionTemplate> handle) :
-				v8::Local<v8::FunctionTemplate>{handle},
-				handle_with_context{lock} {}
+export struct function_template : public handle_with_context<v8::FunctionTemplate> {
+		using handle_with_context<v8::FunctionTemplate>::handle_with_context;
 
-		explicit operator v8::Local<v8::Function>() const;
+		[[nodiscard]] explicit operator v8::Local<v8::Function>() const;
 
 		template <class Agent, class... Implements>
 		static auto make(const isolate_lock_witness_of<Agent, Implements...>& lock, auto function) -> v8::Local<v8::FunctionTemplate>;
