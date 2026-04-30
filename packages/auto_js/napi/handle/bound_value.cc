@@ -11,16 +11,16 @@ class bound_value_next : public bound_value<typename Tag::tag_type> {
 	public:
 		using bound_value<typename Tag::tag_type>::bound_value;
 		bound_value_next() = default;
-		bound_value_next(napi_env env, value<Tag> value) :
+		bound_value_next(napi_env env, value_of<Tag> value) :
 				bound_value<typename Tag::tag_type>{env, napi_value{value}} {}
 
 		// NOLINTNEXTLINE(google-explicit-constructor)
-		operator value<Tag>() const { return value<Tag>::from(napi_value{*this}); }
+		operator value_of<Tag>() const { return value_of<Tag>::from(napi_value{*this}); }
 };
 
 // Member & method implementation for stateful objects. Used internally in visitors. I think it
 // might make sense to have the environment specified by a template parameter. Then you would use
-// `bound_value<T>` or something instead of passing the environment to each `value<T>` method.
+// `bound_value<T>` or something instead of passing the environment to each `value_of<T>` method.
 template <class Tag>
 class bound_value : public value_specialization<Tag>::bound_type {
 	public:
@@ -28,7 +28,7 @@ class bound_value : public value_specialization<Tag>::bound_type {
 };
 
 template <class Tag>
-bound_value(auto, value<Tag>) -> bound_value<Tag>;
+bound_value(auto, value_of<Tag>) -> bound_value<Tag>;
 
 template <>
 class bound_value<void> : public value_handle {

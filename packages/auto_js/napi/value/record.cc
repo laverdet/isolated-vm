@@ -23,7 +23,7 @@ auto bound_value_for_record::keys() const -> const keys_type& {
 			static_cast<napi_key_filter>(napi_key_enumerable | napi_key_skip_symbols),
 			napi_key_keep_numbers
 		);
-		keys_ = keys_type{env(), js::napi::value<vector_tag>::from(property_names)};
+		keys_ = keys_type{env(), js::napi::value_of<vector_tag>::from(property_names)};
 	}
 	return keys_;
 }
@@ -31,7 +31,7 @@ auto bound_value_for_record::keys() const -> const keys_type& {
 bound_value_for_record::iterator_transform::iterator_transform(const bound_value_for_record& subject) :
 		subject_{&subject} {}
 
-auto bound_value_for_record::iterator_transform::operator()(value<value_tag> key) const -> value_type {
+auto bound_value_for_record::iterator_transform::operator()(value_of<value_tag> key) const -> value_type {
 	return std::pair{key_type::from(key), subject_->get(key)};
 }
 

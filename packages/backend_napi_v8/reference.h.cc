@@ -18,12 +18,12 @@ export class reference_handle {
 		reference_handle(agent_handle agent, js::typeof_kind type_of, js::iv8::shared_remote<v8::Context> realm, js::iv8::shared_remote<v8::Value> value);
 		reference_handle(const agent_handle::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm, v8::Local<v8::Value> value);
 		reference_handle(const agent_handle::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm, v8::Local<v8::Object> value);
-		auto copy(environment& env) -> js::forward<js::napi::value<>>;
-		auto get(environment& env, js::string_t name) -> js::forward<js::napi::value<>>;
-		auto set(environment& env, js::string_t name, js::forward<js::napi::value<>> value_local) -> js::forward<js::napi::value<>>;
-		auto invoke(environment& env, js::forward<js::napi::value<list_tag>> params_local) -> js::forward<js::napi::value<>>;
+		auto copy(environment& env) -> js::forward<js::napi::value_of<>>;
+		auto get(environment& env, js::string_t name) -> js::forward<js::napi::value_of<>>;
+		auto set(environment& env, js::string_t name, js::forward<js::napi::value_of<>> value_local) -> js::forward<js::napi::value_of<>>;
+		auto invoke(environment& env, js::forward<js::napi::value_of<list_tag>> params_local) -> js::forward<js::napi::value_of<>>;
 
-		static auto class_template(environment& env) -> js::napi::value<class_tag_of<reference_handle>>;
+		static auto class_template(environment& env) -> js::napi::value_of<class_tag_of<reference_handle>>;
 
 	private:
 		agent_handle agent_;

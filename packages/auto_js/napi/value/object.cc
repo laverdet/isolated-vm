@@ -6,8 +6,8 @@ import :value_handle;
 namespace js::napi {
 
 // object
-auto bound_value_for_object::get(napi_value key) const -> value<value_tag> {
-	return value<value_tag>::from(napi::invoke(napi_get_property, env(), napi_value{*this}, key));
+auto bound_value_for_object::get(napi_value key) const -> value_of<value_tag> {
+	return value_of<value_tag>::from(napi::invoke(napi_get_property, env(), napi_value{*this}, key));
 }
 
 auto bound_value_for_object::has(napi_value key) const -> bool {

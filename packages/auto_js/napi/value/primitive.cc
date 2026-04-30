@@ -63,16 +63,16 @@ bound_value_for_bigint::operator std::uint64_t() const {
 }
 
 // string
-auto value_for_string::make_property_name(const environment& env, std::string_view string) -> value<string_tag> {
-	return value<string_tag>::from(napi::invoke(node_api_create_property_key_latin1, napi_env{env}, reinterpret_cast<const char*>(string.data()), string.length()));
+auto value_for_string::make_property_name(const environment& env, std::string_view string) -> value_of<string_tag> {
+	return value_of<string_tag>::from(napi::invoke(node_api_create_property_key_latin1, napi_env{env}, reinterpret_cast<const char*>(string.data()), string.length()));
 }
 
-auto value_for_string::make_property_name(const environment& env, std::u8string_view string) -> value<string_tag> {
-	return value<string_tag>::from(napi::invoke(node_api_create_property_key_utf8, napi_env{env}, reinterpret_cast<const char*>(string.data()), string.length()));
+auto value_for_string::make_property_name(const environment& env, std::u8string_view string) -> value_of<string_tag> {
+	return value_of<string_tag>::from(napi::invoke(node_api_create_property_key_utf8, napi_env{env}, reinterpret_cast<const char*>(string.data()), string.length()));
 }
 
-auto value_for_string::make_property_name(const environment& env, std::u16string_view string) -> value<string_tag> {
-	return value<string_tag>::from(napi::invoke(node_api_create_property_key_utf16, napi_env{env}, string.data(), string.length()));
+auto value_for_string::make_property_name(const environment& env, std::u16string_view string) -> value_of<string_tag> {
+	return value_of<string_tag>::from(napi::invoke(node_api_create_property_key_utf16, napi_env{env}, string.data(), string.length()));
 }
 
 bound_value_for_string::operator std::string() const {

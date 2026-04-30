@@ -274,8 +274,8 @@ export class database {
 		using transfer_type = js::tagged_external<database>;
 
 		auto query(environment& env, std::string query) -> std::string;
-		static auto connect(environment& env, std::string uri) -> js::forward<js::napi::value<>>;
-		static auto class_template(environment& env) -> js::napi::value<class_tag_of<database>> {
+		static auto connect(environment& env, std::string uri) -> js::forward<js::napi::value_of<>>;
+		static auto class_template(environment& env) -> js::napi::value_of<class_tag_of<database>> {
 			// incomplete
 		}
 };

@@ -32,8 +32,8 @@ class bound_value_for_array_buffer_view : public bound_value_next<array_buffer_v
 	protected:
 		bound_value_for_array_buffer_view(
 			napi_env env,
-			value<array_buffer_view_tag> typed_array,
-			std::tuple<value<data_block_tag>, std::size_t, std::size_t> array_buffer_info
+			value_of<array_buffer_view_tag> typed_array,
+			std::tuple<value_of<data_block_tag>, std::size_t, std::size_t> array_buffer_info
 		) :
 				bound_value_next<array_buffer_view_tag>{env, typed_array},
 				array_buffer_{std::get<0>(array_buffer_info)},
@@ -41,12 +41,12 @@ class bound_value_for_array_buffer_view : public bound_value_next<array_buffer_v
 				length_{std::get<2>(array_buffer_info)} {}
 
 	public:
-		[[nodiscard]] auto buffer() const -> value<data_block_tag> { return array_buffer_; }
+		[[nodiscard]] auto buffer() const -> value_of<data_block_tag> { return array_buffer_; }
 		[[nodiscard]] auto byte_offset() const -> std::size_t { return byte_offset_; }
 		[[nodiscard]] auto size() const -> std::size_t { return length_; }
 
 	private:
-		value<data_block_tag> array_buffer_;
+		value_of<data_block_tag> array_buffer_;
 		std::size_t byte_offset_;
 		std::size_t length_;
 };
@@ -54,8 +54,8 @@ class bound_value_for_array_buffer_view : public bound_value_next<array_buffer_v
 // `TypedArray`
 class value_for_typed_array : public value_next<typed_array_tag> {
 	protected:
-		static auto make(const environment& env, napi_typedarray_type type, value<array_buffer_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<typed_array_tag>;
-		static auto make(const environment& env, napi_typedarray_type type, value<shared_array_buffer_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<typed_array_tag>;
+		static auto make(const environment& env, napi_typedarray_type type, value_of<array_buffer_tag> buffer, std::size_t byte_offset, std::size_t length) -> value_of<typed_array_tag>;
+		static auto make(const environment& env, napi_typedarray_type type, value_of<shared_array_buffer_tag> buffer, std::size_t byte_offset, std::size_t length) -> value_of<typed_array_tag>;
 };
 
 class bound_value_for_typed_array : public bound_value_next<typed_array_tag> {
@@ -74,7 +74,7 @@ class bound_value_for_typed_array : public bound_value_next<typed_array_tag> {
 			bound_value<typed_array_tag_of<std::uint64_t>>,
 			bound_value<typed_array_tag_of<std::uint8_t>>>;
 
-		static auto make_bound(const environment& env, value<typed_array_tag> typed_array) -> any_bound_typed_array;
+		static auto make_bound(const environment& env, value_of<typed_array_tag> typed_array) -> any_bound_typed_array;
 };
 
 template <class Type>
@@ -82,15 +82,15 @@ class value_for_typed_array_of : public value_next<typed_array_tag_of<Type>> {
 	public:
 		using value_next<typed_array_tag_of<Type>>::value_next;
 
-		static auto make(const environment& env, value<data_block_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<typed_array_tag_of<Type>> {
+		static auto make(const environment& env, value_of<data_block_tag> buffer, std::size_t byte_offset, std::size_t length) -> value_of<typed_array_tag_of<Type>> {
 			if (napi::invoke(napi_is_arraybuffer, napi_env{env}, buffer)) {
-				return make(env, napi::value<array_buffer_tag>::from(buffer), byte_offset, length);
+				return make(env, value_of<array_buffer_tag>::from(buffer), byte_offset, length);
 			} else {
-				return make(env, napi::value<shared_array_buffer_tag>::from(buffer), byte_offset, length);
+				return make(env, value_of<shared_array_buffer_tag>::from(buffer), byte_offset, length);
 			}
 		}
 
-		static auto make(const environment& env, value<array_buffer_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<typed_array_tag_of<Type>> {
+		static auto make(const environment& env, value_of<array_buffer_tag> buffer, std::size_t byte_offset, std::size_t length) -> value_of<typed_array_tag_of<Type>> {
 			constexpr auto type_tag = util::overloaded{
 				[](std::type_identity<double>) -> napi_typedarray_type { return napi_float64_array; },
 				[](std::type_identity<float>) -> napi_typedarray_type { return napi_float32_array; },
@@ -104,11 +104,11 @@ class value_for_typed_array_of : public value_next<typed_array_tag_of<Type>> {
 				[](std::type_identity<std::uint64_t>) -> napi_typedarray_type { return napi_biguint64_array; },
 				[](std::type_identity<std::uint8_t>) -> napi_typedarray_type { return napi_uint8_array; },
 			}(type<Type>);
-			return value<typed_array_tag_of<Type>>::from(value_for_typed_array::make(env, type_tag, buffer, byte_offset, length));
+			return value_of<typed_array_tag_of<Type>>::from(value_for_typed_array::make(env, type_tag, buffer, byte_offset, length));
 		}
 
 		// napi doesn't provide a way to make a typed array view on a shared array buffer
-		static auto make(const environment& /*env*/, value<shared_array_buffer_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<typed_array_tag_of<Type>> {
+		static auto make(const environment& /*env*/, value_of<shared_array_buffer_tag> buffer, std::size_t byte_offset, std::size_t length) -> value_of<typed_array_tag_of<Type>> {
 			using constructor_type = type_t<util::overloaded{
 				[](std::type_identity<double>) -> std::type_identity<v8::Float64Array> { return {}; },
 				[](std::type_identity<float>) -> std::type_identity<v8::Float32Array> { return {}; },
@@ -124,7 +124,7 @@ class value_for_typed_array_of : public value_next<typed_array_tag_of<Type>> {
 			}(type<Type>)>;
 			auto buffer_local = std::bit_cast<v8::Local<v8::SharedArrayBuffer>>(napi_value{buffer});
 			auto view_local = constructor_type::New(buffer_local, byte_offset, length);
-			return value<typed_array_tag_of<Type>>::from(std::bit_cast<napi_value>(view_local));
+			return value_of<typed_array_tag_of<Type>>::from(std::bit_cast<napi_value>(view_local));
 		}
 };
 
@@ -139,14 +139,14 @@ class value_for_data_view : public value_next<data_view_tag> {
 	public:
 		using value_next<data_view_tag>::value_next;
 
-		static auto make(const environment& env, value<data_block_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<data_view_tag>;
-		static auto make(const environment& env, value<array_buffer_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<data_view_tag>;
-		static auto make(const environment& env, value<shared_array_buffer_tag> buffer, std::size_t byte_offset, std::size_t length) -> value<data_view_tag>;
+		static auto make(const environment& env, value_of<data_block_tag> buffer, std::size_t byte_offset, std::size_t length) -> value_of<data_view_tag>;
+		static auto make(const environment& env, value_of<array_buffer_tag> buffer, std::size_t byte_offset, std::size_t length) -> value_of<data_view_tag>;
+		static auto make(const environment& env, value_of<shared_array_buffer_tag> buffer, std::size_t byte_offset, std::size_t length) -> value_of<data_view_tag>;
 };
 
 class bound_value_for_data_view : public bound_value_next<data_view_tag> {
 	public:
-		bound_value_for_data_view(napi_env env, value<data_view_tag> data_view);
+		bound_value_for_data_view(napi_env env, value_of<data_view_tag> data_view);
 };
 
 } // namespace js::napi

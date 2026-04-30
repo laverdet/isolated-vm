@@ -12,7 +12,7 @@ class bound_value_for_vector : public bound_value_next<vector_tag> {
 	public:
 		class iterator;
 		using bound_value_next<vector_tag>::bound_value_next;
-		using value_type = value<value_tag>;
+		using value_type = value_of<value_tag>;
 
 		[[nodiscard]] auto begin() const -> iterator;
 		[[nodiscard]] auto end() const -> iterator;

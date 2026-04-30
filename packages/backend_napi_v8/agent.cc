@@ -59,7 +59,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	auto options = std::move(options_optional).value_or(make_agent_options{});
 	auto& cluster = env.cluster();
 	auto [ promise, resolver ] = make_promise(env, [](environment& env, agent_handle agent) -> auto {
-		auto class_template = js::napi::value<class_tag_of<agent_handle>>::from(env.agent_class());
+		auto class_template = js::napi::value_of<class_tag_of<agent_handle>>::from(env.agent_class());
 		return js::forward{class_template.construct(env, std::move(agent))};
 	});
 	auto clock_ = std::visit(
@@ -93,7 +93,7 @@ auto create_agent(environment& env, std::optional<make_agent_options> options_op
 	return js::forward{promise};
 }
 
-auto agent_class_template(environment& env) -> js::napi::value<js::class_tag_of<agent_handle>> {
+auto agent_class_template(environment& env) -> js::napi::value_of<js::class_tag_of<agent_handle>> {
 	return env.class_template(
 		std::type_identity<agent_handle>{},
 		js::class_template{

@@ -14,8 +14,8 @@ export class native_module_handle {
 	public:
 		explicit native_module_handle(const std::string& filename);
 
-		static auto class_template(environment& env) -> js::napi::value<class_tag_of<native_module_handle>>;
-		static auto create(environment& env, std::string filename) -> js::forward<js::napi::value<>>;
+		static auto class_template(environment& env) -> js::napi::value_of<class_tag_of<native_module_handle>>;
+		static auto create(environment& env, std::string filename) -> js::forward<js::napi::value_of<>>;
 
 	private:
 		js::napi::uv_dlib lib_;

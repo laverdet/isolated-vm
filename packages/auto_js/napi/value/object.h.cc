@@ -11,7 +11,7 @@ namespace js::napi {
 // object
 class value_for_object : public value_next<object_tag> {
 	public:
-		auto assign(this value<object_tag> self, auto_environment auto& env, auto source) -> void;
+		auto assign(this value_of<object_tag> self, auto_environment auto& env, auto source) -> void;
 };
 
 class bound_value_for_object : public bound_value_next<object_tag> {
@@ -21,7 +21,7 @@ class bound_value_for_object : public bound_value_next<object_tag> {
 		template <class Type>
 		[[nodiscard]] auto try_cast(std::type_identity<Type> /*type*/) const -> Type*;
 
-		[[nodiscard]] auto get(napi_value key) const -> value<value_tag>;
+		[[nodiscard]] auto get(napi_value key) const -> value_of<value_tag>;
 		[[nodiscard]] auto has(napi_value key) const -> bool;
 
 		auto set(napi_value key, napi_value value) -> void;

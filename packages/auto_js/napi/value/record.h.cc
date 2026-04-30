@@ -12,15 +12,15 @@ class bound_value_for_record : public bound_value_next<record_tag> {
 	public:
 		using bound_value_next<record_tag>::bound_value_next;
 		using keys_type = bound_value<vector_tag>;
-		using key_type = value<primitive_tag>;
-		using mapped_type = value<value_tag>;
+		using key_type = value_of<primitive_tag>;
+		using mapped_type = value_of<value_tag>;
 		using value_type = std::pair<key_type, mapped_type>;
 
 	private:
 		class iterator_transform {
 			public:
 				explicit iterator_transform(const bound_value_for_record& subject_);
-				auto operator()(value<value_tag> key) const -> value_type;
+				auto operator()(value_of<value_tag> key) const -> value_type;
 
 			private:
 				const bound_value_for_record* subject_;

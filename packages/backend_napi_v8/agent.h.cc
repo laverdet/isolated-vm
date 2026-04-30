@@ -19,7 +19,7 @@ export class agent_environment {
 
 using agent_handle = js::iv8::isolated::agent_handle_of<agent_environment>;
 
-export auto agent_class_template(environment& env) -> js::napi::value<js::class_tag_of<agent_handle>>;
+export auto agent_class_template(environment& env) -> js::napi::value_of<js::class_tag_of<agent_handle>>;
 
 } // namespace backend_napi_v8
 

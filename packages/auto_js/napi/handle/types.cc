@@ -4,7 +4,7 @@ import nodejs;
 
 namespace js::napi {
 
-// `value_handle` is the base class of `value<T>`, and `bound_value<T>`.
+// `value_handle` is the base class of `value_of<T>`, and `bound_value<T>`.
 class value_handle {
 	protected:
 		explicit value_handle(napi_value value) :
@@ -24,9 +24,9 @@ class value_handle {
 		napi_value value_{};
 };
 
-// `value` forward declarations
+// `value_of` forward declarations
 export template <class Tag = value_tag>
-class value;
+class value_of;
 
 template <class Tag>
 class value_next;
@@ -47,7 +47,7 @@ class bound_value_next;
 template <class Type>
 class bound_value_for_typed_array_of;
 
-// Map of `value<Tag>` / `bound_value<Tag>` to concrete implementation classes.
+// Map of `value_of<Tag>` / `bound_value<Tag>` to concrete implementation classes.
 template <class Tag>
 struct value_defaults {
 		using value_type = value_next<Tag>;

@@ -26,15 +26,15 @@ auto value_for_function::invoke(auto_environment auto& env, std::span<napi_value
 }
 
 template <auto_environment Environment>
-auto value_for_function::make(Environment& env, auto function) -> value<function_tag> {
+auto value_for_function::make(Environment& env, auto function) -> value_of<function_tag> {
 	auto [ callback, data ] = make_callback_storage(env, make_free_function<Environment>(std::move(function).callback));
-	auto make = [ & ](void* data) -> value<function_tag> {
-		return value<function_tag>::from(napi::invoke(napi_create_function, napi_env{env}, function.name.data(), function.name.length(), callback, data));
+	auto make = [ & ](void* data) -> value_of<function_tag> {
+		return value_of<function_tag>::from(napi::invoke(napi_create_function, napi_env{env}, function.name.data(), function.name.length(), callback, data));
 	};
 	if constexpr (requires { typename decltype(data)::element_type; }) {
 		// Function requires finalizer
 		auto function = make(data.get());
-		return apply_finalizer(std::move(data), [ & ](auto* data, napi_finalize finalize, void* hint) -> value<function_tag> {
+		return apply_finalizer(std::move(data), [ & ](auto* data, napi_finalize finalize, void* hint) -> value_of<function_tag> {
 			napi::invoke0(napi_add_finalizer, napi_env{env}, function, data, finalize, hint, nullptr);
 			return function;
 		});

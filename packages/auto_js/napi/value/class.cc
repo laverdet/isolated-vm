@@ -10,7 +10,7 @@ namespace js::napi {
 
 template <class Type>
 template <class... Args>
-auto value_for_class_of<Type>::construct(auto& env, Args&&... args) const -> value<object_tag>
+auto value_for_class_of<Type>::construct(auto& env, Args&&... args) const -> value_of<object_tag>
 	requires std::constructible_from<Type, Args...> {
 	// NOLINTNEXTLINE(readability-simplify-boolean-expr)
 	if (false) {
@@ -27,7 +27,7 @@ auto value_for_class_of<Type>::runtime_construct(
 	auto& env,
 	std::tuple<HostArgs...> host_args,
 	std::tuple<RuntimeArgs...> runtime_args
-) const -> value<object_tag>
+) const -> value_of<object_tag>
 	requires std::constructible_from<Type, HostArgs...> {
 	const auto [... indices ] = util::sequence<sizeof...(HostArgs)>;
 	// NOLINTNEXTLINE(bugprone-use-after-move)
@@ -37,7 +37,7 @@ auto value_for_class_of<Type>::runtime_construct(
 
 template <class Type>
 template <class... Args>
-auto value_for_class_of<Type>::transfer_construct(auto& env, auto instance, std::tuple<Args...> runtime_args) const -> value<object_tag> {
+auto value_for_class_of<Type>::transfer_construct(auto& env, auto instance, std::tuple<Args...> runtime_args) const -> value_of<object_tag> {
 	using element_type = decltype(instance)::element_type;
 	auto construct = [ & ](napi_value this_arg) mutable -> napi_value {
 		// Tag `this_arg`
@@ -53,16 +53,16 @@ auto value_for_class_of<Type>::transfer_construct(auto& env, auto instance, std:
 	// Now an external (of `internal_constructor`) gets passed to JavaScript for a moment and
 	// hopefully it jumps into `construct`
 	auto construct_ref = internal_constructor{construct};
-	auto* construct_external = napi_value{value<external_tag>::make(env, &construct_ref)};
+	auto* construct_external = napi_value{value_of<external_tag>::make(env, &construct_ref)};
 	auto [... runtime_arg_values ] = js::transfer_in_strict<std::array<napi_value, sizeof...(Args)>>(std::move(runtime_args), env);
 	auto arg_vector = std::array{construct_external, runtime_arg_values...};
 	auto* this_arg = napi::invoke(napi_new_instance, napi_env{env}, napi_value{*this}, arg_vector.size(), arg_vector.data());
-	return value<object_tag>::from(this_arg);
+	return value_of<object_tag>::from(this_arg);
 }
 
 template <class Type>
 template <class Environment>
-auto value_for_class_of<Type>::make(Environment& env, const auto& class_template) -> value<class_tag_of<Type>> {
+auto value_for_class_of<Type>::make(Environment& env, const auto& class_template) -> value_of<class_tag_of<Type>> {
 	// Make constructor callback
 	auto [ construct_ptr, constructor_data ] =
 		make_callback_storage(env, make_constructor_function<Environment, Type>(class_template.constructor.function));
@@ -134,7 +134,7 @@ auto value_for_class_of<Type>::make(Environment& env, const auto& class_template
 		property_descriptors.size(),
 		property_descriptors.data()
 	);
-	return js::napi::value<class_tag_of<Type>>::from(result);
+	return js::napi::value_of<class_tag_of<Type>>::from(result);
 }
 
 } // namespace js::napi

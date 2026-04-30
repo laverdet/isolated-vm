@@ -139,11 +139,11 @@ class canvas {
 		auto get_created_at() const -> js::js_clock::time_point { return created_at_; }
 
 		// Static factory — called as Canvas.create(name) from JavaScript.
-		static auto create(environment& env, std::u8string name) -> js::forward<js::napi::value<js::object_tag>> {
+		static auto create(environment& env, std::u8string name) -> js::forward<js::napi::value_of<js::object_tag>> {
 			return js::forward{canvas::class_template(env).construct(env, std::move(name))};
 		}
 
-		static auto class_template(environment& env) -> js::napi::value<js::class_tag_of<canvas>> {
+		static auto class_template(environment& env) -> js::napi::value_of<js::class_tag_of<canvas>> {
 			return env.class_template(
 				std::type_identity<canvas>{},
 				js::class_template{

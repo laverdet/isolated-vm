@@ -120,7 +120,7 @@ auto make_promise(Environment& env, auto... dispatch) {
 	auto resolve = resolver{env, deferred, std::move(dispatch)...};
 
 	// `[ promise, resolver ]`
-	return std::tuple{value<promise_tag>::from(promise), std::move(resolve)};
+	return std::tuple{value_of<promise_tag>::from(promise), std::move(resolve)};
 }
 
 } // namespace js::napi

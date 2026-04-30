@@ -49,7 +49,7 @@ export class subscriber_capability;
 
 export class module_handle {
 	private:
-		using callback_type = js::forward<js::napi::value<js::function_tag>>;
+		using callback_type = js::forward<js::napi::value_of<js::function_tag>>;
 
 	public:
 		using transfer_type = js::tagged_external<module_handle>;
@@ -57,19 +57,19 @@ export class module_handle {
 
 		auto agent() -> auto& { return agent_; }
 
-		auto evaluate(environment& env, realm_handle& realm) -> js::forward<js::napi::value<>>;
-		auto link(environment& env, realm_handle& realm, module_handle_link_record link_record) -> js::forward<js::napi::value<>>;
+		auto evaluate(environment& env, realm_handle& realm) -> js::forward<js::napi::value_of<>>;
+		auto link(environment& env, realm_handle& realm, module_handle_link_record link_record) -> js::forward<js::napi::value_of<>>;
 
 		static auto compile(
 			agent_handle& agent,
 			environment& env,
 			js::string_t source_text,
 			compile_module_options options
-		) -> js::forward<js::napi::value<>>;
+		) -> js::forward<js::napi::value_of<>>;
 
-		static auto create_capability(realm_handle& realm, environment& env, callback_type make_capability, create_capability_options options) -> js::forward<js::napi::value<>>;
+		static auto create_capability(realm_handle& realm, environment& env, callback_type make_capability, create_capability_options options) -> js::forward<js::napi::value_of<>>;
 
-		static auto class_template(environment& env) -> js::napi::value<class_tag_of<module_handle>>;
+		static auto class_template(environment& env) -> js::napi::value_of<class_tag_of<module_handle>>;
 
 	private:
 		agent_handle agent_;
@@ -90,10 +90,10 @@ export class subscriber_capability {
 		explicit subscriber_capability(private_constructor /*private*/) {};
 		auto accept_callback(callback_type callback) -> void;
 		auto take_subscriber() -> std::shared_ptr<subscriber>;
-		auto send(environment& env, js::forward<napi::value<>> message_local) -> bool;
-		static auto make(environment& env) -> js::napi::value<js::object_tag>;
+		auto send(environment& env, js::forward<napi::value_of<>> message_local) -> bool;
+		static auto make(environment& env) -> js::napi::value_of<js::object_tag>;
 
-		static auto class_template(environment& env) -> js::napi::value<js::class_tag_of<subscriber_capability>>;
+		static auto class_template(environment& env) -> js::napi::value_of<js::class_tag_of<subscriber_capability>>;
 
 	private:
 		util::lockable<callback_type> callback_;

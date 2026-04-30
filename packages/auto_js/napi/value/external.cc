@@ -10,11 +10,11 @@ namespace js::napi {
 class value_for_external : public value_next<external_tag> {
 	public:
 		// untagged
-		static auto make(auto& env, void* pointer) -> value<external_tag>;
+		static auto make(auto& env, void* pointer) -> value_of<external_tag>;
 
 		// tagged
 		template <class Type>
-		static auto make(auto& env, Type* pointer) -> value<external_tag>;
+		static auto make(auto& env, Type* pointer) -> value_of<external_tag>;
 };
 
 class bound_value_for_external : public bound_value_next<external_tag> {
@@ -27,13 +27,13 @@ class bound_value_for_external : public bound_value_next<external_tag> {
 
 // ---
 
-auto value_for_external::make(auto& env, void* pointer) -> value<external_tag> {
+auto value_for_external::make(auto& env, void* pointer) -> value_of<external_tag> {
 	auto* external = napi::invoke(napi_create_external, napi_env{env}, pointer, nullptr, nullptr);
-	return value<external_tag>::from(external);
+	return value_of<external_tag>::from(external);
 }
 
 template <class Type>
-auto value_for_external::make(auto& env, Type* pointer) -> value<external_tag> {
+auto value_for_external::make(auto& env, Type* pointer) -> value_of<external_tag> {
 	auto external = make(env, static_cast<void*>(pointer));
 	napi::invoke0(napi_type_tag_object, napi_env{env}, external, &type_tag_for<Type>);
 	return external;

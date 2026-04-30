@@ -54,11 +54,11 @@ export class environment
 	public:
 		using napi::environment::environment;
 
-		auto agent_class() -> napi::value<function_tag> { return agent_class_.get(*this); }
-		auto cluster() -> js::iv8::isolated::cluster& { return cluster_; }
-		auto module_class() -> napi::value<function_tag> { return module_class_.get(*this); }
+		auto agent_class() -> napi::value_of<function_tag> { return agent_class_.get(*this); }
+		auto cluster() -> iv8::isolated::cluster& { return cluster_; }
+		auto module_class() -> napi::value_of<function_tag> { return module_class_.get(*this); }
 
-		auto make_initialize() -> napi::value<function_tag>;
+		auto make_initialize() -> napi::value_of<function_tag>;
 
 	private:
 		iv8::isolated::cluster cluster_;

@@ -81,7 +81,7 @@ reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle 
 			return reference_handle{std::move(agent), type_of, std::move(realm), js::iv8::make_shared_remote(lock, value.As<v8::Value>())};
 		}}} {}
 
-auto reference_handle::copy(environment& env) -> js::forward<js::napi::value<>> {
+auto reference_handle::copy(environment& env) -> js::forward<js::napi::value_of<>> {
 	auto [ promise, resolver ] = make_promise(env);
 	switch (typeof_) {
 		case js::typeof_kind::null:
@@ -111,7 +111,7 @@ auto reference_handle::copy(environment& env) -> js::forward<js::napi::value<>> 
 	return js::forward{promise};
 }
 
-auto reference_handle::get(environment& env, js::string_t name) -> js::forward<js::napi::value<>> {
+auto reference_handle::get(environment& env, js::string_t name) -> js::forward<js::napi::value_of<>> {
 	auto [ promise, resolver ] = make_promise(env, [](environment& env, reference_handle reference) -> auto {
 		return js::forward{reference_handle::class_template(env).construct(env, std::move(reference))};
 	});
@@ -167,7 +167,7 @@ auto reference_handle::get(environment& env, js::string_t name) -> js::forward<j
 	return js::forward{promise};
 }
 
-auto reference_handle::set(environment& env, js::string_t name, js::forward<js::napi::value<>> value_local) -> js::forward<js::napi::value<>> {
+auto reference_handle::set(environment& env, js::string_t name, js::forward<js::napi::value_of<>> value_local) -> js::forward<js::napi::value_of<>> {
 	auto value = js::transfer_out<js::value_t>(*value_local, env);
 	auto [ promise, resolver ] = make_promise(env);
 	switch (typeof_) {
@@ -216,7 +216,7 @@ auto reference_handle::set(environment& env, js::string_t name, js::forward<js::
 	return js::forward{promise};
 }
 
-auto reference_handle::invoke(environment& env, js::forward<js::napi::value<list_tag>> params_local) -> js::forward<js::napi::value<>> {
+auto reference_handle::invoke(environment& env, js::forward<js::napi::value_of<list_tag>> params_local) -> js::forward<js::napi::value_of<>> {
 	auto params = js::transfer_out<js::values_vector_t>(*params_local, env);
 	auto [ promise, resolver ] = make_promise(env);
 	if (typeof_ == js::typeof_kind::function) {
@@ -247,7 +247,7 @@ auto reference_handle::invoke(environment& env, js::forward<js::napi::value<list
 	return js::forward{promise};
 }
 
-auto reference_handle::class_template(environment& env) -> js::napi::value<class_tag_of<reference_handle>> {
+auto reference_handle::class_template(environment& env) -> js::napi::value_of<class_tag_of<reference_handle>> {
 	return env.class_template(
 		std::type_identity<reference_handle>{},
 		js::class_template{

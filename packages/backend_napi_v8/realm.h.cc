@@ -16,12 +16,12 @@ export class realm_handle {
 		auto agent() -> auto& { return agent_; }
 		auto realm() -> auto& { return realm_; }
 
-		auto acquire_global_object(environment& env) -> js::forward<js::napi::value<>>;
-		auto instantiate_runtime(environment& env) -> js::forward<js::napi::value<>>;
+		auto acquire_global_object(environment& env) -> js::forward<js::napi::value_of<>>;
+		auto instantiate_runtime(environment& env) -> js::forward<js::napi::value_of<>>;
 
-		static auto create(agent_handle& agent, environment& env) -> js::forward<js::napi::value<>>;
+		static auto create(agent_handle& agent, environment& env) -> js::forward<js::napi::value_of<>>;
 
-		static auto class_template(environment& env) -> js::napi::value<class_tag_of<realm_handle>>;
+		static auto class_template(environment& env) -> js::napi::value_of<class_tag_of<realm_handle>>;
 
 	private:
 		agent_handle agent_;

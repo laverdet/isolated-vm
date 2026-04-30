@@ -30,7 +30,7 @@ export template <const auto& Strings>
 class class_template_references {
 	public:
 		template <class Type>
-		auto class_template(this auto& self, std::type_identity<Type> /*type*/, const auto& class_template) -> napi::value<class_tag_of<Type>> {
+		auto class_template(this auto& self, std::type_identity<Type> /*type*/, const auto& class_template) -> value_of<class_tag_of<Type>> {
 			constexpr auto name_sv = util::make_consteval_string_view(class_template.constructor.name);
 			constexpr auto index = class_template_references_of<Strings>.lookup(name_sv);
 			if constexpr (!index) {
@@ -43,7 +43,7 @@ class class_template_references {
 				static_assert(index, "Class template '"s + name_sv + "' is missing in storage"s);
 			}
 			auto& reference = self.class_template_references_.at(index).second;
-			using value_type = js::napi::value<class_tag_of<Type>>;
+			using value_type = js::napi::value_of<class_tag_of<Type>>;
 			if (reference) {
 				return value_type::from(reference.get(self));
 			} else {

@@ -18,7 +18,7 @@ template <class Type>
 constexpr auto unwrap_member_this = [](auto_environment auto& env, napi_value this_arg) noexcept -> std::optional<tagged_external<Type>> {
 	return napi::invoke_maybe(napi_coerce_to_object, napi_env{env}, this_arg)
 		.and_then([ &env ](napi_value coerced_this_arg) -> std::optional<tagged_external<Type>> {
-			auto as_object = bound_value{env, value<object_tag>::from(coerced_this_arg)};
+			auto as_object = bound_value{env, value_of<object_tag>::from(coerced_this_arg)};
 			// Technically `try_cast` can throw but it should only be in catastrophic cases.
 			Type* unwrapped = as_object.try_cast(type<Type>);
 			if (unwrapped == nullptr) {
@@ -121,7 +121,7 @@ constexpr auto make_constructor_function(auto constructor) {
 							auto instance = std::apply(
 								callback,
 								std::tuple_cat(
-									std::forward_as_tuple(env, value<object_tag>::from(info.this_arg())),
+									std::forward_as_tuple(env, value_of<object_tag>::from(info.this_arg())),
 									js::transfer_out<std::tuple<Args...>>(info.arguments(), env)
 								)
 							);
@@ -141,7 +141,7 @@ constexpr auto make_constructor_function(auto constructor) {
 				using callback_type = decltype(callback);
 				return util::bind{
 					[](callback_type& callback, Environment& env, const callback_info& info) noexcept -> napi_value {
-						return wrap(callback(env, value<object_tag>::from(info.this_arg())));
+						return wrap(callback(env, value_of<object_tag>::from(info.this_arg())));
 					},
 					std::move(callback),
 				};
