@@ -61,21 +61,35 @@ auto module_record::compile(context_lock_witness lock, v8::Local<v8::String> sou
 	});
 }
 
-auto module_record::create_synthetic(context_lock_witness lock, string_span export_names, synthetic_module_action_type action, v8::Local<v8::String> module_name) -> v8::Local<v8::Module> {
-	thread_local v8::Isolate* tl_isolate;
-	thread_local synthetic_module_action_type* tl_synthetic_action;
-	tl_isolate = lock.isolate();
-	tl_synthetic_action = &action;
+auto module_record::create_synthetic(
+	context_lock_witness lock,
+	v8::Local<v8::String> module_name,
+	std::span<const v8::Local<v8::String>> export_names,
+	std::span<const v8::Local<v8::Value>> export_values
+) -> v8::Local<v8::Module> {
+	thread_local std::span<const v8::Local<v8::String>>* tl_export_names;
+	thread_local std::span<const v8::Local<v8::Value>>* tl_export_values;
+	tl_export_names = &export_names;
+	tl_export_values = &export_values;
+	auto scope_exit = util::scope_exit{[ & ]() {
+		tl_export_names = nullptr;
+		tl_export_values = nullptr;
+	}};
 
 	// Make `v8::Module` record with immediate evaluation steps
 	v8::Module::SyntheticModuleEvaluationSteps evaluation_steps =
 		[](v8::Local<v8::Context> context, v8::Local<v8::Module> module) -> v8::MaybeLocal<v8::Value> {
-		auto& action = *tl_synthetic_action;
-		auto isolate_witness = isolate_lock_witness::make_witness(tl_isolate);
-		auto context_witness = context_lock_witness::make_witness(isolate_witness, context);
-		action(context_witness, module);
-		auto resolver = unmaybe(v8::Promise::Resolver::New(context_witness.context()));
-		unmaybe(resolver->Resolve(context, v8::Undefined(context_witness.isolate())));
+		auto lock = [ & ]() -> context_lock_witness {
+			auto isolate_witness = isolate_lock_witness::make_witness(v8::Isolate::GetCurrent());
+			return context_lock_witness::make_witness(isolate_witness, context);
+		}();
+		auto& names = *tl_export_names;
+		auto& values = *tl_export_values;
+		for (auto [ name, value ] : std::views::zip(names, values)) {
+			unmaybe(module->SetSyntheticModuleExport(lock.isolate(), name, value));
+		}
+		auto resolver = unmaybe(v8::Promise::Resolver::New(lock.context()));
+		unmaybe(resolver->Resolve(lock.context(), v8::Undefined(lock.isolate())));
 		return resolver->GetPromise();
 	};
 	auto v8_export_names = v8::MemorySpan<const v8::Local<v8::String>>{export_names.begin(), export_names.end()};
@@ -88,7 +102,6 @@ auto module_record::create_synthetic(context_lock_witness lock, string_span expo
 
 	// `Evaluate` invokes `evaluation_steps` above
 	unmaybe(module_record->Evaluate(lock.context()));
-	tl_synthetic_action = nullptr;
 	return module_record;
 }
 

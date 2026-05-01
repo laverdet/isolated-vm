@@ -27,13 +27,13 @@ runtime_interface::runtime_interface(const js::iv8::isolated::agent_lock& lock) 
 
 auto runtime_interface::instantiate(js::iv8::context_lock_witness lock) -> v8::Local<v8::Module> {
 	auto make_interface = [ & ]() -> auto {
-		return std::vector{
+		return std::array{
 			std::pair{std::string{"clockTime"}, clock_time_->deref(util::slice(lock))},
 			std::pair{std::string{"performanceTime"}, performance_time_->deref(util::slice(lock))},
 		};
 	};
 	auto origin = std::u16string{u"isolated-vm://runtime"};
-	auto interface = js::iv8::module_record::create_synthetic(lock, make_interface(), std::move(origin));
+	auto interface = js::iv8::module_record::create_synthetic(lock, std::move(origin), make_interface());
 	auto runtime = js::iv8::module_record::compile(lock, util::make_consteval_string_view(runtime_dist_interface_js), js::iv8::source_origin{}).value();
 	auto link_record = js::iv8::module_link_record{
 		.modules = {runtime, interface},

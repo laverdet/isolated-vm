@@ -1,30 +1,59 @@
+module;
+#include <cassert>
 module backend_napi_v8;
-import isolated_vm;
+import :lock;
+import :module_;
 import :native_module;
+import isolated_vm;
+import v8_js;
 
 namespace backend_napi_v8 {
 
-native_module_handle::native_module_handle(js::napi::uv_dlib lib, isolated_vm::detail::registration_signature* registration, void* data) :
+native_module_handle::native_module_handle(
+	js::napi::uv_dlib lib,
+	isolated_vm::detail::initialize_addon* initialize,
+	std::u16string origin,
+	std::vector<std::u16string> names
+) :
 		lib_{std::move(lib)},
-		registration_{registration},
-		registration_data_{data} {}
+		initialize_{initialize},
+		origin_{std::move(origin)},
+		names_{std::move(names)} {}
 
-auto native_module_handle::instantiate(environment& env, agent_handle& agent) -> js::forward<js::napi::value_of<>> {
-	auto [ promise, resolver ] = make_promise(env);
-	agent.schedule(
-		[ registration = registration_,
-			registration_data = registration_data_ ](
+auto native_module_handle::instantiate(environment& env, realm_handle& realm) -> js::forward<js::napi::value_of<>> {
+	auto [ promise, resolver ] = make_promise(
+		env,
+		[](environment& env, agent_handle agent, js::iv8::shared_remote<v8::Module> module_record) -> auto {
+			return js::forward{module_handle::class_template(env).construct(env, std::move(agent), std::move(module_record))};
+		}
+	);
+	realm.agent().schedule(
+		[ realm = realm.realm(),
+			names = names_,
+			origin = origin_,
+			initialize = initialize_ ](
 			const agent_handle::lock& lock,
+			agent_handle agent,
 			auto resolver
 		) -> void {
-			auto module_environment = isolated_vm::environment{lock};
-			registration(module_environment, registration_data);
-			resolver.resolve(std::monostate{});
+			context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) mutable -> void {
+				auto addon_environment = isolated_vm::environment{lock};
+				auto module_result = v8::Local<v8::Module>{};
+				auto make = [ & ](std::span<isolated_vm::value_of<>> values) -> void {
+					auto v8_origin = js::transfer_in<v8::Local<v8::String>>(origin, lock);
+					auto v8_names = js::transfer_in<std::vector<v8::Local<v8::String>>>(names, lock);
+					auto v8_values = std::bit_cast<std::span<v8::Local<v8::Value>>>(values);
+					module_result = js::iv8::module_record::create_synthetic(realm, v8_origin, v8_names, v8_values);
+				};
+				initialize(addon_environment, make);
+				assert(module_result != v8::Local<v8::Module>{});
+				resolver(std::move(agent), make_shared_remote(lock, module_result));
+			});
 		},
+		realm.agent(),
 		std::move(resolver)
 	);
 	return js::forward{promise};
-	// auto addon_environment = isolated_vm::environment{env};
 }
 
 auto native_module_handle::class_template(environment& env) -> js::napi::value_of<js::class_tag_of<native_module_handle>> {
@@ -38,7 +67,7 @@ auto native_module_handle::class_template(environment& env) -> js::napi::value_o
 	);
 }
 
-auto native_module_handle::create(environment& env, std::string filename) -> js::forward<js::napi::value_of<>> {
+auto native_module_handle::create(environment& env, std::string filename, std::u16string origin) -> js::forward<js::napi::value_of<>> {
 #if __APPLE__
 	filename += ".dylib";
 #elif _WIN64
@@ -48,16 +77,15 @@ auto native_module_handle::create(environment& env, std::string filename) -> js:
 #endif
 	auto [ promise, resolver ] = make_promise(
 		env,
-		[ filename = std::move(filename) ](environment& env) -> auto {
-			auto [ lib, registration ] = isolated_vm::subscribe_registration([ & ]() -> auto {
+		[ filename = std::move(filename) ](environment& env, std::u16string origin) -> auto {
+			auto [ lib, names, initialize ] = isolated_vm::subscribe_registration([ & ]() -> auto {
 				return js::napi::uv_dlib{filename};
 			});
-			auto [ callback, data ] = registration;
-			auto handle = native_module_handle::class_template(env).construct(env, std::move(lib), callback, data);
+			auto handle = native_module_handle::class_template(env).construct(env, std::move(lib), initialize, std::move(origin), names());
 			return js::forward{handle};
 		}
 	);
-	resolver();
+	resolver(std::move(origin));
 	return js::forward{promise};
 }
 

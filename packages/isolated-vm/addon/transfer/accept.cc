@@ -11,7 +11,7 @@ using namespace js;
 
 struct EXPORT accept_vm_primitive {
 	public:
-		explicit accept_vm_primitive(environment& env) : env_{env} {}
+		explicit accept_vm_primitive(const environment& env) : env_{env} {}
 
 		// undefined
 		auto operator()(undefined_tag tag, visit_holder visit, std::monostate subject) const -> value_of<undefined_tag>;
@@ -93,7 +93,7 @@ struct EXPORT accept_vm_primitive {
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 
 	private:
-		std::reference_wrapper<environment> env_;
+		std::reference_wrapper<const environment> env_;
 };
 
 } // namespace isolated_vm

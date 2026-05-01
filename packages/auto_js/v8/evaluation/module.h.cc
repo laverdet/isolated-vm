@@ -51,7 +51,6 @@ export class module_record : public handle_with_context<v8::Module> {
 	public:
 		using expected_module_type = std::expected<v8::Local<v8::Module>, js::error_value>;
 		using expected_value_type = std::expected<std::monostate, js::error_value>;
-		using synthetic_module_action_type = auto (*)(context_lock_witness, v8::Local<v8::Module>) -> void;
 		using handle_with_context<v8::Module>::handle_with_context;
 
 		static auto evaluate(context_lock_witness lock, v8::Local<v8::Module> module) -> expected_value_type;
@@ -60,13 +59,16 @@ export class module_record : public handle_with_context<v8::Module> {
 		static auto requests(context_lock_witness lock, v8::Local<v8::Module> module) -> std::vector<module_request>;
 
 		static auto compile(context_lock_witness lock, auto source_text, iv8::source_origin origin) -> expected_module_type;
-		static auto create_synthetic(context_lock_witness lock, auto module_interface, auto origin) -> v8::Local<v8::Module>;
+		static auto create_synthetic(context_lock_witness lock, auto origin, auto module_interface) -> v8::Local<v8::Module>;
+		static auto create_synthetic(
+			context_lock_witness lock,
+			v8::Local<v8::String> module_name,
+			std::span<const v8::Local<v8::String>> export_names,
+			std::span<const v8::Local<v8::Value>> export_values
+		) -> v8::Local<v8::Module>;
 
 	private:
-		using string_span = std::span<const v8::Local<v8::String>>;
-
 		static auto compile(context_lock_witness lock, v8::Local<v8::String> source_text, iv8::source_origin origin) -> expected_module_type;
-		static auto create_synthetic(context_lock_witness lock, string_span export_names, synthetic_module_action_type action, v8::Local<v8::String> module_name) -> v8::Local<v8::Module>;
 };
 
 // ---
@@ -76,32 +78,17 @@ auto module_record::compile(context_lock_witness lock, auto source_text, iv8::so
 	return compile(lock, local_source_text, std::move(origin));
 }
 
-auto module_record::create_synthetic(context_lock_witness lock, auto module_interface, auto origin) -> v8::Local<v8::Module> {
+auto module_record::create_synthetic(context_lock_witness lock, auto origin, auto module_interface) -> v8::Local<v8::Module> {
 	auto origin_local = js::transfer_in_strict<v8::Local<v8::String>>(std::move(origin), lock);
 	auto name_locals = std::vector<v8::Local<v8::String>>{};
+	name_locals.reserve(module_interface.size());
 	auto export_locals = std::vector<v8::Local<v8::Value>>{};
+	export_locals.reserve(module_interface.size());
 	for (auto& [ key, value ] : module_interface) {
 		name_locals.push_back(js::transfer_in_strict<v8::Local<v8::String>>(std::move(key), lock));
 		export_locals.push_back(js::transfer_strict<v8::Local<v8::Value>>(std::move(value), std::forward_as_tuple(lock), std::forward_as_tuple(lock)));
 	}
-
-	auto callback = [ & ](context_lock_witness lock, v8::Local<v8::Module> module) -> void {
-		for (const auto& [ key, value ] : std::views::zip(name_locals, export_locals)) {
-			unmaybe(module->SetSyntheticModuleExport(lock.isolate(), key, value));
-		}
-	};
-
-	using callback_type = decltype(callback);
-	thread_local callback_type* tl_callback;
-	tl_callback = &callback;
-
-	synthetic_module_action_type action = [](context_lock_witness lock, v8::Local<v8::Module> module) -> void {
-		auto& callback = *tl_callback;
-		callback(lock, module);
-	};
-	auto module_ = create_synthetic(lock, std::span{name_locals}, action, origin_local);
-	tl_callback = nullptr;
-	return module_;
+	return create_synthetic(lock, origin_local, std::span{name_locals}, std::span{export_locals});
 }
 
 } // namespace js::iv8

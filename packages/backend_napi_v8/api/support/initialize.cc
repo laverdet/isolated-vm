@@ -5,21 +5,23 @@ namespace isolated_vm {
 
 #if EXPORT_IS_EXPORT
 
-inline thread_local detail::registration_signature* registration_callback = nullptr;
-inline thread_local void* registration_data = nullptr;
+inline thread_local detail::make_addon_names* names_registration_callback = nullptr;
+inline thread_local detail::initialize_addon* exports_registration_callback = nullptr;
 
 export inline auto subscribe_registration(auto invoke) -> auto {
 	auto result = invoke();
-	auto callback = std::exchange(registration_callback, {});
-	if (callback == nullptr) {
+	auto names_callback = std::exchange(names_registration_callback, {});
+	auto exports_callback = std::exchange(exports_registration_callback, {});
+	if (names_callback == nullptr || exports_callback == nullptr) {
 		throw js::runtime_error{u"isolated-vm 'NativeModule' did not register"};
+	} else {
+		return std::tuple{invoke(), names_callback, exports_callback};
 	}
-	return std::tuple{invoke(), std::tuple{callback, std::exchange(registration_data, nullptr)}};
 }
 
-auto addon::register_addon(detail::registration_signature* initialize, void* data) -> void {
-	registration_callback = initialize;
-	registration_data = data;
+auto addon::register_addon(detail::make_addon_names* names, detail::initialize_addon* initialize) -> void {
+	names_registration_callback = names;
+	exports_registration_callback = initialize;
 }
 
 #endif

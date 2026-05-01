@@ -49,7 +49,7 @@ auto module_handle::compile(
 			auto specifier = origin.name;
 			auto maybe_module_data = context_scope_operation(lock, lock->scratch_context(), [ & ](const realm_scope& lock) -> auto {
 				auto maybe_module = js::iv8::module_record::compile(lock, std::move(source_text), std::move(origin));
-				return std::move(maybe_module).transform([ & ](v8::Local<v8::Module> module_record) {
+				return std::move(maybe_module).transform([ & ](v8::Local<v8::Module> module_record) -> auto {
 					auto shared_module = make_shared_remote(lock, module_record);
 					auto requests = js::iv8::module_record::requests(lock, module_record);
 					auto module_ = module_handle{std::move(agent), shared_module};
@@ -206,7 +206,7 @@ auto module_handle::create_capability(
 					}),
 			};
 			auto module_record = context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) mutable -> auto {
-				return js::iv8::module_record::create_synthetic(realm, std::move(capability_interface), std::move(options).origin);
+				return js::iv8::module_record::create_synthetic(realm, std::move(options).origin, std::move(capability_interface));
 			});
 			resolver(module_handle{std::move(agent), make_shared_remote(lock, std::move(module_record))});
 		},
