@@ -163,7 +163,7 @@ struct accept_napi_value : accept_basic_napi_value {
 
 		// function
 		template <class Callback>
-		auto operator()(function_tag /*tag*/, visit_holder /*visit*/, js::free_function<Callback> subject) const -> value_of<function_tag> {
+		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, js::free_function<Callback> subject) const -> value_of<function_tag> {
 			return value_of<function_tag>::make(environment(), std::forward<decltype(subject)>(subject));
 		}
 

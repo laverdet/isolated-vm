@@ -14,7 +14,7 @@ struct visit_tuple_of {
 		constexpr explicit visit_tuple_of(auto* transfer) :
 				visit_{[ = ]() constexpr -> visitors_type {
 					const auto [... indices ] = util::sequence<sizeof...(Types)>;
-					return {util::elide(util::constructor<std::tuple_element_t<indices, visitors_type>>, transfer)...};
+					return {util::elide{util::constructor<std::tuple_element_t<indices, visitors_type>>, transfer}...};
 				}()} {}
 
 		template <std::size_t Index, class Accept>

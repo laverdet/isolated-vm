@@ -107,6 +107,11 @@ auto accept_value::operator()(error_tag /*tag*/, visit_holder /*visit*/, const j
 	return js::referenceable_value{error.As<v8::Object>()};
 }
 
+// function
+auto accept_value::operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::FunctionTemplate> subject) const -> v8::Local<v8::Function> {
+	return unmaybe(subject->GetFunction(context_));
+}
+
 // data blocks
 auto accept_value::operator()(array_buffer_tag /*tag*/, visit_holder /*visit*/, js::array_buffer subject) const
 	-> js::referenceable_value<v8::Local<v8::ArrayBuffer>> {

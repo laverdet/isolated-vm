@@ -161,4 +161,14 @@ auto context_scope_operation(const isolate_lock_witness_of<Agent, Implements...>
 	return operation(witness);
 }
 
+template <class Agent, class... Implements>
+auto revive_lock_of(isolate_lock_witness lock, void* agent) -> isolate_lock_witness_of<Agent, Implements...> {
+	return isolate_lock_witness_of<Agent, Implements...>{lock, *static_cast<Agent*>(agent)};
+}
+
+template <class Agent, class... Implements>
+auto revive_lock_of(context_lock_witness lock, void* agent) -> context_lock_witness_of<Agent, Implements...> {
+	return context_lock_witness_of<Agent, Implements...>{lock, *static_cast<Agent*>(agent)};
+}
+
 } // namespace js::iv8

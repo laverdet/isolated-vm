@@ -198,7 +198,7 @@ auto module_handle::create_capability(
 						auto [ key, value ] = std::move(pair);
 						auto fn_template = std::visit(
 							[ & ](auto capability) -> auto {
-								return js::iv8::function_template::make(lock, std::move(capability));
+								return js::transfer_in<v8::Local<v8::FunctionTemplate>>(std::move(capability), lock);
 							},
 							std::move(value)
 						);

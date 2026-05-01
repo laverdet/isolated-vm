@@ -8,7 +8,7 @@ import v8;
 namespace js::iv8 {
 
 // Make callback for plain free function
-export template <class Lock>
+template <class Lock>
 constexpr auto make_free_function(auto function) {
 	constexpr auto make_with_try_catch =
 		[]<std::constructible_from<Lock> LockAs, class... Args, bool Nx, class Result>(

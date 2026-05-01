@@ -64,6 +64,11 @@ constexpr auto tag_to_v8_fn = util::overloaded{
 	[](typed_array_tag_of<std::uint32_t> /*tag*/) -> std::type_identity<v8::Uint32Array> { return {}; },
 	[](typed_array_tag_of<std::uint64_t> /*tag*/) -> std::type_identity<v8::BigUint64Array> { return {}; },
 	[](typed_array_tag_of<std::uint8_t> /*tag*/) -> std::type_identity<v8::Uint8Array> { return {}; },
+
+	// templates
+	[](function_prototype_tag /*tag*/) -> std::type_identity<v8::FunctionTemplate> { return {}; },
+	[](object_prototype_tag /*tag*/) -> std::type_identity<v8::ObjectTemplate> { return {}; },
+	[](prototype_tag /*tag*/) -> std::type_identity<v8::Template> { return {}; },
 };
 
 constexpr auto v8_to_tag_fn = util::overloaded{
@@ -111,6 +116,11 @@ constexpr auto v8_to_tag_fn = util::overloaded{
 	[](std::type_identity<v8::Uint32Array> /*type*/) -> typed_array_tag_of<std::uint32_t> { return {}; },
 	[](std::type_identity<v8::Uint8Array> /*type*/) -> typed_array_tag_of<std::uint8_t> { return {}; },
 	[](std::type_identity<v8::Uint8ClampedArray> /*type*/) -> typed_array_tag_of<std::byte> { return {}; },
+
+	// templates
+	[](std::type_identity<v8::FunctionTemplate> /*type*/) -> function_prototype_tag { return {}; },
+	[](std::type_identity<v8::ObjectTemplate> /*type*/) -> object_prototype_tag { return {}; },
+	[](std::type_identity<v8::Template> /*type*/) -> prototype_tag { return {}; },
 };
 
 export template <class Tag>

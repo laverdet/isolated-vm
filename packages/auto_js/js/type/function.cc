@@ -19,7 +19,7 @@ template <class Function>
 struct visit<void, free_function<Function>> {
 		template <class Accept>
 		constexpr auto operator()(auto&& function, const Accept& accept) const -> accept_target_t<Accept> {
-			return accept(function_tag{}, *this, std::forward<decltype(function)>(function));
+			return accept(function_prototype_tag{}, *this, std::forward<decltype(function)>(function));
 		}
 
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }

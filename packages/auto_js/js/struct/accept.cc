@@ -75,11 +75,11 @@ struct accept_struct_properties<Meta, Type, js::struct_template<Property...>> {
 		explicit constexpr accept_struct_properties(auto* transfer) :
 				properties{[ = ]() -> properties_type {
 					const auto [... indices ] = util::sequence<sizeof...(Property)>;
-					return {util::elide(
+					return {util::elide{
 						util::constructor<accept_object_property<Meta, Property...[ indices ]>>,
 						transfer,
 						std::get<indices>(descriptor_type::properties)
-					)...};
+					}...};
 				}()} {}
 
 		constexpr auto operator()(undefined_tag /*tag*/, auto& /*visit*/, const auto& /*subject*/) const -> Type

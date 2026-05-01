@@ -7,13 +7,6 @@ import v8;
 
 namespace js::iv8 {
 
-template <class Agent, class... Implements>
-auto revive_lock_of(v8::Isolate* isolate, void* agent) -> context_lock_witness_of<Agent, Implements...> {
-	auto isolate_witness = isolate_lock_witness::make_witness(isolate);
-	auto context_witness = context_lock_witness::make_witness(isolate_witness, isolate_witness.isolate()->GetCurrentContext());
-	return context_lock_witness_of<Agent, Implements...>{context_witness, *static_cast<Agent*>(agent)};
-}
-
 // Converts any invocable into a `v8::FunctionCallback` and `v8::Value` (data value). The data value
 // may have an attached weak ref callback. This is structured a bit differently from the napi
 // version, because in pure v8 it makes more sense to attach the "finalizer" to the function data
@@ -29,7 +22,8 @@ auto make_callback_storage(const isolate_lock_witness_of<Agent, Implements...>& 
 			auto external_data = v8::External::New(lock.isolate(), std::addressof(*lock));
 			const auto callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
 				auto invoke = function_type{};
-				auto lock = revive_lock_of<Agent, Implements...>(info.GetIsolate(), info.Data().As<v8::External>()->Value());
+				auto witness = context_lock_witness::from_isolate(isolate_lock_witness::make_witness(info.GetIsolate()));
+				auto lock = revive_lock_of<Agent, Implements...>(witness, info.Data().As<v8::External>()->Value());
 				invoke(lock, info);
 			}};
 			return std::tuple{callback, external_data};
@@ -37,7 +31,8 @@ auto make_callback_storage(const isolate_lock_witness_of<Agent, Implements...>& 
 			// Trivial data-only function type. `Data()` is a latin1 string containing the agent & function data.
 			auto trampoline = util::bind{
 				[](Agent& agent, function_type& invoke, v8::Isolate* isolate, const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
-					auto lock = revive_lock_of<Agent, Implements...>(isolate, &agent);
+					auto witness = context_lock_witness::from_isolate(isolate_lock_witness::make_witness(isolate));
+					auto lock = revive_lock_of<Agent, Implements...>(witness, &agent);
 					invoke(lock, info);
 				},
 				std::ref(*lock),
@@ -61,7 +56,8 @@ auto make_callback_storage(const isolate_lock_witness_of<Agent, Implements...>& 
 		auto external = make_collected_external<pair_type>(lock, std::addressof(*lock), std::move(function));
 		const auto callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
 			auto& state = unwrap_collected_external<pair_type>(info.Data().As<v8::External>());
-			auto lock = revive_lock_of<Agent, Implements...>(info.GetIsolate(), state.first);
+			auto witness = context_lock_witness::from_isolate(isolate_lock_witness::make_witness(info.GetIsolate()));
+			auto lock = revive_lock_of<Agent, Implements...>(witness, state.first);
 			state.second(lock, info);
 		}};
 		return std::tuple{callback, external};

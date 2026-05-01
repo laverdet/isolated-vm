@@ -15,11 +15,12 @@ struct con_tag_of : Tag {
 
 export namespace js {
 
-struct value_tag {
+struct datum_tag {
 		using tag_type = void;
 };
+
+struct value_tag : tag_of<datum_tag> {};
 struct primitive_tag : tag_of<value_tag> {};
-struct function_tag : tag_of<primitive_tag> {};
 
 // null & undefined
 struct null_tag : tag_of<primitive_tag> {};
@@ -52,10 +53,16 @@ struct object_tag : tag_of<value_tag> {};
 struct error_tag : tag_of<object_tag> {};
 struct external_tag : tag_of<object_tag> {};
 
-// classes
+// functions & classes
+struct function_tag : tag_of<primitive_tag> {};
 struct class_tag : tag_of<object_tag> {};
 template <class Type>
 struct class_tag_of : tag_of<class_tag> {};
+
+// prototypes (v8 template)
+struct prototype_tag : tag_of<datum_tag> {};
+struct object_prototype_tag : tag_of<prototype_tag> {};
+struct function_prototype_tag : tag_of<prototype_tag> {};
 
 // Continuous packed array-like with integer keys and known (at runtime) length. Generally
 // `arguments` or "trusted" arrays.

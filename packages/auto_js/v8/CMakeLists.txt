@@ -22,7 +22,6 @@ target_sources(v8_js
 		value/array_buffer.cc
 		value/array.cc
 		value/fixed_array.cc
-		value/function.cc
 		value/object.cc
 		value/primitive.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
@@ -59,7 +58,6 @@ target_sources(v8_js
 		value/array.h.cc
 		value/callback_info.cc
 		value/fixed_array.h.cc
-		value/function.h.cc
 		value/handle.cc
 		value/object.h.cc
 		value/primitive.h.cc

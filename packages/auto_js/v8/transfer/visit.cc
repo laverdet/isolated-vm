@@ -217,13 +217,13 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 			return accept_tagged(subject, accept);
 		}
 
-		// promise
+		// promise (cannot be accepted)
 		template <class Accept>
 		auto immediate(v8::Local<v8::Promise> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept(promise_tag{}, *this, subject);
 		}
 
-		// function
+		// function (cannot be accepted)
 		template <class Accept>
 		auto immediate(v8::Local<v8::Function> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept(function_tag{}, *this, subject);
@@ -379,13 +379,30 @@ struct visit_value : visit_flat_value<Target> {
 		context_lock_witness context_lock_;
 };
 
+// Template visitor needs no lock. The acceptor will instantiate values.
+struct visit_template {
+		explicit visit_template(auto* /*transfer*/) {}
+
+		template <class Accept>
+		auto operator()(v8::Local<v8::FunctionTemplate> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(function_prototype_tag{}, *this, subject);
+		}
+
+		template <class Accept>
+		auto operator()(v8::Local<v8::ObjectTemplate> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(object_prototype_tag{}, *this, subject);
+		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+};
+
 } // namespace js::iv8
 
 namespace js {
 
 // Name visitor (string + symbol)
 template <class Meta, class Type>
-	requires std::is_base_of_v<primitive_tag, iv8::v8_to_tag<Type>>
+	requires std::is_base_of_v<v8::Primitive, Type>
 struct visit<Meta, v8::Local<Type>> : iv8::visit_uncached_flat_value_with<Meta> {
 		using iv8::visit_uncached_flat_value_with<Meta>::visit_uncached_flat_value_with;
 };
@@ -394,6 +411,13 @@ struct visit<Meta, v8::Local<Type>> : iv8::visit_uncached_flat_value_with<Meta> 
 template <class Meta, class Type>
 struct visit<Meta, v8::Local<Type>> : iv8::visit_value_with<Meta> {
 		using iv8::visit_value_with<Meta>::visit_value_with;
+};
+
+// Template visitor
+template <class Meta, class Type>
+	requires std::is_base_of_v<v8::Template, Type>
+struct visit<Meta, v8::Local<Type>> : iv8::visit_template {
+		using iv8::visit_template::visit_template;
 };
 
 // `arguments` visitor

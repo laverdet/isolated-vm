@@ -1,5 +1,6 @@
 export module v8_js:accept;
 import :array_buffer;
+import :callback_storage;
 import :hash;
 import :lock;
 import :primitive;
@@ -11,6 +12,10 @@ import util;
 import v8;
 
 namespace js::iv8 {
+
+// Forward declaration from :callback
+template <class Lock>
+constexpr auto make_free_function(auto function);
 
 // Reference acceptor
 struct reaccept_value {
@@ -92,11 +97,6 @@ struct accept_primitive {
 			return (*this)(tag, visit, std::basic_string<Char>{std::forward<decltype(subject)>(subject)});
 		}
 
-		// function (instantiated in visitor)
-		auto operator()(function_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::Function> subject) const -> v8::Local<v8::Function> {
-			return subject;
-		}
-
 		// extras
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 
@@ -120,12 +120,6 @@ struct accept_value : accept_primitive {
 		[[nodiscard]] auto witness() const -> context_lock_witness {
 			auto isolate_lock = isolate_lock_witness::make_witness(isolate());
 			return context_lock_witness::make_witness(isolate_lock, context_);
-		}
-
-		// hacky function template acceptor
-		// NOLINTNEXTLINE(bugprone-derived-method-shadowing-base-method)
-		auto operator()(function_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::Function> value) const -> v8::Local<v8::Function> {
-			return value;
 		}
 
 		// bigint (why does `NewFromWords` need a context?)
@@ -162,6 +156,9 @@ struct accept_value : accept_primitive {
 			-> js::referenceable_value<v8::Local<v8::Object>> {
 			return (*this)(tag, visit, js::error_value{subject});
 		}
+
+		// function
+		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::FunctionTemplate> subject) const -> v8::Local<v8::Function>;
 
 		// array
 		auto operator()(this const auto& self, list_tag /*tag*/, auto& visit, auto&& subject)
@@ -241,12 +238,34 @@ struct accept_value : accept_primitive {
 		v8::Local<v8::Context> context_;
 };
 
+// Acceptor with template environment
+template <class Meta, class Environment>
+struct accept_template;
+
+template <class Meta, class Agent, class... Implements>
+struct accept_template<Meta, isolate_lock_witness_of<Agent, Implements...>> : accept_primitive {
+	public:
+		explicit accept_template(auto* /*transfer*/, const isolate_lock_witness_of<Agent, Implements...>& lock) :
+				accept_primitive{lock},
+				lock_{lock} {}
+
+		// function template
+		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, auto subject) const -> v8::Local<v8::FunctionTemplate> {
+			using lock_type = const context_lock_witness_of<Agent, Implements...>&;
+			auto [ callback, data ] = make_callback_storage(lock_.get(), make_free_function<lock_type>(std::move(subject).callback));
+			return v8::FunctionTemplate::New(lock_.get().isolate(), callback, data, v8::Local<v8::Signature>{}, 0, v8::ConstructorBehavior::kThrow);
+		}
+
+	private:
+		std::reference_wrapper<const isolate_lock_witness_of<Agent, Implements...>> lock_;
+};
+
 } // namespace js::iv8
 
 namespace js {
 
 template <class Type>
-	requires std::is_base_of_v<primitive_tag, iv8::v8_to_tag<Type>>
+	requires std::is_base_of_v<v8::Primitive, Type>
 struct accept<void, v8::Local<Type>> : iv8::accept_primitive {
 		using accept_primitive::accept_primitive;
 };
@@ -254,6 +273,12 @@ struct accept<void, v8::Local<Type>> : iv8::accept_primitive {
 template <class Type>
 struct accept<void, v8::Local<Type>> : iv8::accept_value {
 		using accept_value::accept_value;
+};
+
+template <class Meta, class Type>
+	requires std::is_base_of_v<v8::Template, Type>
+struct accept<Meta, v8::Local<Type>> : iv8::accept_template<Meta, typename Meta::accept_context_type> {
+		using iv8::accept_template<Meta, typename Meta::accept_context_type>::accept_template;
 };
 
 // A `MaybeLocal` also accepts `undefined`, similar to `std::optional`.

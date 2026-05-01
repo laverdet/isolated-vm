@@ -21,15 +21,15 @@ auto performance_time(js::iv8::context_lock_witness /*lock*/) -> double {
 }
 
 runtime_interface::runtime_interface(const js::iv8::isolated::agent_lock& lock) :
-		clock_time_{make_unique_remote(lock, js::iv8::function_template::make(lock, js::free_function{clock_time}))},
-		performance_time_{make_unique_remote(lock, js::iv8::function_template::make(lock, js::free_function{performance_time}))} {
+		clock_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{clock_time}, lock))},
+		performance_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{performance_time}, lock))} {
 }
 
 auto runtime_interface::instantiate(js::iv8::context_lock_witness lock) -> v8::Local<v8::Module> {
 	auto make_interface = [ & ]() -> auto {
-		return std::array{
-			std::pair{std::string{"clockTime"}, clock_time_->deref(util::slice(lock))},
-			std::pair{std::string{"performanceTime"}, performance_time_->deref(util::slice(lock))},
+		return std::tuple{
+			std::pair{util::cw<"clockTime">, clock_time_->deref(util::slice(lock))},
+			std::pair{util::cw<"performanceTime">, performance_time_->deref(util::slice(lock))},
 		};
 	};
 	auto origin = std::u16string{u"isolated-vm://runtime"};

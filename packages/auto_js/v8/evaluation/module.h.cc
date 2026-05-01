@@ -59,7 +59,16 @@ export class module_record : public handle_with_context<v8::Module> {
 		static auto requests(context_lock_witness lock, v8::Local<v8::Module> module) -> std::vector<module_request>;
 
 		static auto compile(context_lock_witness lock, auto source_text, iv8::source_origin origin) -> expected_module_type;
-		static auto create_synthetic(context_lock_witness lock, auto origin, auto module_interface) -> v8::Local<v8::Module>;
+
+		template <class... Types>
+		static auto create_synthetic(context_lock_witness lock, auto origin, std::tuple<std::in_place_t, Types...> module_interface) -> v8::Local<v8::Module>;
+
+		template <class... Types>
+		static auto create_synthetic(context_lock_witness lock, auto origin, std::tuple<Types...> module_interface) -> v8::Local<v8::Module>;
+
+		template <class Type>
+		static auto create_synthetic(context_lock_witness lock, auto origin, std::vector<Type> module_interface) -> v8::Local<v8::Module>;
+
 		static auto create_synthetic(
 			context_lock_witness lock,
 			v8::Local<v8::String> module_name,
@@ -78,7 +87,23 @@ auto module_record::compile(context_lock_witness lock, auto source_text, iv8::so
 	return compile(lock, local_source_text, std::move(origin));
 }
 
-auto module_record::create_synthetic(context_lock_witness lock, auto origin, auto module_interface) -> v8::Local<v8::Module> {
+template <class... Types>
+auto module_record::create_synthetic(context_lock_witness lock, auto origin, std::tuple<std::in_place_t, Types...> module_interface) -> v8::Local<v8::Module> {
+	auto [... ii ] = util::sequence<sizeof...(Types)>;
+	return create_synthetic(lock, origin, std::tuple{std::get<ii + 1>(module_interface)...});
+}
+
+template <class... Types>
+auto module_record::create_synthetic(context_lock_witness lock, auto origin, std::tuple<Types...> module_interface) -> v8::Local<v8::Module> {
+	const auto& [... entries ] = module_interface;
+	auto origin_local = js::transfer_in_strict<v8::Local<v8::String>>(std::move(origin), lock);
+	auto names = js::transfer_in_strict<std::array<v8::Local<v8::String>, sizeof...(Types)>>(std::tuple{std::get<0>(entries)...}, lock);
+	auto exports = std::array{js::transfer_in_strict<v8::Local<v8::Value>>(std::get<1>(entries), lock)...};
+	return create_synthetic(lock, origin_local, std::span{names}, std::span{exports});
+}
+
+template <class Type>
+auto module_record::create_synthetic(context_lock_witness lock, auto origin, std::vector<Type> module_interface) -> v8::Local<v8::Module> {
 	auto origin_local = js::transfer_in_strict<v8::Local<v8::String>>(std::move(origin), lock);
 	auto name_locals = std::vector<v8::Local<v8::String>>{};
 	name_locals.reserve(module_interface.size());
@@ -86,7 +111,7 @@ auto module_record::create_synthetic(context_lock_witness lock, auto origin, aut
 	export_locals.reserve(module_interface.size());
 	for (auto& [ key, value ] : module_interface) {
 		name_locals.push_back(js::transfer_in_strict<v8::Local<v8::String>>(std::move(key), lock));
-		export_locals.push_back(js::transfer_strict<v8::Local<v8::Value>>(std::move(value), std::forward_as_tuple(lock), std::forward_as_tuple(lock)));
+		export_locals.push_back(js::transfer_in_strict<v8::Local<v8::Value>>(std::move(value), lock));
 	}
 	return create_synthetic(lock, origin_local, std::span{name_locals}, std::span{export_locals});
 }
