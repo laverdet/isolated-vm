@@ -44,8 +44,8 @@ target_sources(isolated_vm
 		api/value/value.cc
 	PUBLIC FILE_SET CXX_MODULES BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/api" FILES
 		api/support/cast.cc
-		api/support/environment.cc
 		api/support/initialize.cc
+		api/support/lock.cc
 )
 
 # Windows linking

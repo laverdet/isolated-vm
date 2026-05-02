@@ -260,7 +260,7 @@ struct visit_value : visit_flat_value<Target> {
 
 		explicit visit_value(auto* transfer, context_lock_witness lock) :
 				visit_type{transfer, lock},
-				context_lock_{lock} {}
+				context_{lock.context()} {}
 		explicit visit_value(auto* transfer, const auto& lock) :
 				visit_value{transfer, context_lock_witness{util::slice(lock)}} {}
 
@@ -291,7 +291,9 @@ struct visit_value : visit_flat_value<Target> {
 		}
 
 		// extras
-		[[nodiscard]] auto witness() const -> auto& { return context_lock_; }
+		[[nodiscard]] auto witness() const {
+			return context_lock_witness::make_witness(visit_type::witness(), context_);
+		}
 
 	protected:
 		// object
@@ -329,7 +331,7 @@ struct visit_value : visit_flat_value<Target> {
 		// function template
 		template <class Accept>
 		auto immediate(v8::Local<v8::FunctionTemplate> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(function_tag{}, *this, unmaybe(subject->GetFunction(context_lock_.context())));
+			return accept(function_tag{}, *this, unmaybe(subject->GetFunction(context_)));
 		}
 
 		// array buffer views (typed arrays, data view)
@@ -371,7 +373,7 @@ struct visit_value : visit_flat_value<Target> {
 		}
 
 	private:
-		context_lock_witness context_lock_;
+		v8::Local<v8::Context> context_;
 };
 
 // Template visitor needs no lock. The acceptor will instantiate values.

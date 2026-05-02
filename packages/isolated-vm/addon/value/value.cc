@@ -3,7 +3,7 @@ module;
 export module isolated_vm:value;
 export import :handle.bound_value;
 export import :handle.value_of;
-export import :support.environment_fwd;
+export import :support.lock_fwd;
 export import :value.primitive;
 
 namespace isolated_vm {
@@ -22,13 +22,13 @@ export enum class value_typeof : std::uint8_t {
 	bigint_i64,
 };
 
-EXPORT auto inspect_type(const environment& env, value_of<value_tag> value) -> value_typeof;
+EXPORT auto inspect_type(const basic_lock& lock, value_of<value_tag> value) -> value_typeof;
 
 // primitives
-EXPORT auto inspect_type(const environment& env, value_of<primitive_tag> value) -> value_typeof;
-EXPORT auto inspect_type(const environment& env, value_of<number_tag> value) -> value_typeof;
-EXPORT auto inspect_type(const environment& env, value_of<name_tag> value) -> value_typeof;
-EXPORT auto inspect_type(const environment& env, value_of<string_tag> value) -> value_typeof;
-EXPORT auto inspect_type(const environment& env, value_of<bigint_tag> value) -> value_typeof;
+EXPORT auto inspect_type(const basic_lock& lock, value_of<primitive_tag> value) -> value_typeof;
+EXPORT auto inspect_type(const basic_lock& lock, value_of<number_tag> value) -> value_typeof;
+EXPORT auto inspect_type(const basic_lock& lock, value_of<name_tag> value) -> value_typeof;
+EXPORT auto inspect_type(const basic_lock& lock, value_of<string_tag> value) -> value_typeof;
+EXPORT auto inspect_type(const basic_lock& lock, value_of<bigint_tag> value) -> value_typeof;
 
 } // namespace isolated_vm

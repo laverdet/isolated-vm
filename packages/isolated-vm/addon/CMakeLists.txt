@@ -8,10 +8,10 @@ target_sources(isolated_vm
 		handle/bound_value.cc
 		handle/types.cc
 		handle/value_of.cc
+		support/initialize.cc
+		support/lock.cc
 		transfer/accept.cc
 		transfer/visit.cc
-		support/environment_fwd.cc
-		support/initialize.cc
 		value/primitive.cc
 		value/value.cc
 )

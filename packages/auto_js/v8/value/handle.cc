@@ -21,7 +21,7 @@ class handle_with_isolate : public v8::Local<Type> {
 		// default-constructible), the isolate is stored.
 		handle_with_isolate() = default;
 		explicit handle_with_isolate(isolate_lock_witness lock, v8::Local<Type> local) :
-				v8::Local<Type>(local),
+				v8::Local<Type>{local},
 				isolate_{lock.isolate()} {}
 
 		[[nodiscard]] auto isolate() const -> v8::Isolate* { return isolate_; }
@@ -33,20 +33,18 @@ class handle_with_isolate : public v8::Local<Type> {
 		v8::Isolate* isolate_{};
 };
 
-// Handle which requires a context (and isolate)
+// Handle which requires a context
 template <class Type>
-class handle_with_context : public handle_with_isolate<Type> {
+class handle_with_context : public v8::Local<Type> {
 	public:
 		handle_with_context() = default;
+		explicit handle_with_context(v8::Local<v8::Context> context, v8::Local<Type> local) :
+				v8::Local<Type>{local},
+				context_{context} {}
 		explicit handle_with_context(context_lock_witness lock, v8::Local<Type> local) :
-				handle_with_isolate<Type>{util::slice(lock), local},
-				context_{lock.context()} {}
+				handle_with_context{lock.context(), local} {}
 
 		[[nodiscard]] auto context() const -> v8::Local<v8::Context> { return context_; }
-		// NOLINTNEXTLINE(bugprone-derived-method-shadowing-base-method)
-		[[nodiscard]] auto witness() const -> context_lock_witness {
-			return context_lock_witness::make_witness(handle_with_isolate<Type>::witness(), context_);
-		}
 
 	private:
 		v8::Local<v8::Context> context_;

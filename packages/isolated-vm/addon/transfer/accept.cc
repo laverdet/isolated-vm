@@ -11,7 +11,7 @@ using namespace js;
 
 struct EXPORT accept_vm_primitive {
 	public:
-		explicit accept_vm_primitive(const environment& env) : env_{env} {}
+		explicit accept_vm_primitive(const basic_lock& lock) : lock_{lock} {}
 
 		// undefined
 		auto operator()(undefined_tag tag, visit_holder visit, std::monostate subject) const -> value_of<undefined_tag>;
@@ -90,10 +90,19 @@ struct EXPORT accept_vm_primitive {
 			return (*this)(tag, visit, Type{std::forward<decltype(subject)>(subject)});
 		}
 
+		[[nodiscard]] auto lock() const -> const basic_lock& { return lock_; }
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 
 	private:
-		std::reference_wrapper<const environment> env_;
+		std::reference_wrapper<const basic_lock> lock_;
+};
+
+struct EXPORT accept_vm_value : accept_vm_primitive {
+		explicit accept_vm_value(const runtime_lock& lock) : accept_vm_primitive{lock} {}
+
+		[[nodiscard]] auto lock() const -> const runtime_lock& {
+			return reinterpret_cast<const runtime_lock&>(accept_vm_primitive::lock());
+		}
 };
 
 } // namespace isolated_vm

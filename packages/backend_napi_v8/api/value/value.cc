@@ -1,22 +1,22 @@
 module isolated_vm;
 import :support.cast;
-import :support.environment;
+import :support.lock;
 import :value;
 import auto_js;
 
 namespace isolated_vm {
 using namespace js;
 
-auto inspect_type(const environment& env, value_of<value_tag> value) -> value_typeof {
+auto inspect_type(const basic_lock& lock, value_of<value_tag> value) -> value_typeof {
 	auto subject = cast_in(value);
 	if (subject->IsPrimitive()) {
-		return inspect_type(env, value_of<primitive_tag>::from(value));
+		return inspect_type(lock, value_of<primitive_tag>::from(value));
 	} else {
 		std::unreachable();
 	}
 }
 
-auto inspect_type(const environment& env, value_of<primitive_tag> value) -> value_typeof {
+auto inspect_type(const basic_lock& lock, value_of<primitive_tag> value) -> value_typeof {
 	auto subject = cast_in(value);
 	if (subject->IsNullOrUndefined()) {
 		if (subject->IsNull()) {
@@ -25,19 +25,19 @@ auto inspect_type(const environment& env, value_of<primitive_tag> value) -> valu
 			return value_typeof::undefined;
 		}
 	} else if (subject->IsNumber()) {
-		return inspect_type(env, value_of<number_tag>::from(value));
+		return inspect_type(lock, value_of<number_tag>::from(value));
 	} else if (subject->IsName()) {
-		return inspect_type(env, value_of<name_tag>::from(value));
+		return inspect_type(lock, value_of<name_tag>::from(value));
 	} else if (subject->IsBoolean()) {
 		return value_typeof::boolean;
 	} else if (subject->IsBigInt()) {
-		return inspect_type(env, value_of<bigint_tag>::from(value));
+		return inspect_type(lock, value_of<bigint_tag>::from(value));
 	} else {
 		std::unreachable();
 	}
 }
 
-auto inspect_type(const environment& /*env*/, value_of<number_tag> value) -> value_typeof {
+auto inspect_type(const basic_lock& /*lock*/, value_of<number_tag> value) -> value_typeof {
 	auto subject = cast_in(value);
 	if (subject->IsInt32()) {
 		return value_typeof::number_i32;
@@ -46,16 +46,16 @@ auto inspect_type(const environment& /*env*/, value_of<number_tag> value) -> val
 	}
 }
 
-auto inspect_type(const environment& env, value_of<name_tag> value) -> value_typeof {
+auto inspect_type(const basic_lock& lock, value_of<name_tag> value) -> value_typeof {
 	auto subject = cast_in(value);
 	if (subject->IsString()) {
-		return inspect_type(env, value_of<string_tag>::from(value));
+		return inspect_type(lock, value_of<string_tag>::from(value));
 	} else {
 		return value_typeof::symbol;
 	}
 }
 
-auto inspect_type(const environment& /*env*/, value_of<string_tag> value) -> value_typeof {
+auto inspect_type(const basic_lock& /*lock*/, value_of<string_tag> value) -> value_typeof {
 	auto subject = cast_in(value);
 	if (subject->IsOneByte()) {
 		return value_typeof::string_latin1;
@@ -64,7 +64,7 @@ auto inspect_type(const environment& /*env*/, value_of<string_tag> value) -> val
 	}
 }
 
-auto inspect_type(const environment& /*env*/, value_of<bigint_tag> value) -> value_typeof {
+auto inspect_type(const basic_lock& /*lock*/, value_of<bigint_tag> value) -> value_typeof {
 	auto subject = cast_in(value);
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	bool lossless;

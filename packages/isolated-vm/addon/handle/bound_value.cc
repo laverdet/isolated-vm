@@ -1,6 +1,6 @@
 export module isolated_vm:handle.bound_value;
 import :handle.types;
-import :support.environment_fwd;
+import :support.lock_fwd;
 
 namespace isolated_vm {
 
@@ -11,17 +11,11 @@ class bound_value_next : public bound_value<typename Tag::tag_type> {
 		using tag_type = Tag;
 		using bound_value<typename Tag::tag_type>::bound_value;
 		bound_value_next() = default;
-		bound_value_next(const environment& env, value_of<Tag> value) :
-				bound_value<typename Tag::tag_type>{env, value},
-				env_{&env} {}
+		bound_value_next(const basic_lock& lock, value_of<Tag> value) :
+				bound_value<typename Tag::tag_type>{lock, value} {}
 
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		operator value_of<Tag>() const { return value_of<Tag>::from(value_handle{*this}); }
-
-		[[nodiscard]] auto environment() const -> const environment& { return *env_; }
-
-	private:
-		const isolated_vm::environment* env_{};
 };
 
 // Member & method implementation for stateful objects. Used internally in visitors.
@@ -38,14 +32,14 @@ template <>
 class bound_value<void> : public value_handle {
 	protected:
 		bound_value() = default;
-		bound_value(const environment& env, value_handle value) :
+		bound_value(const runtime_lock& lock, value_handle value) :
 				value_handle{value},
-				env_{&env} {}
+				lock_{&lock} {}
 
-		[[nodiscard]] auto env() const -> const environment* { return env_; }
+		[[nodiscard]] auto lock() const -> const runtime_lock& { return *lock_; }
 
 	private:
-		const environment* env_{};
+		const runtime_lock* lock_{};
 };
 
 } // namespace isolated_vm

@@ -37,7 +37,7 @@ auto value_for_object::keys() const -> const value_for_array& {
 			v8::IndexFilter::kIncludeIndices,
 			v8::KeyConversionMode::kKeepNumbers
 		);
-		keys_ = value_for_array{witness(), unmaybe(property_names)};
+		keys_ = value_for_array{context(), unmaybe(property_names)};
 	}
 	return keys_;
 }

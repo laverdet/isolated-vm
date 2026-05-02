@@ -37,7 +37,7 @@ auto native_module_handle::instantiate(environment& env, realm_handle& realm) ->
 			auto resolver
 		) -> void {
 			context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) mutable -> void {
-				auto addon_environment = isolated_vm::environment{lock};
+				auto addon_lock = isolated_vm::basic_lock_implementation{lock};
 				auto module_result = v8::Local<v8::Module>{};
 				auto make = [ & ](std::span<isolated_vm::value_of<>> values) -> void {
 					auto v8_origin = js::transfer_in<v8::Local<v8::String>>(origin, lock);
@@ -45,7 +45,7 @@ auto native_module_handle::instantiate(environment& env, realm_handle& realm) ->
 					auto v8_values = std::bit_cast<std::span<v8::Local<v8::Value>>>(values);
 					module_result = js::iv8::module_record::create_synthetic(realm, v8_origin, v8_names, v8_values);
 				};
-				initialize(addon_environment, make);
+				initialize(addon_lock, make);
 				assert(module_result != v8::Local<v8::Module>{});
 				resolver(std::move(agent), make_shared_remote(lock, module_result));
 			});
