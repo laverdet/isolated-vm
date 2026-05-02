@@ -1,9 +1,10 @@
 export module napi_js:value;
+export import :array_buffer;
+export import :array;
+export import :class_;
+export import :external;
+export import :function;
+export import :object;
+export import :primitive;
+export import :record;
 export import :value_handle;
-import :array_buffer;
-import :class_;
-import :external;
-import :function;
-import :object;
-import :primitive;
-import :record;

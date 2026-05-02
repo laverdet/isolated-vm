@@ -1,5 +1,5 @@
 export module isolated_vm:handle.value_of;
-import :handle.types;
+export import :handle.types;
 import auto_js;
 import std;
 

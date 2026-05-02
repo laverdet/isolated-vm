@@ -1,6 +1,7 @@
 module;
 #include "auto_js/export_tag.h"
 export module isolated_vm:value;
+export import :handle.bound_value;
 export import :handle.value_of;
 export import :support.environment_fwd;
 export import :value.primitive;
