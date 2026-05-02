@@ -4,6 +4,7 @@ export import :container.sealed_map;
 export import :container.segmented_priority_queue;
 export import :container.tinker_queue;
 export import :functional;
+export import :functional.flat_tuple;
 export import :memory;
 export import :meta.algorithm;
 export import :platform.lockable;
@@ -12,6 +13,3 @@ export import :platform.timer;
 export import :type_traits;
 export import :utility;
 export import :utility.variant;
-#if __GNUC__ > 14
-export import :functional.flat_tuple;
-#endif
