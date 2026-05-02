@@ -9,7 +9,7 @@ import std;
 namespace js {
 
 // `Meta` type for `visit` implementations
-export template <class Context, class Subject, class Target, class Reference>
+template <class Context, class Subject, class Target, class Reference>
 struct visit_meta_holder {
 		using accept_property_subject_type = Target;
 		using accept_reference_type = Reference;

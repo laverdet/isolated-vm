@@ -45,7 +45,7 @@ struct remote_module_link_record {
 		std::vector<unsigned> payload;
 };
 
-export class subscriber_capability;
+class subscriber_capability;
 
 export class module_handle {
 	private:
@@ -76,7 +76,7 @@ export class module_handle {
 		js::iv8::shared_remote<v8::Module> module_;
 };
 
-export class subscriber_capability {
+class subscriber_capability {
 	private:
 		struct private_constructor {
 				explicit private_constructor() = default;

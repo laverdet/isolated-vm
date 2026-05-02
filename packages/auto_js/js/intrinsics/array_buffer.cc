@@ -6,7 +6,7 @@ import util;
 namespace js {
 
 // "Data block" [6.2.9]. v8 calls it `BackingStore`.
-class data_block {
+export class data_block {
 	public:
 		// NOLINTNEXTLINE(modernize-avoid-c-arrays)
 		using array_type = std::byte[];

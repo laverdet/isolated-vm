@@ -38,7 +38,7 @@ struct throw_completion_record {
 		js::error_value error_;
 };
 
-export template <class Expected>
+template <class Expected>
 struct completion_record : std::expected<normal_completion_record<Expected>, throw_completion_record> {
 		using std::expected<normal_completion_record<Expected>, throw_completion_record>::expected;
 };

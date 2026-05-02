@@ -9,7 +9,7 @@ import util;
 namespace js {
 
 // `Meta` type for `accept` implementations
-export template <class Wrap, class Context, class Subject>
+template <class Wrap, class Context, class Subject>
 struct accept_meta_holder {
 		using accept_context_type = Context;
 		using accept_wrap_type = Wrap;

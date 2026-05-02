@@ -35,7 +35,7 @@ constexpr auto unwrap_member_this = [](auto_environment auto& env, napi_value th
 using internal_constructor = util::function_ref<auto(napi_value)->napi_value>;
 
 // Make callback for plain free function
-export template <auto_environment Environment>
+template <auto_environment Environment>
 constexpr auto make_free_function(auto function) {
 	constexpr auto make_with_try_catch =
 		[]<class Env, class... Args, bool Nx, class Result>(
@@ -85,7 +85,7 @@ constexpr auto make_free_function(auto function) {
 }
 
 // Make callback for constructor invocations
-export template <auto_environment Environment, class Type>
+template <auto_environment Environment, class Type>
 constexpr auto make_constructor_function(auto constructor) {
 	// First, a lambda is created which will actually invoke the supplied constructor function.
 	constexpr auto make_invoke_runtime_constructor = util::overloaded{
@@ -199,7 +199,7 @@ constexpr auto make_constructor_function(auto constructor) {
 };
 
 // Make callback for method invocations
-export template <auto_environment Environment, class Type, class Method>
+template <auto_environment Environment, class Type, class Method>
 constexpr auto make_member_function(Method method) {
 	constexpr auto make_with_try_catch =
 		[]<class That, class Env, class... Args, bool Nx, class Result>(

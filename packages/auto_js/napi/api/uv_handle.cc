@@ -31,7 +31,7 @@ class uv_typed_handle {
 
 // `uv_handle_t` subtype wrapper with uv-owned shared memory. An open handle must be closed before
 // the handle is destroyed or it is UB.
-export template <class Handle, class Type>
+template <class Handle, class Type>
 class uv_handle_of : public util::pointer_facade {
 	private:
 		struct private_constructor {

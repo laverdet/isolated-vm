@@ -27,7 +27,7 @@ class task_runner : public v8::TaskRunner {
 
 // The result of `IdleTasksEnabled` (& co.) will change depending on whether or not `Self`
 // implements `post_idle` (& co.)
-export template <class Self>
+template <class Self>
 class task_runner_of : public task_runner {
 	private:
 		friend Self;

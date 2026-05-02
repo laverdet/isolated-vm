@@ -13,7 +13,7 @@ namespace js::napi {
 // Note: 1 -> 0x1'0000'0000
 const std::uint64_t null_value_handle_data = 0x7f7f'7f7f'7f7f'7f7f;
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
-export auto* const null_value_handle = reinterpret_cast<napi_value>(const_cast<std::uint64_t*>(&null_value_handle_data));
+auto* const null_value_handle = reinterpret_cast<napi_value>(const_cast<std::uint64_t*>(&null_value_handle_data));
 
 // Unwrap the v8 address of the napi handle. This points into the v8 heap.
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
@@ -58,8 +58,8 @@ struct virtual_address_equal_of final : virtual_address_equal {
 		NO_UNIQUE_ADDRESS Address address_;
 };
 
-export using direct_address_equal = virtual_address_equal_of<direct_handle_address>;
-export using indirect_address_equal = virtual_address_equal_of<indirect_handle_address>;
+using direct_address_equal = virtual_address_equal_of<direct_handle_address>;
+using indirect_address_equal = virtual_address_equal_of<indirect_handle_address>;
 
 // Polymorphic address equality operator
 export class address_equal {
@@ -96,7 +96,7 @@ struct address_hash_of final {
 		NO_UNIQUE_ADDRESS std::hash<void*> hash_;
 };
 
-export using direct_address_hash = address_hash_of<direct_handle_address>;
-export using indirect_address_hash = address_hash_of<indirect_handle_address>;
+using direct_address_hash = address_hash_of<direct_handle_address>;
+using indirect_address_hash = address_hash_of<indirect_handle_address>;
 
 } // namespace js::napi

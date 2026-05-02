@@ -38,7 +38,7 @@ template <class Type>
 class value_for_typed_array_of;
 
 // `bound_value` forward declarations
-export template <class Tag>
+template <class Tag>
 class bound_value;
 
 template <class Tag>

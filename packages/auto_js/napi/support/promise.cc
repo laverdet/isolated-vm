@@ -8,7 +8,7 @@ import util;
 namespace js::napi {
 
 // Resolver for `make_promise`
-export template <class Environment, class Dispatch>
+template <class Environment, class Dispatch>
 class resolver {
 	public:
 		resolver(Environment& env, napi_deferred deferred, Dispatch dispatch = {}) :

@@ -31,8 +31,8 @@ class remote_handle : util::non_copyable {
 };
 
 // Required types for `remote_handle_lock`
-export using expired_remote_type = std::unique_ptr<remote_handle, util::derived_delete<remote_handle>>;
-export using reset_handle_type = util::function_ref<auto(expired_remote_type) noexcept -> void>;
+using expired_remote_type = std::unique_ptr<remote_handle, util::derived_delete<remote_handle>>;
+using reset_handle_type = util::function_ref<auto(expired_remote_type) noexcept -> void>;
 
 // "Deleter" for `remote_handle` which actually just forwards the handle to a reset scheduler.
 class remote_handle::expire {
