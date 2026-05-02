@@ -1,6 +1,4 @@
 export module backend_napi_v8:script;
-import :agent;
-import :environment;
 import :realm;
 import auto_js;
 import napi_js;

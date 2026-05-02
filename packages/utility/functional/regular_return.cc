@@ -1,5 +1,4 @@
 export module util:functional.regular_return;
-import :type_traits;
 import :utility;
 import std;
 

@@ -3,7 +3,6 @@ import :api;
 import :bound_value;
 import :environment_fwd;
 import :primitive;
-import :value_handle;
 import std;
 
 namespace js::napi {

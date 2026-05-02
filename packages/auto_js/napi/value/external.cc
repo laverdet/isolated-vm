@@ -2,7 +2,6 @@ export module napi_js:external;
 import :api;
 import :bound_value;
 import :object;
-import :value_handle;
 import std;
 
 namespace js::napi {

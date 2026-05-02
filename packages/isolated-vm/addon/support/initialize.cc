@@ -1,7 +1,6 @@
 module;
 #include "auto_js/export_tag.h"
 export module isolated_vm:support.initialize_fwd;
-import :support.environment_fwd;
 import :value;
 import auto_js;
 import std;

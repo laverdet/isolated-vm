@@ -4,7 +4,6 @@ export import :functional.elide;
 export import :functional.function_constant;
 export import :functional.function_ref;
 export import :functional.regular_return;
-import :type_traits;
 import std;
 
 namespace util {

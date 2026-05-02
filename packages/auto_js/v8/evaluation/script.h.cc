@@ -1,7 +1,6 @@
 export module v8_js:evaluation.script;
 import :accept;
 import :evaluation.origin;
-import :lock;
 import auto_js;
 import std;
 import v8;

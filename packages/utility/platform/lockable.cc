@@ -2,7 +2,6 @@ module;
 #include "auto_js/no_unique_address.h"
 #include <cassert>
 export module util:platform.lockable;
-import :type_traits;
 import :utility;
 import std;
 

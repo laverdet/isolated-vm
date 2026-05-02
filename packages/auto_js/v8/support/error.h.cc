@@ -2,8 +2,6 @@ module;
 #include <cassert>
 export module v8_js:error;
 import :accept;
-import :lock;
-import :unmaybe;
 import auto_js;
 import std;
 import v8;

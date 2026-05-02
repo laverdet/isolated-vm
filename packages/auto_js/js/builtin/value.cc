@@ -4,7 +4,6 @@ export import :intrinsics.bigint;
 export import :intrinsics.date;
 export import :vector.vector_of;
 import :variant.types;
-import :tag;
 import std;
 
 namespace js {

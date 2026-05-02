@@ -1,7 +1,5 @@
 export module napi_js:accept;
-import :api;
 import :container;
-import :environment_fwd;
 import :value;
 import std;
 import util;

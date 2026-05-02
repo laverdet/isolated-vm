@@ -1,6 +1,5 @@
 export module v8_js:array_buffer;
 import :handle;
-import :lock;
 import :value.tag;
 import auto_js;
 import std;

@@ -1,6 +1,4 @@
 export module auto_js:enum_.accept;
-import :enum_.types;
-import :intrinsics.error;
 import :transfer;
 import std;
 import util;

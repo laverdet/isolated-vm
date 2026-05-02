@@ -1,8 +1,6 @@
 module;
 #include "auto_js/gcc_abi_tag.h"
 export module backend_napi_v8:module_;
-import :agent;
-import :environment;
 import :realm;
 import auto_js;
 import napi_js;

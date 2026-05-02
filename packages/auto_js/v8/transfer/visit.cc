@@ -1,15 +1,10 @@
 export module v8_js:visit;
 import :array_buffer;
-import :array;
 import :callback_info;
-import :handle;
 import :handle.value;
 import :hash;
-import :lock;
 import :object;
-import :primitive;
 import :unmaybe;
-import :value.tag;
 import auto_js;
 import std;
 import v8;

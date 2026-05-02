@@ -1,7 +1,6 @@
 module;
 #include <cassert>
 export module auto_js:reference.visit;
-import :intrinsics.error;
 import :referential_value;
 import :transfer;
 import std;

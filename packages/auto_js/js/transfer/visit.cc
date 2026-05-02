@@ -2,7 +2,6 @@ module;
 #include <cassert>
 export module auto_js:visit;
 import :deferred_receiver;
-import :tag;
 import :transfer.types;
 import std;
 

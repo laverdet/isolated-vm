@@ -1,6 +1,4 @@
 export module napi_js:promise;
-import :api;
-import :environment;
 import :value;
 import std;
 import util;

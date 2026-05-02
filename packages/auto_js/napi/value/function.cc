@@ -1,7 +1,5 @@
 export module napi_js:function_definitions;
-import :api;
 import :callback;
-import :function;
 import std;
 
 namespace js::napi {

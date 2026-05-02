@@ -1,11 +1,6 @@
 export module napi_js:callback;
 export import :callback_storage;
-import :api;
-import :bound_value;
-import :environment_fwd;
 import :error_scope;
-import :object;
-import :value_handle;
 import std;
 import util;
 

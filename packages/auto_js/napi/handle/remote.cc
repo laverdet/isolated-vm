@@ -1,8 +1,6 @@
 export module napi_js:remote;
-import :api;
 import :environment;
 import :reference;
-import :value_handle;
 import std;
 import util;
 

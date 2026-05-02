@@ -2,8 +2,6 @@ export module auto_js:builtin.visit;
 import :intrinsics.array_buffer;
 import :intrinsics.bigint;
 import :intrinsics.date;
-import :intrinsics.error;
-import :transfer;
 import :variant.visit;
 import std;
 import util;

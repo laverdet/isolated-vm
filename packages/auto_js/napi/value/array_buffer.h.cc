@@ -2,8 +2,6 @@ export module napi_js:array_buffer;
 import :bound_value;
 import :environment;
 import :object;
-import :utility;
-import :value_handle;
 import std;
 import v8;
 

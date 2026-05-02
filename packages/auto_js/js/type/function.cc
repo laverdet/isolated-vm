@@ -1,5 +1,4 @@
 export module auto_js:function;
-import :tag;
 import :visit;
 import std;
 

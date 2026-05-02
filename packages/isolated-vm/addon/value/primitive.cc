@@ -3,7 +3,6 @@ module;
 export module isolated_vm:value.primitive;
 import :handle.bound_value;
 import :handle.value_of;
-import :support.environment_fwd;
 import auto_js;
 import std;
 

@@ -1,7 +1,6 @@
 module;
 #include "auto_js/no_unique_address.h"
 export module auto_js:accept;
-import :transfer.types;
 import :visit;
 import std;
 import util;

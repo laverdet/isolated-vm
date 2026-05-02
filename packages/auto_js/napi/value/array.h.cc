@@ -1,7 +1,5 @@
 export module napi_js:array;
-import :bound_value;
 import :object;
-import :value_handle;
 import auto_js;
 import nodejs;
 import util;

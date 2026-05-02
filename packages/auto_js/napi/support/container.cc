@@ -1,6 +1,5 @@
 export module napi_js:container;
 import :environment;
-import :utility;
 import nodejs;
 import std;
 import util;

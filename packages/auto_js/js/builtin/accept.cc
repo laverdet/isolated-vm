@@ -2,10 +2,8 @@ export module auto_js:builtin.accept;
 import :intrinsics.array_buffer;
 import :intrinsics.bigint;
 import :intrinsics.date;
-import :intrinsics.error;
 import :intrinsics.external;
 import :reference.accept;
-import :transfer;
 import std;
 import util;
 

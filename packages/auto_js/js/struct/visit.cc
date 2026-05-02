@@ -1,7 +1,6 @@
 module;
 #include "auto_js/no_unique_address.h"
 export module auto_js:struct_.visit;
-import :property;
 import :struct_.types;
 import :transfer;
 import std;

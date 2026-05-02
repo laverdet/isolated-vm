@@ -1,5 +1,4 @@
 export module napi_js:class_;
-import :value_handle;
 import :object;
 import std;
 

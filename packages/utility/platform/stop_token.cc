@@ -1,6 +1,5 @@
 export module util:platform.stop_token;
 import :functional;
-import :utility;
 import std;
 
 namespace util {

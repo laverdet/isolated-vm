@@ -1,6 +1,5 @@
 export module backend_napi_v8:reference;
 import :agent;
-import :environment;
 import :lock;
 import auto_js;
 import napi_js;

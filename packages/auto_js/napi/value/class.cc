@@ -1,8 +1,6 @@
 export module napi_js:class_definitions;
 import :api;
 import :callback;
-import :class_;
-import :external;
 import std;
 import util;
 

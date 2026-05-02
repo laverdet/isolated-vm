@@ -1,7 +1,5 @@
 export module napi_js:error_scope;
 import :accept;
-import :api;
-import :environment;
 
 namespace js::napi {
 

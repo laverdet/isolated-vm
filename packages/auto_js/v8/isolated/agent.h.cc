@@ -1,10 +1,8 @@
 module;
 #include <cassert>
 export module v8_js:isolated.agent;
-import :boost;
 import :collected_handle;
 import :isolated.clock;
-import :lock;
 import :platform.foreground_runner;
 import :remote;
 import std;

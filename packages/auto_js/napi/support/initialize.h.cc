@@ -1,5 +1,4 @@
 export module napi_js:initialize;
-import :environment;
 import :value;
 import nodejs;
 import std;

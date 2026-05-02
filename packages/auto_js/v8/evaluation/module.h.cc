@@ -3,8 +3,6 @@ module;
 export module v8_js:evaluation.module_record;
 import :evaluation.origin;
 import :fixed_array;
-import :hash;
-import :lock;
 import :unmaybe;
 import :weak_map;
 import auto_js;

@@ -1,8 +1,6 @@
 export module auto_js:union_.accept;
-import :intrinsics.error;
 import :transfer;
 import :union_.types;
-import :variant.types;
 import std;
 import util;
 

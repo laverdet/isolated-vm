@@ -1,5 +1,4 @@
 export module backend_napi_v8:native_module;
-import :environment;
 import :realm;
 import auto_js;
 import isolated_vm;
