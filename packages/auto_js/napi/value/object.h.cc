@@ -45,4 +45,8 @@ auto bound_value_for_object::try_cast(std::type_identity<Type> /*type*/) const -
 	}
 }
 
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=125144
+template class bound_value_next<data_block_tag>;
+template class bound_value_next<array_buffer_view_tag>;
+
 } // namespace js::napi

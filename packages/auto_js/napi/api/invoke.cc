@@ -64,7 +64,7 @@ using napi_invoke_out_t = type_t<napi_invoke_out(type<Params>...)>;
 
 // Invoke the given napi function and throw if it fails.
 export template <class... Params>
-auto invoke(auto(function)(Params...)->napi_status, auto&&... args)
+auto invoke(auto(function)(Params...)->napi_status, auto&&... args) -> napi_invoke_out_t<Params...>
 	requires std::invocable<decltype(function), decltype(args)..., napi_invoke_out_t<Params...>*> {
 	napi_invoke_out_t<Params...> out_arg;
 	napi::invoke0(function, std::forward<decltype(args)>(args)..., &out_arg);
@@ -73,7 +73,7 @@ auto invoke(auto(function)(Params...)->napi_status, auto&&... args)
 
 // Invoke the given napi function and return `optional<T>` indicating failure.
 export template <class... Params>
-auto invoke_maybe(auto(function)(Params...)->napi_status, auto&&... args)
+auto invoke_maybe(auto(function)(Params...)->napi_status, auto&&... args) -> std::optional<napi_invoke_out_t<Params...>>
 	requires std::invocable<decltype(function), decltype(args)..., napi_invoke_out_t<Params...>*> {
 	using out_type = napi_invoke_out_t<Params...>;
 	out_type out_arg;
@@ -84,7 +84,7 @@ auto invoke_maybe(auto(function)(Params...)->napi_status, auto&&... args)
 
 // Invoke the given napi function and terminate if it fails.
 export template <class... Params>
-auto invoke_noexcept(auto(function)(Params...)->napi_status, auto&&... args) noexcept
+auto invoke_noexcept(auto(function)(Params...)->napi_status, auto&&... args) noexcept -> napi_invoke_out_t<Params...>
 	requires std::invocable<decltype(function), decltype(args)..., napi_invoke_out_t<Params...>*> {
 	napi_invoke_out_t<Params...> out_arg;
 	napi::invoke0_noexcept(function, std::forward<decltype(args)>(args)..., &out_arg);
