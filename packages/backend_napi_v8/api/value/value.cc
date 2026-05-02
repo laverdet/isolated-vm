@@ -3,7 +3,6 @@ import :support.cast;
 import :support.environment;
 import :value;
 import auto_js;
-import v8_js;
 
 namespace isolated_vm {
 using namespace js;

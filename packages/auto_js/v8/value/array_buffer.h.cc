@@ -3,7 +3,6 @@ import :handle;
 import :value.tag;
 import auto_js;
 import std;
-import util;
 import v8;
 
 namespace js::iv8 {

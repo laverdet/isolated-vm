@@ -1,7 +1,6 @@
 export module napi_js:function;
 import :primitive;
 import std;
-import util;
 
 namespace js::napi {
 

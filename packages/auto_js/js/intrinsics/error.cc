@@ -3,7 +3,6 @@ module;
 export module auto_js:intrinsics.error;
 import :enum_.types;
 import std;
-import util;
 
 namespace js {
 

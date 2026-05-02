@@ -1,7 +1,6 @@
 export module napi_js:promise;
 import :value;
 import std;
-import util;
 
 namespace js::napi {
 

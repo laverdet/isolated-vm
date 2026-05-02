@@ -4,7 +4,6 @@ import :support.environment;
 import :transfer.accept;
 import auto_js;
 import std;
-import util;
 
 namespace isolated_vm {
 using namespace js;

@@ -1,6 +1,5 @@
 export module isolated_vm:handle.types;
 import auto_js;
-import std;
 
 namespace isolated_vm {
 using namespace js;

@@ -1,7 +1,6 @@
 export module napi_js:array;
 import :object;
 import auto_js;
-import nodejs;
 import util;
 
 namespace js::napi {

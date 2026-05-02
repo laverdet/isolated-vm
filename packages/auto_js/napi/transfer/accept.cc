@@ -1,6 +1,5 @@
 module napi_js;
 import std;
-import util;
 
 namespace js::napi {
 

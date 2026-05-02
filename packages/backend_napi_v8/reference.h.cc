@@ -3,7 +3,6 @@ import :agent;
 import :lock;
 import auto_js;
 import napi_js;
-import std;
 import v8_js;
 
 namespace backend_napi_v8 {

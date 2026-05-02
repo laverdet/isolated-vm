@@ -1,7 +1,6 @@
 export module isolated_vm:handle.bound_value;
 import :handle.types;
 import :support.environment_fwd;
-import std;
 
 namespace isolated_vm {
 

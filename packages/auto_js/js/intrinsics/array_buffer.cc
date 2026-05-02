@@ -1,7 +1,6 @@
 export module auto_js:intrinsics.array_buffer;
 import :reference_of;
 import std;
-import util;
 
 namespace js {
 
