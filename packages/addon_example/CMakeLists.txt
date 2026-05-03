@@ -15,6 +15,7 @@ project(addon_example LANGUAGES CXX)
 set(CMAKE_CXX_MODULE_STD ON)
 
 # compilation settings
+set(CMAKE_SKIP_BUILD_RPATH true)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 if(APPLE)
 	set(CMAKE_OSX_DEPLOYMENT_TARGET "13.3")
@@ -29,10 +30,6 @@ find_package_from_npm(@isolated-vm/experimental)
 add_library(addon_example SHARED)
 set_target_properties(addon_example PROPERTIES PREFIX "")
 target_link_libraries(addon_example PUBLIC isolated_vm)
-
-# TODO!!
-target_link_directories(addon_example PUBLIC /workspace/packages/isolated-vm/node_modules/@isolated-vm/experimental-linux-arm64-gnu)
-target_link_libraries(addon_example PRIVATE :backend_napi_v8.node)
 
 # sources
 target_sources(addon_example

@@ -222,6 +222,7 @@ endfunction()
 include(FindNpmPackage)
 
 # Mark exported symbols as exported
+set(EXPORT_IS_EXPORT ON)
 add_definitions(-DEXPORT_IS_EXPORT)
 
 # Embedded v8
