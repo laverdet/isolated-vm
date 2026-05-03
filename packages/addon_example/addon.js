@@ -5,9 +5,9 @@ const addon = await NativeModule.create(fileURLToPath(new URL("build/addon_examp
 const agent = await Agent.create();
 const realm = await agent.createRealm();
 const native = await addon.instantiate(realm);
-const module = expectComplete(await agent.compileModule('import { one } from "module:example"; globalThis.result = one;'));
+const module = expectComplete(await agent.compileModule('import { test } from "module:example"; globalThis.result = test;'));
 await module.link(realm, () => native);
 expectComplete(await module.evaluate(realm));
 const global = await realm.acquireGlobalObject();
 const result = await global.get("result");
-console.log(await result.copy());
+console.log(expectComplete(await result.invoke([ "hello world" ])));

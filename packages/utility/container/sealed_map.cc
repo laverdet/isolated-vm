@@ -68,7 +68,7 @@ class sealed_map {
 						// Sort without invoking `operator()=`, which might not exist on the value type
 						auto entries = std::array<value_type, Size>{std::move(pairs)...};
 						auto indices = std::array<std::size_t, Size>{};
-						std::ranges::copy(std::ranges::iota_view{std::size_t{0}, Size}, indices.begin());
+						std::ranges::copy(std::ranges::views::iota(std::size_t{0}, Size), indices.begin());
 						const auto projection = [ & ](std::size_t ii) -> const auto& { return entries.at(ii).first; };
 						std::ranges::sort(indices, std::less{}, projection);
 						const auto [... sorted_indices ] = indices;

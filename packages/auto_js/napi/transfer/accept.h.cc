@@ -35,7 +35,7 @@ struct accept_basic_napi_value {
 		}
 
 		auto operator()(null_tag tag, visit_holder visit, std::nullptr_t subject) const -> value_of<null_tag>;
-		auto operator()(null_tag tag, visit_holder visit, const auto& /*null*/) const -> value_of<null_tag> {
+		auto operator()(null_tag tag, visit_holder visit, const auto& /*subject*/) const -> value_of<null_tag> {
 			return (*this)(tag, visit, nullptr);
 		}
 
@@ -44,8 +44,8 @@ struct accept_basic_napi_value {
 
 		// number
 		auto operator()(number_tag_of<double> tag, visit_holder visit, double subject) const -> value_of<number_tag_of<double>>;
-		auto operator()(number_tag_of<std::int32_t> tag, visit_holder visit, std::int32_t) const -> value_of<number_tag_of<std::int32_t>>;
-		auto operator()(number_tag_of<std::uint32_t> tag, visit_holder visit, std::uint32_t) const -> value_of<number_tag_of<std::uint32_t>>;
+		auto operator()(number_tag_of<std::int32_t> tag, visit_holder visit, std::int32_t subject) const -> value_of<number_tag_of<std::int32_t>>;
+		auto operator()(number_tag_of<std::uint32_t> tag, visit_holder visit, std::uint32_t subject) const -> value_of<number_tag_of<std::uint32_t>>;
 
 		auto operator()(number_tag /*tag*/, visit_holder visit, auto&& subject) const -> value_of<number_tag> {
 			return (*this)(number_tag_of<double>{}, visit, double{std::forward<decltype(subject)>(subject)});
@@ -339,8 +339,8 @@ struct accept<Meta, napi::value_of<Tag>> : napi::accept_napi_value_with<Meta> {
 // Forwarded `value_of<T>` acceptor
 template <class Tag>
 struct accept<void, js::forward<napi::value_of<Tag>, Tag>> {
-		auto operator()(Tag /*tag*/, visit_holder /*visit*/, napi::value_of<Tag> value) const -> js::forward<napi::value_of<Tag>, Tag> {
-			return js::forward{napi::value_of<Tag>{value}, Tag{}};
+		auto operator()(Tag /*tag*/, visit_holder /*visit*/, napi::value_of<Tag> subject) const -> js::forward<napi::value_of<Tag>, Tag> {
+			return js::forward{napi::value_of<Tag>{subject}, Tag{}};
 		}
 
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
@@ -354,9 +354,9 @@ struct accept_property_value<Meta, Key, Type, napi_value> {
 				first{transfer},
 				second{transfer} {}
 
-		auto operator()(dictionary_tag /*tag*/, auto& visit, const auto& object) const -> Type {
-			if (auto local = first(std::type_identity<void>{}, visit.first); object.has(local)) {
-				return visit.second(object.get(local), second);
+		auto operator()(dictionary_tag /*tag*/, auto& visit, const auto& subject) const -> Type {
+			if (auto local = first(std::type_identity<void>{}, visit.first); subject.has(local)) {
+				return visit.second(subject.get(local), second);
 			} else {
 				return second(undefined_in_tag{}, visit.second, std::monostate{});
 			}

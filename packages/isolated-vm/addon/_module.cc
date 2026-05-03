@@ -1,4 +1,5 @@
 export module isolated_vm;
+export import :support.free_function;
 export import :support.initialize_fwd;
 export import :transfer.accept;
 export import :transfer.visit;

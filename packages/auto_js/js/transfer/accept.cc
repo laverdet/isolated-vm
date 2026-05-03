@@ -216,11 +216,11 @@ struct accept_property_value<Meta, Key, Type, void> {
 				first{transfer},
 				second{transfer} {}
 
-		constexpr auto operator()(dictionary_tag /*tag*/, auto& visit, const auto& dictionary) const {
-			auto it = std::ranges::find_if(dictionary, [ & ](const auto& entry) -> bool {
+		constexpr auto operator()(dictionary_tag /*tag*/, auto& visit, const auto& subject) const {
+			auto it = std::ranges::find_if(subject, [ & ](const auto& entry) -> bool {
 				return visit.first(entry.first, first) == util::make_consteval_string_view(Key);
 			});
-			if (it == dictionary.end()) {
+			if (it == subject.end()) {
 				return second(undefined_in_tag{}, visit, std::monostate{});
 			} else {
 				return visit.second(it->second, second);

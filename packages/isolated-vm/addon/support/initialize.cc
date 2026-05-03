@@ -9,7 +9,7 @@ import util;
 namespace isolated_vm {
 export namespace detail {
 using make_addon_names = auto() -> std::vector<std::u16string>;
-using accept_addon_values = auto(std::span<value_of<>>) -> void;
+using accept_addon_values = auto(std::span<value_of<prototype_tag>>) -> void;
 using initialize_addon = auto(const basic_lock&, util::function_ref<accept_addon_values>) -> void;
 } // namespace detail
 
@@ -31,8 +31,8 @@ consteval auto get_descriptors(std::integral_constant<std::size_t, Index> /*inde
 	return util::overloaded{
 		[]<class... Types>(std::tuple<std::in_place_t, Types...> ns) {
 			auto [... ii ] = util::sequence<sizeof...(Types)>;
-			auto [... entries ] = std::tuple{std::get<ii + 1>(ns)...};
-			return std::tuple{std::get<Index>(entries)...};
+			auto [... entries ] = std::make_tuple(std::get<ii + 1>(ns)...);
+			return std::make_tuple(std::get<Index>(entries)...);
 		},
 		[](auto ns) {
 			auto [... entries ] = ns;
@@ -51,7 +51,7 @@ addon::addon(std::type_identity<Type> /*environment*/, auto callback) {
 		// Check for duplicates (only at compile time)
 		static_assert([ names ]() {
 			auto [... names_cw ] = names;
-			auto names_vector = std::vector{js::transfer<std::u16string>(names_cw)...};
+			auto names_vector = std::vector{js::transfer_strict<std::u16string>(names_cw)...};
 			for (auto ii = names_vector.begin(); ii != names_vector.end(); ++ii) {
 				auto remaining = std::ranges::subrange{std::next(ii), names_vector.end()};
 				if (std::ranges::find(remaining, *ii) != remaining.end()) {
@@ -62,12 +62,12 @@ addon::addon(std::type_identity<Type> /*environment*/, auto callback) {
 		}());
 		// Make `std::vector` of strings
 		auto [... names_cw ] = names;
-		return std::vector{js::transfer<std::u16string>(names_cw)...};
+		return std::vector{js::transfer_strict<std::u16string>(names_cw)...};
 	};
 	constexpr auto make_exports = [](const basic_lock& lock, util::function_ref<detail::accept_addon_values> make) -> void {
 		constexpr auto values = get_descriptors(std::integral_constant<std::size_t, 1>{}, callback_type{}());
 		constexpr auto size = std::tuple_size_v<decltype(values)>;
-		auto vm_values = js::transfer_in<std::array<value_of<>, size>>(values, lock);
+		auto vm_values = js::transfer_in_strict<std::array<value_of<prototype_tag>, size>>(values, lock);
 		make(std::span{vm_values});
 	};
 	register_addon(make_names, make_exports);

@@ -19,8 +19,8 @@ struct reaccept_value {
 		using reference_type = v8::Local<v8::Value>;
 
 		template <class Type>
-		constexpr auto operator()(std::type_identity<v8::Local<Type>> /*type*/, v8::Local<v8::Value> value) const -> v8::Local<Type> {
-			return value.As<Type>();
+		constexpr auto operator()(std::type_identity<v8::Local<Type>> /*type*/, v8::Local<v8::Value> subject) const -> v8::Local<Type> {
+			return subject.As<Type>();
 		}
 };
 
@@ -56,8 +56,8 @@ struct accept_primitive {
 
 		// number
 		auto operator()(number_tag_of<double> tag, visit_holder visit, double subject) const -> v8::Local<iv8::Double>;
-		auto operator()(number_tag_of<std::int32_t> tag, visit_holder visit, std::int32_t) const -> v8::Local<v8::Int32>;
-		auto operator()(number_tag_of<std::uint32_t> tag, visit_holder visit, std::uint32_t) const -> v8::Local<v8::Uint32>;
+		auto operator()(number_tag_of<std::int32_t> tag, visit_holder visit, std::int32_t subject) const -> v8::Local<v8::Int32>;
+		auto operator()(number_tag_of<std::uint32_t> tag, visit_holder visit, std::uint32_t subject) const -> v8::Local<v8::Uint32>;
 
 		auto operator()(number_tag /*tag*/, visit_holder visit, auto&& subject) const -> v8::Local<v8::Number> {
 			return (*this)(number_tag_of<double>{}, visit, double{std::forward<decltype(subject)>(subject)});
@@ -309,23 +309,23 @@ struct accept<void, v8::ReturnValue<v8::Value>> : accept<void, v8::Local<v8::Val
 		explicit accept(const std::convertible_to<iv8::context_lock_witness> auto& lock, value_type return_value) :
 				accept{iv8::context_lock_witness{util::slice(lock)}, return_value} {}
 
-		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, const auto& value) const -> value_type {
-			return_value_.Set(bool{value});
+		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, const auto& subject) const -> value_type {
+			return_value_.Set(bool{subject});
 			return return_value_;
 		}
 
 		template <class Type>
-		auto operator()(number_tag_of<Type> /*tag*/, visit_holder /*visit*/, const auto& value) const -> value_type {
-			return_value_.Set(Type{value});
+		auto operator()(number_tag_of<Type> /*tag*/, visit_holder /*visit*/, const auto& subject) const -> value_type {
+			return_value_.Set(Type{subject});
 			return return_value_;
 		}
 
-		auto operator()(null_tag /*tag*/, visit_holder /*visit*/, const auto& /*null*/) const -> value_type {
+		auto operator()(null_tag /*tag*/, visit_holder /*visit*/, const auto& /*subject*/) const -> value_type {
 			return_value_.SetNull();
 			return return_value_;
 		}
 
-		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*undefined*/) const -> value_type {
+		auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*subject*/) const -> value_type {
 			return_value_.SetUndefined();
 			return return_value_;
 		}

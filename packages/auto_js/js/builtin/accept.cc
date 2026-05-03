@@ -12,7 +12,7 @@ namespace js {
 // Static value acceptor
 template <class Tag, auto Value>
 struct accept_as_constant {
-		constexpr auto operator()(Tag /*tag*/, visit_holder /*visit*/, const auto& /*value*/) const -> decltype(Value) {
+		constexpr auto operator()(Tag /*tag*/, visit_holder /*visit*/, const auto& /*subject*/) const -> decltype(Value) {
 			return Value;
 		}
 
@@ -248,7 +248,7 @@ struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
 		using accept_type::accept_type;
 
 		using accept_type::operator();
-		constexpr auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*value*/) const -> std::optional<Type> {
+		constexpr auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*subject*/) const -> std::optional<Type> {
 			return std::nullopt;
 		}
 };
@@ -287,7 +287,7 @@ struct accept<Meta, Type*> : accept<Meta, Type&> {
 
 		using accept_type::operator();
 
-		constexpr auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*value*/) const -> Type* {
+		constexpr auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*subject*/) const -> Type* {
 			return nullptr;
 		}
 
@@ -307,7 +307,7 @@ struct accept<Meta, std::expected<Type, undefined_in_tag>> : accept<Meta, Type> 
 
 		using accept_type::operator();
 
-		constexpr auto operator()(undefined_in_tag tag, visit_holder /*visit*/, const auto& /*value*/) const -> value_type {
+		constexpr auto operator()(undefined_in_tag tag, visit_holder /*visit*/, const auto& /*subject*/) const -> value_type {
 			return value_type{std::unexpect, tag};
 		}
 

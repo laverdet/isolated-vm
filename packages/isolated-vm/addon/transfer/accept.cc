@@ -1,6 +1,8 @@
 module;
 #include "auto_js/export_tag.h"
+#include <concepts>
 export module isolated_vm:transfer.accept;
+import :support.free_function;
 import :value;
 import auto_js;
 import std;
@@ -68,7 +70,7 @@ struct EXPORT accept_vm_primitive {
 			return (*this)(tag, visit, std::basic_string<Char>{std::forward<decltype(subject)>(subject)});
 		}
 
-		// bigint (why does `NewFromWords` need a context?)
+		// bigint
 		auto operator()(bigint_tag_of<std::int64_t> tag, visit_holder visit, std::int64_t subject) const
 			-> js::referenceable_value<value_of<bigint_tag_of<std::int64_t>>>;
 		auto operator()(bigint_tag_of<std::uint64_t> tag, visit_holder visit, std::uint64_t subject) const
@@ -97,8 +99,47 @@ struct EXPORT accept_vm_primitive {
 		std::reference_wrapper<const basic_lock> lock_;
 };
 
+struct EXPORT accept_vm_prototype : accept_vm_primitive {
+	public:
+		using accept_vm_primitive::accept_vm_primitive;
+		using accept_vm_primitive::lock;
+
+		// cast primitive to prototype
+		template <std::convertible_to<primitive_tag> Tag>
+		auto operator()(Tag tag, auto& visit, auto&& subject) const -> value_of<prototype_tag> {
+			const accept_vm_primitive& accept = *this;
+			auto result = accept(tag, visit, std::forward<decltype(subject)>(subject));
+			constexpr auto unwrap = util::overloaded{
+				[](auto value) { return value; },
+				[]<class Type>(js::referenceable_value<Type> value) { return *std::move(value); },
+			};
+			return value_of<prototype_tag>::from(unwrap(result));
+		}
+
+		// function
+		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, auto subject) const -> value_of<function_prototype_tag> {
+			using lock_type = const runtime_lock&;
+			auto [ function, length ] = make_free_function<lock_type>(std::move(subject).callback);
+			auto data = make_callback_storage(std::move(function));
+			return make_function_prototype(std::move(data), length);
+		}
+
+	private:
+		// function
+		[[nodiscard]] auto make_function_prototype(runtime_callback_data_span_type data, int length) const -> value_of<function_prototype_tag>;
+		[[nodiscard]] auto make_function_prototype(runtime_callback_data_allocated_type data, int length) const -> value_of<function_prototype_tag>;
+
+		template <class Type>
+		[[nodiscard]] auto make_function_prototype(runtime_callback_function_storage<Type> data, int length) const -> value_of<function_prototype_tag> {
+			auto data_span = std::span{reinterpret_cast<std::byte*>(&data), sizeof(data)};
+			return make_function_prototype(data_span, length);
+		}
+};
+
 struct EXPORT accept_vm_value : accept_vm_primitive {
+	public:
 		explicit accept_vm_value(const runtime_lock& lock) : accept_vm_primitive{lock} {}
+		using accept_vm_primitive::operator();
 
 		[[nodiscard]] auto lock() const -> const runtime_lock& {
 			return reinterpret_cast<const runtime_lock&>(accept_vm_primitive::lock());
@@ -110,9 +151,24 @@ struct EXPORT accept_vm_value : accept_vm_primitive {
 namespace js {
 using namespace isolated_vm;
 
-template <class Tag>
+// Primitive acceptor
+template <std::convertible_to<value_tag> Tag>
+	requires std::is_base_of_v<primitive_tag, Tag>
 struct accept<void, value_of<Tag>> : accept_vm_primitive {
 		using accept_vm_primitive::accept_vm_primitive;
+};
+
+// Template / prototype acceptor
+template <class Tag>
+	requires std::is_base_of_v<prototype_tag, Tag>
+struct accept<void, value_of<Tag>> : accept_vm_prototype {
+		using accept_vm_prototype::accept_vm_prototype;
+};
+
+// Value acceptor
+template <std::convertible_to<value_tag> Tag>
+struct accept<void, value_of<Tag>> : accept_vm_value {
+		using accept_vm_value::accept_vm_value;
 };
 
 } // namespace js

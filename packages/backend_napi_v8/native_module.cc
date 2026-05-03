@@ -39,10 +39,10 @@ auto native_module_handle::instantiate(environment& env, realm_handle& realm) ->
 			context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) mutable -> void {
 				auto addon_lock = isolated_vm::basic_lock_implementation{lock};
 				auto module_result = v8::Local<v8::Module>{};
-				auto make = [ & ](std::span<isolated_vm::value_of<>> values) -> void {
+				auto make = [ & ](std::span<isolated_vm::value_of<prototype_tag>> values) -> void {
 					auto v8_origin = js::transfer_in<v8::Local<v8::String>>(origin, lock);
 					auto v8_names = js::transfer_in<std::vector<v8::Local<v8::String>>>(names, lock);
-					auto v8_values = std::bit_cast<std::span<v8::Local<v8::Value>>>(values);
+					auto v8_values = std::bit_cast<std::span<v8::Local<v8::Data>>>(values);
 					module_result = js::iv8::module_record::create_synthetic(realm, v8_origin, v8_names, v8_values);
 				};
 				initialize(addon_lock, make);

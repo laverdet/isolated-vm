@@ -1,4 +1,5 @@
 module isolated_vm;
+import :support.callback;
 import :support.cast;
 import :support.lock;
 import :transfer.accept;
@@ -77,6 +78,19 @@ auto accept_vm_primitive::operator()(bigint_tag_of<js::bigint> /*tag*/, visit_ho
 auto accept_vm_primitive::operator()(bigint_tag_of<js::bigint> tag, visit_holder visit, js::bigint&& subject) const
 	-> js::referenceable_value<value_of<bigint_tag_of<js::bigint>>> {
 	return (*this)(tag, visit, static_cast<const js::bigint&>(subject));
+}
+
+// function
+auto accept_vm_prototype::make_function_prototype(runtime_callback_data_span_type data, int length) const -> value_of<function_prototype_tag> {
+	auto [ v8_callback, v8_data ] = make_function_callback(lock().witness(), data);
+	auto v8_function = v8::FunctionTemplate::New(lock().witness().isolate(), v8_callback, v8_data, {}, length, v8::ConstructorBehavior::kThrow);
+	return cast_out(v8_function);
+}
+
+auto accept_vm_prototype::make_function_prototype(runtime_callback_data_allocated_type data, int length) const -> value_of<function_prototype_tag> {
+	auto [ v8_callback, v8_data ] = make_function_callback(lock().witness(), std::move(data));
+	auto v8_function = v8::FunctionTemplate::New(lock().witness().isolate(), v8_callback, v8_data, {}, length, v8::ConstructorBehavior::kThrow);
+	return cast_out(v8_function);
 }
 
 } // namespace isolated_vm

@@ -81,7 +81,7 @@ class bind_explicit<Invocable, auto(Args...) noexcept(Nx)->Result, Bound...> : p
 
 		using try_cvref_type = apply_cvref_t<ensure_reference_t<invocable_type_t<Invocable>>, Invocable>;
 		using cvref_type =
-			std::conditional_t<std::is_invocable_v<try_cvref_type, apply_cvref_t<try_cvref_type, Bound>...>, try_cvref_type, bind_explicit&>;
+			std::conditional_t<std::is_invocable_v<try_cvref_type, apply_cvref_t<try_cvref_type, Bound>..., Args...>, try_cvref_type, bind_explicit&>;
 		using this_type = apply_cvref_t<cvref_type, bind_explicit>;
 		constexpr static auto invoke_as_mutable = std::is_same_v<this_type, bind_explicit&>;
 		constexpr static auto invoke_as_forward = !invoke_as_mutable;
@@ -146,4 +146,5 @@ template <class Invocable, class... Bound>
 class bind<Invocable, Bound...> : public bind_explicit_params_t<Invocable, Bound...> {
 		using bind_explicit_params_t<Invocable, Bound...>::bind_explicit_params_t;
 };
+
 } // namespace util

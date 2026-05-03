@@ -39,7 +39,7 @@ constexpr auto sequence = []() consteval -> auto {
 	// https://clang.llvm.org/cxx_status.html
 
 	// std::array<std::size_t, Size> result{};
-	// std::ranges::copy(std::ranges::iota_view{std::size_t{0}, Size}, result.begin());
+	// std::ranges::copy(std::ranges::views::iota(std::size_t{0}, Size), result.begin());
 	// return result;
 
 	return []<std::size_t... Index>(std::index_sequence<Index...> /*sequence*/) consteval {

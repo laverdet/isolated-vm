@@ -4,20 +4,6 @@ import :support.lock_fwd;
 
 namespace isolated_vm {
 
-// Details applied to each level of the `bound_value<T>` hierarchy.
-template <class Tag>
-class bound_value_next : public bound_value<typename Tag::tag_type> {
-	public:
-		using tag_type = Tag;
-		using bound_value<typename Tag::tag_type>::bound_value;
-		bound_value_next() = default;
-		bound_value_next(const basic_lock& lock, value_of<Tag> value) :
-				bound_value<typename Tag::tag_type>{lock, value} {}
-
-		// NOLINTNEXTLINE(google-explicit-constructor)
-		operator value_of<Tag>() const { return value_of<Tag>::from(value_handle{*this}); }
-};
-
 // Member & method implementation for stateful objects. Used internally in visitors.
 template <class Tag>
 class bound_value : public value_specialization<Tag>::bound_type {
@@ -40,6 +26,20 @@ class bound_value<void> : public value_handle {
 
 	private:
 		const runtime_lock* lock_{};
+};
+
+// Details applied to each level of the `bound_value<T>` hierarchy.
+template <class Tag>
+class bound_value_next : public bound_value<typename Tag::tag_type> {
+	public:
+		using tag_type = Tag;
+		using bound_value<typename Tag::tag_type>::bound_value;
+		bound_value_next() = default;
+		bound_value_next(const runtime_lock& lock, value_of<Tag> value) :
+				bound_value<typename Tag::tag_type>{lock, value_handle{value}} {}
+
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		operator value_of<Tag>() const { return value_of<Tag>::from(value_handle{*this}); }
 };
 
 } // namespace isolated_vm

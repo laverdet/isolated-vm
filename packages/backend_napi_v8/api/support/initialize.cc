@@ -3,8 +3,6 @@ import :support.initialize_fwd;
 
 namespace isolated_vm {
 
-#if EXPORT_IS_EXPORT
-
 inline thread_local detail::make_addon_names* names_registration_callback = nullptr;
 inline thread_local detail::initialize_addon* exports_registration_callback = nullptr;
 
@@ -23,7 +21,5 @@ auto addon::register_addon(detail::make_addon_names* names, detail::initialize_a
 	names_registration_callback = names;
 	exports_registration_callback = initialize;
 }
-
-#endif
 
 } // namespace isolated_vm

@@ -70,7 +70,7 @@ export class module_record {
 			context_lock_witness lock,
 			v8::Local<v8::String> module_name,
 			std::span<const v8::Local<v8::String>> export_names,
-			std::span<const v8::Local<v8::Value>> export_values
+			std::span<const v8::Local<v8::Data>> export_values
 		) -> v8::Local<v8::Module>;
 
 	private:
@@ -95,7 +95,7 @@ auto module_record::create_synthetic(context_lock_witness lock, auto origin, std
 	const auto& [... entries ] = module_interface;
 	auto origin_local = js::transfer_in_strict<v8::Local<v8::String>>(std::move(origin), lock);
 	auto names = js::transfer_in_strict<std::array<v8::Local<v8::String>, sizeof...(Types)>>(std::tuple{std::get<0>(entries)...}, lock);
-	auto exports = std::array{js::transfer_in_strict<v8::Local<v8::Value>>(std::get<1>(entries), lock)...};
+	auto exports = std::array{js::transfer_in_strict<v8::Local<v8::Data>>(std::get<1>(entries), lock)...};
 	return create_synthetic(lock, origin_local, std::span{names}, std::span{exports});
 }
 
@@ -104,11 +104,11 @@ auto module_record::create_synthetic(context_lock_witness lock, auto origin, std
 	auto origin_local = js::transfer_in_strict<v8::Local<v8::String>>(std::move(origin), lock);
 	auto name_locals = std::vector<v8::Local<v8::String>>{};
 	name_locals.reserve(module_interface.size());
-	auto export_locals = std::vector<v8::Local<v8::Value>>{};
+	auto export_locals = std::vector<v8::Local<v8::Data>>{};
 	export_locals.reserve(module_interface.size());
 	for (auto& [ key, value ] : module_interface) {
 		name_locals.push_back(js::transfer_in_strict<v8::Local<v8::String>>(std::move(key), lock));
-		export_locals.push_back(js::transfer_in_strict<v8::Local<v8::Value>>(std::move(value), lock));
+		export_locals.push_back(js::transfer_in_strict<v8::Local<v8::Data>>(std::move(value), lock));
 	}
 	return create_synthetic(lock, origin_local, std::span{name_locals}, std::span{export_locals});
 }

@@ -65,10 +65,10 @@ auto module_record::create_synthetic(
 	context_lock_witness lock,
 	v8::Local<v8::String> module_name,
 	std::span<const v8::Local<v8::String>> export_names,
-	std::span<const v8::Local<v8::Value>> export_values
+	std::span<const v8::Local<v8::Data>> export_values
 ) -> v8::Local<v8::Module> {
 	thread_local std::span<const v8::Local<v8::String>>* tl_export_names;
-	thread_local std::span<const v8::Local<v8::Value>>* tl_export_values;
+	thread_local std::span<const v8::Local<v8::Data>>* tl_export_values;
 	tl_export_names = &export_names;
 	tl_export_values = &export_values;
 	auto scope_exit = util::scope_exit{[ & ]() {
@@ -86,7 +86,16 @@ auto module_record::create_synthetic(
 		auto& names = *tl_export_names;
 		auto& values = *tl_export_values;
 		for (auto [ name, value ] : std::views::zip(names, values)) {
-			unmaybe(module->SetSyntheticModuleExport(lock.isolate(), name, value));
+			auto instantiated_value = [ & ] -> v8::Local<v8::Value> {
+				if (value->IsValue()) {
+					return value.As<v8::Value>();
+				} else if (value->IsFunctionTemplate()) {
+					return unmaybe(value.As<v8::FunctionTemplate>()->GetFunction(lock.context()));
+				} else {
+					return unmaybe(value.As<v8::ObjectTemplate>()->NewInstance(lock.context()));
+				}
+			}();
+			unmaybe(module->SetSyntheticModuleExport(lock.isolate(), name, instantiated_value));
 		}
 		auto resolver = unmaybe(v8::Promise::Resolver::New(lock.context()));
 		unmaybe(resolver->Resolve(lock.context(), v8::Undefined(lock.isolate())));
