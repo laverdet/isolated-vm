@@ -1,5 +1,5 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index 52a9c860841..5e713daf462 100644
+index 52a9c860..5e713daf 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
 @@ -1480,7 +1480,7 @@ config("toolchain") {

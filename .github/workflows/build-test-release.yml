@@ -468,8 +468,6 @@ jobs:
       - name: Setup
         shell: sh
         id: setup
-        env:
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           set -ux
           npm config set --location user access=public
@@ -486,8 +484,6 @@ jobs:
       - name: Assemble
         shell: sh
         working-directory: packages/isolated-vm
-        env:
-          ARTIFACTS: ${{ steps.artifacts.outputs.download-path }}
         run: |
           set -ux
           npx napi create-npm-dirs

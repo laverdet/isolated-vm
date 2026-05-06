@@ -1,5 +1,5 @@
 # Note: Terminate existing docker containers before building otherwise the build is slow.
-# export LLVM_VERSION=22 NODE_VERSION=24.14.0 V8_TARGET=arm64.debug V8_VERSION=14.2.231.21
+# export LLVM_VERSION=22 NODE_VERSION=24.14.0 V8_TARGET=aarch64-unknown-linux-gnu.optdebug V8_VERSION=14.2.231.21
 # docker compose --progress=plain build --pull depot_tools v8_sources v8 node_sources node
 # docker compose --progress=plain build development
 
@@ -15,17 +15,19 @@ services:
     image: isolated-vm/depot_tools
     build:
       additional_contexts:
-        - debian=docker-image://debian:experimental
+        - debian=docker-image://debian:sid
       dockerfile: Dockerfile.v8
       target: depot_tools
 
+  # v8 section could probably just be removed because most of the time I'm just building v8 in an
+  # existing container anyway.
   v8:
     image: isolated-vm/v8:${V8_TARGET}-${V8_VERSION}
     build:
       additional_contexts:
         - patches=../patches
         - scripts=../scripts
-        - debian=docker-image://debian:experimental
+        - debian=docker-image://debian:sid
       args:
         REF: ${V8_VERSION}
         TARGET: ${V8_TARGET}
@@ -46,7 +48,7 @@ services:
       args:
         REF: v${NODE_VERSION}
       additional_contexts:
-        - debian=docker-image://debian:experimental
+        - debian=docker-image://debian:trixie
         - scripts=../scripts
       dockerfile: Dockerfile.node
 
@@ -62,7 +64,7 @@ services:
     image: isolated-vm/development
     build:
       additional_contexts:
-        - debian=docker-image://debian:experimental
+        - debian=docker-image://debian:sid
         - isolated-vm/depot_tools=docker-image://isolated-vm/depot_tools
         - isolated-vm/node_sources=docker-image://isolated-vm/node_sources:${NODE_VERSION}
         - isolated-vm/node=docker-image://isolated-vm/node:${NODE_VERSION}

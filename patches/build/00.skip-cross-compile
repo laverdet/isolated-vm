@@ -1,5 +1,5 @@
 diff --git a/config/BUILDCONFIG.gn b/config/BUILDCONFIG.gn
-index 92a423c08..37f337558 100644
+index 92a423c..37f3375 100644
 --- a/config/BUILDCONFIG.gn
 +++ b/config/BUILDCONFIG.gn
 @@ -69,6 +69,12 @@ if (current_os == "") {
@@ -16,7 +16,7 @@ index 92a423c08..37f337558 100644
  # BUILD FLAGS
  # =============================================================================
 diff --git a/config/compiler/BUILD.gn b/config/compiler/BUILD.gn
-index 9be6a1d8a..a18beaecb 100644
+index 9be6a1d..a18beae 100644
 --- a/config/compiler/BUILD.gn
 +++ b/config/compiler/BUILD.gn
 @@ -1332,7 +1332,7 @@ config("compiler_cpu_abi") {
@@ -40,7 +40,7 @@ index 9be6a1d8a..a18beaecb 100644
  
    asmflags = cflags
 diff --git a/toolchain/linux/BUILD.gn b/toolchain/linux/BUILD.gn
-index a6e20a05c..721031267 100644
+index a6e20a0..7210312 100644
 --- a/toolchain/linux/BUILD.gn
 +++ b/toolchain/linux/BUILD.gn
 @@ -32,6 +32,9 @@ clang_toolchain("clang_arm64") {

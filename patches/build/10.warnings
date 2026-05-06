@@ -1,5 +1,5 @@
 diff --git a/config/compiler/BUILD.gn b/config/compiler/BUILD.gn
-index a18beaecb..8046f41d0 100644
+index a18beae..8046f41 100644
 --- a/config/compiler/BUILD.gn
 +++ b/config/compiler/BUILD.gn
 @@ -2100,6 +2100,8 @@ config("default_warnings") {

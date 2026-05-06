@@ -177,7 +177,7 @@
     {
       "label": "v8: build",
       "type": "shell",
-      "command": "unset CLANG_BASE_PATH; set -eu; set -a; source $ENV_FILE\nTARGET=$(triplet_util %t.${input:v8_target})\nexport V8_BUNDLE_PATH=\"$(pwd)/out/$V8_REF/$TARGET\"\nWITHOUT_SYSROOT=1 v8_build \"$V8_BUNDLE_PATH\"\nivm_write_env V8_BUNDLE_PATH\n",
+      "command": "set -eu; set -a; source $ENV_FILE\nTARGET=$(triplet_util %t.${input:v8_target})\nexport V8_BUNDLE_PATH=\"$(pwd)/out/$V8_REF/$TARGET\"\nWITHOUT_SYSROOT=1 v8_build \"$V8_BUNDLE_PATH\"\nivm_write_env V8_BUNDLE_PATH\n",
       "options": {
         "cwd": "/v8"
       },

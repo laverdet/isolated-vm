@@ -1,5 +1,5 @@
 diff --git a/hwy/ops/set_macros-inl.h b/hwy/ops/set_macros-inl.h
-index 0d8f7e7a..34b4f8ad 100644
+index 0d8f7e7..34b4f8a 100644
 --- a/hwy/ops/set_macros-inl.h
 +++ b/hwy/ops/set_macros-inl.h
 @@ -187,12 +187,13 @@

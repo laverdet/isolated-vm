@@ -186,7 +186,7 @@ tasks:
   - label: 'v8: build'
     type: shell
     command: |
-      unset CLANG_BASE_PATH; set -eu; set -a; source $ENV_FILE
+      set -eu; set -a; source $ENV_FILE
       TARGET=$(triplet_util %t.${input:v8_target})
       export V8_BUNDLE_PATH="$(pwd)/out/$V8_REF/$TARGET"
       WITHOUT_SYSROOT=1 v8_build "$V8_BUNDLE_PATH"

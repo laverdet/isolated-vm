@@ -18,6 +18,7 @@ RUN <<DONE
 		clangd-$LLVM_VERSION \
 		cmake \
 		curl \
+		entr \
 		git \
 		jq \
 		libboost-all-dev \
@@ -31,6 +32,7 @@ RUN <<DONE
 		pkg-config \
 		python3 \
 		vim \
+		yq \
 	;
 	# apt-get install -y -t experimental gcc-15 g++-15
 	# curl https://archives.boost.io/release/1.88.0/source/boost_1_88_0.tar.gz | tar xz --strip-components=2 -C /usr/include/boost boost_1_88_0/boost
@@ -65,4 +67,3 @@ RUN <<DONE
 		eval "$(dircolors)"
 	RC
 DONE
-ENV CLANG_BASE_PATH=/lib/llvm-$LLVM_VERSION

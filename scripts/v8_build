@@ -188,4 +188,4 @@ EOF
 
 # Build the monolith
 NINJA_ARGS=(-C "$BUILD_PATH" v8 "${V8_TARGETS[@]}")
-ninja "${NINJA_ARGS[@]}" || ninja -j2 "${NINJA_ARGS[@]}"
+ninja "${NINJA_ARGS[@]}" || ninja -j4 "${NINJA_ARGS[@]}" || ninja -j2 "${NINJA_ARGS[@]}"

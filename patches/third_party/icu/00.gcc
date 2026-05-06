@@ -1,5 +1,5 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index dad59595b..f53c70605 100644
+index dad5959..f53c706 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
 @@ -551,7 +551,7 @@ if (icu_use_data_file) {

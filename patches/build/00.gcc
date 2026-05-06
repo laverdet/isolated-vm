@@ -1,5 +1,5 @@
 diff --git a/config/BUILDCONFIG.gn b/config/BUILDCONFIG.gn
-index 24a1d1439..92a423c08 100644
+index 24a1d14..92a423c 100644
 --- a/config/BUILDCONFIG.gn
 +++ b/config/BUILDCONFIG.gn
 @@ -142,6 +142,9 @@ declare_args() {
@@ -13,7 +13,7 @@ index 24a1d1439..92a423c08 100644
    # argument, and set as the default toolchain.
    custom_toolchain = ""
 diff --git a/config/compiler/BUILD.gn b/config/compiler/BUILD.gn
-index 7bf4f2d63..9be6a1d8a 100644
+index 7bf4f2d..9be6a1d 100644
 --- a/config/compiler/BUILD.gn
 +++ b/config/compiler/BUILD.gn
 @@ -362,6 +362,30 @@ config("compiler") {
