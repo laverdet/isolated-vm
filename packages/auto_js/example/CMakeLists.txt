@@ -17,6 +17,7 @@ endif()
 include(FindNpmPackage)
 set(NAPI_VERSION 10)
 find_package_from_npm(@auto_js/napi)
+find_package_from_npm(@auto_js/v8)
 
 # target
 add_library(example SHARED)

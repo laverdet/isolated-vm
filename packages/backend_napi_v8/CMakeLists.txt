@@ -1,9 +1,8 @@
 set(NAPI_VERSION 10)
 set(V8_TRICKSHOT ON)
 find_package_from_npm(@auto_js/js)
-find_package_from_npm(@auto_js/v8_exports @isolated-vm/embedded_v8)
 find_package_from_npm(@auto_js/napi)
-find_package_from_npm(@auto_js/v8)
+find_package_from_npm(@auto_js/v8 @isolated-vm/embedded_v8_js)
 
 if(COMPILE_ONLY)
 	add_library(backend_napi_v8 OBJECT)
@@ -38,10 +37,10 @@ target_sources(backend_napi_v8
 )
 
 target_embed_content(backend_napi_v8 runtime/dist/interface.js runtime_dist_interface_js)
-target_link_libraries(backend_napi_v8 PUBLIC auto_js isolated_vm napi_js nodejs utility_js v8_js)
+target_link_libraries(backend_napi_v8 PUBLIC auto_js embedded_v8_js isolated_vm napi_js nodejs utility_js)
 
 # Addon 'isolated_vm' module is built with additional sources
-target_link_libraries(isolated_vm PRIVATE v8_js)
+target_link_libraries(isolated_vm PRIVATE embedded_v8_js)
 target_sources(isolated_vm
 	PRIVATE
 		api/value/accept.cc

@@ -1,11 +1,11 @@
 # Library name: google_v8, or nodejs_v8
 set(CXX_MODULE_NAME v8)
-if(PACKAGE_NAME STREQUAL "@isolated-vm/embedded_v8")
-	set(TARGET_NAME "google_v8")
-elseif(PACKAGE_NAME STREQUAL "@auto_js/v8_exports")
+if(PACKAGE_NAME STREQUAL "@auto_js/v8_exports")
 	set(TARGET_NAME "nodejs_v8")
+elseif(PACKAGE_NAME STREQUAL "@isolated-vm/embedded_v8")
+	set(TARGET_NAME "google_v8")
 else()
-	message(FATAL_ERROR "Missing or unknown @auto_js/v8 PACKAGE_NAME: '${PACKAGE_NAME}'")
+	message(FATAL_ERROR "Missing or unknown @auto_js/v8_exports PACKAGE_NAME: '${PACKAGE_NAME}'")
 endif()
 add_library("${TARGET_NAME}" STATIC)
 
