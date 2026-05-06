@@ -104,6 +104,7 @@ if(V8_EMBEDDED)
 endif()
 
 # Sources which will be preprocessed by `expand_def`
+include(./PreprocessedSources.cmake)
 target_preprocessed_sources("${NAME}" v8 "${MODULE_NAME}"
 	PUBLIC FILE_SET CXX_MODULES FILES
 		v8.cc
