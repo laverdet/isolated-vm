@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.8.0",
-    "@isolated-vm/experimental": "workspace:*",
+    "@isolated-vm/experimental": "workspace:^",
     "@napi-rs/cli": "^3.5.1",
     "@stylistic/eslint-plugin": "^2.6.2",
     "@typescript-eslint/eslint-plugin": "^8.0.1",
@@ -21,7 +21,7 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
-    "@auto_js/js": "workspace:*",
+    "@auto_js/js": "workspace:^",
     "@changesets/cli": "^2.30.0",
     "tslib": "^2.7.0"
   }

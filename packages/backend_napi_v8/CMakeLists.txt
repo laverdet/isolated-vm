@@ -1,4 +1,7 @@
 set(NAPI_VERSION 10)
+set(V8_TRICKSHOT ON)
+find_package_from_npm(@auto_js/js)
+find_package_from_npm(@auto_js/v8_exports @isolated-vm/embedded_v8)
 find_package_from_npm(@auto_js/napi)
 find_package_from_npm(@auto_js/v8)
 
@@ -7,6 +10,8 @@ if(COMPILE_ONLY)
 else()
 	add_library(backend_napi_v8 SHARED)
 endif()
+
+# Sources
 target_sources(backend_napi_v8
 	PRIVATE
 		agent.cc

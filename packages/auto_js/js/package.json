@@ -8,7 +8,7 @@
     "auto_js_cmake_include": "cmake/cmake_include.mjs"
   },
   "dependencies": {
-    "@auto_js/utility": "workspace:*"
+    "@auto_js/utility": "workspace:^"
   },
   "repository": {
     "type": "git",

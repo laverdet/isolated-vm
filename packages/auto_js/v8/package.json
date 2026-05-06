@@ -5,7 +5,8 @@
   "homepage": "https://github.com/laverdet/isolated-vm/tree/experimental/packages/auto_js/v8",
   "license": "ISC",
   "dependencies": {
-    "@auto_js/js": "workspace:*"
+    "@auto_js/js": "workspace:^",
+    "@auto_js/v8_exports": "workspace:^"
   },
   "repository": {
     "type": "git",

@@ -3,7 +3,8 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@auto_js/napi": "workspace:*",
-    "@auto_js/v8": "workspace:*"
+    "@auto_js/napi": "workspace:^",
+    "@auto_js/v8": "workspace:^",
+    "@auto_js/v8_exports": "workspace:^"
   }
 }

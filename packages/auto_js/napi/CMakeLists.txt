@@ -1,5 +1,6 @@
 find_package_from_npm(@auto_js/js)
 find_package_from_npm(@auto_js/napi_exports)
+find_package_from_npm(@auto_js/v8_exports)
 
 add_library(napi_js OBJECT)
 target_compile_features(napi_js PUBLIC cxx_std_23)

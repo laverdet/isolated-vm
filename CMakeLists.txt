@@ -225,22 +225,9 @@ include(FindNpmPackage)
 set(EXPORT_IS_EXPORT ON)
 add_definitions(-DEXPORT_IS_EXPORT)
 
-# Embedded v8
-set(V8_EMBEDDED ON)
-set(V8_TRICKSHOT ON)
-add_subdirectory(packages/third_party/v8 google_v8)
-
-# nodejs v8
-set(V8_VENDOR nodejs)
-set(V8_EMBEDDED OFF)
-set(V8_TRICKSHOT OFF)
-add_subdirectory(packages/third_party/v8 nodejs_v8)
-
-# addon api
-add_subdirectory(packages/isolated-vm/addon)
-
 # nodejs require-able module
+add_subdirectory(packages/isolated-vm/addon)
 add_subdirectory(packages/backend_napi_v8)
 
 # Playground
-add_subdirectory(playground)
+add_subdirectory(playground EXCLUDE_FROM_ALL)

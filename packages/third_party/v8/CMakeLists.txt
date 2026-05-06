@@ -1,11 +1,15 @@
 # Library name: google_v8, or nodejs_v8
-if(NOT DEFINED V8_VENDOR)
-	set(V8_VENDOR "google")
+set(CXX_MODULE_NAME v8)
+if(PACKAGE_NAME STREQUAL "@isolated-vm/embedded_v8")
+	set(TARGET_NAME "google_v8")
+elseif(PACKAGE_NAME STREQUAL "@auto_js/v8_exports")
+	set(TARGET_NAME "nodejs_v8")
+else()
+	message(FATAL_ERROR "Missing or unknown @auto_js/v8 PACKAGE_NAME: '${PACKAGE_NAME}'")
 endif()
-set(NAME "${V8_VENDOR}_v8")
-add_library("${NAME}" STATIC)
+add_library("${TARGET_NAME}" STATIC)
 
-if (V8_EMBEDDED)
+if(TARGET_NAME STREQUAL "google_v8")
 	# Header files (embedded)
 	if(NOT DEFINED V8_INCLUDE_DIR)
 		set(V8_INCLUDE_DIR "$ENV{V8_BUNDLE_PATH}/../include")
@@ -47,47 +51,49 @@ if (V8_EMBEDDED)
 		set(V8_LIBRARY_TYPE "$ENV{V8_LIBRARY_TYPE}" CACHE STRING "")
 	endif()
 	message(STATUS "Using v8 library type '${V8_LIBRARY_TYPE}'")
+
+	# Preprocessor macros which enable dual v8 in the same process
+	if(V8_TRICKSHOT)
+		set(MODULE_NAME z8)
+		target_compile_definitions("${TARGET_NAME}" PUBLIC
+			cppgc=zppgc
+			unibrow=znibrow
+			v8_crdtp=z8_crdtp
+			V8_Dcheck=Z8_Dcheck
+			V8_Fatal=Z8_Fatal
+			v8_inspector=z8_inspector
+			v8=z8
+		)
+	endif()
 else()
 	# Header files (nodejs)
+	if(NOT DEFINED NODE_DIST_DIR)
+		message(FATAL_ERROR "'NODE_DIST_DIR' is not set")
+	endif()
+	set(V8_INCLUDE_DIR "${NODE_DIST_DIR}/include/node")
 	if(NOT EXISTS "${V8_INCLUDE_DIR}/v8.h")
-		message(FATAL_ERROR "Missing ${V8_INCLUDE_DIR}/v8.h")
+		message(FATAL_ERROR "Missing '${V8_INCLUDE_DIR}/v8.h'")
 	endif()
 	message(STATUS "Using v8 headers from '${V8_INCLUDE_DIR}'")
 endif()
 
-# Preprocessor macros which enable dual v8 in the same process
-if(V8_TRICKSHOT)
-	set(MODULE_NAME z8)
-	target_compile_definitions("${NAME}" PUBLIC
-		cppgc=zppgc
-		unibrow=znibrow
-		v8_crdtp=z8_crdtp
-		V8_Dcheck=Z8_Dcheck
-		V8_Fatal=Z8_Fatal
-		v8_inspector=z8_inspector
-		v8=z8
-	)
-else()
-	set(MODULE_NAME v8)
-endif()
-
 # version.h
-target_include_directories("${NAME}" SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_include_directories("${TARGET_NAME}" SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # v8 headers
-target_include_directories("${NAME}" SYSTEM PRIVATE "${V8_INCLUDE_DIR}")
+target_include_directories("${TARGET_NAME}" SYSTEM PRIVATE "${V8_INCLUDE_DIR}")
 
-if(V8_EMBEDDED)
+if(TARGET_NAME STREQUAL "google_v8")
 	# Include v8-gn.h
-	target_compile_options("${NAME}" PRIVATE -include "${V8_INCLUDE_GN_FILE}")
+	target_compile_options("${TARGET_NAME}" PRIVATE -include "${V8_INCLUDE_GN_FILE}")
 
 	# Include deeper v8 headers not provided by nodejs
-	target_compile_definitions("${NAME}" PRIVATE INCLUDE_V8_PLATFORM)
+	target_compile_definitions("${TARGET_NAME}" PRIVATE INCLUDE_V8_PLATFORM)
 
 	# Link against v8, which is built elsewhere
 	if(V8_LIBRARY_TYPE STREQUAL static)
-		target_link_directories("${NAME}" PUBLIC "${V8_LIBRARY_PATH}/obj")
-		target_link_libraries("${NAME}" PUBLIC v8_monolith)
+		target_link_directories("${TARGET_NAME}" PUBLIC "${V8_LIBRARY_PATH}/obj")
+		target_link_libraries("${TARGET_NAME}" PUBLIC v8_monolith)
 
 		# Building v8 against libstdc++ w/ clang requires `-latomic`
 		# TODO(?): We would need to record how v8 was compiled, not which toolchain is compiling *this*
@@ -96,8 +102,8 @@ if(V8_EMBEDDED)
 		# 	target_link_libraries(google_v8 PUBLIC atomic)
 		# endif()
 	elseif(V8_LIBRARY_TYPE STREQUAL shared)
-		target_link_directories("${NAME}" PUBLIC "${V8_LIBRARY_PATH}")
-		target_link_libraries("${NAME}" PUBLIC v8 v8_libbase v8_libplatform icuuc)
+		target_link_directories("${TARGET_NAME}" PUBLIC "${V8_LIBRARY_PATH}")
+		target_link_libraries("${TARGET_NAME}" PUBLIC v8 v8_libbase v8_libplatform icuuc)
 	else()
 		message(FATAL_ERROR "Unknown v8 library type")
 	endif()
@@ -105,7 +111,7 @@ endif()
 
 # Sources which will be preprocessed by `expand_def`
 include(./PreprocessedSources.cmake)
-target_preprocessed_sources("${NAME}" v8 "${MODULE_NAME}"
+target_preprocessed_sources("${TARGET_NAME}" v8 "${CXX_MODULE_NAME}"
 	PUBLIC FILE_SET CXX_MODULES FILES
 		v8.cc
 )

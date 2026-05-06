@@ -37,7 +37,7 @@
     "tslib": "^2.7.0"
   },
   "devDependencies": {
-    "@isolated-vm/experimental": "workspace:*",
+    "@isolated-vm/experimental": "workspace:^",
     "@types/node": "^22.1.0"
   },
   "repository": {

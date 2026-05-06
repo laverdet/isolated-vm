@@ -9,4 +9,5 @@ packages:
   - packages/backend_napi_v8
   - packages/isolated-vm
   - packages/third_party/nodejs
+  - packages/third_party/v8
   - packages/utility
