@@ -55,3 +55,44 @@ jobs:
         run: |
           npm test
         timeout-minutes: 4
+  build-and-test-msys2:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    env:
+      MSYSTEM: UCRT64
+      CHERE_INVOKING: 1
+      MSYS2_PATH_TYPE: inherit
+    strategy:
+      matrix:
+        node: [ 24 ]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v6
+      - name: Use Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          install: jq base-devel binutils git mingw-w64-ucrt-x86_64-toolchain
+          pacboy: >-
+            yarn:p python:p
+          update: true
+          path-type: inherit
+          release: false
+      - name: Build
+        run: |
+          npm install --build-from-source
+          ls -R build
+      - name: Test
+        uses: nick-fields/retry@v3
+        with:
+          max_attempts: 3
+          retry_on: error
+          timeout_minutes: 6
+          shell: cmd
+          command: msys2 -c "npm test"
+
