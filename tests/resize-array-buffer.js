@@ -15,3 +15,4 @@ context.evalClosureSync(
     timeout: 1000,
   },
 );
+console.log('pass');
