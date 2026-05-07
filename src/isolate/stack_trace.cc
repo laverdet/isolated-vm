@@ -77,7 +77,11 @@ void ErrorStackGetter(Local<Name> /*property*/, const PropertyCallbackInfo<Value
 	FunctorRunners::RunCallback(info, [ &info ]() {
 		Isolate* isolate = Isolate::GetCurrent();
 		Local<Context> context = isolate->GetCurrentContext();
+#if V8_AT_LEAST(14, 0, 0)
+		Local<Object> holder = info.HolderV2();
+#else
 		Local<Object> holder = info.This();
+#endif
 		Local<Value> name = Unmaybe(holder->Get(context, StringTable::Get().name));
 		if (!name->IsString()) {
 			name = holder->GetConstructorName();
@@ -86,7 +90,7 @@ void ErrorStackGetter(Local<Name> /*property*/, const PropertyCallbackInfo<Value
 			StringConcat(isolate, name.As<String>(), StringTable::Get().colonSpace),
 			StringConcat(isolate,
 				Unmaybe(
-					Unmaybe(info.This()->Get(context, StringTable::Get().message))->ToString(context)
+					Unmaybe(holder->Get(context, StringTable::Get().message))->ToString(context)
 				),
 				RenderErrorStack(Unmaybe(holder->GetPrivate(context, GetPrivateStackSymbol())))
 			)
