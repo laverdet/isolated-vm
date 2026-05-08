@@ -13,17 +13,17 @@ namespace {
  */
 class ExternalString final : public v8::String::ExternalStringResource {
 	public:
-		explicit ExternalString(std::shared_ptr<std::vector<char>> value) : value{std::move(value)} {
-			IsolateEnvironment::GetCurrent().AdjustExtraAllocatedMemory(this->value->size());
+		explicit ExternalString(std::shared_ptr<std::vector<char>> value) :
+				value{std::move(value)}, environment{&IsolateEnvironment::GetCurrent()} {
+			environment->AdjustExtraAllocatedMemory(this->value->size());
 		}
 
 		ExternalString(const ExternalString&) = delete;
 
 		~ExternalString() final {
-			auto* environment = Executor::GetCurrentEnvironment();
-			if (environment != nullptr) {
-				environment->AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
-			}
+			// V8 14 may invoke string finalizers from a context where Executor's thread-local
+			// is not set, so use the environment captured at construction.
+			environment->AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
 		}
 
 		auto operator= (const ExternalString&) = delete;
@@ -38,21 +38,20 @@ class ExternalString final : public v8::String::ExternalStringResource {
 
 	private:
 		std::shared_ptr<std::vector<char>> value;
+		IsolateEnvironment* environment;
 };
 
 class ExternalStringOneByte final : public v8::String::ExternalOneByteStringResource {
 	public:
-		explicit ExternalStringOneByte(std::shared_ptr<std::vector<char>> value) : value{std::move(value)} {
-			IsolateEnvironment::GetCurrent().AdjustExtraAllocatedMemory(this->value->size());
+		explicit ExternalStringOneByte(std::shared_ptr<std::vector<char>> value) :
+				value{std::move(value)}, environment{&IsolateEnvironment::GetCurrent()} {
+			environment->AdjustExtraAllocatedMemory(this->value->size());
 		}
 
 		ExternalStringOneByte(const ExternalStringOneByte&) = delete;
 
 		~ExternalStringOneByte() final {
-			auto* environment = Executor::GetCurrentEnvironment();
-			if (environment != nullptr) {
-				environment->AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
-			}
+			environment->AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
 		}
 
 		auto operator= (const ExternalStringOneByte&) = delete;
@@ -67,6 +66,7 @@ class ExternalStringOneByte final : public v8::String::ExternalOneByteStringReso
 
 	private:
 		std::shared_ptr<std::vector<char>> value;
+		IsolateEnvironment* environment;
 };
 
 } // anonymous namespace
