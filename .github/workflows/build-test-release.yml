@@ -82,7 +82,9 @@ jobs:
             triplet: x86_64-alpine-linux-musl
           - runs-on: macos-15-intel
             triplet: x86_64-apple-darwin
-          - runs-on: windows-2025
+          # todo: back to windows-latest after vs2026 migration
+          # https://github.blog/changelog/2026-02-05-github-actions-early-february-2026-updates/#windows-server-2025-with-visual-studio-2026-image-now-available-for-github-hosted-runners
+          - runs-on: windows-2025-vs2026
             triplet: x86_64-pc-windows
           - runs-on: ${{ needs.configure.outputs.x86_64-unknown-linux-gnu }}
             container: debian:sid
@@ -134,7 +136,9 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           set -ux
-          brew install boost cmake lld llvm ninja node
+          # https://github.com/orgs/Homebrew/discussions/5602
+          brew install --quiet cmake ninja
+          brew install boost lld llvm node
           # Clever workaround for clang-scan-deps issues
           # /opt/homebrew/opt/llvm/bin/../include/c++/v1/__locale_dir/support/bsd_like.h:21:10: fatal error: 'time.h' file not found
           # https://github.com/Homebrew/homebrew-core/issues/221782#issuecomment-3245658786
@@ -151,6 +155,7 @@ jobs:
       # https://github.com/actions/partner-runner-images/blob/main/images/arm-windows-11-image.md
       - name: Toolchain [Windows]
         if: runner.os == 'Windows'
+        id: windows
         shell: sh
         run: |
           set -ux
@@ -170,17 +175,17 @@ jobs:
           echo ::endgroup::
 
           echo ::group::import std hack
-          # /c/Program Files/Microsoft Visual Studio/2022/Enterprise
+          # /c/Program Files/Microsoft Visual Studio/18/Enterprise
           VISUAL_STUDIO_PATH=$(cygpath "$(vswhere | grep installationPath: | cut -c19-)")
-          # /c/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207
+          # /c/Program Files/Microsoft Visual Studio/18/Enterprise/VC/Tools/MSVC/14.50.35717
           MSVC_PATH="$VISUAL_STUDIO_PATH/VC/Tools/MSVC/$(ls "$VISUAL_STUDIO_PATH/VC/Tools/MSVC" | sort -V | tail -1)"
-
-          # Make the `import std` interface manifest
+          # Make the `import std` ecostd manifest
           MODULES_STD_FRAGMENT='{ "logical-name": "std", "source-path": "'"$(cygpath -w "$MSVC_PATH/modules/std.ixx" | sed 's \\ \\\\\\\\ g')"'", "is-std-library": true }'
           MODULES_STD_COMPAT_FRAGMENT='{ "logical-name": "std", "source-path": "'"$(cygpath -w "$MSVC_PATH/modules/std.compat.ixx" | sed 's \\ \\\\\\\\ g')"'", "is-std-library": true }'
           ARGUMENTS_FRAGMENT='"local-arguments": { "system-include-directories": [ "'"$MSVC_PATH/modules"'" ] }'
           MANIFEST_JSON='{ "version": 1, "revision": 1, "modules": [ '"$MODULES_STD_FRAGMENT"', '"$MODULES_STD_COMPAT_FRAGMENT"' ], '"$ARGUMENTS_FRAGMENT"' }'
-          echo "$MANIFEST_JSON" > ms-stl.modules.json
+          echo "$MANIFEST_JSON" > "$RUNNER_TOOL_CACHE/stl.modules.json"
+          echo "modules=/$(cygpath.exe --mixed "$RUNNER_TOOL_CACHE/stl.modules.json")" >> "$GITHUB_OUTPUT"
 
           # Patch cmake
           patch --batch --forward --unified /c/msys64/mingw64/share/cmake/Modules/Compiler/Clang-CXX-CXXImportStd.cmake <<"EOF"
@@ -261,6 +266,7 @@ jobs:
       - name: Configure
         shell: sh
         env:
+          CXX_MODULES_JSON: ${{ steps.windows.outputs.modules }}
           NODE_DIST_DIR: deps/nodejs/${{ env.NODE_HEADERS }}
           V8_REF: ${{ env.V8_REF }}
         run: |
@@ -272,6 +278,7 @@ jobs:
             *-darwin)
               CMAKE_C_COMPILER=$(brew --prefix llvm)/bin/clang
               CMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++
+              CXX_MODULES_JSON=$(brew --prefix llvm)/lib/c++/libc++.modules.json
               ;;
             *-linux-gnu|*-linux-musl)
               CMAKE_C_COMPILER=$(realpath "$(which clang-22)")
@@ -285,16 +292,17 @@ jobs:
               ;;
           esac
           cmake \
-            -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_C_COMPILER="$CMAKE_C_COMPILER" \
             -DCMAKE_CXX_COMPILER="$CMAKE_CXX_COMPILER" \
+            -DCMAKE_CXX_STDLIB_MODULES_JSON="$CXX_MODULES_JSON" \
             -DCMAKE_MAKE_PROGRAM="$CMAKE_MAKE_PROGRAM" \
+            -DCMAKE_MODULE_PATH="$(npm exec auto_js_cmake_include)" \
             -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
             -DV8_INCLUDE_DIR="$V8_REF_PATH/include" \
             -DV8_INCLUDE_GN_FILE="$V8_REF_PATH/$TRIPLET.release/include/v8-gn.h" \
-            -DV8_LIBRARY_TYPE=static \
             -DV8_LIBRARY_PATH="$V8_REF_PATH/$TRIPLET.release" \
+            -DV8_LIBRARY_TYPE=static \
             -DIVM_INSTALL=copy \
             -B build \
             -G Ninja \

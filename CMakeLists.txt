@@ -1,19 +1,7 @@
 message(STATUS "Cmake version: ${CMAKE_VERSION}")
 
 # Mess of `import std` configuration
-if(WIN32)
-	cmake_minimum_required(VERSION 4.3.0 FATAL_ERROR)
-	set(CMAKE_CXX_STDLIB_MODULES_JSON ms-stl.modules.json)
-elseif(APPLE)
-	cmake_minimum_required(VERSION 4.0.0 FATAL_ERROR)
-	execute_process(COMMAND brew --prefix llvm OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE BREW_LLVM_LOCATION RESULT_VARIABLE RESULT)
-	if(NOT RESULT STREQUAL 0)
-		message(FATAL_ERROR "Failed to run brew")
-	endif()
-	set(CMAKE_CXX_STDLIB_MODULES_JSON "${BREW_LLVM_LOCATION}/lib/c++/libc++.modules.json")
-else()
-	cmake_minimum_required(VERSION 4.0.0 FATAL_ERROR)
-endif()
+cmake_minimum_required(VERSION 4.0.0 FATAL_ERROR)
 add_compile_options(
 	$<$<CXX_COMPILER_ID:Clang>:-fno-modules-reduced-bmi>
 	$<$<CXX_COMPILER_ID:Clang>:-Wno-include-angled-in-module-purview>
