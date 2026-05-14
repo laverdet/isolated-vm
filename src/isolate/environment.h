@@ -35,7 +35,7 @@ namespace ivm {
 /**
  * Wrapper around Isolate with helpers to make working with multiple isolates easier.
  */
-class IsolateEnvironment {
+class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironment> {
 	// These are here so they can adjust `extra_allocated_memory`. TODO: Make this a method
 	friend class ExternalCopyString;
 
