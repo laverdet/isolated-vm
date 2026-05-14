@@ -5,8 +5,6 @@ target_compile_features(auto_js PUBLIC cxx_std_23)
 target_link_libraries(auto_js PUBLIC utility_js)
 
 target_sources(auto_js
-	PRIVATE
-		assertions.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		builtin/accept.cc
@@ -47,3 +45,9 @@ target_sources(auto_js
 		vector/vector_of.cc
 		vector/visit.cc
 )
+if(CMAKE_BUILD_TYPE STREQUAL Debug)
+	target_sources(auto_js
+		PRIVATE
+			assertions.cc
+	)
+endif()
