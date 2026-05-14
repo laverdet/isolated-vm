@@ -6,30 +6,30 @@ import v8;
 namespace js::iv8 {
 
 // null
-auto accept_primitive::operator()(null_tag /*tag*/, visit_holder /*visit*/, std::nullptr_t /*subject*/) const -> v8::Local<iv8::Null> {
+auto accept_v8_primitive::operator()(null_tag /*tag*/, visit_holder /*visit*/, std::nullptr_t /*subject*/) const -> v8::Local<iv8::Null> {
 	return v8::Null(isolate()).As<iv8::Null>();
 }
 
 // boolean
-auto accept_primitive::operator()(boolean_tag /*tag*/, visit_holder /*visit*/, bool subject) const -> v8::Local<v8::Boolean> {
+auto accept_v8_primitive::operator()(boolean_tag /*tag*/, visit_holder /*visit*/, bool subject) const -> v8::Local<v8::Boolean> {
 	return v8::Boolean::New(isolate_, subject);
 }
 
 // number
-auto accept_primitive::operator()(number_tag_of<double> /*tag*/, visit_holder /*visit*/, double subject) const -> v8::Local<iv8::Double> {
+auto accept_v8_primitive::operator()(number_tag_of<double> /*tag*/, visit_holder /*visit*/, double subject) const -> v8::Local<iv8::Double> {
 	return v8::Number::New(isolate_, subject).As<iv8::Double>();
 }
 
-auto accept_primitive::operator()(number_tag_of<std::int32_t> /*tag*/, visit_holder /*visit*/, std::int32_t subject) const -> v8::Local<v8::Int32> {
+auto accept_v8_primitive::operator()(number_tag_of<std::int32_t> /*tag*/, visit_holder /*visit*/, std::int32_t subject) const -> v8::Local<v8::Int32> {
 	return v8::Integer::New(isolate_, subject).As<v8::Int32>();
 }
 
-auto accept_primitive::operator()(number_tag_of<std::uint32_t> /*tag*/, visit_holder /*visit*/, std::uint32_t subject) const -> v8::Local<v8::Uint32> {
+auto accept_v8_primitive::operator()(number_tag_of<std::uint32_t> /*tag*/, visit_holder /*visit*/, std::uint32_t subject) const -> v8::Local<v8::Uint32> {
 	return v8::Integer::NewFromUnsigned(isolate_, subject).As<v8::Uint32>();
 }
 
 // string
-auto accept_primitive::operator()(string_tag_of<char> /*tag*/, visit_holder /*visit*/, std::string_view subject) const
+auto accept_v8_primitive::operator()(string_tag_of<char> /*tag*/, visit_holder /*visit*/, std::string_view subject) const
 	-> js::referenceable_value<v8::Local<iv8::StringOneByte>> {
 	const auto* data = reinterpret_cast<const std::uint8_t*>(subject.data());
 	auto size = static_cast<int>(subject.size());
@@ -37,7 +37,7 @@ auto accept_primitive::operator()(string_tag_of<char> /*tag*/, visit_holder /*vi
 	return js::referenceable_value{value};
 }
 
-auto accept_primitive::operator()(string_tag_of<char8_t> /*tag*/, visit_holder /*visit*/, std::u8string_view subject) const
+auto accept_v8_primitive::operator()(string_tag_of<char8_t> /*tag*/, visit_holder /*visit*/, std::u8string_view subject) const
 	-> js::referenceable_value<v8::Local<v8::String>> {
 	const auto* data = reinterpret_cast<const char*>(subject.data());
 	auto size = static_cast<int>(subject.size());
@@ -45,7 +45,7 @@ auto accept_primitive::operator()(string_tag_of<char8_t> /*tag*/, visit_holder /
 	return js::referenceable_value{value};
 }
 
-auto accept_primitive::operator()(string_tag_of<char16_t> /*tag*/, visit_holder /*visit*/, std::u16string_view subject) const
+auto accept_v8_primitive::operator()(string_tag_of<char16_t> /*tag*/, visit_holder /*visit*/, std::u16string_view subject) const
 	-> js::referenceable_value<v8::Local<iv8::StringTwoByte>> {
 	const auto* data = reinterpret_cast<const std::uint16_t*>(subject.data());
 	auto size = static_cast<int>(subject.size());
@@ -54,39 +54,39 @@ auto accept_primitive::operator()(string_tag_of<char16_t> /*tag*/, visit_holder 
 }
 
 // bigint (why does `NewFromWords` need a context?)
-auto accept_value::operator()(bigint_tag_of<std::int64_t> /*tag*/, visit_holder /*visit*/, std::int64_t subject) const
+auto accept_v8_value::operator()(bigint_tag_of<std::int64_t> /*tag*/, visit_holder /*visit*/, std::int64_t subject) const
 	-> js::referenceable_value<v8::Local<iv8::BigInt64>> {
 	auto value = v8::BigInt::New(isolate(), subject).As<iv8::BigInt64>();
 	return js::referenceable_value{value};
 }
 
-auto accept_value::operator()(bigint_tag_of<std::uint64_t> /*tag*/, visit_holder /*visit*/, std::uint64_t subject) const
+auto accept_v8_value::operator()(bigint_tag_of<std::uint64_t> /*tag*/, visit_holder /*visit*/, std::uint64_t subject) const
 	-> js::referenceable_value<v8::Local<iv8::BigIntU64>> {
 	auto value = v8::BigInt::NewFromUnsigned(isolate(), subject).As<iv8::BigIntU64>();
 	return js::referenceable_value{value};
 }
 
-auto accept_value::operator()(bigint_tag_of<js::bigint> /*tag*/, visit_holder /*visit*/, const js::bigint& subject) const
+auto accept_v8_value::operator()(bigint_tag_of<js::bigint> /*tag*/, visit_holder /*visit*/, const js::bigint& subject) const
 	-> js::referenceable_value<v8::Local<iv8::BigIntWords>> {
 	auto value = unmaybe(v8::BigInt::NewFromWords(context_, subject.sign_bit(), static_cast<int>(subject.size()), subject.data())).As<iv8::BigIntWords>();
 	return js::referenceable_value{value};
 }
 
 // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
-auto accept_value::operator()(bigint_tag_of<js::bigint> tag, visit_holder visit, js::bigint&& subject) const
+auto accept_v8_value::operator()(bigint_tag_of<js::bigint> tag, visit_holder visit, js::bigint&& subject) const
 	-> js::referenceable_value<v8::Local<iv8::BigIntWords>> {
 	return (*this)(tag, visit, static_cast<const js::bigint&>(subject));
 }
 
 // date
-auto accept_value::operator()(date_tag /*tag*/, visit_holder /*visit*/, js_clock::time_point subject) const
+auto accept_v8_value::operator()(date_tag /*tag*/, visit_holder /*visit*/, js_clock::time_point subject) const
 	-> js::referenceable_value<v8::Local<v8::Date>> {
 	auto value = unmaybe(v8::Date::New(context_, subject.time_since_epoch().count())).As<v8::Date>();
 	return js::referenceable_value{value};
 }
 
 // error
-auto accept_value::operator()(error_tag /*tag*/, visit_holder /*visit*/, const js::error_value& subject) const
+auto accept_v8_value::operator()(error_tag /*tag*/, visit_holder /*visit*/, const js::error_value& subject) const
 	-> js::referenceable_value<v8::Local<v8::Object>> {
 	auto message = js::transfer_in<v8::Local<v8::String>>(subject.message(), witness());
 	auto error = v8::Local<v8::Value>{[ & ]() -> v8::Local<v8::Value> {
@@ -108,12 +108,12 @@ auto accept_value::operator()(error_tag /*tag*/, visit_holder /*visit*/, const j
 }
 
 // function
-auto accept_value::operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::FunctionTemplate> subject) const -> v8::Local<v8::Function> {
+auto accept_v8_value::operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::FunctionTemplate> subject) const -> v8::Local<v8::Function> {
 	return unmaybe(subject->GetFunction(context_));
 }
 
 // data blocks
-auto accept_value::operator()(array_buffer_tag /*tag*/, visit_holder /*visit*/, js::array_buffer subject) const
+auto accept_v8_value::operator()(array_buffer_tag /*tag*/, visit_holder /*visit*/, js::array_buffer subject) const
 	-> js::referenceable_value<v8::Local<v8::ArrayBuffer>> {
 	auto byte_length = subject.size();
 	auto backing_store = v8::ArrayBuffer::NewBackingStore(
@@ -128,7 +128,7 @@ auto accept_value::operator()(array_buffer_tag /*tag*/, visit_holder /*visit*/, 
 	return js::referenceable_value{value};
 }
 
-auto accept_value::operator()(shared_array_buffer_tag /*tag*/, visit_holder /*visit*/, js::shared_array_buffer&& subject) const
+auto accept_v8_value::operator()(shared_array_buffer_tag /*tag*/, visit_holder /*visit*/, js::shared_array_buffer&& subject) const
 	-> js::referenceable_value<v8::Local<v8::SharedArrayBuffer>> {
 	auto byte_length = subject.size();
 	auto backing_store = [ & ]() -> auto {
@@ -154,7 +154,7 @@ auto accept_value::operator()(shared_array_buffer_tag /*tag*/, visit_holder /*vi
 	return js::referenceable_value{value};
 }
 
-auto accept_value::operator()(shared_array_buffer_tag tag, visit_holder visit, const js::shared_array_buffer& subject) const
+auto accept_v8_value::operator()(shared_array_buffer_tag tag, visit_holder visit, const js::shared_array_buffer& subject) const
 	-> js::referenceable_value<v8::Local<v8::SharedArrayBuffer>> {
 	return (*this)(tag, visit, js::shared_array_buffer{subject});
 }

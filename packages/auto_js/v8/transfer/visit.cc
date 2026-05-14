@@ -381,12 +381,12 @@ struct visit_template {
 		explicit visit_template(auto* /*transfer*/) {}
 
 		template <class Accept>
-		auto operator()(v8::Local<v8::FunctionTemplate> subject, const Accept& accept) -> accept_target_t<Accept> {
+		auto operator()(v8::Local<v8::FunctionTemplate> subject, const Accept& accept) const -> accept_target_t<Accept> {
 			return accept(function_prototype_tag{}, *this, subject);
 		}
 
 		template <class Accept>
-		auto operator()(v8::Local<v8::ObjectTemplate> subject, const Accept& accept) -> accept_target_t<Accept> {
+		auto operator()(v8::Local<v8::ObjectTemplate> subject, const Accept& accept) const -> accept_target_t<Accept> {
 			return accept(object_prototype_tag{}, *this, subject);
 		}
 

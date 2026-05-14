@@ -7,18 +7,32 @@ import v8;
 
 namespace js::iv8 {
 
+template <class Type>
+struct revive_lock_type : std::type_identity<Type> {};
+
+template <class Agent, class... Implements>
+struct revive_lock_type<isolate_lock_witness_of<Agent, Implements...>>
+		: std::type_identity<const context_lock_witness_of<Agent, Implements...>&> {};
+
+template <class Agent, class... Implements>
+struct revive_lock_type<context_lock_witness_of<Agent, Implements...>>
+		: std::type_identity<const context_lock_witness_of<Agent, Implements...>&> {};
+
 // Make callback for plain free function
 template <class Lock>
 constexpr auto make_free_function(auto function) {
+	using lock_type = revive_lock_type<Lock>::type;
+
 	constexpr auto make_with_try_catch =
-		[]<std::constructible_from<Lock> LockAs, class... Args, bool Nx, class Result>(
+		[]<std::constructible_from<lock_type> LockAs, class... Args, bool Nx, class Result>(
 			std::type_identity<auto(LockAs, Args...) noexcept(Nx)->Result> /*signature*/,
 			auto callback
 		) -> auto {
 		using callback_type = decltype(callback);
 		return util::bind{
-			[](callback_type& callback, Lock lock, const v8::FunctionCallbackInfo<v8::Value>& info) noexcept(Nx) -> void {
-				auto result = invoke_internal_error_scope(util::slice(lock), [ & ]() -> auto {
+			[](callback_type& callback, lock_type lock, const v8::FunctionCallbackInfo<v8::Value>& info) noexcept(Nx) -> void {
+				// NOLINTNEXTLINE(cppcoreguidelines-slicing)
+				auto result = invoke_internal_error_scope(lock, [ & ]() -> auto {
 					auto run = util::regular_return{[ & ]() -> decltype(auto) {
 						return std::apply(
 							callback,
@@ -31,21 +45,21 @@ constexpr auto make_free_function(auto function) {
 					return run().value_or(std::monostate{});
 				});
 				if (result) {
-					js::transfer_in_strict<v8::ReturnValue<v8::Value>>(std::move(result), lock, info.GetReturnValue());
+					return_into(lock, info.GetReturnValue(), *std::move(result));
 				}
 			},
 			std::move(callback),
 		};
 	};
 	constexpr auto make_noexcept =
-		[]<std::constructible_from<Lock> LockAs, class Result>(
+		[]<std::constructible_from<lock_type> LockAs, class Result>(
 			std::type_identity<auto(LockAs) noexcept -> Result> /*signature*/,
 			auto callback
 		) -> auto {
 		static_assert(false, "untested");
 		using callback_type = decltype(callback);
 		return util::bind{
-			[](callback_type& callback, Lock lock, const v8::FunctionCallbackInfo<v8::Value>& /*info*/) noexcept -> void {
+			[](callback_type& callback, lock_type lock, const v8::FunctionCallbackInfo<v8::Value>& /*info*/) noexcept -> void {
 				auto run = util::regular_return{[ & ]() -> decltype(auto) {
 					return callback(lock);
 				}};
@@ -55,7 +69,7 @@ constexpr auto make_free_function(auto function) {
 		};
 	};
 
-	auto callback = js::functional::thunk_free_function<Lock>(std::move(function));
+	auto callback = js::functional::thunk_free_function<lock_type>(std::move(function));
 	constexpr auto make = util::overloaded{make_with_try_catch, make_noexcept};
 	return make(std::type_identity<util::function_signature_t<decltype(callback)>>{}, std::move(callback));
 }
