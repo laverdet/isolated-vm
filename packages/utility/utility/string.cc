@@ -233,14 +233,14 @@ class codepoint_forward_view<char16_t> {
 
 		constexpr auto read() -> char32_t {
 			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-			auto char0 = char32_t{*pos_++};
+			auto char0 = static_cast<char32_t>(*pos_++);
 			if (char0 >= 0xd800 && char0 < 0xdc00) {
 				if (eof()) {
 					// nb: Unpaired surrogate
 					return char0;
 				}
 				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-				auto char1 = char32_t{*pos_++};
+				auto char1 = static_cast<char32_t>(*pos_++);
 				if (char1 >= 0xdc00 && char1 < 0xe000) {
 					return ((char0 - 0xd800) * 0x400) + (char1 - 0xdc00) + 0x1'0000;
 				} else {
