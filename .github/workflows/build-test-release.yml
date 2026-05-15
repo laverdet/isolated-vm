@@ -180,12 +180,22 @@ jobs:
           # /c/Program Files/Microsoft Visual Studio/18/Enterprise/VC/Tools/MSVC/14.50.35717
           MSVC_PATH="$VISUAL_STUDIO_PATH/VC/Tools/MSVC/$(ls "$VISUAL_STUDIO_PATH/VC/Tools/MSVC" | sort -V | tail -1)"
           # Make the `import std` ecostd manifest
-          MODULES_STD_FRAGMENT='{ "logical-name": "std", "source-path": "'"$(cygpath -w "$MSVC_PATH/modules/std.ixx" | sed 's \\ \\\\\\\\ g')"'", "is-std-library": true }'
-          MODULES_STD_COMPAT_FRAGMENT='{ "logical-name": "std", "source-path": "'"$(cygpath -w "$MSVC_PATH/modules/std.compat.ixx" | sed 's \\ \\\\\\\\ g')"'", "is-std-library": true }'
-          ARGUMENTS_FRAGMENT='"local-arguments": { "system-include-directories": [ "'"$MSVC_PATH/modules"'" ] }'
-          MANIFEST_JSON='{ "version": 1, "revision": 1, "modules": [ '"$MODULES_STD_FRAGMENT"', '"$MODULES_STD_COMPAT_FRAGMENT"' ], '"$ARGUMENTS_FRAGMENT"' }'
-          echo "$MANIFEST_JSON" > "$RUNNER_TOOL_CACHE/stl.modules.json"
-          echo "modules=/$(cygpath.exe --mixed "$RUNNER_TOOL_CACHE/stl.modules.json")" >> "$GITHUB_OUTPUT"
+          internal_escape() { cat | sed 's \\ \\\\ g'; }
+          json_string() { echo "\"$(cat | internal_escape)\""; }
+          cat <<EOF > "$RUNNER_TOOL_CACHE/stl.modules.json"
+          {
+            "version": 1,
+            "revision": 1,
+            "local-arguments": {
+              "system-include-directories": [ $(echo "$MSVC_PATH/modules" | json_string) ]
+            },
+            "modules": [
+              { "logical-name": "std", "is-std-library": true, "source-path": $(cygpath -w "$MSVC_PATH/modules/std.ixx" | internal_escape | json_string) },
+              { "logical-name": "std", "is-std-library": true, "source-path": $(cygpath -w "$MSVC_PATH/modules/std.compat.ixx" | internal_escape | json_string) }
+            ]
+          }
+          EOF
+          echo "modules=/$(cygpath.exe -m "$RUNNER_TOOL_CACHE/stl.modules.json")" >> "$GITHUB_OUTPUT"
 
           # Patch cmake
           patch --batch --forward --unified /c/msys64/mingw64/share/cmake/Modules/Compiler/Clang-CXX-CXXImportStd.cmake <<"EOF"
