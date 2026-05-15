@@ -124,14 +124,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 	if(NOT COMPILE_ONLY)
 		add_compile_options(-Wpedantic)
 	endif()
-	if(NOT CMAKE_BUILD_TYPE STREQUAL Debug)
-		# Soften common development warnings
-		add_compile_options(
-			-Wno-unused-but-set-variable
-			-Wno-unused-local-typedef
-			-Wno-unused-result
-		)
-	endif()
 endif()
 
 # Clang feature flags

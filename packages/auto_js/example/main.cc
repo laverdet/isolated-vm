@@ -240,11 +240,12 @@ auto area(shape value) -> double {
 }
 
 // Variant: accepts either a string or a number; resolved from the JS value type.
-auto describe_value(std::variant<std::u16string, double> value) -> std::u8string {
+auto describe_value(std::variant<std::u16string, double, std::int32_t> value) -> std::u8string {
 	return std::visit(
 		util::overloaded{
-			[](std::u16string& /*value*/) -> std::u8string { return u8"string"; },
-			[](double& /*value*/) -> std::u8string { return u8"number"; }
+			[](const std::u16string& /*value*/) -> std::u8string { return u8"string"; },
+			[](double /*value*/) -> std::u8string { return u8"number"; },
+			[](std::int32_t /*value*/) -> std::u8string { return u8"int32"; },
 		},
 		value
 	);

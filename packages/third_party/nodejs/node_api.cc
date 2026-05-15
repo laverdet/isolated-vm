@@ -1,4 +1,5 @@
 module;
+#include "version.h"
 #include <node_api.h>
 export module nodejs:node_api;
 // NOLINTBEGIN(misc-unused-using-decls)

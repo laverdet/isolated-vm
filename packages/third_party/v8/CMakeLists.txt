@@ -94,6 +94,9 @@ if(TARGET_NAME STREQUAL "google_v8")
 	if(V8_LIBRARY_TYPE STREQUAL static)
 		target_link_directories("${TARGET_NAME}" PUBLIC "${V8_LIBRARY_PATH}/obj")
 		target_link_libraries("${TARGET_NAME}" PUBLIC v8_monolith)
+		if(WIN32)
+			target_link_libraries("${TARGET_NAME}" PUBLIC dbghelp)
+		endif()
 
 		# Building v8 against libstdc++ w/ clang requires `-latomic`
 		# TODO(?): We would need to record how v8 was compiled, not which toolchain is compiling *this*

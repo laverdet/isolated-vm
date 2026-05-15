@@ -60,8 +60,7 @@ if(WIN32)
 	if(NODE_ARCH STREQUAL amd64)
 		set(NODE_ARCH x64)
 	endif()
-	target_link_directories(backend_napi_v8 PUBLIC ${NODE_DIST_DIR}/windows/${NODE_ARCH})
-	target_link_libraries(backend_napi_v8 PUBLIC node dbghelp winmm)
+	target_link_directories(backend_napi_v8 PUBLIC ${NODE_DIST_DIR}/win-${NODE_ARCH})
 endif()
 
 # Emit `xx.node` instead of `libxx.so`

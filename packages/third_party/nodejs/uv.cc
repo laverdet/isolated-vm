@@ -1,4 +1,5 @@
 module;
+#include "version.h"
 #include <uv.h>
 export module nodejs:uv;
 

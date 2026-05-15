@@ -56,6 +56,7 @@ auto bound_value_for_typed_array::make_bound(const environment& env, value_of<ty
 	switch (type_tag) {
 		case napi_bigint64_array: return make(typed_array_tag_of<std::int64_t>{});
 		case napi_biguint64_array: return make(typed_array_tag_of<std::uint64_t>{});
+		case napi_float16_array: throw std::logic_error{"unsupported"};
 		case napi_float32_array: return make(typed_array_tag_of<float>{});
 		case napi_float64_array: return make(typed_array_tag_of<double>{});
 		case napi_int16_array: return make(typed_array_tag_of<std::int16_t>{});

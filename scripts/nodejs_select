@@ -5,7 +5,7 @@ mkdir -p "$1"
 curl "https://nodejs.org/download/release/v$VERSION/node-v$VERSION-headers.tar.gz" | \
 	tar xz --strip-components=1 --directory="$1"
 for PLATFORM in arm64 x64 x86; do
-	mkdir -p "$1/windows/$PLATFORM"
-	curl "https://nodejs.org/download/release/v$VERSION/win-$PLATFORM/node.lib" -o "$1/windows/$PLATFORM/node.lib"
+	mkdir -p "$1/win-$PLATFORM"
+	curl "https://nodejs.org/download/release/v$VERSION/win-$PLATFORM/node.lib" -o "$1/win-$PLATFORM/node.lib"
 done
 echo "$1"

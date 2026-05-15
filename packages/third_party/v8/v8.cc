@@ -55,7 +55,9 @@ using v8::DcheckErrorCallback;
 using v8::EntropySource;
 using v8::ReturnAddressLocationResolver;
 using v8::V8;
+#if V8_AT_LEAST(12, 7, 219)
 using v8::V8FatalErrorCallback;
+#endif
 
 // v8-isolate.h
 using v8::Isolate;
