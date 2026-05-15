@@ -8,6 +8,6 @@
     "build": "ninja -C build example"
   },
   "devDependencies": {
-    "@auto_js/napi": "workspace:*"
+    "@auto_js/napi": "workspace:^"
   }
 }

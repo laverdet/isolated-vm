@@ -1,6 +1,9 @@
 name: Build, Test, Release
 on: [ push ]
 
+defaults:
+  run:
+    shell: sh
 env:
   NODE_HEADERS: 24.0.0
   V8_REF: 14.2.231.21
@@ -37,8 +40,7 @@ jobs:
           key: v8/${{ env.V8_REF }}/${{ matrix.host.triplet }}
           lookup-only: true
           path: deps/v8/out
-      - shell: sh
-        id: output
+      - id: output
         env:
           CACHE_HIT: ${{ steps.cache.outputs.cache-hit }}
           TRIPLET: ${{ matrix.host.triplet }}
@@ -100,8 +102,7 @@ jobs:
 
       # Setup
       - uses: actions/checkout@v5
-      - shell: sh
-        run: echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
+      - run: echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
 
       # GNU `tar` & `zstd` is needed for `actions/cache`
       - uses: laverdet/install@v0
@@ -156,7 +157,6 @@ jobs:
       - name: Toolchain [Windows]
         if: runner.os == 'Windows'
         id: windows
-        shell: sh
         run: |
           set -ux
           echo ::group::Toolchain
@@ -268,13 +268,11 @@ jobs:
 
       # Build isolated-vm
       - uses: pnpm/action-setup@v5
-      - shell: sh
-        run: |
+      - run: |
           set -ux
           pnpm install --frozen-lockfile
           npx tsc -b
       - name: Configure
-        shell: sh
         env:
           CXX_MODULES_JSON: ${{ steps.windows.outputs.modules }}
           NODE_DIST_DIR: deps/nodejs/${{ env.NODE_HEADERS }}
@@ -318,10 +316,8 @@ jobs:
             -G Ninja \
           ;
       - name: Build
-        shell: sh
         run: ninja -C build backend_napi_v8
       - name: Sanity Check
-        shell: sh
         run: node -e "require('./build/packages/backend_napi_v8/artifacts/$(triplet_util -t "$TRIPLET" %p)')"
 
       # Diagnostics
@@ -335,7 +331,6 @@ jobs:
           nm -guC build/packages/backend_napi_v8/backend_napi_v8.node
       - name: Symbols [Windows]
         if: runner.os == 'Windows'
-        shell: sh
         run: |
           set -ux
           ls -la build/packages/backend_napi_v8/backend_napi_v8.node
@@ -405,12 +400,10 @@ jobs:
 
       # Setup
       - uses: actions/checkout@v5
-      - shell: sh
-        run: echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
+      - run: echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
 
       # Get triplet information and make package.json for module
-      - shell: sh
-        id: platform
+      - id: platform
         run: |
           echo "platform=$(triplet_util %p)" >> "$GITHUB_OUTPUT"
           echo "triplet=$(triplet_util %t)" >> "$GITHUB_OUTPUT"
@@ -422,8 +415,7 @@ jobs:
           path: build/packages/backend_napi_v8/artifacts
 
       # Install nodejs [musl]
-      - shell: sh
-        id: musl
+      - id: musl
         if: endsWith(steps.platform.outputs.triplet, '-linux-musl')
         env:
           NODE_VERSION: ${{ matrix.node }}
@@ -453,12 +445,10 @@ jobs:
       # Install npm dependencies, build TypeScript, check module sanity
       - uses: pnpm/action-setup@v5
       - name: Install
-        shell: sh
         env:
           PLATFORM: ${{ steps.platform.outputs.platform }}
         run: |
           set -ux
-          npm config set script-shell /bin/sh
           pnpm install --frozen-lockfile
           npx tsc -b
           mkdir -p node_modules/@isolated-vm
@@ -466,7 +456,9 @@ jobs:
           node -e "require('@isolated-vm/experimental-$PLATFORM')"
       # Run tests
       - name: Test
-        run: pnpm run -s test
+        run: |
+          pnpm config set script-shell /bin/sh
+          pnpm run -s test
 
       # Console on failure
       - uses: laverdet/console@v1
@@ -482,9 +474,10 @@ jobs:
       # Setup
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v6
+        with:
+          node-version: 'lts/*'
       - uses: pnpm/action-setup@v5
       - name: Setup
-        shell: sh
         id: setup
         run: |
           set -ux
@@ -500,7 +493,6 @@ jobs:
 
       # Assemble @isolated-vm/experimental
       - name: Assemble
-        shell: sh
         working-directory: packages/isolated-vm
         run: |
           set -ux
@@ -508,9 +500,13 @@ jobs:
           npx napi artifacts
 
       # Publish
-      - uses: changesets/action@v1
+      - if: github.repository == 'laverdet/isolated-vm' && github.ref_name == 'experimental' && github.event_name == 'push'
+        id: publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          createGithubReleases: false
-          publish: pnpm publish --no-git-checks --recursive --publish-branch experimental --provenance
+        run: |
+          # https://github.com/pnpm/pnpm/issues/5894
+          if [ "$(git status --porcelain)" ]; then
+            git status && false
+          fi
+          pnpm publish --no-git-checks --recursive --publish-branch experimental --provenance

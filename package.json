@@ -2,7 +2,7 @@
   "name": "@isolated-vm/workspace",
   "type": "module",
   "private": true,
-  "packageManager": "pnpm@9.15.2",
+  "packageManager": "pnpm@11.1.2",
   "scripts": {
     "clang-format": "find packages -name '*.cc' -exec clang-format -i {} \\;",
     "lint:cc": "run-clang-tidy -allow-no-checks -p build",
