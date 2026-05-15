@@ -7,7 +7,7 @@ namespace js::functional {
 // Thunk for most functions including free function, static functions, and constructors. The first
 // `realm` parameter is optional for callbacks. This returns a function which always accepts
 // `realm`.
-export template <class Realm>
+export template <class Realm, class Nil = Realm>
 constexpr auto thunk_free_function = []<class Callback>(Callback callback) constexpr -> auto {
 	constexpr auto make_with_realm =
 		[]<class Type, class... Args, bool Nx, class Result>(
@@ -23,7 +23,7 @@ constexpr auto thunk_free_function = []<class Callback>(Callback callback) const
 			auto callback
 		) -> auto {
 		return util::bind{
-			[](Callback& callback, const Realm& /*realm*/, Args... args) noexcept(Nx) -> Result {
+			[](Callback& callback, Nil /*realm*/, Args... args) noexcept(Nx) -> Result {
 				return callback(std::forward<Args>(args)...);
 			},
 			std::move(callback),
@@ -36,7 +36,7 @@ constexpr auto thunk_free_function = []<class Callback>(Callback callback) const
 
 // This takes the place of `thunk_free_function` for member functions, where `realm` is the second
 // parameter.
-export template <class Realm>
+export template <class Realm, class Nil = Realm>
 constexpr auto thunk_member_function = []<class Callback>(Callback callback) constexpr -> auto {
 	constexpr auto make_with_realm =
 		[]<class That, class Type, class... Args, bool Nx, class Result>(
@@ -52,7 +52,7 @@ constexpr auto thunk_member_function = []<class Callback>(Callback callback) con
 			auto callback
 		) -> auto {
 		return util::bind{
-			[](Callback& callback, That that, const Realm& /*realm*/, Args... args) noexcept(Nx) -> Result {
+			[](Callback& callback, That that, Nil /*realm*/, Args... args) noexcept(Nx) -> Result {
 				return callback(that, std::forward<Args>(args)...);
 			},
 			std::move(callback),

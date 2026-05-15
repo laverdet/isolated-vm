@@ -270,8 +270,9 @@ struct accept_v8_value_with<context_lock_witness> : accept_v8_value {
 
 		// function instantiation
 		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, auto subject) const -> v8::Local<v8::Function> {
-			auto [ callback, data ] = make_callback_storage(witness(), make_free_function<context_lock_witness>(std::move(subject).callback));
-			return unmaybe(v8::Function::New(witness().context(), callback, data, 0, v8::ConstructorBehavior::kThrow));
+			auto [ function, length ] = make_free_function<context_lock_witness>(std::move(subject).callback);
+			auto [ callback, data ] = make_callback_storage(witness(), std::move(function));
+			return unmaybe(v8::Function::New(witness().context(), callback, data, length, v8::ConstructorBehavior::kThrow));
 		}
 };
 
@@ -286,8 +287,9 @@ struct accept_v8_value_with : accept_v8_value {
 
 		// function instantiation
 		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, auto subject) const -> v8::Local<v8::Function> {
-			auto [ callback, data ] = make_callback_storage(lock_.get(), make_free_function<Lock>(std::move(subject).callback));
-			return v8::Function::New(lock_.get().context(), callback, data, 0, v8::ConstructorBehavior::kThrow);
+			auto [ function, length ] = make_free_function<Lock>(std::move(subject).callback);
+			auto [ callback, data ] = make_callback_storage(lock_.get(), std::move(function));
+			return v8::Function::New(lock_.get().context(), callback, data, length, v8::ConstructorBehavior::kThrow);
 		}
 
 	private:
@@ -304,8 +306,9 @@ struct accept_v8_template : accept_v8_primitive {
 
 		// function template
 		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, auto subject) const -> v8::Local<v8::FunctionTemplate> {
-			auto [ callback, data ] = make_callback_storage(lock_.get(), make_free_function<Lock>(std::move(subject).callback));
-			return v8::FunctionTemplate::New(lock_.get().isolate(), callback, data, v8::Local<v8::Signature>{}, 0, v8::ConstructorBehavior::kThrow);
+			auto [ function, length ] = make_free_function<Lock>(std::move(subject).callback);
+			auto [ callback, data ] = make_callback_storage(lock_.get(), std::move(function));
+			return v8::FunctionTemplate::New(lock_.get().isolate(), callback, data, v8::Local<v8::Signature>{}, length, v8::ConstructorBehavior::kThrow);
 		}
 
 	private:

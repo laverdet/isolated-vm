@@ -128,6 +128,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 		# Soften common development warnings
 		add_compile_options(
 			-Wno-unused-but-set-variable
+			-Wno-unused-local-typedef
 			-Wno-unused-result
 		)
 	endif()

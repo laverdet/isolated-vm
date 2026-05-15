@@ -9,7 +9,7 @@ namespace isolated_vm {
 template <class Lock>
 constexpr auto make_free_function(auto function) {
 	constexpr auto make_with_try_catch =
-		[]<std::constructible_from<Lock> LockAs, class... Args, bool Nx, class Result>(
+		[]<class LockAs, class... Args, bool Nx, class Result>(
 			std::type_identity<auto(LockAs, Args...) noexcept(Nx)->Result> /*signature*/,
 			auto callback
 		) -> auto {
