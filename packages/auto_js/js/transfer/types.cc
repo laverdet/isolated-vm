@@ -31,17 +31,20 @@ struct forward : util::pointer_facade {
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		forward(forward<From, FromTag> from) :
 				value_{*std::move(from)} {}
-
-		explicit forward(const Type& value, Tag /*tag*/ = {}) :
-				value_{value} {}
-		explicit forward(Type&& value, Tag /*tag*/ = {}) :
-				value_{std::move(value)} {}
+		explicit forward(std::convertible_to<Type> auto&& value, Tag /*tag*/ = {}) :
+				value_{std::forward<decltype(value)>(value)} {}
 
 		constexpr auto operator*(this auto&& self) -> auto&& { return std::forward<decltype(self)>(self).value_; }
 
 	private:
 		Type value_;
 };
+
+template <class Type>
+forward(Type) -> forward<Type>;
+
+template <class Type, class Tag>
+forward(Type, Tag) -> forward<Type, Tag>;
 
 // Extract the target type from an `accept`-like type. This is used to know what to cast the result
 // of `accept()` to.

@@ -15,6 +15,9 @@ template <class Tag>
 class value_of : public value_specialization<Tag>::type {
 	public:
 		using value_specialization<Tag>::type::type;
+
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		operator v8::Local<tag_to_v8<Tag>>() const { return std::bit_cast<v8::Local<tag_to_v8<Tag>>>(*this); }
 };
 
 template <class Type>
