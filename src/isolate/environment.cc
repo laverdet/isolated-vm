@@ -405,6 +405,7 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<v8::B
 	// Create a default context for the library to use if needed
 	{
 		Locker locker(isolate);
+		Isolate::Scope iso_scope(isolate);
 		HandleScope handle_scope(isolate);
 		default_context.Reset(isolate, NewContext());
 	}

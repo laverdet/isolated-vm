@@ -8,6 +8,7 @@
 #include "generic/handle_cast.h"
 #include "generic/read_option.h"
 #include "v8-function-callback.h"
+#include "v8_version.h"
 
 #include <cassert>
 #include <cstddef>
@@ -144,7 +145,11 @@ class ClassHandle {
 		 * Transfer ownership of this C++ pointer to the v8 handle lifetime.
 		 */
 		static void Wrap(std::unique_ptr<ClassHandle> ptr, v8::Local<v8::Object> handle) {
+#if V8_AT_LEAST(14, 0, 0)
+			handle->SetAlignedPointerInInternalField(0, ptr.get(), v8::kEmbedderDataTypeTagDefault);
+#else
 			handle->SetAlignedPointerInInternalField(0, ptr.get());
+#endif
 			ptr->handle.Reset(v8::Isolate::GetCurrent(), handle);
 			ClassHandle* ptr_raw = ptr.release();
 			ptr_raw->SetWeak<void, WeakCallback>(ptr_raw);
@@ -263,7 +268,11 @@ class ClassHandle {
 				return nullptr;
 			}
 			assert(handle->InternalFieldCount() > 0);
+#if V8_AT_LEAST(14, 0, 0)
+			return dynamic_cast<T*>(static_cast<ClassHandle*>(handle->GetAlignedPointerFromInternalField(0, v8::kEmbedderDataTypeTagDefault)));
+#else
 			return dynamic_cast<T*>(static_cast<ClassHandle*>(handle->GetAlignedPointerFromInternalField(0)));
+#endif
 		}
 
 		/**

@@ -32,11 +32,14 @@ ModuleInfo::ModuleInfo(Local<Module> handle) : identity_hash{handle->GetIdentity
 	IsolateEnvironment::GetCurrent().module_handles.emplace(identity_hash, this);
 	// Grab all dependency specifiers
 	Isolate* isolate = Isolate::GetCurrent();
-	auto context = isolate->GetCurrentContext();
 	auto& requests = **handle->GetModuleRequests();
 	dependency_specifiers.reserve(requests.Length());
 	for (int ii = 0; ii < requests.Length(); ii++) {
-		auto request = requests.Get(context, ii).As<ModuleRequest>();
+#if V8_AT_LEAST(14, 0, 0)
+		auto request = requests.Get(ii).As<ModuleRequest>();
+#else
+		auto request = requests.Get(isolate->GetCurrentContext(), ii).As<ModuleRequest>();
+#endif
 		dependency_specifiers.emplace_back(*String::Utf8Value{isolate, request->GetSpecifier()});
 	}
 }

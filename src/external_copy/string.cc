@@ -11,18 +11,23 @@ namespace {
  * Helper classes passed to v8 so we can reuse the same externally allocated memory for strings
  * between different isolates
  */
+// V8 14 may invoke string finalizers from a context where Executor's thread-local environment
+// pointer is not set. Capture a weak_ptr to the environment at construction so the dtor can
+// still find the live counter — but safely skip the decrement if the isolate (and its
+// IsolateEnvironment) has already been torn down by the time V8 finalizes the resource.
 class ExternalString final : public v8::String::ExternalStringResource {
 	public:
-		explicit ExternalString(std::shared_ptr<std::vector<char>> value) : value{std::move(value)} {
+		explicit ExternalString(std::shared_ptr<std::vector<char>> value) :
+				value{std::move(value)},
+				weak_env{IsolateEnvironment::GetCurrent().weak_from_this()} {
 			IsolateEnvironment::GetCurrent().AdjustExtraAllocatedMemory(this->value->size());
 		}
 
 		ExternalString(const ExternalString&) = delete;
 
 		~ExternalString() final {
-			auto* environment = Executor::GetCurrentEnvironment();
-			if (environment != nullptr) {
-				environment->AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
+			if (auto env = weak_env.lock()) {
+				env->AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
 			}
 		}
 
@@ -38,20 +43,22 @@ class ExternalString final : public v8::String::ExternalStringResource {
 
 	private:
 		std::shared_ptr<std::vector<char>> value;
+		std::weak_ptr<IsolateEnvironment> weak_env;
 };
 
 class ExternalStringOneByte final : public v8::String::ExternalOneByteStringResource {
 	public:
-		explicit ExternalStringOneByte(std::shared_ptr<std::vector<char>> value) : value{std::move(value)} {
+		explicit ExternalStringOneByte(std::shared_ptr<std::vector<char>> value) :
+				value{std::move(value)},
+				weak_env{IsolateEnvironment::GetCurrent().weak_from_this()} {
 			IsolateEnvironment::GetCurrent().AdjustExtraAllocatedMemory(this->value->size());
 		}
 
 		ExternalStringOneByte(const ExternalStringOneByte&) = delete;
 
 		~ExternalStringOneByte() final {
-			auto* environment = Executor::GetCurrentEnvironment();
-			if (environment != nullptr) {
-				environment->AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
+			if (auto env = weak_env.lock()) {
+				env->AdjustExtraAllocatedMemory(-static_cast<int>(this->value->size()));
 			}
 		}
 
@@ -67,6 +74,7 @@ class ExternalStringOneByte final : public v8::String::ExternalOneByteStringReso
 
 	private:
 		std::shared_ptr<std::vector<char>> value;
+		std::weak_ptr<IsolateEnvironment> weak_env;
 };
 
 } // anonymous namespace
@@ -84,7 +92,7 @@ ExternalCopyString::ExternalCopyString(Local<String> string) :
 			Isolate::GetCurrent(),
 			0, value->size(),
 			reinterpret_cast<uint8_t*>(value->data()),
-			String::WriteOptions::NO_NULL_TERMINATION
+			String::WriteFlags::kNone
 		);
 #else
 		string->WriteOneByte(
@@ -100,7 +108,7 @@ ExternalCopyString::ExternalCopyString(Local<String> string) :
 			Isolate::GetCurrent(),
 			0, value->size() >> 1,
 			reinterpret_cast<uint16_t*>(value->data()),
-			String::WriteOptions::NO_NULL_TERMINATION
+			String::WriteFlags::kNone
 		);
 #else
 		string->Write(
