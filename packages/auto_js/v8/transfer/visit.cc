@@ -51,6 +51,35 @@ struct visit_property_name {
 		std::reference_wrapper<Visit> visit_;
 };
 
+// `visit_key_literal` instantiation for v8
+template <auto Key>
+struct visit_v8_key_literal {
+		explicit constexpr visit_v8_key_literal(auto* /*transfer*/) {}
+
+		auto operator()(const auto& /*anything*/, const auto& accept_or_visit) -> v8::Local<v8::Name> {
+			const auto make = util::overloaded{
+				[](v8::Isolate* isolate, std::string_view subject) -> v8::Local<v8::String> {
+					const auto* data = reinterpret_cast<const std::uint8_t*>(subject.data());
+					auto size = static_cast<int>(subject.size());
+					return unmaybe(v8::String::NewFromOneByte(isolate, data, v8::NewStringType::kInternalized, size));
+				},
+				[](v8::Isolate* isolate, std::u16string_view subject) -> v8::Local<v8::String> {
+					const auto* data = reinterpret_cast<const std::uint16_t*>(subject.data());
+					auto size = static_cast<int>(subject.size());
+					return unmaybe(v8::String::NewFromTwoByte(isolate, data, v8::NewStringType::kInternalized, size));
+				},
+			};
+			if (local_key_.IsEmpty()) {
+				constexpr auto key = util::make_consteval_string_view(Key);
+				local_key_ = make(accept_or_visit.witness().isolate(), key);
+			}
+			return local_key_;
+		}
+
+	private:
+		v8::Local<v8::String> local_key_;
+};
+
 // Implements `Visit`'s non-caching `immediate()` function as a caching visit operation.
 template <class Visit>
 struct visit_cached_immediate : Visit {
@@ -432,6 +461,12 @@ struct visit<Meta, v8::FunctionCallbackInfo<v8::Value>> : visit<Meta, v8::Local<
 		auto operator()(v8::FunctionCallbackInfo<v8::Value> info, const Accept& accept) -> accept_target_t<Accept> {
 			return accept(vector_tag{}, *this, iv8::callback_info{info});
 		}
+};
+
+// Object key maker for v8 objects
+template <auto Key>
+struct visit_key_literal<Key, v8::Local<v8::Object>> : iv8::visit_v8_key_literal<Key> {
+		using iv8::visit_v8_key_literal<Key>::visit_v8_key_literal;
 };
 
 } // namespace js

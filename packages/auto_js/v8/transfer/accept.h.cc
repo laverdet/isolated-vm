@@ -105,6 +105,7 @@ struct accept_v8_primitive {
 struct accept_v8_value : accept_v8_primitive {
 	public:
 		using accept_type = accept_v8_primitive;
+		using accept_target_type = v8::Local<v8::Value>;
 		explicit accept_v8_value(auto* transfer, context_lock_witness lock) :
 				accept_type{transfer, lock},
 				context_{lock.context()} {}
@@ -236,7 +237,7 @@ struct accept_v8_value : accept_v8_primitive {
 		auto operator()(this const auto& self, struct_tag<Size> /*tag*/, auto& visit, auto&& subject)
 			-> js::deferred_receiver<v8::Local<v8::Object>, decltype(self), decltype(visit), decltype(subject)> {
 			return {
-				v8::Local<v8::Object>::New(self.isolate()),
+				v8::Object::New(self.isolate()),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](v8::Local<v8::Object> object, auto& self, auto& visit, auto /*&&*/ subject) -> void {
 					self.template accept_entry_pair_struct<Size>(visit, object, std::forward<decltype(subject)>(subject));
@@ -315,6 +316,27 @@ struct accept_v8_template : accept_v8_primitive {
 		std::reference_wrapper<const Lock> lock_;
 };
 
+// object key lookup (struct_template, etc)
+template <class Meta, auto Key, class Type>
+struct accept_v8_property_value {
+	public:
+		explicit constexpr accept_v8_property_value(auto* transfer) :
+				first{transfer},
+				second{transfer} {}
+
+		auto operator()(dictionary_tag /*tag*/, auto& visit, const auto& subject) const -> Type {
+			if (auto local = first(std::type_identity<void>{}, visit.first); subject.has(local)) {
+				return visit.second(subject.get(local), second);
+			} else {
+				return second(undefined_in_tag{}, visit.second, std::monostate{});
+			}
+		}
+
+	private:
+		mutable visit_key_literal<Key, v8::Local<v8::Object>> first;
+		accept_value<Meta, Type> second;
+};
+
 // `return_into(...)`
 struct return_into_marker {};
 
@@ -360,8 +382,9 @@ struct accept_v8_return_into : accept_v8_value_with<Lock> {
 		}
 
 		auto operator()(auto tag, auto& visit, auto&& subject) const -> return_into_marker
-			requires std::invocable<const accept_type&, decltype(visit), decltype(tag), decltype(subject)> {
-			return_value_.Set(util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(subject)>(subject)));
+			requires std::invocable<const accept_type&, decltype(tag), decltype(visit), decltype(subject)> {
+			auto value = util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(subject)>(subject));
+			return_value_.Set(js::dispatch_referenceable(std::move(value)));
 			return {};
 		}
 
@@ -403,6 +426,9 @@ struct accept_v8_object_assign {
 
 namespace js {
 
+template <class Type>
+struct accept_property_subject<v8::Local<Type>> : std::type_identity<v8::Local<v8::Object>> {};
+
 // primitives
 template <class Meta, class Type>
 	requires std::is_base_of_v<v8::Primitive, Type>
@@ -441,7 +467,16 @@ struct accept<Meta, v8::MaybeLocal<Type>> : accept<Meta, v8::Local<Type>> {
 		}
 };
 
+// object key lookup (struct_template, etc)
+template <class Meta, auto Key, class Type>
+struct accept_property_value<Meta, Key, Type, v8::Local<v8::Object>> : iv8::accept_v8_property_value<Meta, Key, Type> {
+		using iv8::accept_v8_property_value<Meta, Key, Type>::accept_v8_property_value;
+};
+
 // return_into
+template <>
+struct accept_property_subject<iv8::return_into_marker> : accept_property_subject<v8::Local<v8::Value>> {};
+
 template <class Meta>
 struct accept<Meta, iv8::return_into_marker> : iv8::accept_v8_return_into<typename Meta::accept_context_type> {
 		using iv8::accept_v8_return_into<typename Meta::accept_context_type>::accept_v8_return_into;
