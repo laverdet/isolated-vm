@@ -7,9 +7,9 @@ const targetArgs = [
   '--strip',
   '--no-napi',
   '--target',
-  '22.22.0',
-  '--target',
   '24.14.0',
+  '--target',
+  '26.0.0',
 ];
 
 if (process.platform === 'linux') {
