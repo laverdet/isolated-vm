@@ -142,4 +142,34 @@ constexpr auto slice(const Type& value) {
 	return slice_t<const Type>{value};
 }
 
+// Implements construction of containers with variadic elements
+template <class Type>
+struct inplace_container_constructor {
+		constexpr auto operator()(auto&&... args) const -> Type {
+			return Type{std::in_place, std::forward<decltype(args)>(args)...};
+		}
+};
+
+template <class Type, std::size_t Size>
+struct inplace_container_constructor<std::array<Type, Size>> {
+		constexpr auto operator()(auto&&... args) const -> std::array<Type, Size> {
+			return std::array<Type, Size>{std::forward<decltype(args)>(args)...};
+		}
+};
+
+template <class Type, class Alloc>
+struct inplace_container_constructor<std::vector<Type, Alloc>> {
+		constexpr auto operator()(auto&&... args) const -> std::vector<Type, Alloc> {
+			auto container = std::vector<Type, Alloc>{};
+			container.reserve(sizeof...(args));
+			(..., container.emplace_back(std::forward<decltype(args)>(args)));
+			return container;
+		}
+};
+
+export template <class Type>
+auto make_inplace_container(auto&&... args) -> Type {
+	return inplace_container_constructor<Type>{}(std::forward<decltype(args)>(args)...);
+}
+
 } // namespace util

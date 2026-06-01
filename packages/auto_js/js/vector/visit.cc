@@ -38,15 +38,17 @@ struct visit<Meta, std::span<Type>> : visit<Meta, std::remove_cvref_t<Type>> {
 		}
 };
 
-template <class Meta, class Type>
-struct visit<Meta, std::vector<Type>> : visit<Meta, Type> {
-		using visit_type = visit<Meta, Type>;
+template <class Meta, transferable_range Type>
+struct visit<Meta, Type> : visit<Meta, std::ranges::range_value_t<Type>> {
+		using visit_type = visit<Meta, std::ranges::range_value_t<Type>>;
 		using visit_type::visit_type;
 
 		template <class Accept>
 		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
+			using tag_type = tagged_range<Type>::type;
 			visit_type& visitor = *this;
-			return accept(vector_tag{}, visitor, std::forward<decltype(subject)>(subject));
+			// TODO: I'm not sure this invocation to 'dispatch_referenceable' is cromulent
+			return dispatch_referenceable(accept(tag_type{}, visitor, std::forward<decltype(subject)>(subject)));
 		}
 };
 

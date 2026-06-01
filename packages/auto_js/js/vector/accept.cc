@@ -43,22 +43,23 @@ struct accept<Meta, std::array<Type, Size>> : accept_value<Meta, Type> {
 };
 
 // `std::vector` can accept all kinds of lists
-template <class Meta, class Type>
-struct accept<Meta, std::vector<Type>>;
+template <class Meta, transferable_range Type>
+struct accept<Meta, Type>;
 
-template <class Type>
-struct accept_target_for<std::vector<Type>> : accept_target_for<Type> {};
+template <transferable_range Type>
+struct accept_target_for<Type> : accept_target_for<std::ranges::range_value_t<Type>> {};
 
-template <class Meta, class Type>
-struct accept<Meta, std::vector<Type>> : public accept_value<Meta, Type> {
+template <class Meta, transferable_range Type>
+struct accept<Meta, Type> : public accept_value<Meta, std::ranges::range_value_t<Type>> {
 	private:
-		using accept_type = accept_value<Meta, Type>;
+		using value_type = std::ranges::range_value_t<Type>;
+		using accept_type = accept_value<Meta, value_type>;
 
 	public:
 		explicit accept(auto* transfer, auto&&... args) :
 				accept_type{transfer, std::forward<decltype(args)>(args)...} {}
 
-		constexpr auto operator()(list_tag /*tag*/, auto& visit, auto&& subject) const -> std::vector<Type> {
+		constexpr auto operator()(list_tag /*tag*/, auto& visit, auto&& subject) const -> Type {
 			const accept_type& accept = *this;
 			// nb: This doesn't check for string keys, so like `Object.assign([ 1 ], { foo: 2 })` might
 			// yield `[ 1, 2 ]`
@@ -66,32 +67,31 @@ struct accept<Meta, std::vector<Type>> : public accept_value<Meta, Type> {
 			return {
 				std::from_range,
 				util::forward_range(std::forward<decltype(range)>(range)) |
-					std::views::transform([ & ](auto&& entry) -> Type {
+					std::views::transform([ & ](auto&& entry) -> value_type {
 						return visit.second(std::forward<decltype(entry)>(entry).second, accept);
 					})
 			};
 		}
 
-		constexpr auto operator()(vector_tag /*tag*/, auto& visit, auto&& subject) const -> std::vector<Type> {
+		constexpr auto operator()(vector_tag /*tag*/, auto& visit, auto&& subject) const -> Type {
 			const accept_type& accept = *this;
 			auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
 			return {
 				std::from_range,
 				util::forward_range(std::forward<decltype(range)>(range)) |
-					std::views::transform([ & ](auto&& entry) -> Type {
+					std::views::transform([ & ](auto&& entry) -> value_type {
 						return visit(std::forward<decltype(entry)>(entry), accept);
 					})
 			};
 		}
 
 		template <std::size_t Size>
-		constexpr auto operator()(tuple_tag<Size> /*tag*/, auto& visit, auto&& subject) const -> std::vector<Type> {
-			const accept_type& accept = *this;
-			std::vector<Type> result;
-			result.reserve(Size);
+		constexpr auto operator()(tuple_tag<Size> /*tag*/, auto& visit, auto&& subject) const -> Type {
 			const auto [... indices ] = util::sequence<Size>;
-			(..., result.emplace_back(visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(subject)>(subject), accept)));
-			return result;
+			const accept_type& accept = *this;
+			return util::make_inplace_container<Type>(
+				visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(subject)>(subject), accept)...
+			);
 		}
 };
 

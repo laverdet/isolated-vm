@@ -178,6 +178,40 @@ struct accept_v8_value : accept_v8_primitive {
 			};
 		}
 
+		// vectors
+		auto operator()(this const auto& self, vector_tag /*tag*/, auto& visit, auto&& subject)
+			-> js::deferred_receiver<v8::Local<v8::Array>, decltype(self), decltype(visit), decltype(subject)> {
+			auto [... size ] = util::maybe_range_size(subject);
+			return {
+				v8::Array::New(self.isolate(), size...),
+				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
+				[](v8::Local<v8::Array> array, auto& self, auto& visit, auto /*&&*/ subject) -> void {
+					std::uint32_t ii = 0;
+					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
+					for (auto&& subject : util::forward_range(std::forward<decltype(range)>(range))) {
+						auto element = visit(std::forward<decltype(subject)>(subject), self);
+						unmaybe(array->Set(self.context_, ii++, element));
+					}
+				},
+			};
+		}
+
+		template <std::size_t Size>
+		auto operator()(this const auto& self, tuple_tag<Size> /*tag*/, auto& visit, auto&& subject)
+			-> js::deferred_receiver<v8::Local<v8::Array>, decltype(self), decltype(visit), decltype(subject)> {
+			return {
+				v8::Array::New(self.isolate(), Size),
+				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
+				[](v8::Local<v8::Array> array, auto& self, auto& visit, auto /*&&*/ tuple) -> void {
+					const auto [... indices ] = util::sequence<Size>;
+					(..., [ & ]() -> void {
+						auto element = visit(indices, std::forward<decltype(tuple)>(tuple), self);
+						unmaybe(array->Set(self.context_, indices, element));
+					}());
+				}
+			};
+		}
+
 		// object
 		auto operator()(this const auto& self, dictionary_tag /*tag*/, auto& visit, auto&& subject)
 			-> js::deferred_receiver<v8::Local<v8::Object>, decltype(self), decltype(visit), decltype(subject)> {

@@ -4,6 +4,23 @@ import std;
 
 namespace js {
 
+// Declares that this type is a transferrable range
+export template <class Type>
+struct tagged_range;
+
+// Or, define `range_tag_type` on the type itself
+template <class Type>
+	requires(Type::range_tag_type)
+struct tagged_range<Type> : std::type_identity<typename Type::range_tag_type> {};
+
+// Check whether or not `tagged_range` is valid for this type
+template <class Type>
+concept transferable_range = std::convertible_to<typename tagged_range<Type>::type, object_tag>;
+
+// std::vector<T> is a transferrable range
+template <class Type, class Alloc>
+struct tagged_range<std::vector<Type, Alloc>> : std::type_identity<vector_tag> {};
+
 // `vector_of` is just a vector with an associated js tag
 export template <class Tag, class Value>
 class vector_of : public std::vector<Value> {

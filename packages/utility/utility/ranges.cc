@@ -52,4 +52,15 @@ export constexpr auto into_range(meta_range auto&& range) {
 	return std::forward<decltype(range)>(range).into_range();
 }
 
+// Returns either a `std::tuple<size_type>` with the range's size, or `std::tuple<>` if it can't be
+// determined in constant time.
+export template <class Type>
+constexpr auto maybe_range_size(const Type& range) {
+	if constexpr (std::ranges::sized_range<Type>) {
+		return std::tuple{std::ranges::size(range)};
+	} else {
+		return std::tuple{};
+	}
+}
+
 } // namespace util

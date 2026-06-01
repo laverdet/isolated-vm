@@ -64,6 +64,11 @@ struct prototype_tag : tag_of<datum_tag> {};
 struct object_prototype_tag : tag_of<prototype_tag> {};
 struct function_prototype_tag : tag_of<prototype_tag> {};
 
+// `{}` & `[]`
+struct record_tag : tag_of<object_tag> {};
+struct dictionary_tag : tag_of<record_tag> {};
+struct list_tag : tag_of<record_tag> {};
+
 // Continuous packed array-like with integer keys and known (at runtime) length. Generally
 // `arguments` or "trusted" arrays.
 struct vector_tag : tag_of<object_tag> {};
@@ -77,11 +82,7 @@ template <std::size_t Element> struct tuple_tag : tag_of<object_tag> {};
 // An object whose property keys are known at compile time.
 template <std::size_t Properties> struct struct_tag : tag_of<object_tag> {};
 
-// `{}` & `[]`
-struct record_tag : tag_of<object_tag> {};
-struct dictionary_tag : tag_of<record_tag> {};
-struct list_tag : tag_of<record_tag> {};
-
+// Other builtin objects
 struct date_tag : tag_of<object_tag> {};
 struct promise_tag : tag_of<object_tag> {};
 
