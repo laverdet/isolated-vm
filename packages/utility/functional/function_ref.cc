@@ -24,7 +24,11 @@ class function_ref<auto(Args...) noexcept(Nx)->Result> {
 
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		constexpr function_ref(signature_type* function) :
-				function_ref{std::type_identity<signature_type>{}, static_cast<void*>(function)} {}
+				invoke_{[](void* ptr, Args... args) noexcept(Nx) -> Result {
+					auto& fn = *reinterpret_cast<signature_type*>(ptr);
+					return fn(std::forward<Args>(args)...);
+				}},
+				ptr_{reinterpret_cast<void*>(function)} {}
 
 		template <std::invocable<Args...> Object>
 			requires(type<Object> != type<function_ref>)
