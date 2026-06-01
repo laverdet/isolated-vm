@@ -3,30 +3,37 @@ import std;
 
 namespace util {
 
-// Internal addition facade
-template <class difference_type_>
-class addition_facade {
+// Implements `Type++` via `++Type`
+export class incrementable_facade {
 	public:
-		using difference_type = difference_type_;
-
-		// ++Type
-		auto operator++(this auto& self) -> auto& { return self += 1; }
+		using difference_type = int;
 
 		// Type++
-		auto operator++(this auto& self, int) {
+		constexpr auto operator++(this auto& self, int) {
 			auto result = self;
 			++self;
 			return result;
 		}
+};
+
+// Implements addition operators via `operator+=()`
+export template <class difference_type_>
+class addition_facade : public incrementable_facade {
+	public:
+		using incrementable_facade::operator++;
+		using difference_type = difference_type_;
+
+		// ++Type
+		constexpr auto operator++(this auto& self) -> auto& { return self += 1; }
 
 		// Type + difference_type
-		auto operator+(this const auto& self, difference_type offset) {
+		constexpr auto operator+(this const auto& self, difference_type offset) {
 			auto result = self;
 			return result += offset;
 		}
 
 		// difference_type + Type
-		friend auto operator+(difference_type left, const auto& right) {
+		constexpr friend auto operator+(difference_type left, const auto& right) {
 			return right + left;
 		}
 };
@@ -47,26 +54,26 @@ class subtraction_facade<difference_type_, wide_size_type> {
 		using difference_type = difference_type_;
 
 		// Type -= difference_type
-		auto operator-=(this auto& self, difference_type offset) -> auto& { return self += -offset; }
+		constexpr auto operator-=(this auto& self, difference_type offset) -> auto& { return self += -offset; }
 
 		// --Type
-		auto operator--(this auto& self) -> auto& { return self -= 1; }
+		constexpr auto operator--(this auto& self) -> auto& { return self -= 1; }
 
 		// Type--
-		auto operator--(this auto& self, int) {
+		constexpr auto operator--(this auto& self, int) {
 			auto result = self;
 			--self;
 			return result;
 		}
 
 		// Type - difference_type
-		auto operator-(this const auto& self, difference_type offset) {
+		constexpr auto operator-(this const auto& self, difference_type offset) {
 			auto result = self;
 			return result -= offset;
 		}
 
 		// Type - Type
-		auto operator-(this const auto& self, decltype(self) right) -> difference_type {
+		constexpr auto operator-(this const auto& self, decltype(self) right) -> difference_type {
 			return static_cast<difference_type>(wide_size_type{+self} - wide_size_type{+right});
 		}
 };
@@ -97,7 +104,7 @@ class arithmetic_facade
 export template <class difference_type>
 class array_facade {
 	public:
-		auto operator[](this auto&& self, difference_type offset) -> decltype(auto) {
+		constexpr auto operator[](this auto&& self, difference_type offset) -> decltype(auto) {
 			return *(std::forward<decltype(self)>(self) + offset);
 		}
 };
