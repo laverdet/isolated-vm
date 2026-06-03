@@ -62,6 +62,8 @@
 	},
 	"clangd.arguments": [
 		"--compile-commands-dir=build",
+		// This feature is annoying with `import std`
+		"--header-insertion=never",
 		// `--experimental-modules-support` makes it crash less, but often it gets stuck at like 1200% CPU
 	],
 }

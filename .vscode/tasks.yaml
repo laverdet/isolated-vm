@@ -61,17 +61,28 @@ tasks:
       id: plug
 
   # Watcher which converts this file to `tasks.json`
-  # In case you mess it up: `yq < .vscode/tasks.yaml > .vscode/tasks.json`
+  # In case you mess it up:
+  # v4: yq -o json < .vscode/tasks.yaml > .vscode/tasks.json
+  # v3: yq < .vscode/tasks.yaml > .vscode/tasks.json
   - label: 'tasks.yaml: watch'
     type: shell
     command: |
-      set -eu
-      if [ "$(uname -s)" = Linux ]; then
-        export COMMENT="// This file is generated from tasks.yaml. Don't edit it!"
-        export TASKS_JSON=.vscode/tasks.json
-        export TASKS_YAML=.vscode/tasks.yaml
+      set -eux; reset
+      export TASKS_JSON=.vscode/tasks.json
+      export TASKS_YAML=.vscode/tasks.yaml
+      export COMMENT="// This file is generated from tasks.yaml. Don't edit it!"
+      if echo | yq -o json 2>/dev/null; then
+        export YQ="yq -o json"
+      else
+        export YQ=yq
+      fi
+      if command -v entr >/dev/null; then
+        echo "Watching $TASKS_YAML for changes..."
         echo "$TASKS_YAML" | \
-        entr -n sh -c 'echo "$COMMENT" > $TASKS_JSON; yq < $TASKS_YAML >> $TASKS_JSON'
+        entr -n sh -c 'date; echo "$COMMENT" > $TASKS_JSON; $YQ < $TASKS_YAML >> $TASKS_JSON'
+      else
+        echo "One-shot $TASKS_YAML"
+        $YQ < .vscode/tasks.yaml > .vscode/tasks.json
       fi
     isBackground: true
     presentation:
@@ -109,12 +120,14 @@ tasks:
   - label: 'cmake: configure'
     type: shell
     command: |
-      set -eu; set -a; source $ENV_FILE; source $V8_BUNDLE_PATH/env
+      set -eux; reset;
+      set -a; source "$ENV_FILE"; source "$V8_BUNDLE_PATH/env"
       cmake \
         -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \
         -DCMAKE_BUILD_TYPE=${input:ivm_target} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DIVM_INSTALL=link \
+        ${ECO_STD:+"-DCMAKE_CXX_STDLIB_MODULES_JSON=${ECO_STD}"} \
         -G Ninja -B build
     dependsOn:
       - 'cmake: clean'
@@ -130,7 +143,8 @@ tasks:
   - label: 'cmake: configure stdlib compat'
     type: shell
     command: |
-      set -eu; set -a; source $ENV_FILE; source $V8_BUNDLE_PATH/env
+      set -eux; reset;
+      set -a; source "$ENV_FILE"; source "$V8_BUNDLE_PATH/env"
       cmake \
         -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \
         -DCMAKE_BUILD_TYPE=Release \
@@ -171,11 +185,11 @@ tasks:
   - label: 'v8: select'
     type: shell
     command: |
-      set -eu
+      set -eux; reset;
+      set -a; source "$ENV_FILE"
+      cd "${V8_SRC_PATH:-/v8}"
       export V8_REF=$(PATCH_DIR=${workspaceFolder}/patches v8_select ${input:v8_version})
       ivm_write_env V8_REF
-    options:
-      cwd: /v8
     problemMatcher: []
     presentation:
       reveal: silent
@@ -186,13 +200,13 @@ tasks:
   - label: 'v8: build'
     type: shell
     command: |
-      set -eu; set -a; source $ENV_FILE
+      set -eux; reset;
+      set -a; source "$ENV_FILE"
+      cd "${V8_SRC_PATH:-/v8}"
       TARGET=$(triplet_util %t.${input:v8_target})
       export V8_BUNDLE_PATH="$(pwd)/out/$V8_REF/$TARGET"
       WITHOUT_SYSROOT=1 v8_build "$V8_BUNDLE_PATH"
       ivm_write_env V8_BUNDLE_PATH
-    options:
-      cwd: /v8
     problemMatcher: []
     presentation:
       reveal: always

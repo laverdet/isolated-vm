@@ -50,6 +50,7 @@ CONFIG=${PLATFORM_CONFIG_PAIR[1]} # debug, optdebug, release
 # `v8_enable_sandbox=false`
 # The sandbox requires `SharedArrayBuffer` instances to be located in the isolate group's virtual
 # address memory region.
+GN="${DEPOT_TOOLS:-gn}${DEPOT_TOOLS:+/gn}"
 
 GN_ARGS=(
 	clang_use_chrome_plugins=false
@@ -152,8 +153,8 @@ case "$CONFIG" in
 esac
 
 # Configure gn / ninja
-echo gn gen "$BUILD_PATH" --args=\'"${GN_ARGS[*]}"\'
-if ! gn gen "$BUILD_PATH" --args="${GN_ARGS[*]}"; then
+echo "$GN" gen "$BUILD_PATH" --args=\'"${GN_ARGS[*]}"\'
+if ! "$GN" gen "$BUILD_PATH" --args="${GN_ARGS[*]}"; then
 	RESULT=$?
 	# Weird failure from gn on linux-musl arm64, but it still generates the ninja files
 	if [ "${PLATFORM:-}" = linux-musl ]; then

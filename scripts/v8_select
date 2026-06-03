@@ -1,8 +1,9 @@
 #!/bin/sh
 set -eu
+V8_REF="$1"
 PATCH_DIR=$(realpath "$PATCH_DIR")
 PATCHES=$(find "$PATCH_DIR" -type f | sort -n)
-V8_REF="$1"
+GCLIENT="${DEPOT_TOOLS:-gclient}${DEPOT_TOOLS:+/gclient}"
 
 # Checkout revision, sync dependencies
 if ! git rev-parse --quiet "tags/$V8_REF" >/dev/null 2>&1; then
@@ -12,9 +13,9 @@ git checkout --detach "tags/$V8_REF"
 if [ -z ${SKIP_SYNC+-} ]; then
 	git clean -f 1>&2
 	if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
-		(cd ..; gclient sync --no-history --shallow --with_branch_heads 1>&2)
+		(cd ..; "$GCLIENT" sync --no-history --shallow --with_branch_heads 1>&2)
 	else
-		(cd ..; gclient sync --with_branch_heads 1>&2)
+		(cd ..; "$GCLIENT" sync --with_branch_heads 1>&2)
 	fi
 fi
 

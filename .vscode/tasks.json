@@ -77,7 +77,7 @@
     {
       "label": "tasks.yaml: watch",
       "type": "shell",
-      "command": "set -eu\nif [ \"$(uname -s)\" = Linux ]; then\n  export COMMENT=\"// This file is generated from tasks.yaml. Don't edit it!\"\n  export TASKS_JSON=.vscode/tasks.json\n  export TASKS_YAML=.vscode/tasks.yaml\n  echo \"$TASKS_YAML\" | \\\n  entr -n sh -c 'echo \"$COMMENT\" > $TASKS_JSON; yq < $TASKS_YAML >> $TASKS_JSON'\nfi\n",
+      "command": "set -eux; reset\nexport TASKS_JSON=.vscode/tasks.json\nexport TASKS_YAML=.vscode/tasks.yaml\nexport COMMENT=\"// This file is generated from tasks.yaml. Don't edit it!\"\nif echo | yq -o json 2>/dev/null; then\n  export YQ=\"yq -o json\"\nelse\n  export YQ=yq\nfi\nif command -v entr >/dev/null; then\n  echo \"Watching $TASKS_YAML for changes...\"\n  echo \"$TASKS_YAML\" | \\\n  entr -n sh -c 'date; echo \"$COMMENT\" > $TASKS_JSON; $YQ < $TASKS_YAML >> $TASKS_JSON'\nelse\n  echo \"One-shot $TASKS_YAML\"\n  $YQ < .vscode/tasks.yaml > .vscode/tasks.json\nfi\n",
       "isBackground": true,
       "presentation": {
         "panel": "dedicated",
@@ -119,7 +119,7 @@
     {
       "label": "cmake: configure",
       "type": "shell",
-      "command": "set -eu; set -a; source $ENV_FILE; source $V8_BUNDLE_PATH/env\ncmake \\\n  -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \\\n  -DCMAKE_BUILD_TYPE=${input:ivm_target} \\\n  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \\\n  -DIVM_INSTALL=link \\\n  -G Ninja -B build\n",
+      "command": "set -eux; reset;\nset -a; source \"$ENV_FILE\"; source \"$V8_BUNDLE_PATH/env\"\ncmake \\\n  -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \\\n  -DCMAKE_BUILD_TYPE=${input:ivm_target} \\\n  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \\\n  -DIVM_INSTALL=link \\\n  ${ECO_STD:+\"-DCMAKE_CXX_STDLIB_MODULES_JSON=${ECO_STD}\"} \\\n  -G Ninja -B build\n",
       "dependsOn": [
         "cmake: clean"
       ],
@@ -137,7 +137,7 @@
     {
       "label": "cmake: configure stdlib compat",
       "type": "shell",
-      "command": "set -eu; set -a; source $ENV_FILE; source $V8_BUNDLE_PATH/env\ncmake \\\n  -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \\\n  -DCMAKE_BUILD_TYPE=Release \\\n  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \\\n  -DIVM_INSTALL=link \\\n  -G Ninja -B build\ncmake \\\n  -DTEST_STDLIB=stl \\\n  -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \\\n  -DCMAKE_BUILD_TYPE=Release \\\n  -G Ninja -B build/for_stl\ncmake \\\n  -DTEST_STDLIB=libc++ \\\n  -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \\\n  -DCMAKE_BUILD_TYPE=Release \\\n  -G Ninja -B build/for_libcxx\necho 'Build with:'\necho 'ninja -C build backend_napi_v8 && ninja -C build/for_stl backend_napi_v8 && ninja -C build/for_libcxx backend_napi_v8'\n",
+      "command": "set -eux; reset;\nset -a; source \"$ENV_FILE\"; source \"$V8_BUNDLE_PATH/env\"\ncmake \\\n  -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \\\n  -DCMAKE_BUILD_TYPE=Release \\\n  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \\\n  -DIVM_INSTALL=link \\\n  -G Ninja -B build\ncmake \\\n  -DTEST_STDLIB=stl \\\n  -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \\\n  -DCMAKE_BUILD_TYPE=Release \\\n  -G Ninja -B build/for_stl\ncmake \\\n  -DTEST_STDLIB=libc++ \\\n  -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \\\n  -DCMAKE_BUILD_TYPE=Release \\\n  -G Ninja -B build/for_libcxx\necho 'Build with:'\necho 'ninja -C build backend_napi_v8 && ninja -C build/for_stl backend_napi_v8 && ninja -C build/for_libcxx backend_napi_v8'\n",
       "problemMatcher": [],
       "icon": {
         "id": "wrench"
@@ -162,10 +162,7 @@
     {
       "label": "v8: select",
       "type": "shell",
-      "command": "set -eu\nexport V8_REF=$(PATCH_DIR=${workspaceFolder}/patches v8_select ${input:v8_version})\nivm_write_env V8_REF\n",
-      "options": {
-        "cwd": "/v8"
-      },
+      "command": "set -eux; reset;\nset -a; source \"$ENV_FILE\"\ncd \"${V8_SRC_PATH:-/v8}\"\nexport V8_REF=$(PATCH_DIR=${workspaceFolder}/patches v8_select ${input:v8_version})\nivm_write_env V8_REF\n",
       "problemMatcher": [],
       "presentation": {
         "reveal": "silent"
@@ -177,10 +174,7 @@
     {
       "label": "v8: build",
       "type": "shell",
-      "command": "set -eu; set -a; source $ENV_FILE\nTARGET=$(triplet_util %t.${input:v8_target})\nexport V8_BUNDLE_PATH=\"$(pwd)/out/$V8_REF/$TARGET\"\nWITHOUT_SYSROOT=1 v8_build \"$V8_BUNDLE_PATH\"\nivm_write_env V8_BUNDLE_PATH\n",
-      "options": {
-        "cwd": "/v8"
-      },
+      "command": "set -eux; reset;\nset -a; source \"$ENV_FILE\"\ncd \"${V8_SRC_PATH:-/v8}\"\nTARGET=$(triplet_util %t.${input:v8_target})\nexport V8_BUNDLE_PATH=\"$(pwd)/out/$V8_REF/$TARGET\"\nWITHOUT_SYSROOT=1 v8_build \"$V8_BUNDLE_PATH\"\nivm_write_env V8_BUNDLE_PATH\n",
       "problemMatcher": [],
       "presentation": {
         "reveal": "always"

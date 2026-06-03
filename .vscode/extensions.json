@@ -1,0 +1,13 @@
+{
+	"recommendations": [
+		"dbaeumer.vscode-eslint",
+		"llvm-vs-code-extensions.vscode-clangd",
+		"ms-vscode.cpptools",
+		"twxs.cmake",
+		"vadimcn.vscode-lldb"
+	],
+	"unwantedRecommendations": [
+		"ms-azuretools.vscode-containers",
+		"ms-vscode.cmake-tools",
+	]
+}
