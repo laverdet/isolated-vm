@@ -17,6 +17,7 @@ struct accept_as_constant {
 		}
 
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+		constexpr static auto tag_types = std::tuple{Tag{}};
 };
 
 // Lossless value acceptor
@@ -27,6 +28,7 @@ struct accept_without_narrowing {
 		}
 
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+		constexpr static auto tag_types = std::tuple{Tag{}};
 };
 
 // Generic casting acceptor. It throws if the value cannot be safely cast.
@@ -53,6 +55,7 @@ struct accept_with_cast {
 		}
 
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+		constexpr static auto tag_types = std::tuple{contravariant_tag_type{}};
 
 	private:
 		[[nodiscard]] constexpr auto cast(std::type_identity<Type> /*tag*/, auto&& subject) const -> Type {
@@ -151,6 +154,7 @@ struct accept_with_casted_string {
 		}
 
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+		constexpr static auto tag_types = std::tuple{string_tag{}};
 
 	private:
 		template <class Accept, class Subject>
@@ -223,6 +227,7 @@ struct accept_typed_array {
 		}
 
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+		constexpr static auto tag_types = std::tuple{Tag{}};
 
 	private:
 		accept_value<Meta, data_block_variant> accept_;
@@ -274,6 +279,8 @@ struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
 		constexpr auto operator()(undefined_tag /*tag*/, visit_holder /*visit*/, const auto& /*subject*/) const -> std::optional<Type> {
 			return std::nullopt;
 		}
+
+		constexpr static auto tag_types = std::tuple_cat(accept_tags_of_v<accept_type>, std::tuple<undefined_tag>{});
 };
 
 // `std::pair` uses `first` & `second` acceptors. This corresponds to "entries" in a vector / array.

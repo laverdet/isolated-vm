@@ -130,3 +130,9 @@ export template <class Type>
 using v8_to_tag = decltype(v8_to_tag_fn(type<Type>));
 
 } // namespace js::iv8
+
+// Specialization for `js::forward`.
+namespace js {
+template <class Type>
+struct forward_tag_for<v8::Local<Type>> : std::type_identity<iv8::v8_to_tag<Type>> {};
+} // namespace js

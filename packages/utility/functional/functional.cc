@@ -63,6 +63,20 @@ constexpr auto invoke_this_as(auto&& func, auto&&... args)
 	return std::forward<decltype(func)>(func).InvokeAsType_::operator()(std::forward<decltype(args)>(args)...);
 }
 
+// Invoke the given function with each value in a pack. The first parameter is a value and the
+// second parameter is a continuation thunk. If it reaches the end it will invoke the function with
+// no parameters, returning that result.
+export constexpr auto template_traverse(auto values_pack, const auto& invoke) -> decltype(auto) {
+	const auto fold = util::overloaded{
+		[ & ]() -> decltype(auto) { return invoke(); },
+		[ & ](this const auto& self, auto value, auto... values) -> decltype(auto) {
+			return invoke(value, [ & ]() -> decltype(auto) { return self(values...); });
+		},
+	};
+	const auto [... values ] = values_pack;
+	return fold(values...);
+}
+
 // Invoke the given function with the constant expression matching a runtime value.
 export constexpr auto template_switch(const auto& value, auto case_pack, auto invoke) -> decltype(auto) {
 	auto dispatch = [ & ](this const auto& self, auto case_, auto... cases) -> decltype(auto) {
@@ -81,6 +95,23 @@ export constexpr auto template_switch(const auto& value, auto case_pack, auto in
 	// NOLINTNEXTLINE(clang-analyzer-core.CallAndMessage)
 	return dispatch(cases...);
 }
+
+// It seems like this should work but clang 22.1.6 throws this error:
+// /workspace/packages/auto_js/js/assertions.cc:37:15: error: static assertion expression is not an integral constant expression
+//    37 | static_assert(transfer<double>(std::variant<int, double>{1.1}) == 1.1);
+//       |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// /workspace/packages/utility/functional/functional.cc:73:11: note: subobject of type 'const util::overloaded<(lambda at /workspace/packages/utility/functional/functional.cc:85:4), (lambda at /workspace/packages/utility/functional/functional.cc:86:4)> &const' is not initialized
+//    73 |                         return invoke(value, [ & ]() -> decltype(auto) { return self(values...); });
+//
+// export constexpr auto template_switch(const auto& value, auto case_pack, auto invoke) -> decltype(auto) {
+// 	return template_traverse(
+// 		case_pack,
+// 		util::overloaded{
+// 			[ & ](auto case_, auto next) -> decltype(auto) { return value == case_ ? invoke(case_) : next(); },
+// 			[ & ]() -> decltype(auto) { return invoke(); },
+// 		}
+// 	);
+// }
 
 // libc++'s `std::reference_wrapper` causes a template instantiation while looking for
 // `result_type`. That breaks our transfer machinery.

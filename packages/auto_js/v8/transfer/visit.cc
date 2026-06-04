@@ -304,11 +304,56 @@ struct visit_value : visit_flat_value<Target> {
 
 			// Check the reference map, and check type
 			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
-				if (subject->IsObject()) {
-					return immediate(subject.As<v8::Object>(), accept);
-				} else {
-					return immediate(subject.As<v8::Primitive>(), accept);
-				}
+				return util::template_traverse(
+					accept_tags_of_v<Accept>,
+					util::overloaded{
+						// Fast paths
+						[ & ](undefined_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+							return subject->IsUndefined() ? immediate(subject.As<iv8::Undefined>(), accept) : next();
+						},
+						[ & ](null_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+							return subject->IsNull() ? immediate(subject.As<iv8::Null>(), accept) : next();
+						},
+						[ & ](boolean_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+							return subject->IsBoolean() ? immediate(subject.As<v8::Boolean>(), accept) : next();
+						},
+						[ & ](number_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+							return subject->IsNumber() ? immediate(subject.As<v8::Number>(), accept) : next();
+						},
+						[ & ](string_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+							return subject->IsString() ? immediate(subject.As<v8::String>(), accept) : next();
+						},
+						[ & ](bigint_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+							return subject->IsBigInt() ? immediate(subject.As<v8::BigInt>(), accept) : next();
+						},
+						[ & ](date_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+							return subject->IsDate() ? immediate(subject.As<v8::Date>(), accept) : next();
+						},
+						[ & ](list_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+							return subject->IsArray() ? immediate(subject.As<v8::Array>(), accept) : next();
+						},
+						[ & ](object_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+							// nb: You can't really skip the subsequent is promise, is date, is arraybuffer, etc
+							// checks. We don't really want to accept those types here, I don't think..
+							return subject->IsObject() ? immediate(subject.As<v8::Object>(), accept) : next();
+						},
+						[ & ](function_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+							return subject->IsFunction() ? immediate(subject.As<v8::Function>(), accept) : next();
+						},
+
+						// Unknown tag
+						[](auto /*tag*/, auto next) -> accept_target_t<Accept> { return next(); },
+
+						// Slow path
+						[ & ]() -> accept_target_t<Accept> {
+							if (subject->IsObject()) {
+								return immediate(subject.As<v8::Object>(), accept);
+							} else {
+								return immediate(subject.As<v8::Primitive>(), accept);
+							}
+						},
+					}
+				);
 			});
 		}
 

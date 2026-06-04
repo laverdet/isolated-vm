@@ -232,4 +232,22 @@ struct accept_property_value<Meta, Key, Type, void> {
 		accept_value<Meta, Type> second;
 };
 
+// Extract `tag_types` from an acceptor
+template <class Accept>
+struct accept_tags_of;
+
+export template <class Accept>
+constexpr auto accept_tags_of_v = accept_tags_of<Accept>::value;
+
+template <class Accept>
+struct accept_tags_of {
+		constexpr static auto value = std::tuple{};
+};
+
+template <class Accept>
+	requires requires { Accept::tag_types; }
+struct accept_tags_of<Accept> {
+		constexpr static auto value = Accept::tag_types;
+};
+
 } // namespace js
