@@ -21,8 +21,8 @@ The version of isolated-vm you should be using depends on your version of nodejs
 
 | nodejs version | isolated-vm version |
 |----------------|---------------------|
-| 22.x           | 5.x                 |
-| 24.x           | 6.x                 |
+| 22.x           | 5.x or 4.x          |
+| 24.x           | 6.x or 5.x          |
 | 26.x           | 7.x                 |
 
 You may ask "what about odd-numbered versions of nodejs" and the answer is that we can't support it
