@@ -19,8 +19,6 @@ class bound_value_for_number : public bound_value_next<number_tag> {
 		using bound_value_next<number_tag>::bound_value_next;
 		[[nodiscard]] explicit operator double() const;
 		[[nodiscard]] explicit operator std::int32_t() const;
-		[[nodiscard]] explicit operator std::int64_t() const;
-		[[nodiscard]] explicit operator std::uint32_t() const;
 };
 
 // bigint
@@ -29,7 +27,6 @@ class bound_value_for_bigint : public bound_value_next<bigint_tag> {
 		using bound_value_next<bigint_tag>::bound_value_next;
 		[[nodiscard]] explicit operator bigint() const;
 		[[nodiscard]] explicit operator std::int64_t() const;
-		[[nodiscard]] explicit operator std::uint64_t() const;
 };
 
 // string

@@ -22,7 +22,6 @@ class EXPORT bound_value_for_number : public bound_value_next<number_tag> {
 		using bound_value_next<number_tag>::bound_value_next;
 		[[nodiscard]] explicit operator double() const;
 		[[nodiscard]] explicit operator std::int32_t() const;
-		[[nodiscard]] explicit operator std::uint32_t() const;
 };
 
 // string

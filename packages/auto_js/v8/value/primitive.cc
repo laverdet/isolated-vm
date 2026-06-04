@@ -20,14 +20,6 @@ value_for_number::operator std::int32_t() const {
 	return this->As<v8::Int32>()->Value();
 }
 
-value_for_number::operator std::int64_t() const {
-	return this->As<v8::Integer>()->Value();
-}
-
-value_for_number::operator std::uint32_t() const {
-	return this->As<v8::Uint32>()->Value();
-}
-
 // `value_for_bigint`
 value_for_bigint::operator js::bigint() const {
 	auto bigint = js::bigint{};
@@ -52,18 +44,6 @@ value_for_string::operator std::string() const {
 		if (length > 0) {
 			auto* data_uint8 = reinterpret_cast<std::uint8_t*>(data);
 			(*this)->WriteOneByteV2(isolate(), 0, length, data_uint8, v8::String::WriteOptions::NO_NULL_TERMINATION);
-		}
-		return length;
-	});
-	return string;
-}
-
-value_for_string::operator std::u8string() const {
-	std::u8string string;
-	string.resize_and_overwrite((*this)->Utf8LengthV2(isolate()), [ this ](char8_t* data, std::size_t length) -> std::size_t {
-		if (length > 0) {
-			auto* data_char = reinterpret_cast<char*>(data);
-			(*this)->WriteUtf8V2(isolate(), data_char, length, v8::String::WriteOptions::NO_NULL_TERMINATION);
 		}
 		return length;
 	});

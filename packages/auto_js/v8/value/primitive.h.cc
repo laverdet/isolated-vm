@@ -17,8 +17,6 @@ class value_for_number : public handle_without_lock<v8::Number> {
 		using handle_without_lock<v8::Number>::handle_without_lock;
 		[[nodiscard]] explicit operator double() const;
 		[[nodiscard]] explicit operator std::int32_t() const;
-		[[nodiscard]] explicit operator std::int64_t() const;
-		[[nodiscard]] explicit operator std::uint32_t() const;
 };
 
 class value_for_bigint : public handle_without_lock<v8::BigInt> {
@@ -43,7 +41,6 @@ class value_for_string : public handle_with_isolate<v8::String> {
 	public:
 		using handle_with_isolate<v8::String>::handle_with_isolate;
 		[[nodiscard]] explicit operator std::string() const;
-		[[nodiscard]] explicit operator std::u8string() const;
 		[[nodiscard]] explicit operator std::u16string() const;
 };
 

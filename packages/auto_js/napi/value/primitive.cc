@@ -20,14 +20,6 @@ bound_value_for_number::operator std::int32_t() const {
 	return napi::invoke(napi_get_value_int32, env(), napi_value{*this});
 }
 
-bound_value_for_number::operator std::int64_t() const {
-	return napi::invoke(napi_get_value_int64, env(), napi_value{*this});
-}
-
-bound_value_for_number::operator std::uint32_t() const {
-	return napi::invoke(napi_get_value_uint32, env(), napi_value{*this});
-}
-
 // bigint
 bound_value_for_bigint::operator bigint() const {
 	js::bigint value;
@@ -52,13 +44,6 @@ bound_value_for_bigint::operator std::int64_t() const {
 	// nb: `lossless` error not checked for consistency with `napi_get_value_int32`,
 	// `napi_get_value_string_latin1`, etc which don't return any errors.
 	napi::invoke(napi_get_value_bigint_int64, env(), napi_value{*this}, &value);
-	return value;
-}
-
-bound_value_for_bigint::operator std::uint64_t() const {
-	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
-	std::uint64_t value;
-	napi::invoke(napi_get_value_bigint_uint64, env(), napi_value{*this}, &value);
 	return value;
 }
 
