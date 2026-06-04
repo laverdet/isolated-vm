@@ -51,7 +51,7 @@ struct visit_delegated : util::reference_wrapper<Visit> {
 			this->get().emplace_subject(reference, value);
 		}
 
-		consteval static auto has_reference_map() -> bool { return js::has_reference_map(type<Visit>); }
+		consteval static auto visit_with_reference_map() -> bool { return js::visit_with_reference_map<Visit>; }
 		consteval static auto types(auto recursive) -> auto { return Visit::types(recursive); }
 };
 
@@ -66,7 +66,7 @@ struct visit_entry_pair {
 			second.emplace_subject(subject, value);
 		}
 
-		consteval static auto has_reference_map() -> bool { return js::has_reference_map(type<Second>); }
+		consteval static auto visit_with_reference_map() -> bool { return js::visit_with_reference_map<Second>; }
 
 		// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
 		First first;
@@ -134,7 +134,7 @@ struct reference_map_provider {
 			}
 		}
 
-		consteval static auto has_reference_map() -> bool { return true; }
+		consteval static auto visit_with_reference_map() -> bool { return true; }
 
 	private:
 		map_type map_;

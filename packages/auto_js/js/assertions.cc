@@ -10,9 +10,10 @@ namespace js {
 // Narrowing sanity check. We want to narrow in non-variant cases because if the visitor has a
 // string and the acceptor wants a string_view, that should be fine. Or if v8 gives us a
 // std::uint32_t and we want an std::int32_t then that is probably fine.
-static_assert(transfer_strict<int>(1.0) == 1);
-static_assert(transfer_strict<double>(1) == 1.0);
+static_assert(transfer<std::int32_t>(1.0) == 1);
+static_assert(transfer_strict<double>(std::int32_t{1}) == 1.0);
 static_assert(transfer_strict<std::string>("hello"sv) == "hello"s);
+static_assert(transfer_strict<std::string>(util::cw<u"hello">) == "hello"s);
 
 // Variants
 template <class Type>
@@ -169,20 +170,20 @@ struct union_of<union_object> {
 		};
 };
 
-// constexpr auto discriminated_with_one = transfer<union_object>(dictionary{
-// 	std::in_place,
-// 	std::pair{"type"s, "one"s},
-// 	std::pair{"one"s, "left"s},
-// });
+constexpr auto discriminated_with_one = transfer<union_object>(dictionary{
+	std::in_place,
+	std::pair{"type"s, "one"s},
+	std::pair{"one"s, "left"s},
+});
 
-// constexpr auto discriminated_with_two = transfer<union_object>(dictionary{{
-// 	std::in_place,
-// 	std::pair{"type"s, "two"s},
-// 	std::pair{"two"s, "right"s},
-// }});
+constexpr auto discriminated_with_two = transfer<union_object>(dictionary{
+	std::in_place,
+	std::pair{"type"s, "two"s},
+	std::pair{"two"s, "right"s},
+});
 
-// static_assert(variant_is_equal_to(discriminated_with_one, union_alternative_one{.one = "left"s}));
-// static_assert(variant_is_equal_to(discriminated_with_two, union_alternative_two{.two = "right"s}));
+static_assert(variant_is_equal_to(discriminated_with_one, union_alternative_one{.one = "left"s}));
+static_assert(variant_is_equal_to(discriminated_with_two, union_alternative_two{.two = "right"s}));
 
 } // namespace js
 

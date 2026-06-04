@@ -29,9 +29,9 @@ struct accept_without_narrowing {
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
-// Generic coercing acceptor
+// Generic casting acceptor. It throws if the value cannot be safely cast.
 template <template <class> class TagOf, class Canonical, class Type>
-struct accept_coerced {
+struct accept_with_cast {
 	private:
 		// nb: For example, `number_of_tag<double>`
 		using covariant_tag_type = TagOf<Type>;
@@ -39,34 +39,42 @@ struct accept_coerced {
 		using contravariant_tag_type = covariant_tag_type::tag_type;
 
 	public:
-		constexpr auto operator()(contravariant_tag_type /*tag*/, visit_holder /*visit*/, auto&& subject) const -> Type {
-			return coerce(std::type_identity<Canonical>{}, std::forward<decltype(subject)>(subject));
+		constexpr auto operator()(this const auto& self, contravariant_tag_type /*tag*/, visit_holder /*visit*/, auto&& subject) -> Type {
+			return self.cast(std::type_identity<Canonical>{}, std::forward<decltype(subject)>(subject));
 		}
 
 		template <class Subject>
-		constexpr auto operator()(TagOf<Subject> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> Type {
-			return coerce(std::type_identity<Subject>{}, std::forward<decltype(subject)>(subject));
+		constexpr auto operator()(this const auto& self, TagOf<Subject> /*tag*/, visit_holder /*visit*/, auto&& subject) -> Type {
+			return self.cast(std::type_identity<Subject>{}, std::forward<decltype(subject)>(subject));
 		}
 
-		constexpr auto operator()(covariant_tag<covariant_tag_type> tag, visit_holder visit, auto&& subject) const -> Type {
-			return (*this)(*tag, visit, std::forward<decltype(subject)>(subject));
+		constexpr auto operator()(this const auto& self, covariant_tag<covariant_tag_type> tag, visit_holder visit, auto&& subject) -> Type {
+			return self(*tag, visit, std::forward<decltype(subject)>(subject));
 		}
 
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 
 	private:
-		[[nodiscard]] constexpr auto coerce(std::type_identity<Type> /*tag*/, auto&& subject) const -> Type {
+		[[nodiscard]] constexpr auto cast(std::type_identity<Type> /*tag*/, auto&& subject) const -> Type {
 			return Type{std::forward<decltype(subject)>(subject)};
 		}
 
-		template <class Subject>
-		[[nodiscard]] constexpr auto coerce(std::type_identity<Subject> /*tag*/, auto&& subject) const -> Type {
-			auto coerced = static_cast<Subject>(std::forward<decltype(subject)>(subject));
-			auto result = static_cast<Type>(coerced);
-			if (static_cast<Subject>(result) != coerced) {
-				throw js::range_error{u"Could not coerce value"};
+		template <class Accept, class Subject>
+		[[nodiscard]] constexpr auto cast(this const Accept& /*self*/, std::type_identity<Subject> /*tag*/, auto&& subject) -> Type {
+			auto value = Subject{std::forward<decltype(subject)>(subject)};
+			if constexpr (requires { Type{value}; }) {
+				return Type{value};
+			} else if constexpr (util::safe_numeric_conversion_v<Subject, Type>) {
+				return static_cast<Type>(value);
+			} else if constexpr (js::accept_allows_throw<Accept>) {
+				auto coerced = static_cast<Type>(value);
+				if (static_cast<Subject>(coerced) != value) {
+					throw js::range_error{u"Could not cast value"};
+				}
+				return coerced;
+			} else {
+				static_assert(false, "cannot guarantee runtime cast");
 			}
-			return result;
 		}
 };
 
@@ -83,37 +91,50 @@ struct accept<void, bool> : accept_without_narrowing<boolean_tag, bool> {};
 
 // `number` types
 template <>
-struct accept<void, double> : accept_coerced<number_tag_of, double, double> {};
+struct accept<void, double> : accept_with_cast<number_tag_of, double, double> {};
 
 template <>
-struct accept<void, std::int32_t> : accept_coerced<number_tag_of, double, std::int32_t> {};
+struct accept<void, std::int8_t> : accept_with_cast<number_tag_of, double, std::int8_t> {};
 
 template <>
-struct accept<void, std::uint32_t> : accept_coerced<number_tag_of, double, std::uint32_t> {};
+struct accept<void, std::int16_t> : accept_with_cast<number_tag_of, double, std::int16_t> {};
+
+template <>
+struct accept<void, std::int32_t> : accept_with_cast<number_tag_of, double, std::int32_t> {};
+
+template <>
+struct accept<void, std::uint8_t> : accept_with_cast<number_tag_of, double, std::uint8_t> {};
+
+template <>
+struct accept<void, std::uint16_t> : accept_with_cast<number_tag_of, double, std::uint16_t> {};
+
+template <>
+struct accept<void, std::uint32_t> : accept_with_cast<number_tag_of, double, std::uint32_t> {};
 
 // `bigint` types
 template <>
-struct accept<void, bigint> : accept_coerced<bigint_tag_of, bigint, bigint> {};
+struct accept<void, bigint> : accept_with_cast<bigint_tag_of, bigint, bigint> {};
 
 template <>
-struct accept<void, std::int64_t> : accept_coerced<bigint_tag_of, bigint, std::int64_t> {};
+struct accept<void, std::int64_t> : accept_with_cast<bigint_tag_of, bigint, std::int64_t> {};
 
 template <>
-struct accept<void, std::uint64_t> : accept_coerced<bigint_tag_of, bigint, std::uint64_t> {};
+struct accept<void, std::uint64_t> : accept_with_cast<bigint_tag_of, bigint, std::uint64_t> {};
 
 // `date`
 template <>
 struct accept<void, js_clock::time_point> : accept_without_narrowing<date_tag, js_clock::time_point> {};
 
-// `string` types. utf8 string interpolation is not implemented, so non-latin1 characters will throw
+// `string` types
 template <class Char>
-struct accept_coerced_string {
+struct accept_with_casted_string {
 	private:
 		using value_type = std::basic_string<Char>;
 
 	public:
-		constexpr auto operator()(string_tag /*tag*/, visit_holder visit, auto&& subject) const -> value_type {
-			return (*this)(string_tag_of<char16_t>{}, visit, std::forward<decltype(subject)>(subject));
+		template <class Accept>
+		constexpr auto operator()(this const Accept& self, string_tag /*tag*/, visit_holder visit, auto&& subject) -> value_type {
+			return self(string_tag_of<char16_t>{}, visit, std::forward<decltype(subject)>(subject));
 		}
 
 		constexpr auto operator()(string_tag_of<Char> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> value_type {
@@ -124,32 +145,34 @@ struct accept_coerced_string {
 			return value_type{std::forward<decltype(subject)>(subject)};
 		}
 
-		template <class Subject>
-		constexpr auto operator()(string_tag_of<Subject> /*tag*/, visit_holder /*visit*/, auto&& subject) const -> value_type {
-			return coerce<Subject>(std::forward<decltype(subject)>(subject));
+		template <class Accept, class Subject>
+		constexpr auto operator()(this const Accept& self, string_tag_of<Subject> /*tag*/, visit_holder /*visit*/, auto&& subject) -> value_type {
+			return self.cast(std::type_identity<Subject>{}, std::forward<decltype(subject)>(subject));
 		}
 
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 
 	private:
-		template <class Subject>
-		constexpr auto coerce(auto&& subject) const -> value_type {
-			return coerce(std::basic_string_view{std::basic_string<Subject>{std::forward<decltype(subject)>(subject)}});
+		template <class Accept, class Subject>
+		constexpr auto cast(this const Accept& self, std::type_identity<Subject> tag, auto&& subject) -> value_type {
+			return self.cast(tag, std::basic_string_view{std::basic_string<Subject>{std::forward<decltype(subject)>(subject)}});
 		}
 
-		template <class Subject>
-		constexpr auto coerce(std::basic_string_view<Subject> subject) const -> value_type {
+		template <class Accept, class Subject>
+		constexpr auto cast(this const Accept& /*self*/, std::type_identity<Subject> /*tag*/, std::basic_string_view<Subject> subject) -> value_type {
+			static_assert(js::accept_allows_throw<Accept> || type<Char> != type<char> || type<Subject> == type<char>, "cannot guarantee runtime cast");
 			return util::transcode_string<Char>(subject);
 		}
 
 		template <class Subject, auto Value>
-		constexpr auto coerce(util::constant_wrapper<Value> subject) const -> value_type {
-			return util::transcode_string<Char>(subject);
+		constexpr auto cast(this auto& /*self*/, std::type_identity<Subject> /*tag*/, const util::constant_wrapper<Value>& subject) -> value_type {
+			using transcoded_type = decltype(util::transcode_string<Char>(subject));
+			return transcoded_type::value;
 		}
 };
 
 template <class Char>
-struct accept<void, std::basic_string<Char>> : accept_coerced_string<Char> {};
+struct accept<void, std::basic_string<Char>> : accept_with_casted_string<Char> {};
 
 // `ArrayBuffer` & `SharedArrayBuffer` types
 template <>
@@ -172,7 +195,7 @@ struct accept<Meta, data_block_variant> : accept<Meta, data_block_variant::value
 		using accept_type::operator();
 
 		// reference provider
-		auto operator()(std::type_identity<data_block_variant> /*type*/, accepted_reference reference) const -> data_block_variant {
+		constexpr auto operator()(std::type_identity<data_block_variant> /*type*/, accepted_reference reference) const -> data_block_variant {
 			if (reference.type_index() == array_buffer_index_) {
 				return reference_of<array_buffer>{reference.id()};
 			} else if (reference.type_index() == shared_array_buffer_index_) {

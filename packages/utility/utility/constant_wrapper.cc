@@ -7,7 +7,7 @@ import std;
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay, modernize-avoid-c-arrays)
 namespace util {
 
-template <class Type>
+export template <class Type>
 struct fixed_value {
 		using type = Type;
 		// NOLINTNEXTLINE(google-explicit-constructor)

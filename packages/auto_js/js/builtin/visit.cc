@@ -8,19 +8,6 @@ import util;
 
 namespace js {
 
-// `util::cw` visitor
-template <auto Value>
-struct visit<void, util::constant_wrapper<Value>> : visit<void, std::remove_cv_t<typename util::constant_wrapper<Value>::value_type>> {
-		using value_type = std::remove_cvref_t<typename util::constant_wrapper<Value>::value_type>;
-		using visit_type = visit<void, value_type>;
-
-		template <class Accept>
-		constexpr auto operator()(const auto& subject, const Accept& accept) const -> accept_target_t<Accept> {
-			const value_type& subject_value = subject;
-			return util::invoke_as<visit_type>(*this, subject_value, accept);
-		}
-};
-
 // The most basic of visitors which passes along a value with the tag supplied in the template.
 template <class Tag>
 struct visit_value_tagged {
@@ -82,6 +69,20 @@ struct visit<void, Char[ Extent ]> {
 		// NOLINTNEXTLINE(modernize-avoid-c-arrays)
 		constexpr auto operator()(const Char (&subject)[ Extent ], const Accept& accept) const -> accept_target_t<Accept> {
 			return accept(string_tag_of<Char>{}, *this, std::basic_string_view<Char>{subject, Extent - 1});
+		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+};
+
+// NOLINTNEXTLINE(modernize-avoid-c-arrays)
+template <std::integral Char, std::size_t Extent, util::fixed_value<Char[ Extent ]> Value>
+struct visit<void, util::constant_wrapper<Value>> {
+		using value_type = std::remove_cvref_t<typename util::constant_wrapper<Value>::value_type>;
+		using visit_type = visit<void, value_type>;
+
+		template <class Accept>
+		constexpr auto operator()(const util::constant_wrapper<Value>& subject, const Accept& accept) const -> accept_target_t<Accept> {
+			return accept(string_tag_of<Char>{}, *this, subject);
 		}
 
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }

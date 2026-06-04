@@ -28,6 +28,7 @@ template <class Accept>
 struct accept_with_throw::accept_throw : Accept {
 		using accept_target_type = accept_target_t<Accept>;
 		using Accept::Accept;
+		constexpr static auto accept_allows_throw = true;
 
 		using Accept::operator();
 		constexpr auto operator()(auto tag, auto& visit, auto&& subject) const -> accept_target_type
