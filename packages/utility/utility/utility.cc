@@ -4,6 +4,7 @@ export import :utility.covariant_value;
 export import :utility.facade;
 export import :utility.hash;
 export import :utility.ranges;
+export import :utility.sequence;
 export import :utility.string;
 // export import :utility.variant;
 import std;
@@ -30,22 +31,6 @@ export class non_moveable {
 		non_moveable(const non_moveable&) = delete;
 		auto operator=(const non_moveable&) = delete;
 };
-
-// Return a sequence of index constants
-export template <std::size_t Size>
-constexpr auto sequence = []() consteval -> auto {
-	// With C++26 P2686 we can do constexpr decomposition. So instead of the `tuple` of
-	// `integral_constants` it can be an array of `std::size_t`.
-	// https://clang.llvm.org/cxx_status.html
-
-	// std::array<std::size_t, Size> result{};
-	// std::ranges::copy(std::ranges::views::iota(std::size_t{0}, Size), result.begin());
-	// return result;
-
-	return []<std::size_t... Index>(std::index_sequence<Index...> /*sequence*/) consteval {
-		return std::tuple{std::integral_constant<std::size_t, Index>{}...};
-	}(std::make_index_sequence<Size>());
-}();
 
 // Checked container / range access for types which don't have `.at()`
 export auto at(auto&& range, std::size_t index) -> decltype(auto) {

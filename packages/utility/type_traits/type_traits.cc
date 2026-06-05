@@ -34,4 +34,17 @@ static_assert(safe_numeric_conversion<std::int32_t, double>::value);
 static_assert(safe_numeric_conversion<float, double>::value);
 static_assert(!safe_numeric_conversion<double, float>::value);
 
+// Resolves to the type of every type in the pack. If any type differs then it is ill-formed.
+template <class... Type>
+struct identical_type;
+
+template <class... Type>
+using identical_type_t = identical_type<Type...>::type;
+
+template <class Type>
+struct identical_type<Type> : std::type_identity<Type> {};
+
+template <class Type, class... Rest>
+struct identical_type<Type, Type, Rest...> : identical_type<Type, Rest...> {};
+
 } // namespace util

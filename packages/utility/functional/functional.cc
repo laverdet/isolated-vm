@@ -77,6 +77,32 @@ export constexpr auto template_traverse(auto values_pack, const auto& invoke) ->
 	return fold(values...);
 }
 
+// Fold operation for template packs. If the pack is empty then `identity` is returned. Otherwise
+// `identity` is ignored.
+export constexpr auto template_fold(auto values_pack, auto identity, const auto& invoke) -> decltype(auto) {
+	const auto fold = util::overloaded{
+		[ & ]() -> decltype(auto) { return identity; },
+		[ & ](auto left) -> decltype(auto) { return left; },
+		[ & ](this const auto& self, auto left, auto right, auto... values) -> decltype(auto) {
+			return self(invoke(left, right), values...);
+		},
+	};
+	const auto [... values ] = values_pack;
+	return fold(values...);
+};
+
+// Template pack reducer
+export constexpr auto template_reduce(auto values_pack, auto accumulator, const auto& invoke) -> decltype(auto) {
+	const auto reduce = util::overloaded{
+		[ & ](auto accumulator) -> decltype(auto) { return accumulator; },
+		[ & ](this const auto& self, auto accumulator, auto value, auto... values) -> decltype(auto) {
+			return self(invoke(accumulator, value), values...);
+		},
+	};
+	const auto [... values ] = values_pack;
+	return reduce(accumulator, values...);
+};
+
 // Invoke the given function with the constant expression matching a runtime value.
 export constexpr auto template_switch(const auto& value, auto case_pack, auto invoke) -> decltype(auto) {
 	auto dispatch = [ & ](this const auto& self, auto case_, auto... cases) -> decltype(auto) {

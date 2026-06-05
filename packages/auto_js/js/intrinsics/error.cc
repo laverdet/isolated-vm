@@ -3,6 +3,7 @@ module;
 export module auto_js:intrinsics.error;
 import :enum_.types;
 import std;
+import util;
 
 namespace js {
 
@@ -60,6 +61,12 @@ class specific_error_value : public error {
 		explicit specific_error_value(std::u16string message) :
 				error{Type},
 				message_{std::move(message)} {}
+
+		// TODO: Make a template specialization for `util::cw` which just returns the bytes instead of
+		// heap strings.
+		template <auto Message>
+		explicit specific_error_value(util::constant_wrapper<Message> /*message*/) :
+				specific_error_value{std::u16string{Message.value}} {}
 
 		[[nodiscard]] auto message() const -> std::u16string final { return message_; }
 

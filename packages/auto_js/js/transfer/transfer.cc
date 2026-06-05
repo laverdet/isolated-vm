@@ -9,6 +9,53 @@ import util;
 
 namespace js {
 
+// Tag message descriptions for error messages.
+constexpr auto message_for_tag = util::overloaded{
+	[](bigint_tag /*tag*/) -> auto { return util::cw<u"bigint">; },
+	[](bigint_tag_of<std::int64_t> /*tag*/) -> auto { return util::cw<u"bigint[int64]">; },
+	[](boolean_tag /*tag*/) -> auto { return util::cw<u"boolean">; },
+	[](null_tag /*tag*/) -> auto { return util::cw<u"null">; },
+	[](number_tag /*tag*/) -> auto { return util::cw<u"number">; },
+	[](number_tag_of<std::int32_t> /*tag*/) -> auto { return util::cw<u"number[int32]">; },
+	[](string_tag /*tag*/) -> auto { return util::cw<u"string">; },
+	[](string_tag_of<char> /*tag*/) -> auto { return util::cw<u"string[latin1]">; },
+	[](symbol_tag /*tag*/) -> auto { return util::cw<u"symbol">; },
+	[](undefined_tag /*tag*/) -> auto { return util::cw<u"undefined">; },
+	[](value_tag /*tag*/) -> auto { return util::cw<u"value">; },
+
+	[](array_buffer_tag /*tag*/) -> auto { return util::cw<u"ArrayBuffer">; },
+	[](array_buffer_view_tag /*tag*/) -> auto { return util::cw<u"array buffer view">; },
+	[](data_block_tag /*tag*/) -> auto { return util::cw<u"data block">; },
+	[](data_view_tag /*tag*/) -> auto { return util::cw<u"DataView">; },
+	[](date_tag /*tag*/) -> auto { return util::cw<u"Date">; },
+	[](error_tag /*tag*/) -> auto { return util::cw<u"Error">; },
+	[](external_tag /*tag*/) -> auto { return util::cw<u"external">; },
+	[](function_tag /*tag*/) -> auto { return util::cw<u"function">; },
+	[](list_tag /*tag*/) -> auto { return util::cw<u"Array">; },
+	[](object_tag /*tag*/) -> auto { return util::cw<u"object">; },
+	[](promise_tag /*tag*/) -> auto { return util::cw<u"Promise">; },
+	[](shared_array_buffer_tag /*tag*/) -> auto { return util::cw<u"SharedArrayBuffer">; },
+	[](typed_array_tag /*tag*/) -> auto { return util::cw<u"TypedArray">; },
+	[](vector_tag /*tag*/) -> auto { return util::cw<u"array">; },
+};
+
+template <class Accept>
+constexpr auto expected_tag_message() {
+	constexpr auto accept_tags = accept_tags_of_v<Accept>;
+	using accept_tag_type = decltype(accept_tags);
+	if constexpr (std::tuple_size_v<accept_tag_type> == 0) {
+		return util::cw<u"unknown">;
+	} else if constexpr (std::tuple_size_v<accept_tag_type> == 1) {
+		return message_for_tag(std::get<0>(accept_tags));
+	} else if constexpr (std::tuple_size_v<accept_tag_type> == 2) {
+		return util::consteval_strcat(
+			message_for_tag(std::get<0>(accept_tags)),
+			util::cw<u" or ">,
+			message_for_tag(std::get<1>(accept_tags))
+		);
+	}
+}
+
 // Default `accept` passthrough `Wrap`
 struct accept_pass {
 		template <class Accept>
@@ -33,7 +80,7 @@ struct accept_with_throw::accept_throw : Accept {
 		using Accept::operator();
 		constexpr auto operator()(auto tag, auto& visit, auto&& subject) const -> accept_target_type
 			requires(!std::invocable<const Accept&, decltype(tag), decltype(visit), decltype(subject)>) {
-			throw js::type_error{u"Could not accept"};
+			throw js::type_error{util::consteval_strcat(util::cw<u"expected ">, expected_tag_message<Accept>(), util::cw<u", but got ">, message_for_tag(tag))};
 		}
 };
 

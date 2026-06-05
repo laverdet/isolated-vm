@@ -38,6 +38,7 @@ target_sources(utility_js
 		utility/facade.cc
 		utility/hash.cc
 		utility/ranges.cc
+		utility/sequence.cc
 		utility/string.cc
 		utility/utility.cc
 		utility/variant.cc
