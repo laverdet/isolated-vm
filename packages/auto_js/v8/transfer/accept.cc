@@ -108,8 +108,8 @@ auto accept_v8_value::operator()(error_tag /*tag*/, visit_holder /*visit*/, cons
 }
 
 // function
-auto accept_v8_value::operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::FunctionTemplate> subject) const -> v8::Local<v8::Function> {
-	return unmaybe(subject->GetFunction(context_));
+auto accept_v8_value::operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::FunctionTemplate> subject) const -> v8::Local<iv8::Function> {
+	return unmaybe(subject->GetFunction(context_).As<iv8::Function>());
 }
 
 // data blocks

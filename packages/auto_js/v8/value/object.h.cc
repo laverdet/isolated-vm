@@ -1,6 +1,5 @@
 export module v8_js:object;
 import :array;
-import :primitive;
 import auto_js;
 import std;
 import v8;

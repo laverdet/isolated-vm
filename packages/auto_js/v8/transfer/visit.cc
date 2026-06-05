@@ -3,8 +3,8 @@ import :array_buffer;
 import :callback_info;
 import :handle.value;
 import :hash;
-import :object;
 import :unmaybe;
+import :value;
 import auto_js;
 import std;
 import v8;
@@ -30,14 +30,14 @@ struct visit_property_name {
 					auto value = value_of{witness(), subject.As<tag_to_v8<Tag>>()};
 					return accept(tag, *this, value);
 				};
-				if (subject->IsNumber()) {
-					return accept_as(number_tag_of<std::int32_t>{});
-				} else if (subject->IsString()) {
+				if (subject->IsString()) {
 					if (subject.As<v8::String>()->IsOneByte()) {
 						return accept_as(string_tag_of<char>{});
 					} else {
 						return accept_as(string_tag_of<char16_t>{});
 					}
+				} else if (subject->IsNumber()) {
+					return accept_as(number_tag_of<std::int32_t>{});
 				} else {
 					return accept_as(symbol_tag{});
 				}
@@ -177,7 +177,7 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 		}
 
 		template <class Accept, class Type>
-			requires std::is_base_of_v<primitive_tag, iv8::v8_to_tag<Type>>
+			requires std::is_convertible_v<Type, v8::Primitive>
 		auto immediate(v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept_tagged(subject, accept);
 		}
@@ -230,7 +230,7 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 		}
 
 		template <class Accept, class Type>
-			requires std::is_base_of_v<data_block_tag, iv8::v8_to_tag<Type>>
+			requires std::is_convertible_v<iv8::v8_to_tag<Type>, data_block_tag>
 		auto immediate(v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept_tagged(subject, accept);
 		}
@@ -241,15 +241,16 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 			return accept_tagged(subject, accept);
 		}
 
-		// promise (cannot be accepted)
+		// promise (maybe could be forwarded)
 		template <class Accept>
 		auto immediate(v8::Local<v8::Promise> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept(promise_tag{}, *this, subject);
 		}
 
-		// function (cannot be accepted)
-		template <class Accept>
-		auto immediate(v8::Local<v8::Function> subject, const Accept& accept) -> accept_target_t<Accept> {
+		// function (can be forwarded)
+		template <class Type, class Accept>
+			requires std::is_convertible_v<Type, v8::Function>
+		auto immediate(v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept(function_tag{}, *this, subject);
 		}
 
@@ -309,16 +310,16 @@ struct visit_value : visit_flat_value<Target> {
 					util::overloaded{
 						// Fast paths
 						[ & ](undefined_tag /*tag*/, auto next) -> accept_target_t<Accept> {
-							return subject->IsUndefined() ? immediate(subject.As<iv8::Undefined>(), accept) : next();
+							return subject->IsUndefined() ? accept(undefined_tag{}, *this, subject.As<iv8::Undefined>()) : next();
 						},
 						[ & ](null_tag /*tag*/, auto next) -> accept_target_t<Accept> {
-							return subject->IsNull() ? immediate(subject.As<iv8::Null>(), accept) : next();
+							return subject->IsNull() ? accept(null_tag{}, *this, subject.As<iv8::Null>()) : next();
 						},
 						[ & ](boolean_tag /*tag*/, auto next) -> accept_target_t<Accept> {
-							return subject->IsBoolean() ? immediate(subject.As<v8::Boolean>(), accept) : next();
+							return subject->IsBoolean() ? (*this)(subject.As<v8::Boolean>(), accept) : next();
 						},
 						[ & ](number_tag /*tag*/, auto next) -> accept_target_t<Accept> {
-							return subject->IsNumber() ? immediate(subject.As<v8::Number>(), accept) : next();
+							return subject->IsNumber() ? (*this)(subject.As<v8::Number>(), accept) : next();
 						},
 						[ & ](string_tag /*tag*/, auto next) -> accept_target_t<Accept> {
 							return subject->IsString() ? immediate(subject.As<v8::String>(), accept) : next();
@@ -338,7 +339,7 @@ struct visit_value : visit_flat_value<Target> {
 							return subject->IsObject() ? immediate(subject.As<v8::Object>(), accept) : next();
 						},
 						[ & ](function_tag /*tag*/, auto next) -> accept_target_t<Accept> {
-							return subject->IsFunction() ? immediate(subject.As<v8::Function>(), accept) : next();
+							return subject->IsFunction() ? immediate(subject.As<iv8::Function>(), accept) : next();
 						},
 
 						// Unknown tag
@@ -388,7 +389,7 @@ struct visit_value : visit_flat_value<Target> {
 			} else if (subject->IsPromise()) {
 				return immediate(subject.As<v8::Promise>(), accept);
 			} else if (subject->IsFunction()) {
-				return immediate(subject.As<v8::Function>(), accept);
+				return immediate(subject.As<iv8::Function>(), accept);
 			} else {
 				auto visit_entry = visit_entry_pair<visit_property_name<visit_value>, visit_value&>{*this};
 				return accept(dictionary_tag{}, visit_entry, value_of{witness(), subject.As<v8::Object>()});
@@ -441,7 +442,7 @@ struct visit_value : visit_flat_value<Target> {
 		}
 
 		template <class Accept, class Type>
-			requires std::is_base_of_v<array_buffer_view_tag, v8_to_tag<Type>>
+			requires std::is_convertible_v<Type, v8::ArrayBufferView>
 		auto immediate(v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept(v8_to_tag<Type>{}, *this, value_of{witness(), subject});
 		}
@@ -473,7 +474,7 @@ namespace js {
 
 // Name visitor (string + symbol)
 template <class Meta, class Type>
-	requires std::is_base_of_v<v8::Primitive, Type>
+	requires std::is_convertible_v<Type, v8::Primitive>
 struct visit<Meta, v8::Local<Type>> : iv8::visit_uncached_flat_value_with<Meta> {
 		using iv8::visit_uncached_flat_value_with<Meta>::visit_uncached_flat_value_with;
 };
@@ -486,7 +487,7 @@ struct visit<Meta, v8::Local<Type>> : iv8::visit_value_with<Meta> {
 
 // Template visitor
 template <class Meta, class Type>
-	requires std::is_base_of_v<v8::Template, Type>
+	requires std::is_convertible_v<Type, v8::Template>
 struct visit<Meta, v8::Local<Type>> : iv8::visit_template {
 		using iv8::visit_template::visit_template;
 };

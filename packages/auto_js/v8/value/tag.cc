@@ -7,6 +7,7 @@ import v8;
 namespace js::iv8 {
 
 // These helper classes are provided to avoid extra visit inspections on tagged values
+export class Function;
 export class BigInt64 : public v8::BigInt {};
 export class BigIntU64 : public v8::BigInt {};
 export class BigIntWords : public v8::BigInt {};
@@ -45,7 +46,7 @@ constexpr auto tag_to_v8_fn = util::overloaded{
 	[](array_buffer_tag /*tag*/) -> std::type_identity<v8::ArrayBuffer> { return {}; },
 	[](date_tag /*tag*/) -> std::type_identity<v8::Date> { return {}; },
 	[](external_tag /*tag*/) -> std::type_identity<v8::External> { return {}; },
-	[](function_tag /*tag*/) -> std::type_identity<v8::Function> { return {}; },
+	[](function_tag /*tag*/) -> std::type_identity<iv8::Function> { return {}; },
 	[](list_tag /*tag*/) -> std::type_identity<v8::Array> { return {}; },
 	[](object_tag /*tag*/) -> std::type_identity<v8::Object> { return {}; },
 	[](promise_tag /*tag*/) -> std::type_identity<v8::Promise> { return {}; },
@@ -95,6 +96,7 @@ constexpr auto v8_to_tag_fn = util::overloaded{
 	[](std::type_identity<v8::Uint32> /*type*/) -> number_tag_of<std::uint32_t> { return {}; },
 
 	// objects
+	[](std::type_identity<iv8::Function> /*type*/) -> function_tag { return {}; },
 	[](std::type_identity<v8::Array> /*type*/) -> list_tag { return {}; },
 	[](std::type_identity<v8::ArrayBuffer> /*type*/) -> array_buffer_tag { return {}; },
 	[](std::type_identity<v8::Date> /*type*/) -> date_tag { return {}; },

@@ -42,18 +42,16 @@ reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle 
 						} else {
 							return js::typeof_kind::undefined;
 						}
+					} else if (value->IsString()) {
+						return js::typeof_kind::string;
 					} else if (value->IsNumber()) {
 						return js::typeof_kind::number;
-					} else if (value->IsName()) {
-						if (value->IsString()) {
-							return js::typeof_kind::string;
-						} else {
-							return js::typeof_kind::symbol;
-						}
 					} else if (value->IsBoolean()) {
 						return js::typeof_kind::boolean;
 					} else if (value->IsBigInt()) {
 						return js::typeof_kind::bigint;
+					} else if (value->IsSymbol()) {
+						return js::typeof_kind::symbol;
 					} else {
 						std::unreachable();
 					}
@@ -229,10 +227,8 @@ auto reference_handle::invoke(environment& env, js::forward<js::napi::value_of<l
 			) -> void {
 				auto maybe_result = context_scope_operation(agent_lock, realm->deref(agent_lock), [ & ](const realm_scope& lock) -> auto {
 					return iv8::invoke_externalized_error_scope(lock, [ & ]() -> js::value_t {
-						auto local = value->deref(lock).As<v8::Function>();
-						auto arg_values = js::transfer_in_strict<std::vector<v8::Local<v8::Value>>>(std::move(params), lock);
-						auto result = iv8::unmaybe(local->Call(lock.isolate(), lock.context(), v8::Undefined(lock.isolate()), static_cast<int>(arg_values.size()), arg_values.data()));
-						return js::transfer_out<js::value_t>(result, lock);
+						auto fn = value->deref(lock).As<iv8::Function>();
+						return fn->apply<js::value_t>(lock, std::move(params));
 					});
 				});
 				resolver.resolve(completion_record{std::move(maybe_result)});

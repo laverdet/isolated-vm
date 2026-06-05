@@ -1,8 +1,7 @@
 export module v8_js:accept;
-import :array_buffer;
 import :callback_storage;
 import :hash;
-import :primitive;
+import :value;
 import auto_js;
 import std;
 import util;
@@ -156,7 +155,7 @@ struct accept_v8_value : accept_v8_primitive {
 		}
 
 		// function
-		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::FunctionTemplate> subject) const -> v8::Local<v8::Function>;
+		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::FunctionTemplate> subject) const -> v8::Local<iv8::Function>;
 
 		// array
 		auto operator()(this const auto& self, list_tag /*tag*/, auto& visit, auto&& subject)
@@ -304,10 +303,10 @@ struct accept_v8_value_with<context_lock_witness> : accept_v8_value {
 		using accept_v8_value::witness;
 
 		// function instantiation
-		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, auto subject) const -> v8::Local<v8::Function> {
+		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, auto subject) const -> v8::Local<iv8::Function> {
 			auto [ function, length ] = make_free_function<context_lock_witness>(std::move(subject).callback);
 			auto [ callback, data ] = make_callback_storage(witness(), std::move(function));
-			return unmaybe(v8::Function::New(witness().context(), callback, data, length, v8::ConstructorBehavior::kThrow));
+			return unmaybe(v8::Function::New(witness().context(), callback, data, length, v8::ConstructorBehavior::kThrow).template As<iv8::Function>());
 		}
 };
 
@@ -321,7 +320,7 @@ struct accept_v8_value_with : accept_v8_value {
 		using accept_v8_value::operator();
 
 		// function instantiation
-		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, auto subject) const -> v8::Local<v8::Function> {
+		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, auto subject) const -> v8::Local<iv8::Function> {
 			auto [ function, length ] = make_free_function<Lock>(std::move(subject).callback);
 			auto [ callback, data ] = make_callback_storage(lock_.get(), std::move(function));
 			return v8::Function::New(lock_.get().context(), callback, data, length, v8::ConstructorBehavior::kThrow);
@@ -465,7 +464,7 @@ struct accept_property_subject<v8::Local<Type>> : std::type_identity<v8::Local<v
 
 // primitives
 template <class Meta, class Type>
-	requires std::is_base_of_v<v8::Primitive, Type>
+	requires std::is_convertible_v<Type, v8::Primitive>
 struct accept<Meta, v8::Local<Type>> : iv8::accept_v8_primitive {
 		using accept_v8_primitive::accept_v8_primitive;
 };
@@ -478,7 +477,7 @@ struct accept<Meta, v8::Local<Type>> : iv8::accept_v8_value_with<typename Meta::
 
 // templates
 template <class Meta, class Type>
-	requires std::is_base_of_v<v8::Template, Type>
+	requires std::is_convertible_v<Type, v8::Template>
 struct accept<Meta, v8::Local<Type>> : iv8::accept_v8_template<Meta, typename Meta::accept_context_type> {
 		using iv8::accept_v8_template<Meta, typename Meta::accept_context_type>::accept_v8_template;
 };

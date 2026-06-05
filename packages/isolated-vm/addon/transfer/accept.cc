@@ -153,14 +153,14 @@ using namespace isolated_vm;
 
 // Primitive acceptor
 template <std::convertible_to<value_tag> Tag>
-	requires std::is_base_of_v<primitive_tag, Tag>
+	requires std::is_convertible_v<Tag, primitive_tag>
 struct accept<void, value_of<Tag>> : accept_vm_primitive {
 		using accept_vm_primitive::accept_vm_primitive;
 };
 
 // Template / prototype acceptor
 template <class Tag>
-	requires std::is_base_of_v<prototype_tag, Tag>
+	requires std::is_convertible_v<Tag, prototype_tag>
 struct accept<void, value_of<Tag>> : accept_vm_prototype {
 		using accept_vm_prototype::accept_vm_prototype;
 };

@@ -47,6 +47,7 @@ struct accept<void, forward<Type, Tag>> {
 			return forward<Type, Tag>{std::forward<decltype(subject)>(subject)};
 		}
 
+		constexpr static auto accept_tags_of() { return std::tuple<Tag>{}; }
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
@@ -65,6 +66,7 @@ struct accept_delegated : util::reference_wrapper<Accept> {
 				// cause confusing compile-time or run-time errors.
 				util::reference_wrapper<Accept>{*static_cast<Accept*>(transfer)} {}
 
+		constexpr static auto accept_tags_of() { return js::accept_tags_of_v<Accept>; }
 		consteval static auto types(auto recursive) -> auto { return Accept::types(recursive); }
 };
 
@@ -230,24 +232,6 @@ struct accept_property_value<Meta, Key, Type, void> {
 	private:
 		accept_value<Meta, std::string> first;
 		accept_value<Meta, Type> second;
-};
-
-// Extract `tag_types` from an acceptor
-template <class Accept>
-struct accept_tags_of;
-
-export template <class Accept>
-constexpr auto accept_tags_of_v = accept_tags_of<Accept>::value;
-
-template <class Accept>
-struct accept_tags_of {
-		constexpr static auto value = std::tuple{};
-};
-
-template <class Accept>
-	requires requires { Accept::tag_types; }
-struct accept_tags_of<Accept> {
-		constexpr static auto value = Accept::tag_types;
 };
 
 } // namespace js

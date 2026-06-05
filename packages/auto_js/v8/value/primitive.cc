@@ -1,5 +1,4 @@
 module v8_js;
-import :handle;
 import :primitive;
 import std;
 import v8;

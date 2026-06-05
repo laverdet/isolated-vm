@@ -80,4 +80,12 @@ concept visit_with_reference_map = std::remove_cvref_t<Visit>::visit_with_refere
 template <class Accept>
 concept accept_allows_throw = std::remove_cvref_t<Accept>::accept_allows_throw;
 
+// Extract `accept_tags_of` from an acceptor
+export template <class Accept>
+constexpr auto accept_tags_of_v = std::tuple{};
+
+export template <class Accept>
+	requires requires { Accept::accept_tags_of(); }
+constexpr auto accept_tags_of_v<Accept> = Accept::accept_tags_of();
+
 } // namespace js

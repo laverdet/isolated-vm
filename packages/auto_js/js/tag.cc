@@ -54,7 +54,7 @@ struct error_tag : tag_of<object_tag> {};
 struct external_tag : tag_of<object_tag> {};
 
 // functions & classes
-struct function_tag : tag_of<primitive_tag> {};
+struct function_tag : tag_of<value_tag> {};
 struct class_tag : tag_of<object_tag> {};
 template <class Type>
 struct class_tag_of : tag_of<class_tag> {};

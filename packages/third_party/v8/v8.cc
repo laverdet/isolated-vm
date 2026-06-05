@@ -63,9 +63,11 @@ using v8::V8FatalErrorCallback;
 using v8::Isolate;
 
 // v8-local-handle.h
+using v8::EscapableHandleScope;
 using v8::HandleScope;
 using v8::Local;
 using v8::MaybeLocal;
+using v8::SealHandleScope;
 
 // v8-locker.h
 using v8::Locker;

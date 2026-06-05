@@ -16,8 +16,8 @@ struct accept_as_constant {
 			return Value;
 		}
 
+		consteval static auto accept_tags_of() { return std::tuple{Tag{}}; }
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
-		constexpr static auto tag_types = std::tuple{Tag{}};
 };
 
 // Lossless value acceptor
@@ -27,8 +27,8 @@ struct accept_without_narrowing {
 			return Type{std::forward<decltype(subject)>(subject)};
 		}
 
+		consteval static auto accept_tags_of() { return std::tuple{Tag{}}; }
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
-		constexpr static auto tag_types = std::tuple{Tag{}};
 };
 
 // Generic casting acceptor. It throws if the value cannot be safely cast.
@@ -54,8 +54,8 @@ struct accept_with_cast {
 			return self(*tag, visit, std::forward<decltype(subject)>(subject));
 		}
 
+		consteval static auto accept_tags_of() { return std::tuple{contravariant_tag_type{}}; }
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
-		constexpr static auto tag_types = std::tuple{contravariant_tag_type{}};
 
 	private:
 		[[nodiscard]] constexpr auto cast(std::type_identity<Type> /*tag*/, auto&& subject) const -> Type {
@@ -153,8 +153,8 @@ struct accept_with_casted_string {
 			return self.cast(std::type_identity<Subject>{}, std::forward<decltype(subject)>(subject));
 		}
 
+		consteval static auto accept_tags_of() { return std::tuple{string_tag{}}; }
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
-		constexpr static auto tag_types = std::tuple{string_tag{}};
 
 	private:
 		template <class Accept, class Subject>
@@ -234,8 +234,8 @@ struct accept_typed_array {
 			return Type{visit(std::forward<decltype(subject)>(subject).buffer(), accept_), byte_offset, size};
 		}
 
+		consteval static auto accept_tags_of() { return std::tuple{Tag{}}; }
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
-		constexpr static auto tag_types = std::tuple{Tag{}};
 
 	private:
 		accept_value<Meta, data_block_variant> accept_;
@@ -262,8 +262,8 @@ struct accept_typed_array_span : private accept_data_block_span {
 			return typed_span.subspan(0, subject.size());
 		}
 
+		consteval static auto accept_tags_of() { return std::tuple{typed_array_tag_of<std::remove_const_t<Type>>{}}; }
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
-		constexpr static auto tag_types = std::tuple{typed_array_tag_of<std::remove_const_t<Type>>{}};
 };
 
 template <class Meta, class Type>
@@ -308,7 +308,7 @@ struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {
 			return std::nullopt;
 		}
 
-		constexpr static auto tag_types = std::tuple_cat(accept_tags_of_v<accept_type>, std::tuple<undefined_tag>{});
+		consteval static auto accept_tags_of() { return std::tuple_cat(accept_tags_of_v<accept_type>, std::tuple<undefined_tag>{}); }
 };
 
 // `std::pair` uses `first` & `second` acceptors. This corresponds to "entries" in a vector / array.

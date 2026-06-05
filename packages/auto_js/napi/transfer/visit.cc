@@ -239,7 +239,7 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 	private:
 		// I think this only applies to `symbol_tag`
 		template <class Accept, class Tag>
-			requires std::is_base_of_v<primitive_tag, Tag>
+			requires std::is_convertible_v<Tag, primitive_tag>
 		auto immediate(value_of<Tag> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept_tagged(subject, accept);
 		}
@@ -299,7 +299,7 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 		}
 
 		template <class Accept, class Tag>
-			requires std::is_base_of_v<data_block_tag, Tag>
+			requires std::is_convertible_v<Tag, data_block_tag>
 		auto immediate(value_of<Tag> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept_tagged(subject, accept);
 		}

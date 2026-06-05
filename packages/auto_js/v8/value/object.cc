@@ -1,8 +1,5 @@
 module v8_js;
-import :array;
-import :handle;
-import :lock;
-import :primitive;
+import :object;
 import std;
 import v8;
 

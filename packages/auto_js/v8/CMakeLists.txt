@@ -49,10 +49,13 @@ target_sources("${TARGET_NAME}"
 		value/array.h.cc
 		value/callback_info.cc
 		value/fixed_array.h.cc
+		value/function.cc
+		value/function.h.cc
 		value/handle.cc
 		value/object.h.cc
 		value/primitive.h.cc
 		value/tag.cc
+		value/value.cc
 )
 
 if(TARGET_NAME STREQUAL "embedded_v8_js")

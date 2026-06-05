@@ -6,14 +6,14 @@ namespace js::napi {
 
 template <class Result>
 auto value_for_function::apply(auto_environment auto& env, auto&& args) -> Result {
-	auto arg_values = js::transfer_in_strict<std::vector<napi_value>>(std::forward<decltype(args)>(args), env);
-	return invoke<Result>(env, std::span{arg_values});
+	auto argv = js::transfer_in_strict<std::vector<napi_value>>(std::forward<decltype(args)>(args), env);
+	return invoke<Result>(env, std::span{argv});
 }
 
 template <class Result>
 auto value_for_function::call(auto_environment auto& env, auto&&... args) -> Result {
-	auto arg_values = js::transfer_in_strict<std::array<napi_value, sizeof...(args)>>(std::forward_as_tuple(args...), env);
-	return invoke<Result>(env, std::span{arg_values});
+	auto argv = js::transfer_in_strict<std::array<napi_value, sizeof...(args)>>(std::forward_as_tuple(args...), env);
+	return invoke<Result>(env, std::span{argv});
 }
 
 template <class Result>

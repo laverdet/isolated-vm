@@ -135,7 +135,7 @@ tasks:
     presentation:
       clear: true
       panel: dedicated
-      reveal: silent
+      reveal: always
       showReuseMessage: false
     icon:
       id: wrench
@@ -175,7 +175,7 @@ tasks:
     presentation:
       clear: true
       panel: dedicated
-      reveal: never
+      reveal: always
       showReuseMessage: false
     group: build
     icon:

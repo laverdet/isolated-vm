@@ -139,7 +139,7 @@ auto module_handle::create_capability(
 			[ accept_subscriber = subscriber->take_subscriber(),
 				schedule_task = std::move(schedule_task) ](
 				const realm_scope& lock,
-				js::forward<v8::Local<v8::Function>, function_tag> callback
+				js::forward<v8::Local<iv8::Function>> callback
 			) -> void {
 				auto callback_remote = make_shared_remote(lock, *callback);
 				auto wake =
@@ -152,9 +152,7 @@ auto module_handle::create_capability(
 							const realm_scope& lock,
 							js::value_t message
 						) -> void {
-							auto callback = callback_remote->deref(lock);
-							auto argv = js::transfer_in_strict<v8::Local<v8::Value>>(std::move(message), lock);
-							js::iv8::unmaybe(callback->Call(lock.context(), v8::Undefined(lock.isolate()), 1, &argv));
+							callback_remote->deref(lock)->call(lock, std::move(message));
 						},
 						std::move(message)
 					);
@@ -372,3 +370,11 @@ auto subscriber_capability::subscriber::subscribe(callback_type callback) -> voi
 }
 
 } // namespace backend_napi_v8
+
+// There is some spooky issue in clang v22.1.0 on macOS where if these templates are not explicitly
+// instantiated in this file it causes bad codegen throughout the project. Like code totally
+// unrelated to JS modules will throw vector out bounds exceptions, SIGBUS, asan violations. I tried
+// disabling LTO, this is the only thing that seems to work.
+[[maybe_unused]] constexpr auto template_workaround = [](js::iv8::context_lock_witness lock, js::value_t value) -> void {
+	std::ignore = js::transfer_in_strict<v8::Local<v8::Value>>(std::move(value), lock);
+};
