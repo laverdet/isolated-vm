@@ -55,7 +55,8 @@ constexpr auto tag_to_v8_fn = util::overloaded{
 	[](data_view_tag /*tag*/) -> std::type_identity<v8::DataView> { return {}; },
 	[](typed_array_tag_of<double> /*tag*/) -> std::type_identity<v8::Float64Array> { return {}; },
 	[](typed_array_tag_of<float> /*tag*/) -> std::type_identity<v8::Float32Array> { return {}; },
-	[](typed_array_tag_of<std::byte> /*tag*/) -> std::type_identity<v8::Uint8ClampedArray> { return {}; },
+	[](typed_array_tag_of<js::float16_t> /*tag*/) -> std::type_identity<v8::Float16Array> { return {}; },
+	[](typed_array_tag_of<js::uint8_clamped_t> /*tag*/) -> std::type_identity<v8::Uint8ClampedArray> { return {}; },
 	[](typed_array_tag_of<std::int16_t> /*tag*/) -> std::type_identity<v8::Int16Array> { return {}; },
 	[](typed_array_tag_of<std::int32_t> /*tag*/) -> std::type_identity<v8::Int32Array> { return {}; },
 	[](typed_array_tag_of<std::int64_t> /*tag*/) -> std::type_identity<v8::BigInt64Array> { return {}; },
@@ -107,6 +108,7 @@ constexpr auto v8_to_tag_fn = util::overloaded{
 	[](std::type_identity<v8::BigInt64Array> /*type*/) -> typed_array_tag_of<std::int64_t> { return {}; },
 	[](std::type_identity<v8::BigUint64Array> /*type*/) -> typed_array_tag_of<std::uint64_t> { return {}; },
 	[](std::type_identity<v8::DataView> /*type*/) -> data_view_tag { return {}; },
+	[](std::type_identity<v8::Float16Array> /*type*/) -> typed_array_tag_of<js::float16_t> { return {}; },
 	[](std::type_identity<v8::Float32Array> /*type*/) -> typed_array_tag_of<float> { return {}; },
 	[](std::type_identity<v8::Float64Array> /*type*/) -> typed_array_tag_of<double> { return {}; },
 	[](std::type_identity<v8::Int16Array> /*type*/) -> typed_array_tag_of<std::int16_t> { return {}; },
@@ -115,7 +117,7 @@ constexpr auto v8_to_tag_fn = util::overloaded{
 	[](std::type_identity<v8::Uint16Array> /*type*/) -> typed_array_tag_of<std::uint16_t> { return {}; },
 	[](std::type_identity<v8::Uint32Array> /*type*/) -> typed_array_tag_of<std::uint32_t> { return {}; },
 	[](std::type_identity<v8::Uint8Array> /*type*/) -> typed_array_tag_of<std::uint8_t> { return {}; },
-	[](std::type_identity<v8::Uint8ClampedArray> /*type*/) -> typed_array_tag_of<std::byte> { return {}; },
+	[](std::type_identity<v8::Uint8ClampedArray> /*type*/) -> typed_array_tag_of<js::uint8_clamped_t> { return {}; },
 
 	// templates
 	[](std::type_identity<v8::FunctionTemplate> /*type*/) -> function_prototype_tag { return {}; },

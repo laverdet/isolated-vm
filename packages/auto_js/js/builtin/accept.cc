@@ -214,6 +214,14 @@ struct accept<Meta, data_block_variant> : accept<Meta, data_block_variant::value
 		unsigned shared_array_buffer_index_;
 };
 
+struct accept_data_block_span {
+		using accept_target_type = std::span<std::byte>;
+
+		constexpr auto operator()(data_block_tag /*tag*/, visit_holder /*visit*/, const auto& subject) const -> accept_target_type {
+			return std::span{subject.data(), subject.byte_length()};
+		}
+};
+
 // `TypedArray` and `DataView` types
 template <class Meta, class Tag, class Type>
 struct accept_typed_array {
@@ -241,6 +249,26 @@ struct accept<Meta, typed_array<Type>> : accept_typed_array<Meta, typed_array_ta
 template <class Meta>
 struct accept<Meta, typed_array<void>> : accept_typed_array<Meta, data_view_tag, typed_array<void>> {
 		using accept_typed_array<Meta, data_view_tag, typed_array<void>>::accept_typed_array;
+};
+
+template <class Meta, class Type>
+struct accept_typed_array_span : private accept_data_block_span {
+		explicit constexpr accept_typed_array_span(auto* /*transfer*/) {}
+
+		constexpr auto operator()(typed_array_tag_of<Type> /*tag*/, auto& visit, const auto& subject) const -> std::span<Type> {
+			const accept_data_block_span& accept_block = *this;
+			auto byte_span = visit(subject.buffer(), accept_block);
+			auto typed_span = std::span{reinterpret_cast<Type*>(byte_span.data() + subject.byte_offset()), byte_span.size() / sizeof(Type)};
+			return typed_span.subspan(0, subject.size());
+		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+		constexpr static auto tag_types = std::tuple{typed_array_tag_of<std::remove_const_t<Type>>{}};
+};
+
+template <class Meta, class Type>
+struct accept<Meta, std::span<Type>> : accept_typed_array_span<Meta, std::remove_const_t<Type>> {
+		using accept_typed_array_span<Meta, std::remove_const_t<Type>>::accept_typed_array_span;
 };
 
 // `tagged_external` acceptors

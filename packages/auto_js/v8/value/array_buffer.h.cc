@@ -7,22 +7,32 @@ import v8;
 
 namespace js::iv8 {
 
+// nb: This handles `v8::ArrayBuffer` and also `v8::SharedArrayBuffer`. They aren't related by
+// inheritance but v8 seem to allow it, and even encourage it.
+class value_for_data_block : public handle_without_lock<v8::ArrayBuffer> {
+	public:
+		using handle_without_lock<v8::ArrayBuffer>::handle_without_lock;
+		[[nodiscard]] auto byte_length() const -> std::size_t { return (*this)->ByteLength(); }
+		[[nodiscard]] auto data() const -> std::byte* { return static_cast<std::byte*>((*this)->Data()); }
+		explicit operator std::span<std::byte>() const { return {data(), byte_length()}; }
+};
+
 class value_for_array_buffer : public handle_without_lock<v8::ArrayBuffer> {
 	public:
 		using handle_without_lock<v8::ArrayBuffer>::handle_without_lock;
+		[[nodiscard]] auto byte_length() const -> std::size_t { return (*this)->ByteLength(); }
 		[[nodiscard]] auto data() const -> std::byte* { return static_cast<std::byte*>((*this)->Data()); }
-		[[nodiscard]] auto size() const -> std::size_t { return (*this)->ByteLength(); }
-		explicit operator js::array_buffer() const;
-		explicit operator std::span<std::byte>() const;
+		explicit operator js::array_buffer() const { return js::array_buffer{std::span<std::byte>{*this}}; }
+		explicit operator std::span<std::byte>() const { return {data(), byte_length()}; }
 };
 
 class value_for_shared_array_buffer : public handle_without_lock<v8::SharedArrayBuffer> {
 	public:
 		using handle_without_lock<v8::SharedArrayBuffer>::handle_without_lock;
+		[[nodiscard]] auto byte_length() const -> std::size_t { return (*this)->ByteLength(); }
 		[[nodiscard]] auto data() const -> std::byte* { return static_cast<std::byte*>((*this)->Data()); }
-		[[nodiscard]] auto size() const -> std::size_t { return (*this)->ByteLength(); }
 		explicit operator js::shared_array_buffer() const;
-		explicit operator std::span<std::byte>() const;
+		explicit operator std::span<std::byte>() const { return {data(), byte_length()}; }
 };
 
 template <class Type>

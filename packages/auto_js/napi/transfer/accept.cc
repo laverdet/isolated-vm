@@ -109,7 +109,7 @@ auto accept_basic_napi_value::operator()(array_buffer_tag /*tag*/, visit_holder 
 	// though.
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	void* bytes;
-	auto* result = napi::invoke(napi_create_arraybuffer, napi_env{*this}, subject.size(), &bytes);
+	auto* result = napi::invoke(napi_create_arraybuffer, napi_env{*this}, subject.byte_length(), &bytes);
 	// nb: `std::memcpy` *technically* results in undefined behavior on block size 0
 	// (and also) it maybe causes an infinite loop with musl
 	// https://stackoverflow.com/questions/5243012/is-it-guaranteed-to-be-safe-to-perform-memcpy0-0-0
@@ -121,7 +121,7 @@ auto accept_basic_napi_value::operator()(array_buffer_tag /*tag*/, visit_holder 
 auto accept_basic_napi_value::operator()(shared_array_buffer_tag /*tag*/, visit_holder /*visit*/, js::shared_array_buffer&& subject) const
 	-> js::referenceable_value<value_of<shared_array_buffer_tag>> {
 	auto backing_store = [ & ]() -> auto {
-		auto byte_length = subject.size();
+		auto byte_length = subject.byte_length();
 		// v8 does not call the deleter `byte_length` is zero. So the heap-allocated shared_ptr trick
 		// does not work in that case.
 		if (byte_length == 0) {

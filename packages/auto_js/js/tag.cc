@@ -99,10 +99,12 @@ struct data_view_tag : tag_of<array_buffer_view_tag> {};
 
 // `TypeArray` subclasses
 // typed_array_tag_of<std::uint8_t> = Uint8Array
-// typed_array_tag_of<std::byte> = Uint8ClampedArray;
+// typed_array_tag_of<js::uint8_clamped_t> = Uint8ClampedArray;
 // typed_array_tag_of<float> = Float32Array
 // typed_array_tag_of<double> = Float64Array
 // ...etc
+enum class float16_t : std::uint16_t {};
+enum class uint8_clamped_t : unsigned char {};
 struct typed_array_tag : tag_of<array_buffer_view_tag> {};
 
 template <class Type>

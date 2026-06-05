@@ -100,6 +100,11 @@ struct value_specialization<function_tag> : value_defaults<function_tag> {
 };
 
 template <>
+struct value_specialization<data_block_tag> : value_defaults<data_block_tag> {
+		using bound_type = class bound_value_for_data_block;
+};
+
+template <>
 struct value_specialization<array_buffer_tag> : value_defaults<array_buffer_tag> {
 		using bound_type = class bound_value_for_array_buffer;
 };

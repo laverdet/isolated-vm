@@ -15,6 +15,7 @@ auto check_transfer(
 	js::iv8::context_lock_witness v8_lock,
 	v8::Local<v8::Value> v8_local
 ) -> void {
+	[[maybe_unused]] auto yy = js::transfer_out_strict<std::span<const std::uint8_t>>(v8_local.As<v8::Uint8Array>(), v8_lock);
 	std::ignore = js::transfer<napi_value>(v8_local, std::forward_as_tuple(v8_lock), std::forward_as_tuple(napi_lock));
 	std::ignore = js::transfer<v8::Local<v8::Value>>(napi_local, std::forward_as_tuple(napi_lock), std::forward_as_tuple(v8_lock));
 }

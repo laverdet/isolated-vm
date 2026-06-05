@@ -13,7 +13,7 @@ export class data_block {
 
 		data_block() = default;
 		explicit data_block(std::size_t byte_length) : byte_length_{byte_length} {}
-		[[nodiscard]] constexpr auto size() const -> std::size_t { return byte_length_; }
+		[[nodiscard]] constexpr auto byte_length() const -> std::size_t { return byte_length_; }
 
 	private:
 		std::size_t byte_length_{};
@@ -36,7 +36,7 @@ export class array_buffer : public data_block {
 		// from view
 		explicit constexpr array_buffer(std::span<const std::byte> data) :
 				data_block{data.size()},
-				data_{unique_pointer_type{new (std::align_val_t{max_align_v}) std::byte[ size() ]}} {
+				data_{unique_pointer_type{new (std::align_val_t{max_align_v}) std::byte[ byte_length() ]}} {
 			std::ranges::copy(data, data_.get());
 		}
 
@@ -59,8 +59,8 @@ export class array_buffer : public data_block {
 		// getters
 		[[nodiscard]] constexpr auto data() const -> const std::byte* { return data_.get(); }
 		[[nodiscard]] constexpr auto data() -> std::byte* { return data_.get(); }
-		explicit constexpr operator std::span<std::byte>() { return {data(), size()}; }
-		explicit constexpr operator std::span<const std::byte>() const { return {data(), size()}; }
+		explicit constexpr operator std::span<std::byte>() { return {data(), byte_length()}; }
+		explicit constexpr operator std::span<const std::byte>() const { return {data(), byte_length()}; }
 
 		// take ownership of this data block, leaving a moved-from value
 		constexpr auto acquire_ownership() && -> unique_pointer_type { return std::move(data_); }
@@ -83,8 +83,8 @@ export class shared_array_buffer : public data_block {
 		// getters
 		[[nodiscard]] constexpr auto data() const -> const std::byte* { return data_.get(); }
 		[[nodiscard]] constexpr auto data() -> std::byte* { return data_.get(); }
-		explicit constexpr operator std::span<std::byte>() { return {data(), size()}; }
-		explicit constexpr operator std::span<const std::byte>() const { return {data(), size()}; }
+		explicit constexpr operator std::span<std::byte>() { return {data(), byte_length()}; }
+		explicit constexpr operator std::span<const std::byte>() const { return {data(), byte_length()}; }
 
 		// take ownership of this data block, leaving a moved-from value
 		constexpr auto acquire_ownership() && -> shared_pointer_type { return std::move(data_); }

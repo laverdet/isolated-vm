@@ -115,7 +115,7 @@ auto accept_v8_value::operator()(function_prototype_tag /*tag*/, visit_holder /*
 // data blocks
 auto accept_v8_value::operator()(array_buffer_tag /*tag*/, visit_holder /*visit*/, js::array_buffer subject) const
 	-> js::referenceable_value<v8::Local<v8::ArrayBuffer>> {
-	auto byte_length = subject.size();
+	auto byte_length = subject.byte_length();
 	auto backing_store = v8::ArrayBuffer::NewBackingStore(
 		std::move(subject).acquire_ownership().release(),
 		byte_length,
@@ -130,7 +130,7 @@ auto accept_v8_value::operator()(array_buffer_tag /*tag*/, visit_holder /*visit*
 
 auto accept_v8_value::operator()(shared_array_buffer_tag /*tag*/, visit_holder /*visit*/, js::shared_array_buffer&& subject) const
 	-> js::referenceable_value<v8::Local<v8::SharedArrayBuffer>> {
-	auto byte_length = subject.size();
+	auto byte_length = subject.byte_length();
 	auto backing_store = [ & ]() -> auto {
 		if (byte_length == 0) {
 			// v8 does not call the deleter if `byte_length` is zero. So the heap-allocated shared_ptr

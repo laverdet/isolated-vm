@@ -6,6 +6,16 @@ import v8;
 
 namespace js::napi {
 
+// `bound_value_for_data_block`
+bound_value_for_data_block::operator std::span<std::byte>() const {
+	if (std::bit_cast<v8::Local<v8::Object>>(napi_value{*this})->IsSharedArrayBuffer()) {
+		return std::span<std::byte>{napi::bound_value{env(), value_of<shared_array_buffer_tag>::from(*this)}};
+	} else {
+		return std::span<std::byte>{napi::bound_value{env(), value_of<array_buffer_tag>::from(*this)}};
+	}
+	return {};
+}
+
 // `bound_value_for_array_buffer`
 bound_value_for_array_buffer::operator js::array_buffer() const {
 	return js::array_buffer{std::span<std::byte>{*this}};
@@ -56,7 +66,7 @@ auto bound_value_for_typed_array::make_bound(const environment& env, value_of<ty
 	switch (type_tag) {
 		case napi_bigint64_array: return make(typed_array_tag_of<std::int64_t>{});
 		case napi_biguint64_array: return make(typed_array_tag_of<std::uint64_t>{});
-		case napi_float16_array: throw std::logic_error{"unsupported"};
+		case napi_float16_array: return make(typed_array_tag_of<js::float16_t>{});
 		case napi_float32_array: return make(typed_array_tag_of<float>{});
 		case napi_float64_array: return make(typed_array_tag_of<double>{});
 		case napi_int16_array: return make(typed_array_tag_of<std::int16_t>{});
@@ -65,7 +75,7 @@ auto bound_value_for_typed_array::make_bound(const environment& env, value_of<ty
 		case napi_uint16_array: return make(typed_array_tag_of<std::uint16_t>{});
 		case napi_uint32_array: return make(typed_array_tag_of<std::uint32_t>{});
 		case napi_uint8_array: return make(typed_array_tag_of<std::uint8_t>{});
-		case napi_uint8_clamped_array: return make(typed_array_tag_of<std::byte>{});
+		case napi_uint8_clamped_array: return make(typed_array_tag_of<js::uint8_clamped_t>{});
 	}
 	std::unreachable();
 }

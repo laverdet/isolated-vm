@@ -61,11 +61,12 @@ using variant_value = std::variant<
 	// typed arrays & data view
 	reference_of<typed_array<double>>,
 	reference_of<typed_array<float>>,
+	reference_of<typed_array<js::float16_t>>,
+	reference_of<typed_array<js::uint8_clamped_t>>,
 	reference_of<typed_array<std::int16_t>>,
 	reference_of<typed_array<std::int32_t>>,
 	reference_of<typed_array<std::int64_t>>,
 	reference_of<typed_array<std::int8_t>>,
-	reference_of<typed_array<std::byte>>,
 	reference_of<typed_array<std::uint16_t>>,
 	reference_of<typed_array<std::uint32_t>>,
 	reference_of<typed_array<std::uint64_t>>,
