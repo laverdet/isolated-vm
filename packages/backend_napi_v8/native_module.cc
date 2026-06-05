@@ -36,7 +36,7 @@ auto native_module_handle::instantiate(environment& env, realm_handle& realm) ->
 			agent_handle agent,
 			auto resolver
 		) -> void {
-			context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) mutable -> void {
+			context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) -> void {
 				auto addon_lock = isolated_vm::basic_lock_implementation{lock};
 				auto module_result = v8::Local<v8::Module>{};
 				auto make = [ & ](std::span<isolated_vm::value_of<prototype_tag>> values) -> void {

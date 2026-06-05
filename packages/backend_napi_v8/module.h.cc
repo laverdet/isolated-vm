@@ -81,7 +81,7 @@ class subscriber_capability {
 		};
 
 	public:
-		using callback_type = util::maybe_move_only_function<auto(js::value_t) const->bool>;
+		using callback_type = util::move_only_function<auto(js::value_t) const->bool>;
 		using transfer_type = js::tagged_external<subscriber_capability>;
 		class subscriber;
 

@@ -19,6 +19,7 @@ target_sources(utility_js
 		functional/function_constant.cc
 		functional/function_ref.cc
 		functional/functional.cc
+		functional/move_only_function.cc
 		functional/regular_return.cc
 		memory/autorelease_pool.cc
 		memory/comparator.cc

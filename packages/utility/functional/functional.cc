@@ -3,6 +3,7 @@ export import :functional.bind;
 export import :functional.elide;
 export import :functional.function_constant;
 export import :functional.function_ref;
+export import :functional.move_only_function;
 export import :functional.regular_return;
 import std;
 
@@ -13,32 +14,6 @@ export template <class... Visitors>
 struct overloaded : Visitors... {
 		using Visitors::operator()...;
 };
-
-// Holder for functions in libc++ which doesn't support std::move_only_function
-#if defined(__cpp_lib_move_only_function) && !defined(DEBUG)
-
-export template <class Signature>
-using maybe_move_only_function = std::move_only_function<Signature>;
-
-export template <class Fn>
-auto make_indirect_moveable_function(Fn fn) {
-	return fn;
-}
-
-#else
-
-export template <class Signature>
-using maybe_move_only_function = std::function<remove_function_cvref_t<Signature>>;
-
-export template <class Fn>
-auto make_indirect_moveable_function(Fn&& fn) {
-	auto fn_ptr = std::make_shared<std::remove_cvref_t<Fn>>(std::forward<Fn>(fn));
-	return [ = ](auto&&... args) -> decltype(auto) {
-		return (*fn_ptr)(std::forward<decltype(args)>(args)...);
-	};
-}
-
-#endif
 
 // Hide `-Wunused-value` warnings
 export constexpr auto unused = [](auto&& /*nothing*/) -> void {};

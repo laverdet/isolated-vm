@@ -116,20 +116,23 @@ auto module_handle::create_capability(
 		auto schedule_task =
 			[ agent = realm.agent(),
 				realm = realm.realm() ](
-				auto resolver
+				auto resolver,
+				auto&&... args
 			) -> void {
 			agent.schedule(
 				[](
 					const agent_handle::lock& lock,
 					const js::iv8::shared_remote<v8::Context>& realm,
-					auto resolver
+					auto resolver,
+					auto&&... args
 				) -> void {
-					context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) mutable -> void {
-						resolver(realm);
+					context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) -> void {
+						resolver(realm, std::forward<decltype(args)>(args)...);
 					});
 				},
 				realm,
-				std::move(resolver)
+				std::move(resolver),
+				std::forward<decltype(args)>(args)...
 			);
 		};
 		return js::free_function{
@@ -145,14 +148,15 @@ auto module_handle::create_capability(
 						js::value_t message
 					) -> bool {
 					schedule_task(
-						[ callback_remote,
-							message = std::move(message) ](
-							const realm_scope& lock
-						) mutable -> void {
+						[ callback_remote ](
+							const realm_scope& lock,
+							js::value_t message
+						) -> void {
 							auto callback = callback_remote->deref(lock);
 							auto argv = js::transfer_in_strict<v8::Local<v8::Value>>(std::move(message), lock);
 							js::iv8::unmaybe(callback->Call(lock.context(), v8::Undefined(lock.isolate()), 1, &argv));
-						}
+						},
+						std::move(message)
 					);
 					return true;
 				};
@@ -205,7 +209,7 @@ auto module_handle::create_capability(
 						return std::pair{std::move(key), std::move(fn_template)};
 					}),
 			};
-			auto module_record = context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) mutable -> auto {
+			auto module_record = context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) -> auto {
 				return js::iv8::module_record::create_synthetic(realm, std::move(options).origin, std::move(capability_interface));
 			});
 			resolver(module_handle{std::move(agent), make_shared_remote(lock, std::move(module_record))});
