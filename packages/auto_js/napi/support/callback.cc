@@ -46,7 +46,7 @@ constexpr auto make_free_function(auto function) {
 							callback,
 							std::tuple_cat(
 								std::forward_as_tuple(env),
-								js::transfer_out<std::tuple<Args...>>(info.arguments(), env)
+								js::transfer_out<std::tuple<js::functional::parameter_transfer_as_t<Args>...>>(info.arguments(), env)
 							)
 						);
 					}};
@@ -117,7 +117,7 @@ constexpr auto make_constructor_function(auto constructor) {
 								callback,
 								std::tuple_cat(
 									std::forward_as_tuple(env, value_of<object_tag>::from(info.this_arg())),
-									js::transfer_out<std::tuple<Args...>>(info.arguments(), env)
+									js::transfer_out<std::tuple<js::functional::parameter_transfer_as_t<Args>...>>(info.arguments(), env)
 								)
 							);
 							return wrap(std::move(instance));
@@ -214,7 +214,7 @@ constexpr auto make_member_function(Method method) {
 							callback,
 							std::tuple_cat(
 								std::forward_as_tuple(**maybe_that, env),
-								js::transfer_out<std::tuple<Args...>>(info.arguments(), env)
+								js::transfer_out<std::tuple<js::functional::parameter_transfer_as_t<Args>...>>(info.arguments(), env)
 							)
 						);
 					}};

@@ -35,7 +35,7 @@ constexpr auto make_free_function_with_try_catch =
 						callback,
 						std::tuple_cat(
 							std::forward_as_tuple(lock),
-							js::transfer_out<std::tuple<Args...>>(info, lock)
+							js::transfer_out<std::tuple<js::functional::parameter_transfer_as_t<Args>...>>(info, lock)
 						)
 					);
 				}};

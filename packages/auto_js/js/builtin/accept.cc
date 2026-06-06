@@ -286,17 +286,6 @@ struct accept<void, tagged_external<Type>> {
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
-template <class Type>
-	requires requires { typename transfer_type_t<Type>; }
-struct accept<void, Type&> : accept<void, transfer_type_t<Type>> {
-		using accept<void, transfer_type_t<Type>>::accept;
-};
-
-template <class Type>
-struct accept<void, const Type&> : accept<void, Type&> {
-		using accept<void, Type&>::accept;
-};
-
 // `std::optional` allows `undefined` in addition to the next acceptor
 template <class Meta, class Type>
 struct accept<Meta, std::optional<Type>> : accept<Meta, Type> {

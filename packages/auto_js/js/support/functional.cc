@@ -1,4 +1,5 @@
 export module auto_js:functional;
+import :transfer.types;
 import std;
 import util;
 
@@ -62,5 +63,28 @@ constexpr auto thunk_member_function = []<class Callback>(Callback callback) con
 	constexpr auto make = util::overloaded{make_with_realm, make_without_realm};
 	return make(std::type_identity<util::function_signature_t<decltype(callback)>>{}, std::move(callback));
 };
+
+// Given a function parameter type, resolve the argument type
+export template <class Type>
+struct parameter_transfer_as;
+
+export template <class Type>
+using parameter_transfer_as_t = typename parameter_transfer_as<Type>::type;
+
+template <class Type>
+struct parameter_transfer_as : std::type_identity<Type> {
+		static_assert(!std::is_reference_v<Type>, "parameter type must be T or const T&, not T&");
+};
+
+template <class Type>
+struct parameter_transfer_as<const Type&> : parameter_transfer_as<Type> {};
+
+template <class Type>
+	requires requires { typename transfer_type_t<Type>; }
+struct parameter_transfer_as<Type> : transfer_type<Type> {};
+
+template <class Type>
+	requires requires { typename transfer_type_t<Type>; }
+struct parameter_transfer_as<Type&> : transfer_type<Type> {};
 
 } // namespace js::functional
