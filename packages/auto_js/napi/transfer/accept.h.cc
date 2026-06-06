@@ -168,8 +168,9 @@ struct accept_napi_value : accept_basic_napi_value {
 		// vectors
 		auto operator()(this const auto& self, vector_tag /*tag*/, auto& visit, auto&& subject)
 			-> js::deferred_receiver<value_of<vector_tag>, decltype(self), decltype(visit), decltype(subject)> {
+			auto [... size ] = util::maybe_range_size(subject, 0);
 			return {
-				value_of<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{self}, subject.size())),
+				value_of<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{self}, size...)),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](value_of<vector_tag> array, auto& self, auto& visit, auto /*&&*/ subject) -> void {
 					int ii = 0;
