@@ -13,8 +13,8 @@
   },
   "imports": {
     "#backend_v8": {
-      "import": "./backend_v8.js",
-      "types": "./backend_v8.d.ts"
+      "import": "./backend/backend_v8.js",
+      "types": "./backend/backend_v8.d.ts"
     }
   },
   "scripts": {

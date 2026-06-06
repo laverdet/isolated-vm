@@ -4,7 +4,7 @@ version: 2.0.0
 options:
   env:
     ENV_FILE: ${workspaceFolder}/.env
-    PATH: ${workspaceFolder}/scripts:${env:PATH}
+    PATH: ${workspaceFolder}/scripts:${workspaceFolder}/packages/auto_js/js/cmake:${env:PATH}
 inputs:
   - type: pickString
     id: ivm_target

@@ -33,6 +33,7 @@ RUN <<DONE
 	gclient config --unmanaged $(git -C v8 config --get remote.origin.url)
 	gclient sync --no-history --shallow --with_branch_heads 1>&2
 DONE
+COPY --from=packages/auto_js/js/cmake triplet_util .
 COPY --from=patches . patches
 COPY --from=scripts v8_select .
 ARG REF

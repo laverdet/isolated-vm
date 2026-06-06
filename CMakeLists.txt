@@ -199,8 +199,9 @@ function(target_preprocessed_sources TARGET SEARCH REPLACE)
 	endif()
 endfunction()
 
-# `find_package_from_npm` from `@auto_js/js`
+# `find_package_from_npm` & `triplet_util` from `@auto_js/js`
 include(FindNpmPackage)
+include(TripletUtil)
 
 # Mark exported symbols as exported
 set(EXPORT_IS_EXPORT ON)

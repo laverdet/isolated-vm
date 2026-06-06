@@ -1,6 +1,6 @@
 // @ts-check
 import { createRequire } from "node:module";
-import path from "@isolated-vm/experimental/backend_path";
+import path from "@isolated-vm/experimental/backend/specifier";
 
 // Import compiled module
 const require = createRequire(import.meta.url);

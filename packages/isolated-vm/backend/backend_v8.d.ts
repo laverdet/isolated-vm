@@ -1,15 +1,15 @@
 declare module "#backend_v8" {
-	type CapabilityMake = import("./frontend/realm.ts").Realm.CapabilityMake;
-	type CompileModuleOptions = import("./frontend/agent.ts").Agent.CompileModuleOptions;
-	type CompileScriptOptions = import("./frontend/agent.ts").Agent.CompileScriptOptions;
-	type CreateAgentOptions = import("./frontend/agent.ts").Agent.CreateOptions;
-	type CreateCapabilityOptions = import("./frontend/realm.ts").Realm.CreateCapabilityOptions;
-	type MaybeCompletionOf<T> = import("./utility/completion.ts").MaybeCompletionOf<T>;
-	type ModuleLinkRecord = import("./frontend/module.ts").Module.LinkRecord;
-	type RunScriptOptions = import("./frontend/script.ts").Script.RunScriptOptions;
-	type _Agent = import("./frontend/agent.ts").Agent;
-	type _Module = import("./frontend/module.ts").Module;
-	type _Reference<T> = import("./frontend/reference.ts").Reference<T>;
+	type CapabilityMake = import("@isolated-vm/experimental/frontend/realm").Realm.CapabilityMake;
+	type CompileModuleOptions = import("@isolated-vm/experimental/frontend/agent").Agent.CompileModuleOptions;
+	type CompileScriptOptions = import("@isolated-vm/experimental/frontend/agent").Agent.CompileScriptOptions;
+	type CreateAgentOptions = import("@isolated-vm/experimental/frontend/agent").Agent.CreateOptions;
+	type CreateCapabilityOptions = import("@isolated-vm/experimental/frontend/realm").Realm.CreateCapabilityOptions;
+	type MaybeCompletionOf<T> = import("@isolated-vm/experimental/utility/completion").MaybeCompletionOf<T>;
+	type ModuleLinkRecord = import("@isolated-vm/experimental/frontend/module").Module.LinkRecord;
+	type RunScriptOptions = import("@isolated-vm/experimental/frontend/script").Script.RunScriptOptions;
+	type _Agent = import("@isolated-vm/experimental/frontend/agent").Agent;
+	type _Module = import("@isolated-vm/experimental/frontend/module").Module;
+	type _Reference<T> = import("@isolated-vm/experimental/frontend/reference").Reference<T>;
 
 	interface InheritedClasses {
 		Agent: object;

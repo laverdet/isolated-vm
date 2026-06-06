@@ -102,7 +102,9 @@ jobs:
 
       # Setup
       - uses: actions/checkout@v5
-      - run: echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
+      - run: |
+          echo "$GITHUB_WORKSPACE/packages/auto_js/js/cmake" >> "$GITHUB_PATH"
+          echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
 
       # GNU `tar` & `zstd` is needed for `actions/cache`
       - uses: laverdet/install@v0
@@ -325,17 +327,21 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           set -ux
-          ls -la build/packages/backend_napi_v8/backend_napi_v8.node
-          ls -lah build/packages/backend_napi_v8/backend_napi_v8.node
-          ldd build/packages/backend_napi_v8/backend_napi_v8.node 2>&1 | grep -v 'Error relocating'
-          nm -guC build/packages/backend_napi_v8/backend_napi_v8.node
+          SO_PATH="build/packages/backend_napi_v8/backend_napi_v8.$(triplet_util -t "$TRIPLET" %p).node"
+          ls -la "$SO_PATH"
+          ls -lah "$SO_PATH"
+          ldd "$SO_PATH" 2>&1 | grep -v 'Error relocating'
+          nm -guC "$SO_PATH"
       - name: Symbols [Windows]
         if: runner.os == 'Windows'
+        env:
+          BACKEND_NAPI_V8: ${{ steps.build.outputs.name }}
         run: |
           set -ux
-          ls -la build/packages/backend_napi_v8/backend_napi_v8.node
-          ls -lah build/packages/backend_napi_v8/backend_napi_v8.node
-          dependencies.exe -imports build/packages/backend_napi_v8/backend_napi_v8.node
+          DLL_PATH="build/packages/backend_napi_v8/backend_napi_v8.$(triplet_util -t "$TRIPLET" %p).node"
+          ls -la "$DLL_PATH"
+          ls -lah "$DLL_PATH"
+          dependencies.exe -imports "$DLL_PATH"
 
       # Upload build artifacts
       - uses: actions/upload-artifact@v6
@@ -400,7 +406,9 @@ jobs:
 
       # Setup
       - uses: actions/checkout@v5
-      - run: echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
+      - run: |
+          echo "$GITHUB_WORKSPACE/packages/auto_js/js/cmake" >> "$GITHUB_PATH"
+          echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
 
       # Get triplet information and make package.json for module
       - id: platform

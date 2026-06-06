@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -eu
 
 # triplet_util [-t <triplet>] <format>
@@ -64,12 +64,10 @@ if [ -z "${TRIPLET:-}" ]; then
 			;;
 	esac
 else
-	# Otherwise, parse provided triplet
-	# shellcheck disable=SC2206
-	TRIPLET=(${TRIPLET//-/ })
+	# Otherwise, parse the provided triplet:
 
 	# arch
-	ARCH=${TRIPLET[0]}
+	ARCH=$(echo "$TRIPLET" | cut -d- -f1)
 	case $ARCH in
 		aarch64|x86_64) ;;
 		*)
@@ -77,34 +75,32 @@ else
 			exit 1
 	esac
 
-	# vendor
-	II=1
-	VENDOR=${TRIPLET[II]}
-	case "$VENDOR" in
-		alpine|apple|pc|unknown) II=$((II + 1)) ;;
-		*) VENDOR=unknown ;;
-	esac
-
-	# os
-	OS=${TRIPLET[II]}
-	case "$OS" in
-		darwin|linux|windows) II=$((II + 1)) ;;
+	# vendor & os
+	VENDOR_OR_OS=$(echo "$TRIPLET" | cut -d- -f2)
+	case "$VENDOR_OR_OS" in
+		alpine|apple|pc|unknown)
+			VENDOR=$VENDOR_OR_OS
+			OS=$(echo "$TRIPLET" | cut -d- -f3)
+			ENV=$(echo "$TRIPLET" | cut -d- -f4)
+			;;
 		*)
-			echo "Unsupported OS: $OS" >&2
-			exit 1
+			VENDOR=unknown
+			OS=$VENDOR_OR_OS
+			ENV=$(echo "$TRIPLET" | cut -d- -f3)
+			;;
 	esac
 
 	# abi
-	ENV=${TRIPLET[II]:-}
 	case "$ENV" in
 		'') ;;
 		gnu|musl) ENV=-$ENV ;;
 		*)
-			echo "Unsupported API / toolchain: $ABI" >&2
+			echo "Unsupported API / toolchain: $ENV" >&2
 			exit 1
 	esac
 fi
 
+# Canonicalize arch & os
 case "$ARCH" in
 	aarch64) ARCHS=arm64 ;;
 	x86_64) ARCHS=x64 ;;
@@ -115,5 +111,5 @@ case "$OS" in
 	*) OSS=$OS ;;
 esac
 
-# print custom format string
+# Print custom format string
 echo "$FORMAT" | sed "s#%p#%q-%b%e#; s#%t#%a-%v-%o%e#; s#%v#$VENDOR#; s#%o#$OS#; s#%q#$OSS#; s#%e#$ENV#; s#%a#$ARCH#; s#%b#$ARCHS#;"
