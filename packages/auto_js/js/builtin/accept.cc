@@ -218,7 +218,7 @@ struct accept_data_block_span {
 		using accept_target_type = std::span<std::byte>;
 
 		constexpr auto operator()(data_block_tag /*tag*/, visit_holder /*visit*/, const auto& subject) const -> accept_target_type {
-			return std::span{subject.data(), subject.byte_length()};
+			return {subject};
 		}
 };
 

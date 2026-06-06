@@ -281,6 +281,7 @@ struct visit_value : visit_flat_value<Target> {
 	public:
 		friend struct visit_flat_value<Target>;
 		using visit_type = visit_flat_value<Target>;
+		using visit_type::accept_tagged;
 		using visit_type::immediate;
 		using visit_type::is_cached_null;
 		using visit_type::is_cached_undefined;
@@ -361,7 +362,20 @@ struct visit_value : visit_flat_value<Target> {
 		template <class Accept>
 		auto operator()(v8::Local<iv8::DataBlock> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
-				return immediate(subject, accept);
+				return util::template_traverse(
+					accept_tags_of_v<Accept>,
+					util::overloaded{
+						// Fast paths
+						[ & ](data_block_tag /*tag*/, auto /*next*/) -> accept_target_t<Accept> { return accept_tagged(subject, accept); },
+						[ & ](array_buffer_tag /*tag*/, auto next) -> accept_target_t<Accept> { return next(); },
+						[ & ](shared_array_buffer_tag /*tag*/, auto next) -> accept_target_t<Accept> { return next(); },
+
+						// Slow path
+						[ & ]() -> accept_target_t<Accept> {
+							return immediate(subject, accept);
+						}
+					}
+				);
 			});
 		}
 

@@ -8,12 +8,10 @@ namespace js::napi {
 
 // `bound_value_for_data_block`
 bound_value_for_data_block::operator std::span<std::byte>() const {
-	if (std::bit_cast<v8::Local<v8::Object>>(napi_value{*this})->IsSharedArrayBuffer()) {
-		return std::span<std::byte>{napi::bound_value{env(), value_of<shared_array_buffer_tag>::from(*this)}};
-	} else {
-		return std::span<std::byte>{napi::bound_value{env(), value_of<array_buffer_tag>::from(*this)}};
-	}
-	return {};
+	auto local = std::bit_cast<v8::Local<v8::ArrayBuffer>>(napi_value{*this});
+	auto* data = reinterpret_cast<std::byte*>(local->Data());
+	auto byte_length = local->ByteLength();
+	return std::span{data, byte_length};
 }
 
 // `bound_value_for_array_buffer`
@@ -27,7 +25,7 @@ bound_value_for_array_buffer::operator std::span<std::byte>() const {
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	std::size_t byte_length;
 	napi::invoke0(napi_get_arraybuffer_info, env(), napi_value{*this}, &bytes, &byte_length);
-	return std::span<std::byte>{reinterpret_cast<std::byte*>(bytes), byte_length};
+	return std::span{reinterpret_cast<std::byte*>(bytes), byte_length};
 }
 
 // `bound_value_for_shared_array_buffer`
@@ -41,7 +39,7 @@ bound_value_for_shared_array_buffer::operator js::shared_array_buffer() const {
 
 bound_value_for_shared_array_buffer::operator std::span<std::byte>() const {
 	auto local = std::bit_cast<v8::Local<v8::SharedArrayBuffer>>(napi_value{*this});
-	return std::span<std::byte>{reinterpret_cast<std::byte*>(local->Data()), local->ByteLength()};
+	return std::span{reinterpret_cast<std::byte*>(local->Data()), local->ByteLength()};
 }
 
 // `value_for_typed_array`

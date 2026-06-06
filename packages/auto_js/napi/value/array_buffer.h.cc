@@ -11,6 +11,8 @@ namespace js::napi {
 class bound_value_for_data_block : public bound_value_next<data_block_tag> {
 	public:
 		using bound_value_next<data_block_tag>::bound_value_next;
+		[[nodiscard]] constexpr auto byte_length() const -> std::size_t { return std::span<std::byte>{*this}.size(); }
+		[[nodiscard]] constexpr auto data() const -> const std::byte* { return std::span<std::byte>{*this}.data(); }
 		explicit operator std::span<std::byte>() const;
 };
 
@@ -18,7 +20,8 @@ class bound_value_for_data_block : public bound_value_next<data_block_tag> {
 class bound_value_for_array_buffer : public bound_value_next<array_buffer_tag> {
 	public:
 		using bound_value_next<array_buffer_tag>::bound_value_next;
-
+		[[nodiscard]] constexpr auto byte_length() const -> std::size_t { return std::span<std::byte>{*this}.size(); }
+		[[nodiscard]] constexpr auto data() const -> const std::byte* { return std::span<std::byte>{*this}.data(); }
 		explicit operator js::array_buffer() const;
 		explicit operator std::span<std::byte>() const;
 };
@@ -27,7 +30,8 @@ class bound_value_for_array_buffer : public bound_value_next<array_buffer_tag> {
 class bound_value_for_shared_array_buffer : public bound_value_next<shared_array_buffer_tag> {
 	public:
 		using bound_value_next<shared_array_buffer_tag>::bound_value_next;
-
+		[[nodiscard]] constexpr auto byte_length() const -> std::size_t { return std::span<std::byte>{*this}.size(); }
+		[[nodiscard]] constexpr auto data() const -> const std::byte* { return std::span<std::byte>{*this}.data(); }
 		explicit operator js::shared_array_buffer() const;
 		explicit operator std::span<std::byte>() const;
 };

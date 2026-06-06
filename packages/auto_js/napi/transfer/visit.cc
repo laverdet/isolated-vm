@@ -231,6 +231,26 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 			});
 		}
 
+		template <class Accept>
+		auto operator()(value_of<data_block_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
+				return util::template_traverse(
+					accept_tags_of_v<Accept>,
+					util::overloaded{
+						// Fast paths
+						[ & ](data_block_tag /*tag*/, auto /*next*/) -> accept_target_t<Accept> { return accept_tagged(subject, accept); },
+						[ & ](array_buffer_tag /*tag*/, auto next) -> accept_target_t<Accept> { return next(); },
+						[ & ](shared_array_buffer_tag /*tag*/, auto next) -> accept_target_t<Accept> { return next(); },
+
+						// Slow path
+						[ & ]() -> accept_target_t<Accept> {
+							return immediate(subject, accept);
+						}
+					}
+				);
+			});
+		}
+
 		// extras
 		[[nodiscard]] auto environment() const -> Environment& { return env_; }
 		explicit operator napi_env() const { return napi_env{env_.get()}; }
