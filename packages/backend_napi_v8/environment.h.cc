@@ -31,6 +31,7 @@ constexpr auto string_literals = std::tuple{
 	"randomSeed"sv,
 	"result"sv,
 	"specifier"sv,
+	"suffix"sv,
 	"timeout"sv,
 	"type"sv,
 };

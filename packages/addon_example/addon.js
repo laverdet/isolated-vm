@@ -1,7 +1,8 @@
 import { fileURLToPath } from "node:url";
 import { Agent, NativeModule, expectComplete } from "@isolated-vm/experimental";
 
-const addon = await NativeModule.create(fileURLToPath(new URL("build/addon_example", import.meta.url)), "module:example");
+const pathFragment = fileURLToPath(new URL("build/addon_example", import.meta.url));
+const addon = await NativeModule.create(pathFragment, { origin: "module:example" });
 const agent = await Agent.create();
 const realm = await agent.createRealm();
 const native = await addon.instantiate(realm);

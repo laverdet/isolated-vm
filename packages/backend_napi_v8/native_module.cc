@@ -12,12 +12,12 @@ namespace backend_napi_v8 {
 native_module_handle::native_module_handle(
 	js::napi::uv_dlib lib,
 	isolated_vm::detail::initialize_addon* initialize,
-	std::u16string origin,
+	create_native_module_options options,
 	std::vector<std::u16string> names
 ) :
 		lib_{std::move(lib)},
 		initialize_{initialize},
-		origin_{std::move(origin)},
+		options_{std::move(options)},
 		names_{std::move(names)} {}
 
 auto native_module_handle::instantiate(environment& env, realm_handle& realm) -> js::forward<js::napi::value_of<>> {
@@ -30,7 +30,7 @@ auto native_module_handle::instantiate(environment& env, realm_handle& realm) ->
 	realm.agent().schedule(
 		[ realm = realm.realm(),
 			names = names_,
-			origin = origin_,
+			options = options_,
 			initialize = initialize_ ](
 			const agent_handle::lock& lock,
 			agent_handle agent,
@@ -40,7 +40,7 @@ auto native_module_handle::instantiate(environment& env, realm_handle& realm) ->
 				auto addon_lock = isolated_vm::basic_lock_implementation{lock};
 				auto module_result = v8::Local<v8::Module>{};
 				auto make = [ & ](std::span<isolated_vm::value_of<prototype_tag>> values) -> void {
-					auto v8_origin = js::transfer_in<v8::Local<v8::String>>(origin, lock);
+					auto v8_origin = js::transfer_in<v8::Local<v8::String>>(options.origin, lock);
 					auto v8_names = js::transfer_in<std::vector<v8::Local<v8::String>>>(names, lock);
 					auto v8_values = std::bit_cast<std::span<v8::Local<v8::Data>>>(values);
 					module_result = js::iv8::module_record::create_synthetic(realm, v8_origin, v8_names, v8_values);
@@ -67,25 +67,29 @@ auto native_module_handle::class_template(environment& env) -> js::napi::value_o
 	);
 }
 
-auto native_module_handle::create(environment& env, std::string filename, std::u16string origin) -> js::forward<js::napi::value_of<>> {
+auto native_module_handle::create(environment& env, std::string filename, create_native_module_options options) -> js::forward<js::napi::value_of<>> {
+	if (options.suffix) {
+		filename += *options.suffix;
+	} else {
 #if __APPLE__
-	filename += ".dylib";
+		filename += ".dylib";
 #elif _WIN64
-	filename += ".dll";
+		filename += ".dll";
 #else
-	filename += ".so";
+		filename += ".so";
 #endif
+	}
 	auto [ promise, resolver ] = make_promise(
 		env,
-		[ filename = std::move(filename) ](environment& env, std::u16string origin) -> auto {
+		[ filename = std::move(filename) ](environment& env, create_native_module_options options) -> auto {
 			auto [ lib, names, initialize ] = isolated_vm::subscribe_registration([ & ]() -> auto {
 				return js::napi::uv_dlib{filename};
 			});
-			auto handle = native_module_handle::class_template(env).construct(env, std::move(lib), initialize, std::move(origin), names());
+			auto handle = native_module_handle::class_template(env).construct(env, std::move(lib), initialize, std::move(options), names());
 			return js::forward{handle};
 		}
 	);
-	resolver(std::move(origin));
+	resolver(std::move(options));
 	return js::forward{promise};
 }
 

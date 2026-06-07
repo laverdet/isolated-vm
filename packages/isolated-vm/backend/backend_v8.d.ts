@@ -1,15 +1,16 @@
 declare module "#backend_v8" {
 	type CapabilityMake = import("@isolated-vm/experimental/frontend/realm").Realm.CapabilityMake;
+	type _Agent = import("@isolated-vm/experimental/frontend/agent").Agent;
+	type _Module = import("@isolated-vm/experimental/frontend/module").Module;
+	type _Reference<T> = import("@isolated-vm/experimental/frontend/reference").Reference<T>;
 	type CompileModuleOptions = import("@isolated-vm/experimental/frontend/agent").Agent.CompileModuleOptions;
 	type CompileScriptOptions = import("@isolated-vm/experimental/frontend/agent").Agent.CompileScriptOptions;
 	type CreateAgentOptions = import("@isolated-vm/experimental/frontend/agent").Agent.CreateOptions;
 	type CreateCapabilityOptions = import("@isolated-vm/experimental/frontend/realm").Realm.CreateCapabilityOptions;
+	type CreateNativeModuleOptions = import("@isolated-vm/experimental/frontend/native_module").NativeModule.CreateOptions;
 	type MaybeCompletionOf<T> = import("@isolated-vm/experimental/utility/completion").MaybeCompletionOf<T>;
 	type ModuleLinkRecord = import("@isolated-vm/experimental/frontend/module").Module.LinkRecord;
 	type RunScriptOptions = import("@isolated-vm/experimental/frontend/script").Script.RunScriptOptions;
-	type _Agent = import("@isolated-vm/experimental/frontend/agent").Agent;
-	type _Module = import("@isolated-vm/experimental/frontend/module").Module;
-	type _Reference<T> = import("@isolated-vm/experimental/frontend/reference").Reference<T>;
 
 	interface InheritedClasses {
 		Agent: object;
@@ -41,8 +42,8 @@ declare module "#backend_v8" {
 	export class NativeModule {
 		readonly #private;
 		protected constructor(secret: Secret, ...args: unknown[]);
-		instantiate(agent: Agent): Promise<Module>;
-		static create(filename: string): Promise<NativeModule>;
+		instantiate(realm: Realm): Promise<Module>;
+		static create(filename: string, options: CreateNativeModuleOptions): Promise<NativeModule>;
 	}
 
 	export class Realm {
