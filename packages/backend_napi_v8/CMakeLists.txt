@@ -61,9 +61,14 @@ endif()
 # `packages/isolated-vm/addon`
 target_sources(isolated_vm
 	PRIVATE
-		api/value/accept.cc
+		api/value/array_buffer.cc
+		api/value/array.cc
+		api/value/function.cc
+		api/value/object.cc
 		api/value/primitive.cc
-		api/value/value.cc
+		api/value/prototype.cc
+		api/value/record.cc
+		api/value/vector.cc
 	PUBLIC FILE_SET CXX_MODULES BASE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/api" FILES
 		api/support/callback_info.cc
 		api/support/callback.cc

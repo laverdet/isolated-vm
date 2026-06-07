@@ -4,6 +4,7 @@ export import :support.initialize_fwd;
 export import :transfer.accept;
 export import :transfer.visit;
 export import :value;
+export import :value.function_definitions;
 #if EXPORT_IS_EXPORT
 export import :support.initialize;
 export import :support.lock;

@@ -16,8 +16,16 @@ target_sources(isolated_vm
 		support/lock.cc
 		transfer/accept.cc
 		transfer/visit.cc
+		value/array_buffer.cc
+		value/array.cc
+		value/function.cc
+		value/function.h.cc
+		value/object.cc
 		value/primitive.cc
+		value/prototype.cc
+		value/record.cc
 		value/value.cc
+		value/vector.cc
 )
 
 if(NOT EXPORT_IS_EXPORT)

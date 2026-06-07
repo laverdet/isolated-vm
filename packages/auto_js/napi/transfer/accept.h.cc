@@ -175,9 +175,9 @@ struct accept_napi_value : accept_basic_napi_value {
 				[](value_of<vector_tag> array, auto& self, auto& visit, auto /*&&*/ subject) -> void {
 					int ii = 0;
 					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
-					for (auto&& subject : util::forward_range(std::forward<decltype(range)>(range))) {
-						auto* element = napi_value{visit(std::forward<decltype(subject)>(subject), self)};
-						napi::invoke0(napi_set_element, napi_env{self}, napi_value{array}, ii++, element);
+					for (auto&& element : util::forward_range(std::forward<decltype(range)>(range))) {
+						auto* item = napi_value{visit(std::forward<decltype(element)>(element), self)};
+						napi::invoke0(napi_set_element, napi_env{self}, napi_value{array}, ii++, item);
 					}
 				},
 			};

@@ -36,12 +36,10 @@ reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle 
 				return reference_handle{lock, std::move(agent), std::move(realm), value.As<v8::Object>()};
 			} else {
 				const auto type_of = [ & ]() -> js::typeof_kind {
-					if (value->IsNullOrUndefined()) {
-						if (value->IsNull()) {
-							return js::typeof_kind::null;
-						} else {
-							return js::typeof_kind::undefined;
-						}
+					if (value->IsUndefined()) {
+						return js::typeof_kind::undefined;
+					} else if (value->IsNull()) {
+						return js::typeof_kind::null;
 					} else if (value->IsString()) {
 						return js::typeof_kind::string;
 					} else if (value->IsNumber()) {

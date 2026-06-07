@@ -32,9 +32,9 @@ class value_for_object : public handle_with_context<v8::Object> {
 		using range_type = std::ranges::transform_view<std::views::all_t<const value_for_array&>, iterator_transform>;
 		using iterator = std::ranges::iterator_t<range_type>;
 
-		[[nodiscard]] auto get(v8::Local<v8::Name> key) const -> v8::Local<v8::Value>;
-		[[nodiscard]] auto get(v8::Local<v8::Number> key) const -> v8::Local<v8::Value>;
-		[[nodiscard]] auto get(v8::Local<v8::Primitive> key) const -> v8::Local<v8::Value>;
+		[[nodiscard]] auto get(v8::Local<v8::Name> key) const -> mapped_type;
+		[[nodiscard]] auto get(v8::Local<v8::Number> key) const -> mapped_type;
+		[[nodiscard]] auto get(v8::Local<v8::Primitive> key) const -> mapped_type;
 		[[nodiscard]] auto has(v8::Local<v8::Name> key) const -> bool;
 		[[nodiscard]] auto has(v8::Local<v8::Number> key) const -> bool;
 		[[nodiscard]] auto has(v8::Local<v8::Primitive> key) const -> bool;

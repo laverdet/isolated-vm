@@ -8,7 +8,7 @@ namespace isolated_vm {
 using namespace js;
 
 template <class Tag>
-auto cast_in(value_of<Tag> value) -> v8::Local<iv8::tag_to_v8<Tag>> {
+auto cast_in(value_next<Tag> value) -> v8::Local<iv8::tag_to_v8<Tag>> {
 	return std::bit_cast<v8::Local<iv8::tag_to_v8<Tag>>>(value);
 }
 

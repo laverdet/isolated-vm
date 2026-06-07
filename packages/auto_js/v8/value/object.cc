@@ -69,15 +69,15 @@ auto value_for_object::has(v8::Local<v8::Primitive> key) const -> bool {
 	return has_property(context(), util::slice(*this), key);
 }
 
-auto value_for_object::get(v8::Local<v8::Name> key) const -> v8::Local<v8::Value> {
+auto value_for_object::get(v8::Local<v8::Name> key) const -> mapped_type {
 	return get_property(context(), util::slice(*this), key);
 }
 
-auto value_for_object::get(v8::Local<v8::Number> key) const -> v8::Local<v8::Value> {
+auto value_for_object::get(v8::Local<v8::Number> key) const -> mapped_type {
 	return get_property(context(), util::slice(*this), key);
 }
 
-auto value_for_object::get(v8::Local<v8::Primitive> key) const -> v8::Local<v8::Value> {
+auto value_for_object::get(v8::Local<v8::Primitive> key) const -> mapped_type {
 	return get_property(context(), util::slice(*this), key);
 }
 

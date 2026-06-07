@@ -57,27 +57,15 @@ struct visit_v8_key_literal {
 		explicit constexpr visit_v8_key_literal(auto* /*transfer*/) {}
 
 		auto operator()(const auto& /*anything*/, const auto& accept_or_visit) -> v8::Local<v8::Name> {
-			const auto make = util::overloaded{
-				[](v8::Isolate* isolate, std::string_view subject) -> v8::Local<v8::String> {
-					const auto* data = reinterpret_cast<const std::uint8_t*>(subject.data());
-					auto size = static_cast<int>(subject.size());
-					return unmaybe(v8::String::NewFromOneByte(isolate, data, v8::NewStringType::kInternalized, size));
-				},
-				[](v8::Isolate* isolate, std::u16string_view subject) -> v8::Local<v8::String> {
-					const auto* data = reinterpret_cast<const std::uint16_t*>(subject.data());
-					auto size = static_cast<int>(subject.size());
-					return unmaybe(v8::String::NewFromTwoByte(isolate, data, v8::NewStringType::kInternalized, size));
-				},
-			};
 			if (local_key_.IsEmpty()) {
 				constexpr auto key = util::make_consteval_string_view(Key);
-				local_key_ = make(accept_or_visit.witness().isolate(), key);
+				local_key_ = transfer_in<v8::Local<v8::Name>>(key, accept_or_visit.witness());
 			}
 			return local_key_;
 		}
 
 	private:
-		v8::Local<v8::String> local_key_;
+		v8::Local<v8::Name> local_key_;
 };
 
 // Implements `Visit`'s non-caching `immediate()` function as a caching visit operation.
@@ -155,14 +143,12 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 		// primitives
 		template <class Accept>
 		auto immediate(v8::Local<v8::Primitive> subject, const Accept& accept) -> accept_target_t<Accept> {
-			if (subject->IsNullOrUndefined()) {
-				if (subject->IsNull()) {
-					null_ = subject;
-					return accept(null_tag{}, *this, subject);
-				} else {
-					undefined_ = subject;
-					return accept(undefined_tag{}, *this, subject);
-				}
+			if (subject->IsUndefined()) {
+				undefined_ = subject;
+				return accept(undefined_tag{}, *this, subject);
+			} else if (subject->IsNull()) {
+				null_ = subject;
+				return accept(null_tag{}, *this, subject);
 			} else if (subject->IsNumber()) {
 				return (*this)(subject.As<v8::Number>(), accept);
 			} else if (subject->IsName()) {
@@ -430,6 +416,8 @@ struct visit_value : visit_flat_value<Target> {
 				return immediate(subject.As<v8::Uint8Array>(), accept);
 			} else if (subject->IsDataView()) {
 				return immediate(subject.As<v8::DataView>(), accept);
+			} else if (subject->IsUint8ClampedArray()) {
+				return immediate(subject.As<v8::Uint8ClampedArray>(), accept);
 			} else if (subject->IsInt8Array()) {
 				return immediate(subject.As<v8::Int8Array>(), accept);
 			} else if (subject->IsUint16Array()) {
@@ -440,6 +428,8 @@ struct visit_value : visit_flat_value<Target> {
 				return immediate(subject.As<v8::Uint32Array>(), accept);
 			} else if (subject->IsInt32Array()) {
 				return immediate(subject.As<v8::Int32Array>(), accept);
+			} else if (subject->IsFloat16Array()) {
+				return immediate(subject.As<v8::Float16Array>(), accept);
 			} else if (subject->IsFloat32Array()) {
 				return immediate(subject.As<v8::Float32Array>(), accept);
 			} else if (subject->IsFloat64Array()) {
@@ -448,8 +438,6 @@ struct visit_value : visit_flat_value<Target> {
 				return immediate(subject.As<v8::BigInt64Array>(), accept);
 			} else if (subject->IsBigUint64Array()) {
 				return immediate(subject.As<v8::BigUint64Array>(), accept);
-			} else if (subject->IsUint8ClampedArray()) {
-				return immediate(subject.As<v8::Uint8ClampedArray>(), accept);
 			} else {
 				throw js::type_error{u"Received exotic v8 'ArrayBufferView'"};
 			}

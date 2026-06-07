@@ -3,6 +3,7 @@ module;
 #include <cassert>
 export module isolated_vm:support.callback_info_fwd;
 import :handle.value_of;
+import :value.primitive;
 import auto_js;
 import std;
 import util;

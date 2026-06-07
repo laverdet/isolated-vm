@@ -187,9 +187,9 @@ struct accept_v8_value : accept_v8_primitive {
 				[](v8::Local<v8::Array> array, auto& self, auto& visit, auto /*&&*/ subject) -> void {
 					std::uint32_t ii = 0;
 					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
-					for (auto&& subject : util::forward_range(std::forward<decltype(range)>(range))) {
-						auto element = visit(std::forward<decltype(subject)>(subject), self);
-						unmaybe(array->Set(self.context_, ii++, element));
+					for (auto&& element : util::forward_range(std::forward<decltype(range)>(range))) {
+						auto item = visit(std::forward<decltype(element)>(element), self);
+						unmaybe(array->Set(self.context_, ii++, item));
 					}
 				},
 			};

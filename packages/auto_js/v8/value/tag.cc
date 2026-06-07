@@ -20,7 +20,7 @@ export class Undefined : public v8::Primitive {};
 // `v8::Local<v8::ArrayBuffer>{}->Buffer()` returns a `v8::Local<v8::ArrayBuffer>`, even in the case
 // it has a `SharedArrayBuffer`. In this case `buffer->IsArrayBuffer()` will return false. This is a
 // wrapper to denote that there is a data block but we do not know what kind it is.
-class DataBlock : public v8::Object {};
+export class DataBlock : public v8::Object {};
 
 constexpr auto tag_to_v8_fn = util::overloaded{
 	[](value_tag /*tag*/) -> std::type_identity<v8::Value> { return {}; },
@@ -43,16 +43,21 @@ constexpr auto tag_to_v8_fn = util::overloaded{
 	[](symbol_tag /*tag*/) -> std::type_identity<v8::Symbol> { return {}; },
 
 	// objects
-	[](array_buffer_tag /*tag*/) -> std::type_identity<v8::ArrayBuffer> { return {}; },
 	[](date_tag /*tag*/) -> std::type_identity<v8::Date> { return {}; },
 	[](external_tag /*tag*/) -> std::type_identity<v8::External> { return {}; },
 	[](function_tag /*tag*/) -> std::type_identity<iv8::Function> { return {}; },
 	[](list_tag /*tag*/) -> std::type_identity<v8::Array> { return {}; },
 	[](object_tag /*tag*/) -> std::type_identity<v8::Object> { return {}; },
 	[](promise_tag /*tag*/) -> std::type_identity<v8::Promise> { return {}; },
+	[](vector_tag /*tag*/) -> std::type_identity<v8::Array> { return {}; },
+
+	// data blocks
+	[](array_buffer_tag /*tag*/) -> std::type_identity<v8::ArrayBuffer> { return {}; },
+	[](data_block_tag /*tag*/) -> std::type_identity<iv8::DataBlock> { return {}; },
 	[](shared_array_buffer_tag /*tag*/) -> std::type_identity<v8::SharedArrayBuffer> { return {}; },
 
 	// typed arrays
+	[](array_buffer_view_tag /*tag*/) -> std::type_identity<v8::ArrayBufferView> { return {}; },
 	[](data_view_tag /*tag*/) -> std::type_identity<v8::DataView> { return {}; },
 	[](typed_array_tag_of<double> /*tag*/) -> std::type_identity<v8::Float64Array> { return {}; },
 	[](typed_array_tag_of<float> /*tag*/) -> std::type_identity<v8::Float32Array> { return {}; },
@@ -98,15 +103,19 @@ constexpr auto v8_to_tag_fn = util::overloaded{
 	// objects
 	[](std::type_identity<iv8::Function> /*type*/) -> function_tag { return {}; },
 	[](std::type_identity<v8::Array> /*type*/) -> list_tag { return {}; },
-	[](std::type_identity<v8::ArrayBuffer> /*type*/) -> array_buffer_tag { return {}; },
 	[](std::type_identity<v8::Date> /*type*/) -> date_tag { return {}; },
 	[](std::type_identity<v8::External> /*type*/) -> external_tag { return {}; },
 	[](std::type_identity<v8::Function> /*type*/) -> function_tag { return {}; },
 	[](std::type_identity<v8::Object> /*type*/) -> object_tag { return {}; },
 	[](std::type_identity<v8::Promise> /*type*/) -> promise_tag { return {}; },
+
+	// data blocks
+	[](std::type_identity<iv8::DataBlock> /*type*/) -> data_block_tag { return {}; },
+	[](std::type_identity<v8::ArrayBuffer> /*type*/) -> array_buffer_tag { return {}; },
 	[](std::type_identity<v8::SharedArrayBuffer> /*type*/) -> shared_array_buffer_tag { return {}; },
 
 	// typed arrays
+	[](std::type_identity<v8::ArrayBufferView> /*type*/) -> array_buffer_view_tag { return {}; },
 	[](std::type_identity<v8::BigInt64Array> /*type*/) -> typed_array_tag_of<std::int64_t> { return {}; },
 	[](std::type_identity<v8::BigUint64Array> /*type*/) -> typed_array_tag_of<std::uint64_t> { return {}; },
 	[](std::type_identity<v8::DataView> /*type*/) -> data_view_tag { return {}; },
