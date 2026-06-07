@@ -22,9 +22,13 @@ auto make_callback_storage(Environment& env, std::invocable<Environment&, const 
 			// Constant expression function, expressed entirely in the type. `data` is the environment.
 			const auto callback = napi_callback{[](napi_env nenv, napi_callback_info info) -> napi_value {
 				const auto args = callback_info{nenv, info};
-				auto invoke = function_type{};
-				auto& env = *static_cast<Environment*>(args.data());
-				return invoke(env, args);
+				if (args) {
+					auto invoke = function_type{};
+					auto& env = *static_cast<Environment*>(args.data());
+					return invoke(env, args);
+				} else {
+					return {};
+				}
 			}};
 			return std::tuple{callback, &env};
 		} else if constexpr (sizeof(function_type) <= sizeof(void*)) {
@@ -34,10 +38,14 @@ auto make_callback_storage(Environment& env, std::invocable<Environment&, const 
 			auto* data = reinterpret_cast<void*&>(function);
 			const auto callback = napi_callback{[](napi_env nenv, napi_callback_info info) -> napi_value {
 				const auto args = callback_info{nenv, info};
-				auto* data = args.data();
-				auto& invoke = reinterpret_cast<function_type&>(data);
-				auto& env = *callback_env_local<Environment>;
-				return invoke(env, args);
+				if (args) {
+					auto* data = args.data();
+					auto& invoke = reinterpret_cast<function_type&>(data);
+					auto& env = *callback_env_local<Environment>;
+					return invoke(env, args);
+				} else {
+					return {};
+				}
 			}};
 			return std::tuple{callback, data};
 		} else {
@@ -49,8 +57,12 @@ auto make_callback_storage(Environment& env, std::invocable<Environment&, const 
 		auto external_data = std::make_unique<pair_type>(&env, std::move(function));
 		const auto callback = napi_callback{[](napi_env nenv, napi_callback_info info) -> napi_value {
 			const auto args = callback_info{nenv, info};
-			auto& state = *static_cast<pair_type*>(args.data());
-			return state.second(*state.first, args);
+			if (args) {
+				auto& state = *static_cast<pair_type*>(args.data());
+				return state.second(*state.first, args);
+			} else {
+				return {};
+			}
 		}};
 		return std::tuple{callback, std::move(external_data)};
 	}

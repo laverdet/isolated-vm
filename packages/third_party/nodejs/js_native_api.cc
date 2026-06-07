@@ -84,6 +84,8 @@ export using ::napi_set_element;
 export using ::napi_set_instance_data;
 export using ::napi_set_named_property;
 export using ::napi_set_property;
+export using ::napi_throw_error;
+export using ::napi_throw_range_error;
 export using ::napi_throw_type_error;
 export using ::napi_throw;
 export using ::napi_type_tag_object;
@@ -94,5 +96,6 @@ export using ::node_api_create_property_key_latin1;
 export using ::node_api_create_property_key_utf16;
 export using ::node_api_create_property_key_utf8;
 export using ::node_api_create_syntax_error;
+export using ::node_api_throw_syntax_error;
 
 // NOLINTEND(misc-unused-using-decls)

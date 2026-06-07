@@ -13,17 +13,22 @@ export struct callback_info : util::non_copyable {
 		callback_info(napi_env env, napi_callback_info info) {
 			napi::invoke0(napi_get_cb_info, env, info, &count_, storage_.data(), &this_, &data_);
 			if (count_ > storage_.size()) {
-				throw js::range_error{u"Too many arguments provided for a function call"};
+				constexpr auto message = std::string_view{"Too many arguments provided for a function call"};
+				napi::invoke0(napi_throw_range_error, env, nullptr, message.data());
+				count_ = 0;
+			} else {
+				++count_;
 			}
 		}
 
-		[[nodiscard]] auto arguments() const -> std::span<const napi_value> { return std::span{storage_}.first(count_); }
+		[[nodiscard]] auto arguments() const -> std::span<const napi_value> { return std::span{storage_}.first(count_ - 1); }
 		[[nodiscard]] auto data() const -> void* { return data_; }
 		[[nodiscard]] auto this_arg() const -> napi_value { return this_; }
+		explicit operator bool() const { return count_ != 0; }
 
 	private:
 		napi_value this_;
-		std::array<napi_value, 8> storage_;
+		std::array<napi_value, 16> storage_;
 		std::size_t count_{storage_.size()};
 		void* data_;
 };
