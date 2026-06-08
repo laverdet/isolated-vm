@@ -10,8 +10,6 @@ import util;
 namespace isolated_vm {
 using namespace js;
 
-const auto max_callback_storage_size = 32;
-
 using runtime_callback_type = auto (*)(const runtime_lock&, callback_info, const void*) -> value_of<>;
 using runtime_callback_finalizer_type = auto (*)(void*) -> void;
 
@@ -20,19 +18,22 @@ using runtime_callback_data_allocated_type = std::unique_ptr<void, runtime_callb
 
 // Runtime host requires extra pointers for storage, which is allocated upfront in the addon.
 struct runtime_callback_data_storage {
-		runtime_callback_data_storage() = default;
-		void* data;
+		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
+		explicit runtime_callback_data_storage(runtime_callback_type callback) : callback{callback} {}
+		void* runtime_data;
 		runtime_callback_type callback;
 };
 
 template <class Type>
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct runtime_callback_function_storage : runtime_callback_data_storage {
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-		explicit runtime_callback_function_storage(Type function) : function{std::move(function)} {}
-		runtime_callback_function_storage() = default;
+		explicit runtime_callback_function_storage(Type function, runtime_callback_type callback) :
+				runtime_callback_data_storage{callback},
+				function{std::move(function)} {}
 		NO_UNIQUE_ADDRESS Type function;
 };
+
+const auto max_callback_storage_size = sizeof(runtime_callback_function_storage<void*>);
 
 // Make callback storage for an addon function. It returns `std::pair<callback_type, data_type>`
 // where `data_type` is either `void*` for trivial word-sized functions, `std::array<std::byte, N>`
@@ -41,23 +42,17 @@ struct runtime_callback_function_storage : runtime_callback_data_storage {
 auto make_callback_storage(std::invocable<const runtime_lock&, callback_info> auto function) {
 	using function_type = decltype(function);
 	using data_type = runtime_callback_function_storage<function_type>;
+	constexpr auto callback = runtime_callback_type{[](const runtime_lock& lock, callback_info info, const void* data) -> value_of<> {
+		const auto& storage = *static_cast<const data_type*>(data);
+		return storage.function(lock, info);
+	}};
 	if constexpr (std::is_trivially_copyable_v<function_type>) {
 		// Trivial function type. `data` is `std::array<std::byte, N>`.
 		static_assert(sizeof(function_type) <= max_callback_storage_size);
-		auto storage = data_type{std::move(function)};
-		storage.callback = runtime_callback_type{[](const runtime_lock& lock, callback_info info, const void* data) -> value_of<> {
-			const auto& storage = *static_cast<const data_type*>(data);
-			return storage.function(lock, info);
-		}};
-		return storage;
+		return data_type{std::move(function), callback};
 	} else {
 		// Otherwise the function requires bound state w/ a destructor
-		using data_type = runtime_callback_function_storage<function_type>;
-		auto storage = std::make_unique<data_type>(std::move(function));
-		storage->callback = runtime_callback_type{[](const runtime_lock& lock, callback_info info, const void* data) -> value_of<> {
-			const auto& storage = *static_cast<const data_type*>(data);
-			return storage.function(lock, info);
-		}};
+		auto storage = std::make_unique<data_type>(std::move(function), callback);
 		return runtime_callback_data_allocated_type{
 			storage.release(),
 			[](void* data) { delete static_cast<data_type*>(data); },

@@ -105,8 +105,11 @@ export class context_lock_witness : public isolate_lock_witness {
 				context_{context} {}
 
 	public:
+		explicit context_lock_witness(const v8::FunctionCallbackInfo<v8::Value>& info) :
+				isolate_lock_witness{isolate_lock_witness::make_witness(info.GetIsolate())},
+				context_{isolate()->GetCurrentContext()} {}
+
 		[[nodiscard]] auto context() const -> v8::Local<v8::Context> { return context_; }
-		[[nodiscard]] static auto from_isolate(isolate_lock_witness lock) -> context_lock_witness;
 		[[nodiscard]] static auto make_witness(isolate_lock_witness lock, v8::Local<v8::Context> context) -> context_lock_witness;
 
 	private:

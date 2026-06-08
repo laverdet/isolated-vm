@@ -15,9 +15,7 @@ constexpr auto make_plain_callback =
 	) -> auto {
 	return util::bind{
 		[](auto& function, const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
-			auto isolate_witness = isolate_lock_witness::make_witness(info.GetIsolate());
-			auto context_witness = context_lock_witness::from_isolate(isolate_witness);
-			function(context_witness, info);
+			function(context_lock_witness{info}, info);
 		},
 		std::move(function),
 	};
@@ -32,9 +30,8 @@ constexpr auto make_decorated_callback =
 	) -> auto {
 	return util::bind{
 		[](auto& agent, auto& function, const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
-			auto isolate_witness = isolate_lock_witness::make_witness(info.GetIsolate());
-			auto context_witness = context_lock_witness::from_isolate(isolate_witness);
-			auto decorated_witness = context_lock_witness_of<Agent, Implements...>{context_witness, agent};
+			auto witness = context_lock_witness{info};
+			auto decorated_witness = context_lock_witness_of<Agent, Implements...>{witness, agent};
 			function(decorated_witness, info);
 		},
 		std::ref(*lock),

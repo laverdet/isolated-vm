@@ -16,19 +16,16 @@ auto make_function_callback(iv8::isolate_lock_witness witness, runtime_callback_
 	if (data.size() > max_callback_storage_size) {
 		throw js::runtime_error{u"function data too large"};
 	}
-	auto& storage = *reinterpret_cast<runtime_callback_data_storage*>(data.data());
-	storage.data = nullptr;
 	auto v8_callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
-		auto* isolate = info.GetIsolate();
-		auto witness = iv8::context_lock_witness::from_isolate(iv8::isolate_lock_witness::make_witness(isolate));
+		auto witness = iv8::context_lock_witness{info};
 		auto data_string = info.Data().As<v8::String>();
 		auto length = data_string->Length();
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 		std::array<std::byte, max_callback_storage_size> data;
-		data_string->WriteOneByteV2(isolate, 0, length, reinterpret_cast<std::uint8_t*>(data.data()), v8::String::WriteFlags::kNone);
+		data_string->WriteOneByteV2(witness.isolate(), 0, length, reinterpret_cast<std::uint8_t*>(data.data()), v8::String::WriteFlags::kNone);
 		const auto& storage = *reinterpret_cast<runtime_callback_data_storage*>(data.data());
 		auto runtime_lock = runtime_lock_implementation{witness};
-		info.GetReturnValue().Set(cast_in((*storage.callback)(runtime_lock, callback_info_implementation{info}, storage.data)));
+		info.GetReturnValue().Set(cast_in(storage.callback(runtime_lock, callback_info_implementation{info}, data.data())));
 	}};
 	auto storage_sv = std::string_view{reinterpret_cast<const char*>(data.data()), data.size()};
 	auto v8_data = js::transfer_in_strict<v8::Local<v8::String>>(storage_sv, witness);
