@@ -1,5 +1,6 @@
 module backend_napi_v8;
 import :environment;
+import :native_module;
 using namespace js;
 
 namespace backend_napi_v8 {
@@ -13,6 +14,10 @@ struct inherited_classes {
 			js::struct_member{util::cw<"Module">, &inherited_classes::module_},
 		};
 };
+
+environment::~environment() {
+	native_module_handle::unload_hook();
+}
 
 auto environment::make_initialize() -> napi::value_of<function_tag> {
 	auto initialize = [](environment& env, inherited_classes inherited) -> void {

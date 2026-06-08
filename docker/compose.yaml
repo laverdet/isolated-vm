@@ -25,8 +25,7 @@ services:
     image: isolated-vm/v8:${V8_TARGET}-${V8_VERSION}
     build:
       additional_contexts:
-        - patches=../patches
-        - scripts=../scripts
+        - workspace=..
         - debian=docker-image://debian:sid
       args:
         REF: ${V8_VERSION}
@@ -49,7 +48,7 @@ services:
         REF: v${NODE_VERSION}
       additional_contexts:
         - debian=docker-image://debian:trixie
-        - scripts=../scripts
+        - workspace=..
       dockerfile: Dockerfile.node
 
   node_sources:
@@ -78,10 +77,10 @@ services:
     image: isolated-vm/v8_alpine:${V8_TARGET}-${V8_VERSION}
     build:
       additional_contexts:
-        - patches=../patches
-        - scripts=../scripts
+        - alpine=docker-image://alpine:edge
+        - workspace=..
       args:
         REF: ${V8_VERSION}
-        TARGET: linux-musl.${V8_TARGET}
+        TARGET: ${V8_TARGET}
       dockerfile: Dockerfile.v8
       target: v8_alpine

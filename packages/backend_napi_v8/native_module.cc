@@ -1,4 +1,7 @@
 module;
+#if __MUSL__
+#include <dlfcn.h>
+#endif
 #include <cassert>
 module backend_napi_v8;
 import :lock;
@@ -8,6 +11,10 @@ import isolated_vm;
 import v8_js;
 
 namespace backend_napi_v8 {
+
+#if __MUSL__
+void* promoted_self_handle = nullptr;
+#endif
 
 native_module_handle::native_module_handle(
 	js::napi::uv_dlib lib,
@@ -68,6 +75,23 @@ auto native_module_handle::class_template(environment& env) -> js::napi::value_o
 }
 
 auto native_module_handle::create(environment& env, std::string filename, create_native_module_options options) -> js::forward<js::napi::value_of<>> {
+
+#if __MUSL__
+	// musl has some unique behavior with bare .so names. There is a lot of discussion here:
+
+	// https://github.com/JuliaLang/julia/issues/40556
+	// and also a totally deranged but impressive PR which mucks with internal dynamic so structures to
+	// workaround it here:
+	// https://github.com/JuliaPackaging/JLLWrappers.jl/pull/34/files
+
+	// Anyway, this is a different approach which just loads our symbols into the global namespace,
+	// which is also fine. nodejs forces your module to load with RTLD_LOCAL but if you reopen it you
+	// can "promote" it.
+	Dl_info info;
+	dladdr(reinterpret_cast<void*>(&create), &info);
+	promoted_self_handle = dlopen(info.dli_fname, RTLD_NOW | RTLD_GLOBAL | RTLD_NOLOAD);
+#endif
+
 	if (options.suffix) {
 		filename += *options.suffix;
 	} else {
@@ -91,6 +115,14 @@ auto native_module_handle::create(environment& env, std::string filename, create
 	);
 	resolver(std::move(options));
 	return js::forward{promise};
+}
+
+auto native_module_handle::unload_hook() -> void {
+#if __MUSL__
+	if (promoted_self_handle) {
+		dlclose(std::exchange(promoted_self_handle, nullptr));
+	}
+#endif
 }
 
 } // namespace backend_napi_v8

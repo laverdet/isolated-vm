@@ -126,7 +126,6 @@ tasks:
         -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \
         -DCMAKE_BUILD_TYPE=${input:ivm_target} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-        -DIVM_INSTALL=link \
         ${ECO_STD:+"-DCMAKE_CXX_STDLIB_MODULES_JSON=${ECO_STD}"} \
         -G Ninja -B build
     dependsOn:
@@ -149,7 +148,6 @@ tasks:
         -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-        -DIVM_INSTALL=link \
         -G Ninja -B build
       cmake \
         -DTEST_STDLIB=stl \

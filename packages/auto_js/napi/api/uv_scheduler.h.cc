@@ -3,15 +3,6 @@ import :api.uv_handle;
 import std;
 import util;
 
-#if _LIBCPP_VERSION
-// clang 22.1.0
-// /usr/lib/llvm-22/bin/../include/c++/v1/__new/allocate.h:39:30: error: no matching function for call to 'operator new'
-//    39 |     return static_cast<_Tp*>(__builtin_operator_new(__size, static_cast<align_val_t>(__align)));
-export {
-	using ::operator new;
-}
-#endif
-
 namespace js::napi {
 
 // Shareable libuv scheduler

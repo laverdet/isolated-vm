@@ -23,7 +23,7 @@ export class data_block {
 export class array_buffer : public data_block {
 	private:
 		struct deleter {
-				auto operator()(array_type ptr) const -> void {
+				constexpr auto operator()(array_type ptr) const -> void {
 					operator delete[](ptr, std::align_val_t{max_align_v});
 				}
 		};

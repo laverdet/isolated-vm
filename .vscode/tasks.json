@@ -119,7 +119,7 @@
     {
       "label": "cmake: configure",
       "type": "shell",
-      "command": "set -eux; reset;\nset -a; source \"$ENV_FILE\"; source \"$V8_BUNDLE_PATH/env\"\ncmake \\\n  -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \\\n  -DCMAKE_BUILD_TYPE=${input:ivm_target} \\\n  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \\\n  -DIVM_INSTALL=link \\\n  ${ECO_STD:+\"-DCMAKE_CXX_STDLIB_MODULES_JSON=${ECO_STD}\"} \\\n  -G Ninja -B build\n",
+      "command": "set -eux; reset;\nset -a; source \"$ENV_FILE\"; source \"$V8_BUNDLE_PATH/env\"\ncmake \\\n  -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \\\n  -DCMAKE_BUILD_TYPE=${input:ivm_target} \\\n  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \\\n  ${ECO_STD:+\"-DCMAKE_CXX_STDLIB_MODULES_JSON=${ECO_STD}\"} \\\n  -G Ninja -B build\n",
       "dependsOn": [
         "cmake: clean"
       ],
@@ -137,7 +137,7 @@
     {
       "label": "cmake: configure stdlib compat",
       "type": "shell",
-      "command": "set -eux; reset;\nset -a; source \"$ENV_FILE\"; source \"$V8_BUNDLE_PATH/env\"\ncmake \\\n  -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \\\n  -DCMAKE_BUILD_TYPE=Release \\\n  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \\\n  -DIVM_INSTALL=link \\\n  -G Ninja -B build\ncmake \\\n  -DTEST_STDLIB=stl \\\n  -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \\\n  -DCMAKE_BUILD_TYPE=Release \\\n  -G Ninja -B build/for_stl\ncmake \\\n  -DTEST_STDLIB=libc++ \\\n  -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \\\n  -DCMAKE_BUILD_TYPE=Release \\\n  -G Ninja -B build/for_libcxx\necho 'Build with:'\necho 'ninja -C build backend_napi_v8 && ninja -C build/for_stl backend_napi_v8 && ninja -C build/for_libcxx backend_napi_v8'\n",
+      "command": "set -eux; reset;\nset -a; source \"$ENV_FILE\"; source \"$V8_BUNDLE_PATH/env\"\ncmake \\\n  -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \\\n  -DCMAKE_BUILD_TYPE=Release \\\n  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \\\n  -G Ninja -B build\ncmake \\\n  -DTEST_STDLIB=stl \\\n  -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \\\n  -DCMAKE_BUILD_TYPE=Release \\\n  -G Ninja -B build/for_stl\ncmake \\\n  -DTEST_STDLIB=libc++ \\\n  -DCMAKE_MODULE_PATH=$(npm exec auto_js_cmake_include) \\\n  -DCMAKE_BUILD_TYPE=Release \\\n  -G Ninja -B build/for_libcxx\necho 'Build with:'\necho 'ninja -C build backend_napi_v8 && ninja -C build/for_stl backend_napi_v8 && ninja -C build/for_libcxx backend_napi_v8'\n",
       "problemMatcher": [],
       "icon": {
         "id": "wrench"

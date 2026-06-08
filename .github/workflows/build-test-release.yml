@@ -162,6 +162,8 @@ jobs:
         run: |
           set -ux
           echo ::group::Toolchain
+          # Look for existing version (diagnostics)
+          clang++ --version || true
           # Install updated LLVM (and hide spammy progress bar)
           winget install --accept-source-agreements --silent -e --id=LLVM.LLVM --version=22.1.2 | tr '\r' '\n' | grep -Ev --line-buffered '^[ -\/|]+$'
           # You want the mingw version of ninja, not the msys version. The msys version uses
@@ -282,6 +284,7 @@ jobs:
         run: |
           set -ux
           V8_REF_PATH=$PWD/deps/v8/out/$V8_REF
+          # TODO: These should all be configured above
           CMAKE_MAKE_PROGRAM=ninja
           CMAKE_PREFIX_PATH=
           case "$TRIPLET" in
@@ -289,16 +292,21 @@ jobs:
               CMAKE_C_COMPILER=$(brew --prefix llvm)/bin/clang
               CMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++
               CXX_MODULES_JSON=$(brew --prefix llvm)/lib/c++/libc++.modules.json
+              echo "CXX=$CMAKE_CXX_COMPILER" >> "$GITHUB_ENV"
+              echo "ECO_STD=$CXX_MODULES_JSON" >> "$GITHUB_ENV"
               ;;
             *-linux-gnu|*-linux-musl)
               CMAKE_C_COMPILER=$(realpath "$(which clang-22)")
               CMAKE_CXX_COMPILER=$(realpath "$(which clang++-22)")
+              echo "CXX=$CMAKE_CXX_COMPILER" >> "$GITHUB_ENV"
               ;;
             *-windows)
               CMAKE_C_COMPILER=$(which clang.exe)
               CMAKE_CXX_COMPILER=$(which clang++.exe)
               CMAKE_MAKE_PROGRAM=$(which ninja.exe)
               CMAKE_PREFIX_PATH=C:/msys64/mingw64/lib/cmake
+              echo "CXX=$CMAKE_CXX_COMPILER" >> "$GITHUB_ENV"
+              echo "ECO_STD=$CXX_MODULES_JSON" >> "$GITHUB_ENV"
               ;;
           esac
           cmake \
@@ -313,14 +321,34 @@ jobs:
             -DV8_INCLUDE_GN_FILE="$V8_REF_PATH/$TRIPLET.release/include/v8-gn.h" \
             -DV8_LIBRARY_PATH="$V8_REF_PATH/$TRIPLET.release" \
             -DV8_LIBRARY_TYPE=static \
-            -DIVM_INSTALL=copy \
+            -DIVM_INSTALL=artifacts \
             -B build \
             -G Ninja \
           ;
       - name: Build
         run: ninja -C build backend_napi_v8
       - name: Sanity Check
-        run: node -e "require('./build/packages/backend_napi_v8/artifacts/$(triplet_util -t "$TRIPLET" %p)')"
+        run: |
+          PLATFORM=$(triplet_util -t "$TRIPLET" %p)
+          # `actions/upload-artifact` uses the 'build/[...]' location, but we copy the module
+          # into place for the sanity check. It's a copy and not a link for the NativeModule rpath
+          # test below.
+          cp -a "$PWD/build/packages/backend_napi_v8/artifacts/$PLATFORM" "packages/isolated-vm/node_modules/@isolated-vm/experimental-$PLATFORM"
+          node -e "require('@isolated-vm/experimental')"
+      - name: NativeModule test
+        working-directory: packages/addon_example
+        run: |
+          cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_MODULE_PATH="$(pnpm exec auto_js_cmake_include)" \
+            ${ECO_STD:+"-DCMAKE_CXX_STDLIB_MODULES_JSON=${ECO_STD}"} \
+            -G Ninja -B build \
+          ;
+          ninja -C build
+          node addon.js
+          # Ensure that the library wasn't linked with a full path
+          mv ../isolated-vm/node_modules ../
+          node addon.js
 
       # Diagnostics
       - name: Symbols [Linux]

@@ -42,6 +42,12 @@ target_sources("${BACKEND_NAME}"
 )
 target_embed_content("${BACKEND_NAME}" runtime/dist/interface.js runtime_dist_interface_js)
 
+# Detect musl libc for dlopen workaround
+triplet_util(HOST_TOOLCHAIN %e)
+if(HOST_TOOLCHAIN STREQUAL -musl)
+	target_compile_definitions("${BACKEND_NAME}" PRIVATE __MUSL__)
+endif()
+
 # Link backend target
 target_link_libraries("${BACKEND_NAME}" PUBLIC auto_js embedded_v8_js isolated_vm napi_js nodejs utility_js)
 
@@ -83,20 +89,29 @@ add_custom_target(backend_napi_v8)
 add_dependencies(backend_napi_v8 "${BACKEND_NAME}")
 
 # Install
-if(IVM_INSTALL STREQUAL link)
+if(NOT DEFINED IVM_INSTALL)
+	set(IVM_INSTALL link)
+endif()
+if(IVM_INSTALL STREQUAL artifacts)
+	# Copy to `artifacts`; `napi-rs` will regenerate `package.json` later. We still need the
+	# placeholder `package.json` for testing.
+	set(LOCAL_BACKEND_PACKAGE "${CMAKE_CURRENT_BINARY_DIR}/artifacts/${HOST_PLATFORM}")
+	add_custom_command(
+		TARGET backend_napi_v8 POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
+		"${CMAKE_CURRENT_BINARY_DIR}/backend_napi_v8.${HOST_PLATFORM}.node"
+		"${LOCAL_BACKEND_PACKAGE}/")
+	if(WIN32)
+		add_custom_command(
+			TARGET backend_napi_v8 POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
+			"${CMAKE_CURRENT_BINARY_DIR}/backend_napi_v8.${HOST_PLATFORM}.lib"
+			"${LOCAL_BACKEND_PACKAGE}/")
+	endif()
+elseif(IVM_INSTALL STREQUAL link)
 	# Setup development package
 	set(LOCAL_BACKEND_PACKAGE "${CMAKE_CURRENT_BINARY_DIR}")
 	add_custom_command(
 		TARGET backend_napi_v8 POST_BUILD COMMAND ${CMAKE_COMMAND} -E create_symlink
 		"${CMAKE_CURRENT_BINARY_DIR}"
 		"${CMAKE_SOURCE_DIR}/packages/isolated-vm/node_modules/@isolated-vm/experimental-${HOST_PLATFORM}")
-elseif(IVM_INSTALL STREQUAL copy)
-	# Copy to `artifacts`; `napi-rs` will regenerate `package.json` later. We still need the
-	# placeholder `package.json` for testing.
-	set(LOCAL_BACKEND_PACKAGE "${CMAKE_CURRENT_BINARY_DIR}/artifacts/${HOST_PLATFORM}")
-	add_custom_command(
-		TARGET backend_napi_v8 POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy
-		"$<TARGET_FILE:${BACKEND_NAME}>"
-		"${LOCAL_BACKEND_PACKAGE}/backend_napi_v8.${HOST_PLATFORM}.node")
 endif()
 file(WRITE "${LOCAL_BACKEND_PACKAGE}/package.json" "{\"main\":\"backend_napi_v8.${HOST_PLATFORM}.node\"}\n")

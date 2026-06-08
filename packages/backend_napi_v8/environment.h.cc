@@ -54,6 +54,7 @@ export class environment
 			public napi::class_template_references<class_names> {
 	public:
 		using napi::environment::environment;
+		~environment();
 
 		auto agent_class() -> napi::value_of<function_tag> { return agent_class_.get(*this); }
 		auto cluster() -> iv8::isolated::cluster& { return cluster_; }

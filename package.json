@@ -10,6 +10,7 @@
     "test": "pnpm run --recursive --sequential --silent test"
   },
   "devDependencies": {
+    "@auto_js/js": "workspace:^",
     "@eslint/js": "^9.8.0",
     "@isolated-vm/experimental": "workspace:^",
     "@napi-rs/cli": "^3.5.1",

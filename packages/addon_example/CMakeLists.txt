@@ -4,6 +4,10 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL "4.3.0")
 else()
 	set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
 endif()
+add_compile_options(
+	$<$<CXX_COMPILER_ID:Clang>:-Wno-include-angled-in-module-purview>
+	$<$<CXX_COMPILER_ID:Clang>:-Wno-reserved-module-identifier>
+)
 
 # project settings
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -15,11 +19,13 @@ project(addon_example LANGUAGES CXX)
 set(CMAKE_CXX_MODULE_STD ON)
 
 # compilation settings
-set(CMAKE_SKIP_BUILD_RPATH true)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_SKIP_BUILD_RPATH true)
 if(APPLE)
 	set(CMAKE_OSX_DEPLOYMENT_TARGET "13.3")
 	set(CMAKE_SHARED_LINKER_FLAGS "-dynamiclib -undefined dynamic_lookup")
+elseif(LINUX)
+	set(CMAKE_LINKER_TYPE LLD)
 endif()
 
 # napi configuration

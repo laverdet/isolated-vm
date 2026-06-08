@@ -33,9 +33,8 @@ RUN <<DONE
 	gclient config --unmanaged $(git -C v8 config --get remote.origin.url)
 	gclient sync --no-history --shallow --with_branch_heads 1>&2
 DONE
-COPY --from=packages/auto_js/js/cmake triplet_util .
-COPY --from=patches . patches
-COPY --from=scripts v8_select .
+COPY --from=workspace patches .
+COPY --from=workspace scripts/v8_select .
 ARG REF
 RUN <<DONE
 	set -eux
@@ -62,7 +61,7 @@ RUN <<DONE
 	;
 DONE
 COPY --from=synced_sources v8 v8
-COPY --from=scripts triplet_util v8_build .
+COPY --from=workspace packages/auto_js/js/cmake/triplet_util scripts/v8_build .
 ARG REF TARGET
 RUN <<DONE
 	set -eux
@@ -90,17 +89,21 @@ RUN <<DONE
 DONE
 
 # Build v8 for alpine
-FROM alpine AS build_alpine
+# FROM alpine AS build_alpine
+FROM alpine AS v8_alpine
 RUN <<DONE
+	# This doesn't work by the way
 	set -eux
 	apk add \
 		bash \
-		build-base \
+		clang22 \
+		compiler-rt \
 		coreutils \
 		curl \
 		git \
 		libstdc++ \
 		linux-headers \
+		llvm22 \
 		ninja-is-really-ninja \
 		openssh \
 		patch \
@@ -108,10 +111,12 @@ RUN <<DONE
 		python3 \
 		xz \
 	;
+	ln -s /usr/lib/llvm22/lib/clang/2/lib/aarch64-alpine-linux-musl /usr/lib/llvm22/lib/clang/22/lib/aarch64-unknown-linux-gnu
+	ln -s /usr/lib/llvm22/lib/clang/2/lib/aarch64-unknown-linux-gnu/libclang_rt.builtins-aarch64.a /usr/lib/llvm22/lib/clang/22/lib/aarch64-unknown-linux-gnu/libclang_rt.builtins.a
 DONE
 COPY --from=gn gn/out gn
 COPY --from=synced_sources v8 v8
-COPY --from=scripts triplet_util v8_build .
+COPY --from=workspace packages/auto_js/js/cmake/triplet_util scripts/v8_build .
 ARG REF TARGET
 ENV PATH=$PATH:/gn
 RUN <<DONE

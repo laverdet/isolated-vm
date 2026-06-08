@@ -1,9 +1,10 @@
 // ninja -C build auto_js
+#include <version>
 import auto_js;
 import std;
 import util;
 using namespace std::literals;
-#if __clang_major__ >= 19
+#if __clang_major__ >= 19 && _LIBCPP_VERSION
 
 namespace js {
 

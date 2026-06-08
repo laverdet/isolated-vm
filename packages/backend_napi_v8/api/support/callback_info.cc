@@ -1,3 +1,5 @@
+module;
+#include "auto_js/export_tag.h"
 module isolated_vm:support.callback_info;
 import :support.callback_info_fwd;
 import :support.cast;
@@ -5,12 +7,12 @@ import v8;
 
 namespace isolated_vm {
 
-auto callback_info::size() const -> int {
+EXPORT auto callback_info::size() const -> int {
 	const auto& info = *std::bit_cast<const v8::FunctionCallbackInfo<v8::Value>*>(info_);
 	return info.Length();
 }
 
-auto callback_info::iterator::operator*() const -> value_type {
+EXPORT auto callback_info::iterator::operator*() const -> value_type {
 	const auto& info = *std::bit_cast<const v8::FunctionCallbackInfo<v8::Value>*>(info_);
 	return cast_out(info[ index_ ]);
 }

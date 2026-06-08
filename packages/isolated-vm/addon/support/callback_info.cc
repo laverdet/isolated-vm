@@ -12,15 +12,14 @@ namespace isolated_vm {
 
 class EXPORT callback_info {
 	protected:
-		explicit callback_info(const void* info) :
-				info_{info} {};
+		constexpr explicit callback_info(const void* info) : info_{info} {};
 
 	public:
 		class iterator;
 		using value_type = value_of<>;
 
-		[[nodiscard]] auto begin() const -> iterator;
-		[[nodiscard]] auto end() const -> iterator;
+		[[nodiscard]] constexpr auto begin() const -> iterator;
+		[[nodiscard]] constexpr auto end() const -> iterator;
 		[[nodiscard]] auto size() const -> int;
 
 	private:
@@ -39,7 +38,7 @@ class callback_info::iterator : public util::random_access_iterator_facade<int> 
 				info_{info},
 				index_{index} {}
 
-		auto operator*() const -> value_type;
+		EXPORT auto operator*() const -> value_type;
 		auto operator+=(difference_type offset) -> iterator& {
 			index_ += offset;
 			return *this;
@@ -56,11 +55,11 @@ class callback_info::iterator : public util::random_access_iterator_facade<int> 
 
 // ---
 
-auto callback_info::begin() const -> iterator {
+EXPORT constexpr auto callback_info::begin() const -> iterator {
 	return iterator{info_, 0};
 };
 
-auto callback_info::end() const -> iterator {
+EXPORT constexpr auto callback_info::end() const -> iterator {
 	return iterator{info_, size()};
 };
 
