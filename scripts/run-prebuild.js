@@ -23,8 +23,21 @@ const env = {
 
 fs.rmSync(path.join(__dirname, '..', 'prebuilds'), { recursive: true, force: true });
 
-const prebuildifyCli = require.resolve('prebuildify/bin.js');
-const result = spawnSync(process.execPath, [prebuildifyCli, ...targetArgs], { stdio: 'inherit', env });
+let command = process.execPath;
+let args;
+
+try {
+  args = [require.resolve('prebuildify/bin.js'), ...targetArgs];
+} catch (error) {
+  if (error && error.code === 'MODULE_NOT_FOUND' && error.message.includes('prebuildify/bin.js')) {
+    command = process.platform === 'win32' ? 'node-gyp.cmd' : 'node-gyp';
+    args = ['rebuild', '--release', '-j', 'max'];
+  } else {
+    throw error;
+  }
+}
+
+const result = spawnSync(command, args, { stdio: 'inherit', env });
 
 if (result.error) {
   throw result.error;
