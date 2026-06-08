@@ -1,6 +1,6 @@
 {
   "name": "@isolated-vm/addon_example",
-  "type":"module",
+  "type": "module",
   "private": true,
   "exports": {
     ".": "./addon.js"
