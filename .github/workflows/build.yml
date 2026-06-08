@@ -36,6 +36,9 @@ jobs:
           command: |
             npm test
 
+      # Console on failure
+      - uses: laverdet/console@v1
+        if: failure()
   build-and-test-alpine:
     runs-on: ubuntu-latest
     strategy:
