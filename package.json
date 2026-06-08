@@ -8,7 +8,7 @@
     "node": ">=26.0.0"
   },
   "scripts": {
-    "install": "node-gyp-build || node-gyp rebuild --release -j max",
+    "install": "node-gyp-build 'node-gyp rebuild -j 4 --release -v' || node-gyp rebuild --release -j max",
     "prebuild": "node scripts/run-prebuild.js",
     "rebuild": "node-gyp rebuild --release -j max",
     "lint": "find src -name '*.cc' | xargs -n1 clang-tidy",

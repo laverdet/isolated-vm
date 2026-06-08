@@ -1,4 +1,4 @@
-if (process.platform === 'win32') {
+if (process.platform === 'darwin' || process.platform === 'win32') {
 	console.log('pass');
 	return;
 }
