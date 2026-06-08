@@ -13,9 +13,18 @@
 					'MACOSX_DEPLOYMENT_TARGET': '10.12',
 				},
 				'msvs_settings': {
+					# For some reason the LTO changes they made here leak into this build.
+					# https://github.com/nodejs/node/commit/a6e99879f48ebaa00e040482b6f91657fd7cad66
 					'VCCLCompilerTool': {
 						'AdditionalOptions': [ '-std:c++20' ],
+						'AdditionalOptions!': [ '-flto=thin' ],
 						'ExceptionHandling': '1',
+					},
+					'VCLibrarianTool': {
+						'AdditionalOptions!': [ '-flto=thin' ],
+					},
+					'VCLinkerTool': {
+						'AdditionalOptions!': [ '-flto=thin', '/opt:lldltojobs=2' ],
 					},
 				},
 				'msvs_disabled_warnings': [
