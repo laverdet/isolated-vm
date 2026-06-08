@@ -144,10 +144,8 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 		template <class Accept>
 		auto immediate(v8::Local<v8::Primitive> subject, const Accept& accept) -> accept_target_t<Accept> {
 			if (subject->IsUndefined()) {
-				undefined_ = subject;
 				return accept(undefined_tag{}, *this, subject);
 			} else if (subject->IsNull()) {
-				null_ = subject;
 				return accept(null_tag{}, *this, subject);
 			} else if (subject->IsNumber()) {
 				return (*this)(subject.As<v8::Number>(), accept);
@@ -246,13 +244,8 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 			return accept(iv8::v8_to_tag<Type>{}, *this, value_of{witness(), subject});
 		}
 
-		[[nodiscard]] auto is_cached_null(v8::Local<v8::Value> value) const { return value == null_; }
-		[[nodiscard]] auto is_cached_undefined(v8::Local<v8::Value> value) const { return value == undefined_; }
-
 	private:
 		isolate_lock_witness isolate_lock_;
-		v8::Local<v8::Primitive> null_;
-		v8::Local<v8::Primitive> undefined_;
 };
 
 // Primary visitor w/ `context_lock_witness`
@@ -269,8 +262,6 @@ struct visit_value : visit_flat_value<Target> {
 		using visit_type = visit_flat_value<Target>;
 		using visit_type::accept_tagged;
 		using visit_type::immediate;
-		using visit_type::is_cached_null;
-		using visit_type::is_cached_undefined;
 		using visit_type::lookup_or_visit;
 		using visit_type::witness;
 		using visit_type::operator();
@@ -283,12 +274,6 @@ struct visit_value : visit_flat_value<Target> {
 
 		template <class Accept>
 		auto operator()(v8::Local<v8::Value> subject, const Accept& accept) -> accept_target_t<Accept> {
-			// Check known address values before the map lookup
-			if (is_cached_null(subject)) {
-				return accept(null_tag{}, *this, subject);
-			} else if (is_cached_undefined(subject)) {
-				return accept(undefined_tag{}, *this, subject);
-			}
 
 			// Check the reference map, and check type
 			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
@@ -319,11 +304,6 @@ struct visit_value : visit_flat_value<Target> {
 						},
 						[ & ](list_tag /*tag*/, auto next) -> accept_target_t<Accept> {
 							return subject->IsArray() ? immediate(subject.As<v8::Array>(), accept) : next();
-						},
-						[ & ](object_tag /*tag*/, auto next) -> accept_target_t<Accept> {
-							// nb: You can't really skip the subsequent is promise, is date, is arraybuffer, etc
-							// checks. We don't really want to accept those types here, I don't think..
-							return subject->IsObject() ? immediate(subject.As<v8::Object>(), accept) : next();
 						},
 						[ & ](function_tag /*tag*/, auto next) -> accept_target_t<Accept> {
 							return subject->IsFunction() ? immediate(subject.As<iv8::Function>(), accept) : next();

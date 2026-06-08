@@ -8,12 +8,41 @@ namespace isolated_vm {
 using namespace js;
 
 // value & primitive
+
+auto value_for_value::is_array() const -> bool {
+	return cast_in(*this)->IsArray();
+}
+
+auto value_for_value::is_bigint() const -> bool {
+	return cast_in(*this)->IsBigInt();
+}
+
+auto value_for_value::is_boolean() const -> bool {
+	return cast_in(*this)->IsBoolean();
+}
+
+auto value_for_value::is_date() const -> bool {
+	return cast_in(*this)->IsDate();
+}
+
+auto value_for_value::is_function() const -> bool {
+	return cast_in(*this)->IsFunction();
+}
+
+auto value_for_value::is_null() const -> bool {
+	return cast_in(*this)->IsNull();
+}
+
 auto value_for_value::is_number() const -> bool {
 	return cast_in(*this)->IsNumber();
 }
 
 auto value_for_value::is_string() const -> bool {
 	return cast_in(*this)->IsString();
+}
+
+auto value_for_value::is_undefined() const -> bool {
+	return cast_in(*this)->IsUndefined();
 }
 
 auto value_for_value::inspect() const -> value_typeof {

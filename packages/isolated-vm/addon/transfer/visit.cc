@@ -93,14 +93,54 @@ struct visit_vm_value {
 
 		template <class Accept>
 		auto operator()(value_of<> subject, const Accept& accept) -> accept_target_t<Accept> {
-			// TODO: reference map and fast path
-			auto type = subject.inspect();
-			const auto [... primitive_types ] = primitive_typeofs;
-			if ((... || (type == primitive_types))) {
-				return inspected(type, value_of<primitive_tag>::from(subject), accept);
-			} else {
-				return inspected(type, value_of<object_tag>::from(subject), accept);
-			}
+			// TODO: reference map
+			return util::template_traverse(
+				accept_tags_of_v<Accept>,
+				util::overloaded{
+					// Fast paths
+					[ & ](undefined_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+						return subject.is_undefined() ? accept_as(undefined_tag{}, subject, accept) : next();
+					},
+					[ & ](null_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+						return subject.is_null() ? accept_as(null_tag{}, subject, accept) : next();
+					},
+					[ & ](boolean_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+						return subject.is_boolean() ? accept_as(boolean_tag{}, subject, accept) : next();
+					},
+					[ & ](number_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+						return subject.is_number() ? accept_as(number_tag{}, subject, accept) : next();
+					},
+					[ & ](string_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+						return subject.is_string() ? accept_as(string_tag{}, subject, accept) : next();
+					},
+					[ & ](bigint_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+						return subject.is_bigint() ? accept_as(bigint_tag{}, subject, accept) : next();
+					},
+					[ & ](date_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+						return subject.is_date() ? accept_as(date_tag{}, subject, accept) : next();
+					},
+					[ & ](list_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+						return subject.is_array() ? accept_as(list_tag{}, subject, accept) : next();
+					},
+					[ & ](function_tag /*tag*/, auto next) -> accept_target_t<Accept> {
+						return subject.is_function() ? accept_as(function_tag{}, subject, accept) : next();
+					},
+
+					// Unknown tag
+					[](auto /*tag*/, auto next) -> accept_target_t<Accept> { return next(); },
+
+					// Slow path
+					[ & ]() -> accept_target_t<Accept> {
+						auto type = subject.inspect();
+						const auto [... primitive_types ] = primitive_typeofs;
+						if ((... || (type == primitive_types))) {
+							return inspected(type, value_of<primitive_tag>::from(subject), accept);
+						} else {
+							return inspected(type, value_of<object_tag>::from(subject), accept);
+						}
+					},
+				}
+			);
 		}
 
 		template <class Accept>
@@ -183,8 +223,8 @@ struct visit_vm_value {
 				switch (type_of) {
 					case value_typeof::external: return accept_as(external_tag{}, subject, accept);
 					case value_typeof::date: return accept_as(date_tag{}, subject, accept);
-					case value_typeof::promise: return accept(promise_tag{}, *this, subject);
-					case value_typeof::function: return accept(function_tag{}, *this, subject);
+					case value_typeof::promise: return accept_as(promise_tag{}, subject, accept);
+					case value_typeof::function: return accept_as(function_tag{}, subject, accept);
 					case value_typeof::array:
 						{
 							auto visit_entry = visit_entry_pair<visit_vm_property_key<visit_vm_value>, visit_vm_value&>{*this};

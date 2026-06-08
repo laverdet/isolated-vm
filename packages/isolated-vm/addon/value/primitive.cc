@@ -53,8 +53,15 @@ export enum class value_typeof : std::uint8_t {
 class EXPORT value_for_value : public value_next<value_tag> {
 	public:
 		using value_next<value_tag>::value_next;
+		[[nodiscard]] auto is_array() const -> bool;
+		[[nodiscard]] auto is_bigint() const -> bool;
+		[[nodiscard]] auto is_boolean() const -> bool;
+		[[nodiscard]] auto is_date() const -> bool;
+		[[nodiscard]] auto is_function() const -> bool;
+		[[nodiscard]] auto is_null() const -> bool;
 		[[nodiscard]] auto is_number() const -> bool;
 		[[nodiscard]] auto is_string() const -> bool;
+		[[nodiscard]] auto is_undefined() const -> bool;
 		[[nodiscard]] auto inspect() const -> value_typeof;
 };
 
