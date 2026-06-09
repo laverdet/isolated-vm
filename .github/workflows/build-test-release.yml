@@ -490,8 +490,10 @@ jobs:
           mkdir -p node_modules/@isolated-vm
           mv build/packages/backend_napi_v8/artifacts/$PLATFORM node_modules/@isolated-vm/experimental-$PLATFORM
           node -e "require('@isolated-vm/experimental-$PLATFORM')"
+
       # Run tests
       - name: Test
+        timeout-minutes: 1
         run: |
           pnpm config set script-shell /bin/sh
           pnpm run -s test
@@ -534,6 +536,15 @@ jobs:
           set -ux
           npx napi create-npm-dirs
           npx napi artifacts
+          set -x
+
+          # copy .lib for NativeModule consumers on win32
+          for PLATFORM in win32-x64; do
+            echo backend_napi_v8.$PLATFORM.lib
+            cp artifacts/*/$PLATFORM/backend_napi_v8.$PLATFORM.lib npm/$PLATFORM/
+            PACKAGE=$(jq '.files += [ "backend_napi_v8.'$PLATFORM'.lib" ]' npm/$PLATFORM/package.json)
+            echo "$PACKAGE" > npm/$PLATFORM/package.json
+          done
 
       # Publish
       - if: github.repository == 'laverdet/isolated-vm' && github.ref_name == 'experimental' && github.event_name == 'push'
