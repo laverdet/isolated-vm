@@ -1,25 +1,20 @@
+# Locate dependencies
 find_package(Boost 1.83 REQUIRED)
-if(PACKAGE_NAME STREQUAL "@auto_js/v8")
-	set(TARGET_NAME "v8_js")
-	find_package_from_npm(@auto_js/v8_exports)
-elseif(PACKAGE_NAME STREQUAL "@isolated-vm/embedded_v8_js")
-	set(TARGET_NAME "embedded_v8_js")
-	find_package_from_npm(@auto_js/v8_exports @isolated-vm/embedded_v8)
-else()
-	message(FATAL_ERROR "Missing or unknown @auto_js/v8 PACKAGE_NAME: '${PACKAGE_NAME}'")
-endif()
-find_package_from_npm(@auto_js/js)
+find_package_from_npm(@auto_js/v8_exports AS @auto_js/${AUTO_JS_PREFIX}v8_exports PROPAGATE google_v8)
+find_package_from_npm(@auto_js/js AS @auto_js/${AUTO_JS_PREFIX}js PROPAGATE auto_js)
 
-add_library("${TARGET_NAME}" OBJECT)
-target_link_libraries("${TARGET_NAME}" PUBLIC Boost::boost auto_js utility_js)
-if(TARGET_NAME STREQUAL "v8_js")
-	target_link_libraries("${TARGET_NAME}" PUBLIC nodejs_v8)
-else()
-	target_compile_definitions("${TARGET_NAME}" PRIVATE INCLUDE_ISOLATED_V8)
-	target_link_libraries("${TARGET_NAME}" PUBLIC google_v8)
-endif()
+# Initialize target [v8_js or v8_isolated_js]
+set(v8_js ${AUTO_JS_PREFIX}v8_js)
+add_library(${v8_js} STATIC)
+set_npm_package_properties(@auto_js/v8 auto_js v8_js)
+target_compile_features(${auto_js} PUBLIC cxx_std_23)
 
-target_sources("${TARGET_NAME}"
+# Link dependencies
+target_link_libraries(${v8_js} PRIVATE Boost::boost ${auto_js} utility_js)
+target_link_libraries(${v8_js} PUBLIC ${google_v8})
+
+# Common sources (nodejs + iv8::isolated)
+target_sources(${v8_js}
 	PRIVATE
 		handle/remote.cc
 		support/error.cc
@@ -58,8 +53,10 @@ target_sources("${TARGET_NAME}"
 		value/value.cc
 )
 
-if(TARGET_NAME STREQUAL "embedded_v8_js")
-	target_sources("${TARGET_NAME}"
+# iv8::isolated sources
+if(v8_js STREQUAL isolated_v8_js)
+	target_compile_definitions(${v8_js} PRIVATE INCLUDE_ISOLATED_V8)
+	target_sources(${v8_js}
 		PRIVATE
 			evaluation/module.cc
 			evaluation/script.cc

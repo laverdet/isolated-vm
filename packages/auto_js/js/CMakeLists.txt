@@ -1,10 +1,20 @@
+# Locate dependency
 find_package_from_npm(@auto_js/utility)
 
-add_library(auto_js OBJECT)
-target_compile_features(auto_js PUBLIC cxx_std_23)
-target_link_libraries(auto_js PUBLIC utility_js)
+# Initialize target [auto_js or auto_isolated_js]
+set(auto_js auto_${AUTO_JS_PREFIX}js)
+add_library(${auto_js} STATIC)
+set_npm_package_properties(@auto_js/js auto_js)
+target_compile_features(${auto_js} PUBLIC cxx_std_23)
+target_link_libraries(${auto_js} PRIVATE utility_js)
 
-target_sources(auto_js
+# Activate 'EXPORT' macro (for js::error typeinfo)
+if(EXPORT_IS_EXPORT)
+	target_compile_definitions(${auto_js} PRIVATE EXPORT_IS_EXPORT)
+endif()
+
+# Sources
+target_sources(${auto_js}
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		builtin/accept.cc
@@ -45,8 +55,10 @@ target_sources(auto_js
 		vector/vector_of.cc
 		vector/visit.cc
 )
+
+# consteval assertions for troubleshooting
 if(CMAKE_BUILD_TYPE STREQUAL Debug)
-	target_sources(auto_js
+	target_sources(${auto_js}
 		PRIVATE
 			assertions.cc
 	)

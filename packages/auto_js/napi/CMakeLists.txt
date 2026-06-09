@@ -1,13 +1,18 @@
-find_package_from_npm(@auto_js/js)
+# Locate dependencies (napi_exports is always `nodejs`)
+find_package_from_npm(@auto_js/js AS @auto_js/${AUTO_JS_PREFIX}js PROPAGATE auto_js)
 find_package_from_npm(@auto_js/napi_exports)
-find_package_from_npm(@auto_js/v8_exports)
+find_package_from_npm(@auto_js/v8_exports PROPAGATE google_v8)
 
-add_library(napi_js OBJECT)
-target_compile_features(napi_js PUBLIC cxx_std_23)
-target_include_directories(napi_js INTERFACE include)
-target_link_libraries(napi_js PRIVATE auto_js nodejs nodejs_v8 utility_js)
+# Initialize target [napi_js or napi_isolated_js]
+set(napi_js ${AUTO_JS_PREFIX}napi_js)
+add_library(${napi_js} STATIC)
+set_npm_package_properties(@auto_js/napi auto_js napi_js)
+target_compile_features(${napi_js} PUBLIC cxx_std_23)
+target_include_directories(${napi_js} INTERFACE include)
+target_link_libraries(${napi_js} PRIVATE ${auto_js} ${google_v8} utility_js)
+target_link_libraries(${napi_js} PUBLIC nodejs)
 
-target_sources(napi_js
+target_sources(${napi_js}
 	PRIVATE
 		api/uv_dlib.cc
 		api/uv_scheduler.cc

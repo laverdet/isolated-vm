@@ -16,7 +16,7 @@ elseif(TEST_STDLIB STREQUAL "stl")
 	# Or test compilation against STL
 	# ninja -C build-stl backend_napi_v8
 	add_compile_options(--target=x86_64-pc-windows -Wno-character-conversion -Wno-language-extension-token -Wno-nested-anon-types -Wno-extra-semi -Wno-ignored-attributes)
-	add_definitions(-D_ITERATOR_DEBUG_LEVEL=0)
+	add_compile_definitions(_ITERATOR_DEBUG_LEVEL=0)
 	include_directories(/root/windows/include /root/windows/shared /root/windows/ucrt /root/windows/um /root/windows/boost)
 	set(CMAKE_CXX_STDLIB_MODULES_JSON "/root/windows/stl.modules.json")
 	set(COMPILE_ONLY ON)
@@ -128,8 +128,6 @@ endif()
 
 # Clang feature flags
 if(CMAKE_CXX_COMPILER_ID STREQUAL Clang)
-	# Ignore warnings from `expand_def` using gnu c-preprocessor against clang compiler.
-	add_compile_options(-Wno-gnu-line-marker)
 	# Debug / Release configuration flags
 	if(CMAKE_BUILD_TYPE STREQUAL Debug)
 		# Enable (A|L|UB)SAN
@@ -161,51 +159,12 @@ function(target_embed_content TARGET FILE IDENTIFIER)
 	target_sources(${TARGET} PRIVATE "${OUT_FILE}.c")
 endfunction()
 
-# Generate lightly preprocessed C++ source files, to workaround P3034R1
-function(target_preprocessed_sources TARGET SEARCH REPLACE)
-	set(FILE_SET ${ARGV})
-	list(POP_FRONT FILE_SET) # TARGET
-	list(POP_FRONT FILE_SET) # SEARCH
-	list(POP_FRONT FILE_SET) # REPLACE
-
-	if("${SEARCH}" STREQUAL "${REPLACE}")
-		# No-op replacement directly uses original sources
-		target_sources(${TARGET} ${FILE_SET})
-	else()
-		# Generated sources with macro replacement
-		set(GEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.${REPLACE}")
-		file(MAKE_DIRECTORY "${GEN_DIR}")
-		file(WRITE "${GEN_DIR}/.clang-tidy" "Checks: '-*'")
-		set(SCOPE)
-		set(NEXT_SCOPE)
-		foreach(FILE ${FILE_SET})
-			# Uppercase "files" are actually scope keywords
-			if("${FILE}" MATCHES "^[A-Z_]+$")
-				list(APPEND NEXT_SCOPE "${FILE}")
-				continue()
-			elseif(NEXT_SCOPE)
-				set(SCOPE ${NEXT_SCOPE})
-				set(NEXT_SCOPE)
-			endif()
-			# Add generator command
-			add_custom_command(
-				DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${FILE}"
-				OUTPUT "${GEN_DIR}/${FILE}"
-				COMMAND sh -c "${PROJECT_SOURCE_DIR}/scripts/cmake/expand_def ${CMAKE_CURRENT_SOURCE_DIR}/${FILE} -D${SEARCH}=${REPLACE} >${GEN_DIR}/${FILE}"
-			)
-			set_source_files_properties("${GEN_DIR}/${FILE}" PROPERTIES GENERATED TRUE)
-			target_sources(${TARGET} ${SCOPE} "${GEN_DIR}/${FILE}")
-		endforeach()
-	endif()
-endfunction()
-
 # `find_package_from_npm` & `triplet_util` from `@auto_js/js`
 include(FindNpmPackage)
 include(TripletUtil)
 
 # Mark exported symbols as exported
 set(EXPORT_IS_EXPORT ON)
-add_definitions(-DEXPORT_IS_EXPORT)
 
 # nodejs require-able module
 add_subdirectory(packages/isolated-vm/addon)

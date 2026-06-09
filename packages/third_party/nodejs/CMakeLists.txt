@@ -5,7 +5,7 @@ target_compile_features(nodejs PUBLIC cxx_std_23)
 if(NOT DEFINED NAPI_VERSION)
 	message(FATAL_ERROR "Missing 'NAPI_VERSION' cmake variable.")
 endif()
-target_compile_definitions(nodejs PUBLIC "NAPI_VERSION=${NAPI_VERSION}")
+target_compile_definitions(nodejs PUBLIC NAPI_VERSION=${NAPI_VERSION})
 
 # Architecture, for window linkage
 string(TOLOWER ${CMAKE_HOST_SYSTEM_PROCESSOR} NODE_ARCH)
@@ -57,7 +57,7 @@ if(WIN32)
 		message(WARNING "Missing '${NODE_DIST_DIR}/win-${NODE_ARCH}/node.lib'")
 	endif()
 	# nb: `winmm` for `js_clock::now()`
-	target_link_libraries(nodejs PUBLIC node winmm)
+	target_link_libraries(nodejs PRIVATE node winmm)
 endif()
 
 # Sources

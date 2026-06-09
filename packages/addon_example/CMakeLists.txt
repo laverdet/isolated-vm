@@ -35,7 +35,7 @@ find_package_from_npm(@isolated-vm/experimental)
 # target
 add_library(addon_example SHARED)
 set_target_properties(addon_example PROPERTIES PREFIX "")
-target_link_libraries(addon_example PUBLIC isolated_vm)
+target_link_libraries(addon_example PRIVATE isolated_vm)
 
 # sources
 target_sources(addon_example

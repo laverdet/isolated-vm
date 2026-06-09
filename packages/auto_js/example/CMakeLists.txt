@@ -19,12 +19,12 @@ endif()
 # napi configuration
 include(FindNpmPackage)
 set(NAPI_VERSION 10)
-find_package_from_npm(@auto_js/napi)
+find_package_from_npm(@auto_js/napi PROPAGATE auto_js napi_js)
 
 # target
 add_library(example SHARED)
 set_target_properties(example PROPERTIES PREFIX "" SUFFIX ".node")
-target_link_libraries(example PUBLIC auto_js napi_js nodejs utility_js)
+target_link_libraries(example PRIVATE ${auto_js} ${napi_js} utility_js)
 
 # sources
 target_sources(example

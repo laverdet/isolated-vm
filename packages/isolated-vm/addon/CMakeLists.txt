@@ -1,8 +1,9 @@
-find_package_from_npm(@auto_js/js)
-find_package_from_npm(@auto_js/utility)
+set(AUTO_JS_PREFIX isolated_)
+find_package_from_npm(@auto_js/js AS @auto_js/${AUTO_JS_PREFIX}js PROPAGATE auto_js)
 
 add_library(isolated_vm OBJECT)
-target_link_libraries(isolated_vm PRIVATE auto_js utility_js)
+set_npm_package_properties(@isolated-vm/experimental auto_js)
+target_link_libraries(isolated_vm PRIVATE ${auto_js} utility_js)
 target_sources(isolated_vm
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
@@ -28,7 +29,10 @@ target_sources(isolated_vm
 		value/vector.cc
 )
 
-if(NOT EXPORT_IS_EXPORT)
+if(EXPORT_IS_EXPORT)
+	# Activate 'EXPORT' macro
+	target_compile_definitions(isolated_vm PRIVATE EXPORT_IS_EXPORT)
+else()
 	# @isolated-vm/experimental install location (for linking)
 	execute_process(COMMAND node "${CMAKE_CURRENT_SOURCE_DIR}/resolve.js" OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE ISOLATED_VM_PATH RESULT_VARIABLE RESULT)
 	if(NOT RESULT STREQUAL 0)

@@ -1,22 +1,26 @@
 # Configure and locate dependencies
 set(NAPI_VERSION 10)
-set(V8_TRICKSHOT ON)
-find_package_from_npm(@auto_js/js)
-find_package_from_npm(@auto_js/napi)
-find_package_from_npm(@auto_js/v8 @isolated-vm/embedded_v8_js)
+set(AUTO_JS_PREFIX isolated_)
+find_package_from_npm(@auto_js/napi AS @auto_js/${AUTO_JS_PREFIX}napi PROPAGATE auto_js napi_js)
+find_package_from_npm(@auto_js/v8 AS @auto_js/${AUTO_JS_PREFIX}v8 PROPAGATE v8_js)
 
 # Create a build target: 'backend_napi_v8.triplet' which compiles, but does not "install". This is
 # so that the binary in `./build/` matches the distributed binary's filename.
 triplet_util(HOST_PLATFORM %p)
-set(BACKEND_NAME "backend_napi_v8.${HOST_PLATFORM}")
+set(backend_napi_v8 "backend_napi_v8.${HOST_PLATFORM}")
 if(COMPILE_ONLY)
-	add_library("${BACKEND_NAME}" OBJECT)
+	add_library(${backend_napi_v8} OBJECT)
 else()
-	add_library("${BACKEND_NAME}" SHARED)
+	add_library(${backend_napi_v8} SHARED)
 endif()
+target_compile_definitions(${backend_napi_v8} PRIVATE EXPORT_IS_EXPORT)
+
+# An additional target 'backend_napi_v8' which copies or links the binary where nodejs can find it.
+add_custom_target(backend_napi_v8)
+add_dependencies(backend_napi_v8 ${backend_napi_v8})
 
 # Backend sources
-target_sources("${BACKEND_NAME}"
+target_sources(${backend_napi_v8}
 	PRIVATE
 		agent.cc
 		environment.cc
@@ -40,28 +44,7 @@ target_sources("${BACKEND_NAME}"
 		script.h.cc
 		utility.cc
 )
-target_embed_content("${BACKEND_NAME}" runtime/dist/interface.js runtime_dist_interface_js)
-
-# Detect musl libc for dlopen workaround
-triplet_util(HOST_TOOLCHAIN %e)
-if(HOST_TOOLCHAIN STREQUAL -musl)
-	target_compile_definitions("${BACKEND_NAME}" PRIVATE __MUSL__)
-endif()
-
-# Link backend target
-target_link_libraries("${BACKEND_NAME}" PUBLIC auto_js embedded_v8_js isolated_vm napi_js nodejs utility_js)
-
-# Emit `xx.node` instead of `libxx.so`
-set_target_properties("${BACKEND_NAME}" PROPERTIES PREFIX "" SUFFIX ".node")
-
-# Windows linking
-if(WIN32)
-	string(TOLOWER ${CMAKE_HOST_SYSTEM_PROCESSOR} NODE_ARCH)
-	if(NODE_ARCH STREQUAL amd64)
-		set(NODE_ARCH x64)
-	endif()
-	target_link_directories("${BACKEND_NAME}" PUBLIC ${NODE_DIST_DIR}/win-${NODE_ARCH})
-endif()
+target_embed_content(${backend_napi_v8} runtime/dist/interface.js runtime_dist_interface_js)
 
 # Addon 'isolated_vm' module is built with additional sources. This target is initialized in
 # `packages/isolated-vm/addon`
@@ -82,11 +65,28 @@ target_sources(isolated_vm
 		api/support/initialize.cc
 		api/support/lock.cc
 )
-target_link_libraries(isolated_vm PRIVATE embedded_v8_js)
+target_link_libraries(isolated_vm PRIVATE ${v8_js})
 
-# An additional target 'backend_napi_v8' which copies or links the binary where nodejs can find it.
-add_custom_target(backend_napi_v8)
-add_dependencies(backend_napi_v8 "${BACKEND_NAME}")
+# Detect musl libc for dlopen workaround
+triplet_util(HOST_TOOLCHAIN %e)
+if(HOST_TOOLCHAIN STREQUAL -musl)
+	target_compile_definitions(${backend_napi_v8} PRIVATE __MUSL__)
+endif()
+
+# Link backend target
+target_link_libraries(${backend_napi_v8} PRIVATE ${auto_js} ${napi_js} ${v8_js} isolated_vm utility_js)
+
+# Emit `xx.node` instead of `libxx.so`
+set_target_properties(${backend_napi_v8} PROPERTIES PREFIX "" SUFFIX ".node")
+
+# Windows linking
+if(WIN32)
+	string(TOLOWER ${CMAKE_HOST_SYSTEM_PROCESSOR} NODE_ARCH)
+	if(NODE_ARCH STREQUAL amd64)
+		set(NODE_ARCH x64)
+	endif()
+	target_link_directories(${backend_napi_v8} PUBLIC ${NODE_DIST_DIR}/win-${NODE_ARCH})
+endif()
 
 # Install
 if(NOT DEFINED IVM_INSTALL)
