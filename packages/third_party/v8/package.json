@@ -1,6 +1,6 @@
 {
   "name": "@auto_js/v8_exports",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "C++ module exports for v8",
   "author": "https://github.com/laverdet/",
   "homepage": "https://github.com/laverdet/isolated-vm/tree/experimental/packages/third_party/v8",
