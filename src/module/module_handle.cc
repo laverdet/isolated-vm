@@ -3,6 +3,7 @@
 #include "reference_handle.h"
 #include "transferable.h"
 #include "isolate/class_handle.h"
+#include "isolate/functor_runners.h"
 #include "isolate/run_with_timeout.h"
 #include "isolate/three_phase_task.h"
 
@@ -406,13 +407,29 @@ class ModuleLinkerAsync : public ModuleLinker::Implementation {
 
 		using ModuleLinker::Implementation::Implementation;
 		auto Begin(ModuleHandle& module, RemoteHandle<Context> context) -> Local<Value> final {
-			GetLinker().Link(&module);
+			auto promise = async_handles.Deref<0>()->GetPromise();
+			bool failed = false;
+			FunctorRunners::RunCatchValue(
+				[&]() {
+					GetLinker().Link(&module);
+				},
+				[&](Local<Value> error) {
+					// The resolve callback threw synchronously. Reject the returned promise (mirroring the
+					// rejected-promise path in ModuleRejected), then Reset() -- which destroys this impl, so
+					// it must come last and nothing below may touch members.
+					Unmaybe(async_handles.Deref<0>()->Reject(Isolate::GetCurrent()->GetCurrentContext(), error));
+					GetLinker().Reset();
+					failed = true;
+				});
+			if (failed) {
+				return promise;
+			}
 			info = module.GetInfo();
 			this->context = std::move(context);
 			if (pending == 0) {
 				Instantiate();
 			}
-			return async_handles.Deref<0>()->GetPromise();
+			return promise;
 		}
 };
 
