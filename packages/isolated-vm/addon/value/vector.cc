@@ -26,7 +26,7 @@ class EXPORT bound_value_for_vector : public bound_value_next<vector_tag> {
 		mutable std::uint32_t size_{};
 };
 
-class bound_value_for_vector::iterator : public util::random_access_iterator_facade<std::int32_t, std::int64_t> {
+class EXPORT bound_value_for_vector::iterator : public util::random_access_iterator_facade<std::int32_t, std::int64_t> {
 	public:
 		using arithmetic_facade::operator+;
 		using difference_type = arithmetic_facade::difference_type;
@@ -38,16 +38,16 @@ class bound_value_for_vector::iterator : public util::random_access_iterator_fac
 
 		auto operator*() const -> value_type;
 
-		auto operator+=(difference_type offset) -> iterator& {
+		constexpr auto operator+=(difference_type offset) -> iterator& {
 			index_ += offset;
 			return *this;
 		}
 
-		auto operator==(const iterator& right) const -> bool { return index_ == right.index_; }
-		auto operator<=>(const iterator& right) const -> std::strong_ordering { return index_ <=> right.index_; }
+		constexpr auto operator==(const iterator& right) const -> bool { return index_ == right.index_; }
+		constexpr auto operator<=>(const iterator& right) const -> std::strong_ordering { return index_ <=> right.index_; }
 
 	private:
-		auto operator+() const -> size_type { return index_; }
+		constexpr auto operator+() const -> size_type { return index_; }
 
 		bound_value_for_vector subject_;
 		size_type index_{};

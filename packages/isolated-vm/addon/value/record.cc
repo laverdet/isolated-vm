@@ -26,7 +26,7 @@ class EXPORT bound_value_for_record : public bound_value_next<record_tag> {
 		using value_type = std::pair<key_type, mapped_type>;
 
 	private:
-		class iterator_transform {
+		class EXPORT iterator_transform {
 			public:
 				explicit iterator_transform(const bound_value_for_record& subject);
 				auto operator()(value_of<> key) const -> value_type;
