@@ -1,10 +1,10 @@
 diff --git a/config/BUILDCONFIG.gn b/config/BUILDCONFIG.gn
-index 24a1d14..92a423c 100644
+index 4d1ac59b9..48f6f3f6c 100644
 --- a/config/BUILDCONFIG.gn
 +++ b/config/BUILDCONFIG.gn
-@@ -142,6 +142,9 @@ declare_args() {
-               current_cpu != "mips" && current_cpu != "mips64" &&
-               current_cpu != "riscv64")
+@@ -139,6 +139,9 @@ declare_args() {
+   is_clang = current_os != "linux" ||
+              (current_cpu != "mips" && current_cpu != "mips64")
  
 +  # :)
 +  is_gcc = false
@@ -13,10 +13,10 @@ index 24a1d14..92a423c 100644
    # argument, and set as the default toolchain.
    custom_toolchain = ""
 diff --git a/config/compiler/BUILD.gn b/config/compiler/BUILD.gn
-index 7bf4f2d..9be6a1d 100644
+index 7c7b24e99..4df1e4831 100644
 --- a/config/compiler/BUILD.gn
 +++ b/config/compiler/BUILD.gn
-@@ -362,6 +362,30 @@ config("compiler") {
+@@ -385,6 +385,30 @@ config("compiler") {
      configs -= [ ":clang_warning_suppression" ]
    }
  

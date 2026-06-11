@@ -7,33 +7,42 @@ GCLIENT="${DEPOT_TOOLS:-gclient}${DEPOT_TOOLS:+/gclient}"
 
 # Checkout revision, sync dependencies
 if ! git rev-parse --quiet "tags/$V8_REF" >/dev/null 2>&1; then
-    git fetch --tags 1>&2
+	git fetch --tags 1>&2
 fi
-git checkout --detach "tags/$V8_REF"
+git checkout --detach "tags/$V8_REF" 1>&2
 if [ -z ${SKIP_SYNC+-} ]; then
-	git clean -f 1>&2
+	git reset --hard 1>&2
 	if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
-		(cd ..; "$GCLIENT" sync --no-history --shallow --with_branch_heads 1>&2)
+		"$GCLIENT" sync --no-history --shallow --with_branch_heads 1>&2
 	else
-		(cd ..; "$GCLIENT" sync --with_branch_heads 1>&2)
+		"$GCLIENT" sync --with_branch_heads 1>&2
 	fi
 fi
 
 # Copy headers so building the module works even if we switch v8 checkout
 mkdir -p "out/$V8_REF"
 if [ "$(uname)" = Darwin ]; then
-	rsync -am --include='*.h' --include='*/' --exclude='*' include "out/$V8_REF"
+	rsync -am --include='*.h' --include='*/' --exclude='*' include "out/$V8_REF" 1>&2
 else
-	find include -name '*.h' -exec cp --parents --recursive {} "out/$V8_REF" \;
+	find include -name '*.h' -exec cp --parents --recursive {} "out/$V8_REF" \; 1>&2
 fi
 
-# Output revision
+# Output revision (stdout!)
 git describe --exact-match --tags || git rev-parse --short HEAD
 
 # Apply patches
 for PATCH in $PATCHES; do
 	PATH_TO=./$(dirname "$PATCH" | cut -c$((${#PATCH_DIR} + 2))-)
-	patch -p1 -d"$PATH_TO" --batch < "$PATCH" 1>&2
-	git -C "$PATH_TO" -c user.name=patches -c user.email='<>' commit --all --allow-empty --message="$PATCH" 1>&2
-	git -C "$PATH_TO" diff HEAD~1 HEAD > "$PATCH"
+	echo "$PATCH" 1>&2
+	if [ "${MSYSTEM:-}" ]; then
+		# The isolated-vm repo (so, patches) are checked out with CR/LF, which breaks `git apply`. So we
+		# skip the patch write back feature, which is mainly intended for development.
+		patch -p1 --directory="$PATH_TO" --batch --forward < "$PATCH" 1>&2
+	else
+		git reset --hard 1>&2
+		git clean --force 1>&2
+		git -C "$PATH_TO" apply --3way < "$PATCH" 1>&2
+		git -C "$PATH_TO" -c user.name=patches -c user.email='<>' commit --allow-empty --message="$PATCH" 1>&2
+		git -C "$PATH_TO" diff HEAD~1 HEAD > "$PATCH"
+	fi
 done

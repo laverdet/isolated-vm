@@ -1,8 +1,8 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index dad5959..f53c706 100644
+index 72529db08..d198fce86 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -551,7 +551,7 @@ if (icu_use_data_file) {
+@@ -555,7 +555,7 @@ if (icu_use_data_file) {
        sources = [ data_assembly ]
        deps = [ ":make_data_assembly" ]
        asmflags = []

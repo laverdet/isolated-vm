@@ -35,16 +35,16 @@
       "id": "v8_version",
       "description": "Which v8 revision to checkout?",
       "options": [
-        "14.2.231.21",
-        "14.1.146.11",
-        "14.0.365.10",
-        "13.9.205.21",
-        "13.8.258.30",
-        "13.7.152.17",
-        "13.6.233.10",
-        "13.5.212.10"
+        "14.9.207.27",
+        "14.8.178.28",
+        "14.7.173.22",
+        "14.6.202.31",
+        "14.5.201.17",
+        "14.4.258.24",
+        "14.3.127.17",
+        "14.2.231.21"
       ],
-      "default": "14.2.231.21"
+      "default": "14.7.173.22"
     },
     {
       "type": "pickString",
@@ -162,10 +162,10 @@
     {
       "label": "v8: select",
       "type": "shell",
-      "command": "set -eux; reset;\nset -a; source \"$ENV_FILE\"\ncd \"${V8_SRC_PATH:-/v8}\"\nexport V8_REF=$(PATCH_DIR=${workspaceFolder}/patches v8_select ${input:v8_version})\nivm_write_env V8_REF\n",
+      "command": "set -eux; reset;\nset -a; source \"$ENV_FILE\"\ncd \"${V8_SRC_PATH:-/v8}\"\nV8_REF=$(PATCH_DIR=${workspaceFolder}/patches v8_select ${input:v8_version})\nexport V8_REF\nivm_write_env V8_REF\n",
       "problemMatcher": [],
       "presentation": {
-        "reveal": "silent"
+        "reveal": "always"
       },
       "icon": {
         "id": "versions"
@@ -186,7 +186,7 @@
     {
       "label": "nodejs: select",
       "type": "shell",
-      "command": "set -eu\nexport NODE_DIST_DIR=$(nodejs_select ~/local/nodejs/${input:nodejs_version})\nivm_write_env NODE_DIST_DIR\n",
+      "command": "set -eu\nNODE_DIST_DIR=$(nodejs_select ~/local/nodejs/${input:nodejs_version})\nexport NODE_DIST_DIR\nivm_write_env NODE_DIST_DIR\n",
       "options": {
         "cwd": "${userHome}"
       },

@@ -1,14 +1,14 @@
 diff --git a/config/compiler/BUILD.gn b/config/compiler/BUILD.gn
-index 07e876c..7bf4f2d 100644
+index 76ee812a3..7c7b24e99 100644
 --- a/config/compiler/BUILD.gn
 +++ b/config/compiler/BUILD.gn
-@@ -540,6 +540,9 @@ config("compiler") {
-     # linker_driver.py script runs dsymutil itself, which is set to be the
-     # linker for Rust targets as well.
-     rustflags += [ "-Csplit-debuginfo=unpacked" ]
-+
+@@ -527,6 +527,9 @@ config("compiler") {
+       cflags += [ "-femit-dwarf-unwind=no-compact-unwind" ]
+     }
+ 
 +    # lmao
 +    ldflags += [ "obj/std_hash.o" ]
-   }
- 
-   # Linux/Android/Fuchsia common flags setup.
++
+     # dsymutil is not available in the system, on bots, for rustc to call. Our
+     # linker_driver.py script runs dsymutil itself, which is set to be the
+     # linker for Rust targets as well.

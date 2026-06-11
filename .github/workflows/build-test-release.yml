@@ -6,7 +6,7 @@ defaults:
     shell: sh
 env:
   NODE_HEADERS: 24.0.0
-  V8_REF: 14.2.231.21
+  V8_REF: 14.7.173.22
 
 jobs:
   # First, check to see if v8 has been built for each target. If not, then a more powerful `runs-on`

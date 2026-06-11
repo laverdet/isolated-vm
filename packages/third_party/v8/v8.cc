@@ -1,6 +1,6 @@
 module;
 #include "v8.h"
-#include "version.h"
+#include "v8/version.h"
 #ifdef INCLUDE_V8_PLATFORM
 #include "libplatform/libplatform.h"
 #include "v8-platform.h"
@@ -140,25 +140,13 @@ using v8::AccessCheckCallback;
 using v8::ConstructorBehavior;
 using v8::DictionaryTemplate;
 using v8::FunctionTemplate;
-using v8::GenericNamedPropertyDefinerCallback;
-using v8::GenericNamedPropertyDeleterCallback;
-using v8::GenericNamedPropertyDescriptorCallback;
-using v8::GenericNamedPropertyEnumeratorCallback;
-using v8::GenericNamedPropertyQueryCallback;
-using v8::GenericNamedPropertySetterCallback;
-using v8::IndexedPropertyDefinerCallback;
 using v8::IndexedPropertyDefinerCallbackV2;
-using v8::IndexedPropertyDeleterCallback;
 using v8::IndexedPropertyDeleterCallbackV2;
-using v8::IndexedPropertyDescriptorCallback;
 using v8::IndexedPropertyDescriptorCallbackV2;
 using v8::IndexedPropertyEnumeratorCallback;
-using v8::IndexedPropertyGetterCallback;
 using v8::IndexedPropertyGetterCallbackV2;
 using v8::IndexedPropertyHandlerConfiguration;
-using v8::IndexedPropertyQueryCallback;
 using v8::IndexedPropertyQueryCallbackV2;
-using v8::IndexedPropertySetterCallback;
 using v8::IndexedPropertySetterCallbackV2;
 using v8::Intercepted;
 using v8::NamedPropertyDefinerCallback;

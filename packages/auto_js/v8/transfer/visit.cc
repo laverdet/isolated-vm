@@ -486,7 +486,7 @@ struct visit<Meta, v8::FunctionCallbackInfo<v8::Value>> : visit<Meta, v8::Local<
 		using visit_type::operator();
 
 		template <class Accept>
-		auto operator()(v8::FunctionCallbackInfo<v8::Value> info, const Accept& accept) -> accept_target_t<Accept> {
+		auto operator()(const v8::FunctionCallbackInfo<v8::Value>& info, const Accept& accept) -> accept_target_t<Accept> {
 			return accept(vector_tag{}, *this, iv8::callback_info{info});
 		}
 };

@@ -1,0 +1,25 @@
+diff --git a/src/base/functional/function-ref.h b/src/base/functional/function-ref.h
+index e15152d3c59..4ca8e75faf4 100644
+--- a/src/base/functional/function-ref.h
++++ b/src/base/functional/function-ref.h
+@@ -19,7 +19,10 @@
+ #include "src/base/types/is-instantiation.h"
+ 
+ namespace v8::base {
+-
++// nb: The v8 implementation can't infer signature of `std::function` on MS STL
++template <class Signature>
++using FunctionRef = absl::FunctionRef<Signature>;
++/*
+ template <typename Signature>
+ class FunctionRef;
+ 
+@@ -129,7 +132,7 @@ class FunctionRef<R(Args...)> {
+  private:
+   absl::FunctionRef<R(Args...)> wrapped_func_ref_;
+ };
+-
++*/
+ }  // namespace v8::base
+ 
+ #endif  // V8_BASE_FUNCTIONAL_FUNCTION_REF_H_

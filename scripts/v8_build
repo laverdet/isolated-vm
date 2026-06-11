@@ -32,7 +32,7 @@ BUILD_PATH="$BUILD_PATH$SUFFIX"
 
 # shellcheck disable=SC2206
 PLATFORM_CONFIG_PAIR=(${TARGET//./ })
-OS=$("$(dirname "$0")/triplet_util" -t "${PLATFORM_CONFIG_PAIR[0]}" %o%e)
+OS=$(triplet_util -t "${PLATFORM_CONFIG_PAIR[0]}" %o%e)
 CONFIG=${PLATFORM_CONFIG_PAIR[1]} # debug, optdebug, release
 
 # `use_custom_libcxx=false`
@@ -131,6 +131,11 @@ case "$CONFIG" in
 		;;
 esac
 
+# Enable v8 -> z8 preprocessor macro. Theoretically it should only be needed for shared library
+# builds (development) but turning it off ICEs clang (v22.1.7).
+GN_ARGS+=(v8_trickshot=true)
+V8_TRICKSHOT=blam
+
 # Static vs shared library build
 case "$CONFIG" in
 	debug)
@@ -185,6 +190,7 @@ done
 # Make `env`
 cat <<EOF > "$BUILD_PATH/env"
 V8_LIBRARY_TYPE=$V8_LIBRARY_TYPE
+V8_TRICKSHOT=$V8_TRICKSHOT
 EOF
 
 # Build the monolith

@@ -1,3 +1,5 @@
+module;
+#include <v8/version.h>
 module v8_js;
 import v8;
 
@@ -25,7 +27,11 @@ fixed_array::iterator::iterator(v8::Local<v8::FixedArray> array, v8::Local<v8::C
 		index_{index} {}
 
 auto fixed_array::iterator::operator*() const -> value_type {
+#if V8_HAS_CONTEXT_FREE_FIXED_ARRAY
+	return array_->Get(index_);
+#else
 	return array_->Get(context_, index_);
+#endif
 }
 
 auto fixed_array::iterator::operator+=(difference_type offset) -> iterator& {

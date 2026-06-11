@@ -1,3 +1,5 @@
+module;
+#include <v8/version.h>
 export module v8_js:callback_storage;
 import :collected_handle;
 import :unmaybe;
@@ -79,9 +81,22 @@ auto make_callback_storage(const auto& lock, auto function) {
 			return std::tuple{callback, data};
 		} else if constexpr (sizeof(bound_type) == sizeof(void*)) {
 			// Trivial function of pointer type. Data() is the function data.
-			auto data = v8::External::New(lock.isolate(), std::bit_cast<void*>(bound));
+			auto data = [ & ]() -> auto {
+#if V8_HAS_TAGGED_EXTERNAL
+				return v8::External::New(lock.isolate(), std::bit_cast<void*>(bound), 0);
+#else
+				return v8::External::New(lock.isolate(), std::bit_cast<void*>(bound));
+#endif
+			}();
 			const auto callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
-				auto invoke = std::bit_cast<bound_type>(info.Data().As<v8::External>()->Value());
+				auto invoke = [ & ]() -> auto {
+#if V8_HAS_TAGGED_EXTERNAL
+					// TODO: Use this feature
+					return std::bit_cast<bound_type>(info.Data().As<v8::External>()->Value(0));
+#else
+					return std::bit_cast<bound_type>(info.Data().As<v8::External>()->Value());
+#endif
+				}();
 				invoke(info);
 			}};
 			return std::tuple{callback, data};

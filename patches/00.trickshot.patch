@@ -1,22 +1,43 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index 52a9c860841..5e713daf462 100644
+index a5c7d847781..fbdcc2639b7 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -1480,7 +1480,7 @@ config("toolchain") {
-   # Only targets in this file and its subdirs can depend on this.
+@@ -16,6 +16,7 @@ import("//third_party/icu/config.gni")
+ 
+ import("gni/cluster_build.gni")
+ import("gni/snapshot_toolchain.gni")
++import("gni/trickshot.gni")
+ import("gni/v8.gni")
+ 
+ if (is_clang) {
+@@ -1561,6 +1562,9 @@ config("toolchain") {
    visibility = [ "./*" ]
  
--  defines = []
-+  defines = [ "v8=z8", "v8_inspector=z8_inspector", "v8_crdtp=z8_crdtp", "V8_Dcheck=Z8_Dcheck", "V8_Fatal=Z8_Fatal", "absl=zbsl", "cppgc=zppgc", "heap=zeap", "unibrow=znibrow" ]
+   defines = []
++  if (v8_trickshot) {
++    defines += [ "v8=z8", "v8_inspector=z8_inspector", "v8_crdtp=z8_crdtp", "V8_Dcheck=Z8_Dcheck", "V8_Fatal=Z8_Fatal", "absl=zbsl", "cppgc=zppgc", "heap=zeap", "unibrow=znibrow" ]
++  }
    cflags = []
    ldflags = []
  
-@@ -6862,6 +6862,8 @@ v8_component("v8_libbase") {
+@@ -7210,6 +7214,10 @@ v8_component("v8_libbase") {
      defines = [ "BUILDING_V8_BASE_SHARED" ]
    }
  
-+  defines += [ "v8=z8", "v8_inspector=z8_inspector", "v8_crdtp=z8_crdtp", "V8_Dcheck=Z8_Dcheck", "V8_Fatal=Z8_Fatal", "absl=zbsl", "cppgc=zppgc", "heap=zeap", "unibrow=znibrow" ]
++  if (v8_trickshot) {
++    defines += [ "v8=z8", "v8_inspector=z8_inspector", "v8_crdtp=z8_crdtp", "V8_Dcheck=Z8_Dcheck", "V8_Fatal=Z8_Fatal", "absl=zbsl", "cppgc=zppgc", "heap=zeap", "unibrow=znibrow" ]
++  }
 +
    if (is_posix || is_fuchsia) {
      sources += [
        "src/base/platform/platform-posix.cc",
+diff --git a/gni/trickshot.gni b/gni/trickshot.gni
+new file mode 100644
+index 00000000000..5456ec0281d
+--- /dev/null
++++ b/gni/trickshot.gni
+@@ -0,0 +1,4 @@
++declare_args() {
++  # Macro to replace 'v8' with 'z8' for shared library linkage
++  v8_trickshot = false
++}

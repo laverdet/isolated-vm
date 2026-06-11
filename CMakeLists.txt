@@ -134,9 +134,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL Clang)
 		add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fsanitize=address,undefined>)
 		add_link_options(-fsanitize=address,undefined -shared-libasan)
 	else()
-		# clang-18 complains about `std::aligned_storage` within `std::shared_ptr` compiling against
-		# libstdc++
-		add_compile_options(-Wno-deprecated-declarations)
 		# Unused parameters in assert(..)
 		add_compile_options(-Wno-unused-parameter)
 	endif()

@@ -9,3 +9,9 @@
 
 // https://github.com/v8/v8/commit/4f8d4447533bc8d119048961c2f103d9875674e0
 #define V8_HAS_NUMERIC V8_AT_LEAST(11, 7, 352)
+
+// e1aadd4b3ec
+#define V8_HAS_TAGGED_EXTERNAL V8_AT_LEAST(14, 3, 30)
+
+// 7f7b4b9e4c8
+#define V8_HAS_CONTEXT_FREE_FIXED_ARRAY V8_AT_LEAST(14, 4, 111)

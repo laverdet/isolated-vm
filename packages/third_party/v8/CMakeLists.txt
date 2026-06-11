@@ -56,15 +56,25 @@ if(NPM_PACKAGE_NAME STREQUAL @auto_js/isolated_v8_exports)
 	message(STATUS "Using v8 library type '${V8_LIBRARY_TYPE}'")
 
 	# Preprocessor macros which enable dual v8 in the same process
-	target_compile_definitions(${google_v8} PUBLIC
-		cppgc=zppgc
-		unibrow=znibrow
-		v8_crdtp=z8_crdtp
-		V8_Dcheck=Z8_Dcheck
-		V8_Fatal=Z8_Fatal
-		v8_inspector=z8_inspector
-		v8=z8
-	)
+	if(NOT DEFINED V8_TRICKSHOT)
+		if(DEFINED ENV{V8_TRICKSHOT})
+			set(V8_TRICKSHOT "$ENV{V8_TRICKSHOT}" CACHE STRING "")
+		else()
+			# nb: For older bundles where it was not defined
+			set(V8_TRICKSHOT blam)
+		endif()
+	endif()
+	if(V8_TRICKSHOT)
+		target_compile_definitions(${google_v8} PUBLIC
+			cppgc=zppgc
+			unibrow=znibrow
+			v8_crdtp=z8_crdtp
+			V8_Dcheck=Z8_Dcheck
+			V8_Fatal=Z8_Fatal
+			v8_inspector=z8_inspector
+			v8=z8
+		)
+	endif()
 
 	# Link against v8, which is built elsewhere
 	if(V8_LIBRARY_TYPE STREQUAL static)
@@ -98,11 +108,15 @@ else()
 	message(STATUS "Using v8 headers from '${V8_INCLUDE_DIR}'")
 endif()
 
+# These need to be public, for version detection. I was hoping I could do it with constexpr but
+# apparently not:
+# https://github.com/llvm/llvm-project/issues/203372
+
 # version.h
-target_include_directories(${google_v8} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_include_directories(${google_v8} SYSTEM PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # v8 headers
-target_include_directories(${google_v8} SYSTEM PRIVATE "${V8_INCLUDE_DIR}")
+target_include_directories(${google_v8} SYSTEM PUBLIC "${V8_INCLUDE_DIR}")
 
 # Sources
 target_sources(${google_v8}

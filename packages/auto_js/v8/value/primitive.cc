@@ -1,3 +1,5 @@
+module;
+#include <v8/version.h>
 module v8_js;
 import :primitive;
 import std;
@@ -42,7 +44,7 @@ value_for_string::operator std::string() const {
 	string.resize_and_overwrite((*this)->Length(), [ this ](char* data, std::size_t length) -> std::size_t {
 		if (length > 0) {
 			auto* data_uint8 = reinterpret_cast<std::uint8_t*>(data);
-			(*this)->WriteOneByteV2(isolate(), 0, length, data_uint8, v8::String::WriteOptions::NO_NULL_TERMINATION);
+			(*this)->WriteOneByteV2(isolate(), 0, length, data_uint8, v8::String::WriteFlags::kNone);
 		}
 		return length;
 	});
@@ -54,7 +56,7 @@ value_for_string::operator std::u16string() const {
 	string.resize_and_overwrite((*this)->Length(), [ this ](char16_t* data, std::size_t length) -> std::size_t {
 		if (length > 0) {
 			auto* data_uint16 = reinterpret_cast<std::uint16_t*>(data);
-			(*this)->WriteV2(isolate(), 0, length, data_uint16, v8::String::WriteOptions::NO_NULL_TERMINATION);
+			(*this)->WriteV2(isolate(), 0, length, data_uint16, v8::String::WriteFlags::kNone);
 		}
 		return length;
 	});
@@ -68,7 +70,12 @@ value_for_date::operator js_clock::time_point() const {
 
 // `value_for_external`
 value_for_external::operator void*() const {
+#if V8_HAS_TAGGED_EXTERNAL
+	// TODO: Use this feature
+	return (*this)->Value(0);
+#else
 	return (*this)->Value();
+#endif
 }
 
 } // namespace js::iv8

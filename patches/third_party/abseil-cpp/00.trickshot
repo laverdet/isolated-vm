@@ -1,13 +1,23 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index 23b44f3..cbea975 100644
+index af8afd0..2a698fb 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -202,7 +202,7 @@ config("absl_include_config") {
- }
+@@ -11,6 +11,7 @@ import("//build/config/compiler/compiler.gni")
+ import("//build/config/sanitizers/sanitizers.gni")
+ import("//build/toolchain/toolchain.gni")
+ import("//build_overrides/build.gni")
++import("//gni/trickshot.gni")
+ import("//third_party/abseil-cpp/absl.gni")
  
+ config("absl_component_build") {
+@@ -209,6 +210,10 @@ config("absl_include_config") {
  config("absl_define_config") {
--  defines = [ "ABSL_ALLOCATOR_NOTHROW=1" ]
-+  defines = [ "ABSL_ALLOCATOR_NOTHROW=1", "absl=zbsl" ]
+   defines = [ "ABSL_ALLOCATOR_NOTHROW=1" ]
  
++  if (v8_trickshot) {
++    defines += [ "absl=zbsl" ]
++  }
++
    if (is_win && !use_custom_libcxx) {
      defines += [
+       # See crbug.com/1101367: Acknowledge extended alignment when using
