@@ -1,8 +1,8 @@
 diff --git a/gni/v8.gni b/gni/v8.gni
-index b616a1f0abc..c9677ba8f89 100644
+index 3a031e9ddfb..c0302e0bc9f 100644
 --- a/gni/v8.gni
 +++ b/gni/v8.gni
-@@ -429,7 +429,7 @@ if (v8_symbol_level != symbol_level) {
+@@ -428,7 +428,7 @@ if (v8_symbol_level != symbol_level) {
    }
  }
  

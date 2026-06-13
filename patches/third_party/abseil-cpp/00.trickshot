@@ -1,5 +1,5 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index af8afd0..2a698fb 100644
+index 4dba9a9..e3efbc6 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
 @@ -11,6 +11,7 @@ import("//build/config/compiler/compiler.gni")
@@ -10,12 +10,12 @@ index af8afd0..2a698fb 100644
  import("//third_party/abseil-cpp/absl.gni")
  
  config("absl_component_build") {
-@@ -209,6 +210,10 @@ config("absl_include_config") {
+@@ -210,6 +211,10 @@ config("absl_include_config") {
  config("absl_define_config") {
    defines = [ "ABSL_ALLOCATOR_NOTHROW=1" ]
  
 +  if (v8_trickshot) {
-+    defines += [ "absl=zbsl" ]
++    defines += [ "absl=ybsl" ]
 +  }
 +
    if (is_win && !use_custom_libcxx) {

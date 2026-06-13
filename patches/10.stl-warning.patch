@@ -1,0 +1,15 @@
+diff --git a/BUILD.gn b/BUILD.gn
+index e51fe66ce41..1e7959692c2 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -1823,7 +1823,9 @@ config("toolchain") {
+       # Google3 enables this warning, so we should also enable it to find issue
+       # earlier. See https://reviews.llvm.org/D56731 for details about this
+       # warning.
+-      cflags += [ "-Wctad-maybe-unsupported" ]
++      # ../../..\src/heap/cppgc/heap-object-header.h(357,10): warning: 'std::atomic_ref' may not intend to support class template argument deduction [-Wctad-maybe-unsupported]
++      # [repeated 100,000 times]
++      # cflags += [ "-Wctad-maybe-unsupported" ]
+     }
+ 
+     if (is_clang && use_cppgc_clang_plugin && clang_use_chrome_plugins) {

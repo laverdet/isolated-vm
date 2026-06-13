@@ -1,0 +1,14 @@
+diff --git a/BUILD.gn b/BUILD.gn
+index 235ba4d9cd9..e51fe66ce41 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -1801,7 +1801,8 @@ config("toolchain") {
+   if (is_clang) {
+     cflags += [ "-Wunreachable-code" ]
+     if (v8_current_cpu != "ppc64" && v8_current_cpu != "s390x") {
+-      cflags += [ "-Wlifetime-safety-permissive" ]
++      # cflags += [ "-Wlifetime-safety-permissive" ]
++      # warning: unknown warning option '-Wlifetime-safety-permissive' [-Wunknown-warning-option]
+     }
+ 
+     if ((v8_current_cpu != "x64" && v8_current_cpu != "ia32") ||

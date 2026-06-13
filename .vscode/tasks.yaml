@@ -29,6 +29,7 @@ inputs:
     # (click the "i" icon)
     options:
       # todo: update v14.9 to chrome 149 final, when it is released
+      # note: may need to remove NEON64, or move to clang
       - 14.9.207.27
       - 14.8.178.28
       - 14.7.173.22
@@ -37,7 +38,7 @@ inputs:
       - 14.4.258.24
       - 14.3.127.17
       - 14.2.231.21
-    default: 14.7.173.22
+    default: 14.8.178.28
   - type: pickString
     id: nodejs_version
     description:

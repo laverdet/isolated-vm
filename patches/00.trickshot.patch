@@ -1,5 +1,5 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index a5c7d847781..fbdcc2639b7 100644
+index 382c7d3ed44..235ba4d9cd9 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
 @@ -16,6 +16,7 @@ import("//third_party/icu/config.gni")
@@ -10,22 +10,22 @@ index a5c7d847781..fbdcc2639b7 100644
  import("gni/v8.gni")
  
  if (is_clang) {
-@@ -1561,6 +1562,9 @@ config("toolchain") {
+@@ -1587,6 +1588,9 @@ config("toolchain") {
    visibility = [ "./*" ]
  
    defines = []
 +  if (v8_trickshot) {
-+    defines += [ "v8=z8", "v8_inspector=z8_inspector", "v8_crdtp=z8_crdtp", "V8_Dcheck=Z8_Dcheck", "V8_Fatal=Z8_Fatal", "absl=zbsl", "cppgc=zppgc", "heap=zeap", "unibrow=znibrow" ]
++    defines += [ "v8=y8", "v8_inspector=y8_inspector", "v8_crdtp=y8_crdtp", "V8_Dcheck=Y8_Dcheck", "V8_Fatal=Y8_Fatal", "cppgc=yppgc", "heap=yeap", "unibrow=ynibrow" ]
 +  }
    cflags = []
    ldflags = []
  
-@@ -7210,6 +7214,10 @@ v8_component("v8_libbase") {
+@@ -7235,6 +7239,10 @@ v8_component("v8_libbase") {
      defines = [ "BUILDING_V8_BASE_SHARED" ]
    }
  
 +  if (v8_trickshot) {
-+    defines += [ "v8=z8", "v8_inspector=z8_inspector", "v8_crdtp=z8_crdtp", "V8_Dcheck=Z8_Dcheck", "V8_Fatal=Z8_Fatal", "absl=zbsl", "cppgc=zppgc", "heap=zeap", "unibrow=znibrow" ]
++    defines += [ "v8=y8", "v8_inspector=y8_inspector", "v8_crdtp=y8_crdtp", "V8_Dcheck=Y8_Dcheck", "V8_Fatal=Y8_Fatal", "cppgc=yppgc", "heap=yeap", "unibrow=ynibrow" ]
 +  }
 +
    if (is_posix || is_fuchsia) {
@@ -33,11 +33,11 @@ index a5c7d847781..fbdcc2639b7 100644
        "src/base/platform/platform-posix.cc",
 diff --git a/gni/trickshot.gni b/gni/trickshot.gni
 new file mode 100644
-index 00000000000..5456ec0281d
+index 00000000000..af6d5f9f385
 --- /dev/null
 +++ b/gni/trickshot.gni
 @@ -0,0 +1,4 @@
 +declare_args() {
-+  # Macro to replace 'v8' with 'z8' for shared library linkage
++  # Macro to replace 'v8' with 'y8' for shared library linkage
 +  v8_trickshot = false
 +}

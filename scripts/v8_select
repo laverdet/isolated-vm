@@ -1,15 +1,21 @@
 #!/bin/sh
 set -eu
-V8_REF="$1"
+V8_REF=$1
+NAME=$V8_REF
 PATCH_DIR=$(realpath "$PATCH_DIR")
 PATCHES=$(find "$PATCH_DIR" -type f | sort -n)
 GCLIENT="${DEPOT_TOOLS:-gclient}${DEPOT_TOOLS:+/gclient}"
 
 # Checkout revision, sync dependencies
-if ! git rev-parse --quiet "tags/$V8_REF" >/dev/null 2>&1; then
-	git fetch --tags 1>&2
+if [ "$V8_REF" = main ]; then
+	V8_REF=refs/heads/main
+else
+	V8_REF="tags/$V8_REF"
+	if ! git rev-parse --quiet "$V8_REF" >/dev/null 2>&1; then
+		git fetch --tags 1>&2
+	fi
 fi
-git checkout --detach "tags/$V8_REF" 1>&2
+git checkout --detach "$V8_REF" 1>&2
 if [ -z ${SKIP_SYNC+-} ]; then
 	git reset --hard 1>&2
 	if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
@@ -17,14 +23,6 @@ if [ -z ${SKIP_SYNC+-} ]; then
 	else
 		"$GCLIENT" sync --with_branch_heads 1>&2
 	fi
-fi
-
-# Copy headers so building the module works even if we switch v8 checkout
-mkdir -p "out/$V8_REF"
-if [ "$(uname)" = Darwin ]; then
-	rsync -am --include='*.h' --include='*/' --exclude='*' include "out/$V8_REF" 1>&2
-else
-	find include -name '*.h' -exec cp --parents --recursive {} "out/$V8_REF" \; 1>&2
 fi
 
 # Output revision (stdout!)
@@ -46,3 +44,11 @@ for PATCH in $PATCHES; do
 		git -C "$PATH_TO" diff HEAD~1 HEAD > "$PATCH"
 	fi
 done
+
+# Copy headers so building the module works even if we switch v8 checkout
+mkdir -p "out/$NAME"
+if [ "$(uname)" = Darwin ]; then
+	rsync -am --include='*.h' --include='*/' --exclude='*' include "out/$NAME" 1>&2
+else
+	find include -name '*.h' -exec cp --parents --recursive {} "out/$NAME" \; 1>&2
+fi

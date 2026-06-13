@@ -1,5 +1,5 @@
 diff --git a/config/BUILDCONFIG.gn b/config/BUILDCONFIG.gn
-index 4d1ac59b9..48f6f3f6c 100644
+index cc00f8463..a6120c0a0 100644
 --- a/config/BUILDCONFIG.gn
 +++ b/config/BUILDCONFIG.gn
 @@ -139,6 +139,9 @@ declare_args() {
@@ -13,7 +13,7 @@ index 4d1ac59b9..48f6f3f6c 100644
    # argument, and set as the default toolchain.
    custom_toolchain = ""
 diff --git a/config/compiler/BUILD.gn b/config/compiler/BUILD.gn
-index 7c7b24e99..4df1e4831 100644
+index 9028d96c5..f823be461 100644
 --- a/config/compiler/BUILD.gn
 +++ b/config/compiler/BUILD.gn
 @@ -385,6 +385,30 @@ config("compiler") {
@@ -23,7 +23,7 @@ index 7c7b24e99..4df1e4831 100644
 +  # nodejs team agrees:
 +  # https://github.com/nodejs/node/commit/ee61c2c6d3e97425b16d6821118084a833e52e29
 +  #
-+  # src/strings/string-hasher.cc: In static member function ‘static uint64_t z8::internal::ConvertTo8BitHashReader::Read64(const uint8_t*)’:
++  # src/strings/string-hasher.cc: In static member function ‘static uint64_t y8::internal::ConvertTo8BitHashReader::Read64(const uint8_t*)’:
 +  # src/strings/string-hasher.cc:32:55: note: use ‘-flax-vector-conversions’ to permit conversions between vectors with differing element types or numbers of subparts
 +  #    32 |     return vget_lane_u64(vreinterpret_u64_u8(vmovn_u16(x)), 0);
 +  #       |                                              ~~~~~~~~~^~~

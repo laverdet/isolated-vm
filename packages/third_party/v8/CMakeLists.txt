@@ -66,13 +66,13 @@ if(NPM_PACKAGE_NAME STREQUAL @auto_js/isolated_v8_exports)
 	endif()
 	if(V8_TRICKSHOT)
 		target_compile_definitions(${google_v8} PUBLIC
-			cppgc=zppgc
-			unibrow=znibrow
-			v8_crdtp=z8_crdtp
-			V8_Dcheck=Z8_Dcheck
-			V8_Fatal=Z8_Fatal
-			v8_inspector=z8_inspector
-			v8=z8
+			cppgc=yppgc
+			unibrow=ynibrow
+			v8_crdtp=y8_crdtp
+			V8_Dcheck=Y8_Dcheck
+			V8_Fatal=Y8_Fatal
+			v8_inspector=y8_inspector
+			v8=y8
 		)
 	endif()
 

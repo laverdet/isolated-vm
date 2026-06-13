@@ -66,7 +66,7 @@ auto collected_handle<Value, Type>::reset(const collected_handle_lock& lock, uni
 			[](const v8::WeakCallbackInfo<collected_handle>& data) -> auto {
 				auto* ptr = data.GetParameter();
 				auto unique = ptr->pool_.get().reacquire(ptr);
-				unique->global_.ClearWeak();
+				unique->global_.template ClearWeak<void>();
 			},
 			v8::WeakCallbackType::kParameter
 		);

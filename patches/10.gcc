@@ -1,0 +1,82 @@
+diff --git a/src/api/api.cc b/src/api/api.cc
+index e1089f2c81f..46d8aaef8a6 100644
+--- a/src/api/api.cc
++++ b/src/api/api.cc
+@@ -7409,7 +7409,7 @@ bool FunctionTemplate::HasInstance(v8::Local<v8::Value> value) {
+     return true;
+   }
+   if (i::IsJSGlobalProxy(*obj)) {
+-    auto jsobj = Cast<i::JSGlobalProxy>(*obj);
++    auto jsobj = i::Cast<i::JSGlobalProxy>(*obj);
+     if (jsobj->IsDetached()) return false;
+     // If it's a global proxy, then test with the global object. Note that the
+     // inner global object may not necessarily be a JSGlobalObject.
+diff --git a/src/base/macros.h b/src/base/macros.h
+index 70ad7f80cd9..7dd6aa475cc 100644
+--- a/src/base/macros.h
++++ b/src/base/macros.h
+@@ -628,8 +628,8 @@ bool is_inbounds(float_t v) {
+ #endif  // defined(__clang__)
+ 
+ // Disable/enable -Wlifetime-safety warnings in code.
+-#if defined(__clang__) && defined(__has_warning) && \
+-    __has_warning("-Wlifetime-safety")
++#if defined(__clang__)
++#if defined(__has_warning) && __has_warning("-Wlifetime-safety")
+ #define START_IGNORE_LIFETIME_SAFETY_WARNINGS() \
+   _Pragma("clang diagnostic push")              \
+       _Pragma("clang diagnostic ignored \"-Wlifetime-safety\"")
+@@ -637,11 +637,15 @@ bool is_inbounds(float_t v) {
+ #else
+ #define START_IGNORE_LIFETIME_SAFETY_WARNINGS()
+ #define END_IGNORE_LIFETIME_SAFETY_WARNINGS()
++#endif // defined(__has_warning) && [...]
++#else
++#define START_IGNORE_LIFETIME_SAFETY_WARNINGS()
++#define END_IGNORE_LIFETIME_SAFETY_WARNINGS()
+ #endif  // defined(__clang__)
+ 
+ // Disable/enable -Wreturn-stack-address warnings in code.
+-#if defined(__clang__) && defined(__has_warning) && \
+-    __has_warning("-Wreturn-stack-address")
++#if defined(__clang__)
++#if defined(__has_warning) && __has_warning("-Wreturn-stack-address")
+ #define START_IGNORE_RETURN_STACK_ADDRESS_WARNINGS() \
+   _Pragma("clang diagnostic push")                   \
+       _Pragma("clang diagnostic ignored \"-Wreturn-stack-address\"")
+@@ -650,6 +654,10 @@ bool is_inbounds(float_t v) {
+ #else
+ #define START_IGNORE_RETURN_STACK_ADDRESS_WARNINGS()
+ #define END_IGNORE_RETURN_STACK_ADDRESS_WARNINGS()
++#endif // defined(__has_warning) && [...]
++#else
++#define START_IGNORE_RETURN_STACK_ADDRESS_WARNINGS()
++#define END_IGNORE_RETURN_STACK_ADDRESS_WARNINGS()
+ #endif  // defined(__clang__)
+ 
+ #endif  // V8_BASE_MACROS_H_
+diff --git a/src/bigint/bigint.h b/src/bigint/bigint.h
+index 48748885869..87e8c5a1a3d 100644
+--- a/src/bigint/bigint.h
++++ b/src/bigint/bigint.h
+@@ -10,6 +10,7 @@
+ #include <algorithm>
+ #include <cstring>
+ #include <iostream>
++#include <memory>
+ #include <utility>
+ 
+ namespace v8 {
+diff --git a/src/common/globals.h b/src/common/globals.h
+index d5885006fca..d5cb72875a8 100644
+--- a/src/common/globals.h
++++ b/src/common/globals.h
+@@ -578,7 +578,7 @@ using AtomicTagged_t = base::AtomicWord;
+ // virtual memory ranges (PR_SET_VMA_ANON_NAME on Linux).
+ // TODO(saelo): It might be nicer to have one name per table type, e.g.
+ // v8-external-pointer-table, v8-trusted-pointer-table, etc.
+-static const char* kPointerTableAddressSpaceName = "v8-pointer-table";
++[[maybe_unused]] static const char* kPointerTableAddressSpaceName = "v8-pointer-table";
+ 
+ //
+ // JavaScript Dispatch Table

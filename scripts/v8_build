@@ -131,7 +131,7 @@ case "$CONFIG" in
 		;;
 esac
 
-# Enable v8 -> z8 preprocessor macro. Theoretically it should only be needed for shared library
+# Enable v8 -> y8 preprocessor macro. Theoretically it should only be needed for shared library
 # builds (development) but turning it off ICEs clang (v22.1.7).
 GN_ARGS+=(v8_trickshot=true)
 V8_TRICKSHOT=blam
