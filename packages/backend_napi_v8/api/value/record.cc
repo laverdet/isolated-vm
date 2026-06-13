@@ -11,20 +11,20 @@ using namespace js;
 
 // value_for_record
 auto value_for_record::set(const runtime_lock& lock, value_of<> key, value_of<> value) const -> void {
-	iv8::unmaybe(cast_in(*this)->Set(lock.witness().context(), cast_in(key), cast_in(value)));
+	iv8::unmaybe(cast_in(*this)->Set(unwrap_lock_witness(lock).context(), cast_in(key), cast_in(value)));
 }
 
 auto value_for_record::make(const runtime_lock& lock) -> value_of<record_tag> {
-	return value_of<dictionary_tag>::from(cast_out(v8::Object::New(lock.witness().isolate())));
+	return value_of<dictionary_tag>::from(cast_out(v8::Object::New(unwrap_lock_witness(lock).isolate())));
 }
 
 // bound_value_for_record
 constexpr auto get_property(const runtime_lock& lock, value_of<object_tag> object, value_of<name_tag> key) -> value_of<> {
-	return cast_out(iv8::unmaybe(cast_in(object)->GetRealNamedProperty(lock.witness().context(), cast_in(key))));
+	return cast_out(iv8::unmaybe(cast_in(object)->GetRealNamedProperty(unwrap_lock_witness(lock).context(), cast_in(key))));
 }
 
 constexpr auto get_property(const runtime_lock& lock, value_of<object_tag> object, value_of<number_tag> key) -> value_of<> {
-	return cast_out(iv8::unmaybe(cast_in(object)->Get(lock.witness().context(), cast_in(key).As<v8::Uint32>()->Value())));
+	return cast_out(iv8::unmaybe(cast_in(object)->Get(unwrap_lock_witness(lock).context(), cast_in(key).As<v8::Uint32>()->Value())));
 }
 
 constexpr auto get_property(const runtime_lock& lock, value_of<object_tag> object, value_of<primitive_tag> key) -> value_of<> {
@@ -36,11 +36,11 @@ constexpr auto get_property(const runtime_lock& lock, value_of<object_tag> objec
 }
 
 constexpr auto has_property(const runtime_lock& lock, value_of<object_tag> object, value_of<name_tag> key) -> bool {
-	return iv8::unmaybe(cast_in(object)->HasRealNamedProperty(lock.witness().context(), cast_in(key)));
+	return iv8::unmaybe(cast_in(object)->HasRealNamedProperty(unwrap_lock_witness(lock).context(), cast_in(key)));
 }
 
 constexpr auto has_property(const runtime_lock& lock, value_of<object_tag> object, value_of<number_tag> key) -> bool {
-	return iv8::unmaybe(cast_in(object)->HasRealIndexedProperty(lock.witness().context(), cast_in(key).As<v8::Uint32>()->Value()));
+	return iv8::unmaybe(cast_in(object)->HasRealIndexedProperty(unwrap_lock_witness(lock).context(), cast_in(key).As<v8::Uint32>()->Value()));
 }
 
 constexpr auto has_property(const runtime_lock& lock, value_of<object_tag> object, value_of<primitive_tag> key) -> bool {
@@ -53,7 +53,7 @@ constexpr auto has_property(const runtime_lock& lock, value_of<object_tag> objec
 
 auto bound_value_for_record::keys() const -> const internal_keys_type& {
 	if (!keys_) {
-		auto context = lock().witness().context();
+		auto context = unwrap_lock_witness(lock()).context();
 		auto object = cast_in(value_of{*this});
 		auto names = iv8::unmaybe(object->GetPropertyNames(
 			context,

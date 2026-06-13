@@ -169,7 +169,7 @@ struct accept_with_casted_string {
 		}
 
 		template <class Subject, auto Value>
-		constexpr auto cast(this auto& /*self*/, std::type_identity<Subject> /*tag*/, const util::constant_wrapper<Value>& subject) -> value_type {
+		constexpr auto cast(this const auto& /*self*/, std::type_identity<Subject> /*tag*/, const util::constant_wrapper<Value>& subject) -> value_type {
 			using transcoded_type = decltype(util::transcode_string<Char>(subject));
 			return transcoded_type::value;
 		}
@@ -218,7 +218,7 @@ struct accept_data_block_span {
 		using accept_target_type = std::span<std::byte>;
 
 		constexpr auto operator()(data_block_tag /*tag*/, visit_holder /*visit*/, const auto& subject) const -> accept_target_type {
-			return {subject};
+			return accept_target_type{subject};
 		}
 };
 

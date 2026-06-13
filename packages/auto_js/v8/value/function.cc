@@ -8,7 +8,7 @@ import v8;
 
 namespace js::iv8 {
 
-template <class Result = std::monostate>
+template <class Result>
 auto Function::apply(context_lock_witness lock, auto&& args) -> Result {
 	auto result = [ & ]() {
 		using args_type = std::vector<v8::Local<v8::Value>>;
@@ -21,7 +21,7 @@ auto Function::apply(context_lock_witness lock, auto&& args) -> Result {
 	return js::transfer_out<Result>(result, lock);
 }
 
-template <class Result = std::monostate>
+template <class Result>
 auto Function::call(context_lock_witness lock, auto&&... args) -> Result {
 	auto result = [ & ]() {
 		using args_type = std::array<v8::Local<v8::Value>, sizeof...(args) + 1>;

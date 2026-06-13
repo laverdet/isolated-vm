@@ -120,9 +120,19 @@ template <class Function>
 struct function_signature<Function>
 		: remove_function_cvref<std::remove_pointer_t<std::decay_t<Function>>> {};
 
+// Explicit function signature for `util::bind`
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=125779
+template <class Type>
+concept has_explicit_function_signature = requires { typename Type::function_signature; };
+
+template <has_explicit_function_signature Type>
+struct function_signature<Type> : std::type_identity<typename Type::function_signature> {};
+
 // Struct type with `operator()` (lambda, etc)
 template <class Type>
-	requires requires { &std::remove_cvref_t<Type>::operator(); }
+concept has_function_call_operator = requires { &std::remove_cvref_t<Type>::operator(); };
+template <has_function_call_operator Type>
+	requires(!has_explicit_function_signature<Type>)
 struct function_signature<Type>
 		: function_operator_signature<Type, unbound_member_function_signature_t<decltype(&std::remove_cvref_t<Type>::operator())>> {};
 

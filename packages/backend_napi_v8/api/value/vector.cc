@@ -31,7 +31,7 @@ bound_value_for_vector::iterator::iterator(bound_value_for_vector subject, size_
 		index_{index} {}
 
 auto bound_value_for_vector::iterator::operator*() const -> value_type {
-	auto context = subject_.lock().witness().context();
+	auto context = unwrap_lock_witness(subject_.lock()).context();
 	return cast_out(iv8::unmaybe(cast_in(value_of{subject_})->Get(context, index_)));
 }
 

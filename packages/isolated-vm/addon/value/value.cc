@@ -5,6 +5,7 @@ export import :support.lock_fwd;
 export import :value.array_buffer;
 export import :value.array;
 export import :value.function;
+export import :value.object;
 export import :value.primitive;
 export import :value.prototype;
 export import :value.record;

@@ -73,7 +73,7 @@ auto make_callback_storage(const auto& lock, auto function) {
 		static_assert(std::is_trivially_destructible_v<bound_type>);
 		if constexpr (std::is_empty_v<bound_type>) {
 			// Constant expression function of 0 size. No data needed at all!
-			auto data = v8::Local<v8::Data>{};
+			auto data = v8::Local<v8::Value>{};
 			const auto callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
 				auto invoke = bound_type{};
 				invoke(info);

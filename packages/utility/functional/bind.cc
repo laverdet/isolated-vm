@@ -88,6 +88,8 @@ class bind_explicit<Invocable, auto(Args...) noexcept(Nx)->Result, Bound...> : p
 
 	public:
 		using storage_type::storage_type;
+		// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=125779
+		using function_signature = auto(Args...) noexcept(Nx) -> Result;
 
 		// This overload allows `std::invocable<bind<...>>` without a reference, which makes concept
 		// parameters work correctly.

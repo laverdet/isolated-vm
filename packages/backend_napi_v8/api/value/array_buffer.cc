@@ -40,7 +40,7 @@ auto bound_value_for_data_block::data() const -> std::byte* {
 
 // value_for_array_buffer
 auto value_for_array_buffer::make(const runtime_lock& lock, js::array_buffer buffer) -> value_of<array_buffer_tag> {
-	return cast_out(js::transfer_in<v8::Local<v8::ArrayBuffer>>(std::move(buffer), lock.witness()));
+	return cast_out(js::transfer_in<v8::Local<v8::ArrayBuffer>>(std::move(buffer), unwrap_lock_witness(lock)));
 }
 
 // value_for_array_buffer_view

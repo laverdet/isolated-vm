@@ -76,6 +76,13 @@ if(NPM_PACKAGE_NAME STREQUAL @auto_js/isolated_v8_exports)
 		)
 	endif()
 
+	# P3034R1 workaround for gcc
+	if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+		set(v8 y8)
+	else()
+		set(v8 v8)
+	endif()
+
 	# Link against v8, which is built elsewhere
 	if(V8_LIBRARY_TYPE STREQUAL static)
 		target_link_directories(${google_v8} PUBLIC "${V8_LIBRARY_PATH}/obj")
@@ -97,6 +104,7 @@ if(NPM_PACKAGE_NAME STREQUAL @auto_js/isolated_v8_exports)
 		message(FATAL_ERROR "Unknown v8 library type")
 	endif()
 else()
+	set(v8 v8)
 	# Header files (nodejs)
 	if(NOT DEFINED NODE_DIST_DIR)
 		message(FATAL_ERROR "'NODE_DIST_DIR' is not set")
@@ -118,8 +126,9 @@ target_include_directories(${google_v8} SYSTEM PUBLIC "${CMAKE_CURRENT_SOURCE_DI
 # v8 headers
 target_include_directories(${google_v8} SYSTEM PUBLIC "${V8_INCLUDE_DIR}")
 
-# Sources
-target_sources(${google_v8}
+# Sources which may be preprocessed by `expand_def`
+include(./PreprocessedSources.cmake)
+target_preprocessed_sources(${google_v8} v8 ${v8}
 	PUBLIC FILE_SET CXX_MODULES FILES
 		v8.cc
 )

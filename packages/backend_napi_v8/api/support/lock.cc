@@ -36,4 +36,13 @@ export class runtime_lock_implementation : public runtime_lock {
 				runtime_lock{lock.isolate(), std::bit_cast<void*>(lock.context())} {}
 };
 
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=125778
+auto unwrap_lock_witness(const basic_lock& lock) -> js::iv8::isolate_lock_witness {
+	return lock.witness();
+}
+
+auto unwrap_lock_witness(const runtime_lock& lock) -> js::iv8::context_lock_witness {
+	return lock.witness();
+}
+
 } // namespace isolated_vm

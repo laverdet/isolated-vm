@@ -5,7 +5,7 @@ import :transfer.visit;
 namespace isolated_vm {
 using namespace js;
 
-template <class Result = std::monostate>
+template <class Result>
 auto value_for_function::apply(const runtime_lock& lock, auto&& args) -> Result {
 	using args_type = std::vector<value_of<>>;
 	auto undefined = js::transfer_in_strict<value_of<>>(std::monostate{}, lock);
@@ -14,7 +14,7 @@ auto value_for_function::apply(const runtime_lock& lock, auto&& args) -> Result 
 	return js::transfer_out<Result>(result, lock);
 }
 
-template <class Result = std::monostate>
+template <class Result>
 auto value_for_function::call(const runtime_lock& lock, auto&&... args) -> Result {
 	using args_type = std::array<value_of<>, sizeof...(args) + 1>;
 	auto argv = js::transfer_in_strict<args_type>(
