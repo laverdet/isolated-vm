@@ -32,6 +32,8 @@ jobs:
       aarch64-alpine-linux-musl: ${{ steps.output.outputs.aarch64-alpine-linux-musl }}
       aarch64-unknown-linux-gnu: ${{ steps.output.outputs.aarch64-unknown-linux-gnu }}
       x86_64-alpine-linux-musl: ${{ steps.output.outputs.x86_64-alpine-linux-musl }}
+      # nb: Does not come with /c/msys64, so it doesn't work for me
+      x86_64-pc-windows: ${{ steps.output.outputs.x86_64-pc-windows }}
       x86_64-unknown-linux-gnu: ${{ steps.output.outputs.x86_64-unknown-linux-gnu }}
     steps:
       - uses: actions/cache/restore@v5
@@ -52,13 +54,13 @@ jobs:
           else
             case "$RUNS_ON" in
               ubuntu-24.04)
-                echo "$TRIPLET=runs-on,runner=32cpu-linux-x64,run-id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+                echo "$TRIPLET=runs-on=$GITHUB_RUN_ID/family=m7a+m7i/cpu=32+48/image=ubuntu24-full-x64" >> "$GITHUB_OUTPUT"
                 ;;
               ubuntu-24.04-arm)
-                echo "$TRIPLET=runs-on,runner=32cpu-linux-arm64,run-id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+                echo "$TRIPLET=runs-on=$GITHUB_RUN_ID/family=m7g/cpu=32+48/image=ubuntu24-full-arm64" >> "$GITHUB_OUTPUT"
                 ;;
-              windows-2025)
-                echo "$TRIPLET=runs-on,image=windows22-base-x64,family=m7i,run-id=$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+              windows-2025-vs2026)
+                echo "$TRIPLET=runs-on=$GITHUB_RUN_ID/family=m7a+m7i/cpu=32+48/image=windows25-full-x64" >> "$GITHUB_OUTPUT"
                 ;;
             esac
           fi
@@ -84,8 +86,6 @@ jobs:
             triplet: x86_64-alpine-linux-musl
           - runs-on: macos-15-intel
             triplet: x86_64-apple-darwin
-          # todo: back to windows-latest after vs2026 migration
-          # https://github.blog/changelog/2026-02-05-github-actions-early-february-2026-updates/#windows-server-2025-with-visual-studio-2026-image-now-available-for-github-hosted-runners
           - runs-on: windows-2025-vs2026
             triplet: x86_64-pc-windows
           - runs-on: ${{ needs.configure.outputs.x86_64-unknown-linux-gnu }}
@@ -97,8 +97,8 @@ jobs:
     env:
       TRIPLET: ${{ matrix.host.triplet }}
     steps:
-      - uses: laverdet/alpine-arm64@v1
-        if: matrix.host.triplet == 'aarch64-alpine-linux-musl'
+      - if: matrix.host.triplet == 'aarch64-alpine-linux-musl'
+        uses: laverdet/alpine-arm64@v1
 
       # Setup
       - uses: actions/checkout@v5
@@ -106,22 +106,49 @@ jobs:
           echo "$GITHUB_WORKSPACE/packages/auto_js/js/cmake" >> "$GITHUB_PATH"
           echo "$GITHUB_WORKSPACE/scripts" >> "$GITHUB_PATH"
 
-      # GNU `tar` & `zstd` is needed for `actions/cache`
-      - uses: laverdet/install@v0
-        if: runner.os == 'Linux'
-        with:
-          packages: curl tar zstd
-
       # Install toolchain
-      - name: Sources [Debian]
-        if: endsWith(matrix.host.triplet, '-linux-gnu')
-        run: curl -kfsSL https://deb.nodesource.com/setup_24.x | bash -
-      - name: Toolchain [Linux]
-        uses: laverdet/install@v0
-        if: runner.os == 'Linux'
+      - if: matrix.host.container == 'debian:sid'
+        name: Sources [Debian]
+        uses: laverdet/install/apt/sources@v1
+        with:
+          name: nodesource24
+          source: |
+            Types: deb
+            URIs: https://deb.nodesource.com/node_24.x
+            Suites: nodistro
+            Components: main
+            Signed-By: https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
+
+      - if: matrix.host.container == 'alpine:edge'
+        name: Toolchain [Alpine]
+        uses: laverdet/install@v1
         with:
           packages: |
             bash
+            binutils
+            boost-dev
+            build-base
+            clang22
+            clang22-extra-tools
+            cmake
+            curl
+            lld22
+            llvm22
+            ninja-is-really-ninja
+            nodejs
+            npm
+            tar
+            xxd
+            zstd
+          export: |
+            CC=clang-22
+            CXX=clang++-22
+
+      - if: matrix.host.container == 'debian:sid'
+        name: Toolchain [Debian]
+        uses: laverdet/install@v1
+        with:
+          packages: |
             binutils
             build-essential
             clang-22
@@ -133,8 +160,13 @@ jobs:
             llvm-22
             ninja-build
             nodejs
+            npm
             xxd
-            alpine#npm
+            zstd
+          export: |
+            CC=clang-22
+            CXX=clang++-22
+
       - name: Toolchain [macOS]
         if: runner.os == 'macOS'
         run: |
@@ -142,10 +174,13 @@ jobs:
           # https://github.com/orgs/Homebrew/discussions/5602
           brew install --quiet cmake ninja
           brew install boost lld llvm node
-          # Clever workaround for clang-scan-deps issues
-          # /opt/homebrew/opt/llvm/bin/../include/c++/v1/__locale_dir/support/bsd_like.h:21:10: fatal error: 'time.h' file not found
           # https://github.com/Homebrew/homebrew-core/issues/221782#issuecomment-3245658786
           ln -s $(brew --prefix)/etc/clang ~/.config/clang
+          LLVM=$(brew --prefix llvm)
+          echo "CC=$LLVM/bin/clang" >> "$GITHUB_ENV"
+          echo "CXX=$LLVM/bin/clang++" >> "$GITHUB_ENV"
+          echo "ECO_STD=$LLVM/lib/c++/libc++.modules.json" >> "$GITHUB_ENV"
+
       # On Windows, the POSIX shell in GitHub actions is Git Bash. This runs in an isolated MSYS2
       # installation under `C:/Program Files/Git`. The runner comes with another MSYS2 installation
       # in `C:/msys64`. This action adds the root MSYS2 installation higher up in $PATH so we can
@@ -156,9 +191,23 @@ jobs:
       # is not supported by v8. Cross-build via Linux may be the only way.
       # nb: windows-11-arm does *not* have Pacman!
       # https://github.com/actions/partner-runner-images/blob/main/images/arm-windows-11-image.md
-      - name: Toolchain [Windows]
-        if: runner.os == 'Windows'
-        id: windows
+      - if: runner.os == 'Windows'
+        name: Toolchain [Windows]
+        uses: laverdet/install@v1
+        with:
+          tool: /c/msys64/usr/bin/pacman
+          packages: |
+            mingw-w64-%a-boost
+            mingw64/mingw-w64-%a-cmake>=4.3.0
+            mingw64/mingw-w64-%a-ninja
+          export: |
+            CMAKE_MAKE_PROGRAM=ninja
+            CMAKE_PREFIX_PATH=C:/msys64/mingw64/lib/cmake
+          path: |
+            /c/msys64/usr/bin
+            /c/msys64/mingw64/bin
+      - if: runner.os == 'Windows'
+        name: Toolchain [Windows]
         run: |
           set -ux
           echo ::group::Toolchain
@@ -166,16 +215,8 @@ jobs:
           clang++ --version || true
           # Install updated LLVM (and hide spammy progress bar)
           winget install --accept-source-agreements --silent -e --id=LLVM.LLVM --version=22.1.2 | tr '\r' '\n' | grep -Ev --line-buffered '^[ -\/|]+$'
-          # You want the mingw version of ninja, not the msys version. The msys version uses
-          # `CMD.EXE` and does not work with the cmake Ninja generator.
-          ARCH=$(triplet_util %a)
-          /c/msys64/usr/bin/pacman -Sy --noconfirm \
-            mingw-w64-$ARCH-boost \
-            "mingw64/mingw-w64-$ARCH-cmake>=4.3.0" \
-            mingw64/mingw-w64-$ARCH-ninja \
-          ;
-          echo "/c/msys64/mingw64/bin" >> "$GITHUB_PATH"
-          echo "/c/msys64/usr/bin" >> "$GITHUB_PATH"
+          echo "CC=clang" >> "$GITHUB_ENV"
+          echo "CXX=clang++" >> "$GITHUB_ENV"
           echo ::endgroup::
 
           echo ::group::import std hack
@@ -199,7 +240,7 @@ jobs:
             ]
           }
           EOF
-          echo "modules=/$(cygpath.exe -m "$RUNNER_TOOL_CACHE/stl.modules.json")" >> "$GITHUB_OUTPUT"
+          echo "ECO_STD=/$(cygpath.exe -m "$RUNNER_TOOL_CACHE/stl.modules.json")" >> "$GITHUB_ENV"
 
           # Patch cmake
           patch --batch --forward --unified /c/msys64/mingw64/share/cmake/Modules/Compiler/Clang-CXX-CXXImportStd.cmake <<"EOF"
@@ -236,16 +277,17 @@ jobs:
           path: deps/v8/out
 
       # Build v8 on cache miss
-      - uses: ./.github/actions/v8
+      - if: steps.v8-cache.outputs.cache-hit != 'true'
         name: Build v8
-        if: steps.v8-cache.outputs.cache-hit != 'true'
+        uses: ./.github/actions/v8
         with:
-          triplet: ${{ matrix.host.triplet }}
+          container: ${{ matrix.host.container }}
           ref: ${{ env.V8_REF }}
+          triplet: ${{ matrix.host.triplet }}
 
       # Cache v8
-      - uses: actions/cache/save@v5
-        if: steps.v8-cache.outputs.cache-hit != 'true'
+      - if: steps.v8-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
         with:
           key: ${{ steps.v8-cache.outputs.cache-primary-key }}
           path: deps/v8/out
@@ -257,14 +299,14 @@ jobs:
           enableCrossOsArchive: true
           key: nodejs-headers-${{ env.NODE_HEADERS }}
           path: deps/nodejs
-      - name: node headers
+      - if: steps.nodejs-headers-cache.outputs.cache-hit != 'true'
+        name: node headers
         id: nodejs-headers
-        if: steps.nodejs-headers-cache.outputs.cache-hit != 'true'
         env:
           NODE_HEADERS: ${{ env.NODE_HEADERS }}
         run: set -u; nodejs_select "deps/nodejs/$NODE_HEADERS"
-      - uses: actions/cache/save@v5
-        if: steps.nodejs-headers.outcome == 'success'
+      - if: steps.nodejs-headers.outcome == 'success'
+        uses: actions/cache/save@v5
         with:
           enableCrossOsArchive: true
           key: ${{ steps.nodejs-headers-cache.outputs.cache-primary-key }}
@@ -272,56 +314,27 @@ jobs:
 
       # Build isolated-vm
       - uses: pnpm/action-setup@v5
-      - run: |
+      - name: pnpm install
+        run: |
           set -ux
           pnpm install --frozen-lockfile
           npx tsc -b
       - name: Configure
         env:
-          CXX_MODULES_JSON: ${{ steps.windows.outputs.modules }}
           NODE_DIST_DIR: deps/nodejs/${{ env.NODE_HEADERS }}
           V8_REF: ${{ env.V8_REF }}
         run: |
           set -ux
           V8_REF_PATH=$PWD/deps/v8/out/$V8_REF
-          # TODO: These should all be configured above
-          CMAKE_MAKE_PROGRAM=ninja
-          CMAKE_PREFIX_PATH=
-          case "$TRIPLET" in
-            *-darwin)
-              CMAKE_C_COMPILER=$(brew --prefix llvm)/bin/clang
-              CMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++
-              CXX_MODULES_JSON=$(brew --prefix llvm)/lib/c++/libc++.modules.json
-              echo "CXX=$CMAKE_CXX_COMPILER" >> "$GITHUB_ENV"
-              echo "ECO_STD=$CXX_MODULES_JSON" >> "$GITHUB_ENV"
-              ;;
-            *-linux-gnu|*-linux-musl)
-              CMAKE_C_COMPILER=$(realpath "$(which clang-22)")
-              CMAKE_CXX_COMPILER=$(realpath "$(which clang++-22)")
-              echo "CXX=$CMAKE_CXX_COMPILER" >> "$GITHUB_ENV"
-              ;;
-            *-windows)
-              CMAKE_C_COMPILER=$(which clang.exe)
-              CMAKE_CXX_COMPILER=$(which clang++.exe)
-              CMAKE_MAKE_PROGRAM=$(which ninja.exe)
-              CMAKE_PREFIX_PATH=C:/msys64/mingw64/lib/cmake
-              echo "CXX=$CMAKE_CXX_COMPILER" >> "$GITHUB_ENV"
-              echo "ECO_STD=$CXX_MODULES_JSON" >> "$GITHUB_ENV"
-              ;;
-          esac
           cmake \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER="$CMAKE_C_COMPILER" \
-            -DCMAKE_CXX_COMPILER="$CMAKE_CXX_COMPILER" \
-            -DCMAKE_CXX_STDLIB_MODULES_JSON="$CXX_MODULES_JSON" \
-            -DCMAKE_MAKE_PROGRAM="$CMAKE_MAKE_PROGRAM" \
-            -DCMAKE_MODULE_PATH="$(npm exec auto_js_cmake_include)" \
-            -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
+            -DCMAKE_MODULE_PATH="$(pnpm exec auto_js_cmake_include)" \
+            -DIVM_INSTALL=artifacts \
             -DV8_INCLUDE_DIR="$V8_REF_PATH/include" \
             -DV8_INCLUDE_GN_FILE="$V8_REF_PATH/$TRIPLET.release/include/v8-gn.h" \
             -DV8_LIBRARY_PATH="$V8_REF_PATH/$TRIPLET.release" \
             -DV8_LIBRARY_TYPE=static \
-            -DIVM_INSTALL=artifacts \
+            ${ECO_STD:+"-DCMAKE_CXX_STDLIB_MODULES_JSON=${ECO_STD}"} \
             -B build \
             -G Ninja \
           ;
@@ -427,7 +440,7 @@ jobs:
     steps:
       - uses: laverdet/alpine-arm64@v1
         if: matrix.host.container == 'alpine:edge'
-      - uses: laverdet/install@v0
+      - uses: laverdet/install@v1
         if: matrix.host.container == 'alpine:edge'
         with:
           packages: bash
@@ -467,10 +480,10 @@ jobs:
               exit 1
               ;;
           esac
-      - uses: laverdet/install@v0
+      - uses: laverdet/install@v1
         if: steps.musl.outcome == 'success'
         with:
-          packages: alpine#${{ steps.musl.outputs.package }} npm
+          packages: ${{ steps.musl.outputs.package }} npm
 
       # Install nodejs [others]
       - uses: actions/setup-node@v6

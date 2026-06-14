@@ -1,6 +1,10 @@
 #!/bin/sh
 # ./embed.sh <source> <target> <variable>
 set -eu
+if ! command -v xxd >/dev/null; then
+	echo "'xxd' not found in PATH" >&2
+	exit 1
+fi
 SIZE=$(($(cat "$1" | wc -c) + 1))
 
 cat <<EOF > "$2.h"

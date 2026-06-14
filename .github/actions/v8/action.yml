@@ -1,38 +1,57 @@
 description: Build v8
 
 inputs:
-  triplet:
-    required: true
-  # "debug", "optdebug", "release"
   configuration:
+    type: choice
     default: release
+    options:
+      - debug
+      - optdebug
+      - release
+  container:
+    type: string
   ref:
     required: true
+    type: string
+  triplet:
+    required: true
+    type: string
 
 runs:
   using: composite
   steps:
     # Install dependencies
-    - uses: laverdet/install@v0
-      if: runner.os == 'Linux'
+    - if: inputs.container == 'alpine:edge'
+      name: Toolchain [Alpine]
+      uses: laverdet/install@v1
       with:
         packages: |
-          bash
-          build-essential
           coreutils
-          curl
           git
-          ninja-build
+          linux-headers
+          openssh
           patch
+          pkgconf
+          python3
+          xz
+
+    - if: inputs.container == 'debian:sid'
+      name: Toolchain [Debian]
+      uses: laverdet/install@v1
+      with:
+        packages: |
+          ca-certificates
+          coreutils
+          git
+          libglib2.0-dev
           pkgconf
           python3
           ssh
           xz-utils
-          alpine#linux-headers
-          debian#ca-certificates
-          debian#libglib2.0-dev
-    - shell: sh
-      if: runner.os == 'macOS'
+
+    - if: runner.os == 'macOS'
+      name: Toolchain [macOS]
+      shell: sh
       run: brew install llvm
 
     # Install `gn`
