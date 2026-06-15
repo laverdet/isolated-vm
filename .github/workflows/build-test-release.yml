@@ -415,26 +415,8 @@ jobs:
           - runs-on: ubuntu-24.04
             container: debian:forky
         node:
-          - 22
           - 24
-          - 25
-        exclude:
-          - host:
-              runs-on: ubuntu-24.04-arm
-              container: alpine:edge
-            node: 25
-          - host:
-              runs-on: ubuntu-24.04-arm
-              container: debian:forky
-            node: 25
-          - host:
-              runs-on: ubuntu-24.04
-              container: alpine:edge
-            node: 25
-          - host:
-              runs-on: ubuntu-24.04
-              container: debian:forky
-            node: 25
+          - 26
     runs-on: ${{ matrix.host.runs-on }}
     container: ${{ matrix.host.container }}
     steps:
@@ -473,8 +455,8 @@ jobs:
           echo https://dl-cdn.alpinelinux.org/alpine/edge/community/ >> /etc/apk/repositories
           echo https://dl-cdn.alpinelinux.org/alpine/edge/testing/ >> /etc/apk/repositories
           case "$NODE_VERSION" in
-            24) echo "package=nodejs-current" >> "$GITHUB_OUTPUT" ;;
-            22) echo "package=nodejs" >> "$GITHUB_OUTPUT" ;;
+            26) echo "package=nodejs-current" >> "$GITHUB_OUTPUT" ;;
+            24) echo "package=nodejs" >> "$GITHUB_OUTPUT" ;;
             *)
               echo "Unknown node version: $NODE_VERSION" 1>&2
               exit 1
