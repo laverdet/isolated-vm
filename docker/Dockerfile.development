@@ -54,7 +54,8 @@ RUN <<DONE
 	mkdir "$CLANG_LIB_DIR"
 	ln -s "$CLANG_LIB_DIR/../linux/libclang_rt.builtins-$(uname -m).a" "$CLANG_LIB_DIR/libclang_rt.builtins.a"
 
-	# Preload asan for `node`
+	# Preload asan for `node` & `bun`
+	ln -s /workspace/scripts/bun_asan /usr/bin/
 	ln -s /workspace/scripts/node_asan /usr/bin/
 
 	# Allow local directory `.lldbinit`

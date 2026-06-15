@@ -32,7 +32,7 @@ git describe --exact-match --tags || git rev-parse --short HEAD
 for PATCH in $PATCHES; do
 	PATH_TO=./$(dirname "$PATCH" | cut -c$((${#PATCH_DIR} + 2))-)
 	echo "$PATCH" 1>&2
-	if [ "${MSYSTEM:-}" ]; then
+	if [ ${MSYSTEM:+-} ]; then
 		# The isolated-vm repo (so, patches) are checked out with CR/LF, which breaks `git apply`. So we
 		# skip the patch write back feature, which is mainly intended for development.
 		patch -p1 --directory="$PATH_TO" --batch --forward < "$PATCH" 1>&2

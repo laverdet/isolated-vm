@@ -210,8 +210,13 @@ tasks:
       set -a; source "$ENV_FILE"
       cd "${V8_SRC_PATH:-/v8}"
       TARGET=$(triplet_util %t.${input:v8_target})
-      export V8_BUNDLE_PATH="$(pwd)/out/$V8_REF/$TARGET"
-      WITHOUT_SYSROOT=1 v8_build "$V8_BUNDLE_PATH"
+      V8_BUNDLE_PATH="$(pwd)/out/$V8_REF/$TARGET"
+      WITHOUT_SYSROOT=1 v8_configure "$V8_BUNDLE_PATH"
+      source "$V8_BUNDLE_PATH/env"
+      ninja -C "out/$V8_REF/$TARGET" $V8_TARGETS || \
+      ninja -j4 -C "out/$V8_REF/$TARGET" $V8_TARGETS || \
+      ninja -j2 -C "out/$V8_REF/$TARGET" $V8_TARGETS
+      export V8_BUNDLE_PATH
       ivm_write_env V8_BUNDLE_PATH
     problemMatcher: []
     presentation:

@@ -61,12 +61,14 @@ RUN <<DONE
 	;
 DONE
 COPY --from=synced_sources v8 v8
-COPY --from=workspace packages/auto_js/js/cmake/triplet_util scripts/v8_build .
+COPY --from=workspace packages/auto_js/js/cmake/triplet_util scripts/v8_configure .
 ARG REF TARGET
 RUN <<DONE
 	set -eux
 	cd v8
-	WITHOUT_SYSROOT=yikes /v8_build "out/$REF/$TARGET"
+	WITHOUT_SYSROOT=yikes /v8_configure "out/$REF/$TARGET"
+	source "out/$REF/$TARGET/env"
+	ninja -C "out/$REF/$TARGET" $V8_TARGETS
 	rm -rf "out/$REF/$TARGET/gen"
 	find out -type f ! -name env ! -name '*.so' ! -name '*.a' ! -name '*.h' -delete
 	find out -type d -empty -delete
@@ -116,13 +118,15 @@ RUN <<DONE
 DONE
 COPY --from=gn gn/out gn
 COPY --from=synced_sources v8 v8
-COPY --from=workspace packages/auto_js/js/cmake/triplet_util scripts/v8_build .
+COPY --from=workspace packages/auto_js/js/cmake/triplet_util scripts/v8_configure .
 ARG REF TARGET
 ENV PATH=$PATH:/gn
 RUN <<DONE
 	set -eux
 	cd v8
-	/v8_build "out/$REF/$TARGET"
+	/v8_configure "out/$REF/$TARGET"
+	source "out/$REF/$TARGET/env"
+	ninja -C "out/$REF/$TARGET" $V8_TARGETS
 	rm -rf "out/$REF/$TARGET/gen"
 	find out -type f ! -name env ! -name '*.so' ! -name '*.a' ! -name '*.h' -delete
 	find out -type d -empty -delete

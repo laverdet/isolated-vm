@@ -65,7 +65,7 @@ GN_ARGS=(
 	v8_enable_temporal_support=false
 	v8_use_external_startup_data=false
 );
-if [ ${CLANG_BASE_PATH+-} ]; then
+if [ ${CLANG_BASE_PATH:+-} ]; then
 	CLANG_VERSION=$("$CLANG_BASE_PATH/bin/clang" --version | sed -nE 's/^.*version ([0-9]+).*$/\1/p')
 	GN_ARGS+=(
 		clang_base_path="\"$CLANG_BASE_PATH\""
@@ -84,7 +84,7 @@ else
 		is_gcc=true
 	)
 fi
-if [ ${WITHOUT_SYSROOT+-} ]; then
+if [ ${WITHOUT_SYSROOT:+-} ]; then
 	GN_ARGS+=(use_sysroot=false)
 fi
 
@@ -140,7 +140,7 @@ V8_TRICKSHOT=blam
 case "$CONFIG" in
 	debug)
 		V8_LIBRARY_TYPE=shared
-		V8_TARGETS=(v8 v8_libbase v8_libplatform)
+		V8_TARGETS="v8 v8_libbase v8_libplatform"
 		;;
 	optdebug|release)
 		GN_ARGS+=(
@@ -153,7 +153,7 @@ case "$CONFIG" in
 			GN_ARGS+=(use_debug_fission=false)
 		fi
 		V8_LIBRARY_TYPE=static
-		V8_TARGETS=(v8_monolith)
+		V8_TARGETS=v8_monolith
 		;;
 esac
 
@@ -162,7 +162,7 @@ echo "$GN" gen "$BUILD_PATH" --args=\'"${GN_ARGS[*]}"\'
 if ! "$GN" gen "$BUILD_PATH" --args="${GN_ARGS[*]}"; then
 	RESULT=$?
 	# Weird failure from gn on linux-musl arm64, but it still generates the ninja files
-	if [ "${PLATFORM:-}" = linux-musl ]; then
+	if [ "${PLATFORM-}" = linux-musl ]; then
 		echo "Ignoring gn error code of $RESULT on linux-musl"
 	else
 		exit 1
@@ -178,7 +178,7 @@ echo "$DEFINES" | while read -r LINE; do
 	# shellcheck disable=SC2206
 	PAIR=(${LINE//=/ })
 	FLAG=${PAIR[0]}
-	VALUE=${PAIR[1]:-}
+	VALUE=${PAIR[1]-}
 	if [[ "$USED_DEFINES" == *"$FLAG"* ]]; then
 		if [[ "$VALUE" == '' ]]; then
 			VALUE=1
@@ -191,8 +191,12 @@ done
 cat <<EOF > "$BUILD_PATH/env"
 V8_LIBRARY_TYPE=$V8_LIBRARY_TYPE
 V8_TRICKSHOT=$V8_TRICKSHOT
+V8_TARGETS="$V8_TARGETS"
 EOF
 
-# Build the monolith
-NINJA_ARGS=(-C "$BUILD_PATH" v8 "${V8_TARGETS[@]}")
-ninja "${NINJA_ARGS[@]}" || ninja -j4 "${NINJA_ARGS[@]}" || ninja -j2 "${NINJA_ARGS[@]}"
+# Diagnostics
+grep -E -A4 '^rule (cc|cxx)$' 1>&2 <"$BUILD_PATH/toolchain.ninja"
+for WHAT in configs  cflags cflags_c cflags_cc defines include_dirs ldflags libs; do
+	printf '\n%s\n' "$WHAT:" 1>&2
+	"$GN" desc "$BUILD_PATH" '//:v8_libbase' "$WHAT" | sed 's/^/  /' 1>&2
+done

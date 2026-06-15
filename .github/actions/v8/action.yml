@@ -95,16 +95,22 @@ runs:
         TRIPLET: ${{ inputs.triplet }}
       run: |
         set -ux
-        echo ::group::Build v8
+        echo ::group::Configure v8
         case $(triplet_util -t "$TRIPLET" %o) in
           darwin)
-            export CLANG_BASE_PATH="$(brew --cellar llvm)/$(brew list --versions llvm | cut -d' ' -f2 | sort -V | head -n1)"
-            ;;
-          windows)
-            export DEPOT_TOOLS_WIN_TOOLCHAIN=0
+            if ! "$CXX" --version | grep -q clang; then
+              echo "Error: 'CXX' must be clang on macOS" 1>&2
+              exit 1
+            fi
+            CLANG_BASE_PATH=$(realpath $(realpath "$CXX")/../..)
             ;;
         esac
-        v8_build "out/$REF/$TARGET"
+        CLANG_BASE_PATH="${CLANG_BASE_PATH-}" DEPOT_TOOLS_WIN_TOOLCHAIN=0 v8_configure "out/$REF/$TARGET"
+        . "out/$REF/$TARGET/env"
+        echo ::endgroup::
+
+        echo ::group::Build v8
+        ninja -C "out/$REF/$TARGET" $V8_TARGETS
         rm -rf "out/$REF/$TARGET/gen"
         find out -type f ! -name env ! -name args.gn ! -name '*.a' ! -name '*.h' ! -name '*.lib' -delete -print
         find out -type d -empty -delete

@@ -214,7 +214,7 @@ jobs:
           # Look for existing version (diagnostics)
           clang++ --version || true
           # Install updated LLVM (and hide spammy progress bar)
-          winget install --accept-source-agreements --silent -e --id=LLVM.LLVM --version=22.1.2 | tr '\r' '\n' | grep -Ev --line-buffered '^[ -\/|]+$'
+          winget install --accept-source-agreements --silent -e --id=LLVM.LLVM --version=22.1.7 | tr '\r' '\n' | grep -Ev --line-buffered '^[ -\/|]+$'
           echo "CC=clang" >> "$GITHUB_ENV"
           echo "CXX=clang++" >> "$GITHUB_ENV"
           echo ::endgroup::
@@ -426,6 +426,13 @@ jobs:
         if: matrix.host.container == 'alpine:edge'
         with:
           packages: bash
+
+      # TODO(?): Remove this. The requirement on libatomic is in the distributed nodejs binaries.
+      # https://github.com/nodejs/node/issues/60790
+      - uses: laverdet/install@v1
+        if: matrix.host.container == 'debian:forky'
+        with:
+          packages: libatomic1
 
       # Setup
       - uses: actions/checkout@v5
