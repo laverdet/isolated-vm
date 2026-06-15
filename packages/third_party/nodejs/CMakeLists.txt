@@ -4,8 +4,11 @@ target_compile_features(nodejs PUBLIC cxx_std_23)
 # Set `NAPI_VERSION` macro
 if(NOT DEFINED NAPI_VERSION)
 	message(FATAL_ERROR "Missing 'NAPI_VERSION' cmake variable.")
+elseif(NAPI_VERSION STREQUAL EXPERIMENTAL)
+	target_compile_definitions(nodejs PUBLIC NAPI_EXPERIMENTAL)
+else()
+	target_compile_definitions(nodejs PUBLIC NAPI_VERSION=${NAPI_VERSION})
 endif()
-target_compile_definitions(nodejs PUBLIC NAPI_VERSION=${NAPI_VERSION})
 
 # Architecture, for window linkage
 string(TOLOWER ${CMAKE_HOST_SYSTEM_PROCESSOR} NODE_ARCH)

@@ -20,7 +20,6 @@ export using ::napi_finalize;
 export using ::napi_property_descriptor;
 export using ::napi_type_tag;
 export using ::node_api_basic_finalize;
-export using ::node_api_nogc_finalize;
 
 // napi_key_collection_mode
 export using ::napi_key_collection_mode;

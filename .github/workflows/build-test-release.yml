@@ -5,7 +5,7 @@ defaults:
   run:
     shell: sh
 env:
-  NODE_HEADERS: 24.0.0
+  NODE_HEADERS: 24.16.0
   V8_REF: 14.8.178.28
 
 jobs:

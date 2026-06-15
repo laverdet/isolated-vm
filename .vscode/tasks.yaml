@@ -45,10 +45,15 @@ inputs:
       Which nodejs version to link against? For debug builds of isolated-vm the headers must match
       the nodejs version.
     options:
+      - 26.3.0
+      - 26.0.0
+      - 24.16.0
       - 24.0.0
+      - 22.22.3
       - 22.0.0
+      - 20.20.20
       - 20.0.0
-    default: 24.0.0
+    default: 24.16.0
 tasks:
   # Default meta-build task
   - label: 'isolated-vm: build'
