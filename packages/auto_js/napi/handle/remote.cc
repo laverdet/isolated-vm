@@ -9,7 +9,7 @@ namespace js::napi {
 template <class Type>
 concept remote_handle_environment =
 	std::is_base_of_v<environment, Type> &&
-	std::is_base_of_v<uv_schedulable, Type>;
+	std::is_base_of_v<napi_schedulable, Type>;
 
 // Thread safe persistent value reference
 export template <class Tag>
@@ -23,7 +23,7 @@ class remote : protected reference_handle {
 	public:
 		using unique_remote = std::unique_ptr<remote, util::function_constant<expire>>;
 
-		remote(private_constructor /*private*/, const environment& env, value_of<Tag> value, uv_scheduler scheduler) :
+		remote(private_constructor /*private*/, const environment& env, value_of<Tag> value, napi_scheduler scheduler) :
 				reference_handle{napi_env{env}, napi_value{value}},
 				scheduler_{std::move(scheduler)} {}
 
@@ -33,7 +33,7 @@ class remote : protected reference_handle {
 		static auto make_unique(remote_handle_environment auto& env, value_of<Tag> value) -> unique_remote;
 
 	private:
-		uv_scheduler scheduler_;
+		napi_scheduler scheduler_;
 };
 
 // Convenience helpers
@@ -59,8 +59,7 @@ template <class Tag>
 auto remote<Tag>::expire(remote* ptr) -> void {
 	std::unique_ptr<remote> self{ptr};
 	ptr->scheduler_(
-		[](auto self) -> void {
-			const auto scope = handle_scope{self->env()};
+		[](napi_env /*env*/, napi_value /*nothing*/, auto self) -> void {
 			self.reset();
 		},
 		std::move(self)

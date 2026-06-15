@@ -13,7 +13,7 @@ class resolver {
 				deferred_{deferred},
 				scheduler_{env.scheduler()},
 				dispatch_{dispatch} {
-			scheduler_.increment_ref();
+			scheduler_.increment_ref(napi_env{env});
 		}
 		resolver(const resolver&) = delete;
 		resolver(resolver&&) = default;
@@ -67,10 +67,9 @@ class resolver {
 		auto schedule(auto operation, auto&&... args) -> void {
 			auto scheduler = std::move(scheduler_);
 			scheduler(
-				[](napi_env env, napi_deferred deferred, auto operation, auto&&... args) {
+				[](napi_env env, napi_value /*nothing*/, napi_deferred deferred, auto operation, auto&&... args) {
 					auto& environment = napi::environment::unsafe_get_environment_as<Environment>(env);
-					environment.scheduler().decrement_ref();
-					const auto scope = js::napi::handle_scope{env};
+					environment.scheduler().decrement_ref(env);
 					try {
 						auto expected = operation(environment, std::forward<decltype(args)>(args)...);
 						if (expected) {
@@ -88,7 +87,6 @@ class resolver {
 						napi::invoke0(napi_reject_deferred, env, deferred, exception);
 					}
 				},
-				env_,
 				deferred_,
 				std::move(operation),
 				std::forward<decltype(args)>(args)...
@@ -97,7 +95,7 @@ class resolver {
 
 		napi_env env_;
 		napi_deferred deferred_;
-		uv_scheduler scheduler_;
+		napi_scheduler scheduler_;
 		Dispatch dispatch_;
 };
 

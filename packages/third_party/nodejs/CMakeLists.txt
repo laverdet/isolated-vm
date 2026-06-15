@@ -65,6 +65,7 @@ target_sources(nodejs
 	PUBLIC FILE_SET CXX_MODULES FILES
 		js_native_api_types.cc
 		js_native_api.cc
+		node_api_types.cc
 		node_api.cc
 		nodejs.cc
 		uv.cc

@@ -1,5 +1,4 @@
 module;
-#include "version.h"
 // https://nodejs.org/api/n-api.html
 #include <js_native_api.h>
 export module nodejs:js_native_api;

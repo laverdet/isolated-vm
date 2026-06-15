@@ -6,21 +6,20 @@ import util;
 namespace js::napi {
 
 environment::environment(napi_env env, bool uses_direct_handles) :
+		napi_schedulable{env},
 		env_{env},
 		address_equal_{uses_direct_handles},
 		uses_direct_handles_{uses_direct_handles} {
-	scheduler().open(napi::invoke(napi_get_uv_event_loop, env));
-	// nb: `uv_async_t` is closed with an async hook, and not as the finalizer of
-	// `napi_set_instance_data`. `uv_close` is async and since nothing is keeping this shared library
-	// alive, the finalizer code can be unloaded.
-	auto finalizer = [](napi_async_cleanup_hook_handle handle, void* data) -> void {
-		auto& env = *static_cast<environment*>(data);
+	// nb: Closing the schedule needs to be the first thing we do, and deleting it needs to be the
+	// last thing we do. Otherwise we get deadlocks or use-after-free problems.
+	auto release_scheduler = [](napi_async_cleanup_hook_handle handle, void* data) -> void {
 		auto finalizer = util::fn<[](napi_async_cleanup_hook_handle handle) -> void {
 			napi::invoke0_noexcept(napi_remove_async_cleanup_hook, handle);
 		}>;
+		auto& env = *static_cast<environment*>(data);
 		env.scheduler().close(util::function_ref{finalizer, handle});
 	};
-	napi::invoke0_noexcept(napi_add_async_cleanup_hook, env, finalizer, this, &cleanup_hook_handle_);
+	napi::invoke0_noexcept(napi_add_async_cleanup_hook, env, release_scheduler, this, &cleanup_hook_handle_);
 }
 
 environment::environment(napi_env env) :

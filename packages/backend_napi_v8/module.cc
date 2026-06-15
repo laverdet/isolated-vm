@@ -86,23 +86,19 @@ auto module_handle::create_capability(
 				environment& env,
 				js::values_vector_t params
 			) -> void {
-			const auto scope = js::napi::handle_scope{napi_env{env}};
 			callback->deref(env).apply(env, std::move(params));
 		};
 		// Invoked in the isolate thread
 		return js::free_function{
-			// TODO: I don't like this `&env` capture, but `scheduler` should throw away the callback if
-			// the environment isn't still valid.
-			[ &env,
-				scheduler = env.scheduler(),
+			[ scheduler = env.scheduler(),
 				invoke = std::move(invoke) ](
 				const realm_scope& /*lock*/,
 				js::rest /*rest*/,
 				js::values_vector_t params
 			) -> void {
 				scheduler(
-					[ &env, invoke ](js::values_vector_t params) -> void {
-						invoke(env, std::move(params));
+					[ invoke ](napi_env env, napi_value /*nothing*/, js::values_vector_t params) -> void {
+						invoke(napi::environment::unsafe_get_environment_as<environment>(env), std::move(params));
 					},
 					std::move(params)
 				);

@@ -14,6 +14,7 @@ target_link_libraries(${napi_js} PUBLIC nodejs)
 
 target_sources(${napi_js}
 	PRIVATE
+		api/napi_scheduler.cc
 		api/uv_dlib.cc
 		api/uv_scheduler.cc
 		support/environment.cc
@@ -31,6 +32,8 @@ target_sources(${napi_js}
 		api/finalizer.cc
 		api/handle_scope.cc
 		api/invoke.cc
+		api/napi_scheduler.h.cc
+		api/threadsafe_function.cc
 		api/uv_dlib.h.cc
 		api/uv_handle.cc
 		api/uv_scheduler.h.cc

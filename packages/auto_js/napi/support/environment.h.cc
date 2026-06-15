@@ -9,7 +9,7 @@ namespace js::napi {
 
 // A reference to an environment is used as the lock witness. Generally, you should not have an
 // `environment&` unless you're in the napi thread and locked.
-export class environment : util::non_moveable, public uv_schedulable {
+export class environment : util::non_moveable, public napi_schedulable {
 	private:
 		environment(napi_env env, bool uses_direct_handles);
 
