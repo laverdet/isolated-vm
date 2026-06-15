@@ -5,7 +5,6 @@ export import :bound_value;
 export import :callback;
 export import :class_definitions;
 export import :class_template_storage;
-export import :container;
 export import :environment;
 export import :error_scope;
 export import :function_definitions;

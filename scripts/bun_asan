@@ -1,0 +1,2 @@
+#!/bin/sh
+exec "$(dirname "$(realpath "$0")")/preload_asan" bun "$@"

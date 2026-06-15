@@ -96,7 +96,7 @@ constexpr auto make_constructor_function(auto constructor) {
 				// Tag the result
 				napi::invoke0(napi_type_tag_object, napi_env{env}, info.this_arg(), &type_tag_for<Type>);
 				// Wrap w/ finalizer
-				return apply_finalizer(std::move(instance), [ & ](Type* instance, napi_finalize finalize, void* hint) -> napi_value {
+				return apply_finalizer(std::move(instance), [ & ](Type* instance, node_api_basic_finalize finalize, void* hint) -> napi_value {
 					napi::invoke0(napi_wrap, napi_env{env}, info.this_arg(), instance, finalize, hint, nullptr);
 					return info.this_arg();
 				});

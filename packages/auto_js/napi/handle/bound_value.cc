@@ -8,6 +8,7 @@ namespace js::napi {
 template <class Tag>
 class bound_value_next : public bound_value<typename Tag::tag_type> {
 	public:
+		using tag_type = Tag;
 		using bound_value<typename Tag::tag_type>::bound_value;
 		bound_value_next() = default;
 		bound_value_next(napi_env env, value_of<Tag> value) :

@@ -1,5 +1,5 @@
 # Configure and locate dependencies
-set(NAPI_VERSION 10)
+set(NAPI_VERSION EXPERIMENTAL)
 set(AUTO_JS_PREFIX isolated_)
 find_package_from_npm(@auto_js/napi AS @auto_js/${AUTO_JS_PREFIX}napi PROPAGATE auto_js napi_js)
 find_package_from_npm(@auto_js/v8 AS @auto_js/${AUTO_JS_PREFIX}v8 PROPAGATE v8_js)

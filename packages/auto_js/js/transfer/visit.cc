@@ -115,8 +115,6 @@ struct reference_map_provider {
 		static_assert(std::is_trivially_copyable_v<mapped_type>);
 
 	public:
-		explicit reference_map_provider(auto&&... args) :
-				map_{std::forward<decltype(args)>(args)...} {}
 		constexpr auto emplace_subject(key_type subject, mapped_type value) -> void {
 			// NOLINTNEXTLINE(cppcoreguidelines-slicing)
 			[[maybe_unused]] auto [ iterator, inserted ] = map_.try_emplace(subject, value);

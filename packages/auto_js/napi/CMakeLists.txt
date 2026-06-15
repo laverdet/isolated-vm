@@ -18,6 +18,8 @@ target_sources(${napi_js}
 		api/uv_dlib.cc
 		api/uv_scheduler.cc
 		support/environment.cc
+		support/host_shim.cc
+		support/host.cc
 		support/initialize.cc
 		transfer/accept.cc
 		value/array_buffer.cc
@@ -45,10 +47,10 @@ target_sources(${napi_js}
 		support/callback_storage.cc
 		support/callback.cc
 		support/class_template_storage.cc
-		support/container.cc
 		support/environment_fwd.cc
 		support/environment.h.cc
 		support/error_scope.cc
+		support/host.h.cc
 		support/initialize.h.cc
 		support/promise.cc
 		support/string_table.cc

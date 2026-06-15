@@ -121,28 +121,7 @@ auto accept_basic_napi_value::operator()(array_buffer_tag /*tag*/, visit_holder 
 
 auto accept_basic_napi_value::operator()(shared_array_buffer_tag /*tag*/, visit_holder /*visit*/, js::shared_array_buffer&& subject) const
 	-> js::referenceable_value<value_of<shared_array_buffer_tag>> {
-	auto backing_store = [ & ]() -> auto {
-		auto byte_length = subject.byte_length();
-		// v8 does not call the deleter `byte_length` is zero. So the heap-allocated shared_ptr trick
-		// does not work in that case.
-		if (byte_length == 0) {
-			return v8::SharedArrayBuffer::NewBackingStore(nullptr, 0, nullptr, nullptr);
-		} else {
-			auto holder = std::make_unique<js::shared_array_buffer::shared_pointer_type>(std::move(subject).acquire_ownership());
-			auto backing_store = v8::SharedArrayBuffer::NewBackingStore(
-				holder->get(),
-				byte_length,
-				[](void* /*data*/, std::size_t /*length*/, void* param) -> void {
-					delete static_cast<js::shared_array_buffer::shared_pointer_type*>(param);
-				},
-				holder.get()
-			);
-			std::ignore = holder.release();
-			return backing_store;
-		}
-	}();
-	auto shared_array_buffer = v8::SharedArrayBuffer::New(v8::Isolate::GetCurrent(), std::move(backing_store));
-	auto value = value_of<shared_array_buffer_tag>::from(std::bit_cast<napi_value>(shared_array_buffer));
+	auto value = make_shared_array_buffer(std::move(subject).acquire_ownership(), subject.byte_length());
 	return js::referenceable_value{value};
 }
 

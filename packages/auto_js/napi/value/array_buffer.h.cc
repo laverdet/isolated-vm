@@ -20,20 +20,14 @@ class bound_value_for_data_block : public bound_value_next<data_block_tag> {
 class bound_value_for_array_buffer : public bound_value_next<array_buffer_tag> {
 	public:
 		using bound_value_next<array_buffer_tag>::bound_value_next;
-		[[nodiscard]] constexpr auto byte_length() const -> std::size_t { return std::span<std::byte>{*this}.size(); }
-		[[nodiscard]] constexpr auto data() const -> const std::byte* { return std::span<std::byte>{*this}.data(); }
 		explicit operator js::array_buffer() const;
-		explicit operator std::span<std::byte>() const;
 };
 
 // `SharedArrayBuffer`
 class bound_value_for_shared_array_buffer : public bound_value_next<shared_array_buffer_tag> {
 	public:
 		using bound_value_next<shared_array_buffer_tag>::bound_value_next;
-		[[nodiscard]] constexpr auto byte_length() const -> std::size_t { return std::span<std::byte>{*this}.size(); }
-		[[nodiscard]] constexpr auto data() const -> const std::byte* { return std::span<std::byte>{*this}.data(); }
 		explicit operator js::shared_array_buffer() const;
-		explicit operator std::span<std::byte>() const;
 };
 
 // `ArrayBufferView` (hidden superclass of `TypedArray` and `DataView`)
@@ -120,23 +114,7 @@ class value_for_typed_array_of : public value_next<typed_array_tag_of<Type>> {
 
 		// napi doesn't provide a way to make a typed array view on a shared array buffer
 		static auto make(const environment& /*env*/, value_of<shared_array_buffer_tag> buffer, std::size_t byte_offset, std::size_t length) -> value_of<typed_array_tag_of<Type>> {
-			using constructor_type = type_t<util::overloaded{
-				[](std::type_identity<double>) -> std::type_identity<v8::Float64Array> { return {}; },
-				[](std::type_identity<float>) -> std::type_identity<v8::Float32Array> { return {}; },
-				[](std::type_identity<js::float16_t>) -> std::type_identity<v8::Float16Array> { return {}; },
-				[](std::type_identity<js::uint8_clamped_t>) -> std::type_identity<v8::Uint8ClampedArray> { return {}; },
-				[](std::type_identity<std::int16_t>) -> std::type_identity<v8::Int16Array> { return {}; },
-				[](std::type_identity<std::int32_t>) -> std::type_identity<v8::Int32Array> { return {}; },
-				[](std::type_identity<std::int64_t>) -> std::type_identity<v8::BigInt64Array> { return {}; },
-				[](std::type_identity<std::int8_t>) -> std::type_identity<v8::Int8Array> { return {}; },
-				[](std::type_identity<std::uint16_t>) -> std::type_identity<v8::Uint16Array> { return {}; },
-				[](std::type_identity<std::uint32_t>) -> std::type_identity<v8::Uint32Array> { return {}; },
-				[](std::type_identity<std::uint64_t>) -> std::type_identity<v8::BigUint64Array> { return {}; },
-				[](std::type_identity<std::uint8_t>) -> std::type_identity<v8::Uint8Array> { return {}; },
-			}(type<Type>)>;
-			auto buffer_local = std::bit_cast<v8::Local<v8::SharedArrayBuffer>>(napi_value{buffer});
-			auto view_local = constructor_type::New(buffer_local, byte_offset, length);
-			return value_of<typed_array_tag_of<Type>>::from(std::bit_cast<napi_value>(view_local));
+			return make_sab_typed_array_of<Type>(buffer, byte_offset, length);
 		}
 };
 

@@ -47,6 +47,7 @@ export using ::napi_get_cb_info;
 export using ::napi_get_dataview_info;
 export using ::napi_get_date_value;
 export using ::napi_get_element;
+export using ::napi_get_global;
 export using ::napi_get_instance_data;
 export using ::napi_get_null;
 export using ::napi_get_property_names;
@@ -91,10 +92,12 @@ export using ::napi_type_tag_object;
 export using ::napi_typeof;
 export using ::napi_unwrap;
 export using ::napi_wrap;
+export using ::node_api_create_external_sharedarraybuffer;
 export using ::node_api_create_property_key_latin1;
 export using ::node_api_create_property_key_utf16;
 export using ::node_api_create_property_key_utf8;
 export using ::node_api_create_syntax_error;
+export using ::node_api_is_sharedarraybuffer;
 export using ::node_api_throw_syntax_error;
 
 // NOLINTEND(misc-unused-using-decls)

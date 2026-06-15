@@ -10,16 +10,11 @@ namespace js::napi {
 // A reference to an environment is used as the lock witness. Generally, you should not have an
 // `environment&` unless you're in the napi thread and locked.
 export class environment : util::non_moveable, public napi_schedulable {
-	private:
-		environment(napi_env env, bool uses_direct_handles);
-
 	public:
 		explicit environment(napi_env env);
 
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		[[nodiscard]] operator napi_env() const { return env_; }
-		[[nodiscard]] auto address_equal() const -> const auto& { return address_equal_; }
-		[[nodiscard]] auto uses_direct_handles() const -> bool { return uses_direct_handles_; }
 
 		template <class Type>
 		static auto make_and_set_environment(napi_env env, auto&&... args) -> Type&
@@ -39,8 +34,6 @@ export class environment : util::non_moveable, public napi_schedulable {
 	private:
 		napi_env env_;
 		napi_async_cleanup_hook_handle cleanup_hook_handle_{};
-		napi::address_equal address_equal_;
-		bool uses_direct_handles_;
 };
 
 } // namespace js::napi

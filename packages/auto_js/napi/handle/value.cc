@@ -26,6 +26,11 @@ class value_next : public value_of<typename Tag::tag_type> {
 		static auto from(napi_value value_) -> value_of<Tag> { return std::bit_cast<value_of<Tag>>(value_); }
 };
 
+// Deduction guide for `value_of{bound_value}`
+template <class Type>
+	requires requires { typename Type::tag_type; }
+value_of(Type value) -> value_of<typename Type::tag_type>;
+
 // Tagged napi_value
 export template <class Tag>
 class value_of : public value_specialization<Tag>::value_type {

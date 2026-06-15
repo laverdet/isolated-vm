@@ -364,8 +364,8 @@ jobs:
           node addon.js
 
       # Diagnostics
-      - name: Symbols [Linux]
-        if: runner.os == 'Linux'
+      - if: runner.os == 'Linux'
+        name: Symbols [Linux]
         run: |
           set -ux
           SO_PATH="build/packages/backend_napi_v8/backend_napi_v8.$(triplet_util -t "$TRIPLET" %p).node"
@@ -373,10 +373,8 @@ jobs:
           ls -lah "$SO_PATH"
           ldd "$SO_PATH" 2>&1 | grep -v 'Error relocating'
           nm -guC "$SO_PATH"
-      - name: Symbols [Windows]
-        if: runner.os == 'Windows'
-        env:
-          BACKEND_NAPI_V8: ${{ steps.build.outputs.name }}
+      - if: runner.os == 'Windows'
+        name: Symbols [Windows]
         run: |
           set -ux
           DLL_PATH="build/packages/backend_napi_v8/backend_napi_v8.$(triplet_util -t "$TRIPLET" %p).node"
@@ -392,12 +390,19 @@ jobs:
           if-no-files-found: error
 
       # Console on failure
-      - uses: laverdet/console@v1
-        if: failure()
+      - if: failure()
+        uses: laverdet/console@v1
 
   # Run tests
   test:
-    name: Test [${{ matrix.host.container || matrix.host.runs-on }} ${{ endsWith(matrix.host.runs-on, '-arm' && 'arm64') || (endsWith(matrix.host.runs-on, '-intel') && 'x64') || (startsWith(matrix.host.runs-on, 'macos') && 'arm64') || 'x64' }} node:${{ matrix.node }}]
+    name:
+      Test [${{ matrix.host.container || matrix.host.runs-on }}
+        ${{
+          (endsWith(matrix.host.runs-on, '-arm') && 'arm64') ||
+          (endsWith(matrix.host.runs-on, '-intel') && 'x64') ||
+          (startsWith(matrix.host.runs-on, 'macos') && 'arm64') || 'x64'
+        }}
+        ${{ matrix.runtime.runtime }}${{ (matrix.runtime.runtime == 'node' && format(':{0}', matrix.runtime.node)) || '' }}]
     needs: build
     strategy:
       fail-fast: false
@@ -414,23 +419,40 @@ jobs:
           - runs-on: windows-2025
           - runs-on: ubuntu-24.04
             container: debian:forky
-        node:
-          - 24
-          - 26
+        runtime:
+          - runtime: node
+            node: 24
+          - runtime: node
+            node: 26
+          - runtime: bun
+            node: 24
+        exclude:
+          # Bun doesn't support musl. Actually, the gcompat hack from `laverdet/alpine-arm64` lets
+          # the tests run but this is probably not a platform you would find in the wild.
+          # https://github.com/oven-sh/bun/issues/14292
+          - host:
+              container: alpine:edge
+            runtime:
+              runtime: bun
+          # This is another can of worms.
+          - host:
+              runs-on: windows-2025
+            runtime:
+              runtime: bun
     runs-on: ${{ matrix.host.runs-on }}
     container: ${{ matrix.host.container }}
     steps:
-      - uses: laverdet/alpine-arm64@v1
-        if: matrix.host.container == 'alpine:edge'
-      - uses: laverdet/install@v1
-        if: matrix.host.container == 'alpine:edge'
+      - if: matrix.host.container == 'alpine:edge'
+        uses: laverdet/alpine-arm64@v1
+      - if: matrix.host.container == 'alpine:edge'
+        uses: laverdet/install@v1
         with:
           packages: bash
 
       # TODO(?): Remove this. The requirement on libatomic is in the distributed nodejs binaries.
       # https://github.com/nodejs/node/issues/60790
-      - uses: laverdet/install@v1
-        if: matrix.host.container == 'debian:forky'
+      - if: matrix.host.container == 'debian:forky' && matrix.runtime.node == '26'
+        uses: laverdet/install@v1
         with:
           packages: libatomic1
 
@@ -453,10 +475,10 @@ jobs:
           path: build/packages/backend_napi_v8/artifacts
 
       # Install nodejs [musl]
-      - id: musl
-        if: endsWith(steps.platform.outputs.triplet, '-linux-musl')
+      - if: endsWith(steps.platform.outputs.triplet, '-linux-musl')
+        id: musl
         env:
-          NODE_VERSION: ${{ matrix.node }}
+          NODE_VERSION: ${{ matrix.runtime.node }}
         run: |
           set -ux
           echo https://dl-cdn.alpinelinux.org/alpine/edge/community/ >> /etc/apk/repositories
@@ -469,16 +491,24 @@ jobs:
               exit 1
               ;;
           esac
-      - uses: laverdet/install@v1
-        if: steps.musl.outcome == 'success'
+      - if: steps.musl.outcome == 'success'
+        uses: laverdet/install@v1
         with:
           packages: ${{ steps.musl.outputs.package }} npm
 
       # Install nodejs [others]
-      - uses: actions/setup-node@v6
-        if: steps.musl.outcome == 'skipped'
+      - if: steps.musl.outcome == 'skipped'
+        uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node }}
+          node-version: ${{ matrix.runtime.node }}
+
+      # Install Bun (maybe)
+      - if: matrix.runtime.runtime == 'bun' && (matrix.host.container == 'alpine:edge' || matrix.host.container == 'debian:forky')
+        uses: laverdet/install@v1
+        with:
+          packages: unzip
+      - if: matrix.runtime.runtime == 'bun'
+        uses: oven-sh/setup-bun@v2
 
       # Install npm dependencies, build TypeScript, check module sanity
       - uses: pnpm/action-setup@v5
@@ -495,6 +525,8 @@ jobs:
 
       # Run tests
       - name: Test
+        env:
+          TEST_SCOPE: ${{ (matrix.runtime.runtime == 'bun' && 'bun') || '' }}
         timeout-minutes: 1
         run: |
           pnpm config set script-shell /bin/sh
