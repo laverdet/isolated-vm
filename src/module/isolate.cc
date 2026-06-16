@@ -104,8 +104,8 @@ void init(Local<Object> target) {
 		assert(isolates->find(isolate) == isolates->end());
 		auto holder = IsolateEnvironment::New(isolate, context);
         auto dummy_buffer = node::Buffer::New(isolate, 0).ToLocalChecked();
-        assert(dummy_buffer->GetPrototype()->IsObject());
-        holder->GetIsolate()->SetBufferPrototype(dummy_buffer->GetPrototype().As<Object>());
+        assert(dummy_buffer->GetPrototypeV2()->IsObject());
+        holder->GetIsolate()->SetBufferPrototype(dummy_buffer->GetPrototypeV2().As<Object>());
 		isolates->insert(std::make_pair(
 			isolate,
 			IsolateHolderAndJoin{holder, holder->GetIsolate()->GetDisposeWaitHandle()}

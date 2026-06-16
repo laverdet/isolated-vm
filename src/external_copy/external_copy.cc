@@ -480,7 +480,7 @@ auto ExternalCopyArrayBufferView::CopyInto(bool /*transfer_in*/) -> Local<Value>
         auto& environment = IsolateEnvironment::GetCurrent();
         auto buffer_prototype = environment.GetBufferPrototype();
         if (!buffer_prototype.IsEmpty() && buffer_prototype->IsObject()) {
-            view->SetPrototype(Isolate::GetCurrent()->GetCurrentContext(), buffer_prototype).Check();
+            view->SetPrototypeV2(Isolate::GetCurrent()->GetCurrentContext(), buffer_prototype).Check();
         }
     }
 
@@ -527,7 +527,7 @@ auto ExternalCopyArrayBufferView::Copy(v8::Local<v8::ArrayBufferView> view) -> s
 	Local<Context> context = isolate->GetCurrentContext();
 
 	auto buffer_prototype = environment.GetBufferPrototype();
-	bool is_node_buffer = !buffer_prototype.IsEmpty() && view->GetPrototype()->Equals(context, buffer_prototype).ToChecked();
+	bool is_node_buffer = !buffer_prototype.IsEmpty() && view->GetPrototypeV2()->Equals(context, buffer_prototype).ToChecked();
 	size_t byte_offset = view->ByteOffset();
 	size_t byte_length = view->ByteLength();
 

@@ -188,7 +188,7 @@ auto IsolateEnvironment::CodeGenCallback2(Local<Context> context, Local<Value> s
 
 void IsolateEnvironment::MarkSweepCompactPrologue(Isolate* /*isolate*/, GCType gc_type, GCCallbackFlags /*gc_flags*/, void* data) {
 #if V8_AT_LEAST(10, 0, 0) // Node.js 18+
-	if ((gc_type & (GCType::kGCTypeMarkSweepCompact | GCType::kGCTypeMinorMarkCompact)) == 0) {
+	if ((gc_type & (GCType::kGCTypeMarkSweepCompact | GCType::kGCTypeMinorMarkSweep)) == 0) {
 		return;
 	}
 #else
