@@ -32,24 +32,20 @@ at this time.
 PROJECT STATUS
 --------------
 
-`isolated-vm` is currently in *maintenance mode*. New features are not actively being added but
-existing features and new versions of nodejs are supported as possible. There are some major
-architectural changes which need to be added to improve the stability and security of the project. I
-don't have as much spare time as I did when I started this project, so there is not currently any
-plan for these improvements.
+`isolated-vm` is currently in *maintenance mode*. It will continue to be supported for as long as is
+technically feasible. In the
+[experimental](https://github.com/laverdet/isolated-vm/tree/experimental) branch I have been working
+on a new version for quite some time. It is worth taking a look if you are interested in this
+project, but it is certainly not ready for serious applications.
 
-#### Wishlist
 
-1) Multi-process architecture. v8 is *not* resilient to out of memory conditions and is unable to
-gracefully unwind from these errors. Therefore it is possible, and even common, to crash a process
-with poorly-written or hostile software. I implemented a band-aid for this with the
-`onCatastrophicError` callback which quarantines a corrupted isolate, but it is not reliable.
+SPONSORSHIP
+-----------
 
-2) Bundled v8 version. nodejs uses a patched version of v8 which makes development of this module
-more difficult than it needs to be. For some reason they're also allowed to change the v8 ABI in
-semver minor releases as well, which causes issues for users while upgrading nodejs. Also, some
-Linux distributions strip "internal" symbols from their nodejs binaries which makes usage of this
-module impossible. I think the way to go is to compile and link against our own version of v8.
+[![GitHub Sponsors](https://img.shields.io/github/sponsors/laverdet?logo=githubsponsors&color=ec6cb9)](https://github.com/sponsors/laverdet)
+
+Please sponsor this project if you feel like it.
+
 
 CONTENTS
 --------
