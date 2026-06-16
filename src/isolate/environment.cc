@@ -476,9 +476,23 @@ IsolateEnvironment::~IsolateEnvironment() {
 			if (parent_isolate_holder) {
 				auto parent_isolate = parent_isolate_holder->GetIsolate();
 				if (parent_isolate) {
-					parent_isolate->GetIsolate()->AdjustAmountOfExternalAllocatedMemory(
-							-(ssize_t) last_reported_external_memory_size
-					);
+					auto reported = static_cast<ssize_t>(last_reported_external_memory_size);
+					if (reported > 0) {
+						// Release the external memory we attributed to the parent. Increments are
+						// applied asynchronously via RequestInterrupt (see ReportExternalMemoryToParentIsolate),
+						// so some may not have landed when a child is disposed mid-work. V8 (Node 26+)
+						// hard-asserts that an isolate's external memory can't go negative, so defer the
+						// decrement to the parent thread and clamp it to whatever is still accounted for.
+						parent_isolate->GetIsolate()->RequestInterrupt([](v8::Isolate* isolate, void* data) {
+							auto amount = reinterpret_cast<ssize_t>(data); // NOLINT(*-no-int-to-ptr)
+							v8::HeapStatistics heap;
+							isolate->GetHeapStatistics(&heap);
+							auto clamped = std::min<ssize_t>(amount, static_cast<ssize_t>(heap.external_memory()));
+							if (clamped > 0) {
+								isolate->AdjustAmountOfExternalAllocatedMemory(-clamped);
+							}
+						}, reinterpret_cast<void*>(reported)); // NOLINT(*-no-int-to-ptr)
+					}
 				}
 			}
 		}
