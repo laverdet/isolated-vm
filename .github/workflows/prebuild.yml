@@ -93,5 +93,4 @@ jobs:
           name: npm-package
           path: '*.tgz'
       - name: Publish
-        if: github.repository_owner == 'laverdet'
         run: npm publish
