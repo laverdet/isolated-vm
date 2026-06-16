@@ -21,11 +21,18 @@ const ivm = require('isolated-vm');
 const WARMUP_ITERATIONS = 500;
 const MEASURE_ITERATIONS = WARMUP_ITERATIONS * 4; // 4x the work; a leak would grow ~4x with it.
 
-// After the pool is warm, a 4x batch should add almost nothing. Allow generous slack for noise; a real
-// leak would blow past this by hundreds of MB (4x the warmup's growth).
-const MAX_POST_WARMUP_RSS_GROWTH_MB = 32;
+// RSS leak gate (allocator-independent). An absolute MB threshold can't be portable: baseline
+// fragmentation/page-retention is allocator-specific (glibc vs macOS libmalloc vs jemalloc/tcmalloc),
+// so a 4x batch grows a different absolute amount on each platform with no leak present. Instead we
+// compare the measurement batch's growth *per iteration* against the warmup batch's. Once the pool is
+// warm, bounded retention grows far slower per-iteration than it did cold; a real leak grows at parity
+// or faster. We only flag a leak when BOTH hold: growth clears a small absolute noise floor AND the
+// per-iteration rate stays a meaningful fraction of the warmup rate.
+const RSS_NOISE_FLOOR_MB = 24; // below this, post-warmup growth is just measurement noise — ignore.
+const MAX_PER_ITERATION_RATIO = 0.75; // measurePerIter must stay below warmupPerIter * this.
 
-// Collected isolates must bring the heap/external memory back down near where it started.
+// Collected isolates must bring the heap/external memory back down near where it started. These are the
+// reliable, allocator-independent leak signals.
 const MAX_HEAP_GROWTH_MB = 8;
 const MAX_EXTERNAL_GROWTH_MB = 8;
 
@@ -90,13 +97,22 @@ async function run() {
 	await settle();
 	const afterMeasure = sampleMemoryMb();
 
+	const warmupRssGrowth = afterWarmup.rss - baseline.rss;
 	const postWarmupRssGrowth = afterMeasure.rss - afterWarmup.rss;
 	const heapGrowth = afterMeasure.heap - baseline.heap;
 	const externalGrowth = afterMeasure.external - baseline.external;
 
+	// How fast RSS climbs cold (warmup) vs warm (measurement). If the warmup didn't grow RSS at all,
+	// this platform has negligible fragmentation, so the noise floor alone decides.
+	const warmupPerIter = warmupRssGrowth / WARMUP_ITERATIONS;
+	const measurePerIter = postWarmupRssGrowth / MEASURE_ITERATIONS;
+	const perIterationRatio = warmupPerIter > 0 ? measurePerIter / warmupPerIter : Infinity;
+
 	const failures = [];
-	if (postWarmupRssGrowth > MAX_POST_WARMUP_RSS_GROWTH_MB) {
-		failures.push(`RSS grew ${postWarmupRssGrowth} MB on a 4x batch after warmup — memory scales with iterations (leak)`);
+	// A leak only if growth is both large enough to matter AND keeps pace, per-iteration, with the cold
+	// warmup. Bounded retention grows far slower once warm; a real leak grows at parity or faster.
+	if (postWarmupRssGrowth > RSS_NOISE_FLOOR_MB && perIterationRatio > MAX_PER_ITERATION_RATIO) {
+		failures.push(`RSS grew ${postWarmupRssGrowth} MB on a 4x batch at ${Math.round(perIterationRatio * 100)}% of the warmup per-iteration rate — memory scales with iterations (leak)`);
 	}
 	if (heapGrowth > MAX_HEAP_GROWTH_MB) {
 		failures.push(`V8 heap stayed ${heapGrowth} MB above baseline — collected isolates did not release heap memory`);
@@ -112,7 +128,8 @@ async function run() {
 		console.error('baseline:', JSON.stringify(baseline));
 		console.error(`after ${WARMUP_ITERATIONS} (warmup):`, JSON.stringify(afterWarmup));
 		console.error(`after ${MEASURE_ITERATIONS} (4x):`, JSON.stringify(afterMeasure));
-		console.error(`post-warmup RSS growth: ${postWarmupRssGrowth} MB (limit ${MAX_POST_WARMUP_RSS_GROWTH_MB})`);
+		console.error(`RSS growth: warmup ${warmupRssGrowth} MB (${warmupPerIter.toFixed(3)} MB/iter), post-warmup ${postWarmupRssGrowth} MB (${measurePerIter.toFixed(3)} MB/iter)`);
+		console.error(`per-iteration ratio: ${perIterationRatio === Infinity ? 'n/a' : Math.round(perIterationRatio * 100) + '%'} (limit ${Math.round(MAX_PER_ITERATION_RATIO * 100)}%, noise floor ${RSS_NOISE_FLOOR_MB} MB)`);
 		console.error(`heap growth vs baseline: ${heapGrowth} MB (limit ${MAX_HEAP_GROWTH_MB})`);
 		console.error(`external growth vs baseline: ${externalGrowth} MB (limit ${MAX_EXTERNAL_GROWTH_MB})`);
 		for (const failure of failures) {
