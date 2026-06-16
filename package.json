@@ -1,7 +1,7 @@
 {
-  "name": "isolated-vm",
+  "name": "@integromat/isolated-vm",
   "version": "7.0.0",
-  "description": "Access to multiple isolates",
+  "description": "Access to multiple isolates - Make Fork",
   "main": "isolated-vm.js",
   "types": "isolated-vm.d.ts",
   "engines": {
