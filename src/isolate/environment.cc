@@ -212,9 +212,21 @@ void IsolateEnvironment::MarkSweepCompactPrologue(Isolate* /*isolate*/, GCType g
 
 		auto owned_isolate = ref->GetIsolate();
 		if (owned_isolate && owned_isolate->last_memory_pressure != MemoryPressureLevel::kCritical) {
-			Executor::Lock lock(*owned_isolate);
+			// NB: This runs inside the *parent* isolate's GC prologue, on the parent's thread. Taking
+			// `Executor::Lock` here would construct a blocking `v8::Locker` on the child; if that child is
+			// busy (e.g. running an unbounded script) it never releases the lock, freezing the parent
+			// mid-GC and deadlocking the whole process.
+			//
+			// Deliver the notification off-thread instead. `v8::Isolate::MemoryPressureNotification` is
+			// safe to call from a non-owning thread: it detects we don't hold the child's lock and, rather
+			// than collecting inline, posts a memory-pressure GC task to the child's foreground task runner
+			// (and never blocks). Our task runner only enqueues though (see `IsolateTaskRunner::PostTaskImpl`),
+			// so an idle child would never run that task — wake it explicitly so the GC actually happens on
+			// the child's own thread. A busy child is already `Running`, so `WakeIsolate` is a no-op and the
+			// pressure is picked up when it next yields.
 			owned_isolate->memory_pressure = MemoryPressureLevel::kCritical;
-			owned_isolate->CheckMemoryPressure();
+			owned_isolate->isolate->MemoryPressureNotification(MemoryPressureLevel::kCritical);
+			owned_isolate->scheduler->Lock()->WakeIsolate(owned_isolate);
 		}
 	}
 }
