@@ -93,4 +93,4 @@ jobs:
           name: npm-package
           path: '*.tgz'
       - name: Publish
-        run: npm publish
+        run: npm publish --tag alpha
