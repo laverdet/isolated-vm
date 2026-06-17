@@ -5,7 +5,7 @@
   "main": "isolated-vm.js",
   "types": "isolated-vm.d.ts",
   "engines": {
-    "node": ">=26.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "install": "node-gyp-build 'node-gyp rebuild -j 4 --release -v' || node-gyp rebuild --release -j max",
