@@ -76,8 +76,6 @@ jobs:
         with:
           node-version: latest
           registry-url: 'https://registry.npmjs.org'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Download all prebuild artifacts
         uses: actions/download-artifact@v8
         with:
