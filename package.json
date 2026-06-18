@@ -4,6 +4,16 @@
   "description": "Access to multiple isolates - Make Fork",
   "main": "isolated-vm.js",
   "types": "isolated-vm.d.ts",
+  "files": [
+    "isolated-vm.js",
+    "isolated-vm.d.ts",
+    "include.js",
+    "binding.gyp",
+    "src/",
+    "vendor/",
+    "scripts/",
+    "prebuilds/"
+  ],
   "engines": {
     "node": ">=24.0.0"
   },

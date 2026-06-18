@@ -1,8 +1,0 @@
-test.js
-tests
-out/
-build/
-.github/
-.travis.yml
-.vscode/
-*.md
