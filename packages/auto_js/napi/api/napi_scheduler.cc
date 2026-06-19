@@ -10,11 +10,11 @@ napi_scheduler::napi_scheduler(napi_env env) :
 	fn_.unref(env);
 }
 
-napi_scheduler::operator bool() const {
+napi_scheduler::operator bool() const noexcept {
 	return bool{fn_};
 }
 
-auto napi_scheduler::close(threadsafe_function_type::close_callback close) -> void {
+auto napi_scheduler::close(threadsafe_function_type::close_callback close) noexcept -> void {
 	fn_.close(close);
 }
 
@@ -32,7 +32,7 @@ auto napi_scheduler::increment_ref(node_api_basic_env env) const -> void {
 	}
 }
 
-auto napi_scheduler::storage::operator()(napi_env env, napi_value value, task_type& task) -> void {
+auto napi_scheduler::storage::operator()(napi_env env, napi_value value, task_type& task) noexcept -> void {
 	task(env, value);
 }
 

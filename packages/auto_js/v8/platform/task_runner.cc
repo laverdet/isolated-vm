@@ -6,7 +6,7 @@ using std::chrono::steady_clock;
 
 // NOTE:
 // There is nothing interesting in this file. The main thing is that `task_runner_of` automatically
-// defines `NonNestableTasksEnabled` (etc) for you based on whether or not `post_non_nestable` (etc)
+// defines `NonNestableTasksEnabled` (etc) -> for you based on whether or not `post_non_nestable` (etc)
 // is defined.
 
 namespace js::iv8::platform {

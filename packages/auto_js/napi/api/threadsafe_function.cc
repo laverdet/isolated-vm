@@ -20,12 +20,12 @@ class threadsafe_function_of : util::non_copyable {
 		auto operator=(const threadsafe_function_of&) -> threadsafe_function_of& = delete;
 		auto operator=(threadsafe_function_of&&) -> threadsafe_function_of& = delete;
 
-		auto close(close_callback callback) -> void;
+		auto close(close_callback callback) noexcept -> void;
 		auto ref(node_api_basic_env env) const -> void;
 		auto unref(node_api_basic_env env) const -> void;
-		auto operator()(Message message) const -> bool;
-		auto operator*() const -> Context& { return get(); }
-		explicit operator bool() const { return tsfn_ != nullptr; }
+		auto operator()(Message message) const noexcept -> bool;
+		auto operator*() const noexcept -> Context& { return get(); }
+		explicit operator bool() const noexcept { return tsfn_ != nullptr; }
 
 	private:
 		struct storage : Context {
@@ -36,7 +36,7 @@ class threadsafe_function_of : util::non_copyable {
 			private:
 				close_callback close_hook_{[] -> void {}};
 		};
-		auto get() const -> storage&;
+		auto get() const noexcept -> storage&;
 
 		constexpr static auto trivial_message =
 			std::is_trivially_destructible_v<Message> && sizeof(Message) <= sizeof(void*);
@@ -98,7 +98,7 @@ threadsafe_function_of<Context, Message>::~threadsafe_function_of() {
 }
 
 template <class Context, class Message>
-auto threadsafe_function_of<Context, Message>::close(close_callback callback) -> void {
+auto threadsafe_function_of<Context, Message>::close(close_callback callback) noexcept -> void {
 	get().close_hook_ = callback;
 	napi::invoke0_noexcept(napi_release_threadsafe_function, std::exchange(tsfn_, nullptr), napi_tsfn_abort);
 }
@@ -114,7 +114,7 @@ auto threadsafe_function_of<Context, Message>::unref(node_api_basic_env env) con
 }
 
 template <class Context, class Message>
-auto threadsafe_function_of<Context, Message>::operator()(Message message) const -> bool {
+auto threadsafe_function_of<Context, Message>::operator()(Message message) const noexcept -> bool {
 	auto check = [ & ](napi_status status) {
 		switch (status) {
 			case napi_ok:
@@ -147,7 +147,7 @@ auto threadsafe_function_of<Context, Message>::operator()(Message message) const
 }
 
 template <class Context, class Message>
-auto threadsafe_function_of<Context, Message>::get() const -> storage& {
+auto threadsafe_function_of<Context, Message>::get() const noexcept -> storage& {
 	auto* context = napi::invoke_noexcept(napi_get_threadsafe_function_context, tsfn_);
 	return *reinterpret_cast<storage*>(context);
 }

@@ -11,7 +11,7 @@ import v8_js;
 
 namespace backend_napi_v8 {
 
-auto script_handle::compile_script(agent_handle& agent, environment& env, js::string_t code_string, compile_script_options options) -> js::forward<js::napi::value_of<>> {
+auto script_handle::compile_script(environment& env, agent_handle& agent, js::string_t code_string, compile_script_options options) -> forward_promise_type {
 	using expected_type = std::expected<script_handle, js::error_value>;
 	auto [ promise, resolver ] = make_promise(
 		env,
@@ -44,7 +44,7 @@ auto script_handle::compile_script(agent_handle& agent, environment& env, js::st
 	return js::forward{promise};
 }
 
-auto script_handle::run(environment& env, realm_handle& realm, run_script_options options) -> js::forward<js::napi::value_of<>> {
+auto script_handle::run(environment& env, realm_handle& realm, run_script_options options) -> forward_promise_type {
 	using expected_type = std::expected<js::value_t, js::error_value>;
 	auto [ promise, resolver ] = make_promise(env);
 	realm.agent().schedule(

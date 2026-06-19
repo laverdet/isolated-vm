@@ -1,5 +1,7 @@
 export module backend_napi_v8:realm;
-import :agent;
+import :agent_handle;
+import :environment;
+import :module_;
 import auto_js;
 import napi_js;
 import v8_js;
@@ -15,11 +17,11 @@ export class realm_handle {
 		auto agent() -> auto& { return agent_; }
 		auto realm() -> auto& { return realm_; }
 
-		auto acquire_global_object(environment& env) -> js::forward<js::napi::value_of<>>;
-		auto instantiate_runtime(environment& env) -> js::forward<js::napi::value_of<>>;
+		auto acquire_global_object(environment& env) -> forward_promise_type;
+		auto instantiate_runtime(environment& env) -> forward_promise_type;
+		auto create_capability(environment& env, forward_callback_type make_capability, create_capability_options options) -> forward_promise_type;
 
-		static auto create(agent_handle& agent, environment& env) -> js::forward<js::napi::value_of<>>;
-
+		static auto create(environment& env, agent_handle& agent) -> forward_promise_type;
 		static auto class_template(environment& env) -> js::napi::value_of<class_tag_of<realm_handle>>;
 
 	private:

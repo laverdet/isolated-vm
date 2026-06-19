@@ -27,7 +27,7 @@ native_module_handle::native_module_handle(
 		options_{std::move(options)},
 		names_{std::move(names)} {}
 
-auto native_module_handle::instantiate(environment& env, realm_handle& realm) -> js::forward<js::napi::value_of<>> {
+auto native_module_handle::instantiate(environment& env, realm_handle& realm) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(
 		env,
 		[](environment& env, agent_handle agent, js::iv8::shared_remote<v8::Module> module_record) -> auto {
@@ -74,7 +74,7 @@ auto native_module_handle::class_template(environment& env) -> js::napi::value_o
 	);
 }
 
-auto native_module_handle::create(environment& env, std::string filename, create_native_module_options options) -> js::forward<js::napi::value_of<>> {
+auto native_module_handle::create(environment& env, std::string filename, create_native_module_options options) -> forward_promise_type {
 
 #if __MUSL__
 	// musl has some unique behavior with bare .so names. There is a lot of discussion here:

@@ -16,11 +16,11 @@ module_handle::module_handle(agent_handle agent, js::iv8::shared_remote<v8::Modu
 		module_{std::move(module)} {}
 
 auto module_handle::compile(
-	agent_handle& agent,
 	environment& env,
+	agent_handle& agent,
 	js::string_t source_text,
 	compile_module_options options
-) -> js::forward<js::napi::value_of<>> {
+) -> forward_promise_type {
 	using value_type = std::tuple<module_handle, std::optional<std::u16string>, std::vector<js::iv8::module_request>>;
 	using expected_type = std::expected<value_type, js::error_value>;
 	auto [ promise, resolver ] = make_promise(
@@ -67,19 +67,19 @@ auto module_handle::compile(
 }
 
 auto module_handle::create_capability(
-	realm_handle& realm,
 	environment& env,
-	callback_type make_capability,
+	realm_handle& realm,
+	js::napi::value_of<js::function_tag> make_capability,
 	create_capability_options options
-) -> js::forward<js::napi::value_of<>> {
+) -> forward_promise_type {
 	// Make the `subscriber_capability` and pass it to the interface maker
-	using capability_type = std::variant<callback_type, js::tagged_external<subscriber_capability>>;
+	using capability_type = std::variant<forward_callback_type, js::tagged_external<subscriber_capability>>;
 	using capability_interface_type = js::dictionary<js::dictionary_tag, js::string_t, capability_type>;
 	auto subscriber = subscriber_capability::make(env);
-	auto local_capability_interface = make_capability->call<capability_interface_type>(env, js::forward{subscriber});
+	auto local_capability_interface = make_capability.call<capability_interface_type>(env, js::forward{subscriber});
 
 	// Makes `js::free_function` which invokes the user-supplied callback capability
-	auto make_capability_callback = [ & ](callback_type capability) -> auto {
+	auto make_capability_callback = [ & ](forward_callback_type capability) -> auto {
 		// Invoked in the node thread
 		auto invoke =
 			[ callback = js::napi::make_shared_remote(env, *capability) ](
@@ -217,7 +217,7 @@ auto module_handle::create_capability(
 	return js::forward{promise};
 };
 
-auto module_handle::evaluate(environment& env, realm_handle& realm) -> js::forward<js::napi::value_of<>> {
+auto module_handle::evaluate(environment& env, realm_handle& realm) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(env);
 	agent_.schedule(
 		[](
@@ -252,7 +252,7 @@ auto deref_remote_link_record(js::iv8::isolate_lock_witness lock, remote_module_
 	};
 };
 
-auto module_handle::link(environment& env, realm_handle& realm, module_handle_link_record link_record) -> js::forward<js::napi::value_of<>> {
+auto module_handle::link(environment& env, realm_handle& realm, module_handle_link_record link_record) -> forward_promise_type {
 	auto scheduler = env.scheduler();
 	auto [ promise, resolver ] = make_promise(env);
 

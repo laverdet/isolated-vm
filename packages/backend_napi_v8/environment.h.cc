@@ -68,4 +68,8 @@ export class environment
 		napi::reference<function_tag> module_class_;
 };
 
+// Common types
+using forward_callback_type = js::forward<js::napi::value_of<js::function_tag>>;
+using forward_promise_type = js::forward<js::napi::value_of<js::promise_tag>>;
+
 } // namespace backend_napi_v8

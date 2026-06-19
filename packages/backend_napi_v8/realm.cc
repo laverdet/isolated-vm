@@ -1,14 +1,10 @@
 module backend_napi_v8;
-import :agent;
 import :environment;
 import :lock;
 import :module_;
 import :reference;
 import :utility;
-import auto_js;
-import napi_js;
 import std;
-import v8_js;
 
 namespace backend_napi_v8 {
 
@@ -16,7 +12,7 @@ realm_handle::realm_handle(agent_handle agent, js::iv8::shared_remote<v8::Contex
 		agent_{std::move(agent)},
 		realm_{std::move(realm)} {}
 
-auto realm_handle::create(agent_handle& agent, environment& env) -> js::forward<js::napi::value_of<>> {
+auto realm_handle::create(environment& env, agent_handle& agent) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(
 		env,
 		[](environment& env, agent_handle agent, js::iv8::shared_remote<v8::Context> realm) -> auto {
@@ -38,7 +34,7 @@ auto realm_handle::create(agent_handle& agent, environment& env) -> js::forward<
 	return js::forward{promise};
 }
 
-auto realm_handle::acquire_global_object(environment& env) -> js::forward<js::napi::value_of<>> {
+auto realm_handle::acquire_global_object(environment& env) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(
 		env,
 		[](environment& env, reference_handle reference) -> auto {
@@ -63,7 +59,11 @@ auto realm_handle::acquire_global_object(environment& env) -> js::forward<js::na
 	return js::forward{promise};
 }
 
-auto realm_handle::instantiate_runtime(environment& env) -> js::forward<js::napi::value_of<>> {
+auto realm_handle::create_capability(environment& env, forward_callback_type make_capability, create_capability_options options) -> forward_promise_type {
+	return module_handle::create_capability(env, *this, *make_capability, std::move(options));
+}
+
+auto realm_handle::instantiate_runtime(environment& env) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(
 		env,
 		[](environment& env, agent_handle agent, js::iv8::shared_remote<v8::Module> module_record) -> auto {
@@ -93,7 +93,7 @@ auto realm_handle::class_template(environment& env) -> js::napi::value_of<class_
 		js::class_template{
 			js::class_constructor{util::cw<"Realm">},
 			js::class_method{util::cw<"acquireGlobalObject">, util::fn<&realm_handle::acquire_global_object>},
-			js::class_method{util::cw<"createCapability">, util::fn<&module_handle::create_capability>},
+			js::class_method{util::cw<"createCapability">, util::fn<&realm_handle::create_capability>},
 			js::class_method{util::cw<"instantiateRuntime">, util::fn<&realm_handle::instantiate_runtime>},
 		}
 	);

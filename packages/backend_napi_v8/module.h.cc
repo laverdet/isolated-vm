@@ -1,8 +1,8 @@
 module;
 #include "auto_js/gcc_abi_tag.h"
 export module backend_napi_v8:module_;
-import :realm;
-import auto_js;
+import :agent_handle;
+import :environment;
 import napi_js;
 import std;
 import util;
@@ -10,6 +10,7 @@ import v8_js;
 
 namespace backend_napi_v8 {
 export class module_handle;
+export class realm_handle;
 
 struct compile_module_options : js::optional_constructible {
 		using js::optional_constructible::optional_constructible;
@@ -46,28 +47,17 @@ struct remote_module_link_record {
 class subscriber_capability;
 
 export class module_handle {
-	private:
-		using callback_type = js::forward<js::napi::value_of<js::function_tag>>;
-
 	public:
 		using transfer_type = js::tagged_external<module_handle>;
 		module_handle(agent_handle agent, js::iv8::shared_remote<v8::Module> module);
 
 		auto agent() -> auto& { return agent_; }
 
-		auto evaluate(environment& env, realm_handle& realm) -> js::forward<js::napi::value_of<>>;
-		auto link(environment& env, realm_handle& realm, module_handle_link_record link_record) -> js::forward<js::napi::value_of<>>;
-
-		static auto compile(
-			agent_handle& agent,
-			environment& env,
-			js::string_t source_text,
-			compile_module_options options
-		) -> js::forward<js::napi::value_of<>>;
-
-		static auto create_capability(realm_handle& realm, environment& env, callback_type make_capability, create_capability_options options) -> js::forward<js::napi::value_of<>>;
-
+		auto evaluate(environment& env, realm_handle& realm) -> forward_promise_type;
+		auto link(environment& env, realm_handle& realm, module_handle_link_record link_record) -> forward_promise_type;
 		static auto class_template(environment& env) -> js::napi::value_of<class_tag_of<module_handle>>;
+		static auto compile(environment& env, agent_handle& agent, js::string_t source_text, compile_module_options options) -> forward_promise_type;
+		static auto create_capability(environment& env, realm_handle& realm, js::napi::value_of<js::function_tag> make_capability, create_capability_options options) -> forward_promise_type;
 
 	private:
 		agent_handle agent_;

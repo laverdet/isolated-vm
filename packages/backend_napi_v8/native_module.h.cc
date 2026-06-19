@@ -28,9 +28,9 @@ export class native_module_handle {
 			std::vector<std::u16string> names
 		);
 
-		auto instantiate(environment& env, realm_handle& realm) -> js::forward<js::napi::value_of<>>;
+		auto instantiate(environment& env, realm_handle& realm) -> forward_promise_type;
 		static auto class_template(environment& env) -> js::napi::value_of<class_tag_of<native_module_handle>>;
-		static auto create(environment& env, std::string filename, create_native_module_options options) -> js::forward<js::napi::value_of<>>;
+		static auto create(environment& env, std::string filename, create_native_module_options options) -> forward_promise_type;
 		static auto unload_hook() -> void;
 
 	private:

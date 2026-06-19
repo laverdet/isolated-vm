@@ -33,6 +33,7 @@ target_sources(${backend_napi_v8}
 		script.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
+		agent_handle.h.cc
 		agent.h.cc
 		environment.h.cc
 		lock.cc
