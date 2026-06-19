@@ -226,7 +226,9 @@ auto reference_handle::invoke(environment& env, js::forward<js::napi::value_of<l
 						return fn->apply<js::value_t>(lock, std::move(params));
 					});
 				});
-				resolver.resolve(completion_record{std::move(maybe_result)});
+				if (maybe_result) {
+					resolver.resolve(completion_record{std::move(*maybe_result)});
+				}
 			},
 			std::move(resolver),
 			realm_,

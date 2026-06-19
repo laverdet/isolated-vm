@@ -23,6 +23,7 @@ class remote : protected reference_handle {
 	public:
 		using unique_remote = std::unique_ptr<remote, util::function_constant<expire>>;
 
+		remote() = default;
 		remote(private_constructor /*private*/, const environment& env, value_of<Tag> value, napi_scheduler scheduler) :
 				reference_handle{napi_env{env}, napi_value{value}},
 				scheduler_{std::move(scheduler)} {}

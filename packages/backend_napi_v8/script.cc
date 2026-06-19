@@ -45,7 +45,6 @@ auto script_handle::compile_script(environment& env, agent_handle& agent, js::st
 }
 
 auto script_handle::run(environment& env, realm_handle& realm, run_script_options options) -> forward_promise_type {
-	using expected_type = std::expected<js::value_t, js::error_value>;
 	auto [ promise, resolver ] = make_promise(env);
 	realm.agent().schedule(
 		[ options = options,
@@ -54,7 +53,7 @@ auto script_handle::run(environment& env, realm_handle& realm, run_script_option
 			const agent_handle::lock& lock,
 			auto resolver
 		) -> void {
-			auto result = context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) -> expected_type {
+			auto result = context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) -> auto {
 				auto stop_token =
 					options.timeout.transform([ & ](double timeout) -> util::timer_stop_token {
 						return util::timer_stop_token{js::js_clock::duration{timeout}};
@@ -63,13 +62,18 @@ auto script_handle::run(environment& env, realm_handle& realm, run_script_option
 					stop_token.transform([ & ](util::timer_stop_token& timer) -> auto {
 						return std::stop_callback{
 							timer.get_token(), [ & ]() -> auto {
-								lock->isolate()->TerminateExecution();
+								lock->executor().isolate()->TerminateExecution();
 							}
 						};
 					});
-				return js::iv8::script::run(realm, script_remote->deref(lock));
+				return iv8::invoke_externalized_error_scope(realm, [ & ] -> auto {
+					auto value = js::iv8::script::run(realm, script_remote->deref(lock));
+					return js::transfer_out<js::value_t>(value, realm);
+				});
 			});
-			resolver.resolve(completion_record{std::move(result)});
+			if (result) {
+				resolver.resolve(completion_record{std::move(*result)});
+			}
 		},
 		std::move(resolver)
 	);

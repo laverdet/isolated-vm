@@ -2,6 +2,7 @@ export module util:memory;
 export import :memory.autorelease_pool;
 export import :memory.comparator;
 export import :memory.noinit_allocator;
+import :platform.lockable;
 import std;
 
 namespace util {
@@ -56,5 +57,25 @@ auto safe_pointer_upcast(std::unique_ptr<Type, Deleter> unique) {
 	};
 	return std::unique_ptr<To, cast_deleter>{std::move(unique)};
 }
+
+// `std::atomic<std::shared_ptr<T>>` replacement when not available (macOS)
+#if __cpp_lib_atomic_shared_ptr
+
+export template <class Type>
+using atomic_shared_ptr = std::atomic<std::shared_ptr<Type>>;
+
+#else
+
+export template <class Type>
+class atomic_shared_ptr {
+	public:
+		auto load(auto /*order*/) const -> std::shared_ptr<Type> { return pointer_.read(); }
+		auto store(auto value, auto /*order*/) -> void { *pointer_.write() = std::move(value); }
+
+	private:
+		util::lockable<std::shared_ptr<Type>> pointer_;
+};
+
+#endif
 
 } // namespace util

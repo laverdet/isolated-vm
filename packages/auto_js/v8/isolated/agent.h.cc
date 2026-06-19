@@ -3,6 +3,7 @@ module;
 export module v8_js:isolated.agent;
 import :collected_handle;
 import :isolated.clock;
+import :isolated.executor;
 import :platform.foreground_runner;
 import :remote;
 import std;
@@ -67,15 +68,18 @@ export class agent_storage {
 export class agent_handle {
 	public:
 		using lock = agent_lock;
+		using dispose_callback_type = util::move_only_function<auto() noexcept -> void>;
 		explicit agent_handle(std::shared_ptr<agent_host> host);
-		agent_handle(const agent_handle& /*handle*/);
+		agent_handle(const agent_handle& handle);
 		agent_handle(agent_handle&&) = default;
 		~agent_handle();
 		auto operator=(const agent_handle&) -> agent_handle& = delete;
 		auto operator=(agent_handle&&) -> agent_handle& = default;
 
+		auto dispose(dispose_callback_type after_callback) -> void;
+
 	protected:
-		[[nodiscard]] auto lock_host() const -> std::shared_ptr<agent_host> { return host_.lock(); }
+		[[nodiscard]] auto lock_host() const -> std::shared_ptr<agent_host>;
 
 	private:
 		std::weak_ptr<agent_host> host_;
@@ -125,7 +129,7 @@ export class agent_host
 
 		auto autorelease_pool() -> util::autorelease_pool& { return autorelease_pool_; }
 		auto clock(this auto& self) -> auto& { return self.clock_.at(0); }
-		auto isolate() -> v8::Isolate* { return isolate_.get(); }
+		auto executor() -> auto& { return executor_; }
 		auto make_context() -> v8::Local<v8::Context>;
 		auto make_remote_handle_lock(isolate_lock_witness lock) -> remote_handle_lock;
 		auto scratch_context() -> v8::Local<v8::Context>;
@@ -137,15 +141,11 @@ export class agent_host
 
 	private:
 		friend class agent_handle;
-		using lockable_handle_type = util::lockable_with<std::shared_ptr<agent_host>, {.shared = true}>;
-
 		auto remote_expiration_callback(expired_remote_type remote) noexcept -> void;
-		static auto dispose_isolate(v8::Isolate* isolate) -> void { isolate->Dispose(); }
 
 		// Order matters for these members
 		std::shared_ptr<agent_storage> storage_;
-		std::shared_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
-		std::unique_ptr<v8::Isolate, util::function_constant<dispose_isolate>> isolate_;
+		isolated::executor executor_;
 
 		// Order doesn't really matter
 		bool should_give_seed_{};
@@ -157,8 +157,9 @@ export class agent_host
 		//         /gcc-out/../gcc/gcc/cp/class.cc:9510
 		std::array<clock::any_clock, 1> clock_;
 		destroy_callback_type destroy_callback_;
-		lockable_handle_type self_handle_;
+		util::atomic_shared_ptr<agent_host> self_handle_;
 		remote_handle_list remote_handle_list_;
+		agent_handle::dispose_callback_type dispose_callback_;
 		std::array<reset_handle_type, 1> reset_handle_callback_;
 		std::atomic<unsigned> handle_count_;
 		std::optional<double> random_seed_;
@@ -195,7 +196,7 @@ auto agent_handle_of<Type>::schedule(Task task, Args... args) const -> void {
 		auto& scheduler = host->storage()->foreground_runner();
 		scheduler.schedule_client_task(
 			[](std::stop_token /*stop_token*/, const auto& host, const auto& task, auto&&... args) -> void {
-				auto isolate_lock = isolate_execution_lock{host->isolate()};
+				auto isolate_lock = isolate_execution_lock{host->executor().isolate()};
 				std::visit([](auto& clock) -> void { clock.begin_tick(); }, host->clock());
 				task(lock{isolate_lock, static_cast<agent_host_of<Type>&>(*host)}, std::forward<decltype(args)>(args)...);
 			},

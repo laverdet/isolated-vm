@@ -2,7 +2,6 @@ module;
 #include <cassert>
 module v8_js;
 import :isolated.agent;
-import :platform.allocator;
 import std;
 
 namespace js::iv8::isolated {
@@ -25,7 +24,7 @@ auto agent_storage::release(std::shared_ptr<agent_storage> storage) -> void {
 agent_handle::agent_handle(std::shared_ptr<agent_host> host) :
 		host_{host} {
 	if (host && host->handle_count_.fetch_add(1, std::memory_order_relaxed) == 0) {
-		*host->self_handle_.write() = std::move(host);
+		host->self_handle_.store(std::move(host), std::memory_order_relaxed);
 	}
 }
 
@@ -46,10 +45,27 @@ agent_handle::~agent_handle() {
 				host->handle_count_.load(std::memory_order_acquire) == 1 ||
 				host->handle_count_.fetch_sub(1, std::memory_order_acq_rel) == 1
 			) {
-				host->self_handle_.write()->reset();
+				host->self_handle_.store(nullptr, std::memory_order_relaxed);
 			}
 		}
 	}
+}
+
+auto agent_handle::dispose(dispose_callback_type after_callback) -> void {
+	if (auto host = host_.lock()) {
+		assert(!host->dispose_callback_);
+		host->dispose_callback_ = std::move(after_callback);
+		host->executor_.terminate();
+		host->self_handle_.store(nullptr, std::memory_order_release);
+	}
+}
+
+auto agent_handle::lock_host() const -> std::shared_ptr<agent_host> {
+	auto host = host_.lock();
+	if (host && host->executor_.is_terminated()) {
+		host.reset();
+	}
+	return host;
 }
 
 // `agent_host`
@@ -59,27 +75,24 @@ agent_host::agent_host(
 	behavior_params params
 ) :
 		storage_{std::move(storage)},
-		// TODO: v8 holds its own reference to this. I will probably need it later for per-isolate
-		// memory diagnostics though?
-		array_buffer_allocator_{std::make_shared<platform::data_block_allocator>()},
-		isolate_{v8::Isolate::Allocate()},
 		clock_{params.clock},
 		destroy_callback_{destroy_callback},
 		reset_handle_callback_{reset_handle_type{util::fn<&agent_host::remote_expiration_callback>, *this}},
 		random_seed_{params.random_seed} {
-	isolate_->SetData(0, this);
-	auto create_params = v8::Isolate::CreateParams{};
-	create_params.array_buffer_allocator_shared = array_buffer_allocator_;
-	v8::Isolate::Initialize(isolate_.get(), create_params);
-
-	isolate_->SetCaptureStackTraceForUncaughtExceptions(true);
+	executor_.initialize([ & ](v8::Isolate* isolate) noexcept -> auto {
+		isolate->SetData(0, this);
+		auto create_params = v8::Isolate::CreateParams{};
+		create_params.array_buffer_allocator_shared =
+			std::shared_ptr<v8::ArrayBuffer::Allocator>(v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+		return create_params;
+	});
+	executor_.isolate()->SetCaptureStackTraceForUncaughtExceptions(true);
 }
 
 agent_host::~agent_host() {
 	// Terminate foreground runner
 	auto& scheduler = storage_->foreground_runner().scheduler();
 	scheduler.terminate();
-	assert(!scheduler.is_this_thread());
 	if (!scheduler.is_this_thread()) {
 		auto thread = scheduler.invoke([](auto& controller) -> auto {
 			return controller.take();
@@ -88,19 +101,20 @@ agent_host::~agent_host() {
 	}
 	// Destroy isolate and remaining handles
 	{
-		auto lock = js::iv8::isolate_destructor_lock{isolate_.get()};
+		auto lock = js::iv8::isolate_destructor_lock{executor_.isolate()};
 		scratch_context_.Reset();
-		scheduler.mutate([ & ](platform::foreground_task_queue& queue) -> void {
-			queue.finalize();
-		});
 		remote_handle_list_.clear(util::slice(lock));
 		autorelease_pool_.clear();
 		destroy_callback_(util::slice(lock));
 	}
 	// Deallocate isolate (before `agent_storage`)
-	isolate_.reset();
+	executor_.reset();
 	// Release storage
 	agent_storage::release(std::move(storage_));
+	// Notify client
+	if (dispose_callback_) {
+		dispose_callback_();
+	}
 }
 
 auto agent_host::make_context() -> v8::Local<v8::Context> {
@@ -109,7 +123,7 @@ auto agent_host::make_context() -> v8::Local<v8::Context> {
 	// the generator is initialized on context creation, so we just control the randomness in that one
 	// case.
 	should_give_seed_ = true;
-	auto context = v8::Context::New(isolate_.get());
+	auto context = v8::Context::New(executor_.isolate());
 	should_give_seed_ = false;
 	return context;
 }
@@ -122,7 +136,7 @@ auto agent_host::make_remote_handle_lock(isolate_lock_witness lock) -> remote_ha
 auto agent_host::remote_expiration_callback(expired_remote_type remote) noexcept -> void {
 	storage_->foreground_runner().schedule_handle_task(
 		[ this, remote = std::move(remote) ](std::stop_token /*stop_token*/) -> void {
-			auto lock = isolate_execution_lock{isolate()};
+			auto lock = isolate_execution_lock{executor_.isolate()};
 			remote->reset(util::slice(lock));
 			remote_handle_list_.erase(*remote);
 		}
@@ -132,11 +146,11 @@ auto agent_host::remote_expiration_callback(expired_remote_type remote) noexcept
 auto agent_host::scratch_context() -> v8::Local<v8::Context> {
 	if (scratch_context_.IsEmpty()) {
 		auto context = make_context();
-		scratch_context_.Reset(isolate_.get(), context);
+		scratch_context_.Reset(executor_.isolate(), context);
 		scratch_context_.SetWeak();
 		return context;
 	} else {
-		return scratch_context_.Get(isolate_.get());
+		return scratch_context_.Get(executor_.isolate());
 	}
 }
 

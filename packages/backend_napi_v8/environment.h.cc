@@ -53,11 +53,13 @@ export class environment
 			public napi::string_table<string_literals>,
 			public napi::class_template_references<class_names> {
 	public:
-		using napi::environment::environment;
+		explicit environment(napi_env env);
 		~environment();
 
 		auto agent_class() -> napi::value_of<function_tag> { return agent_class_.get(*this); }
 		auto cluster() -> iv8::isolated::cluster& { return cluster_; }
+		// NOLINTNEXTLINE(performance-unnecessary-value-param)
+		auto destroy_orphan_scheduler(std::any isolate_scheduler) -> void;
 		auto module_class() -> napi::value_of<function_tag> { return module_class_.get(*this); }
 
 		auto make_initialize() -> napi::value_of<function_tag>;

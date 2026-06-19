@@ -14,6 +14,7 @@ export class napi_scheduler {
 		using threadsafe_function_type = threadsafe_function_of<storage, task_type>;
 
 	public:
+		napi_scheduler() = default;
 		explicit napi_scheduler(napi_env env);
 		auto operator()(auto task, auto&&... args) const noexcept -> bool;
 		explicit operator bool() const noexcept;

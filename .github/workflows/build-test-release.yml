@@ -509,6 +509,10 @@ jobs:
           packages: unzip
       - if: matrix.runtime.runtime == 'bun'
         uses: oven-sh/setup-bun@v2
+        with:
+          # TODO: Back to latest when this lands:
+          # https://github.com/oven-sh/bun/commit/17b4071b444831e43e7b1dd0f1154ac3413f88e2
+          bun-version: canary
 
       # Install npm dependencies, build TypeScript, check module sanity
       - uses: pnpm/action-setup@v5

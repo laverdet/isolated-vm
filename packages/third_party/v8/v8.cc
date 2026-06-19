@@ -61,6 +61,9 @@ using v8::V8FatalErrorCallback;
 
 // v8-isolate.h
 using v8::Isolate;
+using v8::IsolateGroup;
+using v8::MemoryPressureLevel;
+using v8::ResourceConstraints;
 
 // v8-local-handle.h
 using v8::EscapableHandleScope;

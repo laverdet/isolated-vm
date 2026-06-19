@@ -55,13 +55,7 @@ export class Agent extends backend.Agent {
 		return backend.Agent.create(options);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await
-	async dispose(): Promise<boolean> {
-		// :)
-		return true;
-	}
-
 	async [Symbol.asyncDispose](): Promise<void> {
-		await this.dispose();
+		await this.disposeAsync();
 	}
 }

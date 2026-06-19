@@ -34,7 +34,10 @@ auto agent_handle_value::create(environment& env, std::optional<create_options> 
 	);
 	cluster.make_agent(
 		[](const js::iv8::isolated::agent_handle::lock& lock) -> auto { return agent_environment{lock}; },
-		{.clock = clock_, .random_seed = options.random_seed},
+		{
+			.clock = clock_,
+			.random_seed = options.random_seed,
+		},
 		[ dispatch = std::move(resolver) ](
 			const agent_handle::lock& /*lock*/,
 			agent_handle agent
@@ -58,6 +61,18 @@ auto agent_handle_value::compile_script(environment& env, js::string_t source_te
 	return script_handle::compile_script(env, agent_, std::move(source_text), std::move(options));
 }
 
+auto agent_handle_value::dispose_async(environment& env) -> forward_promise_type {
+	if (disposed_) {
+		return js::forward{disposed_.get(env)};
+	}
+	auto [ promise, resolver ] = make_promise(env);
+	disposed_.reset(env, promise);
+	agent_.dispose([ resolver = std::move(resolver) ] mutable noexcept -> auto {
+		resolver.resolve(std::monostate{});
+	});
+	return js::forward{promise};
+}
+
 auto agent_handle_value::class_template(environment& env) -> js::napi::value_of<class_tag_of<agent_handle_value>> {
 	return env.class_template(
 		std::type_identity<agent_handle_value>{},
@@ -66,6 +81,7 @@ auto agent_handle_value::class_template(environment& env) -> js::napi::value_of<
 			js::class_method{util::cw<"compileModule">, util::fn<&agent_handle_value::compile_module>},
 			js::class_method{util::cw<"compileScript">, util::fn<&agent_handle_value::compile_script>},
 			js::class_method{util::cw<"createRealm">, util::fn<&agent_handle_value::create_realm>},
+			js::class_method{util::cw<"disposeAsync">, util::fn<&agent_handle_value::dispose_async>},
 			js::class_static{util::cw<"create">, &create},
 		}
 	);

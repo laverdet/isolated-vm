@@ -21,11 +21,13 @@ export class agent_handle_value {
 		auto create_realm(environment& env) -> forward_promise_type;
 		auto compile_module(environment& env, js::string_t source_text, compile_module_options options) -> forward_promise_type;
 		auto compile_script(environment& env, js::string_t source_text, compile_script_options options) -> forward_promise_type;
+		auto dispose_async(environment& env) -> forward_promise_type;
 		static auto create(environment& env, std::optional<create_options> options_optional) -> forward_promise_type;
 		static auto class_template(environment& env) -> js::napi::value_of<class_tag_of<agent_handle_value>>;
 
 	private:
 		agent_handle agent_;
+		napi::reference<promise_tag> disposed_;
 };
 
 // Clock options

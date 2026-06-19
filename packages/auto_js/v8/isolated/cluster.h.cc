@@ -8,16 +8,21 @@ namespace js::iv8::isolated {
 
 export class cluster {
 	public:
-		cluster() : platform_{isolated_platform::acquire()} {}
+		using synchronize_destroy = util::function_ref<auto(std::any)->void>;
+
+		explicit cluster(synchronize_destroy destroy) :
+				destroy_{destroy},
+				platform_{isolated_platform::acquire()} {}
+
 		auto make_agent(auto make_environment, behavior_params params, auto callback) -> void;
 		auto release_agent_storage(std::shared_ptr<agent_storage> storage) -> void;
 
 	private:
 		using intrusive_no_size = boost::intrusive::constant_time_size<false>;
 		using agent_storage_list_type = boost::intrusive::list<agent_storage, intrusive_no_size, agent_storage::intrusive_hook>;
-
 		auto acquire_agent_storage() -> std::shared_ptr<agent_storage>;
 
+		synchronize_destroy destroy_;
 		util::lockable<agent_storage_list_type> agent_storage_;
 		platform::platform_handle platform_;
 };
@@ -36,7 +41,7 @@ auto cluster::make_agent(auto make_environment, behavior_params params, auto cal
 			auto callback
 		) -> auto {
 			auto host = std::make_shared<agent_host_of<environment_type>>(std::move(storage), params);
-			auto isolate_lock = isolate_execution_lock{host->isolate()};
+			auto isolate_lock = isolate_execution_lock{host->executor().isolate()};
 			host->emplace_environment(util::elide{[ & ]() -> environment_type {
 				return make_environment(agent_lock{isolate_lock, *host});
 			}});

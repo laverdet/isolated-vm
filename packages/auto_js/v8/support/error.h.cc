@@ -40,24 +40,29 @@ auto externalize_caught_error(context_lock_witness lock, v8::Local<v8::Value> va
 	}
 };
 
-// Catch pending js errors and externalize them as `js::error_value`. `std::expected<T,
-// js::error_value>` is returned.
+// Catch pending js errors and externalize them as `js::error_value`.
+// `std::optional<std::expected<T, js::error_value>>` is returned. The outer optional is nullopt in
+// the case of terminating execution.
 export [[nodiscard]] auto invoke_externalized_error_scope(context_lock_witness lock, auto operation) {
 	using result_type = decltype(operation());
-	using value_type = std::expected<result_type, js::error_value>;
+	using value_type = std::optional<std::expected<result_type, js::error_value>>;
 	const auto try_catch = v8::TryCatch{lock.isolate()};
 	try {
 		if constexpr (type<result_type> == type<void>) {
 			operation();
-			return value_type{std::in_place};
+			return value_type{std::in_place, std::in_place};
 		} else {
-			return value_type{std::in_place, operation()};
+			return value_type{std::in_place, std::in_place, operation()};
 		}
 	} catch (const iv8::pending_error& /*error*/) {
 		assert(try_catch.HasCaught());
-		return value_type{std::unexpect, externalize_caught_error(lock, try_catch)};
+		if (lock.isolate()->IsExecutionTerminating()) {
+			return value_type{std::nullopt};
+		} else {
+			return value_type{std::in_place, std::unexpect, externalize_caught_error(lock, try_catch)};
+		}
 	} catch (const js::error& error) {
-		return value_type{std::unexpect, error};
+		return value_type{std::in_place, std::unexpect, error};
 	}
 }
 

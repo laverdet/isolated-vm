@@ -14,7 +14,7 @@ class reference_handle : util::non_copyable {
 				env_{env},
 				ref_{napi::invoke(napi_create_reference, env, value, 1)} {}
 
-		[[nodiscard]] auto env() const -> napi_env {
+		[[nodiscard]] auto env() const -> node_api_basic_env {
 			return env_;
 		}
 
@@ -64,7 +64,7 @@ class reference_handle : util::non_copyable {
 		explicit operator bool() const { return ref_ != nullptr; }
 
 	private:
-		napi_env env_{};
+		node_api_basic_env env_{};
 		napi_ref ref_{};
 };
 

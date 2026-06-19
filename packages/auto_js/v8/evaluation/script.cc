@@ -20,11 +20,9 @@ auto script::compile(context_lock_witness lock, v8::Local<v8::String> code_strin
 	});
 }
 
-auto script::run(context_lock_witness lock, v8::Local<v8::UnboundScript> script) -> expected_value_type {
-	return invoke_externalized_error_scope(lock, [ & ]() -> js::value_t {
-		auto maybe_result = script->BindToCurrentContext()->Run(lock.context());
-		return js::transfer_out<js::value_t>(unmaybe(maybe_result), lock);
-	});
+auto script::run(context_lock_witness lock, v8::Local<v8::UnboundScript> script) -> v8::Local<v8::Value> {
+	auto maybe_result = script->BindToCurrentContext()->Run(lock.context());
+	return unmaybe(maybe_result);
 }
 
 } // namespace js::iv8

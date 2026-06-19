@@ -26,6 +26,7 @@ declare module "#backend_v8" {
 	export class Agent {
 		readonly #private;
 		protected constructor(secret: Secret, ...args: unknown[]);
+		disposeAsync(): Promise<void>;
 		compileModule(code: string, options?: CompileModuleOptions | undefined): Promise<MaybeCompletionOf<_Module>>;
 		compileScript(code: string, options?: CompileScriptOptions | undefined): Promise<MaybeCompletionOf<Script>>;
 		createRealm(): Promise<Realm>;

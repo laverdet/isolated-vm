@@ -97,9 +97,8 @@ await test("transfer types", async () => {
 // });
 
 await describe("regressions", async () => {
-	await using agent = await ivm.Agent.create();
-
 	await test("numeric references", async () => {
+		await using agent = await ivm.Agent.create();
 		const realm = await agent.createRealm();
 		const global = await realm.acquireGlobalObject();
 		// doubles are stored as references in `value_t`, because they are bigger than 32-bit. there was
@@ -108,6 +107,7 @@ await describe("regressions", async () => {
 	});
 
 	await test("numeric indices", async () => {
+		await using agent = await ivm.Agent.create();
 		const realm = await agent.createRealm();
 		const global = await realm.acquireGlobalObject();
 		// numeric array indices broke as part of a double to int32_t change.
@@ -115,6 +115,7 @@ await describe("regressions", async () => {
 	});
 
 	await test("seen index type", async () => {
+		await using agent = await ivm.Agent.create();
 		const realm = await agent.createRealm();
 		const global = await realm.acquireGlobalObject();
 		const payload = {

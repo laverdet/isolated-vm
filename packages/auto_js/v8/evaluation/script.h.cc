@@ -10,12 +10,12 @@ namespace js::iv8 {
 export struct script {
 	public:
 		using expected_script_type = std::expected<v8::Local<v8::UnboundScript>, js::error_value>;
-		using expected_value_type = std::expected<js::value_t, js::error_value>;
+		using expected_value_type = std::optional<std::expected<js::value_t, js::error_value>>;
 
 		// nb: It is undocumented (and even mentions "context independent"), but the script compiler
 		// actually needs a context because it can throw an error and *that* would need a context.
 		static auto compile(context_lock_witness lock, auto code_string, source_origin source_origin) -> expected_script_type;
-		static auto run(context_lock_witness lock, v8::Local<v8::UnboundScript> script) -> expected_value_type;
+		static auto run(context_lock_witness lock, v8::Local<v8::UnboundScript> script) -> v8::Local<v8::Value>;
 
 	private:
 		static auto compile(context_lock_witness lock, v8::Local<v8::String> code_string, source_origin source_origin) -> expected_script_type;

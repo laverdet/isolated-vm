@@ -49,6 +49,8 @@ expectComplete(await module.evaluate(realm));
 
 // $ bun example.mts
 // > Hello from v8!
+// Note: you will need bun canary installed, v1.3.14 will not work because of a broken API.
+// `bun upgrade --canary`
 ```
 
 

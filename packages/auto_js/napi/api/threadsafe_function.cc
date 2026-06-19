@@ -13,6 +13,7 @@ class threadsafe_function_of : util::non_copyable {
 	public:
 		using close_callback = util::function_ref<auto()->void>;
 
+		threadsafe_function_of() = default;
 		explicit threadsafe_function_of(auto& env, napi_value value, auto&&... args);
 		threadsafe_function_of(const threadsafe_function_of&);
 		threadsafe_function_of(threadsafe_function_of&&) noexcept;
@@ -40,7 +41,7 @@ class threadsafe_function_of : util::non_copyable {
 
 		constexpr static auto trivial_message =
 			std::is_trivially_destructible_v<Message> && sizeof(Message) <= sizeof(void*);
-		mutable napi_threadsafe_function tsfn_;
+		mutable napi_threadsafe_function tsfn_{};
 };
 
 // ---

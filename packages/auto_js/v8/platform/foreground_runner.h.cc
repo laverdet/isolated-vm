@@ -25,7 +25,6 @@ class foreground_task_queue {
 		auto operator=(foreground_task_queue&&) -> foreground_task_queue& = delete;
 
 		[[nodiscard]] auto empty() const -> bool { return tasks_.empty(); }
-		auto finalize() -> void;
 		auto flush(clock_type::time_point now) -> clock_type::time_point;
 		auto front() -> task_entry_type&;
 		auto pop() -> void { tasks_.pop(); }
@@ -35,7 +34,6 @@ class foreground_task_queue {
 	private:
 		util::segmented_priority_queue<queue_type, priority_count> tasks_;
 		delayed_queue_type delayed_tasks_;
-		bool finalized_ = false;
 };
 
 // Foreground task runner. Combines scheduler and task queue.

@@ -286,9 +286,12 @@ auto module_handle::link(environment& env, realm_handle& realm, module_handle_li
 			});
 			// TODO: resolver should accept a `std::expected<T, E>`?
 			if (result) {
-				resolver.resolve(true);
-			} else {
-				resolver.reject(std::move(result).error());
+				auto expected = *std::move(result);
+				if (expected) {
+					resolver.resolve(true);
+				} else {
+					resolver.reject(std::move(expected).error());
+				}
 			}
 		},
 		std::move(resolver),

@@ -63,6 +63,7 @@ if(v8_js STREQUAL isolated_v8_js)
 			isolated/agent.cc
 			isolated/clock.cc
 			isolated/cluster.cc
+			isolated/executor.cc
 			isolated/platform.cc
 			platform/delegate.cc
 			platform/foreground_runner.cc
@@ -74,8 +75,8 @@ if(v8_js STREQUAL isolated_v8_js)
 			isolated/agent.h.cc
 			isolated/clock.h.cc
 			isolated/cluster.h.cc
+			isolated/executor.h.cc
 			isolated/platform.h.cc
-			platform/allocator.h.cc
 			platform/delegate.h.cc
 			platform/foreground_runner.h.cc
 			platform/scheduler.cc
