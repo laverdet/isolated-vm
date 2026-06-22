@@ -1,5 +1,5 @@
 module;
-#include "version.h"
+#include "napi_js/version.h"
 #include <js_native_api_types.h>
 export module nodejs:js_native_api_types;
 // NOLINTBEGIN(misc-unused-using-decls)

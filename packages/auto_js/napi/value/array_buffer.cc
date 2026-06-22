@@ -24,11 +24,9 @@ bound_value_for_array_buffer::operator js::array_buffer() const {
 
 // `bound_value_for_shared_array_buffer`
 bound_value_for_shared_array_buffer::operator js::shared_array_buffer() const {
-	auto local = std::bit_cast<v8::Local<v8::SharedArrayBuffer>>(napi_value{*this});
-	auto backing_store = local->GetBackingStore();
-	auto* data = reinterpret_cast<std::byte*>(backing_store->Data());
-	auto data_shared_ptr = std::shared_ptr<js::shared_array_buffer::array_type>{std::move(backing_store), data};
-	return js::shared_array_buffer{local->ByteLength(), std::move(data_shared_ptr)};
+	auto byte_length = shared_array_buffer_get_byte_length(value_of{*this});
+	auto backing_store = shared_array_buffer_get_backing_store(value_of{*this});
+	return js::shared_array_buffer{byte_length, std::move(backing_store)};
 }
 
 // `value_for_typed_array`

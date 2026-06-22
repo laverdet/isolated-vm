@@ -1,6 +1,16 @@
 module;
+// Pull in `V8_EXPORT`
+#include "v8config.h"
+
+// Redefine `V8_EXPORT` with weak attribute
+#if USING_V8_SHARED
+#undef V8_EXPORT
+#include "v8_js/extern.h"
+#endif
+
+// Continue with the rest of the include chain
 #include "v8.h"
-#include "v8/version.h"
+#include "v8_js/version.h"
 #ifdef INCLUDE_V8_PLATFORM
 #include "libplatform/libplatform.h"
 #include "v8-platform.h"

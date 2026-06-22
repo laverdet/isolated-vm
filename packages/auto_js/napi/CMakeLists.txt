@@ -18,7 +18,6 @@ target_sources(${napi_js}
 		api/uv_dlib.cc
 		api/uv_scheduler.cc
 		support/environment.cc
-		support/host_shim.cc
 		support/host.cc
 		support/initialize.cc
 		transfer/accept.cc

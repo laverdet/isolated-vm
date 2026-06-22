@@ -13,6 +13,19 @@ class bound_value_for_boolean : public bound_value_next<boolean_tag> {
 		using bound_value_next<boolean_tag>::bound_value_next;
 		[[nodiscard]] explicit operator bool() const;
 };
+
+class bound_value_for_false : public bound_value_next<false_tag> {
+	public:
+		using bound_value_next<false_tag>::bound_value_next;
+		[[nodiscard]] constexpr explicit operator bool() const { return false; }
+};
+
+class bound_value_for_true : public bound_value_next<true_tag> {
+	public:
+		using bound_value_next<true_tag>::bound_value_next;
+		[[nodiscard]] constexpr explicit operator bool() const { return true; }
+};
+
 // number
 class bound_value_for_number : public bound_value_next<number_tag> {
 	public:

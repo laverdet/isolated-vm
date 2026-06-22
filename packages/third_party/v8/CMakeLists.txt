@@ -114,6 +114,9 @@ else()
 		message(FATAL_ERROR "Missing '${V8_INCLUDE_DIR}/v8.h'")
 	endif()
 	message(STATUS "Using v8 headers from '${V8_INCLUDE_DIR}'")
+
+	# nodejs v8 is linked as a shared library
+	target_compile_definitions(${google_v8} PRIVATE USING_V8_SHARED)
 endif()
 
 # These need to be public, for version detection. I was hoping I could do it with constexpr but

@@ -1,5 +1,5 @@
 module;
-#include "version.h"
+#include "napi_js/version.h"
 #include <uv.h>
 export module nodejs:uv;
 

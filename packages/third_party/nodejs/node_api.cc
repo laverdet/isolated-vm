@@ -1,4 +1,5 @@
 module;
+#include "napi_js/extern.h"
 #include <node_api.h>
 export module nodejs:node_api;
 // NOLINTBEGIN(misc-unused-using-decls)

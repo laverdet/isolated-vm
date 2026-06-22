@@ -64,6 +64,16 @@ struct value_specialization<boolean_tag> : value_defaults<boolean_tag> {
 };
 
 template <>
+struct value_specialization<false_tag> : value_defaults<false_tag> {
+		using bound_type = class bound_value_for_false;
+};
+
+template <>
+struct value_specialization<true_tag> : value_defaults<true_tag> {
+		using bound_type = class bound_value_for_true;
+};
+
+template <>
 struct value_specialization<number_tag> : value_defaults<number_tag> {
 		using bound_type = class bound_value_for_number;
 };

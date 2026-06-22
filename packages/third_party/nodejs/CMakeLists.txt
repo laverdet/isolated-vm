@@ -52,6 +52,7 @@ endif()
 message(STATUS "Using Node.js headers from '${NODE_DIST_DIR}'")
 
 # Configuration
+target_include_directories(nodejs SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_include_directories(nodejs SYSTEM PUBLIC "${NODE_DIST_DIR}/include/node")
 if(WIN32)
 	if(EXISTS "${NODE_DIST_DIR}/win-${NODE_ARCH}/node.lib")

@@ -31,6 +31,8 @@ struct undefined_in_tag : tag_of<undefined_tag> {};
 
 // numerics
 struct boolean_tag : tag_of<primitive_tag> {};
+struct false_tag : tag_of<boolean_tag> {};
+struct true_tag : tag_of<boolean_tag> {};
 
 struct number_tag : tag_of<primitive_tag> {};
 template <class Type> struct number_tag_of : con_tag_of<number_tag> {};
