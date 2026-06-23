@@ -68,3 +68,15 @@ target_sources(${napi_js}
 		value/record.h.cc
 		value/value.cc
 )
+
+# Enable "delay load" for win32 otherwise the dll will attempt to load node.exe from PATH as a
+# shared library and then start invoking functions from it.
+if(WIN32)
+	set(napi_js_delay_load ${napi_js}_delay_load)
+	add_library(${napi_js_delay_load} STATIC)
+	set_target_properties(${napi_js_delay_load} PROPERTIES CXX_VISIBILITY_PRESET default)
+	target_sources(${napi_js_delay_load} PUBLIC support/win32_delay_load_hook.cc)
+	target_link_libraries(${napi_js_delay_load} PUBLIC delayimp.lib)
+	target_link_libraries(${napi_js} PUBLIC ${napi_js_delay_load})
+	target_link_options(${napi_js_delay_load} PUBLIC "-Wl,/DELAYLOAD:node.exe")
+endif()

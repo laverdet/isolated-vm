@@ -44,7 +44,7 @@ export function makeDirectResolver(): ResolverSync<string> {
 }
 
 export function makeLocalResolver(meta: ImportMeta): ResolverSync<string> {
-	return (specifier, referrer) => meta.resolve(specifier, referrer);
+	return specifier => meta.resolve(specifier);
 }
 
 export function makeCachedLoader<Type extends AbstractModule | undefined>(loader: LoaderAsync<Type>): LoaderAsync<Type> {

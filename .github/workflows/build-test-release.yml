@@ -434,11 +434,6 @@ jobs:
               container: alpine:edge
             runtime:
               runtime: bun
-          # This is another can of worms.
-          - host:
-              runs-on: windows-2025
-            runtime:
-              runtime: bun
     runs-on: ${{ matrix.host.runs-on }}
     container: ${{ matrix.host.container }}
     steps:

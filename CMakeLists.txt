@@ -106,9 +106,13 @@ if(MSVC)
 	add_compile_options(/Zc:__cplusplus)
 endif()
 
-# Windows flags. You want /MT and not /MD
-if(WIN32 AND NOT CMAKE_BUILD_TYPE STREQUAL Debug)
-	set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreaded)
+# Windows flags. You want /MT and not /MD. This must match the v8 configuration.
+if(WIN32 AND NOT DEFINED(CMAKE_MSVC_RUNTIME_LIBRARY))
+	if(CMAKE_BUILD_TYPE STREQUAL Debug)
+		set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreadedDebug)
+	else()
+		set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreaded)
+	endif()
 endif()
 
 # Windows Clang flags
@@ -118,25 +122,22 @@ if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL Clang)
 	add_compile_options(-Wno-unknown-attributes)
 endif()
 
-# Clang & GCC diagnostic flags. GCC can't compile this project right now but I am hopeful.
+# Clang & GCC diagnostic flags.
 if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 	add_compile_options(-fdiagnostics-color -Wall -Wextra)
 	if(NOT COMPILE_ONLY)
 		add_compile_options(-Wpedantic)
-	endif()
-endif()
 
-# Clang feature flags
-if(CMAKE_CXX_COMPILER_ID STREQUAL Clang)
-	# Debug / Release configuration flags
-	if(CMAKE_BUILD_TYPE STREQUAL Debug)
-		# Enable (A|L|UB)SAN
-		add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fsanitize=address,undefined>)
-		add_link_options(-fsanitize=address,undefined -shared-libasan)
-	else()
 		# Unused parameters in assert(..)
 		add_compile_options(-Wno-unused-parameter)
 	endif()
+endif()
+
+# Sanitizer features
+if(LINUX AND CMAKE_CXX_COMPILER_ID STREQUAL Clang AND CMAKE_BUILD_TYPE STREQUAL Debug)
+	# Enable (A|L|UB)SAN
+	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fsanitize=address,undefined>)
+	add_link_options(-fsanitize=address,undefined -shared-libasan)
 endif()
 
 # Convert file into a binary blob and embed it into a C++ source file.
