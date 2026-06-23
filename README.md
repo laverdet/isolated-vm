@@ -47,6 +47,10 @@ expectComplete(await module.evaluate(realm));
 // $ node example.mts
 // > Hello from v8!
 
+// deno --allow-ffi --allow-read example.mts
+// > Hello from v8!
+// Note: it doesn't work on Windows right now.
+
 // $ bun example.mts
 // > Hello from v8!
 // Note: you will need bun canary installed, v1.3.14 will not work because of a broken API.

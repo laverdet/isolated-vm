@@ -1,0 +1,71 @@
+diff --git a/src/codegen/interface-descriptors.h b/src/codegen/interface-descriptors.h
+index 47fe69dab9b..4e41e7cbc81 100644
+--- a/src/codegen/interface-descriptors.h
++++ b/src/codegen/interface-descriptors.h
+@@ -276,7 +276,7 @@ class V8_EXPORT_PRIVATE CallInterfaceDescriptorData {
+   StackArgumentOrder stack_order() const { return stack_order_; }
+ 
+   void RestrictAllocatableRegisters(const Register* registers, size_t num) {
+-    DCHECK(allocatable_registers_.is_empty());
++    // DCHECK(allocatable_registers_.is_empty());
+     for (size_t i = 0; i < num; ++i) {
+       allocatable_registers_.set(registers[i]);
+     }
+diff --git a/src/common/segmented-table-inl.h b/src/common/segmented-table-inl.h
+index 94a6d82e8e3..ccb82ae7279 100644
+--- a/src/common/segmented-table-inl.h
++++ b/src/common/segmented-table-inl.h
+@@ -122,7 +122,7 @@ void SegmentedTable<Entry, size>::Initialize() {
+ 
+   if (kUseSegmentPool) {
+     for (size_t i = 0; i < kSegmentPoolSize; ++i) {
+-      DCHECK_EQ(segment_pool_[i].load(std::memory_order_acquire), 0);
++      // DCHECK_EQ(segment_pool_[i].load(std::memory_order_acquire), 0);
+       segment_pool_[i].store(kSegmentPoolFreeEntry, std::memory_order_release);
+     }
+ 
+diff --git a/src/init/v8.cc b/src/init/v8.cc
+index 381748382db..8c9e9375238 100644
+--- a/src/init/v8.cc
++++ b/src/init/v8.cc
+@@ -89,6 +89,9 @@ void AdvanceStartupState(V8StartupState expected_next_state) {
+           static_cast<int>(current_state), static_cast<int>(next_state),
+           static_cast<int>(expected_next_state));
+   }
++  if (next_state == V8StartupState::kPlatformDisposed) {
++    next_state = V8StartupState::kIdle;
++  }
+   if (!v8_startup_state_.compare_exchange_strong(current_state, next_state)) {
+     FATAL(
+         "Multiple threads are initializating V8 in the wrong order: expected "
+diff --git a/src/objects/elements.cc b/src/objects/elements.cc
+index 9529b07d3e8..71dc2834669 100644
+--- a/src/objects/elements.cc
++++ b/src/objects/elements.cc
+@@ -5987,14 +5987,14 @@ void ElementsAccessor::InitializeOncePerProcess() {
+   // can either use an array with 256 entries or have an explicit bounds-check
+   // on access. The latter is probably more expensive.
+   static_assert(std::is_same_v<std::underlying_type_t<ElementsKind>, uint8_t>);
+-  static ElementsAccessor* accessor_array[256] = {
++  static std::array<ElementsAccessor*, 256> accessor_array;
++  accessor_array = {
+ #define ACCESSOR_ARRAY(Class, Kind, Store) new Class(),
+       ELEMENTS_LIST(ACCESSOR_ARRAY)
+ #undef ACCESSOR_ARRAY
+   };
+ 
+-  static_assert((sizeof(accessor_array) / sizeof(*accessor_array)) >=
+-                kElementsKindCount);
++  static_assert(accessor_array.size() >= kElementsKindCount);
+ 
+   // Check that the ELEMENTS_LIST macro is in the same order as the ElementsKind
+   // enum.
+@@ -6005,7 +6005,7 @@ void ElementsAccessor::InitializeOncePerProcess() {
+   };
+   static_assert(IsIdentityMapping(elements_kinds_from_macro, 0));
+ 
+-  elements_accessors_ = accessor_array;
++  elements_accessors_ = accessor_array.data();
+ }
+ 
+ void ElementsAccessor::TearDown() {

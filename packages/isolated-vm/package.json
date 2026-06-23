@@ -19,8 +19,10 @@
   },
   "scripts": {
     "prepublishOnly": "npx napi prepublish --no-gh-release",
-    "test": "${NODE:-node} --enable-source-maps --expose-gc --test-reporter=spec --test dist/test/*.js dist/test/**/*.js",
-    "test:bun": "${BUN:-bun} test dist/test/*.js ./dist/test/**/*.js"
+    "test:all": "pnpm run -s test:node && pnpm run -s test:deno && pnpm run -s test:bun",
+    "test:bun": "${bun:-bun} test dist/test/*.js ./dist/test/**/*.js",
+    "test:deno": "${deno:-deno} test --no-check --allow-env --allow-ffi --allow-read dist/test/*.js ./dist/test/**/*.js",
+    "test:node": "${node:-node} --enable-source-maps --expose-gc --test-reporter=spec --test dist/test/*.js dist/test/**/*.js"
   },
   "napi": {
     "binaryName": "backend_napi_v8",

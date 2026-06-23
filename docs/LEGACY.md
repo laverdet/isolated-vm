@@ -28,9 +28,10 @@ deterministic control over clocks and the pseudorandom number generator.
 
 Also, the backend is now (almost) entirely [napi-based](https://nodejs.org/api/n-api.html). This
 feature along with a full copy of v8 means that arbitrary versions of `@isolated-vm/experimental`
-will continue to run on newer versions of nodejs. Even [Bun](https://bun.com) will work using the
-same binaries that nodejs uses. That's something that just couldn't be done with the previous
-architecture. We could even swap out v8 with another JavaScript engine if we wanted.
+will continue to run on newer versions of nodejs. Even [Deno](https://deno.com) &
+[Bun](https://bun.com) will work using the same binaries that nodejs uses. That's something that
+just couldn't be done with the previous architecture. We could even swap out v8 with another
+JavaScript engine if we wanted.
 
 
 Naming

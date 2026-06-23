@@ -250,7 +250,22 @@ auto initialize_host_environment(napi_env env) -> void {
 				return napi::invoke(napi_get_value_bool, env, is_bun_bool);
 			}();
 
-			auto is_nodejs = !is_bun;
+			// Detect deno via `process.versions.deno`
+			auto is_deno = process_global == nullptr ? false : [ & ]() -> bool {
+				constexpr auto versions_cw = util::make_consteval_string_view(util::cw<"versions">);
+				auto* versions_str = napi::invoke(node_api_create_property_key_latin1, env, versions_cw.data(), versions_cw.length());
+				auto* versions = napi::invoke(napi_get_property, env, process_global, versions_str);
+				if (napi::invoke(napi_typeof, env, versions) != napi_object) {
+					return false;
+				}
+				constexpr auto deno_cw = util::make_consteval_string_view(util::cw<"deno">);
+				auto* deno_str = napi::invoke(node_api_create_property_key_latin1, env, deno_cw.data(), deno_cw.length());
+				auto* deno = napi::invoke(napi_get_property, env, versions, deno_str);
+				auto* deno_bool = napi::invoke(napi_coerce_to_bool, env, deno);
+				return napi::invoke(napi_get_value_bool, env, deno_bool);
+			}();
+
+			auto is_nodejs = !is_bun && !is_deno;
 			if (is_nodejs) {
 				has_extended_fast_is_functions = true;
 				fast_is_false = v8_is_false;

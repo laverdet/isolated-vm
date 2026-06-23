@@ -3,8 +3,9 @@ import { describe, test } from "node:test";
 import * as ivm from "@isolated-vm/experimental";
 import { injectAssert, unsafeEvalAsString, unsafeEvalAsStringInRealm } from "./fixtures.js";
 
-// @ts-expect-error
-const hostSupportsSharedArraySupport = process.isBun === undefined;
+const hostSupportsSharedArraySupport =
+	// @ts-expect-error
+	process.isBun === undefined && process.versions.deno === undefined;
 
 await describe("array buffer", async () => {
 	await describe("transfer out", async () => {
@@ -105,6 +106,7 @@ await describe("shared array buffer", async () => {
 			await unsafeEvalAsStringInRealm(agent, realm, () => {
 				// @ts-expect-error
 				const uint8 = new Uint8Array(globalThis.sab);
+				assert.ok(uint8.buffer instanceof SharedArrayBuffer);
 				assert.deepStrictEqual([ ...uint8 ], [ 1, 2, 3 ]);
 			});
 		});

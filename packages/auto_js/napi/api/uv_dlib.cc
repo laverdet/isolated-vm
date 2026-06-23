@@ -21,7 +21,7 @@ auto uv_dlib::operator=(uv_dlib&& right) noexcept -> uv_dlib& {
 
 uv_dlib::~uv_dlib() {
 	if (lib_.handle != nullptr) {
-		uv_dlclose(&lib_);
+		host_uv_dlclose(&lib_);
 	}
 }
 

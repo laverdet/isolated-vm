@@ -7,7 +7,7 @@
     "clang-format": "find packages -name '*.cc' -exec clang-format -i {} \\;",
     "lint:cc": "run-clang-tidy -allow-no-checks -p build",
     "lint:js": "eslint --fix packages",
-    "test": "pnpm run --recursive --sequential --silent test${TEST_SCOPE:+:$TEST_SCOPE}"
+    "test": "pnpm run --recursive --sequential --silent test:${TEST_SCOPE:-node}"
   },
   "devDependencies": {
     "@auto_js/js": "workspace:^",

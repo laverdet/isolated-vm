@@ -426,14 +426,26 @@ jobs:
             node: 26
           - runtime: bun
             node: 24
+          - runtime: deno
+            node: 24
         exclude:
-          # Bun doesn't support musl. Actually, the gcompat hack from `laverdet/alpine-arm64` lets
-          # the tests run but this is probably not a platform you would find in the wild.
+          # Bun & Deno don't support musl. Actually, the gcompat hack from `laverdet/alpine-arm64`
+          # lets the tests run but this is probably not a platform you would find in the wild.
           # https://github.com/oven-sh/bun/issues/14292
           - host:
               container: alpine:edge
             runtime:
               runtime: bun
+          - host:
+              container: alpine:edge
+            runtime:
+              runtime: deno
+          # Failure on Windows with Deno..
+          # Check failed: old_protection == PAGE_READWRITE || old_protection == PAGE_WRITECOPY.
+          - host:
+              runs-on: windows-2025
+            runtime:
+              runtime: deno
     runs-on: ${{ matrix.host.runs-on }}
     container: ${{ matrix.host.container }}
     steps:
@@ -497,17 +509,23 @@ jobs:
         with:
           node-version: ${{ matrix.runtime.node }}
 
-      # Install Bun (maybe)
-      - if: matrix.runtime.runtime == 'bun' && (matrix.host.container == 'alpine:edge' || matrix.host.container == 'debian:forky')
+      # Install unzip in containers for setup-bun / setup-deno actions
+      - if: matrix.runtime.runtime != 'node' && (matrix.host.container == 'alpine:edge' || matrix.host.container == 'debian:forky')
         uses: laverdet/install@v1
         with:
           packages: unzip
+
+      # Install Bun (maybe)
       - if: matrix.runtime.runtime == 'bun'
         uses: oven-sh/setup-bun@v2
         with:
           # TODO: Back to latest when this lands:
           # https://github.com/oven-sh/bun/commit/17b4071b444831e43e7b1dd0f1154ac3413f88e2
           bun-version: canary
+
+      # Install Deno (maybe)
+      - if: matrix.runtime.runtime == 'deno'
+        uses: denoland/setup-deno@v2
 
       # Install npm dependencies, build TypeScript, check module sanity
       - uses: pnpm/action-setup@v5
@@ -525,7 +543,7 @@ jobs:
       # Run tests
       - name: Test
         env:
-          TEST_SCOPE: ${{ (matrix.runtime.runtime == 'bun' && 'bun') || '' }}
+          TEST_SCOPE: ${{ matrix.runtime.runtime }}
         timeout-minutes: 1
         run: |
           pnpm config set script-shell /bin/sh
