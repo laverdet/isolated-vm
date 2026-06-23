@@ -307,7 +307,7 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 				return immediate(value_of<data_view_tag>::from(subject), accept);
 			} else if (maybe_is_shared_array_buffer(env_.get(), subject).value_or(false)) {
 				return immediate(value_of<shared_array_buffer_tag>::from(subject), accept);
-			} else if (napi::invoke(napi_is_arraybuffer, napi_env{*this}, subject)) {
+			} else if (is_object_array_buffer(env_.get(), subject)) {
 				return immediate(value_of<array_buffer_tag>::from(subject), accept);
 			} else if (napi::invoke(napi_is_promise, napi_env{*this}, subject)) {
 				return immediate(value_of<promise_tag>::from(subject), accept);
@@ -325,7 +325,7 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 		// data blocks
 		template <class Accept>
 		auto immediate(value_of<data_block_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
-			if (napi::invoke(napi_is_arraybuffer, napi_env{*this}, subject)) {
+			if (is_data_block_array_buffer(env_.get(), subject)) {
 				return immediate(value_of<array_buffer_tag>::from(subject), accept);
 			} else {
 				return immediate(value_of<shared_array_buffer_tag>::from(subject), accept);

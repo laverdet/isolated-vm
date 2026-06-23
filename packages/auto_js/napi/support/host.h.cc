@@ -22,6 +22,10 @@ auto fast_is_number(napi_value value) -> bool;
 auto fast_is_object(napi_value value) -> bool;
 auto fast_is_string(napi_value value) -> bool;
 
+// Bug fixes
+auto (*is_object_array_buffer)(napi_env env, value_of<object_tag> value) -> bool = nullptr;
+auto (*is_data_block_array_buffer)(napi_env env, value_of<data_block_tag> value) -> bool = nullptr;
+
 // Optional value inspectors. int32 & latin1 will select optimized representations, and
 // shared_array_buffer is required for support of that value type.
 auto (*maybe_is_number_int32)(value_of<number_tag> value) -> std::optional<bool> = nullptr;

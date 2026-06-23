@@ -3,6 +3,9 @@ import { describe, test } from "node:test";
 import * as ivm from "@isolated-vm/experimental";
 import { unsafeEvalAsStringInRealm } from "./fixtures.js";
 
+// @ts-expect-error
+const hostSupportsSharedArraySupport = process.isBun === undefined;
+
 async function check(agent: ivm.Agent, realm: ivm.Realm, fn: () => unknown) {
 	const result = await unsafeEvalAsStringInRealm(agent, realm, fn);
 	assert.deepStrictEqual(result, fn());
@@ -114,14 +117,16 @@ await describe("regressions", async () => {
 		await global.set("xx", [ false, true ]);
 	});
 
-	await test("seen index type", async () => {
-		await using agent = await ivm.Agent.create();
-		const realm = await agent.createRealm();
-		const global = await realm.acquireGlobalObject();
-		const payload = {
-			number: 0,
-			buffer: [ new Uint8Array(new SharedArrayBuffer(0)) ],
-		};
-		await global.set("xx", [ payload ]);
-	});
+	if (hostSupportsSharedArraySupport) {
+		await test("seen index type", async () => {
+			await using agent = await ivm.Agent.create();
+			const realm = await agent.createRealm();
+			const global = await realm.acquireGlobalObject();
+			const payload = {
+				number: 0,
+				buffer: [ new Uint8Array(new SharedArrayBuffer(0)) ],
+			};
+			await global.set("xx", [ payload ]);
+		});
+	}
 });

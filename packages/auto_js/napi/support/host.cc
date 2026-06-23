@@ -69,6 +69,31 @@ auto fast_is_string(napi_value value) -> bool {
 	return std::bit_cast<v8::Local<v8::Value>>(value)->IsString();
 }
 
+// Bug fixes
+auto napi_is_object_array_buffer(napi_env env, value_of<object_tag> value) -> bool {
+	return napi::invoke(napi_is_arraybuffer, env, value);
+}
+
+auto napi_is_data_block_array_buffer(napi_env env, value_of<data_block_tag> value) -> bool {
+	return napi_is_object_array_buffer(env, value);
+}
+
+auto bun_is_data_block_array_buffer(napi_env env, value_of<data_block_tag> value) -> bool {
+	// https://github.com/oven-sh/bun/issues/32624
+	auto* string = napi::invoke(napi_coerce_to_string, env, value);
+	auto length = napi::invoke(napi_get_value_string_latin1, env, string, nullptr, 0);
+	// '[object ArrayBuffer]'
+	return length == 20;
+}
+
+auto bun_is_object_array_buffer(napi_env env, value_of<object_tag> value) -> bool {
+	if (napi::invoke(napi_is_arraybuffer, env, value)) {
+		return bun_is_data_block_array_buffer(env, value_of<data_block_tag>::from(value));
+	} else {
+		return false;
+	}
+}
+
 // Optional value inspectors.
 auto v8_is_number_int32(value_of<number_tag> value) -> std::optional<bool> {
 	return std::bit_cast<v8::Local<v8::Number>>(value)->IsInt32();
@@ -78,8 +103,16 @@ auto v8_is_string_one_byte(value_of<string_tag> value) -> std::optional<bool> {
 	return std::bit_cast<v8::Local<v8::String>>(value)->IsOneByte();
 }
 
-auto napi_maybe_is_shared_array_buffer(napi_env env, value_of<object_tag> value) -> std::optional<bool> {
+auto node_api_maybe_is_shared_array_buffer(napi_env env, value_of<object_tag> value) -> std::optional<bool> {
 	return napi::invoke(node_api_is_sharedarraybuffer, env, value);
+}
+
+auto bun_maybe_is_shared_array_buffer(napi_env env, value_of<object_tag> value) -> std::optional<bool> {
+	if (napi::invoke(napi_is_arraybuffer, env, value)) {
+		return !bun_is_data_block_array_buffer(env, value_of<data_block_tag>::from(value));
+	} else {
+		return std::nullopt;
+	}
 }
 
 constexpr auto unknown_maybe_is = [](auto...) -> std::optional<bool> { return std::nullopt; };
@@ -195,24 +228,29 @@ auto initialize_host_environment(napi_env env) -> void {
 				handle_addressof = indirect_handle_address;
 			}
 
-			auto is_nodejs = [ & ]() -> bool {
-				// Get `globalThis.process`
+			// Get `globalThis.process`
+			auto* process_global = [ & ]() -> napi_value {
 				auto* global = napi::invoke(napi_get_global, env);
 				constexpr auto process_cw = util::make_consteval_string_view(util::cw<"process">);
 				auto* process_str = napi::invoke(node_api_create_property_key_latin1, env, process_cw.data(), process_cw.length());
 				auto* process = napi::invoke(napi_get_property, env, global, process_str);
-				if (napi::invoke(napi_typeof, env, process) != napi_object) {
-					return true;
+				if (napi::invoke(napi_typeof, env, process) == napi_object) {
+					return process;
+				} else {
+					return nullptr;
 				}
-
-				// Detect bun via `process.isBun`
-				constexpr auto is_bun_cw = util::make_consteval_string_view(util::cw<"isBun">);
-				auto* is_bun_str = napi::invoke(node_api_create_property_key_latin1, env, is_bun_cw.data(), is_bun_cw.length());
-				auto* is_bun = napi::invoke(napi_get_property, env, process, is_bun_str);
-				auto* is_bun_bool = napi::invoke(napi_coerce_to_bool, env, is_bun);
-				return !napi::invoke(napi_get_value_bool, env, is_bun_bool);
 			}();
 
+			// Detect bun via `process.isBun`
+			auto is_bun = process_global == nullptr ? false : [ & ]() -> bool {
+				constexpr auto is_bun_cw = util::make_consteval_string_view(util::cw<"isBun">);
+				auto* is_bun_str = napi::invoke(node_api_create_property_key_latin1, env, is_bun_cw.data(), is_bun_cw.length());
+				auto* is_bun = napi::invoke(napi_get_property, env, process_global, is_bun_str);
+				auto* is_bun_bool = napi::invoke(napi_coerce_to_bool, env, is_bun);
+				return napi::invoke(napi_get_value_bool, env, is_bun_bool);
+			}();
+
+			auto is_nodejs = !is_bun;
 			if (is_nodejs) {
 				has_extended_fast_is_functions = true;
 				fast_is_false = v8_is_false;
@@ -236,7 +274,7 @@ auto initialize_host_environment(napi_env env) -> void {
 				make_sab_typed_array_of<std::uint8_t> = v8_make_sab_typed_array_of<std::uint8_t>;
 				make_shared_array_buffer = v8_make_shared_array_buffer;
 				maybe_is_number_int32 = v8_is_number_int32;
-				maybe_is_shared_array_buffer = napi_maybe_is_shared_array_buffer;
+				maybe_is_shared_array_buffer = node_api_maybe_is_shared_array_buffer;
 				maybe_is_string_latin1 = v8_is_string_one_byte;
 				shared_array_buffer_get_backing_store = v8_shared_array_buffer_get_backing_store;
 				shared_array_buffer_get_byte_length = v8_shared_array_buffer_get_byte_length;
@@ -269,6 +307,15 @@ auto initialize_host_environment(napi_env env) -> void {
 				// NOLINTNEXTLINE(modernize-avoid-c-arrays)
 				shared_array_buffer_get_backing_store = unknown_sab_throw<std::shared_ptr<std::byte[]>>;
 				shared_array_buffer_get_byte_length = unknown_sab_throw<std::size_t>;
+			}
+
+			// Bug fixes
+			is_data_block_array_buffer = napi_is_data_block_array_buffer;
+			is_object_array_buffer = napi_is_object_array_buffer;
+			if (is_bun) {
+				is_data_block_array_buffer = bun_is_data_block_array_buffer;
+				is_object_array_buffer = bun_is_object_array_buffer;
+				maybe_is_shared_array_buffer = bun_maybe_is_shared_array_buffer;
 			}
 		}
 	}

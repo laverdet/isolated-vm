@@ -92,35 +92,38 @@ await describe("shared array buffer", async () => {
 			});
 			assert.strictEqual(ab[0], ab[1]);
 		});
-	}
 
-	await test("transfer in", async () => {
-		await using agent = await ivm.Agent.create();
-		const realm = await agent.createRealm();
-		await injectAssert(agent, realm);
-		const global = await realm.acquireGlobalObject();
-		const sab = new SharedArrayBuffer(3);
-		const uint8 = new Uint8Array(sab);
-		uint8.set([ 1, 2, 3 ]);
-		await global.set("sab", sab);
-		await unsafeEvalAsStringInRealm(agent, realm, () => {
-			// @ts-expect-error
-			const uint8 = new Uint8Array(globalThis.sab);
-			assert.deepStrictEqual([ ...uint8 ], [ 1, 2, 3 ]);
+		await test("transfer in", async () => {
+			await using agent = await ivm.Agent.create();
+			const realm = await agent.createRealm();
+			await injectAssert(agent, realm);
+			const global = await realm.acquireGlobalObject();
+			const sab = new SharedArrayBuffer(3);
+			const uint8 = new Uint8Array(sab);
+			uint8.set([ 1, 2, 3 ]);
+			await global.set("sab", sab);
+			await unsafeEvalAsStringInRealm(agent, realm, () => {
+				// @ts-expect-error
+				const uint8 = new Uint8Array(globalThis.sab);
+				assert.deepStrictEqual([ ...uint8 ], [ 1, 2, 3 ]);
+			});
 		});
-	});
+	}
 
 	await test("transfer in same reference", async () => {
 		await using agent = await ivm.Agent.create();
 		const realm = await agent.createRealm();
 		await injectAssert(agent, realm);
 		const global = await realm.acquireGlobalObject();
-		const sab = new SharedArrayBuffer(0);
-		await global.set("sabs", [ sab, sab ]);
+		const ab = new ArrayBuffer(0);
+		await global.set("abs", [ ab, ab ]);
 		await unsafeEvalAsStringInRealm(agent, realm, () => {
 			// @ts-expect-error
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			assert.strictEqual(sabs[0], sabs[1]);
+			assert.strictEqual(`${abs[0]}`, "[object ArrayBuffer]");
+			// @ts-expect-error
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			assert.strictEqual(abs[0], abs[1]);
 		});
 	});
 });
