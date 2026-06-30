@@ -3,7 +3,7 @@ import { test } from "node:test";
 import * as ivm from "@isolated-vm/experimental";
 import { unsafeEvalAsString } from "./fixtures.js";
 
-const makeAgentRandom =	async (randomSeed?: number) => {
+const makeAgentRandom = async (randomSeed?: number) => {
 	await using agent = await ivm.Agent.create({ randomSeed });
 	return await unsafeEvalAsString(agent, () => Math.random());
 };

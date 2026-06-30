@@ -1,5 +1,5 @@
 import type { SourceOrigin } from "./script.js";
-import * as backend from "#backend_v8";
+import * as backend from "#backend";
 import { Module } from "./module.js";
 
 export namespace Agent {
@@ -50,7 +50,7 @@ export class Agent extends backend.Agent {
 	static override create(options?: Agent.CreateOptions): Promise<Agent> {
 		if (!didInitialize) {
 			backend.initialize({ Agent, Module });
-			didInitialize	= true;
+			didInitialize = true;
 		}
 		return backend.Agent.create(options);
 	}

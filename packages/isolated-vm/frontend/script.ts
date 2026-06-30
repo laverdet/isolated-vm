@@ -1,4 +1,4 @@
-export { Script } from "#backend_v8";
+export { Script } from "#backend";
 
 export interface Location {
 	line: number;

@@ -444,6 +444,14 @@ export default [
 			},
 		},
 	},
+	{
+		files: [ ...dTsGlob ],
+		languageOptions: {
+			parserOptions: {
+				projectService: false,
+			},
+		},
+	},
 
 	// JavaScript rules
 	{

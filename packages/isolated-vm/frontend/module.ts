@@ -1,4 +1,4 @@
-import * as backend from "#backend_v8";
+import * as backend from "#backend";
 
 export const AbstractModule: typeof backend.Module = backend.Module;
 export type AbstractModule = backend.Module;

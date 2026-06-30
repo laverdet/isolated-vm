@@ -1,6 +1,6 @@
-import * as backend from "#backend_v8";
+import * as backend from "#backend";
 
-export { Realm } from "#backend_v8";
+export { Realm } from "#backend";
 
 export namespace Realm {
 	export type CapabilityInterface = Record<string, CapabilitySignature>;

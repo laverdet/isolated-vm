@@ -1,19 +1,19 @@
 import * as assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import * as ivm from "@isolated-vm/experimental";
+import { Agent, Realm } from "@isolated-vm/experimental";
 import { unsafeEvalAsStringInRealm } from "./fixtures.js";
 
 const hostSupportsSharedArraySupport =
 	// @ts-expect-error
 	process.isBun === undefined && process.versions.deno === undefined;
 
-async function check(agent: ivm.Agent, realm: ivm.Realm, fn: () => unknown) {
+async function check(agent: Agent, realm: Realm, fn: () => unknown) {
 	const result = await unsafeEvalAsStringInRealm(agent, realm, fn);
 	assert.deepStrictEqual(result, fn());
 }
 
 await test("transfer types", async () => {
-	await using agent = await ivm.Agent.create();
+	await using agent = await Agent.create();
 	const realm = await agent.createRealm();
 
 	// null, undefined, bool
@@ -102,7 +102,7 @@ await test("transfer types", async () => {
 
 // TODO: deno fails when this is in the `describe` (??)
 await test("numeric references", async () => {
-	await using agent = await ivm.Agent.create();
+	await using agent = await Agent.create();
 	const realm = await agent.createRealm();
 	const global = await realm.acquireGlobalObject();
 	// doubles are stored as references in `value_t`, because they are bigger than 32-bit. there was
@@ -112,7 +112,7 @@ await test("numeric references", async () => {
 
 await describe("regressions", async () => {
 	await test("numeric indices", async () => {
-		await using agent = await ivm.Agent.create();
+		await using agent = await Agent.create();
 		const realm = await agent.createRealm();
 		const global = await realm.acquireGlobalObject();
 		// numeric array indices broke as part of a double to int32_t change.
@@ -121,7 +121,7 @@ await describe("regressions", async () => {
 
 	if (hostSupportsSharedArraySupport) {
 		await test("seen index type", async () => {
-			await using agent = await ivm.Agent.create();
+			await using agent = await Agent.create();
 			const realm = await agent.createRealm();
 			const global = await realm.acquireGlobalObject();
 			const payload = {

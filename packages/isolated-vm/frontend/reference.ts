@@ -1,4 +1,4 @@
-import type * as backend from "#backend_v8";
+import type * as backend from "#backend";
 import type { MaybeCompletionOf } from "@isolated-vm/experimental";
 
 type InvokeArguments<Value> = Value extends (...args: infer Args) => unknown ? Args : never;

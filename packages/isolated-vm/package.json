@@ -12,10 +12,22 @@
     "./*": "./dist/*.js"
   },
   "imports": {
-    "#backend_v8": {
-      "import": "./backend/backend_v8.js",
-      "types": "./backend/backend_v8.d.ts"
-    }
+    "#backend_cjs": {
+      "types": "./backend/backend.d.cts",
+      "darwin-arm64": "@isolated-vm/experimental-darwin-arm64",
+      "darwin-x64": "@isolated-vm/experimental-darwin-x64",
+      "linux-arm64-gnu": "@isolated-vm/experimental-linux-arm64-gnu",
+      "linux-arm64-musl": "@isolated-vm/experimental-linux-arm64-musl",
+      "linux-x64-gnu": "@isolated-vm/experimental-linux-x64-gnu",
+      "linux-x64-musl": "@isolated-vm/experimental-linux-x64-musl",
+      "win32-x64": "@isolated-vm/experimental-win32-x64",
+      "require": "./dist/backend/require.cjs"
+    },
+    "#backend": {
+      "types": "./backend/backend.d.cts",
+      "import": "./dist/backend/backend.cjs"
+    },
+    "#host_cjs": "./dist/backend/host.cjs"
   },
   "scripts": {
     "prepublishOnly": "npx napi prepublish --no-gh-release",
