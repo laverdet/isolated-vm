@@ -1,14 +1,14 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
 import { setTimeout } from "node:timers/promises";
-import * as ivm from "@isolated-vm/experimental";
-import { unsafeEvalAsString, unsafeEvalAsStringInRealm } from "./fixtures.js";
+import { Agent } from "@isolated-vm/experimental";
+import { unsafeEvalAsString, unsafeEvalAsStringInRealm } from "@isolated-vm/experimental/test/fixtures";
 
 const y2k = new Date("2000-01-01T00:00:00Z");
 // Figure out how many loops to waste ~25ms on this build. Extra slop factor is added afterwards.
 const speedFactorMs = 25;
 const speedFactor = await async function() {
-	await using agent = await ivm.Agent.create();
+	await using agent = await Agent.create();
 	return await unsafeEvalAsString(
 		agent, speedFactorMs =>
 			Math.min(...Array(3).fill(undefined).map(() => {
@@ -27,7 +27,7 @@ const speedFactor = await async function() {
 }();
 
 await test("deterministic clock", async () => {
-	await using agent = await ivm.Agent.create({
+	await using agent = await Agent.create({
 		clock: { type: "deterministic", epoch: y2k, interval: 1 },
 	});
 	const realm = await agent.createRealm();
@@ -40,7 +40,7 @@ await test("deterministic clock", async () => {
 });
 
 await test("microtask clock", async () => {
-	await using agent = await ivm.Agent.create({
+	await using agent = await Agent.create({
 		clock: { type: "microtask", epoch: y2k },
 	});
 	const realm = await agent.createRealm();
@@ -59,7 +59,7 @@ await test("microtask clock", async () => {
 });
 
 await test("realtime clock", async () => {
-	await using agent = await ivm.Agent.create({
+	await using agent = await Agent.create({
 		clock: { type: "realtime", epoch: y2k },
 	});
 	const realm = await agent.createRealm();
@@ -77,7 +77,7 @@ await test("realtime clock", async () => {
 await test("system clock", async () => {
 	// `std::system_clock` on Windows returns jittering results across different CPU cores.
 	const threshold = process.platform === "win32" ? 10 : 0;
-	await using agent = await ivm.Agent.create();
+	await using agent = await Agent.create();
 	const realm = await agent.createRealm();
 	for (let ii = 0; ii < 5; ++ii) {
 		const then = new Date();

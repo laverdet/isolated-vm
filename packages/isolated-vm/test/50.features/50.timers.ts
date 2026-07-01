@@ -1,11 +1,11 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import * as ivm from "@isolated-vm/experimental";
+import { Agent } from "@isolated-vm/experimental";
+import { expectComplete } from "@isolated-vm/experimental/test/fixtures";
 import { makeCompositeLinker, makeDirectResolver, makeFileSystemCompilationLoader, makeLinker, makeLocalResolver, makeStaticLoader } from "@isolated-vm/experimental/utility/linker";
-import { expectComplete } from "./fixtures.js";
 
 await test("setTimeout capability", async () => {
-	await using agent = await ivm.Agent.create();
+	await using agent = await Agent.create();
 	const realm = await agent.createRealm();
 	const runTimers = expectComplete(await agent.compileScript("runTimers()"));
 	const resolvers = Promise.withResolvers();

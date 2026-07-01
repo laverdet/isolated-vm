@@ -1,13 +1,13 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import * as ivm from "@isolated-vm/experimental";
-import {} from "@isolated-vm/experimental/test/fixtures";
+import { Agent, expectComplete } from "@isolated-vm/experimental";
+import "@isolated-vm/experimental/test/fixtures";
 
 await test("dispose while running", async () => {
 	const result = async function() {
-		await using agent = await ivm.Agent.create();
+		await using agent = await Agent.create();
 		const realm = await agent.createRealm();
-		const script = ivm.expectComplete(await agent.compileScript("for(;;);"));
+		const script = expectComplete(await agent.compileScript("for(;;);"));
 		// eslint-disable-next-line @typescript-eslint/return-await
 		return script.run(realm);
 	}();

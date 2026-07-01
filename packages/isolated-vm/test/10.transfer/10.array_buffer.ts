@@ -1,7 +1,7 @@
 import * as assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import * as ivm from "@isolated-vm/experimental";
-import { injectAssert, unsafeEvalAsString, unsafeEvalAsStringInRealm } from "./fixtures.js";
+import { Agent } from "@isolated-vm/experimental";
+import { injectAssert, unsafeEvalAsString, unsafeEvalAsStringInRealm } from "@isolated-vm/experimental/test/fixtures";
 
 const hostSupportsSharedArraySupport =
 	// @ts-expect-error
@@ -9,7 +9,7 @@ const hostSupportsSharedArraySupport =
 
 await describe("array buffer", async () => {
 	await describe("transfer out", async () => {
-		await using agent = await ivm.Agent.create();
+		await using agent = await Agent.create();
 		const ab = await unsafeEvalAsString(agent, () => {
 			const uint8 = new Uint8Array([ 1, 2, 3 ]);
 			return uint8.buffer;
@@ -20,7 +20,7 @@ await describe("array buffer", async () => {
 
 	if (hostSupportsSharedArraySupport) {
 		await test("transfer out same reference", async () => {
-			await using agent = await ivm.Agent.create();
+			await using agent = await Agent.create();
 			const ab = await unsafeEvalAsString(agent, () => {
 				// nb: also tests zero-length buffer
 				const ab = new ArrayBuffer(0);
@@ -31,7 +31,7 @@ await describe("array buffer", async () => {
 	}
 
 	await test("transfer in", async () => {
-		await using agent = await ivm.Agent.create();
+		await using agent = await Agent.create();
 		const realm = await agent.createRealm();
 		await injectAssert(agent, realm);
 		const global = await realm.acquireGlobalObject();
@@ -44,7 +44,7 @@ await describe("array buffer", async () => {
 	});
 
 	await test("transfer in same reference", async () => {
-		await using agent = await ivm.Agent.create();
+		await using agent = await Agent.create();
 		const realm = await agent.createRealm();
 		await injectAssert(agent, realm);
 		const global = await realm.acquireGlobalObject();
@@ -61,7 +61,7 @@ await describe("array buffer", async () => {
 await describe("shared array buffer", async () => {
 	if (hostSupportsSharedArraySupport) {
 		await describe("transfer out", async () => {
-			await using agent = await ivm.Agent.create();
+			await using agent = await Agent.create();
 			const realm = await agent.createRealm();
 			const sab = await unsafeEvalAsStringInRealm(agent, realm, () => {
 				const sab = new SharedArrayBuffer(3);
@@ -85,7 +85,7 @@ await describe("shared array buffer", async () => {
 		});
 
 		await test("transfer out same reference", async () => {
-			await using agent = await ivm.Agent.create();
+			await using agent = await Agent.create();
 			const ab = await unsafeEvalAsString(agent, () => {
 				// nb: also tests zero-length buffer
 				const sab = new SharedArrayBuffer(0);
@@ -95,7 +95,7 @@ await describe("shared array buffer", async () => {
 		});
 
 		await test("transfer in", async () => {
-			await using agent = await ivm.Agent.create();
+			await using agent = await Agent.create();
 			const realm = await agent.createRealm();
 			await injectAssert(agent, realm);
 			const global = await realm.acquireGlobalObject();
@@ -113,7 +113,7 @@ await describe("shared array buffer", async () => {
 	}
 
 	await test("transfer in same reference", async () => {
-		await using agent = await ivm.Agent.create();
+		await using agent = await Agent.create();
 		const realm = await agent.createRealm();
 		await injectAssert(agent, realm);
 		const global = await realm.acquireGlobalObject();
@@ -132,7 +132,7 @@ await describe("shared array buffer", async () => {
 
 // TODO: deno fails when this is in the `describe` (??)
 await test("transfer out", async () => {
-	await using agent = await ivm.Agent.create();
+	await using agent = await Agent.create();
 	const [ uint8, uint8_copy ] = await unsafeEvalAsString(agent, () => {
 		const uint8 = new Uint8Array([ 1, 2, 3 ]);
 		return [ uint8, new Uint8Array(uint8.buffer) ];
@@ -143,7 +143,7 @@ await test("transfer out", async () => {
 
 await describe("typed array", async () => {
 	await test("transfer in", async () => {
-		await using agent = await ivm.Agent.create();
+		await using agent = await Agent.create();
 		const realm = await agent.createRealm();
 		await injectAssert(agent, realm);
 		const global = await realm.acquireGlobalObject();
@@ -159,7 +159,7 @@ await describe("typed array", async () => {
 
 	if (hostSupportsSharedArraySupport) {
 		await test("shared transfer out", async () => {
-			await using agent = await ivm.Agent.create();
+			await using agent = await Agent.create();
 			const [ shared_uint8, shared_uint8_copy ] = await unsafeEvalAsString(agent, () => {
 				const sab = new SharedArrayBuffer(3);
 				const uint8 = new Uint8Array(sab);

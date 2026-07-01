@@ -23,7 +23,6 @@
 
 		// Module resolution settings
 		"allowArbitraryExtensions": true,
-		"esModuleInterop": false,
 		"lib": [ "esnext" ],
 		"module": "nodenext",
 		"moduleResolution": "nodenext",

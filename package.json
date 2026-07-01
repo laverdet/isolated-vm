@@ -19,7 +19,7 @@
     "@typescript-eslint/parser": "^8.0.1",
     "eslint": "^9.17.0",
     "eslint-plugin-import": "^2.29.1",
-    "typescript": "^5.5.4"
+    "typescript": "^6.0.3"
   },
   "dependencies": {
     "@auto_js/js": "workspace:^",

@@ -1,10 +1,10 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import * as ivm from "@isolated-vm/experimental";
-import { unsafeEvalAsStringInRealm } from "./fixtures.js";
+import { Agent } from "@isolated-vm/experimental";
+import { unsafeEvalAsStringInRealm } from "@isolated-vm/experimental/test/fixtures";
 
 await test("realm global reference", async () => {
-	await using agent = await ivm.Agent.create();
+	await using agent = await Agent.create();
 	const realm = await agent.createRealm();
 	await unsafeEvalAsStringInRealm(agent, realm, () => {
 		// @ts-expect-error
