@@ -21,7 +21,7 @@ if [ -z ${SKIP_SYNC+-} ]; then
 	if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
 		"$GCLIENT" sync --no-history --shallow --with_branch_heads 1>&2
 	else
-		"$GCLIENT" sync --with_branch_heads 1>&2
+		"$GCLIENT" sync --reset --upstream --with_branch_heads 1>&2
 	fi
 fi
 

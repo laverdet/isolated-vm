@@ -179,7 +179,7 @@
     {
       "label": "v8: build",
       "type": "shell",
-      "command": "set -eux; reset;\nset -a; source \"$ENV_FILE\"\ncd \"${V8_SRC_PATH:-/v8}\"\nTARGET=$(triplet_util %t.${input:v8_target})\nV8_BUNDLE_PATH=\"$(pwd)/out/$V8_REF/$TARGET\"\nWITHOUT_SYSROOT=1 v8_configure \"$V8_BUNDLE_PATH\"\nsource \"$V8_BUNDLE_PATH/env\"\nninja -C \"out/$V8_REF/$TARGET\" $V8_TARGETS || \\\nninja -j4 -C \"out/$V8_REF/$TARGET\" $V8_TARGETS || \\\nninja -j2 -C \"out/$V8_REF/$TARGET\" $V8_TARGETS\nexport V8_BUNDLE_PATH\nivm_write_env V8_BUNDLE_PATH\n",
+      "command": "set -eux; reset;\nset -a; source \"$ENV_FILE\"\ncd \"${V8_SRC_PATH:-/v8}\"\nTARGET=$(triplet_util %t.${input:v8_target})\nV8_BUNDLE_PATH=\"$(pwd)/out/$V8_REF/$TARGET\"\nWITHOUT_SYSROOT=1 v8_configure \"$V8_BUNDLE_PATH\"\nsource \"$V8_BUNDLE_PATH/env\"\nninja -C \"out/$V8_REF/$TARGET\" $(echo $V8_TARGETS)\nexport V8_BUNDLE_PATH\nivm_write_env V8_BUNDLE_PATH\n",
       "problemMatcher": [],
       "presentation": {
         "reveal": "always"

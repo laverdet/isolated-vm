@@ -54,6 +54,7 @@ GN="${DEPOT_TOOLS:-gn}${DEPOT_TOOLS:+/gn}"
 
 GN_ARGS=(
 	clang_use_chrome_plugins=false
+	concurrent_links=1
 	icu_use_data_file=false
 	treat_warnings_as_errors=false
 	use_clang_modules=false
