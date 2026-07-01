@@ -98,9 +98,9 @@ declare namespace IsolatedVM {
 		 *
 		 * See: https://nodejs.org/dist/latest-v8.x/docs/api/v8.html#v8_v8_getheapstatistics.
 		 *
-		 * This function returns one additional property: "externally_allocated_size" which is the total
-		 * amount of currently allocated memory which is not included in the v8 heap but counts against
-		 * this isolate's "memoryLimit".
+		 * This function returns two additional properties: "externally_allocated_size", the total amount
+		 * of currently allocated memory which is not included in the v8 heap but counts against this
+		 * isolate's "memoryLimit"; and "major_gc_count", the number of major GCs this isolate has run.
 		 *
 		 * ArrayBuffer instances over a certain size are externally allocated and will be counted here.
 		 */
@@ -177,6 +177,12 @@ declare namespace IsolatedVM {
 		 * counts against this isolate's "memoryLimit".
 		 */
 		externally_allocated_size: number;
+
+		/**
+		 * The number of major (mark-sweep-compact) garbage collections this isolate has performed over
+		 * its lifetime. Useful for detecting pathological GC pressure.
+		 */
+		major_gc_count: number;
 	};
 
 	export type CompileModuleOptions = ScriptInfo & {

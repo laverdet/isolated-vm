@@ -348,6 +348,7 @@ struct HeapStatRunner : public ThreePhaseTask {
 	HeapStatistics heap;
 	size_t externally_allocated_size = 0;
 	size_t adjustment = 0;
+	size_t major_gc_count = 0;
 
 	// Dummy constructor to workaround gcc bug
 	explicit HeapStatRunner(int /*unused*/) {}
@@ -357,6 +358,7 @@ struct HeapStatRunner : public ThreePhaseTask {
 		isolate->GetHeapStatistics(&heap);
 		adjustment = heap.heap_size_limit() - isolate.GetInitialHeapSizeLimit();
 		externally_allocated_size = isolate.GetExtraAllocatedMemory();
+		major_gc_count = isolate.GetMajorGcCount();
 	}
 
 	auto Phase3() -> Local<Value> final {
@@ -374,6 +376,7 @@ struct HeapStatRunner : public ThreePhaseTask {
 		Unmaybe(ret->Set(context, strings.peak_malloced_memory, Number::New(isolate, heap.peak_malloced_memory())));
 		Unmaybe(ret->Set(context, strings.does_zap_garbage, Number::New(isolate, heap.does_zap_garbage())));
 		Unmaybe(ret->Set(context, strings.externally_allocated_size, Number::New(isolate, externally_allocated_size)));
+		Unmaybe(ret->Set(context, strings.major_gc_count, Number::New(isolate, major_gc_count)));
 		return ret;
 	}
 };

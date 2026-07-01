@@ -90,6 +90,7 @@ class StringTable {
 		String does_zap_garbage{"does_zap_garbage"};
 		String externally_allocated_size{"externally_allocated_size"};
 		String heap_size_limit{"heap_size_limit"};
+		String major_gc_count{"major_gc_count"};
 		String malloced_memory{"malloced_memory"};
 		String peak_malloced_memory{"peak_malloced_memory"};
 		String total_available_size{"total_available_size"};

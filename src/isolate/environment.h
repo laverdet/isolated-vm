@@ -104,6 +104,10 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		std::atomic<size_t> extra_allocated_memory = 0;
 		v8::MemoryPressureLevel memory_pressure = v8::MemoryPressureLevel::kNone;
 		v8::MemoryPressureLevel last_memory_pressure = v8::MemoryPressureLevel::kNone;
+		// Count of major (mark-sweep-compact) GCs this isolate has run. Maintained on the isolate's own
+		// thread in MarkSweepCompactEpilogue and surfaced via getHeapStatistics(). Useful for spotting
+		// pathological GC pressure (e.g. the parent force-collecting a child on every parent GC).
+		size_t major_gc_count = 0;
 		bool hit_memory_limit = false;
 		bool did_adjust_heap_limit = false;
 		bool nodejs_isolate = false;
@@ -312,6 +316,9 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		 */
 		auto GetExtraAllocatedMemory() const -> size_t {
 			return extra_allocated_memory;
+		}
+		auto GetMajorGcCount() const -> size_t {
+			return major_gc_count;
 		}
 		void AdjustExtraAllocatedMemory(int size) {
 			extra_allocated_memory += size;

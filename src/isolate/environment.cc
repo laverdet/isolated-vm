@@ -211,19 +211,43 @@ void IsolateEnvironment::MarkSweepCompactPrologue(Isolate* /*isolate*/, GCType g
 		}
 
 		auto owned_isolate = ref->GetIsolate();
-		if (owned_isolate && owned_isolate->last_memory_pressure != MemoryPressureLevel::kCritical) {
-			// NB: This runs inside the *parent* isolate's GC prologue, on the parent's thread. Taking
-			// `Executor::Lock` here would construct a blocking `v8::Locker` on the child; if that child is
-			// busy (e.g. running an unbounded script) it never releases the lock, freezing the parent
-			// mid-GC and deadlocking the whole process.
-			//
-			// Deliver the notification off-thread instead. `v8::Isolate::MemoryPressureNotification` is
-			// safe to call from a non-owning thread: it detects we don't hold the child's lock and, rather
-			// than collecting inline, posts a memory-pressure GC task to the child's foreground task runner
-			// (and never blocks). Our task runner only enqueues though (see `IsolateTaskRunner::PostTaskImpl`),
-			// so an idle child would never run that task — wake it explicitly so the GC actually happens on
-			// the child's own thread. A busy child is already `Running`, so `WakeIsolate` is a no-op and the
-			// pressure is picked up when it next yields.
+		if (!owned_isolate) {
+			continue;
+		}
+
+		// Only propagate the parent's major GC to *idle* children. A running child is skipped for two
+		// reasons: (1) it can't be force-collected safely from here anyway — the old code took a blocking
+		// `Executor::Lock` (a `v8::Locker`) on the child, and a busy child never releases it, freezing the
+		// parent mid-GC and deadlocking the process (the bug 9fb10cd fixed); and (2) a running child is
+		// already executing script and self-manages its heap via its own GC epilogue + NearHeapLimitCallback.
+		// Repeatedly nudging a busy child was the "child GC storm": every parent GC forced another full
+		// collect-all on it, pinning the CPU (see tests/child-gc-storm.js).
+		//
+		// Read the run status under the scheduler lock, then release it before notifying: our task runner's
+		// `PostTaskImpl` also takes the scheduler lock, so calling `MemoryPressureNotification` (which posts
+		// a task) while holding it would deadlock. A benign TOCTOU remains — the child may start running
+		// right after we release — but that at worst costs one extra notification it picks up when it yields,
+		// not a storm.
+		bool running = false;
+		{
+			auto lock = owned_isolate->scheduler->Lock();
+			running = lock->status == Scheduler::Status::Running;
+		}
+		if (running) {
+			continue;
+		}
+
+		// Dedup on the child-owned `last_memory_pressure`: an idle child that already got a `kCritical`
+		// notification keeps that value (its collect-all epilogue doesn't reset it), so we don't re-notify
+		// it. It only re-arms once it runs real work and a routine collection drops it below threshold — by
+		// which point it's `Running` and skipped above. The net effect: an idle child is reclaimed once per
+		// genuine work cycle under sustained parent pressure, never in a tight storm.
+		if (owned_isolate->last_memory_pressure != MemoryPressureLevel::kCritical) {
+			// NB: `MemoryPressureNotification` is safe to call from this non-owning (parent) thread: it
+			// detects we don't hold the child's lock and, rather than collecting inline, posts a
+			// memory-pressure GC task to the child's foreground task runner (and never blocks). Our task
+			// runner only enqueues, so an idle child would never run that task — wake it explicitly so the
+			// GC actually happens on the child's own thread.
 			owned_isolate->memory_pressure = MemoryPressureLevel::kCritical;
 			owned_isolate->isolate->MemoryPressureNotification(MemoryPressureLevel::kCritical);
 			owned_isolate->scheduler->Lock()->WakeIsolate(owned_isolate);
@@ -233,6 +257,7 @@ void IsolateEnvironment::MarkSweepCompactPrologue(Isolate* /*isolate*/, GCType g
 
 void IsolateEnvironment::MarkSweepCompactEpilogue(Isolate* isolate, GCType /*gc_type*/, GCCallbackFlags gc_flags, void* data) {
 	auto* that = static_cast<IsolateEnvironment*>(data);
+	++that->major_gc_count;
 	HeapStatistics heap;
 	that->isolate->GetHeapStatistics(&heap);
 	size_t total_memory = heap.used_heap_size() + that->extra_allocated_memory;
