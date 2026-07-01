@@ -28,8 +28,10 @@ auto value_for_class_of<Type>::runtime_construct(
 ) const -> value_of<object_tag>
 	requires std::constructible_from<Type, HostArgs...> {
 	const auto [... indices ] = util::sequence<sizeof...(HostArgs)>;
+	// TODO: Move this back to `std::make_unique`. Also, remove the `autorelease_pool` from environment.
+	// https://github.com/denoland/deno/issues/35692
 	// NOLINTNEXTLINE(bugprone-use-after-move)
-	auto instance = std::make_unique<Type>(std::get<indices>(std::move(host_args))...);
+	auto instance = env.autorelease_pool().template make_unique<Type>(std::get<indices>(std::move(host_args))...);
 	return transfer_construct(env, std::move(instance), std::move(runtime_args));
 }
 

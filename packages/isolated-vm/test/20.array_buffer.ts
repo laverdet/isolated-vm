@@ -130,17 +130,18 @@ await describe("shared array buffer", async () => {
 	});
 });
 
-await describe("typed array", async () => {
-	await test("transfer out", async () => {
-		await using agent = await ivm.Agent.create();
-		const [ uint8, uint8_copy ] = await unsafeEvalAsString(agent, () => {
-			const uint8 = new Uint8Array([ 1, 2, 3 ]);
-			return [ uint8, new Uint8Array(uint8.buffer) ];
-		});
-		assert.deepStrictEqual(uint8, new Uint8Array([ 1, 2, 3 ]));
-		assert.strictEqual(uint8.buffer, uint8_copy.buffer);
+// TODO: deno fails when this is in the `describe` (??)
+await test("transfer out", async () => {
+	await using agent = await ivm.Agent.create();
+	const [ uint8, uint8_copy ] = await unsafeEvalAsString(agent, () => {
+		const uint8 = new Uint8Array([ 1, 2, 3 ]);
+		return [ uint8, new Uint8Array(uint8.buffer) ];
 	});
+	assert.deepStrictEqual(uint8, new Uint8Array([ 1, 2, 3 ]));
+	assert.strictEqual(uint8.buffer, uint8_copy.buffer);
+});
 
+await describe("typed array", async () => {
 	await test("transfer in", async () => {
 		await using agent = await ivm.Agent.create();
 		const realm = await agent.createRealm();

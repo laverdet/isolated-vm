@@ -3,8 +3,9 @@ import { describe, test } from "node:test";
 import * as ivm from "@isolated-vm/experimental";
 import { unsafeEvalAsStringInRealm } from "./fixtures.js";
 
-// @ts-expect-error
-const hostSupportsSharedArraySupport = process.isBun === undefined;
+const hostSupportsSharedArraySupport =
+	// @ts-expect-error
+	process.isBun === undefined && process.versions.deno === undefined;
 
 async function check(agent: ivm.Agent, realm: ivm.Realm, fn: () => unknown) {
 	const result = await unsafeEvalAsStringInRealm(agent, realm, fn);
@@ -99,16 +100,17 @@ await test("transfer types", async () => {
 // 	});
 // });
 
-await describe("regressions", async () => {
-	await test("numeric references", async () => {
-		await using agent = await ivm.Agent.create();
-		const realm = await agent.createRealm();
-		const global = await realm.acquireGlobalObject();
-		// doubles are stored as references in `value_t`, because they are bigger than 32-bit. there was
-		// a failure with more than one of them in the same transfer operation.
-		await global.set("xx", { zero: 0.1, one: 0.2 });
-	});
+// TODO: deno fails when this is in the `describe` (??)
+await test("numeric references", async () => {
+	await using agent = await ivm.Agent.create();
+	const realm = await agent.createRealm();
+	const global = await realm.acquireGlobalObject();
+	// doubles are stored as references in `value_t`, because they are bigger than 32-bit. there was
+	// a failure with more than one of them in the same transfer operation.
+	await global.set("xx", { zero: 0.1, one: 0.2 });
+});
 
+await describe("regressions", async () => {
 	await test("numeric indices", async () => {
 		await using agent = await ivm.Agent.create();
 		const realm = await agent.createRealm();

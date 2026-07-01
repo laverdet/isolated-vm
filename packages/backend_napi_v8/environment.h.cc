@@ -2,6 +2,7 @@ export module backend_napi_v8:environment;
 import auto_js;
 import napi_js;
 import std;
+import util;
 import v8_js;
 using namespace js;
 using namespace std::string_view_literals;
@@ -57,6 +58,7 @@ export class environment
 		~environment();
 
 		auto agent_class() -> napi::value_of<function_tag> { return agent_class_.get(*this); }
+		auto autorelease_pool() -> util::autorelease_pool& { return autorelease_pool_; }
 		auto cluster() -> iv8::isolated::cluster& { return cluster_; }
 		// NOLINTNEXTLINE(performance-unnecessary-value-param)
 		auto destroy_orphan_scheduler(std::any isolate_scheduler) -> void;
@@ -68,6 +70,7 @@ export class environment
 		iv8::isolated::cluster cluster_;
 		napi::reference<function_tag> agent_class_;
 		napi::reference<function_tag> module_class_;
+		util::autorelease_pool autorelease_pool_;
 };
 
 // Common types
