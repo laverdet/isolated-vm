@@ -27,6 +27,51 @@ using v8::BackingStore;
 using v8::DataView;
 using v8::SharedArrayBuffer;
 
+// v8-callback.h
+using v8::AccessType;
+using v8::AddCrashKeyCallback;
+using v8::AddHistogramSampleCallback;
+using v8::AllowWasmCodeGenerationCallback;
+using v8::ApiImplementationCallback;
+using v8::BeforeCallEnteredCallback;
+using v8::CallCompletedCallback;
+using v8::CompileHintCallback;
+using v8::CounterLookupCallback;
+using v8::CrashKeyId;
+using v8::CreateHistogramCallback;
+using v8::ExtensionCallback;
+using v8::FailedAccessCheckCallback;
+using v8::FatalErrorCallback;
+using v8::GCCallback;
+using v8::GCCallbackFlags;
+using v8::GCType;
+using v8::HostCreateShadowRealmContextCallback;
+using v8::HostImportModuleDynamicallyCallback;
+using v8::HostImportModuleWithPhaseDynamicallyCallback;
+using v8::HostInitializeImportMetaObjectCallback;
+using v8::InterruptCallback;
+using v8::IsJSApiWrapperNativeErrorCallback;
+using v8::JitCodeEvent;
+using v8::JitCodeEventHandler;
+using v8::JitCodeEventOptions;
+using v8::LogEventCallback;
+using v8::LogEventStatus;
+using v8::MessageCallback;
+using v8::ModifyCodeGenerationFromStringsCallback;
+using v8::ModifyCodeGenerationFromStringsCallback2;
+using v8::ModifyCodeGenerationFromStringsResult;
+using v8::ModuleImportPhase;
+using v8::NearHeapLimitCallback;
+using v8::OOMDetails;
+using v8::OOMErrorCallback;
+using v8::PrepareStackTraceCallback;
+using v8::PrintCurrentStackTraceFilterCallback;
+using v8::SharedArrayBufferConstructorEnabledCallback;
+using v8::WasmAsyncResolvePromiseCallback;
+using v8::WasmAsyncSuccess;
+using v8::WasmLoadSourceMapCallback;
+using v8::WasmStreamingCallback;
+
 // v8-container.h
 using v8::Array;
 
@@ -59,6 +104,16 @@ using v8::ReturnValue;
 
 // v8-function.h
 using v8::Function;
+
+// v8-heap-statistics.h
+using v8::HeapCodeStatistics;
+using v8::HeapObjectStatistics;
+using v8::HeapSpaceStatistics;
+using v8::HeapStatistics;
+using v8::MeasureMemoryDelegate;
+using v8::MeasureMemoryExecution;
+using v8::MeasureMemoryMode;
+using v8::SharedMemoryStatistics;
 
 // v8-initialization.h
 using v8::DcheckErrorCallback;

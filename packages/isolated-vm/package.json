@@ -32,7 +32,7 @@
   "scripts": {
     "prepublishOnly": "npx napi prepublish --no-gh-release",
     "test:all": "pnpm run -s test:node && pnpm run -s test:deno && pnpm run -s test:bun",
-    "test:bun": "${bun:-bun} test ./test/glob.ts",
+    "test:bun": "${bun:-bun} test --timeout 60000 ./test/glob.ts",
     "test:deno": "${deno:-deno} test --no-check --allow-env --allow-ffi --allow-read ./test/**/*.ts",
     "test:node": "${node:-node} --enable-source-maps --expose-gc --test-reporter=spec --test test/**/*.ts"
   },

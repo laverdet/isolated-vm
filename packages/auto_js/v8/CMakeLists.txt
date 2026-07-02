@@ -64,6 +64,7 @@ if(v8_js STREQUAL isolated_v8_js)
 			isolated/clock.cc
 			isolated/cluster.cc
 			isolated/executor.cc
+			isolated/memory_policy.cc
 			isolated/platform.cc
 			platform/delegate.cc
 			platform/foreground_runner.cc
@@ -76,6 +77,7 @@ if(v8_js STREQUAL isolated_v8_js)
 			isolated/clock.h.cc
 			isolated/cluster.h.cc
 			isolated/executor.h.cc
+			isolated/memory_policy.h.cc
 			isolated/platform.h.cc
 			platform/delegate.h.cc
 			platform/foreground_runner.h.cc

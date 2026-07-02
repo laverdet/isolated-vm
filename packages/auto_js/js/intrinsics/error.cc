@@ -58,6 +58,11 @@ export class error_value {
 template <error_name Type>
 class specific_error_value : public error {
 	public:
+		template <class... Args>
+		explicit specific_error_value(std::format_string<Args...> format, Args&&... args) :
+				error{Type},
+				message_{util::transcode_string<char16_t>(std::string_view{std::format(format, std::forward<Args>(args)...)})} {}
+
 		explicit specific_error_value(std::u16string message) :
 				error{Type},
 				message_{std::move(message)} {}

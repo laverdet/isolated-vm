@@ -10,10 +10,13 @@ export template <class Type, class... Types>
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
 class covariant_value : public pointer_facade {
 	public:
+		constexpr covariant_value() : covariant_value{std::type_identity<Types...[ 0 ]>{}} {}
+
 		template <class Derived>
 			requires(... || (type<Derived> == type<Types>))
-		constexpr explicit covariant_value(Derived value) :
-				value_{std::move(value)} {}
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		constexpr covariant_value(std::type_identity<Derived>, auto&&... args) :
+				value_{std::in_place_type<Derived>, std::forward<decltype(args)>(args)...} {}
 
 		constexpr auto operator*(this auto& self) noexcept -> auto& {
 			using reference_type = util::apply_cvref_t<decltype(self), Type>;

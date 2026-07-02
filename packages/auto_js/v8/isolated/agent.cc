@@ -75,18 +75,22 @@ agent_host::agent_host(
 	behavior_params params
 ) :
 		storage_{std::move(storage)},
+		memory_policy_{std::move(params.memory_policy)},
 		clock_{params.clock},
 		destroy_callback_{destroy_callback},
 		reset_handle_callback_{reset_handle_type{util::fn<&agent_host::remote_expiration_callback>, *this}},
 		random_seed_{params.random_seed} {
 	executor_.initialize([ & ](v8::Isolate* isolate) noexcept -> auto {
 		isolate->SetData(0, this);
-		auto create_params = v8::Isolate::CreateParams{};
-		create_params.array_buffer_allocator_shared =
-			std::shared_ptr<v8::ArrayBuffer::Allocator>(v8::ArrayBuffer::Allocator::NewDefaultAllocator());
-		return create_params;
+		v8::Isolate::CreateParams params;
+		auto memory_params = memory_policy_->make_create_params();
+		params.constraints = memory_params.constraints;
+		params.array_buffer_allocator_shared = std::move(memory_params.allocator);
+		return params;
 	});
-	executor_.isolate()->SetCaptureStackTraceForUncaughtExceptions(true);
+	auto* isolate = executor_.isolate();
+	isolate->SetCaptureStackTraceForUncaughtExceptions(true);
+	memory_policy_->initialize(isolate);
 }
 
 agent_host::~agent_host() {

@@ -65,10 +65,12 @@ struct agent_handle_value::create_options {
 		using clock_type = std::variant<clock_deterministic, clock_microtask, clock_realtime, clock_system>;
 
 		std::optional<clock_type> clock;
+		std::optional<double> memory_limit_bytes;
 		std::optional<double> random_seed;
 
 		constexpr static auto struct_template = js::struct_template{
 			js::struct_member{util::cw<"clock">, &create_options::clock},
+			js::struct_member{util::cw<"memoryLimitBytes">, &create_options::memory_limit_bytes},
 			js::struct_member{util::cw<"randomSeed">, &create_options::random_seed},
 		};
 };

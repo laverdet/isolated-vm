@@ -72,7 +72,7 @@ struct accept_with_cast {
 			} else if constexpr (js::accept_allows_throw<Accept>) {
 				auto coerced = static_cast<Type>(value);
 				if (static_cast<Subject>(coerced) != value) {
-					throw js::range_error{u"Could not cast value"};
+					throw js::range_error{"Could not cast value {}", value};
 				}
 				return coerced;
 			} else {

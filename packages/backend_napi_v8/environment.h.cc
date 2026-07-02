@@ -24,6 +24,7 @@ constexpr auto string_literals = std::tuple{
 	"interval"sv,
 	"line"sv,
 	"location"sv,
+	"memoryLimitBytes"sv,
 	"Module"sv,
 	"modules"sv,
 	"name"sv,

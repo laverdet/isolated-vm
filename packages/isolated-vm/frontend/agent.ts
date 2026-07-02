@@ -32,6 +32,7 @@ export namespace Agent {
 
 	export interface CreateOptions {
 		clock?: CreateOptions.Clock | undefined;
+		memoryLimitBytes?: number | undefined;
 		randomSeed?: number | undefined;
 	}
 

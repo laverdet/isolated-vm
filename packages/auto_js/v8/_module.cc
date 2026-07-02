@@ -24,6 +24,7 @@ export import :evaluation.script;
 export import :isolated.agent;
 export import :isolated.clock;
 export import :isolated.cluster;
+export import :isolated.memory_policy;
 export import :isolated.platform;
 export import :platform.delegate;
 export import :platform.foreground_runner;

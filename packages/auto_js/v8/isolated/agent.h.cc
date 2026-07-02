@@ -4,6 +4,7 @@ export module v8_js:isolated.agent;
 import :collected_handle;
 import :isolated.clock;
 import :isolated.executor;
+import :isolated.memory_policy;
 import :platform.foreground_runner;
 import :remote;
 import std;
@@ -18,6 +19,7 @@ class agent_host_of;
 
 // `agent_host` behavior parameters
 export struct behavior_params {
+		memory_policy::covariant memory_policy;
 		clock::any_clock clock;
 		std::optional<double> random_seed;
 };
@@ -146,6 +148,7 @@ export class agent_host
 		// Order matters for these members
 		std::shared_ptr<agent_storage> storage_;
 		isolated::executor executor_;
+		isolated::memory_policy::covariant memory_policy_;
 
 		// Order doesn't really matter
 		bool should_give_seed_{};
