@@ -28,21 +28,21 @@ export class Agent {
 	disposeAsync(): Promise<void>;
 	compileModule(code: string, options?: CompileModuleOptions): Promise<MaybeCompletionOf<_Module>>;
 	compileScript(code: string, options?: CompileScriptOptions): Promise<MaybeCompletionOf<Script>>;
-	createRealm(): Promise<Realm>;
+	createRealm(): Promise<Realm | null>;
 	static create(options?: CreateAgentOptions): Promise<_Agent>;
 }
 
 export class Module {
 	readonly #private;
 	protected constructor(secret: Secret, ...args: unknown[]);
-	/** @internal */ _link(realm: Realm, linker: ModuleLinkRecord): Promise<void>;
-	evaluate(realm: Realm): Promise<MaybeCompletionOf<unknown>>;
+	/** @internal */ _link(realm: Realm | null, linker: ModuleLinkRecord): Promise<void>;
+	evaluate(realm: Realm | null): Promise<MaybeCompletionOf<unknown>>;
 }
 
 export class NativeModule {
 	readonly #private;
 	protected constructor(secret: Secret, ...args: unknown[]);
-	instantiate(realm: Realm): Promise<Module>;
+	instantiate(realm: Realm | null): Promise<Module | null>;
 	static create(filename: string, options: CreateNativeModuleOptions): Promise<NativeModule>;
 }
 
@@ -50,23 +50,23 @@ export class Realm {
 	readonly #private;
 	protected constructor(secret: Secret, ...args: unknown[]);
 	acquireGlobalObject(): Promise<_Reference<Record<string, unknown>>>;
-	createCapability(make: CapabilityMake, options: CreateCapabilityOptions): Promise<Module>;
-	instantiateRuntime(): Promise<Module>;
+	createCapability(make: CapabilityMake, options: CreateCapabilityOptions): Promise<Module | null>;
+	instantiateRuntime(): Promise<Module | null>;
 }
 
 export class Reference {
 	readonly #private;
 	protected constructor(secret: Secret, ...args: unknown[]);
 	copy(): Promise<unknown>;
-	get(property: string): Promise<Reference>;
-	set(property: string, value: unknown): Promise<void>;
+	get(property: string): Promise<Reference | null>;
+	set(property: string, value: unknown): Promise<true | null>;
 	invoke(args: unknown[]): Promise<MaybeCompletionOf<unknown>>;
 }
 
 export class Script {
 	readonly #private;
 	protected constructor(secret: Secret, ...args: unknown[]);
-	run(realm: Realm, options?: RunScriptOptions): Promise<MaybeCompletionOf<unknown>>;
+	run(realm: Realm | null, options?: RunScriptOptions): Promise<MaybeCompletionOf<unknown>>;
 }
 
 export class SubscriberCapability {

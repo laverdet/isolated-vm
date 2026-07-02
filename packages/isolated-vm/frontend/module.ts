@@ -62,7 +62,7 @@ export class Module extends backend.Module {
 		this.requests = requests;
 	}
 
-	async link(realm: backend.Realm, linker: Module.Linker): Promise<void> {
+	async link(realm: backend.Realm | null, linker: Module.Linker): Promise<void> {
 		const modules: AbstractModule[] = [];
 		const payload: number[] = [];
 		const seen = new Map<AbstractModule, number>();

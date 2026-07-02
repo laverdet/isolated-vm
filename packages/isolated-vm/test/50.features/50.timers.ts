@@ -1,16 +1,16 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import { Agent } from "@isolated-vm/experimental";
+import { Agent, expect } from "@isolated-vm/experimental";
 import { expectComplete } from "@isolated-vm/experimental/test/fixtures";
 import { makeCompositeLinker, makeDirectResolver, makeFileSystemCompilationLoader, makeLinker, makeLocalResolver, makeStaticLoader } from "@isolated-vm/experimental/utility/linker";
 
 await test("setTimeout capability", async () => {
 	await using agent = await Agent.create();
-	const realm = await agent.createRealm();
+	const realm = expect(await agent.createRealm());
 	const runTimers = expectComplete(await agent.compileScript("runTimers()"));
 	const resolvers = Promise.withResolvers();
 	const capabilities = makeStaticLoader({
-		"isolated-vm:capability/timers": await realm.createCapability(
+		"isolated-vm:capability/timers": expect(await realm.createCapability(
 			() => ({
 				default: (/*timeout*/) => {
 					void async function() {
@@ -18,12 +18,12 @@ await test("setTimeout capability", async () => {
 					}();
 				},
 			}),
-			{ origin: "isolated-vm:capability/timers" }),
-		"notify-test": await realm.createCapability(
+			{ origin: "isolated-vm:capability/timers" })),
+		"notify-test": expect(await realm.createCapability(
 			() => ({
 				default: (message: unknown) => { resolvers.resolve(message); },
 			}),
-			{ origin: "notify-test" }),
+			{ origin: "notify-test" })),
 	});
 
 	const runtime = makeFileSystemCompilationLoader(agent);

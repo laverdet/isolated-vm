@@ -19,7 +19,7 @@ class resolver {
 		resolver(resolver&&) = default;
 		~resolver() {
 			if (scheduler_) {
-				resolve(std::monostate{});
+				resolve(nullptr);
 			}
 		}
 

@@ -7,10 +7,10 @@ type InvokeResult<Value> = Value extends (...args: unknown[]) => infer Result ? 
 export declare interface Reference<Type = unknown> extends backend.Reference {
 	copy: () => Promise<Type>;
 	invoke: (args: InvokeArguments<Type>) => Promise<MaybeCompletionOf<InvokeResult<Type>>>;
-	set: (property: string, value: unknown) => Promise<void>;
+	set: (property: string, value: unknown) => Promise<true | null>;
 
 	// eslint-disable-next-line @typescript-eslint/method-signature-style
-	get<Key extends keyof Type>(property: Key): Promise<Reference<Type[Key]>>;
+	get<Key extends keyof Type>(property: Key): Promise<Reference<Type[Key]> | null>;
 	// eslint-disable-next-line @typescript-eslint/method-signature-style
-	get(property: string): Promise<Reference>;
+	get(property: string): Promise<Reference | null>;
 }

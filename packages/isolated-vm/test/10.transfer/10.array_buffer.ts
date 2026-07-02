@@ -1,6 +1,6 @@
 import * as assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { Agent } from "@isolated-vm/experimental";
+import { Agent, expect } from "@isolated-vm/experimental";
 import { injectAssert, unsafeEvalAsString, unsafeEvalAsStringInRealm } from "@isolated-vm/experimental/test/fixtures";
 
 const hostSupportsSharedArraySupport =
@@ -32,7 +32,7 @@ await describe("array buffer", async () => {
 
 	await test("transfer in", async () => {
 		await using agent = await Agent.create();
-		const realm = await agent.createRealm();
+		const realm = expect(await agent.createRealm());
 		await injectAssert(agent, realm);
 		const global = await realm.acquireGlobalObject();
 		await global.set("ab", new Uint8Array([ 1, 2, 3 ]).buffer);
@@ -45,7 +45,7 @@ await describe("array buffer", async () => {
 
 	await test("transfer in same reference", async () => {
 		await using agent = await Agent.create();
-		const realm = await agent.createRealm();
+		const realm = expect(await agent.createRealm());
 		await injectAssert(agent, realm);
 		const global = await realm.acquireGlobalObject();
 		const ab = new ArrayBuffer(0);
@@ -96,7 +96,7 @@ await describe("shared array buffer", async () => {
 
 		await test("transfer in", async () => {
 			await using agent = await Agent.create();
-			const realm = await agent.createRealm();
+			const realm = expect(await agent.createRealm());
 			await injectAssert(agent, realm);
 			const global = await realm.acquireGlobalObject();
 			const sab = new SharedArrayBuffer(3);
@@ -114,7 +114,7 @@ await describe("shared array buffer", async () => {
 
 	await test("transfer in same reference", async () => {
 		await using agent = await Agent.create();
-		const realm = await agent.createRealm();
+		const realm = expect(await agent.createRealm());
 		await injectAssert(agent, realm);
 		const global = await realm.acquireGlobalObject();
 		const ab = new ArrayBuffer(0);
@@ -144,7 +144,7 @@ await test("transfer out", async () => {
 await describe("typed array", async () => {
 	await test("transfer in", async () => {
 		await using agent = await Agent.create();
-		const realm = await agent.createRealm();
+		const realm = expect(await agent.createRealm());
 		await injectAssert(agent, realm);
 		const global = await realm.acquireGlobalObject();
 		const uint8 = new Uint8Array([ 1, 2, 3 ]);

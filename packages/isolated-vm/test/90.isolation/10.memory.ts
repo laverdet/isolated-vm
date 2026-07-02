@@ -15,5 +15,5 @@ for (;;) {
 }`;
 	const script = expectComplete(await agent.compileScript(sourceText));
 	const result = await script.run(realm);
-	assert.strictEqual(result, undefined);
+	assert.strictEqual(result, null);
 });

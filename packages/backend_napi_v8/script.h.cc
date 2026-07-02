@@ -33,7 +33,7 @@ export class script_handle {
 		explicit script_handle(script_type script) :
 				script_{std::move(script)} {}
 
-		auto run(environment& env, realm_handle& realm, run_script_options options) -> forward_promise_type;
+		auto run(environment& env, realm_handle* realm, run_script_options options) -> forward_promise_type;
 
 		static auto class_template(environment& env) -> js::napi::value_of<class_tag_of<script_handle>>;
 		static auto compile_script(environment& env, agent_handle& agent, js::string_t code_string, compile_script_options options) -> forward_promise_type;

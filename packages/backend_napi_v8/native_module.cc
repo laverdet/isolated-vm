@@ -27,15 +27,18 @@ native_module_handle::native_module_handle(
 		options_{std::move(options)},
 		names_{std::move(names)} {}
 
-auto native_module_handle::instantiate(environment& env, realm_handle& realm) -> forward_promise_type {
+auto native_module_handle::instantiate(environment& env, realm_handle* realm) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(
 		env,
 		[](environment& env, agent_handle agent, js::iv8::shared_remote<v8::Module> module_record) -> auto {
 			return js::forward{module_handle::class_template(env).construct(env, std::move(agent), std::move(module_record))};
 		}
 	);
-	realm.agent().schedule(
-		[ realm = realm.realm(),
+	if (realm == nullptr) {
+		return js::forward{promise};
+	}
+	realm->agent().schedule(
+		[ realm = realm->realm(),
 			names = names_,
 			options = options_,
 			initialize = initialize_ ](
@@ -57,7 +60,7 @@ auto native_module_handle::instantiate(environment& env, realm_handle& realm) ->
 				resolver(std::move(agent), make_shared_remote(lock, module_result));
 			});
 		},
-		realm.agent(),
+		realm->agent(),
 		std::move(resolver)
 	);
 	return js::forward{promise};

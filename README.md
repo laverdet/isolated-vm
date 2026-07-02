@@ -22,17 +22,17 @@ might be interesting to you.
 
 ```ts
 // $ cat example.mts
-import { Agent, expectComplete } from "@isolated-vm/experimental";
+import { Agent, expect, expectComplete } from "@isolated-vm/experimental";
 import { makeDirectResolver, makeLinker, makeStaticLoader } from "@isolated-vm/experimental/utility/linker";
 
 const agent = await Agent.create();
-const realm = await agent.createRealm();
-const log = await realm.createCapability(
+const realm = expect(await agent.createRealm());
+const log = expect(await realm.createCapability(
 	() => ({
 		log(...args: unknown[]) { console.log(">", ...args); },
 	}),
 	{ origin: "example:log" },
-);
+));
 const module = expectComplete(await agent.compileModule(`
 	import { log } from "example:log";
 	log("Hello from v8!");

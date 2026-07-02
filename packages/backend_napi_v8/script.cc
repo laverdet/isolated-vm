@@ -44,11 +44,14 @@ auto script_handle::compile_script(environment& env, agent_handle& agent, js::st
 	return js::forward{promise};
 }
 
-auto script_handle::run(environment& env, realm_handle& realm, run_script_options options) -> forward_promise_type {
+auto script_handle::run(environment& env, realm_handle* realm, run_script_options options) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(env);
-	realm.agent().schedule(
+	if (realm == nullptr) {
+		return js::forward{promise};
+	}
+	realm->agent().schedule(
 		[ options = options,
-			realm = realm.realm(),
+			realm = realm->realm(),
 			script_remote = script_ ](
 			const agent_handle::lock& lock,
 			auto resolver

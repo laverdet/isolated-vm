@@ -1,6 +1,6 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import { Agent } from "@isolated-vm/experimental";
+import { Agent, expect } from "@isolated-vm/experimental";
 import { expectComplete, expectThrow } from "@isolated-vm/experimental/test/fixtures";
 import { makeNullLinker } from "@isolated-vm/experimental/utility/linker";
 
@@ -30,8 +30,8 @@ await test("synthetic module capability", async () => {
 	await using agent = await Agent.create();
 	const capabilityName = "isolated-vm:///capability";
 	let didInvoke = false;
-	const realm = await agent.createRealm();
-	const capability = await realm.createCapability(
+	const realm = expect(await agent.createRealm());
+	const capability = expect(await realm.createCapability(
 		() => ({
 			default: (value1: unknown, value2: unknown) => {
 				didInvoke = true;
@@ -39,7 +39,7 @@ await test("synthetic module capability", async () => {
 				assert.equal(value2, "world");
 			},
 		}),
-		{ origin: capabilityName });
+		{ origin: capabilityName }));
 	const left = expectComplete(await agent.compileModule(`
 		import capability from ${JSON.stringify(capabilityName)};
 		capability("hello", "world");
@@ -55,8 +55,8 @@ await test("synthetic module capability", async () => {
 await test("synthetic module with circular reference", async () => {
 	await using agent = await Agent.create();
 	const capabilityName = "isolated-vm:///capability";
-	const realm = await agent.createRealm();
-	const capability = await realm.createCapability(
+	const realm = expect(await agent.createRealm());
+	const capability = expect(await realm.createCapability(
 		() => ({
 			default: (value1: unknown) => {
 				// @ts-expect-error
@@ -65,7 +65,7 @@ await test("synthetic module with circular reference", async () => {
 				assert.strictEqual(value1.object, value1);
 			},
 		}),
-		{ origin: capabilityName });
+		{ origin: capabilityName }));
 	const left = expectComplete(await agent.compileModule(`
 		import capability from ${JSON.stringify(capabilityName)};
 		const date = new Date();

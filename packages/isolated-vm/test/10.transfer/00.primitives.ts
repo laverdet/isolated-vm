@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { Agent, Realm } from "@isolated-vm/experimental";
 import { unsafeEvalAsStringInRealm } from "@isolated-vm/experimental/test/fixtures";
 
-async function check(agent: Agent, realm: Realm, fn: () => unknown) {
+async function check(agent: Agent, realm: Realm | null, fn: () => unknown) {
 	const result = await unsafeEvalAsStringInRealm(agent, realm, fn);
 	assert.deepStrictEqual(result, fn());
 }

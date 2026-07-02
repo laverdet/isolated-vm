@@ -53,8 +53,8 @@ export class module_handle {
 
 		auto agent() -> auto& { return agent_; }
 
-		auto evaluate(environment& env, realm_handle& realm) -> forward_promise_type;
-		auto link(environment& env, realm_handle& realm, module_handle_link_record link_record) -> forward_promise_type;
+		auto evaluate(environment& env, realm_handle* realm) -> forward_promise_type;
+		auto link(environment& env, realm_handle* realm, module_handle_link_record link_record) -> forward_promise_type;
 		static auto class_template(environment& env) -> js::napi::value_of<class_tag_of<module_handle>>;
 		static auto compile(environment& env, agent_handle& agent, js::string_t source_text, compile_module_options options) -> forward_promise_type;
 		static auto create_capability(environment& env, realm_handle& realm, js::napi::value_of<js::function_tag> make_capability, create_capability_options options) -> forward_promise_type;

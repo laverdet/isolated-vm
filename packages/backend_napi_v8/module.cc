@@ -72,6 +72,13 @@ auto module_handle::create_capability(
 	js::napi::value_of<js::function_tag> make_capability,
 	create_capability_options options
 ) -> forward_promise_type {
+	auto [ promise, resolver ] = make_promise(
+		env,
+		[](environment& env, module_handle module_) -> auto {
+			return js::forward{module_handle::class_template(env).construct(env, std::move(module_))};
+		}
+	);
+
 	// Make the `subscriber_capability` and pass it to the interface maker
 	using capability_type = std::variant<forward_callback_type, js::tagged_external<subscriber_capability>>;
 	using capability_interface_type = js::dictionary<js::dictionary_tag, js::string_t, capability_type>;
@@ -174,12 +181,6 @@ auto module_handle::create_capability(
 	};
 
 	// Make synthetic module
-	auto [ promise, resolver ] = make_promise(
-		env,
-		[](environment& env, module_handle module_) -> auto {
-			return js::forward{module_handle::class_template(env).construct(env, std::move(module_))};
-		}
-	);
 	realm.agent().schedule(
 		[](
 			const agent_handle::lock& lock,
@@ -217,8 +218,11 @@ auto module_handle::create_capability(
 	return js::forward{promise};
 };
 
-auto module_handle::evaluate(environment& env, realm_handle& realm) -> forward_promise_type {
+auto module_handle::evaluate(environment& env, realm_handle* realm) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(env);
+	if (realm == nullptr) {
+		return js::forward{promise};
+	}
 	agent_.schedule(
 		[](
 			const agent_handle::lock& agent,
@@ -232,7 +236,7 @@ auto module_handle::evaluate(environment& env, realm_handle& realm) -> forward_p
 			resolver.resolve(completion_record{std::move(result)});
 		},
 		std::move(resolver),
-		realm.realm(),
+		realm->realm(),
 		module_
 	);
 	return js::forward{promise};
@@ -252,9 +256,12 @@ auto deref_remote_link_record(js::iv8::isolate_lock_witness lock, remote_module_
 	};
 };
 
-auto module_handle::link(environment& env, realm_handle& realm, module_handle_link_record link_record) -> forward_promise_type {
+auto module_handle::link(environment& env, realm_handle* realm, module_handle_link_record link_record) -> forward_promise_type {
 	auto scheduler = env.scheduler();
 	auto [ promise, resolver ] = make_promise(env);
+	if (realm == nullptr) {
+		return js::forward{promise};
+	}
 
 	// Convert `module_handle` to `remote<v8::Module>`
 	auto remote_link_record = remote_module_link_record{
@@ -295,7 +302,7 @@ auto module_handle::link(environment& env, realm_handle& realm, module_handle_li
 			}
 		},
 		std::move(resolver),
-		realm.realm(),
+		realm->realm(),
 		module_,
 		std::move(remote_link_record)
 	);

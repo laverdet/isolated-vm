@@ -1,11 +1,11 @@
 import type { Agent, Realm } from "@isolated-vm/experimental";
 import { afterEach } from "node:test";
-import { expectComplete } from "@isolated-vm/experimental/utility/completion";
+import { expect, expectComplete } from "@isolated-vm/experimental/utility/completion";
 
 export { expectComplete, expectThrow } from "@isolated-vm/experimental/utility/completion";
 
 /** @internal */
-export function injectAssert(agent: Agent, realm: Realm) {
+export function injectAssert(agent: Agent, realm: Realm | null) {
 	return unsafeEvalAsStringInRealm(agent, realm, () => {
 		const assert = {
 			ok(value: unknown, message?: string) {
@@ -43,14 +43,14 @@ export async function unsafeEvalAsString<Type, Args extends unknown[]>(
 	code: (...args: Args) => Type,
 	...args: Args
 ): Promise<Type> {
-	const realm = await agent.createRealm();
+	const realm = expect(await agent.createRealm());
 	return unsafeEvalAsStringInRealm(agent, realm, code, ...args);
 }
 
 /** @internal */
 export async function unsafeEvalAsStringInRealm<Type, Args extends unknown[]>(
 	agent: Agent,
-	realm: Realm,
+	realm: Realm | null,
 	code: (...args: Args) => Type,
 	...args: Args
 ): Promise<Type> {
