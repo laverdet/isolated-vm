@@ -57,9 +57,7 @@ threadsafe_function_of<Context, Message>::threadsafe_function_of(auto& env, napi
 				auto& context = *static_cast<storage*>(context_ptr);
 				if constexpr (trivial_message) {
 					if (env != nullptr) {
-						auto message = Message{};
-						std::memcpy(&message, &data, sizeof(Message));
-						context(env, value, message);
+						context(env, value, util::bit_truncation_cast<Message>(data));
 					}
 				} else {
 					auto message = std::unique_ptr<Message>{static_cast<Message*>(data)};
@@ -134,8 +132,7 @@ auto threadsafe_function_of<Context, Message>::operator()(Message message) const
 		}
 	};
 	if constexpr (trivial_message) {
-		void* data{};
-		std::memcpy(&data, &message, sizeof(Message));
+		auto* data = util::bit_padding_cast<void*>(message);
 		return check(napi_call_threadsafe_function(tsfn_, data, napi_tsfn_nonblocking));
 	} else {
 		auto message_ptr = std::make_unique<Message>(std::move(message));

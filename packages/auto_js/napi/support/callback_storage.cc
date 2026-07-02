@@ -35,12 +35,12 @@ auto make_callback_storage(Environment& env, std::invocable<Environment&, const 
 			// Trivial function type containing less than or equal to a pointer size. `data` is the
 			// function and environment is stored in a thread local.
 			callback_env_local<Environment> = &env;
-			auto* data = reinterpret_cast<void*&>(function);
+			auto* data = util::bit_padding_cast<void*>(function);
 			const auto callback = napi_callback{[](napi_env nenv, napi_callback_info info) -> napi_value {
 				const auto args = callback_info{nenv, info};
 				if (args) {
 					auto* data = args.data();
-					auto& invoke = reinterpret_cast<function_type&>(data);
+					auto invoke = util::bit_truncation_cast<function_type>(data);
 					auto& env = *callback_env_local<Environment>;
 					return invoke(env, args);
 				} else {

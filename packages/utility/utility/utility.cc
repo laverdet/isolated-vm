@@ -157,4 +157,37 @@ auto make_inplace_container(auto&&... args) -> Type {
 	return inplace_container_constructor<Type>{}(std::forward<decltype(args)>(args)...);
 }
 
+// `std::bit_cast` into a type that is larger than needed. Useful for packing arbitrary small
+// trivials into C-style function callbacks which accept a `void*`
+export template <class Type>
+constexpr auto bit_padding_cast(const auto& value) -> Type {
+	using value_type = std::remove_cvref_t<decltype(value)>;
+	static_assert(sizeof(value_type) <= sizeof(Type), "'Type' must be larger than 'value'");
+	if constexpr (sizeof(value_type) == sizeof(Type)) {
+		return std::bit_cast<Type>(value);
+	} else {
+		struct [[gnu::packed]] holder {
+				value_type value;
+				std::array<std::byte, sizeof(Type) - sizeof(value_type)> padding;
+		};
+		return std::bit_cast<Type>(holder{.value = value, .padding = {}});
+	}
+}
+
+// `std::bit_cast` from the result of `util::bit_padding_cast`
+export template <class Type>
+constexpr auto bit_truncation_cast(const auto& value) -> Type {
+	using value_type = std::remove_cvref_t<decltype(value)>;
+	static_assert(sizeof(value_type) >= sizeof(Type), "'Type' must be smaller than 'value'");
+	if constexpr (sizeof(value_type) == sizeof(Type)) {
+		return std::bit_cast<Type>(value);
+	} else {
+		struct [[gnu::packed]] holder {
+				Type value;
+				std::array<std::byte, sizeof(value_type) - sizeof(Type)> padding;
+		};
+		return std::bit_cast<holder>(value).value;
+	}
+}
+
 } // namespace util
