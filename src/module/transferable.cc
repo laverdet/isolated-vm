@@ -124,6 +124,9 @@ class TransferablePromiseHolder final : public ClassHandle {
 				} else {
 					Unmaybe(resolver->Resolve(context, value->TransferIn()));
 				}
+				// Under the nodejs isolate's explicit microtasks policy the continuations
+				// queued above would wait for an unrelated callback to run a checkpoint.
+				Isolate::GetCurrent()->PerformMicrotaskCheckpoint();
 			}
 
 			RemoteTuple<Promise::Resolver, v8::Context> resolver;
