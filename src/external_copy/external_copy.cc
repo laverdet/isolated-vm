@@ -113,6 +113,7 @@ auto ExternalCopy::operator= (ExternalCopy&& that) noexcept -> ExternalCopy& {
 
 auto ExternalCopy::Copy(Local<Value> value, bool transfer_out, ArrayRange transfer_list)
 -> std::unique_ptr<ExternalCopy> {
+	v8::Isolate::DisallowJavascriptExecutionScope disallow_js(Isolate::GetCurrent(), v8::Isolate::DisallowJavascriptExecutionScope::THROW_ON_FAILURE);
 	std::unique_ptr<ExternalCopy> copy = CopyIfPrimitive(value);
 	if (copy) {
 		return copy;

@@ -101,6 +101,18 @@ let str = '1,2,3,4,5,6,7,8';
 	try {
 		copy2.copy();
 	} catch (err) {}
+
+	// Don't allow interceptors on transferList
+	assert.throws(() => {
+		const view = new Uint8Array(arr);
+		const { buffer } = view;
+		const transferList = [ buffer ];
+		Object.defineProperty(transferList, 0, {
+			enumerable: true,
+			get() { return buffer; },
+		});
+		const copy = new ivm.ExternalCopy({ view }, { transferList });
+	})
 }
 
 // Try typed array
