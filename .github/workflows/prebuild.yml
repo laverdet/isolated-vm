@@ -94,4 +94,4 @@ jobs:
           path: '*.tgz'
       - name: Publish
         if: github.repository_owner == 'laverdet'
-        run: npm publish
+        run: npm publish --tag backport-v6
