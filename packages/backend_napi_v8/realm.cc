@@ -66,7 +66,7 @@ auto realm_handle::create_capability(environment& env, forward_callback_type mak
 auto realm_handle::instantiate_runtime(environment& env) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(
 		env,
-		[](environment& env, agent_handle agent, js::iv8::shared_remote<v8::Module> module_record) -> auto {
+		[](environment& env, agent_handle agent, js::iv8::shared_remote<js::iv8::module_record> module_record) -> auto {
 			return js::forward{module_handle::class_template(env)->construct(env, std::move(agent), std::move(module_record))};
 		}
 	);

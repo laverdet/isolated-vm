@@ -11,7 +11,7 @@ import v8_js;
 
 namespace backend_napi_v8 {
 
-module_handle::module_handle(agent_handle agent, js::iv8::shared_remote<v8::Module> module) :
+module_handle::module_handle(agent_handle agent, js::iv8::shared_remote<js::iv8::module_record> module) :
 		agent_{std::move(agent)},
 		module_{std::move(module)} {}
 
@@ -48,10 +48,12 @@ auto module_handle::compile(
 			auto origin = std::move(options).origin.value_or(js::iv8::source_origin{});
 			auto specifier = origin.name;
 			auto maybe_module_data = context_scope_operation(lock, lock->scratch_context(), [ & ](const realm_scope& lock) -> auto {
-				auto maybe_module = js::iv8::module_record::compile(lock, std::move(source_text), std::move(origin));
-				return std::move(maybe_module).transform([ & ](v8::Local<v8::Module> module_record) -> auto {
+				auto maybe_module = iv8::unmaybe_one(lock, [ & ] -> v8::MaybeLocal<js::iv8::module_record> {
+					return js::iv8::module_record::compile(lock, std::move(source_text), std::move(origin));
+				});
+				return std::move(maybe_module).transform([ & ](v8::Local<js::iv8::module_record> module_record) -> auto {
 					auto shared_module = make_shared_remote(lock, module_record);
-					auto requests = js::iv8::module_record::requests(lock, module_record);
+					auto requests = module_record->requests(lock);
 					auto module_ = module_handle{std::move(agent), shared_module};
 					return std::tuple{std::move(module_), std::move(specifier), std::move(requests)};
 				});
@@ -228,10 +230,10 @@ auto module_handle::evaluate(environment& env, realm_handle* realm) -> forward_p
 			const agent_handle::lock& agent,
 			auto resolver,
 			const js::iv8::shared_remote<v8::Context>& realm,
-			const js::iv8::shared_remote<v8::Module>& module_record
+			const js::iv8::shared_remote<js::iv8::module_record>& module_record
 		) -> void {
 			auto result = context_scope_operation(agent, realm->deref(agent), [ & ](const realm_scope& realm) -> auto {
-				return js::iv8::module_record::evaluate(realm, module_record->deref(realm));
+				return module_record->deref(realm)->evaluate(realm);
 			});
 			resolver.resolve(completion_record{std::move(result)});
 		},
@@ -248,7 +250,7 @@ auto deref_remote_link_record(js::iv8::isolate_lock_witness lock, remote_module_
 		.modules = std::vector{
 			std::from_range,
 			link_record.modules |
-				std::views::transform([ & ](auto& remote_module) {
+				std::views::transform([ & ](auto& remote_module) -> v8::Local<v8::Module> {
 					return remote_module->deref(lock);
 				}),
 		},
@@ -281,14 +283,14 @@ auto module_handle::link(environment& env, realm_handle* realm, module_handle_li
 			const agent_handle::lock& agent,
 			auto resolver,
 			const js::iv8::shared_remote<v8::Context>& realm,
-			const js::iv8::shared_remote<v8::Module>& module,
+			const js::iv8::shared_remote<js::iv8::module_record>& module,
 			remote_module_link_record link_record
 		) -> void {
 			auto result = context_scope_operation(agent, realm->deref(agent), [ & ](const realm_scope& lock) -> auto {
 				return iv8::invoke_externalized_error_scope(lock, [ & ] {
 					auto module_local = module->deref(lock);
 					auto local_link_record = deref_remote_link_record(lock, std::move(link_record));
-					js::iv8::module_record::link(lock, module_local, std::move(local_link_record));
+					module_local->link(lock, std::move(local_link_record));
 				});
 			});
 			// TODO: resolver should accept a `std::expected<T, E>`?

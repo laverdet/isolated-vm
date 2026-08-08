@@ -30,8 +30,10 @@ auto script_handle::compile_script(environment& env, agent_handle& agent, js::st
 		) -> void {
 			auto origin = std::move(options).origin.value_or(js::iv8::source_origin{});
 			auto maybe_script = context_scope_operation(agent, agent->scratch_context(), [ & ](const realm_scope& lock) -> auto {
-				auto maybe_script = js::iv8::script::compile(util::slice(lock), std::move(code_string), std::move(origin));
-				return maybe_script.transform([ & ](v8::Local<v8::UnboundScript> script) -> auto {
+				auto maybe_script = iv8::unmaybe_one(lock, [ & ] -> v8::MaybeLocal<js::iv8::script> {
+					return js::iv8::script::compile(util::slice(lock), std::move(code_string), std::move(origin));
+				});
+				return maybe_script.transform([ & ](v8::Local<js::iv8::script> script) -> auto {
 					return script_handle{make_shared_remote(lock, script)};
 				});
 			});
@@ -70,7 +72,7 @@ auto script_handle::run(environment& env, realm_handle* realm, run_script_option
 						};
 					});
 				return iv8::invoke_externalized_error_scope(realm, [ & ] -> auto {
-					auto value = js::iv8::script::run(realm, script_remote->deref(lock));
+					auto value = script_remote->deref(lock)->run(realm);
 					return js::transfer_out<js::value_t>(value, realm);
 				});
 			});

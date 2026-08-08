@@ -30,7 +30,7 @@ native_module_handle::native_module_handle(
 auto native_module_handle::instantiate(environment& env, realm_handle* realm) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(
 		env,
-		[](environment& env, agent_handle agent, js::iv8::shared_remote<v8::Module> module_record) -> auto {
+		[](environment& env, agent_handle agent, js::iv8::shared_remote<js::iv8::module_record> module_record) -> auto {
 			return js::forward{module_handle::class_template(env)->construct(env, std::move(agent), std::move(module_record))};
 		}
 	);
@@ -48,7 +48,7 @@ auto native_module_handle::instantiate(environment& env, realm_handle* realm) ->
 		) -> void {
 			context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) -> void {
 				auto addon_lock = isolated_vm::basic_lock_implementation{lock};
-				auto module_result = v8::Local<v8::Module>{};
+				auto module_result = v8::Local<js::iv8::module_record>{};
 				auto make = [ & ](std::span<isolated_vm::local_of<prototype_tag>> values) -> void {
 					auto v8_origin = js::transfer_in<v8::Local<v8::String>>(options.origin, lock);
 					auto v8_names = js::transfer_in<std::vector<v8::Local<v8::String>>>(names, lock);
@@ -56,7 +56,7 @@ auto native_module_handle::instantiate(environment& env, realm_handle* realm) ->
 					module_result = js::iv8::module_record::create_synthetic(realm, v8_origin, v8_names, v8_values);
 				};
 				initialize(addon_lock, make);
-				assert(module_result != v8::Local<v8::Module>{});
+				assert(module_result != v8::Local<js::iv8::module_record>{});
 				resolver(std::move(agent), make_shared_remote(lock, module_result));
 			});
 		},

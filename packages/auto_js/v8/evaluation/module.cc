@@ -11,8 +11,8 @@ import v8;
 
 namespace js::iv8 {
 
-auto module_record::requests(context_lock_witness lock, v8::Local<v8::Module> module) -> std::vector<module_request> {
-	auto requests_array = fixed_array{lock.context(), module->GetModuleRequests()};
+auto module_record::requests(context_lock_witness lock) -> std::vector<module_request> {
+	auto requests_array = fixed_array{lock.context(), GetModuleRequests()};
 	auto requests_view =
 		requests_array |
 		std::views::transform([ & ](v8::Local<v8::Data> value) -> module_request {
@@ -38,7 +38,7 @@ auto module_record::requests(context_lock_witness lock, v8::Local<v8::Module> mo
 	return {std::from_range, std::move(requests_view)};
 }
 
-auto module_record::compile(context_lock_witness lock, v8::Local<v8::String> source_text, iv8::source_origin origin) -> expected_module_type {
+auto module_record::compile(context_lock_witness lock, v8::Local<v8::String> source_text, iv8::source_origin origin) -> v8::MaybeLocal<module_record> {
 	auto location = origin.location.value_or(source_location{});
 	auto maybe_resource_name = js::transfer_in_strict<v8::MaybeLocal<v8::String>>(std::move(origin).name, lock);
 	v8::Local<v8::String> resource_name{};
@@ -56,9 +56,7 @@ auto module_record::compile(context_lock_witness lock, v8::Local<v8::String> sou
 		true,
 	};
 	v8::ScriptCompiler::Source source{source_text, script_origin};
-	return unmaybe_one(lock, [ & ] -> v8::MaybeLocal<v8::Module> {
-		return v8::ScriptCompiler::CompileModule(lock.isolate(), &source);
-	});
+	return v8::ScriptCompiler::CompileModule(lock.isolate(), &source).As<module_record>();
 }
 
 auto module_record::create_synthetic(
@@ -66,7 +64,7 @@ auto module_record::create_synthetic(
 	v8::Local<v8::String> module_name,
 	std::span<const v8::Local<v8::String>> export_names,
 	std::span<const v8::Local<v8::Data>> export_values
-) -> v8::Local<v8::Module> {
+) -> v8::Local<module_record> {
 	thread_local std::span<const v8::Local<v8::String>>* tl_export_names;
 	thread_local std::span<const v8::Local<v8::Data>>* tl_export_values;
 	tl_export_names = &export_names;
@@ -102,19 +100,19 @@ auto module_record::create_synthetic(
 		return resolver->GetPromise();
 	};
 	auto v8_export_names = v8::MemorySpan<const v8::Local<v8::String>>{export_names.begin(), export_names.end()};
-	auto module_record = v8::Module::CreateSyntheticModule(lock.isolate(), module_name, v8_export_names, evaluation_steps);
+	auto synthetic_module = v8::Module::CreateSyntheticModule(lock.isolate(), module_name, v8_export_names, evaluation_steps);
 
 	// "Link" the module, which is a no-op
 	// auto null_callback = v8::Module::ResolveModuleByIndexCallback{nullptr};
 	auto null_callback = v8::Module::ResolveModuleCallback{nullptr};
-	unmaybe(module_record->InstantiateModule(lock.context(), null_callback));
+	unmaybe(synthetic_module->InstantiateModule(lock.context(), null_callback));
 
 	// `Evaluate` invokes `evaluation_steps` above
-	unmaybe(module_record->Evaluate(lock.context()));
-	return module_record;
+	unmaybe(synthetic_module->Evaluate(lock.context()));
+	return synthetic_module.As<module_record>();
 }
 
-auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module, module_link_record link_record) -> void {
+auto module_record::link(context_lock_witness lock, module_link_record link_record) -> void {
 	// Initialize link state
 	auto module_specifier_map = std::unordered_map<v8::Local<v8::Module>, unsigned, address_hash>{};
 	auto module_id = 0U;
@@ -146,11 +144,11 @@ auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module
 			return (*linker_ptr)(referrer, module_request_index);
 		}
 	};
-	unmaybe(module->InstantiateModule(lock.context(), v8_callback));
+	unmaybe(InstantiateModule(lock.context(), v8_callback));
 	linker_ptr = nullptr;
 }
 
-auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module) -> void {
+auto module_record::link(context_lock_witness lock) -> void {
 	// Probably a synthetic module
 	auto v8_callback = v8::Module::ResolveModuleByIndexCallback{
 		[](
@@ -161,12 +159,12 @@ auto module_record::link(context_lock_witness lock, v8::Local<v8::Module> module
 			std::terminate();
 		}
 	};
-	unmaybe(module->InstantiateModule(lock.context(), v8_callback));
+	unmaybe(InstantiateModule(lock.context(), v8_callback));
 }
 
-auto module_record::evaluate(context_lock_witness lock, v8::Local<v8::Module> module) -> expected_value_type {
-	auto promise = unmaybe(module->Evaluate(lock.context())).As<v8::Promise>();
-	if (module->IsGraphAsync()) {
+auto module_record::evaluate(context_lock_witness lock) -> expected_value_type {
+	auto promise = unmaybe(Evaluate(lock.context())).As<v8::Promise>();
+	if (IsGraphAsync()) {
 		throw std::runtime_error{"Module is async"};
 	}
 	if (promise->State() == v8::Promise::kRejected) {

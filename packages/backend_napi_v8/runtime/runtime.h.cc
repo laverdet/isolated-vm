@@ -6,7 +6,7 @@ namespace backend_napi_v8 {
 class runtime_interface {
 	public:
 		explicit runtime_interface(const js::iv8::isolated::agent_lock& lock);
-		auto instantiate(js::iv8::context_lock_witness lock) -> v8::Local<v8::Module>;
+		auto instantiate(js::iv8::context_lock_witness lock) -> v8::Local<js::iv8::module_record>;
 
 	private:
 		js::iv8::unique_remote<v8::FunctionTemplate> clock_time_;

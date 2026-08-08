@@ -28,7 +28,7 @@ struct run_script_options : js::optional_constructible {
 export class script_handle {
 	public:
 		using transfer_type = js::tagged_external<script_handle>;
-		using script_type = js::iv8::shared_remote<v8::UnboundScript>;
+		using script_type = js::iv8::shared_remote<js::iv8::script>;
 
 		explicit script_handle(script_type script) :
 				script_{std::move(script)} {}

@@ -25,7 +25,7 @@ runtime_interface::runtime_interface(const js::iv8::isolated::agent_lock& lock) 
 		performance_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{performance_time}, lock))} {
 }
 
-auto runtime_interface::instantiate(js::iv8::context_lock_witness lock) -> v8::Local<v8::Module> {
+auto runtime_interface::instantiate(js::iv8::context_lock_witness lock) -> v8::Local<js::iv8::module_record> {
 	auto make_interface = [ & ]() -> auto {
 		return std::tuple{
 			std::pair{util::cw<"clockTime">, clock_time_->deref(util::slice(lock))},
@@ -34,13 +34,13 @@ auto runtime_interface::instantiate(js::iv8::context_lock_witness lock) -> v8::L
 	};
 	auto origin = std::u16string{u"isolated-vm://runtime"};
 	auto interface = js::iv8::module_record::create_synthetic(lock, std::move(origin), make_interface());
-	auto runtime = js::iv8::module_record::compile(lock, util::make_consteval_string_view(runtime_dist_interface_js), js::iv8::source_origin{}).value();
+	auto runtime = js::iv8::unmaybe(js::iv8::module_record::compile(lock, util::make_consteval_string_view(runtime_dist_interface_js), js::iv8::source_origin{}));
 	auto link_record = js::iv8::module_link_record{
 		.modules = {runtime, interface},
 		.payload = {1, 1, 0},
 	};
-	js::iv8::module_record::link(lock, runtime, std::move(link_record));
-	std::ignore = js::iv8::module_record::evaluate(lock, runtime).value();
+	runtime->link(lock, std::move(link_record));
+	std::ignore = runtime->evaluate(lock).value();
 	return runtime;
 }
 

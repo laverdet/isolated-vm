@@ -40,7 +40,7 @@ struct module_handle_link_record {
 };
 
 struct remote_module_link_record {
-		std::vector<js::iv8::shared_remote<v8::Module>> modules;
+		std::vector<js::iv8::shared_remote<js::iv8::module_record>> modules;
 		std::vector<unsigned> payload;
 };
 
@@ -49,7 +49,7 @@ class subscriber_capability;
 export class module_handle {
 	public:
 		using transfer_type = js::tagged_external<module_handle>;
-		module_handle(agent_handle agent, js::iv8::shared_remote<v8::Module> module);
+		module_handle(agent_handle agent, js::iv8::shared_remote<js::iv8::module_record> module);
 
 		auto agent() -> auto& { return agent_; }
 
@@ -61,7 +61,7 @@ export class module_handle {
 
 	private:
 		agent_handle agent_;
-		js::iv8::shared_remote<v8::Module> module_;
+		js::iv8::shared_remote<js::iv8::module_record> module_;
 };
 
 class subscriber_capability {
