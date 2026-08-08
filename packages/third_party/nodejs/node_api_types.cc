@@ -3,8 +3,10 @@ module;
 export module nodejs:node_api_types;
 // NOLINTBEGIN(misc-unused-using-decls)
 
+export using ::napi_async_cleanup_hook_handle;
 export using ::napi_async_cleanup_hook;
 export using ::napi_cleanup_hook;
+export using ::napi_threadsafe_function_call_js;
 export using ::napi_threadsafe_function;
 
 // napi_threadsafe_function_release_mode

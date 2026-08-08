@@ -12,11 +12,10 @@ template <class Tag>
 struct local_specialization;
 
 // Tagged isolated_vm value. Each `local_of<T>` inherits from the tag before it.
-export template <class Tag = value_tag>
+export template <class Tag>
 class local_of : public local_of<typename Tag::tag_type> {
-	protected:
+	private:
 		using local_type = local_specialization<Tag>::type;
-		explicit local_of(runtime_handle value) : local_of<typename Tag::tag_type>{value} {}
 
 	public:
 		local_of() = default;

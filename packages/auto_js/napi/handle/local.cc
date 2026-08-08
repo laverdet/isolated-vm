@@ -13,7 +13,7 @@ struct local_specialization;
 
 // Tagged napi_value. Each `local_of<T>` inherits from the tag before it which makes overloading
 // acceptor functions naturally hierarchical.
-export template <class Tag = value_tag>
+export template <class Tag>
 class local_of : public local_of<typename Tag::tag_type> {
 	protected:
 		using local_type = local_specialization<Tag>::type;

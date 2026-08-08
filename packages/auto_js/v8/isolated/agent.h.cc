@@ -19,7 +19,7 @@ class agent_host_of;
 
 // `agent_host` behavior parameters
 export struct behavior_params {
-		memory_policy::covariant memory_policy;
+		isolated::memory_policy::covariant memory_policy;
 		clock::any_clock clock;
 		std::optional<double> random_seed;
 };
