@@ -54,7 +54,8 @@ jobs:
           else
             case "$RUNS_ON" in
               ubuntu-24.04)
-                echo "$TRIPLET=runs-on=$GITHUB_RUN_ID/family=m7a+m7i/cpu=32+48/image=ubuntu24-full-x64" >> "$GITHUB_OUTPUT"
+                # Default disk is 28G, which is not enough to build v8 on Linux (sysroot required).
+                echo "$TRIPLET=runs-on=$GITHUB_RUN_ID/family=m7a+m7i/cpu=32+48/image=ubuntu24-full-x64,volume=64g" >> "$GITHUB_OUTPUT"
                 ;;
               ubuntu-24.04-arm)
                 echo "$TRIPLET=runs-on=$GITHUB_RUN_ID/family=m7g/cpu=32+48/image=ubuntu24-full-arm64" >> "$GITHUB_OUTPUT"
@@ -171,6 +172,8 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           set -ux
+          # cmake v4.4.0 is broken, v4.4.2 is needed.
+          brew update
           # https://github.com/orgs/Homebrew/discussions/5602
           brew install --quiet cmake ninja
           brew install boost lld llvm node
@@ -215,8 +218,8 @@ jobs:
           clang++ --version || true
           # Install updated LLVM (and hide spammy progress bar)
           winget install --accept-source-agreements --silent -e --id=LLVM.LLVM --version=22.1.7 | tr '\r' '\n' | grep -Ev --line-buffered '^[ -\/|]+$'
-          echo "CC=clang" >> "$GITHUB_ENV"
-          echo "CXX=clang++" >> "$GITHUB_ENV"
+          echo "CC=clang.exe" >> "$GITHUB_ENV"
+          echo "CXX=clang++.exe" >> "$GITHUB_ENV"
           echo ::endgroup::
 
           echo ::group::import std hack
@@ -241,20 +244,6 @@ jobs:
           }
           EOF
           echo "ECO_STD=/$(cygpath.exe -m "$RUNNER_TOOL_CACHE/stl.modules.json")" >> "$GITHUB_ENV"
-
-          # Patch cmake
-          patch --batch --forward --unified /c/msys64/mingw64/share/cmake/Modules/Compiler/Clang-CXX-CXXImportStd.cmake <<"EOF"
-          @@ -4,8 +4,7 @@
-             elseif (CMAKE_CXX_STANDARD_LIBRARY STREQUAL "libstdc++")
-               set(_clang_modules_json_impl "libstdc++")
-             else ()
-          -    set(CMAKE_CXX_COMPILER_IMPORT_STD_ERROR_MESSAGE "Only `libc++` and `libstdc++` are supported" PARENT_SCOPE)
-          -    return ()
-          +    set(_clang_modules_json_impl "libc++")
-             endif ()
-
-             if (NOT CMAKE_CXX_STDLIB_MODULES_JSON)
-          EOF
           echo ::endgroup::
 
           echo ::group::Dependency Walker
