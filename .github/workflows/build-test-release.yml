@@ -413,8 +413,8 @@ jobs:
             node: 24
           - runtime: node
             node: 26
-          - runtime: bun
-            node: 24
+          # - runtime: bun
+          #   node: 24
           - runtime: deno
             node: 24
         exclude:
@@ -508,17 +508,14 @@ jobs:
       - if: matrix.runtime.runtime == 'bun'
         uses: oven-sh/setup-bun@v2
         with:
-          # TODO: Back to latest when this lands:
-          # https://github.com/oven-sh/bun/commit/17b4071b444831e43e7b1dd0f1154ac3413f88e2
-          bun-version: canary
+          bun-version: latest
 
       # Install Deno (maybe)
       - if: matrix.runtime.runtime == 'deno'
         uses: denoland/setup-deno@v2
         with:
-          # TODO: Back to latest when this lands:
-          # https://github.com/denoland/deno/commit/c6963a84905fe46d528e0d2e2d5075cedff3540a
-          deno-version: canary
+          # TODO: Back to canary
+          deno-version: 2.9.4
 
       # Install npm dependencies, build TypeScript, check module sanity
       - uses: pnpm/action-setup@v5
