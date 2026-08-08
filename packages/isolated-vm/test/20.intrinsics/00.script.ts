@@ -3,6 +3,8 @@ import { test } from "node:test";
 import { Agent } from "@isolated-vm/experimental";
 import { expectComplete, expectThrow, unsafeEvalAsStringInRealm, unsafeIIFEAsString } from "@isolated-vm/experimental/test/fixtures";
 
+const illegalAccess = new Error("illegal access");
+
 await test("script source origin", async () => {
 	await using agent = await Agent.create();
 	const script = expectComplete(await agent.compileScript(
@@ -60,4 +62,17 @@ await test("script which returns a circular object", async () => {
 	});
 	assert.strictEqual(result.date1, result.date2);
 	assert.strictEqual(result.object, result);
+});
+
+await test("script result should not invoke interceptors", async () => {
+	await using agent = await Agent.create();
+	const realm = await agent.createRealm();
+	const script = expectComplete(await agent.compileScript(unsafeIIFEAsString(() => {
+		const object = Object.defineProperty({ name: "value" }, "name", {
+			enumerable: true,
+			get() { throw new Error("interceptor invoked"); },
+		});
+		return object;
+	})));
+	await assert.rejects(async () => expectComplete(await script.run(realm)), illegalAccess);
 });

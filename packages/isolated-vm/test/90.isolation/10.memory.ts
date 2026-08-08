@@ -17,3 +17,12 @@ for (;;) {
 	const result = await script.run(realm);
 	assert.strictEqual(result, null);
 });
+
+await test("array spread", async () => {
+	await using agent = await Agent.create({ memoryLimitBytes: 128 << 20 });
+	const realm = await agent.createRealm();
+	const sourceText = "[...'.'.repeat(5e7)]; undefined";
+	const script = expectComplete(await agent.compileScript(sourceText));
+	const result = await script.run(realm);
+	assert.strictEqual(result, null);
+});

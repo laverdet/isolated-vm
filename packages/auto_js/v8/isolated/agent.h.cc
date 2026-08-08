@@ -201,6 +201,9 @@ auto agent_handle_of<Type>::schedule(Task task, Args... args) const -> void {
 			[](std::stop_token /*stop_token*/, const auto& host, const auto& task, auto&&... args) -> void {
 				auto isolate_lock = isolate_execution_lock{host->executor().isolate()};
 				std::visit([](auto& clock) -> void { clock.begin_tick(); }, host->clock());
+				// By default we disallow code execution except when explicitly annotated
+				auto disallow_js =
+					v8::Isolate::DisallowJavascriptExecutionScope{isolate_lock.isolate(), v8::Isolate::DisallowJavascriptExecutionScope::THROW_ON_FAILURE};
 				task(lock{isolate_lock, static_cast<agent_host_of<Type>&>(*host)}, std::forward<decltype(args)>(args)...);
 			},
 			std::move(host),

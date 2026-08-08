@@ -2,7 +2,7 @@ import * as assert from "node:assert/strict";
 
 export type CompletionOf<Type> = NormalCompletion<Type> | ThrowCompletion;
 
-export type MaybeCompletionOf<Type> = CompletionOf<Type> | null;
+export type MaybeCompletionOf<Type> = CompletionOf<Type> | null | undefined;
 
 export interface NormalCompletion<Type> {
 	complete: true;

@@ -287,7 +287,7 @@ auto module_handle::link(environment& env, realm_handle* realm, module_handle_li
 			remote_module_link_record link_record
 		) -> void {
 			auto result = context_scope_operation(agent, realm->deref(agent), [ & ](const realm_scope& lock) -> auto {
-				return iv8::invoke_externalized_error_scope(lock, [ & ] {
+				return iv8::invoke_externalized_error_scope(lock, [ & ] -> auto {
 					auto module_local = module->deref(lock);
 					auto local_link_record = deref_remote_link_record(lock, std::move(link_record));
 					module_local->link(lock, std::move(local_link_record));

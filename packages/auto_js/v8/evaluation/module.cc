@@ -144,6 +144,8 @@ auto module_record::link(context_lock_witness lock, module_link_record link_reco
 			return (*linker_ptr)(referrer, module_request_index);
 		}
 	};
+	// nb: It is strange that we need js here.
+	auto allow_js = v8::Isolate::AllowJavascriptExecutionScope{lock.isolate()};
 	unmaybe(InstantiateModule(lock.context(), v8_callback));
 	linker_ptr = nullptr;
 }
@@ -163,7 +165,10 @@ auto module_record::link(context_lock_witness lock) -> void {
 }
 
 auto module_record::evaluate(context_lock_witness lock) -> expected_value_type {
-	auto promise = unmaybe(Evaluate(lock.context())).As<v8::Promise>();
+	auto promise = [ & ] -> auto {
+		auto allow_js = v8::Isolate::AllowJavascriptExecutionScope{lock.isolate()};
+		return unmaybe(Evaluate(lock.context())).As<v8::Promise>();
+	}();
 	if (IsGraphAsync()) {
 		throw std::runtime_error{"Module is async"};
 	}

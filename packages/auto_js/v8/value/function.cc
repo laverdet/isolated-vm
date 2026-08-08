@@ -15,6 +15,7 @@ auto Function::apply(context_lock_witness lock, auto&& args) -> Result {
 		auto handle_scope = v8::EscapableHandleScope{lock.isolate()};
 		auto undefined = js::transfer_in_strict<v8::Local<v8::Value>>(std::monostate{}, lock);
 		auto argv = js::transfer_in_strict<args_type>(std::forward<decltype(args)>(args), lock);
+		auto allow_js = v8::Isolate::AllowJavascriptExecutionScope{lock.isolate()};
 		auto result = unmaybe(v8::Function::Call(lock.context(), undefined, argv.size(), argv.data()));
 		return handle_scope.Escape(result);
 	}();
@@ -33,6 +34,7 @@ auto Function::call(context_lock_witness lock, auto&&... args) -> Result {
 			),
 			lock
 		);
+		auto allow_js = v8::Isolate::AllowJavascriptExecutionScope{lock.isolate()};
 		return handle_scope.Escape(unmaybe(v8::Function::Call(lock.context(), argv[ 0 ], argv.size() - 1, argv.data() + 1)));
 	}();
 	return js::transfer_out<Result>(result, lock);

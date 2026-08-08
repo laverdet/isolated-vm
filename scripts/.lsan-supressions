@@ -1,1 +1,2 @@
 leak:v8impl::ExternalWrapper::New
+leak:CRYPTO_malloc

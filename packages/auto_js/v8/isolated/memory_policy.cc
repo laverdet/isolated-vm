@@ -42,8 +42,8 @@ auto memory_policy::limited::near_heap_limit_callback(std::size_t current_heap_l
 		auto& executor = agent_host::get_current(isolate).executor();
 		executor.terminate();
 	}
-	// Increase heap limit 64mb at a time
-	return current_heap_limit + (64 << 20);
+	// Increase heap limit 80mb at a time. Experimentally derived.
+	return current_heap_limit + (80 << 20);
 }
 
 } // namespace js::iv8::isolated

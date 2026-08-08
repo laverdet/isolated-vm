@@ -21,6 +21,7 @@ auto script::compile(context_lock_witness lock, v8::Local<v8::String> code_strin
 }
 
 auto script::run(context_lock_witness lock) -> v8::Local<v8::Value> {
+	auto allow_js = v8::Isolate::AllowJavascriptExecutionScope{lock.isolate()};
 	return unmaybe(BindToCurrentContext()->Run(lock.context()));
 }
 

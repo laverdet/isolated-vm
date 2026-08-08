@@ -92,10 +92,20 @@ auto reference_handle::copy(environment& env) -> forward_promise_type {
 					const agent_handle::lock& lock,
 					auto resolver
 				) -> void {
-					auto transferred = context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& lock) -> js::value_t {
-						return js::transfer_out<js::value_t>(value->deref(lock), lock);
+					auto maybe_transferred = context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& lock) -> auto {
+						return iv8::invoke_externalized_error_scope(lock, [ & ] -> js::value_t {
+							auto local = value->deref(lock);
+							return js::transfer_out<js::value_t>(local, lock);
+						});
 					});
-					resolver.resolve(std::move(transferred));
+					if (maybe_transferred) {
+						auto& transferred = *maybe_transferred;
+						if (transferred) {
+							resolver.resolve(*std::move(transferred));
+						} else {
+							resolver.reject(std::move(transferred).error());
+						}
+					}
 				},
 				std::move(resolver)
 			);
@@ -138,16 +148,25 @@ auto reference_handle::get(environment& env, js::string_t name) -> forward_promi
 					js::iv8::shared_remote<v8::Context> realm
 				) -> void {
 					auto name_local = js::transfer_in_strict<v8::Local<v8::String>>(std::move(name), agent_lock);
-					auto reference = context_scope_operation(agent_lock, realm->deref(agent_lock), [ & ](const realm_scope& lock) -> reference_handle {
+					auto maybe_reference = context_scope_operation(agent_lock, realm->deref(agent_lock), [ & ](const realm_scope& lock) -> auto {
 						auto local = value->deref(lock).As<v8::Object>();
-						if (js::iv8::unmaybe(local->HasRealNamedProperty(lock.context(), name_local))) {
-							auto property = js::iv8::unmaybe(local->GetRealNamedProperty(lock.context(), name_local));
-							return reference_handle{agent_lock, std::move(agent), std::move(realm), property};
-						} else {
-							return reference_handle{js::undefined_tag{}};
-						}
+						return iv8::invoke_externalized_error_scope(lock, [ & ] -> reference_handle {
+							if (js::iv8::unmaybe(local->HasRealNamedProperty(lock.context(), name_local))) {
+								auto property = js::iv8::unmaybe(local->GetRealNamedProperty(lock.context(), name_local));
+								return reference_handle{agent_lock, std::move(agent), std::move(realm), property};
+							} else {
+								return reference_handle{js::undefined_tag{}};
+							}
+						});
 					});
-					resolver(std::move(reference));
+					if (maybe_reference) {
+						auto& reference = *maybe_reference;
+						if (reference) {
+							resolver(*std::move(reference));
+						} else {
+							resolver.reject(std::move(reference).error());
+						}
+					}
 				},
 				std::move(resolver),
 				std::move(name),
@@ -192,12 +211,21 @@ auto reference_handle::set(environment& env, js::string_t name, js::forward<js::
 					js::value_t value
 				) -> void {
 					auto name_local = js::transfer_in_strict<v8::Local<v8::String>>(std::move(name), agent_lock);
-					auto result = context_scope_operation(agent_lock, realm->deref(agent_lock), [ & ](const realm_scope& lock) -> bool {
-						auto local = receiver->deref(lock).As<v8::Object>();
-						auto transferred = js::transfer_in_strict<v8::Local<v8::Value>>(std::move(value), lock);
-						return js::iv8::unmaybe(local->CreateDataProperty(lock.context(), name_local, transferred));
+					auto maybe_result = context_scope_operation(agent_lock, realm->deref(agent_lock), [ & ](const realm_scope& lock) -> auto {
+						return iv8::invoke_externalized_error_scope(lock, [ & ] -> bool {
+							auto local = receiver->deref(lock).As<v8::Object>();
+							auto transferred = js::transfer_in_strict<v8::Local<v8::Value>>(std::move(value), lock);
+							return js::iv8::unmaybe(local->CreateDataProperty(lock.context(), name_local, transferred));
+						});
 					});
-					resolver.resolve(result);
+					if (maybe_result) {
+						auto& result = *maybe_result;
+						if (result) {
+							resolver.resolve(*result);
+						} else {
+							resolver.reject(std::move(result).error());
+						}
+					}
 				},
 				std::move(resolver),
 				std::move(name),
