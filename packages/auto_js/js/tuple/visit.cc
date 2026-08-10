@@ -13,7 +13,7 @@ struct visit_tuple_of {
 	public:
 		constexpr explicit visit_tuple_of(auto* transfer) :
 				visit_{[ = ]() constexpr -> visitors_type {
-					const auto [... indices ] = util::sequence<sizeof...(Types)>;
+					constexpr auto [... indices ] = util::sequence<sizeof...(Types)>;
 					return {util::elide{util::constructor<std::tuple_element_t<indices, visitors_type>>, transfer}...};
 				}()} {}
 
@@ -28,7 +28,7 @@ struct visit_tuple_of {
 		}
 
 		consteval static auto types(auto recursive) -> auto {
-			const auto [... types ] = util::make_type_pack(type<visitors_type>);
+			constexpr auto [... types ] = util::make_type_pack(type<visitors_type>);
 			return util::pack_concat(type_t<types>::types(recursive)...);
 		}
 

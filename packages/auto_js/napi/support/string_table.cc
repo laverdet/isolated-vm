@@ -10,7 +10,7 @@ namespace js::napi {
 // Given a pack of strings it returns a static reference to a `util::sealed_map` of napi string
 // references.
 template <const auto& Strings>
-constexpr auto string_table_of = []() -> auto {
+constexpr auto string_table_of = []() consteval -> auto {
 	const auto [... strings ] = Strings;
 	return util::sealed_map{std::type_identity<napi::reference<string_tag>>{}, strings...};
 }();

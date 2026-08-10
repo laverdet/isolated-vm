@@ -41,7 +41,7 @@ class deferred_receiver : public referenceable_value<Type> {
 				args_{std::move(args)} {}
 
 		constexpr auto operator()() && -> void {
-			const auto [... indices ] = util::sequence<sizeof...(Args)>;
+			constexpr auto [... indices ] = util::sequence<sizeof...(Args)>;
 			dispatch_(*std::move(*this), std::get<indices>(std::move(args_))...);
 		}
 

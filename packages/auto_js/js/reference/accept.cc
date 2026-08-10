@@ -49,8 +49,8 @@ struct reaccept_accepted_reference<util::type_pack<Types...>> {
 
 		template <class To>
 		constexpr auto operator()(std::type_identity<To> /*type*/, accepted_reference reference) const -> To {
-			const auto reaccept = [ = ]<std::size_t Index>(std::integral_constant<std::size_t, Index> /*index*/) -> To {
-				using mapped_reference_type = reference_of<Types...[ Index ]>;
+			const auto reaccept = [ = ](auto index) -> To {
+				using mapped_reference_type = reference_of<Types...[ index ]>;
 				if constexpr (requires(mapped_reference_type ref) { To{ref}; }) {
 					return To{mapped_reference_type{reference.id()}};
 				} else {
@@ -62,7 +62,7 @@ struct reaccept_accepted_reference<util::type_pack<Types...>> {
 			};
 			return util::template_switch(
 				reference.type_index(),
-				util::sequence<sizeof...(Types)>,
+				util::sequence_cw<sizeof...(Types)>,
 				util::overloaded{
 					reaccept,
 					[]() -> To { std::unreachable(); },

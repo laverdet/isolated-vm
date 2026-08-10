@@ -30,7 +30,7 @@ template <std::size_t Index>
 consteval auto get_descriptors(std::integral_constant<std::size_t, Index> /*index*/, auto ns) {
 	return util::overloaded{
 		[]<class... Types>(std::tuple<std::in_place_t, Types...> ns) {
-			auto [... ii ] = util::sequence<sizeof...(Types)>;
+			constexpr auto [... ii ] = util::sequence<sizeof...(Types)>;
 			auto [... entries ] = std::make_tuple(std::get<ii + 1>(ns)...);
 			return std::make_tuple(std::get<Index>(entries)...);
 		},

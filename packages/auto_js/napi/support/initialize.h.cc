@@ -31,7 +31,7 @@ class napi_js_module final : private detail::initialize_require {
 	private:
 		auto operator()(napi_env env, napi_value exports) -> void override {
 			// construct environment, set napi instance data w/ finalizer
-			const auto [... indices ] = util::sequence<sizeof...(Args)>;
+			constexpr auto [... indices ] = util::sequence<sizeof...(Args)>;
 			auto& client_environment = environment::make_and_set_environment<Environment>(env, std::get<indices>(std::move(args_))...);
 			// assign export descriptor to napi-constructor namespace object
 			auto exports_local = local_of<dictionary_tag>::from(exports);

@@ -191,7 +191,7 @@ struct accept_vm_value : accept_vm_primitive {
 				local_of<list_tag>::make(self.lock(), Size),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](local_of<list_tag> receiver, auto& self, auto& visit, auto /*&&*/ tuple) -> void {
-					const auto [... indices ] = util::sequence<Size>;
+					constexpr auto [... indices ] = util::sequence<Size>;
 					(..., [ & ]() -> void {
 						auto element = visit(indices, std::forward<decltype(tuple)>(tuple), self);
 						unmaybe(receiver->set(self.lock(), indices, element));
@@ -231,7 +231,7 @@ struct accept_vm_value : accept_vm_primitive {
 
 		template <std::size_t Size>
 		auto accept_entry_pair_struct(this const auto& self, auto& visit, local_of<record_tag> receiver, auto&& subject) -> void {
-			const auto [... indices ] = util::sequence<Size>;
+			constexpr auto [... indices ] = util::sequence<Size>;
 			(..., [ & ]() -> void {
 				auto accept_entry = accept_entry_pair<decltype(self), decltype(self)>{self};
 				auto entry = visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(subject)>(subject), accept_entry);

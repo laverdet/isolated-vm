@@ -13,7 +13,7 @@ struct visit<void, Enum> {
 		template <class Accept>
 		constexpr auto operator()(Enum subject, const Accept& accept) const -> accept_target_t<Accept> {
 			constexpr auto values = make_enum_map();
-			const auto& [... entries ] = enum_values<Enum>::values;
+			constexpr auto& [... entries ] = enum_values<Enum>::values;
 			return util::template_switch(
 				subject,
 				std::tuple{util::cw<entries.second>...},
@@ -31,13 +31,8 @@ struct visit<void, Enum> {
 
 	private:
 		consteval static auto make_enum_map() {
-			const auto& [... values ] = enum_values<Enum>::values;
-			return util::sealed_map{
-				std::in_place,
-				[ & ]() constexpr -> auto {
-					return std::pair{values.second, values.first};
-				}()...,
-			};
+			constexpr auto& [... values ] = enum_values<Enum>::values;
+			return util::sealed_map{std::in_place, std::pair{values.second, values.first}...};
 		}
 };
 

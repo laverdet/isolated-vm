@@ -132,7 +132,7 @@ struct visit_vm_value {
 					// Slow path
 					[ & ]() -> accept_target_t<Accept> {
 						auto type = subject->inspect();
-						const auto [... primitive_types ] = primitive_typeofs;
+						constexpr auto [... primitive_types ] = primitive_typeofs;
 						if ((... || (type == primitive_types))) {
 							return inspected(type, local_of<primitive_tag>::from(subject), accept);
 						} else {
@@ -213,8 +213,8 @@ struct visit_vm_value {
 
 		template <class Accept>
 		constexpr auto inspected(value_typeof type_of, local_of<object_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
-			const auto [... data_block_types ] = data_block_typeofs;
-			const auto [... array_buffer_view_types ] = array_buffer_view_typeofs;
+			constexpr auto [... data_block_types ] = data_block_typeofs;
+			constexpr auto [... array_buffer_view_types ] = array_buffer_view_typeofs;
 			if ((... || (type_of == data_block_types))) {
 				return inspected(type_of, local_of<data_block_tag>::from(subject), accept);
 			} else if ((... || (type_of == array_buffer_view_types))) {

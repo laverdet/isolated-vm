@@ -85,7 +85,7 @@ auto module_record::compile(context_lock_witness lock, auto source_text, iv8::so
 
 template <class... Types>
 auto module_record::create_synthetic(context_lock_witness lock, auto origin, std::tuple<std::in_place_t, Types...> module_interface) -> v8::Local<module_record> {
-	auto [... ii ] = util::sequence<sizeof...(Types)>;
+	constexpr auto [... ii ] = util::sequence<sizeof...(Types)>;
 	return create_synthetic(lock, origin, std::tuple{std::get<ii + 1>(module_interface)...});
 }
 

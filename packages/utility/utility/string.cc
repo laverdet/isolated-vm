@@ -30,7 +30,7 @@ consteval auto consteval_strcat(constant_wrapper<Strings>... /*strings*/) {
 		(..., (std::ranges::copy(Strings.value, chars.data() + offset), offset += std::extent_v<typename constant_wrapper<Strings>::value_type> - 1));
 		return chars;
 	}();
-	auto [... indices ] = sequence<chars.size()>;
+	constexpr auto [... indices ] = sequence<chars.size()>;
 	constexpr char_type string[ chars.size() ] = {chars[ indices ]...};
 	return cw<string>;
 }

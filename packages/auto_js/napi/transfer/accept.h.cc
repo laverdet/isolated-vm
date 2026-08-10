@@ -190,7 +190,7 @@ struct accept_napi_value : accept_basic_napi_value {
 				local_of<vector_tag>::from(napi::invoke(napi_create_array_with_length, napi_env{self}, Size)),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](local_of<vector_tag> array, auto& self, auto& visit, auto /*&&*/ tuple) -> void {
-					const auto [... indices ] = util::sequence<Size>;
+					constexpr auto [... indices ] = util::sequence<Size>;
 					(..., [ & ]() -> void {
 						// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
 						// reference members one at a time.
@@ -267,7 +267,7 @@ struct accept_napi_value : accept_basic_napi_value {
 		auto accept_entry_pair_struct(this const auto& self, auto& visit, local_of<object_tag> target, auto&& subject) -> void {
 			// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 			std::array<napi_property_descriptor, Size> properties;
-			const auto [... indices ] = util::sequence<Size>;
+			constexpr auto [... indices ] = util::sequence<Size>;
 			(..., [ & ]() -> void {
 				// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
 				// reference members one at a time.

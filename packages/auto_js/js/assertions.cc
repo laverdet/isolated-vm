@@ -24,7 +24,7 @@ constexpr auto variant_is_equal_to(const auto& variant, const Type& value) {
 		[]<class... Types>(const std::variant<Types...>& variant) -> auto& { return variant; },
 		[](const auto& variant) -> auto& { return *variant; },
 	}(variant);
-	const auto [... types ] = []<class... Types>(const std::variant<Types...>& /*variant*/) -> auto {
+	constexpr auto [... types ] = []<class... Types>(const std::variant<Types...>& /*variant*/) -> auto {
 		return util::type_pack<Types...>{};
 	}(underlying_variant);
 	if constexpr ((... || (type<reference_of<Type>> == types))) {

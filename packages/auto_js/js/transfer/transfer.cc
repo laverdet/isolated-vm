@@ -184,9 +184,9 @@ constexpr auto transfer_with(
 
 	// extract shared types from `accept` & `visit`. this allows acceptors to share, for example,
 	// multiple same-named key property getters accessed from different unrelated acceptors.
-	const auto [... accept_types ] = accept_type::types(util::type_pack{});
-	const auto [... visit_types ] = visit_type::types(util::type_pack{});
-	const auto [... unique_types ] = util::pack_unique(accept_types..., visit_types...);
+	constexpr auto [... accept_types ] = accept_type::types(util::type_pack{});
+	constexpr auto [... visit_types ] = visit_type::types(util::type_pack{});
+	constexpr auto [... unique_types ] = util::pack_unique(accept_types..., visit_types...);
 
 	auto visit_and_accept = transfer_holder<visit_type, accept_type, type_t<unique_types>...>{std::move(visit_args), std::move(accept_args)};
 	// NOLINTNEXTLINE(misc-const-correctness)

@@ -35,7 +35,7 @@ auto foreground_runner::terminate() -> void {
 auto foreground_runner::get_for_priority(std::shared_ptr<foreground_runner> self, v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner> {
 	return util::template_switch(
 		priority_numeric_from(priority),
-		util::sequence<priority_count>,
+		util::sequence_cw<priority_count>,
 		util::overloaded{
 			[ & ](auto priority) -> std::shared_ptr<v8::TaskRunner> {
 				using priority_runner_of = foreground_runner_of_priority<priority_enum_from(priority)>;

@@ -23,7 +23,7 @@ struct accept<Meta, std::array<Type, Size>> : accept_value<Meta, Type> {
 			const accept_type& accept = *this;
 			auto&& forward_range = util::forward_range(std::forward<decltype(subject)>(subject));
 			auto iterator = forward_range.begin();
-			const auto [... indices ] = util::sequence<Size>;
+			constexpr auto [... indices ] = util::sequence<Size>;
 			return std::array<Type, Size>{
 				// nb: Comma operator trick
 				// NOLINTNEXTLINE(clang-analyzer-core.CallAndMessage)
@@ -34,7 +34,7 @@ struct accept<Meta, std::array<Type, Size>> : accept_value<Meta, Type> {
 		template <std::size_t TupleSize>
 		constexpr auto operator()(tuple_tag<TupleSize> /*tag*/, auto& visit, auto&& subject) const -> std::array<Type, Size> {
 			const accept_type& accept = *this;
-			const auto [... indices ] = util::sequence<TupleSize>;
+			constexpr auto [... indices ] = util::sequence<TupleSize>;
 			return std::array<Type, Size>{
 				// NOLINTNEXTLINE(bugprone-use-after-move)
 				visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(subject)>(subject), accept)...,
@@ -87,7 +87,7 @@ struct accept<Meta, Type> : public accept_value<Meta, std::ranges::range_value_t
 
 		template <std::size_t Size>
 		constexpr auto operator()(tuple_tag<Size> /*tag*/, auto& visit, auto&& subject) const -> Type {
-			const auto [... indices ] = util::sequence<Size>;
+			constexpr auto [... indices ] = util::sequence<Size>;
 			const accept_type& accept = *this;
 			return util::make_inplace_container<Type>(
 				visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(subject)>(subject), accept)...
@@ -120,7 +120,7 @@ struct accept<Meta, vector_of<Tag, Entry>> {
 		constexpr auto operator()(struct_tag<Size> /*tag*/, auto& visit, auto&& subject) const -> vector_of<Tag, Entry> {
 			// nb: The value category of `subject` is forwarded to *each* visitor. Move operations should
 			// keep this in mind and only move one member at time.
-			auto& [... indices ] = util::sequence<Size>;
+			constexpr auto [... indices ] = util::sequence<Size>;
 			return vector_of<Tag, Entry>{
 				std::in_place,
 				// NOLINTNEXTLINE(bugprone-use-after-move)

@@ -73,7 +73,7 @@ struct visit_struct_properties<Meta, Type, js::struct_template<Property...>> {
 	public:
 		explicit constexpr visit_struct_properties(auto* transfer) :
 				properties{[ = ]() constexpr -> properties_type {
-					const auto [... indices ] = util::sequence<sizeof...(Property)>;
+					constexpr auto [... indices ] = util::sequence<sizeof...(Property)>;
 					return {util::elide{
 						util::constructor<visit_object_property<Meta, Property...[ indices ]>>,
 						transfer,

@@ -55,19 +55,19 @@ consteval auto make_tuple_acceptor_types() {
 			return size;
 		}
 	}();
-	const auto [... indices ] = util::sequence<size>;
-	const auto [... acceptor_types ] = util::type_pack{
-		[](auto index) consteval {
-			using type_name = Types...[ index ];
+	constexpr auto [... indices ] = util::sequence<size>;
+	constexpr auto [... acceptor_types ] = util::type_pack{
+		[ = ] consteval {
+			using type_name = Types...[ indices ];
 			if constexpr (type<type_name> == type<rest>) {
-				static_assert(index + 1 == rest_param, "`rest` must be second-to-last parameter in a tuple");
+				static_assert(indices + 1 == rest_param, "`rest` must be second-to-last parameter in a tuple");
 				return type<accept_tuple_rest_placeholder>;
-			} else if constexpr (index == rest_param) {
+			} else if constexpr (indices == rest_param) {
 				return type<accept_tuple_rest_spread<Meta, type_name>>;
 			} else {
 				return type<accept_tuple_param<Meta, type_name>>;
 			}
-		}(indices)...,
+		}()...,
 	};
 	return type<std::tuple<type_t<acceptor_types>...>>;
 };
@@ -82,7 +82,7 @@ struct accept<Meta, std::tuple<Types...>> {
 	public:
 		explicit constexpr accept(auto* transfer) :
 				accept_{[ = ]() constexpr -> acceptors_type {
-					const auto [... indices ] = util::sequence<std::tuple_size_v<acceptors_type>>;
+					constexpr auto [... indices ] = util::sequence<std::tuple_size_v<acceptors_type>>;
 					return {util::elide{util::constructor<std::tuple_element_t<indices, acceptors_type>>, transfer}...};
 				}()} {}
 

@@ -70,6 +70,9 @@ struct flat_tuple : flat_tuple_storage_t<Types...> {
 		using flat_tuple_storage_t<Types...>::flat_tuple_storage_t;
 };
 
+template <class... Types>
+flat_tuple(Types...) -> flat_tuple<Types...>;
+
 // `std::get` replacement for `flat_tuple`
 export template <std::size_t Index, class... Types>
 constexpr auto get(flat_tuple<Types...>& tuple) -> auto& {
@@ -87,3 +90,16 @@ constexpr auto get(const flat_tuple<Types...>& tuple) -> const auto& {
 }
 
 } // namespace util
+
+namespace std {
+// `util::flat_tuple` destructuring specializations
+template <std::size_t Index, class... Types>
+struct tuple_element<Index, util::flat_tuple<Types...>> {
+		using type = Types...[ Index ];
+};
+
+template <class... Types>
+struct tuple_size<util::flat_tuple<Types...>> {
+		constexpr static auto value = sizeof...(Types);
+};
+} // namespace std

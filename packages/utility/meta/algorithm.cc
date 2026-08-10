@@ -30,7 +30,7 @@ export constexpr auto pack_concat = util::overloaded{
 
 // Apply transformation function to each type in the pack
 export constexpr auto pack_transform = [](auto pack, auto unary) consteval -> auto {
-	const auto [... types ] = pack;
+	constexpr auto [... types ] = pack;
 	return pack_concat(unary(types)...);
 };
 
@@ -64,17 +64,16 @@ export constexpr auto pack_partition = util::overloaded{
 export constexpr auto pack_unique = util::overloaded{
 	[]() consteval -> auto { return type_pack{}; },
 	[](auto... types) consteval -> auto {
-		constexpr auto transform = [ = ](auto index) {
-			constexpr auto subject = types...[ index ];
-			const auto [... indices ] = util::sequence<index>;
-			if constexpr ((... || (subject == types...[ indices ]))) {
+		constexpr auto [... ii ] = util::sequence<sizeof...(types)>;
+		return (... + [ & ] -> auto {
+			constexpr auto subject = types...[ ii ];
+			constexpr auto [... jj ] = util::sequence<ii>;
+			if constexpr ((... || (subject == types...[ jj ]))) {
 				return type_pack_of{};
 			} else {
 				return type_pack_of{subject};
 			}
-		};
-		const auto [... indices ] = util::sequence<sizeof...(types)>;
-		return (... + transform(indices));
+		}());
 	},
 };
 

@@ -9,8 +9,8 @@ export auto map_variant(auto&& variant, auto visit) {
 	constexpr auto result_from = []<class Type>(std::type_identity<Type> /*alternative*/) {
 		return type<decltype(visit)>(type<util::apply_cvref_t<decltype(variant), Type>>);
 	};
-	const auto [... alternative_types ] = util::make_type_pack(util::remove_cvref(type<decltype(variant)>));
-	const auto [... result_types ] = util::pack_unique(result_from(alternative_types)...);
+	constexpr auto [... alternative_types ] = util::make_type_pack(util::remove_cvref(type<decltype(variant)>));
+	constexpr auto [... result_types ] = util::pack_unique(result_from(alternative_types)...);
 	using result_type = std::variant<type_t<result_types>...>;
 	return std::visit(
 		[ & ](auto&& value) -> result_type {

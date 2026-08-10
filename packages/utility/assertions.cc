@@ -1,7 +1,7 @@
 import std;
 import util;
 
-constexpr auto assert_strings_equal(auto... strings) {
+consteval auto assert_strings_equal(auto... strings) {
 	const auto [... left ] = std::tuple{std::basic_string_view{strings}...};
 	const auto [... right ] = std::tuple{std::basic_string_view{strings}...};
 	(..., ([ = ](auto left) -> void {

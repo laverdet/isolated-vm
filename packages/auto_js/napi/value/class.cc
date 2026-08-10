@@ -27,7 +27,7 @@ auto local_for_class_of<Type>::runtime_construct(
 	std::tuple<RuntimeArgs...> runtime_args
 ) const -> local_of<object_tag>
 	requires std::constructible_from<Type, HostArgs...> {
-	const auto [... indices ] = util::sequence<sizeof...(HostArgs)>;
+	constexpr auto [... indices ] = util::sequence<sizeof...(HostArgs)>;
 	auto instance = std::make_unique<Type>(std::get<indices>(std::move(host_args))...);
 	return transfer_construct(env, std::move(instance), std::move(runtime_args));
 }

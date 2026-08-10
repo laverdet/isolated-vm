@@ -24,13 +24,10 @@ struct accept<void, Enum> {
 
 	private:
 		consteval static auto make_enum_map() {
-			const auto& [... values ] = enum_values<Enum>::values;
+			constexpr auto& [... values ] = enum_values<Enum>::values;
 			return util::sealed_map{
 				std::in_place,
-				[ & ]() constexpr -> auto {
-					// NOLINTNEXTLINE(modernize-type-traits)
-					return std::pair{util::fnv1a_hash(std::u16string_view{values.first}), values.second};
-				}()...,
+				std::pair{util::fnv1a_hash(std::u16string_view{values.first}), values.second}...,
 			};
 		}
 };

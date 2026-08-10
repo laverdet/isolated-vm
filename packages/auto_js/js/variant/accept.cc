@@ -89,7 +89,7 @@ struct accept_external_covariants<Meta, Variant, js::tagged_external<Types>...> 
 					}
 				}
 			};
-			const auto [... types ] = util::type_pack{type<Types>...};
+			constexpr auto [... types ] = util::type_pack{type<Types>...};
 			return try_accept(types...);
 		}
 

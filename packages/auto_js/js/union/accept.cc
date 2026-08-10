@@ -53,7 +53,7 @@ struct accept<Meta, std::variant<Types...>> {
 	private:
 		template <class Value, class Visit>
 		consteval static auto make_discriminant_map() {
-			const auto [... indices ] = util::sequence<sizeof...(Types)>;
+			constexpr auto [... indices ] = util::sequence<sizeof...(Types)>;
 			return util::sealed_map{
 				std::in_place,
 				[ = ]() constexpr -> auto {
