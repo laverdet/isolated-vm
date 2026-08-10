@@ -27,12 +27,12 @@ struct safe_numeric_conversion {
 export template <class From, class To>
 constexpr auto safe_numeric_conversion_v = safe_numeric_conversion<From, To>::value;
 
-static_assert(safe_numeric_conversion<std::int32_t, std::int64_t>::value);
-static_assert(!safe_numeric_conversion<std::int32_t, std::uint64_t>::value);
-static_assert(!safe_numeric_conversion<std::int64_t, double>::value);
-static_assert(safe_numeric_conversion<std::int32_t, double>::value);
-static_assert(safe_numeric_conversion<float, double>::value);
-static_assert(!safe_numeric_conversion<double, float>::value);
+static_assert(safe_numeric_conversion_v<std::int32_t, std::int64_t>);
+static_assert(!safe_numeric_conversion_v<std::int32_t, std::uint64_t>);
+static_assert(!safe_numeric_conversion_v<std::int64_t, double>);
+static_assert(safe_numeric_conversion_v<std::int32_t, double>);
+static_assert(safe_numeric_conversion_v<float, double>);
+static_assert(!safe_numeric_conversion_v<double, float>);
 
 // Resolves to the type of every type in the pack. If any type differs then it is ill-formed.
 template <class... Type>

@@ -64,6 +64,12 @@ struct accept_v8_primitive {
 		}
 
 		template <class Type>
+		auto operator()(number_tag_of<Type> tag, visit_holder visit, Type subject) const -> v8::Local<tag_to_v8<number_tag_of<Type>>> {
+			auto value = (*this)(tag, visit, std::int32_t{std::forward<decltype(subject)>(subject)});
+			return v8::Local<v8::Int32>{value}.As<tag_to_v8<number_tag_of<Type>>>();
+		}
+
+		template <class Type>
 		auto operator()(number_tag_of<Type> tag, visit_holder visit, auto&& subject) const -> v8::Local<tag_to_v8<number_tag_of<Type>>> {
 			return (*this)(tag, visit, Type{std::forward<decltype(subject)>(subject)});
 		}

@@ -44,8 +44,24 @@ struct accept_vm_primitive {
 			return local_of<number_tag_of<std::int32_t>>::make(lock(), subject);
 		}
 
+		auto operator()(number_tag_of<std::uint32_t> /*tag*/, visit_holder /*visit*/, std::uint32_t subject) const -> local_of<number_tag_of<std::uint32_t>> {
+			if (subject <= std::numeric_limits<std::int32_t>::max()) {
+				auto value = local_of<number_tag_of<std::int32_t>>::make(lock(), static_cast<std::int32_t>(subject));
+				return local_of<number_tag_of<std::uint32_t>>::from(value);
+			} else {
+				auto value = local_of<number_tag_of<double>>::make(lock(), static_cast<double>(subject));
+				return local_of<number_tag_of<std::uint32_t>>::from(value);
+			}
+		}
+
 		auto operator()(number_tag /*tag*/, visit_holder visit, auto&& subject) const -> local_of<number_tag> {
 			return (*this)(number_tag_of<double>{}, visit, double{std::forward<decltype(subject)>(subject)});
+		}
+
+		template <class Type>
+		auto operator()(number_tag_of<Type> tag, visit_holder visit, Type subject) const -> local_of<number_tag_of<Type>> {
+			auto value = (*this)(tag, visit, std::int32_t{std::forward<decltype(subject)>(subject)});
+			return local_of<number_tag_of<Type>>::from(value);
 		}
 
 		template <class Type>

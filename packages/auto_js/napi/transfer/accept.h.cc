@@ -52,6 +52,12 @@ struct accept_basic_napi_value {
 		}
 
 		template <class Type>
+		auto operator()(number_tag_of<Type> tag, visit_holder visit, Type subject) const -> local_of<number_tag_of<Type>> {
+			auto value = (*this)(tag, visit, std::int32_t{std::forward<decltype(subject)>(subject)});
+			return local_of<number_tag_of<Type>>::from(value);
+		}
+
+		template <class Type>
 		auto operator()(number_tag_of<Type> tag, visit_holder visit, auto&& subject) const -> local_of<number_tag_of<Type>> {
 			return (*this)(tag, visit, Type{std::forward<decltype(subject)>(subject)});
 		}

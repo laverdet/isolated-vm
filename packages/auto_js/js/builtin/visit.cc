@@ -35,8 +35,16 @@ template <>
 struct visit<void, double> : visit_value_tagged<number_tag_of<double>> {};
 
 template <>
+struct visit<void, std::int8_t> : visit_value_tagged<number_tag_of<std::int8_t>> {};
+template <>
+struct visit<void, std::int16_t> : visit_value_tagged<number_tag_of<std::int16_t>> {};
+template <>
 struct visit<void, std::int32_t> : visit_value_tagged<number_tag_of<std::int32_t>> {};
 
+template <>
+struct visit<void, std::uint8_t> : visit_value_tagged<number_tag_of<std::uint8_t>> {};
+template <>
+struct visit<void, std::uint16_t> : visit_value_tagged<number_tag_of<std::uint16_t>> {};
 template <>
 struct visit<void, std::uint32_t> : visit_value_tagged<number_tag_of<std::uint32_t>> {};
 
