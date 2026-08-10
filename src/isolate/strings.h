@@ -72,6 +72,7 @@ class StringTable {
 		String number{"number"};
 		String object{"object"};
 		String onCatastrophicError{"onCatastrophicError"};
+		String onUnhandledRejection{"onUnhandledRejection"};
 		String produceCachedData{"produceCachedData"};
 		String promise{"promise"};
 		String reference{"reference"};

@@ -155,6 +155,17 @@ declare namespace IsolatedVM {
 		 * work, and end the process by calling `process.abort()`.
 		 */
 		onCatastrophicError?: (message: string) => void;
+
+		/**
+		 * Callback to be invoked when a promise is rejected without a handler. By default such a
+		 * rejection is thrown out of whichever call into the isolate happens to be running, an `eval` or
+		 * an `apply` that may have nothing to do with the promise itself. If this callback is set,
+		 * nothing is thrown: each rejected value is copied out of the isolate, the way a thrown value
+		 * would be, and delivered to the callback in the isolate which created this one. For an isolate
+		 * created from node that means the callback runs on node's event loop. Errors thrown by the
+		 * callback are ignored.
+		 */
+		onUnhandledRejection?: (error: any) => void;
 	};
 
 	export type ContextOptions = {

@@ -72,6 +72,7 @@ auto IsolateHandle::Definition() -> Local<FunctionTemplate> {
 auto IsolateHandle::New(MaybeLocal<Object> maybe_options) -> unique_ptr<ClassHandle> {
 	shared_ptr<v8::BackingStore> snapshot_blob;
 	RemoteHandle<Function> error_handler;
+	RemoteHandle<Function> rejection_handler;
 	size_t snapshot_blob_length = 0;
 	size_t memory_limit = 128;
 	bool inspector = false;
@@ -111,6 +112,12 @@ auto IsolateHandle::New(MaybeLocal<Object> maybe_options) -> unique_ptr<ClassHan
 		if (maybe_handler.ToLocal(&error_handler_local)) {
 			error_handler = RemoteHandle<Function>{error_handler_local};
 		}
+
+		auto maybe_rejection_handler = ReadOption<MaybeLocal<Function>>(options, StringTable::Get().onUnhandledRejection, {});
+		Local<Function> rejection_handler_local;
+		if (maybe_rejection_handler.ToLocal(&rejection_handler_local)) {
+			rejection_handler = RemoteHandle<Function>{rejection_handler_local};
+		}
 	}
 
 	// Return isolate handle
@@ -118,6 +125,7 @@ auto IsolateHandle::New(MaybeLocal<Object> maybe_options) -> unique_ptr<ClassHan
 	auto env = holder->GetIsolate();
 	env->GetIsolate()->SetHostInitializeImportMetaObjectCallback(ModuleHandle::InitializeImportMeta);
 	env->error_handler = error_handler;
+	env->unhandled_rejection_handler = rejection_handler;
 	if (inspector) {
 		env->EnableInspectorAgent();
 	}

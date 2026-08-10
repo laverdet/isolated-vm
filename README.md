@@ -195,6 +195,10 @@ contains can represent quite a large chunk of memory though you may want to expl
     this is invoked it means that v8 has lost all control over the isolate, and all resources in use
     are totally unrecoverable. If you receive this error you should log the error, stop serving
     requests, finish outstanding work, and end the process by calling `process.abort()`.
+  * `onUnhandledRejection` *[function]* - Callback to be invoked when a promise is rejected without a
+    handler. By default such a rejection is thrown out of whichever call into the isolate happens to
+    be running, which may be one unrelated to the promise. If this callback is set the rejected value
+    is passed to it instead and nothing is thrown. Errors thrown by the callback are ignored.
 
 *NOTE*: `snapshot` contains compiled machine code. That means you should not accept `snapshot`
 payloads from a user, otherwise they may be able to run arbitrary code.

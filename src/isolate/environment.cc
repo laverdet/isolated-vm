@@ -498,7 +498,13 @@ auto IsolateEnvironment::TaskEpilogue() -> std::unique_ptr<ExternalCopy> {
 	for (auto& handle : rejected_promises) {
 		if (!handle.IsEmpty()) {
 			Context::Scope context_scope{DefaultContext()};
-			return ExternalCopy::CopyThrownValue(Deref(handle)->Result());
+			auto error = ExternalCopy::CopyThrownValue(Deref(handle)->Result());
+			// A throw can only carry the first rejection; a handler receives every one recorded during
+			// the task.
+			if (!unhandled_rejection_handler) {
+				return error;
+			}
+			ReportUnhandledRejection(unhandled_rejection_handler, std::move(error));
 		}
 	}
 	return {};
@@ -623,6 +629,36 @@ auto RaiseCatastrophicError(RemoteHandle<Function>& handler, const char* message
 	};
 	handler.GetIsolateHolder()->ScheduleTask(std::make_unique<ErrorTask>(message, handler), false, true);
 	return true;
+}
+
+/**
+ * Delivers a rejected value to an `onUnhandledRejection` handler. The handler belongs to another
+ * isolate, usually the nodejs one, so the call is scheduled as a task on the isolate which owns it.
+ * A handler which throws is ignored, since there is nobody left to report that error to.
+ */
+void ReportUnhandledRejection(RemoteHandle<Function>& handler, std::unique_ptr<ExternalCopy> error) {
+	class RejectionTask : public Task {
+		public:
+			explicit RejectionTask(std::unique_ptr<ExternalCopy> error, RemoteHandle<Function> handler) :
+				error{std::move(error)}, handler{std::move(handler)} {}
+
+			void Run() final {
+				auto* isolate = Isolate::GetCurrent();
+				auto context = IsolateEnvironment::GetCurrent().DefaultContext();
+				Context::Scope context_scope{context};
+				TryCatch try_catch{isolate};
+				try {
+					auto fn = handler.Deref();
+					Local<Value> argv[] = { error->CopyInto() };
+					Unmaybe(fn->Call(context, Undefined(isolate), 1, argv));
+				} catch (const RuntimeError& err) {}
+			}
+
+		private:
+			std::unique_ptr<ExternalCopy> error;
+			RemoteHandle<Function> handler;
+	};
+	handler.GetIsolateHolder()->ScheduleTask(std::make_unique<RejectionTask>(std::move(error), handler), false, true);
 }
 
 } // namespace ivm
