@@ -22,7 +22,7 @@ struct visit<void, Enum> {
 						constexpr auto sv = values.at(values.lookup(value)).second;
 						return accept(string_tag_of<char>{}, *this, sv);
 					},
-					[]() -> accept_target_t<Accept> { std::unreachable(); },
+					[] -> accept_target_t<Accept> { std::unreachable(); },
 				}
 			);
 		}

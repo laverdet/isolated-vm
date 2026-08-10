@@ -52,7 +52,7 @@ class sealed_map {
 			requires std::default_initializable<Type> :
 				sealed_map{
 					sorted_equivalent_t{},
-					util::elide{[ & ]() -> container_type {
+					util::elide{[ & ] -> container_type {
 						auto keys_array = std::array<key_type, Size>{std::move(keys)...};
 						std::ranges::sort(keys_array);
 						auto [... sorted_keys ] = std::move(keys_array);
@@ -64,7 +64,7 @@ class sealed_map {
 		explicit consteval sealed_map(std::in_place_t /*tag*/, auto... pairs) :
 				sealed_map{
 					sorted_equivalent_t{},
-					util::elide{[ & ]() -> container_type {
+					util::elide{[ & ] -> container_type {
 						// Sort without invoking `operator()=`, which might not exist on the value type
 						auto entries = std::array<value_type, Size>{std::move(pairs)...};
 						auto indices = std::array<std::size_t, Size>{};

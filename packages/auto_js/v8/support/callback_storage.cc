@@ -81,7 +81,7 @@ auto make_callback_storage(const auto& lock, auto function) {
 			return std::tuple{callback, data};
 		} else if constexpr (sizeof(bound_type) == sizeof(void*)) {
 			// Trivial function of pointer type. Data() is the function data.
-			auto data = [ & ]() -> auto {
+			auto data = [ & ] -> auto {
 #if V8_HAS_TAGGED_EXTERNAL
 				return v8::External::New(lock.isolate(), std::bit_cast<void*>(bound), 0);
 #else
@@ -89,7 +89,7 @@ auto make_callback_storage(const auto& lock, auto function) {
 #endif
 			}();
 			const auto callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
-				auto invoke = [ & ]() -> auto {
+				auto invoke = [ & ] -> auto {
 #if V8_HAS_TAGGED_EXTERNAL
 					// TODO: Use this feature
 					return std::bit_cast<bound_type>(info.Data().As<v8::External>()->Value(0));

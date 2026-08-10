@@ -65,7 +65,7 @@ struct reaccept_accepted_reference<util::type_pack<Types...>> {
 				util::sequence_cw<sizeof...(Types)>,
 				util::overloaded{
 					reaccept,
-					[]() -> To { std::unreachable(); },
+					[] -> To { std::unreachable(); },
 				}
 			);
 		}

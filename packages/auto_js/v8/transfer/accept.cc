@@ -89,7 +89,7 @@ auto accept_v8_value::operator()(date_tag /*tag*/, visit_holder /*visit*/, js_cl
 auto accept_v8_value::operator()(error_tag /*tag*/, visit_holder /*visit*/, const js::error_value& subject) const
 	-> js::referenceable_value<v8::Local<v8::Object>> {
 	auto message = js::transfer_in<v8::Local<v8::String>>(subject.message(), witness());
-	auto error = v8::Local<v8::Value>{[ & ]() -> v8::Local<v8::Value> {
+	auto error = v8::Local<v8::Value>{[ & ] -> v8::Local<v8::Value> {
 		switch (subject.name()) {
 			// These functions don't need an isolate somehow?
 			default:
@@ -131,7 +131,7 @@ auto accept_v8_value::operator()(array_buffer_tag /*tag*/, visit_holder /*visit*
 auto accept_v8_value::operator()(shared_array_buffer_tag /*tag*/, visit_holder /*visit*/, js::shared_array_buffer&& subject) const
 	-> js::referenceable_value<v8::Local<v8::SharedArrayBuffer>> {
 	auto byte_length = subject.byte_length();
-	auto backing_store = [ & ]() -> auto {
+	auto backing_store = [ & ] -> auto {
 		if (byte_length == 0) {
 			// v8 does not call the deleter if `byte_length` is zero. So the heap-allocated shared_ptr
 			// trick does not work in that case.

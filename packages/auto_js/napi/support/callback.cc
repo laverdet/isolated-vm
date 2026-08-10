@@ -40,8 +40,8 @@ constexpr auto make_free_function(auto function) {
 		using callback_type = decltype(callback);
 		return util::bind{
 			[](callback_type& callback, Environment& env, const callback_info& info) noexcept(Nx) -> napi_value {
-				return invoke_internal_error_scope(env, [ & ]() -> napi_value {
-					auto run = util::regular_return{[ & ]() -> decltype(auto) {
+				return invoke_internal_error_scope(env, [ & ] -> napi_value {
+					auto run = util::regular_return{[ & ] -> decltype(auto) {
 						return std::apply(
 							callback,
 							std::tuple_cat(
@@ -65,7 +65,7 @@ constexpr auto make_free_function(auto function) {
 		using callback_type = decltype(callback);
 		return util::bind{
 			[](callback_type& callback, Environment& env, const callback_info& /*info*/) noexcept -> napi_value {
-				auto run = util::regular_return{[ & ]() -> decltype(auto) {
+				auto run = util::regular_return{[ & ] -> decltype(auto) {
 					return callback(env);
 				}};
 				return js::transfer_in_strict<napi_value>(run().value_or(std::monostate{}), env);
@@ -112,7 +112,7 @@ constexpr auto make_constructor_function(auto constructor) {
 				using callback_type = decltype(callback);
 				return util::bind{
 					[](callback_type& callback, wrap_type& wrap, Environment& env, const callback_info& info) noexcept(Nx) -> napi_value {
-						return invoke_internal_error_scope(env, [ & ]() -> napi_value {
+						return invoke_internal_error_scope(env, [ & ] -> napi_value {
 							auto instance = std::apply(
 								callback,
 								std::tuple_cat(
@@ -159,7 +159,7 @@ constexpr auto make_constructor_function(auto constructor) {
 		[](runtime_constructor_type& constructor, Environment& env, const callback_info& info) -> napi_value {
 			auto arguments = info.arguments();
 			if (!arguments.empty()) {
-				auto maybe_constructor = [ & ]() -> std::optional<internal_constructor*> {
+				auto maybe_constructor = [ & ] -> std::optional<internal_constructor*> {
 					try {
 						// Check truthiness since null or undefined causes `napi_coerce_to_object` to throw
 						auto* arg0 = util::at(arguments, 0);
@@ -181,7 +181,7 @@ constexpr auto make_constructor_function(auto constructor) {
 				}
 				if (*maybe_constructor != nullptr) {
 					const auto& constructor = **maybe_constructor;
-					return invoke_internal_error_scope(env, [ & ]() -> napi_value {
+					return invoke_internal_error_scope(env, [ & ] -> napi_value {
 						return constructor(info.this_arg());
 					});
 				}
@@ -208,8 +208,8 @@ constexpr auto make_member_function(Method method) {
 				if (!maybe_that) {
 					return nullptr;
 				}
-				return invoke_internal_error_scope(env, [ & ]() -> napi_value {
-					auto run = util::regular_return{[ & ]() -> decltype(auto) {
+				return invoke_internal_error_scope(env, [ & ] -> napi_value {
+					auto run = util::regular_return{[ & ] -> decltype(auto) {
 						return std::apply(
 							callback,
 							std::tuple_cat(
@@ -237,7 +237,7 @@ constexpr auto make_member_function(Method method) {
 				if (!maybe_that) {
 					return nullptr;
 				}
-				auto run = util::regular_return{[ & ]() -> decltype(auto) {
+				auto run = util::regular_return{[ & ] -> decltype(auto) {
 					return callback(**maybe_that, env);
 				}};
 				return js::transfer_in_strict<napi_value>(run().value_or(std::monostate{}), env);

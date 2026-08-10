@@ -76,7 +76,7 @@ struct visit_reference_of : visit<Meta, Type> {
 
 		template <class Accept>
 		constexpr auto operator()(reference_of<Type> reference, const Accept& accept) -> accept_target_t<Accept> {
-			return values_storage_.lookup_or_visit(reference, [ & ]() constexpr -> accept_target_t<Accept> {
+			return values_storage_.lookup_or_visit(reference, [ & ] constexpr -> accept_target_t<Accept> {
 				auto insert = [ & ] -> auto {
 					if constexpr (type<typename Meta::accept_reference_type> == type<void>) {
 						return [](const auto& /*value*/) -> void {};

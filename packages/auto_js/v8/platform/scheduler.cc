@@ -138,7 +138,7 @@ auto scheduler_foreground_thread::controller::run(
 	});
 	const auto any_stop_token = util::composite_stop_token{std::move(stop_token), termination_stop_token};
 	while (!any_stop_token.stop_requested()) {
-		auto [... timeout ] = [ & ]() -> auto {
+		auto [... timeout ] = [ & ] -> auto {
 			if constexpr (requires { typename queue_type::clock_type; }) {
 				return std::tuple{lock->queue.flush(queue_type::clock_type::now())};
 			} else {
@@ -192,7 +192,7 @@ auto scheduler_background_threads::controller::run(
 	});
 	const auto any_stop_token = util::composite_stop_token{std::move(stop_token), termination_stop_token};
 	while (!any_stop_token.stop_requested()) {
-		auto [... timeout ] = [ & ]() -> auto {
+		auto [... timeout ] = [ & ] -> auto {
 			if constexpr (requires { typename queue_type::clock_type; }) {
 				return std::tuple{lock->queue.flush(queue_type::clock_type::now())};
 			} else {

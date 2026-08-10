@@ -9,8 +9,8 @@ namespace util {
 
 // Captures the given parameters in way such that empty objects yield an empty and
 // default-constructible invocable. See:
-//   static_assert(std::is_empty_v<decltype([]() {})>);
-//   static_assert(!std::is_empty_v<decltype([ a = std::monostate{} ]() {})>);
+//   static_assert(std::is_empty_v<decltype([] {})>);
+//   static_assert(!std::is_empty_v<decltype([ a = std::monostate{} ] {})>);
 export template <class Invocable, class... Bound>
 class bind;
 

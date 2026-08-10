@@ -25,7 +25,7 @@ struct visit_property_name {
 
 		template <class Accept>
 		auto operator()(v8::Local<v8::Primitive> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return visit_.get().lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
+			return visit_.get().lookup_or_visit(subject, [ & ] -> accept_target_t<Accept> {
 				auto accept_as = [ & ]<class Tag>(Tag tag) -> auto {
 					auto value = value_of{witness(), subject.As<tag_to_v8<Tag>>()};
 					return accept(tag, *this, value);
@@ -80,7 +80,7 @@ struct visit_cached_immediate : Visit {
 		auto operator()(auto subject, const Accept& accept) -> accept_target_t<Accept>
 			// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=124954
 			requires requires { this->immediate(subject, accept); } {
-			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
+			return lookup_or_visit(subject, [ & ] -> accept_target_t<Accept> {
 				return immediate(subject, accept);
 			});
 		}
@@ -276,7 +276,7 @@ struct visit_value : visit_flat_value<Target> {
 		auto operator()(v8::Local<v8::Value> subject, const Accept& accept) -> accept_target_t<Accept> {
 
 			// Check the reference map, and check type
-			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
+			return lookup_or_visit(subject, [ & ] -> accept_target_t<Accept> {
 				return util::template_traverse(
 					accept_tags_of_v<Accept>,
 					util::overloaded{
@@ -313,7 +313,7 @@ struct visit_value : visit_flat_value<Target> {
 						[](auto /*tag*/, auto next) -> accept_target_t<Accept> { return next(); },
 
 						// Slow path
-						[ & ]() -> accept_target_t<Accept> {
+						[ & ] -> accept_target_t<Accept> {
 							if (subject->IsObject()) {
 								return immediate(subject.As<v8::Object>(), accept);
 							} else {
@@ -327,7 +327,7 @@ struct visit_value : visit_flat_value<Target> {
 
 		template <class Accept>
 		auto operator()(v8::Local<iv8::DataBlock> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
+			return lookup_or_visit(subject, [ & ] -> accept_target_t<Accept> {
 				return util::template_traverse(
 					accept_tags_of_v<Accept>,
 					util::overloaded{
@@ -337,7 +337,7 @@ struct visit_value : visit_flat_value<Target> {
 						[ & ](shared_array_buffer_tag /*tag*/, auto next) -> accept_target_t<Accept> { return next(); },
 
 						// Slow path
-						[ & ]() -> accept_target_t<Accept> {
+						[ & ] -> accept_target_t<Accept> {
 							return immediate(subject, accept);
 						}
 					}

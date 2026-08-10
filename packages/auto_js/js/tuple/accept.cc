@@ -48,7 +48,7 @@ struct accept_tuple_rest_spread : accept_value<Meta, Type> {
 template <class Meta, class... Types>
 consteval auto make_tuple_acceptor_types() {
 	constexpr auto size = sizeof...(Types);
-	constexpr auto rest_param = []() consteval -> std::size_t {
+	constexpr auto rest_param = [] consteval -> std::size_t {
 		if constexpr (size >= 2) {
 			return type<Types...[ size - 2 ]> == type<rest> ? size - 1 : size;
 		} else {
@@ -81,7 +81,7 @@ struct accept<Meta, std::tuple<Types...>> {
 
 	public:
 		explicit constexpr accept(auto* transfer) :
-				accept_{[ = ]() constexpr -> acceptors_type {
+				accept_{[ = ] constexpr -> acceptors_type {
 					constexpr auto [... indices ] = util::sequence<std::tuple_size_v<acceptors_type>>;
 					return {util::elide{util::constructor<std::tuple_element_t<indices, acceptors_type>>, transfer}...};
 				}()} {}

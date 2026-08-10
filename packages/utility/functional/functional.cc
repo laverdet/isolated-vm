@@ -43,9 +43,9 @@ constexpr auto invoke_this_as(auto&& func, auto&&... args)
 // no parameters, returning that result.
 export constexpr auto template_traverse(auto values_pack, const auto& invoke) -> decltype(auto) {
 	const auto fold = util::overloaded{
-		[ & ]() -> decltype(auto) { return invoke(); },
+		[ & ] -> decltype(auto) { return invoke(); },
 		[ & ](this const auto& self, auto value, auto... values) -> decltype(auto) {
-			return invoke(value, [ & ]() -> decltype(auto) { return self(values...); });
+			return invoke(value, [ & ] -> decltype(auto) { return self(values...); });
 		},
 	};
 	const auto [... values ] = values_pack;
@@ -56,7 +56,7 @@ export constexpr auto template_traverse(auto values_pack, const auto& invoke) ->
 // `identity` is ignored.
 export constexpr auto template_fold(auto values_pack, auto identity, const auto& invoke) -> decltype(auto) {
 	const auto fold = util::overloaded{
-		[ & ]() -> decltype(auto) { return identity; },
+		[ & ] -> decltype(auto) { return identity; },
 		[ & ](auto left) -> decltype(auto) { return left; },
 		[ & ](this const auto& self, auto left, auto right, auto... values) -> decltype(auto) {
 			return self(invoke(left, right), values...);
@@ -102,14 +102,14 @@ export constexpr auto template_switch(const auto& value, auto case_pack, auto in
 //    37 | static_assert(transfer<double>(std::variant<int, double>{1.1}) == 1.1);
 //       |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // /workspace/packages/utility/functional/functional.cc:73:11: note: subobject of type 'const util::overloaded<(lambda at /workspace/packages/utility/functional/functional.cc:85:4), (lambda at /workspace/packages/utility/functional/functional.cc:86:4)> &const' is not initialized
-//    73 |                         return invoke(value, [ & ]() -> decltype(auto) { return self(values...); });
+//    73 |                         return invoke(value, [ & ] -> decltype(auto) { return self(values...); });
 //
 // export constexpr auto template_switch(const auto& value, auto case_pack, auto invoke) -> decltype(auto) {
 // 	return template_traverse(
 // 		case_pack,
 // 		util::overloaded{
 // 			[ & ](auto case_, auto next) -> decltype(auto) { return value == case_ ? invoke(case_) : next(); },
-// 			[ & ]() -> decltype(auto) { return invoke(); },
+// 			[ & ] -> decltype(auto) { return invoke(); },
 // 		}
 // 	);
 // }

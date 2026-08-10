@@ -50,7 +50,7 @@ auto uv_scheduler::operator()(auto task, auto&&... args) const -> void {
 	if (shared->is_open) {
 		shared->tasks.emplace_back(
 			[ task = std::move(task),
-				... args = std::forward<decltype(args)>(args) ]() mutable -> void {
+				... args = std::forward<decltype(args)>(args) ] mutable -> void {
 				task(std::move(args)...);
 			}
 		);

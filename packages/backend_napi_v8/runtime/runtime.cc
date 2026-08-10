@@ -26,7 +26,7 @@ runtime_interface::runtime_interface(const js::iv8::isolated::agent_lock& lock) 
 }
 
 auto runtime_interface::instantiate(js::iv8::context_lock_witness lock) -> v8::Local<js::iv8::module_record> {
-	auto make_interface = [ & ]() -> auto {
+	auto make_interface = [ & ] -> auto {
 		return std::tuple{
 			std::pair{util::cw<"clockTime">, clock_time_->deref(util::slice(lock))},
 			std::pair{util::cw<"performanceTime">, performance_time_->deref(util::slice(lock))},

@@ -230,15 +230,15 @@ struct lockable_traits {
 };
 
 template <class Resource, lockable_traits Traits = {}>
-constexpr auto make_lockable_traits = []() consteval {
-	using mutex_type = type_t<[]() {
+constexpr auto make_lockable_traits = [] consteval {
+	using mutex_type = type_t<[] {
 		if constexpr (Traits.shared) {
 			return type<std::shared_mutex>;
 		} else {
 			return type<std::mutex>;
 		}
 	}()>;
-	using cv_type = type_t<[]() {
+	using cv_type = type_t<[] {
 		if constexpr (Traits.interuptable) {
 			return type<std::condition_variable_any>;
 		} else if constexpr (Traits.notifiable) {

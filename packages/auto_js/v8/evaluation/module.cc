@@ -69,7 +69,7 @@ auto module_record::create_synthetic(
 	thread_local std::span<const v8::Local<v8::Data>>* tl_export_values;
 	tl_export_names = &export_names;
 	tl_export_values = &export_values;
-	auto scope_exit = util::scope_exit{[ & ]() {
+	auto scope_exit = util::scope_exit{[ & ] {
 		tl_export_names = nullptr;
 		tl_export_values = nullptr;
 	}};
@@ -77,7 +77,7 @@ auto module_record::create_synthetic(
 	// Make `v8::Module` record with immediate evaluation steps
 	v8::Module::SyntheticModuleEvaluationSteps evaluation_steps =
 		[](v8::Local<v8::Context> context, v8::Local<v8::Module> module) -> v8::MaybeLocal<v8::Value> {
-		auto lock = [ & ]() -> context_lock_witness {
+		auto lock = [ & ] -> context_lock_witness {
 			auto isolate_witness = isolate_lock_witness::make_witness(v8::Isolate::GetCurrent());
 			return context_lock_witness::make_witness(isolate_witness, context);
 		}();

@@ -12,7 +12,7 @@ struct visit_tuple_of {
 
 	public:
 		constexpr explicit visit_tuple_of(auto* transfer) :
-				visit_{[ = ]() constexpr -> visitors_type {
+				visit_{[ = ] constexpr -> visitors_type {
 					constexpr auto [... indices ] = util::sequence<sizeof...(Types)>;
 					return {util::elide{util::constructor<std::tuple_element_t<indices, visitors_type>>, transfer}...};
 				}()} {}

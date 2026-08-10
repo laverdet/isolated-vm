@@ -28,7 +28,7 @@ constexpr auto get(const constexpr_array<Type, Size>& array) -> Type {
 // Return a sequence of `std::integral_constant`.
 // Keep an eye on P1789 and then replace with `std::index_sequence_for`.
 export template <std::size_t Size>
-constexpr auto sequence_cw = []() consteval -> auto {
+constexpr auto sequence_cw = [] consteval -> auto {
 	return []<std::size_t... Index>(std::index_sequence<Index...> /*sequence*/) consteval {
 		return std::tuple{util::cw<Index>...};
 	}(std::make_index_sequence<Size>());
@@ -36,7 +36,7 @@ constexpr auto sequence_cw = []() consteval -> auto {
 
 // Return a sequence of constexpr indices
 export template <std::size_t Size>
-constexpr auto sequence = []() consteval -> auto {
+constexpr auto sequence = [] consteval -> auto {
 #if defined(__clang__)
 	return sequence_cw<Size>;
 #else

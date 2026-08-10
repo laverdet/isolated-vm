@@ -130,7 +130,7 @@ struct visit_vm_value {
 					[](auto /*tag*/, auto next) -> accept_target_t<Accept> { return next(); },
 
 					// Slow path
-					[ & ]() -> accept_target_t<Accept> {
+					[ & ] -> accept_target_t<Accept> {
 						auto type = subject->inspect();
 						constexpr auto [... primitive_types ] = primitive_typeofs;
 						if ((... || (type == primitive_types))) {

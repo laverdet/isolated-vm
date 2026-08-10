@@ -63,7 +63,7 @@ auto timer_thread::loop(std::stop_token stop_token) -> void {
 	auto lock = requests_.write_waitable(std::not_fn(&request_queue_type::empty));
 	while (!stop_token.stop_requested()) {
 		// wait for requests or timeout
-		const auto has_requests = [ & ]() -> bool {
+		const auto has_requests = [ & ] -> bool {
 			if (timers_.empty()) {
 				return lock.wait(stop_token);
 			} else {
@@ -120,7 +120,7 @@ auto timer_thread::dispatch(Invocable invocable, auto&&... args) {
 		result = implementation(queue);
 	};
 	dispatch(request_type{request});
-	return *std::move(result).value_or(util::elide{[]() -> result_type {
+	return *std::move(result).value_or(util::elide{[] -> result_type {
 		std::unreachable();
 	}});
 }

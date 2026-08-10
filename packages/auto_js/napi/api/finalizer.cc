@@ -43,7 +43,7 @@ auto make_finalizer(std::type_identity<Env> /*type*/, std::shared_ptr<Type> shar
 template <class Pointer, class Apply>
 auto apply_finalizer(Pointer smart_ptr, Apply apply) -> decltype(auto) {
 	using element_type = Pointer::element_type;
-	constexpr auto napi_env_type = []() consteval -> auto {
+	constexpr auto napi_env_type = [] consteval -> auto {
 		if constexpr (std::invocable<Apply, element_type*, node_api_basic_finalize, void*>) {
 			return type<node_api_basic_env>;
 		} else {

@@ -26,7 +26,7 @@ struct visit<Meta, std::variant<Types...>> : visit<Meta, Types>... {
 				util::sequence_cw<sizeof...(Types)>,
 				util::overloaded{
 					visit_alternative,
-					[]() -> target_type { std::unreachable(); },
+					[] -> target_type { std::unreachable(); },
 				}
 			);
 		}

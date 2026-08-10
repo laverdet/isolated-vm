@@ -42,7 +42,7 @@ auto cluster::make_agent(auto make_environment, behavior_params params, auto cal
 		) -> auto {
 			auto host = std::make_shared<agent_host_of<environment_type>>(std::move(storage), params);
 			auto isolate_lock = isolate_execution_lock{host->executor().isolate()};
-			host->emplace_environment(util::elide{[ & ]() -> environment_type {
+			host->emplace_environment(util::elide{[ & ] -> environment_type {
 				return make_environment(agent_lock{isolate_lock, *host});
 			}});
 			auto lock = agent_lock_of{isolate_lock, *host};

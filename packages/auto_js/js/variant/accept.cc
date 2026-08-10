@@ -79,7 +79,7 @@ struct accept_external_covariants<Meta, Variant, js::tagged_external<Types>...> 
 		constexpr auto operator()(object_tag /*tag*/, visit_holder /*visit*/, const auto& subject) const -> std::optional<Variant> {
 			using result_type = std::optional<Variant>;
 			auto try_accept = util::overloaded{
-				[]() -> result_type { return std::nullopt; },
+				[] -> result_type { return std::nullopt; },
 				[ & ](this const auto& try_accept, auto type, auto... types) -> result_type {
 					auto* external = subject.try_cast(type);
 					if (external == nullptr) {

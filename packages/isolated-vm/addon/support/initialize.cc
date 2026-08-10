@@ -46,10 +46,10 @@ addon::addon(std::type_identity<Type> /*environment*/, auto callback) {
 	using callback_type = decltype(callback);
 	static_assert(std::is_empty_v<callback_type>);
 
-	constexpr auto make_names = []() -> std::vector<std::u16string> {
+	constexpr auto make_names = [] -> std::vector<std::u16string> {
 		constexpr auto names = get_descriptors(std::integral_constant<std::size_t, 0>{}, callback_type{}());
 		// Check for duplicates (only at compile time)
-		static_assert([ names ]() {
+		static_assert([ names ] {
 			auto [... names_cw ] = names;
 			auto names_vector = std::vector{js::transfer_strict<std::u16string>(names_cw)...};
 			for (auto ii = names_vector.begin(); ii != names_vector.end(); ++ii) {

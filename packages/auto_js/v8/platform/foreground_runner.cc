@@ -41,7 +41,7 @@ auto foreground_runner::get_for_priority(std::shared_ptr<foreground_runner> self
 				using priority_runner_of = foreground_runner_of_priority<priority_enum_from(priority)>;
 				return std::static_pointer_cast<priority_runner_of>(std::move(self));
 			},
-			[]() -> std::shared_ptr<v8::TaskRunner> {
+			[] -> std::shared_ptr<v8::TaskRunner> {
 				throw std::logic_error{"Invalid 'foreground_runner' priority"};
 			},
 		}

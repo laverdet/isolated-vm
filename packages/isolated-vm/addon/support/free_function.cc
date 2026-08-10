@@ -16,7 +16,7 @@ constexpr auto make_free_function(auto function) {
 		using callback_type = decltype(callback);
 		auto bound_function = util::bind{
 			[](const callback_type& callback, Lock lock, callback_info info) noexcept(Nx) -> local_of<> {
-				auto run = util::regular_return{[ & ]() -> decltype(auto) {
+				auto run = util::regular_return{[ & ] -> decltype(auto) {
 					return std::apply(
 						callback,
 						std::tuple_cat(

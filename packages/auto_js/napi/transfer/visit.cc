@@ -22,7 +22,7 @@ struct visit_property_name {
 
 		template <class Accept>
 		auto operator()(napi_value subject, const Accept& accept) -> accept_target_t<Accept> {
-			return visit_.get().lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
+			return visit_.get().lookup_or_visit(subject, [ & ] -> accept_target_t<Accept> {
 				auto accept_as = [ & ]<class Tag>(Tag tag) -> auto {
 					auto value = value_of{napi_env{visit_.get()}, local_of<Tag>::from(subject)};
 					return accept(tag, *this, value);
@@ -111,7 +111,7 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 		template <class Tag, class Accept>
 		auto operator()(local_of<Tag> subject, const Accept& accept) -> accept_target_t<Accept>
 			requires requires { immediate(subject, accept); } {
-			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
+			return lookup_or_visit(subject, [ & ] -> accept_target_t<Accept> {
 				return immediate(subject, accept);
 			});
 		}
@@ -151,10 +151,10 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 		auto operator()(napi_value subject, const Accept& accept) -> accept_target_t<Accept> {
 
 			// Check the reference map, and lookup type via napi
-			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
+			return lookup_or_visit(subject, [ & ] -> accept_target_t<Accept> {
 				// This is the pure-napi implementation
 				auto slow_path = util::overloaded{
-					[ & ]() -> accept_target_t<Accept> {
+					[ & ] -> accept_target_t<Accept> {
 						auto type_of = napi::invoke(napi_typeof, napi_env{*this}, subject);
 						switch (type_of) {
 							case napi_undefined:
@@ -247,7 +247,7 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 
 		template <class Accept>
 		auto operator()(local_of<data_block_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return lookup_or_visit(subject, [ & ]() -> accept_target_t<Accept> {
+			return lookup_or_visit(subject, [ & ] -> accept_target_t<Accept> {
 				return util::template_traverse(
 					accept_tags_of_v<Accept>,
 					util::overloaded{
@@ -257,7 +257,7 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 						[ & ](shared_array_buffer_tag /*tag*/, auto next) -> accept_target_t<Accept> { return next(); },
 
 						// Slow path
-						[ & ]() -> accept_target_t<Accept> {
+						[ & ] -> accept_target_t<Accept> {
 							return immediate(subject, accept);
 						}
 					}

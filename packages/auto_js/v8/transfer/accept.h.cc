@@ -204,7 +204,7 @@ struct accept_v8_value : accept_v8_primitive {
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](v8::Local<v8::Array> array, auto& self, auto& visit, auto /*&&*/ tuple) -> void {
 					constexpr auto [... indices ] = util::sequence<Size>;
-					(..., [ & ]() -> void {
+					(..., [ & ] -> void {
 						auto element = visit(indices, std::forward<decltype(tuple)>(tuple), self);
 						unmaybe(array->Set(self.context_, indices, element));
 					}());
@@ -282,7 +282,7 @@ struct accept_v8_value : accept_v8_primitive {
 		template <std::size_t Size>
 		auto accept_entry_pair_struct(this const auto& self, auto& visit, v8::Local<v8::Object> target, auto&& subject) -> void {
 			constexpr auto [... indices ] = util::sequence<Size>;
-			(..., [ & ]() -> void {
+			(..., [ & ] -> void {
 				auto accept_entry = accept_entry_pair<decltype(self), decltype(self)>{self};
 				auto entry = visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(subject)>(subject), accept_entry);
 				unmaybe(target->Set(self.context_, entry.first, entry.second));

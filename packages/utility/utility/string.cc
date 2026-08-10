@@ -23,7 +23,7 @@ consteval auto make_consteval_string_view(constant_wrapper<Value> /*cw*/) -> std
 export template <auto... Strings>
 consteval auto consteval_strcat(constant_wrapper<Strings>... /*strings*/) {
 	using char_type = identical_type_t<std::remove_extent_t<typename constant_wrapper<Strings>::value_type>...>;
-	constexpr auto chars = [ & ]() -> auto {
+	constexpr auto chars = [ & ] -> auto {
 		constexpr auto size = (... + (std::extent_v<typename constant_wrapper<Strings>::value_type> - 1));
 		std::array<char_type, size + 1> chars{};
 		std::size_t offset = 0;
@@ -191,7 +191,7 @@ class codepoint_utf8_forward_view {
 		[[nodiscard]] constexpr auto eof() const -> bool { return pos_ == end_; }
 		constexpr auto read() -> char32_t {
 			// Check the expected length of the byte sequence from the leading byte's bit pattern
-			auto sequence_length = [ & ]() -> unsigned {
+			auto sequence_length = [ & ] -> unsigned {
 				auto byte0 = std::bit_cast<std::uint8_t>(*pos_);
 				if (byte0 < 0x80) {
 					return 1;
@@ -291,7 +291,7 @@ constexpr auto transcode_string(std::basic_string_view<From> from) -> std::basic
 	// before.
 	// TODO: It may be worth looking at the generated code for common cases and seeing if it needs
 	// optimization.
-	auto size = [ & ]() -> std::size_t {
+	auto size = [ & ] -> std::size_t {
 		auto size_reader = reader;
 		std::size_t size = 0;
 		while (!size_reader.eof()) {
@@ -316,8 +316,8 @@ constexpr auto transcode_string(std::basic_string_view<From> from) -> std::basic
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
 export template <class To, class From, std::size_t Extent, fixed_value<From[ Extent ]> Value>
 constexpr auto transcode_string(util::constant_wrapper<Value> /*cw*/) {
-	constexpr auto make = []() { return transcode_string<To>(std::basic_string_view{Value.value, Extent - 1}); };
-	constexpr auto chars = [ = ]() {
+	constexpr auto make = [] { return transcode_string<To>(std::basic_string_view{Value.value, Extent - 1}); };
+	constexpr auto chars = [ = ] {
 		std::array<To, make().size()> result{};
 		std::ranges::copy(make(), result.data());
 		return result;

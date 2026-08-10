@@ -28,11 +28,11 @@ reference_handle::reference_handle(
 		typeof_{type_of} {}
 
 reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm, v8::Local<v8::Value> value) :
-		reference_handle{util::elide{[ & ]() -> reference_handle {
+		reference_handle{util::elide{[ & ] -> reference_handle {
 			if (value->IsObject()) {
 				return reference_handle{lock, std::move(agent), std::move(realm), value.As<v8::Object>()};
 			} else {
-				const auto type_of = [ & ]() -> js::typeof_kind {
+				const auto type_of = [ & ] -> js::typeof_kind {
 					if (value->IsUndefined()) {
 						return js::typeof_kind::undefined;
 					} else if (value->IsNull()) {
@@ -63,8 +63,8 @@ reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle 
 		}}} {}
 
 reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm, v8::Local<v8::Object> value) :
-		reference_handle{util::elide{[ & ]() -> reference_handle {
-			const auto type_of = [ & ]() -> js::typeof_kind {
+		reference_handle{util::elide{[ & ] -> reference_handle {
+			const auto type_of = [ & ] -> js::typeof_kind {
 				if (value->IsFunction()) {
 					return js::typeof_kind::function;
 				} else {
@@ -249,7 +249,7 @@ auto reference_handle::invoke(environment& env, js::forward<js::napi::local_of<l
 				js::values_vector_t params
 			) -> void {
 				auto maybe_result = context_scope_operation(agent_lock, realm->deref(agent_lock), [ & ](const realm_scope& lock) -> auto {
-					return iv8::invoke_externalized_error_scope(lock, [ & ]() -> js::value_t {
+					return iv8::invoke_externalized_error_scope(lock, [ & ] -> js::value_t {
 						auto fn = value->deref(lock).As<iv8::Function>();
 						return fn->apply<js::value_t>(lock, std::move(params));
 					});

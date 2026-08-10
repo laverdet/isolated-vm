@@ -123,7 +123,7 @@ constexpr auto unknown_maybe_is = [](auto...) -> std::optional<bool> { return st
 
 // 'SharedArrayBuffer' functions
 auto v8_make_shared_array_buffer(js::shared_array_buffer::shared_pointer_type data, std::size_t byte_length) -> local_of<shared_array_buffer_tag> {
-	auto backing_store = [ & ]() -> auto {
+	auto backing_store = [ & ] -> auto {
 		// v8 does not call the deleter `byte_length` is zero. So the heap-allocated shared_ptr trick
 		// does not work in that case.
 		if (byte_length == 0) {
@@ -233,7 +233,7 @@ auto initialize_host_environment(napi_env env) -> void {
 			}
 
 			// Get `globalThis.process`
-			auto* process_global = [ & ]() -> napi_value {
+			auto* process_global = [ & ] -> napi_value {
 				auto* global = napi::invoke(napi_get_global, env);
 				constexpr auto process_cw = util::make_consteval_string_view(util::cw<"process">);
 				auto* process_str = napi::invoke(node_api_create_property_key_latin1, env, process_cw.data(), process_cw.length());
@@ -246,7 +246,7 @@ auto initialize_host_environment(napi_env env) -> void {
 			}();
 
 			// Detect bun via `process.isBun`
-			auto is_bun = process_global == nullptr ? false : [ & ]() -> bool {
+			auto is_bun = process_global == nullptr ? false : [ & ] -> bool {
 				constexpr auto is_bun_cw = util::make_consteval_string_view(util::cw<"isBun">);
 				auto* is_bun_str = napi::invoke(node_api_create_property_key_latin1, env, is_bun_cw.data(), is_bun_cw.length());
 				auto* is_bun = napi::invoke(napi_get_property, env, process_global, is_bun_str);
@@ -255,7 +255,7 @@ auto initialize_host_environment(napi_env env) -> void {
 			}();
 
 			// Detect deno via `process.versions.deno`
-			auto is_deno = process_global == nullptr ? false : [ & ]() -> bool {
+			auto is_deno = process_global == nullptr ? false : [ & ] -> bool {
 				constexpr auto versions_cw = util::make_consteval_string_view(util::cw<"versions">);
 				auto* versions_str = napi::invoke(node_api_create_property_key_latin1, env, versions_cw.data(), versions_cw.length());
 				auto* versions = napi::invoke(napi_get_property, env, process_global, versions_str);

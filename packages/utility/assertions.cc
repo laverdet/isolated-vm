@@ -13,7 +13,7 @@ consteval auto assert_strings_equal(auto... strings) {
 	 }(left)));
 }
 
-static_assert([]() -> int {
+static_assert([] -> int {
 	// https://en.cppreference.com/w/cpp/language/string_literal.html
 
 	// Quick check of interpolation matrix

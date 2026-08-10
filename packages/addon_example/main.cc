@@ -13,7 +13,7 @@ auto test(const runtime_lock& /*lock*/, std::string message) -> std::int32_t {
 
 isolated_vm::addon module_namespace{
 	std::type_identity<std::monostate>{},
-	[]() -> auto {
+	[] -> auto {
 		return std::tuple{
 			std::in_place,
 			std::pair{util::cw<"test">, js::free_function{util::fn<test>}},

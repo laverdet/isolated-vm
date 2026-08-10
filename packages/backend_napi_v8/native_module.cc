@@ -109,7 +109,7 @@ auto native_module_handle::create(environment& env, std::string filename, create
 	auto [ promise, resolver ] = make_promise(
 		env,
 		[ filename = std::move(filename) ](environment& env, create_native_module_options options) -> auto {
-			auto [ lib, names, initialize ] = isolated_vm::subscribe_registration([ & ]() -> auto {
+			auto [ lib, names, initialize ] = isolated_vm::subscribe_registration([ & ] -> auto {
 				return js::napi::uv_dlib{filename};
 			});
 			auto handle = native_module_handle::class_template(env)->construct(env, std::move(lib), initialize, std::move(options), names());

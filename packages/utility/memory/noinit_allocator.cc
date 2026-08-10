@@ -32,7 +32,7 @@ class noinit_allocator {
 
 		constexpr auto construct(pointer ptr, auto&&... args) -> void
 			requires std::constructible_from<Type, decltype(args)...> {
-			auto construct = [ & ]() constexpr -> void {
+			auto construct = [ & ] constexpr -> void {
 				std::allocator_traits<Allocator>::construct(allocator_, ptr, std::forward<decltype(args)>(args)...);
 			};
 			if consteval {

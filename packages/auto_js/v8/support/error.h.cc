@@ -17,7 +17,7 @@ auto externalize_caught_error(context_lock_witness lock, v8::Local<v8::Value> va
 // Catch `iv8::pending_error` or `js::error`, converting to thrown v8 runtime error.
 [[nodiscard]] auto invoke_internal_error_scope(context_lock_witness lock, auto operation) {
 	using result_type = std::invoke_result_t<decltype(operation)>;
-	using value_type = type_t<[]() {
+	using value_type = type_t<[] {
 		if constexpr (type<result_type> == type<void>) {
 			return type<bool>;
 		} else {

@@ -24,7 +24,7 @@ constexpr auto spread_type_pack = util::overloaded{
 
 // Concatenate 0..N `util::type_packs` together
 export constexpr auto pack_concat = util::overloaded{
-	[]() consteval -> auto { return type_pack{}; },
+	[] consteval -> auto { return type_pack{}; },
 	[](auto&&... packs) consteval -> auto { return (... + make_type_pack(packs)); },
 };
 
@@ -62,7 +62,7 @@ export constexpr auto pack_partition = util::overloaded{
 
 // Return unique types from the pack
 export constexpr auto pack_unique = util::overloaded{
-	[]() consteval -> auto { return type_pack{}; },
+	[] consteval -> auto { return type_pack{}; },
 	[](auto... types) consteval -> auto {
 		constexpr auto [... ii ] = util::sequence<sizeof...(types)>;
 		return (... + [ & ] -> auto {

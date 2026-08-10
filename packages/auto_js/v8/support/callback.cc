@@ -29,8 +29,8 @@ constexpr auto make_free_function_with_try_catch =
 	auto bound_function = util::bind{
 		[](callback_type& callback, Lock lock, const v8::FunctionCallbackInfo<v8::Value>& info) noexcept(Nx) -> void {
 			// NOLINTNEXTLINE(cppcoreguidelines-slicing)
-			auto result = invoke_internal_error_scope(lock, [ & ]() -> auto {
-				auto run = util::regular_return{[ & ]() -> decltype(auto) {
+			auto result = invoke_internal_error_scope(lock, [ & ] -> auto {
+				auto run = util::regular_return{[ & ] -> decltype(auto) {
 					return std::apply(
 						callback,
 						std::tuple_cat(
@@ -61,7 +61,7 @@ constexpr auto make_free_function_noexcept =
 	using callback_type = decltype(callback);
 	auto bound_function = util::bind{
 		[](callback_type& callback, Lock lock, const v8::FunctionCallbackInfo<v8::Value>& /*info*/) noexcept -> void {
-			auto run = util::regular_return{[ & ]() -> decltype(auto) {
+			auto run = util::regular_return{[ & ] -> decltype(auto) {
 				return callback(lock);
 			}};
 			return js::transfer_in_strict<v8::Local<v8::Value>>(run().value_or(std::monostate{}), lock);

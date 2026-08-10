@@ -171,7 +171,7 @@ constexpr auto transfer_with(
 
 	// cast subject to `T&&` or `const T&`. otherwise the `auto&&` parameters will accept too many
 	// value categories.
-	using subject_value_type = type_t<[]() consteval -> auto {
+	using subject_value_type = type_t<[] consteval -> auto {
 		using value_type = decltype(value);
 		if constexpr (std::is_rvalue_reference_v<value_type>) {
 			// `T&&`

@@ -45,7 +45,7 @@ class composite_stop_token : private std::stop_source, public std::stop_token {
 		template <class Source, class... Tokens>
 		explicit composite_stop_token(Source&& source, int stoppable, Tokens&&... tokens) :
 				std::stop_source{std::forward<Source>(source)},
-				std::stop_token{util::elide{[ & ]() -> std::stop_token {
+				std::stop_token{util::elide{[ & ] -> std::stop_token {
 					switch (stoppable) {
 						// No `stop_token`
 						case 0: return std::stop_token{};
@@ -53,7 +53,7 @@ class composite_stop_token : private std::stop_source, public std::stop_token {
 						case 1:
 							{
 								constexpr auto fold = util::overloaded{
-									[]() -> std::stop_token { std::unreachable(); },
+									[] -> std::stop_token { std::unreachable(); },
 									[](auto&& token) -> std::stop_token { return std::forward<decltype(token)>(token); },
 									[](this auto& fold, auto&& token, auto&&... tokens) -> std::stop_token {
 										if (token.stop_possible()) {
@@ -69,7 +69,7 @@ class composite_stop_token : private std::stop_source, public std::stop_token {
 						default: return std::stop_source::get_token();
 					}
 				}}},
-				callbacks_{[ & ]() -> callback_pack_type {
+				callbacks_{[ & ] -> callback_pack_type {
 					switch (stoppable) {
 						// No-op callback pack
 						case 0:

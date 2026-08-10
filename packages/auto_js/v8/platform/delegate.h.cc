@@ -83,7 +83,7 @@ export class instrumentation_delegate : virtual public v8::Platform {
 
 template <class Delegate>
 auto platform_handle::acquire() -> platform_handle {
-	constexpr auto make = []() -> std::shared_ptr<v8::Platform> {
+	constexpr auto make = [] -> std::shared_ptr<v8::Platform> {
 		return std::make_shared<Delegate>();
 	};
 	return platform_handle{typeid(Delegate), make};

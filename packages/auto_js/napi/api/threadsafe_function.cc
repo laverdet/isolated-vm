@@ -48,7 +48,7 @@ class threadsafe_function_of : util::non_copyable {
 
 template <class Context, class Message>
 threadsafe_function_of<Context, Message>::threadsafe_function_of(auto& env, napi_value value, auto&&... args) :
-		tsfn_{[ & ]() -> auto {
+		tsfn_{[ & ] -> auto {
 			constexpr auto name = util::make_consteval_string_view(util::cw<"threadsafe_function_of">);
 			auto resource_name = napi::invoke(napi_create_string_latin1, env, name.data(), name.size());
 			auto context = std::make_unique<storage>(std::forward<decltype(args)>(args)...);

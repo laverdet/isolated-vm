@@ -43,7 +43,7 @@ class task_of final : public v8::Task {
 
 template <class... Args>
 auto make_task_of(std::invocable<std::stop_token, Args...> auto callback, Args&&... args) -> std::unique_ptr<v8::Task> {
-	auto task = [ & ]() -> auto {
+	auto task = [ & ] -> auto {
 		if constexpr (sizeof...(Args) == 0) {
 			return std::move(callback);
 		} else {
