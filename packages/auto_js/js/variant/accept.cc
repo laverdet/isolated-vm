@@ -7,167 +7,140 @@ import util;
 
 namespace js {
 
-// Returns a `util::type_pack` of `util::type_pack`'s: { primitives, objects, externals }
+// Returns a `util::type_pack` of `util::type_pack`'s: { plain, discriminators }.
+// 'discriminators' is pack of packs `{ discriminator, subjects... }`.
 constexpr auto collect_alternatives_by_type = []<class Meta>(std::type_identity<Meta>, auto types) consteval {
-	constexpr auto is_object_type = util::fn<[]<class Type>(std::type_identity<Type> /*type*/) -> bool {
-		return std::invocable<accept<Meta, Type>, object_tag, const std::monostate&, std::monostate>;
+	constexpr auto is_discriminated_type = util::fn<[]<class Type>(std::type_identity<Type> /*type*/) -> bool {
+		return requires { variant_discriminator<Type>::value; };
 	}>;
-	constexpr auto is_tagged_type = util::fn<util::overloaded{
-		[]<class Type>(std::type_identity<Type> /*type*/) -> bool { return false; },
-		[]<class Type>(std::type_identity<js::tagged_external<Type>> /*type*/) -> bool { return true; },
-	}>;
-	constexpr auto [ objects_and_externals, primitives ] = util::pack_partition(types, is_object_type);
-	constexpr auto [ externals, objects ] = util::pack_partition(objects_and_externals, is_tagged_type);
-	return util::type_pack{primitives, objects, externals};
+	constexpr auto [ discriminated, plain ] = util::pack_partition(types, is_discriminated_type);
+	constexpr auto discriminator_of = [](auto subject) -> auto {
+		return variant_discriminator<type_t<subject>>::value.discriminator;
+	};
+	constexpr auto group_of = [ = ](auto discriminator, auto discriminated_pack) consteval -> auto {
+		constexpr auto [... subjects ] = discriminated_pack;
+		constexpr auto member_of = [ = ](auto subject) consteval -> auto {
+			if constexpr (discriminator_of(subject) == discriminator) {
+				return util::type_pack{subject};
+			} else {
+				return util::type_pack{};
+			}
+		};
+		return util::type_pack{(util::type_pack{discriminator} + ... + member_of(subjects))};
+	};
+	constexpr auto collect_discriminators = [ = ](auto discriminated_pack) consteval -> auto {
+		constexpr auto [... subjects ] = discriminated_pack;
+		constexpr auto [... discriminators ] = util::pack_unique(discriminator_of(subjects)...);
+		return (util::type_pack{} + ... + group_of(discriminators, discriminated_pack));
+	};
+	return util::type_pack{plain, collect_discriminators(type_t<discriminated>{})};
 };
 
-// Box variant alternative with `accept_value` interface
-template <class Variant, class Type>
-struct accept_with_variant {
-		constexpr auto operator()(Type&& target) const -> Variant {
-			return Variant{std::move(target)};
-		}
-};
-
-// Distinguish primitives with `covariant_tag`
+// We assume that primitive & normal object types can negotiate amongst themselves by tag overload
+// precedence
 template <class Meta, class Variant, class Type>
-struct accept_primitive_covariant
-		: accept<Meta, Type>,
-			accept_with_variant<Variant, Type> {
+struct accept_plain_covariant : accept<Meta, Type> {
 		using accept_type = accept<Meta, Type>;
 		using accept_type::accept_type;
 
-		using accept_with_variant<Variant, Type>::operator();
 		constexpr auto operator()(auto tag, auto& visit, auto&& subject) const
 			-> std::invoke_result_t<const accept_type&, decltype(covariant_tag{tag}), decltype(visit), decltype(subject)> {
 			return util::invoke_as<accept_type>(*this, covariant_tag{tag}, visit, std::forward<decltype(subject)>(subject));
 		}
 };
 
-// We assume that object types can negotiate amongst themselves by tag overload precedence
-template <class Meta, class Variant, class Type>
-struct accept_object_covariant
-		: accept<Meta, Type>,
-			accept_with_variant<Variant, Type> {
-		using accept_type = accept<Meta, Type>;
-		using accept_type::accept_type;
-
-		using accept_type::operator();
-		using accept_with_variant<Variant, Type>::operator();
-};
-
-// Collect `accept_object_covariant` instantiations
+// Compose plain covariants into one struct to allow the compiler do overload resolution amongst the
+// tags
 template <class Meta, class Variant, class... Types>
-struct accept_object_covariants : accept_object_covariant<Meta, Variant, Types>... {
-		constexpr explicit accept_object_covariants(auto* transfer) :
-				accept_object_covariant<Meta, Variant, Types>{transfer}... {}
-
-		using accept_object_covariant<Meta, Variant, Types>::operator()...;
-		// Ensure that this class has an `operator()` for the `using <...>::operator()` declarations
-		auto operator()() = delete;
+struct accept_plain_covariants : accept_plain_covariant<Meta, Variant, Types>... {
+		constexpr explicit accept_plain_covariants(auto* transfer) :
+				accept_plain_covariant<Meta, Variant, Types>{transfer}... {}
+		using accept_target_type = Variant;
+		using accept_plain_covariant<Meta, Variant, Types>::accept_plain_covariant::operator()...;
 
 		consteval static auto types(auto recursive) -> auto {
-			return (util::type_pack{} + ... + accept_object_covariant<Meta, Variant, Types>::types(recursive));
+			return (util::type_pack{} + ... + accept_plain_covariant<Meta, Variant, Types>::types(recursive));
 		}
 };
 
-// Perform runtime checking of external types
-// TODO: Merge this, somehow, with discriminated unions
-template <class Meta, class Variant, class... Types>
-struct accept_external_covariants;
+// A discriminator inspects an object-like subject and may claim it, returning a callback which
+// must accept the moved subject as a specific variant alternative. If the discriminator declines
+// then the acceptor moves on to the next discriminator.
+template <class Meta, class Variant, class Discriminator, class... Types>
+struct accept_discriminator;
 
-template <class Meta, class Variant, class... Types>
-struct accept_external_covariants<Meta, Variant, js::tagged_external<Types>...> {
-		constexpr auto operator()(object_tag /*tag*/, visit_holder /*visit*/, const auto& subject) const -> std::optional<Variant> {
-			using result_type = std::optional<Variant>;
-			auto try_accept = util::overloaded{
-				[] -> result_type { return std::nullopt; },
-				[ & ](this const auto& try_accept, auto type, auto... types) -> result_type {
-					auto* external = subject.try_cast(type);
-					if (external == nullptr) {
-						return try_accept(types...);
-					} else {
-						return Variant{js::tagged_external{*external}};
-					}
-				}
-			};
-			constexpr auto [... types ] = util::type_pack{type<Types>...};
-			return try_accept(types...);
-		}
+template <class Meta, class Variant, class Pack>
+struct accept_discriminator_unpack;
 
-		consteval static auto types(auto /*recursive*/) -> auto {
-			return util::type_pack{};
-		}
-};
+template <class Meta, class Variant, class Pack>
+using accept_discriminator_t = accept_discriminator_unpack<Meta, Variant, Pack>::type;
 
-// Negotiate covariance of object types and host objects
-template <class Meta, class Variant, class Objects, class Externals>
-struct accept_object_and_host_covariants;
+template <class Meta, class Variant, class Discriminator, class... Types>
+struct accept_discriminator_unpack<Meta, Variant, util::type_pack<Discriminator, Types...>>
+		: std::type_identity<accept_discriminator<Meta, Variant, Discriminator, Types...>> {};
 
-// Special case for when there are no host object types. No extra runtime checking is needed.
-template <class Meta, class Variant, class... Objects>
-struct accept_object_and_host_covariants<Meta, Variant, util::type_pack<Objects...>, util::type_pack<>>
-		: accept_object_covariants<Meta, Variant, Objects...> {
-		using accept_object_covariants<Meta, Variant, Objects...>::accept_object_covariants;
-};
-
-// Perform runtime type checking for external types
-template <class Meta, class Variant, class... Objects, class... Externals>
-struct accept_object_and_host_covariants<Meta, Variant, util::type_pack<Objects...>, util::type_pack<Externals...>>
-		: accept_object_covariants<Meta, Variant, Objects...>,
-			accept_external_covariants<Meta, Variant, Externals...> {
-		using accept_external_type = accept_external_covariants<Meta, Variant, Externals...>;
-		using accept_object_type = accept_object_covariants<Meta, Variant, Objects...>;
-		using accept_object_type::accept_object_type;
-
-		constexpr auto operator()(std::convertible_to<object_tag> auto tag, auto& visit, auto&& subject) const -> Variant {
-			auto maybe_result = util::invoke_as<accept_external_type>(*this, tag, visit, std::forward<decltype(subject)>(subject));
-			if (maybe_result) {
-				return *std::move(maybe_result);
-			} else {
-				if constexpr (std::invocable<const accept_object_type&, decltype(tag), decltype(visit), decltype(subject)>) {
-					return Variant{util::invoke_as<accept_object_type>(*this, tag, visit, std::forward<decltype(subject)>(subject))};
-				} else {
-					throw js::type_error{u"Invalid object type"};
-				}
-			}
-		}
-
-		consteval static auto types(auto recursive) -> auto {
-			return (
-				accept_object_covariants<Meta, Variant, Objects...>::types(recursive) +
-				accept_external_covariants<Meta, Variant, Externals...>::types(recursive)
-			);
-		}
-};
-
-// Delegate to `accept_primitive_covariant` and `accept_object_and_host_covariants`
+// Delegate to `accept_plain_covariant` and `accept_discriminated_covariants`
 template <class Meta, class Variant, class Types>
 struct accept_covariants;
 
 template <class Meta, class Variant, class... Types>
 using accept_covariants_from_t = accept_covariants<Meta, Variant, type_t<collect_alternatives_by_type(type<Meta>, util::type_pack<Types...>{})>>;
 
-template <class Meta, class Variant, class... Primitives, class Objects, class Externals>
-struct accept_covariants<Meta, Variant, util::type_pack<util::type_pack<Primitives...>, Objects, Externals>>
-		: accept_primitive_covariant<Meta, Variant, Primitives>...,
-			accept_object_and_host_covariants<Meta, Variant, Objects, Externals> {
+template <class Meta, class Variant, class... Plain, class... Discriminators>
+struct accept_covariants<Meta, Variant, util::type_pack<util::type_pack<Plain...>, util::type_pack<Discriminators...>>>
+		: accept_value_from<accept_plain_covariants<Meta, Variant, Plain...>>,
+			accept_discriminator_t<Meta, Variant, Discriminators>... {
+	private:
+		using accept_plain_type = accept_plain_covariants<Meta, Variant, Plain...>;
+		template <class Type>
+		using accept_discriminated_type = accept_discriminator_t<Meta, Variant, Type>;
+
+	public:
 		constexpr explicit accept_covariants(auto* transfer) :
-				accept_primitive_covariant<Meta, Variant, Primitives>{transfer}...,
-				accept_object_and_host_covariants<Meta, Variant, Objects, Externals>{transfer} {}
-		using accept_primitive_covariant<Meta, Variant, Primitives>::operator()...;
-		using accept_object_and_host_covariants<Meta, Variant, Objects, Externals>::operator();
+				accept_value_from<accept_plain_type>{transfer},
+				accept_discriminated_type<Discriminators>{transfer}... {}
+
+		constexpr auto operator()(this const auto& self, auto tag, auto& visit, auto&& subject) -> Variant
+			requires(
+				std::invocable<const accept_plain_type&, decltype(tag), decltype(visit), decltype(subject)> ||
+				(... || std::invocable<const accept_discriminated_type<Discriminators>&, std::type_identity<decltype(subject)>, decltype(tag), decltype(visit), decltype(subject)>)
+			) {
+			return self.select(util::type_pack<Discriminators...>{}, tag, visit, std::forward<decltype(subject)>(subject));
+		}
 
 		consteval static auto types(auto recursive) -> auto {
-			auto primitives = (util::type_pack{} + ... + accept_primitive_covariant<Meta, Variant, Primitives>::types(recursive));
-			auto objects_and_externals = accept_object_and_host_covariants<Meta, Variant, Objects, Externals>::types(recursive);
-			return primitives + objects_and_externals;
+			constexpr auto plain_types = accept_plain_type::types(recursive);
+			constexpr auto discriminated_types = (util::type_pack{} + ... + accept_discriminated_type<Discriminators>::types(recursive));
+			return plain_types + discriminated_types;
+		}
+
+	private:
+		// Probe the next discriminator for a callback which accepts the subject
+		template <class Discriminator, class... Rest>
+		constexpr auto select(this const auto& self, util::type_pack<Discriminator, Rest...> /*discriminators*/, auto tag, auto& visit, auto&& subject) -> Variant {
+			using discriminator_type = accept_discriminated_type<Discriminator>;
+			using identity_type = std::type_identity<decltype(subject)>;
+			if constexpr (std::invocable<const discriminator_type&, identity_type, decltype(tag), decltype(visit), decltype(subject)>) {
+				auto accept_subject = util::invoke_as<discriminator_type>(self, identity_type{}, tag, visit, subject);
+				if (accept_subject) {
+					return (*accept_subject)(std::forward<decltype(subject)>(subject));
+				}
+			}
+			return self.select(util::type_pack<Rest...>{}, tag, visit, std::forward<decltype(subject)>(subject));
+		}
+
+		// No discriminator claimed the subject; fall back to plain covariance
+		constexpr auto select(this const auto& self, util::type_pack<> /*discriminators*/, auto tag, auto& visit, auto&& subject) -> Variant {
+			if constexpr (std::invocable<const accept_plain_type&, decltype(tag), decltype(visit), decltype(subject)>) {
+				return util::invoke_as<accept_value_from<accept_plain_type>>(self, tag, visit, std::forward<decltype(subject)>(subject));
+			} else {
+				throw js::type_error{u"Invalid object type"};
+			}
 		}
 };
 
 // Unpack `std::variant` alternative types and pass forward to `accept_covariants`
 template <class Meta, class... Types>
-	requires is_variant_v<Types...>
 struct accept<Meta, std::variant<Types...>> : accept_covariants_from_t<Meta, std::variant<Types...>, Types...> {
 		using accept_covariants_from_t<Meta, std::variant<Types...>, Types...>::accept_covariants_from_t;
 };

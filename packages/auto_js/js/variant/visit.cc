@@ -8,7 +8,6 @@ namespace js {
 
 // `std::variant` visitor.
 template <class Meta, class... Types>
-	requires is_variant_v<Types...>
 struct visit<Meta, std::variant<Types...>> : visit<Meta, Types>... {
 		constexpr explicit visit(auto* transfer) :
 				visit<Meta, Types>{transfer}... {}

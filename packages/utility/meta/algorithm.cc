@@ -22,12 +22,6 @@ constexpr auto spread_type_pack = util::overloaded{
 	},
 };
 
-// Concatenate 0..N `util::type_packs` together
-export constexpr auto pack_concat = util::overloaded{
-	[] consteval -> auto { return type_pack{}; },
-	[](auto&&... packs) consteval -> auto { return (... + make_type_pack(packs)); },
-};
-
 // Apply transformation function to each type in the pack
 export constexpr auto pack_transform = [](auto pack, auto unary) consteval -> auto {
 	constexpr auto [... types ] = pack;
@@ -48,10 +42,9 @@ export constexpr auto pack_filter = [](auto pack, auto predicate) consteval -> a
 };
 
 // Return a nested `type_pack` of two `tuple_pack`'s containing types filtered by the predicate.
-// nb: `predicate` must be `util::fn<...>`
-export constexpr auto pack_partition = []<class Predicate>(auto pack, Predicate predicate) consteval -> auto {
+export constexpr auto pack_partition = []<auto Predicate>(auto pack, function_constant<Predicate> predicate) consteval -> auto {
 	// `std::not_fn()` doesn't work
-	constexpr auto not_fn = util::fn<[](auto type) -> bool { return !Predicate{}(type); }>;
+	constexpr auto not_fn = util::fn<[](auto type) -> bool { return !Predicate(type); }>;
 	const auto left = pack_filter(pack, predicate);
 	const auto right = pack_filter(pack, not_fn);
 	return type_pack_of{left, right};

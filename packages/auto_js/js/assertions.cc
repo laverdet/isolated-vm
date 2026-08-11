@@ -149,6 +149,7 @@ struct union_alternative_one {
 		std::string one;
 		constexpr auto operator==(const union_alternative_one& right) const -> bool { return one == right.one; };
 
+		constexpr static auto variant = discriminated_alternative{util::cw<"type">, util::cw<"one">};
 		constexpr static auto struct_template = js::struct_template{
 			js::struct_member{util::cw<"one">, &union_alternative_one::one},
 		};
@@ -158,21 +159,13 @@ struct union_alternative_two {
 		std::string two;
 		constexpr auto operator==(const union_alternative_two& right) const -> bool { return two == right.two; };
 
+		constexpr static auto variant = discriminated_alternative{util::cw<"type">, util::cw<"two">};
 		constexpr static auto struct_template = js::struct_template{
 			js::struct_member{util::cw<"two">, &union_alternative_two::two},
 		};
 };
 
 using union_object = std::variant<union_alternative_one, union_alternative_two>;
-
-template <>
-struct union_of<union_object> {
-		constexpr static auto& discriminant = util::cw<"type">;
-		constexpr static auto alternatives = std::tuple{
-			alternative<union_alternative_one>{"one"},
-			alternative<union_alternative_two>{"two"},
-		};
-};
 
 constexpr auto discriminated_with_one = transfer<union_object>(dictionary{
 	std::in_place,

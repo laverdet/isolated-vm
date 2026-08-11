@@ -90,6 +90,7 @@ struct circle {
 		point center;
 		double radius{};
 
+		constexpr static auto variant = js::discriminated_alternative{util::cw<"type">, util::cw<"circle">};
 		constexpr static auto struct_template = js::struct_template{
 			js::struct_member{util::cw<"center">, &circle::center},
 			js::struct_member{util::cw<"radius">, &circle::radius},
@@ -101,6 +102,7 @@ struct rectangle {
 		double width{};
 		double height{};
 
+		constexpr static auto variant = js::discriminated_alternative{util::cw<"type">, util::cw<"rectangle">};
 		constexpr static auto struct_template = js::struct_template{
 			js::struct_member{util::cw<"topLeft">, &rectangle::top_left},
 			js::struct_member{util::cw<"width">, &rectangle::width},
@@ -109,17 +111,6 @@ struct rectangle {
 };
 
 using shape = std::variant<circle, rectangle>;
-
-namespace js {
-template <>
-struct union_of<shape> {
-		constexpr static auto& discriminant = util::cw<"type">;
-		constexpr static auto alternatives = std::tuple{
-			alternative<circle>{"circle"},
-			alternative<rectangle>{"rectangle"},
-		};
-};
-} // namespace js
 
 // ── Class (object wrap) ───────────────────────────────────────────────────────
 // A C++ object whose lifetime is managed by the JS garbage collector.

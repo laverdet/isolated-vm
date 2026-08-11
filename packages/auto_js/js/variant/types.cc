@@ -5,12 +5,15 @@ import util;
 
 namespace js {
 
-// Specialize in order to disable `std::variant` visitor
-template <class... Types>
-struct is_variant : std::bool_constant<true> {};
+// Generalized variant discriminators
+export template <class Type>
+struct variant_discriminator;
 
-template <class... Types>
-constexpr bool is_variant_v = is_variant<Types...>::value;
+template <class Type>
+	requires(Type::variant.is_variant_discriminator)
+struct variant_discriminator<Type> {
+		constexpr static auto value = Type::variant;
+};
 
 // Extract `std::variant` types for `reference_value`
 constexpr auto variant_types_from =

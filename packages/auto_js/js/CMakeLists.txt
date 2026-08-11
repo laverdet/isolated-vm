@@ -23,6 +23,7 @@ target_sources(${auto_js}
 		enum/accept.cc
 		enum/types.cc
 		enum/visit.cc
+		external/accept.cc
 		intrinsics/array_buffer.cc
 		intrinsics/bigint.cc
 		intrinsics/date.cc
