@@ -199,6 +199,12 @@ contains can represent quite a large chunk of memory though you may want to expl
     handler. By default such a rejection is thrown out of whichever call into the isolate happens to
     be running, which may be one unrelated to the promise. If this callback is set the rejected value
     is passed to it instead and nothing is thrown. Errors thrown by the callback are ignored.
+  * `importModuleDynamically` *[function]* - Callback which resolves `import()` for the code this
+    isolate runs. It accepts two parameters: `specifier` and `referrer`, the `filename` used in
+    [`ScriptOrigin`](#scriptorigin) by the script or module which called `import()`. It must return
+    a `Module` which has been instantiated and evaluated, or a promise for one, since the importing
+    code is given that module's namespace. Nothing is cached, so answer the same specifier with the
+    same module. Without this option `import()` rejects with "Not supported".
 
 *NOTE*: `snapshot` contains compiled machine code. That means you should not accept `snapshot`
 payloads from a user, otherwise they may be able to run arbitrary code.

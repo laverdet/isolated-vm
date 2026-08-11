@@ -166,6 +166,16 @@ declare namespace IsolatedVM {
 		 * callback are ignored.
 		 */
 		onUnhandledRejection?: (error: any) => void;
+
+		/**
+		 * Callback which resolves `import()` for the code this isolate runs. It accepts two parameters:
+		 * `specifier` and `referrer`, the `filename` given in the `ScriptOrigin` of the script or module
+		 * which called `import()`. It must return a `Module` which has been instantiated and evaluated,
+		 * or a promise for one, since the importing code is given that module's namespace. Nothing is
+		 * cached, so answer the same specifier with the same module. Without this option `import()`
+		 * rejects with "Not supported".
+		 */
+		importModuleDynamically?: (specifier: string, referrer: string) => Module | Promise<Module>;
 	};
 
 	export type ContextOptions = {

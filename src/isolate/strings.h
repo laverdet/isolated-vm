@@ -60,6 +60,7 @@ class StringTable {
 		String function{"function"};
 		String global{"global"};
 		String ignored{"ignored"};
+		String importModuleDynamically{"importModuleDynamically"};
 		String inspector{"inspector"};
 		String isolateIsDisposed{"Isolate is disposed"};
 		String isolatedVm{"isolated-vm"};

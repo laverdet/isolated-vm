@@ -120,6 +120,99 @@ void ModuleHandle::InitializeImportMeta(Local<Context> context, Local<Module> mo
 }
 
 /**
+ * Runs the handler which answers `import()`, in the isolate that registered it. The handler is
+ * given the specifier and the importer's resource name, and answers with the module that specifier
+ * names, or with a promise for one.
+ */
+struct DynamicImportRunner : public ThreePhaseTask {
+	RemoteHandle<Function> handler;
+	std::string specifier;
+	std::string referrer;
+	std::unique_ptr<Transferable> module_handle;
+
+	DynamicImportRunner(RemoteHandle<Function> handler, Local<String> specifier, Local<Value> resource_name) :
+		handler{std::move(handler)},
+		specifier{HandleCast<std::string>(specifier)},
+		referrer{HandleCast<std::string>(resource_name)} {}
+
+	void Phase2() final {
+		auto* isolate = Isolate::GetCurrent();
+		auto& env = IsolateEnvironment::GetCurrent();
+		Local<Context> context = env.DefaultContext();
+		Context::Scope context_scope{context};
+		Local<Value> argv[2];
+		argv[0] = HandleCast<Local<String>>(specifier);
+		argv[1] = HandleCast<Local<String>>(referrer);
+		auto maybe_value = handler.Deref()->Call(context, Undefined(isolate), 2, argv);
+		if (env.DidHitMemoryLimit()) {
+			throw FatalRuntimeError("Isolate was disposed during execution due to memory limit");
+		} else if (env.terminated) {
+			throw FatalRuntimeError("Isolate was disposed during execution");
+		}
+		TransferOptions options;
+		options.promise = true;
+		module_handle = TransferOut(Unmaybe(maybe_value), options);
+	}
+
+	auto Phase3() -> Local<Value> final {
+		return module_handle->TransferIn();
+	}
+};
+
+namespace {
+
+/**
+ * A module namespace cannot leave the isolate which holds the module, so the handler answers with
+ * the module and the namespace is taken here, once it has crossed back.
+ */
+auto GetModuleNamespace(Local<Value> value) -> Local<Value> {
+	auto* module = value->IsObject() ? ClassHandle::Unwrap<ModuleHandle>(value.As<Object>()) : nullptr;
+	if (module == nullptr) {
+		throw RuntimeTypeError("Resolved import was not `Module`");
+	}
+	auto info = module->GetInfo();
+	if (info->handle.GetSharedIsolateHolder() != IsolateEnvironment::GetCurrentHolder()) {
+		throw RuntimeGenericError("Module is from a different isolate");
+	}
+	Local<Module> mod = info->handle.Deref();
+	auto status = mod->GetStatus();
+	if (status == Module::Status::kErrored) {
+		Isolate::GetCurrent()->ThrowException(mod->GetException());
+		throw RuntimeError();
+	}
+	// A module which is still evaluating hands over the bindings it has so far, the same as a cycle
+	// sees anywhere else
+	if (status != Module::Status::kEvaluating && status != Module::Status::kEvaluated) {
+		throw RuntimeGenericError("Module has not been evaluated");
+	}
+	return mod->GetModuleNamespace();
+}
+
+} // anonymous namespace
+
+/**
+ * Invoked by v8 for each `import()` in an isolate whose embedder registered a handler.
+ */
+auto ModuleHandle::ImportModuleDynamically(
+	Local<Context> context,
+	Local<Data> /*host_defined_options*/,
+	Local<Value> resource_name,
+	Local<String> specifier,
+	Local<FixedArray> /*import_attributes*/
+) -> MaybeLocal<Promise> {
+	MaybeLocal<Promise> ret;
+	detail::RunBarrier([&]() {
+		auto& handler = IsolateEnvironment::GetCurrent().dynamic_import_handler;
+		Local<Value> module = ThreePhaseTask::Run<1, DynamicImportRunner>(
+			*handler.GetIsolateHolder(), handler, specifier, resource_name);
+		ret = Unmaybe(module.As<Promise>()->Then(context, Unmaybe(
+			Function::New(context, FreeFunction<decltype(&GetModuleNamespace), &GetModuleNamespace>{}.callback)
+		)));
+	});
+	return ret;
+}
+
+/**
  * Implements the module linking logic used by `instantiate`. This is implemented as a class handle
  * so v8 can manage the lifetime of the linker. If a promise fails to resolve then v8 will be
  * responsible for calling the destructor.
