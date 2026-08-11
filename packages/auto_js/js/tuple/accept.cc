@@ -96,7 +96,7 @@ struct accept<Meta, std::tuple<Types...>> {
 		}
 
 		consteval static auto types(auto recursive) -> auto {
-			return util::pack_concat(accept<Meta, Types>::types(recursive)...);
+			return (util::type_pack{} + ... + accept<Meta, Types>::types(recursive));
 		}
 
 	private:

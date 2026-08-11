@@ -9,14 +9,16 @@ namespace js {
 
 // Returns a `util::type_pack` of `util::type_pack`'s: { primitives, objects, externals }
 constexpr auto collect_alternatives_by_type = []<class Meta>(std::type_identity<Meta>, auto types) consteval {
-	constexpr auto is_not_object_type = util::fn<[]<class Type>(std::type_identity<Type> /*type*/) -> bool {
-		return !std::invocable<accept<Meta, Type>, object_tag, const std::monostate&, std::monostate>;
+	constexpr auto is_object_type = util::fn<[]<class Type>(std::type_identity<Type> /*type*/) -> bool {
+		return std::invocable<accept<Meta, Type>, object_tag, const std::monostate&, std::monostate>;
 	}>;
-	constexpr auto is_not_tagged_type = util::fn<util::overloaded{
-		[]<class Type>(std::type_identity<Type> /*type*/) -> bool { return true; },
-		[]<class Type>(std::type_identity<js::tagged_external<Type>> /*type*/) -> bool { return false; },
+	constexpr auto is_tagged_type = util::fn<util::overloaded{
+		[]<class Type>(std::type_identity<Type> /*type*/) -> bool { return false; },
+		[]<class Type>(std::type_identity<js::tagged_external<Type>> /*type*/) -> bool { return true; },
 	}>;
-	return util::pack_partition(types, is_not_object_type, is_not_tagged_type);
+	constexpr auto [ objects_and_externals, primitives ] = util::pack_partition(types, is_object_type);
+	constexpr auto [ externals, objects ] = util::pack_partition(objects_and_externals, is_tagged_type);
+	return util::type_pack{primitives, objects, externals};
 };
 
 // Box variant alternative with `accept_value` interface
@@ -65,7 +67,7 @@ struct accept_object_covariants : accept_object_covariant<Meta, Variant, Types>.
 		auto operator()() = delete;
 
 		consteval static auto types(auto recursive) -> auto {
-			return util::pack_concat(accept_object_covariant<Meta, Variant, Types>::types(recursive)...);
+			return (util::type_pack{} + ... + accept_object_covariant<Meta, Variant, Types>::types(recursive));
 		}
 };
 
@@ -157,10 +159,9 @@ struct accept_covariants<Meta, Variant, util::type_pack<util::type_pack<Primitiv
 		using accept_object_and_host_covariants<Meta, Variant, Objects, Externals>::operator();
 
 		consteval static auto types(auto recursive) -> auto {
-			return util::pack_concat(
-				accept_primitive_covariant<Meta, Variant, Primitives>::types(recursive)...,
-				accept_object_and_host_covariants<Meta, Variant, Objects, Externals>::types(recursive)
-			);
+			auto primitives = (util::type_pack{} + ... + accept_primitive_covariant<Meta, Variant, Primitives>::types(recursive));
+			auto objects_and_externals = accept_object_and_host_covariants<Meta, Variant, Objects, Externals>::types(recursive);
+			return primitives + objects_and_externals;
 		}
 };
 

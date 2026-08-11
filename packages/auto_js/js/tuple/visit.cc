@@ -29,7 +29,7 @@ struct visit_tuple_of {
 
 		consteval static auto types(auto recursive) -> auto {
 			constexpr auto [... types ] = util::make_type_pack(type<visitors_type>);
-			return util::pack_concat(type_t<types>::types(recursive)...);
+			return (util::type_pack{} + ... + type_t<types>::types(recursive));
 		}
 
 	private:

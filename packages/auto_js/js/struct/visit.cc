@@ -93,7 +93,7 @@ struct visit_struct_properties<Meta, Type, js::struct_template<Property...>> {
 
 		consteval static auto types(auto recursive) -> auto {
 			const auto [... properties ] = descriptor_type::properties.as_tuple();
-			return util::pack_concat(visit_object_property<Meta, decltype(properties)>::types(recursive)...);
+			return (util::type_pack{} + ... + visit_object_property<Meta, decltype(properties)>::types(recursive));
 		}
 
 	private:

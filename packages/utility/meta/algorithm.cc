@@ -31,7 +31,7 @@ export constexpr auto pack_concat = util::overloaded{
 // Apply transformation function to each type in the pack
 export constexpr auto pack_transform = [](auto pack, auto unary) consteval -> auto {
 	constexpr auto [... types ] = pack;
-	return pack_concat(unary(types)...);
+	return (type_pack{} + ... + make_type_pack(unary(types)));
 };
 
 // Return a new `type_pack` with types matching the predicate
@@ -44,20 +44,17 @@ export constexpr auto pack_filter = [](auto pack, auto predicate) consteval -> a
 			return type_pack{};
 		}
 	};
-	return pack_transform(pack, filter);
+	return pack_transform(make_type_pack(pack), filter);
 };
 
-// Return a nested `type_pack` of `tuple_pack`'s containing types filtered by the predicates
-// nb: `predicates` must be `util::fn<...>`
-export constexpr auto pack_partition = util::overloaded{
-	[](auto pack) consteval -> auto { return type_pack{pack}; },
-	[]<class Predicate>(this auto pack_partition, auto pack, Predicate predicate, auto... predicates) consteval -> auto {
-		// `std::not_fn()` doesn't work
-		constexpr auto not_fn = util::fn<[](auto type) -> bool { return !Predicate{}(type); }>;
-		const auto left = pack_filter(pack, predicate);
-		const auto right = pack_filter(pack, not_fn);
-		return pack_concat(pack_partition(left), pack_partition(right, predicates...));
-	},
+// Return a nested `type_pack` of two `tuple_pack`'s containing types filtered by the predicate.
+// nb: `predicate` must be `util::fn<...>`
+export constexpr auto pack_partition = []<class Predicate>(auto pack, Predicate predicate) consteval -> auto {
+	// `std::not_fn()` doesn't work
+	constexpr auto not_fn = util::fn<[](auto type) -> bool { return !Predicate{}(type); }>;
+	const auto left = pack_filter(pack, predicate);
+	const auto right = pack_filter(pack, not_fn);
+	return type_pack_of{left, right};
 };
 
 // Return unique types from the pack

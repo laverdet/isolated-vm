@@ -32,7 +32,7 @@ struct visit<Meta, std::variant<Types...>> : visit<Meta, Types>... {
 		}
 
 		consteval static auto types(auto recursive) -> auto {
-			return util::pack_concat(visit<Meta, Types>::types(recursive)...);
+			return (util::type_pack{} + ... + visit<Meta, Types>::types(recursive));
 		}
 };
 

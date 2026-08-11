@@ -42,14 +42,8 @@ struct type_pack : std::type_identity<type_pack<Types...>> {
 		[[nodiscard]] consteval auto at(auto index) const { return get<index>(); }
 
 		// Structured binding accessor
-		// Explicit return type causes error:
-		// "candidate template ignored: substitution failure [with Index = 0]: invalid index 0 for pack 'Types' of size 0"
-		// ...even with `requires(Index < sizeof...(Types))` on the template and/or signature
 		template <std::size_t Index>
-		[[nodiscard]] consteval auto get() const /* -> std::type_identity<Types... [ Index ]> */ {
-			// return {};
-			return type<Types...[ Index ]>;
-		}
+		[[nodiscard]] consteval auto get() const -> type_of<hidden_t<Types... [ Index ]>> { return {}; }
 
 		// Find the index of the given type, or `size()` if not found
 		template <class Type>
