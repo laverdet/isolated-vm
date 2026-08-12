@@ -453,8 +453,13 @@ struct EvaluateRunner : public ThreePhaseTask {
 	shared_ptr<ModuleInfo> info;
 	std::unique_ptr<Transferable> result;
 	uint32_t timeout;
+	TransferOptions transfer_options;
 
-	EvaluateRunner(shared_ptr<ModuleInfo> info, uint32_t ms) : info(std::move(info)), timeout(ms) {}
+	EvaluateRunner(shared_ptr<ModuleInfo> info, uint32_t ms, bool promise) : info(std::move(info)), timeout(ms) {
+		// The evaluation promise is the only signal that a module which awaits at the top level has
+		// finished.
+		transfer_options.promise = promise;
+	}
 
 	void Phase2() final {
 		Local<Module> mod = info->handle.Deref();
@@ -463,7 +468,7 @@ struct EvaluateRunner : public ThreePhaseTask {
 		}
 		Local<Context> context_local = Deref(info->context_handle);
 		Context::Scope context_scope(context_local);
-		result = OptionalTransferOut(RunWithTimeout(timeout, [&]() { return mod->Evaluate(context_local); }));
+		result = OptionalTransferOut(RunWithTimeout(timeout, [&]() { return mod->Evaluate(context_local); }), transfer_options);
 		std::lock_guard<std::mutex> lock(info->mutex);
 		info->global_namespace = RemoteHandle<Value>(mod->GetModuleNamespace());
 	}
@@ -481,7 +486,8 @@ template <int async>
 auto ModuleHandle::Evaluate(MaybeLocal<Object> maybe_options) -> Local<Value> {
 	auto info = GetInfo();
 	int32_t timeout_ms = ReadOption<int32_t>(maybe_options, StringTable::Get().timeout, 0);
-	return ThreePhaseTask::Run<async, EvaluateRunner>(*info->handle.GetIsolateHolder(), info, timeout_ms);
+	bool promise = ReadOption<bool>(maybe_options, StringTable::Get().promise, false);
+	return ThreePhaseTask::Run<async, EvaluateRunner>(*info->handle.GetIsolateHolder(), info, timeout_ms, promise);
 }
 
 auto ModuleHandle::GetNamespace() -> Local<Value> {

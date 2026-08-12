@@ -409,6 +409,10 @@ module will have no effect.
 * `options` *[object]* - Optional.
 	* `timeout` *[number]* - Maximum amount of time in milliseconds this module is allowed to
 	run before execution is canceled. Default is no timeout.
+	* `promise` *[boolean]* - Resolve once the module has finished running rather than when it
+	first yields, and reject with the error it threw along the way. `evaluateSync` returns a
+	promise when this option is set, even for an error thrown before the first yield. `timeout`
+	covers only the run up to the first yield. The other transfer options are ignored.
 * **return** *[transferable]*
 
 Evaluate the module and return the last expression (same as script.run). If `evaluate` is called
@@ -416,7 +420,8 @@ more than once on the same module the return value from the first invocation wil
 thrown).
 
 **Note:** nodejs v14.8.0 enabled top-level await by default which has the effect of breaking the
-return value of this function.
+return value of this function. With `promise: true` the call waits for such a module to finish.
+The resolved value is still `undefined`: v8 fulfills the evaluation promise with no value.
 
 ##### `module.release()`
 

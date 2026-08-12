@@ -321,11 +321,13 @@ declare namespace IsolatedVM {
 		/**
 		 * Evaluate the module and return the last expression (same as script.run). If evaluate is
 		 * called more than once on the same module the return value from the first invocation will be
-		 * returned (or thrown).
+		 * returned (or thrown). A module which awaits at the top level keeps running after evaluate
+		 * resolves. With `promise: true` the call resolves once the module has finished, and rejects
+		 * with the error it threw.
 		 * @param options Optional
 		 */
 		evaluate(options?: ScriptRunOptions): Promise<Transferable>;
-		evaluateSync(options?: ScriptRunOptions): Transferable;
+		evaluateSync<Options extends ScriptRunOptions>(options?: Options): CheckPromise<Options, Transferable>;
 
 		/**
 		 * Releases this module. This behaves the same as other `.release()` methods.
