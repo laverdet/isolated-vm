@@ -43,7 +43,10 @@ struct type_pack : std::type_identity<type_pack<Types...>> {
 
 		// Structured binding accessor
 		template <std::size_t Index>
-		[[nodiscard]] consteval auto get() const -> type_of<hidden_t<Types... [ Index ]>> { return {}; }
+		// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126796
+		[[nodiscard]] consteval auto get() const -> auto {
+			return type_of<hidden_t<Types... [ Index ]>>{};
+		}
 
 		// Find the index of the given type, or `size()` if not found
 		template <class Type>

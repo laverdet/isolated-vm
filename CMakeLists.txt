@@ -136,10 +136,18 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 endif()
 
 # Sanitizer features
-if(LINUX AND CMAKE_CXX_COMPILER_ID STREQUAL Clang AND CMAKE_BUILD_TYPE STREQUAL Debug)
+if(LINUX AND CMAKE_BUILD_TYPE STREQUAL Debug)
 	# Enable (A|L|UB)SAN
 	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fsanitize=address,undefined>)
-	add_link_options(-fsanitize=address,undefined -shared-libasan)
+	if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+		# nonnull-attribute,returns-nonnull-attribute:
+		# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=71962
+		# vptr: false positive on v8 platform delegate
+		add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fno-sanitize=null,nonnull-attribute,returns-nonnull-attribute,vptr>)
+		add_link_options(-fsanitize=address,undefined)
+	else()
+		add_link_options(-fsanitize=address,undefined -shared-libasan)
+	endif()
 endif()
 
 # Convert file into a binary blob and embed it into a C++ source file.

@@ -26,6 +26,7 @@ target_sources(utility_js
 		memory/memory.cc
 		memory/noinit_allocator.cc
 		meta/algorithm.cc
+		platform/format.cc
 		platform/lockable.cc
 		platform/stop_token.cc
 		platform/timer.h.cc
@@ -34,6 +35,7 @@ target_sources(utility_js
 		type_traits/type_of.cc
 		type_traits/type_pack.cc
 		type_traits/type_traits.cc
+		utility/array.cc
 		utility/constant_wrapper.cc
 		utility/covariant_value.cc
 		utility/facade.cc

@@ -173,12 +173,10 @@ struct accept_v8_value : accept_v8_primitive {
 				[](v8::Local<v8::Array> array, auto& self, auto& visit, auto /*&&*/ subject) -> void {
 					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
 					for (auto&& [ key, value ] : util::forward_range(std::forward<decltype(range)>(range))) {
-						auto result = array->Set(
-							self.context_,
-							visit.first(std::forward<decltype(key)>(key), self),
-							visit.second(std::forward<decltype(value)>(value), self)
-						);
-						unmaybe(result);
+						// nb: 'first' must run before 'second'
+						auto name = visit.first(std::forward<decltype(key)>(key), self);
+						auto item = visit.second(std::forward<decltype(value)>(value), self);
+						unmaybe(array->Set(self.context_, name, item));
 					}
 				},
 			};
@@ -227,12 +225,10 @@ struct accept_v8_value : accept_v8_primitive {
 				[](v8::Local<v8::Object> object, auto& self, auto& visit, auto /*&&*/ subject) -> void {
 					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
 					for (auto&& [ key, value ] : util::forward_range(std::forward<decltype(range)>(range))) {
-						auto result = object->Set(
-							self.context_,
-							visit.first(std::forward<decltype(key)>(key), self),
-							visit.second(std::forward<decltype(value)>(value), self)
-						);
-						unmaybe(result);
+						// nb: 'first' must run before 'second'
+						auto name = visit.first(std::forward<decltype(key)>(key), self);
+						auto item = visit.second(std::forward<decltype(value)>(value), self);
+						unmaybe(object->Set(self.context_, name, item));
 					}
 				},
 			};
@@ -378,10 +374,10 @@ struct accept_v8_template : accept_v8_primitive {
 				[](v8::Local<v8::ObjectTemplate> object, auto& self, auto& visit, auto /*&&*/ subject) -> void {
 					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
 					for (auto&& [ key, value ] : util::forward_range(std::forward<decltype(range)>(range))) {
-						object->Set(
-							v8::Local<v8::Template>{visit.first(std::forward<decltype(key)>(key), self)}.As<v8::Name>(),
-							visit.second(std::forward<decltype(value)>(value), self)
-						);
+						// nb: 'first' must run before 'second'
+						auto name = v8::Local<v8::Template>{visit.first(std::forward<decltype(key)>(key), self)};
+						auto item = visit.second(std::forward<decltype(value)>(value), self);
+						object->Set(name.As<v8::Name>(), item);
 					}
 				},
 			};

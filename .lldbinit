@@ -2,9 +2,10 @@
 # Environment variables for ASAN / -fsanitize. Since isolated-vm is loaded into a non-ASAN process
 # via dlopen, ASAN must be preloaded.
 env LD_PRELOAD=libclang_rt.asan-aarch64.so
+# env LD_PRELOAD=/root/lib64/libasan.so.8.0.0
 env ASAN_OPTIONS=detect_leaks=1:detect_stack_use_after_return=1:check_initialization_order=1:strict_init_order=1
-env LSAN_OPTIONS=suppressions=./scripts/.lsan-supressions
-env UBSAN_OPTIONS=suppressions=./scripts/.ubsan-supressions
+env LSAN_OPTIONS=suppressions=./scripts/.lsan-suppressions
+env UBSAN_OPTIONS=suppressions=./scripts/.ubsan-suppressions
 
 # Map v8 sources
 settings append target.source-map ../../../include /v8/include

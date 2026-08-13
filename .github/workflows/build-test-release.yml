@@ -152,21 +152,24 @@ jobs:
           packages: |
             binutils
             build-essential
-            clang-22
-            clang-tools-22
             cmake
             curl
+            g++-16
+            gcc-16
             libboost-all-dev
             lld-22
-            llvm-22
             ninja-build
             nodejs
             npm
             xxd
             zstd
           export: |
-            CC=clang-22
-            CXX=clang++-22
+            CC=gcc-16
+            CXX=g++-16
+            LLD=lld-22
+      - if: matrix.host.container == 'debian:sid'
+        name: Toolchain [Debian]
+        run: ln -s "$(which "$LLD")" /usr/bin/ld.lld
 
       - name: Toolchain [macOS]
         if: runner.os == 'macOS'
@@ -413,8 +416,8 @@ jobs:
             node: 24
           - runtime: node
             node: 26
-          # - runtime: bun
-          #   node: 24
+          - runtime: bun
+            node: 24
           - runtime: deno
             node: 24
         exclude:
@@ -508,7 +511,8 @@ jobs:
       - if: matrix.runtime.runtime == 'bun'
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          # https://github.com/oven-sh/bun/issues/37201
+          bun-version: canary
 
       # Install Deno (maybe)
       - if: matrix.runtime.runtime == 'deno'

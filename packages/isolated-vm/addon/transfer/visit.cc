@@ -7,7 +7,7 @@ import util;
 namespace isolated_vm {
 using namespace js;
 
-constexpr auto primitive_typeofs = std::array{
+constexpr auto primitive_typeofs = util::constexpr_array{
 	value_typeof::undefined,
 	value_typeof::null,
 	value_typeof::boolean,
@@ -20,12 +20,12 @@ constexpr auto primitive_typeofs = std::array{
 	value_typeof::bigint_i64,
 };
 
-constexpr auto data_block_typeofs = std::array{
+constexpr auto data_block_typeofs = util::constexpr_array{
 	value_typeof::array_buffer,
 	value_typeof::shared_array_buffer,
 };
 
-constexpr auto array_buffer_view_typeofs = std::array{
+constexpr auto array_buffer_view_typeofs = util::constexpr_array{
 	value_typeof::bigint64_array,
 	value_typeof::biguint64_array,
 	value_typeof::data_view,
