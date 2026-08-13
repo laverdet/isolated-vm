@@ -472,6 +472,17 @@ struct visit_template {
 		explicit visit_template(auto* /*transfer*/) {}
 
 		template <class Accept>
+		auto operator()(v8::Local<v8::Template> subject, const Accept& accept) const -> accept_target_t<Accept> {
+			if (subject->IsFunctionTemplate()) {
+				return (*this)(subject.As<v8::FunctionTemplate>(), accept);
+			} else if (subject->IsObjectTemplate()) {
+				return (*this)(subject.As<v8::ObjectTemplate>(), accept);
+			} else {
+				return accept_target_t<Accept>{subject};
+			}
+		}
+
+		template <class Accept>
 		auto operator()(v8::Local<v8::FunctionTemplate> subject, const Accept& accept) const -> accept_target_t<Accept> {
 			return accept(function_prototype_tag{}, *this, subject);
 		}

@@ -82,7 +82,7 @@ auto module_handle::create_capability(
 	);
 
 	// Make the `subscriber_capability` and pass it to the interface maker
-	using capability_type = std::variant<forward_callback_type, js::tagged_external<subscriber_capability>>;
+	using capability_type = std::variant<forward_callback_type, js::tagged_external<subscriber_capability>, std::u16string, std::string>;
 	using capability_interface_type = js::dictionary<js::dictionary_tag, js::string_t, capability_type>;
 	auto subscriber = subscriber_capability::make(env);
 	auto local_capability_interface = make_capability->call<capability_interface_type>(env, js::forward{subscriber});
@@ -168,6 +168,12 @@ auto module_handle::create_capability(
 		};
 	};
 
+	// Forward value interface as value
+	constexpr auto forward_value_capability = util::overloaded{
+		[](std::u16string value) -> auto { return value; },
+		[](std::string value) -> auto { return value; },
+	};
+
 	// Apply `make_capability_callback` and `make_subscribe_capability` to each entry in the
 	// interface. This will be passed to `create_synthetic` to instantiate the module.
 	auto external_capability_interface = std::vector{
@@ -177,7 +183,7 @@ auto module_handle::create_capability(
 				auto [ key, value ] = std::move(pair);
 				return std::pair{
 					std::move(key),
-					util::map_variant(std::move(value), util::overloaded{make_capability_callback, make_subscribe_capability}),
+					util::map_variant(std::move(value), util::overloaded{make_capability_callback, make_subscribe_capability, forward_value_capability}),
 				};
 			}),
 	};
@@ -199,7 +205,7 @@ auto module_handle::create_capability(
 						auto [ key, value ] = std::move(pair);
 						auto fn_template = std::visit(
 							[ & ](auto capability) -> auto {
-								return js::transfer_in<v8::Local<v8::FunctionTemplate>>(std::move(capability), lock);
+								return js::transfer_in<v8::Local<v8::Template>>(std::move(capability), lock);
 							},
 							std::move(value)
 						);

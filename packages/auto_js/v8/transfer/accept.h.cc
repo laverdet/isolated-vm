@@ -16,10 +16,10 @@ constexpr auto make_free_function(auto function);
 
 // Reference acceptor
 struct reaccept_v8_value {
-		using reference_type = v8::Local<v8::Value>;
+		using reference_type = v8::Local<v8::Data>;
 
 		template <class Type>
-		constexpr auto operator()(std::type_identity<v8::Local<Type>> /*type*/, v8::Local<v8::Value> subject) const -> v8::Local<Type> {
+		constexpr auto operator()(std::type_identity<v8::Local<Type>> /*type*/, v8::Local<v8::Data> subject) const -> v8::Local<Type> {
 			return subject.As<Type>();
 		}
 };
@@ -299,42 +299,54 @@ struct accept_v8_value : accept_v8_primitive {
 		v8::Local<v8::Context> context_;
 };
 
-// `accept_v8_value` subclass, implementing specialized acceptor with lock type.
+// Lock delegate for `accept_v8_value_with`. In the `context_lock_witness` case, `accept_v8_value`
+// holds that lock by type. If the lock is more specialized we need to hold another reference.
 template <class Lock>
-struct accept_v8_value_with;
+struct accept_v8_value_lock_delegate;
 
 template <>
-struct accept_v8_value_with<context_lock_witness> : accept_v8_value {
+struct accept_v8_value_lock_delegate<context_lock_witness> : accept_v8_value {
 		using accept_v8_value::accept_v8_value;
-		using accept_v8_value::operator();
-		using accept_v8_value::witness;
-
-		// function instantiation
-		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, auto subject) const -> v8::Local<iv8::Function> {
-			auto [ function, length ] = make_free_function<context_lock_witness>(std::move(subject).callback);
-			auto [ callback, data ] = make_callback_storage(witness(), std::move(function));
-			return unmaybe(v8::Function::New(witness().context(), callback, data, length, v8::ConstructorBehavior::kThrow).template As<iv8::Function>());
-		}
 };
 
 template <class Lock>
-struct accept_v8_value_with : accept_v8_value {
+struct accept_v8_value_lock_delegate : accept_v8_value {
 	public:
-		accept_v8_value_with(auto* transfer, const Lock& lock) :
+		accept_v8_value_lock_delegate(auto* transfer, const Lock& lock) :
 				accept_v8_value{transfer, lock},
 				lock_{lock} {}
 
-		using accept_v8_value::operator();
-
-		// function instantiation
-		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, auto subject) const -> v8::Local<iv8::Function> {
-			auto [ function, length ] = make_free_function<Lock>(std::move(subject).callback);
-			auto [ callback, data ] = make_callback_storage(lock_.get(), std::move(function));
-			return v8::Function::New(lock_.get().context(), callback, data, length, v8::ConstructorBehavior::kThrow);
-		}
+		[[nodiscard]] auto witness() const -> const Lock& { return lock_; }
 
 	private:
 		std::reference_wrapper<const Lock> lock_;
+};
+
+// `accept_v8_value` subclass, implementing specialized acceptor with lock type.
+template <class Lock>
+struct accept_v8_value_with : accept_v8_value_lock_delegate<Lock> {
+		using accept_v8_value_lock_delegate<Lock>::accept_v8_value_lock_delegate;
+		using accept_v8_value_lock_delegate<Lock>::operator();
+		using accept_v8_value_lock_delegate<Lock>::witness;
+
+		// object template instantiation
+		auto operator()(object_prototype_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::ObjectTemplate> subject) const -> v8::Local<v8::Object> {
+			return unmaybe(subject->NewInstance(witness().context()));
+		}
+
+		// function instantiation (from template)
+		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, v8::Local<v8::FunctionTemplate> subject) const -> v8::Local<iv8::Function> {
+			auto fn = unmaybe(subject->GetFunction(witness().context()));
+			return v8::Local<v8::Function>{fn}.As<iv8::Function>();
+		}
+
+		// function instantiation (from native type)
+		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, auto subject) const -> v8::Local<iv8::Function> {
+			auto [ function, length ] = make_free_function<context_lock_witness>(std::move(subject).callback);
+			auto [ callback, data ] = make_callback_storage(witness(), std::move(function));
+			auto fn = unmaybe(v8::Function::New(witness().context(), callback, data, length, v8::ConstructorBehavior::kThrow));
+			return v8::Local<v8::Function>{fn}.As<iv8::Function>();
+		}
 };
 
 // Acceptor with template environment
@@ -344,6 +356,36 @@ struct accept_v8_template : accept_v8_primitive {
 		explicit accept_v8_template(auto* transfer, const Lock& lock) :
 				accept_v8_primitive{transfer, lock},
 				lock_{lock} {}
+
+		// cast primitive to prototype
+		template <std::convertible_to<primitive_tag> Tag>
+		auto operator()(Tag tag, auto& visit, auto&& subject) const -> v8::Local<v8::Template>
+			// refuse on bigint, which requires a context for some reason.
+			requires(!std::convertible_to<Tag, bigint_tag>) {
+			const accept_v8_primitive& accept = *this;
+			auto result = accept(tag, visit, std::forward<decltype(subject)>(subject));
+			auto value = v8::Local<v8::Value>{dispatch_referenceable(result)};
+			// nb: We are smuggling a `v8::Primitive` as a `v8::Template`
+			return std::bit_cast<v8::Local<v8::Template>>(value);
+		}
+
+		// object
+		auto operator()(this const auto& self, dictionary_tag /*tag*/, auto& visit, auto&& subject)
+			-> js::deferred_receiver<v8::Local<v8::ObjectTemplate>, decltype(self), decltype(visit), decltype(subject)> {
+			return {
+				v8::ObjectTemplate::New(self.isolate()),
+				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
+				[](v8::Local<v8::ObjectTemplate> object, auto& self, auto& visit, auto /*&&*/ subject) -> void {
+					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
+					for (auto&& [ key, value ] : util::forward_range(std::forward<decltype(range)>(range))) {
+						object->Set(
+							v8::Local<v8::Template>{visit.first(std::forward<decltype(key)>(key), self)}.As<v8::Name>(),
+							visit.second(std::forward<decltype(value)>(value), self)
+						);
+					}
+				},
+			};
+		}
 
 		// function template
 		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, auto subject) const -> v8::Local<v8::FunctionTemplate> {

@@ -84,6 +84,28 @@ await test("synthetic module with circular reference", async () => {
 	await left.evaluate(realm);
 });
 
+await test("synthetic module with data templates", async () => {
+	await using agent = await Agent.create();
+	const capabilityName = "isolated-vm:///capability";
+	const realm = expect(await agent.createRealm());
+	const capability = expect(await realm.createCapability(
+		() => ({
+			string: "string",
+		}),
+		{ origin: capabilityName }));
+	const entry = expectComplete(await agent.compileModule(`
+		import { string } from ${JSON.stringify(capabilityName)};
+		globalThis.result = JSON.stringify({ string });
+	`));
+	await entry.link(realm, () => capability);
+	await entry.evaluate(realm);
+	const global = expect(await realm.acquireGlobalObject());
+	const result = expect(await global.get("result"));
+	assert.equal(await result.copy(), JSON.stringify({
+		string: "string",
+	}));
+});
+
 // TODO: This terminates the process. It should probably raise an async error, because there is no
 // promise.
 // await test("throw from synthetic module", async () => {

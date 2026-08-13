@@ -58,6 +58,23 @@ struct accept_plain_covariants : accept_plain_covariant<Meta, Variant, Types>...
 		using accept_target_type = Variant;
 		using accept_plain_covariant<Meta, Variant, Types>::accept_plain_covariant::operator()...;
 
+		// fallback for variants which include only one primary covariant type (utf16 string, double number)
+		constexpr auto operator()(this const auto& self, auto tag, auto& visit, auto&& subject) -> decltype(auto)
+			requires(
+				!(... || std::invocable<const accept_plain_covariant<Meta, Variant, Types>&, decltype(tag), decltype(visit), decltype(subject)>) &&
+				(... || std::invocable<const accept<Meta, Types>&, decltype(tag), decltype(visit), decltype(subject)>)
+			) {
+			constexpr auto [... accept_types ] = util::pack_filter(
+				util::type_pack<accept<Meta, Types>...>{},
+				util::fn<[]<class Accept>(std::type_identity<Accept> /*type*/) consteval -> bool {
+					return std::invocable<const Accept&, decltype(tag), decltype(visit), decltype(subject)>;
+				}>
+			);
+			static_assert(sizeof...(accept_types) == 1);
+			using accept_type = type_t<accept_types...[ 0 ]>;
+			return util::invoke_as<accept_type>(self, tag, visit, std::forward<decltype(subject)>(subject));
+		}
+
 		consteval static auto types(auto recursive) -> auto {
 			return (util::type_pack{} + ... + accept_plain_covariant<Meta, Variant, Types>::types(recursive));
 		}

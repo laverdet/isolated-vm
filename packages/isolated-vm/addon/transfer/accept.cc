@@ -121,11 +121,7 @@ struct accept_vm_prototype : accept_vm_primitive {
 		auto operator()(Tag tag, auto& visit, auto&& subject) const -> local_of<prototype_tag> {
 			const accept_vm_primitive& accept = *this;
 			auto result = accept(tag, visit, std::forward<decltype(subject)>(subject));
-			constexpr auto unwrap = util::overloaded{
-				[](auto value) { return value; },
-				[]<class Type>(js::referenceable_value<Type> value) { return *std::move(value); },
-			};
-			return local_of<prototype_tag>::from(unwrap(result));
+			return local_of<prototype_tag>::from(js::dispatch_referenceable(result));
 		}
 
 		// function
