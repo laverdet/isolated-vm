@@ -53,7 +53,7 @@ RUN <<DONE
 
 	# Link clang-N binaries and libraries to system paths
 	ln -fs /lib/"llvm-$LLVM_VERSION"/bin/* /usr/bin/
-	ln -fs /usr/lib/"llvm-$LLVM_VERSION"/lib/clang/"$LLVM_VERSION"/lib/linux/* /lib/aarch64-linux-gnu/
+	ln -fs /usr/lib/"llvm-$LLVM_VERSION"/lib/clang/"$LLVM_VERSION"/lib/linux/* "/lib/$(uname -m)-linux-gnu/"
 
 	# Fix broken libc++ std manifest
 	ln -s "/lib/llvm-$LLVM_VERSION/share/libc++" /lib/share
