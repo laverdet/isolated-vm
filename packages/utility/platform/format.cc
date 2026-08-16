@@ -1,60 +1,62 @@
+module;
+#include <version>
 export module util:platform.format;
 import std;
 
 namespace util {
 
-#if defined(__GNUC__) && !defined(__clang__)
+#if __GLIBCXX__
 
 // Claude-generated `std::format` fill to avoid gcc 16.2.0 libstdc++ requirement.
 
 template <class Type>
 struct printf_arg {
-	static_assert(false, "type is not formattable by the `util::format` polyfill");
+		static_assert(false, "type is not formattable by the `util::format` polyfill");
 };
 
 template <>
 struct printf_arg<bool> {
-	constexpr static auto spec = std::string_view{"%s"};
-	constexpr static auto pass(bool value) { return std::tuple{value ? "true" : "false"}; }
+		constexpr static auto spec = std::string_view{"%s"};
+		constexpr static auto pass(bool value) { return std::tuple{value ? "true" : "false"}; }
 };
 
 template <>
 struct printf_arg<char> {
-	constexpr static auto spec = std::string_view{"%c"};
-	constexpr static auto pass(char value) { return std::tuple{value}; }
+		constexpr static auto spec = std::string_view{"%c"};
+		constexpr static auto pass(char value) { return std::tuple{value}; }
 };
 
 template <class Type>
 	requires std::signed_integral<Type>
 struct printf_arg<Type> {
-	constexpr static auto spec = std::string_view{"%lld"};
-	constexpr static auto pass(Type value) { return std::tuple{static_cast<long long>(value)}; }
+		constexpr static auto spec = std::string_view{"%lld"};
+		constexpr static auto pass(Type value) { return std::tuple{static_cast<long long>(value)}; }
 };
 
 template <class Type>
 	requires std::unsigned_integral<Type>
 struct printf_arg<Type> {
-	constexpr static auto spec = std::string_view{"%llu"};
-	constexpr static auto pass(Type value) { return std::tuple{static_cast<unsigned long long>(value)}; }
+		constexpr static auto spec = std::string_view{"%llu"};
+		constexpr static auto pass(Type value) { return std::tuple{static_cast<unsigned long long>(value)}; }
 };
 
 template <class Type>
-	requires (std::same_as<Type, float> || std::same_as<Type, double>)
+	requires(std::same_as<Type, float> || std::same_as<Type, double>)
 struct printf_arg<Type> {
-	constexpr static auto spec = std::string_view{"%g"};
-	constexpr static auto pass(Type value) { return std::tuple{static_cast<double>(value)}; }
+		constexpr static auto spec = std::string_view{"%g"};
+		constexpr static auto pass(Type value) { return std::tuple{static_cast<double>(value)}; }
 };
 
 template <>
 struct printf_arg<long double> {
-	constexpr static auto spec = std::string_view{"%Lg"};
-	constexpr static auto pass(long double value) { return std::tuple{value}; }
+		constexpr static auto spec = std::string_view{"%Lg"};
+		constexpr static auto pass(long double value) { return std::tuple{value}; }
 };
 
 template <>
 struct printf_arg<const char*> {
-	constexpr static auto spec = std::string_view{"%s"};
-	constexpr static auto pass(const char* value) { return std::tuple{value}; }
+		constexpr static auto spec = std::string_view{"%s"};
+		constexpr static auto pass(const char* value) { return std::tuple{value}; }
 };
 
 template <>
@@ -62,10 +64,10 @@ struct printf_arg<char*> : printf_arg<const char*> {};
 
 template <>
 struct printf_arg<std::string_view> {
-	constexpr static auto spec = std::string_view{"%.*s"};
-	constexpr static auto pass(std::string_view value) {
-		return std::tuple{static_cast<int>(value.size()), value.data()};
-	}
+		constexpr static auto spec = std::string_view{"%.*s"};
+		constexpr static auto pass(std::string_view value) {
+			return std::tuple{static_cast<int>(value.size()), value.data()};
+		}
 };
 
 template <>
@@ -73,8 +75,8 @@ struct printf_arg<std::string> : printf_arg<std::string_view> {};
 
 template <>
 struct printf_arg<const void*> {
-	constexpr static auto spec = std::string_view{"%p"};
-	constexpr static auto pass(const void* value) { return std::tuple{value}; }
+		constexpr static auto spec = std::string_view{"%p"};
+		constexpr static auto pass(const void* value) { return std::tuple{value}; }
 };
 
 template <>
@@ -82,8 +84,8 @@ struct printf_arg<void*> : printf_arg<const void*> {};
 
 template <>
 struct printf_arg<std::nullptr_t> {
-	constexpr static auto spec = std::string_view{"%p"};
-	constexpr static auto pass(std::nullptr_t /*value*/) { return std::tuple{static_cast<const void*>(nullptr)}; }
+		constexpr static auto spec = std::string_view{"%p"};
+		constexpr static auto pass(std::nullptr_t /*value*/) { return std::tuple{static_cast<const void*>(nullptr)}; }
 };
 
 // Checks the format string against the argument types and rewrites `{}` replacement fields into
@@ -160,7 +162,8 @@ export template <class... Args>
 			std::snprintf(result.data(), result.size() + 1, format.get(), values...);
 			return result;
 		},
-		std::tuple_cat(printf_arg<std::decay_t<Args>>::pass(args)...));
+		std::tuple_cat(printf_arg<std::decay_t<Args>>::pass(args)...)
+	);
 }
 
 #else

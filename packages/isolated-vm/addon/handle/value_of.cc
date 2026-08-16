@@ -1,3 +1,5 @@
+module;
+#include "auto_js/export_tag.h"
 export module isolated_vm:handle.value_of;
 import :handle.types;
 import :support.lock_fwd;
@@ -53,7 +55,7 @@ class value_next : public value_of<typename Tag::tag_type> {
 };
 
 // `value_of<Tag>` specializations.
-template <class Type> class value_for_typed_array_of;
+template <class Type> class EXPORT value_for_typed_array_of;
 
 template <class Tag>
 struct value_specialization
