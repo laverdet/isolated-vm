@@ -9,14 +9,8 @@ type CreateCapabilityOptions = import("@isolated-vm/experimental/frontend/realm"
 type CreateNativeModuleOptions = import("@isolated-vm/experimental/frontend/native_module", { with: { "resolution-mode": "import" }}).NativeModule.CreateOptions;
 type MaybeCompletionOf<T> = import("@isolated-vm/experimental/utility/completion", { with: { "resolution-mode": "import" }}).MaybeCompletionOf<T>;
 type ModuleLinkRecord = import("@isolated-vm/experimental/frontend/module", { with: { "resolution-mode": "import" }}).Module.LinkRecord;
+type ModuleRequest = import("@isolated-vm/experimental/frontend/module", { with: { "resolution-mode": "import" }}).Module.Request;
 type RunScriptOptions = import("@isolated-vm/experimental/frontend/script", { with: { "resolution-mode": "import" }}).Script.RunScriptOptions;
-
-interface InheritedClasses {
-	Agent: object;
-	Module: object;
-}
-
-export const initialize: (inherited: InheritedClasses) => void;
 
 declare const Secret: unique symbol;
 /** @internal */
@@ -33,6 +27,8 @@ export class Agent {
 }
 
 export class Module {
+	readonly requests: readonly ModuleRequest[];
+	readonly specifier: string | undefined;
 	readonly #private;
 	protected constructor(secret: Secret, ...args: unknown[]);
 	/** @internal */ _link(realm: Realm | null, linker: ModuleLinkRecord): Promise<void>;
@@ -77,7 +73,6 @@ export class SubscriberCapability {
 
 /** @internal */
 declare const exports: {
-	initialize: typeof initialize;
 	Agent: typeof Agent;
 	Module: typeof Module;
 	NativeModule: typeof NativeModule;

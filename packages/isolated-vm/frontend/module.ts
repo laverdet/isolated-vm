@@ -1,3 +1,5 @@
+import type { Constructor } from "@isolated-vm/experimental/utility/object";
+import { extend } from "@isolated-vm/experimental/utility/object";
 import * as backend from "#backend";
 
 export const AbstractModule: typeof backend.Module = backend.Module;
@@ -52,17 +54,12 @@ export class Capability extends AbstractModule {}
 /**
  * Compiled `SourceTextModule`. Created with `agent.compileModule`.
  */
-export class Module extends backend.Module {
-	readonly requests: readonly Module.Request[];
-	readonly specifier: string | undefined;
+export interface Module extends AbstractModule {
+	link: (realm: backend.Realm | null, linker: Module.Linker) => Promise<void>;
+}
 
-	constructor(secret: backend.Secret, specifier: string | undefined, requests: readonly Module.Request[]) {
-		super(secret);
-		this.specifier = specifier;
-		this.requests = requests;
-	}
-
-	async link(realm: backend.Realm | null, linker: Module.Linker): Promise<void> {
+extend(backend.Module as unknown as Constructor<Module>, {
+	async link(this: Module, realm, linker) {
 		const modules: AbstractModule[] = [];
 		const payload: number[] = [];
 		const seen = new Map<AbstractModule, number>();
@@ -74,29 +71,26 @@ export class Module extends backend.Module {
 			const moduleId = modules.length;
 			seen.set(module, moduleId);
 			modules.push(module);
-			if (module instanceof Module) {
-				const payloadIndex = payload.length + 1;
-				payload.push(module.requests.length, ...module.requests.map(() => -1));
-				await Promise.all(module.requests.map(async ({ specifier, attributes }, ii) => {
-					const result = await linker(specifier, module.specifier, attributes);
-					if (result === undefined) {
-						let message = `Cannot find module '${specifier}'`;
-						if (module.specifier !== undefined) {
-							message += ` imported from ${module.specifier}`;
-						}
-						if (attributes !== undefined) {
-							message += ` with attributes ${JSON.stringify(attributes)}`;
-						}
-						throw new Error(message);
+			const { requests, specifier: referrer } = module;
+			const payloadIndex = payload.length + 1;
+			payload.push(requests.length, ...requests.map(() => -1));
+			await Promise.all(requests.map(async ({ specifier, attributes }, ii) => {
+				const result = await linker(specifier, referrer, attributes);
+				if (result === undefined) {
+					let message = `Cannot find module '${specifier}'`;
+					if (referrer !== undefined) {
+						message += ` imported from ${referrer}`;
 					}
-					payload[payloadIndex + ii] = await link(result);
-				}));
-			} else {
-				payload.push(0);
-			}
+					if (attributes !== undefined) {
+						message += ` with attributes ${JSON.stringify(attributes)}`;
+					}
+					throw new Error(message);
+				}
+				payload[payloadIndex + ii] = await link(result);
+			}));
 			return moduleId;
 		};
 		await link(this);
 		return this._link(realm, { modules, payload });
-	}
-}
+	},
+});

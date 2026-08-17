@@ -68,7 +68,7 @@ auto local_for_class_of<Type>::make(Environment& env, const auto& class_template
 
 	// Member function property descriptor
 	const auto make_member_function_descriptor = [ & ]<class Property>(const Property& property) -> napi_property_descriptor
-		requires(Property::scope == class_property_scope::prototype) {
+		requires(Property::scope == class_property_scope::prototype && Property::disposition == property_disposition::function) {
 			constexpr auto u8_name = util::make_consteval_string_view(util::transcode_string<char>(property.name));
 			auto [ callback, data ] = make_callback_storage(env, make_member_function<Environment, Type>(property.function));
 			static_assert(!requires { typename decltype(data)::element_type; });
@@ -83,6 +83,26 @@ auto local_for_class_of<Type>::make(Environment& env, const auto& class_template
 
 				// NOLINTNEXTLINE(hicpp-signed-bitwise)
 				.attributes = static_cast<napi_property_attributes>(napi_writable | napi_configurable),
+				.data = data,
+			};
+		};
+
+	// Member getter property descriptor
+	const auto make_member_getter_descriptor = [ & ]<class Property>(const Property& property) -> napi_property_descriptor
+		requires(Property::scope == class_property_scope::prototype && Property::disposition == property_disposition::accessor) {
+			constexpr auto u8_name = util::make_consteval_string_view(util::transcode_string<char>(property.name));
+			auto [ callback, data ] = make_callback_storage(env, make_member_function<Environment, Type>(property.function));
+			static_assert(!requires { typename decltype(data)::element_type; });
+			return {
+				.utf8name = u8_name.data(),
+				.name{},
+
+				.method{},
+				.getter = callback,
+				.setter{},
+				.value{},
+
+				.attributes = napi_configurable,
 				.data = data,
 			};
 		};
@@ -111,6 +131,7 @@ auto local_for_class_of<Type>::make(Environment& env, const auto& class_template
 	// Make class property descriptors
 	const auto make_property_descriptor = util::overloaded{
 		make_member_function_descriptor,
+		make_member_getter_descriptor,
 		make_static_function_descriptor,
 	};
 	const auto [... properties ] = class_template.properties;

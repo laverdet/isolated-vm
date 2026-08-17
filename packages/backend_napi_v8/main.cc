@@ -26,7 +26,6 @@ js::napi::napi_js_module module_namespace{
 	[](environment& env) -> auto {
 		return std::tuple{
 			std::in_place,
-			std::pair{util::cw<"initialize">, js::forward{env.make_initialize()}},
 			std::pair{util::cw<"Agent">, js::forward{agent_handle_value::class_template(env)}},
 			std::pair{util::cw<"Module">, js::forward{module_handle::class_template(env)}},
 			std::pair{util::cw<"NativeModule">, js::forward{native_module_handle::class_template(env)}},

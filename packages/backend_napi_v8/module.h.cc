@@ -49,12 +49,19 @@ class subscriber_capability;
 export class module_handle {
 	public:
 		using transfer_type = js::tagged_external<module_handle>;
-		module_handle(agent_handle agent, js::iv8::shared_remote<js::iv8::module_record> module);
+		module_handle(
+			agent_handle agent,
+			js::iv8::shared_remote<js::iv8::module_record> module,
+			std::optional<std::u16string> specifier = {},
+			std::vector<js::iv8::module_request> requests = {}
+		);
 
 		auto agent() -> auto& { return agent_; }
 
 		auto evaluate(environment& env, realm_handle* realm) -> forward_promise_type;
 		auto link(environment& env, realm_handle* realm, module_handle_link_record link_record) -> forward_promise_type;
+		auto requests(environment& env) -> std::vector<js::iv8::module_request>;
+		auto specifier(environment& env) -> std::optional<std::u16string>;
 		static auto class_template(environment& env) -> js::napi::local_of<class_tag_of<module_handle>>;
 		static auto compile(environment& env, agent_handle& agent, js::string_t source_text, compile_module_options options) -> forward_promise_type;
 		static auto create_capability(environment& env, realm_handle& realm, js::napi::local_of<js::function_tag> make_capability, create_capability_options options) -> forward_promise_type;
@@ -62,6 +69,8 @@ export class module_handle {
 	private:
 		agent_handle agent_;
 		js::iv8::shared_remote<js::iv8::module_record> module_;
+		std::optional<std::u16string> specifier_;
+		std::vector<js::iv8::module_request> requests_;
 };
 
 class subscriber_capability {

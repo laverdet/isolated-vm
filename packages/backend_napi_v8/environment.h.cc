@@ -10,7 +10,6 @@ namespace backend_napi_v8 {
 
 // String literals used in this module
 constexpr auto string_literals = std::tuple{
-	"Agent"sv,
 	"attributes"sv,
 	"clock"sv,
 	"column"sv,
@@ -19,12 +18,10 @@ constexpr auto string_literals = std::tuple{
 	"epoch"sv,
 	"error"sv,
 	"get"sv,
-	"initialize"sv,
 	"interval"sv,
 	"line"sv,
 	"location"sv,
 	"memoryLimitBytes"sv,
-	"Module"sv,
 	"modules"sv,
 	"name"sv,
 	"origin"sv,
@@ -57,18 +54,12 @@ export class environment
 		explicit environment(napi_env env);
 		~environment();
 
-		auto agent_class() -> napi::local_of<function_tag> { return agent_class_.get(*this); }
 		auto cluster() -> iv8::isolated::cluster& { return cluster_; }
 		// NOLINTNEXTLINE(performance-unnecessary-value-param)
 		auto destroy_orphan_scheduler(std::any isolate_scheduler) -> void;
-		auto module_class() -> napi::local_of<function_tag> { return module_class_.get(*this); }
-
-		auto make_initialize() -> napi::local_of<function_tag>;
 
 	private:
 		iv8::isolated::cluster cluster_;
-		napi::reference<function_tag> agent_class_;
-		napi::reference<function_tag> module_class_;
 };
 
 // Common types

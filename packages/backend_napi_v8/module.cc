@@ -11,9 +11,16 @@ import v8_js;
 
 namespace backend_napi_v8 {
 
-module_handle::module_handle(agent_handle agent, js::iv8::shared_remote<js::iv8::module_record> module) :
+module_handle::module_handle(
+	agent_handle agent,
+	js::iv8::shared_remote<js::iv8::module_record> module,
+	std::optional<std::u16string> specifier,
+	std::vector<js::iv8::module_request> requests
+) :
 		agent_{std::move(agent)},
-		module_{std::move(module)} {}
+		module_{std::move(module)},
+		specifier_{std::move(specifier)},
+		requests_{std::move(requests)} {}
 
 auto module_handle::compile(
 	environment& env,
@@ -21,19 +28,12 @@ auto module_handle::compile(
 	js::string_t source_text,
 	compile_module_options options
 ) -> forward_promise_type {
-	using value_type = std::tuple<module_handle, std::optional<std::u16string>, std::vector<js::iv8::module_request>>;
-	using expected_type = std::expected<value_type, js::error_value>;
+	using expected_type = std::expected<module_handle, js::error_value>;
 	auto [ promise, resolver ] = make_promise(
 		env,
 		[](environment& env, expected_type result) -> auto {
-			return completion_record{result.transform([ & ](value_type& module_data) -> auto {
-				auto& [ module_, specifier, requests ] = module_data;
-				auto class_template = js::napi::local_of<class_tag_of<module_handle>>::from(env.module_class());
-				return js::forward{class_template->runtime_construct(
-					env,
-					std::tuple{std::move(module_)},
-					std::tuple{std::move(specifier), std::move(requests)}
-				)};
+			return completion_record{result.transform([ & ](module_handle& module_) -> auto {
+				return js::forward{class_template(env)->construct(env, std::move(module_))};
 			})};
 		}
 	);
@@ -54,8 +54,7 @@ auto module_handle::compile(
 				return std::move(maybe_module).transform([ & ](v8::Local<js::iv8::module_record> module_record) -> auto {
 					auto shared_module = make_shared_remote(lock, module_record);
 					auto requests = module_record->requests(lock);
-					auto module_ = module_handle{std::move(agent), shared_module};
-					return std::tuple{std::move(module_), std::move(specifier), std::move(requests)};
+					return module_handle{std::move(agent), shared_module, std::move(specifier), std::move(requests)};
 				});
 			});
 			resolver(std::move(maybe_module_data));
@@ -317,12 +316,22 @@ auto module_handle::link(environment& env, realm_handle* realm, module_handle_li
 	return js::forward{promise};
 }
 
+auto module_handle::requests(environment& /*env*/) -> std::vector<js::iv8::module_request> {
+	return requests_;
+}
+
+auto module_handle::specifier(environment& /*env*/) -> std::optional<std::u16string> {
+	return specifier_;
+}
+
 auto module_handle::class_template(environment& env) -> js::napi::local_of<class_tag_of<module_handle>> {
 	return env.class_template(
 		std::type_identity<module_handle>{},
 		js::class_template{
 			js::class_constructor{util::cw<"Module">},
 			js::class_method{util::cw<"_link">, util::fn<&module_handle::link>},
+			js::class_getter{util::cw<"requests">, util::fn<&module_handle::requests>},
+			js::class_getter{util::cw<"specifier">, util::fn<&module_handle::specifier>},
 			js::class_method{util::cw<"evaluate">, util::fn<&module_handle::evaluate>},
 		}
 	);

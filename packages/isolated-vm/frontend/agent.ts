@@ -1,6 +1,7 @@
 import type { SourceOrigin } from "./script.js";
+import type { Constructor } from "@isolated-vm/experimental/utility/object";
+import { extend } from "@isolated-vm/experimental/utility/object";
 import * as backend from "#backend";
-import { Module } from "./module.js";
 
 export namespace Agent {
 	export namespace Clock {
@@ -45,18 +46,14 @@ export namespace Agent {
 	}
 }
 
-let didInitialize = false;
-
-export class Agent extends backend.Agent {
-	static override create(options?: Agent.CreateOptions): Promise<Agent> {
-		if (!didInitialize) {
-			backend.initialize({ Agent, Module });
-			didInitialize = true;
-		}
-		return backend.Agent.create(options);
-	}
-
-	async [Symbol.asyncDispose](): Promise<void> {
-		await this.disposeAsync();
-	}
+export interface Agent extends backend.Agent {
+	[Symbol.asyncDispose]: () => Promise<void>;
 }
+
+export const Agent: typeof backend.Agent = backend.Agent;
+
+extend(Agent as unknown as Constructor<Agent>, {
+	async [Symbol.asyncDispose](this: Agent) {
+		await this.disposeAsync();
+	},
+});

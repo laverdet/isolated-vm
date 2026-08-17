@@ -12,8 +12,7 @@ auto agent_handle_value::create(environment& env, std::optional<create_options> 
 	auto options = std::move(options_optional).value_or(create_options{});
 	auto& cluster = env.cluster();
 	auto [ promise, resolver ] = make_promise(env, [](environment& env, agent_handle agent) -> auto {
-		auto class_template = js::napi::local_of<class_tag_of<agent_handle_value>>::from(env.agent_class());
-		return js::forward{class_template->construct(env, std::move(agent))};
+		return js::forward{class_template(env)->construct(env, std::move(agent))};
 	});
 	auto memory_policy_ = [ & ] -> memory_policy::covariant {
 		auto limit = options.memory_limit_bytes.value_or(0);

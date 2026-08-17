@@ -221,6 +221,17 @@ struct class_method : property_function_template<Name, Function> {
 template <class Name, class Function>
 class_method(Name, Function) -> class_method<Name, Function>;
 
+// Class instance getter property
+export template <class Name, class Function>
+struct class_getter : property_function_template<Name, Function> {
+		using property_function_template<Name, Function>::property_function_template;
+		constexpr static auto disposition = property_disposition::accessor;
+		constexpr static auto scope = class_property_scope::prototype;
+};
+
+template <class Name, class Function>
+class_getter(Name, Function) -> class_getter<Name, Function>;
+
 // Class static instance function
 export template <class Name, class Function>
 struct class_static : property_function_template<Name, Function> {
