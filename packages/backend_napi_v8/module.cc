@@ -96,15 +96,15 @@ auto module_handle::create_capability(
 			) -> void {
 			callback->deref(env)->apply(env, std::move(params));
 		};
-		// Invoked in the isolate thread
+		// Invoked in the isolate thread. An instance of this keeps the nodejs loop alive.
 		return js::free_function{
-			[ scheduler = env.scheduler(),
+			[ scheduler = env.scheduler().make_ref(env),
 				invoke = std::move(invoke) ](
 				const realm_scope& /*lock*/,
 				js::rest /*rest*/,
 				js::values_vector_t params
 			) -> void {
-				scheduler(
+				(*scheduler)(
 					[ invoke ](napi_env env, napi_value /*nothing*/, js::values_vector_t params) -> void {
 						invoke(napi::environment::unsafe_get_environment_as<environment>(env), std::move(params));
 					},
@@ -199,7 +199,8 @@ auto module_handle::create_capability(
 		) -> void {
 			auto capability_interface = std::vector{
 				std::from_range,
-				std::move(external_capability_interface) |
+				external_capability_interface |
+					std::views::as_rvalue |
 					std::views::transform([ & ](auto pair) {
 						auto [ key, value ] = std::move(pair);
 						auto fn_template = std::visit(

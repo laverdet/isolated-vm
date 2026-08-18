@@ -22,8 +22,8 @@ class threadsafe_function_of : util::non_copyable {
 		auto operator=(threadsafe_function_of&&) -> threadsafe_function_of& = delete;
 
 		auto close(close_callback callback) noexcept -> void;
-		auto ref(node_api_basic_env env) const -> void;
-		auto unref(node_api_basic_env env) const -> void;
+		auto ref(node_api_basic_env env) const noexcept -> void;
+		auto unref(node_api_basic_env env) const noexcept -> void;
 		auto operator()(Message message) const noexcept -> bool;
 		auto operator*() const noexcept -> Context& { return get(); }
 		explicit operator bool() const noexcept { return tsfn_ != nullptr; }
@@ -103,13 +103,13 @@ auto threadsafe_function_of<Context, Message>::close(close_callback callback) no
 }
 
 template <class Context, class Message>
-auto threadsafe_function_of<Context, Message>::ref(node_api_basic_env env) const -> void {
-	napi::invoke0(napi_ref_threadsafe_function, env, tsfn_);
+auto threadsafe_function_of<Context, Message>::ref(node_api_basic_env env) const noexcept -> void {
+	napi::invoke0_noexcept(napi_ref_threadsafe_function, env, tsfn_);
 }
 
 template <class Context, class Message>
-auto threadsafe_function_of<Context, Message>::unref(node_api_basic_env env) const -> void {
-	napi::invoke0(napi_unref_threadsafe_function, env, tsfn_);
+auto threadsafe_function_of<Context, Message>::unref(node_api_basic_env env) const noexcept -> void {
+	napi::invoke0_noexcept(napi_unref_threadsafe_function, env, tsfn_);
 }
 
 template <class Context, class Message>

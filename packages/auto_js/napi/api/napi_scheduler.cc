@@ -32,8 +32,29 @@ auto napi_scheduler::increment_ref(node_api_basic_env env) const -> void {
 	}
 }
 
+auto napi_scheduler::make_ref(node_api_basic_env env) const -> ref {
+	return ref{env, *this};
+}
+
 auto napi_scheduler::storage::operator()(napi_env env, napi_value value, task_type& task) noexcept -> void {
 	task(env, value);
+}
+
+// napi_scheduler::ref
+napi_scheduler::ref::ref(node_api_basic_env env, napi_scheduler scheduler) :
+		scheduler_{std::move(scheduler)} {
+	scheduler_.increment_ref(env);
+}
+
+napi_scheduler::ref::~ref() {
+	if (scheduler_) {
+		scheduler_(
+			[](napi_env env, napi_value /*nothing*/, const napi_scheduler& scheduler) noexcept -> void {
+				scheduler.decrement_ref(env);
+			},
+			scheduler_
+		);
+	}
 }
 
 } // namespace js::napi

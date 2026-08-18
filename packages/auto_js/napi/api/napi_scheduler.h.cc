@@ -14,6 +14,8 @@ export class napi_scheduler {
 		using threadsafe_function_type = threadsafe_function_of<storage, task_type>;
 
 	public:
+		class ref;
+
 		napi_scheduler() = default;
 		explicit napi_scheduler(napi_env env);
 		auto operator()(auto task, auto&&... args) const noexcept -> bool;
@@ -21,6 +23,7 @@ export class napi_scheduler {
 		auto close(threadsafe_function_type::close_callback close) noexcept -> void;
 		auto decrement_ref(node_api_basic_env env) const -> void;
 		auto increment_ref(node_api_basic_env env) const -> void;
+		auto make_ref(node_api_basic_env env) const -> ref;
 
 	private:
 		struct storage {
@@ -30,6 +33,19 @@ export class napi_scheduler {
 		};
 
 		threadsafe_function_of<storage, task_type> fn_;
+};
+
+// Reference to a scheduler which keeps the napi event loop alive. Can be passed between threads,
+// the decrement_ref operation is scheduled.
+class napi_scheduler::ref {
+	public:
+		ref(node_api_basic_env env, napi_scheduler scheduler);
+		ref(ref&&) noexcept = default;
+		~ref();
+		auto operator*() const -> const napi_scheduler& { return scheduler_; }
+
+	private:
+		napi_scheduler scheduler_;
 };
 
 // An environment with an uv loop and scheduler
