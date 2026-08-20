@@ -121,6 +121,13 @@ auto bun_maybe_is_shared_array_buffer(napi_env env, local_of<object_tag> value) 
 
 constexpr auto unknown_maybe_is = [](auto...) -> std::optional<bool> { return std::nullopt; };
 
+// 'ArrayBuffer' functions
+auto v8_array_buffer_get_backing_store(local_of<array_buffer_tag> buffer) -> std::shared_ptr<data_block::array_type> {
+	auto backing_store = std::bit_cast<v8::Local<v8::ArrayBuffer>>(buffer)->GetBackingStore();
+	auto* data = reinterpret_cast<std::byte*>(backing_store->Data());
+	return std::shared_ptr<data_block::array_type>{std::move(backing_store), data};
+};
+
 // 'SharedArrayBuffer' functions
 auto v8_make_shared_array_buffer(js::shared_array_buffer::shared_pointer_type data, std::size_t byte_length) -> local_of<shared_array_buffer_tag> {
 	auto backing_store = [ & ] -> auto {
@@ -150,11 +157,10 @@ auto v8_shared_array_buffer_get_byte_length(local_of<shared_array_buffer_tag> bu
 	return std::bit_cast<v8::Local<v8::SharedArrayBuffer>>(napi_value{buffer})->ByteLength();
 };
 
-auto v8_shared_array_buffer_get_backing_store(local_of<shared_array_buffer_tag> buffer) -> std::shared_ptr<std::byte[]> {
+auto v8_shared_array_buffer_get_backing_store(local_of<shared_array_buffer_tag> buffer) -> std::shared_ptr<data_block::array_type> {
 	auto backing_store = std::bit_cast<v8::Local<v8::SharedArrayBuffer>>(buffer)->GetBackingStore();
 	auto* data = reinterpret_cast<std::byte*>(backing_store->Data());
-	// NOLINTNEXTLINE(modernize-avoid-c-arrays)
-	return std::shared_ptr<std::byte[]>{std::move(backing_store), data};
+	return std::shared_ptr<data_block::array_type>{std::move(backing_store), data};
 };
 
 // 'ArrayBufferView' constructors
@@ -291,6 +297,7 @@ auto initialize_host_environment(napi_env env) -> void {
 				make_sab_typed_array_of<std::uint32_t> = v8_make_sab_typed_array_of<std::uint32_t>;
 				make_sab_typed_array_of<std::uint64_t> = v8_make_sab_typed_array_of<std::uint64_t>;
 				make_sab_typed_array_of<std::uint8_t> = v8_make_sab_typed_array_of<std::uint8_t>;
+				array_buffer_get_backing_store = v8_array_buffer_get_backing_store;
 				make_shared_array_buffer = v8_make_shared_array_buffer;
 				maybe_is_number_int32 = v8_is_number_int32;
 				maybe_is_shared_array_buffer = node_api_maybe_is_shared_array_buffer;
@@ -319,12 +326,12 @@ auto initialize_host_environment(napi_env env) -> void {
 				make_sab_typed_array_of<std::uint32_t> = unknown_sab_throw<local_of<typed_array_tag_of<std::uint32_t>>>;
 				make_sab_typed_array_of<std::uint64_t> = unknown_sab_throw<local_of<typed_array_tag_of<std::uint64_t>>>;
 				make_sab_typed_array_of<std::uint8_t> = unknown_sab_throw<local_of<typed_array_tag_of<std::uint8_t>>>;
+				array_buffer_get_backing_store = nullptr;
 				make_shared_array_buffer = unknown_sab_throw<local_of<shared_array_buffer_tag>>;
 				maybe_is_number_int32 = unknown_maybe_is;
 				maybe_is_shared_array_buffer = unknown_maybe_is;
 				maybe_is_string_latin1 = unknown_maybe_is;
-				// NOLINTNEXTLINE(modernize-avoid-c-arrays)
-				shared_array_buffer_get_backing_store = unknown_sab_throw<std::shared_ptr<std::byte[]>>;
+				shared_array_buffer_get_backing_store = unknown_sab_throw<std::shared_ptr<data_block::array_type>>;
 				shared_array_buffer_get_byte_length = unknown_sab_throw<std::size_t>;
 			}
 

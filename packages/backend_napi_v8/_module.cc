@@ -7,3 +7,4 @@ export import :native_module;
 export import :realm;
 export import :runtime;
 export import :script;
+export import :utility;

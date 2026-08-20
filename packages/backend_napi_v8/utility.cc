@@ -1,12 +1,26 @@
 export module backend_napi_v8:utility;
 import :environment;
 import auto_js;
+import napi_js;
 import std;
 import util;
 
 namespace backend_napi_v8 {
 using namespace js;
 
+// `structuredClone`-style transfer options
+struct transfer_options : js::optional_constructible {
+		using js::optional_constructible::optional_constructible;
+		std::optional<js::forward<js::napi::local_of<js::list_tag>>> transfer;
+
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_member{util::cw<"transfer">, &transfer_options::transfer},
+		};
+};
+
+using transfer_list_type = js::napi::transfer_list<js::napi::array_buffer_transfer>;
+
+// Wrapper for results from a function which could throw on user-supplied conditions
 template <class Expected>
 struct normal_completion_record {
 	public:

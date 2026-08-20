@@ -5,6 +5,10 @@ import v8;
 namespace js::napi {
 
 // `value_for_data_block`
+auto value_for_data_block::detach() const -> void {
+	napi::invoke0(napi_detach_arraybuffer, env(), napi_value{*this});
+}
+
 value_for_data_block::operator std::span<std::byte>() const {
 	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
 	void* bytes;

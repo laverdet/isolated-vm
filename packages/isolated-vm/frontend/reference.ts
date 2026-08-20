@@ -6,7 +6,7 @@ type InvokeResult<Value> = Value extends (...args: unknown[]) => infer Result ? 
 
 export declare interface Reference<Type = unknown> extends backend.Reference {
 	copy: () => Promise<Type>;
-	invoke: (args: InvokeArguments<Type>) => Promise<MaybeCompletionOf<InvokeResult<Type>>>;
+	invoke: (args: InvokeArguments<Type>, options?: backend.TransferOptions) => Promise<MaybeCompletionOf<InvokeResult<Type>>>;
 	set: (property: string, value: unknown) => Promise<true | null>;
 
 	// eslint-disable-next-line @typescript-eslint/method-signature-style

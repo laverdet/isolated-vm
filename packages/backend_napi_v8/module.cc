@@ -351,8 +351,14 @@ auto subscriber_capability::take_subscriber() -> std::shared_ptr<subscriber> {
 	}
 }
 
-auto subscriber_capability::send(environment& env, js::forward<napi::local_of<>> message_local) -> bool {
-	auto message = js::transfer_out<js::value_t>(*message_local, env);
+auto subscriber_capability::send(
+	environment& env,
+	js::forward<napi::local_of<>> message_local,
+	transfer_options options
+) -> bool {
+	auto message = transfer_list_type::with(env, std::move(options).transfer, [ & ](auto& transfer_list) -> js::value_t {
+		return js::transfer_out<js::value_t>(js::transferee_visit_subject{*message_local, transfer_list}, env, transfer_list);
+	});
 	auto lock = callback_.read();
 	if (*lock) {
 		return (*lock)(std::move(message));

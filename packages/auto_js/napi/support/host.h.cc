@@ -32,11 +32,13 @@ auto (*maybe_is_number_int32)(local_of<number_tag> value) -> std::optional<bool>
 auto (*maybe_is_string_latin1)(local_of<string_tag> value) -> std::optional<bool> = nullptr;
 auto (*maybe_is_shared_array_buffer)(napi_env env, local_of<object_tag> value) -> std::optional<bool> = nullptr;
 
+// 'ArrayBuffer' functions
+auto (*array_buffer_get_backing_store)(local_of<array_buffer_tag> buffer) -> std::shared_ptr<data_block::array_type> = nullptr;
+
 // 'SharedArrayBuffer' functions
 auto (*make_shared_array_buffer)(js::shared_array_buffer::shared_pointer_type data, std::size_t byte_length) -> local_of<shared_array_buffer_tag> = nullptr;
 auto (*shared_array_buffer_get_byte_length)(local_of<shared_array_buffer_tag> buffer) -> std::size_t = nullptr;
-// NOLINTNEXTLINE(modernize-avoid-c-arrays)
-auto (*shared_array_buffer_get_backing_store)(local_of<shared_array_buffer_tag> buffer) -> std::shared_ptr<std::byte[]> = nullptr;
+auto (*shared_array_buffer_get_backing_store)(local_of<shared_array_buffer_tag> buffer) -> std::shared_ptr<data_block::array_type> = nullptr;
 
 // 'ArrayBufferView' constructors
 auto (*make_sab_data_view)(local_of<shared_array_buffer_tag> buffer, std::size_t byte_offset, std::size_t length) -> local_of<data_view_tag> = nullptr;

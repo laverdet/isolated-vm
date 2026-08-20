@@ -3,6 +3,7 @@ module;
 export module backend_napi_v8:module_;
 import :agent_handle;
 import :environment;
+import :utility;
 import napi_js;
 import std;
 import util;
@@ -87,7 +88,7 @@ class subscriber_capability {
 		explicit subscriber_capability(private_constructor /*private*/) {};
 		auto accept_callback(callback_type callback) -> void;
 		auto take_subscriber() -> std::shared_ptr<subscriber>;
-		auto send(environment& env, js::forward<napi::local_of<>> message_local) -> bool;
+		auto send(environment& env, js::forward<napi::local_of<>> message_local, transfer_options options) -> bool;
 		static auto make(environment& env) -> js::napi::local_of<js::object_tag>;
 
 		static auto class_template(environment& env) -> js::napi::local_of<js::class_tag_of<subscriber_capability>>;

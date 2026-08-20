@@ -43,6 +43,7 @@ export using ::napi_create_uint32;
 export using ::napi_define_class;
 export using ::napi_define_properties;
 export using ::napi_delete_reference;
+export using ::napi_detach_arraybuffer;
 export using ::napi_get_all_property_names;
 export using ::napi_get_and_clear_last_exception;
 export using ::napi_get_array_length;

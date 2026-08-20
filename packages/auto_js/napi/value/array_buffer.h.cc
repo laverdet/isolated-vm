@@ -11,6 +11,7 @@ class value_for_data_block : public value_next<data_block_tag> {
 		using value_next<data_block_tag>::value_next;
 		[[nodiscard]] constexpr auto byte_length() const -> std::size_t { return std::span<std::byte>{*this}.size(); }
 		[[nodiscard]] constexpr auto data() const -> const std::byte* { return std::span<std::byte>{*this}.data(); }
+		auto detach() const -> void;
 		explicit operator std::span<std::byte>() const;
 };
 

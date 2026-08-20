@@ -1,6 +1,7 @@
 export module auto_js:intrinsics.array_buffer;
 import :reference_of;
 import std;
+import util;
 
 namespace js {
 
@@ -21,24 +22,24 @@ export class data_block {
 
 // `ArrayBuffer`
 export class array_buffer : public data_block {
-	private:
-		struct deleter {
-				constexpr auto operator()(array_type ptr) const -> void {
-					operator delete[](ptr, std::align_val_t{max_align_v});
-				}
-		};
-
 	public:
+		using deleter = util::function_ref<auto(std::byte* data)->void>;
 		using unique_pointer_type = std::unique_ptr<array_type, deleter>;
+
 		array_buffer() = default;
 		~array_buffer() = default;
 
 		// from view
 		explicit constexpr array_buffer(std::span<const std::byte> data) :
 				data_block{data.size()},
-				data_{unique_pointer_type{new (std::align_val_t{max_align_v}) std::byte[ byte_length() ]}} {
+				data_{unique_pointer_type{new (std::align_val_t{max_align_v}) std::byte[ byte_length() ], deleter{delete_as_array}}} {
 			std::ranges::copy(data, data_.get());
 		}
+
+		// externally-owned data block
+		constexpr array_buffer(std::span<std::byte> data, deleter deleter) :
+				data_block{data.size()},
+				data_{unique_pointer_type{data.data(), deleter}} {}
 
 		// copyable
 		constexpr array_buffer(const array_buffer& right) :
@@ -66,7 +67,11 @@ export class array_buffer : public data_block {
 		constexpr auto acquire_ownership() && -> unique_pointer_type { return std::move(data_); }
 
 	private:
-		unique_pointer_type data_;
+		static auto delete_as_array(std::byte* data) -> void {
+			operator delete[](data, std::align_val_t{max_align_v});
+		}
+
+		unique_pointer_type data_{nullptr, deleter{delete_as_array}};
 };
 
 // `SharedArrayBuffer`

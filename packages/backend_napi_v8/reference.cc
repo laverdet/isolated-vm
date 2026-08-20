@@ -237,8 +237,10 @@ auto reference_handle::set(environment& env, js::string_t name, js::forward<js::
 	return js::forward{promise};
 }
 
-auto reference_handle::invoke(environment& env, js::forward<js::napi::local_of<list_tag>> params_local) -> forward_promise_type {
-	auto params = js::transfer_out<js::values_vector_t>(*params_local, env);
+auto reference_handle::invoke(environment& env, js::forward<js::napi::local_of<list_tag>> params_local, transfer_options options) -> forward_promise_type {
+	auto params = transfer_list_type::with(env, std::move(options).transfer, [ & ](auto& transfer_list) -> js::values_vector_t {
+		return js::transfer_out<js::values_vector_t>(js::transferee_visit_subject{*params_local, transfer_list}, env, transfer_list);
+	});
 	auto [ promise, resolver ] = make_promise(env);
 	if (typeof_ == js::typeof_kind::function) {
 		agent_.schedule(

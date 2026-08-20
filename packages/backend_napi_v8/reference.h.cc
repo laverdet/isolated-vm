@@ -1,6 +1,7 @@
 export module backend_napi_v8:reference;
 import :agent_handle;
 import :environment;
+import :utility;
 import auto_js;
 import napi_js;
 import v8_js;
@@ -19,7 +20,7 @@ export class reference_handle {
 		auto copy(environment& env) -> forward_promise_type;
 		auto get(environment& env, js::string_t name) -> forward_promise_type;
 		auto set(environment& env, js::string_t name, js::forward<js::napi::local_of<>> value_local) -> forward_promise_type;
-		auto invoke(environment& env, js::forward<js::napi::local_of<list_tag>> params_local) -> forward_promise_type;
+		auto invoke(environment& env, js::forward<js::napi::local_of<list_tag>> params_local, transfer_options options) -> forward_promise_type;
 
 		static auto class_template(environment& env) -> js::napi::local_of<class_tag_of<reference_handle>>;
 

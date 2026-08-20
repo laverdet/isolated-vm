@@ -31,6 +31,7 @@ constexpr auto string_literals = std::tuple{
 	"specifier"sv,
 	"suffix"sv,
 	"timeout"sv,
+	"transfer"sv,
 	"type"sv,
 };
 

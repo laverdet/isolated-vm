@@ -2,6 +2,7 @@ module;
 #include <cassert>
 export module auto_js:visit;
 import :deferred_receiver;
+import :intrinsics.error;
 import :transfer.types;
 import std;
 
@@ -151,5 +152,63 @@ struct reference_map : std::type_identity<reference_map_provider<Reference, Map>
 
 template <class Map>
 struct reference_map<void, Map> : std::type_identity<null_reference_map> {};
+
+// `transferList` helper which collects entries matching a projection, and removes them from the
+// original list.
+export template <class Subject>
+auto extract_transferees(auto name_cw, auto project_transferee, auto subject_equal, std::vector<Subject>& transferees) {
+	using projected_type = std::invoke_result_t<decltype(project_transferee)&, Subject&>::value_type;
+	auto subjects = std::vector<projected_type>{};
+	for (auto ii = transferees.begin(); ii != transferees.end();) {
+		if (auto projected = project_transferee(*ii)) {
+			auto is_duplicate = [ & ](const projected_type& subject) -> bool { return subject_equal(subject, *projected); };
+			if (std::ranges::any_of(subjects, is_duplicate)) {
+				constexpr auto name = util::make_consteval_string_view(name_cw);
+				throw js::type_error{u"Transfer list contains duplicate " + std::u16string{name}};
+			}
+			subjects.push_back(*std::move(projected));
+			*ii = transferees.back();
+			transferees.pop_back();
+		} else {
+			++ii;
+		}
+	}
+	return subjects;
+}
+
+// `transferList` subject marker
+export template <class Subject, class Delegate>
+struct transferee_visit_subject {
+	public:
+		transferee_visit_subject(Subject subject, Delegate& /*delegate*/) : subject_{std::move(subject)} {}
+		constexpr auto operator*(this auto&& self) -> auto&& { return std::forward<decltype(self)>(self).subject_; }
+
+	private:
+		Subject subject_;
+};
+
+// `transferee_visit_subject` unwraps to its underlying subject
+template <class Subject, class Delegate>
+struct visit_subject_for<transferee_visit_subject<Subject, Delegate>> : visit_subject_for<Subject> {};
+
+// A transferred value claimed by transfer list delegate. It's convertible back into the underlying
+// value since it's the subject of the visitor subject map. It's also convertible, by move, to the
+// claimed result.
+export template <class Subject, class Type>
+class transferred_value {
+	public:
+		explicit transferred_value(Subject subject, Type& value) :
+				subject_{std::move(subject)},
+				value_{value} {}
+
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		operator Subject() const { return subject_; }
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		operator Type() && { return std::move(value_.get()); }
+
+	private:
+		Subject subject_;
+		std::reference_wrapper<Type> value_;
+};
 
 } // namespace js

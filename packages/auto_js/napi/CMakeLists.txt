@@ -55,6 +55,7 @@ target_sources(${napi_js}
 		support/string_table.cc
 		support/utility.cc
 		transfer/accept.h.cc
+		transfer/transfer_list.cc
 		transfer/visit.cc
 		value/array_buffer.h.cc
 		value/array.h.cc

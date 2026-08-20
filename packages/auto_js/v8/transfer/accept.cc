@@ -116,14 +116,24 @@ auto accept_v8_value::operator()(function_prototype_tag /*tag*/, visit_holder /*
 auto accept_v8_value::operator()(array_buffer_tag /*tag*/, visit_holder /*visit*/, js::array_buffer subject) const
 	-> js::referenceable_value<v8::Local<v8::ArrayBuffer>> {
 	auto byte_length = subject.byte_length();
-	auto backing_store = v8::ArrayBuffer::NewBackingStore(
-		std::move(subject).acquire_ownership().release(),
-		byte_length,
-		[](void* data, std::size_t /*length*/, void* /*deleter_data*/) -> void {
-			std::ignore = js::array_buffer::unique_pointer_type{reinterpret_cast<std::byte*>(data)};
-		},
-		nullptr
-	);
+	auto backing_store = [ & ] -> auto {
+		// nb: v8 does not call the deleter when `byte_length` is zero.
+		if (byte_length == 0) {
+			return v8::ArrayBuffer::NewBackingStore(nullptr, 0, nullptr, nullptr);
+		} else {
+			auto holder = std::make_unique<js::array_buffer>(std::move(subject));
+			auto backing_store = v8::ArrayBuffer::NewBackingStore(
+				holder->data(),
+				byte_length,
+				[](void* /*data*/, std::size_t /*length*/, void* param) -> void {
+					delete static_cast<js::array_buffer*>(param);
+				},
+				holder.get()
+			);
+			std::ignore = holder.release();
+			return backing_store;
+		}
+	}();
 	auto value = v8::ArrayBuffer::New(isolate(), std::move(backing_store));
 	return js::referenceable_value{value};
 }

@@ -50,13 +50,17 @@ export class Realm {
 	instantiateRuntime(): Promise<Module | null>;
 }
 
+export interface TransferOptions {
+	transfer?: readonly unknown[];
+}
+
 export class Reference {
 	readonly #private;
 	protected constructor(secret: Secret, ...args: unknown[]);
 	copy(): Promise<unknown>;
 	get(property: string): Promise<Reference | null>;
 	set(property: string, value: unknown): Promise<true | null>;
-	invoke(args: unknown[]): Promise<MaybeCompletionOf<unknown>>;
+	invoke(args: unknown[], options?: TransferOptions): Promise<MaybeCompletionOf<unknown>>;
 }
 
 export class Script {
@@ -68,7 +72,7 @@ export class Script {
 export class SubscriberCapability {
 	readonly #private;
 	protected constructor(secret: Secret, ...args: unknown[]);
-	send(message: unknown): Promise<boolean>;
+	send(message: unknown, options?: TransferOptions): Promise<boolean>;
 }
 
 /** @internal */
