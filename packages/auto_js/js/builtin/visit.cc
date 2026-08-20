@@ -96,6 +96,17 @@ struct visit<void, util::constant_wrapper<Value>> {
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
+// Constant boolean visitor
+template <util::fixed_value<bool> Value>
+struct visit<void, util::constant_wrapper<Value>> {
+		template <class Accept>
+		constexpr auto operator()(const util::constant_wrapper<Value>& /*subject*/, const Accept& accept) const -> accept_target_t<Accept> {
+			return accept(boolean_tag{}, *this, Value.value);
+		}
+
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+};
+
 // `Error` types
 template <>
 struct visit<void, js::error_value> {

@@ -1,4 +1,5 @@
 export module auto_js:union_.types;
+import std;
 import util;
 
 namespace js {
@@ -12,11 +13,13 @@ export template <auto Discriminant, auto Value>
 struct discriminated_alternative {
 		constexpr discriminated_alternative(auto /*discriminant*/, auto /*value*/) {}
 		constexpr static auto discriminator = type<discriminated_union<Discriminant>>;
+		constexpr static auto discriminant_name = Discriminant;
 		constexpr static auto discriminant_value = Value;
 		constexpr static auto is_variant_discriminator = true;
 };
 
 template <class Discriminant, class Value>
+	requires(std::is_empty_v<Discriminant> && std::is_empty_v<Value>)
 discriminated_alternative(Discriminant, Value) -> discriminated_alternative<Discriminant{}, Value{}>;
 
 } // namespace js

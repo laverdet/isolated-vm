@@ -257,7 +257,7 @@ auto reference_handle::invoke(environment& env, js::forward<js::napi::local_of<l
 					});
 				});
 				if (maybe_result) {
-					resolver.resolve(completion_record{std::move(*maybe_result)});
+					resolver.resolve(make_completion_record(std::move(*maybe_result)));
 				}
 			},
 			std::move(resolver),

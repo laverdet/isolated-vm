@@ -32,9 +32,9 @@ auto module_handle::compile(
 	auto [ promise, resolver ] = make_promise(
 		env,
 		[](environment& env, expected_type result) -> auto {
-			return completion_record{result.transform([ & ](module_handle& module_) -> auto {
+			return make_completion_record(result.transform([ & ](module_handle& module_) -> auto {
 				return js::forward{class_template(env)->construct(env, std::move(module_))};
-			})};
+			}));
 		}
 	);
 	agent.schedule(
@@ -241,7 +241,7 @@ auto module_handle::evaluate(environment& env, realm_handle* realm) -> forward_p
 			auto result = context_scope_operation(agent, realm->deref(agent), [ & ](const realm_scope& realm) -> auto {
 				return module_record->deref(realm)->evaluate(realm);
 			});
-			resolver.resolve(completion_record{std::move(result)});
+			resolver.resolve(make_completion_record(std::move(result)));
 		},
 		std::move(resolver),
 		realm->realm(),

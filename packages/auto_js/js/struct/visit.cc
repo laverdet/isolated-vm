@@ -58,16 +58,16 @@ struct visit_object_property {
 
 // Helper to unpack `properties` tuple, construct individual property visitors, and forward struct
 // to acceptors & getters.
-template <class Meta, class Type, class Properties>
+template <class Meta, class Descriptor, class Properties>
 struct visit_struct_properties;
 
-template <class Meta, class Type>
-using visit_struct_properties_t = visit_struct_properties<Meta, Type, std::remove_cvref_t<decltype(struct_properties<Type>::properties)>>;
+template <class Meta, class Descriptor>
+using visit_struct_properties_t = visit_struct_properties<Meta, Descriptor, std::remove_cvref_t<decltype(Descriptor::properties)>>;
 
-template <class Meta, class Type, class... Property>
-struct visit_struct_properties<Meta, Type, js::struct_template<Property...>> {
+template <class Meta, class Descriptor, class... Property>
+struct visit_struct_properties<Meta, Descriptor, js::struct_template<Property...>> {
 	private:
-		using descriptor_type = struct_properties<Type>;
+		using descriptor_type = Descriptor;
 		using properties_type = std::tuple<visit_object_property<Meta, Property>...>;
 
 	public:
@@ -102,8 +102,8 @@ struct visit_struct_properties<Meta, Type, js::struct_template<Property...>> {
 
 // Visitor function for C++ object types
 template <class Meta, transferable_struct Type>
-struct visit<Meta, Type> : visit_struct_properties_t<Meta, Type> {
-		using visit_struct_properties_t<Meta, Type>::visit_struct_properties_t;
+struct visit<Meta, Type> : visit_struct_properties_t<Meta, struct_properties<Type>> {
+		using visit_struct_properties_t<Meta, struct_properties<Type>>::visit_struct_properties_t;
 };
 
 } // namespace js

@@ -182,6 +182,64 @@ constexpr auto discriminated_with_two = transfer<union_object>(dictionary{
 static_assert(variant_is_equal_to(discriminated_with_one, union_alternative_one{.one = "left"s}));
 static_assert(variant_is_equal_to(discriminated_with_two, union_alternative_two{.two = "right"s}));
 
+// Visited union alternatives include their discriminant
+constexpr auto union_dictionary_test = [] -> auto {
+	return dictionary{
+		std::in_place,
+		std::pair{"type"s, "one"s},
+		std::pair{"one"s, "left"s},
+	};
+};
+static_assert(transfer<decltype(union_dictionary_test())>(union_alternative_one{.one = "left"s}) == union_dictionary_test());
+
+// Boolean discriminants
+struct union_alternative_on {
+		std::string value;
+		constexpr auto operator==(const union_alternative_on& right) const -> bool { return value == right.value; };
+
+		constexpr static auto variant = discriminated_alternative{util::cw<"enabled">, util::cw<true>};
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_member{util::cw<"value">, &union_alternative_on::value},
+		};
+};
+
+struct union_alternative_off {
+		constexpr auto operator==(const union_alternative_off& /*right*/) const -> bool { return true; };
+
+		constexpr static auto variant = discriminated_alternative{util::cw<"enabled">, util::cw<false>};
+		constexpr static auto struct_template = js::struct_template{};
+};
+
+using boolean_union_object = std::variant<union_alternative_on, union_alternative_off>;
+using boolean_union_values = std::variant<bool, std::string>;
+
+constexpr auto discriminated_with_on = transfer<boolean_union_object>(dictionary{
+	std::in_place,
+	std::pair{"enabled"s, boolean_union_values{true}},
+	std::pair{"value"s, boolean_union_values{"engaged"s}},
+});
+
+constexpr auto discriminated_with_off = transfer<boolean_union_object>(dictionary{
+	std::in_place,
+	std::pair{"enabled"s, boolean_union_values{false}},
+});
+
+static_assert(variant_is_equal_to(discriminated_with_on, union_alternative_on{.value = "engaged"s}));
+static_assert(variant_is_equal_to(discriminated_with_off, union_alternative_off{}));
+
+constexpr auto boolean_union_dictionary_test = [] -> auto {
+	return dictionary{
+		std::in_place,
+		std::pair{"enabled"s, boolean_union_values{true}},
+		std::pair{"value"s, boolean_union_values{"engaged"s}},
+	};
+};
+static_assert(transfer<decltype(boolean_union_dictionary_test())>(union_alternative_on{.value = "engaged"s}) == boolean_union_dictionary_test());
+
+// `std::expected` visits as a variant of its value & error types
+static_assert(transfer<std::string>(std::expected<std::string, double>{"hello"s}) == "hello"s);
+static_assert(transfer<double>(std::expected<std::string, double>{std::unexpected{1.5}}) == 1.5);
+
 } // namespace js
 
 #endif

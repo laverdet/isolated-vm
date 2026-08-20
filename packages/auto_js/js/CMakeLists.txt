@@ -49,6 +49,7 @@ target_sources(${auto_js}
 		type/property.cc
 		union/accept.cc
 		union/types.cc
+		union/visit.cc
 		variant/accept.cc
 		variant/types.cc
 		variant/visit.cc

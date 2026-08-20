@@ -16,9 +16,9 @@ auto script_handle::compile_script(environment& env, agent_handle& agent, js::st
 	auto [ promise, resolver ] = make_promise(
 		env,
 		[](environment& env, expected_type script) -> auto {
-			return completion_record{script.transform([ & ](script_handle& script) -> auto {
+			return make_completion_record(script.transform([ & ](script_handle& script) -> auto {
 				return js::forward{script_handle::class_template(env)->construct(env, std::move(script))};
-			})};
+			}));
 		}
 	);
 	agent.schedule(
@@ -77,7 +77,7 @@ auto script_handle::run(environment& env, realm_handle* realm, run_script_option
 				});
 			});
 			if (result) {
-				resolver.resolve(completion_record{std::move(*result)});
+				resolver.resolve(make_completion_record(std::move(*result)));
 			}
 		},
 		std::move(resolver)

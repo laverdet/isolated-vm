@@ -24,6 +24,7 @@ export import :transfer;
 export import :tuple.accept;
 export import :tuple.visit;
 export import :union_.accept;
+export import :union_.visit;
 export import :value;
 export import :variant.accept;
 export import :variant.types;
