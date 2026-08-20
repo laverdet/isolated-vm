@@ -89,7 +89,7 @@ auto ModuleHandle::GetDependencySpecifiers() -> Local<Value> {
 	size_t length = info->dependency_specifiers.size();
 	Local<Array> deps = Array::New(isolate, length);
 	for (size_t ii = 0; ii < length; ++ii) {
-		Unmaybe(deps->Set(isolate->GetCurrentContext(), ii, v8_string(info->dependency_specifiers[ii].c_str())));
+		Unmaybe(deps->Set(isolate->GetCurrentContext(), ii, HandleCast<Local<String>>(info->dependency_specifiers[ii])));
 	}
 	return deps;
 }
@@ -308,7 +308,7 @@ class ModuleLinker : public ClassHandle {
 			argv[1] = module->This();
 			Local<Function> fn = callback.Deref();
 			for (size_t ii = 0; ii < info->dependency_specifiers.size(); ++ii) {
-				argv[0] = v8_string(info->dependency_specifiers[ii].c_str());
+				argv[0] = HandleCast<Local<String>>(info->dependency_specifiers[ii]);
 				impl->HandleCallbackReturn(module, ii, Unmaybe(fn->Call(context, recv, 2, argv)));
 			}
 		}
