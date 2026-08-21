@@ -62,6 +62,7 @@ class value_for_external : public v8::Local<v8::External> {
 		explicit value_for_external(null_lock_witness /*witness*/, v8::Local<v8::External> handle) :
 				v8::Local<v8::External>{handle} {}
 
+		// nb: Unused at this time.
 		[[nodiscard]] explicit operator void*() const;
 };
 

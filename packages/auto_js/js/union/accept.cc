@@ -21,11 +21,11 @@ struct accept_discriminant_value<Char[ Extent ]> {
 		using type = std::basic_string<Char>;
 
 		constexpr static auto key_of(const type& value) -> std::uint32_t {
-			return util::fnv1a_hash(std::basic_string_view<Char>{value});
+			return util::fnv1a_hash32(std::basic_string_view<Char>{value});
 		}
 
 		consteval static auto key_of(auto discriminant_value) -> std::uint32_t {
-			return util::fnv1a_hash(util::make_consteval_string_view(discriminant_value));
+			return util::fnv1a_hash32(util::make_consteval_string_view(discriminant_value));
 		}
 
 		static auto describe(const type& value) -> std::u16string {

@@ -43,6 +43,7 @@ target_sources(${v8_js}
 		value/array_buffer.h.cc
 		value/array.h.cc
 		value/callback_info.cc
+		value/external.h.cc
 		value/fixed_array.h.cc
 		value/function.cc
 		value/function.h.cc

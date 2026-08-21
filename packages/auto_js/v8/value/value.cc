@@ -1,6 +1,7 @@
 export module v8_js:value;
 export import :array_buffer;
 export import :array;
+export import :external;
 export import :fixed_array;
 export import :function;
 export import :object;

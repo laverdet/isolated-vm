@@ -35,6 +35,6 @@ export struct callback_info : util::non_copyable {
 
 // Common declaration for `napi_type_tag` by type
 export template <class Type>
-constexpr auto type_tag_for = napi_type_tag{.lower = util::type_hash<Type>, .upper = 0};
+constexpr auto type_tag_for = napi_type_tag{.lower = util::type_hash64<Type>, .upper = 0};
 
 } // namespace js::napi

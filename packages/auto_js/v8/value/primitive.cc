@@ -1,5 +1,3 @@
-module;
-#include <v8_js/version.h>
 module v8_js;
 import :primitive;
 import std;
@@ -66,16 +64,6 @@ value_for_string::operator std::u16string() const {
 // `value_for_date`
 value_for_date::operator js_clock::time_point() const {
 	return js_clock::time_point{js_clock::duration{(*this)->ValueOf()}};
-}
-
-// `value_for_external`
-value_for_external::operator void*() const {
-#if V8_HAS_TAGGED_EXTERNAL
-	// TODO: Use this feature
-	return (*this)->Value(0);
-#else
-	return (*this)->Value();
-#endif
 }
 
 } // namespace js::iv8

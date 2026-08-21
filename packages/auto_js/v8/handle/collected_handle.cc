@@ -1,5 +1,3 @@
-module;
-#include <v8_js/version.h>
 export module v8_js:collected_handle;
 import :lock;
 import std;
@@ -34,6 +32,7 @@ class collected_handle
 				pool_{pool},
 				value_{std::forward<decltype(args)>(args)...} {}
 
+		auto get() -> Type* { return &value_; }
 		auto operator*() -> Type& { return value_; }
 		static auto make(const collected_handle_lock& lock, auto&&... args) -> unique_ptr
 			requires std::constructible_from<Type, decltype(args)...>;
@@ -44,10 +43,6 @@ class collected_handle
 		v8::Global<Value> global_;
 		Type value_;
 };
-
-// Untagged v8-managed host object
-export template <class Type>
-using collected_external_of = collected_handle<v8::External, Type>;
 
 // ---
 
@@ -71,29 +66,6 @@ auto collected_handle<Value, Type>::reset(const collected_handle_lock& lock, uni
 			v8::WeakCallbackType::kParameter
 		);
 	});
-}
-
-export template <class Type>
-auto make_collected_external(const collected_handle_lock& lock, auto&&... args) -> v8::Local<v8::External> {
-	auto unique = collected_external_of<Type>::make(lock, std::forward<decltype(args)>(args)...);
-#if V8_HAS_TAGGED_EXTERNAL
-	auto value = v8::External::New(lock.isolate(), unique.get(), 0);
-#else
-	auto value = v8::External::New(lock.isolate(), unique.get());
-#endif
-	collected_handle<v8::External, Type>::reset(lock, std::move(unique), value);
-	return value;
-}
-
-export template <class Type>
-auto unwrap_collected_external(v8::Local<v8::External> external) -> Type& {
-	using handle_type = collected_external_of<Type>;
-#if V8_HAS_TAGGED_EXTERNAL
-	// TODO: Use this feature
-	return **static_cast<handle_type*>(external->Value(0));
-#else
-	return **static_cast<handle_type*>(external->Value());
-#endif
 }
 
 } // namespace js::iv8

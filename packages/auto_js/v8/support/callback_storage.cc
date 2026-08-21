@@ -1,7 +1,5 @@
-module;
-#include <v8_js/version.h>
 export module v8_js:callback_storage;
-import :collected_handle;
+import :external;
 import :unmaybe;
 import std;
 import v8;
@@ -70,41 +68,32 @@ auto make_callback_storage(const auto& lock, auto function) {
 	auto bound = make_bound_callback(std::type_identity<signature_type>{}, lock, std::move(function));
 	using bound_type = decltype(bound);
 	if constexpr (std::is_trivially_copyable_v<bound_type>) {
-		static_assert(std::is_trivially_destructible_v<bound_type>);
 		if constexpr (std::is_empty_v<bound_type>) {
 			// Constant expression function of 0 size. No data needed at all!
 			auto data = v8::Local<v8::Value>{};
-			const auto callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
+			constexpr auto callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
 				auto invoke = bound_type{};
 				invoke(info);
 			}};
 			return std::tuple{callback, data};
-		} else if constexpr (sizeof(bound_type) == sizeof(void*)) {
-			// Trivial function of pointer type. Data() is the function data.
-			auto data = [ & ] -> auto {
-#if V8_HAS_TAGGED_EXTERNAL
-				return v8::External::New(lock.isolate(), std::bit_cast<void*>(bound), 0);
-#else
-				return v8::External::New(lock.isolate(), std::bit_cast<void*>(bound));
-#endif
-			}();
-			const auto callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
-				auto invoke = [ & ] -> auto {
-#if V8_HAS_TAGGED_EXTERNAL
-					// TODO: Use this feature
-					return std::bit_cast<bound_type>(info.Data().As<v8::External>()->Value(0));
-#else
-					return std::bit_cast<bound_type>(info.Data().As<v8::External>()->Value());
-#endif
-				}();
-				invoke(info);
-			}};
-			return std::tuple{callback, data};
 		} else {
-			// Trivial data-only function type. `Data()` is a latin1 string containing the agent & function data.
+			if constexpr (sizeof(bound_type) <= sizeof(void*)) {
+				// Trivial function which can fit inside a pointer. There is a v8 DCHECK on nullptr, so in
+				// that case it falls through to the latin1 representation.
+				if (auto* pointer = util::bit_padding_cast<void*>(bound); pointer != nullptr) {
+					using external_type = untagged_external<void>;
+					auto data = v8::Local<v8::Value>{external_type::make(lock, pointer)};
+					constexpr auto callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
+						auto invoke = util::bit_truncation_cast<bound_type>(info.Data().As<external_type>()->value());
+						invoke(info);
+					}};
+					return std::tuple{callback, data};
+				}
+			}
+			// Trivial data-only function type. `Data()` is a latin1 string containing the function data.
 			auto data =
 				unmaybe(v8::String::NewFromOneByte(lock.isolate(), reinterpret_cast<const std::uint8_t*>(&bound), v8::NewStringType::kNormal, sizeof(bound)));
-			const auto callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
+			constexpr auto callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
 				// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 				std::array<std::byte, sizeof(bound_type)> data;
 				auto* isolate = info.GetIsolate();
@@ -112,13 +101,14 @@ auto make_callback_storage(const auto& lock, auto function) {
 				auto invoke = std::bit_cast<bound_type>(data);
 				invoke(info);
 			}};
-			return std::tuple{callback, data};
+			return std::tuple{callback, v8::Local<v8::Value>{data}};
 		}
 	} else {
-		// Otherwise the function requires bound state w/ a destructor
-		auto data = make_collected_external<bound_type>(lock, std::move(bound));
-		const auto callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
-			auto& invoke = unwrap_collected_external<bound_type>(info.Data().As<v8::External>());
+		// Otherwise `Data()` is a collected external.
+		using external_type = untagged_external<bound_type>;
+		auto data = external_type::make_collected(lock, std::move(bound));
+		constexpr auto callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
+			auto& invoke = *info.Data().As<external_type>()->value();
 			invoke(info);
 		}};
 		return std::tuple{callback, data};

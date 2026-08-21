@@ -95,6 +95,11 @@ using v8::TryCatch;
 
 // v8-external.h
 using v8::External;
+#if V8_HAS_TAGGED_EXTERNAL
+using v8::ExternalPointerTypeTag;
+#else
+using ExternalPointerTypeTag = unsigned;
+#endif
 
 // v8-function-callback.h
 using v8::FunctionCallback;
