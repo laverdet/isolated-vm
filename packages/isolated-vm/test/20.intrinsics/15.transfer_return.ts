@@ -81,6 +81,19 @@ await test("unvisited buffer is detached", async () => {
 	assert.equal(await byteLengthInRealm(agent, realm), 0);
 });
 
+await test("getters throw", async () => {
+	await using agent = await Agent.create();
+	const realm = expect(await agent.createRealm());
+	const fn = await makeTransferFunction(agent, realm,
+		`const buffer = new ArrayBuffer(3);
+		const transferList = [ buffer ];
+		Object.defineProperty(transferList, 0, {
+			get() { return buffer }
+		});
+		return transfer("hello", transferList);`);
+	expectThrow(await fn.invoke([]));
+});
+
 await test("invalid transfer list throws", async () => {
 	await using agent = await Agent.create();
 	const realm = expect(await agent.createRealm());

@@ -28,6 +28,8 @@ constexpr auto make_free_function_with_try_catch =
 	using callback_type = decltype(callback);
 	auto bound_function = util::bind{
 		[](callback_type& callback, Lock lock, const v8::FunctionCallbackInfo<v8::Value>& info) noexcept(Nx) -> void {
+			auto disallow_js =
+				v8::Isolate::DisallowJavascriptExecutionScope{lock.isolate(), v8::Isolate::DisallowJavascriptExecutionScope::THROW_ON_FAILURE};
 			// NOLINTNEXTLINE(cppcoreguidelines-slicing)
 			auto result = invoke_internal_error_scope(lock, [ & ] -> auto {
 				auto run = util::regular_return{[ & ] -> decltype(auto) {
@@ -61,6 +63,8 @@ constexpr auto make_free_function_noexcept =
 	using callback_type = decltype(callback);
 	auto bound_function = util::bind{
 		[](callback_type& callback, Lock lock, const v8::FunctionCallbackInfo<v8::Value>& /*info*/) noexcept -> void {
+			auto disallow_js =
+				v8::Isolate::DisallowJavascriptExecutionScope{lock.isolate(), v8::Isolate::DisallowJavascriptExecutionScope::CRASH_ON_FAILURE};
 			auto run = util::regular_return{[ & ] -> decltype(auto) {
 				return callback(lock);
 			}};

@@ -88,7 +88,6 @@ await test("sparse transfer list throws", async () => {
 	assert.equal(buffer.byteLength, 3);
 });
 
-// TODO: This should throw invalid execution
 await test("throwing transfer list getter propagates", async () => {
 	await using agent = await Agent.create();
 	const fn = await makeDescribe(agent);
