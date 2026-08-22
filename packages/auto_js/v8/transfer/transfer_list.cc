@@ -1,61 +1,67 @@
-export module napi_js:transfer_list;
+export module v8_js:transfer_list;
+import :array;
+import :handle.value;
+import :object;
 import :lock;
-import :support.host;
-import :utility;
-import :value;
+import :unmaybe;
+import :value.tag;
+import auto_js;
 import std;
 import util;
+import v8;
 
-namespace js::napi {
+namespace js::iv8 {
 
 // Transfer delegate for `ArrayBuffer`
 export class array_buffer_transfer {
 	public:
-		array_buffer_transfer(environment_lock_witness lock, std::vector<local_of<>>& entries) :
-				lock_{lock},
+		array_buffer_transfer(context_lock_witness /*lock*/, std::vector<v8::Local<v8::Value>>& entries) :
 				buffers_{[ & ] -> auto {
-					auto maybe_claim_in = [ & ](napi_value value) -> std::optional<local_of<array_buffer_tag>> {
-						if (is_object_array_buffer(napi_env{lock}, local_of<object_tag>::from(value))) {
-							return local_of<array_buffer_tag>::from(value);
+					constexpr auto maybe_claim_in = [](v8::Local<v8::Value> value) -> std::optional<v8::Local<v8::ArrayBuffer>> {
+						if (value->IsArrayBuffer()) {
+							auto buffer = value.As<v8::ArrayBuffer>();
+							if (!buffer->IsDetachable()) {
+								throw js::type_error{u"ArrayBuffer is not detachable"};
+							}
+							return buffer;
 						} else {
 							return std::nullopt;
 						}
 					};
-					return js::extract_transferees(util::cw<u"ArrayBuffer">, maybe_claim_in, addressof_equal{}, entries);
+					return js::extract_transferees(util::cw<u"ArrayBuffer">, maybe_claim_in, std::equal_to{}, entries);
 				}()} {}
 
 		template <class Visit, class Accept>
-		auto operator()(local_of<object_tag> subject, Visit& visit, const Accept& accept) {
+		auto operator()(v8::Local<v8::ArrayBuffer> subject, Visit& visit, const Accept& accept) {
 			return maybe_claim_out(subject, visit, accept);
 		}
 
 		template <class Visit, class Accept>
-		auto operator()(local_of<data_block_tag> subject, Visit& visit, const Accept& accept) {
+		auto operator()(v8::Local<iv8::DataBlock> subject, Visit& visit, const Accept& accept) {
 			return maybe_claim_out(subject, visit, accept);
 		}
 
-		// Detaches listed buffers which were never claimed by the visitor
 		auto finalize() -> void {
 			for (auto entry : std::exchange(buffers_, {})) {
-				value_of{lock_, entry}.detach();
+				unmaybe(entry->Detach(v8::Local<v8::Value>{}));
 			}
 		}
 
 	private:
 		template <class Visit, class Accept>
 		auto maybe_claim_out(auto subject, Visit& visit, const Accept& accept) {
-			auto claim_out = [ & ](local_of<array_buffer_tag> handle) -> accept_target_t<Accept> {
-				auto value = value_of{lock_, handle};
+			auto claim_out = [ & ](v8::Local<v8::ArrayBuffer> handle) -> accept_target_t<Accept> {
 				auto buffer = [ & ] -> js::array_buffer {
-					if (array_buffer_get_backing_store == nullptr || value.byte_length() == 0) {
-						return js::array_buffer{std::span<std::byte>{value}};
+					if (handle->ByteLength() == 0) {
+						return js::array_buffer{std::span<std::byte>{}};
 					} else {
 						// Steal the backing store, avoiding a copy of the contents
-						auto backing_store = std::make_unique<std::shared_ptr<data_block::array_type>>(array_buffer_get_backing_store(local_of{value}));
+						auto backing_store = std::make_unique<std::shared_ptr<v8::BackingStore>>(handle->GetBackingStore());
+						auto data = std::span{static_cast<std::byte*>((*backing_store)->Data()), (*backing_store)->ByteLength()};
 						return js::array_buffer{
-							std::span<std::byte>{value},
+							data,
 							js::array_buffer::deleter{
-								[](std::shared_ptr<data_block::array_type>* backing_store, std::byte* /*data*/) -> void {
+								[](std::shared_ptr<v8::BackingStore>* backing_store, std::byte* /*data*/) -> void {
 									delete backing_store;
 								},
 								backing_store.release()
@@ -63,29 +69,28 @@ export class array_buffer_transfer {
 						};
 					}
 				}();
-				value.detach();
-				return accept(array_buffer_tag{}, visit, js::transferred_value{napi_value{handle}, buffer});
+				unmaybe(handle->Detach(v8::Local<v8::Value>{}));
+				return accept(array_buffer_tag{}, visit, js::transferred_value{v8::Local<v8::Data>{handle}, buffer});
 			};
-			return js::claim_transferee(buffers_, subject, addressof_equal{}, claim_out);
+			return js::claim_transferee(buffers_, subject, std::equal_to{}, claim_out);
 		}
 
-		environment_lock_witness lock_;
-		std::vector<local_of<array_buffer_tag>> buffers_;
+		std::vector<v8::Local<v8::ArrayBuffer>> buffers_;
 };
 
-// Napi 'transferList' delegate
+// v8 'transferList' delegate
 export template <class... Delegates>
 class transfer_list {
 	public:
 		template <class Type>
-		transfer_list(const auto& lock, std::optional<Type> list) :
-				transfer_list{lock, list ? std::vector{std::from_range, list->values()} : std::vector<local_of<>>{}} {}
+		transfer_list(context_lock_witness lock, std::optional<Type> list) :
+				transfer_list{lock, list ? entries_of(lock, list->template As<v8::Array>()) : std::vector<v8::Local<v8::Value>>{}} {}
 
-		transfer_list(const auto& lock, value_of<list_tag> list) :
-				transfer_list{lock, std::vector{std::from_range, list.values()}} {}
+		transfer_list(context_lock_witness lock, value_of<list_tag> list) :
+				transfer_list{lock, entries_of(lock, list.As<v8::Array>())} {}
 
 		// Constructs a list in place and invokes the given operation with it, finalizing afterwards
-		static auto with(const auto& lock, auto list, auto operation) {
+		static auto with(context_lock_witness lock, auto list, auto operation) {
 			auto self = transfer_list{lock, std::move(list)};
 			auto result = operation(self);
 			self.finalize();
@@ -119,14 +124,18 @@ class transfer_list {
 
 	private:
 		// Each delegate claims its entries from the vector. Anything left over is unknown.
-		transfer_list(const auto& lock, std::vector<local_of<>> entries) :
+		transfer_list(context_lock_witness lock, std::vector<v8::Local<v8::Value>> entries) :
 				delegates_{Delegates{lock, entries}...} {
 			if (!entries.empty()) {
 				throw js::type_error{u"Transfer list contains unknown value"};
 			}
 		}
 
+		static auto entries_of(context_lock_witness lock, v8::Local<v8::Array> list) -> std::vector<v8::Local<v8::Value>> {
+			return std::vector{std::from_range, value_for_array{lock, list}};
+		}
+
 		std::tuple<Delegates...> delegates_;
 };
 
-} // namespace js::napi
+} // namespace js::iv8

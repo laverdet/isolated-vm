@@ -425,17 +425,25 @@ struct visit_value_delegate : visit_value<Lock, Reference> {
 		using visit_type::operator();
 		using visit_type::immediate;
 
-		template <class Accept, std::convertible_to<local_of<object_tag>> Subject>
-		auto immediate(this auto& self, Subject subject, const Accept& accept) -> accept_target_t<Accept> {
-			if constexpr (std::invocable<Delegate&, Subject, decltype(self), const Accept&>) {
-				if (auto claimed = self.delegate_.get()(subject, self, accept)) {
-					return *std::move(claimed);
-				}
+		template <class Accept>
+		auto immediate(this auto& self, local_of<object_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return self.claim_or_immediate(subject, accept);
+		}
+
+		template <class Accept>
+		auto immediate(this auto& self, local_of<data_block_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return self.claim_or_immediate(subject, accept);
+		}
+
+	private:
+		template <class Accept>
+		auto claim_or_immediate(this auto& self, auto subject, const Accept& accept) -> accept_target_t<Accept> {
+			if (auto claimed = self.delegate_.get()(subject, self, accept)) {
+				return *std::move(claimed);
 			}
 			return self.visit_value<Lock, Reference>::immediate(subject, accept);
 		}
 
-	private:
 		std::reference_wrapper<Delegate> delegate_;
 };
 
@@ -492,16 +500,14 @@ struct visit<Meta, napi::local_of<Tag>> : napi::visit_value_with<Meta> {
 template <class Meta, class Tag, class Delegate>
 struct visit<Meta, transferee_visit_subject<napi::local_of<Tag>, Delegate>> : napi::visit_value_delegate_with<Meta, Delegate> {
 	private:
-		using subject_type = transferee_visit_subject<napi::local_of<Tag>, Delegate>;
 		using visit_type = napi::visit_value_delegate_with<Meta, Delegate>;
 
 	public:
 		using visit_type::visit_type;
-		using visit_type::operator();
 
 		template <class Accept>
-		auto operator()(this auto& self, const subject_type& subject, const Accept& accept) -> accept_target_t<Accept> {
-			return self(*subject, accept);
+		auto operator()(const transferee_visit_subject<napi::local_of<Tag>, Delegate>& subject, const Accept& accept) -> accept_target_t<Accept> {
+			return util::invoke_as<visit_type>(*this, *subject, accept);
 		}
 };
 

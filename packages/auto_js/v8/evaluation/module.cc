@@ -132,7 +132,9 @@ auto module_record::link(context_lock_witness lock, module_link_record link_reco
 		}
 		return link_record.modules.at(link_record.payload.at(it->second + index));
 	};
+	// nb: The initializer only runs on the first pass through the declaration.
 	thread_local auto* linker_ptr = &linker;
+	linker_ptr = &linker;
 
 	// v8 linker callback
 	auto v8_callback = v8::Module::ResolveModuleByIndexCallback{

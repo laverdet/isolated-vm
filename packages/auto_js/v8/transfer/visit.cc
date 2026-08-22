@@ -77,11 +77,11 @@ struct visit_cached_immediate : Visit {
 		using Visit::Visit;
 
 		template <class Accept>
-		auto operator()(auto subject, const Accept& accept) -> accept_target_t<Accept>
+		auto operator()(this auto& self, auto subject, const Accept& accept) -> accept_target_t<Accept>
 			// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=124954
-			requires requires { this->immediate(subject, accept); } {
-			return lookup_or_visit(subject, [ & ] -> accept_target_t<Accept> {
-				return immediate(subject, accept);
+			requires requires { self.immediate(subject, accept); } {
+			return self.lookup_or_visit(subject, [ & ] -> accept_target_t<Accept> {
+				return self.immediate(subject, accept);
 			});
 		}
 };
@@ -94,10 +94,10 @@ struct visit_uncached_immediate : Visit {
 		using Visit::Visit;
 
 		template <class Accept>
-		auto operator()(auto subject, const Accept& accept) -> accept_target_t<Accept>
+		auto operator()(this auto& self, auto subject, const Accept& accept) -> accept_target_t<Accept>
 			// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=124954
-			requires requires { this->immediate(subject, accept); } {
-			return immediate(subject, accept);
+			requires requires { self.immediate(subject, accept); } {
+			return self.immediate(subject, accept);
 		}
 };
 
@@ -121,18 +121,18 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 
 		// numbers
 		template <class Accept>
-		auto operator()(v8::Local<v8::Number> subject, const Accept& accept) -> accept_target_t<Accept> {
+		auto operator()(this auto& self, v8::Local<v8::Number> subject, const Accept& accept) -> accept_target_t<Accept> {
 			if (subject->IsInt32()) {
-				return immediate(subject.As<v8::Int32>(), accept);
+				return self.immediate(subject.As<v8::Int32>(), accept);
 			} else {
-				return immediate(subject.As<iv8::Double>(), accept);
+				return self.immediate(subject.As<iv8::Double>(), accept);
 			}
 		}
 
 		// boolean
 		template <class Accept>
-		auto operator()(v8::Local<v8::Boolean> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return immediate(subject, accept);
+		auto operator()(this auto& self, v8::Local<v8::Boolean> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return self.immediate(subject, accept);
 		}
 
 		// extras
@@ -142,19 +142,19 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 	protected:
 		// primitives
 		template <class Accept>
-		auto immediate(v8::Local<v8::Primitive> subject, const Accept& accept) -> accept_target_t<Accept> {
+		auto immediate(this auto& self, v8::Local<v8::Primitive> subject, const Accept& accept) -> accept_target_t<Accept> {
 			if (subject->IsUndefined()) {
-				return accept(undefined_tag{}, *this, subject);
+				return accept(undefined_tag{}, self, subject);
 			} else if (subject->IsNull()) {
-				return accept(null_tag{}, *this, subject);
+				return accept(null_tag{}, self, subject);
 			} else if (subject->IsNumber()) {
-				return (*this)(subject.As<v8::Number>(), accept);
+				return self(subject.As<v8::Number>(), accept);
 			} else if (subject->IsName()) {
-				return immediate(subject.As<v8::Name>(), accept);
+				return self.immediate(subject.As<v8::Name>(), accept);
 			} else if (subject->IsBoolean()) {
-				return (*this)(subject.As<v8::Boolean>(), accept);
+				return self(subject.As<v8::Boolean>(), accept);
 			} else if (subject->IsBigInt()) {
-				return immediate(subject.As<v8::BigInt>(), accept);
+				return self.immediate(subject.As<v8::BigInt>(), accept);
 			} else {
 				std::unreachable();
 			}
@@ -162,86 +162,86 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 
 		template <class Accept, class Type>
 			requires std::is_convertible_v<Type, v8::Primitive>
-		auto immediate(v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept_tagged(subject, accept);
+		auto immediate(this auto& self, v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return self.accept_tagged(subject, accept);
 		}
 
 		// names
 		template <class Accept>
-		auto immediate(v8::Local<v8::Name> subject, const Accept& accept) -> accept_target_t<Accept> {
+		auto immediate(this auto& self, v8::Local<v8::Name> subject, const Accept& accept) -> accept_target_t<Accept> {
 			if (subject->IsString()) {
-				return immediate(subject.As<v8::String>(), accept);
+				return self.immediate(subject.As<v8::String>(), accept);
 			} else {
-				return immediate(subject.As<v8::Symbol>(), accept);
+				return self.immediate(subject.As<v8::Symbol>(), accept);
 			}
 		}
 
 		template <class Accept>
-		auto immediate(v8::Local<v8::String> subject, const Accept& accept) -> accept_target_t<Accept> {
+		auto immediate(this auto& self, v8::Local<v8::String> subject, const Accept& accept) -> accept_target_t<Accept> {
 			if (subject->IsOneByte()) {
-				return immediate(subject.As<iv8::StringOneByte>(), accept);
+				return self.immediate(subject.As<iv8::StringOneByte>(), accept);
 			} else {
-				return immediate(subject.As<iv8::StringTwoByte>(), accept);
+				return self.immediate(subject.As<iv8::StringTwoByte>(), accept);
 			}
 		}
 
 		// bigint
 		template <class Accept>
-		auto immediate(v8::Local<v8::BigInt> subject, const Accept& accept) -> accept_target_t<Accept> {
+		auto immediate(this auto& self, v8::Local<v8::BigInt> subject, const Accept& accept) -> accept_target_t<Accept> {
 			bool lossless{};
 			auto i64 = subject->Int64Value(&lossless);
 			if (lossless) {
-				return accept(bigint_tag_of<std::int64_t>{}, *this, value_of{witness(), subject.As<iv8::BigInt64>(), i64});
+				return accept(bigint_tag_of<std::int64_t>{}, self, value_of{self.witness(), subject.As<iv8::BigInt64>(), i64});
 			} else {
-				return immediate(subject.As<iv8::BigIntWords>(), accept);
+				return self.immediate(subject.As<iv8::BigIntWords>(), accept);
 			}
 		}
 
 		// date
 		template <class Accept>
-		auto immediate(v8::Local<v8::Date> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept_tagged(subject, accept);
+		auto immediate(this auto& self, v8::Local<v8::Date> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return self.accept_tagged(subject, accept);
 		}
 
 		// data blocks
 		template <class Accept>
-		auto immediate(v8::Local<iv8::DataBlock> subject, const Accept& accept) -> accept_target_t<Accept> {
+		auto immediate(this auto& self, v8::Local<iv8::DataBlock> subject, const Accept& accept) -> accept_target_t<Accept> {
 			if (subject->IsSharedArrayBuffer()) {
-				return immediate(subject.As<v8::SharedArrayBuffer>(), accept);
+				return self.immediate(subject.As<v8::SharedArrayBuffer>(), accept);
 			} else {
-				return immediate(subject.As<v8::ArrayBuffer>(), accept);
+				return self.immediate(subject.As<v8::ArrayBuffer>(), accept);
 			}
 		}
 
 		template <class Accept, class Type>
 			requires std::is_convertible_v<iv8::v8_to_tag<Type>, data_block_tag>
-		auto immediate(v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept_tagged(subject, accept);
+		auto immediate(this auto& self, v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return self.accept_tagged(subject, accept);
 		}
 
 		// external
 		template <class Accept>
-		auto immediate(v8::Local<v8::External> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept_tagged(subject, accept);
+		auto immediate(this auto& self, v8::Local<v8::External> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return self.accept_tagged(subject, accept);
 		}
 
 		// promise (maybe could be forwarded)
 		template <class Accept>
-		auto immediate(v8::Local<v8::Promise> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(promise_tag{}, *this, subject);
+		auto immediate(this auto& self, v8::Local<v8::Promise> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(promise_tag{}, self, subject);
 		}
 
 		// function (can be forwarded)
 		template <class Type, class Accept>
 			requires std::is_convertible_v<Type, v8::Function>
-		auto immediate(v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(function_tag{}, *this, subject);
+		auto immediate(this auto& self, v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(function_tag{}, self, subject);
 		}
 
 		// Convenience function which wraps in `iv8::value_of` and invokes `accept`.
 		template <class Type, class Accept>
-		[[nodiscard]] auto accept_tagged(v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(iv8::v8_to_tag<Type>{}, *this, value_of{witness(), subject});
+		[[nodiscard]] auto accept_tagged(this auto& self, v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(iv8::v8_to_tag<Type>{}, self, value_of{self.witness(), subject});
 		}
 
 	private:
@@ -273,40 +273,40 @@ struct visit_value : visit_flat_value<Target> {
 				visit_value{transfer, context_lock_witness{util::slice(lock)}} {}
 
 		template <class Accept>
-		auto operator()(v8::Local<v8::Value> subject, const Accept& accept) -> accept_target_t<Accept> {
+		auto operator()(this auto& self, v8::Local<v8::Value> subject, const Accept& accept) -> accept_target_t<Accept> {
 
 			// Check the reference map, and check type
-			return lookup_or_visit(subject, [ & ] -> accept_target_t<Accept> {
+			return self.lookup_or_visit(subject, [ & ] -> accept_target_t<Accept> {
 				return util::template_traverse(
 					accept_tags_of_v<Accept>,
 					util::overloaded{
 						// Fast paths
 						[ & ](undefined_tag /*tag*/, auto next) -> accept_target_t<Accept> {
-							return subject->IsUndefined() ? accept(undefined_tag{}, *this, subject.As<iv8::Undefined>()) : next();
+							return subject->IsUndefined() ? accept(undefined_tag{}, self, subject.As<iv8::Undefined>()) : next();
 						},
 						[ & ](null_tag /*tag*/, auto next) -> accept_target_t<Accept> {
-							return subject->IsNull() ? accept(null_tag{}, *this, subject.As<iv8::Null>()) : next();
+							return subject->IsNull() ? accept(null_tag{}, self, subject.As<iv8::Null>()) : next();
 						},
 						[ & ](boolean_tag /*tag*/, auto next) -> accept_target_t<Accept> {
-							return subject->IsBoolean() ? (*this)(subject.As<v8::Boolean>(), accept) : next();
+							return subject->IsBoolean() ? self(subject.As<v8::Boolean>(), accept) : next();
 						},
 						[ & ](number_tag /*tag*/, auto next) -> accept_target_t<Accept> {
-							return subject->IsNumber() ? (*this)(subject.As<v8::Number>(), accept) : next();
+							return subject->IsNumber() ? self(subject.As<v8::Number>(), accept) : next();
 						},
 						[ & ](string_tag /*tag*/, auto next) -> accept_target_t<Accept> {
-							return subject->IsString() ? immediate(subject.As<v8::String>(), accept) : next();
+							return subject->IsString() ? self.immediate(subject.As<v8::String>(), accept) : next();
 						},
 						[ & ](bigint_tag /*tag*/, auto next) -> accept_target_t<Accept> {
-							return subject->IsBigInt() ? immediate(subject.As<v8::BigInt>(), accept) : next();
+							return subject->IsBigInt() ? self.immediate(subject.As<v8::BigInt>(), accept) : next();
 						},
 						[ & ](date_tag /*tag*/, auto next) -> accept_target_t<Accept> {
-							return subject->IsDate() ? immediate(subject.As<v8::Date>(), accept) : next();
+							return subject->IsDate() ? self.immediate(subject.As<v8::Date>(), accept) : next();
 						},
 						[ & ](list_tag /*tag*/, auto next) -> accept_target_t<Accept> {
-							return subject->IsArray() ? immediate(subject.As<v8::Array>(), accept) : next();
+							return subject->IsArray() ? self.immediate(subject.As<v8::Array>(), accept) : next();
 						},
 						[ & ](function_tag /*tag*/, auto next) -> accept_target_t<Accept> {
-							return subject->IsFunction() ? immediate(subject.As<iv8::Function>(), accept) : next();
+							return subject->IsFunction() ? self.immediate(subject.As<iv8::Function>(), accept) : next();
 						},
 
 						// Unknown tag
@@ -315,9 +315,9 @@ struct visit_value : visit_flat_value<Target> {
 						// Slow path
 						[ & ] -> accept_target_t<Accept> {
 							if (subject->IsObject()) {
-								return immediate(subject.As<v8::Object>(), accept);
+								return self.immediate(subject.As<v8::Object>(), accept);
 							} else {
-								return immediate(subject.As<v8::Primitive>(), accept);
+								return self.immediate(subject.As<v8::Primitive>(), accept);
 							}
 						},
 					}
@@ -326,19 +326,19 @@ struct visit_value : visit_flat_value<Target> {
 		}
 
 		template <class Accept>
-		auto operator()(v8::Local<iv8::DataBlock> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return lookup_or_visit(subject, [ & ] -> accept_target_t<Accept> {
+		auto operator()(this auto& self, v8::Local<iv8::DataBlock> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return self.lookup_or_visit(subject, [ & ] -> accept_target_t<Accept> {
 				return util::template_traverse(
 					accept_tags_of_v<Accept>,
 					util::overloaded{
 						// Fast paths
-						[ & ](data_block_tag /*tag*/, auto /*next*/) -> accept_target_t<Accept> { return accept_tagged(subject, accept); },
+						[ & ](data_block_tag /*tag*/, auto /*next*/) -> accept_target_t<Accept> { return self.accept_tagged(subject, accept); },
 						[ & ](array_buffer_tag /*tag*/, auto next) -> accept_target_t<Accept> { return next(); },
 						[ & ](shared_array_buffer_tag /*tag*/, auto next) -> accept_target_t<Accept> { return next(); },
 
 						// Slow path
 						[ & ] -> accept_target_t<Accept> {
-							return immediate(subject, accept);
+							return self.immediate(subject, accept);
 						}
 					}
 				);
@@ -352,72 +352,72 @@ struct visit_value : visit_flat_value<Target> {
 
 	protected:
 		// object
-		template <class Accept>
-		auto immediate(v8::Local<v8::Object> subject, const Accept& accept) -> accept_target_t<Accept> {
+		template <class Visit, class Accept>
+		auto immediate(this Visit& self, v8::Local<v8::Object> subject, const Accept& accept) -> accept_target_t<Accept> {
 			if (subject->IsArray()) {
-				return immediate(subject.As<v8::Array>(), accept);
+				return self.immediate(subject.As<v8::Array>(), accept);
 			} else if (subject->IsExternal()) {
-				return immediate(subject.As<v8::External>(), accept);
+				return self.immediate(subject.As<v8::External>(), accept);
 			} else if (subject->IsDate()) {
-				return immediate(subject.As<v8::Date>(), accept);
+				return self.immediate(subject.As<v8::Date>(), accept);
 			} else if (subject->IsArrayBuffer()) {
-				return immediate(subject.As<v8::ArrayBuffer>(), accept);
+				return self.immediate(subject.As<v8::ArrayBuffer>(), accept);
 			} else if (subject->IsSharedArrayBuffer()) {
-				return immediate(subject.As<v8::SharedArrayBuffer>(), accept);
+				return self.immediate(subject.As<v8::SharedArrayBuffer>(), accept);
 			} else if (subject->IsArrayBufferView()) {
-				return immediate(subject.As<v8::ArrayBufferView>(), accept);
+				return self.immediate(subject.As<v8::ArrayBufferView>(), accept);
 			} else if (subject->IsPromise()) {
-				return immediate(subject.As<v8::Promise>(), accept);
+				return self.immediate(subject.As<v8::Promise>(), accept);
 			} else if (subject->IsFunction()) {
-				return immediate(subject.As<iv8::Function>(), accept);
+				return self.immediate(subject.As<iv8::Function>(), accept);
 			} else {
-				auto visit_entry = visit_entry_pair<visit_property_name<visit_value>, visit_value&>{*this};
-				return accept(dictionary_tag{}, visit_entry, value_of{witness(), subject.As<v8::Object>()});
+				auto visit_entry = visit_entry_pair<visit_property_name<Visit>, Visit&>{self};
+				return accept(dictionary_tag{}, visit_entry, value_of{self.witness(), subject.As<v8::Object>()});
 			}
 		}
 
 		// array
-		template <class Accept>
-		auto immediate(v8::Local<v8::Array> subject, const Accept& accept) -> accept_target_t<Accept> {
-			auto visit_entry = visit_entry_pair<visit_property_name<visit_value>, visit_value&>{*this};
-			return accept(list_tag{}, visit_entry, value_of{witness(), subject.As<v8::Array>()});
+		template <class Visit, class Accept>
+		auto immediate(this Visit& self, v8::Local<v8::Array> subject, const Accept& accept) -> accept_target_t<Accept> {
+			auto visit_entry = visit_entry_pair<visit_property_name<Visit>, Visit&>{self};
+			return accept(list_tag{}, visit_entry, value_of{self.witness(), subject.As<v8::Array>()});
 		}
 
 		// function template
 		template <class Accept>
-		auto immediate(v8::Local<v8::FunctionTemplate> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(function_tag{}, *this, unmaybe(subject->GetFunction(context_)));
+		auto immediate(this auto& self, v8::Local<v8::FunctionTemplate> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(function_tag{}, self, unmaybe(subject->GetFunction(self.witness().context())));
 		}
 
 		// array buffer views (typed arrays, data view)
 		template <class Accept>
-		auto immediate(v8::Local<v8::ArrayBufferView> subject, const Accept& accept) -> accept_target_t<Accept> {
+		auto immediate(this auto& self, v8::Local<v8::ArrayBufferView> subject, const Accept& accept) -> accept_target_t<Accept> {
 			if (subject->IsUint8Array()) {
-				return immediate(subject.As<v8::Uint8Array>(), accept);
+				return self.immediate(subject.As<v8::Uint8Array>(), accept);
 			} else if (subject->IsDataView()) {
-				return immediate(subject.As<v8::DataView>(), accept);
+				return self.immediate(subject.As<v8::DataView>(), accept);
 			} else if (subject->IsUint8ClampedArray()) {
-				return immediate(subject.As<v8::Uint8ClampedArray>(), accept);
+				return self.immediate(subject.As<v8::Uint8ClampedArray>(), accept);
 			} else if (subject->IsInt8Array()) {
-				return immediate(subject.As<v8::Int8Array>(), accept);
+				return self.immediate(subject.As<v8::Int8Array>(), accept);
 			} else if (subject->IsUint16Array()) {
-				return immediate(subject.As<v8::Uint16Array>(), accept);
+				return self.immediate(subject.As<v8::Uint16Array>(), accept);
 			} else if (subject->IsInt16Array()) {
-				return immediate(subject.As<v8::Int16Array>(), accept);
+				return self.immediate(subject.As<v8::Int16Array>(), accept);
 			} else if (subject->IsUint32Array()) {
-				return immediate(subject.As<v8::Uint32Array>(), accept);
+				return self.immediate(subject.As<v8::Uint32Array>(), accept);
 			} else if (subject->IsInt32Array()) {
-				return immediate(subject.As<v8::Int32Array>(), accept);
+				return self.immediate(subject.As<v8::Int32Array>(), accept);
 			} else if (subject->IsFloat16Array()) {
-				return immediate(subject.As<v8::Float16Array>(), accept);
+				return self.immediate(subject.As<v8::Float16Array>(), accept);
 			} else if (subject->IsFloat32Array()) {
-				return immediate(subject.As<v8::Float32Array>(), accept);
+				return self.immediate(subject.As<v8::Float32Array>(), accept);
 			} else if (subject->IsFloat64Array()) {
-				return immediate(subject.As<v8::Float64Array>(), accept);
+				return self.immediate(subject.As<v8::Float64Array>(), accept);
 			} else if (subject->IsBigInt64Array()) {
-				return immediate(subject.As<v8::BigInt64Array>(), accept);
+				return self.immediate(subject.As<v8::BigInt64Array>(), accept);
 			} else if (subject->IsBigUint64Array()) {
-				return immediate(subject.As<v8::BigUint64Array>(), accept);
+				return self.immediate(subject.As<v8::BigUint64Array>(), accept);
 			} else {
 				throw js::type_error{u"Received exotic v8 'ArrayBufferView'"};
 			}
@@ -425,13 +425,55 @@ struct visit_value : visit_flat_value<Target> {
 
 		template <class Accept, class Type>
 			requires std::is_convertible_v<Type, v8::ArrayBufferView>
-		auto immediate(v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(v8_to_tag<Type>{}, *this, value_of{witness(), subject});
+		auto immediate(this auto& self, v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(v8_to_tag<Type>{}, self, value_of{self.witness(), subject});
 		}
 
 	private:
 		v8::Local<v8::Context> context_;
 };
+
+// Visitor with transfer delegate. The delegate is offered transferable subjects, claiming the ones
+// listed in its `transferList` before the underlying visitor gets a chance to copy them.
+template <class Target, class Delegate>
+struct visit_value_delegate : visit_value<Target> {
+	private:
+		using visit_type = visit_value<Target>;
+
+	public:
+		visit_value_delegate(auto* transfer, context_lock_witness lock, Delegate& delegate) :
+				visit_type{transfer, lock},
+				delegate_{delegate} {}
+		visit_value_delegate(auto* transfer, const auto& lock, Delegate& delegate) :
+				visit_value_delegate{transfer, context_lock_witness{util::slice(lock)}, delegate} {}
+
+		using visit_type::operator();
+		using visit_type::immediate;
+
+		template <class Accept>
+		auto immediate(this auto& self, v8::Local<v8::ArrayBuffer> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return self.claim_or_immediate(subject, accept);
+		}
+
+		template <class Accept>
+		auto immediate(this auto& self, v8::Local<iv8::DataBlock> subject, const Accept& accept) -> accept_target_t<Accept> {
+			return self.claim_or_immediate(subject, accept);
+		}
+
+	private:
+		template <class Accept>
+		auto claim_or_immediate(this auto& self, auto subject, const Accept& accept) -> accept_target_t<Accept> {
+			if (auto claimed = self.delegate_.get()(subject, self, accept)) {
+				return *std::move(claimed);
+			}
+			return self.visit_value<Target>::immediate(subject, accept);
+		}
+
+		std::reference_wrapper<Delegate> delegate_;
+};
+
+template <class Meta, class Delegate>
+using visit_value_delegate_with = visit_cached_immediate<visit_value_delegate<typename Meta::accept_reference_type, Delegate>>;
 
 // Forward `value_of<T>` back to acceptor
 template <class Tag>
@@ -510,6 +552,21 @@ struct visit<Meta, v8::Local<Type>> : iv8::visit_uncached_flat_value_with<Meta> 
 template <class Meta, class Type>
 struct visit<Meta, v8::Local<Type>> : iv8::visit_value_with<Meta> {
 		using iv8::visit_value_with<Meta>::visit_value_with;
+};
+
+// `transferee_visit_subject` subject visitor
+template <class Meta, class Type, class Delegate>
+struct visit<Meta, transferee_visit_subject<v8::Local<Type>, Delegate>> : iv8::visit_value_delegate_with<Meta, Delegate> {
+	private:
+		using visit_type = iv8::visit_value_delegate_with<Meta, Delegate>;
+
+	public:
+		using visit_type::visit_type;
+
+		template <class Accept>
+		auto operator()(const transferee_visit_subject<v8::Local<Type>, Delegate>& subject, const Accept& accept) -> accept_target_t<Accept> {
+			return util::invoke_as<visit_type>(*this, *subject, accept);
+		}
 };
 
 // value_of<T> visitor

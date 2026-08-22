@@ -1,3 +1,3 @@
-import { clockTime, performanceTime } from "./runtime.js";
+import { clockTime, performanceTime, transfer } from "./runtime.js";
 
-export { clockTime, performanceTime };
+export { clockTime, performanceTime, transfer };

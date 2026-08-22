@@ -39,6 +39,7 @@ target_sources(${v8_js}
 		support/lock.h.cc
 		support/unmaybe.cc
 		transfer/accept.h.cc
+		transfer/transfer_list.cc
 		transfer/visit.cc
 		value/array_buffer.h.cc
 		value/array.h.cc

@@ -4,13 +4,17 @@ import v8;
 
 namespace js::iv8 {
 
+// Physical location of the local handle's value, comparable between unrelated handle types
+export constexpr auto handle_addressof =
+	[]<class Type>(v8::Local<Type> local) -> void* { return *local; };
+
 // Hash based on the physical location of the local handle's value
 export struct address_hash : std::hash<void*> {
 		using std::hash<void*>::operator();
 
 		template <class Type>
 		auto operator()(v8::Local<Type> local) const -> std::size_t {
-			return (*this)(*local);
+			return (*this)(handle_addressof(local));
 		}
 };
 

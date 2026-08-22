@@ -20,9 +20,56 @@ auto performance_time(js::iv8::context_lock_witness /*lock*/) -> double {
 	return duration_cast<js_clock::duration>(now.time_since_epoch()).count();
 }
 
+auto transfer(
+	const js::iv8::isolated::realm_scope& lock,
+	js::forward<v8::Local<v8::Value>> subject,
+	std::optional<js::iv8::value_of<js::list_tag>> transfer
+) -> js::forward<v8::Local<v8::Value>> {
+	return js::forward{transfer_record::make(lock, *subject, transfer)};
+}
+
+// transfer_record
+transfer_record::transfer_record(
+	v8::Isolate* isolate,
+	v8::Local<v8::Value> subject,
+	std::optional<js::iv8::value_of<js::list_tag>> transfer
+) :
+		subject_{isolate, subject},
+		transfer_{isolate, transfer ? v8::Local<v8::Array>{*transfer} : v8::Local<v8::Array>{}} {}
+
+auto transfer_record::make(
+	const js::iv8::isolated::realm_scope& lock,
+	v8::Local<v8::Value> subject,
+	std::optional<js::iv8::value_of<js::list_tag>> transfer
+) -> v8::Local<v8::Value> {
+	return external_type::make_collected(lock, lock.isolate(), subject, transfer);
+}
+
+auto transfer_record::match(v8::Local<v8::Value> value) -> transfer_record* {
+	if (value->IsExternal()) {
+		return value.As<external_type>()->try_cast();
+	} else {
+		return nullptr;
+	}
+}
+
+auto transfer_record::subject(js::iv8::isolate_lock_witness lock) const -> v8::Local<v8::Value> {
+	return subject_.Get(lock.isolate());
+}
+
+auto transfer_record::transfer(js::iv8::context_lock_witness lock) const -> std::optional<js::iv8::value_of<js::list_tag>> {
+	if (transfer_.IsEmpty()) {
+		return std::nullopt;
+	} else {
+		return js::iv8::value_of{lock, transfer_.Get(lock.isolate())};
+	}
+}
+
+// runtime_interface
 runtime_interface::runtime_interface(const js::iv8::isolated::agent_lock& lock) :
 		clock_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{clock_time}, lock))},
-		performance_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{performance_time}, lock))} {
+		performance_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{performance_time}, lock))},
+		transfer_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{transfer}, lock))} {
 }
 
 auto runtime_interface::instantiate(js::iv8::context_lock_witness lock) -> v8::Local<js::iv8::module_record> {
@@ -30,6 +77,7 @@ auto runtime_interface::instantiate(js::iv8::context_lock_witness lock) -> v8::L
 		return std::tuple{
 			std::pair{util::cw<"clockTime">, clock_time_->deref(util::slice(lock))},
 			std::pair{util::cw<"performanceTime">, performance_time_->deref(util::slice(lock))},
+			std::pair{util::cw<"transfer">, transfer_->deref(util::slice(lock))},
 		};
 	};
 	auto origin = std::u16string{u"isolated-vm://runtime"};

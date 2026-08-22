@@ -3,6 +3,7 @@ import :agent_handle;
 import :environment;
 import :lock;
 import :reference;
+import :runtime;
 import :utility;
 import std;
 
@@ -253,7 +254,14 @@ auto reference_handle::invoke(const environment::lock& lock, js::forward<js::nap
 				auto maybe_result = context_scope_operation(agent_lock, realm->deref(agent_lock), [ & ](const realm_scope& lock) -> auto {
 					return iv8::invoke_externalized_error_scope(lock, [ & ] -> js::value_t {
 						auto fn = value->deref(lock).As<iv8::Function>();
-						return fn->apply<js::value_t>(lock, std::move(params));
+						auto result = *fn->apply<js::forward<v8::Local<v8::Value>>>(lock, std::move(params));
+						if (auto* record = transfer_record::match(result)) {
+							return v8_transfer_list_type::with(lock, record->transfer(lock), [ & ](auto& transfer_list) -> js::value_t {
+								return js::transfer_out<js::value_t>(js::transferee_visit_subject{record->subject(lock), transfer_list}, lock, transfer_list);
+							});
+						} else {
+							return js::transfer_out<js::value_t>(result, lock);
+						}
 					});
 				});
 				if (maybe_result) {

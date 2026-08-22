@@ -176,6 +176,19 @@ auto extract_transferees(auto name_cw, auto project_transferee, auto subject_equ
 	return subjects;
 }
 
+// `transferList` helper which matches `subject` against the list and invoke the claim function if
+// it's found, returning a std::optional of the result.
+export template <class Subject>
+auto claim_transferee(std::vector<Subject>& transferees, const auto& subject, auto subject_equal, auto claim) {
+	auto it = std::ranges::find_if(transferees, [ & ](const Subject& entry) -> bool { return subject_equal(entry, subject); });
+	auto deferred = [ &transferees, it, claim = std::move(claim) ] -> decltype(auto) {
+		auto entry = std::exchange(*it, transferees.back());
+		transferees.pop_back();
+		return claim(entry);
+	};
+	return it == transferees.end() ? std::nullopt : std::optional{std::move(deferred)};
+}
+
 // `transferList` subject marker
 export template <class Subject, class Delegate>
 struct transferee_visit_subject {
