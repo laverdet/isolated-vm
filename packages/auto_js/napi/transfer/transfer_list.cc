@@ -12,7 +12,7 @@ export class array_buffer_transfer {
 	public:
 		array_buffer_transfer() = default;
 
-		array_buffer_transfer(auto_environment auto& env, std::vector<napi_value>& entries) :
+		array_buffer_transfer(auto_environment auto& env, std::vector<local_of<>>& entries) :
 				env_{napi_env{env}},
 				buffers_{js::extract_transferees(
 					util::cw<u"ArrayBuffer">,
@@ -90,13 +90,9 @@ class transfer_list {
 		transfer_list(auto_environment auto& env, std::optional<Type> list) :
 				transfer_list{list ? transfer_list{env, *std::move(list)} : transfer_list{}} {}
 
-		template <class Type>
-		transfer_list(auto_environment auto& env, js::forward<Type> list) :
-				transfer_list{env, *list} {}
-
-		transfer_list(auto_environment auto& env, local_of<list_tag> list) :
+		transfer_list(auto_environment auto& env, value_of<list_tag> list) :
 				delegates_{[ & ] {
-					auto entries = value_of{napi_env{env}, local_of<vector_tag>::from(list)} | std::ranges::to<std::vector<napi_value>>();
+					auto entries = std::vector{std::from_range, list.values()};
 					auto delegates = std::tuple{Delegates{env, entries}...};
 					if (!entries.empty()) {
 						throw js::type_error{u"Transfer list contains unknown value"};
@@ -116,7 +112,7 @@ class transfer_list {
 		template <class Visit, class Accept>
 		auto operator()(auto subject, Visit& visit, const Accept& accept) -> std::optional<accept_target_t<Accept>> {
 			return util::template_traverse(
-				util::sequence<sizeof...(Delegates)>,
+				util::sequence_cw<sizeof...(Delegates)>,
 				util::overloaded{
 					[ & ](auto ii, auto next) -> std::optional<accept_target_t<Accept>> {
 						auto& delegate = std::get<ii>(delegates_);

@@ -8,15 +8,20 @@ namespace js::napi {
 class value_for_vector : public value_next<vector_tag> {
 	public:
 		class iterator;
-		using value_next<vector_tag>::value_next;
-		using value_type = local_of<value_tag>;
+		using value_type = local_of<>;
+
+		value_for_vector() = default;
+		value_for_vector(napi_env env, local_of<vector_tag> value, bool maybe_sparse = true) :
+				value_next{env, value},
+				maybe_sparse_{maybe_sparse} {}
 
 		[[nodiscard]] auto begin() const -> iterator;
 		[[nodiscard]] auto end() const -> iterator;
 		[[nodiscard]] auto size() const -> std::uint32_t;
 
 	private:
-		mutable std::uint32_t size_{};
+		bool maybe_sparse_ : 1 = true;
+		mutable std::uint32_t size_ : 31 {};
 };
 
 class value_for_vector::iterator : public util::random_access_iterator_facade<std::int32_t, std::int64_t> {

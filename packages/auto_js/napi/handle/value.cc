@@ -109,6 +109,10 @@ struct value_specialization<record_tag>
 		: std::type_identity<class value_for_record> {};
 
 template <>
+struct value_specialization<list_tag>
+		: std::type_identity<class value_for_list> {};
+
+template <>
 struct value_specialization<data_block_tag>
 		: std::type_identity<class value_for_data_block> {};
 

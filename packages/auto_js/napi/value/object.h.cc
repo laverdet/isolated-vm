@@ -17,7 +17,7 @@ class value_for_object : public value_next<object_tag> {
 		template <class Type>
 		[[nodiscard]] auto try_cast(std::type_identity<Type> /*type*/) const -> Type*;
 
-		[[nodiscard]] auto get(napi_value key) const -> local_of<value_tag>;
+		[[nodiscard]] auto get(napi_value key) const -> local_of<>;
 		[[nodiscard]] auto has(napi_value key) const -> bool;
 
 		auto set(napi_value key, napi_value value) -> void;

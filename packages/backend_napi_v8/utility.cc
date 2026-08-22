@@ -11,7 +11,7 @@ using namespace js;
 // `structuredClone`-style transfer options
 struct transfer_options : js::optional_constructible {
 		using js::optional_constructible::optional_constructible;
-		std::optional<js::forward<js::napi::local_of<js::list_tag>>> transfer;
+		std::optional<js::napi::value_of<js::list_tag>> transfer;
 
 		constexpr static auto struct_template = js::struct_template{
 			js::struct_member{util::cw<"transfer">, &transfer_options::transfer},

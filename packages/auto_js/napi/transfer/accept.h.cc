@@ -349,7 +349,7 @@ struct accept<Meta, napi_value> : napi::accept_napi_value_with<Meta> {
 
 // Tagged `local_of<T>` acceptor
 template <>
-struct accept_property_subject<napi::local_of<value_tag>> : std::type_identity<napi_value> {};
+struct accept_property_subject<napi::local_of<>> : std::type_identity<napi_value> {};
 
 template <class Meta, class Tag>
 struct accept<Meta, napi::local_of<Tag>> : napi::accept_napi_value_with<Meta> {

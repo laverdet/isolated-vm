@@ -1,15 +1,16 @@
 module v8_js;
+import auto_js;
 import util;
 import v8;
 
 namespace js::iv8 {
 
 auto value_for_array::begin() const -> iterator {
-	return iterator{util::slice(*this), context(), 0};
+	return iterator{util::slice(*this), context(), 0, maybe_sparse_};
 }
 
 auto value_for_array::end() const -> iterator {
-	return iterator{util::slice(*this), context(), size()};
+	return iterator{util::slice(*this), context(), size(), maybe_sparse_};
 }
 
 auto value_for_array::size() const -> std::uint32_t {
@@ -20,12 +21,16 @@ auto value_for_array::size() const -> std::uint32_t {
 	return length_ - 1;
 }
 
-value_for_array::iterator::iterator(v8::Local<v8::Array> array, v8::Local<v8::Context> context, std::uint32_t index) :
+value_for_array::iterator::iterator(v8::Local<v8::Array> array, v8::Local<v8::Context> context, std::uint32_t index, bool maybe_sparse) :
 		array_{array},
 		context_{context},
-		index_{index} {}
+		index_{index},
+		maybe_sparse_{maybe_sparse} {}
 
 auto value_for_array::iterator::operator*() const -> value_type {
+	if (maybe_sparse_ && !iv8::unmaybe(array_->Has(context_, index_))) {
+		throw js::type_error{u"Sparse arrays are not supported"};
+	}
 	return iv8::unmaybe(array_->Get(context_, index_));
 }
 

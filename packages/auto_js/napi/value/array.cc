@@ -22,7 +22,12 @@ value_for_vector::iterator::iterator(value_for_vector subject, size_type index) 
 		index_{index} {}
 
 auto value_for_vector::iterator::operator*() const -> value_type {
-	return value_type::from(napi::invoke(napi_get_element, subject_.env(), napi_value{subject_}, index_));
+	auto* env = subject_.env();
+	auto* subject = napi_value{subject_};
+	if (subject_.maybe_sparse_ && !napi::invoke(napi_has_element, env, subject, index_)) {
+		throw js::type_error{u"Sparse arrays are not supported"};
+	}
+	return value_type::from(napi::invoke(napi_get_element, env, subject, index_));
 }
 
 } // namespace js::napi

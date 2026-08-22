@@ -3,8 +3,8 @@ module napi_js;
 namespace js::napi {
 
 // object
-auto value_for_object::get(napi_value key) const -> local_of<value_tag> {
-	return local_of<value_tag>::from(napi::invoke(napi_get_property, env(), napi_value{*this}, key));
+auto value_for_object::get(napi_value key) const -> local_of<> {
+	return local_of<>::from(napi::invoke(napi_get_property, env(), napi_value{*this}, key));
 }
 
 auto value_for_object::has(napi_value key) const -> bool {

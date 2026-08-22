@@ -53,6 +53,7 @@ export using ::napi_get_cb_info;
 export using ::napi_get_dataview_info;
 export using ::napi_get_date_value;
 export using ::napi_get_element;
+export using ::napi_has_element;
 export using ::napi_get_global;
 export using ::napi_get_instance_data;
 export using ::napi_get_null;
