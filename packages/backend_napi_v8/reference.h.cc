@@ -17,12 +17,12 @@ export class reference_handle {
 		reference_handle(agent_handle agent, js::typeof_kind type_of, js::iv8::shared_remote<v8::Context> realm, js::iv8::shared_remote<v8::Value> value);
 		reference_handle(const agent_handle::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm, v8::Local<v8::Value> value);
 		reference_handle(const agent_handle::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm, v8::Local<v8::Object> value);
-		auto copy(environment& env) -> forward_promise_type;
-		auto get(environment& env, js::string_t name) -> forward_promise_type;
-		auto set(environment& env, js::string_t name, js::forward<js::napi::local_of<>> value_local) -> forward_promise_type;
-		auto invoke(environment& env, js::forward<js::napi::local_of<list_tag>> params_local, transfer_options options) -> forward_promise_type;
+		auto copy(const environment::lock& lock) -> forward_promise_type;
+		auto get(const environment::lock& lock, js::string_t name) -> forward_promise_type;
+		auto set(const environment::lock& lock, js::string_t name, js::forward<js::napi::local_of<>> value_local) -> forward_promise_type;
+		auto invoke(const environment::lock& lock, js::forward<js::napi::local_of<list_tag>> params_local, transfer_options options) -> forward_promise_type;
 
-		static auto class_template(environment& env) -> js::napi::local_of<class_tag_of<reference_handle>>;
+		static auto class_template(const environment::lock& lock) -> js::napi::local_of<class_tag_of<reference_handle>>;
 
 	private:
 		agent_handle agent_;

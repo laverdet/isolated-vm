@@ -43,6 +43,30 @@ auto napi_fast_is_undefined(napi_env env, napi_value value) -> bool {
 	return value == napi::invoke(napi_get_undefined, env);
 }
 
+// Isolate access
+auto v8_current_isolate() -> v8::Isolate* {
+	return v8::Isolate::GetCurrent();
+}
+
+constexpr auto unknown_current_isolate = [] -> v8::Isolate* { return nullptr; };
+
+// Element access
+auto v8_has_element(environment_lock_witness lock, napi_value array, std::uint32_t index) -> bool {
+	return napi::unmaybe(std::bit_cast<v8::Local<v8::Object>>(array)->Has(lock.context(), index));
+}
+
+auto v8_get_element(environment_lock_witness lock, napi_value array, std::uint32_t index) -> napi_value {
+	return std::bit_cast<napi_value>(napi::unmaybe(std::bit_cast<v8::Local<v8::Object>>(array)->Get(lock.context(), index)));
+}
+
+auto napi_fast_has_element(environment_lock_witness lock, napi_value array, std::uint32_t index) -> bool {
+	return napi::invoke(napi_has_element, napi_env{lock}, array, index);
+}
+
+auto napi_fast_get_element(environment_lock_witness lock, napi_value array, std::uint32_t index) -> napi_value {
+	return napi::invoke(napi_get_element, napi_env{lock}, array, index);
+}
+
 // Extended fast functions
 // nb: Bun exports these v8 functions, but they crash with the `std::bit_cast<v8::Local<T>>` trick.
 auto fast_is_array(napi_value value) -> bool {
@@ -278,6 +302,9 @@ auto initialize_host_environment(napi_env env) -> void {
 			auto is_nodejs = !is_bun && !is_deno;
 			if (is_nodejs) {
 				has_extended_fast_is_functions = true;
+				host_current_isolate = v8_current_isolate;
+				fast_get_element = v8_get_element;
+				fast_has_element = v8_has_element;
 				fast_is_false = v8_is_false;
 				fast_is_null = v8_is_null;
 				fast_is_true = v8_is_true;
@@ -285,6 +312,7 @@ auto initialize_host_environment(napi_env env) -> void {
 				host_uv_dlclose = node_uv_dlclose;
 				host_uv_dlerror = node_uv_dlerror;
 				host_uv_dlopen = node_uv_dlopen;
+				make_sab_data_view = v8_make_sab_data_view;
 				make_sab_typed_array_of<double> = v8_make_sab_typed_array_of<double>;
 				make_sab_typed_array_of<float> = v8_make_sab_typed_array_of<float>;
 				make_sab_typed_array_of<js::float16_t> = v8_make_sab_typed_array_of<js::float16_t>;
@@ -306,6 +334,9 @@ auto initialize_host_environment(napi_env env) -> void {
 				shared_array_buffer_get_byte_length = v8_shared_array_buffer_get_byte_length;
 			} else {
 				has_extended_fast_is_functions = false;
+				host_current_isolate = unknown_current_isolate;
+				fast_get_element = napi_fast_get_element;
+				fast_has_element = napi_fast_has_element;
 				fast_is_false = napi_fast_is_false;
 				fast_is_null = napi_fast_is_null;
 				fast_is_true = napi_fast_is_true;

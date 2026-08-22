@@ -11,8 +11,8 @@ class value_for_vector : public value_next<vector_tag> {
 		using value_type = local_of<>;
 
 		value_for_vector() = default;
-		value_for_vector(napi_env env, local_of<vector_tag> value, bool maybe_sparse = true) :
-				value_next{env, value},
+		value_for_vector(environment_lock_witness lock, local_of<vector_tag> value, bool maybe_sparse = true) :
+				value_next{lock, value},
 				maybe_sparse_{maybe_sparse} {}
 
 		[[nodiscard]] auto begin() const -> iterator;

@@ -1,7 +1,7 @@
-import type { Agent, Reference } from "@isolated-vm/experimental";
+import type { Reference } from "@isolated-vm/experimental";
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import { Agent as AgentClass, expect } from "@isolated-vm/experimental";
+import { Agent, expect } from "@isolated-vm/experimental";
 import { expectComplete, unsafeEvalAsStringInRealm } from "@isolated-vm/experimental/test/fixtures";
 
 /** Returns a reference to a function which describes the buffers in its parameter */
@@ -20,7 +20,7 @@ async function makeDescribe(agent: Agent) {
 }
 
 await test("transferred buffer is moved", async () => {
-	await using agent = await AgentClass.create();
+	await using agent = await Agent.create();
 	const fn = await makeDescribe(agent);
 	const buffer = Uint8Array.from([ 1, 2, 3 ]).buffer;
 	const result = expectComplete(await fn.invoke([ { buffer } ], { transfer: [ buffer ] }));
@@ -29,7 +29,7 @@ await test("transferred buffer is moved", async () => {
 });
 
 await test("transferred buffer reached through a view", async () => {
-	await using agent = await AgentClass.create();
+	await using agent = await Agent.create();
 	const fn = await makeDescribe(agent);
 	const view = Uint8Array.from([ 1, 2, 3 ]);
 	const result = expectComplete(await fn.invoke([ { buffer: view.buffer, view } ], { transfer: [ view.buffer ] }));
@@ -38,7 +38,7 @@ await test("transferred buffer reached through a view", async () => {
 });
 
 await test("transferred buffer keeps its identity", async () => {
-	await using agent = await AgentClass.create();
+	await using agent = await Agent.create();
 	const fn = await makeDescribe(agent);
 	const buffer = Uint8Array.from([ 1, 2, 3 ]).buffer;
 	const view = new Uint8Array(buffer);
@@ -48,7 +48,7 @@ await test("transferred buffer keeps its identity", async () => {
 });
 
 await test("unlisted buffer is copied", async () => {
-	await using agent = await AgentClass.create();
+	await using agent = await Agent.create();
 	const fn = await makeDescribe(agent);
 	const buffer = Uint8Array.from([ 1, 2, 3 ]).buffer;
 	const result = expectComplete(await fn.invoke([ { buffer } ]));
@@ -57,7 +57,7 @@ await test("unlisted buffer is copied", async () => {
 });
 
 await test("unvisited buffer is detached", async () => {
-	await using agent = await AgentClass.create();
+	await using agent = await Agent.create();
 	const fn = await makeDescribe(agent);
 	const buffer = new ArrayBuffer(3);
 	expectComplete(await fn.invoke([ "hello" ], { transfer: [ buffer ] }));
@@ -65,7 +65,7 @@ await test("unvisited buffer is detached", async () => {
 });
 
 await test("duplicate buffer throws", async () => {
-	await using agent = await AgentClass.create();
+	await using agent = await Agent.create();
 	const fn = await makeDescribe(agent);
 	const buffer = new ArrayBuffer(3);
 	assert.throws(() => void fn.invoke([], { transfer: [ buffer, buffer ] }));
@@ -73,7 +73,31 @@ await test("duplicate buffer throws", async () => {
 });
 
 await test("unknown transfer value throws", async () => {
-	await using agent = await AgentClass.create();
+	await using agent = await Agent.create();
 	const fn = await makeDescribe(agent);
 	assert.throws(() => void fn.invoke([], { transfer: [ {} ] }));
+});
+
+await test("sparse transfer list throws", async () => {
+	await using agent = await Agent.create();
+	const fn = await makeDescribe(agent);
+	const buffer = new ArrayBuffer(3);
+	const list = new Array<ArrayBuffer>(2);
+	list[1] = buffer;
+	assert.throws(() => void fn.invoke([], { transfer: list }), /sparse/i);
+	assert.equal(buffer.byteLength, 3);
+});
+
+// TODO: This should throw invalid execution
+await test("throwing transfer list getter propagates", async () => {
+	await using agent = await Agent.create();
+	const fn = await makeDescribe(agent);
+	const list: ArrayBuffer[] = [];
+	Object.defineProperty(list, 0, {
+		enumerable: true,
+		get: () => {
+			throw new Error("boom");
+		},
+	});
+	assert.throws(() => void fn.invoke([], { transfer: list }), /boom/);
 });

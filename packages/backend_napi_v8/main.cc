@@ -10,7 +10,7 @@ using namespace backend_napi_v8;
 // Sanity check ensuring that, at least in principle, `js::transfer` can directly transfer from
 // runtime to runtime without intermediates.
 auto check_transfer(
-	environment& napi_lock,
+	const environment::lock& napi_lock,
 	napi_value napi_local,
 	js::iv8::context_lock_witness v8_lock,
 	v8::Local<v8::Value> v8_local
@@ -23,14 +23,14 @@ auto check_transfer(
 // Initialize this module
 js::napi::napi_js_module module_namespace{
 	std::type_identity<environment>{},
-	[](environment& env) -> auto {
+	[](const environment::lock& lock) -> auto {
 		return std::tuple{
 			std::in_place,
-			std::pair{util::cw<"Agent">, js::forward{agent_handle_value::class_template(env)}},
-			std::pair{util::cw<"Module">, js::forward{module_handle::class_template(env)}},
-			std::pair{util::cw<"NativeModule">, js::forward{native_module_handle::class_template(env)}},
-			std::pair{util::cw<"Realm">, js::forward{realm_handle::class_template(env)}},
-			std::pair{util::cw<"Script">, js::forward{script_handle::class_template(env)}},
+			std::pair{util::cw<"Agent">, js::forward{agent_handle_value::class_template(lock)}},
+			std::pair{util::cw<"Module">, js::forward{module_handle::class_template(lock)}},
+			std::pair{util::cw<"NativeModule">, js::forward{native_module_handle::class_template(lock)}},
+			std::pair{util::cw<"Realm">, js::forward{realm_handle::class_template(lock)}},
+			std::pair{util::cw<"Script">, js::forward{script_handle::class_template(lock)}},
 		};
 	}
 };

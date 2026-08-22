@@ -1,4 +1,5 @@
 export module napi_js:initialize;
+import :lock;
 import :value;
 import nodejs;
 import std;
@@ -33,9 +34,10 @@ class napi_js_module final : private detail::initialize_require {
 			// construct environment, set napi instance data w/ finalizer
 			constexpr auto [... indices ] = util::sequence<sizeof...(Args)>;
 			auto& client_environment = environment::make_and_set_environment<Environment>(env, std::get<indices>(std::move(args_))...);
+			auto lock = environment_lock_witness_of<Environment>{environment_lock_witness::make_witness(client_environment), client_environment};
 			// assign export descriptor to napi-constructor namespace object
 			auto exports_local = local_of<dictionary_tag>::from(exports);
-			exports_local->assign(client_environment, std::move(make_exports_)(client_environment));
+			exports_local->assign(lock, std::move(make_exports_)(lock));
 		}
 
 		Make make_exports_;

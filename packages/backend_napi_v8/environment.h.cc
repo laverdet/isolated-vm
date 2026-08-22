@@ -52,6 +52,8 @@ export class environment
 			public napi::string_table<string_literals>,
 			public napi::class_template_references<class_names> {
 	public:
+		using lock = napi::environment_lock_witness_of<environment>;
+
 		explicit environment(napi_env env);
 		~environment();
 

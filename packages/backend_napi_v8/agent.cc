@@ -7,12 +7,12 @@ import util;
 
 namespace backend_napi_v8 {
 
-auto agent_handle_value::create(environment& env, std::optional<create_options> options_optional) -> forward_promise_type {
+auto agent_handle_value::create(const environment::lock& lock, std::optional<create_options> options_optional) -> forward_promise_type {
 	using namespace js::iv8::isolated;
 	auto options = std::move(options_optional).value_or(create_options{});
-	auto& cluster = env.cluster();
-	auto [ promise, resolver ] = make_promise(env, [](environment& env, agent_handle agent) -> auto {
-		return js::forward{class_template(env)->construct(env, std::move(agent))};
+	auto& cluster = lock->cluster();
+	auto [ promise, resolver ] = make_promise(lock, [](const environment::lock& lock, agent_handle agent) -> auto {
+		return js::forward{class_template(lock)->construct(lock, std::move(agent))};
 	});
 	auto memory_policy_ = [ & ] -> memory_policy::covariant {
 		auto limit = options.memory_limit_bytes.value_or(0);
@@ -65,33 +65,34 @@ auto agent_handle_value::create(environment& env, std::optional<create_options> 
 	return js::forward{promise};
 }
 
-auto agent_handle_value::create_realm(environment& env) -> forward_promise_type {
-	return realm_handle::create(env, agent_);
+auto agent_handle_value::create_realm(const environment::lock& lock) -> forward_promise_type {
+	return realm_handle::create(lock, agent_);
 }
 
-auto agent_handle_value::compile_module(environment& env, js::string_t source_text, compile_module_options options) -> forward_promise_type {
-	return module_handle::compile(env, agent_, std::move(source_text), std::move(options));
+auto agent_handle_value::compile_module(const environment::lock& lock, js::string_t source_text, compile_module_options options) -> forward_promise_type {
+	return module_handle::compile(lock, agent_, std::move(source_text), std::move(options));
 }
 
-auto agent_handle_value::compile_script(environment& env, js::string_t source_text, compile_script_options options) -> forward_promise_type {
-	return script_handle::compile_script(env, agent_, std::move(source_text), std::move(options));
+auto agent_handle_value::compile_script(const environment::lock& lock, js::string_t source_text, compile_script_options options) -> forward_promise_type {
+	return script_handle::compile_script(lock, agent_, std::move(source_text), std::move(options));
 }
 
-auto agent_handle_value::dispose_async(environment& env) -> forward_promise_type {
+auto agent_handle_value::dispose_async(const environment::lock& lock) -> forward_promise_type {
 	if (disposed_) {
-		return js::forward{disposed_.get(env)};
+		return js::forward{disposed_.get(lock)};
 	}
-	auto [ promise, resolver ] = make_promise(env);
-	disposed_.reset(env, promise);
+	auto [ promise, resolver ] = make_promise(lock);
+	disposed_.reset(lock, promise);
 	agent_.dispose([ resolver = std::move(resolver) ] mutable noexcept -> auto {
 		resolver.resolve(std::monostate{});
 	});
 	return js::forward{promise};
 }
 
-auto agent_handle_value::class_template(environment& env) -> js::napi::local_of<class_tag_of<agent_handle_value>> {
-	return env.class_template(
+auto agent_handle_value::class_template(const environment::lock& lock) -> js::napi::local_of<class_tag_of<agent_handle_value>> {
+	return lock->class_template(
 		std::type_identity<agent_handle_value>{},
+		lock,
 		js::class_template{
 			js::class_constructor{util::cw<"Agent">},
 			js::class_method{util::cw<"compileModule">, util::fn<&agent_handle_value::compile_module>},

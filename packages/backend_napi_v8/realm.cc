@@ -12,11 +12,11 @@ realm_handle::realm_handle(agent_handle agent, js::iv8::shared_remote<v8::Contex
 		agent_{std::move(agent)},
 		realm_{std::move(realm)} {}
 
-auto realm_handle::create(environment& env, agent_handle& agent) -> forward_promise_type {
+auto realm_handle::create(const environment::lock& lock, agent_handle& agent) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(
-		env,
-		[](environment& env, agent_handle agent, js::iv8::shared_remote<v8::Context> realm) -> auto {
-			return js::forward{class_template(env)->construct(env, std::move(agent), std::move(realm))};
+		lock,
+		[](const environment::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm) -> auto {
+			return js::forward{class_template(lock)->construct(lock, std::move(agent), std::move(realm))};
 		}
 	);
 	agent.schedule(
@@ -34,11 +34,11 @@ auto realm_handle::create(environment& env, agent_handle& agent) -> forward_prom
 	return js::forward{promise};
 }
 
-auto realm_handle::acquire_global_object(environment& env) -> forward_promise_type {
+auto realm_handle::acquire_global_object(const environment::lock& lock) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(
-		env,
-		[](environment& env, reference_handle reference) -> auto {
-			return js::forward{reference_handle::class_template(env)->construct(env, std::move(reference))};
+		lock,
+		[](const environment::lock& lock, reference_handle reference) -> auto {
+			return js::forward{reference_handle::class_template(lock)->construct(lock, std::move(reference))};
 		}
 	);
 	agent_.schedule(
@@ -59,15 +59,15 @@ auto realm_handle::acquire_global_object(environment& env) -> forward_promise_ty
 	return js::forward{promise};
 }
 
-auto realm_handle::create_capability(environment& env, forward_callback_type make_capability, create_capability_options options) -> forward_promise_type {
-	return module_handle::create_capability(env, *this, *make_capability, std::move(options));
+auto realm_handle::create_capability(const environment::lock& lock, forward_callback_type make_capability, create_capability_options options) -> forward_promise_type {
+	return module_handle::create_capability(lock, *this, *make_capability, std::move(options));
 }
 
-auto realm_handle::instantiate_runtime(environment& env) -> forward_promise_type {
+auto realm_handle::instantiate_runtime(const environment::lock& lock) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(
-		env,
-		[](environment& env, agent_handle agent, js::iv8::shared_remote<js::iv8::module_record> module_record) -> auto {
-			return js::forward{module_handle::class_template(env)->construct(env, std::move(agent), std::move(module_record))};
+		lock,
+		[](const environment::lock& lock, agent_handle agent, js::iv8::shared_remote<js::iv8::module_record> module_record) -> auto {
+			return js::forward{module_handle::class_template(lock)->construct(lock, std::move(agent), std::move(module_record))};
 		}
 	);
 	agent_.schedule(
@@ -87,9 +87,10 @@ auto realm_handle::instantiate_runtime(environment& env) -> forward_promise_type
 	return js::forward{promise};
 }
 
-auto realm_handle::class_template(environment& env) -> js::napi::local_of<class_tag_of<realm_handle>> {
-	return env.class_template(
+auto realm_handle::class_template(const environment::lock& lock) -> js::napi::local_of<class_tag_of<realm_handle>> {
+	return lock->class_template(
 		std::type_identity<realm_handle>{},
+		lock,
 		js::class_template{
 			js::class_constructor{util::cw<"Realm">},
 			js::class_method{util::cw<"acquireGlobalObject">, util::fn<&realm_handle::acquire_global_object>},

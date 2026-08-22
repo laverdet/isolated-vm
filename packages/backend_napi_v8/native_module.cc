@@ -27,11 +27,11 @@ native_module_handle::native_module_handle(
 		options_{std::move(options)},
 		names_{std::move(names)} {}
 
-auto native_module_handle::instantiate(environment& env, realm_handle* realm) -> forward_promise_type {
+auto native_module_handle::instantiate(const environment::lock& lock, realm_handle* realm) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(
-		env,
-		[](environment& env, agent_handle agent, js::iv8::shared_remote<js::iv8::module_record> module_record) -> auto {
-			return js::forward{module_handle::class_template(env)->construct(env, std::move(agent), std::move(module_record))};
+		lock,
+		[](const environment::lock& lock, agent_handle agent, js::iv8::shared_remote<js::iv8::module_record> module_record) -> auto {
+			return js::forward{module_handle::class_template(lock)->construct(lock, std::move(agent), std::move(module_record))};
 		}
 	);
 	if (realm == nullptr) {
@@ -66,9 +66,10 @@ auto native_module_handle::instantiate(environment& env, realm_handle* realm) ->
 	return js::forward{promise};
 }
 
-auto native_module_handle::class_template(environment& env) -> js::napi::local_of<js::class_tag_of<native_module_handle>> {
-	return env.class_template(
+auto native_module_handle::class_template(const environment::lock& lock) -> js::napi::local_of<js::class_tag_of<native_module_handle>> {
+	return lock->class_template(
 		std::type_identity<native_module_handle>{},
+		lock,
 		js::class_template{
 			js::class_constructor{util::cw<"NativeModule">},
 			js::class_static{util::cw<"create">, create},
@@ -77,7 +78,7 @@ auto native_module_handle::class_template(environment& env) -> js::napi::local_o
 	);
 }
 
-auto native_module_handle::create(environment& env, std::string filename, create_native_module_options options) -> forward_promise_type {
+auto native_module_handle::create(const environment::lock& lock, std::string filename, create_native_module_options options) -> forward_promise_type {
 
 #if __MUSL__
 	// musl has some unique behavior with bare .so names. There is a lot of discussion here:
@@ -107,12 +108,12 @@ auto native_module_handle::create(environment& env, std::string filename, create
 #endif
 	}
 	auto [ promise, resolver ] = make_promise(
-		env,
-		[ filename = std::move(filename) ](environment& env, create_native_module_options options) -> auto {
+		lock,
+		[ filename = std::move(filename) ](const environment::lock& lock, create_native_module_options options) -> auto {
 			auto [ lib, names, initialize ] = isolated_vm::subscribe_registration([ & ] -> auto {
 				return js::napi::uv_dlib{filename};
 			});
-			auto handle = native_module_handle::class_template(env)->construct(env, std::move(lib), initialize, std::move(options), names());
+			auto handle = native_module_handle::class_template(lock)->construct(lock, std::move(lib), initialize, std::move(options), names());
 			return js::forward{handle};
 		}
 	);

@@ -10,6 +10,7 @@ environment::environment(napi_env env) :
 		env_{env} {
 	// Initialize napi_js platform hooks
 	initialize_host_environment(env);
+	isolate_ = host_current_isolate();
 
 	// nb: Closing the schedule needs to be the first thing we do, and deleting it needs to be the
 	// last thing we do. Otherwise we get deadlocks or use-after-free problems.

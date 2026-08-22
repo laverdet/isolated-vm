@@ -7,7 +7,7 @@ namespace js::napi {
 // object
 class local_for_object : public local_next<object_tag> {
 	public:
-		auto assign(auto_environment auto& env, auto source) const -> void;
+		auto assign(const auto& lock, auto source) const -> void;
 };
 
 class value_for_object : public value_next<object_tag> {

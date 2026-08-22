@@ -1,4 +1,5 @@
 export module napi_js:accept;
+import :lock;
 import :utility;
 import :value;
 import std;
@@ -23,7 +24,7 @@ struct reaccept_napi_value {
 // Napi acceptor which does not need specialized environment type
 struct accept_basic_napi_value {
 	public:
-		explicit accept_basic_napi_value(auto* /*transfer*/, auto& env) : env_{env} {}
+		explicit accept_basic_napi_value(auto* /*transfer*/, environment_lock_witness lock) : lock_{lock} {}
 
 		// Declare reference provider
 		using accept_reference_type = reaccept_napi_value;
@@ -140,35 +141,36 @@ struct accept_basic_napi_value {
 			// TODO: We accept the nested `buffer` property as a `data_block` which means `make` needs to
 			// invoke `is_arraybuffer` on it again even though we knew what it was a moment ago.
 			auto buffer = local_of<data_block_tag>::from(visit(std::forward<decltype(subject)>(subject).buffer(), self));
-			return js::referenceable_value{local_of<Tag>::make(self.environment(), buffer, byte_offset, length)};
+			return js::referenceable_value{local_of<Tag>::make(self.lock(), buffer, byte_offset, length)};
 		}
 
 		// extras
-		[[nodiscard]] auto environment() const -> environment& { return env_; }
-		explicit operator napi_env() const { return napi_env{env_.get()}; }
+		[[nodiscard]] auto lock() const -> environment_lock_witness { return lock_; }
+		explicit operator napi_env() const { return napi_env{lock_}; }
 
 	private:
-		std::reference_wrapper<napi::environment> env_;
+		environment_lock_witness lock_;
 };
 
 // Generic napi acceptor which accepts all value types.
-template <class Environment>
+template <class Lock>
 struct accept_napi_value;
 
 template <class Meta>
 using accept_napi_value_with = accept_napi_value<typename Meta::accept_context_type>;
 
-template <class Environment>
+template <class Lock>
 struct accept_napi_value : accept_basic_napi_value {
 	public:
-		explicit accept_napi_value(auto* transfer, auto& env) :
-				accept_basic_napi_value{transfer, env} {}
+		explicit accept_napi_value(auto* transfer, const Lock& lock) :
+				accept_basic_napi_value{transfer, lock},
+				lock_{lock} {}
 		using accept_basic_napi_value::operator();
 
 		// function
 		template <class Callback>
 		auto operator()(function_prototype_tag /*tag*/, visit_holder /*visit*/, js::free_function<Callback> subject) const -> local_of<function_tag> {
-			return local_of<function_tag>::make(environment(), std::forward<decltype(subject)>(subject));
+			return local_of<function_tag>::make(lock(), std::forward<decltype(subject)>(subject));
 		}
 
 		// vectors
@@ -298,11 +300,12 @@ struct accept_napi_value : accept_basic_napi_value {
 		}
 
 		// extras
-		[[nodiscard]] auto environment() const -> Environment& {
-			return static_cast<Environment&>(accept_basic_napi_value::environment());
-		}
+		[[nodiscard]] auto lock() const -> const Lock& { return lock_; }
 
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+
+	private:
+		Lock lock_;
 };
 
 // Forward `value_of<T>`
@@ -329,8 +332,8 @@ struct object_assign_delegate {
 		local_of<object_tag> object_;
 };
 
-auto local_for_object::assign(auto_environment auto& env, auto source) const -> void {
-	js::transfer_in<object_assign_delegate>(std::move(source), env, object_assign_delegate{local_of{*this}});
+auto local_for_object::assign(const auto& lock, auto source) const -> void {
+	js::transfer_in<object_assign_delegate>(std::move(source), lock, object_assign_delegate{local_of{*this}});
 }
 
 } // namespace js::napi
@@ -387,8 +390,8 @@ struct accept_property_value<Meta, Key, Type, napi_value> {
 template <class Meta>
 struct accept<Meta, napi::object_assign_delegate> {
 	public:
-		accept(auto* transfer, auto& env, napi::object_assign_delegate object) :
-				accept_{transfer, env},
+		accept(auto* transfer, const auto& lock, napi::object_assign_delegate object) :
+				accept_{transfer, lock},
 				object_{object} {}
 
 		template <std::size_t Size>

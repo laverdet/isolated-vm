@@ -1,4 +1,5 @@
 export module napi_js:visit;
+import :lock;
 import :utility;
 import :value;
 import std;
@@ -24,7 +25,7 @@ struct visit_property_name {
 		auto operator()(napi_value subject, const Accept& accept) -> accept_target_t<Accept> {
 			return visit_.get().lookup_or_visit(subject, [ & ] -> accept_target_t<Accept> {
 				auto accept_as = [ & ]<class Tag>(Tag tag) -> auto {
-					auto value = value_of{napi_env{visit_.get()}, local_of<Tag>::from(subject)};
+					auto value = value_of{visit_.get().lock(), local_of<Tag>::from(subject)};
 					return accept(tag, *this, value);
 				};
 				switch (napi::invoke(napi_typeof, napi_env{visit_.get()}, subject)) {
@@ -36,7 +37,7 @@ struct visit_property_name {
 			});
 		}
 
-		[[nodiscard]] auto environment() const -> auto& { return visit_.get().environment(); }
+		[[nodiscard]] auto lock() const -> const auto& { return visit_.get().lock(); }
 
 	private:
 		std::reference_wrapper<Visit> visit_;
@@ -50,34 +51,34 @@ struct visit_napi_key_literal {
 
 		auto operator()(const auto& /*could_be_literally_anything*/, const auto& accept_or_visit) -> napi_value {
 			const auto make = util::overloaded{
-				[](auto& env, std::string_view subject) -> napi::local_of<string_tag_of<char>> {
-					auto* value = napi::invoke(node_api_create_property_key_latin1, napi_env{env}, subject.data(), subject.length());
+				[](environment_lock_witness lock, std::string_view subject) -> napi::local_of<string_tag_of<char>> {
+					auto* value = napi::invoke(node_api_create_property_key_latin1, napi_env{lock}, subject.data(), subject.length());
 					return napi::local_of<string_tag_of<char>>::from(value);
 				},
-				[](auto& env, std::u16string_view subject) -> napi::local_of<string_tag_of<char16_t>> {
-					auto* value = napi::invoke(node_api_create_property_key_utf16, napi_env{env}, subject.data(), subject.length());
+				[](environment_lock_witness lock, std::u16string_view subject) -> napi::local_of<string_tag_of<char16_t>> {
+					auto* value = napi::invoke(node_api_create_property_key_utf16, napi_env{lock}, subject.data(), subject.length());
 					return napi::local_of<string_tag_of<char16_t>>::from(value);
 				},
-				[](auto& env, std::u8string_view subject) -> napi::local_of<string_tag_of<char8_t>> {
-					auto* value = napi::invoke(node_api_create_property_key_utf8, napi_env{env}, reinterpret_cast<const char*>(subject.data()), subject.length());
+				[](environment_lock_witness lock, std::u8string_view subject) -> napi::local_of<string_tag_of<char8_t>> {
+					auto* value = napi::invoke(node_api_create_property_key_utf8, napi_env{lock}, reinterpret_cast<const char*>(subject.data()), subject.length());
 					return napi::local_of<string_tag_of<char8_t>>::from(value);
 				},
 			};
 			if (local_key_ == napi_value{}) {
 				constexpr auto key = util::make_consteval_string_view(Key);
-				auto& environment = accept_or_visit.environment();
-				auto storage = environment.string_table_storage(Key);
+				const auto& lock = accept_or_visit.lock();
+				auto storage = lock->string_table_storage(Key);
 				if (storage) {
 					auto& reference = *storage;
 					if (reference) {
-						local_key_ = reference.get(environment);
+						local_key_ = reference.get(lock);
 					} else {
-						auto value = make(environment, key);
-						reference.reset(environment, value);
+						auto value = make(lock, key);
+						reference.reset(lock, value);
 						local_key_ = napi_value{value};
 					}
 				} else {
-					return make(environment, key);
+					return make(lock, key);
 				}
 			}
 			return local_key_;
@@ -90,7 +91,7 @@ struct visit_napi_key_literal {
 // Base napi visitor implementing all functionality. Napi doesn't give us granular information like
 // "is this a latin1 string" and all checks must be made at once. So it's structured it great deal
 // differently than the v8 visitor.
-template <auto_environment Environment, class Ref>
+template <class Lock, class Ref>
 struct visit_value;
 
 template <class Meta>
@@ -98,13 +99,13 @@ using visit_value_with = visit_value<
 	typename Meta::visit_context_type,
 	typename Meta::accept_reference_type>;
 
-template <auto_environment Environment, class Reference>
+template <class Lock, class Reference>
 struct visit_value : reference_map_t<Reference, reference_map_type> {
 	public:
 		using reference_map_t<Reference, reference_map_type>::lookup_or_visit;
 
-		visit_value(auto* /*transfer*/, Environment& env) :
-				env_{env} {}
+		visit_value(auto* /*transfer*/, const Lock& lock) :
+				lock_{lock} {}
 
 		// If the `immediate` operation is defined: this operation will first perform a
 		// reference map lookup, then delegate to the `immediate` operation if not found.
@@ -266,8 +267,8 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 		}
 
 		// extras
-		[[nodiscard]] auto environment() const -> Environment& { return env_; }
-		explicit operator napi_env() const { return napi_env{env_.get()}; }
+		[[nodiscard]] auto lock() const -> const Lock& { return lock_; }
+		explicit operator napi_env() const { return napi_env{lock_.get()}; }
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 
 	protected:
@@ -305,9 +306,9 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 				return self.immediate(local_of<typed_array_tag>::from(subject), accept);
 			} else if (napi::invoke(napi_is_dataview, napi_env{self}, subject)) {
 				return self.immediate(local_of<data_view_tag>::from(subject), accept);
-			} else if (maybe_is_shared_array_buffer(self.env_.get(), subject).value_or(false)) {
+			} else if (maybe_is_shared_array_buffer(napi_env{self}, subject).value_or(false)) {
 				return self.immediate(local_of<shared_array_buffer_tag>::from(subject), accept);
-			} else if (is_object_array_buffer(self.env_.get(), subject)) {
+			} else if (is_object_array_buffer(napi_env{self}, subject)) {
 				return self.immediate(local_of<array_buffer_tag>::from(subject), accept);
 			} else if (napi::invoke(napi_is_promise, napi_env{self}, subject)) {
 				return self.immediate(local_of<promise_tag>::from(subject), accept);
@@ -325,7 +326,7 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 		// data blocks
 		template <class Accept>
 		auto immediate(this auto& self, local_of<data_block_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
-			if (is_data_block_array_buffer(self.env_.get(), subject)) {
+			if (is_data_block_array_buffer(napi_env{self}, subject)) {
 				return self.immediate(local_of<array_buffer_tag>::from(subject), accept);
 			} else {
 				return self.immediate(local_of<shared_array_buffer_tag>::from(subject), accept);
@@ -341,7 +342,7 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 		// array buffer views
 		template <class Accept>
 		auto immediate(this auto& self, local_of<typed_array_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
-			auto bound_subject_variant = value_for_typed_array::make_bound(self.environment(), subject);
+			auto bound_subject_variant = value_for_typed_array::make_bound(self.lock(), subject);
 			if (bound_subject_variant.index() == std::variant_npos) {
 				std::unreachable();
 			} else {
@@ -380,7 +381,7 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 		// array
 		template <class Visit, class Accept>
 		auto immediate(this Visit& self, local_of<list_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
-			auto target = napi::value_of{napi_env{self}, local_of<list_tag>::from(subject)};
+			auto target = napi::value_of{self.lock(), local_of<list_tag>::from(subject)};
 			auto visit_entry = visit_entry_pair<visit_property_name<Visit>, Visit&>{self};
 			return accept(list_tag{}, visit_entry, target);
 		}
@@ -388,7 +389,7 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 		// object / record
 		template <class Visit, class Accept>
 		auto immediate(this Visit& self, local_of<dictionary_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
-			auto target = napi::value_of{napi_env{self}, local_of<dictionary_tag>::from(subject)};
+			auto target = napi::value_of{self.lock(), local_of<dictionary_tag>::from(subject)};
 			auto visit_entry = visit_entry_pair<visit_property_name<Visit>, Visit&>{self};
 			return accept(dictionary_tag{}, visit_entry, target);
 		}
@@ -396,29 +397,29 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 		// Convenience function which wraps in `napi::value_of` and invokes `accept`.
 		template <class Tag, class Accept>
 		[[nodiscard]] auto accept_tagged(this auto& self, local_of<Tag> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(Tag{}, self, napi::value_of{self.environment(), subject});
+			return accept(Tag{}, self, napi::value_of{self.lock(), subject});
 		}
 
 	private:
-		std::reference_wrapper<Environment> env_;
+		std::reference_wrapper<const Lock> lock_;
 };
 
 // Visitor with transfer delegate
-template <auto_environment Environment, class Reference, class Delegate>
+template <class Lock, class Reference, class Delegate>
 struct visit_value_delegate;
 
 template <class Meta, class Delegate>
 using visit_value_delegate_with =
 	visit_value_delegate<typename Meta::visit_context_type, typename Meta::accept_reference_type, Delegate>;
 
-template <auto_environment Environment, class Reference, class Delegate>
-struct visit_value_delegate : visit_value<Environment, Reference> {
+template <class Lock, class Reference, class Delegate>
+struct visit_value_delegate : visit_value<Lock, Reference> {
 	private:
-		using visit_type = visit_value<Environment, Reference>;
+		using visit_type = visit_value<Lock, Reference>;
 
 	public:
-		visit_value_delegate(auto* transfer, Environment& env, Delegate& delegate) :
-				visit_type{transfer, env},
+		visit_value_delegate(auto* transfer, const Lock& lock, Delegate& delegate) :
+				visit_type{transfer, lock},
 				delegate_{delegate} {}
 
 		using visit_type::operator();
@@ -431,7 +432,7 @@ struct visit_value_delegate : visit_value<Environment, Reference> {
 					return *std::move(claimed);
 				}
 			}
-			return self.visit_value<Environment, Reference>::immediate(subject, accept);
+			return self.visit_value<Lock, Reference>::immediate(subject, accept);
 		}
 
 	private:
@@ -445,7 +446,7 @@ struct visit_napi_value_of {
 		using visit_type = visit_value_with<Meta>;
 
 	public:
-		constexpr explicit visit_napi_value_of(auto* transfer, auto& environment) : visit_{transfer, environment} {}
+		constexpr explicit visit_napi_value_of(auto* transfer, const auto& lock) : visit_{transfer, lock} {}
 
 		template <class Accept>
 		constexpr auto operator()(value_of<Tag> subject, const Accept& accept) -> accept_target_t<Accept> {

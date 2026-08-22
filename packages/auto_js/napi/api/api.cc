@@ -8,6 +8,7 @@ export import :api.handle_scope;
 export import :api.invoke;
 export import :api.napi_scheduler;
 export import :api.threadsafe_function;
+export import :api.unmaybe;
 export import :api.uv_dlib;
 export import :api.uv_handle;
 export import :api.uv_scheduler;

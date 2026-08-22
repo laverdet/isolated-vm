@@ -1,6 +1,7 @@
 export module napi_js:callback_storage;
 import :api;
 import :environment_fwd;
+import :lock;
 import std;
 
 namespace js::napi {
@@ -15,8 +16,10 @@ thread_local Environment* callback_env_local = nullptr;
 // result is a `std::tuple` with `{ callback_ptr, data_ptr, finalizer }`. Finalizer is either a
 // `nullptr` or a `std::unique_ptr<T>` which should be disposed of in a finalizer.
 template <auto_environment Environment>
-auto make_callback_storage(Environment& env, std::invocable<Environment&, const callback_info&> auto function) {
+auto make_callback_storage(const environment_lock_witness_of<Environment>& lock, std::invocable<const environment_lock_witness_of<Environment>&, const callback_info&> auto function) {
 	using function_type = decltype(function);
+	using lock_type = environment_lock_witness_of<Environment>;
+	auto& env = *lock;
 	if constexpr (std::is_trivially_copyable_v<function_type>) {
 		if constexpr (std::is_empty_v<function_type>) {
 			// Constant expression function, expressed entirely in the type. `data` is the environment.
@@ -25,7 +28,8 @@ auto make_callback_storage(Environment& env, std::invocable<Environment&, const 
 				if (args) {
 					auto invoke = function_type{};
 					auto& env = *static_cast<Environment*>(args.data());
-					return invoke(env, args);
+					auto lock = lock_type{environment_lock_witness::make_witness(env), env};
+					return invoke(lock, args);
 				} else {
 					return {};
 				}
@@ -42,7 +46,8 @@ auto make_callback_storage(Environment& env, std::invocable<Environment&, const 
 					auto* data = args.data();
 					auto invoke = util::bit_truncation_cast<function_type>(data);
 					auto& env = *callback_env_local<Environment>;
-					return invoke(env, args);
+					auto lock = lock_type{environment_lock_witness::make_witness(env), env};
+					return invoke(lock, args);
 				} else {
 					return {};
 				}
@@ -59,7 +64,9 @@ auto make_callback_storage(Environment& env, std::invocable<Environment&, const 
 			const auto args = callback_info{nenv, info};
 			if (args) {
 				auto& state = *static_cast<pair_type*>(args.data());
-				return state.second(*state.first, args);
+				auto& env = *state.first;
+				auto lock = lock_type{environment_lock_witness::make_witness(env), env};
+				return state.second(lock, args);
 			} else {
 				return {};
 			}

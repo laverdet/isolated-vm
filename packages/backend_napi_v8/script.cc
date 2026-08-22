@@ -11,13 +11,13 @@ import v8_js;
 
 namespace backend_napi_v8 {
 
-auto script_handle::compile_script(environment& env, agent_handle& agent, js::string_t code_string, compile_script_options options) -> forward_promise_type {
+auto script_handle::compile_script(const environment::lock& lock, agent_handle& agent, js::string_t code_string, compile_script_options options) -> forward_promise_type {
 	using expected_type = std::expected<script_handle, js::error_value>;
 	auto [ promise, resolver ] = make_promise(
-		env,
-		[](environment& env, expected_type script) -> auto {
+		lock,
+		[](const environment::lock& lock, expected_type script) -> auto {
 			return make_completion_record(script.transform([ & ](script_handle& script) -> auto {
-				return js::forward{script_handle::class_template(env)->construct(env, std::move(script))};
+				return js::forward{script_handle::class_template(lock)->construct(lock, std::move(script))};
 			}));
 		}
 	);
@@ -46,8 +46,8 @@ auto script_handle::compile_script(environment& env, agent_handle& agent, js::st
 	return js::forward{promise};
 }
 
-auto script_handle::run(environment& env, realm_handle* realm, run_script_options options) -> forward_promise_type {
-	auto [ promise, resolver ] = make_promise(env);
+auto script_handle::run(const environment::lock& lock, realm_handle* realm, run_script_options options) -> forward_promise_type {
+	auto [ promise, resolver ] = make_promise(lock);
 	if (realm == nullptr) {
 		return js::forward{promise};
 	}
@@ -85,9 +85,10 @@ auto script_handle::run(environment& env, realm_handle* realm, run_script_option
 	return js::forward{promise};
 }
 
-auto script_handle::class_template(environment& env) -> js::napi::local_of<class_tag_of<script_handle>> {
-	return env.class_template(
+auto script_handle::class_template(const environment::lock& lock) -> js::napi::local_of<class_tag_of<script_handle>> {
+	return lock->class_template(
 		std::type_identity<script_handle>{},
+		lock,
 		js::class_template{
 			js::class_constructor{util::cw<"Script">},
 			js::class_method{util::cw<"run">, util::fn<&script_handle::run>},

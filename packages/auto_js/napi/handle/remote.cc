@@ -1,5 +1,6 @@
 export module napi_js:remote;
 import :environment;
+import :lock;
 import :reference;
 import std;
 import util;
@@ -24,14 +25,16 @@ class remote : protected reference_handle {
 		using unique_remote = std::unique_ptr<remote, util::function_constant<expire>>;
 
 		remote() = default;
-		remote(private_constructor /*private*/, const environment& env, local_of<Tag> value, napi_scheduler scheduler) :
-				reference_handle{napi_env{env}, napi_value{value}},
+		remote(private_constructor /*private*/, environment_lock_witness lock, local_of<Tag> value, napi_scheduler scheduler) :
+				reference_handle{napi_env{lock}, napi_value{value}},
 				scheduler_{std::move(scheduler)} {}
 
-		auto deref(const environment& env) const -> local_of<Tag>;
+		auto deref(environment_lock_witness lock) const -> local_of<Tag>;
 
-		static auto make_shared(remote_handle_environment auto& env, local_of<Tag> value) -> std::shared_ptr<remote>;
-		static auto make_unique(remote_handle_environment auto& env, local_of<Tag> value) -> unique_remote;
+		template <remote_handle_environment Environment>
+		static auto make_shared(const environment_lock_witness_of<Environment>& lock, local_of<Tag> value) -> std::shared_ptr<remote>;
+		template <remote_handle_environment Environment>
+		static auto make_unique(const environment_lock_witness_of<Environment>& lock, local_of<Tag> value) -> unique_remote;
 
 	private:
 		napi_scheduler scheduler_;
@@ -44,14 +47,14 @@ using shared_remote = std::shared_ptr<remote<Type>>;
 export template <class Type>
 using unique_remote = remote<Type>::unique_remote;
 
-export template <class Tag>
-auto make_shared_remote(remote_handle_environment auto& env, local_of<Tag> value) -> shared_remote<Tag> {
-	return remote<Tag>::make_shared(env, value);
+export template <remote_handle_environment Environment, class Tag>
+auto make_shared_remote(const environment_lock_witness_of<Environment>& lock, local_of<Tag> value) -> shared_remote<Tag> {
+	return remote<Tag>::make_shared(lock, value);
 }
 
-export template <class Tag>
-auto make_unique_remote(remote_handle_environment auto& env, local_of<Tag> value) -> unique_remote<Tag> {
-	return remote<Tag>::make_unique(env, value);
+export template <remote_handle_environment Environment, class Tag>
+auto make_unique_remote(const environment_lock_witness_of<Environment>& lock, local_of<Tag> value) -> unique_remote<Tag> {
+	return remote<Tag>::make_unique(lock, value);
 }
 
 // ---
@@ -68,18 +71,20 @@ auto remote<Tag>::expire(remote* ptr) -> void {
 }
 
 template <class Tag>
-auto remote<Tag>::deref(const environment& env) const -> local_of<Tag> {
-	return local_of<Tag>::from(get_value(napi_env{env}));
+auto remote<Tag>::deref(environment_lock_witness lock) const -> local_of<Tag> {
+	return local_of<Tag>::from(get_value(napi_env{lock}));
 }
 
 template <class Tag>
-auto remote<Tag>::make_shared(remote_handle_environment auto& env, local_of<Tag> value) -> std::shared_ptr<remote> {
-	return std::shared_ptr<remote>{new remote{private_constructor{}, env, value, env.scheduler()}, expire};
+template <remote_handle_environment Environment>
+auto remote<Tag>::make_shared(const environment_lock_witness_of<Environment>& lock, local_of<Tag> value) -> std::shared_ptr<remote> {
+	return std::shared_ptr<remote>{new remote{private_constructor{}, lock, value, lock->scheduler()}, expire};
 }
 
 template <class Tag>
-auto remote<Tag>::make_unique(remote_handle_environment auto& env, local_of<Tag> value) -> unique_remote {
-	return unique_remote{new remote{private_constructor{}, env, value, env.scheduler()}};
+template <remote_handle_environment Environment>
+auto remote<Tag>::make_unique(const environment_lock_witness_of<Environment>& lock, local_of<Tag> value) -> unique_remote {
+	return unique_remote{new remote{private_constructor{}, lock, value, lock->scheduler()}};
 }
 
 } // namespace js::napi

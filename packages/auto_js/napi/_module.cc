@@ -11,6 +11,7 @@ export import :handle.local_of;
 export import :handle.types;
 export import :handle.value_of;
 export import :initialize;
+export import :lock;
 export import :promise;
 export import :reference;
 export import :remote;

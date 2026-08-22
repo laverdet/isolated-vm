@@ -7,11 +7,11 @@ namespace js::napi {
 class local_for_external : public local_next<external_tag> {
 	public:
 		// untagged
-		static auto make(auto& env, void* pointer) -> local_of<external_tag>;
+		static auto make(environment_lock_witness lock, void* pointer) -> local_of<external_tag>;
 
 		// tagged
 		template <class Type>
-		static auto make(auto& env, Type* pointer) -> local_of<external_tag>;
+		static auto make(environment_lock_witness lock, Type* pointer) -> local_of<external_tag>;
 };
 
 class value_for_external : public value_next<external_tag> {
@@ -24,15 +24,15 @@ class value_for_external : public value_next<external_tag> {
 
 // ---
 
-auto local_for_external::make(auto& env, void* pointer) -> local_of<external_tag> {
-	auto* external = napi::invoke(napi_create_external, napi_env{env}, pointer, nullptr, nullptr);
+auto local_for_external::make(environment_lock_witness lock, void* pointer) -> local_of<external_tag> {
+	auto* external = napi::invoke(napi_create_external, napi_env{lock}, pointer, nullptr, nullptr);
 	return local_of<external_tag>::from(external);
 }
 
 template <class Type>
-auto local_for_external::make(auto& env, Type* pointer) -> local_of<external_tag> {
-	auto external = make(env, static_cast<void*>(pointer));
-	napi::invoke0(napi_type_tag_object, napi_env{env}, external, &type_tag_for<Type>);
+auto local_for_external::make(environment_lock_witness lock, Type* pointer) -> local_of<external_tag> {
+	auto external = make(lock, static_cast<void*>(pointer));
+	napi::invoke0(napi_type_tag_object, napi_env{lock}, external, &type_tag_for<Type>);
 	return external;
 };
 

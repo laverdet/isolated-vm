@@ -23,17 +23,17 @@ module_handle::module_handle(
 		requests_{std::move(requests)} {}
 
 auto module_handle::compile(
-	environment& env,
+	const environment::lock& lock,
 	agent_handle& agent,
 	js::string_t source_text,
 	compile_module_options options
 ) -> forward_promise_type {
 	using expected_type = std::expected<module_handle, js::error_value>;
 	auto [ promise, resolver ] = make_promise(
-		env,
-		[](environment& env, expected_type result) -> auto {
+		lock,
+		[](const environment::lock& lock, expected_type result) -> auto {
 			return make_completion_record(result.transform([ & ](module_handle& module_) -> auto {
-				return js::forward{class_template(env)->construct(env, std::move(module_))};
+				return js::forward{class_template(lock)->construct(lock, std::move(module_))};
 			}));
 		}
 	);
@@ -68,45 +68,51 @@ auto module_handle::compile(
 }
 
 auto module_handle::create_capability(
-	environment& env,
+	const environment::lock& lock,
 	realm_handle& realm,
 	js::napi::local_of<js::function_tag> make_capability,
 	create_capability_options options
 ) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(
-		env,
-		[](environment& env, module_handle module_) -> auto {
-			return js::forward{module_handle::class_template(env)->construct(env, std::move(module_))};
+		lock,
+		[](const environment::lock& lock, module_handle module_) -> auto {
+			return js::forward{module_handle::class_template(lock)->construct(lock, std::move(module_))};
 		}
 	);
 
 	// Make the `subscriber_capability` and pass it to the interface maker
 	using capability_type = std::variant<forward_callback_type, js::tagged_external<subscriber_capability>, std::u16string, std::string>;
 	using capability_interface_type = js::dictionary<js::dictionary_tag, js::string_t, capability_type>;
-	auto subscriber = subscriber_capability::make(env);
-	auto local_capability_interface = make_capability->call<capability_interface_type>(env, js::forward{subscriber});
+	auto subscriber = subscriber_capability::make(lock);
+	auto local_capability_interface = make_capability->call<capability_interface_type>(lock, js::forward{subscriber});
 
 	// Makes `js::free_function` which invokes the user-supplied callback capability
 	auto make_capability_callback = [ & ](forward_callback_type capability) -> auto {
 		// Invoked in the node thread
 		auto invoke =
-			[ callback = js::napi::make_shared_remote(env, *capability) ](
-				environment& env,
+			[ callback = js::napi::make_shared_remote(lock, *capability) ](
+				const environment::lock& lock,
 				js::values_vector_t params
 			) -> void {
-			callback->deref(env)->apply(env, std::move(params));
+			callback->deref(lock)->apply(lock, std::move(params));
 		};
 		// Invoked in the isolate thread. An instance of this keeps the nodejs loop alive.
 		return js::free_function{
-			[ scheduler = env.scheduler().make_ref(env),
+			[ scheduler = lock->scheduler().make_ref(lock),
 				invoke = std::move(invoke) ](
 				const realm_scope& /*lock*/,
 				js::rest /*rest*/,
 				js::values_vector_t params
 			) -> void {
 				(*scheduler)(
-					[ invoke ](napi_env env, napi_value /*nothing*/, js::values_vector_t params) -> void {
-						invoke(napi::environment::unsafe_get_environment_as<environment>(env), std::move(params));
+					[ invoke ](napi_env nenv, napi_value /*nothing*/, js::values_vector_t params) -> void {
+						auto& host_environment = napi::environment::unsafe_get_environment_as<environment>(nenv);
+						auto lock = environment::lock{napi::environment_lock_witness::make_witness(host_environment), host_environment};
+						// TODO(?): Exceptions here just fall back to process.on('uncaughtException').
+						std::ignore = napi::invoke_internal_error_scope(lock, [ & ] -> napi_value {
+							invoke(lock, std::move(params));
+							return {};
+						});
 					},
 					std::move(params)
 				);
@@ -226,8 +232,8 @@ auto module_handle::create_capability(
 	return js::forward{promise};
 };
 
-auto module_handle::evaluate(environment& env, realm_handle* realm) -> forward_promise_type {
-	auto [ promise, resolver ] = make_promise(env);
+auto module_handle::evaluate(const environment::lock& lock, realm_handle* realm) -> forward_promise_type {
+	auto [ promise, resolver ] = make_promise(lock);
 	if (realm == nullptr) {
 		return js::forward{promise};
 	}
@@ -264,9 +270,9 @@ auto deref_remote_link_record(js::iv8::isolate_lock_witness lock, remote_module_
 	};
 };
 
-auto module_handle::link(environment& env, realm_handle* realm, module_handle_link_record link_record) -> forward_promise_type {
-	auto scheduler = env.scheduler();
-	auto [ promise, resolver ] = make_promise(env);
+auto module_handle::link(const environment::lock& lock, realm_handle* realm, module_handle_link_record link_record) -> forward_promise_type {
+	auto scheduler = lock->scheduler();
+	auto [ promise, resolver ] = make_promise(lock);
 	if (realm == nullptr) {
 		return js::forward{promise};
 	}
@@ -317,17 +323,18 @@ auto module_handle::link(environment& env, realm_handle* realm, module_handle_li
 	return js::forward{promise};
 }
 
-auto module_handle::requests(environment& /*env*/) -> std::vector<js::iv8::module_request> {
+auto module_handle::requests(const environment::lock& /*lock*/) -> std::vector<js::iv8::module_request> {
 	return requests_;
 }
 
-auto module_handle::specifier(environment& /*env*/) -> std::optional<std::u16string> {
+auto module_handle::specifier(const environment::lock& /*lock*/) -> std::optional<std::u16string> {
 	return specifier_;
 }
 
-auto module_handle::class_template(environment& env) -> js::napi::local_of<class_tag_of<module_handle>> {
-	return env.class_template(
+auto module_handle::class_template(const environment::lock& lock) -> js::napi::local_of<class_tag_of<module_handle>> {
+	return lock->class_template(
 		std::type_identity<module_handle>{},
+		lock,
 		js::class_template{
 			js::class_constructor{util::cw<"Module">},
 			js::class_method{util::cw<"_link">, util::fn<&module_handle::link>},
@@ -352,30 +359,31 @@ auto subscriber_capability::take_subscriber() -> std::shared_ptr<subscriber> {
 }
 
 auto subscriber_capability::send(
-	environment& env,
+	const environment::lock& lock,
 	js::forward<napi::local_of<>> message_local,
 	transfer_options options
 ) -> bool {
-	auto message = transfer_list_type::with(env, std::move(options).transfer, [ & ](auto& transfer_list) -> js::value_t {
-		return js::transfer_out<js::value_t>(js::transferee_visit_subject{*message_local, transfer_list}, env, transfer_list);
+	auto message = transfer_list_type::with(lock, std::move(options).transfer, [ & ](auto& transfer_list) -> js::value_t {
+		return js::transfer_out<js::value_t>(js::transferee_visit_subject{*message_local, transfer_list}, lock, transfer_list);
 	});
-	auto lock = callback_.read();
-	if (*lock) {
-		return (*lock)(std::move(message));
+	auto callback = callback_.read();
+	if (*callback) {
+		return (*callback)(std::move(message));
 	} else {
 		return false;
 	}
 }
 
-auto subscriber_capability::make(environment& env) -> js::napi::local_of<js::object_tag> {
+auto subscriber_capability::make(const environment::lock& lock) -> js::napi::local_of<js::object_tag> {
 	auto capability = std::make_shared<subscriber_capability>(private_constructor{});
 	capability->subscriber_ = std::make_shared<subscriber>(capability);
-	return class_template(env)->transfer_construct(env, std::move(capability), std::tuple{});
+	return class_template(lock)->transfer_construct(lock, std::move(capability), std::tuple{});
 }
 
-auto subscriber_capability::class_template(environment& env) -> js::napi::local_of<js::class_tag_of<subscriber_capability>> {
-	return env.class_template(
+auto subscriber_capability::class_template(const environment::lock& lock) -> js::napi::local_of<js::class_tag_of<subscriber_capability>> {
+	return lock->class_template(
 		std::type_identity<subscriber_capability>{},
+		lock,
 		js::class_template{
 			js::class_constructor{util::cw<"SubscriberCapability">},
 			js::class_method{util::cw<"send">, util::fn<&subscriber_capability::send>},

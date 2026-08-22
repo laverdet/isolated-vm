@@ -1,20 +1,24 @@
 export module napi_js:environment;
 export import :environment_fwd;
 import :api;
-import :utility;
 import std;
 import util;
+import v8;
 
 namespace js::napi {
 
-// A reference to an environment is used as the lock witness. Generally, you should not have an
-// `environment&` unless you're in the napi thread and locked.
+// Per-instance environment state. The lifetime of instances of this class is managed by the
+// runtime.
 export class environment : util::non_moveable, public napi_schedulable {
 	public:
 		explicit environment(napi_env env);
 
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		[[nodiscard]] operator napi_env() const { return env_; }
+
+		// In the fast (nodejs) case this is the isolate which backs the environment. Otherwise it is
+		// `nullptr`.
+		[[nodiscard]] auto isolate() const -> v8::Isolate* { return isolate_; }
 
 		template <class Type>
 		static auto make_and_set_environment(napi_env env, auto&&... args) -> Type&
@@ -33,6 +37,7 @@ export class environment : util::non_moveable, public napi_schedulable {
 
 	private:
 		napi_env env_;
+		v8::Isolate* isolate_{};
 		napi_async_cleanup_hook_handle cleanup_hook_handle_{};
 };
 

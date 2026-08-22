@@ -1,4 +1,5 @@
 export module napi_js:transfer_list;
+import :lock;
 import :support.host;
 import :utility;
 import :value;
@@ -10,13 +11,11 @@ namespace js::napi {
 // Transfer delegate for `ArrayBuffer`
 export class array_buffer_transfer {
 	public:
-		array_buffer_transfer() = default;
-
-		array_buffer_transfer(auto_environment auto& env, std::vector<local_of<>>& entries) :
-				env_{napi_env{env}},
+		array_buffer_transfer(environment_lock_witness lock, std::vector<local_of<>>& entries) :
+				lock_{lock},
 				buffers_{js::extract_transferees(
 					util::cw<u"ArrayBuffer">,
-					[ env = env_ ](napi_value value) -> std::optional<local_of<array_buffer_tag>> {
+					[ env = napi_env{lock} ](napi_value value) -> std::optional<local_of<array_buffer_tag>> {
 						if (is_object_array_buffer(env, local_of<object_tag>::from(value))) {
 							return local_of<array_buffer_tag>::from(value);
 						} else {
@@ -40,7 +39,7 @@ export class array_buffer_transfer {
 		// Detaches listed buffers which were never claimed by the visitor
 		auto finalize() -> void {
 			for (auto entry : std::exchange(buffers_, {})) {
-				value_of{env_, entry}.detach();
+				value_of{lock_, entry}.detach();
 			}
 		}
 
@@ -53,7 +52,7 @@ export class array_buffer_transfer {
 				: std::optional{[ this, it, &visit, &accept ] -> accept_target_t<Accept> {
 						auto handle = std::exchange(*it, buffers_.back());
 						buffers_.pop_back();
-						auto value = value_of{env_, handle};
+						auto value = value_of{lock_, handle};
 						auto buffer = [ & ] -> js::array_buffer {
 							if (array_buffer_get_backing_store == nullptr || value.byte_length() == 0) {
 								return js::array_buffer{std::span<std::byte>{value}};
@@ -76,7 +75,7 @@ export class array_buffer_transfer {
 					}};
 		}
 
-		napi_env env_{};
+		environment_lock_witness lock_;
 		std::vector<local_of<array_buffer_tag>> buffers_;
 };
 
@@ -84,25 +83,16 @@ export class array_buffer_transfer {
 export template <class... Delegates>
 class transfer_list {
 	public:
-		transfer_list() = default;
-
 		template <class Type>
-		transfer_list(auto_environment auto& env, std::optional<Type> list) :
-				transfer_list{list ? transfer_list{env, *std::move(list)} : transfer_list{}} {}
+		transfer_list(const auto& lock, std::optional<Type> list) :
+				transfer_list{lock, list ? std::vector{std::from_range, list->values()} : std::vector<local_of<>>{}} {}
 
-		transfer_list(auto_environment auto& env, value_of<list_tag> list) :
-				delegates_{[ & ] {
-					auto entries = std::vector{std::from_range, list.values()};
-					auto delegates = std::tuple{Delegates{env, entries}...};
-					if (!entries.empty()) {
-						throw js::type_error{u"Transfer list contains unknown value"};
-					}
-					return delegates;
-				}()} {}
+		transfer_list(const auto& lock, value_of<list_tag> list) :
+				transfer_list{lock, std::vector{std::from_range, list.values()}} {}
 
 		// Constructs a list in place and invokes the given operation with it, finalizing afterwards
-		static auto with(auto_environment auto& env, auto list, auto operation) {
-			auto self = transfer_list{env, std::move(list)};
+		static auto with(const auto& lock, auto list, auto operation) {
+			auto self = transfer_list{lock, std::move(list)};
 			auto result = operation(self);
 			self.finalize();
 			return result;
@@ -134,6 +124,14 @@ class transfer_list {
 		}
 
 	private:
+		// Each delegate claims its entries from the vector. Anything left over is unknown.
+		transfer_list(const auto& lock, std::vector<local_of<>> entries) :
+				delegates_{Delegates{lock, entries}...} {
+			if (!entries.empty()) {
+				throw js::type_error{u"Transfer list contains unknown value"};
+			}
+		}
+
 		std::tuple<Delegates...> delegates_;
 };
 

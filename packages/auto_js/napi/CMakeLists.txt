@@ -20,6 +20,7 @@ target_sources(${napi_js}
 		support/environment.cc
 		support/host.cc
 		support/initialize.cc
+		support/lock.cc
 		transfer/accept.cc
 		value/array_buffer.cc
 		value/array.cc
@@ -35,6 +36,7 @@ target_sources(${napi_js}
 		api/invoke.cc
 		api/napi_scheduler.h.cc
 		api/threadsafe_function.cc
+		api/unmaybe.cc
 		api/uv_dlib.h.cc
 		api/uv_handle.cc
 		api/uv_scheduler.h.cc
@@ -51,6 +53,7 @@ target_sources(${napi_js}
 		support/error_scope.cc
 		support/host.h.cc
 		support/initialize.h.cc
+		support/lock.h.cc
 		support/promise.cc
 		support/string_table.cc
 		support/utility.cc

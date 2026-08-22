@@ -1,4 +1,5 @@
 export module napi_js:class_template_storage;
+import :lock;
 import :reference;
 import auto_js;
 import std;
@@ -19,8 +20,8 @@ constexpr auto class_template_references_of = [] consteval -> auto {
 export template <const auto& Strings>
 class class_template_references {
 	public:
-		template <class Type>
-		auto class_template(this auto& self, std::type_identity<Type> /*type*/, const auto& class_template) -> local_of<class_tag_of<Type>> {
+		template <class Environment, class Type>
+		auto class_template(this Environment& self, std::type_identity<Type> /*type*/, const environment_lock_witness_of<Environment>& lock, const auto& class_template) -> local_of<class_tag_of<Type>> {
 			constexpr auto name_sv = util::make_consteval_string_view(class_template.constructor.name);
 			constexpr auto index = class_template_references_of<Strings>.lookup(name_sv);
 			if constexpr (!index) {
@@ -35,10 +36,10 @@ class class_template_references {
 			auto& reference = self.class_template_references_.at(index).second;
 			using value_type = js::napi::local_of<class_tag_of<Type>>;
 			if (reference) {
-				return value_type::from(reference.get(self));
+				return value_type::from(reference.get(lock));
 			} else {
-				auto template_value = value_type::make(self, class_template);
-				reference.reset(self, template_value);
+				auto template_value = value_type::make(lock, class_template);
+				reference.reset(lock, template_value);
 				return template_value;
 			}
 		}

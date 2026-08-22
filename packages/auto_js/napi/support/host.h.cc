@@ -1,6 +1,8 @@
 export module napi_js:support.host;
+import :environment_fwd;
 import :handle.local_of;
 import std;
+import v8;
 
 namespace js::napi {
 
@@ -12,6 +14,13 @@ auto (*fast_is_false)(napi_env env, napi_value value) -> bool;
 auto (*fast_is_null)(napi_env env, napi_value value) -> bool;
 auto (*fast_is_true)(napi_env env, napi_value value) -> bool;
 auto (*fast_is_undefined)(napi_env env, napi_value value) -> bool;
+
+// Isolate access. In the fast case (nodejs) this returns the isolate of the current thread.
+auto (*host_current_isolate)() -> v8::Isolate* = nullptr;
+
+// Element access
+auto (*fast_has_element)(environment_lock_witness lock, napi_value array, std::uint32_t index) -> bool = nullptr;
+auto (*fast_get_element)(environment_lock_witness lock, napi_value array, std::uint32_t index) -> napi_value = nullptr;
 
 // Extended fast functions
 auto has_extended_fast_is_functions = false;

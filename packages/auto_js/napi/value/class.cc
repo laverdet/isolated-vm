@@ -8,7 +8,7 @@ namespace js::napi {
 
 template <class Type>
 template <class... Args>
-auto local_for_class_of<Type>::construct(auto& env, Args&&... args) const -> local_of<object_tag>
+auto local_for_class_of<Type>::construct(const auto& lock, Args&&... args) const -> local_of<object_tag>
 	requires std::constructible_from<Type, Args...> {
 	// NOLINTNEXTLINE(readability-simplify-boolean-expr)
 	if (false) {
@@ -16,33 +16,33 @@ auto local_for_class_of<Type>::construct(auto& env, Args&&... args) const -> loc
 		std::ignore = std::tuple<std::remove_cvref_t<Args>...>{std::forward<Args>(args)...};
 	}
 	// NOLINTNEXTLINE(bugprone-use-after-move)
-	return runtime_construct(env, std::forward_as_tuple(std::forward<Args>(args)...), std::tuple{});
+	return runtime_construct(lock, std::forward_as_tuple(std::forward<Args>(args)...), std::tuple{});
 }
 
 template <class Type>
 template <class... HostArgs, class... RuntimeArgs>
 auto local_for_class_of<Type>::runtime_construct(
-	auto& env,
+	const auto& lock,
 	std::tuple<HostArgs...> host_args,
 	std::tuple<RuntimeArgs...> runtime_args
 ) const -> local_of<object_tag>
 	requires std::constructible_from<Type, HostArgs...> {
 	constexpr auto [... indices ] = util::sequence<sizeof...(HostArgs)>;
 	auto instance = std::make_unique<Type>(std::get<indices>(std::move(host_args))...);
-	return transfer_construct(env, std::move(instance), std::move(runtime_args));
+	return transfer_construct(lock, std::move(instance), std::move(runtime_args));
 }
 
 template <class Type>
 template <class... Args>
-auto local_for_class_of<Type>::transfer_construct(auto& env, auto instance, std::tuple<Args...> runtime_args) const -> local_of<object_tag> {
+auto local_for_class_of<Type>::transfer_construct(const auto& lock, auto instance, std::tuple<Args...> runtime_args) const -> local_of<object_tag> {
 	using element_type = decltype(instance)::element_type;
 	auto construct = [ & ](napi_value this_arg) -> napi_value {
 		// Tag `this_arg`
-		napi::invoke0(napi_type_tag_object, napi_env{env}, this_arg, &type_tag_for<element_type>);
+		napi::invoke0(napi_type_tag_object, napi_env{lock}, this_arg, &type_tag_for<element_type>);
 
 		// Wrap w/ finalizer
 		return apply_finalizer(std::move(instance), [ & ](element_type* instance, node_api_basic_finalize finalize, void* hint) -> napi_value {
-			napi::invoke0(napi_wrap, napi_env{env}, this_arg, instance, finalize, hint, nullptr);
+			napi::invoke0(napi_wrap, napi_env{lock}, this_arg, instance, finalize, hint, nullptr);
 			return this_arg;
 		});
 	};
@@ -50,19 +50,19 @@ auto local_for_class_of<Type>::transfer_construct(auto& env, auto instance, std:
 	// Now an external (of `internal_constructor`) gets passed to JavaScript for a moment and
 	// hopefully it jumps into `construct`
 	auto construct_ref = internal_constructor{construct};
-	auto* construct_external = napi_value{local_of<external_tag>::make(env, &construct_ref)};
-	auto [... runtime_arg_values ] = js::transfer_in_strict<std::array<napi_value, sizeof...(Args)>>(std::move(runtime_args), env);
+	auto* construct_external = napi_value{local_of<external_tag>::make(lock, &construct_ref)};
+	auto [... runtime_arg_values ] = js::transfer_in_strict<std::array<napi_value, sizeof...(Args)>>(std::move(runtime_args), lock);
 	auto arg_vector = std::array{construct_external, runtime_arg_values...};
-	auto* this_arg = napi::invoke(napi_new_instance, napi_env{env}, napi_value{*this}, arg_vector.size(), arg_vector.data());
+	auto* this_arg = napi::invoke(napi_new_instance, napi_env{lock}, napi_value{*this}, arg_vector.size(), arg_vector.data());
 	return local_of<object_tag>::from(this_arg);
 }
 
 template <class Type>
 template <class Environment>
-auto local_for_class_of<Type>::make(Environment& env, const auto& class_template) -> local_of<class_tag_of<Type>> {
+auto local_for_class_of<Type>::make(const environment_lock_witness_of<Environment>& lock, const auto& class_template) -> local_of<class_tag_of<Type>> {
 	// Make constructor callback
 	auto [ construct_ptr, constructor_data ] =
-		make_callback_storage(env, make_constructor_function<Environment, Type>(class_template.constructor.function));
+		make_callback_storage(lock, make_constructor_function<Environment, Type>(class_template.constructor.function));
 	static_assert(std::remove_cvref_t<decltype(class_template.constructor)>::disposition == property_disposition::function);
 	static_assert(!requires { typename decltype(constructor_data)::element_type; });
 
@@ -70,7 +70,7 @@ auto local_for_class_of<Type>::make(Environment& env, const auto& class_template
 	const auto make_member_function_descriptor = [ & ]<class Property>(const Property& property) -> napi_property_descriptor
 		requires(Property::scope == class_property_scope::prototype && Property::disposition == property_disposition::function) {
 			constexpr auto u8_name = util::make_consteval_string_view(util::transcode_string<char>(property.name));
-			auto [ callback, data ] = make_callback_storage(env, make_member_function<Environment, Type>(property.function));
+			auto [ callback, data ] = make_callback_storage(lock, make_member_function<Environment, Type>(property.function));
 			static_assert(!requires { typename decltype(data)::element_type; });
 			return {
 				.utf8name = u8_name.data(),
@@ -91,7 +91,7 @@ auto local_for_class_of<Type>::make(Environment& env, const auto& class_template
 	const auto make_member_getter_descriptor = [ & ]<class Property>(const Property& property) -> napi_property_descriptor
 		requires(Property::scope == class_property_scope::prototype && Property::disposition == property_disposition::accessor) {
 			constexpr auto u8_name = util::make_consteval_string_view(util::transcode_string<char>(property.name));
-			auto [ callback, data ] = make_callback_storage(env, make_member_function<Environment, Type>(property.function));
+			auto [ callback, data ] = make_callback_storage(lock, make_member_function<Environment, Type>(property.function));
 			static_assert(!requires { typename decltype(data)::element_type; });
 			return {
 				.utf8name = u8_name.data(),
@@ -111,7 +111,7 @@ auto local_for_class_of<Type>::make(Environment& env, const auto& class_template
 	const auto make_static_function_descriptor = [ & ]<class Property>(const Property& property) -> napi_property_descriptor
 		requires(Property::scope == class_property_scope::constructor) {
 			constexpr auto u8_name = util::make_consteval_string_view(util::transcode_string<char>(property.name));
-			auto [ callback, data ] = make_callback_storage(env, make_free_function<Environment>(property.function));
+			auto [ callback, data ] = make_callback_storage(lock, make_free_function<Environment>(property.function));
 			static_assert(!requires { typename decltype(data)::element_type; });
 			return {
 				.utf8name = u8_name.data(),
@@ -144,7 +144,7 @@ auto local_for_class_of<Type>::make(Environment& env, const auto& class_template
 	constexpr auto u8_name = util::make_consteval_string_view(util::transcode_string<char>(class_template.constructor.name));
 	auto result = napi::invoke(
 		napi_define_class,
-		napi_env{env},
+		napi_env{lock},
 		u8_name.data(),
 		u8_name.length(),
 		construct_ptr,

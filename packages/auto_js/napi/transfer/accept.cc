@@ -84,7 +84,7 @@ auto accept_basic_napi_value::operator()(date_tag /*tag*/, visit_holder /*visit*
 // error
 auto accept_basic_napi_value::operator()(error_tag /*tag*/, visit_holder visit, const js::error_value& subject) const
 	-> js::referenceable_value<local_of<error_tag>> {
-	auto* message = napi_value{js::transfer_in<local_of<string_tag>>(subject.message(), environment())};
+	auto* message = napi_value{js::transfer_in<local_of<string_tag>>(subject.message(), lock())};
 	auto* error = [ & ] -> napi_value {
 		switch (subject.name()) {
 			default:

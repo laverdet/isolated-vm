@@ -3,12 +3,14 @@ import std;
 
 namespace js::napi {
 
-// A reference to an environment is used as the lock witness. Generally, you should not have an
-// `environment&` unless you're in the napi thread and locked.
+// Per-instance environment state.
 export class environment;
 
 // Environment constraint
 export template <class Type>
 concept auto_environment = std::derived_from<Type, environment>;
+
+// Environment lock witness, defined in `:lock`
+export class environment_lock_witness;
 
 } // namespace js::napi

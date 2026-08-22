@@ -22,7 +22,7 @@ auto value_for_record::keys() const -> const keys_type& {
 			static_cast<napi_key_filter>(napi_key_enumerable | napi_key_skip_symbols),
 			napi_key_keep_numbers
 		);
-		keys_ = keys_type{env(), js::napi::local_of<vector_tag>::from(property_names), false};
+		keys_ = keys_type{lock(), js::napi::local_of<vector_tag>::from(property_names), false};
 	}
 	return keys_;
 }
@@ -36,7 +36,7 @@ auto value_for_record::iterator_transform::operator()(local_of<> key) const -> v
 
 // value_for_list
 auto value_for_list::values() const -> value_of<vector_tag> {
-	return value_of<vector_tag>{env(), local_of<vector_tag>::from(*this)};
+	return value_of<vector_tag>{lock(), local_of<vector_tag>::from(*this)};
 }
 
 } // namespace js::napi

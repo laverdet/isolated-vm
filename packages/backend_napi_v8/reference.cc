@@ -74,8 +74,8 @@ reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle 
 			return reference_handle{std::move(agent), type_of, std::move(realm), js::iv8::make_shared_remote(lock, value.As<v8::Value>())};
 		}}} {}
 
-auto reference_handle::copy(environment& env) -> forward_promise_type {
-	auto [ promise, resolver ] = make_promise(env);
+auto reference_handle::copy(const environment::lock& lock) -> forward_promise_type {
+	auto [ promise, resolver ] = make_promise(lock);
 	switch (typeof_) {
 		case js::typeof_kind::null:
 			resolver.resolve(js::value_t{nullptr});
@@ -114,9 +114,9 @@ auto reference_handle::copy(environment& env) -> forward_promise_type {
 	return js::forward{promise};
 }
 
-auto reference_handle::get(environment& env, js::string_t name) -> forward_promise_type {
-	auto [ promise, resolver ] = make_promise(env, [](environment& env, reference_handle reference) -> auto {
-		return js::forward{reference_handle::class_template(env)->construct(env, std::move(reference))};
+auto reference_handle::get(const environment::lock& lock, js::string_t name) -> forward_promise_type {
+	auto [ promise, resolver ] = make_promise(lock, [](const environment::lock& lock, reference_handle reference) -> auto {
+		return js::forward{reference_handle::class_template(lock)->construct(lock, std::move(reference))};
 	});
 	switch (typeof_) {
 		// Any property on these types is just `undefined`
@@ -179,9 +179,9 @@ auto reference_handle::get(environment& env, js::string_t name) -> forward_promi
 	return js::forward{promise};
 }
 
-auto reference_handle::set(environment& env, js::string_t name, js::forward<js::napi::local_of<>> value_local) -> forward_promise_type {
-	auto value = js::transfer_out<js::value_t>(*value_local, env);
-	auto [ promise, resolver ] = make_promise(env);
+auto reference_handle::set(const environment::lock& lock, js::string_t name, js::forward<js::napi::local_of<>> value_local) -> forward_promise_type {
+	auto value = js::transfer_out<js::value_t>(*value_local, lock);
+	auto [ promise, resolver ] = make_promise(lock);
 	switch (typeof_) {
 		// Setting any property on these types is a no-op
 		case js::typeof_kind::bigint:
@@ -237,11 +237,11 @@ auto reference_handle::set(environment& env, js::string_t name, js::forward<js::
 	return js::forward{promise};
 }
 
-auto reference_handle::invoke(environment& env, js::forward<js::napi::local_of<list_tag>> params_local, transfer_options options) -> forward_promise_type {
-	auto params = transfer_list_type::with(env, std::move(options).transfer, [ & ](auto& transfer_list) -> js::values_vector_t {
-		return js::transfer_out<js::values_vector_t>(js::transferee_visit_subject{*params_local, transfer_list}, env, transfer_list);
+auto reference_handle::invoke(const environment::lock& lock, js::forward<js::napi::local_of<list_tag>> params_local, transfer_options options) -> forward_promise_type {
+	auto params = transfer_list_type::with(lock, std::move(options).transfer, [ & ](auto& transfer_list) -> js::values_vector_t {
+		return js::transfer_out<js::values_vector_t>(js::transferee_visit_subject{*params_local, transfer_list}, lock, transfer_list);
 	});
-	auto [ promise, resolver ] = make_promise(env);
+	auto [ promise, resolver ] = make_promise(lock);
 	if (typeof_ == js::typeof_kind::function) {
 		agent_.schedule(
 			[ value = value_ ](
@@ -270,9 +270,10 @@ auto reference_handle::invoke(environment& env, js::forward<js::napi::local_of<l
 	return js::forward{promise};
 }
 
-auto reference_handle::class_template(environment& env) -> js::napi::local_of<class_tag_of<reference_handle>> {
-	return env.class_template(
+auto reference_handle::class_template(const environment::lock& lock) -> js::napi::local_of<class_tag_of<reference_handle>> {
+	return lock->class_template(
 		std::type_identity<reference_handle>{},
+		lock,
 		js::class_template{
 			js::class_constructor{util::cw<"Reference">},
 			js::class_method{util::cw<"copy">, util::fn<&reference_handle::copy>},

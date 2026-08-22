@@ -18,12 +18,12 @@ export class agent_handle_value {
 		struct clock_system;
 
 		explicit agent_handle_value(agent_handle agent) : agent_{std::move(agent)} {}
-		auto create_realm(environment& env) -> forward_promise_type;
-		auto compile_module(environment& env, js::string_t source_text, compile_module_options options) -> forward_promise_type;
-		auto compile_script(environment& env, js::string_t source_text, compile_script_options options) -> forward_promise_type;
-		auto dispose_async(environment& env) -> forward_promise_type;
-		static auto create(environment& env, std::optional<create_options> options_optional) -> forward_promise_type;
-		static auto class_template(environment& env) -> js::napi::local_of<class_tag_of<agent_handle_value>>;
+		auto create_realm(const environment::lock& lock) -> forward_promise_type;
+		auto compile_module(const environment::lock& lock, js::string_t source_text, compile_module_options options) -> forward_promise_type;
+		auto compile_script(const environment::lock& lock, js::string_t source_text, compile_script_options options) -> forward_promise_type;
+		auto dispose_async(const environment::lock& lock) -> forward_promise_type;
+		static auto create(const environment::lock& lock, std::optional<create_options> options_optional) -> forward_promise_type;
+		static auto class_template(const environment::lock& lock) -> js::napi::local_of<class_tag_of<agent_handle_value>>;
 
 	private:
 		agent_handle agent_;

@@ -1,7 +1,9 @@
 export module napi_js:handle.value_of;
 import :handle.types;
+import :lock;
 import nodejs;
 import std;
+import v8;
 
 namespace js::napi {
 
@@ -33,7 +35,7 @@ class value_next : public value_of<typename Tag::tag_type> {
 };
 
 // Member & method implementation for value semantics objects. It holds the type-erased environment
-// and is used for common operations like casting & iteration.
+// lock witness and is used for common operations like casting & iteration.
 template <class Tag>
 class value_of : public value_specialization<Tag>::type {
 	public:
@@ -46,14 +48,19 @@ template <>
 class value_of<void> : public runtime_handle {
 	protected:
 		value_of() = default;
-		value_of(napi_env env, napi_value value) :
+		value_of(environment_lock_witness lock, napi_value value) :
 				runtime_handle{value},
-				env_{env} {}
+				env_{lock},
+				isolate_{lock.isolate()},
+				context_{lock.context()} {}
 
 		[[nodiscard]] auto env() const -> napi_env { return env_; }
+		[[nodiscard]] auto lock() const -> environment_lock_witness { return environment_lock_witness::make_witness(env_, isolate_, context_); }
 
 	private:
 		napi_env env_{};
+		v8::Isolate* isolate_{};
+		v8::Local<v8::Context> context_;
 };
 
 // Deduction guide
