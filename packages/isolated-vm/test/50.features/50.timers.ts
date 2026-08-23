@@ -11,18 +11,18 @@ await test("setTimeout capability", async () => {
 	const resolvers = Promise.withResolvers();
 	const capabilities = makeStaticLoader({
 		"isolated-vm:capability/timers": expect(await realm.createCapability(
-			() => ({
+			{
 				default: (/*timeout*/) => {
 					void async function() {
 						await runTimers.run(realm);
 					}();
 				},
-			}),
+			},
 			{ origin: "isolated-vm:capability/timers" })),
 		"notify-test": expect(await realm.createCapability(
-			() => ({
+			{
 				default: (message: unknown) => { resolvers.resolve(message); },
-			}),
+			},
 			{ origin: "notify-test" })),
 	});
 

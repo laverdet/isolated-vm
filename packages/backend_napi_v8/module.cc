@@ -70,7 +70,7 @@ auto module_handle::compile(
 auto module_handle::create_capability(
 	const environment::lock& lock,
 	realm_handle& realm,
-	js::napi::local_of<js::function_tag> make_capability,
+	capability_interface_type capability_interface,
 	create_capability_options options
 ) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(
@@ -79,12 +79,6 @@ auto module_handle::create_capability(
 			return js::forward{module_handle::class_template(lock)->construct(lock, std::move(module_))};
 		}
 	);
-
-	// Make the `subscriber_capability` and pass it to the interface maker
-	using capability_type = std::variant<forward_callback_type, js::tagged_external<subscriber_capability>, std::u16string, std::string>;
-	using capability_interface_type = js::dictionary<js::dictionary_tag, js::string_t, capability_type>;
-	auto subscriber = subscriber_capability::make(lock);
-	auto local_capability_interface = make_capability->call<capability_interface_type>(lock, js::forward{subscriber});
 
 	// Makes `js::free_function` which invokes the user-supplied callback capability
 	auto make_capability_callback = [ & ](forward_callback_type capability) -> auto {
@@ -120,75 +114,22 @@ auto module_handle::create_capability(
 		};
 	};
 
-	// Makes `js::free_function` from a `subscriber_capability`
-	auto make_subscribe_capability = [ & ](js::tagged_external<subscriber_capability> subscriber) -> auto {
-		// Wakes the isolate and runs the callback in the current realm
-		auto schedule_task =
-			[ agent = realm.agent(),
-				realm = realm.realm() ](
-				auto resolver,
-				auto&&... args
-			) -> void {
-			agent.schedule(
-				[](
-					const agent_handle::lock& lock,
-					const js::iv8::shared_remote<v8::Context>& realm,
-					auto resolver,
-					auto&&... args
-				) -> void {
-					context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) -> void {
-						resolver(realm, std::forward<decltype(args)>(args)...);
-					});
-				},
-				realm,
-				std::move(resolver),
-				std::forward<decltype(args)>(args)...
-			);
-		};
-		return js::free_function{
-			[ accept_subscriber = subscriber->take_subscriber(),
-				schedule_task = std::move(schedule_task) ](
-				const realm_scope& lock,
-				js::forward<v8::Local<iv8::Function>> callback
-			) -> void {
-				auto callback_remote = make_shared_remote(lock, *callback);
-				auto wake =
-					[ schedule_task = std::move(schedule_task),
-						callback_remote = std::move(callback_remote) ](
-						js::value_t message
-					) -> bool {
-					schedule_task(
-						[ callback_remote ](
-							const realm_scope& lock,
-							js::value_t message
-						) -> void {
-							callback_remote->deref(lock)->call(lock, std::move(message));
-						},
-						std::move(message)
-					);
-					return true;
-				};
-				accept_subscriber->subscribe(std::move(wake));
-			},
-		};
-	};
-
 	// Forward value interface as value
 	constexpr auto forward_value_capability = util::overloaded{
 		[](std::u16string value) -> auto { return value; },
 		[](std::string value) -> auto { return value; },
 	};
 
-	// Apply `make_capability_callback` and `make_subscribe_capability` to each entry in the
-	// interface. This will be passed to `create_synthetic` to instantiate the module.
+	// Apply `make_capability_callback` to each entry in the interface. This will be passed to
+	// `create_synthetic` to instantiate the module.
 	auto external_capability_interface = std::vector{
 		std::from_range,
-		std::move(local_capability_interface) |
+		std::move(capability_interface) |
 			std::views::transform([ & ](auto pair) {
 				auto [ key, value ] = std::move(pair);
 				return std::pair{
 					std::move(key),
-					util::map_variant(std::move(value), util::overloaded{make_capability_callback, make_subscribe_capability, forward_value_capability}),
+					util::map_variant(std::move(value), util::overloaded{make_capability_callback, forward_value_capability}),
 				};
 			}),
 	};
@@ -343,68 +284,6 @@ auto module_handle::class_template(const environment::lock& lock) -> js::napi::l
 			js::class_method{util::cw<"evaluate">, util::fn<&module_handle::evaluate>},
 		}
 	);
-}
-
-// subscriber_capability
-auto subscriber_capability::accept_callback(callback_type callback) -> void {
-	*callback_.write() = std::move(callback);
-}
-
-auto subscriber_capability::take_subscriber() -> std::shared_ptr<subscriber> {
-	if (!subscriber_) {
-		throw js::runtime_error{u"Subscriber capability already forwarded"};
-	} else {
-		return std::move(subscriber_);
-	}
-}
-
-auto subscriber_capability::send(
-	const environment::lock& lock,
-	js::forward<napi::local_of<>> message_local,
-	transfer_options options
-) -> bool {
-	auto message = transfer_list_type::with(lock, std::move(options).transfer, [ & ](auto& transfer_list) -> js::value_t {
-		return js::transfer_out<js::value_t>(js::transferee_visit_subject{*message_local, transfer_list}, lock, transfer_list);
-	});
-	auto callback = callback_.read();
-	if (*callback) {
-		return (*callback)(std::move(message));
-	} else {
-		return false;
-	}
-}
-
-auto subscriber_capability::make(const environment::lock& lock) -> js::napi::local_of<js::object_tag> {
-	auto capability = std::make_shared<subscriber_capability>(private_constructor{});
-	capability->subscriber_ = std::make_shared<subscriber>(capability);
-	return class_template(lock)->transfer_construct(lock, std::move(capability), std::tuple{});
-}
-
-auto subscriber_capability::class_template(const environment::lock& lock) -> js::napi::local_of<js::class_tag_of<subscriber_capability>> {
-	return lock->class_template(
-		std::type_identity<subscriber_capability>{},
-		lock,
-		js::class_template{
-			js::class_constructor{util::cw<"SubscriberCapability">},
-			js::class_method{util::cw<"send">, util::fn<&subscriber_capability::send>},
-		}
-	);
-}
-
-// `subscriber_capability`
-subscriber_capability::subscriber::subscriber(const std::shared_ptr<subscriber_capability>& capability) :
-		capability_{capability} {}
-
-auto subscriber_capability::subscriber::subscribe(callback_type callback) -> void {
-	if (subscribed_) {
-		throw js::runtime_error{u"Already subscribed"};
-	}
-	if (auto capability = capability_.lock()) {
-		// No repeat subscriptions
-		subscribed_ = true;
-		capability_.reset();
-		capability->accept_callback(std::move(callback));
-	}
 }
 
 } // namespace backend_napi_v8

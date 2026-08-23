@@ -30,6 +30,9 @@ struct create_capability_options {
 		};
 };
 
+using capability_type = std::variant<forward_callback_type, std::u16string, std::string>;
+using capability_interface_type = js::dictionary<js::dictionary_tag, js::string_t, capability_type>;
+
 struct module_handle_link_record {
 		std::vector<js::tagged_external<module_handle>> modules;
 		std::vector<unsigned> payload;
@@ -44,8 +47,6 @@ struct remote_module_link_record {
 		std::vector<js::iv8::shared_remote<js::iv8::module_record>> modules;
 		std::vector<unsigned> payload;
 };
-
-class subscriber_capability;
 
 export class module_handle {
 	public:
@@ -65,47 +66,13 @@ export class module_handle {
 		auto specifier(const environment::lock& lock) -> std::optional<std::u16string>;
 		static auto class_template(const environment::lock& lock) -> js::napi::local_of<class_tag_of<module_handle>>;
 		static auto compile(const environment::lock& lock, agent_handle& agent, js::string_t source_text, compile_module_options options) -> forward_promise_type;
-		static auto create_capability(const environment::lock& lock, realm_handle& realm, js::napi::local_of<js::function_tag> make_capability, create_capability_options options) -> forward_promise_type;
+		static auto create_capability(const environment::lock& lock, realm_handle& realm, capability_interface_type capability_interface, create_capability_options options) -> forward_promise_type;
 
 	private:
 		agent_handle agent_;
 		js::iv8::shared_remote<js::iv8::module_record> module_;
 		std::optional<std::u16string> specifier_;
 		std::vector<js::iv8::module_request> requests_;
-};
-
-class subscriber_capability {
-	private:
-		struct private_constructor {
-				explicit private_constructor() = default;
-		};
-
-	public:
-		using callback_type = util::move_only_function<auto(js::value_t) const->bool>;
-		using transfer_type = js::tagged_external<subscriber_capability>;
-		class subscriber;
-
-		explicit subscriber_capability(private_constructor /*private*/) {};
-		auto accept_callback(callback_type callback) -> void;
-		auto take_subscriber() -> std::shared_ptr<subscriber>;
-		auto send(const environment::lock& lock, js::forward<napi::local_of<>> message_local, transfer_options options) -> bool;
-		static auto make(const environment::lock& lock) -> js::napi::local_of<js::object_tag>;
-
-		static auto class_template(const environment::lock& lock) -> js::napi::local_of<js::class_tag_of<subscriber_capability>>;
-
-	private:
-		util::lockable<callback_type> callback_;
-		std::shared_ptr<subscriber> subscriber_;
-};
-
-class subscriber_capability::subscriber {
-	public:
-		explicit subscriber(const std::shared_ptr<subscriber_capability>& capability);
-		auto subscribe(callback_type callback) -> void;
-
-	private:
-		std::weak_ptr<subscriber_capability> capability_;
-		bool subscribed_ = false;
 };
 
 } // namespace backend_napi_v8

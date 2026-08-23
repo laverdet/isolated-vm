@@ -28,9 +28,9 @@ import { makeDirectResolver, makeLinker, makeStaticLoader } from "@isolated-vm/e
 const agent = await Agent.create();
 const realm = expect(await agent.createRealm());
 const log = expect(await realm.createCapability(
-	() => ({
+	{
 		log(...args: unknown[]) { console.log(">", ...args); },
-	}),
+	},
 	{ origin: "example:log" },
 ));
 const module = expectComplete(await agent.compileModule(`

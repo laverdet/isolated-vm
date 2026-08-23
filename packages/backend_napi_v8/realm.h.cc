@@ -19,7 +19,7 @@ export class realm_handle {
 
 		auto acquire_global_object(const environment::lock& lock) -> forward_promise_type;
 		auto instantiate_runtime(const environment::lock& lock) -> forward_promise_type;
-		auto create_capability(const environment::lock& lock, forward_callback_type make_capability, create_capability_options options) -> forward_promise_type;
+		auto create_capability(const environment::lock& lock, capability_interface_type capability_interface, create_capability_options options) -> forward_promise_type;
 
 		static auto create(const environment::lock& lock, agent_handle& agent) -> forward_promise_type;
 		static auto class_template(const environment::lock& lock) -> js::napi::local_of<class_tag_of<realm_handle>>;

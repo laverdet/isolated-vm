@@ -43,7 +43,6 @@ constexpr auto class_names = std::tuple{
 	"Realm"sv,
 	"Reference"sv,
 	"Script"sv,
-	"SubscriberCapability"sv,
 };
 
 // Instance of the `isolated-vm` module, once per nodejs environment.

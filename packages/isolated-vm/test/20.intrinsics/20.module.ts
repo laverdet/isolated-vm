@@ -32,13 +32,13 @@ await test("synthetic module capability", async () => {
 	let didInvoke = false;
 	const realm = expect(await agent.createRealm());
 	const capability = expect(await realm.createCapability(
-		() => ({
+		{
 			default: (value1: unknown, value2: unknown) => {
 				didInvoke = true;
 				assert.equal(value1, "hello");
 				assert.equal(value2, "world");
 			},
-		}),
+		},
 		{ origin: capabilityName }));
 	const left = expectComplete(await agent.compileModule(`
 		import capability from ${JSON.stringify(capabilityName)};
@@ -57,14 +57,14 @@ await test("synthetic module with circular reference", async () => {
 	const capabilityName = "isolated-vm:///capability";
 	const realm = expect(await agent.createRealm());
 	const capability = expect(await realm.createCapability(
-		() => ({
+		{
 			default: (value1: unknown) => {
 				// @ts-expect-error
 				assert.strictEqual(value1.date1, value1.date2);
 				// @ts-expect-error
 				assert.strictEqual(value1.object, value1);
 			},
-		}),
+		},
 		{ origin: capabilityName }));
 	const left = expectComplete(await agent.compileModule(`
 		import capability from ${JSON.stringify(capabilityName)};
@@ -89,9 +89,9 @@ await test("synthetic module with data templates", async () => {
 	const capabilityName = "isolated-vm:///capability";
 	const realm = expect(await agent.createRealm());
 	const capability = expect(await realm.createCapability(
-		() => ({
+		{
 			string: "string",
-		}),
+		},
 		{ origin: capabilityName }));
 	const entry = expectComplete(await agent.compileModule(`
 		import { string } from ${JSON.stringify(capabilityName)};
@@ -113,11 +113,11 @@ await test("synthetic module with data templates", async () => {
 // 	const capabilityName = "isolated-vm:///capability";
 // 	const realm = await agent.createRealm();
 // 	const capability = await realm.createCapability(
-// 		() => ({
+// 		{
 // 			default: () => {
 // 				throw new Error("capability error");
 // 			},
-// 		}),
+// 		},
 // 		{ origin: capabilityName });
 // 	const left = expectComplete(await agent.compileModule(`
 // 		import capability from ${JSON.stringify(capabilityName)};

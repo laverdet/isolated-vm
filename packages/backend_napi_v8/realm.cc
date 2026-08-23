@@ -59,8 +59,8 @@ auto realm_handle::acquire_global_object(const environment::lock& lock) -> forwa
 	return js::forward{promise};
 }
 
-auto realm_handle::create_capability(const environment::lock& lock, forward_callback_type make_capability, create_capability_options options) -> forward_promise_type {
-	return module_handle::create_capability(lock, *this, *make_capability, std::move(options));
+auto realm_handle::create_capability(const environment::lock& lock, capability_interface_type capability_interface, create_capability_options options) -> forward_promise_type {
+	return module_handle::create_capability(lock, *this, std::move(capability_interface), std::move(options));
 }
 
 auto realm_handle::instantiate_runtime(const environment::lock& lock) -> forward_promise_type {

@@ -1,4 +1,4 @@
-type CapabilityMake = import("@isolated-vm/experimental/frontend/realm", { with: { "resolution-mode": "import" }}).Realm.CapabilityMake;
+type CapabilityInterface = import("@isolated-vm/experimental/frontend/realm", { with: { "resolution-mode": "import" }}).Realm.CapabilityInterface;
 type _Agent = import("@isolated-vm/experimental/frontend/agent", { with: { "resolution-mode": "import" }}).Agent;
 type _Module = import("@isolated-vm/experimental/frontend/module", { with: { "resolution-mode": "import" }}).Module;
 type _Reference<T> = import("@isolated-vm/experimental/frontend/reference", { with: { "resolution-mode": "import" }}).Reference<T>;
@@ -46,7 +46,7 @@ export class Realm {
 	readonly #private;
 	protected constructor(secret: Secret, ...args: unknown[]);
 	acquireGlobalObject(): Promise<_Reference<Record<string, unknown>>>;
-	createCapability(make: CapabilityMake, options: CreateCapabilityOptions): Promise<Module | null>;
+	createCapability(capability: CapabilityInterface, options: CreateCapabilityOptions): Promise<Module | null>;
 	instantiateRuntime(): Promise<Module | null>;
 }
 
@@ -67,12 +67,6 @@ export class Script {
 	readonly #private;
 	protected constructor(secret: Secret, ...args: unknown[]);
 	run(realm: Realm | null, options?: RunScriptOptions): Promise<MaybeCompletionOf<unknown>>;
-}
-
-export class SubscriberCapability {
-	readonly #private;
-	protected constructor(secret: Secret, ...args: unknown[]);
-	send(message: unknown, options?: TransferOptions): Promise<boolean>;
 }
 
 /** @internal */
