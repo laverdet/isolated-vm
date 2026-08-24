@@ -19,7 +19,11 @@ class thread_pool_t {
 
 		explicit thread_pool_t(size_t desired_size) noexcept : desired_size{desired_size} {}
 		thread_pool_t(const thread_pool_t&) = delete;
-		~thread_pool_t() { resize(0); }
+		~thread_pool_t() {
+#ifndef __MINGW32__
+            resize(0);
+#endif
+        }
 		auto operator= (const thread_pool_t&) = delete;
 
 		void exec(affinity_t& affinity, entry_t* entry, void* param);
@@ -29,6 +33,15 @@ class thread_pool_t {
 		auto new_thread(std::lock_guard<std::mutex>& /*lock*/) -> size_t;
 
 		struct thread_data_t {
+            ~thread_data_t() {
+				if (thread.joinable()) {
+#if defined (__MINGW32__)
+                    thread.detach();
+#else
+                    thread.join();
+#endif
+                }
+            }
 			std::thread thread;
 			std::condition_variable cv;
 			entry_t* entry = nullptr;
