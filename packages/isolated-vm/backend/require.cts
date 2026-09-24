@@ -3,9 +3,9 @@ import host = require("#host_cjs");
 
 // All hosts enumerated to assist with bundlers. This file can be replaced with a condition.
 module.exports = function(): unknown {
+	// eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
 	switch (host) {
 		case "darwin-arm64": return require("@isolated-vm/experimental-darwin-arm64");
-		case "darwin-x64": return require("@isolated-vm/experimental-darwin-x64");
 		case "linux-arm64-gnu": return require("@isolated-vm/experimental-linux-arm64-gnu");
 		case "linux-arm64-musl": return require("@isolated-vm/experimental-linux-arm64-musl");
 		case "linux-x64-musl": return require("@isolated-vm/experimental-linux-x64-musl");

@@ -157,3 +157,15 @@ index 741342c70e..ddcef1f9c0 100644
                std::is_same_v<TDefiner, IndexedPropertyDefinerCallback> ||
                std::is_same_v<TDefiner, IndexedPropertyDefinerCallbackV2>))
    IndexedPropertyHandlerConfiguration(
+diff --git a/src/base/memcopy.h b/src/base/memcopy.h
+index b1d8a36b4c..e9ab91d476 100644
+--- a/src/base/memcopy.h
++++ b/src/base/memcopy.h
+@@ -8,6 +8,7 @@
+ #include <stdlib.h>
+ 
+ #include <atomic>
++#include <climits>
+ 
+ #include "include/v8config.h"
+ #include "src/base/base-export.h"

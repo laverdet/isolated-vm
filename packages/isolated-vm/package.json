@@ -15,7 +15,6 @@
     "#backend_cjs": {
       "types": "./backend/backend.d.cts",
       "darwin-arm64": "@isolated-vm/experimental-darwin-arm64",
-      "darwin-x64": "@isolated-vm/experimental-darwin-x64",
       "linux-arm64-gnu": "@isolated-vm/experimental-linux-arm64-gnu",
       "linux-arm64-musl": "@isolated-vm/experimental-linux-arm64-musl",
       "linux-x64-gnu": "@isolated-vm/experimental-linux-x64-gnu",

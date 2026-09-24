@@ -36,10 +36,14 @@ runs:
         steps.cache.outputs.cache-hit != 'true'
       run: |
         set -ux
+        # cipd required
+        git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git --depth 1
+        PATH="$PATH:$(realpath depot_tools)"
+        # build gn
         git clone https://gn.googlesource.com/gn deps/gn
         cd deps/gn
         CFLAGS=-D_LARGEFILE64_SOURCE build/gen.py
-        ninja -C out
+        ninja -C out gn
 
     # Save musl cache
     - uses: actions/cache/save@v5

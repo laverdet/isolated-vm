@@ -72,20 +72,6 @@ if(CMAKE_BUILD_TYPE STREQUAL Release)
 	endif()
 endif()
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-	# Broken diagnostic
-	# /workspace/packages/auto_js/v8/visit.cc:261:57: error: ‘visit_and_accept’ may be used uninitialized [-Werror=maybe-uninitialized]
-	#   261 | return immediate(subject.As<v8::Object>(), accept);
-	#       |        ~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	add_compile_options(-Wno-maybe-uninitialized)
-	# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56958
-	# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=124977
-	# /workspace/packages/auto_js/js/transfer/transfer.cc:141:20: warning: structured binding declaration set but not used [-Wunused-but-set-variable=]
-	#   141 | const auto [... unique_types ] = util::pack_unique(accept_types..., visit_types...);
-	#       |            ^~~~~~~~~~~~~~~~~~~
-	add_compile_options(-Wno-unused -Wno-unused-but-set-parameter -Wno-unused-but-set-variable)
-endif()
-
 # Check libc++ / libstdc++
 # https://stackoverflow.com/questions/42593022/cmake-detect-which-library-libc-or-libstdc-is-configured-to-be-used-against
 include(CheckCXXSymbolExists)
@@ -133,6 +119,23 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 		# Unused parameters in assert(..)
 		add_compile_options(-Wno-unused-parameter)
 	endif()
+endif()
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+	# Broken diagnostic
+	# /workspace/packages/auto_js/v8/visit.cc:261:57: error: ‘visit_and_accept’ may be used uninitialized [-Werror=maybe-uninitialized]
+	#   261 | return immediate(subject.As<v8::Object>(), accept);
+	#       |        ~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	add_compile_options(-Wno-maybe-uninitialized)
+	# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56958
+	# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=124977
+	# /workspace/packages/auto_js/js/transfer/transfer.cc:141:20: warning: structured binding declaration set but not used [-Wunused-but-set-variable=]
+	#   141 | const auto [... unique_types ] = util::pack_unique(accept_types..., visit_types...);
+	#       |            ^~~~~~~~~~~~~~~~~~~
+	add_compile_options(-Wno-unused -Wno-unused-but-set-parameter -Wno-unused-but-set-variable)
+
+	# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=127576
+	add_compile_options(-Wno-strict-aliasing)
 endif()
 
 # Sanitizer features

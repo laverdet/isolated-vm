@@ -76,12 +76,8 @@ if(NPM_PACKAGE_NAME STREQUAL @auto_js/isolated_v8_exports)
 		)
 	endif()
 
-	# P3034R1 workaround for gcc
-	if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-		set(v8 y8)
-	else()
-		set(v8 v8)
-	endif()
+	# P3034R1 workaround for clang [23] & gcc [all]
+	set(v8 y8)
 
 	# Link against v8, which is built elsewhere
 	if(V8_LIBRARY_TYPE STREQUAL static)

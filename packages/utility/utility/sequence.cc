@@ -17,7 +17,7 @@ constexpr auto sequence_cw = [] consteval -> auto {
 // Return a sequence of constexpr indices
 export template <std::size_t Size>
 constexpr auto sequence = [] consteval -> auto {
-#if defined(__clang__)
+#if defined(__clang__) && __clang_major__ < 23
 	return sequence_cw<Size>;
 #else
 	constexpr_array<std::size_t, Size> result{};

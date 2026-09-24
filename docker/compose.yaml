@@ -1,5 +1,5 @@
 # Note: Terminate existing docker containers before building otherwise the build is slow.
-# export LLVM_VERSION=22 NODE_VERSION=26.4.0
+# export LLVM_VERSION=23 NODE_VERSION=26.10.0
 # docker compose --progress=plain build --pull depot_tools v8_sources node_sources node
 # docker compose --progress=plain build development
 
