@@ -12,7 +12,7 @@ const targetArgs = [
   '26.0.0',
 ];
 
-if (process.platform === 'linux') {
+if (process.platform === 'linux' || os.type().startsWith('MINGW32_NT')) {
   targetArgs.push('--tag-libc');
 }
 

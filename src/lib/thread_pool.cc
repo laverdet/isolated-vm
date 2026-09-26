@@ -67,7 +67,13 @@ void thread_pool_t::resize(size_t size) {
 		}
 		lock.unlock();
 		for (size_t ii = desired_size; ii < thread_data.size(); ++ii) {
+#if defined (__MINGW32__)
+            if (thread_data[ii].thread.joinable()) {
+				thread_data[ii].thread.detach();
+			}
+#else
 			thread_data[ii].thread.join();
+#endif
 		}
 		thread_data.resize(desired_size);
 	}
