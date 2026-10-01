@@ -46,7 +46,7 @@ class IsolateHolder {
 // we don't want it keeping the isolate alive.
 class IsolateTaskRunner final : public TaskRunner {
 	public:
-		explicit IsolateTaskRunner(const std::shared_ptr<IsolateEnvironment>& isolate) : weak_env{isolate} {}
+		explicit IsolateTaskRunner(const std::shared_ptr<IsolateEnvironment>& isolate);
 		IsolateTaskRunner(const IsolateTaskRunner&) = delete;
 		~IsolateTaskRunner() final = default;
 		auto operator=(const IsolateTaskRunner&) = delete;
@@ -64,6 +64,7 @@ class IsolateTaskRunner final : public TaskRunner {
 
 	private:
 		std::weak_ptr<IsolateEnvironment> weak_env;
+		std::weak_ptr<v8::TaskRunner> default_task_runner;
 };
 
 } // namespace ivm
