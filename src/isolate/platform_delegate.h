@@ -39,6 +39,7 @@ class PlatformDelegate {
 		static void InitializeDelegate();
 		static void RegisterIsolate(v8::Isolate* isolate, node::IsolatePlatformDelegate* isolate_delegate);
 		static void UnregisterIsolate(v8::Isolate* isolate);
+		static auto GetForegroundTaskRunner(v8::Isolate* isolate) -> std::shared_ptr<v8::TaskRunner>;
 
 		node::MultiIsolatePlatform* node_platform = nullptr;
 };

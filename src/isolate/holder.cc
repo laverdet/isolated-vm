@@ -63,10 +63,30 @@ void IsolateHolder::ScheduleTask(std::unique_ptr<Runnable> task, bool run_inline
 }
 
 // Methods for v8::TaskRunner
+IsolateTaskRunner::IsolateTaskRunner(const std::shared_ptr<IsolateEnvironment>& isolate) :
+	weak_env{isolate},
+	default_task_runner{PlatformDelegate::GetForegroundTaskRunner(Executor::GetDefaultEnvironment().GetIsolate())} {}
+
 void IsolateTaskRunner::PostTaskImpl(std::unique_ptr<v8::Task> task, const v8::SourceLocation& /*location*/) {
+	class WakeTask : public Runnable {
+		public:
+			explicit WakeTask(std::weak_ptr<IsolateEnvironment> env) : weak_env{std::move(env)} {}
+			void Run() final {
+				auto env = weak_env.lock();
+				if (env && !env->terminated) {
+					env->GetScheduler().Lock()->WakeIsolate(std::move(env));
+				}
+			}
+		private:
+			std::weak_ptr<IsolateEnvironment> weak_env;
+	};
 	auto env = weak_env.lock();
 	if (env) {
 		env->GetScheduler().Lock()->tasks.push(std::move(task));
+		// V8 workers have no Executor scope; wake through Node's foreground runner to ref libuv safely.
+		if (auto runner = default_task_runner.lock()) {
+			runner->PostTask(std::make_unique<WakeTask>(weak_env));
+		}
 	}
 }
 
