@@ -49,30 +49,30 @@ class ExternalMemoryHandle {
  * GetHeapStatistics() and I think it'll be ok.
  */
 auto LimitedAllocator::Check(const size_t length) -> bool {
-	if (v8_heap + env.extra_allocated_memory + length > next_check) {
+	if (v8_heap + *extra_allocated_memory + length > next_check) {
 		HeapStatistics heap_statistics;
 		Isolate* isolate = Isolate::GetCurrent();
 		isolate->GetHeapStatistics(&heap_statistics);
 		v8_heap = heap_statistics.used_heap_size();
-		if (v8_heap + env.extra_allocated_memory + length > limit + env.misc_memory_size) {
+		if (v8_heap + *extra_allocated_memory + length > limit + env.misc_memory_size) {
 			// This is might be dangerous but the tests pass soooo..
 			isolate->LowMemoryNotification();
 			isolate->GetHeapStatistics(&heap_statistics);
 			v8_heap = heap_statistics.used_heap_size();
-			if (v8_heap + env.extra_allocated_memory + length > limit + env.misc_memory_size) {
+			if (v8_heap + *extra_allocated_memory + length > limit + env.misc_memory_size) {
 				return false;
 			}
 		}
-		next_check = v8_heap + env.extra_allocated_memory + length + 1024 * 1024;
+		next_check = v8_heap + *extra_allocated_memory + length + 1024 * 1024;
 	}
-	return v8_heap + env.extra_allocated_memory + length <= limit + env.misc_memory_size;
+	return v8_heap + *extra_allocated_memory + length <= limit + env.misc_memory_size;
 }
 
-LimitedAllocator::LimitedAllocator(IsolateEnvironment& env, size_t limit) : env(env), limit(limit), v8_heap(1024 * 1024 * 4), next_check(1024 * 1024) {}
+LimitedAllocator::LimitedAllocator(IsolateEnvironment& env, size_t limit) : env(env), extra_allocated_memory(env.extra_allocated_memory_ptr), limit(limit), v8_heap(1024 * 1024 * 4), next_check(1024 * 1024) {}
 
 auto LimitedAllocator::Allocate(size_t length) -> void* {
 	if (Check(length)) {
-		env.extra_allocated_memory += length;
+		*extra_allocated_memory += length;
 		return std::calloc(length, 1);
 	} else {
 		++failures;
@@ -83,7 +83,7 @@ auto LimitedAllocator::Allocate(size_t length) -> void* {
 			// allocator refuses to return a valid pointer it will result in a hard crash so we have no
 			// choice but to let this allocation succeed. Luckily the amount of memory allocated is tiny
 			// and will soon be freed because at the same time we terminate the isolate.
-			env.extra_allocated_memory += length;
+			*extra_allocated_memory += length;
 			env.Terminate();
 			return std::calloc(length, 1);
 		} else {
@@ -95,12 +95,12 @@ auto LimitedAllocator::Allocate(size_t length) -> void* {
 
 auto LimitedAllocator::AllocateUninitialized(size_t length) -> void* {
 	if (Check(length)) {
-		env.extra_allocated_memory += length;
+		*extra_allocated_memory += length;
 		return std::malloc(length);
 	} else {
 		++failures;
 		if (length <= 64) {
-			env.extra_allocated_memory += length;
+			*extra_allocated_memory += length;
 			env.Terminate();
 			return std::malloc(length);
 		} else {
@@ -110,13 +110,13 @@ auto LimitedAllocator::AllocateUninitialized(size_t length) -> void* {
 }
 
 void LimitedAllocator::Free(void* data, size_t length) {
-	env.extra_allocated_memory -= length;
+	*extra_allocated_memory -= length;
 	next_check -= length;
 	std::free(data);
 }
 
 void LimitedAllocator::AdjustAllocatedSize(ptrdiff_t length) {
-	env.extra_allocated_memory += length;
+	*extra_allocated_memory += length;
 }
 
 auto LimitedAllocator::GetFailureCount() const -> int {
