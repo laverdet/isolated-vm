@@ -1,5 +1,6 @@
 #pragma once
 #include <v8.h>
+#include <atomic>
 #include <memory>
 #include "v8_version.h"
 
@@ -8,6 +9,8 @@ namespace ivm {
 class LimitedAllocator : public v8::ArrayBuffer::Allocator {
 	private:
 		class IsolateEnvironment& env;
+		// `Free` can run after `env` is disposed, so the accounting is shared instead of reached through it
+		std::shared_ptr<std::atomic<size_t>> extra_allocated_memory;
 		size_t limit;
 		size_t v8_heap;
 		size_t next_check;

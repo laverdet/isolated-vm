@@ -99,7 +99,9 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		size_t memory_limit = 0;
 		size_t initial_heap_size_limit = 0;
 		size_t misc_memory_size = 0;
-		std::atomic<size_t> extra_allocated_memory = 0;
+		// Shared with `LimitedAllocator`, which v8 backing stores keep alive after this environment is gone
+		std::shared_ptr<std::atomic<size_t>> extra_allocated_memory_ptr = std::make_shared<std::atomic<size_t>>(0);
+		std::atomic<size_t>& extra_allocated_memory = *extra_allocated_memory_ptr;
 		v8::MemoryPressureLevel memory_pressure = v8::MemoryPressureLevel::kNone;
 		v8::MemoryPressureLevel last_memory_pressure = v8::MemoryPressureLevel::kNone;
 		bool hit_memory_limit = false;
