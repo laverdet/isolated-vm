@@ -12,6 +12,7 @@ export import :hash;
 export import :lock;
 export import :remote;
 export import :transfer_list;
+export import :typeof_of;
 export import :unmaybe;
 export import :value;
 export import :value.tag;

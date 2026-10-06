@@ -10,7 +10,7 @@ export template <class Agent, class... Implements>
 class context_lock_witness_of;
 
 // Fake lock witness for types which don't need a lock but want to adhere to the signature
-class null_lock_witness {};
+export class null_lock_witness {};
 
 // Isolate lock witness. Provides some assurance that the given isolate is locked in this thread.
 export class isolate_lock_witness : public null_lock_witness {

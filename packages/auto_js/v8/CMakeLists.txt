@@ -25,6 +25,7 @@ target_sources(${v8_js}
 		value/fixed_array.cc
 		value/object.cc
 		value/primitive.cc
+		value/typeof_of.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		container/hash.cc
@@ -52,6 +53,7 @@ target_sources(${v8_js}
 		value/object.h.cc
 		value/primitive.h.cc
 		value/tag.cc
+		value/typeof_of.h.cc
 		value/value.cc
 )
 

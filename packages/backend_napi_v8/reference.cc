@@ -30,50 +30,19 @@ reference_handle::reference_handle(
 
 reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm, v8::Local<v8::Value> value) :
 		reference_handle{util::elide{[ & ] -> reference_handle {
-			if (value->IsObject()) {
-				return reference_handle{lock, std::move(agent), std::move(realm), value.As<v8::Object>()};
-			} else {
-				const auto type_of = [ & ] -> js::typeof_kind {
-					if (value->IsUndefined()) {
-						return js::typeof_kind::undefined;
-					} else if (value->IsNull()) {
-						return js::typeof_kind::null;
-					} else if (value->IsString()) {
-						return js::typeof_kind::string;
-					} else if (value->IsNumber()) {
-						return js::typeof_kind::number;
-					} else if (value->IsBoolean()) {
-						return js::typeof_kind::boolean;
-					} else if (value->IsBigInt()) {
-						return js::typeof_kind::bigint;
-					} else if (value->IsSymbol()) {
-						return js::typeof_kind::symbol;
-					} else {
-						std::unreachable();
-					}
-				}();
-				switch (type_of) {
-					case js::typeof_kind::null:
-						return reference_handle{js::null_tag{}};
-					case js::typeof_kind::undefined:
-						return reference_handle{js::undefined_tag{}};
-					default:
-						return reference_handle{std::move(agent), type_of, std::move(realm), js::iv8::make_shared_remote(lock, value)};
-				}
+			const auto type_of = js::iv8::typeof_of(lock, value);
+			switch (type_of) {
+				case js::typeof_kind::null:
+					return reference_handle{js::null_tag{}};
+				case js::typeof_kind::undefined:
+					return reference_handle{js::undefined_tag{}};
+				default:
+					return reference_handle{std::move(agent), type_of, std::move(realm), js::iv8::make_shared_remote(lock, value)};
 			}
 		}}} {}
 
 reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm, v8::Local<v8::Object> value) :
-		reference_handle{util::elide{[ & ] -> reference_handle {
-			const auto type_of = [ & ] -> js::typeof_kind {
-				if (value->IsFunction()) {
-					return js::typeof_kind::function;
-				} else {
-					return js::typeof_kind::object;
-				}
-			}();
-			return reference_handle{std::move(agent), type_of, std::move(realm), js::iv8::make_shared_remote(lock, value.As<v8::Value>())};
-		}}} {}
+		reference_handle{std::move(agent), js::iv8::typeof_of(lock, value), std::move(realm), js::iv8::make_shared_remote(lock, value.As<v8::Value>())} {}
 
 auto reference_handle::copy(const environment::lock& lock) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(lock);
