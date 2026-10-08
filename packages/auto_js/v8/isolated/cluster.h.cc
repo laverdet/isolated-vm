@@ -14,7 +14,8 @@ export class cluster {
 				destroy_{destroy},
 				platform_{isolated_platform::acquire()} {}
 
-		auto make_agent(auto make_environment, behavior_params params, auto callback) -> void;
+		template <class Environment>
+		auto make_agent(std::type_identity<Environment> environment, behavior_params params, auto callback) -> void;
 		auto release_agent_storage(std::shared_ptr<agent_storage> storage) -> void;
 
 	private:
@@ -29,27 +30,23 @@ export class cluster {
 
 // ---
 
-auto cluster::make_agent(auto make_environment, behavior_params params, auto callback) -> void {
-	using environment_type = std::invoke_result_t<decltype(make_environment), agent_lock>;
+template <class Environment>
+auto cluster::make_agent(std::type_identity<Environment> /*environment*/, behavior_params params, auto callback) -> void {
 	auto storage = acquire_agent_storage();
 	auto& runner = storage->foreground_runner();
 	runner.schedule_client_task(
 		[ params ](
 			std::stop_token /*stop_token*/,
 			std::shared_ptr<agent_storage> storage,
-			auto make_environment,
 			auto callback
 		) -> auto {
-			auto host = std::make_shared<agent_host_of<environment_type>>(std::move(storage), params);
+			auto host = std::make_shared<agent_host_of<Environment>>(std::move(storage), params);
 			auto isolate_lock = isolate_execution_lock{host->executor().isolate()};
-			host->emplace_environment(util::elide{[ & ] -> environment_type {
-				return make_environment(agent_lock{isolate_lock, *host});
-			}});
+			host->initialize_environment(agent_lock{isolate_lock, *host});
 			auto lock = agent_lock_of{isolate_lock, *host};
 			callback(lock, agent_handle_of{std::move(host)});
 		},
 		std::move(storage),
-		std::move(make_environment),
 		std::move(callback)
 	);
 }

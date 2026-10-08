@@ -70,14 +70,12 @@ auto agent_handle::lock_host() const -> std::shared_ptr<agent_host> {
 
 // `agent_host`
 agent_host::agent_host(
-	destroy_callback_type destroy_callback,
 	std::shared_ptr<agent_storage> storage,
 	behavior_params params
 ) :
 		storage_{std::move(storage)},
 		memory_policy_{std::move(params.memory_policy)},
 		clock_{params.clock},
-		destroy_callback_{destroy_callback},
 		reset_handle_callback_{reset_handle_type{util::fn<&agent_host::remote_expiration_callback>, *this}},
 		random_seed_{params.random_seed} {
 	executor_.initialize([ & ](v8::Isolate* isolate) noexcept -> auto {
@@ -109,7 +107,7 @@ agent_host::~agent_host() {
 		scratch_context_.Reset();
 		remote_handle_list_.clear(util::slice(lock));
 		autorelease_pool_.clear();
-		destroy_callback_(util::slice(lock));
+		destroy_environment();
 	}
 	// Deallocate isolate (before `agent_storage`)
 	executor_.reset();

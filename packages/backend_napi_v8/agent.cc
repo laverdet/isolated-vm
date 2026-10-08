@@ -48,16 +48,17 @@ auto agent_handle_value::create(const environment::lock& lock, std::optional<cre
 	};
 
 	cluster.make_agent(
-		[](const js::iv8::isolated::agent_handle::lock& lock) -> auto { return agent_environment{lock}; },
+		std::type_identity<agent_environment>{},
 		{
 			.memory_policy = memory_policy_(),
 			.clock = clock_(),
 			.random_seed = options.random_seed,
 		},
 		[ dispatch = std::move(resolver) ](
-			const agent_handle::lock& /*lock*/,
+			const agent_handle::lock& lock,
 			agent_handle agent
 		) mutable -> void {
+			lock->environment().initialize(lock);
 			dispatch(std::move(agent));
 		}
 	);

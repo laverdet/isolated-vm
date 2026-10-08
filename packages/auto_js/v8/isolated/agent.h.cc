@@ -111,7 +111,7 @@ class agent_host_environment : util::non_copyable {
 		auto operator=(const agent_host_environment&) -> agent_host_environment& = delete;
 
 		auto destroy() noexcept -> void { instance_.reset(); }
-		auto emplace(std::convertible_to<Type> auto instance) -> void { instance_.emplace(std::move(instance)); }
+		auto emplace(auto&&... args) -> void { instance_.emplace(std::forward<decltype(args)>(args)...); }
 		auto operator*() -> auto& { return instance_.value(); }
 		auto operator*() const -> auto& { return instance_.value(); }
 
@@ -125,9 +125,8 @@ export class agent_host
 		: util::non_moveable,
 			public std::enable_shared_from_this<agent_host> {
 	public:
-		using destroy_callback_type = util::function_ref<auto(isolate_lock_witness) noexcept -> void>;
-		explicit agent_host(destroy_callback_type destroy_callback, std::shared_ptr<agent_storage> storage, behavior_params params);
-		~agent_host();
+		explicit agent_host(std::shared_ptr<agent_storage> storage, behavior_params params);
+		virtual ~agent_host();
 
 		auto autorelease_pool() -> util::autorelease_pool& { return autorelease_pool_; }
 		auto clock(this auto& self) -> auto& { return self.clock_.at(0); }
@@ -143,6 +142,7 @@ export class agent_host
 
 	private:
 		friend class agent_handle;
+		virtual auto destroy_environment() -> void {};
 		auto remote_expiration_callback(expired_remote_type remote) noexcept -> void;
 
 		// Order matters for these members
@@ -159,7 +159,6 @@ export class agent_host
 		// 0x8ddcd8 is_really_empty_class(tree_node*, bool)
 		//         /gcc-out/../gcc/gcc/cp/class.cc:9510
 		std::array<clock::any_clock, 1> clock_;
-		destroy_callback_type destroy_callback_;
 		util::atomic_shared_ptr<agent_host> self_handle_;
 		remote_handle_list remote_handle_list_;
 		agent_handle::dispose_callback_type dispose_callback_;
@@ -176,14 +175,11 @@ class agent_host_of
 		: private agent_host_environment<Type>,
 			public agent_host {
 	public:
-		explicit agent_host_of(auto&&... args)
-			requires std::constructible_from<agent_host, destroy_callback_type, decltype(args)...> :
-				agent_host{
-					destroy_callback_type{util::fn<&agent_host_of::destroy_callback>, *this},
-					std::forward<decltype(args)>(args)...
-				} {}
+		using agent_host::agent_host;
 
-		auto emplace_environment(std::convertible_to<Type> auto environment) -> void { agent_host_environment<Type>::emplace(std::move(environment)); }
+		auto initialize_environment(auto&&... args) -> void {
+			agent_host_environment<Type>::emplace(std::forward<decltype(args)>(args)...);
+		}
 		auto environment(this auto& self) -> auto& { return *self; }
 
 	private:

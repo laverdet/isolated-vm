@@ -77,7 +77,7 @@ auto realm_handle::instantiate_runtime(const environment::lock& lock) -> forward
 			agent_handle agent
 		) -> void {
 			auto module_record = context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) -> auto {
-				return make_shared_remote(lock, lock->environment().runtime().instantiate(realm));
+				return make_shared_remote(lock, lock->environment().instantiate_runtime(realm));
 			});
 			resolver(std::move(agent), module_record);
 		},

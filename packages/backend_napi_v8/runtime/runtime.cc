@@ -21,7 +21,7 @@ auto performance_time(js::iv8::context_lock_witness /*lock*/) -> double {
 }
 
 auto transfer(
-	const js::iv8::isolated::realm_scope& lock,
+	const realm_scope& lock,
 	js::forward<v8::Local<v8::Value>> subject,
 	std::optional<js::iv8::value_of<js::list_tag>> transfer
 ) -> js::forward<v8::Local<v8::Value>> {
@@ -38,7 +38,7 @@ transfer_record::transfer_record(
 		transfer_{isolate, transfer ? v8::Local<v8::Array>{*transfer} : v8::Local<v8::Array>{}} {}
 
 auto transfer_record::make(
-	const js::iv8::isolated::realm_scope& lock,
+	const realm_scope& lock,
 	v8::Local<v8::Value> subject,
 	std::optional<js::iv8::value_of<js::list_tag>> transfer
 ) -> v8::Local<v8::Value> {
@@ -66,7 +66,7 @@ auto transfer_record::transfer(js::iv8::context_lock_witness lock) const -> std:
 }
 
 // runtime_interface
-runtime_interface::runtime_interface(const js::iv8::isolated::agent_lock& lock) :
+runtime_interface::runtime_interface(std::monostate /*nothing*/, const agent_lock& lock) :
 		clock_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{clock_time}, lock))},
 		performance_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{performance_time}, lock))},
 		transfer_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{transfer}, lock))} {

@@ -1,4 +1,5 @@
 export module backend_napi_v8:runtime;
+import :lock;
 import auto_js;
 import std;
 import v8_js;
@@ -16,7 +17,7 @@ class transfer_record {
 
 		// Wraps a value & its transfer list into an opaque external
 		static auto make(
-			const js::iv8::isolated::realm_scope& lock,
+			const realm_scope& lock,
 			v8::Local<v8::Value> subject,
 			std::optional<js::iv8::value_of<js::list_tag>> transfer
 		) -> v8::Local<v8::Value>;
@@ -34,7 +35,7 @@ class transfer_record {
 
 class runtime_interface {
 	public:
-		explicit runtime_interface(const js::iv8::isolated::agent_lock& lock);
+		explicit runtime_interface(std::monostate /*nothing*/, const agent_lock& lock);
 		auto instantiate(js::iv8::context_lock_witness lock) -> v8::Local<js::iv8::module_record>;
 
 	private:
