@@ -9,6 +9,8 @@ module;
 #endif
 
 // Continue with the rest of the include chain
+#include "cppgc/allocation.h"
+#include "v8-cppgc.h"
 #include "v8.h"
 #include "v8_js/version.h"
 #ifdef INCLUDE_V8_PLATFORM
@@ -77,6 +79,9 @@ using v8::Array;
 
 // v8-context.h
 using v8::Context;
+
+// v8-cppgc.h
+using v8::CppHeap;
 
 // v8-data.h
 using v8::Data;
@@ -194,6 +199,9 @@ using v8::PromiseRejectCallback;
 using v8::PromiseRejectEvent;
 using v8::PromiseRejectMessage;
 
+// v8-sandbox.h
+using v8::CppHeapPointerTag;
+
 // v8-script.h
 using v8::Location;
 using v8::Module;
@@ -278,4 +286,12 @@ using tracing::TracingController;
 #endif
 
 } // namespace v8
+
+export namespace cppgc {
+
+// cppgc/allocation.h
+using cppgc::AllocationHandle;
+using cppgc::MakeGarbageCollected;
+
+} // namespace cppgc
 // NOLINTEND(misc-unused-using-decls)

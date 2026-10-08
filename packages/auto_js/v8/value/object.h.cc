@@ -1,5 +1,7 @@
 export module v8_js:object;
 import :array;
+import :lock;
+import :wrappable;
 import auto_js;
 import std;
 import v8;
@@ -12,6 +14,9 @@ class value_for_object : public handle_with_context<v8::Object> {
 		using mapped_type = v8::Local<v8::Value>;
 		using value_type = std::pair<key_type, mapped_type>;
 		using handle_with_context<v8::Object>::handle_with_context;
+
+		template <class Type>
+		[[nodiscard]] auto try_cast(std::type_identity<Type> /*type*/) const -> Type*;
 
 	private:
 		// We use `array` as the base iteration, over the keys of this object, and transform that into
@@ -47,5 +52,13 @@ class value_for_object : public handle_with_context<v8::Object> {
 
 static_assert(std::ranges::range<value_for_object::range_type>);
 static_assert(std::random_access_iterator<value_for_object::iterator>);
+
+// ---
+
+template <class Type>
+auto value_for_object::try_cast(std::type_identity<Type> /*type*/) const -> Type* {
+	auto lock = isolate_lock_witness::make_witness(v8::Isolate::GetCurrent());
+	return wrappable_of<Type>::unwrap(lock, *this);
+}
 
 } // namespace js::iv8

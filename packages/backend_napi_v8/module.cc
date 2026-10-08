@@ -179,20 +179,17 @@ auto module_handle::evaluate(const environment::lock& lock, realm_handle* realm)
 		return js::forward{promise};
 	}
 	agent_.schedule(
-		[](
+		[ realm = realm->realm(),
+			module_record = module_ ](
 			const agent_handle::lock& agent,
-			auto resolver,
-			const js::iv8::shared_remote<v8::Context>& realm,
-			const js::iv8::shared_remote<js::iv8::module_record>& module_record
+			auto resolver
 		) -> void {
-			auto result = context_scope_operation(agent, realm->deref(agent), [ & ](const realm_scope& realm) -> auto {
+			auto result = realm_scope_operation(agent, realm, [ & ](const realm_scope& realm) -> auto {
 				return module_record->deref(realm)->evaluate(realm);
 			});
 			resolver.resolve(make_completion_record(std::move(result)));
 		},
-		std::move(resolver),
-		realm->realm(),
-		module_
+		std::move(resolver)
 	);
 	return js::forward{promise};
 }

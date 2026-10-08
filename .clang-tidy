@@ -40,6 +40,7 @@ Checks: >
   -readability-misleading-indentation,
   -readability-named-parameter,
   -readability-redundant-declaration,
+  -readability-trailing-comma,
 
   -CANONICALIZED_CHECKS,
   -cppcoreguidelines-avoid-c-arrays, +modernize-avoid-c-arrays,

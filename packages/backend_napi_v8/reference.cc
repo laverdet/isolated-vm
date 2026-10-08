@@ -28,9 +28,14 @@ reference_handle::reference_handle(
 		value_{std::move(value)},
 		typeof_{type_of} {}
 
-reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm, v8::Local<v8::Value> value) :
+reference_handle::reference_handle(
+	const js::iv8::remote_handle_lock& lock,
+	agent_handle agent,
+	js::iv8::shared_remote<v8::Context> realm,
+	v8::Local<v8::Value> value
+) :
 		reference_handle{util::elide{[ & ] -> reference_handle {
-			const auto type_of = js::iv8::typeof_of(lock, value);
+			const auto type_of = js::iv8::typeof_of(lock.witness(), value);
 			switch (type_of) {
 				case js::typeof_kind::null:
 					return reference_handle{js::null_tag{}};
@@ -40,9 +45,6 @@ reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle 
 					return reference_handle{std::move(agent), type_of, std::move(realm), js::iv8::make_shared_remote(lock, value)};
 			}
 		}}} {}
-
-reference_handle::reference_handle(const agent_handle::lock& lock, agent_handle agent, js::iv8::shared_remote<v8::Context> realm, v8::Local<v8::Object> value) :
-		reference_handle{std::move(agent), js::iv8::typeof_of(lock, value), std::move(realm), js::iv8::make_shared_remote(lock, value.As<v8::Value>())} {}
 
 auto reference_handle::copy(const environment::lock& lock) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(lock);
@@ -214,13 +216,13 @@ auto reference_handle::invoke(const environment::lock& lock, js::forward<js::nap
 	auto [ promise, resolver ] = make_promise(lock);
 	if (typeof_ == js::typeof_kind::function) {
 		agent_.schedule(
-			[ value = value_ ](
+			[ value = value_,
+				realm = realm_ ](
 				const agent_handle::lock& agent_lock,
 				auto resolver,
-				const js::iv8::shared_remote<v8::Context>& realm,
 				js::values_vector_t params
 			) -> void {
-				auto maybe_result = context_scope_operation(agent_lock, realm->deref(agent_lock), [ & ](const realm_scope& lock) -> auto {
+				auto maybe_result = realm_scope_operation(agent_lock, realm, [ & ](const realm_scope& lock) -> auto {
 					return iv8::invoke_externalized_error_scope(lock, [ & ] -> js::value_t {
 						auto fn = value->deref(lock).As<iv8::Function>();
 						auto result = *fn->apply<js::forward<v8::Local<v8::Value>>>(lock, std::move(params));
@@ -238,13 +240,24 @@ auto reference_handle::invoke(const environment::lock& lock, js::forward<js::nap
 				}
 			},
 			std::move(resolver),
-			realm_,
 			std::move(params)
 		);
 	} else {
 		resolver.reject(js::error_value{js::type_error{u"Reference is not a function"}});
 	}
 	return js::forward{promise};
+}
+
+auto reference_handle::class_template(const agent_lock& lock) -> v8::Local<js::iv8::class_template_of<reference_handle>> {
+	auto constructor = [](const realm_scope& lock, js::forward<v8::Local<v8::Value>> value) -> reference_handle {
+		return reference_handle{lock, lock->make_handle(), get_context_shared_remote(lock), *value};
+	};
+	return js::iv8::class_template_of<reference_handle>::make(
+		lock,
+		js::class_template{
+			js::class_constructor{util::cw<"Reference">, util::fn<+constructor>},
+		}
+	);
 }
 
 auto reference_handle::class_template(const environment::lock& lock) -> js::napi::local_of<class_tag_of<reference_handle>> {

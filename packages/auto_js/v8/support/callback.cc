@@ -1,6 +1,8 @@
 export module v8_js:callback;
 export import :callback_storage;
 import :error;
+import :wrappable;
+import auto_js;
 import std;
 import util;
 import v8;
@@ -83,6 +85,107 @@ constexpr auto make_free_function(auto function) {
 	auto callback = js::functional::thunk_free_function<revived_lock_type, context_lock_witness>(std::move(function));
 	using signature_type = util::function_signature_t<decltype(callback)>;
 	return make(std::type_identity<signature_type>{}, std::move(callback));
+}
+
+// Constructor callback maker. `this` is wrapped with the constructed instance.
+constexpr auto make_constructor_function_with_try_catch =
+	[]<class Type, class Lock, class... Args, bool Nx, class Result>(
+		std::type_identity<Type> /*type*/,
+		std::type_identity<auto(Lock, Args...) noexcept(Nx)->Result> /*signature*/,
+		auto callback
+	) -> auto {
+	static_assert(std::constructible_from<Type, Result>);
+	using callback_type = decltype(callback);
+	auto bound_function = util::bind{
+		[](callback_type& callback, Lock lock, const v8::FunctionCallbackInfo<v8::Value>& info) noexcept(Nx) -> void {
+			auto disallow_js =
+				v8::Isolate::DisallowJavascriptExecutionScope{lock.isolate(), v8::Isolate::DisallowJavascriptExecutionScope::THROW_ON_FAILURE};
+			std::ignore = invoke_internal_error_scope(lock, [ & ] -> void {
+				if (!info.IsConstructCall()) {
+					throw js::type_error{u"Class constructor cannot be invoked without 'new'"};
+				}
+				auto instance = std::apply(
+					callback,
+					std::tuple_cat(
+						std::forward_as_tuple(lock),
+						js::transfer_out<std::tuple<js::functional::parameter_transfer_as_t<Args>...>>(info, lock)
+					)
+				);
+				wrappable_of<Type>::wrap(util::slice(lock), info.This(), std::move(instance));
+			});
+		},
+		std::move(callback),
+	};
+	return std::tuple{std::move(bound_function), sizeof...(Args)};
+};
+
+// Make callback for constructor invocations
+template <class Lock, class Type>
+constexpr auto make_constructor_function(auto constructor) {
+	using revived_lock_type = revive_lock_type<Lock>::type;
+	constexpr auto make = util::overloaded{
+		[](std::nullptr_t /*constructor*/) -> auto {
+			auto bound_function = [](revived_lock_type lock, const v8::FunctionCallbackInfo<v8::Value>& /*info*/) -> void {
+				std::ignore = invoke_internal_error_scope(lock, [] -> void {
+					throw js::type_error{u"Illegal constructor"};
+				});
+			};
+			return std::tuple{bound_function, 0};
+		},
+		[](auto constructor) -> auto {
+			auto callback = js::functional::thunk_free_function<revived_lock_type, context_lock_witness>(std::move(constructor));
+			using signature_type = util::function_signature_t<decltype(callback)>;
+			return make_constructor_function_with_try_catch(std::type_identity<Type>{}, std::type_identity<signature_type>{}, std::move(callback));
+		},
+	};
+	return make(std::move(constructor));
+}
+
+// Member function callback maker. `this` is unwrapped to the receiver instance.
+constexpr auto make_member_function_with_try_catch =
+	[]<class Type, class That, class Lock, class... Args, bool Nx, class Result>(
+		std::type_identity<Type> /*type*/,
+		std::type_identity<auto(That, Lock, Args...) noexcept(Nx)->Result> /*signature*/,
+		auto callback
+	) -> auto {
+	using callback_type = decltype(callback);
+	auto bound_function = util::bind{
+		[](callback_type& callback, Lock lock, const v8::FunctionCallbackInfo<v8::Value>& info) noexcept(Nx) -> void {
+			auto disallow_js =
+				v8::Isolate::DisallowJavascriptExecutionScope{lock.isolate(), v8::Isolate::DisallowJavascriptExecutionScope::THROW_ON_FAILURE};
+			// NOLINTNEXTLINE(cppcoreguidelines-slicing)
+			auto result = invoke_internal_error_scope(lock, [ & ] -> auto {
+				auto* that = wrappable_of<Type>::unwrap(util::slice(lock), info.This());
+				if (that == nullptr) {
+					throw js::type_error{u"Invalid object type"};
+				}
+				auto run = util::regular_return{[ & ] -> decltype(auto) {
+					return std::apply(
+						callback,
+						std::tuple_cat(
+							std::forward_as_tuple(*that, lock),
+							js::transfer_out<std::tuple<js::functional::parameter_transfer_as_t<Args>...>>(info, lock)
+						)
+					);
+				}};
+				return run().value_or(std::monostate{});
+			});
+			if (result) {
+				return_into(lock, info.GetReturnValue(), *std::move(result));
+			}
+		},
+		std::move(callback),
+	};
+	return std::tuple{std::move(bound_function), sizeof...(Args)};
+};
+
+// Make callback for method invocations
+template <class Lock, class Type>
+constexpr auto make_member_function(auto method) {
+	using revived_lock_type = revive_lock_type<Lock>::type;
+	auto callback = js::functional::thunk_member_function<revived_lock_type, context_lock_witness>(std::move(method));
+	using signature_type = util::function_signature_t<decltype(callback)>;
+	return make_member_function_with_try_catch(std::type_identity<Type>{}, std::type_identity<signature_type>{}, std::move(callback));
 }
 
 } // namespace js::iv8

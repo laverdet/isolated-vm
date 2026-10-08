@@ -58,7 +58,7 @@ auto script_handle::run(const environment::lock& lock, realm_handle* realm, run_
 			const agent_handle::lock& lock,
 			auto resolver
 		) -> void {
-			auto result = context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& realm) -> auto {
+			auto result = realm_scope_operation(lock, realm, [ & ](const realm_scope& realm) -> auto {
 				auto stop_token =
 					options.timeout.transform([ & ](double timeout) -> util::timer_stop_token {
 						return util::timer_stop_token{js::js_clock::duration{timeout}};

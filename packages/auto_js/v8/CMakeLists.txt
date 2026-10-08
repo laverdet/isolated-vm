@@ -33,6 +33,7 @@ target_sources(${v8_js}
 		handle/collected_handle.cc
 		handle/remote.h.cc
 		handle/value_of.cc
+		handle/wrappable.h.cc
 		support/boost.h.cc
 		support/callback_storage.cc
 		support/callback.cc
@@ -45,6 +46,8 @@ target_sources(${v8_js}
 		value/array_buffer.h.cc
 		value/array.h.cc
 		value/callback_info.cc
+		value/class.cc
+		value/class.h.cc
 		value/external.h.cc
 		value/fixed_array.h.cc
 		value/function.cc

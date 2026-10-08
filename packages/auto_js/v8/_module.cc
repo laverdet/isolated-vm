@@ -3,6 +3,8 @@ export import :accept;
 export import :boost;
 export import :callback_info;
 export import :callback;
+export import :class_;
+export import :class_definitions;
 export import :collected_handle;
 export import :error;
 export import :function_definitions;
@@ -18,6 +20,7 @@ export import :value;
 export import :value.tag;
 export import :visit;
 export import :weak_map;
+export import :wrappable;
 export import v8;
 #ifdef INCLUDE_ISOLATED_V8
 export import :evaluation.module_record;

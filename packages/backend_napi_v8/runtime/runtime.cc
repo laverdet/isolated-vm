@@ -2,6 +2,7 @@ module;
 #include "runtime_dist_interface_js.h"
 module backend_napi_v8;
 import :lock;
+import :reference;
 import :runtime;
 import auto_js;
 import std;
@@ -69,6 +70,7 @@ auto transfer_record::transfer(js::iv8::context_lock_witness lock) const -> std:
 runtime_interface::runtime_interface(std::monostate /*nothing*/, const agent_lock& lock) :
 		clock_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{clock_time}, lock))},
 		performance_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{performance_time}, lock))},
+		reference_{make_unique_remote(lock, v8::Local<v8::FunctionTemplate>{reference_handle::class_template(lock)})},
 		transfer_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{transfer}, lock))} {
 }
 
@@ -78,10 +80,11 @@ auto runtime_interface::instantiate(js::iv8::context_lock_witness lock) -> v8::L
 			std::pair{util::cw<"clockTime">, clock_time_->deref(util::slice(lock))},
 			std::pair{util::cw<"performanceTime">, performance_time_->deref(util::slice(lock))},
 			std::pair{util::cw<"transfer">, transfer_->deref(util::slice(lock))},
+			std::pair{util::cw<"Reference">, reference_->deref(util::slice(lock))},
 		};
 	};
-	auto origin = std::u16string{u"isolated-vm://runtime"};
-	auto interface = js::iv8::module_record::create_synthetic(lock, std::move(origin), make_interface());
+	auto origin = util::make_consteval_string_view("isolated-vm:runtime");
+	auto interface = js::iv8::module_record::create_synthetic(lock, origin, make_interface());
 	auto runtime = js::iv8::unmaybe(js::iv8::module_record::compile(lock, util::make_consteval_string_view(runtime_dist_interface_js), js::iv8::source_origin{}));
 	auto link_record = js::iv8::module_link_record{
 		.modules = {runtime, interface},

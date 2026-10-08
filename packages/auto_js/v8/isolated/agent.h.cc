@@ -177,10 +177,9 @@ class agent_host_of
 	public:
 		using agent_host::agent_host;
 
-		auto initialize_environment(auto&&... args) -> void {
-			agent_host_environment<Type>::emplace(std::forward<decltype(args)>(args)...);
-		}
 		auto environment(this auto& self) -> auto& { return *self; }
+		auto initialize_environment(auto&&... args) -> void;
+		auto make_handle() -> agent_handle_of<Type>;
 
 	private:
 		auto destroy_callback(isolate_lock_witness /*lock*/) noexcept -> void { agent_host_environment<Type>::destroy(); }
@@ -215,6 +214,16 @@ agent_host_environment<Type>::~agent_host_environment() {
 	if (instance_) {
 		std::unreachable();
 	}
+}
+
+template <class Type>
+auto agent_host_of<Type>::initialize_environment(auto&&... args) -> void {
+	agent_host_environment<Type>::emplace(std::forward<decltype(args)>(args)...);
+}
+
+template <class Type>
+auto agent_host_of<Type>::make_handle() -> agent_handle_of<Type> {
+	return agent_handle_of<Type>{std::static_pointer_cast<agent_host_of>(shared_from_this())};
 }
 
 } // namespace js::iv8::isolated

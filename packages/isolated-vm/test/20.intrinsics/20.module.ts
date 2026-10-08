@@ -28,7 +28,7 @@ await test("nested compilation in module linker", async () => {
 
 await test("synthetic module capability", async () => {
 	await using agent = await Agent.create();
-	const capabilityName = "isolated-vm:///capability";
+	const capabilityName = "isolated-vm:capability";
 	let didInvoke = false;
 	const realm = expect(await agent.createRealm());
 	const capability = expect(await realm.createCapability(
@@ -54,7 +54,7 @@ await test("synthetic module capability", async () => {
 
 await test("synthetic module with circular reference", async () => {
 	await using agent = await Agent.create();
-	const capabilityName = "isolated-vm:///capability";
+	const capabilityName = "isolated-vm:capability";
 	const realm = expect(await agent.createRealm());
 	const capability = expect(await realm.createCapability(
 		{
@@ -86,7 +86,7 @@ await test("synthetic module with circular reference", async () => {
 
 await test("synthetic module with data templates", async () => {
 	await using agent = await Agent.create();
-	const capabilityName = "isolated-vm:///capability";
+	const capabilityName = "isolated-vm:capability";
 	const realm = expect(await agent.createRealm());
 	const capability = expect(await realm.createCapability(
 		{
@@ -110,7 +110,7 @@ await test("synthetic module with data templates", async () => {
 // promise.
 // await test("throw from synthetic module", async () => {
 // 	await using agent = await Agent.create();
-// 	const capabilityName = "isolated-vm:///capability";
+// 	const capabilityName = "isolated-vm:capability";
 // 	const realm = await agent.createRealm();
 // 	const capability = await realm.createCapability(
 // 		{

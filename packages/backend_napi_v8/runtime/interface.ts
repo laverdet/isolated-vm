@@ -1,3 +1,3 @@
-import { clockTime, performanceTime, transfer } from "./runtime.js";
+import { Reference, clockTime, performanceTime, transfer } from "./runtime.js";
 
-export { clockTime, performanceTime, transfer };
+export { Reference, clockTime, performanceTime, transfer };
