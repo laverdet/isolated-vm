@@ -21,10 +21,10 @@ auto agent_storage::release(std::shared_ptr<agent_storage> storage) -> void {
 }
 
 // `agent_handle`
-agent_handle::agent_handle(std::shared_ptr<agent_host> host) :
-		host_{host} {
-	if (host && host->handle_count_.fetch_add(1, std::memory_order_relaxed) == 0) {
-		host->self_handle_.store(std::move(host), std::memory_order_relaxed);
+agent_handle::agent_handle(agent_host& host, std::weak_ptr<agent_host> weak_host) :
+		host_{std::move(weak_host)} {
+	if (host.handle_count_.fetch_add(1, std::memory_order_relaxed) == 0) {
+		host.self_handle_.store(host_.lock(), std::memory_order_relaxed);
 	}
 }
 
@@ -131,8 +131,8 @@ auto agent_host::make_context() -> v8::Local<v8::Context> {
 }
 
 auto agent_host::make_remote_handle_lock(isolate_lock_witness lock) -> remote_handle_lock {
-	auto reset_handle = std::shared_ptr<reset_handle_type>{shared_from_this(), &reset_handle_callback_.at(0)};
-	return remote_handle_lock{lock, remote_handle_list_, reset_handle};
+	auto reset_handle = util::alias_weak_ptr(weak_from_this(), &reset_handle_callback_.at(0));
+	return remote_handle_lock{lock, remote_handle_list_, std::move(reset_handle)};
 }
 
 auto agent_host::remote_expiration_callback(expired_remote_type remote) noexcept -> void {

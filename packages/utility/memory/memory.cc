@@ -58,6 +58,17 @@ auto safe_pointer_upcast(std::unique_ptr<Type, Deleter> unique) {
 	return std::unique_ptr<To, cast_deleter>{std::move(unique)};
 }
 
+// Aliasing constructor for `std::weak_ptr`. Basically the same as `std::shared_ptr{shared,
+// any_pointer}`.
+export template <class Type, class Owner>
+auto alias_weak_ptr(std::weak_ptr<Owner> owner, Type* pointer) noexcept -> std::weak_ptr<Type> {
+	using words_type = std::array<void*, 2>;
+	static_assert(sizeof(std::weak_ptr<Owner>) == sizeof(words_type));
+	auto& alias = reinterpret_cast<std::weak_ptr<Type>&>(owner);
+	reinterpret_cast<words_type&>(alias).at(0) = pointer;
+	return std::move(alias);
+}
+
 // `std::atomic<std::shared_ptr<T>>` replacement when not available (macOS)
 #if __cpp_lib_atomic_shared_ptr
 

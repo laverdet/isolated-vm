@@ -250,7 +250,7 @@ auto reference_handle::invoke(const environment::lock& lock, js::forward<js::nap
 
 auto reference_handle::class_template(const agent_lock& lock) -> v8::Local<js::iv8::class_template_of<reference_handle>> {
 	auto constructor = [](const realm_scope& lock, js::forward<v8::Local<v8::Value>> value) -> reference_handle {
-		return reference_handle{lock, lock->make_handle(), get_context_shared_remote(lock), *value};
+		return reference_handle{lock, agent_handle{*lock}, get_context_shared_remote(lock), *value};
 	};
 	return js::iv8::class_template_of<reference_handle>::make(
 		lock,

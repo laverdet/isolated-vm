@@ -71,7 +71,8 @@ export class agent_handle {
 	public:
 		using lock = agent_lock;
 		using dispose_callback_type = util::move_only_function<auto() noexcept -> void>;
-		explicit agent_handle(std::shared_ptr<agent_host> host);
+		explicit agent_handle(std::nullptr_t /*null*/) noexcept {}
+		agent_handle(agent_host& host, std::weak_ptr<agent_host> weak_host);
 		agent_handle(const agent_handle& handle);
 		agent_handle(agent_handle&&) = default;
 		~agent_handle();
@@ -93,11 +94,16 @@ class agent_handle_of : public agent_handle {
 	public:
 		using lock = agent_lock_of<Type>;
 
-		explicit agent_handle_of(const std::shared_ptr<agent_host_of<Type>>& host) : agent_handle{host} {}
+		explicit agent_handle_of(std::nullptr_t /*null*/) noexcept : agent_handle{nullptr} {}
+		agent_handle_of(agent_host_of<Type>& host, std::weak_ptr<agent_host> weak_host) :
+				agent_handle{host, std::move(weak_host)} {}
 
 		template <class... Args, std::invocable<lock, Args...> Task>
 		auto schedule(Task task, Args... args) const -> void;
 };
+
+export template <class Type>
+agent_handle_of(agent_host_of<Type>&) -> agent_handle_of<Type>;
 
 // Generic client storage, stored along with `agent_host`. If a value is stored (via `emplace`) then
 // `destroy` must be explicitly invoked before the destructor.
@@ -179,7 +185,7 @@ class agent_host_of
 
 		auto environment(this auto& self) -> auto& { return *self; }
 		auto initialize_environment(auto&&... args) -> void;
-		auto make_handle() -> agent_handle_of<Type>;
+		explicit operator agent_handle_of<Type>() { return agent_handle_of<Type>{*this, weak_from_this()}; }
 
 	private:
 		auto destroy_callback(isolate_lock_witness /*lock*/) noexcept -> void { agent_host_environment<Type>::destroy(); }
@@ -219,11 +225,6 @@ agent_host_environment<Type>::~agent_host_environment() {
 template <class Type>
 auto agent_host_of<Type>::initialize_environment(auto&&... args) -> void {
 	agent_host_environment<Type>::emplace(std::forward<decltype(args)>(args)...);
-}
-
-template <class Type>
-auto agent_host_of<Type>::make_handle() -> agent_handle_of<Type> {
-	return agent_handle_of<Type>{std::static_pointer_cast<agent_host_of>(shared_from_this())};
 }
 
 } // namespace js::iv8::isolated
