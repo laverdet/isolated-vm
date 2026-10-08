@@ -2,6 +2,7 @@ export module backend_napi_v8;
 export import :agent_handle;
 export import :agent;
 export import :environment;
+export import :lock;
 export import :module_;
 export import :native_module;
 export import :realm;
