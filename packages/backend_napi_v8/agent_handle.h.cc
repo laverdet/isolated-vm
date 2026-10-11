@@ -4,11 +4,17 @@ import :runtime;
 import std;
 import util;
 import v8_js;
+using namespace std::string_view_literals;
 
 namespace backend_napi_v8 {
 
+// Storage for class templates
+constexpr inline auto runtime_class_names = std::tuple{
+	"Reference"sv,
+};
+
 // This storage is managed by the external isolate, not napi.
-class agent_environment {
+class agent_environment : public js::iv8::class_template_references<runtime_class_names> {
 	public:
 		explicit agent_environment(const js::iv8::isolated::agent_lock& /*lock*/) {}
 

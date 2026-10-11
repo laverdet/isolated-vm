@@ -54,6 +54,7 @@ template <class Type> struct string_tag_of : con_tag_of<string_tag> {};
 struct object_tag : tag_of<value_tag> {};
 struct error_tag : tag_of<object_tag> {};
 struct external_tag : tag_of<object_tag> {};
+struct host_object_tag : tag_of<object_tag> {};
 
 // functions & classes
 struct function_tag : tag_of<value_tag> {};

@@ -376,4 +376,16 @@ struct accept<Meta, std::expected<Type, undefined_in_tag>> : accept<Meta, Type> 
 		}
 };
 
+// `std::any` is a host object, claimed by a visitor delegate
+template <>
+struct accept<void, std::any> {
+		template <class Subject>
+		constexpr auto operator()(host_object_tag /*tag*/, visit_holder /*visit*/, transferred_value<Subject, std::any>&& subject) const -> std::any {
+			return *std::move(subject);
+		}
+
+		constexpr static auto accept_tags_of() { return std::tuple{host_object_tag{}}; }
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+};
+
 } // namespace js

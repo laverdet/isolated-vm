@@ -251,23 +251,24 @@ struct is_visitor_delegate<visitor_delegate_of<Delegates...>> : std::bool_consta
 export template <class Type>
 concept visitor_delegate_type = is_visitor_delegate<Type>::value;
 
-// A transferred value claimed by transfer list delegate. It's convertible back into the underlying
-// value since it's the subject of the visitor subject map. It's also convertible, by move, to the
-// claimed result.
+// A internal transferred value claimed by transfer list delegate.
 export template <class Subject, class Type>
 class transferred_value {
 	public:
-		explicit transferred_value(Subject subject, Type& value) :
+		explicit transferred_value(Subject subject, const Type& value) :
 				subject_{std::move(subject)},
 				value_{value} {}
+		explicit transferred_value(Subject subject, Type&& value) :
+				subject_{std::move(subject)},
+				value_{std::move(value)} {}
 
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		operator Subject() const { return subject_; }
-		auto operator*() && -> Type { return std::move(value_.get()); }
+		auto operator*() && -> Type { return std::move(value_); }
 
 	private:
 		Subject subject_;
-		std::reference_wrapper<Type> value_;
+		Type value_;
 };
 
 } // namespace js

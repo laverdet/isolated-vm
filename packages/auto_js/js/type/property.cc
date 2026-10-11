@@ -78,9 +78,9 @@ struct member_getter_delegate {
 		using value_type = Type;
 		explicit constexpr member_getter_delegate(Type Subject::* member) : member_{member} {}
 
-		constexpr auto operator()(const Subject& subject) const -> const Type& { return subject.*(this->member_); }
+		constexpr auto operator()(const Subject& subject) const -> const Type& { return subject.*this->member_; }
 		// NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
-		constexpr auto operator()(Subject&& subject) const -> Type&& { return std::move(subject).*(this->member_); }
+		constexpr auto operator()(Subject&& subject) const -> Type&& { return std::move(subject).*this->member_; }
 
 	private:
 		Type Subject::* member_;
@@ -93,8 +93,8 @@ struct member_setter_delegate {
 		using value_type = Type;
 		explicit constexpr member_setter_delegate(Type Subject::* member) : member_{member} {}
 
-		constexpr auto operator()(Subject& subject, const Type& value) const -> void { subject.*(this->member_) = value; }
-		constexpr auto operator()(Subject& subject, Type&& value) const -> void { subject.*(this->member_) = std::move(value); }
+		constexpr auto operator()(Subject& subject, const Type& value) const -> void { subject.*this->member_ = value; }
+		constexpr auto operator()(Subject& subject, Type&& value) const -> void { subject.*this->member_ = std::move(value); }
 
 	private:
 		Type Subject::* member_;
@@ -132,6 +132,9 @@ struct accessor_setter_signature;
 
 template <class Set>
 struct accessor_setter_delegate : Set, accessor_setter_signature<util::function_signature_t<Set>> {
+		// Setter not implemented in napi or v8
+		static_assert(false);
+
 		// nb: This would fail for plain function pointers
 		constexpr explicit accessor_setter_delegate(Set set) : Set{std::move(set)} {}
 };
@@ -155,7 +158,7 @@ struct struct_member
 				property_name_template<Name>{std::move(name)},
 				property_accessor_template<member_getter_delegate<Subject, Type>, member_setter_delegate<Subject, Type>>{
 					member_getter_delegate<Subject, Type>{member},
-					member_setter_delegate<Subject, Type>{member}
+					member_setter_delegate<Subject, Type>{member},
 				} {}
 };
 

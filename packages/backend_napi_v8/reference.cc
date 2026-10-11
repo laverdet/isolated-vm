@@ -47,14 +47,14 @@ reference_handle::reference_handle(
 		}}} {}
 
 auto reference_handle::copy(const environment::lock& lock) -> forward_promise_type {
-	auto [ promise, resolver ] = make_promise(lock);
+	auto [ promise, resolver ] = make_promise(lock, resolve_with_references);
 	switch (typeof_) {
 		case js::typeof_kind::null:
-			resolver.resolve(js::value_t{nullptr});
+			resolver(nullptr);
 			break;
 
 		case js::typeof_kind::undefined:
-			resolver.resolve(js::value_t{std::monostate{}});
+			resolver(std::monostate{});
 			break;
 
 		default:
@@ -66,14 +66,13 @@ auto reference_handle::copy(const environment::lock& lock) -> forward_promise_ty
 				) -> void {
 					auto maybe_transferred = context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& lock) -> auto {
 						return iv8::invoke_externalized_error_scope(lock, [ & ] -> js::value_t {
-							auto local = value->deref(lock);
-							return js::transfer_out<js::value_t>(local, lock);
+							return transfer_from_runtime<js::value_t>(lock, value->deref(lock));
 						});
 					});
 					if (maybe_transferred) {
 						auto& transferred = *maybe_transferred;
 						if (transferred) {
-							resolver.resolve(*std::move(transferred));
+							resolver(*std::move(transferred));
 						} else {
 							resolver.reject(std::move(transferred).error());
 						}
@@ -152,7 +151,7 @@ auto reference_handle::get(const environment::lock& lock, js::string_t name) -> 
 }
 
 auto reference_handle::set(const environment::lock& lock, js::string_t name, js::forward<js::napi::local_of<>> value_local) -> forward_promise_type {
-	auto value = js::transfer_out<js::value_t>(*value_local, lock);
+	auto value = transfer_from_host<js::value_t>(lock, *value_local);
 	auto [ promise, resolver ] = make_promise(lock);
 	switch (typeof_) {
 		// Setting any property on these types is a no-op
@@ -186,7 +185,7 @@ auto reference_handle::set(const environment::lock& lock, js::string_t name, js:
 					auto maybe_result = context_scope_operation(agent_lock, realm->deref(agent_lock), [ & ](const realm_scope& lock) -> auto {
 						return iv8::invoke_externalized_error_scope(lock, [ & ] -> bool {
 							auto local = receiver->deref(lock).As<v8::Object>();
-							auto transferred = js::transfer_in_strict<v8::Local<v8::Value>>(std::move(value), lock);
+							auto transferred = js::transfer_in_strict<v8::Local<v8::Value>>(std::move(value), lock, accept_references);
 							return js::iv8::unmaybe(local->CreateDataProperty(lock.context(), name_local, transferred));
 						});
 					});
@@ -210,10 +209,8 @@ auto reference_handle::set(const environment::lock& lock, js::string_t name, js:
 }
 
 auto reference_handle::invoke(const environment::lock& lock, js::forward<js::napi::local_of<list_tag>> params_local, transfer_options options) -> forward_promise_type {
-	auto params = js::napi::transfer_list<js::napi::array_buffer_transfer>(lock, std::move(options).transfer).with([ & ](auto& delegate) -> js::values_vector_t {
-		return js::transfer_out<js::values_vector_t>(*params_local, lock, delegate);
-	});
-	auto [ promise, resolver ] = make_promise(lock);
+	auto params = transfer_from_host<js::values_vector_t>(lock, *params_local, options.transfer.value_or(js::napi::value_of<js::list_tag>{}));
+	auto [ promise, resolver ] = make_promise(lock, resolve_with_references);
 	if (typeof_ == js::typeof_kind::function) {
 		agent_.schedule(
 			[ value = value_,
@@ -225,18 +222,17 @@ auto reference_handle::invoke(const environment::lock& lock, js::forward<js::nap
 				auto maybe_result = realm_scope_operation(agent_lock, realm, [ & ](const realm_scope& lock) -> auto {
 					return iv8::invoke_externalized_error_scope(lock, [ & ] -> js::value_t {
 						auto fn = value->deref(lock).As<iv8::Function>();
-						auto result = *fn->apply<js::forward<v8::Local<v8::Value>>>(lock, std::move(params));
+						auto argv = js::transfer_in_strict<std::vector<v8::Local<v8::Value>>>(std::move(params), lock, accept_references);
+						auto result = fn->invoke(lock, std::span{argv});
 						if (auto* record = transfer_record::match(result)) {
-							return js::iv8::transfer_list<js::iv8::array_buffer_transfer>(lock, record->transfer(lock)).with([ & ](auto& delegate) -> js::value_t {
-								return js::transfer_out<js::value_t>(record->subject(lock), lock, delegate);
-							});
+							return transfer_from_runtime<js::value_t>(lock, record->subject(lock), record->transfer(lock));
 						} else {
-							return js::transfer_out<js::value_t>(result, lock);
+							return transfer_from_runtime<js::value_t>(lock, result);
 						}
 					});
 				});
 				if (maybe_result) {
-					resolver.resolve(make_completion_record(std::move(*maybe_result)));
+					resolver(make_completion_record(std::move(*maybe_result)));
 				}
 			},
 			std::move(resolver),
@@ -248,11 +244,12 @@ auto reference_handle::invoke(const environment::lock& lock, js::forward<js::nap
 	return js::forward{promise};
 }
 
-auto reference_handle::class_template(const agent_lock& lock) -> v8::Local<js::iv8::class_template_of<reference_handle>> {
+auto reference_handle::class_template(const realm_scope& lock) -> v8::Local<js::iv8::class_template_of<reference_handle>> {
 	auto constructor = [](const realm_scope& lock, js::forward<v8::Local<v8::Value>> value) -> reference_handle {
 		return reference_handle{lock, agent_handle{*lock}, get_context_shared_remote(lock), *value};
 	};
-	return js::iv8::class_template_of<reference_handle>::make(
+	return lock->environment().class_template(
+		std::type_identity<reference_handle>{},
 		lock,
 		js::class_template{
 			js::class_constructor{util::cw<"Reference">, util::fn<+constructor>},

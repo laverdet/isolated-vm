@@ -13,12 +13,11 @@ class local_for_function : public local_next<function_tag> {
 		template <class Result = std::monostate>
 		auto call(const auto& lock, auto&&... args) -> Result;
 
+		// Invoke with arguments which were already transferred
+		auto invoke(environment_lock_witness lock, std::span<napi_value> args) -> napi_value;
+
 		template <class Environment>
 		static auto make(const environment_lock_witness_of<Environment>& lock, auto function) -> local_of<function_tag>;
-
-	private:
-		template <class Result>
-		auto invoke(const auto& lock, std::span<napi_value> args) -> Result;
 };
 
 } // namespace js::napi

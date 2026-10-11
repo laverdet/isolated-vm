@@ -58,29 +58,24 @@ auto transfer_record::subject(js::iv8::isolate_lock_witness lock) const -> v8::L
 	return subject_.Get(lock.isolate());
 }
 
-auto transfer_record::transfer(js::iv8::context_lock_witness lock) const -> std::optional<js::iv8::value_of<js::list_tag>> {
-	if (transfer_.IsEmpty()) {
-		return std::nullopt;
-	} else {
-		return js::iv8::value_of{lock, transfer_.Get(lock.isolate())};
-	}
+auto transfer_record::transfer(js::iv8::context_lock_witness lock) const -> js::iv8::value_of<js::list_tag> {
+	return js::iv8::value_of{lock, transfer_.Get(lock.isolate())};
 }
 
 // runtime_interface
 runtime_interface::runtime_interface(std::monostate /*nothing*/, const agent_lock& lock) :
 		clock_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{clock_time}, lock))},
 		performance_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{performance_time}, lock))},
-		reference_{make_unique_remote(lock, v8::Local<v8::FunctionTemplate>{reference_handle::class_template(lock)})},
 		transfer_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{transfer}, lock))} {
 }
 
-auto runtime_interface::instantiate(js::iv8::context_lock_witness lock) -> v8::Local<js::iv8::module_record> {
+auto runtime_interface::instantiate(const realm_scope& lock) -> v8::Local<js::iv8::module_record> {
 	auto make_interface = [ & ] -> auto {
 		return std::tuple{
 			std::pair{util::cw<"clockTime">, clock_time_->deref(util::slice(lock))},
 			std::pair{util::cw<"performanceTime">, performance_time_->deref(util::slice(lock))},
 			std::pair{util::cw<"transfer">, transfer_->deref(util::slice(lock))},
-			std::pair{util::cw<"Reference">, reference_->deref(util::slice(lock))},
+			std::pair{util::cw<"Reference">, v8::Local<v8::FunctionTemplate>{reference_handle::class_template(lock)}},
 		};
 	};
 	auto origin = util::make_consteval_string_view("isolated-vm:runtime");

@@ -405,28 +405,17 @@ struct visit_value_delegate : visit_value<Lock, Reference> {
 				visit_type{transfer, lock},
 				delegate_{delegate} {}
 
-		using visit_type::operator();
-		using visit_type::immediate;
-
-		template <class Accept>
-		auto immediate(this auto& self, local_of<object_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return self.claim_or_immediate(subject, accept);
-		}
-
-		template <class Accept>
-		auto immediate(this auto& self, local_of<array_buffer_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return self.claim_or_immediate(subject, accept);
+		template <class Tag, class Accept>
+		auto immediate(this auto& self, local_of<Tag> subject, const Accept& accept) -> accept_target_t<Accept>
+			requires requires { self.visit_type::immediate(subject, accept); } {
+			if (auto claimed = self.delegate_.get()(subject, self, accept)) {
+				return *std::move(claimed);
+			} else {
+				return self.visit_type::immediate(subject, accept);
+			}
 		}
 
 	private:
-		template <class Accept>
-		auto claim_or_immediate(this auto& self, auto subject, const Accept& accept) -> accept_target_t<Accept> {
-			if (auto claimed = self.delegate_.get()(subject, self, accept)) {
-				return *std::move(claimed);
-			}
-			return self.visit_value<Lock, Reference>::immediate(subject, accept);
-		}
-
 		std::reference_wrapper<Delegate> delegate_;
 };
 

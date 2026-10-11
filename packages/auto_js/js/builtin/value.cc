@@ -70,9 +70,10 @@ using variant_value = std::variant<
 	reference_of<typed_array<std::uint16_t>>,
 	reference_of<typed_array<std::uint32_t>>,
 	reference_of<typed_array<std::uint64_t>>,
-	reference_of<typed_array<std::uint8_t>>
+	reference_of<typed_array<std::uint8_t>>,
 	// reference_of<typed_array<void>>
-	// ---
+	reference_of<std::any>
+	// --- this line intentionally left blank ---
 	>;
 
 using value_holder_t = referential_variant<variant_value>;

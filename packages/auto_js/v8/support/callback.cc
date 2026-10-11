@@ -1,5 +1,6 @@
 export module v8_js:callback;
 export import :callback_storage;
+import :callback_info;
 import :error;
 import :wrappable;
 import auto_js;
@@ -39,7 +40,7 @@ constexpr auto make_free_function_with_try_catch =
 						callback,
 						std::tuple_cat(
 							std::forward_as_tuple(lock),
-							js::transfer_out<std::tuple<js::functional::parameter_transfer_as_t<Args>...>>(info, lock)
+							js::transfer_out<std::tuple<js::functional::parameter_transfer_as_t<Args>...>>(callback_info{info}, lock)
 						)
 					);
 				}};
@@ -108,7 +109,7 @@ constexpr auto make_constructor_function_with_try_catch =
 					callback,
 					std::tuple_cat(
 						std::forward_as_tuple(lock),
-						js::transfer_out<std::tuple<js::functional::parameter_transfer_as_t<Args>...>>(info, lock)
+						js::transfer_out<std::tuple<js::functional::parameter_transfer_as_t<Args>...>>(callback_info{info}, lock)
 					)
 				);
 				wrappable_of<Type>::wrap(util::slice(lock), info.This(), std::move(instance));
@@ -164,7 +165,7 @@ constexpr auto make_member_function_with_try_catch =
 						callback,
 						std::tuple_cat(
 							std::forward_as_tuple(*that, lock),
-							js::transfer_out<std::tuple<js::functional::parameter_transfer_as_t<Args>...>>(info, lock)
+							js::transfer_out<std::tuple<js::functional::parameter_transfer_as_t<Args>...>>(callback_info{info}, lock)
 						)
 					);
 				}};

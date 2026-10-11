@@ -256,4 +256,39 @@ struct accept_property_value<Meta, Key, Type, void> {
 		accept_value<Meta, Type> second;
 };
 
+// Composition of acceptor delegates
+export template <class... Delegates>
+class acceptor_delegate_of {
+	public:
+		constexpr explicit acceptor_delegate_of(Delegates... delegates) : delegates_{std::move(delegates)...} {}
+
+		constexpr auto operator()(auto&& subject, const auto& lock) const {
+			using result_type = decltype(std::get<0>(delegates_)(std::forward<decltype(subject)>(subject), lock));
+			return util::template_traverse(
+				util::sequence_cw<sizeof...(Delegates)>,
+				util::overloaded{
+					[ & ](auto ii, auto next) -> result_type {
+						if (auto result = std::get<ii>(delegates_)(std::forward<decltype(subject)>(subject), lock)) {
+							return result;
+						}
+						return next();
+					},
+					[] -> result_type { return std::nullopt; },
+				}
+			);
+		}
+
+	private:
+		std::tuple<Delegates...> delegates_;
+};
+
+template <class Type>
+struct is_acceptor_delegate : std::bool_constant<false> {};
+
+template <class... Delegates>
+struct is_acceptor_delegate<acceptor_delegate_of<Delegates...>> : std::bool_constant<true> {};
+
+export template <class Type>
+concept acceptor_delegate_type = is_acceptor_delegate<Type>::value;
+
 } // namespace js

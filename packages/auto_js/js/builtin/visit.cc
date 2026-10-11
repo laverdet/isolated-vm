@@ -205,4 +205,8 @@ struct visit<Meta, std::pair<Key, Value>> {
 		visit<Meta, Value> second;
 };
 
+// `std::any` holds a host object.
+template <>
+struct visit<void, std::any> : visit_value_tagged<host_object_tag> {};
+
 } // namespace js

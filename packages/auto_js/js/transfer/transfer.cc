@@ -30,6 +30,7 @@ constexpr auto message_for_tag = util::overloaded{
 	[](date_tag /*tag*/) -> auto { return util::cw<u"Date">; },
 	[](error_tag /*tag*/) -> auto { return util::cw<u"Error">; },
 	[](external_tag /*tag*/) -> auto { return util::cw<u"external">; },
+	[](host_object_tag /*tag*/) -> auto { return util::cw<u"host object">; },
 	[](function_tag /*tag*/) -> auto { return util::cw<u"function">; },
 	[](list_tag /*tag*/) -> auto { return util::cw<u"Array">; },
 	[](object_tag /*tag*/) -> auto { return util::cw<u"object">; },

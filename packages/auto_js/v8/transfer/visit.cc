@@ -444,23 +444,17 @@ struct visit_value_delegate : visit_value<Target> {
 		visit_value_delegate(auto* transfer, const auto& lock, Delegate& delegate) :
 				visit_value_delegate{transfer, context_lock_witness{util::slice(lock)}, delegate} {}
 
-		using visit_type::operator();
-		using visit_type::immediate;
-
-		template <class Accept>
-		auto immediate(this auto& self, v8::Local<v8::ArrayBuffer> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return self.claim_or_immediate(subject, accept);
+		template <class Type, class Accept>
+		auto immediate(this auto& self, v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept>
+			requires requires { self.visit_type::immediate(subject, accept); } {
+			if (auto claimed = self.delegate_.get()(subject, self, accept)) {
+				return *std::move(claimed);
+			} else {
+				return self.visit_type::immediate(subject, accept);
+			}
 		}
 
 	private:
-		template <class Accept>
-		auto claim_or_immediate(this auto& self, auto subject, const Accept& accept) -> accept_target_t<Accept> {
-			if (auto claimed = self.delegate_.get()(subject, self, accept)) {
-				return *std::move(claimed);
-			}
-			return self.visit_value<Target>::immediate(subject, accept);
-		}
-
 		std::reference_wrapper<Delegate> delegate_;
 };
 
@@ -526,6 +520,18 @@ struct visit_template {
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
+// `arguments` visitor
+template <class Visit>
+struct visit_callback_info : Visit {
+		using Visit::Visit;
+		using Visit::operator();
+
+		template <class Accept>
+		auto operator()(const iv8::callback_info& subject, const Accept& accept) -> accept_target_t<Accept> {
+			return accept(vector_tag{}, *this, subject);
+		}
+};
+
 } // namespace js::iv8
 
 namespace js {
@@ -567,23 +573,15 @@ struct visit<Meta, v8::Local<Type>> : iv8::visit_template {
 		using iv8::visit_template::visit_template;
 };
 
-// `arguments` visitor
-template <class Type, class... Args>
-struct select_visit<v8::FunctionCallbackInfo<Type>, Args...> : select_default_visit {
-		using subject_type = select_visit<v8::Local<Type>, Args...>::subject_type;
-};
+template <class... Args>
+struct select_visit<iv8::callback_info, Args...> {
+	private:
+		using select_type = select_visit<v8::Local<v8::Value>, Args...>;
 
-template <class Meta>
-struct visit<Meta, v8::FunctionCallbackInfo<v8::Value>> : visit<Meta, v8::Local<v8::Value>> {
-		using visit_type = visit<Meta, v8::Local<v8::Value>>;
-		using visit_type::visit_type;
-
-		using visit_type::operator();
-
-		template <class Accept>
-		auto operator()(const v8::FunctionCallbackInfo<v8::Value>& info, const Accept& accept) -> accept_target_t<Accept> {
-			return accept(vector_tag{}, *this, iv8::callback_info{info});
-		}
+	public:
+		using subject_type = select_type::subject_type;
+		template <class Meta, class Subject>
+		using visit = iv8::visit_callback_info<typename select_type::template visit<Meta, v8::Local<v8::Value>>>;
 };
 
 // Object key maker for v8 objects

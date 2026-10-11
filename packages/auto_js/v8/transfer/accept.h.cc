@@ -346,6 +346,28 @@ struct accept_v8_value_with : accept_v8_value_lock_delegate<Lock> {
 		}
 };
 
+// `accept_v8_value_with` which also accepts host objects, through an `acceptor_delegate_of`
+template <class Lock, class Delegate>
+struct accept_v8_value_delegate : accept_v8_value_with<Lock> {
+	public:
+		accept_v8_value_delegate(auto* transfer, const Lock& lock, Delegate delegate) :
+				accept_v8_value_with<Lock>{transfer, lock},
+				delegate_{std::move(delegate)} {}
+		using accept_v8_value_with<Lock>::operator();
+
+		// host object
+		auto operator()(host_object_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const -> js::referenceable_value<v8::Local<v8::Object>> {
+			if (auto instance = delegate_(std::forward<decltype(subject)>(subject), this->witness())) {
+				return js::referenceable_value{*instance};
+			} else {
+				throw std::logic_error{"Unsupported host object"};
+			}
+		}
+
+	private:
+		Delegate delegate_;
+};
+
 // Acceptor with template environment
 template <class Meta, class Lock>
 struct accept_v8_template : accept_v8_primitive {
@@ -541,6 +563,14 @@ struct select_accept<v8::Local<Type>, Lock> {
 		using target_type = v8::Local<Type>;
 		template <class Meta, class Target>
 		using accept = accept_as<v8::Local<Type>, iv8::accept_v8_value_with<Lock>>;
+};
+
+// An `acceptor_delegate_of` passed along with the lock selects the delegate acceptor
+template <class Type, class Lock, acceptor_delegate_type Delegate>
+struct select_accept<v8::Local<Type>, Lock, Delegate> {
+		using target_type = v8::Local<Type>;
+		template <class Meta, class Target>
+		using accept = accept_as<v8::Local<Type>, iv8::accept_v8_value_delegate<Lock, Delegate>>;
 };
 
 // forward `value_of<T>`

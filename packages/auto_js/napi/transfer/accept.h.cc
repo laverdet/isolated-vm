@@ -321,6 +321,28 @@ struct accept_napi_value_of {
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
+// `accept_napi_value` which also accepts host objects, through an `acceptor_delegate_of`
+template <class Lock, class Delegate>
+struct accept_napi_value_delegate : accept_napi_value<Lock> {
+	public:
+		accept_napi_value_delegate(auto* transfer, const Lock& lock, Delegate delegate) :
+				accept_napi_value<Lock>{transfer, lock},
+				delegate_{std::move(delegate)} {}
+		using accept_napi_value<Lock>::operator();
+
+		// host object
+		auto operator()(host_object_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const -> js::referenceable_value<local_of<object_tag>> {
+			if (auto instance = delegate_(std::forward<decltype(subject)>(subject), this->lock())) {
+				return js::referenceable_value{local_of<object_tag>{*instance}};
+			} else {
+				throw std::logic_error{"Unsupported host object"};
+			}
+		}
+
+	private:
+		Delegate delegate_;
+};
+
 // `local_of<object_tag>{}->assign(...)` implementation
 struct object_assign_delegate {
 	public:
@@ -383,6 +405,21 @@ struct select_accept<napi::local_of<Tag>, Lock> {
 		using target_type = napi::local_of<Tag>;
 		template <class Meta, class Type>
 		using accept = accept_as<napi::local_of<Tag>, napi::accept_napi_value<Lock>>;
+};
+
+// An `acceptor_delegate_of` passed along with the lock selects the delegate acceptor
+template <class Lock, acceptor_delegate_type Delegate>
+struct select_accept<napi_value, Lock, Delegate> {
+		using target_type = napi_value;
+		template <class Meta, class Type>
+		using accept = napi::accept_napi_value_delegate<Lock, Delegate>;
+};
+
+template <class Tag, class Lock, acceptor_delegate_type Delegate>
+struct select_accept<napi::local_of<Tag>, Lock, Delegate> {
+		using target_type = napi::local_of<Tag>;
+		template <class Meta, class Type>
+		using accept = accept_as<napi::local_of<Tag>, napi::accept_napi_value_delegate<Lock, Delegate>>;
 };
 
 // Forward `value_of<T>`

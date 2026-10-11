@@ -7,20 +7,17 @@ namespace js::napi {
 template <class Result>
 auto local_for_function::apply(const auto& lock, auto&& args) -> Result {
 	auto argv = js::transfer_in_strict<std::vector<napi_value>>(std::forward<decltype(args)>(args), lock);
-	return invoke<Result>(lock, std::span{argv});
+	return js::transfer_out<Result>(invoke(lock, std::span{argv}), lock);
 }
 
 template <class Result>
 auto local_for_function::call(const auto& lock, auto&&... args) -> Result {
 	auto argv = js::transfer_in_strict<std::array<napi_value, sizeof...(args)>>(std::forward_as_tuple(args...), lock);
-	return invoke<Result>(lock, std::span{argv});
+	return js::transfer_out<Result>(invoke(lock, std::span{argv}), lock);
 }
 
-template <class Result>
-auto local_for_function::invoke(const auto& lock, std::span<napi_value> args) -> Result {
-	auto undefined = js::transfer_in_strict<napi_value>(std::monostate{}, lock);
-	auto* result = napi::invoke(napi_call_function, napi_env{lock}, undefined, napi_value{*this}, args.size(), args.data());
-	return js::transfer_out<Result>(result, lock);
+auto local_for_function::invoke(environment_lock_witness lock, std::span<napi_value> args) -> napi_value {
+	return napi::invoke(napi_call_function, napi_env{lock}, js::transfer_in_strict<napi_value>(std::monostate{}, lock), napi_value{*this}, args.size(), args.data());
 }
 
 template <class Environment>

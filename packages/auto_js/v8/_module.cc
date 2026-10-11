@@ -5,6 +5,7 @@ export import :callback_info;
 export import :callback;
 export import :class_;
 export import :class_definitions;
+export import :class_template_storage;
 export import :collected_handle;
 export import :error;
 export import :function_definitions;

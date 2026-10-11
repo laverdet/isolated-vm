@@ -2,6 +2,7 @@ module backend_napi_v8;
 import :environment;
 import :lock;
 import :realm;
+import :reference;
 import :utility;
 import auto_js;
 import napi_js;
@@ -47,7 +48,7 @@ auto script_handle::compile_script(const environment::lock& lock, agent_handle& 
 }
 
 auto script_handle::run(const environment::lock& lock, realm_handle* realm, run_script_options options) -> forward_promise_type {
-	auto [ promise, resolver ] = make_promise(lock);
+	auto [ promise, resolver ] = make_promise(lock, resolve_with_references);
 	if (realm == nullptr) {
 		return js::forward{promise};
 	}
@@ -73,11 +74,11 @@ auto script_handle::run(const environment::lock& lock, realm_handle* realm, run_
 					});
 				return iv8::invoke_externalized_error_scope(realm, [ & ] -> auto {
 					auto value = script_remote->deref(lock)->run(realm);
-					return js::transfer_out<js::value_t>(value, realm);
+					return transfer_from_runtime<js::value_t>(realm, value);
 				});
 			});
 			if (result) {
-				resolver.resolve(make_completion_record(std::move(*result)));
+				resolver(make_completion_record(std::move(*result)));
 			}
 		},
 		std::move(resolver)

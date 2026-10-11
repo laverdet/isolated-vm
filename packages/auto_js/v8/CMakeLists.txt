@@ -37,6 +37,7 @@ target_sources(${v8_js}
 		support/boost.h.cc
 		support/callback_storage.cc
 		support/callback.cc
+		support/class_template_storage.cc
 		support/error.h.cc
 		support/lock.h.cc
 		support/unmaybe.cc

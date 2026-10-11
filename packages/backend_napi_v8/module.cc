@@ -2,6 +2,7 @@ module backend_napi_v8;
 import :environment;
 import :lock;
 import :realm;
+import :reference;
 import :utility;
 import auto_js;
 import napi_js;
@@ -88,15 +89,16 @@ auto module_handle::create_capability(
 				const environment::lock& lock,
 				js::values_vector_t params
 			) -> void {
-			callback->deref(lock)->apply(lock, std::move(params));
+			auto argv = js::transfer_in_strict<std::vector<napi_value>>(std::move(params), lock, accept_references);
+			callback->deref(lock)->invoke(lock, argv);
 		};
 		// Invoked in the isolate thread. An instance of this keeps the nodejs loop alive.
 		return js::free_function{
 			[ scheduler = lock->scheduler().make_ref(lock),
 				invoke = std::move(invoke) ](
-				const realm_scope& /*lock*/,
+				const realm_scope& lock,
 				js::rest /*rest*/,
-				js::values_vector_t params
+				js::forward<js::iv8::callback_info, js::vector_tag> arguments
 			) -> void {
 				(*scheduler)(
 					[ invoke ](napi_env nenv, napi_value /*nothing*/, js::values_vector_t params) -> void {
@@ -108,7 +110,7 @@ auto module_handle::create_capability(
 							return {};
 						});
 					},
-					std::move(params)
+					transfer_from_runtime<js::values_vector_t>(lock, *arguments)
 				);
 			},
 		};
@@ -289,6 +291,6 @@ auto module_handle::class_template(const environment::lock& lock) -> js::napi::l
 // instantiated in this file it causes bad codegen throughout the project. Like code totally
 // unrelated to JS modules will throw vector out bounds exceptions, SIGBUS, asan violations. I tried
 // disabling LTO, this is the only thing that seems to work.
-[[maybe_unused]] constexpr auto template_workaround = [](js::iv8::context_lock_witness lock, js::value_t value) -> void {
-	std::ignore = js::transfer_in_strict<v8::Local<v8::Value>>(std::move(value), lock);
+[[maybe_unused]] constexpr auto template_workaround = [](const backend_napi_v8::realm_scope& lock, js::value_t value) -> void {
+	std::ignore = js::transfer_in_strict<v8::Local<v8::Value>>(std::move(value), lock, backend_napi_v8::accept_references);
 };
