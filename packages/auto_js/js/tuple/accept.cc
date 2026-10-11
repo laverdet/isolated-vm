@@ -104,8 +104,10 @@ struct accept<Meta, std::tuple<Types...>> {
 };
 
 // In the case of accepting only a rest parameter, the accept target can be remapped.
-template <class Type>
-struct accept_target_for<std::tuple<rest, Type>> : accept_target_for<Type> {};
+template <class Type, class... Args>
+struct select_accept<std::tuple<rest, Type>, Args...> : select_default_accept {
+		using target_type = select_accept<Type, Args...>::target_type;
+};
 
 template <class Meta, class Type>
 struct accept<Meta, std::tuple<rest, Type>> : accept<Meta, Type> {

@@ -9,11 +9,10 @@ import std;
 namespace js {
 
 // `Meta` type for `visit` implementations
-template <class Context, class Subject, class Target, class Reference>
+template <class Subject, class Target, class Reference>
 struct visit_meta_holder {
 		using accept_property_subject_type = Target;
 		using accept_reference_type = Reference;
-		using visit_context_type = Context;
 		using visit_subject_type = Subject;
 };
 
@@ -23,6 +22,18 @@ struct visit : visit<void, Type> {
 		// Swallow `transfer` argument on behalf of non-meta visitors
 		constexpr explicit visit(auto* /*transfer*/, auto&&... args) :
 				visit<void, Type>{std::forward<decltype(args)>(args)...} {}
+};
+
+// Default `visit` selection, for `select_visit` specializations which only unfold the subject
+export struct select_default_visit {
+		template <class Meta, class Type>
+		using visit = js::visit<Meta, Type>;
+};
+
+// Top-level visitor configuration
+export template <class Subject, class... Args>
+struct select_visit : select_default_visit {
+		using subject_type = Subject;
 };
 
 // Prevent instantiation of non-specialized void-Meta `visit` (better error messages)
@@ -74,10 +85,6 @@ struct visit_entry_pair {
 		// NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
 		Second second;
 };
-
-// Unfold `Subject` through container visitors.
-export template <class Subject>
-struct visit_subject_for : std::type_identity<Subject> {};
 
 // Returns the key type expected by the delegate (an instance of `visit` or `accept`) target.
 export template <auto Key, class Subject>
@@ -201,8 +208,10 @@ struct transferee_visit_subject {
 };
 
 // `transferee_visit_subject` unwraps to its underlying subject
-template <class Subject, class Delegate>
-struct visit_subject_for<transferee_visit_subject<Subject, Delegate>> : visit_subject_for<Subject> {};
+template <class Subject, class Delegate, class... Args>
+struct select_visit<transferee_visit_subject<Subject, Delegate>, Args...> : select_default_visit {
+		using subject_type = select_visit<Subject, Args...>::subject_type;
+};
 
 // A transferred value claimed by transfer list delegate. It's convertible back into the underlying
 // value since it's the subject of the visitor subject map. It's also convertible, by move, to the

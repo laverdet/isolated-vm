@@ -160,8 +160,7 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 			}
 		}
 
-		template <class Accept, class Type>
-			requires std::is_convertible_v<Type, v8::Primitive>
+		template <class Accept, std::convertible_to<v8::Primitive> Type>
 		auto immediate(this auto& self, v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return self.accept_tagged(subject, accept);
 		}
@@ -232,8 +231,7 @@ struct visit_flat_value : reference_map_t<Reference, visit_reference_map_type> {
 		}
 
 		// function (can be forwarded)
-		template <class Type, class Accept>
-			requires std::is_convertible_v<Type, v8::Function>
+		template <std::convertible_to<v8::Function> Type, class Accept>
 		auto immediate(this auto& self, v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept(function_tag{}, self, subject);
 		}
@@ -423,8 +421,7 @@ struct visit_value : visit_flat_value<Target> {
 			}
 		}
 
-		template <class Accept, class Type>
-			requires std::is_convertible_v<Type, v8::ArrayBufferView>
+		template <class Accept, std::convertible_to<v8::ArrayBufferView> Type>
 		auto immediate(this auto& self, v8::Local<Type> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return accept(v8_to_tag<Type>{}, self, value_of{self.witness(), subject});
 		}
@@ -542,8 +539,7 @@ struct visit_template {
 namespace js {
 
 // Name visitor (string + symbol)
-template <class Meta, class Type>
-	requires std::is_convertible_v<Type, v8::Primitive>
+template <class Meta, std::convertible_to<v8::Primitive> Type>
 struct visit<Meta, v8::Local<Type>> : iv8::visit_uncached_flat_value_with<Meta> {
 		using iv8::visit_uncached_flat_value_with<Meta>::visit_uncached_flat_value_with;
 };
@@ -575,19 +571,22 @@ struct visit<Meta, iv8::value_of<Tag>> : iv8::visit_v8_value_of<Tag> {
 		using iv8::visit_v8_value_of<Tag>::visit_v8_value_of;
 };
 
-template <class Tag>
-struct visit_subject_for<iv8::value_of<Tag>> : std::type_identity<v8::Local<v8::Value>> {};
+template <class Tag, class... Args>
+struct select_visit<iv8::value_of<Tag>, Args...> : select_default_visit {
+		using subject_type = v8::Local<v8::Value>;
+};
 
 // Template visitor
-template <class Meta, class Type>
-	requires std::is_convertible_v<Type, v8::Template>
+template <class Meta, std::convertible_to<v8::Template> Type>
 struct visit<Meta, v8::Local<Type>> : iv8::visit_template {
 		using iv8::visit_template::visit_template;
 };
 
 // `arguments` visitor
-template <class Type>
-struct visit_subject_for<v8::FunctionCallbackInfo<Type>> : visit_subject_for<v8::Local<Type>> {};
+template <class Type, class... Args>
+struct select_visit<v8::FunctionCallbackInfo<Type>, Args...> : select_default_visit {
+		using subject_type = select_visit<v8::Local<Type>, Args...>::subject_type;
+};
 
 template <class Meta>
 struct visit<Meta, v8::FunctionCallbackInfo<v8::Value>> : visit<Meta, v8::Local<v8::Value>> {

@@ -118,20 +118,6 @@ struct transfer_holder : Types..., Visit, Accept {
 				} {}
 };
 
-// Select environment type for `accept` or `visit`. This is either `void` for stateless visitors, or
-// something like `environment_of<T>` for runtime visitors.
-template <class... Types>
-struct select_transferee_environment;
-
-template <class... Types>
-using select_transferee_environment_t = select_transferee_environment<Types...>::type;
-
-template <>
-struct select_transferee_environment<> : std::type_identity<void> {};
-
-template <class Type, class... Rest>
-struct select_transferee_environment<Type, Rest...> : std::decay<Type> {};
-
 // Lookp up acceptor `accept_reference_type`
 template <class Accept>
 struct accept_reference_type : std::type_identity<void> {};
@@ -148,26 +134,21 @@ constexpr auto transfer_with(
 	std::tuple<AcceptArgs...> accept_args
 ) -> Type {
 	using subject_type = std::remove_cvref_t<decltype(value)>;
-	using visit_subject_type = visit_subject_for<subject_type>::type;
-
-	using accept_target_type = accept_target_for<std::remove_cvref_t<Type>>::type;
+	using select_visit_type = select_visit<subject_type, std::remove_cvref_t<VisitArgs>...>;
+	using visit_subject_type = select_visit_type::subject_type;
 
 	// compose accept type
-	using accept_context_type = select_transferee_environment_t<std::remove_cvref_t<AcceptArgs>...>;
-	using accept_meta_type = accept_meta_holder<
-		Wrap,
-		accept_context_type,
-		accept_property_subject_t<visit_subject_type>>;
-	using accept_type = accept_value<accept_meta_type, Type>;
+	using select_accept_type = select_accept<std::remove_cvref_t<Type>, std::remove_cvref_t<AcceptArgs>...>;
+	using accept_target_type = select_accept_type::target_type;
+	using accept_meta_type = accept_meta_holder<Wrap, accept_property_subject_t<visit_subject_type>>;
+	using accept_type = select_accept_value<accept_meta_type, Type, std::remove_cvref_t<AcceptArgs>...>;
 
 	// compose visit type
-	using visit_context_type = select_transferee_environment_t<std::remove_cvref_t<VisitArgs>...>;
 	using visit_meta_type = visit_meta_holder<
-		visit_context_type,
 		visit_subject_type,
 		accept_property_subject_t<accept_target_type>,
 		typename accept_reference_type<accept_type>::type>;
-	using visit_type = visit<visit_meta_type, subject_type>;
+	using visit_type = select_visit_type::template visit<visit_meta_type, subject_type>;
 
 	// cast subject to `T&&` or `const T&`. otherwise the `auto&&` parameters will accept too many
 	// value categories.

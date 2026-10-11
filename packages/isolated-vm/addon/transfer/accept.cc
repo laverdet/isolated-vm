@@ -257,6 +257,7 @@ struct accept_vm_value : accept_vm_primitive {
 			return js::referenceable_value{local_of<array_buffer_tag>::make(lock(), std::move(subject))};
 		}
 
+		// NOLINTNEXTLINE(bugprone-derived-method-shadowing-base-method)
 		[[nodiscard]] auto lock() const -> const runtime_lock& {
 			return reinterpret_cast<const runtime_lock&>(accept_vm_primitive::lock());
 		}
@@ -306,15 +307,13 @@ template <class Tag>
 struct accept_property_subject<local_of<Tag>> : std::type_identity<local_of<record_tag>> {};
 
 // Primitive acceptor
-template <std::convertible_to<value_tag> Tag>
-	requires std::is_convertible_v<Tag, primitive_tag>
+template <std::convertible_to<primitive_tag> Tag>
 struct accept<void, local_of<Tag>> : accept_vm_primitive {
 		using accept_vm_primitive::accept_vm_primitive;
 };
 
 // Template / prototype acceptor
-template <class Tag>
-	requires std::is_convertible_v<Tag, prototype_tag>
+template <std::convertible_to<prototype_tag> Tag>
 struct accept<void, local_of<Tag>> : accept_vm_prototype {
 		using accept_vm_prototype::accept_vm_prototype;
 };

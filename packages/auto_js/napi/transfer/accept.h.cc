@@ -156,12 +156,10 @@ struct accept_basic_napi_value {
 template <class Lock>
 struct accept_napi_value;
 
-template <class Meta>
-using accept_napi_value_with = accept_napi_value<typename Meta::accept_context_type>;
-
 template <class Lock>
 struct accept_napi_value : accept_basic_napi_value {
 	public:
+		using accept_target_type = napi_value;
 		explicit accept_napi_value(auto* transfer, const Lock& lock) :
 				accept_basic_napi_value{transfer, lock},
 				lock_{lock} {}
@@ -300,6 +298,7 @@ struct accept_napi_value : accept_basic_napi_value {
 		}
 
 		// extras
+		// NOLINTNEXTLINE(bugprone-derived-method-shadowing-base-method)
 		[[nodiscard]] auto lock() const -> const Lock& { return lock_; }
 
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
@@ -336,6 +335,30 @@ auto local_for_object::assign(const auto& lock, auto source) const -> void {
 	js::transfer_in<object_assign_delegate>(std::move(source), lock, object_assign_delegate{local_of{*this}});
 }
 
+template <class Meta, class Lock>
+struct accept_object_assign {
+	private:
+		using accept_type = accept_value_with<Meta, accept_napi_value<Lock>>;
+
+	public:
+		using accept_target_type = napi::object_assign_delegate;
+		accept_object_assign(auto* transfer, const Lock& lock, napi::object_assign_delegate object) :
+				accept_{transfer, lock},
+				object_{object} {}
+
+		template <std::size_t Size>
+		auto operator()(this const auto& self, tuple_tag<Size> /*tag*/, auto& visit, auto&& subject) -> napi::object_assign_delegate {
+			self.accept_.template accept_entry_pair_struct<Size>(visit, *self.object_, std::forward<decltype(subject)>(subject));
+			return self.object_;
+		}
+
+		consteval static auto types(auto recursive) { return accept_type::types(recursive); }
+
+	private:
+		accept_type accept_;
+		napi::object_assign_delegate object_;
+};
+
 } // namespace js::napi
 
 namespace js {
@@ -344,20 +367,22 @@ namespace js {
 template <>
 struct accept_property_subject<napi_value> : std::type_identity<napi_value> {};
 
-template <class Meta>
-struct accept<Meta, napi_value> : napi::accept_napi_value_with<Meta> {
-		using accept_type = napi::accept_napi_value_with<Meta>;
-		using accept_type::accept_type;
+template <class Lock>
+struct select_accept<napi_value, Lock> {
+		using target_type = napi_value;
+		template <class Meta, class Type>
+		using accept = napi::accept_napi_value<Lock>;
 };
 
 // Tagged `local_of<T>` acceptor
 template <>
 struct accept_property_subject<napi::local_of<>> : std::type_identity<napi_value> {};
 
-template <class Meta, class Tag>
-struct accept<Meta, napi::local_of<Tag>> : napi::accept_napi_value_with<Meta> {
-		using accept_type = napi::accept_napi_value_with<Meta>;
-		using accept_type::accept_type;
+template <class Tag, class Lock>
+struct select_accept<napi::local_of<Tag>, Lock> {
+		using target_type = napi::local_of<Tag>;
+		template <class Meta, class Type>
+		using accept = accept_as<napi::local_of<Tag>, napi::accept_napi_value<Lock>>;
 };
 
 // Forward `value_of<T>`
@@ -387,24 +412,12 @@ struct accept_property_value<Meta, Key, Type, napi_value> {
 		accept_value<Meta, Type> second;
 };
 
-template <class Meta>
-struct accept<Meta, napi::object_assign_delegate> {
-	public:
-		accept(auto* transfer, const auto& lock, napi::object_assign_delegate object) :
-				accept_{transfer, lock},
-				object_{object} {}
-
-		template <std::size_t Size>
-		auto operator()(this const auto& self, tuple_tag<Size> /*tag*/, auto& visit, auto&& subject) -> napi::object_assign_delegate {
-			self.accept_.template accept_entry_pair_struct<Size>(visit, *self.object_, std::forward<decltype(subject)>(subject));
-			return self.object_;
-		}
-
-		consteval static auto types(auto recursive) { return accept<Meta, napi_value>::types(recursive); }
-
-	private:
-		accept_value<Meta, napi_value> accept_;
-		napi::object_assign_delegate object_;
+// `local_of<object_tag>{}->assign(...)`
+template <class Lock>
+struct select_accept<napi::object_assign_delegate, Lock, napi::object_assign_delegate> {
+		using target_type = napi::object_assign_delegate;
+		template <class Meta, class Type>
+		using accept = napi::accept_object_assign<Meta, Lock>;
 };
 
 } // namespace js

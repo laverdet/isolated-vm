@@ -312,6 +312,7 @@ struct accept_v8_value_lock_delegate : accept_v8_value {
 				accept_v8_value{transfer, lock},
 				lock_{lock} {}
 
+		// NOLINTNEXTLINE(bugprone-derived-method-shadowing-base-method)
 		[[nodiscard]] auto witness() const -> const Lock& { return lock_; }
 
 	private:
@@ -448,6 +449,7 @@ struct accept_v8_return_into : accept_v8_value_with<Lock> {
 		using value_type = v8::ReturnValue<v8::Value>;
 
 	public:
+		using accept_target_type = return_into_marker;
 		accept_v8_return_into(auto* transfer, const auto& lock, value_type return_value) :
 				accept_type{transfer, lock},
 				return_value_{return_value} {}
@@ -494,9 +496,10 @@ export auto object_assign(auto& env, v8::Local<v8::Object> object, auto source) 
 template <class Meta, class Lock>
 struct accept_v8_object_assign {
 	private:
-		using accept_type = accept_v8_value_with<Lock>;
+		using accept_type = accept_value_with<Meta, accept_v8_value_with<Lock>>;
 
 	public:
+		using accept_target_type = object_assign_marker;
 		accept_v8_object_assign(auto* transfer, const auto& lock, v8::Local<v8::Object> object) :
 				accept_{transfer, lock},
 				object_{object} {}
@@ -507,10 +510,10 @@ struct accept_v8_object_assign {
 			return {};
 		}
 
-		consteval static auto types(auto recursive) { return accept<Meta, v8::Local<v8::Value>>::types(recursive); }
+		consteval static auto types(auto recursive) { return accept_type::types(recursive); }
 
 	private:
-		accept_value<Meta, v8::Local<v8::Value>> accept_;
+		accept_type accept_;
 		v8::Local<v8::Object> object_;
 };
 
@@ -522,16 +525,22 @@ template <class Type>
 struct accept_property_subject<v8::Local<Type>> : std::type_identity<v8::Local<v8::Object>> {};
 
 // primitives
-template <class Meta, class Type>
-	requires std::is_convertible_v<Type, v8::Primitive>
+template <class Meta, std::convertible_to<v8::Primitive> Type>
 struct accept<Meta, v8::Local<Type>> : iv8::accept_v8_primitive {
 		using accept_v8_primitive::accept_v8_primitive;
 };
 
+template <std::convertible_to<v8::Primitive> Type, class Lock>
+struct select_accept<v8::Local<Type>, Lock> : select_default_accept {
+		using target_type = v8::Local<Type>;
+};
+
 // values
-template <class Meta, class Type>
-struct accept<Meta, v8::Local<Type>> : iv8::accept_v8_value_with<typename Meta::accept_context_type> {
-		using iv8::accept_v8_value_with<typename Meta::accept_context_type>::accept_v8_value_with;
+template <class Type, class Lock>
+struct select_accept<v8::Local<Type>, Lock> {
+		using target_type = v8::Local<Type>;
+		template <class Meta, class Target>
+		using accept = accept_as<v8::Local<Type>, iv8::accept_v8_value_with<Lock>>;
 };
 
 // forward `value_of<T>`
@@ -541,10 +550,11 @@ struct accept<Meta, iv8::value_of<Tag>> : iv8::accept_v8_value_of<Tag> {
 };
 
 // templates
-template <class Meta, class Type>
-	requires std::is_convertible_v<Type, v8::Template>
-struct accept<Meta, v8::Local<Type>> : iv8::accept_v8_template<Meta, typename Meta::accept_context_type> {
-		using iv8::accept_v8_template<Meta, typename Meta::accept_context_type>::accept_v8_template;
+template <std::convertible_to<v8::Template> Type, class Lock>
+struct select_accept<v8::Local<Type>, Lock> {
+		using target_type = v8::Local<Type>;
+		template <class Meta, class Target>
+		using accept = accept_as<v8::Local<Type>, iv8::accept_v8_template<Meta, Lock>>;
 };
 
 // A `MaybeLocal` also accepts `undefined`, similar to `std::optional`.
@@ -575,15 +585,19 @@ struct accept_property_value<Meta, Key, Type, v8::Local<v8::Object>> : iv8::acce
 template <>
 struct accept_property_subject<iv8::return_into_marker> : accept_property_subject<v8::Local<v8::Value>> {};
 
-template <class Meta>
-struct accept<Meta, iv8::return_into_marker> : iv8::accept_v8_return_into<typename Meta::accept_context_type> {
-		using iv8::accept_v8_return_into<typename Meta::accept_context_type>::accept_v8_return_into;
+template <class Lock>
+struct select_accept<iv8::return_into_marker, Lock, v8::ReturnValue<v8::Value>> {
+		using target_type = iv8::return_into_marker;
+		template <class Meta, class Target>
+		using accept = iv8::accept_v8_return_into<Lock>;
 };
 
 // object_assign
-template <class Meta>
-struct accept<Meta, iv8::object_assign_marker> : iv8::accept_v8_object_assign<Meta, typename Meta::accept_context_type> {
-		using iv8::accept_v8_object_assign<Meta, typename Meta::accept_context_type>::accept_v8_object_assign;
+template <class Lock>
+struct select_accept<iv8::object_assign_marker, Lock, v8::Local<v8::Object>> {
+		using target_type = iv8::object_assign_marker;
+		template <class Meta, class Target>
+		using accept = iv8::accept_v8_object_assign<Meta, Lock>;
 };
 
 } // namespace js

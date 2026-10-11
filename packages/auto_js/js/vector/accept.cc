@@ -7,20 +7,14 @@ import util;
 namespace js {
 
 // `std::array` can only accept a tuple of statically known size
-template <class Meta, std::size_t Size, class Type>
-struct accept<Meta, std::array<Type, Size>>;
-
-template <class Type, std::size_t Size>
-struct accept_target_for<std::array<Type, Size>> : accept_target_for<Type> {};
-
-template <class Meta, std::size_t Size, class Type>
-struct accept<Meta, std::array<Type, Size>> : accept_value<Meta, Type> {
-		using accept_type = accept_value<Meta, Type>;
-		using accept_type::accept_type;
+template <class Type, std::size_t Size, class Accept>
+struct accept_array : Accept {
+		using accept_target_type = std::array<Type, Size>;
+		using Accept::Accept;
 
 		template <std::size_t VectorSize>
 		constexpr auto operator()(vector_n_tag<VectorSize> /*tag*/, auto& visit, auto&& subject) const -> std::array<Type, Size> {
-			const accept_type& accept = *this;
+			const Accept& accept = *this;
 			auto&& forward_range = util::forward_range(std::forward<decltype(subject)>(subject));
 			auto iterator = forward_range.begin();
 			constexpr auto [... indices ] = util::sequence<Size>;
@@ -33,7 +27,7 @@ struct accept<Meta, std::array<Type, Size>> : accept_value<Meta, Type> {
 
 		template <std::size_t TupleSize>
 		constexpr auto operator()(tuple_tag<TupleSize> /*tag*/, auto& visit, auto&& subject) const -> std::array<Type, Size> {
-			const accept_type& accept = *this;
+			const Accept& accept = *this;
 			constexpr auto [... indices ] = util::sequence<TupleSize>;
 			return std::array<Type, Size>{
 				// NOLINTNEXTLINE(bugprone-use-after-move)
@@ -43,24 +37,17 @@ struct accept<Meta, std::array<Type, Size>> : accept_value<Meta, Type> {
 };
 
 // `std::vector` can accept all kinds of lists
-template <class Meta, transferable_range Type>
-struct accept<Meta, Type>;
-
-template <transferable_range Type>
-struct accept_target_for<Type> : accept_target_for<std::ranges::range_value_t<Type>> {};
-
-template <class Meta, transferable_range Type>
-struct accept<Meta, Type> : public accept_value<Meta, std::ranges::range_value_t<Type>> {
+template <class Type, class Accept>
+struct accept_range : Accept {
 	private:
 		using value_type = std::ranges::range_value_t<Type>;
-		using accept_type = accept_value<Meta, value_type>;
 
 	public:
-		explicit accept(auto* transfer, auto&&... args) :
-				accept_type{transfer, std::forward<decltype(args)>(args)...} {}
+		using accept_target_type = Type;
+		using Accept::Accept;
 
 		constexpr auto operator()(list_tag /*tag*/, auto& visit, auto&& subject) const -> Type {
-			const accept_type& accept = *this;
+			const Accept& accept = *this;
 			// nb: This doesn't check for string keys, so like `Object.assign([ 1 ], { foo: 2 })` might
 			// yield `[ 1, 2 ]`
 			auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
@@ -74,7 +61,7 @@ struct accept<Meta, Type> : public accept_value<Meta, std::ranges::range_value_t
 		}
 
 		constexpr auto operator()(vector_tag /*tag*/, auto& visit, auto&& subject) const -> Type {
-			const accept_type& accept = *this;
+			const Accept& accept = *this;
 			auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
 			return {
 				std::from_range,
@@ -88,11 +75,44 @@ struct accept<Meta, Type> : public accept_value<Meta, std::ranges::range_value_t
 		template <std::size_t Size>
 		constexpr auto operator()(tuple_tag<Size> /*tag*/, auto& visit, auto&& subject) const -> Type {
 			constexpr auto [... indices ] = util::sequence<Size>;
-			const accept_type& accept = *this;
+			const Accept& accept = *this;
 			return util::make_inplace_container<Type>(
 				visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(subject)>(subject), accept)...
 			);
 		}
+};
+
+// `js::select_accept` helper for each container
+template <class Element, class... Args>
+struct select_accept_container {
+		using target_type = select_accept<Element, Args...>::target_type;
+		template <class Meta>
+		using element_accept = select_accept_value<Meta, Element, Args...>;
+};
+
+// `js::select_accept` configurations
+template <class Type, std::size_t Size, class... Args>
+struct select_accept<std::array<Type, Size>, Args...> : select_accept_container<Type, Args...> {
+		template <class Meta, class Target>
+		using accept = accept_array<Type, Size, typename select_accept_container<Type, Args...>::template element_accept<Meta>>;
+};
+
+template <transferable_range Type, class... Args>
+struct select_accept<Type, Args...> : select_accept_container<std::ranges::range_value_t<Type>, Args...> {
+		template <class Meta, class Target>
+		using accept = accept_range<Type, typename select_accept_container<std::ranges::range_value_t<Type>, Args...>::template element_accept<Meta>>;
+};
+
+// `std::array`
+template <class Meta, std::size_t Size, class Type>
+struct accept<Meta, std::array<Type, Size>> : accept_array<Type, Size, accept_value<Meta, Type>> {
+		using accept_array<Type, Size, accept_value<Meta, Type>>::accept_array;
+};
+
+// Ranges
+template <class Meta, transferable_range Type>
+struct accept<Meta, Type> : accept_range<Type, accept_value<Meta, std::ranges::range_value_t<Type>>> {
+		using accept_range<Type, accept_value<Meta, std::ranges::range_value_t<Type>>>::accept_range;
 };
 
 // Dictionary's accepts a properly-tagged subject or maybe even a struct

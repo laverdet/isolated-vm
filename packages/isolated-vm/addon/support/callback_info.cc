@@ -72,8 +72,10 @@ namespace js {
 using namespace isolated_vm;
 
 // `arguments` visitor
-template <>
-struct visit_subject_for<callback_info> : visit_subject_for<local_of<>> {};
+template <class... Args>
+struct select_visit<callback_info, Args...> : select_default_visit {
+		using subject_type = select_visit<local_of<>, Args...>::subject_type;
+};
 
 template <class Meta>
 struct visit<Meta, callback_info> : visit<Meta, local_of<>> {

@@ -91,14 +91,6 @@ struct visit_napi_key_literal {
 // Base napi visitor implementing all functionality. Napi doesn't give us granular information like
 // "is this a latin1 string" and all checks must be made at once. So it's structured it great deal
 // differently than the v8 visitor.
-template <class Lock, class Ref>
-struct visit_value;
-
-template <class Meta>
-using visit_value_with = visit_value<
-	typename Meta::visit_context_type,
-	typename Meta::accept_reference_type>;
-
 template <class Lock, class Reference>
 struct visit_value : reference_map_t<Reference, reference_map_type> {
 	public:
@@ -273,8 +265,7 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 
 	protected:
 		// I think this only applies to `symbol_tag`
-		template <class Accept, class Tag>
-			requires std::is_convertible_v<Tag, primitive_tag>
+		template <class Accept, std::convertible_to<primitive_tag> Tag>
 		auto immediate(this auto& self, local_of<Tag> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return self.accept_tagged(subject, accept);
 		}
@@ -333,8 +324,7 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 			}
 		}
 
-		template <class Accept, class Tag>
-			requires std::is_convertible_v<Tag, data_block_tag>
+		template <class Accept, std::convertible_to<data_block_tag> Tag>
 		auto immediate(this auto& self, local_of<Tag> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return self.accept_tagged(subject, accept);
 		}
@@ -406,13 +396,6 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 
 // Visitor with transfer delegate
 template <class Lock, class Reference, class Delegate>
-struct visit_value_delegate;
-
-template <class Meta, class Delegate>
-using visit_value_delegate_with =
-	visit_value_delegate<typename Meta::visit_context_type, typename Meta::accept_reference_type, Delegate>;
-
-template <class Lock, class Reference, class Delegate>
 struct visit_value_delegate : visit_value<Lock, Reference> {
 	private:
 		using visit_type = visit_value<Lock, Reference>;
@@ -448,10 +431,10 @@ struct visit_value_delegate : visit_value<Lock, Reference> {
 };
 
 // Forward `value_of<T>` back to acceptor
-template <class Meta, class Tag>
+template <class Lock, class Reference, class Tag>
 struct visit_napi_value_of {
 	private:
-		using visit_type = visit_value_with<Meta>;
+		using visit_type = visit_value<Lock, Reference>;
 
 	public:
 		constexpr explicit visit_napi_value_of(auto* transfer, const auto& lock) : visit_{transfer, lock} {}
@@ -486,39 +469,45 @@ struct visit_napi_value_of {
 namespace js {
 
 // Napi value visitor entry
-template <class Meta>
-struct visit<Meta, napi_value> : napi::visit_value_with<Meta> {
-		using napi::visit_value_with<Meta>::visit_value_with;
+template <class Lock>
+struct select_visit<napi_value, Lock> {
+		using subject_type = napi_value;
+		template <class Meta, class Type>
+		using visit = napi::visit_value<Lock, typename Meta::accept_reference_type>;
 };
 
-template <class Meta, class Tag>
-struct visit<Meta, napi::local_of<Tag>> : napi::visit_value_with<Meta> {
-		using napi::visit_value_with<Meta>::visit_value_with;
+template <class Tag, class Lock>
+struct select_visit<napi::local_of<Tag>, Lock> {
+		using subject_type = napi::local_of<Tag>;
+		template <class Meta, class Type>
+		using visit = napi::visit_value<Lock, typename Meta::accept_reference_type>;
 };
 
 // `transferee_visit_subject` subject visitor
-template <class Meta, class Tag, class Delegate>
-struct visit<Meta, transferee_visit_subject<napi::local_of<Tag>, Delegate>> : napi::visit_value_delegate_with<Meta, Delegate> {
-	private:
-		using visit_type = napi::visit_value_delegate_with<Meta, Delegate>;
-
-	public:
-		using visit_type::visit_type;
+template <class Subject, class Visit>
+struct visit_transferee : Visit {
+		using Visit::Visit;
 
 		template <class Accept>
-		auto operator()(const transferee_visit_subject<napi::local_of<Tag>, Delegate>& subject, const Accept& accept) -> accept_target_t<Accept> {
-			return util::invoke_as<visit_type>(*this, *subject, accept);
+		auto operator()(const Subject& subject, const Accept& accept) -> accept_target_t<Accept> {
+			return util::invoke_as<Visit>(*this, *subject, accept);
 		}
 };
 
-// Pass through `value_of<Tag>`
-template <class Meta, class Tag>
-struct visit<Meta, napi::value_of<Tag>> : napi::visit_napi_value_of<Meta, Tag> {
-		using napi::visit_napi_value_of<Meta, Tag>::visit_napi_value_of;
+template <class Tag, class Lock, class Delegate>
+struct select_visit<transferee_visit_subject<napi::local_of<Tag>, Delegate>, Lock, Delegate> {
+		using subject_type = napi::local_of<Tag>;
+		template <class Meta, class Type>
+		using visit = visit_transferee<Type, napi::visit_value_delegate<Lock, typename Meta::accept_reference_type, Delegate>>;
 };
 
-template <class Tag>
-struct visit_subject_for<napi::value_of<Tag>> : std::type_identity<napi_value> {};
+// Pass through `value_of<Tag>`
+template <class Tag, class Lock>
+struct select_visit<napi::value_of<Tag>, Lock> {
+		using subject_type = napi_value;
+		template <class Meta, class Type>
+		using visit = napi::visit_napi_value_of<Lock, typename Meta::accept_reference_type, Tag>;
+};
 
 // Object key maker via napi
 template <auto Key>

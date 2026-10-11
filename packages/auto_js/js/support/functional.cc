@@ -69,7 +69,7 @@ export template <class Type>
 struct parameter_transfer_as;
 
 export template <class Type>
-using parameter_transfer_as_t = typename parameter_transfer_as<Type>::type;
+using parameter_transfer_as_t = parameter_transfer_as<Type>::type;
 
 template <class Type>
 struct parameter_transfer_as : std::type_identity<Type> {

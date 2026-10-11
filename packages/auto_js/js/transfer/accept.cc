@@ -8,9 +8,8 @@ import util;
 namespace js {
 
 // `Meta` type for `accept` implementations
-template <class Wrap, class Context, class Subject>
+template <class Wrap, class Subject>
 struct accept_meta_holder {
-		using accept_context_type = Context;
 		using accept_wrap_type = Wrap;
 		using visit_property_subject_type = Subject;
 };
@@ -34,6 +33,18 @@ struct accept : accept<void, Type> {
 		// Swallow `transfer` argument on behalf of non-meta acceptors
 		explicit constexpr accept(auto* /*transfer*/, auto&&... args) :
 				accept_type{std::forward<decltype(args)>(args)...} {}
+};
+
+// Default `accept` selection
+export struct select_default_accept {
+		template <class Meta, class Type>
+		using accept = js::accept<Meta, Type>;
+};
+
+// Top-level acceptor configuration
+export template <class Target, class... Args>
+struct select_accept : select_default_accept {
+		using target_type = Target;
 };
 
 // Prevent instantiation of non-specialized void-Meta `accept` (better error messages)
@@ -68,6 +79,13 @@ struct accept_delegated : util::reference_wrapper<Accept> {
 
 		constexpr static auto accept_tags_of() { return js::accept_tags_of_v<Accept>; }
 		consteval static auto types(auto recursive) -> auto { return Accept::types(recursive); }
+};
+
+// Acceptor wrapper which declares `accept_target_type`
+export template <class Target, class Accept>
+struct accept_as : Accept {
+		using accept_target_type = Target;
+		using Accept::Accept;
 };
 
 // `accept_value_from` is the implementation of `accept_value`. It is an `accept` wrapper which most
@@ -164,10 +182,17 @@ struct accept_value_from : Accept {
 		}
 };
 
-// `accept_value` is the main utility used by nested containers. See `accept_value_from` notes
-// above.
+// `accept_value_from` around an explicit acceptor, wrapped by `Meta`'s wrap type.
+export template <class Meta, class Accept>
+using accept_value_with = accept_value_from<typename Meta::accept_wrap_type::template accept<Accept>>;
+
+// `accept_value` is the main utility used by nested containers.
 export template <class Meta, class Type>
-using accept_value = accept_value_from<typename Meta::accept_wrap_type::template accept<accept<Meta, Type>>>;
+using accept_value = accept_value_with<Meta, accept<Meta, Type>>;
+
+// `accept_value` for a top-level acceptos, via `select_accept`
+export template <class Meta, class Type, class... Args>
+using select_accept_value = accept_value_with<Meta, typename select_accept<std::remove_cvref_t<Type>, Args...>::template accept<Meta, Type>>;
 
 // Utility to pass oneself as an object entry acceptor
 export template <class First, class Second>
@@ -187,11 +212,6 @@ struct accept_target<accept_entry_pair<First, Second>>
 		: std::type_identity<std::pair<
 				accept_target_t<std::remove_cvref_t<First>>,
 				accept_target_t<std::remove_cvref_t<Second>>>> {};
-
-// Specialized by certain containers to map `Target` to the first meaningful acceptor. This is
-// specifically used with `accept_property_subject_type` in relation to property names.
-export template <class Target>
-struct accept_target_for : std::type_identity<Target> {};
 
 // Specialized to map the given `accept` "target" to the "subject" type it expects for visited
 // properties. For primitive types this is `void`. This corresponds to the `Subject` parameter of

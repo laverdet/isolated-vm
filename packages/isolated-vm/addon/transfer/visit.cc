@@ -327,8 +327,10 @@ struct visit<void, isolated_vm::value_of<Tag>> : isolated_vm::visit_vm_value_of<
 		using isolated_vm::visit_vm_value_of<Tag>::visit_vm_value_of;
 };
 
-template <class Tag>
-struct visit_subject_for<isolated_vm::value_of<Tag>> : std::type_identity<isolated_vm::local_of<Tag>> {};
+template <class Tag, class... Args>
+struct select_visit<isolated_vm::value_of<Tag>, Args...> : select_default_visit {
+		using subject_type = isolated_vm::local_of<Tag>;
+};
 
 template <auto Key>
 struct visit_key_literal<Key, local_of<record_tag>> : visit_vm_key_literal<Key> {
