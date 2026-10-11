@@ -119,8 +119,8 @@ struct accept_reference_of : accept<Meta, Type> {
 
 // `reference_of` acceptor delegates to `accept_reference_of`.
 template <class Meta, class Type>
-struct accept<Meta, reference_of<Type>> : accept_delegated<accept_reference_of<Meta, Type>> {
-		using accept_type = accept_delegated<accept_reference_of<Meta, Type>>;
+struct accept<Meta, reference_of<Type>> : accept_proxy_relative<accept_reference_of<Meta, Type>> {
+		using accept_type = accept_proxy_relative<accept_reference_of<Meta, Type>>;
 		using accept_type::accept_type;
 };
 
@@ -134,16 +134,16 @@ using accept_recursive_value_holder_from = accept_recursive_value_holder<Meta, V
 
 template <class Meta, template <class> class Make, auto Extract>
 struct accept<Meta, recursive_value_holder<Make, Extract>>
-		: accept_delegated<accept_recursive_value_holder_from<Meta, recursive_value_holder<Make, Extract>>> {
+		: accept_proxy_relative<accept_recursive_value_holder_from<Meta, recursive_value_holder<Make, Extract>>> {
 	private:
-		using delegated_type = accept_recursive_value_holder_from<Meta, recursive_value_holder<Make, Extract>>;
-		using accept_type = accept_delegated<delegated_type>;
+		using proxied_type = accept_recursive_value_holder_from<Meta, recursive_value_holder<Make, Extract>>;
+		using accept_type = accept_proxy_relative<proxied_type>;
 
 	public:
 		using accept_type::accept_type;
 
 		consteval static auto types(auto recursive) -> auto {
-			return util::type_pack{type<delegated_type>} + delegated_type::types(recursive);
+			return util::type_pack{type<proxied_type>} + proxied_type::types(recursive);
 		}
 
 	protected:

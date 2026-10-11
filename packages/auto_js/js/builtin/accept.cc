@@ -179,9 +179,20 @@ struct accept_with_casted_string {
 template <class Char>
 struct accept<void, std::basic_string<Char>> : accept_with_casted_string<Char> {};
 
+// Value acceptor for a transferable type, which may also arrive claimed by a transfer list delegate
+template <class Tag, class Type>
+struct accept_transferable : accept_without_narrowing<Tag, Type> {
+		using accept_without_narrowing<Tag, Type>::operator();
+
+		template <class Subject>
+		constexpr auto operator()(Tag /*tag*/, visit_holder /*visit*/, transferred_value<Subject, Type>&& subject) const -> Type {
+			return *std::move(subject);
+		}
+};
+
 // `ArrayBuffer` & `SharedArrayBuffer` types
 template <>
-struct accept<void, array_buffer> : accept_without_narrowing<array_buffer_tag, array_buffer> {};
+struct accept<void, array_buffer> : accept_transferable<array_buffer_tag, array_buffer> {};
 
 template <>
 struct accept<void, shared_array_buffer> : accept_without_narrowing<shared_array_buffer_tag, shared_array_buffer> {};

@@ -120,11 +120,11 @@ struct transfer_holder : Types..., Visit, Accept {
 
 // Lookp up acceptor `accept_reference_type`
 template <class Accept>
-struct accept_reference_type : std::type_identity<void> {};
+struct select_accept_reference_type : std::type_identity<void> {};
 
 template <class Accept>
 	requires requires { typename Accept::accept_reference_type; }
-struct accept_reference_type<Accept> : std::type_identity<typename Accept::accept_reference_type> {};
+struct select_accept_reference_type<Accept> : std::type_identity<typename Accept::accept_reference_type> {};
 
 // Transfer a JavaScript value from one domain to another
 template <class Type, class Wrap, class... VisitArgs, class... AcceptArgs>
@@ -142,12 +142,11 @@ constexpr auto transfer_with(
 	using accept_target_type = select_accept_type::target_type;
 	using accept_meta_type = accept_meta_holder<Wrap, accept_property_subject_t<visit_subject_type>>;
 	using accept_type = select_accept_value<accept_meta_type, Type, std::remove_cvref_t<AcceptArgs>...>;
+	using accept_reference_type = select_accept_reference_type<accept_type>::type;
 
 	// compose visit type
-	using visit_meta_type = visit_meta_holder<
-		visit_subject_type,
-		accept_property_subject_t<accept_target_type>,
-		typename accept_reference_type<accept_type>::type>;
+	using accept_property_subject_type = accept_property_subject_t<accept_target_type>;
+	using visit_meta_type = visit_meta_holder<visit_subject_type, accept_property_subject_type, accept_reference_type>;
 	using visit_type = select_visit_type::template visit<visit_meta_type, subject_type>;
 
 	// cast subject to `T&&` or `const T&`. otherwise the `auto&&` parameters will accept too many

@@ -118,8 +118,8 @@ struct visit_reference_of : visit<Meta, Type> {
 
 // `reference_of` visitor delegates to `visit_reference_of`
 template <class Meta, class Type>
-struct visit<Meta, reference_of<Type>> : visit_delegated<visit_reference_of<Meta, Type>> {
-		using visit_type = visit_delegated<visit_reference_of<Meta, Type>>;
+struct visit<Meta, reference_of<Type>> : visit_proxy_relative<visit_reference_of<Meta, Type>> {
+		using visit_type = visit_proxy_relative<visit_reference_of<Meta, Type>>;
 		using visit_type::visit_type;
 };
 
@@ -133,16 +133,16 @@ using visit_recursive_value_holder_from = visit_recursive_value_holder<Meta, Val
 
 template <class Meta, template <class> class Make, auto Extract>
 struct visit<Meta, recursive_value_holder<Make, Extract>>
-		: visit_delegated<visit_recursive_value_holder_from<Meta, recursive_value_holder<Make, Extract>>> {
+		: visit_proxy_relative<visit_recursive_value_holder_from<Meta, recursive_value_holder<Make, Extract>>> {
 	private:
-		using delegated_type = visit_recursive_value_holder_from<Meta, recursive_value_holder<Make, Extract>>;
-		using visit_type = visit_delegated<delegated_type>;
+		using proxied_type = visit_recursive_value_holder_from<Meta, recursive_value_holder<Make, Extract>>;
+		using visit_type = visit_proxy_relative<proxied_type>;
 
 	public:
 		using visit_type::visit_type;
 
 		consteval static auto types(auto recursive) -> auto {
-			return util::type_pack{type<delegated_type>} + delegated_type::types(recursive);
+			return util::type_pack{type<proxied_type>} + proxied_type::types(recursive);
 		}
 
 	protected:

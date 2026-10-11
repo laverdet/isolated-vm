@@ -5,6 +5,7 @@ import :deferred_receiver;
 import :intrinsics.error;
 import :transfer.types;
 import std;
+import util;
 
 namespace js {
 
@@ -50,10 +51,10 @@ struct visit<void, forward<Type>> {
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
-// `visit` delegated to a sub class passed down from the constructor
+// `visit` delegated to a related sub class passed down from the constructor
 export template <class Visit>
-struct visit_delegated : util::reference_wrapper<Visit> {
-		constexpr explicit visit_delegated(auto* transfer) :
+struct visit_proxy_relative : util::reference_wrapper<Visit> {
+		constexpr explicit visit_proxy_relative(auto* transfer) :
 				// nb: Casting through pointer is very intentional. Since we inherit from
 				// `std::reference_wrapper<T>` casting through a reference might invoke `operator T&` and
 				// cause confusing compile-time or run-time errors.
@@ -183,35 +184,72 @@ auto extract_transferees(auto name_cw, auto project_transferee, auto subject_equ
 	return subjects;
 }
 
-// `transferList` helper which matches `subject` against the list and invoke the claim function if
+// `transferList` helper which matches `subject` against the list and invokes the claim function if
 // it's found, returning a std::optional of the result.
 export template <class Subject>
-auto claim_transferee(std::vector<Subject>& transferees, const auto& subject, auto subject_equal, auto claim) {
+auto claim_transferee(std::vector<Subject>& transferees, const auto& subject, auto subject_equal, auto claim)
+	-> std::optional<std::invoke_result_t<decltype(claim)&, Subject>> {
 	auto it = std::ranges::find_if(transferees, [ & ](const Subject& entry) -> bool { return subject_equal(entry, subject); });
-	auto deferred = [ &transferees, it, claim = std::move(claim) ] -> decltype(auto) {
-		auto entry = std::exchange(*it, transferees.back());
-		transferees.pop_back();
-		return claim(entry);
-	};
-	return it == transferees.end() ? std::nullopt : std::optional{std::move(deferred)};
+	return it == transferees.end()
+		? std::nullopt
+		: std::optional{[ & ] -> auto {
+				auto entry = std::exchange(*it, transferees.back());
+				transferees.pop_back();
+				return claim(entry);
+			}()};
 }
 
-// `transferList` subject marker
-export template <class Subject, class Delegate>
-struct transferee_visit_subject {
+// Composition of visitor delegates. A subject is offered to each delegate in declaration order and
+// the first one to claim it wins.
+export template <class... Delegates>
+class visitor_delegate_of {
 	public:
-		transferee_visit_subject(Subject subject, Delegate& /*delegate*/) : subject_{std::move(subject)} {}
-		constexpr auto operator*(this auto&& self) -> auto&& { return std::forward<decltype(self)>(self).subject_; }
+		explicit visitor_delegate_of(Delegates... delegates) : delegates_{std::move(delegates)...} {}
+
+		auto with(this auto&& self, auto operation) -> decltype(auto) {
+			auto result = operation(self);
+			self.finalize();
+			return result;
+		}
+
+		// Finalizes each delegate which has something to finalize. A composer is itself a delegate, so
+		// this is what makes one nest inside another.
+		auto finalize() -> void {
+			constexpr auto [... ii ] = util::sequence<sizeof...(Delegates)>;
+			(..., std::get<ii>(delegates_).finalize());
+		}
+
+		template <class Visit, class Accept>
+		auto operator()(auto subject, Visit& visit, const Accept& accept) -> std::optional<accept_target_t<Accept>> {
+			return util::template_traverse(
+				util::sequence_cw<sizeof...(Delegates)>,
+				util::overloaded{
+					[ & ](auto ii, auto next) -> std::optional<accept_target_t<Accept>> {
+						auto& delegate = std::get<ii>(delegates_);
+						if constexpr (std::invocable<decltype(delegate), decltype(subject), Visit&, const Accept&>) {
+							if (auto result = delegate(subject, visit, accept)) {
+								return result;
+							}
+						}
+						return next();
+					},
+					[] -> std::optional<accept_target_t<Accept>> { return std::nullopt; },
+				}
+			);
+		}
 
 	private:
-		Subject subject_;
+		std::tuple<Delegates...> delegates_;
 };
 
-// `transferee_visit_subject` unwraps to its underlying subject
-template <class Subject, class Delegate, class... Args>
-struct select_visit<transferee_visit_subject<Subject, Delegate>, Args...> : select_default_visit {
-		using subject_type = select_visit<Subject, Args...>::subject_type;
-};
+template <class Type>
+struct is_visitor_delegate : std::bool_constant<false> {};
+
+template <class... Delegates>
+struct is_visitor_delegate<visitor_delegate_of<Delegates...>> : std::bool_constant<true> {};
+
+export template <class Type>
+concept visitor_delegate_type = is_visitor_delegate<Type>::value;
 
 // A transferred value claimed by transfer list delegate. It's convertible back into the underlying
 // value since it's the subject of the visitor subject map. It's also convertible, by move, to the
@@ -225,8 +263,7 @@ class transferred_value {
 
 		// NOLINTNEXTLINE(google-explicit-constructor)
 		operator Subject() const { return subject_; }
-		// NOLINTNEXTLINE(google-explicit-constructor)
-		operator Type() && { return std::move(value_.get()); }
+		auto operator*() && -> Type { return std::move(value_.get()); }
 
 	private:
 		Subject subject_;

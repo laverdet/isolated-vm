@@ -77,7 +77,7 @@ template <class Visit>
 concept visit_with_reference_map = std::remove_cvref_t<Visit>::visit_with_reference_map();
 
 // Prevents runtime throws via `transfer_strict`
-template <class Accept>
+export template <class Accept>
 concept accept_allows_throw = std::remove_cvref_t<Accept>::accept_allows_throw;
 
 // Extract `accept_tags_of` from an acceptor

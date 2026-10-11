@@ -62,16 +62,16 @@ struct accept<void, forward<Type, Tag>> {
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
 
-// `accept` delegated to a sub class passed down from the constructor
+// `accept` delegated to a related sub class passed down from the constructor
 export template <class Accept>
-struct accept_delegated;
+struct accept_proxy_relative;
 
 template <class Accept>
-struct accept_target<accept_delegated<Accept>> : accept_target<Accept> {};
+struct accept_target<accept_proxy_relative<Accept>> : accept_target<Accept> {};
 
 template <class Accept>
-struct accept_delegated : util::reference_wrapper<Accept> {
-		constexpr explicit accept_delegated(auto* transfer) :
+struct accept_proxy_relative : util::reference_wrapper<Accept> {
+		constexpr explicit accept_proxy_relative(auto* transfer) :
 				// nb: Casting through pointer is very intentional. Since we inherit from
 				// `std::reference_wrapper<T>` casting through a reference might invoke `operator T&` and
 				// cause confusing compile-time or run-time errors.
@@ -120,6 +120,8 @@ struct accept_value_direct {
 		constexpr accept_value_direct(const accept_type& accept, Insert insert) :
 				accept_{accept},
 				insert_{std::move(insert)} {}
+
+		constexpr static auto accept_allows_throw = js::accept_allows_throw<Accept>;
 
 		constexpr auto operator()(auto tag, auto& visit, auto&& subject) const -> target_type {
 			// nb: A `static_assert` is more correct and helpful than a requirement check, since there

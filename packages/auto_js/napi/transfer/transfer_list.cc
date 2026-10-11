@@ -25,25 +25,8 @@ export class array_buffer_transfer {
 				}()} {}
 
 		template <class Visit, class Accept>
-		auto operator()(local_of<object_tag> subject, Visit& visit, const Accept& accept) {
-			return maybe_claim_out(subject, visit, accept);
-		}
-
-		template <class Visit, class Accept>
-		auto operator()(local_of<data_block_tag> subject, Visit& visit, const Accept& accept) {
-			return maybe_claim_out(subject, visit, accept);
-		}
-
-		// Detaches listed buffers which were never claimed by the visitor
-		auto finalize() -> void {
-			for (auto entry : std::exchange(buffers_, {})) {
-				value_of{lock_, entry}.detach();
-			}
-		}
-
-	private:
-		template <class Visit, class Accept>
-		auto maybe_claim_out(auto subject, Visit& visit, const Accept& accept) {
+		auto operator()(local_of<array_buffer_tag> subject, Visit& visit, const Accept& accept) {
+			static_assert(js::accept_allows_throw<Accept>);
 			auto claim_out = [ & ](local_of<array_buffer_tag> handle) -> accept_target_t<Accept> {
 				auto value = value_of{lock_, handle};
 				auto buffer = [ & ] -> js::array_buffer {
@@ -69,64 +52,27 @@ export class array_buffer_transfer {
 			return js::claim_transferee(buffers_, subject, addressof_equal{}, claim_out);
 		}
 
+		// Detaches listed buffers which were never claimed by the visitor
+		auto finalize() -> void {
+			for (auto entry : std::exchange(buffers_, {})) {
+				value_of{lock_, entry}.detach();
+			}
+		}
+
+	private:
 		environment_lock_witness lock_;
 		std::vector<local_of<array_buffer_tag>> buffers_;
 };
 
 // Napi 'transferList' delegate
 export template <class... Delegates>
-class transfer_list {
-	public:
-		template <class Type>
-		transfer_list(const auto& lock, std::optional<Type> list) :
-				transfer_list{lock, list ? std::vector{std::from_range, list->values()} : std::vector<local_of<>>{}} {}
-
-		transfer_list(const auto& lock, value_of<list_tag> list) :
-				transfer_list{lock, std::vector{std::from_range, list.values()}} {}
-
-		// Constructs a list in place and invokes the given operation with it, finalizing afterwards
-		static auto with(const auto& lock, auto list, auto operation) {
-			auto self = transfer_list{lock, std::move(list)};
-			auto result = operation(self);
-			self.finalize();
-			return result;
-		}
-
-		// Offers the subject to each delegate in order, claiming with the first which engages
-		template <class Visit, class Accept>
-		auto operator()(auto subject, Visit& visit, const Accept& accept) -> std::optional<accept_target_t<Accept>> {
-			return util::template_traverse(
-				util::sequence_cw<sizeof...(Delegates)>,
-				util::overloaded{
-					[ & ](auto ii, auto next) -> std::optional<accept_target_t<Accept>> {
-						auto& delegate = std::get<ii>(delegates_);
-						if constexpr (std::invocable<decltype(delegate), decltype(subject), Visit&, const Accept&>) {
-							if (auto claim = delegate(subject, visit, accept)) {
-								return std::optional{(*std::move(claim))()};
-							}
-						}
-						return next();
-					},
-					[] -> std::optional<accept_target_t<Accept>> { return std::nullopt; },
-				}
-			);
-		}
-
-		auto finalize() -> void {
-			constexpr auto [... ii ] = util::sequence<sizeof...(Delegates)>;
-			(..., std::get<ii>(delegates_).finalize());
-		}
-
-	private:
-		// Each delegate claims its entries from the vector. Anything left over is unknown.
-		transfer_list(const auto& lock, std::vector<local_of<>> entries) :
-				delegates_{Delegates{lock, entries}...} {
-			if (!entries.empty()) {
-				throw js::type_error{u"Transfer list contains unknown value"};
-			}
-		}
-
-		std::tuple<Delegates...> delegates_;
-};
+auto transfer_list(const auto& lock, std::optional<value_of<list_tag>> list) {
+	auto entries = list ? std::vector{std::from_range, list->values()} : std::vector<local_of<>>{};
+	auto delegate = js::visitor_delegate_of{Delegates{lock, entries}...};
+	if (!entries.empty()) {
+		throw js::type_error{u"Transfer list contains unknown value"};
+	}
+	return delegate;
+}
 
 } // namespace js::napi

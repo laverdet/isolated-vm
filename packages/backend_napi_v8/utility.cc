@@ -19,9 +19,6 @@ struct transfer_options : js::optional_constructible {
 		};
 };
 
-using transfer_list_type = js::napi::transfer_list<js::napi::array_buffer_transfer>;
-using v8_transfer_list_type = js::iv8::transfer_list<js::iv8::array_buffer_transfer>;
-
 // Wrapper for results from a function which could throw on user-supplied conditions
 template <class Expected>
 struct normal_completion_record {

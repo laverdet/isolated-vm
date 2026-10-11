@@ -414,7 +414,7 @@ struct visit_value_delegate : visit_value<Lock, Reference> {
 		}
 
 		template <class Accept>
-		auto immediate(this auto& self, local_of<data_block_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
+		auto immediate(this auto& self, local_of<array_buffer_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
 			return self.claim_or_immediate(subject, accept);
 		}
 
@@ -483,22 +483,12 @@ struct select_visit<napi::local_of<Tag>, Lock> {
 		using visit = napi::visit_value<Lock, typename Meta::accept_reference_type>;
 };
 
-// `transferee_visit_subject` subject visitor
-template <class Subject, class Visit>
-struct visit_transferee : Visit {
-		using Visit::Visit;
-
-		template <class Accept>
-		auto operator()(const Subject& subject, const Accept& accept) -> accept_target_t<Accept> {
-			return util::invoke_as<Visit>(*this, *subject, accept);
-		}
-};
-
-template <class Tag, class Lock, class Delegate>
-struct select_visit<transferee_visit_subject<napi::local_of<Tag>, Delegate>, Lock, Delegate> {
+// A `visitor_delegate_of` passed along with the lock selects the delegate visitor
+template <class Tag, class Lock, visitor_delegate_type Delegate>
+struct select_visit<napi::local_of<Tag>, Lock, Delegate> {
 		using subject_type = napi::local_of<Tag>;
 		template <class Meta, class Type>
-		using visit = visit_transferee<Type, napi::visit_value_delegate<Lock, typename Meta::accept_reference_type, Delegate>>;
+		using visit = napi::visit_value_delegate<Lock, typename Meta::accept_reference_type, Delegate>;
 };
 
 // Pass through `value_of<Tag>`

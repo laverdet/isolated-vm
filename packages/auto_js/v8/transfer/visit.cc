@@ -452,11 +452,6 @@ struct visit_value_delegate : visit_value<Target> {
 			return self.claim_or_immediate(subject, accept);
 		}
 
-		template <class Accept>
-		auto immediate(this auto& self, v8::Local<iv8::DataBlock> subject, const Accept& accept) -> accept_target_t<Accept> {
-			return self.claim_or_immediate(subject, accept);
-		}
-
 	private:
 		template <class Accept>
 		auto claim_or_immediate(this auto& self, auto subject, const Accept& accept) -> accept_target_t<Accept> {
@@ -468,9 +463,6 @@ struct visit_value_delegate : visit_value<Target> {
 
 		std::reference_wrapper<Delegate> delegate_;
 };
-
-template <class Meta, class Delegate>
-using visit_value_delegate_with = visit_cached_immediate<visit_value_delegate<typename Meta::accept_reference_type, Delegate>>;
 
 // Forward `value_of<T>` back to acceptor
 template <class Tag>
@@ -550,19 +542,12 @@ struct visit<Meta, v8::Local<Type>> : iv8::visit_value_with<Meta> {
 		using iv8::visit_value_with<Meta>::visit_value_with;
 };
 
-// `transferee_visit_subject` subject visitor
-template <class Meta, class Type, class Delegate>
-struct visit<Meta, transferee_visit_subject<v8::Local<Type>, Delegate>> : iv8::visit_value_delegate_with<Meta, Delegate> {
-	private:
-		using visit_type = iv8::visit_value_delegate_with<Meta, Delegate>;
-
-	public:
-		using visit_type::visit_type;
-
-		template <class Accept>
-		auto operator()(const transferee_visit_subject<v8::Local<Type>, Delegate>& subject, const Accept& accept) -> accept_target_t<Accept> {
-			return util::invoke_as<visit_type>(*this, *subject, accept);
-		}
+// A `visitor_delegate_of` passed along with the lock selects the delegate visitor
+template <class Type, class Lock, visitor_delegate_type Delegate>
+struct select_visit<v8::Local<Type>, Lock, Delegate> {
+		using subject_type = v8::Local<Type>;
+		template <class Meta, class Subject>
+		using visit = iv8::visit_cached_immediate<iv8::visit_value_delegate<typename Meta::accept_reference_type, Delegate>>;
 };
 
 // value_of<T> visitor

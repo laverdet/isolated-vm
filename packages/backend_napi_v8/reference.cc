@@ -210,8 +210,8 @@ auto reference_handle::set(const environment::lock& lock, js::string_t name, js:
 }
 
 auto reference_handle::invoke(const environment::lock& lock, js::forward<js::napi::local_of<list_tag>> params_local, transfer_options options) -> forward_promise_type {
-	auto params = transfer_list_type::with(lock, std::move(options).transfer, [ & ](auto& transfer_list) -> js::values_vector_t {
-		return js::transfer_out<js::values_vector_t>(js::transferee_visit_subject{*params_local, transfer_list}, lock, transfer_list);
+	auto params = js::napi::transfer_list<js::napi::array_buffer_transfer>(lock, std::move(options).transfer).with([ & ](auto& delegate) -> js::values_vector_t {
+		return js::transfer_out<js::values_vector_t>(*params_local, lock, delegate);
 	});
 	auto [ promise, resolver ] = make_promise(lock);
 	if (typeof_ == js::typeof_kind::function) {
@@ -227,8 +227,8 @@ auto reference_handle::invoke(const environment::lock& lock, js::forward<js::nap
 						auto fn = value->deref(lock).As<iv8::Function>();
 						auto result = *fn->apply<js::forward<v8::Local<v8::Value>>>(lock, std::move(params));
 						if (auto* record = transfer_record::match(result)) {
-							return v8_transfer_list_type::with(lock, record->transfer(lock), [ & ](auto& transfer_list) -> js::value_t {
-								return js::transfer_out<js::value_t>(js::transferee_visit_subject{record->subject(lock), transfer_list}, lock, transfer_list);
+							return js::iv8::transfer_list<js::iv8::array_buffer_transfer>(lock, record->transfer(lock)).with([ & ](auto& delegate) -> js::value_t {
+								return js::transfer_out<js::value_t>(record->subject(lock), lock, delegate);
 							});
 						} else {
 							return js::transfer_out<js::value_t>(result, lock);
