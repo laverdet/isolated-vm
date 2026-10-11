@@ -2,14 +2,78 @@
 #include "executor.h"
 #include "node_wrapper.h"
 #include "scheduler.h"
+#include <cstdlib>
+#include <fstream>
 #include <memory>
+#include <string>
 #include <v8.h>
 #include <utility>
 
 using namespace v8;
 namespace ivm {
 namespace {
-	thread_pool_t thread_pool{std::thread::hardware_concurrency() + 1};
+
+auto ceil_div(long long quota, long long period) -> unsigned {
+	if (quota <= 0 || period <= 0) {
+		return 0;
+	}
+	return static_cast<unsigned>((quota + period - 1) / period);
+}
+
+// Returns the CPU limit imposed on this process by its cgroup, or 0 if there is none.
+auto cgroup_cpu_limit() -> unsigned {
+#ifdef __linux__
+	{
+		// cgroup v2 writes "<quota> <period>", or "max <period>" when unconstrained.
+		std::ifstream file{"/sys/fs/cgroup/cpu.max"};
+		std::string quota;
+		long long period = 0;
+		if (file >> quota >> period && quota != "max") {
+			char* end = nullptr;
+			long long value = std::strtoll(quota.c_str(), &end, 10);
+			if (end != quota.c_str() && *end == '\0') {
+				return ceil_div(value, period);
+			}
+		}
+	}
+	{
+		// cgroup v1 splits it across two files, and uses -1 for "unconstrained".
+		std::ifstream quota_file{"/sys/fs/cgroup/cpu/cpu.cfs_quota_us"};
+		std::ifstream period_file{"/sys/fs/cgroup/cpu/cpu.cfs_period_us"};
+		long long quota = 0;
+		long long period = 0;
+		if (quota_file >> quota && period_file >> period) {
+			return ceil_div(quota, period);
+		}
+	}
+#endif
+	return 0;
+}
+
+// `hardware_concurrency` reports the host's CPU count. Under a container orchestrator that is
+// routinely far larger than the CPU time this process may actually use, and the surplus threads
+// can never run concurrently -- they only cost an OS thread each, plus, on glibc, a malloc arena
+// each. Size the pool from the cgroup quota when that is the smaller of the two.
+auto thread_pool_size() -> size_t {
+	unsigned threads = std::thread::hardware_concurrency();
+	if (threads == 0) {
+		threads = 1;
+	}
+	if (const char* env = std::getenv("ISOLATED_VM_THREAD_POOL_SIZE")) {
+		char* end = nullptr;
+		long long value = std::strtoll(env, &end, 10);
+		if (end != env && *end == '\0' && value > 0) {
+			return static_cast<size_t>(value);
+		}
+	}
+	unsigned limit = cgroup_cpu_limit();
+	if (limit > 0 && limit < threads) {
+		threads = limit;
+	}
+	return static_cast<size_t>(threads) + 1;
+}
+
+thread_pool_t thread_pool{thread_pool_size()};
 }
 
 /*
