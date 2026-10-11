@@ -1,8 +1,9 @@
 // https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-settimeout-dev
 import type { Comparator } from "@isolated-vm/experimental/utility/comparator";
-import { ArrayIndexOf, ArrayShift, ArraySplice, DateNow, FunctionConstructor, GlobalIsNaN, MapConstructor, MapDelete, MapGet, MapSet, NumberConstructor, StringConstructor } from "@isolated-vm/experimental/host/intrinsics";
+import { ArrayIndexOf, ArrayShift, ArraySplice, DateNow, FunctionConstructor, GlobalIsNaN, MapConstructor, MapDelete, MapGet, MapSet, NumberConstructor, Number_MAX_SAFE_INTEGER, StringConstructor } from "@isolated-vm/experimental/host/intrinsics";
 import { arrayLowerBound } from "@isolated-vm/experimental/utility/algorithm";
-import schedule from "isolated-vm:capability/timers";
+import { initialize, schedule } from "isolated-vm:capability/timers";
+import { Reference } from "isolated-vm:runtime";
 
 interface Timer {
 	readonly callback: () => void;
@@ -20,7 +21,7 @@ interface RepeatTimer extends Timer {
 
 type AnyTimer = OneShotTimer | RepeatTimer;
 
-let nextTimeout = Number.MAX_SAFE_INTEGER;
+let nextTimeout = Number_MAX_SAFE_INTEGER;
 let timerIndex = 0;
 
 const timersById = new MapConstructor<number, AnyTimer>();
@@ -96,6 +97,7 @@ function scheduleTimer(timer: Timer) {
 }
 
 function runTimers() {
+	nextTimeout = Number_MAX_SAFE_INTEGER;
 	let now = 0;
 	let timer = timersByTime[0];
 	while (timer) {
@@ -144,13 +146,13 @@ export function setTimeout(callbackOrCodeString: unknown, delay: unknown, ...arg
 	return initializeTimer(handler, interval, false);
 }
 
-// TODO: Obviously put this somewhere else
-// @ts-expect-error
-globalThis.runTimers = runTimers;
-
 globalThis.clearInterval = clearInterval;
 globalThis.clearTimeout = clearTimeout;
 // @ts-expect-error
 globalThis.setInterval = setInterval;
 // @ts-expect-error
 globalThis.setTimeout = setTimeout;
+
+export function initializeTimers(): void {
+	initialize(new Reference(runTimers));
+}

@@ -21,6 +21,7 @@ function makeFreeFunction<This, Result, Args extends unknown[]>(
 /** @internal */ export const FunctionConstructor = Function;
 
 /** @internal */ export const NumberConstructor = Number;
+/** @internal */ export const { MAX_SAFE_INTEGER: Number_MAX_SAFE_INTEGER } = Number;
 
 /** @internal */ export const MapConstructor = Map;
 /** @internal */ export const MapDelete: <K, V>(thisArg: Map<K, V>, key: K) => boolean = makeFreeFunction(Map.prototype.delete);
