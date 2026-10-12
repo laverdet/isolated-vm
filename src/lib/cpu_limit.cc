@@ -116,25 +116,20 @@ struct mount_t {
 	std::string root;
 	std::string point;
 	bool v2 = false;
-	bool found = false;
 };
 
 // mountinfo lines are "<id> <parent> <maj:min> <root> <point> <opts>... - <type> <src> <superopts>".
 // The controller list for v1 lives in the super options, where "cpu" and "cpuacct" are commonly
 // mounted together as a single "cpu,cpuacct" hierarchy.
 //
-// Both hierarchies are returned rather than letting cgroup2 win outright: a hybrid system mounts
-// cgroup2 alongside v1 controllers, and the cpu controller may well still be the v1 one, in which
-// case the v2 mount has no cpu.max to find.
-struct mounts_t {
-	mount_t v2;
-	mount_t v1;
-};
-
-auto find_cpu_mounts(const std::string& sysroot) -> mounts_t {
+// Every cgroup mount is collected rather than just the first of each kind. A hybrid system mounts
+// cgroup2 alongside the v1 controllers and cpu may well still be the v1 one, and the same
+// hierarchy can be mounted more than once -- including binds of a subtree this process is not in,
+// which must not be mistaken for its own.
+auto find_cpu_mounts(const std::string& sysroot) -> std::vector<mount_t> {
 	std::ifstream file{sysroot + "/proc/self/mountinfo"};
 	std::string line;
-	mounts_t mounts;
+	std::vector<mount_t> mounts;
 	while (std::getline(file, line)) {
 		std::istringstream stream{line};
 		std::vector<std::string> head;
@@ -150,11 +145,9 @@ auto find_cpu_mounts(const std::string& sysroot) -> mounts_t {
 		std::string super;
 		stream >> type >> source >> super;
 		if (type == "cgroup2") {
-			if (!mounts.v2.found) {
-				mounts.v2 = mount_t{unescape(head[3]), unescape(head[4]), true, true};
-			}
-		} else if (type == "cgroup" && !mounts.v1.found && has_entry(super, "cpu")) {
-			mounts.v1 = mount_t{unescape(head[3]), unescape(head[4]), false, true};
+			mounts.push_back(mount_t{unescape(head[3]), unescape(head[4]), true});
+		} else if (type == "cgroup" && has_entry(super, "cpu")) {
+			mounts.push_back(mount_t{unescape(head[3]), unescape(head[4]), false});
 		}
 	}
 	return mounts;
@@ -182,25 +175,34 @@ auto find_cgroup_path(const std::string& sysroot, bool v2) -> std::string {
 	return "/";
 }
 
-// Resolve the process's group within one hierarchy and return the tightest limit declared along
-// it, or 0 when that hierarchy imposes none.
-auto limit_for_mount(const std::string& sysroot, const mount_t& mount) -> unsigned {
-	// When only a subtree is mounted -- which is what a container namespace does -- the path from
-	// /proc/self/cgroup is still written relative to the hierarchy root, so strip the mounted
-	// prefix off it before joining.
-	std::string cgroup = find_cgroup_path(sysroot, mount.v2);
-	if (mount.root != "/" && cgroup.rfind(mount.root, 0) == 0) {
-		cgroup = cgroup.substr(mount.root.size());
+// Does this mount expose the group the process is actually in? Compared on whole path components,
+// so a mount rooted at "/other" neither contains "/app" nor "/otherthing".
+auto contains_path(const std::string& root, const std::string& path) -> bool {
+	if (root.empty() || root == "/") {
+		return true;
 	}
-	if (cgroup.empty() || cgroup.front() != '/') {
-		cgroup.insert(cgroup.begin(), '/');
+	if (path.rfind(root, 0) != 0) {
+		return false;
 	}
+	return path.size() == root.size() || path[root.size()] == '/';
+}
 
-	// An ancestor can be more restrictive than the group the process sits in, and in a namespaced
-	// container the leaf path may not exist under the mount at all, so collect every level from
-	// the leaf up to the mount point and take the tightest limit any of them declares.
+// The process's group expressed relative to the mount root, which is what the mount exposes.
+auto relative_to(const std::string& root, const std::string& path) -> std::string {
+	std::string rest = (root.empty() || root == "/") ? path : path.substr(root.size());
+	if (rest.empty() || rest.front() != '/') {
+		rest.insert(rest.begin(), '/');
+	}
+	return rest;
+}
+
+// Tightest limit declared anywhere along the process's own path within this mount, or 0 for none.
+auto limit_for_mount(const std::string& sysroot, const mount_t& mount, const std::string& relative)
+		-> unsigned {
+	// An ancestor can be more restrictive than the group the process sits in, so read every level
+	// from the leaf up to the mount point. Only levels on the process's verified path are read.
 	std::string base = sysroot + mount.point;
-	std::string dir = base + (cgroup == "/" ? std::string{} : cgroup);
+	std::string dir = base + (relative == "/" ? std::string{} : relative);
 	std::vector<std::string> dirs;
 	while (dir.size() > base.size()) {
 		dirs.push_back(dir);
@@ -224,13 +226,17 @@ auto limit_for_mount(const std::string& sysroot, const mount_t& mount) -> unsign
 // Not guarded by __linux__: on other platforms /proc/self/mountinfo simply does not open and we
 // fall out with "no limit", at the cost of one failed open during static init.
 auto cgroup_cpu_limit(const std::string& sysroot) -> unsigned {
-	mounts_t mounts = find_cpu_mounts(sysroot);
+	std::string v2_path = find_cgroup_path(sysroot, true);
+	std::string v1_path = find_cgroup_path(sysroot, false);
 	unsigned limit = 0;
-	if (mounts.v2.found) {
-		limit = tighter(limit, limit_for_mount(sysroot, mounts.v2));
-	}
-	if (mounts.v1.found) {
-		limit = tighter(limit, limit_for_mount(sysroot, mounts.v1));
+	for (const mount_t& mount : find_cpu_mounts(sysroot)) {
+		const std::string& path = mount.v2 ? v2_path : v1_path;
+		// A mount rooted somewhere this process does not live belongs to another workload; reading
+		// its quota would size this pool from someone else's limit.
+		if (!contains_path(mount.root, path)) {
+			continue;
+		}
+		limit = tighter(limit, limit_for_mount(sysroot, mount, relative_to(mount.root, path)));
 	}
 	return limit;
 }
