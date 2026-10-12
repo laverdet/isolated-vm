@@ -57,6 +57,28 @@ auto has_entry(const std::string& list, const std::string& name) -> bool {
 	}
 }
 
+// mountinfo escapes space, tab, newline and backslash in the root, mountpoint and source fields
+// as a backslash followed by three octal digits, so those fields must be decoded before use as
+// paths. See mangle() in fs/proc_namespace.c.
+auto unescape(const std::string& text) -> std::string {
+	std::string out;
+	out.reserve(text.size());
+	for (size_t ii = 0; ii < text.size(); ++ii) {
+		bool octal = text[ii] == '\\' && ii + 3 < text.size();
+		for (size_t jj = 1; octal && jj <= 3; ++jj) {
+			octal = text[ii + jj] >= '0' && text[ii + jj] <= '7';
+		}
+		if (octal) {
+			int value = (text[ii + 1] - '0') * 64 + (text[ii + 2] - '0') * 8 + (text[ii + 3] - '0');
+			out.push_back(static_cast<char>(value));
+			ii += 3;
+		} else {
+			out.push_back(text[ii]);
+		}
+	}
+	return out;
+}
+
 // cgroup v2 writes "<quota> <period>", or "max <period>" when unconstrained.
 auto read_v2(const std::string& dir) -> unsigned {
 	std::ifstream file{dir + "/cpu.max"};
@@ -100,10 +122,19 @@ struct mount_t {
 // mountinfo lines are "<id> <parent> <maj:min> <root> <point> <opts>... - <type> <src> <superopts>".
 // The controller list for v1 lives in the super options, where "cpu" and "cpuacct" are commonly
 // mounted together as a single "cpu,cpuacct" hierarchy.
-auto find_cpu_mount(const std::string& sysroot) -> mount_t {
+//
+// Both hierarchies are returned rather than letting cgroup2 win outright: a hybrid system mounts
+// cgroup2 alongside v1 controllers, and the cpu controller may well still be the v1 one, in which
+// case the v2 mount has no cpu.max to find.
+struct mounts_t {
+	mount_t v2;
+	mount_t v1;
+};
+
+auto find_cpu_mounts(const std::string& sysroot) -> mounts_t {
 	std::ifstream file{sysroot + "/proc/self/mountinfo"};
 	std::string line;
-	mount_t v1;
+	mounts_t mounts;
 	while (std::getline(file, line)) {
 		std::istringstream stream{line};
 		std::vector<std::string> head;
@@ -119,13 +150,14 @@ auto find_cpu_mount(const std::string& sysroot) -> mount_t {
 		std::string super;
 		stream >> type >> source >> super;
 		if (type == "cgroup2") {
-			return mount_t{head[3], head[4], true, true};
-		}
-		if (type == "cgroup" && !v1.found && has_entry(super, "cpu")) {
-			v1 = mount_t{head[3], head[4], false, true};
+			if (!mounts.v2.found) {
+				mounts.v2 = mount_t{unescape(head[3]), unescape(head[4]), true, true};
+			}
+		} else if (type == "cgroup" && !mounts.v1.found && has_entry(super, "cpu")) {
+			mounts.v1 = mount_t{unescape(head[3]), unescape(head[4]), false, true};
 		}
 	}
-	return v1;
+	return mounts;
 }
 
 // /proc/self/cgroup lines are "<hierarchy-id>:<controllers>:<path>"; v2 uses an empty controller
@@ -150,16 +182,9 @@ auto find_cgroup_path(const std::string& sysroot, bool v2) -> std::string {
 	return "/";
 }
 
-} // anonymous namespace
-
-// Not guarded by __linux__: on other platforms /proc/self/mountinfo simply does not open and we
-// fall out with "no limit", at the cost of one failed open during static init.
-auto cgroup_cpu_limit(const std::string& sysroot) -> unsigned {
-	mount_t mount = find_cpu_mount(sysroot);
-	if (!mount.found) {
-		return 0;
-	}
-
+// Resolve the process's group within one hierarchy and return the tightest limit declared along
+// it, or 0 when that hierarchy imposes none.
+auto limit_for_mount(const std::string& sysroot, const mount_t& mount) -> unsigned {
 	// When only a subtree is mounted -- which is what a container namespace does -- the path from
 	// /proc/self/cgroup is still written relative to the hierarchy root, so strip the mounted
 	// prefix off it before joining.
@@ -190,6 +215,22 @@ auto cgroup_cpu_limit(const std::string& sysroot) -> unsigned {
 	unsigned limit = 0;
 	for (const std::string& candidate : dirs) {
 		limit = tighter(limit, mount.v2 ? read_v2(candidate) : read_v1(candidate));
+	}
+	return limit;
+}
+
+} // anonymous namespace
+
+// Not guarded by __linux__: on other platforms /proc/self/mountinfo simply does not open and we
+// fall out with "no limit", at the cost of one failed open during static init.
+auto cgroup_cpu_limit(const std::string& sysroot) -> unsigned {
+	mounts_t mounts = find_cpu_mounts(sysroot);
+	unsigned limit = 0;
+	if (mounts.v2.found) {
+		limit = tighter(limit, limit_for_mount(sysroot, mounts.v2));
+	}
+	if (mounts.v1.found) {
+		limit = tighter(limit, limit_for_mount(sysroot, mounts.v1));
 	}
 	return limit;
 }
