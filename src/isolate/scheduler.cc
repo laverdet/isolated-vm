@@ -2,6 +2,10 @@
 #include "executor.h"
 #include "node_wrapper.h"
 #include "scheduler.h"
+#include "lib/cpu_limit.h"
+#include <cerrno>
+#include <cstdlib>
+#include <limits>
 #include <memory>
 #include <v8.h>
 #include <utility>
@@ -9,7 +13,36 @@
 using namespace v8;
 namespace ivm {
 namespace {
-	thread_pool_t thread_pool{std::thread::hardware_concurrency() + 1};
+
+// `hardware_concurrency` reports the host's CPU count. Under a container orchestrator that is
+// routinely far larger than the CPU time this process may actually use, and since the pool only
+// ever grows, it ratchets up to one thread per host CPU and keeps them. The surplus threads can
+// never run concurrently -- they only cost an OS thread each, plus, on glibc, a malloc arena each.
+auto thread_pool_size() -> size_t {
+	unsigned threads = std::thread::hardware_concurrency();
+	if (threads == 0) {
+		threads = 1;
+	}
+	if (const char* env = std::getenv("ISOLATED_VM_THREAD_POOL_SIZE")) {
+		errno = 0;
+		char* end = nullptr;
+		long long value = std::strtoll(env, &end, 10);
+		bool representable = value > 0 &&
+			static_cast<unsigned long long>(value) <= std::numeric_limits<size_t>::max();
+		if (end != env && *end == '\0' && errno != ERANGE && representable) {
+			return static_cast<size_t>(value);
+		}
+		// Anything else -- blank, negative, trailing garbage, or out of range -- falls through to
+		// the usual sizing rather than silently becoming an unbounded pool.
+	}
+	unsigned limit = cgroup_cpu_limit();
+	if (limit > 0 && limit < threads) {
+		threads = limit;
+	}
+	return static_cast<size_t>(threads) + 1;
+}
+
+thread_pool_t thread_pool{thread_pool_size()};
 }
 
 /*
