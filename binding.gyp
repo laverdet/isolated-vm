@@ -10,7 +10,7 @@
 					'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
 					'GCC_GENERATE_DEBUGGING_SYMBOLS': 'YES',
 					'CLANG_CXX_LANGUAGE_STANDARD': 'c++20',
-					'MACOSX_DEPLOYMENT_TARGET': '10.12',
+					'MACOSX_DEPLOYMENT_TARGET': '11.00',
 				},
 				'msvs_settings': {
 					# For some reason the LTO changes they made here leak into this build.
