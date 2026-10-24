@@ -209,7 +209,7 @@ auto ReferenceHandle::Release() -> Local<Value> {
 /**
  * Call a function, like Function.prototype.apply
  */
-class ApplyRunner : public ThreePhaseTask {
+class ApplyRunner final : public ThreePhaseTask {
 	public:
 		ApplyRunner(
 			ReferenceHandle& that,
@@ -251,13 +251,13 @@ class ApplyRunner : public ThreePhaseTask {
 		ApplyRunner(const ApplyRunner&) = delete;
 		auto operator=(const ApplyRunner&) = delete;
 
-		~ApplyRunner() final {
+		~ApplyRunner() {
 			if (did_finish) {
 				*did_finish = 1;
 			}
 		}
 
-		void Phase2() final {
+		void Phase2()  {
 			// Invoke in the isolate
 			Local<Context> context_handle = Deref(context);
 			Context::Scope context_scope{context_handle};
@@ -275,7 +275,7 @@ class ApplyRunner : public ThreePhaseTask {
 			ret = TransferOut(result, return_transfer_options);
 		}
 
-		auto Phase2Async(Scheduler::AsyncWait& wait) -> bool final {
+		auto Phase2Async(Scheduler::AsyncWait& wait) -> bool {
 			// Same as regular `Phase2()` but if it returns a promise we will wait on it
 			if (!(return_transfer_options == TransferOptions{TransferOptions::Type::Reference})) {
 				throw RuntimeTypeError("`result` options are not available for `applySyncPromise`");
@@ -313,7 +313,7 @@ class ApplyRunner : public ThreePhaseTask {
 			}
 		}
 
-		auto Phase3() -> Local<Value> final {
+		auto Phase3() -> Local<Value> {
 			if (did_finish && *did_finish == 0) {
 				*did_finish = 1;
 				throw RuntimeGenericError("Script execution timed out.");
@@ -412,7 +412,7 @@ auto ReferenceHandle::Apply(MaybeLocal<Value> recv_handle, Maybe<ArrayRange> may
 /**
  * Copy this reference's value into this isolate
  */
-class CopyRunner : public ThreePhaseTask {
+class CopyRunner final : public ThreePhaseTask {
 	public:
 		CopyRunner(
 			const ReferenceHandle& that,
@@ -422,13 +422,13 @@ class CopyRunner : public ThreePhaseTask {
 			that.CheckDisposed();
 		}
 
-		void Phase2() final {
+		void Phase2() {
 			Context::Scope context_scope{Deref(context)};
 			Local<Value> value = Deref(reference);
 			copy = ExternalCopy::Copy(value);
 		}
 
-		auto Phase3() -> Local<Value> final {
+		auto Phase3() -> Local<Value> {
 			return copy->TransferIn();
 		}
 
@@ -511,7 +511,7 @@ class GetRunner final : public AccessorRunner {
 		accessors{target.accessors || ReadOption(maybe_options, StringTable::Get().accessors, false)},
 		inherit{target.inherit} {}
 
-		void Phase2() final {
+		void Phase2() {
 			// Setup
 			auto* isolate = Isolate::GetCurrent();
 			auto context = Deref(this->context);
@@ -552,7 +552,7 @@ class GetRunner final : public AccessorRunner {
 			}(), options);
 		}
 
-		auto Phase3() -> Local<Value> final {
+		auto Phase3() -> Local<Value> {
 			return ret->TransferIn();
 		}
 
@@ -575,7 +575,7 @@ class DeleteRunner final : public AccessorRunner {
 		DeleteRunner(ReferenceHandle& that, Local<Value> key_handle) :
 		AccessorRunner{that, key_handle} {}
 
-		void Phase2() final {
+		void Phase2() {
 			auto context = Deref(this->context);
 			Context::Scope context_scope{context};
 			auto object = GetTargetAndAlsoCheckForProxy();
@@ -584,7 +584,7 @@ class DeleteRunner final : public AccessorRunner {
 			}
 		}
 
-		auto Phase3() -> Local<Value> final {
+		auto Phase3() -> Local<Value> {
 			return Undefined(Isolate::GetCurrent());
 		}
 };
@@ -607,7 +607,7 @@ class SetRunner final : public AccessorRunner {
 		AccessorRunner{that, key_handle},
 		val{TransferOut(val_handle, TransferOptions{maybe_options})} {}
 
-		void Phase2() final {
+		void Phase2() {
 			auto context = Deref(this->context);
 			Context::Scope context_scope{context};
 			auto name = GetKey(context);
@@ -620,7 +620,7 @@ class SetRunner final : public AccessorRunner {
 			}
 		}
 
-		auto Phase3() -> Local<Value> final {
+		auto Phase3() -> Local<Value> {
 			return Undefined(Isolate::GetCurrent());
 		}
 
