@@ -88,18 +88,18 @@ namespace {
  * HeapCheck implementation
  */
 IsolateEnvironment::HeapCheck::HeapCheck(IsolateEnvironment& env, bool force) :
-		env{env}, extra_size_before{env.extra_allocated_memory}, force{force} {
+		env{env}, extra_size_before{env.GetExtraAllocatedMemory()}, force{force} {
 }
 
 void IsolateEnvironment::HeapCheck::Epilogue() {
-	if (!env.nodejs_isolate && (force || env.extra_allocated_memory != extra_size_before)) {
+	if (!env.nodejs_isolate && (force || env.GetExtraAllocatedMemory() != extra_size_before)) {
 		Isolate* isolate = env.GetIsolate();
 		HeapStatistics heap;
 		isolate->GetHeapStatistics(&heap);
-		if (heap.used_heap_size() + env.extra_allocated_memory > env.memory_limit) {
+		if (heap.used_heap_size() + env.GetExtraAllocatedMemory() > env.memory_limit) {
 			isolate->LowMemoryNotification();
 			isolate->GetHeapStatistics(&heap);
-			if (heap.used_heap_size() + env.extra_allocated_memory > env.memory_limit) {
+			if (heap.used_heap_size() + env.GetExtraAllocatedMemory() > env.memory_limit) {
 				env.hit_memory_limit = true;
 				env.Terminate();
 				throw FatalRuntimeError("Isolate was disposed during execution due to memory limit");
@@ -186,7 +186,7 @@ void IsolateEnvironment::MarkSweepCompactEpilogue(Isolate* isolate, GCType /*gc_
 	auto* that = static_cast<IsolateEnvironment*>(data);
 	HeapStatistics heap;
 	that->isolate->GetHeapStatistics(&heap);
-	size_t total_memory = heap.used_heap_size() + that->extra_allocated_memory;
+	size_t total_memory = heap.used_heap_size() + that->GetExtraAllocatedMemory();
 	size_t memory_limit = that->memory_limit + that->misc_memory_size;
 	if (total_memory > memory_limit) {
 		if ((gc_flags & (GCCallbackFlags::kGCCallbackFlagCollectAllAvailableGarbage | GCCallbackFlags::kGCCallbackFlagForced)) == 0) {
@@ -225,7 +225,7 @@ auto IsolateEnvironment::NearHeapLimitCallback(void* data, size_t current_heap_l
 	that->did_adjust_heap_limit = true;
 	HeapStatistics heap;
 	that->isolate->GetHeapStatistics(&heap);
-	if (heap.used_heap_size() + that->extra_allocated_memory > that->memory_limit + that->misc_memory_size) {
+	if (heap.used_heap_size() + that->GetExtraAllocatedMemory() > that->memory_limit + that->misc_memory_size) {
 		that->RequestMemoryPressureNotification(MemoryPressureLevel::kCritical, true);
 	} else {
 		that->RequestMemoryPressureNotification(MemoryPressureLevel::kModerate, true);
@@ -511,11 +511,7 @@ auto IsolateEnvironment::TaskEpilogue() -> std::unique_ptr<ExternalCopy> {
 }
 
 auto IsolateEnvironment::GetLimitedAllocator() const -> LimitedAllocator* {
-	if (nodejs_isolate) {
-		return nullptr;
-	} else {
-		return static_cast<LimitedAllocator*>(allocator_ptr.get());
-	}
+	return allocator_ptr.get();
 }
 
 void IsolateEnvironment::EnableInspectorAgent() {

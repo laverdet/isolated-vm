@@ -9,8 +9,7 @@ namespace ivm {
 class LimitedAllocator : public v8::ArrayBuffer::Allocator {
 	private:
 		class IsolateEnvironment& env;
-		// `Free` can run after `env` is disposed, so the accounting is shared instead of reached through it
-		std::shared_ptr<std::atomic<size_t>> extra_allocated_memory;
+		std::atomic<size_t> extra_allocated_memory{0};
 		size_t limit;
 		size_t v8_heap;
 		size_t next_check;
@@ -26,6 +25,9 @@ class LimitedAllocator : public v8::ArrayBuffer::Allocator {
 		// This is used by ExternalCopy when an ArrayBuffer is transferred. The memory is not freed but
 		// we should no longer count it against the isolate
 		void AdjustAllocatedSize(ptrdiff_t length);
+		auto GetExtraAllocatedMemory() const -> size_t {
+			return extra_allocated_memory;
+		}
 		auto GetFailureCount() const -> int;
 		void Track(v8::Local<v8::Object> handle, size_t size);
 };

@@ -4,6 +4,7 @@
 #include <v8.h>
 #include <uv.h>
 
+#include "allocator.h"
 #include "executor.h"
 #include "holder.h"
 #include "remote_handle.h"
@@ -92,16 +93,13 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		std::shared_ptr<IsolateTaskRunner> task_runner;
 		std::unique_ptr<class InspectorAgent> inspector_agent;
 		v8::Persistent<v8::Context> default_context;
-		std::shared_ptr<v8::ArrayBuffer::Allocator> allocator_ptr;
+		std::shared_ptr<LimitedAllocator> allocator_ptr;
 		std::shared_ptr<v8::BackingStore> snapshot_blob_ptr;
 		v8::StartupData startup_data{};
 		void* timer_holder = nullptr;
 		size_t memory_limit = 0;
 		size_t initial_heap_size_limit = 0;
 		size_t misc_memory_size = 0;
-		// Shared with `LimitedAllocator`, which v8 backing stores keep alive after this environment is gone
-		std::shared_ptr<std::atomic<size_t>> extra_allocated_memory_ptr = std::make_shared<std::atomic<size_t>>(0);
-		std::atomic<size_t>& extra_allocated_memory = *extra_allocated_memory_ptr;
 		v8::MemoryPressureLevel memory_pressure = v8::MemoryPressureLevel::kNone;
 		v8::MemoryPressureLevel last_memory_pressure = v8::MemoryPressureLevel::kNone;
 		bool hit_memory_limit = false;
@@ -270,7 +268,7 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		/**
 		 * Get allocator used by this isolate. Will return nullptr for the default isolate.
 		 */
-		auto GetLimitedAllocator() const -> class LimitedAllocator*;
+		auto GetLimitedAllocator() const -> LimitedAllocator*;
 
 		/**
 		 * Get the initial v8 heap_size_limit when the isolate was created.
@@ -309,10 +307,13 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		 * isolates.
 		 */
 		auto GetExtraAllocatedMemory() const -> size_t {
-			return extra_allocated_memory;
+			return allocator_ptr ? allocator_ptr->GetExtraAllocatedMemory() : 0;
 		}
+
 		void AdjustExtraAllocatedMemory(int size) {
-			extra_allocated_memory += size;
+			if (allocator_ptr) {
+				allocator_ptr->AdjustAllocatedSize(size);
+			}
 		}
 
 		/**
