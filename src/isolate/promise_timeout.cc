@@ -40,7 +40,7 @@ void PromiseTimeout::PostUvRef(bool acquire) {
 			bool acquire;
 	};
 	if (auto runner = default_task_runner.lock()) {
-		runner->PostTask(std::make_unique<UvRefTask>(default_env, acquire));
+		runner->PostTask(std::make_unique<UvRefTask>(default_env, acquire), v8::SourceLocation{});
 	}
 }
 
@@ -183,7 +183,7 @@ void PromiseTimeout::PostNotification(bool interrupt) {
 		};
 		env->scheduler->Lock()->tasks.push(std::make_unique<Notification>(shared_from_this(), false));
 		if (auto runner = default_task_runner.lock()) {
-			runner->PostTask(std::make_unique<WakeTask>(weak_env));
+			runner->PostTask(std::make_unique<WakeTask>(weak_env), v8::SourceLocation{});
 		}
 	}
 }
