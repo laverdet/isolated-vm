@@ -21,7 +21,6 @@ BaseSerializer{[&](ValueSerializer& serializer, Local<Context> context) {
 	}
 
 	// Serialize object and save
-	serializer.WriteHeader();
 	Unmaybe(serializer.WriteValue(context, value));
 }} {
 
@@ -41,7 +40,6 @@ auto ExternalCopySerialized::CopyInto(bool transfer_in) -> Local<Value> {
 		}
 
 		// Deserialize object
-		Unmaybe(deserializer.ReadHeader(context));
 		return deserializer.ReadValue(context).ToLocal(&value);
 	});
 
@@ -65,7 +63,6 @@ auto SerializedVector::CopyIntoAsVector() -> std::vector<Local<Value>> {
 	Deserialize([&](ValueDeserializer& deserializer, Local<Context> context) {
 		// Read length
 		uint32_t length;
-		Unmaybe(deserializer.ReadHeader(context));
 		if (!deserializer.ReadUint32(&length)) {
 			throw RuntimeGenericError("Invalid arguments payload");
 		}
