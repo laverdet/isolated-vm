@@ -19,4 +19,8 @@ void PlatformDelegate::UnregisterIsolate(v8::Isolate* isolate) {
 	delegate.node_platform->UnregisterIsolate(isolate);
 }
 
+auto PlatformDelegate::GetForegroundTaskRunner(v8::Isolate* isolate) -> std::shared_ptr<v8::TaskRunner> {
+	return delegate.node_platform->GetForegroundTaskRunner(isolate);
+}
+
 } // namespace ivm
