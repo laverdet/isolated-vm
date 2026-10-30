@@ -107,7 +107,8 @@ auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
 					std::unique_lock<std::mutex> lock{state.mutex};
 					if (isolate.error_handler) {
 						if (!state.cv.wait_until(lock, deadline, [&] { return state.did_release || state.did_finish; })) {
-							assert(RaiseCatastrophicError(isolate.error_handler, "Script failed to terminate"));
+							[[maybe_unused]] auto raised = RaiseCatastrophicError(isolate.error_handler, "Script failed to terminate");
+							assert(raised);
 							thread_suspend.suspend();
 							return;
 						}
@@ -125,7 +126,8 @@ auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
 					if (state.did_finish) {
 						return;
 					} else if (isolate.error_handler && deadline < std::chrono::steady_clock::now()) {
-						assert(RaiseCatastrophicError(isolate.error_handler, "Script failed to terminate"));
+						[[maybe_unused]] auto raised = RaiseCatastrophicError(isolate.error_handler, "Script failed to terminate");
+						assert(raised);
 						thread_suspend.suspend();
 						return;
 					}

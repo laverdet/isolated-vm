@@ -90,7 +90,8 @@ auto InspectorAgent::ConnectSession(InspectorSession& session) -> unique_ptr<V8I
  * Called from the session when it disconnects.
  */
 void InspectorAgent::SessionDisconnected(InspectorSession& session) {
-	assert(active_sessions.write()->erase(&session) == 1);
+	[[maybe_unused]] auto erased = active_sessions.write()->erase(&session);
+	assert(erased == 1);
 }
 
 /**

@@ -46,7 +46,8 @@ auto DeserializerDelegate::ReadHostObject(Isolate* /*isolate*/) -> MaybeLocal<Ob
 	MaybeLocal<Object> result;
 	detail::RunBarrier([&]() {
 		uint32_t ii;
-		assert(deserializer->ReadUint32(&ii));
+		[[maybe_unused]] auto did_read = deserializer->ReadUint32(&ii);
+		assert(did_read);
 		result = transferables.at(ii)->TransferIn().As<Object>();
 	});
 	return result;
