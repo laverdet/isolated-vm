@@ -91,6 +91,7 @@
 				'src/isolate/scheduler.cc',
 				'src/isolate/stack_trace.cc',
 				'src/isolate/three_phase_task.cc',
+				'src/lib/cpu_limit.cc',
 				'src/lib/thread_pool.cc',
 				'src/lib/timer.cc',
 				'src/module/callback.cc',
