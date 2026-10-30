@@ -47,7 +47,7 @@ auto DeserializerDelegate::ReadHostObject(Isolate* /*isolate*/) -> MaybeLocal<Ob
 	detail::RunBarrier([&]() {
 		uint32_t ii;
 		assert(deserializer->ReadUint32(&ii));
-		result = transferables[ii]->TransferIn().As<Object>();
+		result = transferables.at(ii)->TransferIn().As<Object>();
 	});
 	return result;
 }
@@ -56,7 +56,7 @@ auto DeserializerDelegate::GetSharedArrayBufferFromId(
 		Isolate* /*isolate*/, uint32_t clone_id) -> MaybeLocal<SharedArrayBuffer> {
 	MaybeLocal<SharedArrayBuffer> result;
 	detail::RunBarrier([&]() {
-		result = transferables[clone_id]->TransferIn().As<SharedArrayBuffer>();
+		result = transferables.at(clone_id)->TransferIn().As<SharedArrayBuffer>();
 	});
 	return result;
 }
@@ -65,7 +65,7 @@ auto DeserializerDelegate::GetWasmModuleFromId(
 		Isolate* isolate, uint32_t transfer_id) -> MaybeLocal<WasmModuleObject> {
 	MaybeLocal<WasmModuleObject> result;
 	detail::RunBarrier([&]() {
-		result = WasmModuleObject::FromCompiledModule(isolate, wasm_modules[transfer_id]);
+		result = WasmModuleObject::FromCompiledModule(isolate, wasm_modules.at(transfer_id));
 	});
 	return result;
 }

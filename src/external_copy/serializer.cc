@@ -37,7 +37,7 @@ auto ExternalCopySerialized::CopyInto(bool transfer_in) -> Local<Value> {
 	Deserialize([&](ValueDeserializer& deserializer, Local<Context> context) {
 		// Transfer ArrayBuffers
 		for (unsigned ii = 0; ii < array_buffers.size(); ++ii) {
-			deserializer.TransferArrayBuffer(ii, array_buffers[ii]->CopyIntoCheckHeap(transfer_in).As<ArrayBuffer>());
+			deserializer.TransferArrayBuffer(ii, array_buffers.at(ii)->CopyIntoCheckHeap(transfer_in).As<ArrayBuffer>());
 		}
 
 		// Deserialize object
@@ -73,7 +73,7 @@ auto SerializedVector::CopyIntoAsVector() -> std::vector<Local<Value>> {
 		// Read arguments
 		result.resize(length);
 		for (unsigned ii = 0; ii < length; ++ii) {
-			if (!deserializer.ReadValue(context).ToLocal(&result[ii])) {
+			if (!deserializer.ReadValue(context).ToLocal(&result.at(ii))) {
 				return false;
 			}
 		}
