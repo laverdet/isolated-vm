@@ -19,9 +19,8 @@ class invocable_task {
 		explicit invocable_task(task_type task) : task_{std::move(task)} {}
 
 		auto operator()(std::stop_token stop_token) -> void {
-			thread_stop_token = &stop_token;
+			auto scope_thread_stop_token = util::scope_stack(thread_stop_token, &stop_token);
 			task_->Run();
-			thread_stop_token = nullptr;
 		}
 
 		explicit operator bool() const { return bool{task_}; }

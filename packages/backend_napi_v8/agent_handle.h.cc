@@ -39,8 +39,7 @@ constexpr auto shared_realm_remote = [] -> auto& {
 };
 
 auto realm_scope_operation(const agent_lock& lock, const js::iv8::shared_remote<v8::Context>& realm, auto operation) -> decltype(auto) {
-	const auto* previous = std::exchange(shared_realm_remote(), &realm);
-	auto scope = util::scope_exit{[ & ] { shared_realm_remote() = previous; }};
+	auto scope_realm = util::scope_stack(shared_realm_remote(), &realm);
 	return context_scope_operation(lock, realm->deref(lock), std::move(operation));
 }
 

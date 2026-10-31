@@ -89,20 +89,6 @@ class nothing : public pointer_facade {
 		constexpr auto operator*() const -> Type { std::unreachable(); }
 };
 
-// https://en.cppreference.com/w/cpp/experimental/scope_exit
-export template <class Invoke>
-class scope_exit : non_copyable {
-	public:
-		explicit scope_exit(Invoke invoke) :
-				invoke_{std::move(invoke)} {}
-		scope_exit(const scope_exit&) = delete;
-		~scope_exit() { invoke_(); }
-		auto operator=(const scope_exit&) -> scope_exit& = delete;
-
-	private:
-		Invoke invoke_;
-};
-
 // Explicitly annotate desired struct slicing: cppcoreguidelines-slicing
 template <class Type>
 struct slice_t;
@@ -189,6 +175,25 @@ constexpr auto bit_truncation_cast(const auto& value) -> Type {
 		};
 		return std::bit_cast<holder>(value).value;
 	}
+}
+
+// Store the given value in the holder for the duration of the scope
+export template <class Type>
+auto scope_stack(Type& holder, Type value) {
+	class scope_exit : util::non_moveable {
+		public:
+			explicit scope_exit(Type& holder, Type previous) :
+					holder_{holder},
+					previous_{std::move(previous)} {}
+			scope_exit(const scope_exit&) = delete;
+			~scope_exit() { holder_.get() = std::move(previous_); }
+			auto operator=(const scope_exit&) -> scope_exit& = delete;
+
+		private:
+			std::reference_wrapper<Type> holder_;
+			Type previous_;
+	};
+	return scope_exit(holder, std::exchange(holder, std::move(value)));
 }
 
 } // namespace util

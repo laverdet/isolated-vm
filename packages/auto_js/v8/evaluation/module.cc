@@ -65,14 +65,10 @@ auto module_record::create_synthetic(
 	std::span<const v8::Local<v8::String>> export_names,
 	std::span<const v8::Local<v8::Data>> export_values
 ) -> v8::Local<module_record> {
-	thread_local std::span<const v8::Local<v8::String>>* tl_export_names;
-	thread_local std::span<const v8::Local<v8::Data>>* tl_export_values;
-	tl_export_names = &export_names;
-	tl_export_values = &export_values;
-	auto scope_exit = util::scope_exit{[ & ] {
-		tl_export_names = nullptr;
-		tl_export_values = nullptr;
-	}};
+	thread_local std::span<const v8::Local<v8::String>>* tl_export_names = nullptr;
+	thread_local std::span<const v8::Local<v8::Data>>* tl_export_values = nullptr;
+	auto scope_stack_names = util::scope_stack(tl_export_names, &export_names);
+	auto scope_stack_values = util::scope_stack(tl_export_values, &export_values);
 
 	// Make `v8::Module` record with immediate evaluation steps
 	v8::Module::SyntheticModuleEvaluationSteps evaluation_steps =
@@ -132,9 +128,8 @@ auto module_record::link(context_lock_witness lock, module_link_record link_reco
 		}
 		return link_record.modules.at(link_record.payload.at(it->second + index));
 	};
-	// nb: The initializer only runs on the first pass through the declaration.
-	thread_local auto* linker_ptr = &linker;
-	linker_ptr = &linker;
+	thread_local auto* linker_ptr = std::add_pointer_t<decltype(linker)>{nullptr};
+	auto linker_ptr_stack = util::scope_stack(linker_ptr, &linker);
 
 	// v8 linker callback
 	auto v8_callback = v8::Module::ResolveModuleByIndexCallback{
@@ -149,7 +144,6 @@ auto module_record::link(context_lock_witness lock, module_link_record link_reco
 	// nb: It is strange that we need js here.
 	auto allow_js = v8::Isolate::AllowJavascriptExecutionScope{lock.isolate()};
 	unmaybe(InstantiateModule(lock.context(), v8_callback));
-	linker_ptr = nullptr;
 }
 
 auto module_record::link(context_lock_witness lock) -> void {
