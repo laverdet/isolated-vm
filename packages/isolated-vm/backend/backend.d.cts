@@ -26,6 +26,19 @@ export class Agent {
 	static create(options?: CreateAgentOptions): Promise<_Agent>;
 }
 
+export declare const Capability: CapabilityConstructor;
+
+export interface Capability {
+	readonly [Secret]: "Capability";
+}
+
+export interface CapabilityConstructor {
+	readonly name: "Capability";
+	readonly prototype: Capability;
+	// eslint-disable-next-line @typescript-eslint/method-signature-style
+	/** @internal */ _sync(this: void, callback: (resolve: (value: unknown) => void, reject: (reason: unknown) => void, args: unknown[]) => void): Capability;
+}
+
 export class Module {
 	readonly requests: readonly ModuleRequest[];
 	readonly specifier: string | undefined;
@@ -72,6 +85,7 @@ export class Script {
 /** @internal */
 declare const exports: {
 	Agent: typeof Agent;
+	Capability: typeof Capability;
 	Module: typeof Module;
 	NativeModule: typeof NativeModule;
 	Realm: typeof Realm;

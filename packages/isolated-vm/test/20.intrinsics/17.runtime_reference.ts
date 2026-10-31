@@ -1,7 +1,7 @@
 import type { Realm, Reference } from "@isolated-vm/experimental";
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import { Agent, expect } from "@isolated-vm/experimental";
+import { Agent, Capability, expect } from "@isolated-vm/experimental";
 import { expectComplete, expectThrow } from "@isolated-vm/experimental/test/fixtures";
 import { makeDirectResolver, makeLinker, makeStaticLoader } from "@isolated-vm/experimental/utility/linker";
 
@@ -126,7 +126,7 @@ await test("reference is transferable through a capability", async () => {
 	const realm = expect(await agent.createRealm());
 	const { promise, resolve } = Promise.withResolvers<Reference<number>>();
 	const capability = expect(await realm.createCapability(
-		{ send(value: unknown) { resolve(value as Reference<number>); } },
+		{ send: Capability.sync((value: unknown) => { resolve(value as Reference<number>); }) },
 		{ origin: "test:capability" },
 	));
 	await evaluateWithRuntime(agent, realm, `

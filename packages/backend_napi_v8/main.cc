@@ -27,6 +27,7 @@ js::napi::napi_js_module module_namespace{
 		return std::tuple{
 			std::in_place,
 			std::pair{util::cw<"Agent">, js::forward{agent_handle_value::class_template(lock)}},
+			std::pair{util::cw<"Capability">, js::forward{capability_handle::class_template(lock)}},
 			std::pair{util::cw<"Module">, js::forward{module_handle::class_template(lock)}},
 			std::pair{util::cw<"NativeModule">, js::forward{native_module_handle::class_template(lock)}},
 			std::pair{util::cw<"Realm">, js::forward{realm_handle::class_template(lock)}},

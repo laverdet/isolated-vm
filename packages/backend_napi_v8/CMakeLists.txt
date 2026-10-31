@@ -23,6 +23,7 @@ add_dependencies(backend_napi_v8 ${backend_napi_v8})
 target_sources(${backend_napi_v8}
 	PRIVATE
 		agent.cc
+		capability.cc
 		environment.cc
 		main.cc
 		module.cc
@@ -35,6 +36,7 @@ target_sources(${backend_napi_v8}
 		_module.cc
 		agent_handle.h.cc
 		agent.h.cc
+		capability.h.cc
 		environment.h.cc
 		lock.cc
 		module.h.cc

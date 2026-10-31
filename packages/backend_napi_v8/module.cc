@@ -81,58 +81,24 @@ auto module_handle::create_capability(
 		}
 	);
 
-	// Makes `js::free_function` which invokes the user-supplied callback capability
-	auto make_capability_callback = [ & ](forward_callback_type capability) -> auto {
-		// Invoked in the node thread
-		auto invoke =
-			[ callback = js::napi::make_shared_remote(lock, *capability) ](
-				const environment::lock& lock,
-				js::values_vector_t params
-			) -> void {
-			auto argv = js::transfer_in_strict<std::vector<napi_value>>(std::move(params), lock, accept_references);
-			callback->deref(lock)->invoke(lock, argv);
-		};
-		// Invoked in the isolate thread. An instance of this keeps the nodejs loop alive.
-		return js::free_function{
-			[ scheduler = lock->scheduler().make_ref(lock),
-				invoke = std::move(invoke) ](
-				const realm_scope& lock,
-				js::rest /*rest*/,
-				js::forward<js::iv8::callback_info, js::vector_tag> arguments
-			) -> void {
-				(*scheduler)(
-					[ invoke ](napi_env nenv, napi_value /*nothing*/, js::values_vector_t params) -> void {
-						auto& host_environment = napi::environment::unsafe_get_environment_as<environment>(nenv);
-						auto lock = environment::lock{napi::environment_lock_witness::make_witness(host_environment), host_environment};
-						// TODO(?): Exceptions here just fall back to process.on('uncaughtException').
-						std::ignore = napi::invoke_internal_error_scope(lock, [ & ] -> napi_value {
-							invoke(lock, std::move(params));
-							return {};
-						});
-					},
-					transfer_from_runtime<js::values_vector_t>(lock, *arguments)
-				);
-			},
-		};
-	};
-
-	// Forward value interface as value
-	constexpr auto forward_value_capability = util::overloaded{
+	// `Capability` handles are moved out, plain values are forwarded as-is.
+	constexpr auto unwrap_capability = util::overloaded{
+		[](js::tagged_external<capability_handle> handle) -> capability_handle {
+			if (*handle) {
+				return std::move(*handle);
+			} else {
+				throw js::runtime_error{u"Capability was already used"};
+			}
+		},
 		[](std::u16string value) -> auto { return value; },
 		[](std::string value) -> auto { return value; },
 	};
-
-	// Apply `make_capability_callback` to each entry in the interface. This will be passed to
-	// `create_synthetic` to instantiate the module.
 	auto external_capability_interface = std::vector{
 		std::from_range,
 		std::move(capability_interface) |
 			std::views::transform([ & ](auto pair) {
 				auto [ key, value ] = std::move(pair);
-				return std::pair{
-					std::move(key),
-					util::map_variant(std::move(value), util::overloaded{make_capability_callback, forward_value_capability}),
-				};
+				return std::pair{std::move(key), util::map_variant(std::move(value), unwrap_capability)};
 			}),
 	};
 
@@ -153,8 +119,13 @@ auto module_handle::create_capability(
 					std::views::transform([ & ](auto pair) {
 						auto [ key, value ] = std::move(pair);
 						auto fn_template = std::visit(
-							[ & ](auto capability) -> auto {
-								return js::transfer_in<v8::Local<v8::Template>>(std::move(capability), lock);
+							util::overloaded{
+								[ & ](capability_handle capability) -> v8::Local<v8::Template> {
+									return std::move(capability).instantiate(lock);
+								},
+								[ & ](auto value) -> v8::Local<v8::Template> {
+									return js::transfer_in<v8::Local<v8::Template>>(std::move(value), lock);
+								},
 							},
 							std::move(value)
 						);

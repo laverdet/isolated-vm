@@ -1,6 +1,6 @@
 export module napi_js:callback;
 export import :callback_storage;
-import :error_scope;
+import :error;
 import :lock;
 import std;
 import util;

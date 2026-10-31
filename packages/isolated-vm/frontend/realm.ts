@@ -1,9 +1,11 @@
+import type { Capability } from "./capability.js";
+
 export { Realm } from "#backend";
 
 export namespace Realm {
 	export type CapabilityInterface = Record<string, CapabilitySignature>;
 	export type CapabilitySignature =
-		((...args: unknown[]) => void) |
+		Capability |
 		string;
 
 	export interface CreateCapabilityOptions {

@@ -1,7 +1,7 @@
 import type { Reference } from "@isolated-vm/experimental";
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import { Agent, expect } from "@isolated-vm/experimental";
+import { Agent, Capability, expect } from "@isolated-vm/experimental";
 import { expectComplete } from "@isolated-vm/experimental/test/fixtures";
 import { makeCompositeLinker, makeDirectResolver, makeFileSystemCompilationLoader, makeLinker, makeLocalResolver, makeStaticLoader } from "@isolated-vm/experimental/utility/linker";
 
@@ -14,17 +14,17 @@ await test("setTimeout capability", async () => {
 		"isolated-vm:runtime": expect(await realm.instantiateRuntime()),
 		"isolated-vm:capability/timers": expect(await realm.createCapability(
 			{
-				initialize: (reference: unknown) => {
+				initialize: Capability.sync((reference: unknown) => {
 					wake = reference as Reference<() => void>;
-				},
-				schedule: (timeout: unknown) => {
+				}),
+				schedule: Capability.sync((timeout: unknown) => {
 					setTimeout(() => void wake?.invoke([]), Math.max(0, Number(timeout) - Date.now()));
-				},
+				}),
 			},
 			{ origin: "isolated-vm:capability/timers" })),
 		"notify-test": expect(await realm.createCapability(
 			{
-				default: (message: unknown) => { resolvers.resolve(message); },
+				default: Capability.sync((message: unknown) => { resolvers.resolve(message); }),
 			},
 			{ origin: "notify-test" })),
 	});

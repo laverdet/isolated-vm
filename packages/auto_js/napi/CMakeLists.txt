@@ -50,7 +50,7 @@ target_sources(${napi_js}
 		support/class_template_storage.cc
 		support/environment_fwd.cc
 		support/environment.h.cc
-		support/error_scope.cc
+		support/error.h.cc
 		support/host.h.cc
 		support/initialize.h.cc
 		support/lock.h.cc

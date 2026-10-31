@@ -5,7 +5,7 @@ export import :callback;
 export import :class_definitions;
 export import :class_template_storage;
 export import :environment;
-export import :error_scope;
+export import :error;
 export import :function_definitions;
 export import :handle.local_of;
 export import :handle.types;

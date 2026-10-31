@@ -2,6 +2,7 @@ module;
 #include "auto_js/gcc_abi_tag.h"
 export module backend_napi_v8:module_;
 import :agent_handle;
+import :capability;
 import :environment;
 import :utility;
 import napi_js;
@@ -30,7 +31,7 @@ struct create_capability_options {
 		};
 };
 
-using capability_type = std::variant<forward_callback_type, std::u16string, std::string>;
+using capability_type = std::variant<js::tagged_external<capability_handle>, std::u16string, std::string>;
 using capability_interface_type = js::dictionary<js::dictionary_tag, js::string_t, capability_type>;
 
 struct module_handle_link_record {

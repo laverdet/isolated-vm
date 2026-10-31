@@ -12,13 +12,14 @@ export class executor { // "En taro adun"
 
 		[[nodiscard]] auto is_terminated() const -> bool;
 		[[nodiscard]] auto isolate() const -> v8::Isolate* { return isolate_.get(); }
+		[[nodiscard]] auto stop_token() const -> std::stop_token { return stop_source_.get_token(); }
 
 	private:
 		constexpr static auto dispose_isolate = [](v8::Isolate* isolate) -> void { isolate->Dispose(); };
 		static auto on_before_call_entered(v8::Isolate* isolate) -> void;
 
 		std::unique_ptr<v8::Isolate, decltype(dispose_isolate)> isolate_;
-		std::atomic<bool> terminated_;
+		std::stop_source stop_source_;
 };
 
 // ---

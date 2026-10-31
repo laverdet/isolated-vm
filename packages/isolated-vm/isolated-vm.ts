@@ -1,6 +1,7 @@
 export type * from "./frontend/reference.js";
 export { NativeModule } from "#backend";
 export * from "./frontend/agent.js";
+export * from "./frontend/capability.js";
 export * from "./frontend/module.js";
 export * from "./frontend/realm.js";
 export * from "./frontend/script.js";

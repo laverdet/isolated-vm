@@ -1,6 +1,6 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import { Agent, expect } from "@isolated-vm/experimental";
+import { Agent, Capability, expect } from "@isolated-vm/experimental";
 import { expectComplete, expectThrow } from "@isolated-vm/experimental/test/fixtures";
 import { makeNullLinker } from "@isolated-vm/experimental/utility/linker";
 
@@ -33,11 +33,11 @@ await test("synthetic module capability", async () => {
 	const realm = expect(await agent.createRealm());
 	const capability = expect(await realm.createCapability(
 		{
-			default: (value1: unknown, value2: unknown) => {
+			default: Capability.sync((value1: unknown, value2: unknown) => {
 				didInvoke = true;
 				assert.equal(value1, "hello");
 				assert.equal(value2, "world");
-			},
+			}),
 		},
 		{ origin: capabilityName }));
 	const left = expectComplete(await agent.compileModule(`
@@ -58,12 +58,12 @@ await test("synthetic module with circular reference", async () => {
 	const realm = expect(await agent.createRealm());
 	const capability = expect(await realm.createCapability(
 		{
-			default: (value1: unknown) => {
+			default: Capability.sync((value1: unknown) => {
 				// @ts-expect-error
 				assert.strictEqual(value1.date1, value1.date2);
 				// @ts-expect-error
 				assert.strictEqual(value1.object, value1);
-			},
+			}),
 		},
 		{ origin: capabilityName }));
 	const left = expectComplete(await agent.compileModule(`

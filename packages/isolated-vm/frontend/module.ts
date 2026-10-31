@@ -47,11 +47,6 @@ export namespace Module {
 }
 
 /**
- * A callback into nodejs which grants some kind of low-level capability to internal APIs.
- */
-export class Capability extends AbstractModule {}
-
-/**
  * Compiled `SourceTextModule`. Created with `agent.compileModule`.
  */
 export interface Module extends AbstractModule {

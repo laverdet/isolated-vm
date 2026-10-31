@@ -10,12 +10,12 @@ auto executor::reset() -> void {
 }
 
 auto executor::terminate() -> void {
-	terminated_.store(true, std::memory_order_release);
+	stop_source_.request_stop();
 	isolate_->TerminateExecution();
 }
 
 auto executor::is_terminated() const -> bool {
-	return terminated_.load(std::memory_order_acquire);
+	return stop_source_.stop_requested();
 }
 
 auto executor::on_before_call_entered(v8::Isolate* isolate) -> void {

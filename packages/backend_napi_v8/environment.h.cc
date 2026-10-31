@@ -22,6 +22,7 @@ constexpr auto string_literals = std::tuple{
 	"line"sv,
 	"location"sv,
 	"memoryLimitBytes"sv,
+	"message"sv,
 	"modules"sv,
 	"name"sv,
 	"origin"sv,
@@ -29,6 +30,7 @@ constexpr auto string_literals = std::tuple{
 	"randomSeed"sv,
 	"result"sv,
 	"specifier"sv,
+	"stack"sv,
 	"suffix"sv,
 	"timeout"sv,
 	"transfer"sv,
@@ -38,6 +40,7 @@ constexpr auto string_literals = std::tuple{
 // Storage for class templates
 constexpr auto class_names = std::tuple{
 	"Agent"sv,
+	"Capability"sv,
 	"Module"sv,
 	"NativeModule"sv,
 	"Realm"sv,

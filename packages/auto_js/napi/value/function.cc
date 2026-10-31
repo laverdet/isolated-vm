@@ -29,7 +29,7 @@ auto local_for_function::make(const environment_lock_witness_of<Environment>& lo
 	if constexpr (requires { typename decltype(data)::element_type; }) {
 		// Function requires finalizer
 		auto function = make(data.get());
-		return apply_finalizer(std::move(data), [ & ](auto* data, napi_finalize finalize, void* hint) -> local_of<function_tag> {
+		return apply_finalizer(std::move(data), [ & ](auto* data, node_api_basic_finalize finalize, void* hint) -> local_of<function_tag> {
 			napi::invoke0(napi_add_finalizer, napi_env{lock}, function, data, finalize, hint, nullptr);
 			return function;
 		});
