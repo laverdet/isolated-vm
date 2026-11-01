@@ -137,7 +137,7 @@ auto agent_host::make_remote_handle_lock(isolate_lock_witness lock) -> remote_ha
 
 auto agent_host::remote_expiration_callback(expired_remote_type remote) noexcept -> void {
 	storage_->foreground_runner().schedule_handle_task(
-		[ this, remote = std::move(remote) ](std::stop_token /*stop_token*/) -> void {
+		[ this, remote = std::move(remote) ](util::inplace_stop_token /*stop_token*/) -> void {
 			auto lock = isolate_execution_lock{executor_.isolate()};
 			remote->reset(util::slice(lock));
 			remote_handle_list_.erase(*remote);

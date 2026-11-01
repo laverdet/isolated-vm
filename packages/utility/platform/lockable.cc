@@ -2,6 +2,7 @@ module;
 #include "auto_js/no_unique_address.h"
 #include <cassert>
 export module util:platform.lockable;
+import :platform.inplace_stop_token;
 import :utility;
 import std;
 
@@ -99,6 +100,10 @@ class lock_notify {
 template <std::predicate Predicate, basic_lockable Lock, waitable<Lock> Waitable>
 class lock_waitable : public Lock {
 	public:
+		using Lock::lock;
+		using Lock::mutex;
+		using Lock::unlock;
+
 		lock_waitable(Predicate predicate, Waitable& cv, auto&&... lock_args)
 			requires std::constructible_from<Lock, decltype(lock_args)...> :
 				Lock{std::forward<decltype(lock_args)>(lock_args)...},
@@ -122,25 +127,54 @@ class lock_waitable : public Lock {
 			return cv_->wait_until(*this, time_point, predicate_);
 		}
 
-		auto wait(std::stop_token stop_token) -> bool
+		auto wait(stoppable_token auto&& stop_token) -> bool
 			requires(type<Waitable> == type<std::condition_variable_any>) {
-			assert(stop_token.stop_possible());
-			return cv_->wait(*this, stop_token, predicate_);
+			return wait_interruptible(std::forward<decltype(stop_token)>(stop_token), [ & ](auto predicate, auto... stop_token) -> decltype(auto) {
+				return cv_->wait(*this, std::move(stop_token)..., std::move(predicate));
+			});
 		}
 
 		template <class Rep, class Period>
-		auto wait(std::stop_token stop_token, std::chrono::duration<Rep, Period> duration) -> bool
+		auto wait(stoppable_token auto&& stop_token, std::chrono::duration<Rep, Period> duration) -> bool
 			requires(type<Waitable> == type<std::condition_variable_any>) {
-			return cv_->wait_for(*this, stop_token, duration, predicate_);
+			return wait(std::forward<decltype(stop_token)>(stop_token), std::chrono::steady_clock::now() + duration);
 		}
 
-		template <class Rep, class Period>
-		auto wait(std::stop_token stop_token, std::chrono::time_point<Rep, Period> time_point) -> bool
+		template <class Clock, class Duration>
+		auto wait(stoppable_token auto&& stop_token, std::chrono::time_point<Clock, Duration> time_point) -> bool
 			requires(type<Waitable> == type<std::condition_variable_any>) {
-			return cv_->wait_until(*this, stop_token, time_point, predicate_);
+			return wait_interruptible(std::forward<decltype(stop_token)>(stop_token), [ & ](auto predicate, auto... stop_token) -> bool {
+				return cv_->wait_until(*this, std::move(stop_token)..., time_point, std::move(predicate));
+			});
 		}
 
 	private:
+		auto wait_interruptible(const std::stop_token& stop_token, auto wait) -> bool {
+			assert(stop_token.stop_possible());
+			return wait(predicate_, stop_token);
+		}
+
+		auto wait_interruptible(util::inplace_stop_token stop_token, auto wait) -> bool {
+			assert(stop_token.stop_possible());
+			{
+				auto callback = inplace_stop_callback{
+					std::defer_lock,
+					stop_token,
+					[ this ] -> void {
+						auto lock = std::scoped_lock{*mutex()};
+						cv_->notify_all();
+					}
+				};
+				if (!callback.try_attach()) {
+					return predicate_();
+				}
+				wait([ & ] -> bool { return stop_token.stop_requested() || predicate_(); });
+				unlock();
+			}
+			lock();
+			return predicate_();
+		}
+
 		Predicate predicate_;
 		Waitable* cv_;
 };

@@ -77,12 +77,12 @@ export class foreground_runner : public foreground_runner_for_each_priority {
 
 		// schedule non-nestable with `kUserVisible` priority
 		template <class... Args>
-		auto schedule_client_task(std::invocable<std::stop_token, Args...> auto operation, Args&&... args) -> void;
+		auto schedule_client_task(std::invocable<util::inplace_stop_token, Args...> auto operation, Args&&... args) -> void;
 
 		// schedule nestable with `kUserBlocking` priority, and runs immediately if this is the
 		// foreground thread
 		template <class... Args>
-		auto schedule_handle_task(std::invocable<std::stop_token, Args...> auto operation, Args&&... args) -> void;
+		auto schedule_handle_task(std::invocable<util::inplace_stop_token, Args...> auto operation, Args&&... args) -> void;
 
 		// stops the foreground thread, cancelling running tasks
 		auto terminate() -> void;
@@ -131,7 +131,7 @@ auto foreground_runner_of_priority<Priority>::post(task_type task) -> void {
 
 // `foreground_runner`
 template <class... Args>
-auto foreground_runner::schedule_client_task(std::invocable<std::stop_token, Args...> auto operation, Args&&... args) -> void {
+auto foreground_runner::schedule_client_task(std::invocable<util::inplace_stop_token, Args...> auto operation, Args&&... args) -> void {
 	scheduler_.signal([ & ](foreground_task_queue& storage) -> void {
 		auto task = make_task_of(std::move(operation), std::forward<decltype(args)>(args)...);
 		auto entry = foreground_task_queue::task_entry_type{nestability::non_nestable, std::move(task)};
@@ -140,9 +140,9 @@ auto foreground_runner::schedule_client_task(std::invocable<std::stop_token, Arg
 }
 
 template <class... Args>
-auto foreground_runner::schedule_handle_task(std::invocable<std::stop_token, Args...> auto operation, Args&&... args) -> void {
+auto foreground_runner::schedule_handle_task(std::invocable<util::inplace_stop_token, Args...> auto operation, Args&&... args) -> void {
 	if (scheduler_.is_this_thread()) {
-		operation(std::stop_token{}, std::forward<decltype(args)>(args)...);
+		operation(util::inplace_stop_token{}, std::forward<decltype(args)>(args)...);
 	} else {
 		scheduler_.signal([ & ](foreground_task_queue& storage) -> void {
 			auto task = make_task_of(std::move(operation), std::forward<decltype(args)>(args)...);

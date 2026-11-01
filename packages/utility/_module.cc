@@ -8,6 +8,7 @@ export import :functional.flat_tuple;
 export import :memory;
 export import :meta.algorithm;
 export import :platform.format;
+export import :platform.inplace_stop_token;
 export import :platform.lockable;
 export import :platform.stop_token;
 export import :platform.timer;

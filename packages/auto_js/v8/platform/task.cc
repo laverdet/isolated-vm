@@ -5,7 +5,7 @@ import v8;
 
 namespace js::iv8::platform {
 // Forward `scheduler`'s stop_token through `v8::Task` virtual dispatch
-inline thread_local std::stop_token* thread_stop_token;
+inline thread_local util::inplace_stop_token thread_stop_token;
 
 // v8 task types
 using idle_task = std::unique_ptr<v8::IdleTask>;
@@ -18,8 +18,8 @@ class invocable_task {
 		invocable_task() = default;
 		explicit invocable_task(task_type task) : task_{std::move(task)} {}
 
-		auto operator()(std::stop_token stop_token) -> void {
-			auto scope_thread_stop_token = util::scope_stack(thread_stop_token, &stop_token);
+		auto operator()(util::inplace_stop_token stop_token) -> void {
+			auto scope_thread_stop_token = util::scope_stack(thread_stop_token, stop_token);
 			task_->Run();
 		}
 
@@ -30,26 +30,26 @@ class invocable_task {
 };
 
 // Allow lambda-style callbacks to be called with the same virtual dispatch as `v8::Task`
-template <std::invocable<std::stop_token> Invocable>
+template <std::invocable<util::inplace_stop_token> Invocable>
 class task_of final : public v8::Task {
 	public:
 		explicit task_of(Invocable task) : task_{std::move(task)} {}
-		auto Run() -> void final { task_(*thread_stop_token); }
+		auto Run() -> void final { task_(thread_stop_token); }
 
 	private:
 		Invocable task_;
 };
 
 template <class... Args>
-auto make_task_of(std::invocable<std::stop_token, Args...> auto callback, Args&&... args) -> std::unique_ptr<v8::Task> {
+auto make_task_of(std::invocable<util::inplace_stop_token, Args...> auto callback, Args&&... args) -> std::unique_ptr<v8::Task> {
 	auto task = [ & ] -> auto {
 		if constexpr (sizeof...(Args) == 0) {
 			return std::move(callback);
 		} else {
 			// bind the arguments but move `stop_token` back to the first parameter
 			return util::bind{
-				[ & ](auto callback, std::remove_reference_t<Args>&... args, std::stop_token stop_token) -> void {
-					return callback(std::move(stop_token), std::move(args)...);
+				[ & ](auto callback, std::remove_reference_t<Args>&... args, util::inplace_stop_token stop_token) -> void {
+					return callback(stop_token, std::move(args)...);
 				},
 				std::move(callback),
 				std::forward<Args>(args)...

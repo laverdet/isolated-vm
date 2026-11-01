@@ -12,7 +12,7 @@ class scheduler_foreground_thread {
 
 	protected:
 		template <class Storage>
-		auto signal_thread(std::stop_token termination_stop_token, Storage& unlocked_storage, Storage::resource_type& storage) -> void;
+		auto signal_thread(util::inplace_stop_token termination_stop_token, Storage& unlocked_storage, Storage::resource_type& storage) -> void;
 
 	private:
 		std::atomic<std::thread::id> thread_id_;
@@ -25,11 +25,11 @@ class scheduler_foreground_thread::controller {
 		auto take() -> std::jthread { return std::move(thread_); };
 
 		template <class Storage>
-		auto signal(std::stop_token termination_stop_token, Storage& unlocked_storage) -> std::thread::id;
+		auto signal(util::inplace_stop_token termination_stop_token, Storage& unlocked_storage) -> std::thread::id;
 
 	private:
 		template <class Storage>
-		static auto run(std::stop_token stop_token, std::stop_token termination_stop_token, Storage& storage) -> void;
+		static auto run(std::stop_token stop_token, util::inplace_stop_token termination_stop_token, Storage& storage) -> void;
 
 		std::jthread thread_;
 };
@@ -44,18 +44,18 @@ class scheduler_background_threads {
 
 	protected:
 		template <class Storage>
-		auto signal_thread(std::stop_token termination_stop_token, Storage& unlocked_storage, Storage::resource_type& storage) -> void;
+		auto signal_thread(util::inplace_stop_token termination_stop_token, Storage& unlocked_storage, Storage::resource_type& storage) -> void;
 };
 
 // Locked storage for `scheduler_background_threads`
 class scheduler_background_threads::controller {
 	public:
 		template <class Storage>
-		auto signal(std::stop_token termination_stop_token, Storage& unlocked_storage) -> void;
+		auto signal(util::inplace_stop_token termination_stop_token, Storage& unlocked_storage) -> void;
 
 	private:
 		template <class Storage>
-		static auto run(std::stop_token stop_token, std::stop_token termination_stop_token, Storage& storage) -> void;
+		static auto run(std::stop_token stop_token, util::inplace_stop_token termination_stop_token, Storage& storage) -> void;
 
 		std::array<std::jthread, 2> threads_;
 		bool initialized_ = false;
@@ -75,6 +75,11 @@ class scheduler_of : public Thread {
 		};
 
 	public:
+		scheduler_of() = default;
+		scheduler_of(const scheduler_of&) = delete;
+		~scheduler_of() { terminate(); }
+		auto operator=(const scheduler_of&) -> scheduler_of& = delete;
+
 		// TODO: Messy
 		auto invoke(std::invocable<typename Thread::controller&> auto operation) -> auto;
 
@@ -89,8 +94,8 @@ class scheduler_of : public Thread {
 		auto terminate() -> void { termination_stop_source_.request_stop(); }
 
 	private:
+		util::inplace_stop_source termination_stop_source_;
 		util::lockable_with<storage, {.interuptable = true, .notifiable = true}> storage_;
-		util::scope_stop_source termination_stop_source_;
 };
 
 // ---
@@ -102,7 +107,7 @@ auto scheduler_foreground_thread::is_this_thread() const -> bool {
 
 template <class Storage>
 auto scheduler_foreground_thread::signal_thread(
-	std::stop_token termination_stop_token,
+	util::inplace_stop_token termination_stop_token,
 	Storage& unlocked_storage,
 	Storage::resource_type& storage
 ) -> void {
@@ -114,7 +119,7 @@ auto scheduler_foreground_thread::signal_thread(
 // `scheduler_foreground_thread::controller`
 template <class Storage>
 auto scheduler_foreground_thread::controller::signal(
-	std::stop_token termination_stop_token,
+	util::inplace_stop_token termination_stop_token,
 	Storage& unlocked_storage
 ) -> std::thread::id {
 	if (thread_.joinable()) {
@@ -127,16 +132,16 @@ auto scheduler_foreground_thread::controller::signal(
 
 template <class Storage>
 auto scheduler_foreground_thread::controller::run(
-	// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 	std::stop_token stop_token,
-	std::stop_token termination_stop_token,
+	util::inplace_stop_token termination_stop_token,
 	Storage& storage
 ) -> void {
 	using queue_type = Storage::resource_type::queue_type;
 	auto lock = storage.write_waitable([](const Storage::resource_type& storage) -> bool {
 		return !storage.queue.empty();
 	});
-	const auto any_stop_token = util::composite_stop_token{std::move(stop_token), termination_stop_token};
+	const auto any_stop_source = util::composite_stop_source{std::move(stop_token), termination_stop_token};
+	const auto any_stop_token = any_stop_source.get_token();
 	while (!any_stop_token.stop_requested()) {
 		auto [... timeout ] = [ & ] -> auto {
 			if constexpr (requires { typename queue_type::clock_type; }) {
@@ -145,7 +150,7 @@ auto scheduler_foreground_thread::controller::run(
 				return std::tuple{};
 			}
 		}();
-		while (lock.wait(util::slice(any_stop_token), timeout...)) {
+		while (lock.wait(any_stop_token, timeout...)) {
 			auto task = std::move(lock->queue.front());
 			lock->queue.pop();
 			lock.unlock();
@@ -158,7 +163,7 @@ auto scheduler_foreground_thread::controller::run(
 // `scheduler_background_threads`
 template <class Storage>
 auto scheduler_background_threads::signal_thread(
-	std::stop_token termination_stop_token,
+	util::inplace_stop_token termination_stop_token,
 	Storage& unlocked_storage,
 	Storage::resource_type& storage
 ) -> void {
@@ -168,7 +173,7 @@ auto scheduler_background_threads::signal_thread(
 // `scheduler_background_threads::controller`
 template <class Storage>
 auto scheduler_background_threads::controller::signal(
-	std::stop_token termination_stop_token,
+	util::inplace_stop_token termination_stop_token,
 	Storage& unlocked_storage
 ) -> void {
 	if (!initialized_) {
@@ -181,16 +186,16 @@ auto scheduler_background_threads::controller::signal(
 
 template <class Storage>
 auto scheduler_background_threads::controller::run(
-	// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 	std::stop_token stop_token,
-	std::stop_token termination_stop_token,
+	util::inplace_stop_token termination_stop_token,
 	Storage& storage
 ) -> void {
 	using queue_type = Storage::resource_type::queue_type;
 	auto lock = storage.write_waitable([](const Storage::resource_type& storage) -> bool {
 		return !storage.queue.empty();
 	});
-	const auto any_stop_token = util::composite_stop_token{std::move(stop_token), termination_stop_token};
+	const auto any_stop_source = util::composite_stop_source{std::move(stop_token), termination_stop_token};
+	const auto any_stop_token = any_stop_source.get_token();
 	while (!any_stop_token.stop_requested()) {
 		auto [... timeout ] = [ & ] -> auto {
 			if constexpr (requires { typename queue_type::clock_type; }) {
@@ -199,7 +204,7 @@ auto scheduler_background_threads::controller::run(
 				return std::tuple{};
 			}
 		}();
-		while (lock.wait(util::slice(any_stop_token), timeout...)) {
+		while (lock.wait(any_stop_token, timeout...)) {
 			auto task = std::move(lock->queue.front());
 			lock->queue.pop();
 			lock.unlock();

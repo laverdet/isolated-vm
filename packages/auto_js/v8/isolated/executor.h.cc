@@ -1,10 +1,11 @@
 export module v8_js:isolated.executor;
 import std;
+import util;
 import v8;
 
 namespace js::iv8::isolated {
 
-export class executor { // "En taro adun"
+export class executor : util::non_moveable { // "En taro adun" lmao
 	public:
 		auto initialize(std::invocable<v8::Isolate*> auto initialize) -> void;
 		auto reset() -> void;
@@ -12,14 +13,14 @@ export class executor { // "En taro adun"
 
 		[[nodiscard]] auto is_terminated() const -> bool;
 		[[nodiscard]] auto isolate() const -> v8::Isolate* { return isolate_.get(); }
-		[[nodiscard]] auto stop_token() const -> std::stop_token { return stop_source_.get_token(); }
+		[[nodiscard]] auto stop_token() const -> util::inplace_stop_token { return stop_source_.get_token(); }
 
 	private:
 		constexpr static auto dispose_isolate = [](v8::Isolate* isolate) -> void { isolate->Dispose(); };
 		static auto on_before_call_entered(v8::Isolate* isolate) -> void;
 
 		std::unique_ptr<v8::Isolate, decltype(dispose_isolate)> isolate_;
-		std::stop_source stop_source_;
+		util::inplace_stop_source stop_source_;
 };
 
 // ---

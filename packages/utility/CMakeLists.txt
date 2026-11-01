@@ -6,6 +6,7 @@ target_include_directories(utility_js PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/includ
 
 target_sources(utility_js
 	PRIVATE
+		platform/inplace_stop_token.cc
 		platform/timer.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
@@ -27,6 +28,7 @@ target_sources(utility_js
 		memory/noinit_allocator.cc
 		meta/algorithm.cc
 		platform/format.cc
+		platform/inplace_stop_token.h.cc
 		platform/lockable.cc
 		platform/stop_token.cc
 		platform/timer.h.cc

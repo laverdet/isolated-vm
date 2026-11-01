@@ -53,9 +53,9 @@ class capability_handle::sync_instance::result::promise : util::non_copyable {
 class capability_handle::sync_instance::result::future : util::non_copyable {
 	public:
 		// Blocks until the value is settled. The result is empty if `stop_token` is stopped first.
-		auto get(std::stop_token stop_token) -> std::optional<value_type> {
+		auto get(util::inplace_stop_token stop_token) -> std::optional<value_type> {
 			auto lock = state_->state_.write_waitable(&std::optional<value_type>::has_value);
-			lock.wait(std::move(stop_token));
+			lock.wait(stop_token);
 			return std::move(*lock);
 		}
 

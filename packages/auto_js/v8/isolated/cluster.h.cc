@@ -36,7 +36,7 @@ auto cluster::make_agent(std::type_identity<Environment> /*environment*/, behavi
 	auto& runner = storage->foreground_runner();
 	runner.schedule_client_task(
 		[ params ](
-			std::stop_token /*stop_token*/,
+			util::inplace_stop_token /*stop_token*/,
 			std::shared_ptr<agent_storage> storage,
 			auto callback
 		) -> auto {

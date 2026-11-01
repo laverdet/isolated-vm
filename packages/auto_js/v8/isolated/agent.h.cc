@@ -199,7 +199,7 @@ auto agent_handle_of<Type>::schedule(Task task, Args... args) const -> void {
 	if (auto host = lock_host()) {
 		auto& scheduler = host->storage()->foreground_runner();
 		scheduler.schedule_client_task(
-			[](std::stop_token /*stop_token*/, const auto& host, const auto& task, auto&&... args) -> void {
+			[](util::inplace_stop_token /*stop_token*/, const auto& host, const auto& task, auto&&... args) -> void {
 				auto isolate_lock = isolate_execution_lock{host->executor().isolate()};
 				std::visit([](auto& clock) -> void { clock.begin_tick(); }, host->clock());
 				// By default we disallow code execution except when explicitly annotated
