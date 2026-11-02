@@ -37,6 +37,16 @@ export interface CapabilityConstructor {
 	readonly prototype: Capability;
 	// eslint-disable-next-line @typescript-eslint/method-signature-style
 	/** @internal */ _sync(this: void, callback: (resolve: (value: unknown) => void, reject: (reason: unknown) => void, args: unknown[]) => void): Capability;
+
+	/**
+	 * Creates a fire-and-forget capability from the given callback. When invoked from an isolate the call returns
+	 * `undefined` immediately and `callback` is scheduled on the nodejs thread. Its return value is ignored, and it is
+	 * expected not to throw. A thrown error is raised as an `uncaughtException`.
+	 *
+	 * Capabilities are one-shot objects. They are consumed by `realm.createCapability`.
+	 */
+	// eslint-disable-next-line @typescript-eslint/method-signature-style
+	void(this: void, callback: (...args: any[]) => void): Capability;
 }
 
 export class Module {

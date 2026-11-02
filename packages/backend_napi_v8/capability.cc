@@ -149,9 +149,47 @@ auto capability_handle::sync_instance::instantiate(const agent_lock& lock) && ->
 	return js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{std::move(capability)}, lock);
 }
 
+// `capability_handle::void_instance`
+capability_handle::void_instance::void_instance(const environment::lock& lock, js::napi::local_of<js::function_tag> callback) :
+		scheduler_{lock->scheduler().make_ref(lock)},
+		callback_{js::napi::make_shared_remote(lock, callback)} {}
+
+auto capability_handle::void_instance::instantiate(const agent_lock& lock) && -> v8::Local<v8::FunctionTemplate> {
+	auto capability =
+		[ self = std::move(*this) ](
+			const realm_scope& lock,
+			js::rest /*rest*/,
+			js::forward<js::iv8::callback_info, js::vector_tag> arguments
+		) -> void {
+		(*self.scheduler_)(
+			[](
+				napi_env nenv,
+				napi_value /*nothing*/,
+				js::napi::shared_remote<js::function_tag> callback,
+				js::values_vector_t params
+			) -> void {
+				auto& host_environment = napi::environment::unsafe_get_environment_as<environment>(nenv);
+				auto lock = environment::lock{napi::environment_lock_witness::make_witness(host_environment), host_environment};
+				napi::invoke_internal_error_scope(lock, [ & ] -> void {
+					auto argv = js::transfer_in_strict<std::vector<napi_value>>(std::move(params), lock, accept_references);
+					callback->deref(lock)->invoke(lock, argv);
+				});
+			},
+			self.callback_,
+			transfer_from_runtime<js::values_vector_t>(lock, *arguments)
+		);
+	};
+	return js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{std::move(capability)}, lock);
+}
+
 // `capability_handle`
 auto capability_handle::sync(const environment::lock& lock, forward_callback_type callback) -> forward_capability_type {
 	auto make = [ & ] -> auto { return capability_handle{instance_type{std::type_identity<sync_instance>{}, lock, *callback}}; };
+	return js::forward{class_template(lock)->construct(lock, make())};
+}
+
+auto capability_handle::void_(const environment::lock& lock, forward_callback_type callback) -> forward_capability_type {
+	auto make = [ & ] -> auto { return capability_handle{instance_type{std::type_identity<void_instance>{}, lock, *callback}}; };
 	return js::forward{class_template(lock)->construct(lock, make())};
 }
 
@@ -162,6 +200,7 @@ auto capability_handle::class_template(const environment::lock& lock) -> js::nap
 		js::class_template{
 			js::class_constructor{util::cw<"Capability">},
 			js::class_static{util::cw<"_sync">, &sync},
+			js::class_static{util::cw<"void">, &void_},
 		}
 	);
 }

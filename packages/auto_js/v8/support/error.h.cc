@@ -15,28 +15,19 @@ auto externalize_caught_error(context_lock_witness lock, const v8::TryCatch& try
 auto externalize_caught_error(context_lock_witness lock, v8::Local<v8::Value> value) -> js::error_value;
 
 // Catch `iv8::pending_error` or `js::error`, converting to thrown v8 runtime error.
-[[nodiscard]] auto invoke_internal_error_scope(context_lock_witness lock, auto operation) {
-	using result_type = std::invoke_result_t<decltype(operation)>;
-	using value_type = type_t<[] {
-		if constexpr (type<result_type> == type<void>) {
-			return type<bool>;
-		} else {
-			return type<std::optional<result_type>>;
-		}
-	}()>;
+auto invoke_internal_error_scope(context_lock_witness lock, auto operation) {
 	try {
-		if constexpr (type<result_type> == type<void>) {
-			operation();
-			return true;
-		} else {
-			return value_type{operation()};
-		}
+		return operation();
 	} catch (const iv8::pending_error& /*error*/) {
-		return value_type{};
 	} catch (const js::error& error) {
 		auto exception = js::transfer_in_strict<v8::Local<v8::Value>>(error, lock);
 		lock.isolate()->ThrowException(exception);
-		return value_type{};
+	}
+	using result_type = std::invoke_result_t<decltype(operation)>;
+	if constexpr (type<result_type> == type<v8::Local<v8::Value>>) {
+		return v8::Local<v8::Value>{};
+	} else {
+		static_assert(type<result_type> == type<void>);
 	}
 };
 

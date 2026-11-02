@@ -126,7 +126,7 @@ await test("reference is transferable through a capability", async () => {
 	const realm = expect(await agent.createRealm());
 	const { promise, resolve } = Promise.withResolvers<Reference<number>>();
 	const capability = expect(await realm.createCapability(
-		{ send: Capability.sync((value: unknown) => { resolve(value as Reference<number>); }) },
+		{ send: Capability.void((value: unknown) => { resolve(value as Reference<number>); }) },
 		{ origin: "test:capability" },
 	));
 	await evaluateWithRuntime(agent, realm, `

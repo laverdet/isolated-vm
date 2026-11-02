@@ -33,8 +33,7 @@ constexpr auto make_free_function_with_try_catch =
 		[](callback_type& callback, Lock lock, const v8::FunctionCallbackInfo<v8::Value>& info) noexcept(Nx) -> void {
 			auto disallow_js =
 				v8::Isolate::DisallowJavascriptExecutionScope{lock.isolate(), v8::Isolate::DisallowJavascriptExecutionScope::THROW_ON_FAILURE};
-			// NOLINTNEXTLINE(cppcoreguidelines-slicing)
-			auto result = invoke_internal_error_scope(lock, [ & ] -> auto {
+			invoke_internal_error_scope(lock, [ & ] -> void {
 				auto run = util::regular_return{[ & ] -> decltype(auto) {
 					return std::apply(
 						callback,
@@ -44,11 +43,8 @@ constexpr auto make_free_function_with_try_catch =
 						)
 					);
 				}};
-				return run().value_or(std::monostate{});
+				return_into(lock, info.GetReturnValue(), run().value_or(std::monostate{}));
 			});
-			if (result) {
-				return_into(lock, info.GetReturnValue(), *std::move(result));
-			}
 		},
 		std::move(callback),
 	};
@@ -101,7 +97,7 @@ constexpr auto make_constructor_function_with_try_catch =
 		[](callback_type& callback, Lock lock, const v8::FunctionCallbackInfo<v8::Value>& info) noexcept(Nx) -> void {
 			auto disallow_js =
 				v8::Isolate::DisallowJavascriptExecutionScope{lock.isolate(), v8::Isolate::DisallowJavascriptExecutionScope::THROW_ON_FAILURE};
-			std::ignore = invoke_internal_error_scope(lock, [ & ] -> void {
+			invoke_internal_error_scope(lock, [ & ] -> void {
 				if (!info.IsConstructCall()) {
 					throw js::type_error{u"Class constructor cannot be invoked without 'new'"};
 				}
@@ -127,7 +123,7 @@ constexpr auto make_constructor_function(auto constructor) {
 	constexpr auto make = util::overloaded{
 		[](std::nullptr_t /*constructor*/) -> auto {
 			auto bound_function = [](revived_lock_type lock, const v8::FunctionCallbackInfo<v8::Value>& /*info*/) -> void {
-				std::ignore = invoke_internal_error_scope(lock, [] -> void {
+				invoke_internal_error_scope(lock, [] -> void {
 					throw js::type_error{u"Illegal constructor"};
 				});
 			};
@@ -154,8 +150,7 @@ constexpr auto make_member_function_with_try_catch =
 		[](callback_type& callback, Lock lock, const v8::FunctionCallbackInfo<v8::Value>& info) noexcept(Nx) -> void {
 			auto disallow_js =
 				v8::Isolate::DisallowJavascriptExecutionScope{lock.isolate(), v8::Isolate::DisallowJavascriptExecutionScope::THROW_ON_FAILURE};
-			// NOLINTNEXTLINE(cppcoreguidelines-slicing)
-			auto result = invoke_internal_error_scope(lock, [ & ] -> auto {
+			invoke_internal_error_scope(lock, [ & ] -> void {
 				auto* that = wrappable_of<Type>::unwrap(util::slice(lock), info.This());
 				if (that == nullptr) {
 					throw js::type_error{u"Invalid object type"};
@@ -169,11 +164,8 @@ constexpr auto make_member_function_with_try_catch =
 						)
 					);
 				}};
-				return run().value_or(std::monostate{});
+				return_into(lock, info.GetReturnValue(), run().value_or(std::monostate{}));
 			});
-			if (result) {
-				return_into(lock, info.GetReturnValue(), *std::move(result));
-			}
 		},
 		std::move(callback),
 	};

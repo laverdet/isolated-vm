@@ -33,7 +33,7 @@ await test("synthetic module capability", async () => {
 	const realm = expect(await agent.createRealm());
 	const capability = expect(await realm.createCapability(
 		{
-			default: Capability.sync((value1: unknown, value2: unknown) => {
+			default: Capability.void((value1: unknown, value2: unknown) => {
 				didInvoke = true;
 				assert.equal(value1, "hello");
 				assert.equal(value2, "world");
@@ -58,7 +58,7 @@ await test("synthetic module with circular reference", async () => {
 	const realm = expect(await agent.createRealm());
 	const capability = expect(await realm.createCapability(
 		{
-			default: Capability.sync((value1: unknown) => {
+			default: Capability.void((value1: unknown) => {
 				// @ts-expect-error
 				assert.strictEqual(value1.date1, value1.date2);
 				// @ts-expect-error

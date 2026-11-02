@@ -14,17 +14,17 @@ await test("setTimeout capability", async () => {
 		"isolated-vm:runtime": expect(await realm.instantiateRuntime()),
 		"isolated-vm:capability/timers": expect(await realm.createCapability(
 			{
-				initialize: Capability.sync((reference: unknown) => {
+				initialize: Capability.void((reference: unknown) => {
 					wake = reference as Reference<() => void>;
 				}),
-				schedule: Capability.sync((timeout: unknown) => {
+				schedule: Capability.void((timeout: unknown) => {
 					setTimeout(() => void wake?.invoke([]), Math.max(0, Number(timeout) - Date.now()));
 				}),
 			},
 			{ origin: "isolated-vm:capability/timers" })),
 		"notify-test": expect(await realm.createCapability(
 			{
-				default: Capability.sync((message: unknown) => { resolvers.resolve(message); }),
+				default: Capability.void((message: unknown) => { resolvers.resolve(message); }),
 			},
 			{ origin: "notify-test" })),
 	});

@@ -33,8 +33,19 @@ export class capability_handle : util::non_copyable {
 				js::napi::unique_remote<js::function_tag> callback_;
 		};
 
+		// `Capability.void`
+		class void_instance final : public instance {
+			public:
+				void_instance(const environment::lock& lock, js::napi::local_of<js::function_tag> callback);
+				[[nodiscard]] auto instantiate(const agent_lock& lock) && -> v8::Local<v8::FunctionTemplate> final;
+
+			private:
+				js::napi::napi_scheduler::ref scheduler_;
+				js::napi::shared_remote<js::function_tag> callback_;
+		};
+
 	public:
-		using instance_type = util::covariant_value<instance, sync_instance>;
+		using instance_type = util::covariant_value<instance, sync_instance, void_instance>;
 		using transfer_type = js::tagged_external<capability_handle>;
 		using forward_capability_type = js::forward<js::napi::local_of<js::object_tag>>;
 
@@ -50,6 +61,7 @@ export class capability_handle : util::non_copyable {
 		}
 
 		static auto sync(const environment::lock& lock, forward_callback_type callback) -> forward_capability_type;
+		static auto void_(const environment::lock& lock, forward_callback_type callback) -> forward_capability_type;
 		static auto class_template(const environment::lock& lock) -> js::napi::local_of<js::class_tag_of<capability_handle>>;
 
 	private:
