@@ -393,7 +393,10 @@ jobs:
         ${{
           (endsWith(matrix.host.runs-on, '-arm') && 'arm64') ||
           (endsWith(matrix.host.runs-on, '-intel') && 'x64') ||
-          (startsWith(matrix.host.runs-on, 'macos') && 'arm64') || '??'
+          (startsWith(matrix.host.runs-on, 'macos') && 'arm64') ||
+          (startsWith(matrix.host.runs-on, 'ubuntu') && 'x64') ||
+          (startsWith(matrix.host.runs-on, 'windows') && 'x64') ||
+          '??'
         }}
         ${{ matrix.runtime.runtime }}${{ (matrix.runtime.runtime == 'node' && format(':{0}', matrix.runtime.node)) || '' }}]
     needs: build
