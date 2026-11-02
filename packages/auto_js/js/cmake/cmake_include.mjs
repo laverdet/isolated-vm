@@ -1,2 +1,2 @@
 #!/usr/bin/env node
-console.log(new URL(".", import.meta.url).pathname);
+process.stdout.write(new URL(".", import.meta.url).pathname);
