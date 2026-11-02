@@ -3,6 +3,7 @@ module;
 export module v8_js:wrappable;
 import :lock;
 import std;
+import util;
 import v8;
 
 namespace js::iv8 {
@@ -12,11 +13,11 @@ namespace js::iv8 {
 // `v8::CppHeapPointerTag`, so the runtime type is checked here instead.
 class wrappable_holder : public v8::Object::Wrappable {
 	public:
-		explicit wrappable_holder(const std::type_info& type) : type_{type} {}
-		[[nodiscard]] auto is(const std::type_info& type) const -> bool { return type_.get() == type; }
+		explicit wrappable_holder(util::type_tag type) : type_{type} {}
+		[[nodiscard]] auto is(util::type_tag type) const -> bool { return type_ == type; }
 
 	private:
-		std::reference_wrapper<const std::type_info> type_;
+		util::type_tag type_;
 };
 
 export template <class Type>
@@ -26,7 +27,7 @@ class wrappable_of final
 	public:
 		explicit wrappable_of(auto&&... args)
 			requires std::constructible_from<Type, decltype(args)...> :
-				wrappable_holder{typeid(Type)},
+				wrappable_holder{util::type_tag::of<Type>()},
 				Type{std::forward<decltype(args)>(args)...} {}
 
 		static auto wrap(isolate_lock_witness lock, v8::Local<v8::Object> object, auto&&... args) -> Type&
@@ -54,7 +55,7 @@ auto wrappable_of<Type>::unwrap(isolate_lock_witness lock, v8::Local<v8::Object>
 	if (object->IsApiWrapper()) {
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-static-cast-downcast)
 		auto* holder = static_cast<wrappable_holder*>(v8::Object::Unwrap<pointer_tag, v8::Object::Wrappable>(lock.isolate(), object));
-		if (holder != nullptr && holder->is(typeid(Type))) {
+		if (holder != nullptr && holder->is(util::type_tag::of<Type>())) {
 			return static_cast<wrappable_of*>(holder);
 		}
 	}

@@ -36,6 +36,7 @@ target_sources(utility_js
 		type_traits/transform.cc
 		type_traits/type_of.cc
 		type_traits/type_pack.cc
+		type_traits/type_tag.cc
 		type_traits/type_traits.cc
 		utility/array.cc
 		utility/constant_wrapper.cc

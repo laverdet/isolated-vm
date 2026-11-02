@@ -4,6 +4,7 @@ export module v8_js:external;
 import :collected_handle;
 import :lock;
 import std;
+import util;
 import v8;
 
 namespace js::iv8 {
@@ -40,7 +41,7 @@ class tagged_external : public v8::External {
 
 // Inherited by `tagged_external<Type>::holder` instances
 struct external_type_tag {
-		std::reference_wrapper<const std::type_info> type_tag;
+		util::type_tag type_tag;
 };
 
 // Host object with type tag
@@ -52,7 +53,7 @@ class tagged_external<Type>::holder
 	public:
 		explicit holder(auto&&... args)
 			requires std::constructible_from<Type, decltype(args)...> :
-				external_type_tag{typeid(Type)},
+				external_type_tag{util::type_tag::of<Type>()},
 				Type{std::forward<decltype(args)>(args)...} {}
 };
 
@@ -111,7 +112,7 @@ auto tagged_external<Type>::try_cast() const -> Type* {
 #else
 		*static_cast<holder*>(Value());
 #endif
-	if (object.type_tag.get() == typeid(Type)) {
+	if (object.type_tag == util::type_tag::of<Type>()) {
 		return &object;
 	} else {
 		return nullptr;

@@ -60,6 +60,11 @@ if(NOT COMPILE_ONLY)
 	set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
+# Disable RTTI (`std::any` requires RTTI on Windows(?))
+if(NOT WIN32)
+	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>)
+endif()
+
 # Release flags
 if(CMAKE_BUILD_TYPE STREQUAL Release)
 	set(CMAKE_COMPILE_WARNING_AS_ERROR ON)

@@ -9,28 +9,28 @@ namespace js::iv8::platform {
 // `platform_handle`
 struct platform_instance_handle {
 		std::weak_ptr<void> platform;
-		const std::type_info* type;
+		std::optional<util::type_tag> type;
 };
 
 util::lockable<platform_instance_handle> shared_platform;
 
-platform_handle::platform_handle(const std::type_info& type, make_type* make) :
+platform_handle::platform_handle(util::type_tag type, make_type* make) :
 		platform_{util::elide{[ & ] -> std::shared_ptr<void> {
 			auto lock = shared_platform.write();
 			auto acquired_platform = lock->platform.lock();
 			if (acquired_platform) {
-				assert(*lock->type == type);
+				assert(lock->type == type);
 			} else {
 				acquired_platform = make();
 				lock->platform = acquired_platform;
-				lock->type = &type;
+				lock->type = type;
 			}
 			return acquired_platform;
 		}}} {}
 
-auto platform_handle::get(const std::type_info& type) const -> void* {
+auto platform_handle::get(util::type_tag type) const -> void* {
 	auto lock = shared_platform.read();
-	[[maybe_unused]] auto type_check = *lock->type == type;
+	[[maybe_unused]] auto type_check = lock->type == type;
 	assert(type_check);
 	return platform_.get();
 }

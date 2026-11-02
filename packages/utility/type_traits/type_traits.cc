@@ -3,6 +3,7 @@ export import :type_traits.function_traits;
 export import :type_traits.transform;
 export import :type_traits.type_of;
 export import :type_traits.type_pack;
+export import :type_traits.type_tag;
 import std;
 
 namespace util {

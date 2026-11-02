@@ -21,13 +21,13 @@ export class platform_handle {
 		auto operator=(const platform_handle&) -> platform_handle& = default;
 
 		template <class Delegate>
-		[[nodiscard]] auto get() const -> Delegate& { return *static_cast<Delegate*>(get(typeid(Delegate))); }
+		[[nodiscard]] auto get() const -> Delegate& { return *static_cast<Delegate*>(get(util::type_tag::of<Delegate>())); }
 
 	private:
 		using make_type = auto() -> std::shared_ptr<void>;
-		platform_handle(const std::type_info& type, make_type* make);
+		platform_handle(util::type_tag type, make_type* make);
 
-		[[nodiscard]] auto get(const std::type_info& type) const -> void*;
+		[[nodiscard]] auto get(util::type_tag type) const -> void*;
 
 		std::shared_ptr<void> platform_;
 };
@@ -93,7 +93,7 @@ auto platform_handle::acquire() -> platform_handle {
 	constexpr auto make = [] -> std::shared_ptr<void> {
 		return std::make_shared<Delegate>();
 	};
-	return platform_handle{typeid(Delegate), make};
+	return platform_handle{util::type_tag::of<Delegate>(), make};
 }
 
 template <class Delegate>
