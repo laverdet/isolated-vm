@@ -4,9 +4,8 @@ import "@isolated-vm/experimental/test/fixtures";
 
 const hostSupportsSharedArraySupport =
 	// @ts-expect-error
-	process.isBun === undefined && process.versions.deno === undefined;
+	process.isBun === undefined;
 
-// TODO: deno fails when this is in the `describe` (??)
 await test("numeric references", async () => {
 	await using agent = await Agent.create();
 	const realm = expect(await agent.createRealm());

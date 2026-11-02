@@ -43,11 +43,6 @@ RUN <<DONE
 	ln -s /root/.bun/bin/bun /usr/bin/bun
 	bun upgrade --canary
 
-	# Install Deno
-	curl -fsSL https://deno.land/install.sh | sh
-	ln -s /root/.deno/bin/deno /usr/bin/deno
-	deno upgrade --canary
-
 	# Configure gclient
 	gclient config --unmanaged $(git -C v8 config --get remote.origin.url)
 
