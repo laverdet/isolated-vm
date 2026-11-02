@@ -110,7 +110,7 @@ class lock_waitable : public Lock {
 				predicate_{std::move(predicate)},
 				cv_{&cv} {}
 
-		auto notify_all() -> void { cv_->notify_one(); }
+		auto notify_all() -> void { cv_->notify_all(); }
 		auto notify_one() -> void { cv_->notify_one(); }
 
 		auto wait() -> void {
@@ -252,8 +252,8 @@ class lockable {
 
 	private:
 		mutex_type mutex_;
-		Resource resource_;
 		NO_UNIQUE_ADDRESS ConditionVariable condition_variable_;
+		Resource resource_;
 };
 
 // Preset lockable types

@@ -1,238 +1,99 @@
 export module v8_js:platform.scheduler;
+import :platform.thread_cache;
 import std;
 import util;
 
 namespace js::iv8::platform {
 
-// Manager of one foreground thread. This outlives `controller`.
-class scheduler_foreground_thread {
-	public:
-		class controller;
-		[[nodiscard]] auto is_this_thread() const -> bool;
-
-	protected:
-		template <class Storage>
-		auto signal_thread(util::inplace_stop_token termination_stop_token, Storage& unlocked_storage, Storage::resource_type& storage) -> void;
-
-	private:
-		std::atomic<std::thread::id> thread_id_;
+export template <class Queue>
+struct scheduler_storage {
+		Queue queue;
+		unsigned threads = 0;
 };
 
-// Locked storage for `scheduler_foreground_thread`
-class scheduler_foreground_thread::controller {
+// Common base of `foreground_scheduler` and `worker_scheduler`. The derived class `run()` method is
+// the entrypoint of spawned threads.
+export template <class Queue, class Storage = scheduler_storage<Queue>>
+class scheduler_of : util::non_moveable {
 	public:
-		// TODO: Messy
-		auto take() -> std::jthread { return std::move(thread_); };
-
-		template <class Storage>
-		auto signal(util::inplace_stop_token termination_stop_token, Storage& unlocked_storage) -> std::thread::id;
-
-	private:
-		template <class Storage>
-		static auto run(std::stop_token stop_token, util::inplace_stop_token termination_stop_token, Storage& storage) -> void;
-
-		std::jthread thread_;
-};
-
-// Manager of multiple background threads.
-class scheduler_background_threads {
-	public:
-		class controller;
-
-		// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-		[[nodiscard]] auto thread_count() const -> std::size_t { return 2; }
-
-	protected:
-		template <class Storage>
-		auto signal_thread(util::inplace_stop_token termination_stop_token, Storage& unlocked_storage, Storage::resource_type& storage) -> void;
-};
-
-// Locked storage for `scheduler_background_threads`
-class scheduler_background_threads::controller {
-	public:
-		template <class Storage>
-		auto signal(util::inplace_stop_token termination_stop_token, Storage& unlocked_storage) -> void;
-
-	private:
-		template <class Storage>
-		static auto run(std::stop_token stop_token, util::inplace_stop_token termination_stop_token, Storage& storage) -> void;
-
-		std::array<std::jthread, 2> threads_;
-		bool initialized_ = false;
-};
-
-// Accepts a thread controller and task queue types, and manages dispatch of events to threads.
-template <class Thread, class Queue>
-class scheduler_of : public Thread {
-	private:
-		using Thread::signal_thread;
-
-		struct storage {
-				using queue_type = Queue;
-
-				Thread::controller controller;
-				Queue queue;
-		};
-
-	public:
-		scheduler_of() = default;
-		scheduler_of(const scheduler_of&) = delete;
-		~scheduler_of() { terminate(); }
-		auto operator=(const scheduler_of&) -> scheduler_of& = delete;
-
-		// TODO: Messy
-		auto invoke(std::invocable<typename Thread::controller&> auto operation) -> auto;
-
-		// Perform `operation` on the queue
-		auto mutate(std::invocable<Queue&> auto operation) -> auto;
-
-		// Perform `operation` on the queue, and signal the controller if `!empty()`
-		template <class... Args>
-		auto signal(std::invocable<Queue&, Args...> auto operation) -> void;
-
-		// Request immediate termination
+		explicit scheduler_of(thread_cache& cache) : cache_{cache} {}
 		auto terminate() -> void { termination_stop_source_.request_stop(); }
 
+	protected:
+		using task_entry_type = Queue::task_entry_type;
+		constexpr static auto has_tasks = [](const Storage& storage) -> bool { return !storage.queue.empty(); };
+
+		[[nodiscard]] auto cache() const -> thread_cache& { return cache_; }
+		[[nodiscard]] auto storage() -> auto& { return storage_; }
+		[[nodiscard]] auto termination_stop_token() const -> util::inplace_stop_token { return termination_stop_source_.get_token(); }
+		auto join() -> void;
+		auto request_thread(this auto& self, Storage& storage, thread_cache::request_kind kind) -> std::thread::id;
+		auto run_task(auto& lock, task_entry_type task) -> void;
+		auto wait_for_task(auto& lock, runner_thread& thread) -> std::expected<task_entry_type, bool>;
+
 	private:
+		std::reference_wrapper<thread_cache> cache_;
 		util::inplace_stop_source termination_stop_source_;
-		util::lockable_with<storage, {.interuptable = true, .notifiable = true}> storage_;
+		util::lockable_with<Storage, {.interuptable = true, .notifiable = true}> storage_;
 };
 
 // ---
 
-// `scheduler_foreground_thread`
-auto scheduler_foreground_thread::is_this_thread() const -> bool {
-	return std::this_thread::get_id() == thread_id_.load(std::memory_order_relaxed);
+template <class Queue, class Storage>
+auto scheduler_of<Queue, Storage>::join() -> void {
+	constexpr auto predicate = [](const Storage& storage) -> bool {
+		return storage.threads == 0;
+	};
+	storage_.write_waitable(predicate).wait();
 }
 
-template <class Storage>
-auto scheduler_foreground_thread::signal_thread(
-	util::inplace_stop_token termination_stop_token,
-	Storage& unlocked_storage,
-	Storage::resource_type& storage
-) -> void {
-	if (auto id = storage.controller.signal(std::move(termination_stop_token), unlocked_storage); id != std::thread::id{}) {
-		thread_id_.store(id, std::memory_order_relaxed);
+template <class Queue, class Storage>
+auto scheduler_of<Queue, Storage>::request_thread(this auto& self, Storage& storage, thread_cache::request_kind kind) -> std::thread::id {
+	auto thread = self.cache().request(kind, [ &self ](runner_thread& thread) -> void {
+		auto lock = self.storage().write_waitable(has_tasks);
+		self.run(lock, thread, self.termination_stop_token());
+		--lock->threads;
+		lock.notify_all();
+	});
+	if (thread != std::thread::id{}) {
+		++storage.threads;
 	}
+	return thread;
 }
 
-// `scheduler_foreground_thread::controller`
-template <class Storage>
-auto scheduler_foreground_thread::controller::signal(
-	util::inplace_stop_token termination_stop_token,
-	Storage& unlocked_storage
-) -> std::thread::id {
-	if (thread_.joinable()) {
-		return {};
+template <class Queue, class Storage>
+auto scheduler_of<Queue, Storage>::wait_for_task(auto& lock, runner_thread& thread) -> std::expected<task_entry_type, bool> {
+	if (thread.reassigned()) {
+		return std::unexpected{true};
+	}
+	auto timeout = lock->queue.flush(Queue::clock_type::now());
+	auto pop = [ & ] -> task_entry_type {
+		auto task = std::move(lock->queue.front());
+		lock->queue.pop();
+		return task;
+	};
+	if (!lock->queue.empty()) {
+		return pop();
+	}
+	auto suspension = thread.will_suspend();
+	auto any_stop_source = util::composite_stop_source{termination_stop_token(), suspension.get_token()};
+	if (lock.wait(any_stop_source.get_token(), timeout)) {
+		return pop();
 	} else {
-		thread_ = std::jthread{&controller::run<Storage>, std::move(termination_stop_token), std::ref(unlocked_storage)};
-		return thread_.get_id();
+		return std::unexpected{suspension.reclaimed()};
 	}
 }
 
-template <class Storage>
-auto scheduler_foreground_thread::controller::run(
-	std::stop_token stop_token,
-	util::inplace_stop_token termination_stop_token,
-	Storage& storage
-) -> void {
-	using queue_type = Storage::resource_type::queue_type;
-	auto lock = storage.write_waitable([](const Storage::resource_type& storage) -> bool {
-		return !storage.queue.empty();
-	});
-	const auto any_stop_source = util::composite_stop_source{std::move(stop_token), termination_stop_token};
-	const auto any_stop_token = any_stop_source.get_token();
-	while (!any_stop_token.stop_requested()) {
-		auto [... timeout ] = [ & ] -> auto {
-			if constexpr (requires { typename queue_type::clock_type; }) {
-				return std::tuple{lock->queue.flush(queue_type::clock_type::now())};
-			} else {
-				return std::tuple{};
-			}
-		}();
-		while (lock.wait(any_stop_token, timeout...)) {
-			auto task = std::move(lock->queue.front());
-			lock->queue.pop();
-			lock.unlock();
-			task(termination_stop_token);
-			lock.lock();
-		}
+template <class Queue, class Storage>
+auto scheduler_of<Queue, Storage>::run_task(auto& lock, task_entry_type task) -> void {
+	lock.unlock();
+	{
+		// nb: The task may own the last reference to an agent. Destruction of the of the agent would
+		// call back into the scheduler.
+		auto unlocked_task = std::move(task);
+		unlocked_task(termination_stop_token());
 	}
-}
-
-// `scheduler_background_threads`
-template <class Storage>
-auto scheduler_background_threads::signal_thread(
-	util::inplace_stop_token termination_stop_token,
-	Storage& unlocked_storage,
-	Storage::resource_type& storage
-) -> void {
-	storage.controller.signal(std::move(termination_stop_token), unlocked_storage);
-}
-
-// `scheduler_background_threads::controller`
-template <class Storage>
-auto scheduler_background_threads::controller::signal(
-	util::inplace_stop_token termination_stop_token,
-	Storage& unlocked_storage
-) -> void {
-	if (!initialized_) {
-		initialized_ = true;
-		for (auto& thread : threads_) {
-			thread = std::jthread{&controller::run<Storage>, termination_stop_token, std::ref(unlocked_storage)};
-		}
-	}
-}
-
-template <class Storage>
-auto scheduler_background_threads::controller::run(
-	std::stop_token stop_token,
-	util::inplace_stop_token termination_stop_token,
-	Storage& storage
-) -> void {
-	using queue_type = Storage::resource_type::queue_type;
-	auto lock = storage.write_waitable([](const Storage::resource_type& storage) -> bool {
-		return !storage.queue.empty();
-	});
-	const auto any_stop_source = util::composite_stop_source{std::move(stop_token), termination_stop_token};
-	const auto any_stop_token = any_stop_source.get_token();
-	while (!any_stop_token.stop_requested()) {
-		auto [... timeout ] = [ & ] -> auto {
-			if constexpr (requires { typename queue_type::clock_type; }) {
-				return std::tuple{lock->queue.flush(queue_type::clock_type::now())};
-			} else {
-				return std::tuple{};
-			}
-		}();
-		while (lock.wait(any_stop_token, timeout...)) {
-			auto task = std::move(lock->queue.front());
-			lock->queue.pop();
-			lock.unlock();
-			task(termination_stop_token);
-			lock.lock();
-		}
-	}
-}
-
-// `scheduler_of`
-template <class Thread, class Queue>
-auto scheduler_of<Thread, Queue>::invoke(std::invocable<typename Thread::controller&> auto operation) -> auto {
-	return operation(storage_.write()->controller);
-}
-
-template <class Thread, class Queue>
-auto scheduler_of<Thread, Queue>::mutate(std::invocable<Queue&> auto operation) -> auto {
-	return operation(storage_.write()->queue);
-}
-
-template <class Thread, class Queue>
-template <class... Args>
-auto scheduler_of<Thread, Queue>::signal(std::invocable<Queue&, Args...> auto operation) -> void {
-	auto lock = storage_.write_notify([](const storage& storage) -> bool {
-		return !storage.queue.empty();
-	});
-	operation(lock->queue);
-	signal_thread(termination_stop_source_.get_token(), storage_, *lock);
+	lock.lock();
 }
 
 } // namespace js::iv8::platform

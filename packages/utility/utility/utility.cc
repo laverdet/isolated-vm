@@ -179,21 +179,18 @@ constexpr auto bit_truncation_cast(const auto& value) -> Type {
 
 // Store the given value in the holder for the duration of the scope
 export template <class Type>
-auto scope_stack(Type& holder, Type value) {
-	class scope_exit : util::non_moveable {
-		public:
-			explicit scope_exit(Type& holder, Type previous) :
-					holder_{holder},
-					previous_{std::move(previous)} {}
-			scope_exit(const scope_exit&) = delete;
-			~scope_exit() { holder_.get() = std::move(previous_); }
-			auto operator=(const scope_exit&) -> scope_exit& = delete;
+class scope_stack : util::non_moveable {
+	public:
+		explicit scope_stack(Type& holder, Type value) :
+				holder_{holder},
+				previous_{std::exchange(holder, std::move(value))} {}
+		scope_stack(const scope_stack&) = delete;
+		~scope_stack() { holder_.get() = std::move(previous_); }
+		auto operator=(const scope_stack&) -> scope_stack& = delete;
 
-		private:
-			std::reference_wrapper<Type> holder_;
-			Type previous_;
-	};
-	return scope_exit(holder, std::exchange(holder, std::move(value)));
-}
+	private:
+		std::reference_wrapper<Type> holder_;
+		Type previous_;
+};
 
 } // namespace util

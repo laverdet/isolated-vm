@@ -1,7 +1,8 @@
 export module v8_js:platform.foreground_runner;
-import :platform.scheduler;
+import :platform.foreground_scheduler;
 import :platform.task_queue;
 import :platform.task_runner;
+import :platform.thread_cache;
 import std;
 import util;
 import v8;
@@ -70,9 +71,10 @@ export class foreground_runner : public foreground_runner_for_each_priority {
 		template <v8::TaskPriority>
 		friend class foreground_runner_of_priority;
 
-		using scheduler_type = scheduler_of<scheduler_foreground_thread, foreground_task_queue>;
+		using scheduler_type = foreground_scheduler<foreground_task_queue>;
 
 	public:
+		explicit foreground_runner(thread_cache& cache) : scheduler_{cache} {}
 		auto scheduler() -> scheduler_type& { return scheduler_; }
 
 		// schedule non-nestable with `kUserVisible` priority

@@ -1,6 +1,7 @@
 export module v8_js:isolated.cluster;
 import :isolated.agent;
 import :isolated.platform;
+import :platform.thread_cache;
 import std;
 import util;
 
@@ -13,6 +14,10 @@ export class cluster {
 		explicit cluster(synchronize_destroy destroy) :
 				destroy_{destroy},
 				platform_{isolated_platform::acquire()} {}
+
+		auto foreground_thread_cache() -> platform::thread_cache& {
+			return platform_.get<isolated_platform>().foreground_thread_cache();
+		}
 
 		template <class Environment>
 		auto make_agent(std::type_identity<Environment> environment, behavior_params params, auto callback) -> void;

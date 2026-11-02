@@ -12,7 +12,7 @@ interface CapabilityConstructor extends backend.CapabilityConstructor {
 	 *
 	 * Capabilities are one-shot objects. They are consumed by `realm.createCapability`.
 	 */
-	sync: (callback: (...args: unknown[]) => unknown) => backend.Capability;
+	sync: (callback: (...args: any[]) => unknown) => backend.Capability;
 }
 
 const { _sync } = backend.Capability;

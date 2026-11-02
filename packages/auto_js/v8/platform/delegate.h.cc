@@ -1,4 +1,5 @@
 export module v8_js:platform.delegate;
+import :platform.thread_cache;
 import :platform.worker_runner;
 import std;
 import util;
@@ -19,11 +20,16 @@ export class platform_handle {
 		auto operator=(platform_handle&&) -> platform_handle& = default;
 		auto operator=(const platform_handle&) -> platform_handle& = default;
 
+		template <class Delegate>
+		[[nodiscard]] auto get() const -> Delegate& { return *static_cast<Delegate*>(get(typeid(Delegate))); }
+
 	private:
-		using make_type = auto() -> std::shared_ptr<v8::Platform>;
+		using make_type = auto() -> std::shared_ptr<void>;
 		platform_handle(const std::type_info& type, make_type* make);
 
-		std::shared_ptr<v8::Platform> platform_;
+		[[nodiscard]] auto get(const std::type_info& type) const -> void*;
+
+		std::shared_ptr<void> platform_;
 };
 
 // Register platform delegate with v8
@@ -36,6 +42,7 @@ export class initialization_delegate : util::non_copyable {
 // Handles background jobs / tasks
 export class background_worker_delegate : virtual public v8::Platform {
 	public:
+		explicit background_worker_delegate(thread_cache& cache) : worker_runner_{cache} {}
 		auto NumberOfWorkerThreads() -> int override;
 
 	protected:
@@ -83,7 +90,7 @@ export class instrumentation_delegate : virtual public v8::Platform {
 
 template <class Delegate>
 auto platform_handle::acquire() -> platform_handle {
-	constexpr auto make = [] -> std::shared_ptr<v8::Platform> {
+	constexpr auto make = [] -> std::shared_ptr<void> {
 		return std::make_shared<Delegate>();
 	};
 	return platform_handle{typeid(Delegate), make};

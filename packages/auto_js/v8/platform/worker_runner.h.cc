@@ -1,6 +1,7 @@
 export module v8_js:platform.worker_runner;
-import :platform.scheduler;
 import :platform.task_queue;
+import :platform.thread_cache;
+import :platform.worker_scheduler;
 import std;
 import util;
 import v8;
@@ -31,12 +32,13 @@ class workers_task_queue {
 // Foreground task runner. Combines scheduler and task queue.
 export class worker_runner {
 	private:
-		using scheduler_type = scheduler_of<scheduler_background_threads, workers_task_queue>;
+		using scheduler_type = worker_scheduler<workers_task_queue>;
 
 	public:
+		explicit worker_runner(thread_cache& cache) : scheduler_{cache} {}
 		auto post_delayed(task_type task, steady_clock::duration duration) -> void;
 		auto post(v8::TaskPriority priority, task_type task) -> void;
-		auto thread_count() const -> std::size_t { return scheduler_.thread_count(); }
+		[[nodiscard]] auto thread_count() const -> std::size_t { return scheduler_.thread_count(); }
 
 	private:
 		scheduler_type scheduler_;

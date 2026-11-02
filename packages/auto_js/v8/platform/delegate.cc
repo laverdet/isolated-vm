@@ -8,14 +8,14 @@ namespace js::iv8::platform {
 
 // `platform_handle`
 struct platform_instance_handle {
-		std::weak_ptr<v8::Platform> platform;
+		std::weak_ptr<void> platform;
 		const std::type_info* type;
 };
 
 util::lockable<platform_instance_handle> shared_platform;
 
 platform_handle::platform_handle(const std::type_info& type, make_type* make) :
-		platform_{util::elide{[ & ] -> std::shared_ptr<v8::Platform> {
+		platform_{util::elide{[ & ] -> std::shared_ptr<void> {
 			auto lock = shared_platform.write();
 			auto acquired_platform = lock->platform.lock();
 			if (acquired_platform) {
@@ -27,6 +27,13 @@ platform_handle::platform_handle(const std::type_info& type, make_type* make) :
 			}
 			return acquired_platform;
 		}}} {}
+
+auto platform_handle::get(const std::type_info& type) const -> void* {
+	auto lock = shared_platform.read();
+	[[maybe_unused]] auto type_check = *lock->type == type;
+	assert(type_check);
+	return platform_.get();
+}
 
 platform_handle::~platform_handle() {
 	// nb: Platform must be released with the lock, in case this is the last handle. That way if one

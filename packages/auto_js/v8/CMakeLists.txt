@@ -76,6 +76,7 @@ if(v8_js STREQUAL isolated_v8_js)
 			isolated/platform.cc
 			platform/delegate.cc
 			platform/foreground_runner.cc
+			platform/thread_cache.cc
 			platform/worker_runner.cc
 		PUBLIC FILE_SET CXX_MODULES FILES
 			evaluation/module.h.cc
@@ -89,10 +90,13 @@ if(v8_js STREQUAL isolated_v8_js)
 			isolated/platform.h.cc
 			platform/delegate.h.cc
 			platform/foreground_runner.h.cc
+			platform/foreground_scheduler.cc
 			platform/scheduler.cc
 			platform/task_queue.cc
 			platform/task_runner.cc
 			platform/task.cc
+			platform/thread_cache.h.cc
 			platform/worker_runner.h.cc
+			platform/worker_scheduler.cc
 	)
 endif()

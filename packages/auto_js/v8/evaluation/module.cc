@@ -67,8 +67,8 @@ auto module_record::create_synthetic(
 ) -> v8::Local<module_record> {
 	thread_local std::span<const v8::Local<v8::String>>* tl_export_names = nullptr;
 	thread_local std::span<const v8::Local<v8::Data>>* tl_export_values = nullptr;
-	auto scope_stack_names = util::scope_stack(tl_export_names, &export_names);
-	auto scope_stack_values = util::scope_stack(tl_export_values, &export_values);
+	auto scope_stack_names = util::scope_stack{tl_export_names, &export_names};
+	auto scope_stack_values = util::scope_stack{tl_export_values, &export_values};
 
 	// Make `v8::Module` record with immediate evaluation steps
 	v8::Module::SyntheticModuleEvaluationSteps evaluation_steps =
@@ -129,7 +129,7 @@ auto module_record::link(context_lock_witness lock, module_link_record link_reco
 		return link_record.modules.at(link_record.payload.at(it->second + index));
 	};
 	thread_local auto* linker_ptr = std::add_pointer_t<decltype(linker)>{nullptr};
-	auto linker_ptr_stack = util::scope_stack(linker_ptr, &linker);
+	auto linker_ptr_stack = util::scope_stack{linker_ptr, &linker};
 
 	// v8 linker callback
 	auto v8_callback = v8::Module::ResolveModuleByIndexCallback{

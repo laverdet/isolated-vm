@@ -126,15 +126,19 @@ auto capability_handle::sync_instance::instantiate(const agent_lock& lock) && ->
 			std::cref(*self.callback_),
 			transfer_from_runtime<js::values_vector_t>(lock, *arguments)
 		);
-		// Block until the host settles, or the agent is terminated
-		auto value = future.get(lock->executor().stop_token());
+		// Block until the host settles, or the agent is terminated.
+		auto& scheduler = lock->storage()->foreground_runner().scheduler();
+		auto value = scheduler.suspend([ & ] -> auto {
+			auto unlock = js::iv8::isolated::executor::unlock{util::slice(lock), lock->executor()};
+			return future.get(lock->executor().stop_token());
+		});
 		if (value) {
 			if (*value) {
 				// Resolved
-				return js::forward{js::transfer_in_strict<v8::Local<v8::Value>>(*std::move(*value), lock, accept_references)};
+				return js::forward{js::transfer_in_strict<v8::Local<v8::Value>>(**std::move(value), lock, accept_references)};
 			} else {
 				// Rejected
-				lock.isolate()->ThrowException(js::transfer_in_strict<v8::Local<v8::Value>>(std::move(*value).error(), lock));
+				lock.isolate()->ThrowException(js::transfer_in_strict<v8::Local<v8::Value>>(std::move(value)->error(), lock));
 				throw js::iv8::pending_error{};
 			}
 		} else {

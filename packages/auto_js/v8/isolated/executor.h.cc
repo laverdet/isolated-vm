@@ -1,4 +1,5 @@
 export module v8_js:isolated.executor;
+import :lock;
 import std;
 import util;
 import v8;
@@ -7,6 +8,7 @@ namespace js::iv8::isolated {
 
 export class executor : util::non_moveable { // "En taro adun" lmao
 	public:
+		class unlock;
 		auto initialize(std::invocable<v8::Isolate*> auto initialize) -> void;
 		auto reset() -> void;
 		auto terminate() -> void;
@@ -21,6 +23,16 @@ export class executor : util::non_moveable { // "En taro adun" lmao
 
 		std::unique_ptr<v8::Isolate, decltype(dispose_isolate)> isolate_;
 		util::inplace_stop_source stop_source_;
+};
+
+class executor::unlock : util::non_moveable {
+	public:
+		explicit unlock(isolate_lock_witness lock, executor& executor);
+		~unlock();
+
+	private:
+		isolate_unlock unlock_;
+		std::reference_wrapper<executor> executor_;
 };
 
 // ---

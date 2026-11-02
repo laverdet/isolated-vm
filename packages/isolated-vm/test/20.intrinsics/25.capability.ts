@@ -1,17 +1,25 @@
+import type { AbstractModule, Realm } from "@isolated-vm/experimental";
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
 import { Agent, Capability, expect } from "@isolated-vm/experimental";
 import { expectComplete, expectThrow } from "@isolated-vm/experimental/test/fixtures";
 
+/** Evaluates `source` in `realm`, with `fn` imported from the capability module */
+async function evaluate(agent: Agent, realm: Realm, fn: AbstractModule, source: string) {
+	const module = expectComplete(await agent.compileModule(`import fn from "fn"; ${source}`));
+	await module.link(realm, () => fn);
+	return module.evaluate(realm);
+}
+
+const createFn = async (realm: Realm, capability: Capability) => expect(await realm.createCapability({ default: capability }, { origin: "fn" }));
+const copy = async (realm: Realm, key: string) => expect(await (await realm.acquireGlobalObject()).get(key)).copy();
+
 /** Evaluates `source` with `fn` bound to `capability`, and returns the completion & `globalThis.result` */
 async function run(capability: Capability, source: string) {
 	await using agent = await Agent.create();
 	const realm = expect(await agent.createRealm());
-	const module = expectComplete(await agent.compileModule(`import fn from "fn"; ${source}`));
-	await module.link(realm, async () => expect(await realm.createCapability({ default: capability }, { origin: "fn" })));
-	const completion = await module.evaluate(realm);
-	const result = await expect(await (await realm.acquireGlobalObject()).get("result")).copy();
-	return { completion, result };
+	const completion = await evaluate(agent, realm, await createFn(realm, capability), source);
+	return { completion, result: await copy(realm, "result") };
 }
 
 await test("sync capability resolves", async () => {
@@ -41,15 +49,39 @@ await test("capability is one-shot", async () => {
 	await using agent = await Agent.create();
 	const realm = expect(await agent.createRealm());
 	const once = Capability.sync(() => {});
-	expect(await realm.createCapability({ default: once }, { origin: "fn" }));
+	await createFn(realm, once);
 	assert.throws(() => realm.createCapability({ default: once }, { origin: "fn" }), /already used/);
+});
+
+await test("suspended tasks run concurrently", async () => {
+	await using agent = await Agent.create();
+	const realm = expect(await agent.createRealm());
+	const gates = [ 0, 1, 2 ].map(() => Promise.withResolvers<number>());
+	const suspensions = [ 0, 1, 2 ].map(() => Promise.withResolvers<null>());
+	const wait = Capability.sync((index: number) => {
+		suspensions[index]?.resolve(null);
+		return gates[index]?.promise;
+	});
+	const fn = await createFn(realm, wait);
+	const script = expectComplete(await agent.compileScript("globalThis.marker = (globalThis.marker ?? 0) + 1"));
+	// Two evaluations suspend at once, then a script runs on a third thread while both are waiting
+	const first = evaluate(agent, realm, fn, "globalThis.first = fn(0) + fn(2); globalThis.result = globalThis.marker;");
+	const second = evaluate(agent, realm, fn, "globalThis.second = fn(1);");
+	await Promise.all([ suspensions[0]?.promise, suspensions[1]?.promise ]);
+	expectComplete(await script.run(realm));
+	gates[1]?.resolve(20);
+	expectComplete(await second);
+	gates[0]?.resolve(10);
+	await suspensions[2]?.promise;
+	expectComplete(await script.run(realm));
+	gates[2]?.resolve(30);
+	expectComplete(await first);
+	assert.deepEqual([ await copy(realm, "first"), await copy(realm, "second"), await copy(realm, "result") ], [ 40, 20, 2 ]);
 });
 
 await test("dispose while suspended", async () => {
 	const agent = await Agent.create();
 	const realm = expect(await agent.createRealm());
-	const module = expectComplete(await agent.compileModule('import fn from "fn"; fn();'));
 	const forever = Capability.sync(() => new Promise(() => void agent.disposeAsync()));
-	await module.link(realm, async () => expect(await realm.createCapability({ default: forever }, { origin: "fn" })));
-	await module.evaluate(realm);
+	await evaluate(agent, realm, await createFn(realm, forever), "fn();");
 });

@@ -15,6 +15,10 @@ agent_collected_handle_lock::agent_collected_handle_lock(isolate_lock_witness lo
 		collected_handle_lock{lock, agent.autorelease_pool()} {};
 
 // `agent_storage`
+agent_storage::agent_storage(cluster& cluster) :
+		cluster_{cluster},
+		foreground_runner_{cluster.foreground_thread_cache()} {}
+
 // NOLINTNEXTLINE(performance-unnecessary-value-param)
 auto agent_storage::release(std::shared_ptr<agent_storage> storage) -> void {
 	storage->cluster_.get().release_agent_storage(std::move(storage));
@@ -87,6 +91,10 @@ agent_host::agent_host(
 		return params;
 	});
 	auto* isolate = executor_.isolate();
+	storage_->foreground_runner().scheduler().on_thread_exit(util::function_ref{
+		[](v8::Isolate* isolate) noexcept -> void { isolate->DiscardThreadSpecificMetadata(); },
+		isolate,
+	});
 	isolate->SetCaptureStackTraceForUncaughtExceptions(true);
 	memory_policy_->initialize(isolate);
 }
@@ -94,12 +102,10 @@ agent_host::agent_host(
 agent_host::~agent_host() {
 	// Terminate foreground runner
 	auto& scheduler = storage_->foreground_runner().scheduler();
+	scheduler.on_thread_exit(+[] noexcept -> void {});
 	scheduler.terminate();
 	if (!scheduler.is_this_thread()) {
-		auto thread = scheduler.invoke([](auto& controller) -> auto {
-			return controller.take();
-		});
-		thread.join();
+		scheduler.join();
 	}
 	// Destroy isolate and remaining handles
 	{

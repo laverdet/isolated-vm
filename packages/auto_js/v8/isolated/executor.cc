@@ -5,6 +5,7 @@ import std;
 
 namespace js::iv8::isolated {
 
+// executor
 auto executor::reset() -> void {
 	isolate_.reset();
 }
@@ -27,5 +28,16 @@ auto executor::on_before_call_entered(v8::Isolate* isolate) -> void {
 		isolate->TerminateExecution();
 	}
 }
+
+// executor::unlock
+executor::unlock::unlock(isolate_lock_witness lock, executor& executor) :
+		unlock_{lock},
+		executor_{executor} {}
+
+executor::unlock::~unlock() {
+	if (executor_.get().is_terminated()) {
+		executor_.get().isolate()->TerminateExecution();
+	}
+};
 
 } // namespace js::iv8::isolated

@@ -1,16 +1,31 @@
 export module v8_js:isolated.platform;
 import :platform.delegate;
+import :platform.thread_cache;
 import std;
 import v8;
 
 namespace js::iv8::isolated {
 
+class isolated_agent_delegate_storage {
+	public:
+		auto foreground_thread_cache() -> platform::thread_cache& { return thread_cache_; }
+
+	protected:
+		auto worker_thread_cache() -> platform::thread_cache& { return thread_cache_; }
+
+	private:
+		platform::thread_cache thread_cache_;
+};
+
 class isolated_agent_delegate
 		: virtual public v8::Platform,
+			public isolated_agent_delegate_storage,
 			public platform::background_worker_delegate,
 			public platform::instrumentation_delegate,
 			public platform::platform_entropy_delegate<isolated_agent_delegate> {
 	public:
+		isolated_agent_delegate() : platform::background_worker_delegate{worker_thread_cache()} {}
+
 		auto CurrentClockTimeMilliseconds() -> std::int64_t override;
 		auto CurrentClockTimeMillis() -> double override;
 		auto GetForegroundTaskRunner(v8::Isolate* isolate, v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner> override;

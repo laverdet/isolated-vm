@@ -47,7 +47,7 @@ using realm_scope_of = context_lock_witness_of<agent_host_of<Environment>, agent
 // Manages storage which must outlive the `agent_host`
 export class agent_storage {
 	public:
-		explicit agent_storage(cluster& cluster) : cluster_{cluster} {}
+		explicit agent_storage(cluster& cluster);
 		auto foreground_runner() -> platform::foreground_runner& { return foreground_runner_; }
 		static auto release(std::shared_ptr<agent_storage> storage) -> void;
 

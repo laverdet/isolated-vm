@@ -19,7 +19,7 @@ class invocable_task {
 		explicit invocable_task(task_type task) : task_{std::move(task)} {}
 
 		auto operator()(util::inplace_stop_token stop_token) -> void {
-			auto scope_thread_stop_token = util::scope_stack(thread_stop_token, stop_token);
+			auto scope_thread_stop_token = util::scope_stack{thread_stop_token, stop_token};
 			task_->Run();
 		}
 
