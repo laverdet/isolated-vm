@@ -60,18 +60,9 @@ auto script_handle::run(const environment::lock& lock, realm_handle* realm, run_
 			auto resolver
 		) -> void {
 			auto result = realm_scope_operation(lock, realm, [ & ](const realm_scope& realm) -> auto {
-				auto stop_token =
-					options.timeout.transform([ & ](double timeout) -> util::timer_stop_token {
-						return util::timer_stop_token{js::js_clock::duration{timeout}};
-					});
-				auto timer_callback =
-					stop_token.transform([ & ](util::timer_stop_token& timer) -> auto {
-						return std::stop_callback{
-							timer.get_token(), [ & ] -> auto {
-								lock->executor().isolate()->TerminateExecution();
-							}
-						};
-					});
+				auto timeout_watchdog = options.timeout
+					? std::optional<execution_timeout>{std::in_place, lock->executor(), js::js_clock::duration{*options.timeout}}
+					: std::nullopt;
 				return iv8::invoke_externalized_error_scope(realm, [ & ] -> auto {
 					auto value = script_remote->deref(lock)->run(realm);
 					return transfer_from_runtime<js::value_t>(realm, value);

@@ -1,5 +1,4 @@
 # Locate dependencies
-find_package(Boost 1.83 REQUIRED)
 find_package_from_npm(@auto_js/v8_exports AS @auto_js/${AUTO_JS_PREFIX}v8_exports PROPAGATE google_v8)
 find_package_from_npm(@auto_js/js AS @auto_js/${AUTO_JS_PREFIX}js PROPAGATE auto_js)
 
@@ -10,7 +9,7 @@ set_npm_package_properties(@auto_js/v8 auto_js v8_js)
 target_compile_features(${auto_js} PUBLIC cxx_std_23)
 
 # Link dependencies
-target_link_libraries(${v8_js} PRIVATE Boost::boost ${auto_js} utility_js)
+target_link_libraries(${v8_js} PRIVATE ${auto_js} utility_js)
 target_link_libraries(${v8_js} PUBLIC ${google_v8})
 
 # Common sources (nodejs + iv8::isolated)
@@ -34,7 +33,6 @@ target_sources(${v8_js}
 		handle/remote.h.cc
 		handle/value_of.cc
 		handle/wrappable.h.cc
-		support/boost.h.cc
 		support/callback_storage.cc
 		support/callback.cc
 		support/class_template_storage.cc

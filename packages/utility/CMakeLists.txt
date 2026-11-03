@@ -1,5 +1,7 @@
 add_library(utility_js OBJECT)
+find_package(Boost 1.83 REQUIRED)
 target_compile_features(utility_js PUBLIC cxx_std_23)
+target_link_libraries(utility_js PRIVATE Boost::boost)
 
 # Setup `#include "auto_js/[..]"`
 target_include_directories(utility_js PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -10,6 +12,7 @@ target_sources(utility_js
 		platform/timer.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
+		boost.h.cc
 		container/mutable_priority_queue.cc
 		container/sealed_map.cc
 		container/segmented_priority_queue.cc

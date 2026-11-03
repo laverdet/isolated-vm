@@ -1,6 +1,6 @@
 export module v8_js:remote;
-import :boost;
 import :lock;
+import boost;
 import std;
 import util;
 import v8;

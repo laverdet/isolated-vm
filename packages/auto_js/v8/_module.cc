@@ -1,6 +1,5 @@
 export module v8_js;
 export import :accept;
-export import :boost;
 export import :callback_info;
 export import :callback;
 export import :class_;

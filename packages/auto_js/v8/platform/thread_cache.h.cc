@@ -1,5 +1,5 @@
 export module v8_js:platform.thread_cache;
-import :boost;
+import boost;
 import std;
 import util;
 

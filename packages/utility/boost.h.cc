@@ -1,9 +1,9 @@
 module;
-// nb: Simply including this header causes "not defined" errors in gcc. Shimming as a module fixes
+// nb: Simply including these headers causes "not defined" errors in gcc. Shimming as a module fixes
 // it.
 #include <boost/intrusive/list.hpp>
 #include <boost/intrusive/slist.hpp>
-export module v8_js:boost;
+export module boost;
 
 // NOLINTBEGIN(misc-unused-using-decls)
 export namespace boost::intrusive {

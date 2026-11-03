@@ -32,6 +32,7 @@ target_sources(${backend_napi_v8}
 		reference.cc
 		runtime/runtime.cc
 		script.cc
+		utility.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		agent_handle.h.cc
@@ -45,7 +46,7 @@ target_sources(${backend_napi_v8}
 		reference.h.cc
 		runtime/runtime.h.cc
 		script.h.cc
-		utility.cc
+		utility.h.cc
 )
 target_embed_content(${backend_napi_v8} runtime/dist/interface.js runtime_dist_interface_js)
 

@@ -127,23 +127,24 @@ class lock_waitable : public Lock {
 			return cv_->wait_until(*this, time_point, predicate_);
 		}
 
-		auto wait(stoppable_token auto&& stop_token) -> bool
+		template <stoppable_token Token>
+		auto wait(Token&& stop_token) -> bool
 			requires(type<Waitable> == type<std::condition_variable_any>) {
-			return wait_interruptible(std::forward<decltype(stop_token)>(stop_token), [ & ](auto predicate, auto... stop_token) -> decltype(auto) {
+			return wait_interruptible(std::forward<Token>(stop_token), [ & ](auto predicate, auto... stop_token) -> decltype(auto) {
 				return cv_->wait(*this, std::move(stop_token)..., std::move(predicate));
 			});
 		}
 
-		template <class Rep, class Period>
-		auto wait(stoppable_token auto&& stop_token, std::chrono::duration<Rep, Period> duration) -> bool
+		template <stoppable_token Token, class Rep, class Period>
+		auto wait(Token&& stop_token, std::chrono::duration<Rep, Period> duration) -> bool
 			requires(type<Waitable> == type<std::condition_variable_any>) {
-			return wait(std::forward<decltype(stop_token)>(stop_token), std::chrono::steady_clock::now() + duration);
+			return wait(std::forward<Token>(stop_token), std::chrono::steady_clock::now() + duration);
 		}
 
-		template <class Clock, class Duration>
-		auto wait(stoppable_token auto&& stop_token, std::chrono::time_point<Clock, Duration> time_point) -> bool
+		template <stoppable_token Token, class Clock, class Duration>
+		auto wait(Token&& stop_token, std::chrono::time_point<Clock, Duration> time_point) -> bool
 			requires(type<Waitable> == type<std::condition_variable_any>) {
-			return wait_interruptible(std::forward<decltype(stop_token)>(stop_token), [ & ](auto predicate, auto... stop_token) -> bool {
+			return wait_interruptible(std::forward<Token>(stop_token), [ & ](auto predicate, auto... stop_token) -> bool {
 				return cv_->wait_until(*this, std::move(stop_token)..., time_point, std::move(predicate));
 			});
 		}

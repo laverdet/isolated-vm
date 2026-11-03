@@ -7,6 +7,7 @@ import :isolated.executor;
 import :isolated.memory_policy;
 import :platform.foreground_runner;
 import :remote;
+import boost;
 import std;
 
 namespace js::iv8::isolated {
