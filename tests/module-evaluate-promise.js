@@ -87,6 +87,18 @@ const { strictEqual } = require('assert');
 			error => strictEqual(error.message, 'Script execution timed out.'));
 	}
 
+	// The timeout does not extend past the first yield.
+	{
+		const module = await isolate.compileModule(
+			'await new Promise(resolve => globalThis.wakeAfterTimeout = resolve); globalThis.finishedAfterTimeout = true;');
+		await module.instantiate(context, () => {});
+		const settled = module.evaluate({ timeout: 50, promise: true });
+		await new Promise(resolve => setTimeout(resolve, 100));
+		await context.eval('wakeAfterTimeout()');
+		await settled;
+		strictEqual(await context.global.get('finishedAfterTimeout'), true);
+	}
+
 	// Repeat calls answer with the first invocation's outcome, while the module
 	// is still running and after it has failed.
 	{

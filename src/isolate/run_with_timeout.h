@@ -1,6 +1,7 @@
 #pragma once
 #include "environment.h"
 #include "inspector.h"
+#include "promise_timeout.h"
 #include "runnable.h"
 #include "stack_trace.h"
 #include "lib/suspend.h"
@@ -8,6 +9,7 @@
 #include <chrono>
 #include <memory>
 #include <thread>
+#include <utility>
 
 namespace ivm {
 
@@ -63,8 +65,9 @@ class TimeoutRunner final : public Runnable {
  * Run some v8 thing with a timeout. Also throws error if memory limit is hit.
  */
 template <typename F>
-auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
+auto RunWithTimeout(uint32_t timeout_ms, F&& fn, bool track_async_promise) -> v8::Local<v8::Value> {
 	IsolateEnvironment& isolate = IsolateEnvironment::GetCurrent();
+	PromiseTimeoutScope promise_timeout{isolate, track_async_promise ? timeout_ms : 0};
 	thread_suspend_handle thread_suspend{};
 	bool is_default_thread = Executor::IsDefaultThread();
 	bool did_terminate = false;
@@ -168,6 +171,11 @@ auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
 		throw RuntimeGenericError("Script execution timed out.", std::move(state.stack_trace));
 	}
 	return Unmaybe(result);
+}
+
+template <typename F>
+auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value> {
+	return RunWithTimeout(timeout_ms, std::forward<F>(fn), true);
 }
 
 } // namespace ivm

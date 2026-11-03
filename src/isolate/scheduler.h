@@ -28,6 +28,7 @@ auto ExchangeDefault(Type& container) {
 class UvScheduler;
 class Scheduler {
 	friend IsolateEnvironment;
+	friend class PromiseTimeout;
 	friend class LockedScheduler;
 	private:
 		using TaskQueue = std::queue<std::unique_ptr<Runnable>>;
@@ -144,6 +145,7 @@ class IsolatedScheduler final : public LockedScheduler {
 };
 
 class UvScheduler final : public LockedScheduler {
+	friend class PromiseTimeout;
 	friend IsolatedScheduler;
 	friend Scheduler;
 	public:

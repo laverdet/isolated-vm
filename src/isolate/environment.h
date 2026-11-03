@@ -33,6 +33,9 @@
 
 namespace ivm {
 
+class PromiseTimeout;
+struct PromiseTimeoutReference;
+
 /**
  * Wrapper around Isolate with helpers to make working with multiple isolates easier.
  */
@@ -44,15 +47,16 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 	friend class InspectorAgent;
 	friend class InspectorSession;
 	friend class IsolateHolder;
-	friend class LimitedAllocator;
-	friend class LockedScheduler;
-	friend StringTable;
-	friend class ThreePhaseTask;
+		friend class LimitedAllocator;
+		friend class LockedScheduler;
+		friend class PromiseTimeout;
+		friend class PromiseTimeoutScope;
+		friend StringTable;
+		friend class ThreePhaseTask;
 	template <class>
 	friend class IsolateSpecific;
 	template <typename F>
-	friend auto RunWithTimeout(uint32_t timeout_ms, F&& fn) -> v8::Local<v8::Value>;
-
+	friend auto RunWithTimeout(uint32_t timeout_ms, F&& fn, bool track_async_promise) -> v8::Local<v8::Value>;
 	public:
 		/**
 		 * Ensures we don't blow up the v8 heap while transferring arbitrary data
@@ -91,6 +95,9 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		std::shared_ptr<IsolateDisposeWait> dispose_wait{std::make_shared<IsolateDisposeWait>()};
 		std::weak_ptr<IsolateHolder> holder;
 		std::shared_ptr<IsolateTaskRunner> task_runner;
+		std::shared_ptr<PromiseTimeout> current_promise_timeout;
+		std::vector<std::shared_ptr<PromiseTimeout>> reaction_promise_timeouts;
+		v8::Eternal<v8::Private> promise_timeout_key;
 		std::unique_ptr<class InspectorAgent> inspector_agent;
 		v8::Persistent<v8::Context> default_context;
 		std::shared_ptr<LimitedAllocator> allocator_ptr;
@@ -141,7 +148,13 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		 * contexts so we have to handle that ourselves.
 		 */
 		static void PromiseRejectCallback(v8::PromiseRejectMessage rejection);
+		static void PromiseHook(v8::PromiseHookType type, v8::Local<v8::Promise> promise, v8::Local<v8::Value> parent);
+		static void ReleasePromiseTimeoutReference(const v8::WeakCallbackInfo<PromiseTimeoutReference>& info);
+		void AttachPromiseTimeout(v8::Local<v8::Promise> promise, const std::shared_ptr<PromiseTimeout>& timeout);
+		auto GetPromiseTimeoutReference(v8::Local<v8::Promise> promise) -> PromiseTimeoutReference*;
 	public:
+		auto GetPromiseTimeout(v8::Local<v8::Promise> promise) -> std::shared_ptr<PromiseTimeout>;
+		void ResolvePromiseTimeout(v8::Local<v8::Promise> promise);
 		void PromiseWasHandled(v8::Local<v8::Promise> promise);
 
 	private:

@@ -1,5 +1,6 @@
 #include "external_copy/external_copy.h"
 #include "isolate/class_handle.h"
+#include "isolate/promise_timeout.h"
 #include "isolate/util.h"
 #include "lib/lockable.h"
 #include "callback.h"
@@ -17,6 +18,7 @@ namespace {
 // Shared state for `TransferablePromise` and `TransferablePromiseHolder`
 struct TransferablePromiseStateStruct {
 	std::shared_ptr<Transferable> value;
+	std::shared_ptr<PromiseTimeout> timeout;
 	// This would be a good case for a unique_ptr version of RemoteHandle
 	std::deque<RemoteTuple<Promise::Resolver, v8::Context>> waiting;
 	bool did_throw = false;
@@ -51,6 +53,12 @@ class TransferablePromiseHolder final : public ClassHandle {
 		void Accept(Local<Promise> promise) {
 			auto state = promise->State();
 			if (state == Promise::PromiseState::kPending) {
+				auto& env = IsolateEnvironment::GetCurrent();
+				if (auto timeout = env.GetPromiseTimeout(promise)) {
+					std::weak_ptr<TransferablePromiseState> weak_state = this->state;
+					this->state->write()->timeout = timeout;
+					timeout->Watch(this, [weak_state]() { SaveTimeout(weak_state); });
+				}
 				auto* isolate = Isolate::GetCurrent();
 				auto context = isolate->GetCurrentContext();
 				auto handle = This();
@@ -79,6 +87,28 @@ class TransferablePromiseHolder final : public ClassHandle {
 		}
 
 	private:
+		static void SaveTimeout(const std::weak_ptr<TransferablePromiseState>& weak_state) {
+			if (auto state = weak_state.lock()) {
+				std::deque<RemoteTuple<Promise::Resolver, v8::Context>> pending_tasks;
+				std::shared_ptr<Transferable> value;
+				{
+					auto lock = state->write();
+					if (lock->resolved) {
+						return;
+					}
+					lock->resolved = true;
+					lock->did_throw = true;
+					lock->value = std::make_shared<ExternalCopyError>(ExternalCopyError::ErrorType::Error, "Script execution timed out.");
+					value = lock->value;
+					pending_tasks = std::exchange(lock->waiting, {});
+				}
+				for (auto& resolver : pending_tasks) {
+					resolver.GetIsolateHolder()->ScheduleTask(
+						std::make_unique<ResolveTask>(std::move(resolver), value, true), false, true);
+				}
+			}
+		}
+
 		template <class Function>
 		void Save(bool did_throw, Function callback) {
 			std::shared_ptr<Transferable> resolved_value;
@@ -97,6 +127,9 @@ class TransferablePromiseHolder final : public ClassHandle {
 				resolved_value = lock->value;
 				return std::exchange(lock->waiting, {});
 			}();
+			if (auto timeout = state->read()->timeout) {
+				timeout->Unwatch(this);
+			}
 			for (auto& resolver : pending_tasks) {
 				auto holder = resolver.GetIsolateHolder();
 				holder->ScheduleTask(
