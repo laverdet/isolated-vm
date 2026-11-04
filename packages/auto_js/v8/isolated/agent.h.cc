@@ -147,9 +147,11 @@ export class agent_host
 
 		static auto get_current(v8::Isolate* isolate) -> agent_host&;
 
+	protected:
+		auto destroy_handles(util::function_ref<auto(isolate_lock_witness)->void> destroy) -> void;
+
 	private:
 		friend class agent_handle;
-		virtual auto destroy_environment() -> void {};
 		auto remote_expiration_callback(expired_remote_type remote) noexcept -> void;
 
 		// Order matters for these members
@@ -178,18 +180,19 @@ export class agent_host
 
 // Host which also manages client storage
 export template <class Type>
-class agent_host_of
-		: private agent_host_environment<Type>,
-			public agent_host {
+class agent_host_of : public agent_host {
 	public:
 		using agent_host::agent_host;
+		agent_host_of(const agent_host_of&) = delete;
+		~agent_host_of() override;
+		auto operator=(const agent_host_of&) -> agent_host_of& = delete;
 
-		auto environment(this auto& self) -> auto& { return *self; }
+		auto environment(this auto& self) -> auto& { return *self.environment_; }
 		auto initialize_environment(auto&&... args) -> void;
 		explicit operator agent_handle_of<Type>() { return agent_handle_of<Type>{*this, weak_from_this()}; }
 
 	private:
-		auto destroy_callback(isolate_lock_witness /*lock*/) noexcept -> void { agent_host_environment<Type>::destroy(); }
+		agent_host_environment<Type> environment_;
 };
 
 // ---
@@ -224,8 +227,13 @@ agent_host_environment<Type>::~agent_host_environment() {
 }
 
 template <class Type>
+agent_host_of<Type>::~agent_host_of() {
+	destroy_handles(util::function_ref{[ & ](isolate_lock_witness /*lock*/) -> void { environment_.destroy(); }});
+}
+
+template <class Type>
 auto agent_host_of<Type>::initialize_environment(auto&&... args) -> void {
-	agent_host_environment<Type>::emplace(std::forward<decltype(args)>(args)...);
+	environment_.emplace(std::forward<decltype(args)>(args)...);
 }
 
 } // namespace js::iv8::isolated

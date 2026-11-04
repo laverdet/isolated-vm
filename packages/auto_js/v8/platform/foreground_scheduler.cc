@@ -13,7 +13,7 @@ inline thread_local const void* current_foreground_scheduler = nullptr;
 template <class Queue>
 struct foreground_storage : scheduler_storage<Queue> {
 		std::thread::id active;
-		util::function_ref<auto() noexcept -> void> on_thread_exit{+[] noexcept {}};
+		util::function_ref<auto() noexcept -> void> on_thread_exit = util::function_ref{[] noexcept {}};
 };
 
 // Dispatches tasks from a queue to one active foreground thread at a time. A suspended thread
@@ -122,7 +122,7 @@ auto foreground_scheduler<Queue>::run(auto& lock, runner_thread& thread, util::i
 		}
 	}
 	lock->on_thread_exit();
-	lock->on_thread_exit = +[] noexcept {};
+	lock->on_thread_exit = util::function_ref{[] noexcept -> void {}};
 }
 
 } // namespace js::iv8::platform

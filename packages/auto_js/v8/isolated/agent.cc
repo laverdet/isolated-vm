@@ -100,21 +100,9 @@ agent_host::agent_host(
 }
 
 agent_host::~agent_host() {
-	// Terminate foreground runner
-	auto& scheduler = storage_->foreground_runner().scheduler();
-	scheduler.on_thread_exit(+[] noexcept -> void {});
-	scheduler.terminate();
-	if (!scheduler.is_this_thread()) {
-		scheduler.join();
-	}
-	// Destroy isolate and remaining handles
-	{
-		auto lock = js::iv8::isolate_destructor_lock{executor_.isolate()};
-		scratch_context_.Reset();
-		remote_handle_list_.clear(util::slice(lock));
-		autorelease_pool_.clear();
-		destroy_environment();
-	}
+	// nb: Technically `destroy_handles` should be invoked here but `agent_host_of<T>` invokes it. So
+	// there's no more work to be done.
+
 	// Deallocate isolate (before `agent_storage`)
 	executor_.reset();
 	// Release storage
@@ -123,6 +111,22 @@ agent_host::~agent_host() {
 	if (dispose_callback_) {
 		dispose_callback_();
 	}
+}
+
+auto agent_host::destroy_handles(util::function_ref<auto(isolate_lock_witness)->void> destroy) -> void {
+	// Terminate foreground runner
+	auto& scheduler = storage_->foreground_runner().scheduler();
+	scheduler.on_thread_exit(util::function_ref{[] noexcept -> void {}});
+	scheduler.terminate();
+	if (!scheduler.is_this_thread()) {
+		scheduler.join();
+	}
+	// Destroy handles
+	auto lock = isolate_destructor_lock{executor_.isolate()};
+	scratch_context_.Reset();
+	remote_handle_list_.clear(util::slice(lock));
+	autorelease_pool_.clear();
+	destroy(util::slice(lock));
 }
 
 auto agent_host::make_context() -> v8::Local<v8::Context> {
