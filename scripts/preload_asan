@@ -5,7 +5,11 @@ LOCAL_PATH=$(dirname "$SUPPRESSIONS_PATH")
 LSAN_SUPPRESSIONS="$SUPPRESSIONS_PATH/.lsan-suppressions"
 UBSAN_SUPPRESSIONS="$SUPPRESSIONS_PATH/.ubsan-suppressions"
 . "$LOCAL_PATH/.env"
-LD_PRELOAD="$("$CXX" -print-file-name=libasan.so)" \
+case "$CXX" in
+	*clang*) ASAN_RUNTIME="libclang_rt.asan-$(uname -m).so" ;;
+	*) ASAN_RUNTIME="libasan.so" ;;
+esac
+LD_PRELOAD="$("$CXX" -print-file-name="$ASAN_RUNTIME")" \
 ASAN_OPTIONS=detect_leaks=1:detect_stack_use_after_return=1:check_initialization_order=1:strict_init_order=1 \
 LSAN_OPTIONS=suppressions=$LSAN_SUPPRESSIONS \
 UBSAN_OPTIONS=suppressions=$UBSAN_SUPPRESSIONS \
