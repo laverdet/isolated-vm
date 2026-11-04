@@ -35,6 +35,10 @@ static_assert(safe_numeric_conversion_v<std::int32_t, double>);
 static_assert(safe_numeric_conversion_v<float, double>);
 static_assert(!safe_numeric_conversion_v<double, float>);
 
+// For constraining forwarding references to an exact type.
+export template <class Type, class Target>
+concept decays_to = std::same_as<std::decay_t<Type>, Target>;
+
 // Resolves to the type of every type in the pack. If any type differs then it is ill-formed.
 template <class... Type>
 struct identical_type;

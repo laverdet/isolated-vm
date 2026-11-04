@@ -23,7 +23,9 @@ class reference_storage_of {
 		using reference_type = reference_of<Type>;
 
 		reference_storage_of() = default;
-		constexpr explicit reference_storage_of(Type value) :
+		// nb: Don't accept by coercion, otherwise `std::any` clobbers everything
+		template <std::same_as<Type> Value>
+		constexpr explicit reference_storage_of(Value value) :
 				references_{std::move(value)} {}
 
 		[[nodiscard]] constexpr auto at(reference_type reference) const& -> const Type& { return references_.at(reference.id()); }

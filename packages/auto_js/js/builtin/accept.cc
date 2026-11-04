@@ -384,6 +384,12 @@ struct accept<void, std::any> {
 			return *std::move(subject);
 		}
 
+		// Re-transferred from a `referential_value`
+		template <util::decays_to<std::any> Subject>
+		constexpr auto operator()(host_object_tag /*tag*/, visit_holder /*visit*/, Subject&& subject) const -> std::any {
+			return std::forward<Subject>(subject);
+		}
+
 		constexpr static auto accept_tags_of() { return std::tuple{host_object_tag{}}; }
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 };
