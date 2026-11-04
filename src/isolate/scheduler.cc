@@ -2,6 +2,7 @@
 #include "executor.h"
 #include "node_wrapper.h"
 #include "scheduler.h"
+#include <cstdlib>
 #include <memory>
 #include <v8.h>
 #include <utility>
@@ -9,7 +10,17 @@
 using namespace v8;
 namespace ivm {
 namespace {
-	thread_pool_t thread_pool{std::thread::hardware_concurrency() + 1};
+	// `hardware_concurrency` can far exceed a container's CPU quota, and the pool never shrinks
+	auto thread_pool_size() -> size_t {
+		if (const char* env = std::getenv("ISOLATED_VM_THREAD_POOL_SIZE")) {
+			if (long size = std::strtol(env, nullptr, 10); size > 0) {
+				return size;
+			}
+		}
+		return std::thread::hardware_concurrency() + 1;
+	}
+
+	thread_pool_t thread_pool{thread_pool_size()};
 }
 
 /*
