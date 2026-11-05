@@ -84,7 +84,7 @@ auto make_callback_storage(const auto& lock, auto function) {
 					using external_type = untagged_external<void>;
 					auto data = v8::Local<v8::Value>{external_type::make(lock, pointer)};
 					constexpr auto callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
-						auto invoke = util::bit_truncation_cast<bound_type>(info.Data().As<external_type>()->value());
+						auto invoke = util::bit_truncation_cast<bound_type>(info.DataV2().As<external_type>()->value());
 						invoke(info);
 					}};
 					return std::tuple{callback, data};
@@ -97,7 +97,7 @@ auto make_callback_storage(const auto& lock, auto function) {
 				// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 				std::array<std::byte, sizeof(bound_type)> data;
 				auto* isolate = info.GetIsolate();
-				info.Data().As<v8::String>()->WriteOneByteV2(isolate, 0, data.size(), reinterpret_cast<std::uint8_t*>(data.data()), v8::String::WriteFlags::kNone);
+				info.DataV2().As<v8::String>()->WriteOneByte(isolate, 0, data.size(), reinterpret_cast<std::uint8_t*>(data.data()), v8::String::WriteFlags::kNone);
 				auto invoke = std::bit_cast<bound_type>(data);
 				invoke(info);
 			}};
@@ -108,7 +108,7 @@ auto make_callback_storage(const auto& lock, auto function) {
 		using external_type = untagged_external<bound_type>;
 		auto data = external_type::make_collected(lock, std::move(bound));
 		constexpr auto callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
-			auto& invoke = *info.Data().As<external_type>()->value();
+			auto& invoke = *info.DataV2().As<external_type>()->value();
 			invoke(info);
 		}};
 		return std::tuple{callback, data};

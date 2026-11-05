@@ -1,5 +1,5 @@
 diff --git a/config/BUILDCONFIG.gn b/config/BUILDCONFIG.gn
-index a6120c0a0c..139a183031 100644
+index c57bca1968..8c36f2bab9 100644
 --- a/config/BUILDCONFIG.gn
 +++ b/config/BUILDCONFIG.gn
 @@ -69,6 +69,12 @@ if (current_os == "") {
@@ -15,21 +15,21 @@ index a6120c0a0c..139a183031 100644
  # =============================================================================
  # BUILD FLAGS
  # =============================================================================
-diff --git a/config/compiler/BUILD.gn b/config/compiler/BUILD.gn
-index f823be461d..55efe0a1d4 100644
---- a/config/compiler/BUILD.gn
-+++ b/config/compiler/BUILD.gn
-@@ -1362,7 +1362,7 @@ config("compiler_cpu_abi") {
-     configs += [ "//build/config/chromeos:compiler_cpu_abi" ]
+diff --git a/config/compiler_cpu_abi.gn b/config/compiler_cpu_abi.gn
+index ae62bab587..45da51d11d 100644
+--- a/config/compiler_cpu_abi.gn
++++ b/config/compiler_cpu_abi.gn
+@@ -45,7 +45,7 @@ if (is_chromeos_device && is_chromeos) {
    }
+ }
  
--  if ((is_posix && !is_apple) || is_fuchsia) {
-+  if (is_cross_compile && ((is_posix && !is_apple) || is_fuchsia)) {
-     # CPU architecture. We may or may not be doing a cross compile now, so for
-     # simplicity we always explicitly set the architecture.
-     if (current_cpu == "x64") {
+-if ((is_posix && !is_apple) || is_fuchsia) {
++if (is_cross_compile && ((is_posix && !is_apple) || is_fuchsia)) {
+   # simplicity we always explicitly set the architecture.
+   if (current_cpu == "x64") {
+     if (is_clang && !is_android && !is_fuchsia && !is_chromeos_device) {
 diff --git a/toolchain/linux/BUILD.gn b/toolchain/linux/BUILD.gn
-index a6e20a05c5..721031267b 100644
+index fa3d1ba0cb..ef566a799d 100644
 --- a/toolchain/linux/BUILD.gn
 +++ b/toolchain/linux/BUILD.gn
 @@ -32,6 +32,9 @@ clang_toolchain("clang_arm64") {

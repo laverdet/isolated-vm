@@ -72,7 +72,7 @@ auto module_record::create_synthetic(
 
 	// Make `v8::Module` record with immediate evaluation steps
 	v8::Module::SyntheticModuleEvaluationSteps evaluation_steps =
-		[](v8::Local<v8::Context> context, v8::Local<v8::Module> module) -> v8::MaybeLocal<v8::Value> {
+		[](v8::Local<v8::Context> context, v8::Local<v8::Module> module) -> v8::MaybeLocal<v8::Promise> {
 		auto lock = [ & ] -> context_lock_witness {
 			auto isolate_witness = isolate_lock_witness::make_witness(v8::Isolate::GetCurrent());
 			return context_lock_witness::make_witness(isolate_witness, context);
@@ -95,8 +95,7 @@ auto module_record::create_synthetic(
 		unmaybe(resolver->Resolve(lock.context(), v8::Undefined(lock.isolate())));
 		return resolver->GetPromise();
 	};
-	auto v8_export_names = v8::MemorySpan<const v8::Local<v8::String>>{export_names.begin(), export_names.end()};
-	auto synthetic_module = v8::Module::CreateSyntheticModule(lock.isolate(), module_name, v8_export_names, evaluation_steps);
+	auto synthetic_module = v8::Module::CreateSyntheticModule(lock.isolate(), module_name, export_names, evaluation_steps);
 
 	// "Link" the module, which is a no-op
 	// auto null_callback = v8::Module::ResolveModuleByIndexCallback{nullptr};

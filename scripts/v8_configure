@@ -50,6 +50,9 @@ CONFIG=${PLATFORM_CONFIG_PAIR[1]} # debug, optdebug, release
 # `v8_enable_sandbox=false`
 # The sandbox requires `SharedArrayBuffer` instances to be located in the isolate group's virtual
 # address memory region.
+
+# `v8_use_metagen_instance_types=false`
+# Requires custom libcxx
 GN="${DEPOT_TOOLS:-gn}${DEPOT_TOOLS:+/gn}"
 
 GN_ARGS=(
@@ -65,6 +68,7 @@ GN_ARGS=(
 	v8_enable_sandbox=false
 	v8_enable_temporal_support=false
 	v8_use_external_startup_data=false
+	v8_use_metagen_instance_types=false
 );
 if [ ${CLANG_BASE_PATH:+-} ]; then
 	CLANG_VERSION=$("$CLANG_BASE_PATH/bin/clang" --version | sed -nE 's/^.*version ([0-9]+).*$/\1/p')
@@ -84,6 +88,9 @@ else
 		is_clang=false
 		is_gcc=true
 	)
+	# `cppgc_enable_object_section_gcinfo=false`
+	# We build v8 with gcc on Linux. This requires clang for the whole toolchain.
+	GN_ARGS+=(cppgc_enable_object_section_gcinfo=false)
 fi
 if [ ${WITHOUT_SYSROOT:+-} ]; then
 	GN_ARGS+=(use_sysroot=false)
