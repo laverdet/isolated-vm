@@ -29,6 +29,7 @@ class scheduler_of : util::non_moveable {
 		auto join() -> void;
 		auto request_thread(this auto& self, Storage& storage, thread_cache::request_kind kind) -> std::thread::id;
 		auto run_task(auto& lock, task_entry_type task) -> void;
+		auto run_task(auto& lock, task_entry_type task, std::invocable<util::inplace_stop_token, task_entry_type&> auto dispatch) -> void;
 		auto wait_for_task(auto& lock, runner_thread& thread) -> std::expected<task_entry_type, bool>;
 
 	private:
@@ -86,12 +87,17 @@ auto scheduler_of<Queue, Storage>::wait_for_task(auto& lock, runner_thread& thre
 
 template <class Queue, class Storage>
 auto scheduler_of<Queue, Storage>::run_task(auto& lock, task_entry_type task) -> void {
+	run_task(lock, std::move(task), [](util::inplace_stop_token token, task_entry_type& task) { task(token); });
+}
+
+template <class Queue, class Storage>
+auto scheduler_of<Queue, Storage>::run_task(auto& lock, task_entry_type task, std::invocable<util::inplace_stop_token, task_entry_type&> auto dispatch) -> void {
 	lock.unlock();
 	{
 		// nb: The task may own the last reference to an agent. Destruction of the of the agent would
 		// call back into the scheduler.
 		auto unlocked_task = std::move(task);
-		unlocked_task(termination_stop_token());
+		dispatch(termination_stop_token(), unlocked_task);
 	}
 	lock.lock();
 }

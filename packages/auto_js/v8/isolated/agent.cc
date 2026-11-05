@@ -91,10 +91,8 @@ agent_host::agent_host(
 		return params;
 	});
 	auto* isolate = executor_.isolate();
-	storage_->foreground_runner().scheduler().on_thread_exit(util::function_ref{
-		[](v8::Isolate* isolate) noexcept -> void { isolate->DiscardThreadSpecificMetadata(); },
-		isolate,
-	});
+	auto& scheduler = storage_->foreground_runner().scheduler();
+	scheduler.initialize(isolate);
 	isolate->SetCaptureStackTraceForUncaughtExceptions(true);
 	memory_policy_->initialize(isolate);
 }
@@ -116,7 +114,7 @@ agent_host::~agent_host() {
 auto agent_host::destroy_handles(util::function_ref<auto(isolate_lock_witness)->void> destroy) -> void {
 	// Terminate foreground runner
 	auto& scheduler = storage_->foreground_runner().scheduler();
-	scheduler.on_thread_exit(util::function_ref{[] noexcept -> void {}});
+	scheduler.reset();
 	scheduler.terminate();
 	if (!scheduler.is_this_thread()) {
 		scheduler.join();
@@ -148,8 +146,8 @@ auto agent_host::make_remote_handle_lock(isolate_lock_witness lock) -> remote_ha
 auto agent_host::remote_expiration_callback(expired_remote_type remote) noexcept -> void {
 	storage_->foreground_runner().schedule_handle_task(
 		[ this, remote = std::move(remote) ](util::inplace_stop_token /*stop_token*/) -> void {
-			auto lock = isolate_execution_lock{executor_.isolate()};
-			remote->reset(util::slice(lock));
+			auto lock = isolate_lock_witness::make_witness(executor_.isolate());
+			remote->reset(lock);
 			remote_handle_list_.erase(*remote);
 		}
 	);

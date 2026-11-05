@@ -1,10 +1,12 @@
 module;
 #include <cassert>
 export module v8_js:platform.foreground_scheduler;
+import :lock;
 import :platform.scheduler;
 import :platform.thread_cache;
 import std;
 import util;
+import v8;
 
 namespace js::iv8::platform {
 
@@ -13,7 +15,7 @@ inline thread_local const void* current_foreground_scheduler = nullptr;
 template <class Queue>
 struct foreground_storage : scheduler_storage<Queue> {
 		std::thread::id active;
-		util::function_ref<auto() noexcept -> void> on_thread_exit = util::function_ref{[] noexcept {}};
+		v8::Isolate* isolate = nullptr;
 };
 
 // Dispatches tasks from a queue to one active foreground thread at a time. A suspended thread
@@ -23,6 +25,7 @@ class foreground_scheduler : public scheduler_of<Queue, foreground_storage<Queue
 	private:
 		using storage_type = foreground_storage<Queue>;
 		using scheduler_type = scheduler_of<Queue, storage_type>;
+		using typename scheduler_type::task_entry_type;
 		friend scheduler_type;
 
 	public:
@@ -32,8 +35,9 @@ class foreground_scheduler : public scheduler_of<Queue, foreground_storage<Queue
 		auto operator=(const foreground_scheduler&) -> foreground_scheduler& = delete;
 
 		[[nodiscard]] auto is_this_thread() const -> bool { return current_foreground_scheduler == this; }
+		auto initialize(v8::Isolate* isolate) -> void;
 		auto join() -> void;
-		auto on_thread_exit(util::function_ref<auto() noexcept -> void> callback) -> void;
+		auto reset() -> void;
 		auto signal(std::invocable<Queue&> auto operation) -> void;
 		auto suspend(std::invocable auto operation) -> decltype(auto);
 
@@ -52,14 +56,19 @@ foreground_scheduler<Queue>::~foreground_scheduler() {
 }
 
 template <class Queue>
+auto foreground_scheduler<Queue>::initialize(v8::Isolate* isolate) -> void {
+	this->storage().write()->isolate = isolate;
+}
+
+template <class Queue>
 auto foreground_scheduler<Queue>::join() -> void {
 	assert(!is_this_thread());
 	scheduler_type::join();
 }
 
 template <class Queue>
-auto foreground_scheduler<Queue>::on_thread_exit(util::function_ref<auto() noexcept -> void> callback) -> void {
-	this->storage().write()->on_thread_exit = callback;
+auto foreground_scheduler<Queue>::reset() -> void {
+	this->storage().write()->isolate = nullptr;
 }
 
 template <class Queue>
@@ -109,7 +118,14 @@ auto foreground_scheduler<Queue>::run(auto& lock, runner_thread& thread, util::i
 	const auto scope_current_scheduler = util::scope_stack{current_foreground_scheduler, static_cast<const void*>(this)};
 	while (!stop_token.stop_requested() && activate(*lock)) {
 		if (auto task = this->wait_for_task(lock, thread)) {
-			this->run_task(lock, *std::move(task));
+			if (lock->isolate == nullptr) {
+				this->run_task(lock, *std::move(task));
+			} else {
+				this->run_task(lock, *std::move(task), [ & ](util::inplace_stop_token token, task_entry_type& task) {
+					auto isolate_lock = isolate_execution_lock(lock->isolate);
+					task(token);
+				});
+			}
 		} else if (task.error()) {
 			break;
 		}
@@ -121,8 +137,9 @@ auto foreground_scheduler<Queue>::run(auto& lock, runner_thread& thread, util::i
 			spawn(*lock);
 		}
 	}
-	lock->on_thread_exit();
-	lock->on_thread_exit = util::function_ref{[] noexcept -> void {}};
+	if (auto* isolate = lock->isolate) {
+		isolate->DiscardThreadSpecificMetadata();
+	}
 }
 
 } // namespace js::iv8::platform
