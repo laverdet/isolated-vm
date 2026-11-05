@@ -42,7 +42,9 @@ auto runner_thread::run() -> void {
 			return;
 		}
 		work(*this);
-		cache_.get().release(*this);
+		if (!cache_.get().release(*this)) {
+			return;
+		}
 	}
 }
 
@@ -51,11 +53,9 @@ thread_cache::thread_cache() :
 		concurrency_{std::max(1U, std::thread::hardware_concurrency())} {}
 
 thread_cache::~thread_cache() {
-#ifndef NDEBUG
-	auto lock = storage_.read();
-	assert(lock->active == 0);
+	auto lock = storage_.write_waitable(is_idle);
+	lock.wait();
 	assert(lock->suspended.empty());
-#endif
 }
 
 auto thread_cache::request(request_kind kind, runner_thread::job_type work) -> std::thread::id {
@@ -72,7 +72,9 @@ auto thread_cache::request(request_kind kind, runner_thread::job_type work) -> s
 		} else {
 			auto* thread = [ & ] -> runner_thread* {
 				if (lock->cached.empty()) {
-					return &lock->threads.emplace_back(*this);
+					auto& thread = lock->threads.emplace_back(*this);
+					thread.self_ = std::prev(lock->threads.end());
+					return &thread;
 				} else {
 					auto& thread = lock->cached.front();
 					lock->cached.pop_front();
@@ -92,13 +94,22 @@ auto thread_cache::request(request_kind kind, runner_thread::job_type work) -> s
 	return thread == nullptr ? std::thread::id{} : thread->id();
 }
 
-auto thread_cache::release(runner_thread& thread) -> void {
+auto thread_cache::release(runner_thread& thread) -> bool {
 	if (thread.reassigned()) {
-		return;
+		return true;
 	}
-	auto lock = storage_.write();
-	lock->cached.push_front(thread);
+	auto lock = storage_.write_notify(is_idle);
+	if (!lock->retired.empty()) {
+		lock->retired.pop_front();
+	}
 	--lock->active;
+	if (lock->threads.size() <= concurrency_) {
+		lock->cached.push_front(thread);
+		return true;
+	} else {
+		lock->retired.splice(lock->retired.begin(), lock->threads, thread.self_);
+		return false;
+	}
 }
 
 auto thread_cache::suspend(thread_suspension& suspension) -> void {

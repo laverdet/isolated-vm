@@ -53,6 +53,7 @@ export class runner_thread : util::non_moveable {
 		using intrusive_list_hook = boost::intrusive::slist_member_hook<intrusive_safe_mode>;
 
 		intrusive_list_hook list_hook_;
+		std::list<runner_thread>::iterator self_;
 		std::reference_wrapper<thread_cache> cache_;
 		std::binary_semaphore semaphore_{0};
 		std::atomic<bool> pending_;
@@ -86,16 +87,19 @@ export class thread_cache : util::non_moveable {
 
 		struct storage {
 				std::list<runner_thread> threads;
+				// nb: Holds at most one thread, see `release`
+				std::list<runner_thread> retired;
 				cached_list_type cached;
 				suspended_list_type suspended;
 				unsigned active = 0;
 		};
 
-		auto release(runner_thread& thread) -> void;
+		static auto is_idle(const storage& storage) -> bool { return storage.active == 0; }
+		auto release(runner_thread& thread) -> bool;
 		auto resume(thread_suspension& suspension) -> void;
 		auto suspend(thread_suspension& suspension) -> void;
 
-		util::lockable<storage> storage_;
+		util::lockable_with<storage, {.notifiable = true}> storage_;
 		unsigned concurrency_;
 };
 
