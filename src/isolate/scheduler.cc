@@ -3,6 +3,7 @@
 #include "node_wrapper.h"
 #include "scheduler.h"
 #include <cstdlib>
+#include <uv.h>
 #include <memory>
 #include <v8.h>
 #include <utility>
@@ -10,14 +11,14 @@
 using namespace v8;
 namespace ivm {
 namespace {
-	// `hardware_concurrency` can far exceed a container's CPU quota, and the pool never shrinks
+	// `uv_available_parallelism` respects CPU affinity and cgroup quotas, unlike `hardware_concurrency`
 	auto thread_pool_size() -> size_t {
 		if (const char* env = std::getenv("ISOLATED_VM_THREAD_POOL_SIZE")) {
 			if (long size = std::strtol(env, nullptr, 10); size > 0) {
 				return size;
 			}
 		}
-		return std::thread::hardware_concurrency() + 1;
+		return uv_available_parallelism() + 1;
 	}
 
 	thread_pool_t thread_pool{thread_pool_size()};
