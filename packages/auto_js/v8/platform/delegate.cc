@@ -14,7 +14,7 @@ struct platform_instance_handle {
 
 util::lockable<platform_instance_handle> shared_platform;
 
-platform_handle::platform_handle(util::type_tag type, make_type* make) :
+platform_handle::platform_handle(util::type_tag type, make_type make) :
 		platform_{util::elide{[ & ] -> std::shared_ptr<void> {
 			auto lock = shared_platform.write();
 			auto acquired_platform = lock->platform.lock();

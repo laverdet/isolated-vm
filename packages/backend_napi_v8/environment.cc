@@ -7,7 +7,10 @@ namespace backend_napi_v8 {
 
 environment::environment(napi_env env) :
 		napi::environment{env},
-		cluster_{util::function_ref{util::fn<&environment::destroy_orphan_scheduler>, *this}} {}
+		cluster_{
+			util::function_ref{util::fn<&environment::destroy_orphan_scheduler>, *this},
+			napi::available_parallelism(),
+		} {}
 
 environment::~environment() {
 	native_module_handle::unload_hook();

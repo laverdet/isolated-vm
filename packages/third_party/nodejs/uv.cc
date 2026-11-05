@@ -13,6 +13,7 @@ export using ::uv_loop_t;
 
 export using ::uv_async_init;
 export using ::uv_async_send;
+export using ::uv_available_parallelism;
 export using ::uv_close;
 export using ::uv_dlclose;
 export using ::uv_dlerror;

@@ -36,8 +36,8 @@ auto isolated_agent_delegate::fill_random_bytes_for_isolate(v8::Isolate* isolate
 	return fill_random_bytes(buffer, length);
 }
 
-auto isolated_platform::acquire() -> platform::platform_handle {
-	return platform::platform_handle::acquire<isolated_platform>();
+auto isolated_platform::acquire(unsigned concurrency) -> platform::platform_handle {
+	return platform::platform_handle::acquire<isolated_platform>(concurrency);
 }
 
 } // namespace js::iv8::isolated

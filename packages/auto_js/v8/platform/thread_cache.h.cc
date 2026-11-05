@@ -72,7 +72,7 @@ export class thread_cache : util::non_moveable {
 			hard,
 		};
 
-		thread_cache();
+		explicit thread_cache(unsigned concurrency);
 		~thread_cache();
 
 		[[nodiscard]] auto concurrency() const -> unsigned { return concurrency_; }

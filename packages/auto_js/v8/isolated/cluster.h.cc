@@ -12,9 +12,9 @@ export class cluster {
 	public:
 		using synchronize_destroy = util::function_ref<auto(std::any)->void>;
 
-		explicit cluster(synchronize_destroy destroy) :
+		explicit cluster(synchronize_destroy destroy, unsigned concurrency) :
 				destroy_{destroy},
-				platform_{isolated_platform::acquire()} {}
+				platform_{isolated_platform::acquire(concurrency)} {}
 
 		auto foreground_thread_cache() -> platform::thread_cache& {
 			return platform_.get<isolated_platform>().foreground_thread_cache();

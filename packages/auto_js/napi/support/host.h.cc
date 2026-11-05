@@ -18,6 +18,10 @@ auto (*fast_is_undefined)(napi_env env, napi_value value) -> bool;
 // Isolate access. In the fast case (nodejs) this returns the isolate of the current thread.
 auto (*host_current_isolate)() -> v8::Isolate* = nullptr;
 
+// Misc
+auto (*host_available_parallelism)() -> unsigned = nullptr;
+export auto available_parallelism() -> unsigned;
+
 // Element access
 auto (*fast_has_element)(environment_lock_witness lock, napi_value array, std::uint32_t index) -> bool = nullptr;
 auto (*fast_get_element)(environment_lock_witness lock, napi_value array, std::uint32_t index) -> napi_value = nullptr;

@@ -50,6 +50,16 @@ auto v8_current_isolate() -> v8::Isolate* {
 
 constexpr auto unknown_current_isolate = [] -> v8::Isolate* { return nullptr; };
 
+// Misc
+constexpr auto node_available_parallelism = [] -> unsigned { return uv_available_parallelism(); };
+constexpr auto std_available_parallelism = [] -> unsigned {
+	return std::max(1U, std::thread::hardware_concurrency());
+};
+
+auto available_parallelism() -> unsigned {
+	return host_available_parallelism();
+}
+
 // Element access
 auto v8_has_element(environment_lock_witness lock, napi_value array, std::uint32_t index) -> bool {
 	return napi::unmaybe(std::bit_cast<v8::Local<v8::Object>>(array)->Has(lock.context(), index));
@@ -287,6 +297,7 @@ auto initialize_host_environment(napi_env env) -> void {
 			auto is_nodejs = !is_bun;
 			if (is_nodejs) {
 				has_extended_fast_is_functions = true;
+				host_available_parallelism = node_available_parallelism;
 				host_current_isolate = v8_current_isolate;
 				fast_get_element = v8_get_element;
 				fast_has_element = v8_has_element;
@@ -319,6 +330,7 @@ auto initialize_host_environment(napi_env env) -> void {
 				shared_array_buffer_get_byte_length = v8_shared_array_buffer_get_byte_length;
 			} else {
 				has_extended_fast_is_functions = false;
+				host_available_parallelism = std_available_parallelism;
 				host_current_isolate = unknown_current_isolate;
 				fast_get_element = napi_fast_get_element;
 				fast_has_element = napi_fast_has_element;

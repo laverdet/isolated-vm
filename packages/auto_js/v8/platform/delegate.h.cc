@@ -12,7 +12,7 @@ namespace js::iv8::platform {
 export class platform_handle {
 	public:
 		template <class Delegate>
-		static auto acquire() -> platform_handle;
+		static auto acquire(auto&&... args) -> platform_handle;
 
 		~platform_handle();
 		platform_handle(platform_handle&&) = default;
@@ -24,8 +24,8 @@ export class platform_handle {
 		[[nodiscard]] auto get() const -> Delegate& { return *static_cast<Delegate*>(get(util::type_tag::of<Delegate>())); }
 
 	private:
-		using make_type = auto() -> std::shared_ptr<void>;
-		platform_handle(util::type_tag type, make_type* make);
+		using make_type = util::function_ref<auto()->std::shared_ptr<void>>;
+		platform_handle(util::type_tag type, make_type make);
 
 		[[nodiscard]] auto get(util::type_tag type) const -> void*;
 
@@ -89,9 +89,9 @@ export class instrumentation_delegate : virtual public v8::Platform {
 // ---
 
 template <class Delegate>
-auto platform_handle::acquire() -> platform_handle {
-	constexpr auto make = [] -> std::shared_ptr<void> {
-		return std::make_shared<Delegate>();
+auto platform_handle::acquire(auto&&... args) -> platform_handle {
+	auto make = [... args = std::forward<decltype(args)>(args) ] mutable -> std::shared_ptr<void> {
+		return std::make_shared<Delegate>(std::forward<decltype(args)>(args)...);
 	};
 	return platform_handle{util::type_tag::of<Delegate>(), make};
 }

@@ -49,8 +49,7 @@ auto runner_thread::run() -> void {
 }
 
 // `thread_cache`
-thread_cache::thread_cache() :
-		concurrency_{std::max(1U, std::thread::hardware_concurrency())} {}
+thread_cache::thread_cache(unsigned concurrency) : concurrency_{concurrency} {}
 
 thread_cache::~thread_cache() {
 	auto lock = storage_.write_waitable(is_idle);
