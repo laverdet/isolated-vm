@@ -18,11 +18,11 @@ auto make_function_callback(iv8::isolate_lock_witness witness, runtime_callback_
 	}
 	auto v8_callback = v8::FunctionCallback{[](const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
 		auto witness = iv8::context_lock_witness{info};
-		auto data_string = info.Data().As<v8::String>();
+		auto data_string = info.DataV2().As<v8::String>();
 		auto length = data_string->Length();
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 		std::array<std::byte, max_callback_storage_size> data;
-		data_string->WriteOneByteV2(witness.isolate(), 0, length, reinterpret_cast<std::uint8_t*>(data.data()), v8::String::WriteFlags::kNone);
+		data_string->WriteOneByte(witness.isolate(), 0, length, reinterpret_cast<std::uint8_t*>(data.data()), v8::String::WriteFlags::kNone);
 		const auto& storage = *reinterpret_cast<runtime_callback_data_storage*>(data.data());
 		auto runtime_lock = runtime_lock_implementation{witness};
 		info.GetReturnValue().Set(cast_in(storage.callback(runtime_lock, callback_info_implementation{info}, data.data())));

@@ -1,8 +1,8 @@
 diff --git a/config/compiler/BUILD.gn b/config/compiler/BUILD.gn
-index ab38e902d8..9028d96c51 100644
+index b63156cae7..3c6a692df7 100644
 --- a/config/compiler/BUILD.gn
 +++ b/config/compiler/BUILD.gn
-@@ -527,6 +527,9 @@ config("compiler") {
+@@ -530,6 +530,9 @@ config("compiler") {
        cflags += [ "-femit-dwarf-unwind=no-compact-unwind" ]
      }
  

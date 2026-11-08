@@ -50,11 +50,19 @@ CONFIG=${PLATFORM_CONFIG_PAIR[1]} # debug, optdebug, release
 # `v8_enable_sandbox=false`
 # The sandbox requires `SharedArrayBuffer` instances to be located in the isolate group's virtual
 # address memory region.
+
+# `cppgc_enable_object_names=false`
+# TODO: Fails with the trickshot macro
+#
+# `v8_use_metagen_instance_types=false`
+# Requires custom libcxx
 GN="${DEPOT_TOOLS:-gn}${DEPOT_TOOLS:+/gn}"
 
+GN_FLAGS=()
 GN_ARGS=(
 	clang_use_chrome_plugins=false
 	concurrent_links=1
+	cppgc_enable_object_names=false
 	icu_use_data_file=false
 	treat_warnings_as_errors=false
 	use_clang_modules=false
@@ -65,6 +73,7 @@ GN_ARGS=(
 	v8_enable_sandbox=false
 	v8_enable_temporal_support=false
 	v8_use_external_startup_data=false
+	v8_use_metagen_instance_types=false
 );
 if [ ${CLANG_BASE_PATH:+-} ]; then
 	CLANG_VERSION=$("$CLANG_BASE_PATH/bin/clang" --version | sed -nE 's/^.*version ([0-9]+).*$/\1/p')
@@ -84,6 +93,9 @@ else
 		is_clang=false
 		is_gcc=true
 	)
+	# `cppgc_enable_object_section_gcinfo=false`
+	# We build v8 with gcc on Linux. This requires clang for the whole toolchain.
+	GN_ARGS+=(cppgc_enable_object_section_gcinfo=false)
 fi
 if [ ${WITHOUT_SYSROOT:+-} ]; then
 	GN_ARGS+=(use_sysroot=false)
@@ -102,6 +114,7 @@ case "$OS" in
 			use_glib=false
 			use_sysroot=false
 		)
+		GN_FLAGS+=(--script-executable=python3)
 		;;
 esac
 
@@ -159,8 +172,8 @@ case "$CONFIG" in
 esac
 
 # Configure gn / ninja
-echo "$GN" gen "$BUILD_PATH" --args=\'"${GN_ARGS[*]}"\'
-if ! "$GN" gen "$BUILD_PATH" --args="${GN_ARGS[*]}"; then
+echo "$GN" gen "$BUILD_PATH" ${GN_FLAGS[@]+"${GN_FLAGS[@]}"} --args=\'"${GN_ARGS[*]}"\'
+if ! "$GN" gen "$BUILD_PATH" ${GN_FLAGS[@]+"${GN_FLAGS[@]}"} --args="${GN_ARGS[*]}"; then
 	RESULT=$?
 	# Weird failure from gn on linux-musl arm64, but it still generates the ninja files
 	if [ "${PLATFORM-}" = linux-musl ]; then

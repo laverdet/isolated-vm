@@ -1,8 +1,8 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index e51fe66ce4..1e7959692c 100644
+index d62e7445fb..42dce9b15a 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -1823,7 +1823,9 @@ config("toolchain") {
+@@ -1928,7 +1928,9 @@ config("toolchain") {
        # Google3 enables this warning, so we should also enable it to find issue
        # earlier. See https://reviews.llvm.org/D56731 for details about this
        # warning.

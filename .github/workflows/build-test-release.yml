@@ -6,7 +6,7 @@ defaults:
     shell: sh
 env:
   NODE_HEADERS: 24.16.0
-  V8_REF: 14.8.178.28
+  V8_REF: 15.6.75.27
 
 jobs:
   # First, check to see if v8 has been built for each target. If not, then a more powerful `runs-on`
@@ -207,8 +207,9 @@ jobs:
             mingw-w64-%a-boost
             mingw64/mingw-w64-%a-cmake>=4.3.0
             mingw64/mingw-w64-%a-ninja
+          # nb: `CMAKE_MAKE_PROGRAM` to override the depot_tools version
           export: |
-            CMAKE_MAKE_PROGRAM=ninja
+            CMAKE_MAKE_PROGRAM=C:/msys64/mingw64/bin/ninja.exe
             CMAKE_PREFIX_PATH=C:/msys64/mingw64/lib/cmake
           path: |
             /c/msys64/usr/bin
@@ -224,6 +225,12 @@ jobs:
           winget install --accept-source-agreements --silent -e --id=LLVM.LLVM --version=22.1.7 | tr '\r' '\n' | grep -Ev --line-buffered '^[ -\/|]+$'
           echo "CC=clang.exe" >> "$GITHUB_ENV"
           echo "CXX=clang++.exe" >> "$GITHUB_ENV"
+
+          # Windows SDK requested by v8 in `vcvarsall.bat` / `v8/build/toolchain/win/setup_toolchain.py`
+          # TODO: Try the previous, simpler, version of this incantation in a future version of v8
+          WINSDK_SETUP=$(cygpath "$RUNNER_TEMP")/winsdksetup.exe
+          curl -fsSL -o "$WINSDK_SETUP" https://download.microsoft.com/download/e6cfffdc-0d3e-4c6c-96d7-d491da459a07/KIT_BUNDLE_WINDOWSSDK_MEDIACREATION/winsdksetup.exe
+          MSYS2_ARG_CONV_EXCL='*' "$WINSDK_SETUP" /features OptionId.DesktopCPPx64 OptionId.DesktopCPPx86 OptionId.UWPCPP /q /norestart /ceip off
           echo ::endgroup::
 
           echo ::group::import std hack

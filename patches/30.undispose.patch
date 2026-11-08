@@ -1,8 +1,8 @@
 diff --git a/src/codegen/interface-descriptors.h b/src/codegen/interface-descriptors.h
-index 47fe69dab9..4e41e7cbc8 100644
+index 9da51025d9..613552bb74 100644
 --- a/src/codegen/interface-descriptors.h
 +++ b/src/codegen/interface-descriptors.h
-@@ -276,7 +276,7 @@ class V8_EXPORT_PRIVATE CallInterfaceDescriptorData {
+@@ -280,7 +280,7 @@ class V8_EXPORT_PRIVATE CallInterfaceDescriptorData {
    StackArgumentOrder stack_order() const { return stack_order_; }
  
    void RestrictAllocatableRegisters(const Register* registers, size_t num) {
@@ -11,24 +11,39 @@ index 47fe69dab9..4e41e7cbc8 100644
      for (size_t i = 0; i < num; ++i) {
        allocatable_registers_.set(registers[i]);
      }
-diff --git a/src/common/segmented-table-inl.h b/src/common/segmented-table-inl.h
-index 94a6d82e8e..ccb82ae727 100644
---- a/src/common/segmented-table-inl.h
-+++ b/src/common/segmented-table-inl.h
-@@ -122,7 +122,7 @@ void SegmentedTable<Entry, size>::Initialize() {
+diff --git a/src/common/synchronization-point-support.cc b/src/common/synchronization-point-support.cc
+index 89bcc4756b..04cba25742 100644
+--- a/src/common/synchronization-point-support.cc
++++ b/src/common/synchronization-point-support.cc
+@@ -29,6 +29,11 @@ void SynchronizationPointSupport::Initialize() {
+   instance_ = new SynchronizationPointSupport();
+ }
  
-   if (kUseSegmentPool) {
-     for (size_t i = 0; i < kSegmentPoolSize; ++i) {
--      DCHECK_EQ(segment_pool_[i].load(std::memory_order_acquire), 0);
-+      // DCHECK_EQ(segment_pool_[i].load(std::memory_order_acquire), 0);
-       segment_pool_[i].store(kSegmentPoolFreeEntry, std::memory_order_release);
-     }
++void SynchronizationPointSupport::TearDown() {
++  delete instance_;
++  instance_ = nullptr;
++}
++
+ void SynchronizationPointSupport::RequestBlockAt(
+     std::string synchronization_point, base::TimeDelta timeout) {
+   any_requested_ = true;
+diff --git a/src/common/synchronization-point-support.h b/src/common/synchronization-point-support.h
+index c9830efb3c..efecac38e3 100644
+--- a/src/common/synchronization-point-support.h
++++ b/src/common/synchronization-point-support.h
+@@ -32,6 +32,7 @@ namespace internal {
+ class V8_EXPORT_PRIVATE SynchronizationPointSupport {
+  public:
+   static void Initialize();
++  static void TearDown();
+   static V8_INLINE SynchronizationPointSupport* Get() { return instance_; }
  
+   // Requests a block at the given synchronization point. When a thread reaches
 diff --git a/src/init/v8.cc b/src/init/v8.cc
-index 381748382d..8c9e937523 100644
+index 91463a1ead..50f33f8398 100644
 --- a/src/init/v8.cc
 +++ b/src/init/v8.cc
-@@ -89,6 +89,9 @@ void AdvanceStartupState(V8StartupState expected_next_state) {
+@@ -90,6 +90,9 @@ void AdvanceStartupState(V8StartupState expected_next_state) {
            static_cast<int>(current_state), static_cast<int>(next_state),
            static_cast<int>(expected_next_state));
    }
@@ -38,11 +53,19 @@ index 381748382d..8c9e937523 100644
    if (!v8_startup_state_.compare_exchange_strong(current_state, next_state)) {
      FATAL(
          "Multiple threads are initializating V8 in the wrong order: expected "
+@@ -288,6 +291,7 @@ void V8::Dispose() {
+ #if defined(V8_ENABLE_SANDBOX) && defined(V8_ENABLE_MEMORY_CORRUPTION_API)
+   ExternalStringsCage::TearDown();
+ #endif  // V8_ENABLE_SANDBOX && V8_ENABLE_MEMORY_CORRUPTION_API
++  SynchronizationPointSupport::TearDown();
+   AdvanceStartupState(V8StartupState::kV8Disposed);
+ }
+ 
 diff --git a/src/objects/elements.cc b/src/objects/elements.cc
-index 9529b07d3e..71dc283466 100644
+index 410bd48dc1..52c6888327 100644
 --- a/src/objects/elements.cc
 +++ b/src/objects/elements.cc
-@@ -5987,14 +5987,14 @@ void ElementsAccessor::InitializeOncePerProcess() {
+@@ -6115,14 +6115,14 @@ void ElementsAccessor::InitializeOncePerProcess() {
    // can either use an array with 256 entries or have an explicit bounds-check
    // on access. The latter is probably more expensive.
    static_assert(std::is_same_v<std::underlying_type_t<ElementsKind>, uint8_t>);
@@ -60,7 +83,7 @@ index 9529b07d3e..71dc283466 100644
  
    // Check that the ELEMENTS_LIST macro is in the same order as the ElementsKind
    // enum.
-@@ -6005,7 +6005,7 @@ void ElementsAccessor::InitializeOncePerProcess() {
+@@ -6133,7 +6133,7 @@ void ElementsAccessor::InitializeOncePerProcess() {
    };
    static_assert(IsIdentityMapping(elements_kinds_from_macro, 0));
  

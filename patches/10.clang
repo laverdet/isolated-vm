@@ -1,11 +1,11 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index 235ba4d9cd..e51fe66ce4 100644
+index 081f9977b6..d62e7445fb 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -1801,7 +1801,8 @@ config("toolchain") {
-   if (is_clang) {
-     cflags += [ "-Wunreachable-code" ]
-     if (v8_current_cpu != "ppc64" && v8_current_cpu != "s390x") {
+@@ -1906,7 +1906,8 @@ config("toolchain") {
+     # rolling the compiler update into V8 instead.
+     if (!build_with_chromium && v8_current_cpu != "ppc64" &&
+         v8_current_cpu != "s390x") {
 -      cflags += [ "-Wlifetime-safety-permissive" ]
 +      # cflags += [ "-Wlifetime-safety-permissive" ]
 +      # warning: unknown warning option '-Wlifetime-safety-permissive' [-Wunknown-warning-option]
