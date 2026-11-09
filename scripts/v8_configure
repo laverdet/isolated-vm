@@ -54,7 +54,7 @@ CONFIG=${PLATFORM_CONFIG_PAIR[1]} # debug, optdebug, release
 # `cppgc_enable_object_names=false`
 # TODO: Fails with the trickshot macro
 #
-# `v8_use_metagen_instance_types=false`
+# `v8_use_metagen=false`
 # Requires custom libcxx
 GN="${DEPOT_TOOLS:-gn}${DEPOT_TOOLS:+/gn}"
 
@@ -73,7 +73,7 @@ GN_ARGS=(
 	v8_enable_sandbox=false
 	v8_enable_temporal_support=false
 	v8_use_external_startup_data=false
-	v8_use_metagen_instance_types=false
+	v8_use_metagen=false
 );
 if [ ${CLANG_BASE_PATH:+-} ]; then
 	CLANG_VERSION=$("$CLANG_BASE_PATH/bin/clang" --version | sed -nE 's/^.*version ([0-9]+).*$/\1/p')

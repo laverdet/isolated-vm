@@ -1,8 +1,8 @@
 diff --git a/src/common/globals.h b/src/common/globals.h
-index 16b4c069f5..01d40ea7a2 100644
+index 00159e4a81..f1d3c20749 100644
 --- a/src/common/globals.h
 +++ b/src/common/globals.h
-@@ -596,7 +596,7 @@ using AtomicTagged_t = base::AtomicWord;
+@@ -603,7 +603,7 @@ using AtomicTagged_t = base::AtomicWord;
  // virtual memory ranges (PR_SET_VMA_ANON_NAME on Linux).
  // TODO(saelo): It might be nicer to have one name per table type, e.g.
  // v8-external-pointer-table, v8-trusted-pointer-table, etc.

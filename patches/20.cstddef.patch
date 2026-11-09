@@ -1,8 +1,8 @@
 diff --git a/src/base/memcopy.h b/src/base/memcopy.h
-index 4c2bea2597..a785b9a224 100644
+index 51b285d95f..4710dd227c 100644
 --- a/src/base/memcopy.h
 +++ b/src/base/memcopy.h
-@@ -9,6 +9,7 @@
+@@ -10,6 +10,7 @@
  
  #include <algorithm>
  #include <atomic>

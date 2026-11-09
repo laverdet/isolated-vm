@@ -1,8 +1,8 @@
 diff --git a/src/codegen/interface-descriptors.h b/src/codegen/interface-descriptors.h
-index 9da51025d9..613552bb74 100644
+index 74793f9550..c9b4d8ddbb 100644
 --- a/src/codegen/interface-descriptors.h
 +++ b/src/codegen/interface-descriptors.h
-@@ -280,7 +280,7 @@ class V8_EXPORT_PRIVATE CallInterfaceDescriptorData {
+@@ -281,7 +281,7 @@ class V8_EXPORT_PRIVATE CallInterfaceDescriptorData {
    StackArgumentOrder stack_order() const { return stack_order_; }
  
    void RestrictAllocatableRegisters(const Register* registers, size_t num) {
@@ -62,10 +62,10 @@ index 91463a1ead..50f33f8398 100644
  }
  
 diff --git a/src/objects/elements.cc b/src/objects/elements.cc
-index 410bd48dc1..52c6888327 100644
+index d884b39393..aa6192901e 100644
 --- a/src/objects/elements.cc
 +++ b/src/objects/elements.cc
-@@ -6115,14 +6115,14 @@ void ElementsAccessor::InitializeOncePerProcess() {
+@@ -6114,14 +6114,14 @@ void ElementsAccessor::InitializeOncePerProcess() {
    // can either use an array with 256 entries or have an explicit bounds-check
    // on access. The latter is probably more expensive.
    static_assert(std::is_same_v<std::underlying_type_t<ElementsKind>, uint8_t>);
@@ -83,7 +83,7 @@ index 410bd48dc1..52c6888327 100644
  
    // Check that the ELEMENTS_LIST macro is in the same order as the ElementsKind
    // enum.
-@@ -6133,7 +6133,7 @@ void ElementsAccessor::InitializeOncePerProcess() {
+@@ -6132,7 +6132,7 @@ void ElementsAccessor::InitializeOncePerProcess() {
    };
    static_assert(IsIdentityMapping(elements_kinds_from_macro, 0));
  

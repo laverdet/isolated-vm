@@ -1,8 +1,8 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index 1df3d4e31b..081f9977b6 100644
+index 8956a3dc35..fb760e30ab 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -19,6 +19,7 @@ import("//third_party/icu/config.gni")
+@@ -20,6 +20,7 @@ import("//third_party/icu/config.gni")
  
  import("gni/cluster_build.gni")
  import("gni/snapshot_toolchain.gni")
@@ -10,7 +10,7 @@ index 1df3d4e31b..081f9977b6 100644
  import("gni/v8.gni")
  
  if (is_clang) {
-@@ -1691,6 +1692,9 @@ config("toolchain") {
+@@ -1713,6 +1714,9 @@ config("toolchain") {
    visibility = [ "./*" ]
  
    defines = []
@@ -20,7 +20,7 @@ index 1df3d4e31b..081f9977b6 100644
    cflags = []
    ldflags = []
  
-@@ -7635,6 +7639,10 @@ v8_component("v8_libbase") {
+@@ -7705,6 +7709,10 @@ v8_component("v8_libbase") {
      defines = [ "BUILDING_V8_BASE_SHARED" ]
    }
  

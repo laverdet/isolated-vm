@@ -1,8 +1,8 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index 081f9977b6..d62e7445fb 100644
+index fb760e30ab..479637e1ed 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -1906,7 +1906,8 @@ config("toolchain") {
+@@ -1928,7 +1928,8 @@ config("toolchain") {
      # rolling the compiler update into V8 instead.
      if (!build_with_chromium && v8_current_cpu != "ppc64" &&
          v8_current_cpu != "s390x") {

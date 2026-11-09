@@ -1,5 +1,5 @@
 diff --git a/BUILD.gn b/BUILD.gn
-index 72c1655fee..886611571f 100644
+index 3761b75f66..b66dd2d779 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
 @@ -11,6 +11,7 @@ import("//build/config/compiler/compiler.gni")

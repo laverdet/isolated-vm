@@ -74,6 +74,31 @@ runs:
         set -ux
         SKIP_SYNC=thanks PATCH_DIR="$GITHUB_WORKSPACE/patches" v8_select "$REF"
 
+    # https://github.com/actions/runner-images/issues/14198
+    - shell: pwsh
+      if: runner.os == 'Windows'
+      run: |
+        $sdkVersion = "10.0.28000.0"
+        $sdkPath = "C:\Program Files (x86)\Windows Kits\10\Include\$sdkVersion\um"
+        if (Test-Path $sdkPath) {
+          Write-Host "Windows SDK $sdkVersion already exists."
+          exit 0
+        }
+        Write-Host "Installing Windows SDK $sdkVersion..."
+        $installerUrl = "https://download.microsoft.com/download/e6cfffdc-0d3e-4c6c-96d7-d491da459a07/KIT_BUNDLE_WINDOWSSDK_MEDIACREATION/winsdksetup.exe"
+        $installerPath = "$env:RUNNER_TEMP\winsdksetup.exe"
+        Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath -ErrorAction Stop
+        $features = "/features OptionId.DesktopCPPx64 OptionId.DesktopCPPx86 OptionId.UWPCPP /q /norestart /ceip off"
+        $proc = Start-Process -FilePath $installerPath -ArgumentList $features -PassThru -Wait
+        if ($proc.ExitCode -ne 0) {
+          Write-Error "winsdksetup.exe failed with code $($proc.ExitCode)"
+          exit 1
+        }
+        if (-not (Test-Path $sdkPath)) {
+          Write-Error "Windows SDK $sdkVersion was not installed to $sdkPath"
+          exit 1
+        }
+
     # Linux builds require sysroot for libc version compatibility
     - shell: sh
       if: endsWith(inputs.triplet, '-linux-gnu')

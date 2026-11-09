@@ -28,16 +28,9 @@ inputs:
     # pick from: https://chromiumdash.appspot.com/releases
     # (click the "i" icon)
     options:
+      - 15.7.112.23
       - 15.6.75.27
-      - 15.5.35.25
-      - 15.4.80.20
-      - 15.3.76.13
-      - 15.2.124.21
-      - 15.1.206.23
-      - 15.0.245.21
-      - 14.9.207.35
-      - 14.8.178.28
-    default: 15.6.75.27
+    default: 15.7.112.23
   - type: pickString
     id: nodejs_version
     description:

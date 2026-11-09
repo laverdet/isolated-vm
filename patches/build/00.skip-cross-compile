@@ -1,5 +1,5 @@
 diff --git a/config/BUILDCONFIG.gn b/config/BUILDCONFIG.gn
-index c57bca1968..8c36f2bab9 100644
+index 799d8de08c..e0cdb77644 100644
 --- a/config/BUILDCONFIG.gn
 +++ b/config/BUILDCONFIG.gn
 @@ -69,6 +69,12 @@ if (current_os == "") {
