@@ -34,7 +34,7 @@ await test("setTimeout capability", async () => {
 		makeLinker(makeDirectResolver(), capabilities),
 		makeLinker(makeLocalResolver(import.meta), runtime));
 	const module = expectComplete(await agent.compileModule(`
-		import { initializeTimers } from "@isolated-vm/experimental/host/html/timers";
+		import { initializeTimers } from "@isolated-vm/experimental/host/html/install/timers";
 		import hello from "notify-test";
 		initializeTimers();
 		setTimeout(hello, 0, "hello");

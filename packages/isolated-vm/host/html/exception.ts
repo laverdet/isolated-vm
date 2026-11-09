@@ -7,6 +7,3 @@ export class DOMException extends Error {
 		}
 	}
 }
-
-// @ts-expect-error
-globalThis.DOMException = DOMException;

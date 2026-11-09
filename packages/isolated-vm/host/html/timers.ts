@@ -146,13 +146,6 @@ export function setTimeout(callbackOrCodeString: unknown, delay: unknown, ...arg
 	return initializeTimer(handler, interval, false);
 }
 
-globalThis.clearInterval = clearInterval;
-globalThis.clearTimeout = clearTimeout;
-// @ts-expect-error
-globalThis.setInterval = setInterval;
-// @ts-expect-error
-globalThis.setTimeout = setTimeout;
-
 export function initializeTimers(): void {
 	initialize(new Reference(runTimers));
 }

@@ -87,6 +87,3 @@ export function btoa(inputString: unknown): string {
 	}
 	return result;
 }
-
-globalThis.atob = atob;
-globalThis.btoa = btoa;
