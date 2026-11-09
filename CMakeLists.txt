@@ -158,24 +158,8 @@ if(LINUX AND CMAKE_BUILD_TYPE STREQUAL Debug)
 	endif()
 endif()
 
-# Convert file into a binary blob and embed it into a C++ source file.
-function(target_embed_content TARGET FILE IDENTIFIER)
-	set(GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/embed")
-	set(OUT_FILE "${GEN_DIR}/${IDENTIFIER}")
-	file(MAKE_DIRECTORY "${GEN_DIR}")
-	target_include_directories(${TARGET} PRIVATE "${GEN_DIR}")
-
-	message(STATUS "Embedding ${FILE} as ${IDENTIFIER}")
-	add_custom_command(
-		DEPENDS "${FILE}"
-		OUTPUT "${OUT_FILE}.c" "${OUT_FILE}.h"
-		COMMAND sh -c "${PROJECT_SOURCE_DIR}/embed.sh ${CMAKE_CURRENT_SOURCE_DIR}/${FILE} ${OUT_FILE} ${IDENTIFIER}"
-	)
-	set_source_files_properties("${OUT_FILE}.c" PROPERTIES GENERATED TRUE)
-	target_sources(${TARGET} PRIVATE "${OUT_FILE}.c")
-endfunction()
-
-# `find_package_from_npm` & `triplet_util` from `@auto_js/js`
+# `find_package_from_npm`, `triplet_util`, & `target_embed_content` from `@auto_js/js`
+include(EmbedContent)
 include(FindNpmPackage)
 include(TripletUtil)
 

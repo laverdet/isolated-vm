@@ -1,5 +1,6 @@
 export module napi_js:function_definitions;
 import :callback;
+import :runtime;
 import std;
 
 namespace js::napi {
@@ -14,6 +15,12 @@ template <class Result>
 auto local_for_function::call(const auto& lock, auto&&... args) -> Result {
 	auto argv = js::transfer_in_strict<std::array<napi_value, sizeof...(args)>>(std::forward_as_tuple(args...), lock);
 	return js::transfer_out<Result>(invoke(lock, std::span{argv}), lock);
+}
+
+template <class Environment>
+auto local_for_function::invoke_async(const environment_lock_witness_of<Environment>& lock, local_of<list_tag> args, local_of<function_tag> resolve, local_of<function_tag> reject) -> void {
+	auto argv = std::array<napi_value, 4>{napi_value{*this}, args, resolve, reject};
+	lock->runtime().async_to_callbacks(napi_env{lock})->invoke(lock, argv);
 }
 
 auto local_for_function::invoke(environment_lock_witness lock, std::span<napi_value> args) -> napi_value {

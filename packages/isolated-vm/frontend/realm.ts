@@ -1,4 +1,4 @@
-import type { Capability } from "./capability.js";
+import type { Capability } from "#backend";
 
 export { Realm } from "#backend";
 

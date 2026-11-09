@@ -4,7 +4,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 cmake_minimum_required(VERSION 4.4.0 FATAL_ERROR)
 
 # project & language settings
-project(example LANGUAGES CXX)
+project(example LANGUAGES C CXX)
 set(CMAKE_CXX_MODULE_STD ON)
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

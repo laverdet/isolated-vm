@@ -17,6 +17,9 @@ class local_for_function : public local_next<function_tag> {
 		auto invoke(environment_lock_witness lock, std::span<napi_value> args) -> napi_value;
 
 		template <class Environment>
+		auto invoke_async(const environment_lock_witness_of<Environment>& lock, local_of<list_tag> args, local_of<function_tag> resolve, local_of<function_tag> reject) -> void;
+
+		template <class Environment>
 		static auto make(const environment_lock_witness_of<Environment>& lock, auto function) -> local_of<function_tag>;
 };
 

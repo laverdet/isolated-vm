@@ -1,4 +1,5 @@
 # Locate dependencies (napi_exports is always `nodejs`)
+include(EmbedContent)
 find_package_from_npm(@auto_js/js AS @auto_js/${AUTO_JS_PREFIX}js PROPAGATE auto_js)
 find_package_from_npm(@auto_js/napi_exports)
 find_package_from_npm(@auto_js/v8_exports PROPAGATE google_v8)
@@ -21,6 +22,7 @@ target_sources(${napi_js}
 		support/host.cc
 		support/initialize.cc
 		support/lock.cc
+		support/runtime.cc
 		transfer/accept.cc
 		value/array_buffer.cc
 		value/array.cc
@@ -55,6 +57,7 @@ target_sources(${napi_js}
 		support/initialize.h.cc
 		support/lock.h.cc
 		support/promise.cc
+		support/runtime.h.cc
 		support/string_table.cc
 		support/utility.cc
 		transfer/accept.h.cc
@@ -72,6 +75,7 @@ target_sources(${napi_js}
 		value/record.h.cc
 		value/value.cc
 )
+target_embed_content(${napi_js} runtime/dist/runtime.cjs runtime_dist_runtime_cjs)
 
 # Enable "delay load" for win32 otherwise the dll will attempt to load node.exe from PATH as a
 # shared library and then start invoking functions from it.

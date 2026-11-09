@@ -1,6 +1,7 @@
 {
 	"extends": "./tsconfig.base.json",
 	"references": [
+		{ "path": "./packages/auto_js/napi/runtime/tsconfig.json" },
 		{ "path": "./packages/backend_napi_v8/runtime/tsconfig.json" },
 		{ "path": "./packages/isolated-vm/tsconfig.json" },
 	],

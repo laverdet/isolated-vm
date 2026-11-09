@@ -26,17 +26,17 @@ export class Agent {
 	static create(options?: CreateAgentOptions): Promise<_Agent>;
 }
 
-export declare const Capability: CapabilityConstructor;
+export class Capability {
+	readonly #private;
 
-export interface Capability {
-	readonly [Secret]: "Capability";
-}
-
-export interface CapabilityConstructor {
-	readonly name: "Capability";
-	readonly prototype: Capability;
-	// eslint-disable-next-line @typescript-eslint/method-signature-style
-	/** @internal */ _sync(this: void, callback: (resolve: (value: unknown) => void, reject: (reason: unknown) => void, args: unknown[]) => void): Capability;
+	/**
+	 * Creates a synchronous capability from the given callback. When invoked from an isolate the calling task is
+	 * suspended until the value, or promise, returned by `callback` settles. The settled value is returned, or thrown,
+	 * synchronously inside the isolate.
+	 *
+	 * Capabilities are one-shot objects. They are consumed by `realm.createCapability`.
+	 */
+	static sync(this: void, callback: (...args: any[]) => unknown): Capability;
 
 	/**
 	 * Creates a fire-and-forget capability from the given callback. When invoked from an isolate the call returns
@@ -45,8 +45,7 @@ export interface CapabilityConstructor {
 	 *
 	 * Capabilities are one-shot objects. They are consumed by `realm.createCapability`.
 	 */
-	// eslint-disable-next-line @typescript-eslint/method-signature-style
-	void(this: void, callback: (...args: any[]) => void): Capability;
+	static void(this: void, callback: (...args: any[]) => void): Capability;
 }
 
 export class Module {

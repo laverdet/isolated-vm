@@ -1,6 +1,7 @@
 export module napi_js:environment;
 export import :environment_fwd;
 import :api;
+import :runtime;
 import std;
 import util;
 import v8;
@@ -36,9 +37,13 @@ export class environment : util::non_moveable, public napi_schedulable {
 		}
 
 	private:
+		friend class local_for_function;
+		auto runtime() -> napi::runtime& { return runtime_; }
+
 		napi_env env_;
 		v8::Isolate* isolate_{};
 		napi_async_cleanup_hook_handle cleanup_hook_handle_{};
+		napi::runtime runtime_;
 };
 
 } // namespace js::napi

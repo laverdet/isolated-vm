@@ -7,12 +7,14 @@ namespace js::napi {
 
 environment::environment(napi_env env) :
 		napi_schedulable{env},
-		env_{env} {
-	// Initialize napi_js platform hooks
-	initialize_host_environment(env);
-	isolate_ = host_current_isolate();
-
-	// nb: Closing the schedule needs to be the first thing we do, and deleting it needs to be the
+		env_{env},
+		isolate_{[ & ] -> auto {
+			// Initialize napi_js platform hooks
+			initialize_host_environment(env);
+			return host_current_isolate();
+		}()},
+		runtime_{env} {
+	// nb: Closing the scheduler needs to be the first thing we do, and deleting it needs to be the
 	// last thing we do. Otherwise we get deadlocks or use-after-free problems.
 	auto release_scheduler = [](napi_async_cleanup_hook_handle handle, void* data) -> void {
 		auto finalizer = util::fn<[](napi_async_cleanup_hook_handle handle) -> void {

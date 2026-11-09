@@ -20,7 +20,7 @@ export class capability_handle : util::non_copyable {
 				[[nodiscard]] virtual auto instantiate(const agent_lock& lock) && -> v8::Local<v8::FunctionTemplate> = 0;
 		};
 
-		// `Capability.sync
+		// `Capability.sync`
 		class sync_instance final : public instance {
 			public:
 				sync_instance(const environment::lock& lock, js::napi::local_of<js::function_tag> callback);

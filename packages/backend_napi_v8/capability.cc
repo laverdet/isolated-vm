@@ -86,8 +86,8 @@ auto capability_handle::sync_instance::instantiate(const agent_lock& lock) && ->
 		) -> js::forward<v8::Local<v8::Value>> {
 		auto [ promise, future ] = sync_instance::result::make();
 		(*self.scheduler_)(
-			// Invoked in the node thread. Invokes `callback(resolve, reject, params)`, which settles
-			// `promise` through one of the two functions.
+			// Invoked in the node thread. Invokes `callback(...params)` and settles `promise` through one
+			// of the two functions.
 			[](
 				napi_env nenv,
 				napi_value /*nothing*/,
@@ -112,12 +112,13 @@ auto capability_handle::sync_instance::instantiate(const agent_lock& lock) && ->
 							shared->set_value(std::unexpected{napi::externalize_caught_error(lock, *reason)});
 						},
 					};
-					auto argv = js::transfer_in_strict<std::array<napi_value, 3>>(
-						std::forward_as_tuple(std::move(resolve), std::move(reject), std::move(params)),
-						lock,
-						accept_references
-					);
-					callback.deref(lock)->invoke(lock, argv);
+					auto params_value = js::napi::local_of<js::list_tag>::from(js::transfer_in_strict<napi_value>(std::move(params), lock, accept_references));
+					auto [ resolve_value, reject_value ] = [ & ] -> auto {
+						using transfer_type = std::array<js::napi::local_of<js::function_tag>, 2>;
+						auto subject = [ & ] -> auto { return std::forward_as_tuple(std::move(resolve), std::move(reject)); };
+						return js::transfer_in_strict<transfer_type>(subject(), lock);
+					}();
+					callback.deref(lock)->invoke_async(lock, params_value, resolve_value, reject_value);
 				});
 				if (!dispatched) {
 					shared->set_value(std::unexpected{std::move(dispatched).error()});
@@ -201,7 +202,7 @@ auto capability_handle::class_template(const environment::lock& lock) -> js::nap
 		lock,
 		js::class_template{
 			js::class_constructor{util::cw<"Capability">},
-			js::class_static{util::cw<"_sync">, &sync},
+			js::class_static{util::cw<"sync">, &sync},
 			js::class_static{util::cw<"void">, &void_},
 		}
 	);

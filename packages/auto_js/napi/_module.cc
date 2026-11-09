@@ -15,6 +15,7 @@ export import :lock;
 export import :promise;
 export import :reference;
 export import :remote;
+export import :runtime;
 export import :string_table;
 export import :support.host;
 export import :transfer_list;
