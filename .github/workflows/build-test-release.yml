@@ -207,10 +207,11 @@ jobs:
             mingw-w64-%a-boost
             mingw64/mingw-w64-%a-cmake>=4.3.0
             mingw64/mingw-w64-%a-ninja
-          # nb: `CMAKE_MAKE_PROGRAM` to override the depot_tools version
+          # nb: For uncached v8, depot_tools is installed which injects its own ninja with a higher
+          # priority than the msys one.
           export: |
-            CMAKE_MAKE_PROGRAM=C:/msys64/mingw64/bin/ninja.exe
             CMAKE_PREFIX_PATH=C:/msys64/mingw64/lib/cmake
+            NINJA_PATH=C:/msys64/mingw64/bin/ninja.exe
           path: |
             /c/msys64/usr/bin
             /c/msys64/mingw64/bin
@@ -328,6 +329,7 @@ jobs:
             -DV8_INCLUDE_GN_FILE="$V8_REF_PATH/$TRIPLET.release/include/v8-gn.h" \
             -DV8_LIBRARY_PATH="$V8_REF_PATH/$TRIPLET.release" \
             -DV8_LIBRARY_TYPE=static \
+            ${NINJA_PATH:+"-DNINJA_PATH=${NINJA_PATH}"} \
             ${ECO_STD:+"-DCMAKE_CXX_STDLIB_MODULES_JSON=${ECO_STD}"} \
             -B build \
             -G Ninja \
@@ -348,6 +350,7 @@ jobs:
           cmake \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_MODULE_PATH="$(pnpm exec auto_js_cmake_include)" \
+            ${NINJA_PATH:+"-DNINJA_PATH=${NINJA_PATH}"} \
             ${ECO_STD:+"-DCMAKE_CXX_STDLIB_MODULES_JSON=${ECO_STD}"} \
             -G Ninja -B build \
           ;
