@@ -11,6 +11,17 @@ import v8_js;
 
 namespace backend_napi_v8 {
 
+struct invoke_options : js::optional_constructible {
+		using js::optional_constructible::optional_constructible;
+		std::optional<js::napi::value_of<js::list_tag>> transfer;
+		std::optional<double> timeout;
+
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_member{util::cw<"transfer">, &invoke_options::transfer},
+			js::struct_member{util::cw<"timeout">, &invoke_options::timeout},
+		};
+};
+
 export class reference_handle {
 	public:
 		using transfer_type = js::tagged_external<reference_handle>;
@@ -22,7 +33,7 @@ export class reference_handle {
 		auto copy(const environment::lock& lock) -> forward_promise_type;
 		auto get(const environment::lock& lock, js::string_t name) -> forward_promise_type;
 		auto set(const environment::lock& lock, js::string_t name, js::forward<js::napi::local_of<>> value_local) -> forward_promise_type;
-		auto invoke(const environment::lock& lock, js::forward<js::napi::local_of<list_tag>> params_local, transfer_options options) -> forward_promise_type;
+		auto invoke(const environment::lock& lock, js::forward<js::napi::local_of<list_tag>> params_local, invoke_options options) -> forward_promise_type;
 
 		// Host [nodejs] `Reference` class
 		static auto class_template(const environment::lock& lock) -> js::napi::local_of<class_tag_of<reference_handle>>;

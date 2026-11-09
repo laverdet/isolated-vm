@@ -25,6 +25,14 @@ export namespace Module {
 		attributes?: ImportAttributes,
 	) => AbstractModule | undefined | Promise<AbstractModule | undefined>;
 
+	export interface EvaluateOptions {
+		/**
+		 * Maximum amount of time in milliseconds the module body is allowed to run before execution is
+		 * canceled. Default is no timeout. See `Script.RunScriptOptions.timeout`.
+		 */
+		timeout?: number | undefined;
+	}
+
 	/** Internal-ish */
 	export interface LinkRecord {
 		/** Modules corresponding to `payload` ids */

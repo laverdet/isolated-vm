@@ -196,8 +196,6 @@ export template <class... Properties>
 struct struct_template : std::tuple<Properties...> {
 		explicit constexpr struct_template(Properties... properties) :
 				std::tuple<Properties...>{std::move(properties)...} {}
-		// nb: Allows structured binding of the underlying `std::tuple<...>`
-		constexpr auto as_tuple() const -> const std::tuple<Properties...>& { return *this; }
 		constexpr static auto is_struct_template = true;
 };
 
@@ -257,3 +255,10 @@ struct class_template {
 };
 
 } // namespace js
+
+// Tuple protocol for `struct_template`.
+template <class... Properties>
+struct std::tuple_size<js::struct_template<Properties...>> : std::integral_constant<std::size_t, sizeof...(Properties)> {};
+
+template <std::size_t Index, class... Properties>
+struct std::tuple_element<Index, js::struct_template<Properties...>> : std::type_identity<Properties... [ Index ]> {};

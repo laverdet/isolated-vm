@@ -32,7 +32,6 @@ target_sources(${backend_napi_v8}
 		reference.cc
 		runtime/runtime.cc
 		script.cc
-		utility.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		agent_handle.h.cc

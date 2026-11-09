@@ -208,18 +208,22 @@ auto reference_handle::set(const environment::lock& lock, js::string_t name, js:
 	return js::forward{promise};
 }
 
-auto reference_handle::invoke(const environment::lock& lock, js::forward<js::napi::local_of<list_tag>> params_local, transfer_options options) -> forward_promise_type {
+auto reference_handle::invoke(const environment::lock& lock, js::forward<js::napi::local_of<list_tag>> params_local, invoke_options options) -> forward_promise_type {
 	auto params = transfer_from_host<js::values_vector_t>(lock, *params_local, options.transfer.value_or(js::napi::value_of<js::list_tag>{}));
 	auto [ promise, resolver ] = make_promise(lock, resolve_with_references);
 	if (typeof_ == js::typeof_kind::function) {
 		agent_.schedule(
 			[ value = value_,
-				realm = realm_ ](
+				realm = realm_,
+				timeout = options.timeout ](
 				const agent_handle::lock& agent_lock,
 				auto resolver,
 				js::values_vector_t params
 			) -> void {
 				auto maybe_result = realm_scope_operation(agent_lock, realm, [ & ](const realm_scope& lock) -> auto {
+					auto timeout_watchdog = timeout
+						? std::optional<iv8::isolated::executor::timeout>{std::in_place, lock->executor(), js::js_clock::duration{*timeout}}
+						: std::nullopt;
 					return iv8::invoke_externalized_error_scope(lock, [ & ] -> js::value_t {
 						auto fn = value->deref(lock).As<iv8::Function>();
 						auto argv = js::transfer_in_strict<std::vector<v8::Local<v8::Value>>>(std::move(params), lock, accept_references);

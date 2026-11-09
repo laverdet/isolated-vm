@@ -146,21 +146,30 @@ auto module_handle::create_capability(
 	return js::forward{promise};
 };
 
-auto module_handle::evaluate(const environment::lock& lock, realm_handle* realm) -> forward_promise_type {
+auto module_handle::evaluate(const environment::lock& lock, realm_handle* realm, evaluate_module_options options) -> forward_promise_type {
 	auto [ promise, resolver ] = make_promise(lock);
 	if (realm == nullptr) {
 		return js::forward{promise};
 	}
 	agent_.schedule(
 		[ realm = realm->realm(),
-			module_record = module_ ](
+			module_record = module_,
+			timeout = options.timeout ](
 			const agent_handle::lock& agent,
 			auto resolver
 		) -> void {
 			auto result = realm_scope_operation(agent, realm, [ & ](const realm_scope& realm) -> auto {
-				return module_record->deref(realm)->evaluate(realm);
+				auto timeout_watchdog = timeout
+					? std::optional<iv8::isolated::executor::timeout>{std::in_place, realm->executor(), js::js_clock::duration{*timeout}}
+					: std::nullopt;
+				return iv8::invoke_externalized_error_scope(realm, [ & ] -> auto {
+					return module_record->deref(realm)->evaluate(realm);
+				});
 			});
-			resolver.resolve(make_completion_record(std::move(result)));
+			if (result) {
+				auto expected = std::move(*result).and_then([](auto result) -> auto { return result; });
+				resolver.resolve(make_completion_record(std::move(expected)));
+			}
 		},
 		std::move(resolver)
 	);

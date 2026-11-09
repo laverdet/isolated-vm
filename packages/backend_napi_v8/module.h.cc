@@ -23,6 +23,15 @@ struct compile_module_options : js::optional_constructible {
 		};
 };
 
+struct evaluate_module_options : js::optional_constructible {
+		using js::optional_constructible::optional_constructible;
+		std::optional<double> timeout;
+
+		constexpr static auto struct_template = js::struct_template{
+			js::struct_member{util::cw<"timeout">, &evaluate_module_options::timeout},
+		};
+};
+
 struct create_capability_options {
 		std::u16string origin;
 
@@ -61,7 +70,7 @@ export class module_handle {
 
 		auto agent() -> auto& { return agent_; }
 
-		auto evaluate(const environment::lock& lock, realm_handle* realm) -> forward_promise_type;
+		auto evaluate(const environment::lock& lock, realm_handle* realm, evaluate_module_options options) -> forward_promise_type;
 		auto link(const environment::lock& lock, realm_handle* realm, module_handle_link_record link_record) -> forward_promise_type;
 		auto requests(const environment::lock& lock) -> std::vector<js::iv8::module_request>;
 		auto specifier(const environment::lock& lock) -> std::optional<std::u16string>;

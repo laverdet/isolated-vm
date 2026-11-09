@@ -131,7 +131,7 @@ auto capability_handle::sync_instance::instantiate(const agent_lock& lock) && ->
 		// Block until the host settles, or the agent is terminated.
 		auto& scheduler = lock->storage()->foreground_runner().scheduler();
 		auto value = scheduler.suspend([ & ] -> auto {
-			auto suspension = execution_timeout_suspension{};
+			auto suspension = js::iv8::isolated::executor::timeout_suspension{lock->executor()};
 			auto unlock = js::iv8::isolated::executor::unlock{util::slice(lock), lock->executor()};
 			return future.get(lock->executor().stop_token());
 		});

@@ -7,6 +7,7 @@ type CompileScriptOptions = import("@isolated-vm/experimental/frontend/agent", {
 type CreateAgentOptions = import("@isolated-vm/experimental/frontend/agent", { with: { "resolution-mode": "import" }}).Agent.CreateOptions;
 type CreateCapabilityOptions = import("@isolated-vm/experimental/frontend/realm", { with: { "resolution-mode": "import" }}).Realm.CreateCapabilityOptions;
 type CreateNativeModuleOptions = import("@isolated-vm/experimental/frontend/native_module", { with: { "resolution-mode": "import" }}).NativeModule.CreateOptions;
+type EvaluateModuleOptions = import("@isolated-vm/experimental/frontend/module", { with: { "resolution-mode": "import" }}).Module.EvaluateOptions;
 type MaybeCompletionOf<T> = import("@isolated-vm/experimental/utility/completion", { with: { "resolution-mode": "import" }}).MaybeCompletionOf<T>;
 type ModuleLinkRecord = import("@isolated-vm/experimental/frontend/module", { with: { "resolution-mode": "import" }}).Module.LinkRecord;
 type ModuleRequest = import("@isolated-vm/experimental/frontend/module", { with: { "resolution-mode": "import" }}).Module.Request;
@@ -54,7 +55,7 @@ export class Module {
 	readonly #private;
 	protected constructor(secret: Secret, ...args: unknown[]);
 	/** @internal */ _link(realm: Realm | null, linker: ModuleLinkRecord): Promise<void>;
-	evaluate(realm: Realm | null): Promise<MaybeCompletionOf<unknown>>;
+	evaluate(realm: Realm | null, options?: EvaluateModuleOptions): Promise<MaybeCompletionOf<unknown>>;
 }
 
 export class NativeModule {
@@ -76,13 +77,21 @@ export interface TransferOptions {
 	transfer?: readonly unknown[];
 }
 
+export interface InvokeOptions extends TransferOptions {
+	/**
+	 * Maximum amount of time in milliseconds the function is allowed to run before execution is
+	 * canceled. Default is no timeout. See `Script.RunScriptOptions.timeout`.
+	 */
+	timeout?: number | undefined;
+}
+
 export class Reference {
 	readonly #private;
 	protected constructor(secret: Secret, ...args: unknown[]);
 	copy(): Promise<unknown>;
 	get(property: string): Promise<Reference | null>;
 	set(property: string, value: unknown): Promise<true | null>;
-	invoke(args: unknown[], options?: TransferOptions): Promise<MaybeCompletionOf<unknown>>;
+	invoke(args: unknown[], options?: InvokeOptions): Promise<MaybeCompletionOf<unknown>>;
 }
 
 export class Script {

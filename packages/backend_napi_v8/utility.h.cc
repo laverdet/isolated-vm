@@ -59,38 +59,4 @@ auto make_completion_record(std::expected<Expected, js::error_value> result) -> 
 	return completion_record<Expected>{std::move(result)};
 }
 
-// Requests termination after the given timeout duration. The timer is registered as the current
-// execution timeout so that `execution_timeout_suspension` can pause it.
-class execution_timeout : util::non_moveable {
-	public:
-		execution_timeout(js::iv8::isolated::executor& executor, js::js_clock::duration duration);
-		~execution_timeout();
-
-	private:
-		class terminate {
-			public:
-				explicit terminate(v8::Isolate* isolate) : isolate_{isolate} {}
-				auto operator()() const noexcept -> void;
-
-			private:
-				v8::Isolate* isolate_;
-		};
-
-		std::reference_wrapper<js::iv8::isolated::executor> executor_;
-		util::timer_stop_token timer_;
-		util::scope_stack<util::timer_stop_token*> scope_;
-		std::optional<util::inplace_stop_callback<terminate>> callback_;
-};
-
-// Pauses the current execution timeout, if any, for the duration of the scope. Used while a script
-// is blocked waiting on the host.
-class execution_timeout_suspension : util::non_moveable {
-	public:
-		execution_timeout_suspension();
-		~execution_timeout_suspension();
-
-	private:
-		util::timer_stop_token* timer_;
-};
-
 } // namespace backend_napi_v8

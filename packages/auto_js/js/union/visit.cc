@@ -15,7 +15,7 @@ concept discriminated_struct = transferable_struct<Type> && requires { variant_d
 template <class Type>
 struct union_struct_properties {
 	private:
-		constexpr static auto size = std::tuple_size_v<std::remove_cvref_t<decltype(struct_properties<Type>::properties.as_tuple())>>;
+		constexpr static auto size = std::tuple_size_v<std::remove_cvref_t<decltype(struct_properties<Type>::properties)>>;
 
 	public:
 		constexpr static auto properties = [] consteval {
@@ -23,7 +23,7 @@ struct union_struct_properties {
 			constexpr auto [... indices ] = util::sequence<size>;
 			return js::struct_template{
 				js::struct_constant{alternative.discriminant_name, alternative.discriminant_value},
-				std::get<indices>(struct_properties<Type>::properties.as_tuple())...
+				std::get<indices>(struct_properties<Type>::properties)...
 			};
 		}();
 };

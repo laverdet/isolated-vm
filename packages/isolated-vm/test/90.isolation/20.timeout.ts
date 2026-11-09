@@ -1,3 +1,4 @@
+import type { Reference } from "@isolated-vm/experimental";
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
 import { Agent, Capability, expect, expectComplete } from "@isolated-vm/experimental";
@@ -8,6 +9,24 @@ await test("timeout", async () => {
 	const realm = expect(await agent.createRealm());
 	const loop = expectComplete(await agent.compileScript("for(;;);"));
 	assert.strictEqual(await loop.run(realm, { timeout: 20 }), null);
+});
+
+await test("reference.invoke timeout", async () => {
+	await using agent = await Agent.create();
+	const realm = expect(await agent.createRealm());
+	const script = expectComplete(await agent.compileScript("globalThis.loop = () => { for(;;); }; undefined;"));
+	expectComplete(await script.run(realm));
+	const global = await realm.acquireGlobalObject();
+	const loop = expect(await global.get("loop")) as Reference<() => void>;
+	assert.strictEqual(await loop.invoke([], { timeout: 20 }), null);
+});
+
+await test("module.evaluate timeout", async () => {
+	await using agent = await Agent.create();
+	const realm = expect(await agent.createRealm());
+	const loop = expectComplete(await agent.compileModule("for(;;);"));
+	await loop.link(realm, () => undefined);
+	assert.strictEqual(await loop.evaluate(realm, { timeout: 20 }), null);
 });
 
 await test("timeout edge cases", async () => {

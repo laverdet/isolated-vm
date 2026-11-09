@@ -1,7 +1,9 @@
 module v8_js;
 import :isolated.agent;
 import :isolated.executor;
+import auto_js;
 import std;
+import util;
 
 namespace js::iv8::isolated {
 
@@ -39,5 +41,38 @@ executor::unlock::~unlock() {
 		executor_.get().isolate()->TerminateExecution();
 	}
 };
+
+// executor::timeout
+executor::timeout::timeout(executor& executor, js_clock::duration duration) :
+		executor_{executor},
+		timer_{duration},
+		scope_{executor.current_timeout_, this},
+		callback_{std::in_place, timer_.get_token(), expire{executor.isolate()}} {}
+
+executor::timeout::~timeout() {
+	callback_.reset();
+	if (timer_.stop_requested() && !executor_.get().is_terminated()) {
+		// Prevent a completed but timed out task from terminating the next one
+		executor_.get().isolate()->CancelTerminateExecution();
+	}
+}
+
+auto executor::timeout::expire::operator()() const noexcept -> void {
+	isolate_->TerminateExecution();
+}
+
+// executor::timeout_suspension
+executor::timeout_suspension::timeout_suspension(executor& executor) :
+		timeout_{executor.current_timeout_} {
+	if (timeout_ != nullptr) {
+		timeout_->pause();
+	}
+}
+
+executor::timeout_suspension::~timeout_suspension() {
+	if (timeout_ != nullptr) {
+		timeout_->resume();
+	}
+}
 
 } // namespace js::iv8::isolated

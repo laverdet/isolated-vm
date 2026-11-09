@@ -26,6 +26,6 @@ export namespace Script {
 		 * Maximum amount of time in milliseconds this script is allowed to run before execution is
 		 * canceled. Default is no timeout.
 		 */
-		timeout?: number;
+		timeout?: number | undefined;
 	}
 }

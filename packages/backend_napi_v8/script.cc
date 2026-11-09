@@ -61,7 +61,7 @@ auto script_handle::run(const environment::lock& lock, realm_handle* realm, run_
 		) -> void {
 			auto result = realm_scope_operation(lock, realm, [ & ](const realm_scope& realm) -> auto {
 				auto timeout_watchdog = options.timeout
-					? std::optional<execution_timeout>{std::in_place, lock->executor(), js::js_clock::duration{*options.timeout}}
+					? std::optional<iv8::isolated::executor::timeout>{std::in_place, lock->executor(), js::js_clock::duration{*options.timeout}}
 					: std::nullopt;
 				return iv8::invoke_externalized_error_scope(realm, [ & ] -> auto {
 					auto value = script_remote->deref(lock)->run(realm);
