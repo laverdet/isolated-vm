@@ -57,14 +57,28 @@ auto class_template_of<Type>::make(const auto& lock, const auto& class_template)
 			prototype->SetAccessorProperty(name, make_member_template(std::move(function), length));
 		};
 
+	// Static function templates, without receiver checks
+	const auto make_static_template = [ & ](auto function, int length) -> v8::Local<v8::FunctionTemplate> {
+		auto [ callback, data ] = make_callback_storage(lock, std::move(function));
+		return v8::FunctionTemplate::New(isolate, callback, data, v8::Local<v8::Signature>{}, length, v8::ConstructorBehavior::kThrow);
+	};
+
 	// Static function property
 	const auto define_static_function = [ & ]<class Property>(const Property& property) -> void
-		requires(Property::scope == class_property_scope::constructor) {
+		requires(Property::scope == class_property_scope::constructor && Property::disposition == property_disposition::function) {
 			constexpr auto latin1_name = util::make_consteval_string_view(util::transcode_string<char>(property.name));
 			auto name = js::transfer_in_strict<v8::Local<v8::Name>>(latin1_name, lock);
 			auto [ function, length ] = make_free_function<lock_type>(property.function);
-			auto [ callback, data ] = make_callback_storage(lock, std::move(function));
-			result->Set(name, v8::FunctionTemplate::New(isolate, callback, data, v8::Local<v8::Signature>{}, length, v8::ConstructorBehavior::kThrow));
+			result->Set(name, make_static_template(std::move(function), length));
+		};
+
+	// Static getter property
+	const auto define_static_getter = [ & ]<class Property>(const Property& property) -> void
+		requires(Property::scope == class_property_scope::constructor && Property::disposition == property_disposition::accessor) {
+			constexpr auto latin1_name = util::make_consteval_string_view(util::transcode_string<char>(property.name));
+			auto name = js::transfer_in_strict<v8::Local<v8::Name>>(latin1_name, lock);
+			auto [ function, length ] = make_free_function<lock_type>(property.function);
+			result->SetAccessorProperty(name, make_static_template(std::move(function), length));
 		};
 
 	// Define class properties
@@ -72,6 +86,7 @@ auto class_template_of<Type>::make(const auto& lock, const auto& class_template)
 		define_member_function,
 		define_member_getter,
 		define_static_function,
+		define_static_getter,
 	};
 	const auto [... properties ] = class_template.properties;
 	(..., define_property(properties));

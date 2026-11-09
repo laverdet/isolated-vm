@@ -243,6 +243,17 @@ struct class_static : property_function_template<Name, Function> {
 template <class Name, class Function>
 class_static(Name, Function) -> class_static<Name, Function>;
 
+// Class static getter property
+export template <class Name, class Function>
+struct class_static_getter : property_function_template<Name, Function> {
+		using property_function_template<Name, Function>::property_function_template;
+		constexpr static auto disposition = property_disposition::accessor;
+		constexpr static auto scope = class_property_scope::constructor;
+};
+
+template <class Name, class Function>
+class_static_getter(Name, Function) -> class_static_getter<Name, Function>;
+
 // Class template for runtime host values
 export template <class Constructor, class... Properties>
 struct class_template {

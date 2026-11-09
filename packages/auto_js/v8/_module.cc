@@ -6,6 +6,7 @@ export import :class_;
 export import :class_definitions;
 export import :class_template_storage;
 export import :collected_handle;
+export import :continuation;
 export import :error;
 export import :function_definitions;
 export import :handle;

@@ -11,6 +11,21 @@ export declare class Reference<Type = unknown> {
 	constructor(value: Type);
 }
 
+/**
+ * Runtime support for promise-tracking context data
+ */
+export declare class Zone {
+	// eslint-disable-next-line no-unused-private-class-members
+	readonly #private;
+	constructor();
+
+	/** The zone which is currently running, if any. */
+	static get current(): Zone | undefined;
+
+	/** Invokes `callback` with this zone current, and returns the result. */
+	run<Result>(callback: () => Result): Result;
+}
+
 /** System clock time in milliseconds. */
 export declare function clockTime(): number;
 

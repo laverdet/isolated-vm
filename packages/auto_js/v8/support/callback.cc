@@ -2,6 +2,7 @@ export module v8_js:callback;
 export import :callback_storage;
 import :callback_info;
 import :error;
+import :object;
 import :wrappable;
 import auto_js;
 import std;
@@ -138,11 +139,38 @@ constexpr auto make_constructor_function(auto constructor) {
 	return make(std::move(constructor));
 }
 
-// Member function callback maker. `this` is unwrapped to the receiver instance.
+// Normalizes an optional `this_object` parameter which follows the lock in a member function.
+constexpr auto thunk_this_object = []<class Callback>(Callback callback) constexpr -> auto {
+	constexpr auto make_with_this =
+		[]<class That, class Lock, class... Args, bool Nx, class Result>(
+			std::type_identity<auto(That, Lock, this_object, Args...) noexcept(Nx)->Result> /*signature*/,
+			auto callback
+		) -> auto {
+		return std::move(callback);
+	};
+	constexpr auto make_without_this =
+		[]<class That, class Lock, class... Args, bool Nx, class Result>(
+			std::type_identity<auto(That, Lock, Args...) noexcept(Nx)->Result> /*signature*/,
+			auto callback
+		) -> auto {
+		return util::bind{
+			[](Callback& callback, That that, Lock lock, this_object /*self*/, Args... args) noexcept(Nx) -> Result {
+				return callback(that, std::forward<Lock>(lock), std::forward<Args>(args)...);
+			},
+			std::move(callback),
+		};
+	};
+
+	constexpr auto make = util::overloaded{make_with_this, make_without_this};
+	return make(std::type_identity<util::function_signature_t<decltype(callback)>>{}, std::move(callback));
+};
+
+// Member function callback maker. `this` is unwrapped to the receiver instance, and also passed
+// along as `this_object`.
 constexpr auto make_member_function_with_try_catch =
 	[]<class Type, class That, class Lock, class... Args, bool Nx, class Result>(
 		std::type_identity<Type> /*type*/,
-		std::type_identity<auto(That, Lock, Args...) noexcept(Nx)->Result> /*signature*/,
+		std::type_identity<auto(That, Lock, this_object, Args...) noexcept(Nx)->Result> /*signature*/,
 		auto callback
 	) -> auto {
 	using callback_type = decltype(callback);
@@ -155,11 +183,12 @@ constexpr auto make_member_function_with_try_catch =
 				if (that == nullptr) {
 					throw js::type_error{u"Invalid object type"};
 				}
+				auto self = this_object{info.This()};
 				auto run = util::regular_return{[ & ] -> decltype(auto) {
 					return std::apply(
 						callback,
 						std::tuple_cat(
-							std::forward_as_tuple(*that, lock),
+							std::forward_as_tuple(*that, lock, self),
 							js::transfer_out<std::tuple<js::functional::parameter_transfer_as_t<Args>...>>(callback_info{info}, lock)
 						)
 					);
@@ -176,7 +205,7 @@ constexpr auto make_member_function_with_try_catch =
 template <class Lock, class Type>
 constexpr auto make_member_function(auto method) {
 	using revived_lock_type = revive_lock_type<Lock>::type;
-	auto callback = js::functional::thunk_member_function<revived_lock_type, context_lock_witness>(std::move(method));
+	auto callback = thunk_this_object(js::functional::thunk_member_function<revived_lock_type, context_lock_witness>(std::move(method)));
 	using signature_type = util::function_signature_t<decltype(callback)>;
 	return make_member_function_with_try_catch(std::type_identity<Type>{}, std::type_identity<signature_type>{}, std::move(callback));
 }

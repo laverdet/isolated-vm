@@ -109,7 +109,7 @@ auto local_for_class_of<Type>::make(const environment_lock_witness_of<Environmen
 
 	// Static function property descriptor
 	const auto make_static_function_descriptor = [ & ]<class Property>(const Property& property) -> napi_property_descriptor
-		requires(Property::scope == class_property_scope::constructor) {
+		requires(Property::scope == class_property_scope::constructor && Property::disposition == property_disposition::function) {
 			constexpr auto u8_name = util::make_consteval_string_view(util::transcode_string<char>(property.name));
 			auto [ callback, data ] = make_callback_storage(lock, make_free_function<Environment>(property.function));
 			static_assert(!requires { typename decltype(data)::element_type; });

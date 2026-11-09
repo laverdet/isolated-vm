@@ -32,6 +32,7 @@ target_sources(${backend_napi_v8}
 		reference.cc
 		runtime/runtime.cc
 		script.cc
+		zone.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		agent_handle.h.cc
@@ -44,6 +45,7 @@ target_sources(${backend_napi_v8}
 		realm.h.cc
 		reference.h.cc
 		runtime/runtime.h.cc
+		zone.h.cc
 		script.h.cc
 		utility.h.cc
 )

@@ -4,9 +4,20 @@ import :lock;
 import :wrappable;
 import auto_js;
 import std;
+import util;
 import v8;
 
 namespace js::iv8 {
+
+// Marker parameter for member functions.
+export class this_object : util::pointer_facade {
+	public:
+		explicit this_object(v8::Local<v8::Object> object) : object_{object} {}
+		constexpr auto operator*() -> v8::Local<v8::Object> { return object_; }
+
+	private:
+		v8::Local<v8::Object> object_;
+};
 
 class value_for_object : public handle_with_context<v8::Object> {
 	public:

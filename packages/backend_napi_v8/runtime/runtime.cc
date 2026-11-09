@@ -4,6 +4,7 @@ module backend_napi_v8;
 import :lock;
 import :reference;
 import :runtime;
+import :zone;
 import auto_js;
 import std;
 import util;
@@ -76,6 +77,7 @@ auto runtime_interface::instantiate(const realm_scope& lock) -> v8::Local<js::iv
 			std::pair{util::cw<"performanceTime">, performance_time_->deref(util::slice(lock))},
 			std::pair{util::cw<"transfer">, transfer_->deref(util::slice(lock))},
 			std::pair{util::cw<"Reference">, v8::Local<v8::FunctionTemplate>{reference_handle::class_template(lock)}},
+			std::pair{util::cw<"Zone">, v8::Local<v8::FunctionTemplate>{zone_handle::class_template(lock)}},
 		};
 	};
 	auto origin = util::make_consteval_string_view("isolated-vm:runtime");

@@ -11,6 +11,7 @@ namespace backend_napi_v8 {
 // Storage for class templates
 constexpr inline auto runtime_class_names = std::tuple{
 	"Reference"sv,
+	"Zone"sv,
 };
 
 // This storage is managed by the external isolate, not napi.
