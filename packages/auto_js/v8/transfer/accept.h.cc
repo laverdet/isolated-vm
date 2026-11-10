@@ -82,6 +82,13 @@ struct accept_v8_primitive {
 		auto operator()(string_tag_of<char16_t> tag, visit_holder visit, std::u16string_view subject) const
 			-> js::referenceable_value<v8::Local<iv8::StringTwoByte>>;
 
+		// externalized strings
+		auto operator()(string_tag_of<char> tag, visit_holder visit, std::string&& subject) const
+			-> js::referenceable_value<v8::Local<iv8::StringOneByte>>;
+		auto operator()(string_tag_of<char16_t> tag, visit_holder visit, std::u16string&& subject) const
+			-> js::referenceable_value<v8::Local<iv8::StringTwoByte>>;
+
+		// forwarding strings
 		auto operator()(string_tag /*tag*/, visit_holder visit, auto&& subject) const
 			-> js::referenceable_value<v8::Local<v8::String>> {
 			auto value = (*this)(string_tag_of<char16_t>{}, visit, std::u16string_view{std::forward<decltype(subject)>(subject)});

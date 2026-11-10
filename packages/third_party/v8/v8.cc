@@ -16,6 +16,8 @@ module;
 #ifdef INCLUDE_V8_PLATFORM
 #include "libplatform/libplatform.h"
 #include "v8-platform.h"
+// nb: Not part of `v8.h`, and not shipped in nodejs header tarballs
+#include "v8-external-memory-accounter.h"
 #endif
 export module v8;
 
@@ -98,6 +100,11 @@ using v8::StackTrace;
 // v8-exception.h
 using v8::Exception;
 using v8::TryCatch;
+
+// v8-external-memory-accounter.h
+#ifdef INCLUDE_V8_PLATFORM
+using v8::ExternalMemoryAccounter;
+#endif
 
 // v8-external.h
 using v8::External;

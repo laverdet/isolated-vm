@@ -71,6 +71,7 @@ struct accept_basic_napi_value {
 		auto operator()(string_tag_of<char16_t> tag, visit_holder visit, std::u16string_view subject) const
 			-> js::referenceable_value<local_of<string_tag_of<char16_t>>>;
 
+		// forwarding strings
 		auto operator()(string_tag /*tag*/, visit_holder visit, auto&& subject) const
 			-> js::referenceable_value<local_of<string_tag>> {
 			auto value = (*this)(string_tag_of<char16_t>{}, visit, std::u16string_view{std::forward<decltype(subject)>(subject)});

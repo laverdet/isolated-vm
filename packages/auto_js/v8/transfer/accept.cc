@@ -5,6 +5,56 @@ import v8;
 
 namespace js::iv8 {
 
+// After 256 bytes externalized strings tend to beat internalized strings on pure transfer speed.
+// String operations (split, JSON.parse, etc) tend suffer in all cases though. 1kb is a decent
+// cutoff.
+constexpr std::size_t external_string_threshold_bytes = 1'024;
+
+// Holder for externalized strings
+template <class Char>
+struct external_string_resource_base;
+
+template <>
+struct external_string_resource_base<char> : v8::String::ExternalOneByteStringResource {
+	protected:
+		using data_type = const char*;
+};
+
+template <>
+struct external_string_resource_base<char16_t> : v8::String::ExternalStringResource {
+	protected:
+		using data_type = const std::uint16_t*;
+};
+
+template <class Char>
+class external_string_resource final : public external_string_resource_base<Char> {
+	public:
+		using typename external_string_resource_base<Char>::data_type;
+
+		explicit external_string_resource(v8::Isolate* isolate, std::basic_string<Char>&& value) :
+				value_{std::move(value)} {
+			accounter_.Increase(isolate, bytes());
+		}
+
+		[[nodiscard]] auto data() const -> data_type final { return reinterpret_cast<data_type>(value_.data()); }
+		[[nodiscard]] auto length() const -> std::size_t final { return value_.size(); }
+		[[nodiscard]] auto EstimateMemoryUsage() const -> std::size_t final { return sizeof(*this) + bytes(); }
+		auto Unaccount(v8::Isolate* isolate) -> void final { accounter_.Decrease(isolate, bytes()); }
+
+	private:
+		[[nodiscard]] auto bytes() const -> std::size_t { return value_.size() * sizeof(Char); }
+
+		std::basic_string<Char> value_;
+		v8::ExternalMemoryAccounter accounter_;
+};
+
+template <class Char>
+auto should_externalize(const std::basic_string<Char>& subject) -> bool {
+	auto meets_threshold = subject.size() * sizeof(Char) >= external_string_threshold_bytes;
+	auto under_max_length = subject.size() <= static_cast<std::size_t>(v8::String::kMaxLength);
+	return meets_threshold && under_max_length;
+}
+
 // null
 auto accept_v8_primitive::operator()(null_tag /*tag*/, visit_holder /*visit*/, std::nullptr_t /*subject*/) const -> v8::Local<iv8::Null> {
 	return v8::Null(isolate()).As<iv8::Null>();
@@ -51,6 +101,28 @@ auto accept_v8_primitive::operator()(string_tag_of<char16_t> /*tag*/, visit_hold
 	auto size = static_cast<int>(subject.size());
 	auto value = unmaybe(v8::String::NewFromTwoByte(isolate(), data, v8::NewStringType::kNormal, size)).As<iv8::StringTwoByte>();
 	return js::referenceable_value{value};
+}
+
+auto accept_v8_primitive::operator()(string_tag_of<char> tag, visit_holder visit, std::string&& subject) const
+	-> js::referenceable_value<v8::Local<iv8::StringOneByte>> {
+	if (should_externalize(subject)) {
+		auto resource = std::make_unique<external_string_resource<char>>(isolate(), std::move(subject));
+		auto value = unmaybe(v8::String::NewExternalOneByte(isolate(), resource.release())).As<iv8::StringOneByte>();
+		return js::referenceable_value{value};
+	} else {
+		return (*this)(tag, visit, std::string_view{subject});
+	}
+}
+
+auto accept_v8_primitive::operator()(string_tag_of<char16_t> tag, visit_holder visit, std::u16string&& subject) const
+	-> js::referenceable_value<v8::Local<iv8::StringTwoByte>> {
+	if (should_externalize(subject)) {
+		auto resource = std::make_unique<external_string_resource<char16_t>>(isolate(), std::move(subject));
+		auto value = unmaybe(v8::String::NewExternalTwoByte(isolate(), resource.release())).As<iv8::StringTwoByte>();
+		return js::referenceable_value{value};
+	} else {
+		return (*this)(tag, visit, std::u16string_view{subject});
+	}
 }
 
 // bigint (why does `NewFromWords` need a context?)
