@@ -85,11 +85,18 @@ class runtime_reference_transfer {
 // Acceptor delegate which accepts type-erased `std::any` handles as instances of the receiving
 // runtime's `Reference` class.
 struct reference_acceptor {
-		auto operator()(auto&& subject, const auto& lock) const {
+		// Transferred through an intermediate `js::value_t`, which has already unwrapped the claim
+		auto operator()(util::decays_to<std::any> auto&& subject, const auto& lock) const {
 			auto* reference = std::any_cast<reference_handle>(&subject);
 			return reference == nullptr
 				? std::nullopt
 				: std::optional{reference_handle::class_template(lock)->construct(lock, std::forward_like<decltype(subject)>(*reference))};
+		}
+
+		// Transferred directly from the claiming visitor delegate
+		template <class Subject>
+		auto operator()(js::transferred_value<Subject, std::any> subject, const auto& lock) const {
+			return (*this)(*std::move(subject), lock);
 		}
 };
 
@@ -122,6 +129,22 @@ auto transfer_from_runtime(js::iv8::context_lock_witness lock, auto subject, js:
 	};
 	return delegate.with([ & ](auto& delegate) -> Type {
 		return js::transfer_out<Type>(subject, lock, delegate);
+	});
+}
+
+// Transfers a value out of the runtime directly into the host.
+auto transfer_runtime_to_host(
+	const environment::lock& host_lock,
+	js::iv8::context_lock_witness lock,
+	auto subject,
+	js::iv8::value_of<js::list_tag> transfer = {}
+) -> napi_value {
+	auto delegate = js::visitor_delegate_of{
+		js::iv8::transfer_list<js::iv8::array_buffer_transfer>(lock, transfer),
+		runtime_reference_transfer{},
+	};
+	return delegate.with([ & ](auto& delegate) -> napi_value {
+		return js::transfer<napi_value>(subject, std::forward_as_tuple(lock, delegate), std::forward_as_tuple(host_lock, accept_references));
 	});
 }
 

@@ -1,7 +1,8 @@
 import type { Reference } from "@isolated-vm/experimental";
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import { Agent, expect } from "@isolated-vm/experimental";
+import { inspect } from "node:util";
+import { Agent, Capability, expect } from "@isolated-vm/experimental";
 import { expectComplete, unsafeEvalAsStringInRealm } from "@isolated-vm/experimental/test/fixtures";
 
 const illegalAccess = new Error("illegal access");
@@ -108,4 +109,36 @@ await test("invoke should not invoke interceptors", async () => {
 		async () => expectComplete(await fn?.invoke([ { name: "value" } ])),
 		illegalAccess,
 	);
+});
+
+await test("copy settles immediately when the isolate is idle, and waits when it is busy", async () => {
+	await using agent = await Agent.create();
+	const realm = expect(await agent.createRealm());
+	// `started` resolves once the busy loop is running, and therefore holding the isolate lock
+	const { promise: started, resolve: onStarted } = Promise.withResolvers<null>();
+	const signal = expect(await realm.createCapability({ default: Capability.void(() => onStarted(null)) }, { origin: "signal" }));
+	const module = expectComplete(await agent.compileModule(`
+		import signal from "signal";
+		globalThis.value = { nested: [ 1, "two", true ] };
+		globalThis.busy = () => { signal(); const end = Date.now() + 200; while (Date.now() < end); };
+	`));
+	await module.link(realm, () => signal);
+	expectComplete(await module.evaluate(realm));
+	const global = await realm.acquireGlobalObject();
+	const value = expect(await global.get("value"));
+
+	// Idle: only works sometimes. If there's a crash the test will fail intermittently.
+	// eslint-disable-next-line @typescript-eslint/await-thenable
+	await undefined;
+	const idle = value.copy();
+	assert.deepEqual(await idle, { nested: [ 1, "two", true ] });
+
+	// Busy: the copy falls back to the scheduler and completes once the isolate is free
+	const busy = expect(await global.get("busy")) as Reference<() => void>;
+	const running = busy.invoke([]);
+	await started;
+	const deferred = value.copy();
+	assert.match(inspect(deferred), /pending/);
+	assert.deepEqual(await deferred, { nested: [ 1, "two", true ] });
+	expectComplete(await running);
 });

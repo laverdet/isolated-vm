@@ -62,19 +62,24 @@ class isolate_lock_witness_of
 export class isolate_destructor_lock : public isolate_lock_witness {
 	public:
 		explicit isolate_destructor_lock(v8::Isolate* isolate);
+		isolate_destructor_lock(v8::Isolate* isolate, v8::Locker locker);
 
 	private:
 		v8::Locker locker_;
 		v8::Isolate::Scope isolate_scope_;
 };
 
-// Performs a full isolate lock which may allocate handles
+// Performs a full isolate lock which may allocate handles. JavaScript execution is disallowed by
+// default and must be explicitly allowed by the operation which runs it.
 export class isolate_execution_lock : public isolate_destructor_lock {
 	public:
 		explicit isolate_execution_lock(v8::Isolate* isolate);
+		isolate_execution_lock(v8::Isolate* isolate, v8::Locker locker);
+		static auto try_lock(v8::Isolate* isolate) -> std::optional<isolate_execution_lock>;
 
 	private:
 		v8::HandleScope handle_scope_;
+		v8::Isolate::DisallowJavascriptExecutionScope disallow_js_;
 };
 
 // Exit isolate, re-enter on destruction

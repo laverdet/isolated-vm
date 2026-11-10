@@ -114,6 +114,34 @@ resolver(const environment_lock_witness_of<Environment>&, napi_deferred) -> reso
 template <class Environment, class Dispatch>
 resolver(const environment_lock_witness_of<Environment>&, napi_deferred, Dispatch) -> resolver<Environment, Dispatch>;
 
+// Makes a promise which is settled immediately from `expected`, without a trip through the scheduler.
+export template <class Environment, class Value, class Error>
+auto make_settled_promise(const environment_lock_witness_of<Environment>& lock, std::expected<Value, Error> expected) -> local_of<promise_tag> {
+	auto settled = [ & ] -> std::expected<napi_value, napi_value> {
+		if (expected) {
+			return js::transfer_in_strict<napi_value>(*std::move(expected), lock);
+		} else {
+			return std::unexpected{js::transfer_in_strict<napi_value>(std::move(expected).error(), lock)};
+		}
+	}();
+	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+	napi_deferred deferred;
+	// NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+	napi_value promise;
+	napi::invoke0(napi_create_promise, napi_env{lock}, &deferred, &promise);
+	if (settled) {
+		napi::invoke0(napi_resolve_deferred, napi_env{lock}, deferred, *settled);
+	} else {
+		napi::invoke0(napi_reject_deferred, napi_env{lock}, deferred, settled.error());
+	}
+	return local_of<promise_tag>::from(promise);
+}
+
+export template <class Environment, class Value>
+auto make_settled_promise(const environment_lock_witness_of<Environment>& lock, Value value) -> local_of<promise_tag> {
+	return make_settled_promise(lock, std::expected<Value, js::error_value>{std::in_place, std::move(value)});
+}
+
 export template <class Environment>
 auto make_promise(const environment_lock_witness_of<Environment>& lock, auto... dispatch) {
 	// Make nodejs promise & future

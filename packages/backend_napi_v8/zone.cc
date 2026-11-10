@@ -136,7 +136,9 @@ zone_frame::zone_frame(const realm_scope& lock, std::optional<double> timeout) :
 
 zone_frame::zone_frame(const realm_scope& lock, const std::shared_ptr<zone_handle::timeout_type>& budget) :
 		continuation_{util::slice(lock), zone_handle::class_template(lock)->construct(lock, util::slice(lock), budget, v8::Map::New(lock.isolate()))},
-		timeout_{lock->executor(), budget.get()} {}
+		timeout_{lock->executor(), budget.get()} {
+	lock->begin_tick();
+}
 
 auto zone_handle::promise_hook(v8::PromiseHookType type, v8::Local<v8::Promise> /*promise*/, v8::Local<v8::Value> /*parent*/) -> void {
 	thread_local auto reaction_scope = std::optional<timeout_type::scope>{};

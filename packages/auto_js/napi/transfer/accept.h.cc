@@ -42,6 +42,9 @@ struct accept_basic_napi_value {
 
 		// boolean
 		auto operator()(boolean_tag tag, visit_holder visit, bool subject) const -> local_of<boolean_tag>;
+		auto operator()(boolean_tag tag, visit_holder visit, auto&& subject) const -> local_of<boolean_tag> {
+			return (*this)(tag, visit, bool{std::forward<decltype(subject)>(subject)});
+		}
 
 		// number
 		auto operator()(number_tag_of<double> tag, visit_holder visit, double subject) const -> local_of<number_tag_of<double>>;
@@ -115,6 +118,10 @@ struct accept_basic_napi_value {
 		// date
 		auto operator()(date_tag tag, visit_holder /*visit*/, js_clock::time_point subject) const
 			-> js::referenceable_value<local_of<date_tag>>;
+		auto operator()(date_tag tag, visit_holder visit, auto&& subject) const
+			-> js::referenceable_value<local_of<date_tag>> {
+			return (*this)(tag, visit, js_clock::time_point{std::forward<decltype(subject)>(subject)});
+		}
 
 		// error
 		auto operator()(error_tag /*tag*/, visit_holder visit, const js::error_value& subject) const
@@ -132,6 +139,24 @@ struct accept_basic_napi_value {
 			-> js::referenceable_value<local_of<shared_array_buffer_tag>>;
 		auto operator()(shared_array_buffer_tag tag, visit_holder visit, const js::shared_array_buffer& subject) const
 			-> js::referenceable_value<local_of<shared_array_buffer_tag>>;
+
+		// array buffers claimed by a transfer list delegate
+		template <class Subject>
+		auto operator()(array_buffer_tag tag, visit_holder visit, js::transferred_value<Subject, js::array_buffer> subject) const
+			-> js::referenceable_value<local_of<array_buffer_tag>> {
+			return (*this)(tag, visit, *std::move(subject));
+		}
+
+		// data blocks from another runtime's tagged handles
+		auto operator()(array_buffer_tag tag, visit_holder visit, const auto& subject) const
+			-> js::referenceable_value<local_of<array_buffer_tag>> {
+			return (*this)(tag, visit, js::array_buffer{subject});
+		}
+
+		auto operator()(shared_array_buffer_tag tag, visit_holder visit, const auto& subject) const
+			-> js::referenceable_value<local_of<shared_array_buffer_tag>> {
+			return (*this)(tag, visit, js::shared_array_buffer{subject});
+		}
 
 		// typed arrays & data view
 		template <std::convertible_to<array_buffer_view_tag> Tag>

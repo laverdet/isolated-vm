@@ -164,6 +164,10 @@ auto agent_host::scratch_context() -> v8::Local<v8::Context> {
 	}
 }
 
+auto agent_host::begin_tick() -> void {
+	std::visit([](auto& clock) -> void { clock.begin_tick(); }, clock());
+}
+
 auto agent_host::take_random_seed() -> std::optional<double> {
 	if (should_give_seed_) {
 		return std::exchange(random_seed_, std::nullopt);

@@ -5,6 +5,7 @@ import :collected_handle;
 import :isolated.clock;
 import :isolated.executor;
 import :isolated.memory_policy;
+import :lock;
 import :platform.foreground_runner;
 import :remote;
 import boost;
@@ -41,6 +42,10 @@ class agent_collected_handle_lock : public collected_handle_lock {
 export using agent_lock = isolate_lock_witness_of<agent_host, agent_remote_handle_lock, agent_collected_handle_lock>;
 export template <class Environment>
 using agent_lock_of = isolate_lock_witness_of<agent_host_of<Environment>, agent_remote_handle_lock, agent_collected_handle_lock>;
+
+export template <class Type>
+class agent_scoped_lock_of;
+
 export using realm_scope = context_lock_witness_of<agent_host, agent_remote_handle_lock, agent_collected_handle_lock>;
 export template <class Environment>
 using realm_scope_of = context_lock_witness_of<agent_host_of<Environment>, agent_remote_handle_lock, agent_collected_handle_lock>;
@@ -94,6 +99,7 @@ export template <class Type>
 class agent_handle_of : public agent_handle {
 	public:
 		using lock = agent_lock_of<Type>;
+		using scoped_lock = agent_scoped_lock_of<Type>;
 
 		explicit agent_handle_of(std::nullptr_t /*null*/) noexcept : agent_handle{nullptr} {}
 		agent_handle_of(agent_host_of<Type>& host, std::weak_ptr<agent_host> weak_host) :
@@ -101,6 +107,11 @@ class agent_handle_of : public agent_handle {
 
 		template <class... Args, std::invocable<lock, Args...> Task>
 		auto schedule(Task task, Args... args) const -> void;
+
+		// Locks the agent's isolate in the current thread, if it can be done without waiting.
+		// `std::unexpected{true}` - agent is busy
+		// `std::unexpected{false}` - agent is gone
+		auto try_lock() const -> std::expected<scoped_lock, bool>;
 };
 
 export template <class Type>
@@ -136,6 +147,7 @@ export class agent_host
 		virtual ~agent_host();
 
 		auto autorelease_pool() -> util::autorelease_pool& { return autorelease_pool_; }
+		auto begin_tick() -> void;
 		auto clock(this auto& self) -> auto& { return self.clock_.at(0); }
 		auto executor() -> auto& { return executor_; }
 		auto make_context() -> v8::Local<v8::Context>;
@@ -195,6 +207,30 @@ class agent_host_of : public agent_host {
 		agent_host_environment<Type> environment_;
 };
 
+// Storage owned by `agent_scoped_lock_of`. It is a base class so that it is initialized before the
+// witness, which refers to it.
+struct agent_lock_storage {
+		explicit agent_lock_storage(std::shared_ptr<agent_host> host) :
+				host_{std::move(host)},
+				isolate_lock_{host_->executor().isolate()} {}
+		agent_lock_storage(std::shared_ptr<agent_host> host, v8::Locker locker) :
+				host_{std::move(host)},
+				isolate_lock_{host_->executor().isolate(), std::move(locker)} {}
+
+		// Order matters for these members
+		std::shared_ptr<agent_host> host_;
+		isolate_execution_lock isolate_lock_;
+};
+
+// An `agent_lock_of` which owns the isolate lock and holds the host alive.
+export template <class Type>
+class agent_scoped_lock_of : agent_lock_storage, public agent_lock_of<Type> {
+	public:
+		agent_scoped_lock_of(std::shared_ptr<agent_host_of<Type>> host, v8::Locker locker) :
+				agent_lock_storage{std::move(host), std::move(locker)},
+				agent_lock_of<Type>{this->isolate_lock_, static_cast<agent_host_of<Type>&>(*this->host_)} {}
+};
+
 // ---
 
 template <class Type>
@@ -205,10 +241,6 @@ auto agent_handle_of<Type>::schedule(Task task, Args... args) const -> void {
 		scheduler.schedule_client_task(
 			[](util::inplace_stop_token /*stop_token*/, const auto& host, const auto& task, auto&&... args) -> void {
 				auto isolate_lock = isolate_lock_witness::make_witness(host->executor().isolate());
-				std::visit([](auto& clock) -> void { clock.begin_tick(); }, host->clock());
-				// By default we disallow code execution except when explicitly annotated
-				auto disallow_js =
-					v8::Isolate::DisallowJavascriptExecutionScope{isolate_lock.isolate(), v8::Isolate::DisallowJavascriptExecutionScope::THROW_ON_FAILURE};
 				task(lock{isolate_lock, static_cast<agent_host_of<Type>&>(*host)}, std::forward<decltype(args)>(args)...);
 			},
 			std::move(host),
@@ -216,6 +248,20 @@ auto agent_handle_of<Type>::schedule(Task task, Args... args) const -> void {
 			std::move(args)...
 		);
 	}
+}
+
+template <class Type>
+auto agent_handle_of<Type>::try_lock() const -> std::expected<scoped_lock, bool> {
+	if (auto host = lock_host()) {
+		auto locker = v8::Locker{v8::Locker::TryLock{}, host->executor().isolate()};
+		if (locker.OwnsLock()) {
+			return std::expected<scoped_lock, bool>{std::in_place, std::static_pointer_cast<agent_host_of<Type>>(std::move(host)), std::move(locker)};
+		}
+		// Busy, try again from the scheduler
+		return std::unexpected{true};
+	}
+	// Agent is gone
+	return std::unexpected{false};
 }
 
 template <class Type>

@@ -14,6 +14,12 @@ class regular_value {
 		constexpr auto operator*() && -> Type { return std::move(value_); }
 		constexpr auto value_or(const auto& /*nothing*/) && -> Type { return *std::move(*this); };
 
+		template <class Transform>
+		constexpr auto transform(Transform transform) && {
+			using result_type = std::invoke_result_t<Transform&, Type>;
+			return regular_value<result_type>{transform(*std::move(*this))};
+		}
+
 	private:
 		Type value_;
 };
@@ -22,6 +28,7 @@ template <>
 class regular_value<void> {
 	public:
 		constexpr auto operator*() const -> void {}
+		constexpr auto transform(const auto& /*transform*/) -> regular_value { return {}; }
 
 		template <class Type>
 		constexpr auto value_or(Type value) -> Type { return value; };

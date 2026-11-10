@@ -48,41 +48,58 @@ reference_handle::reference_handle(
 		}}} {}
 
 auto reference_handle::copy(const environment::lock& lock) -> forward_promise_type {
-	auto [ promise, resolver ] = make_promise(lock, resolve_with_references);
 	switch (typeof_) {
 		case js::typeof_kind::null:
-			resolver(nullptr);
-			break;
-
+			return js::forward{make_settled_promise(lock, nullptr)};
 		case js::typeof_kind::undefined:
-			resolver(std::monostate{});
-			break;
-
+			return js::forward{make_settled_promise(lock, std::monostate{})};
 		default:
-			agent_.schedule(
-				[ value = value_,
-					realm = realm_ ](
-					const agent_handle::lock& lock,
-					auto resolver
-				) -> void {
-					auto maybe_transferred = context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& lock) -> auto {
-						return iv8::invoke_externalized_error_scope(lock, [ & ] -> js::value_t {
-							return transfer_from_runtime<js::value_t>(lock, value->deref(lock));
-						});
-					});
-					if (maybe_transferred) {
-						auto& transferred = *maybe_transferred;
-						if (transferred) {
-							resolver(*std::move(transferred));
-						} else {
-							resolver.reject(std::move(transferred).error());
-						}
-					}
-				},
-				std::move(resolver)
-			);
 			break;
 	}
+
+	// Fast path: try to immediately lock the runtime isolate and transfer directly on the nodejs
+	// thread
+	if (auto agent_lock = agent_.try_lock()) {
+		auto maybe_transferred = context_scope_operation(*agent_lock, realm_->deref(*agent_lock), [ & ](const realm_scope& realm_lock) -> auto {
+			return iv8::invoke_externalized_error_scope(realm_lock, [ & ] -> js::forward<napi_value> {
+				return js::forward{transfer_runtime_to_host(lock, realm_lock, value_->deref(realm_lock))};
+			});
+		});
+		if (maybe_transferred) {
+			return js::forward{make_settled_promise(lock, *std::move(maybe_transferred))};
+		} else {
+			// Terminated
+			return js::forward{make_settled_promise(lock, nullptr)};
+		}
+	} else if (!agent_lock.error()) {
+		// Agent is gone
+		return js::forward{make_settled_promise(lock, nullptr)};
+	}
+
+	// Slow path: the isolate is busy, so dispatch from the scheduler
+	auto [ promise, resolver ] = make_promise(lock, resolve_with_references);
+	agent_.schedule(
+		[ value = value_,
+			realm = realm_ ](
+			const agent_handle::lock& lock,
+			auto resolver
+		) -> void {
+			auto maybe_transferred = context_scope_operation(lock, realm->deref(lock), [ & ](const realm_scope& lock) -> auto {
+				return iv8::invoke_externalized_error_scope(lock, [ & ] -> js::value_t {
+					return transfer_from_runtime<js::value_t>(lock, value->deref(lock));
+				});
+			});
+			if (maybe_transferred) {
+				auto& transferred = *maybe_transferred;
+				if (transferred) {
+					resolver(*std::move(transferred));
+				} else {
+					resolver.reject(std::move(transferred).error());
+				}
+			}
+		},
+		std::move(resolver)
+	);
 	return js::forward{promise};
 }
 

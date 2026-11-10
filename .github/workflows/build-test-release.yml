@@ -329,7 +329,7 @@ jobs:
             -DV8_INCLUDE_GN_FILE="$V8_REF_PATH/$TRIPLET.release/include/v8-gn.h" \
             -DV8_LIBRARY_PATH="$V8_REF_PATH/$TRIPLET.release" \
             -DV8_LIBRARY_TYPE=static \
-            ${NINJA_PATH:+"-DNINJA_PATH=${NINJA_PATH}"} \
+            ${NINJA_PATH:+"-DCMAKE_MAKE_PROGRAM=${NINJA_PATH}"} \
             ${ECO_STD:+"-DCMAKE_CXX_STDLIB_MODULES_JSON=${ECO_STD}"} \
             -B build \
             -G Ninja \
@@ -350,7 +350,7 @@ jobs:
           cmake \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_MODULE_PATH="$(pnpm exec auto_js_cmake_include)" \
-            ${NINJA_PATH:+"-DNINJA_PATH=${NINJA_PATH}"} \
+            ${NINJA_PATH:+"-DCMAKE_MAKE_PROGRAM=${NINJA_PATH}"} \
             ${ECO_STD:+"-DCMAKE_CXX_STDLIB_MODULES_JSON=${ECO_STD}"} \
             -G Ninja -B build \
           ;
