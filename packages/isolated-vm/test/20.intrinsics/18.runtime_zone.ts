@@ -42,8 +42,29 @@ await test("zone follows await and then", async () => {
 			results.awaited = Zone.current === zone;
 			await Promise.resolve().then(() => { results.chained = Zone.current === zone; });
 		});
-		Promise.resolve().then(() => { results.outside = Zone.current; });
+		Promise.resolve().then(() => { results.outside = Zone.current === zone; });
 		globalThis.result = results;`);
 	// The module's microtask checkpoint runs all of these before `evaluate` settles
-	assert.deepStrictEqual(result, { awaited: true, chained: true, outside: undefined });
+	assert.deepStrictEqual(result, { awaited: true, chained: true, outside: false });
+});
+
+await test("clone snapshots data and detach runs in a new task", async () => {
+	await using agent = await Agent.create();
+	const realm = expect(await agent.createRealm());
+	const result = await evaluateWithZone(agent, realm, `
+		const zone = new Zone();
+		zone.data.set("key", 1);
+		const clone = zone.clone();
+		zone.data.set("key", 2);
+		clone.data.set("other", 3);
+		const order = [];
+		globalThis.result = { order, data: [ zone.data.get("key"), clone.data.get("key"), zone.data.has("other"), clone.data.has("other") ] };
+		zone.run(() => {
+			Zone.detach(() => { order.push([ "detached", Zone.current !== zone ]); });
+			order.push([ "sync", Zone.current === zone ]);
+		});`);
+	assert.deepStrictEqual(result, {
+		order: [ [ "sync", true ], [ "detached", true ] ],
+		data: [ 2, 1, false, true ],
+	});
 });

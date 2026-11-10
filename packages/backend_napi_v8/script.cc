@@ -4,6 +4,7 @@ import :lock;
 import :realm;
 import :reference;
 import :utility;
+import :zone;
 import auto_js;
 import napi_js;
 import std;
@@ -60,9 +61,7 @@ auto script_handle::run(const environment::lock& lock, realm_handle* realm, run_
 			auto resolver
 		) -> void {
 			auto result = realm_scope_operation(lock, realm, [ & ](const realm_scope& realm) -> auto {
-				auto timeout_watchdog = options.timeout
-					? std::optional<iv8::isolated::executor::timeout>{std::in_place, lock->executor(), js::js_clock::duration{*options.timeout}}
-					: std::nullopt;
+				auto frame = zone_frame{realm, options.timeout};
 				return iv8::invoke_externalized_error_scope(realm, [ & ] -> auto {
 					auto value = script_remote->deref(lock)->run(realm);
 					return transfer_from_runtime<js::value_t>(realm, value);

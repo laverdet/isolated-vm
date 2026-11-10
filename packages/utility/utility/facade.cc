@@ -87,6 +87,9 @@ export template <class difference_type_, class wide_size_type = difference_type_
 class arithmetic_facade
 		: public addition_facade<difference_type_>,
 			public subtraction_facade<difference_type_, wide_size_type> {
+	protected:
+		using subtraction_facade_type = subtraction_facade<difference_type_, wide_size_type>;
+
 	public:
 		using difference_type = difference_type_;
 

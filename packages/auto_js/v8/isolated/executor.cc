@@ -1,3 +1,5 @@
+module;
+#include <cassert>
 module v8_js;
 import :isolated.agent;
 import :isolated.executor;
@@ -43,36 +45,68 @@ executor::unlock::~unlock() {
 };
 
 // executor::timeout
-executor::timeout::timeout(executor& executor, js_clock::duration duration) :
+auto executor::exchange_timeout(timeout* timeout) noexcept -> void {
+	if (current_timeout_ == timeout) {
+		return;
+	}
+	auto* previous = std::exchange(current_timeout_, timeout);
+	if (previous != nullptr) {
+		previous->deactivate();
+	}
+	if (timeout != nullptr) {
+		timeout->activate();
+	}
+}
+
+executor::timeout::timeout(executor& executor, duration_type duration) :
 		executor_{executor},
-		timer_{duration},
-		scope_{executor.current_timeout_, this},
-		callback_{std::in_place, timer_.get_token(), expire{executor.isolate()}} {}
+		timer_{std::defer_lock, duration},
+		callback_{std::in_place, timer_.get_token(), expire{executor}} {}
 
 executor::timeout::~timeout() {
+	assert(executor_.get().current_timeout_ != this);
 	callback_.reset();
-	if (timer_.stop_requested() && !executor_.get().is_terminated()) {
-		// Prevent a completed but timed out task from terminating the next one
-		executor_.get().isolate()->CancelTerminateExecution();
+}
+
+auto executor::timeout::activate() noexcept -> void {
+	if (timer_.stop_requested()) {
+		executor_.get().isolate()->TerminateExecution();
+	} else {
+		timer_.resume();
+	}
+}
+
+auto executor::timeout::deactivate() noexcept -> void {
+	timer_.pause();
+	auto* isolate = executor_.get().isolate();
+	if (timer_.stop_requested() && !executor_.get().is_terminated() && !isolate->IsExecutionTerminating()) {
+		// Withdraw unobserved termination request. Yes, the `IsExecutionTerminating()` check above is
+		// needed because `CancelTerminateExecution` additionally clears the pending exception after the
+		// interrupt request has been served.
+		isolate->CancelTerminateExecution();
 	}
 }
 
 auto executor::timeout::expire::operator()() const noexcept -> void {
-	isolate_->TerminateExecution();
+	executor_->isolate()->RequestInterrupt(&interrupt, executor_);
 }
 
-// executor::timeout_suspension
-executor::timeout_suspension::timeout_suspension(executor& executor) :
-		timeout_{executor.current_timeout_} {
-	if (timeout_ != nullptr) {
-		timeout_->pause();
+auto executor::timeout::expire::interrupt(v8::Isolate* isolate, void* data) -> void {
+	auto* current = static_cast<executor*>(data)->current_timeout_;
+	if (current != nullptr && current->timer_.stop_requested()) {
+		isolate->TerminateExecution();
 	}
 }
 
-executor::timeout_suspension::~timeout_suspension() {
-	if (timeout_ != nullptr) {
-		timeout_->resume();
-	}
+// executor::timeout::scope
+executor::timeout::scope::scope(executor& executor, timeout* timeout) :
+		executor_{executor},
+		previous_{executor.current_timeout_} {
+	executor.exchange_timeout(timeout);
+}
+
+executor::timeout::scope::~scope() {
+	executor_.get().exchange_timeout(previous_);
 }
 
 } // namespace js::iv8::isolated

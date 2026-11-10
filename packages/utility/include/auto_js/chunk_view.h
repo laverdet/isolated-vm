@@ -252,7 +252,7 @@ class chunk_view<_View>::__iterator {
 		}
 
 		[[nodiscard]] constexpr friend bool
-		operator==(const __iterator& __x, const __iterator& __y)
+		operator<(const __iterator& __x, const __iterator& __y)
 			requires random_access_range<_Base>
 		{
 			return __x.__current_ < __y.__current_;

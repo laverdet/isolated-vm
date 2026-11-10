@@ -1,6 +1,7 @@
 export module backend_napi_v8:agent_handle;
 import :lock;
 import :runtime;
+import :zone;
 import std;
 import util;
 import v8_js;
@@ -19,7 +20,10 @@ class agent_environment : public js::iv8::class_template_references<runtime_clas
 	public:
 		explicit agent_environment(const js::iv8::isolated::agent_lock& /*lock*/) {}
 
-		auto initialize(const agent_lock& lock) -> void { runtime_interface_.emplace(std::monostate{}, lock); }
+		auto initialize(const agent_lock& lock) -> void {
+			runtime_interface_.emplace(std::monostate{}, lock);
+			lock.isolate()->SetPromiseHook(&zone_handle::promise_hook);
+		}
 
 		auto instantiate_runtime(const realm_scope& lock) -> auto {
 			return runtime_interface_->instantiate(lock);

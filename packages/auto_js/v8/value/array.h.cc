@@ -31,8 +31,8 @@ class value_for_array : public handle_with_context<v8::Array> {
 
 class value_for_array::iterator : public util::random_access_iterator_facade<std::int32_t, std::int64_t> {
 	public:
+		using random_access_iterator_facade::difference_type;
 		using arithmetic_facade::operator+;
-		using difference_type = random_access_iterator_facade::difference_type;
 		using size_type = std::uint32_t;
 		using value_type = value_for_array::value_type;
 
@@ -45,6 +45,7 @@ class value_for_array::iterator : public util::random_access_iterator_facade<std
 		auto operator<=>(const iterator& right) const -> std::strong_ordering { return index_ <=> right.index_; }
 
 	private:
+		friend arithmetic_facade::subtraction_facade_type;
 		auto operator+() const -> size_type { return index_; }
 
 		v8::Local<v8::Array> array_;

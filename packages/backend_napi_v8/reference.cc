@@ -5,6 +5,7 @@ import :lock;
 import :reference;
 import :runtime;
 import :utility;
+import :zone;
 import std;
 
 namespace backend_napi_v8 {
@@ -221,9 +222,7 @@ auto reference_handle::invoke(const environment::lock& lock, js::forward<js::nap
 				js::values_vector_t params
 			) -> void {
 				auto maybe_result = realm_scope_operation(agent_lock, realm, [ & ](const realm_scope& lock) -> auto {
-					auto timeout_watchdog = timeout
-						? std::optional<iv8::isolated::executor::timeout>{std::in_place, lock->executor(), js::js_clock::duration{*timeout}}
-						: std::nullopt;
+					auto frame = zone_frame{lock, timeout};
 					return iv8::invoke_externalized_error_scope(lock, [ & ] -> js::value_t {
 						auto fn = value->deref(lock).As<iv8::Function>();
 						auto argv = js::transfer_in_strict<std::vector<v8::Local<v8::Value>>>(std::move(params), lock, accept_references);

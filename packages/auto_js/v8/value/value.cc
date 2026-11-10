@@ -4,6 +4,7 @@ export import :array;
 export import :external;
 export import :fixed_array;
 export import :function;
+export import :map;
 export import :object;
 export import :primitive;
 export import :value.tag;

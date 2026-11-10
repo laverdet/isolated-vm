@@ -28,8 +28,8 @@ class EXPORT callback_info {
 
 class EXPORT callback_info::iterator : public util::random_access_iterator_facade<int> {
 	public:
+		using arithmetic_facade::difference_type;
 		using arithmetic_facade::operator+;
-		using difference_type = arithmetic_facade::difference_type;
 		using size_type = int;
 		using value_type = callback_info::value_type;
 

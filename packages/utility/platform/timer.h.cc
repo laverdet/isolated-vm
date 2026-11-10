@@ -15,20 +15,8 @@ export class timer_stop_token : util::non_moveable {
 		using duration_type = clock_type::duration;
 
 		explicit timer_stop_token(duration_type duration);
-		template <class Rep, class Period>
-		explicit constexpr timer_stop_token(std::chrono::duration<Rep, Period> duration) :
-				timer_stop_token{[](auto duration) {
-					using input_type = std::chrono::duration<Rep, Period>;
-					if constexpr (std::floating_point<Rep> || std::ratio_greater_equal_v<Period, duration_type::period>) {
-						if (!(duration < std::chrono::floor<input_type>(duration_type::max()))) {
-							return duration_type::max();
-						}
-					}
-					if (duration <= input_type::zero()) {
-						return duration_type::zero();
-					}
-					return std::chrono::ceil<duration_type>(duration);
-				}(duration)} {}
+		timer_stop_token(std::defer_lock_t defer, duration_type duration);
+
 		~timer_stop_token();
 
 		[[nodiscard]] constexpr auto get_token() const noexcept -> inplace_stop_token { return source_.get_token(); }
@@ -36,9 +24,15 @@ export class timer_stop_token : util::non_moveable {
 		constexpr auto operator==(const timer_stop_token& other) const noexcept -> bool { return this == &other; }
 		auto pause() -> void;
 		auto resume() -> void;
+		// nb: Estimate only, per-thread timers may vary wildly
+		[[nodiscard]] auto remaining() const -> duration_type;
+		auto adjust(duration_type duration) -> bool;
+		auto set(duration_type duration) -> bool;
 
 	private:
 		friend timer_thread;
+		auto reset(const auto& update) -> bool;
+
 		using intrusive_safe_mode = boost::intrusive::link_mode<boost::intrusive::safe_link>;
 		using intrusive_list_hook = boost::intrusive::list_member_hook<intrusive_safe_mode>;
 

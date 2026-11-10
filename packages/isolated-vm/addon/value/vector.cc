@@ -28,8 +28,8 @@ class EXPORT value_for_vector : public value_next<vector_tag> {
 
 class EXPORT value_for_vector::iterator : public util::random_access_iterator_facade<std::int32_t, std::int64_t> {
 	public:
+		using arithmetic_facade::difference_type;
 		using arithmetic_facade::operator+;
-		using difference_type = arithmetic_facade::difference_type;
 		using size_type = std::uint32_t;
 		using value_type = value_for_vector::value_type;
 

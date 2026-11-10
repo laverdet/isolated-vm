@@ -10,12 +10,12 @@ namespace js::iv8::isolated {
 export class executor : util::non_moveable { // "En taro adun" lmao
 	public:
 		class timeout;
-		class timeout_suspension;
 		class unlock;
 		auto initialize(std::invocable<v8::Isolate*> auto initialize) -> void;
 		auto reset() -> void;
 		auto terminate() -> void;
 
+		auto exchange_timeout(timeout* timeout) noexcept -> void;
 		[[nodiscard]] auto is_terminated() const -> bool;
 		[[nodiscard]] auto isolate() const -> v8::Isolate* { return isolate_.get(); }
 		[[nodiscard]] auto stop_token() const -> util::inplace_stop_token { return stop_source_.get_token(); }
@@ -26,7 +26,7 @@ export class executor : util::non_moveable { // "En taro adun" lmao
 
 		std::unique_ptr<v8::Isolate, decltype(dispose_isolate)> isolate_;
 		util::inplace_stop_source stop_source_;
-		timeout* current_timeout_{};
+		timeout* current_timeout_ = nullptr;
 };
 
 class executor::unlock : util::non_moveable {
@@ -39,39 +39,57 @@ class executor::unlock : util::non_moveable {
 		std::reference_wrapper<executor> executor_;
 };
 
-// Requests termination after the given duration.
+// Execution time budget.
 class executor::timeout : util::non_moveable {
 	public:
-		timeout(executor& executor, js_clock::duration duration);
+		class scope;
+		class suspension;
+		using duration_type = util::timer_stop_token::duration_type;
+
+		timeout(executor& executor, duration_type duration);
 		~timeout();
 
-		auto pause() -> void { timer_.pause(); }
-		auto resume() -> void { timer_.resume(); }
+		// nb: Estimate only
+		[[nodiscard]] auto remaining() const -> duration_type { return timer_.remaining(); }
+		auto adjust(duration_type duration) -> bool { return timer_.adjust(duration); }
+		auto set(duration_type duration) -> bool { return timer_.set(duration); }
 
 	private:
+		friend executor;
+		auto activate() noexcept -> void;
+		auto deactivate() noexcept -> void;
+
+		// Invoked from the timer thread.
 		class expire {
 			public:
-				explicit expire(v8::Isolate* isolate) : isolate_{isolate} {}
+				explicit expire(executor& executor) : executor_{&executor} {}
 				auto operator()() const noexcept -> void;
 
 			private:
-				v8::Isolate* isolate_;
+				static auto interrupt(v8::Isolate* isolate, void* data) -> void;
+				executor* executor_;
 		};
 
 		std::reference_wrapper<executor> executor_;
 		util::timer_stop_token timer_;
-		util::scope_stack<timeout*> scope_;
 		std::optional<util::inplace_stop_callback<expire>> callback_;
 };
 
-// Pauses the current timeout, if any, for the duration of the scope.
-class executor::timeout_suspension : util::non_moveable {
+// Makes `timeout` the running budget for the duration of the scope, then restores the previous one.
+class executor::timeout::scope : util::non_moveable {
 	public:
-		explicit timeout_suspension(executor& executor);
-		~timeout_suspension();
+		scope(executor& executor, timeout* timeout);
+		~scope();
 
 	private:
-		timeout* timeout_;
+		std::reference_wrapper<executor> executor_;
+		timeout* previous_;
+};
+
+// Pauses the running budget, if any, for the duration of the scope.
+class executor::timeout::suspension : scope {
+	public:
+		explicit suspension(executor& executor) : scope{executor, nullptr} {}
 };
 
 // ---

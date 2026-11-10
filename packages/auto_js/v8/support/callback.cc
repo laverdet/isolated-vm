@@ -167,6 +167,8 @@ constexpr auto thunk_this_object = []<class Callback>(Callback callback) constex
 
 // Member function callback maker. `this` is unwrapped to the receiver instance, and also passed
 // along as `this_object`.
+// TODO: A `noexcept` method without parameters could skip the try/catch, like
+// `make_free_function_noexcept`.
 constexpr auto make_member_function_with_try_catch =
 	[]<class Type, class That, class Lock, class... Args, bool Nx, class Result>(
 		std::type_identity<Type> /*type*/,

@@ -76,6 +76,7 @@ using v8::WasmStreamingCallback;
 
 // v8-container.h
 using v8::Array;
+using v8::Map;
 
 // v8-context.h
 using v8::Context;
@@ -242,6 +243,9 @@ using v8::PropertyHandlerFlags;
 using v8::Signature;
 using v8::Template;
 
+// v8-traced-handle.h
+using v8::TracedReference;
+
 // v8-typed-array.h
 using v8::BigInt64Array;
 using v8::BigUint64Array;
@@ -292,6 +296,9 @@ export namespace cppgc {
 // cppgc/allocation.h
 using cppgc::AllocationHandle;
 using cppgc::MakeGarbageCollected;
+
+// cppgc/visitor.h
+using cppgc::Visitor;
 
 } // namespace cppgc
 // NOLINTEND(misc-unused-using-decls)

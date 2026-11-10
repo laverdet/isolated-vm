@@ -26,8 +26,8 @@ class value_for_vector : public value_next<vector_tag> {
 
 class value_for_vector::iterator : public util::random_access_iterator_facade<std::int32_t, std::int64_t> {
 	public:
+		using arithmetic_facade::difference_type;
 		using arithmetic_facade::operator+;
-		using difference_type = arithmetic_facade::difference_type;
 		using size_type = std::uint32_t;
 		using value_type = value_for_vector::value_type;
 
@@ -45,6 +45,7 @@ class value_for_vector::iterator : public util::random_access_iterator_facade<st
 		auto operator<=>(const iterator& right) const -> std::strong_ordering { return index_ <=> right.index_; }
 
 	private:
+		friend arithmetic_facade::subtraction_facade_type;
 		auto operator+() const -> size_type { return index_; }
 
 		value_for_vector subject_;

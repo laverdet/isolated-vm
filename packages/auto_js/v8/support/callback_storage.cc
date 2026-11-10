@@ -8,8 +8,8 @@ namespace js::iv8 {
 
 // callback which does not require an agent pointer
 constexpr auto make_plain_callback =
-	[]<class Lock>(
-		std::type_identity<auto(Lock, const v8::FunctionCallbackInfo<v8::Value>&)->void> /*signature*/,
+	[]<class Lock, bool Nx>(
+		std::type_identity<auto(Lock, const v8::FunctionCallbackInfo<v8::Value>&) noexcept(Nx)->void> /*signature*/,
 		const auto& /*lock*/,
 		auto function
 	) -> auto {
@@ -23,8 +23,8 @@ constexpr auto make_plain_callback =
 
 // callback which requires an agent pointer
 constexpr auto make_decorated_callback =
-	[]<class Agent, class... Implements>(
-		std::type_identity<auto(const context_lock_witness_of<Agent, Implements...>&, const v8::FunctionCallbackInfo<v8::Value>&)->void> /*signature*/,
+	[]<class Agent, class... Implements, bool Nx>(
+		std::type_identity<auto(const context_lock_witness_of<Agent, Implements...>&, const v8::FunctionCallbackInfo<v8::Value>&) noexcept(Nx)->void> /*signature*/,
 		const auto& lock,
 		auto function
 	) -> auto {
@@ -42,15 +42,15 @@ constexpr auto make_decorated_callback =
 // returns a `v8::FunctionCallback`-ish callback
 constexpr auto make_bound_callback = util::overloaded{
 	make_plain_callback,
-	[]<class Agent, class... Implements>(
-		std::type_identity<auto(const isolate_lock_witness_of<Agent, Implements...>&, const v8::FunctionCallbackInfo<v8::Value>&)->void> signature,
+	[]<class Agent, class... Implements, bool Nx>(
+		std::type_identity<auto(const isolate_lock_witness_of<Agent, Implements...>&, const v8::FunctionCallbackInfo<v8::Value>&) noexcept(Nx)->void> signature,
 		const auto& lock,
 		auto function
 	) -> auto {
 		return make_decorated_callback(signature, lock, std::move(function));
 	},
-	[]<class Agent, class... Implements>(
-		std::type_identity<auto(const context_lock_witness_of<Agent, Implements...>&, const v8::FunctionCallbackInfo<v8::Value>&)->void> signature,
+	[]<class Agent, class... Implements, bool Nx>(
+		std::type_identity<auto(const context_lock_witness_of<Agent, Implements...>&, const v8::FunctionCallbackInfo<v8::Value>&) noexcept(Nx)->void> signature,
 		const auto& lock,
 		auto function
 	) -> auto {

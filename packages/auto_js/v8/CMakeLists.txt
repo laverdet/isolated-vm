@@ -22,6 +22,7 @@ target_sources(${v8_js}
 		value/array_buffer.cc
 		value/array.cc
 		value/fixed_array.cc
+		value/map.cc
 		value/object.cc
 		value/primitive.cc
 		value/typeof_of.cc
@@ -53,6 +54,7 @@ target_sources(${v8_js}
 		value/function.cc
 		value/function.h.cc
 		value/handle.cc
+		value/map.h.cc
 		value/object.h.cc
 		value/primitive.h.cc
 		value/tag.cc

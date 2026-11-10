@@ -34,6 +34,8 @@ class wrappable_of final
 			requires std::constructible_from<Type, decltype(args)...>;
 		static auto unwrap(isolate_lock_witness lock, v8::Local<v8::Object> object) -> Type*;
 
+		auto Trace(cppgc::Visitor* visitor) const -> void final;
+
 	private:
 		constexpr static auto pointer_tag = v8::CppHeapPointerTag::kDefaultTag;
 };
@@ -60,6 +62,14 @@ auto wrappable_of<Type>::unwrap(isolate_lock_witness lock, v8::Local<v8::Object>
 		}
 	}
 	return nullptr;
+}
+
+template <class Type>
+auto wrappable_of<Type>::Trace(cppgc::Visitor* visitor) const -> void {
+	wrappable_holder::Trace(visitor);
+	if constexpr (requires(const Type& that) { that.trace(*visitor); }) {
+		Type::trace(*visitor);
+	}
 }
 
 #else
