@@ -1,3 +1,5 @@
+import { ConsoleError } from "@isolated-vm/experimental/host/intrinsics";
+
 // https://webidl.spec.whatwg.org/#dfn-DOMException
 export class DOMException extends Error {
 	constructor(message?: string, name?: string) {
@@ -6,4 +8,9 @@ export class DOMException extends Error {
 			this.name = name;
 		}
 	}
+}
+
+// TODO:
+export function reportException(error: unknown): void {
+	ConsoleError(error);
 }

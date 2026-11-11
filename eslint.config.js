@@ -276,10 +276,24 @@ const typeScriptRules = acceptTypeScriptRules({
 		overrides: { parameterProperties: "explicit" },
 	} ],
 	"@typescript-eslint/explicit-module-boundary-types": "off",
+	"@typescript-eslint/member-ordering": [ "warn", {
+		default: [
+			"signature",
+			"call-signature",
+			"static-field",
+			"instance-field",
+			"abstract-field",
+			"static-initialization",
+			"constructor",
+			[ "static-get", "static-set" ],
+			"static-method",
+			[ "get", "set" ],
+			"method",
+		],
+	} ],
 	// nb: This is not simply a style rule, as the recommended style enforces contravariance instead
 	// of bivariance.
 	// https://github.com/microsoft/TypeScript/pull/18654
-	"@typescript-eslint/member-ordering": "warn",
 	"@typescript-eslint/method-signature-style": "warn",
 	"@typescript-eslint/no-confusing-non-null-assertion": "warn",
 	"@typescript-eslint/no-empty-function": "off",
