@@ -26,7 +26,10 @@ function makeFreeFunction<This, Result, Args extends unknown[]>(
 
 /** @internal */ export const FunctionConstructor = Function;
 
+/** @internal */ export const MathTrunc = Math.trunc;
+
 /** @internal */ export const NumberConstructor = Number;
+/** @internal */ export const NumberIsFinite = Number.isFinite;
 /** @internal */ export const { MAX_SAFE_INTEGER: Number_MAX_SAFE_INTEGER } = Number;
 
 /** @internal */ export const MapConstructor = Map;
@@ -35,6 +38,7 @@ function makeFreeFunction<This, Result, Args extends unknown[]>(
 /** @internal */ export const MapSet: <K, V>(thisArg: Map<K, V>, key: K, value: V) => Map<K, V> = makeFreeFunction(Map.prototype.set);
 
 /** @internal */ export const ObjectDefineProperty = Object.defineProperty;
+/** @internal */ export const ObjectFreeze = Object.freeze;
 /** @internal */ export const ObjectGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
 
 /** @internal */ export const StringConstructor = String;
@@ -44,3 +48,6 @@ function makeFreeFunction<This, Result, Args extends unknown[]>(
 /** @internal */ export const SymbolToStringTag = Symbol.toStringTag;
 
 /** @internal */ export const TypeErrorConstructor = TypeError;
+
+/** @internal */ export const WeakRefConstructor = WeakRef;
+/** @internal */ export const WeakRefDeref: <Type extends WeakKey>(thisArg: WeakRef<Type>) => Type | undefined = makeFreeFunction(WeakRef.prototype.deref);
