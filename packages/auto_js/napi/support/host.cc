@@ -305,6 +305,7 @@ auto initialize_host_environment(napi_env env) -> void {
 				fast_is_null = v8_is_null;
 				fast_is_true = v8_is_true;
 				fast_is_undefined = v8_is_undefined;
+				host_throw_uncaught_exception = napi_fatal_exception;
 				host_uv_dlclose = node_uv_dlclose;
 				host_uv_dlerror = node_uv_dlerror;
 				host_uv_dlopen = node_uv_dlopen;
@@ -338,6 +339,7 @@ auto initialize_host_environment(napi_env env) -> void {
 				fast_is_null = napi_fast_is_null;
 				fast_is_true = napi_fast_is_true;
 				fast_is_undefined = napi_fast_is_undefined;
+				host_throw_uncaught_exception = nullptr;
 				host_uv_dlclose = unknown_uv_dlclose;
 				host_uv_dlerror = unknown_uv_dlerror;
 				host_uv_dlopen = unknown_uv_dlopen;

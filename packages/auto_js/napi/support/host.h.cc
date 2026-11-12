@@ -22,6 +22,9 @@ auto (*host_current_isolate)() -> v8::Isolate* = nullptr;
 auto (*host_available_parallelism)() -> unsigned = nullptr;
 export auto available_parallelism() -> unsigned;
 
+// https://github.com/nodejs/node/issues/67421
+auto (*host_throw_uncaught_exception)(napi_env env, napi_value exception) -> napi_status = nullptr;
+
 // Element access
 auto (*fast_has_element)(environment_lock_witness lock, napi_value array, std::uint32_t index) -> bool = nullptr;
 auto (*fast_get_element)(environment_lock_witness lock, napi_value array, std::uint32_t index) -> napi_value = nullptr;

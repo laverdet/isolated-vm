@@ -10,6 +10,7 @@ export using ::napi_add_env_cleanup_hook;
 export using ::napi_add_env_cleanup_hook;
 export using ::napi_call_threadsafe_function;
 export using ::napi_create_threadsafe_function;
+export using ::napi_fatal_exception;
 export using ::napi_get_threadsafe_function_context;
 export using ::napi_get_uv_event_loop;
 export using ::napi_ref_threadsafe_function;

@@ -58,6 +58,20 @@ export async function unsafeEvalAsStringInRealm<Type, Args extends unknown[]>(
 	return expectComplete(await script.run(realm)) as Type;
 }
 
+/** @internal */
+export function clearUncaughtExceptionListeners(): Disposable {
+	const listeners = process.rawListeners("uncaughtException") as NodeJS.UncaughtExceptionListener[];
+	process.removeAllListeners("uncaughtException");
+	return {
+		[Symbol.dispose]() {
+			process.removeAllListeners("uncaughtException");
+			for (const listener of listeners) {
+				process.on("uncaughtException", listener);
+			}
+		},
+	};
+}
+
 // Run garbage collection after each test. This cleans up internal napi externals.
 afterEach(() => {
 	global.gc?.();

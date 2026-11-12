@@ -173,7 +173,7 @@ auto capability_handle::void_instance::instantiate(const agent_lock& lock) && ->
 			) -> void {
 				auto& host_environment = napi::environment::unsafe_get_environment_as<environment>(nenv);
 				auto lock = environment::lock{napi::environment_lock_witness::make_witness(host_environment), host_environment};
-				napi::invoke_internal_error_scope(lock, [ & ] -> void {
+				napi::invoke_uncaught_error_scope(lock, [ & ] -> void {
 					auto argv = js::transfer_in_strict<std::vector<napi_value>>(std::move(params), lock, accept_references);
 					callback->deref(lock)->invoke(lock, argv);
 				});

@@ -2,6 +2,7 @@ export module napi_js:error;
 import :accept;
 import :api;
 import :lock;
+import :support.host;
 import :visit;
 import auto_js;
 import std;
@@ -34,6 +35,31 @@ auto invoke_internal_error_scope(const environment_lock_witness_of<Environment>&
 		static_assert(type<result_type> == type<void>);
 	}
 };
+
+// On Bun this is the same as `invoke_internal_error_scope`. On nodejs it fixes the following:
+// https://github.com/nodejs/node/issues/67421
+export template <class Environment>
+auto invoke_uncaught_error_scope(const environment_lock_witness_of<Environment>& lock, auto operation) -> void {
+	if (host_throw_uncaught_exception == nullptr) {
+		return invoke_internal_error_scope(lock, std::move(operation));
+	}
+	auto* exception = [ & ] -> napi_value {
+		auto try_catch = environment_try_catch{lock};
+		try {
+			operation();
+			return nullptr;
+		} catch (const napi::pending_error& /*error*/) {
+			return napi::invoke(napi_get_and_clear_last_exception, napi_env{lock});
+		} catch (const napi::pending_v8_error& /*error*/) {
+			return try_catch.take_exception();
+		} catch (const js::error& error) {
+			return js::transfer_in_strict<napi_value>(error, lock);
+		}
+	}();
+	if (exception != nullptr) {
+		napi::invoke0(host_throw_uncaught_exception, napi_env{lock}, exception);
+	}
+}
 
 // Catch pending errors and externalize them as `js::error_value`. `std::expected<T, js::error_value>` is returned.
 export template <class Environment>

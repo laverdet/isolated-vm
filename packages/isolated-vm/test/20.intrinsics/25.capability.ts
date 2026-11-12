@@ -2,7 +2,11 @@ import type { AbstractModule, Realm } from "@isolated-vm/experimental";
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
 import { Agent, Capability, expect } from "@isolated-vm/experimental";
-import { expectComplete, expectThrow } from "@isolated-vm/experimental/test/fixtures";
+import { clearUncaughtExceptionListeners, expectComplete, expectThrow } from "@isolated-vm/experimental/test/fixtures";
+
+const isBun =
+	// @ts-expect-error
+	process.isBun !== undefined;
 
 /** Evaluates `source` in `realm`, with `fn` imported from the capability module */
 async function evaluate(agent: Agent, realm: Realm, fn: AbstractModule, source: string) {
@@ -38,6 +42,23 @@ await test("sync capability rejects", async () => {
 await test("sync capability throws", async () => {
 	const fail = Capability.sync(() => { throw new Error("nope"); });
 	assert.match(String(expectThrow((await run(fail, "fn();")).completion)), /nope/);
+});
+
+await test("void capability throws as uncaught exception", { skip: isBun && "nodejs-specific" }, async () => {
+	using restore = clearUncaughtExceptionListeners();
+	const uncaught = new Promise<string>(resolve => {
+		process.once("uncaughtException", error => {
+			gc?.();
+			resolve(error.message);
+		});
+	});
+	await using agent = await Agent.create();
+	const realm = expect(await agent.createRealm());
+	const global = expect(await realm.acquireGlobalObject());
+	for (let ii = 0; ii < 100; ++ii) await global.get("Object");
+	const fail = Capability.void(() => { throw new Error("nope"); });
+	await evaluate(agent, realm, await createFn(realm, fail), "fn();");
+	assert.equal(await uncaught, "nope");
 });
 
 await test("abandoned sync capability resolves null", async () => {
