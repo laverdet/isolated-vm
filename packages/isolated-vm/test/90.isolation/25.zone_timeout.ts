@@ -13,7 +13,7 @@ const busy = "const busy = ms => { const end = Date.now() + ms; while (Date.now(
 async function evaluateWithZone(agent: Agent, realm: Realm, body: string) {
 	const runtime = expect(await realm.instantiateRuntime());
 	const module = expectComplete(await agent.compileModule(`
-		import { Zone } from "isolated-vm:runtime";
+		import { Zone, enqueueMicrotask } from "isolated-vm:runtime";
 		${busy}
 		${body}
 	`));
@@ -65,6 +65,14 @@ await test("zone budget terminates and is shared by clones", async () => {
 		clone.run(() => { busy(50); });
 		globalThis.result = [ zone.timeout < 960, clone.timeout < 960, new Zone().timeout ];`));
 	assert.deepStrictEqual(await readResult(realm), [ true, true, undefined ]);
+});
+
+await test("enqueued microtask spends the budget of the zone which enqueued it", async () => {
+	await using agent = await Agent.create();
+	const realm = expect(await agent.createRealm());
+	const start = performance.now();
+	await evaluateWithZone(agent, realm, "new Zone({ timeout: 20 }).run(() => { enqueueMicrotask(() => { for(;;); }); });");
+	assert.ok(performance.now() - start < 1000);
 });
 
 await test("budget can be replaced or adjusted while live", async () => {

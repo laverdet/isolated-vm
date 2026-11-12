@@ -21,6 +21,7 @@ interface RepeatTimer extends Timer {
 
 type AnyTimer = OneShotTimer | RepeatTimer;
 
+let didInitialize = false;
 let nextTimeout = Number_MAX_SAFE_INTEGER;
 let timerIndex = 0;
 
@@ -63,6 +64,9 @@ function timerLowerBound(timer: Timer) {
 
 // https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#timer-initialisation-steps
 function initializeTimer(callback: Timer["callback"], duration: number, repeat: boolean) {
+	if (!didInitialize) {
+		throw new Error("Timers have not been initialized");
+	}
 	const timeout = DateNow() + duration;
 	const interval = repeat ? duration : undefined;
 	const id = timerIndex++;
@@ -137,7 +141,7 @@ export function clearTimeout(id: unknown): void {
 export function setInterval(callbackOrCodeString: unknown, delay: unknown, ...args: unknown[]): number {
 	const handler = coerceHandler(callbackOrCodeString, ...args);
 	const interval = coerceInterval(delay);
-	return initializeTimer(handler, interval, false);
+	return initializeTimer(handler, interval, true);
 }
 
 export function setTimeout(callbackOrCodeString: unknown, delay: unknown, ...args: unknown[]): number {
@@ -147,5 +151,6 @@ export function setTimeout(callbackOrCodeString: unknown, delay: unknown, ...arg
 }
 
 export function initializeTimers(): void {
+	didInitialize = true;
 	initialize(new Reference(runTimers));
 }

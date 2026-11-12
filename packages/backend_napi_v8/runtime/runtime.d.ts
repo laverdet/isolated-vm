@@ -21,5 +21,6 @@ export class Zone {
 }
 
 export function clockTime(): number;
+export function enqueueMicrotask(callback: () => void): void;
 export function performanceTime(): number;
 export function transfer(value: unknown, transferList?: readonly unknown[]): unknown;

@@ -55,6 +55,9 @@ export declare class Zone {
 /** System clock time in milliseconds. */
 export declare function clockTime(): number;
 
+/** Enqueues `callback` as a zone-respecting microtask. */
+export declare function enqueueMicrotask(callback: () => void): void;
+
 /** Monotonic time in milliseconds. */
 export declare function performanceTime(): number;
 

@@ -22,6 +22,24 @@ auto performance_time(js::iv8::context_lock_witness /*lock*/) -> double {
 	return duration_cast<js_clock::duration>(now.time_since_epoch()).count();
 }
 
+// Helper for `enqueue_microtask`
+auto run_microtask(const v8::FunctionCallbackInfo<v8::Value>& info) -> void {
+	auto lock = js::iv8::context_lock_witness{info};
+	auto* isolate = lock.isolate();
+	auto& executor = js::iv8::isolated::agent_host::get_current(isolate).executor();
+	auto* zone = zone_handle::try_cast(util::slice(lock), isolate->GetContinuationPreservedEmbedderData());
+	auto timeout_scope = zone_handle::timeout_type::scope{executor, zone == nullptr ? nullptr : zone->timeout_timer()};
+	auto callback = info.DataV2().As<v8::Function>();
+	std::ignore = callback->Call(lock.context(), v8::Undefined(isolate), 0, nullptr);
+}
+
+// `enqueueMicrotask`
+auto enqueue_microtask(const realm_scope& lock, js::forward<v8::Local<js::iv8::Function>> callback) -> void {
+	auto context = lock.context();
+	auto wrapper = js::iv8::unmaybe(v8::Function::New(context, run_microtask, *callback, 0, v8::ConstructorBehavior::kThrow));
+	context->GetMicrotaskQueue()->EnqueueMicrotask(lock.isolate(), wrapper);
+}
+
 auto transfer(
 	const realm_scope& lock,
 	js::forward<v8::Local<v8::Value>> subject,
@@ -66,6 +84,7 @@ auto transfer_record::transfer(js::iv8::context_lock_witness lock) const -> js::
 // runtime_interface
 runtime_interface::runtime_interface(std::monostate /*nothing*/, const agent_lock& lock) :
 		clock_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{clock_time}, lock))},
+		enqueue_microtask_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{enqueue_microtask}, lock))},
 		performance_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{performance_time}, lock))},
 		transfer_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{transfer}, lock))} {
 }
@@ -74,6 +93,7 @@ auto runtime_interface::instantiate(const realm_scope& lock) -> v8::Local<js::iv
 	auto make_interface = [ & ] -> auto {
 		return std::tuple{
 			std::pair{util::cw<"clockTime">, clock_time_->deref(util::slice(lock))},
+			std::pair{util::cw<"enqueueMicrotask">, enqueue_microtask_->deref(util::slice(lock))},
 			std::pair{util::cw<"performanceTime">, performance_time_->deref(util::slice(lock))},
 			std::pair{util::cw<"transfer">, transfer_->deref(util::slice(lock))},
 			std::pair{util::cw<"Reference">, v8::Local<v8::FunctionTemplate>{reference_handle::class_template(lock)}},
