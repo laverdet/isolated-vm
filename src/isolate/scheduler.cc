@@ -170,13 +170,17 @@ Scheduler::AsyncWait::~AsyncWait() {
 	scheduler.Lock()->async_wait = nullptr;
 }
 
+// nb: The lock must be held while invoking `notify_one`. This object lives on the waiting thread's
+// stack, and a spurious wakeup lets that thread see the new state and return before the notify.
 void Scheduler::AsyncWait::Cancel() {
-	*state.write() = canceled;
+	auto lock = state.write();
+	*lock = canceled;
 	state.notify_one();
 }
 
 void Scheduler::AsyncWait::Done() {
-	*state.write() = finished;
+	auto lock = state.write();
+	*lock = finished;
 	state.notify_one();
 }
 
