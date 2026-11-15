@@ -66,7 +66,9 @@ class TransferablePromiseHolder final : public ClassHandle {
 				if (state == Promise::PromiseState::kFulfilled) {
 					Resolved(*this, promise->Result());
 				} else {
-					IsolateEnvironment::GetCurrent().PromiseWasHandled(promise);
+					auto context = Isolate::GetCurrent()->GetCurrentContext();
+					Unmaybe(promise->Catch(context, Unmaybe(Function::New(context,
+						[](const FunctionCallbackInfo<Value>&) {}))));
 					Rejected(*this, promise->Result());
 				}
 			}
