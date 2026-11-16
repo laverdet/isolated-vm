@@ -40,6 +40,19 @@ auto enqueue_microtask(const realm_scope& lock, js::forward<v8::Local<js::iv8::F
 	context->GetMicrotaskQueue()->EnqueueMicrotask(lock.isolate(), wrapper);
 }
 
+// `getPromiseInternal`
+auto get_promise_internal(js::iv8::context_lock_witness lock, js::forward<v8::Local<v8::Promise>> promise) -> js::forward<v8::Local<v8::Value>> {
+	auto settled = [ & ](bool fulfilled) -> auto {
+		return js::forward{js::transfer_in<v8::Local<v8::Value>>(std::tuple{fulfilled, js::forward{(*promise)->Result()}}, lock)};
+	};
+	switch ((*promise)->State()) {
+		case v8::Promise::kPending: return js::forward{js::transfer_in<v8::Local<v8::Value>>(std::monostate{}, lock)};
+		case v8::Promise::kFulfilled: return settled(true);
+		case v8::Promise::kRejected: return settled(false);
+	}
+	std::unreachable();
+}
+
 auto transfer(
 	const realm_scope& lock,
 	js::forward<v8::Local<v8::Value>> subject,
@@ -85,6 +98,7 @@ auto transfer_record::transfer(js::iv8::context_lock_witness lock) const -> js::
 runtime_interface::runtime_interface(std::monostate /*nothing*/, const agent_lock& lock) :
 		clock_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{clock_time}, lock))},
 		enqueue_microtask_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{enqueue_microtask}, lock))},
+		get_promise_internal_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{get_promise_internal}, lock))},
 		performance_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{performance_time}, lock))},
 		transfer_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{transfer}, lock))} {
 }
@@ -94,6 +108,7 @@ auto runtime_interface::instantiate(const realm_scope& lock) -> v8::Local<js::iv
 		return std::tuple{
 			std::pair{util::cw<"clockTime">, clock_time_->deref(util::slice(lock))},
 			std::pair{util::cw<"enqueueMicrotask">, enqueue_microtask_->deref(util::slice(lock))},
+			std::pair{util::cw<"getPromiseInternal">, get_promise_internal_->deref(util::slice(lock))},
 			std::pair{util::cw<"performanceTime">, performance_time_->deref(util::slice(lock))},
 			std::pair{util::cw<"transfer">, transfer_->deref(util::slice(lock))},
 			std::pair{util::cw<"Reference">, v8::Local<v8::FunctionTemplate>{reference_handle::class_template(lock)}},

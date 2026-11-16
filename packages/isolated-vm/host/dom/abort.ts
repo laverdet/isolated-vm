@@ -6,8 +6,8 @@ import { makeEventHandler, setEventHandler } from "@isolated-vm/experimental/hos
 import { EventTarget, fireEvent } from "@isolated-vm/experimental/host/dom/event/target";
 import { DOMException } from "@isolated-vm/experimental/host/html/exception";
 import { setTimeout } from "@isolated-vm/experimental/host/html/timers";
-import { ArrayPush, TypeErrorConstructor, WeakRefConstructor, WeakRefDeref } from "@isolated-vm/experimental/host/intrinsics";
-import { convertEnforceRangeUnsignedLongLong, defineInterface, requireArguments } from "@isolated-vm/experimental/host/webidl";
+import { ArrayIndexOf, ArrayPush, ArraySplice, TypeErrorConstructor, WeakRefConstructor, WeakRefDeref } from "@isolated-vm/experimental/host/intrinsics";
+import { InternalParameter, coerceEnforceRangeUnsignedLongLong, defineInterface, requireArguments } from "@isolated-vm/experimental/host/webidl";
 
 /**
  * Internal state of an `AbortSignal`.
@@ -27,18 +27,20 @@ interface AbortSignalInternal {
 }
 
 // Private state accessors, assigned from within the class body
-let constructing = false;
 let getAbortSignalInternal: (signal: AbortSignal) => AbortSignalInternal;
 let isAbortSignal: (value: unknown) => value is AbortSignal;
 
 /** `AbortSignal` has no public constructor; this is the only way to make one. */
-function createAbortSignal() {
-	try {
-		constructing = true;
-		return new AbortSignal();
-	} finally {
-		constructing = false;
-	}
+/** @internal */
+export function createAbortSignal(): AbortSignal {
+	return new AbortSignal(new InternalParameter<AbortSignalInternal>({
+		reason: undefined,
+		algorithms: [],
+		dependent: false,
+		sourceSignals: [],
+		dependentSignals: [],
+		onabort: makeEventHandler(),
+	}));
 }
 
 /** `reason` defaults to an "AbortError" when not given. */
@@ -70,7 +72,8 @@ function runAbortSteps(signal: AbortSignal, internal: AbortSignalInternal) {
 }
 
 // https://dom.spec.whatwg.org/#abortsignal-signal-abort
-function signalAbort(signal: AbortSignal, reason: unknown) {
+/** @internal */
+export function signalAbort(signal: AbortSignal, reason: unknown): void {
 	const internal = getAbortSignalInternal(signal);
 	if (internal.reason !== undefined) {
 		return;
@@ -138,9 +141,7 @@ function createDependentAbortSignal(signals: AbortSignal[]) {
 export class AbortController {
 	readonly #signal: AbortSignal;
 
-	static {
-		defineInterface(this);
-	}
+	static { defineInterface(this); }
 
 	constructor() {
 		this.#signal = createAbortSignal();
@@ -172,6 +173,7 @@ export class AbortSignal extends EventTarget {
 		defineAbortSignalBrand({
 			isAbortSignal,
 			isAborted: signal => signal.#internal.reason !== undefined,
+			getAbortReason: signal => signal.#internal.reason,
 			// https://dom.spec.whatwg.org/#abortsignal-add
 			addAbortAlgorithm: (signal, algorithm) => {
 				const internal = signal.#internal;
@@ -179,22 +181,25 @@ export class AbortSignal extends EventTarget {
 					ArrayPush(internal.algorithms, algorithm);
 				}
 			},
+			// https://dom.spec.whatwg.org/#abortsignal-remove
+			removeAbortAlgorithm: (signal, algorithm) => {
+				const { algorithms } = signal.#internal;
+				const index = ArrayIndexOf(algorithms, algorithm);
+				if (index !== -1) {
+					ArraySplice(algorithms, index, 1);
+				}
+			},
 		});
 	}
 
-	constructor() {
-		if (!constructing) {
+	/** @internal */
+	constructor(internal: unknown = undefined) {
+		const unwrapped = InternalParameter.unwrap<AbortSignalInternal>(internal);
+		if (unwrapped === undefined) {
 			throw new TypeErrorConstructor("Illegal constructor");
 		}
 		super();
-		this.#internal = {
-			reason: undefined,
-			algorithms: [],
-			dependent: false,
-			sourceSignals: [],
-			dependentSignals: [],
-			onabort: makeEventHandler(),
-		};
+		this.#internal = unwrapped;
 	}
 
 	// https://dom.spec.whatwg.org/#dom-abortsignal-abort
@@ -208,7 +213,7 @@ export class AbortSignal extends EventTarget {
 	/** Requires the timers capability to have been initialized in this realm. */
 	static timeout(milliseconds: unknown): AbortSignal {
 		requireArguments(arguments.length, 1);
-		const delay = convertEnforceRangeUnsignedLongLong(milliseconds);
+		const delay = coerceEnforceRangeUnsignedLongLong(milliseconds);
 		const signal = createAbortSignal();
 		// The closure keeps the signal alive while the timer is pending
 		setTimeout(() => signalAbort(signal, new DOMException("signal timed out", "TimeoutError")), delay);

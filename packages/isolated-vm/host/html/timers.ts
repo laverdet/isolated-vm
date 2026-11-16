@@ -51,11 +51,8 @@ function coerceHandler(codeStringOrFunction: unknown, ...args: unknown[]): () =>
 }
 
 function coerceInterval(delay: unknown) {
-	let delayNumber = NumberConstructor(delay);
-	if (GlobalIsNaN(delayNumber) || delayNumber < 0) {
-		delayNumber = 0;
-	}
-	return delayNumber;
+	const delayNumber = NumberConstructor(delay);
+	return GlobalIsNaN(delayNumber) || delayNumber < 0 ? 0 : delayNumber;
 }
 
 function timerLowerBound(timer: Timer) {

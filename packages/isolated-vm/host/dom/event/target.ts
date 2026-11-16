@@ -1,7 +1,6 @@
 // https://dom.spec.whatwg.org/#interface-eventtarget
 /* eslint-disable @typescript-eslint/prefer-for-of -- `for-of` goes through the patchable array iterator */
 /* eslint-disable @typescript-eslint/restrict-template-expressions -- `${value}` is `ToString`, which is the DOMString conversion */
-import type { AbortSignal } from "@isolated-vm/experimental/host/dom/abort";
 import type { EventInternal } from "@isolated-vm/experimental/host/dom/event/event";
 import type { Dictionary } from "@isolated-vm/experimental/host/webidl";
 import { addAbortAlgorithm, isAbortSignal, isAborted } from "@isolated-vm/experimental/host/dom/abort/brand";
@@ -177,14 +176,16 @@ export class EventTarget {
 		const typeString = `${type}`;
 		const callbackObject = convertEventListener(callback);
 		const { capture, once, passive, signal } = flattenOptions(options);
-		let abortSignal: AbortSignal | undefined;
-		if (signal !== undefined) {
-			if (!isAbortSignal(signal)) {
+		const abortSignal = function() {
+			if (signal === undefined) {
+				return undefined;
+			} else if (!isAbortSignal(signal)) {
 				throw new TypeErrorConstructor("Provided value is not of type 'AbortSignal'");
-			} else if (isAborted(signal)) {
-				return;
 			}
-			abortSignal = signal;
+			return signal;
+		}();
+		if (abortSignal !== undefined && isAborted(abortSignal)) {
+			return;
 		}
 		if (callbackObject === null) {
 			return;

@@ -58,6 +58,9 @@ export declare function clockTime(): number;
 /** Enqueues `callback` as a zone-respecting microtask. */
 export declare function enqueueMicrotask(callback: () => void): void;
 
+/** Fetch settled state and value. */
+export declare function getPromiseInternal<Type>(promise: Promise<Type>): [ true, Type ] | [ false, unknown ] | undefined;
+
 /** Monotonic time in milliseconds. */
 export declare function performanceTime(): number;
 

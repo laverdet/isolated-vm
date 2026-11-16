@@ -216,7 +216,7 @@ struct accept_v8_value : accept_v8_primitive {
 				[](v8::Local<v8::Array> array, auto& self, auto& visit, auto /*&&*/ tuple) -> void {
 					constexpr auto [... indices ] = util::sequence<Size>;
 					(..., [ & ] -> void {
-						auto element = visit(indices, std::forward<decltype(tuple)>(tuple), self);
+						auto element = visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(tuple)>(tuple), self);
 						unmaybe(array->Set(self.context_, indices, element));
 					}());
 				}

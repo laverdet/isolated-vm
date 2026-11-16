@@ -193,9 +193,7 @@ export class Event {
 export class CustomEvent extends Event {
 	#detail: unknown;
 
-	static {
-		defineInterface(this);
-	}
+	static { defineInterface(this); }
 
 	// https://dom.spec.whatwg.org/#dom-customevent-customevent
 	constructor(type: unknown, eventInitDict: unknown = {}) {

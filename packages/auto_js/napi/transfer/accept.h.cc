@@ -226,7 +226,7 @@ struct accept_napi_value : accept_basic_napi_value {
 					(..., [ & ] -> void {
 						// nb: This is forwarded to *each* visitor. The visitor should be aware and only lvalue
 						// reference members one at a time.
-						auto* element = napi_value{visit(indices, std::forward<decltype(tuple)>(tuple), self)};
+						auto* element = napi_value{visit(std::integral_constant<std::size_t, indices>{}, std::forward<decltype(tuple)>(tuple), self)};
 						napi::invoke0(napi_set_element, napi_env{self}, napi_value{array}, indices, element);
 					}());
 				}

@@ -41,6 +41,7 @@ class runtime_interface {
 	private:
 		js::iv8::unique_remote<v8::FunctionTemplate> clock_time_;
 		js::iv8::unique_remote<v8::FunctionTemplate> enqueue_microtask_;
+		js::iv8::unique_remote<v8::FunctionTemplate> get_promise_internal_;
 		js::iv8::unique_remote<v8::FunctionTemplate> performance_time_;
 		js::iv8::unique_remote<v8::FunctionTemplate> transfer_;
 };
