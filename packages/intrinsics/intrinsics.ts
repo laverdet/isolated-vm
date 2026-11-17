@@ -1,0 +1,14 @@
+export { ArrayIncludes, ArrayIndexOf, ArrayMap, ArrayPrototype, ArrayPush, ArrayShift, ArraySlice, ArraySplice } from "@isolated-vm/intrinsics/array";
+export { ConsoleError } from "@isolated-vm/intrinsics/console";
+export { DateNow } from "@isolated-vm/intrinsics/date";
+export { RangeErrorConstructor, TypeErrorConstructor } from "@isolated-vm/intrinsics/error";
+export { FunctionConstructor } from "@isolated-vm/intrinsics/function";
+export { GlobalIsNaN } from "@isolated-vm/intrinsics/global";
+export { AsyncIteratorPrototype } from "@isolated-vm/intrinsics/iterator";
+export { MapConstructor, MapDelete, MapGet, MapSet } from "@isolated-vm/intrinsics/map";
+export { MathTrunc } from "@isolated-vm/intrinsics/math";
+export { ObjectDefineProperty, ObjectFreeze, ObjectGetOwnPropertyDescriptor, ObjectGetPrototypeOf, ObjectPrototype, ObjectSetPrototypeOf, kEmptyObject } from "@isolated-vm/intrinsics/object";
+export { BooleanConstructor, NumberConstructor, NumberIsFinite, NumberIsNaN, NumberIsSafeInteger, Number_MAX_SAFE_INTEGER, StringCharCodeAt, StringConstructor, StringFromCharCode, SymbolAsyncIterator, SymbolIterator, SymbolToStringTag } from "@isolated-vm/intrinsics/primitive";
+export { PromiseAll, PromiseConstructor, PromiseReject, PromiseResolve, PromiseThen, PromiseWithResolvers } from "@isolated-vm/intrinsics/promise";
+export { ReflectApply, ReflectDeleteProperty, ReflectOwnKeys } from "@isolated-vm/intrinsics/reflect";
+export { WeakRefConstructor, WeakRefDeref } from "@isolated-vm/intrinsics/weak-ref";

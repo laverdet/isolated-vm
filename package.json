@@ -23,7 +23,6 @@
   },
   "dependencies": {
     "@auto_js/js": "workspace:^",
-    "@changesets/cli": "^2.30.0",
-    "tslib": "^2.7.0"
+    "@changesets/cli": "^2.30.0"
   }
 }

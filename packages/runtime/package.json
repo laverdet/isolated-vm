@@ -1,0 +1,27 @@
+{
+  "name": "@isolated-vm/runtime",
+  "version": "0.0.0",
+  "type": "module",
+  "author": "https://github.com/laverdet/",
+  "description": "Web platform runtime for isolated-vm",
+  "homepage": "https://github.com/laverdet/isolated-vm/tree/experimental/packages/runtime",
+  "license": "ISC",
+  "exports": {
+    "./*": "./dist/*.js"
+  },
+  "scripts": {
+    "test:node": "${node:-node} --enable-source-maps --expose-gc --test-reporter=spec --test test/*.ts"
+  },
+  "dependencies": {
+    "@isolated-vm/intrinsics": "workspace:^"
+  },
+  "devDependencies": {
+    "@isolated-vm/experimental": "workspace:^",
+    "@isolated-vm/runtime": "workspace:^",
+    "@types/node": "^26.0.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/laverdet/isolated-vm.git"
+  }
+}

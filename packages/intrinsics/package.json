@@ -1,0 +1,20 @@
+{
+  "name": "@isolated-vm/intrinsics",
+  "version": "0.0.1",
+  "type": "module",
+  "author": "https://github.com/laverdet/",
+  "description": "Captured JavaScript intrinsics for sandbox runtime code",
+  "homepage": "https://github.com/laverdet/isolated-vm/tree/experimental/packages/intrinsics",
+  "license": "ISC",
+  "exports": {
+    ".": "./dist/intrinsics.js",
+    "./*": "./dist/*.js"
+  },
+  "devDependencies": {
+    "@isolated-vm/intrinsics": "workspace:^"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/laverdet/isolated-vm.git"
+  }
+}

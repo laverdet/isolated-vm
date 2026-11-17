@@ -18,7 +18,7 @@
 		"noEmitOnError": false,
 		"sourceMap": true,
 		"stripInternal": true,
-		"target": "es2022",
+		"target": "esnext",
 		"verbatimModuleSyntax": true,
 
 		// Module resolution settings

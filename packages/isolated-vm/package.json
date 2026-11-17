@@ -45,9 +45,6 @@
       "x86_64-unknown-linux-gnu"
     ]
   },
-  "dependencies": {
-    "tslib": "^2.7.0"
-  },
   "devDependencies": {
     "@isolated-vm/experimental": "workspace:^",
     "@types/node": "^26.0.1"

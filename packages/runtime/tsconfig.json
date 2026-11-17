@@ -1,0 +1,12 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"lib": [ "dom", "esnext" ],
+		"types": [ "node" ],
+		"skipLibCheck": false,
+	},
+	"references": [
+		{ "path": "../intrinsics/tsconfig.json" },
+		{ "path": "../isolated-vm/tsconfig.json" },
+	]
+}

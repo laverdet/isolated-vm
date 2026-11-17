@@ -14,9 +14,6 @@ importers:
       '@changesets/cli':
         specifier: ^2.30.0
         version: 2.30.0(@types/node@26.0.1)
-      tslib:
-        specifier: ^2.7.0
-        version: 2.8.1
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.5
@@ -100,13 +97,31 @@ importers:
         specifier: workspace:^
         version: link:../third_party/v8
 
+  packages/intrinsics:
+    devDependencies:
+      '@isolated-vm/intrinsics':
+        specifier: workspace:^
+        version: 'link:'
+
   packages/isolated-vm:
-    dependencies:
-      tslib:
-        specifier: ^2.7.0
-        version: 2.8.1
     devDependencies:
       '@isolated-vm/experimental':
+        specifier: workspace:^
+        version: 'link:'
+      '@types/node':
+        specifier: ^26.0.1
+        version: 26.0.1
+
+  packages/runtime:
+    dependencies:
+      '@isolated-vm/intrinsics':
+        specifier: workspace:^
+        version: link:../intrinsics
+    devDependencies:
+      '@isolated-vm/experimental':
+        specifier: workspace:^
+        version: link:../isolated-vm
+      '@isolated-vm/runtime':
         specifier: workspace:^
         version: 'link:'
       '@types/node':
@@ -4327,7 +4342,8 @@ snapshots:
       minimist: 1.2.8
       strip-bom: 3.0.0
 
-  tslib@2.8.1: {}
+  tslib@2.8.1:
+    optional: true
 
   typanion@3.14.0: {}
 
