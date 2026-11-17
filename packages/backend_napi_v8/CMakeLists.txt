@@ -49,7 +49,6 @@ target_sources(${backend_napi_v8}
 		script.h.cc
 		utility.h.cc
 )
-target_embed_content(${backend_napi_v8} runtime/dist/interface.js runtime_dist_interface_js)
 
 # Addon 'isolated_vm' module is built with additional sources. This target is initialized in
 # `packages/isolated-vm/addon`

@@ -1,5 +1,3 @@
-module;
-#include "runtime_dist_interface_js.h"
 module backend_napi_v8;
 import :lock;
 import :reference;
@@ -116,15 +114,7 @@ auto runtime_interface::instantiate(const realm_scope& lock) -> v8::Local<js::iv
 		};
 	};
 	auto origin = util::make_consteval_string_view("isolated-vm:runtime");
-	auto interface = js::iv8::module_record::create_synthetic(lock, origin, make_interface());
-	auto runtime = js::iv8::unmaybe(js::iv8::module_record::compile(lock, util::make_consteval_string_view(runtime_dist_interface_js), js::iv8::source_origin{}));
-	auto link_record = js::iv8::module_link_record{
-		.modules = {runtime, interface},
-		.payload = {1, 1, 0},
-	};
-	runtime->link(lock, std::move(link_record));
-	std::ignore = runtime->evaluate(lock).value();
-	return runtime;
+	return js::iv8::module_record::create_synthetic(lock, origin, make_interface());
 }
 
 } // namespace backend_napi_v8
