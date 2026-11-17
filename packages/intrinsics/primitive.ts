@@ -19,4 +19,5 @@ export const StringFromCharCode = String.fromCharCode;
 // Symbol
 export const SymbolAsyncIterator = Symbol.asyncIterator;
 export const SymbolIterator = Symbol.iterator;
+export const SymbolSpecies = Symbol.species;
 export const SymbolToStringTag = Symbol.toStringTag;
