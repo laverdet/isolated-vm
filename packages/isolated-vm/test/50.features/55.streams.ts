@@ -28,6 +28,7 @@ async function runStreams(body: string) {
 		makeLinker(makeDirectResolver(), capabilities),
 		makeLinker(makeLocalResolver(import.meta), makeFileSystemCompilationLoader(agent)));
 	const module = expectComplete(await agent.compileModule(`
+		import "@isolated-vm/experimental/host/intrinsics/install";
 		import "@isolated-vm/experimental/host/dom/install/event";
 		import "@isolated-vm/experimental/host/dom/install/abort";
 		import "@isolated-vm/experimental/host/streams/install";
