@@ -1,6 +1,6 @@
 {
   "name": "@isolated-vm/runtime",
-  "version": "0.0.0",
+  "version": "0.0.2",
   "type": "module",
   "author": "https://github.com/laverdet/",
   "description": "Web platform runtime for isolated-vm",

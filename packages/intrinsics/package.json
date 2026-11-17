@@ -1,6 +1,6 @@
 {
   "name": "@isolated-vm/intrinsics",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "author": "https://github.com/laverdet/",
   "description": "Captured JavaScript intrinsics for sandbox runtime code",
