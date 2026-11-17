@@ -4,7 +4,7 @@ import type { AbortSignal } from "@isolated-vm/experimental/host/dom/abort";
 import type { SizeAlgorithm } from "@isolated-vm/experimental/host/streams/queuing-strategy";
 import type { Dictionary } from "@isolated-vm/experimental/host/webidl";
 import { createAbortSignal, signalAbort } from "@isolated-vm/experimental/host/dom/abort";
-import { ArrayPush, ArrayShift, PromiseConstructor, PromiseReject, PromiseResolve, PromiseWithResolvers, RangeErrorConstructor, ReflectApply, TypeErrorConstructor } from "@isolated-vm/experimental/host/intrinsics";
+import { ArrayPush, ArrayShift, PromiseConstructor, PromiseReject, PromiseResolve, PromiseWithResolvers, RangeErrorConstructor, ReflectApply, TypeErrorConstructor, kEmptyObject } from "@isolated-vm/experimental/host/intrinsics";
 import { QueuingStrategy } from "@isolated-vm/experimental/host/streams/queuing-strategy";
 import { QueueWithSizes, markAsHandled, promiseTry, rejectedPromiseCapability, resolvedPromiseCapability } from "@isolated-vm/experimental/host/streams/utility";
 import { InternalParameter, assertCallbackFunction, assertObject, defineInterface, defineInternal, requireArguments } from "@isolated-vm/experimental/host/webidl";
@@ -518,7 +518,7 @@ export class WritableStream {
 	}
 
 	// https://streams.spec.whatwg.org/#ws-constructor
-	constructor(underlyingSink: unknown = undefined, strategy: unknown = {}) {
+	constructor(underlyingSink: unknown = undefined, strategy: unknown = kEmptyObject) {
 		this.#internal = new WritableStreamInternal(function(): ControllerFactory {
 			const factory = InternalParameter.unwrap<ControllerFactory>(underlyingSink);
 			if (factory !== undefined) {
@@ -528,7 +528,7 @@ export class WritableStream {
 				assertObject(underlyingSink);
 			}
 			const queuingStrategy = new QueuingStrategy(strategy);
-			const { abort, close, start, type, write } = (underlyingSink ?? {}) as Dictionary;
+			const { abort, close, start, type, write } = (underlyingSink ?? kEmptyObject) as Dictionary;
 			assertCallbackFunction(abort);
 			assertCallbackFunction(close);
 			assertCallbackFunction(start);

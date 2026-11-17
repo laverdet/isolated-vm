@@ -3,7 +3,7 @@ import type { SizeAlgorithm } from "@isolated-vm/experimental/host/streams/queui
 import type { ReadableStreamDefaultControllerInternal, ReadableStreamInternal } from "@isolated-vm/experimental/host/streams/readable";
 import type { WritableStreamInternal } from "@isolated-vm/experimental/host/streams/writable";
 import type { Dictionary } from "@isolated-vm/experimental/host/webidl";
-import { PromiseWithResolvers, RangeErrorConstructor, ReflectApply, TypeErrorConstructor } from "@isolated-vm/experimental/host/intrinsics";
+import { PromiseWithResolvers, RangeErrorConstructor, ReflectApply, TypeErrorConstructor, kEmptyObject } from "@isolated-vm/experimental/host/intrinsics";
 import { QueuingStrategy } from "@isolated-vm/experimental/host/streams/queuing-strategy";
 import { ReadableStream, createReadableStream, getReadableStreamInternal } from "@isolated-vm/experimental/host/streams/readable";
 import { WritableStream, createWritableStream, getWritableStreamInternal } from "@isolated-vm/experimental/host/streams/writable";
@@ -241,13 +241,13 @@ export class TransformStream {
 	static { defineInterface(this); }
 
 	// https://streams.spec.whatwg.org/#ts-constructor
-	constructor(transformer: unknown = undefined, writableStrategy: unknown = {}, readableStrategy: unknown = {}) {
+	constructor(transformer: unknown = undefined, writableStrategy: unknown = kEmptyObject, readableStrategy: unknown = kEmptyObject) {
 		if (transformer !== undefined) {
 			assertObject(transformer);
 		}
 		const writableQueuingStrategy = new QueuingStrategy(writableStrategy);
 		const readableQueuingStrategy = new QueuingStrategy(readableStrategy);
-		const { cancel, flush, readableType, start, transform, writableType } = (transformer ?? {}) as Dictionary;
+		const { cancel, flush, readableType, start, transform, writableType } = (transformer ?? kEmptyObject) as Dictionary;
 		assertCallbackFunction(cancel);
 		assertCallbackFunction(flush);
 		assertCallbackFunction(start);

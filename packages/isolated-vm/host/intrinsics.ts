@@ -9,7 +9,7 @@ export { AsyncIteratorPrototype } from "@isolated-vm/experimental/host/intrinsic
 export { MapConstructor, MapDelete, MapGet, MapSet } from "@isolated-vm/experimental/host/intrinsics/map";
 export { MathTrunc } from "@isolated-vm/experimental/host/intrinsics/math";
 export { NumberConstructor, NumberIsFinite, NumberIsNaN, NumberIsSafeInteger, Number_MAX_SAFE_INTEGER } from "@isolated-vm/experimental/host/intrinsics/number";
-export { ObjectDefineProperty, ObjectFreeze, ObjectGetOwnPropertyDescriptor, ObjectGetPrototypeOf, ObjectPrototype, ObjectSetPrototypeOf } from "@isolated-vm/experimental/host/intrinsics/object";
+export { ObjectDefineProperty, ObjectFreeze, ObjectGetOwnPropertyDescriptor, ObjectGetPrototypeOf, ObjectPrototype, ObjectSetPrototypeOf, kEmptyObject } from "@isolated-vm/experimental/host/intrinsics/object";
 export { PromiseAll, PromiseConstructor, PromiseReject, PromiseResolve, PromiseThen, PromiseWithResolvers } from "@isolated-vm/experimental/host/intrinsics/promise";
 export { ReflectApply, ReflectDeleteProperty, ReflectOwnKeys } from "@isolated-vm/experimental/host/intrinsics/reflect";
 export { StringCharCodeAt, StringConstructor, StringFromCharCode } from "@isolated-vm/experimental/host/intrinsics/string";

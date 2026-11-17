@@ -1,6 +1,6 @@
 // https://streams.spec.whatwg.org/#qs
 import type { CallbackFunction } from "@isolated-vm/experimental/host/webidl";
-import { NumberConstructor, NumberIsNaN, RangeErrorConstructor, ReflectApply, TypeErrorConstructor } from "@isolated-vm/experimental/host/intrinsics";
+import { NumberConstructor, NumberIsNaN, RangeErrorConstructor, ReflectApply, TypeErrorConstructor, kEmptyObject } from "@isolated-vm/experimental/host/intrinsics";
 import { assertCallbackFunction, assertDictionary, defineInterface, requireArguments } from "@isolated-vm/experimental/host/webidl";
 
 // https://streams.spec.whatwg.org/#callbackdef-queuingstrategysize
@@ -18,7 +18,7 @@ export class QueuingStrategy {
 
 	constructor(value: unknown) {
 		assertDictionary(value);
-		const { highWaterMark, size } = value ?? {};
+		const { highWaterMark, size } = value ?? kEmptyObject;
 		this.#highWaterMark = highWaterMark === undefined ? undefined : NumberConstructor(highWaterMark);
 		assertCallbackFunction(size);
 		this.#size = size;
@@ -48,7 +48,7 @@ export class QueuingStrategy {
 // https://streams.spec.whatwg.org/#dictdef-queuingstrategyinit
 function convertQueuingStrategyInit(value: unknown) {
 	assertDictionary(value);
-	const { highWaterMark } = value ?? {};
+	const { highWaterMark } = value ?? kEmptyObject;
 	if (highWaterMark === undefined) {
 		throw new TypeErrorConstructor("Required member 'highWaterMark' is missing");
 	}

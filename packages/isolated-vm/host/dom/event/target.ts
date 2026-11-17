@@ -6,7 +6,7 @@ import type { Dictionary } from "@isolated-vm/experimental/host/webidl";
 import { addAbortAlgorithm, isAbortSignal, isAborted } from "@isolated-vm/experimental/host/dom/abort/brand";
 import { Event, EventPhases, getEventInternal, isEvent } from "@isolated-vm/experimental/host/dom/event/event";
 import { DOMException, reportException } from "@isolated-vm/experimental/host/html/exception";
-import { ArrayIndexOf, ArrayPush, ArraySlice, ArraySplice, BooleanConstructor, ReflectApply, TypeErrorConstructor } from "@isolated-vm/experimental/host/intrinsics";
+import { ArrayIndexOf, ArrayPush, ArraySlice, ArraySplice, BooleanConstructor, ReflectApply, TypeErrorConstructor, kEmptyObject } from "@isolated-vm/experimental/host/intrinsics";
 import { defineInterface, requireArguments } from "@isolated-vm/experimental/host/webidl";
 
 // https://dom.spec.whatwg.org/#concept-event-listener
@@ -170,7 +170,7 @@ export class EventTarget {
 	}
 
 	// https://dom.spec.whatwg.org/#dom-eventtarget-addeventlistener
-	addEventListener(type: unknown, callback: unknown, options: unknown = {}): void {
+	addEventListener(type: unknown, callback: unknown, options: unknown = kEmptyObject): void {
 		const listeners = this.#listeners;
 		requireArguments(arguments.length, 2);
 		const typeString = `${type}`;
@@ -206,7 +206,7 @@ export class EventTarget {
 	}
 
 	// https://dom.spec.whatwg.org/#dom-eventtarget-removeeventlistener
-	removeEventListener(type: unknown, callback: unknown, options: unknown = {}): void {
+	removeEventListener(type: unknown, callback: unknown, options: unknown = kEmptyObject): void {
 		const listeners = this.#listeners;
 		requireArguments(arguments.length, 2);
 		const typeString = `${type}`;

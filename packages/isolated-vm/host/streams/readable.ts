@@ -6,7 +6,7 @@ import type { SizeAlgorithm } from "@isolated-vm/experimental/host/streams/queui
 import type { WritableStreamInternal } from "@isolated-vm/experimental/host/streams/writable";
 import type { Dictionary } from "@isolated-vm/experimental/host/webidl";
 import { addAbortAlgorithm, getAbortReason, isAbortSignal, isAborted, removeAbortAlgorithm } from "@isolated-vm/experimental/host/dom/abort/brand";
-import { ArrayPush, ArrayShift, AsyncIteratorPrototype, BooleanConstructor, ObjectDefineProperty, ObjectSetPrototypeOf, PromiseAll, PromiseConstructor, PromiseResolve, PromiseWithResolvers, ReflectApply, ReflectDeleteProperty, SymbolAsyncIterator, SymbolIterator, SymbolToStringTag, TypeErrorConstructor } from "@isolated-vm/experimental/host/intrinsics";
+import { ArrayPush, ArrayShift, AsyncIteratorPrototype, BooleanConstructor, ObjectDefineProperty, ObjectSetPrototypeOf, PromiseAll, PromiseConstructor, PromiseResolve, PromiseWithResolvers, ReflectApply, ReflectDeleteProperty, SymbolAsyncIterator, SymbolIterator, SymbolToStringTag, TypeErrorConstructor, kEmptyObject } from "@isolated-vm/experimental/host/intrinsics";
 import { QueuingStrategy } from "@isolated-vm/experimental/host/streams/queuing-strategy";
 import { QueueWithSizes, markAsHandled, promiseTry, rejectedPromiseCapability, resolvedPromiseCapability } from "@isolated-vm/experimental/host/streams/utility";
 import { getWritableStreamInternal, isWritableStream } from "@isolated-vm/experimental/host/streams/writable";
@@ -679,7 +679,7 @@ class ReadableStreamAsyncIteratorInternal {
 // https://streams.spec.whatwg.org/#dictdef-streampipeoptions
 function convertPipeOptions(options: unknown): PipeOptions {
 	assertDictionary(options);
-	const { preventAbort, preventCancel, preventClose, signal } = options ?? {};
+	const { preventAbort, preventCancel, preventClose, signal } = options ?? kEmptyObject;
 	if (signal !== undefined && !isAbortSignal(signal)) {
 		throw new TypeErrorConstructor("Provided value is not of type 'AbortSignal'");
 	}
@@ -748,7 +748,7 @@ export class ReadableStream {
 	}
 
 	// https://streams.spec.whatwg.org/#rs-constructor
-	constructor(underlyingSource: unknown = undefined, strategy: unknown = {}) {
+	constructor(underlyingSource: unknown = undefined, strategy: unknown = kEmptyObject) {
 		this.#internal = new ReadableStreamInternal(function(): ControllerFactory {
 			const factory = InternalParameter.unwrap<ControllerFactory>(underlyingSource);
 			if (factory !== undefined) {
@@ -758,7 +758,7 @@ export class ReadableStream {
 				assertObject(underlyingSource);
 			}
 			const queuingStrategy = new QueuingStrategy(strategy);
-			const { cancel, pull, start, type } = (underlyingSource ?? {}) as Dictionary;
+			const { cancel, pull, start, type } = (underlyingSource ?? kEmptyObject) as Dictionary;
 			assertCallbackFunction(cancel);
 			assertCallbackFunction(pull);
 			assertCallbackFunction(start);
@@ -812,11 +812,11 @@ export class ReadableStream {
 	}
 
 	// https://streams.spec.whatwg.org/#rs-get-reader
-	getReader(options: unknown = {}): ReadableStreamDefaultReader {
+	getReader(options: unknown = kEmptyObject): ReadableStreamDefaultReader {
 		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 		this.#internal;
 		assertDictionary(options);
-		const { mode } = options ?? {};
+		const { mode } = options ?? kEmptyObject;
 		if (mode !== undefined) {
 			if (`${mode}` !== "byob") {
 				throw new TypeErrorConstructor("Provided value is not a valid enum value of type 'ReadableStreamReaderMode'");
@@ -827,11 +827,11 @@ export class ReadableStream {
 	}
 
 	// https://streams.spec.whatwg.org/#rs-pipe-through
-	pipeThrough(transform: unknown, options: unknown = {}): ReadableStream {
+	pipeThrough(transform: unknown, options: unknown = kEmptyObject): ReadableStream {
 		const internal = this.#internal;
 		requireArguments(arguments.length, 1);
 		assertDictionary(transform);
-		const pair = transform ?? {};
+		const pair = transform ?? kEmptyObject;
 		const { readable } = pair;
 		if (!isReadableStream(readable)) {
 			throw new TypeErrorConstructor("Required member 'readable' is not of type 'ReadableStream'");
@@ -853,7 +853,7 @@ export class ReadableStream {
 	}
 
 	// https://streams.spec.whatwg.org/#rs-pipe-to
-	pipeTo(destination: unknown, options: unknown = {}): Promise<void> {
+	pipeTo(destination: unknown, options: unknown = kEmptyObject): Promise<void> {
 		return promiseTry(() => {
 			const internal = this.#internal;
 			requireArguments(arguments.length, 1);
@@ -878,7 +878,7 @@ export class ReadableStream {
 	}
 
 	// https://streams.spec.whatwg.org/#rs-asynciterator
-	values(options: unknown = {}): AsyncIterator<unknown> {
+	values(options: unknown = kEmptyObject): AsyncIterator<unknown> {
 		const internal = this.#internal;
 		assertDictionary(options);
 		const preventCancel = BooleanConstructor(options?.preventCancel);

@@ -1,7 +1,7 @@
 // https://dom.spec.whatwg.org/#interface-event
 /* eslint-disable @typescript-eslint/restrict-template-expressions -- `${value}` is `ToString`, which is the DOMString conversion */
 import type { EventTarget } from "@isolated-vm/experimental/host/dom/event/target";
-import { BooleanConstructor, DateNow, ObjectDefineProperty, ObjectFreeze, ObjectGetOwnPropertyDescriptor } from "@isolated-vm/experimental/host/intrinsics";
+import { BooleanConstructor, DateNow, ObjectDefineProperty, ObjectFreeze, ObjectGetOwnPropertyDescriptor, kEmptyObject } from "@isolated-vm/experimental/host/intrinsics";
 import { assertDictionary, defineConstants, defineInterface, requireArguments } from "@isolated-vm/experimental/host/webidl";
 
 // https://dom.spec.whatwg.org/#dom-event-none
@@ -107,11 +107,11 @@ export class Event {
 	}
 
 	// https://dom.spec.whatwg.org/#dom-event-event
-	constructor(type: unknown, eventInitDict: unknown = {}) {
+	constructor(type: unknown, eventInitDict: unknown = kEmptyObject) {
 		requireArguments(arguments.length, 1);
 		const typeString = `${type}`;
 		assertDictionary(eventInitDict);
-		const { bubbles, cancelable, composed } = eventInitDict ?? {};
+		const { bubbles, cancelable, composed } = eventInitDict ?? kEmptyObject;
 		this.#internal = {
 			type: typeString,
 			target: null,
@@ -196,7 +196,7 @@ export class CustomEvent extends Event {
 	static { defineInterface(this); }
 
 	// https://dom.spec.whatwg.org/#dom-customevent-customevent
-	constructor(type: unknown, eventInitDict: unknown = {}) {
+	constructor(type: unknown, eventInitDict: unknown = kEmptyObject) {
 		requireArguments(arguments.length, 1);
 		super(type, eventInitDict);
 		assertDictionary(eventInitDict);
