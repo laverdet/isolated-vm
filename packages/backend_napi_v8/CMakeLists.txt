@@ -24,6 +24,7 @@ target_sources(${backend_napi_v8}
 	PRIVATE
 		agent.cc
 		capability.cc
+		encoding.cc
 		environment.cc
 		main.cc
 		module.cc
@@ -38,6 +39,7 @@ target_sources(${backend_napi_v8}
 		agent_handle.h.cc
 		agent.h.cc
 		capability.h.cc
+		encoding.h.cc
 		environment.h.cc
 		lock.cc
 		module.h.cc
@@ -76,6 +78,9 @@ triplet_util(HOST_TOOLCHAIN %e)
 if(HOST_TOOLCHAIN STREQUAL -musl)
 	target_compile_definitions(${backend_napi_v8} PRIVATE __MUSL__)
 endif()
+
+# ICU
+target_compile_definitions(${backend_napi_v8} PRIVATE U_STATIC_IMPLEMENTATION)
 
 # Link backend target
 target_link_libraries(${backend_napi_v8} PRIVATE ${auto_js} ${napi_js} ${v8_js} isolated_vm utility_js)

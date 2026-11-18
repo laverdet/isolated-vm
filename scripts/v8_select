@@ -52,3 +52,7 @@ if [ "$(uname)" = Darwin ]; then
 else
 	find include -name '*.h' -exec cp --parents --recursive {} "out/$NAME" \; 1>&2
 fi
+
+# ICU public headers
+mkdir -p "out/$NAME/include/unicode"
+cp third_party/icu/source/common/unicode/*.h "out/$NAME/include/unicode" 1>&2

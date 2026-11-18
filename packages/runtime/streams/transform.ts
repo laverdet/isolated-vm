@@ -13,7 +13,10 @@ type TransformAlgorithm = (chunk: unknown) => Promise<unknown>;
 type FlushAlgorithm = () => Promise<unknown>;
 type CancelAlgorithm = (reason: unknown) => Promise<unknown>;
 
-class TransformStreamInternal {
+/** @internal */ export let getTransformStreamInternal: (stream: TransformStream) => TransformStreamInternal;
+
+/** @internal */
+export class TransformStreamInternal {
 	declare controller: TransformStreamDefaultControllerInternal;
 	readonly readable: ReadableStream;
 	readonly readableInternal: ReadableStreamInternal;
@@ -238,7 +241,10 @@ class TransformStreamDefaultControllerInternal {
 export class TransformStream {
 	readonly #internal: TransformStreamInternal;
 
-	static { defineInterface(this); }
+	static {
+		defineInterface(this);
+		getTransformStreamInternal = stream => stream.#internal;
+	}
 
 	// https://streams.spec.whatwg.org/#ts-constructor
 	constructor(transformer: unknown = undefined, writableStrategy: unknown = kEmptyObject, readableStrategy: unknown = kEmptyObject) {

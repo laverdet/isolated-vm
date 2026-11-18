@@ -166,7 +166,11 @@ struct accept_with_casted_string {
 		template <class Accept, class Subject>
 		constexpr auto cast(this const Accept& /*self*/, std::type_identity<Subject> /*tag*/, std::basic_string_view<Subject> subject) -> value_type {
 			static_assert(js::accept_allows_throw<Accept> || type<Char> != type<char> || type<Subject> == type<char>, "cannot guarantee runtime cast");
-			return util::transcode_string<Char>(subject);
+			try {
+				return util::transcode_string<Char>(subject);
+			} catch (const std::range_error& /*error*/) {
+				throw js::range_error{u"String contains characters outside of Latin-1"};
+			}
 		}
 
 		template <class Subject, auto Value>
@@ -263,6 +267,7 @@ struct accept<Meta, typed_array<void>> : accept_typed_array<Meta, data_view_tag,
 		using accept_typed_array<Meta, data_view_tag, typed_array<void>>::accept_typed_array;
 };
 
+// `std::span<Type>` - only accepts the matching `TypedArray`
 template <class Meta, class Type>
 struct accept_typed_array_span : private accept_data_block_span {
 		explicit constexpr accept_typed_array_span(auto* /*transfer*/) {}
@@ -274,8 +279,53 @@ struct accept_typed_array_span : private accept_data_block_span {
 			return typed_span.subspan(0, subject.size());
 		}
 
-		consteval static auto accept_tags_of() { return std::tuple{typed_array_tag_of<std::remove_const_t<Type>>{}}; }
+		consteval static auto accept_tags_of() { return std::tuple{typed_array_tag_of<Type>{}}; }
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+};
+
+// `std::span<std::byte>` - accepts `Uint8Array`, `ArrayBuffer` or `SharedArrayBuffer`
+template <class Meta>
+struct accept_typed_array_span<Meta, std::byte> : accept_data_block_span {
+		explicit constexpr accept_typed_array_span(auto* /*transfer*/) {}
+		using accept_data_block_span::operator();
+
+		constexpr auto operator()(typed_array_tag_of<std::uint8_t> /*tag*/, auto& visit, const auto& subject) const -> std::span<std::byte> {
+			const accept_data_block_span& accept_block = *this;
+			auto byte_span = visit(subject.buffer(), accept_block);
+			return byte_span.subspan(subject.byte_offset(), subject.size());
+		}
+
+		consteval static auto accept_tags_of() { return std::tuple<data_block_tag, typed_array_tag_of<std::uint8_t>>{}; }
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+};
+
+// `std::span<char>` - any `TypedArray`, `ArrayBuffer` or `SharedArrayBuffer`.
+template <class Meta>
+struct accept_typed_array_span<Meta, char> : private accept_data_block_span {
+		explicit constexpr accept_typed_array_span(auto* /*transfer*/) {}
+
+		constexpr auto operator()(data_block_tag /*tag*/, visit_holder /*visit*/, const auto& subject) const -> std::span<char> {
+			return as_chars(std::span<std::byte>{subject});
+		}
+
+		template <std::derived_from<array_buffer_view_tag> Tag>
+		constexpr auto operator()(Tag tag, auto& visit, const auto& subject) const -> std::span<char> {
+			constexpr auto element_size = util::overloaded{
+				[]<class Type>(typed_array_tag_of<Type> /*tag*/) -> std::size_t { return sizeof(Type); },
+				[](data_view_tag /*tag*/) -> std::size_t { return 1; },
+			};
+			const accept_data_block_span& accept_block = *this;
+			auto byte_span = visit(subject.buffer(), accept_block);
+			return as_chars(byte_span.subspan(subject.byte_offset(), subject.size() * element_size(tag)));
+		}
+
+		consteval static auto accept_tags_of() { return std::tuple<data_block_tag, array_buffer_view_tag>{}; }
+		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+
+	private:
+		static auto as_chars(std::span<std::byte> bytes) -> std::span<char> {
+			return {reinterpret_cast<char*>(bytes.data()), bytes.size()};
+		}
 };
 
 template <class Meta, class Type>

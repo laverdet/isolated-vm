@@ -1,4 +1,5 @@
 module backend_napi_v8;
+import :encoding;
 import :lock;
 import :reference;
 import :runtime;
@@ -110,6 +111,8 @@ auto runtime_interface::instantiate(const realm_scope& lock) -> v8::Local<js::iv
 			std::pair{util::cw<"performanceTime">, performance_time_->deref(util::slice(lock))},
 			std::pair{util::cw<"transfer">, transfer_->deref(util::slice(lock))},
 			std::pair{util::cw<"Reference">, v8::Local<v8::FunctionTemplate>{reference_handle::class_template(lock)}},
+			std::pair{util::cw<"StringReader">, v8::Local<v8::FunctionTemplate>{string_reader_handle::class_template(lock)}},
+			std::pair{util::cw<"StringWriter">, v8::Local<v8::FunctionTemplate>{string_writer_handle::class_template(lock)}},
 			std::pair{util::cw<"Zone">, v8::Local<v8::FunctionTemplate>{zone_handle::class_template(lock)}},
 		};
 	};

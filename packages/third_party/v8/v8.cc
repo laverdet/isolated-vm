@@ -28,6 +28,7 @@ export namespace v8 {
 using v8::ArrayBuffer;
 using v8::ArrayBufferView;
 using v8::BackingStore;
+using v8::BackingStoreInitializationMode;
 using v8::DataView;
 using v8::SharedArrayBuffer;
 

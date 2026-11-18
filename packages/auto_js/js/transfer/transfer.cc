@@ -42,17 +42,17 @@ constexpr auto message_for_tag = util::overloaded{
 
 template <class Accept>
 constexpr auto expected_tag_message() {
-	constexpr auto accept_tags = accept_tags_of_v<Accept>;
-	using accept_tag_type = decltype(accept_tags);
+	// `std::get` (instead of `std::tuple_element_t`) fails in gcc
+	using accept_tag_type = decltype(accept_tags_of_v<Accept>);
 	if constexpr (std::tuple_size_v<accept_tag_type> == 0) {
 		return util::cw<u"unknown">;
 	} else if constexpr (std::tuple_size_v<accept_tag_type> == 1) {
-		return message_for_tag(std::get<0>(accept_tags));
+		return message_for_tag(std::tuple_element_t<0, accept_tag_type>{});
 	} else if constexpr (std::tuple_size_v<accept_tag_type> == 2) {
 		return util::consteval_strcat(
-			message_for_tag(std::get<0>(accept_tags)),
+			message_for_tag(std::tuple_element_t<0, accept_tag_type>{}),
 			util::cw<u" or ">,
-			message_for_tag(std::get<1>(accept_tags))
+			message_for_tag(std::tuple_element_t<1, accept_tag_type>{})
 		);
 	}
 }

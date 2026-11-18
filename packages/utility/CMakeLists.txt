@@ -13,6 +13,7 @@ target_sources(utility_js
 	PUBLIC FILE_SET CXX_MODULES FILES
 		_module.cc
 		boost.h.cc
+		container/inplace_vector.cc
 		container/mutable_priority_queue.cc
 		container/sealed_map.cc
 		container/segmented_priority_queue.cc

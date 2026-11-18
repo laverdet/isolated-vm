@@ -12,6 +12,8 @@ namespace backend_napi_v8 {
 // Storage for class templates
 constexpr inline auto runtime_class_names = std::tuple{
 	"Reference"sv,
+	"StringReader"sv,
+	"StringWriter"sv,
 	"Zone"sv,
 };
 

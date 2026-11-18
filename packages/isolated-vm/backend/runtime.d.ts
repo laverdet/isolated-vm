@@ -1,11 +1,47 @@
 // Type declarations `realm.instantiateRuntime()` which can be linked in the runtime.
 declare module "isolated-vm:runtime" {
+	export type BufferSource = ArrayBufferLike | ArrayBufferView<ArrayBufferLike>;
+
 	/**
 	 * Runtime-side `Reference`. It is transferrable to the host but otherwise has no methods.
 	 */
 	export class Reference<Type = unknown> {
 		readonly #value: Type;
 		constructor(value: Type);
+	}
+
+	/** Streaming decoder behind `TextDecoder` */
+	export class StringReader {
+		readonly #private;
+		constructor(label: string, fatal: boolean, ignoreBOM: boolean);
+
+		/** Resolved encoding name */
+		get encoding(): string;
+
+		/**
+		 * Decodes `input`, holding incomplete sequences unless `flush` is set. `undefined` means invalid input in fatal
+		 * mode.
+		 */
+		read(input: BufferSource, flush: boolean): string | undefined;
+	}
+
+	export interface StringWriterResult {
+		/** Code points consumed */
+		read: number;
+		/** Bytes written */
+		written: number;
+		destination: Uint8Array;
+	}
+
+	/** Streaming UTF-8 encoder behind `TextEncoder` */
+	export class StringWriter {
+		readonly #private;
+		constructor();
+
+		/**
+		 * Encodes `input` into `destination`, or a new `Uint8Array`. Without `flush`, a trailing lead surrogate is held.
+		 */
+		write(input: string, flush: boolean, destination?: Uint8Array): StringWriterResult;
 	}
 
 	export interface ZoneOptions {
