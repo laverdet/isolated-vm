@@ -2,6 +2,7 @@ export module v8_js:primitive;
 import :handle;
 import auto_js;
 import std;
+import util;
 import v8;
 
 namespace js::iv8 {
@@ -42,6 +43,39 @@ class value_for_string : public handle_with_isolate<v8::String> {
 		using handle_with_isolate<v8::String>::handle_with_isolate;
 		[[nodiscard]] explicit operator std::string() const;
 		[[nodiscard]] explicit operator std::u16string() const;
+
+		auto view_string(const auto& function) const {
+			const auto view = v8::String::ValueView{isolate(), util::slice(*this)};
+			if (view.is_one_byte()) {
+				return function(one_byte_view(view));
+			} else {
+				return function(two_byte_view(view));
+			}
+		}
+
+	protected:
+		static auto one_byte_view(const v8::String::ValueView& view) -> std::string_view;
+		static auto two_byte_view(const v8::String::ValueView& view) -> std::u16string_view;
+};
+
+class value_for_string_one_byte : public value_for_string {
+	public:
+		using value_for_string::value_for_string;
+
+		auto view_string(const auto& function) const {
+			const auto view = v8::String::ValueView{isolate(), util::slice(*this)};
+			return function(one_byte_view(view));
+		}
+};
+
+class value_for_string_two_byte : public value_for_string {
+	public:
+		using value_for_string::value_for_string;
+
+		auto view_string(const auto& function) const {
+			const auto view = v8::String::ValueView{isolate(), util::slice(*this)};
+			return function(two_byte_view(view));
+		}
 };
 
 class value_for_symbol : public handle_without_lock<v8::Symbol> {

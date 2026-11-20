@@ -287,21 +287,16 @@ constexpr auto encodings = util::sealed_map{
 };
 
 // string_reader_handle
-string_reader_handle::string_reader_handle(std::string_view label, bool fatal, bool ignore_bom) :
+string_reader_handle::string_reader_handle(std::span<char> label, bool fatal, bool ignore_bom) :
 		encoding_{[ & ] -> std::string_view {
-			// https://encoding.spec.whatwg.org/#concept-encoding-get
-			constexpr auto whitespace = "\t\n\f\r "sv;
-			constexpr auto max_label_size = std::ranges::max(labels | std::views::transform([](const auto& entry) { return entry.first.size(); }));
-			const auto to_lower = [](char character) -> char {
+			static_assert(max_label_size == std::ranges::max(labels | std::views::transform([](const auto& entry) { return entry.first.size(); })));
+			std::ranges::transform(label, label.begin(), [](char character) -> char {
 				return character >= 'A' && character <= 'Z' ? character + ('a' - 'A') : character;
-			};
-			const auto begin = label.find_first_not_of(whitespace);
-			const auto trimmed = begin == std::string_view::npos ? ""sv : label.substr(begin, label.find_last_not_of(whitespace) - begin + 1);
-			auto lowered = util::inplace_vector<char, max_label_size>{};
-			lowered.append_range(trimmed | std::views::take(max_label_size) | std::views::transform(to_lower));
-			const auto* entry = trimmed.size() > max_label_size ? nullptr : labels.find(std::string_view{lowered.data(), lowered.size()});
+			});
+			const auto view = std::string_view{label.data(), label.size()};
+			const auto* entry = label.size() > max_label_size ? nullptr : labels.find(view);
 			if (entry == nullptr) {
-				throw js::range_error{"The encoding label provided ('{}') is invalid", label};
+				throw js::range_error{"The encoding label provided ('{}') is invalid", view};
 			}
 			return entry->second;
 		}()},
@@ -395,9 +390,10 @@ auto string_reader_handle::read(const realm_scope& lock, std::span<const char> i
 }
 
 auto string_reader_handle::class_template(const realm_scope& lock) -> v8::Local<js::iv8::class_template_of<string_reader_handle>> {
-	// TODO: ValueView
-	auto constructor = [](const std::string& label, bool fatal, bool ignore_bom) -> string_reader_handle {
-		return string_reader_handle{label, fatal, ignore_bom};
+	auto constructor = [](js::iv8::value_of<js::string_tag> label, bool fatal, bool ignore_bom) -> string_reader_handle {
+		return label.view_string([ & ](auto label) -> string_reader_handle {
+			return string_reader_handle{label, fatal, ignore_bom};
+		});
 	};
 	return lock->environment().class_template(
 		std::type_identity<string_reader_handle>{},

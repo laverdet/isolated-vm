@@ -12,8 +12,14 @@ struct accept<void, Enum> {
 	public:
 		constexpr auto operator()(string_tag /*tag*/, visit_holder /*visit*/, auto&& subject) const -> Enum {
 			constexpr auto values = make_enum_map();
-			auto string_value = std::u16string{std::forward<decltype(subject)>(subject)};
-			auto result = values.find(util::fnv1a_hash32(std::u16string_view{string_value}));
+			auto find = [ & ](auto view) -> auto* { return values.find(util::fnv1a_hash32(view)); };
+			auto result = [ & ]() -> auto* {
+				if constexpr (requires { subject.view_string(find); }) {
+					return subject.view_string(find);
+				} else {
+					return find(std::u16string_view{std::u16string{std::forward<decltype(subject)>(subject)}});
+				}
+			}();
 			if (result == nullptr) {
 				throw js::type_error{u"Invalid enumeration"};
 			}

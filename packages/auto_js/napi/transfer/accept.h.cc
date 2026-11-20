@@ -90,7 +90,14 @@ struct accept_basic_napi_value {
 		template <class Char>
 		auto operator()(string_tag_of<Char> tag, visit_holder visit, auto&& subject) const
 			-> js::referenceable_value<local_of<string_tag_of<Char>>> {
-			return (*this)(tag, visit, std::basic_string<Char>{std::forward<decltype(subject)>(subject)});
+			auto as_view = [ & ](std::basic_string_view<Char> view) -> js::referenceable_value<local_of<string_tag_of<Char>>> {
+				return (*this)(tag, visit, view);
+			};
+			if constexpr (requires { subject.view_string(as_view); }) {
+				return subject.view_string(as_view);
+			} else {
+				return (*this)(tag, visit, std::basic_string<Char>{std::forward<decltype(subject)>(subject)});
+			}
 		}
 
 		// bigint

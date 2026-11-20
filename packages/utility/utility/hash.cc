@@ -10,8 +10,9 @@ struct fnv1a_hash_of {
 		static_assert(std::is_integral_v<Result>);
 		static_assert(std::is_unsigned_v<Result>);
 
-		template <class Type>
+		template <std::integral Type>
 		constexpr auto operator()(std::span<const Type> data) const -> Result {
+			static_assert(sizeof(Type) <= sizeof(Result));
 			constexpr auto xx = []() -> std::tuple<Result, Result> {
 				if constexpr (sizeof(Result) == 4) {
 					return {0x811c'9dc5, 0x100'0193};
@@ -23,12 +24,9 @@ struct fnv1a_hash_of {
 			constexpr auto offset_basis = std::get<0>(xx);
 			constexpr auto prime = std::get<1>(xx);
 			auto hash = offset_basis;
-			for (const auto& value : data) {
-				auto bytes = std::bit_cast<std::array<std::uint8_t, sizeof(Type)>>(value);
-				for (auto byte : bytes) {
-					hash = hash ^ byte;
-					hash *= prime;
-				}
+			for (auto value : data) {
+				hash ^= static_cast<std::make_unsigned_t<Type>>(value);
+				hash *= prime;
 			}
 			return hash;
 		}

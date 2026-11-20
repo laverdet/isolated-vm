@@ -13,8 +13,16 @@ struct value_specialization;
 // `js::napi::local_of<T>`.
 export template <class Tag>
 class value_of : public value_specialization<Tag>::type {
+	private:
+		using handle_type = value_specialization<Tag>::type;
+
 	public:
-		using value_specialization<Tag>::type::type;
+		using handle_type::handle_type;
+
+		// For example: `value_of<string_tag_of<char>>` -> `value_of<string_tag>`
+		// NOLINTNEXTLINE(google-explicit-constructor)
+		value_of(const handle_type& handle) :
+				handle_type{handle} {}
 
 		template <std::convertible_to<tag_to_v8<Tag>> Type>
 		// NOLINTNEXTLINE(google-explicit-constructor)
@@ -37,6 +45,12 @@ struct value_specialization<number_tag> : std::type_identity<class value_for_num
 
 template <>
 struct value_specialization<string_tag> : std::type_identity<class value_for_string> {};
+
+template <>
+struct value_specialization<string_tag_of<char>> : std::type_identity<class value_for_string_one_byte> {};
+
+template <>
+struct value_specialization<string_tag_of<char16_t>> : std::type_identity<class value_for_string_two_byte> {};
 
 template <>
 struct value_specialization<symbol_tag> : std::type_identity<class value_for_symbol> {};

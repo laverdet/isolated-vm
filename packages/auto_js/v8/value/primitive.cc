@@ -1,3 +1,5 @@
+module;
+#include <cassert>
 module v8_js;
 import :primitive;
 import std;
@@ -47,6 +49,18 @@ value_for_string::operator std::string() const {
 		return length;
 	});
 	return string;
+}
+
+auto value_for_string::one_byte_view(const v8::String::ValueView& view) -> std::string_view {
+	assert(view.is_one_byte());
+	return {reinterpret_cast<const char*>(view.data8()), view.length()};
+}
+
+auto value_for_string::two_byte_view(const v8::String::ValueView& view) -> std::u16string_view {
+	if (view.is_one_byte()) {
+		throw std::logic_error{"'string->IsOneByte()' vs 'view->is_one_byte()' disagreement"};
+	}
+	return {reinterpret_cast<const char16_t*>(view.data16()), view.length()};
 }
 
 value_for_string::operator std::u16string() const {
