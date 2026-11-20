@@ -80,6 +80,7 @@ using v8::WasmStreamingCallback;
 // v8-container.h
 using v8::Array;
 using v8::Map;
+using v8::Set;
 
 // v8-context.h
 using v8::Context;

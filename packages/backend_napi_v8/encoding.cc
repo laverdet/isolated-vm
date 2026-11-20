@@ -343,7 +343,7 @@ auto string_reader_handle::read(const realm_scope& lock, std::span<const char> i
 			input = input.subspan(bom.size());
 		}
 		auto string = js::iv8::unmaybe(v8::String::NewFromUtf8(isolate, input.data(), v8::NewStringType::kNormal, static_cast<int>(input.size())));
-		return js::forward{v8::Local<v8::Value>{string}};
+		return js::forward{string};
 	}
 
 	auto output = std::u16string{};
@@ -375,7 +375,7 @@ auto string_reader_handle::read(const realm_scope& lock, std::span<const char> i
 			ucnv_reset(converter_.get());
 		}
 		if (U_FAILURE(status) != 0) {
-			return js::forward{v8::Local<v8::Value>{v8::Undefined(isolate)}};
+			return js::forward{v8::Undefined(isolate)};
 		}
 	}
 
@@ -446,7 +446,7 @@ auto string_writer_handle::write(const realm_scope& lock, js::forward<v8::Local<
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 		auto* data = static_cast<char*>((*destination)->Buffer()->Data()) + (*destination)->ByteOffset();
 		write(data, std::min((*destination)->ByteLength(), utf8_length));
-		result.destination = js::forward{v8::Local<v8::Uint8Array>{*destination}};
+		result.destination = js::forward{*destination};
 	} else {
 		auto backing_store = v8::ArrayBuffer::NewBackingStore(isolate, utf8_length, v8::BackingStoreInitializationMode::kUninitialized);
 		write(static_cast<char*>(backing_store->Data()), utf8_length);

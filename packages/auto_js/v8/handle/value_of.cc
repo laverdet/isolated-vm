@@ -92,3 +92,9 @@ struct value_specialization<data_view_tag>
 		: std::type_identity<value_for_array_buffer_view<v8::DataView>> {};
 
 } // namespace js::iv8
+
+// Specialization for `js::forward`. Makes `js::forward{value_of<Tag>}` infer `js::forward<..., Tag>`.
+namespace js {
+template <class Tag>
+struct forward_tag_for<iv8::value_of<Tag>> : std::type_identity<Tag> {};
+} // namespace js

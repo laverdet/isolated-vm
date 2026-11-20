@@ -34,6 +34,13 @@ struct forward : util::pointer_facade {
 		explicit forward(std::convertible_to<Type> auto&& value, Tag /*tag*/ = {}) :
 				value_{std::forward<decltype(value)>(value)} {}
 
+		template <class From, std::convertible_to<Tag> FromTag>
+			requires std::assignable_from<Type&, From>
+		constexpr auto operator=(forward<From, FromTag> from) -> forward& {
+			value_ = *std::move(from);
+			return *this;
+		}
+
 		constexpr auto operator*(this auto&& self) -> auto&& { return std::forward<decltype(self)>(self).value_; }
 
 	private:

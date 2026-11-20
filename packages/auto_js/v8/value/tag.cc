@@ -106,8 +106,10 @@ constexpr auto v8_to_tag_fn = util::overloaded{
 	[](std::type_identity<v8::Date> /*type*/) -> date_tag { return {}; },
 	[](std::type_identity<v8::External> /*type*/) -> external_tag { return {}; },
 	[](std::type_identity<v8::Function> /*type*/) -> function_tag { return {}; },
+	[](std::type_identity<v8::Map> /*type*/) -> map_tag { return {}; },
 	[](std::type_identity<v8::Object> /*type*/) -> object_tag { return {}; },
 	[](std::type_identity<v8::Promise> /*type*/) -> promise_tag { return {}; },
+	[](std::type_identity<v8::Set> /*type*/) -> set_tag { return {}; },
 
 	// data blocks
 	[](std::type_identity<iv8::DataBlock> /*type*/) -> data_block_tag { return {}; },

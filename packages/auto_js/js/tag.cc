@@ -87,7 +87,9 @@ template <std::size_t Properties> struct struct_tag : tag_of<object_tag> {};
 
 // Other builtin objects
 struct date_tag : tag_of<object_tag> {};
+struct map_tag : tag_of<object_tag> {};
 struct promise_tag : tag_of<object_tag> {};
+struct set_tag : tag_of<object_tag> {};
 
 // data blocks
 struct data_block_tag : tag_of<object_tag> {};

@@ -55,7 +55,7 @@ auto zone_handle::clone(const realm_scope& lock) -> js::forward<v8::Local<v8::Ob
 }
 
 auto zone_handle::data(const realm_scope& lock) -> js::forward<v8::Local<v8::Object>> {
-	return js::forward{v8::Local<v8::Object>{data_.Get(lock.isolate())}};
+	return js::forward{data_.Get(lock.isolate())};
 }
 
 auto zone_handle::run(const realm_scope& lock, js::iv8::this_object self, js::forward<v8::Local<js::iv8::Function>> callback) -> js::forward<v8::Local<v8::Value>> {
@@ -81,7 +81,7 @@ auto zone_handle::current(const realm_scope& lock) -> js::forward<v8::Local<v8::
 	if (try_cast(util::slice(lock), data) != nullptr) {
 		return js::forward{data.As<v8::Value>()};
 	}
-	return js::forward{v8::Local<v8::Value>{v8::Undefined(lock.isolate())}};
+	return js::forward{v8::Undefined(lock.isolate())};
 }
 
 auto zone_handle::detach(const realm_scope& lock, js::forward<v8::Local<js::iv8::Function>> callback, zone_options options) -> void {
