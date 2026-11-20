@@ -26,6 +26,7 @@ reverseAlphabet[12] =
 reverseAlphabet[13] =
 reverseAlphabet[32] = kAlphabetSizeish;
 
+export function atob(data: string): string;
 export function atob(inputString: unknown): string {
 	const string = StringConstructor(inputString);
 	let result = "";
@@ -60,6 +61,7 @@ export function atob(inputString: unknown): string {
 	return result;
 }
 
+export function btoa(data: string): string;
 export function btoa(inputString: unknown): string {
 	const string = StringConstructor(inputString);
 	let result = "";

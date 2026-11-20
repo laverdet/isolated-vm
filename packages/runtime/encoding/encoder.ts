@@ -20,12 +20,14 @@ export class TextEncoder {
 	}
 
 	// https://encoding.spec.whatwg.org/#dom-textencoder-encode
+	encode(input?: string): Uint8Array;
 	encode(input: unknown = ""): Uint8Array {
 		// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 		return this.#writer.write(`${input}`, true).destination;
 	}
 
 	// https://encoding.spec.whatwg.org/#dom-textencoder-encodeinto
+	encodeInto(source: string, destination: Uint8Array): TextEncoderEncodeIntoResult;
 	encodeInto(source: unknown, destination: unknown): TextEncoderEncodeIntoResult {
 		const writer = this.#writer;
 		requireArguments(arguments.length, 2);

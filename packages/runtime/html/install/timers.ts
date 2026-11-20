@@ -2,7 +2,9 @@ import { clearInterval, clearTimeout, setInterval, setTimeout } from "@isolated-
 
 export { initializeTimers } from "@isolated-vm/runtime/html/timers";
 
+// @ts-expect-error
 globalThis.clearInterval = clearInterval;
+// @ts-expect-error
 globalThis.clearTimeout = clearTimeout;
 // @ts-expect-error
 globalThis.setInterval = setInterval;

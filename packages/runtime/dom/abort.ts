@@ -211,6 +211,7 @@ export class AbortSignal extends EventTarget {
 
 	// https://dom.spec.whatwg.org/#dom-abortsignal-timeout
 	/** Requires the timers capability to have been initialized in this realm. */
+	static timeout(milliseconds: number): AbortSignal;
 	static timeout(milliseconds: unknown): AbortSignal {
 		requireArguments(arguments.length, 1);
 		const delay = coerceEnforceRangeUnsignedLongLong(milliseconds);
@@ -221,6 +222,7 @@ export class AbortSignal extends EventTarget {
 	}
 
 	// https://dom.spec.whatwg.org/#dom-abortsignal-any
+	static any(signals: Iterable<AbortSignal>): AbortSignal;
 	static any(signals: unknown): AbortSignal {
 		requireArguments(arguments.length, 1);
 		// https://webidl.spec.whatwg.org/#es-sequence -- strings are iterable but are not sequences

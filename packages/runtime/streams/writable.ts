@@ -1,11 +1,11 @@
 // https://streams.spec.whatwg.org/#ws-model
 /* eslint-disable @typescript-eslint/prefer-for-of -- `for-of` goes through the patchable array iterator */
 import type { AbortSignal } from "@isolated-vm/runtime/dom/abort";
-import type { SizeAlgorithm } from "@isolated-vm/runtime/streams/queuing-strategy";
+import type { QueuingStrategy, SizeAlgorithm } from "@isolated-vm/runtime/streams/queuing-strategy";
 import type { Dictionary } from "@isolated-vm/runtime/webidl";
 import { ArrayPush, ArrayShift, PromiseConstructor, PromiseReject, PromiseResolve, PromiseWithResolvers, RangeErrorConstructor, ReflectApply, TypeErrorConstructor, kEmptyObject } from "@isolated-vm/intrinsics";
 import { createAbortSignal, signalAbort } from "@isolated-vm/runtime/dom/abort";
-import { QueuingStrategy } from "@isolated-vm/runtime/streams/queuing-strategy";
+import { QueuingStrategyInternal } from "@isolated-vm/runtime/streams/queuing-strategy";
 import { QueueWithSizes, markAsHandled, promiseTry, rejectedPromiseCapability, resolvedPromiseCapability } from "@isolated-vm/runtime/streams/utility";
 import { InternalParameter, assertCallbackFunction, assertObject, defineInterface, defineInternal, requireArguments } from "@isolated-vm/runtime/webidl";
 import { getPromiseInternal } from "isolated-vm:runtime";
@@ -21,6 +21,14 @@ interface PendingAbortRequest {
 	readonly promise: PromiseWithResolvers<void>;
 	readonly reason: unknown;
 	readonly wasAlreadyErroring: boolean;
+}
+
+// https://streams.spec.whatwg.org/#dictdef-underlyingsink
+export interface UnderlyingSink {
+	start?: (controller: WritableStreamDefaultController) => unknown;
+	write?: (chunk: unknown, controller: WritableStreamDefaultController) => unknown;
+	close?: () => unknown;
+	abort?: (reason: unknown) => unknown;
 }
 
 const closeSentinel = Symbol("closeSentinel");
@@ -518,6 +526,9 @@ export class WritableStream {
 	}
 
 	// https://streams.spec.whatwg.org/#ws-constructor
+	constructor(underlyingSink?: UnderlyingSink, strategy?: QueuingStrategy);
+	/** @internal */
+	constructor(controllerFactory: InternalParameter<ControllerFactory>);
 	constructor(underlyingSink: unknown = undefined, strategy: unknown = kEmptyObject) {
 		this.#internal = new WritableStreamInternal(function(): ControllerFactory {
 			const factory = InternalParameter.unwrap<ControllerFactory>(underlyingSink);
@@ -527,7 +538,7 @@ export class WritableStream {
 			if (underlyingSink !== undefined) {
 				assertObject(underlyingSink);
 			}
-			const queuingStrategy = new QueuingStrategy(strategy);
+			const queuingStrategy = new QueuingStrategyInternal(strategy);
 			const { abort, close, start, type, write } = (underlyingSink ?? kEmptyObject) as Dictionary;
 			assertCallbackFunction(abort);
 			assertCallbackFunction(close);
@@ -602,6 +613,7 @@ export class WritableStreamDefaultWriter {
 
 	static { defineInterface(this); }
 
+	constructor(stream: WritableStream);
 	constructor(stream: unknown) {
 		requireArguments(arguments.length, 1);
 		if (!isWritableStream(stream)) {
@@ -671,6 +683,7 @@ export class WritableStreamDefaultController {
 
 	static { defineInterface(this); }
 
+	/** @internal */
 	constructor(internal: unknown = undefined) {
 		const unwrapped = InternalParameter.unwrap<WritableStreamDefaultControllerInternal>(internal);
 		if (unwrapped === undefined) {

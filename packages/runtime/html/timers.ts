@@ -124,23 +124,37 @@ function runTimers() {
 	}
 }
 
-export function clearInterval(id: unknown): void {
-	clearTimeout(id);
-}
-
-export function clearTimeout(id: unknown): void {
+function clearTimer(id: unknown) {
 	const timer = MapGet(timersById, id);
 	if (timer) {
 		eraseTimer(timer);
 	}
 }
 
+// https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-clearinterval
+export function clearInterval(id?: number): void;
+export function clearInterval(id: unknown): void {
+	clearTimer(id);
+}
+
+// https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-cleartimeout
+export function clearTimeout(id?: number): void;
+export function clearTimeout(id: unknown): void {
+	clearTimer(id);
+}
+
+// https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-setinterval
+export function setInterval(handler: string, timeout?: number): number;
+export function setInterval<Args extends unknown[]>(handler: (...args: Args) => unknown, timeout?: number, ...args: Args): number;
 export function setInterval(callbackOrCodeString: unknown, delay: unknown, ...args: unknown[]): number {
 	const handler = coerceHandler(callbackOrCodeString, ...args);
 	const interval = coerceInterval(delay);
 	return initializeTimer(handler, interval, true);
 }
 
+// https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-settimeout
+export function setTimeout(handler: string, timeout?: number): number;
+export function setTimeout<Args extends unknown[]>(handler: (...args: Args) => unknown, timeout?: number, ...args: Args): number;
 export function setTimeout(callbackOrCodeString: unknown, delay: unknown, ...args: unknown[]): number {
 	const handler = coerceHandler(callbackOrCodeString, ...args);
 	const interval = coerceInterval(delay);

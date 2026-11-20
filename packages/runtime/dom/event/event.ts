@@ -4,6 +4,18 @@ import type { EventTarget } from "@isolated-vm/runtime/dom/event/target";
 import { BooleanConstructor, DateNow, ObjectDefineProperty, ObjectFreeze, ObjectGetOwnPropertyDescriptor, kEmptyObject } from "@isolated-vm/intrinsics";
 import { assertDictionary, defineConstants, defineInterface, requireArguments } from "@isolated-vm/runtime/webidl";
 
+// https://dom.spec.whatwg.org/#dictdef-eventinit
+export interface EventInit {
+	bubbles?: boolean;
+	cancelable?: boolean;
+	composed?: boolean;
+}
+
+// https://dom.spec.whatwg.org/#dictdef-customeventinit
+export interface CustomEventInit extends EventInit {
+	detail?: unknown;
+}
+
 // https://dom.spec.whatwg.org/#dom-event-none
 const NONE = 0;
 const CAPTURING_PHASE = 1;
@@ -107,6 +119,7 @@ export class Event {
 	}
 
 	// https://dom.spec.whatwg.org/#dom-event-event
+	constructor(type: string, eventInitDict?: EventInit);
 	constructor(type: unknown, eventInitDict: unknown = kEmptyObject) {
 		requireArguments(arguments.length, 1);
 		const typeString = `${type}`;
@@ -179,6 +192,7 @@ export class Event {
 
 	// https://dom.spec.whatwg.org/#dom-event-initevent
 	/** @deprecated */
+	initEvent(type: string, bubbles?: boolean, cancelable?: boolean): void;
 	initEvent(type: unknown, bubbles: unknown = false, cancelable: unknown = false): void {
 		const internal = this.#internal;
 		requireArguments(arguments.length, 1);
@@ -196,9 +210,10 @@ export class CustomEvent extends Event {
 	static { defineInterface(this); }
 
 	// https://dom.spec.whatwg.org/#dom-customevent-customevent
+	constructor(type: string, eventInitDict?: CustomEventInit);
 	constructor(type: unknown, eventInitDict: unknown = kEmptyObject) {
 		requireArguments(arguments.length, 1);
-		super(type, eventInitDict);
+		super(type as string, eventInitDict as EventInit);
 		assertDictionary(eventInitDict);
 		this.#detail = eventInitDict?.detail ?? null;
 	}
@@ -209,6 +224,7 @@ export class CustomEvent extends Event {
 
 	// https://dom.spec.whatwg.org/#dom-customevent-initcustomevent
 	/** @deprecated */
+	initCustomEvent(type: string, bubbles?: boolean, cancelable?: boolean, detail?: unknown): void;
 	initCustomEvent(type: unknown, bubbles: unknown = false, cancelable: unknown = false, detail: unknown = null): void {
 		// Brand check happens before argument conversion
 		// eslint-disable-next-line @typescript-eslint/no-unused-expressions

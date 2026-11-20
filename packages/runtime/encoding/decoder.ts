@@ -7,6 +7,17 @@ import { StringReader } from "isolated-vm:runtime";
 // A missing `input` decodes as an empty byte sequence
 const kEmptyBytes = new Uint8Array(0);
 
+// https://encoding.spec.whatwg.org/#dictdef-textdecoderoptions
+export interface TextDecoderOptions {
+	fatal?: boolean;
+	ignoreBOM?: boolean;
+}
+
+// https://encoding.spec.whatwg.org/#dictdef-textdecodeoptions
+export interface TextDecodeOptions {
+	stream?: boolean;
+}
+
 export class TextDecoder {
 	#encoding: string | undefined;
 	readonly #reader: StringReader;
@@ -16,6 +27,7 @@ export class TextDecoder {
 	static { defineInterface(this); }
 
 	// https://encoding.spec.whatwg.org/#dom-textdecoder
+	constructor(label?: string, options?: TextDecoderOptions);
 	constructor(label: unknown = "utf-8", options: unknown = null) {
 		// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 		const labelString = `${label}`;
@@ -33,6 +45,7 @@ export class TextDecoder {
 	get ignoreBOM(): boolean { return this.#ignoreBOM; }
 
 	// https://encoding.spec.whatwg.org/#dom-textdecoder-decode
+	decode(input?: BufferSource, options?: TextDecodeOptions): string;
 	decode(input: unknown = kEmptyBytes, options: unknown = null): string {
 		const reader = this.#reader;
 		// https://encoding.spec.whatwg.org/#textdecodeoptions

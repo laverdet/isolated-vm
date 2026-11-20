@@ -1,6 +1,7 @@
 // https://dom.spec.whatwg.org/#interface-eventtarget
 /* eslint-disable @typescript-eslint/prefer-for-of -- `for-of` goes through the patchable array iterator */
 /* eslint-disable @typescript-eslint/restrict-template-expressions -- `${value}` is `ToString`, which is the DOMString conversion */
+import type { AbortSignal } from "@isolated-vm/runtime/dom/abort";
 import type { EventInternal } from "@isolated-vm/runtime/dom/event/event";
 import type { Dictionary } from "@isolated-vm/runtime/webidl";
 import { ArrayIndexOf, ArrayPush, ArraySlice, ArraySplice, BooleanConstructor, ReflectApply, TypeErrorConstructor, kEmptyObject } from "@isolated-vm/intrinsics";
@@ -8,6 +9,25 @@ import { addAbortAlgorithm, isAbortSignal, isAborted } from "@isolated-vm/runtim
 import { Event, EventPhases, getEventInternal, isEvent } from "@isolated-vm/runtime/dom/event/event";
 import { DOMException, reportException } from "@isolated-vm/runtime/html/exception";
 import { defineInterface, requireArguments } from "@isolated-vm/runtime/webidl";
+
+// https://dom.spec.whatwg.org/#callbackdef-eventlistener
+export type EventListener = (event: Event) => unknown;
+
+export interface EventListenerObject {
+	handleEvent: EventListener;
+}
+
+// https://dom.spec.whatwg.org/#dictdef-eventlisteneroptions
+export interface EventListenerOptions {
+	capture?: boolean;
+}
+
+// https://dom.spec.whatwg.org/#dictdef-addeventlisteneroptions
+export interface AddEventListenerOptions extends EventListenerOptions {
+	passive?: boolean;
+	once?: boolean;
+	signal?: AbortSignal;
+}
 
 // https://dom.spec.whatwg.org/#concept-event-listener
 interface EventListenerRecord {
@@ -170,6 +190,7 @@ export class EventTarget {
 	}
 
 	// https://dom.spec.whatwg.org/#dom-eventtarget-addeventlistener
+	addEventListener(type: string, callback: EventListener | EventListenerObject | null, options?: AddEventListenerOptions | boolean): void;
 	addEventListener(type: unknown, callback: unknown, options: unknown = kEmptyObject): void {
 		const listeners = this.#listeners;
 		requireArguments(arguments.length, 2);
@@ -206,6 +227,7 @@ export class EventTarget {
 	}
 
 	// https://dom.spec.whatwg.org/#dom-eventtarget-removeeventlistener
+	removeEventListener(type: string, callback: EventListener | EventListenerObject | null, options?: EventListenerOptions | boolean): void;
 	removeEventListener(type: unknown, callback: unknown, options: unknown = kEmptyObject): void {
 		const listeners = this.#listeners;
 		requireArguments(arguments.length, 2);
@@ -216,6 +238,7 @@ export class EventTarget {
 	}
 
 	// https://dom.spec.whatwg.org/#dom-eventtarget-dispatchevent
+	dispatchEvent(event: Event): boolean;
 	dispatchEvent(event: unknown): boolean {
 		// Brand check happens before argument conversion
 		// eslint-disable-next-line @typescript-eslint/no-unused-expressions

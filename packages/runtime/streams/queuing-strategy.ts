@@ -11,8 +11,19 @@ export type QueuingStrategySize<Type = unknown> = (chunk: Type) => number;
 export type SizeAlgorithm = QueuingStrategySize;
 
 // https://streams.spec.whatwg.org/#dictdef-queuingstrategy
+export interface QueuingStrategy {
+	highWaterMark?: number;
+	size?: QueuingStrategySize;
+}
+
+// https://streams.spec.whatwg.org/#dictdef-queuingstrategyinit
+export interface QueuingStrategyInit {
+	highWaterMark: number;
+}
+
+/** Converted `QueuingStrategy` dictionary */
 /** @internal */
-export class QueuingStrategy {
+export class QueuingStrategyInternal {
 	readonly #highWaterMark: number | undefined;
 	readonly #size: CallbackFunction | undefined;
 
@@ -66,6 +77,7 @@ export class ByteLengthQueuingStrategy {
 
 	static { defineInterface(this); }
 
+	constructor(init: QueuingStrategyInit);
 	constructor(init: unknown) {
 		requireArguments(arguments.length, 1);
 		this.#highWaterMark = convertQueuingStrategyInit(init);
@@ -86,6 +98,7 @@ export class CountQueuingStrategy {
 
 	static { defineInterface(this); }
 
+	constructor(init: QueuingStrategyInit);
 	constructor(init: unknown) {
 		requireArguments(arguments.length, 1);
 		this.#highWaterMark = convertQueuingStrategyInit(init);

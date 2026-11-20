@@ -2,12 +2,12 @@
 /* eslint-disable @typescript-eslint/prefer-for-of -- `for-of` goes through the patchable array iterator */
 /* eslint-disable @typescript-eslint/no-base-to-string, @typescript-eslint/restrict-template-expressions -- `${value}` is `ToString`, which is the DOMString conversion */
 import type { AbortSignal } from "@isolated-vm/runtime/dom/abort";
-import type { SizeAlgorithm } from "@isolated-vm/runtime/streams/queuing-strategy";
-import type { WritableStreamInternal } from "@isolated-vm/runtime/streams/writable";
+import type { QueuingStrategy, SizeAlgorithm } from "@isolated-vm/runtime/streams/queuing-strategy";
+import type { WritableStream, WritableStreamInternal } from "@isolated-vm/runtime/streams/writable";
 import type { Dictionary } from "@isolated-vm/runtime/webidl";
 import { ArrayPush, ArrayShift, AsyncIteratorPrototype, BooleanConstructor, ObjectDefineProperty, ObjectSetPrototypeOf, PromiseAll, PromiseConstructor, PromiseResolve, PromiseWithResolvers, ReflectApply, ReflectDeleteProperty, SymbolAsyncIterator, SymbolIterator, SymbolToStringTag, TypeErrorConstructor, kEmptyObject } from "@isolated-vm/intrinsics";
 import { addAbortAlgorithm, getAbortReason, isAbortSignal, isAborted, removeAbortAlgorithm } from "@isolated-vm/runtime/dom/abort/brand";
-import { QueuingStrategy } from "@isolated-vm/runtime/streams/queuing-strategy";
+import { QueuingStrategyInternal } from "@isolated-vm/runtime/streams/queuing-strategy";
 import { QueueWithSizes, markAsHandled, promiseTry, rejectedPromiseCapability, resolvedPromiseCapability } from "@isolated-vm/runtime/streams/utility";
 import { getWritableStreamInternal, isWritableStream } from "@isolated-vm/runtime/streams/writable";
 import { InternalParameter, assertCallbackFunction, assertDictionary, assertObject, defineInterface, defineInternal, requireArguments } from "@isolated-vm/runtime/webidl";
@@ -50,6 +50,38 @@ type PipeShutdownRequest = PipeShutdownFulfilled | PipeShutdownRejected;
 export interface ReadableStreamReadResult {
 	value: unknown;
 	done: boolean;
+}
+
+// https://streams.spec.whatwg.org/#dictdef-underlyingsource
+export interface UnderlyingSource {
+	start?: (controller: ReadableStreamDefaultController) => unknown;
+	pull?: (controller: ReadableStreamDefaultController) => unknown;
+	cancel?: (reason: unknown) => unknown;
+	type?: "bytes";
+}
+
+// https://streams.spec.whatwg.org/#dictdef-readablestreamgetreaderoptions
+export interface ReadableStreamGetReaderOptions {
+	mode?: "byob";
+}
+
+// https://streams.spec.whatwg.org/#dictdef-readablestreamiteratoroptions
+export interface ReadableStreamIteratorOptions {
+	preventCancel?: boolean;
+}
+
+// https://streams.spec.whatwg.org/#dictdef-readablewritablepair
+export interface ReadableWritablePair {
+	readable: ReadableStream;
+	writable: WritableStream;
+}
+
+// https://streams.spec.whatwg.org/#dictdef-streampipeoptions
+export interface StreamPipeOptions {
+	preventClose?: boolean;
+	preventAbort?: boolean;
+	preventCancel?: boolean;
+	signal?: AbortSignal;
 }
 
 // Private state accessors, assigned from within the class bodies
@@ -748,6 +780,9 @@ export class ReadableStream {
 	}
 
 	// https://streams.spec.whatwg.org/#rs-constructor
+	constructor(underlyingSource?: UnderlyingSource, strategy?: QueuingStrategy);
+	/** @internal */
+	constructor(controllerFactory: InternalParameter<ControllerFactory>);
 	constructor(underlyingSource: unknown = undefined, strategy: unknown = kEmptyObject) {
 		this.#internal = new ReadableStreamInternal(function(): ControllerFactory {
 			const factory = InternalParameter.unwrap<ControllerFactory>(underlyingSource);
@@ -757,7 +792,7 @@ export class ReadableStream {
 			if (underlyingSource !== undefined) {
 				assertObject(underlyingSource);
 			}
-			const queuingStrategy = new QueuingStrategy(strategy);
+			const queuingStrategy = new QueuingStrategyInternal(strategy);
 			const { cancel, pull, start, type } = (underlyingSource ?? kEmptyObject) as Dictionary;
 			assertCallbackFunction(cancel);
 			assertCallbackFunction(pull);
@@ -793,6 +828,7 @@ export class ReadableStream {
 	}
 
 	// https://streams.spec.whatwg.org/#rs-from
+	static from(asyncIterable: Iterable<unknown> | AsyncIterable<unknown>): ReadableStream;
 	static from(asyncIterable: unknown): ReadableStream {
 		requireArguments(arguments.length, 1);
 		return readableStreamFromIterable(asyncIterable);
@@ -812,6 +848,7 @@ export class ReadableStream {
 	}
 
 	// https://streams.spec.whatwg.org/#rs-get-reader
+	getReader(options?: ReadableStreamGetReaderOptions): ReadableStreamDefaultReader;
 	getReader(options: unknown = kEmptyObject): ReadableStreamDefaultReader {
 		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 		this.#internal;
@@ -827,6 +864,7 @@ export class ReadableStream {
 	}
 
 	// https://streams.spec.whatwg.org/#rs-pipe-through
+	pipeThrough(transform: ReadableWritablePair, options?: StreamPipeOptions): ReadableStream;
 	pipeThrough(transform: unknown, options: unknown = kEmptyObject): ReadableStream {
 		const internal = this.#internal;
 		requireArguments(arguments.length, 1);
@@ -853,6 +891,7 @@ export class ReadableStream {
 	}
 
 	// https://streams.spec.whatwg.org/#rs-pipe-to
+	pipeTo(destination: WritableStream, options?: StreamPipeOptions): Promise<void>;
 	pipeTo(destination: unknown, options: unknown = kEmptyObject): Promise<void> {
 		return promiseTry(() => {
 			const internal = this.#internal;
@@ -878,6 +917,7 @@ export class ReadableStream {
 	}
 
 	// https://streams.spec.whatwg.org/#rs-asynciterator
+	values(options?: ReadableStreamIteratorOptions): AsyncIterator<unknown>;
 	values(options: unknown = kEmptyObject): AsyncIterator<unknown> {
 		const internal = this.#internal;
 		assertDictionary(options);
@@ -893,6 +933,7 @@ export class ReadableStreamDefaultReader {
 
 	static { defineInterface(this); }
 
+	constructor(stream: ReadableStream);
 	constructor(stream: unknown) {
 		requireArguments(arguments.length, 1);
 		if (!isReadableStream(stream)) {
@@ -946,6 +987,7 @@ export class ReadableStreamDefaultController {
 
 	static { defineInterface(this); }
 
+	/** @internal */
 	constructor(internal: unknown = undefined) {
 		const unwrapped = InternalParameter.unwrap<ReadableStreamDefaultControllerInternal>(internal);
 		if (unwrapped === undefined) {

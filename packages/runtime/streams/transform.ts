@@ -1,10 +1,10 @@
 // https://streams.spec.whatwg.org/#ts-model
-import type { SizeAlgorithm } from "@isolated-vm/runtime/streams/queuing-strategy";
+import type { QueuingStrategy, SizeAlgorithm } from "@isolated-vm/runtime/streams/queuing-strategy";
 import type { ReadableStreamDefaultControllerInternal, ReadableStreamInternal } from "@isolated-vm/runtime/streams/readable";
 import type { WritableStreamInternal } from "@isolated-vm/runtime/streams/writable";
 import type { Dictionary } from "@isolated-vm/runtime/webidl";
 import { PromiseWithResolvers, RangeErrorConstructor, ReflectApply, TypeErrorConstructor, kEmptyObject } from "@isolated-vm/intrinsics";
-import { QueuingStrategy } from "@isolated-vm/runtime/streams/queuing-strategy";
+import { QueuingStrategyInternal } from "@isolated-vm/runtime/streams/queuing-strategy";
 import { ReadableStream, createReadableStream, getReadableStreamInternal } from "@isolated-vm/runtime/streams/readable";
 import { WritableStream, createWritableStream, getWritableStreamInternal } from "@isolated-vm/runtime/streams/writable";
 import { InternalParameter, assertCallbackFunction, assertObject, defineInterface, defineInternal } from "@isolated-vm/runtime/webidl";
@@ -12,6 +12,14 @@ import { InternalParameter, assertCallbackFunction, assertObject, defineInterfac
 type TransformAlgorithm = (chunk: unknown) => Promise<unknown>;
 type FlushAlgorithm = () => Promise<unknown>;
 type CancelAlgorithm = (reason: unknown) => Promise<unknown>;
+
+// https://streams.spec.whatwg.org/#dictdef-transformer
+export interface Transformer {
+	start?: (controller: TransformStreamDefaultController) => unknown;
+	transform?: (chunk: unknown, controller: TransformStreamDefaultController) => unknown;
+	flush?: (controller: TransformStreamDefaultController) => unknown;
+	cancel?: (reason: unknown) => unknown;
+}
 
 /** @internal */ export let getTransformStreamInternal: (stream: TransformStream) => TransformStreamInternal;
 
@@ -247,12 +255,13 @@ export class TransformStream {
 	}
 
 	// https://streams.spec.whatwg.org/#ts-constructor
+	constructor(transformer?: Transformer, writableStrategy?: QueuingStrategy, readableStrategy?: QueuingStrategy);
 	constructor(transformer: unknown = undefined, writableStrategy: unknown = kEmptyObject, readableStrategy: unknown = kEmptyObject) {
 		if (transformer !== undefined) {
 			assertObject(transformer);
 		}
-		const writableQueuingStrategy = new QueuingStrategy(writableStrategy);
-		const readableQueuingStrategy = new QueuingStrategy(readableStrategy);
+		const writableQueuingStrategy = new QueuingStrategyInternal(writableStrategy);
+		const readableQueuingStrategy = new QueuingStrategyInternal(readableStrategy);
 		const { cancel, flush, readableType, start, transform, writableType } = (transformer ?? kEmptyObject) as Dictionary;
 		assertCallbackFunction(cancel);
 		assertCallbackFunction(flush);
@@ -299,6 +308,7 @@ export class TransformStreamDefaultController {
 
 	static { defineInterface(this); }
 
+	/** @internal */
 	constructor(internal: unknown = undefined) {
 		const unwrapped = InternalParameter.unwrap<TransformStreamDefaultControllerInternal>(internal);
 		if (unwrapped === undefined) {

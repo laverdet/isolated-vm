@@ -1,14 +1,16 @@
 // https://encoding.spec.whatwg.org/#interface-mixin-genericTransformStream
+import type { TextDecoderOptions } from "@isolated-vm/runtime/encoding/decoder";
 import type { ReadableStream } from "@isolated-vm/runtime/streams/readable";
-import type { TransformStreamDefaultController } from "@isolated-vm/runtime/streams/transform";
+import type { TransformStreamDefaultController, Transformer } from "@isolated-vm/runtime/streams/transform";
 import type { WritableStream } from "@isolated-vm/runtime/streams/writable";
+import type { BufferSource } from "isolated-vm:runtime";
 import { TypeErrorConstructor } from "@isolated-vm/intrinsics";
 import { TextDecoder } from "@isolated-vm/runtime/encoding/decoder";
 import { TransformStream, getTransformStreamInternal } from "@isolated-vm/runtime/streams/transform";
 import { defineInterface } from "@isolated-vm/runtime/webidl";
 import { StringWriter } from "isolated-vm:runtime";
 
-function makeTransformStream(transformer: object) {
+function makeTransformStream(transformer: Transformer) {
 	const { readable, writable } = getTransformStreamInternal(new TransformStream(transformer));
 	return { readable, writable };
 }
@@ -22,8 +24,9 @@ export class TextDecoderStream {
 	static { defineInterface(this); }
 
 	// https://encoding.spec.whatwg.org/#dom-textdecoderstream
+	constructor(label?: string, options?: TextDecoderOptions);
 	constructor(label: unknown = "utf-8", options: unknown = null) {
-		const decoder = this.#decoder = new TextDecoder(label, options);
+		const decoder = this.#decoder = new TextDecoder(label as string, options as TextDecoderOptions);
 		const { readable, writable } = makeTransformStream({
 			// https://encoding.spec.whatwg.org/#decode-and-enqueue-a-chunk
 			transform(chunk: unknown, controller: TransformStreamDefaultController) {
@@ -31,7 +34,8 @@ export class TextDecoderStream {
 				if (chunk === undefined) {
 					throw new TypeErrorConstructor("Provided value is not of type '(ArrayBuffer or ArrayBufferView)'");
 				}
-				const output = decoder.decode(chunk, { stream: true });
+				// The decoder rejects anything but a buffer source
+				const output = decoder.decode(chunk as BufferSource, { stream: true });
 				if (output !== "") {
 					controller.enqueue(output);
 				}
