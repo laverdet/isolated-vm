@@ -173,8 +173,6 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           set -ux
-          # cmake v4.4.0 is broken, v4.4.2 is needed.
-          brew update
           # https://github.com/orgs/Homebrew/discussions/7079
           brew install openssl@3
           brew link --overwrite openssl@3
@@ -205,7 +203,7 @@ jobs:
           tool: /c/msys64/usr/bin/pacman
           packages: |
             mingw-w64-%a-boost
-            mingw64/mingw-w64-%a-cmake>=4.3.0
+            mingw64/mingw-w64-%a-cmake
             mingw64/mingw-w64-%a-ninja
           # nb: For uncached v8, depot_tools is installed which injects its own ninja with a higher
           # priority than the msys one.
@@ -245,7 +243,7 @@ jobs:
             },
             "modules": [
               { "logical-name": "std", "is-std-library": true, "source-path": $(cygpath -w "$MSVC_PATH/modules/std.ixx" | internal_escape | json_string) },
-              { "logical-name": "std", "is-std-library": true, "source-path": $(cygpath -w "$MSVC_PATH/modules/std.compat.ixx" | internal_escape | json_string) }
+              { "logical-name": "std.compat", "is-std-library": true, "source-path": $(cygpath -w "$MSVC_PATH/modules/std.compat.ixx" | internal_escape | json_string) }
             ]
           }
           EOF

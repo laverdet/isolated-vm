@@ -1,11 +1,15 @@
 # `import std` configuration (before project)
-set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
+if (CMAKE_VERSION VERSION_LESS "4.5.0")
+	set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
+endif()
 set(CMAKE_CXX_EXTENSIONS OFF)
 cmake_minimum_required(VERSION 4.4.0 FATAL_ERROR)
 
 # project & language settings
 project(example LANGUAGES C CXX)
-set(CMAKE_CXX_MODULE_STD ON)
+if (CMAKE_VERSION VERSION_LESS "4.5.0")
+	set(CMAKE_CXX_MODULE_STD ON)
+endif()
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
