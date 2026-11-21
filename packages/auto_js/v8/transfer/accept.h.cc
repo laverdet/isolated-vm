@@ -377,10 +377,13 @@ struct accept_v8_value_delegate : accept_v8_value_with<Lock> {
 
 // Acceptor with template environment
 template <class Meta, class Lock>
-struct accept_v8_template : accept_v8_primitive {
+struct accept_v8_template : accept_value_with<Meta, accept_as<v8::Local<v8::Value>, accept_v8_primitive>> {
+	private:
+		using primitive_accept_type = accept_value_with<Meta, accept_as<v8::Local<v8::Value>, accept_v8_primitive>>;
+
 	public:
 		explicit accept_v8_template(auto* transfer, const Lock& lock) :
-				accept_v8_primitive{transfer, lock},
+				primitive_accept_type{transfer, lock},
 				lock_{lock} {}
 
 		// cast primitive to prototype
@@ -388,9 +391,8 @@ struct accept_v8_template : accept_v8_primitive {
 		auto operator()(Tag tag, auto& visit, auto&& subject) const -> v8::Local<v8::Template>
 			// refuse on bigint, which requires a context for some reason.
 			requires(!std::convertible_to<Tag, bigint_tag>) {
-			const accept_v8_primitive& accept = *this;
-			auto result = accept(tag, visit, std::forward<decltype(subject)>(subject));
-			auto value = v8::Local<v8::Value>{dispatch_referenceable(result)};
+			const primitive_accept_type& accept = *this;
+			auto value = v8::Local<v8::Value>{accept(tag, visit, std::forward<decltype(subject)>(subject))};
 			// nb: We are smuggling a `v8::Primitive` as a `v8::Template`
 			return std::bit_cast<v8::Local<v8::Template>>(value);
 		}
@@ -471,16 +473,17 @@ auto return_into(auto& /*env*/, v8::ReturnValue<v8::Value> return_value, js::for
 	return_value.Set(*value);
 }
 
-template <class Lock>
-struct accept_v8_return_into : accept_v8_value_with<Lock> {
+template <class Meta, class Lock>
+struct accept_v8_return_into {
 	private:
-		using accept_type = accept_v8_value_with<Lock>;
+		using value_accept_type = accept_v8_value_with<Lock>;
+		using accept_type = accept_value_with<Meta, value_accept_type>;
 		using value_type = v8::ReturnValue<v8::Value>;
 
 	public:
 		using accept_target_type = return_into_marker;
 		accept_v8_return_into(auto* transfer, const auto& lock, value_type return_value) :
-				accept_type{transfer, lock},
+				accept_{transfer, lock},
 				return_value_{return_value} {}
 
 		auto operator()(boolean_tag /*tag*/, visit_holder /*visit*/, const auto& subject) const -> return_into_marker {
@@ -504,15 +507,19 @@ struct accept_v8_return_into : accept_v8_value_with<Lock> {
 			return {};
 		}
 
-		auto operator()(auto tag, auto& visit, auto&& subject) const -> return_into_marker
-			requires std::invocable<const accept_type&, decltype(tag), decltype(visit), decltype(subject)> {
-			auto value = util::invoke_as<accept_type>(*this, tag, visit, std::forward<decltype(subject)>(subject));
-			return_value_.Set(js::dispatch_referenceable(std::move(value)));
+		template <class Tag>
+		auto operator()(Tag tag, auto& visit, auto&& subject) const -> return_into_marker
+			requires(!std::same_as<Tag, boolean_tag> || std::same_as<Tag, null_tag> || std::same_as<Tag, undefined_tag> || std::convertible_to<Tag, number_tag>) {
+			static_assert(std::invocable<const value_accept_type&, Tag, decltype(visit), decltype(subject)>);
+			return_value_.Set(accept_(tag, visit, std::forward<decltype(subject)>(subject)));
 			return {};
 		}
 
+		consteval static auto types(auto recursive) { return accept_type::types(recursive); }
+
 	private:
-		mutable v8::ReturnValue<v8::Value> return_value_;
+		accept_type accept_;
+		mutable value_type return_value_;
 };
 
 // `object_assign(value, ...)`
@@ -626,7 +633,7 @@ template <class Lock>
 struct select_accept<iv8::return_into_marker, Lock, v8::ReturnValue<v8::Value>> {
 		using target_type = iv8::return_into_marker;
 		template <class Meta, class Target>
-		using accept = iv8::accept_v8_return_into<Lock>;
+		using accept = iv8::accept_v8_return_into<Meta, Lock>;
 };
 
 // object_assign

@@ -111,17 +111,20 @@ struct accept_vm_primitive {
 		std::reference_wrapper<const basic_lock> lock_;
 };
 
-struct accept_vm_prototype : accept_vm_primitive {
+template <class Meta>
+struct accept_vm_prototype : accept_value_with<Meta, accept_as<local_of<primitive_tag>, accept_vm_primitive>> {
+	private:
+		using primitive_accept_type = accept_value_with<Meta, accept_as<local_of<primitive_tag>, accept_vm_primitive>>;
+
 	public:
-		using accept_vm_primitive::accept_vm_primitive;
-		using accept_vm_primitive::lock;
+		explicit accept_vm_prototype(auto* /*transfer*/, const basic_lock& lock) : primitive_accept_type{lock} {}
+		using primitive_accept_type::lock;
 
 		// cast primitive to prototype
 		template <std::convertible_to<primitive_tag> Tag>
 		auto operator()(Tag tag, auto& visit, auto&& subject) const -> local_of<prototype_tag> {
-			const accept_vm_primitive& accept = *this;
-			auto result = accept(tag, visit, std::forward<decltype(subject)>(subject));
-			return local_of<prototype_tag>::from(js::dispatch_referenceable(result));
+			const primitive_accept_type& accept = *this;
+			return local_of<prototype_tag>::from(accept(tag, visit, std::forward<decltype(subject)>(subject)));
 		}
 
 		// function
@@ -313,9 +316,9 @@ struct accept<void, local_of<Tag>> : accept_vm_primitive {
 };
 
 // Template / prototype acceptor
-template <std::convertible_to<prototype_tag> Tag>
-struct accept<void, local_of<Tag>> : accept_vm_prototype {
-		using accept_vm_prototype::accept_vm_prototype;
+template <class Meta, std::convertible_to<prototype_tag> Tag>
+struct accept<Meta, local_of<Tag>> : accept_vm_prototype<Meta> {
+		using accept_vm_prototype<Meta>::accept_vm_prototype;
 };
 
 // Value acceptor

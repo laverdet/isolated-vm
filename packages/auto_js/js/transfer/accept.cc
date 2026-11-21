@@ -109,6 +109,21 @@ struct accept_value_direct;
 template <class Accept, class Insert>
 struct accept_target<accept_value_direct<Accept, Insert>> : accept_target<Accept> {};
 
+// Invoke `js::deferred_receiver`, internal to `accept_value_direct`.
+constexpr inline auto dispatch_referenceable = util::overloaded{
+	[]<class Type>(Type&& value) -> Type {
+		return std::forward<decltype(value)>(value);
+	},
+	[]<class Type>(js::referenceable_value<Type> value) -> Type {
+		return *std::move(value);
+	},
+	[]<class Type, class... Args>(js::deferred_receiver<Type, Args...> receiver) -> Type {
+		std::move(receiver)();
+		// NOLINTNEXTLINE(bugprone-use-after-move)
+		return *std::move(receiver);
+	},
+};
+
 // `accept_value_direct`
 template <class Accept, class Insert>
 struct accept_value_direct {

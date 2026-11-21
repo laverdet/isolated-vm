@@ -38,8 +38,7 @@ struct visit_range : Visit {
 		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
 			using tag_type = tagged_range<Type>::type;
 			Visit& visitor = *this;
-			// TODO: I'm not sure this invocation to 'dispatch_referenceable' is cromulent
-			return dispatch_referenceable(accept(tag_type{}, visitor, std::forward<decltype(subject)>(subject)));
+			return accept(tag_type{}, visitor, std::forward<decltype(subject)>(subject));
 		}
 };
 

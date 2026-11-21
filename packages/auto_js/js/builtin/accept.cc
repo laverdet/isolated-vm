@@ -308,7 +308,7 @@ struct accept_typed_array_span<Meta, char> : private accept_data_block_span {
 			return as_chars(std::span<std::byte>{subject});
 		}
 
-		template <std::derived_from<array_buffer_view_tag> Tag>
+		template <std::convertible_to<array_buffer_view_tag> Tag>
 		constexpr auto operator()(Tag tag, auto& visit, const auto& subject) const -> std::span<char> {
 			constexpr auto element_size = util::overloaded{
 				[]<class Type>(typed_array_tag_of<Type> /*tag*/) -> std::size_t { return sizeof(Type); },
