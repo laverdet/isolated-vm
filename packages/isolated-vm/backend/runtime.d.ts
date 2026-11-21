@@ -1,6 +1,35 @@
 // Type declarations `realm.instantiateRuntime()` which can be linked in the runtime.
 declare module "isolated-vm:runtime" {
-	export type BufferSource = ArrayBufferLike | ArrayBufferView<ArrayBufferLike>;
+	export type BufferSource = ArrayBuffer | ArrayBufferView<ArrayBuffer>;
+	export type AllowSharedBufferSource = ArrayBufferLike | ArrayBufferView<ArrayBufferLike>;
+
+	export interface CodecResult {
+		/** Whatever output is ready, in order */
+		output: ArrayBuffer[];
+		/**
+		 * Count of input bytes consumed. A count short of the input means the write stopped at an error, and writing
+		 * the remaining bytes throws it.
+		 */
+		bytesRead: number;
+	}
+
+	/** Streaming compressor behind `CompressionStream` */
+	export class Compressor {
+		readonly #private;
+		constructor(format: string);
+
+		write(input: BufferSource): CodecResult;
+		flush(): ArrayBuffer[];
+	}
+
+	/** Streaming decompressor behind `DecompressionStream` */
+	export class Decompressor {
+		readonly #private;
+		constructor(format: string);
+
+		write(input: BufferSource): CodecResult;
+		flush(): ArrayBuffer[];
+	}
 
 	/**
 	 * Runtime-side `Reference`. It is transferrable to the host but otherwise has no methods.
@@ -22,7 +51,7 @@ declare module "isolated-vm:runtime" {
 		 * Decodes `input`, holding incomplete sequences unless `flush` is set. `undefined` means invalid input in fatal
 		 * mode.
 		 */
-		read(input: BufferSource, flush: boolean): string | undefined;
+		read(input: AllowSharedBufferSource, flush: boolean): string | undefined;
 	}
 
 	export interface StringWriterResult {

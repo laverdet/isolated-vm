@@ -27,6 +27,7 @@ Checks: >
   -cppcoreguidelines-pro-type-union-access,
   -google-build-using-namespace,
   -google-global-names-in-headers,
+  -google-objc-function-naming,
   -google-readability-todo,
   -misc-multiple-inheritance,
   -misc-use-internal-linkage,

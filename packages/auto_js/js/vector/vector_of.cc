@@ -10,7 +10,7 @@ struct tagged_range;
 
 // Or, define `range_tag_type` on the type itself
 template <class Type>
-	requires(Type::range_tag_type)
+	requires requires { typename Type::range_tag_type; }
 struct tagged_range<Type> : std::type_identity<typename Type::range_tag_type> {};
 
 // Check whether or not `tagged_range` is valid for this type
@@ -20,6 +20,21 @@ concept transferable_range = std::convertible_to<typename tagged_range<Type>::ty
 // std::vector<T> is a transferrable range
 template <class Type, class Alloc>
 struct tagged_range<std::vector<Type, Alloc>> : std::type_identity<vector_tag> {};
+
+// Marks a range (usually a view) as transferrable through the given js tag
+export template <class Tag, class Range>
+class tagged_range_of : public Range {
+	public:
+		static_assert(std::ranges::range<Range>);
+		using range_tag_type = Tag;
+
+		explicit constexpr tagged_range_of(Tag /*tag*/, auto&&... args)
+			requires std::constructible_from<Range, decltype(args)...> :
+				Range{std::forward<decltype(args)>(args)...} {}
+};
+
+template <class Tag, class Range>
+tagged_range_of(Tag, Range) -> tagged_range_of<Tag, Range>;
 
 // `vector_of` is just a vector with an associated js tag
 export template <class Tag, class Value>

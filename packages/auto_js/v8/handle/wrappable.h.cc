@@ -21,14 +21,12 @@ class wrappable_holder : public v8::Object::Wrappable {
 };
 
 export template <class Type>
-class wrappable_of final
-		: public wrappable_holder,
-			public Type {
+class wrappable_of final : public wrappable_holder {
 	public:
 		explicit wrappable_of(auto&&... args)
 			requires std::constructible_from<Type, decltype(args)...> :
 				wrappable_holder{util::type_tag::of<Type>()},
-				Type{std::forward<decltype(args)>(args)...} {}
+				value_{std::forward<decltype(args)>(args)...} {}
 
 		static auto wrap(isolate_lock_witness lock, v8::Local<v8::Object> object, auto&&... args) -> Type&
 			requires std::constructible_from<Type, decltype(args)...>;
@@ -38,6 +36,7 @@ class wrappable_of final
 
 	private:
 		constexpr static auto pointer_tag = v8::CppHeapPointerTag::kDefaultTag;
+		Type value_;
 };
 
 // ---
@@ -49,7 +48,7 @@ auto wrappable_of<Type>::wrap(isolate_lock_witness lock, v8::Local<v8::Object> o
 	auto& allocation_handle = isolate->GetCppHeap()->GetAllocationHandle();
 	auto* instance = cppgc::MakeGarbageCollected<wrappable_of>(allocation_handle, std::forward<decltype(args)>(args)...);
 	v8::Object::Wrap<pointer_tag>(isolate, object, instance);
-	return *instance;
+	return instance->value_;
 }
 
 template <class Type>
@@ -58,7 +57,7 @@ auto wrappable_of<Type>::unwrap(isolate_lock_witness lock, v8::Local<v8::Object>
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-static-cast-downcast)
 		auto* holder = static_cast<wrappable_holder*>(v8::Object::Unwrap<pointer_tag, v8::Object::Wrappable>(lock.isolate(), object));
 		if (holder != nullptr && holder->is(util::type_tag::of<Type>())) {
-			return static_cast<wrappable_of*>(holder);
+			return &static_cast<wrappable_of*>(holder)->value_;
 		}
 	}
 	return nullptr;
@@ -68,7 +67,7 @@ template <class Type>
 auto wrappable_of<Type>::Trace(cppgc::Visitor* visitor) const -> void {
 	wrappable_holder::Trace(visitor);
 	if constexpr (requires(const Type& that) { that.trace(*visitor); }) {
-		Type::trace(*visitor);
+		value_.trace(*visitor);
 	}
 }
 

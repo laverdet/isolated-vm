@@ -1,3 +1,5 @@
+module;
+#include "auto_js/no_unique_address.h"
 export module auto_js:builtin.accept;
 import :functional;
 import :intrinsics.array_buffer;
@@ -230,12 +232,26 @@ struct accept<Meta, data_block_variant> : accept<Meta, data_block_variant::value
 		unsigned shared_array_buffer_index_;
 };
 
+// `ArrayBuffer` or `SharedArrayBuffer` bytes
 struct accept_data_block_span {
 		using accept_target_type = std::span<std::byte>;
+		using tag_type = data_block_tag;
 
 		constexpr auto operator()(data_block_tag /*tag*/, visit_holder /*visit*/, const auto& subject) const -> accept_target_type {
 			return accept_target_type{subject};
 		}
+};
+
+// `ArrayBuffer` bytes
+struct accept_array_buffer_span {
+		using accept_target_type = std::span<std::byte>;
+		using tag_type = array_buffer_tag;
+
+		constexpr auto operator()(array_buffer_tag /*tag*/, visit_holder /*visit*/, const auto& subject) const -> accept_target_type {
+			return accept_target_type{subject};
+		}
+
+		consteval static auto accept_tags_of() { return std::tuple{array_buffer_tag{}}; }
 };
 
 // `TypedArray` and `DataView` types
@@ -267,45 +283,64 @@ struct accept<Meta, typed_array<void>> : accept_typed_array<Meta, data_view_tag,
 		using accept_typed_array<Meta, data_view_tag, typed_array<void>>::accept_typed_array;
 };
 
-// `std::span<Type>` - only accepts the matching `TypedArray`
-template <class Meta, class Type>
-struct accept_typed_array_span : private accept_data_block_span {
+// Specialized against `Type`
+template <class Meta, class Type, class AcceptBlock>
+struct accept_typed_array_span;
+
+// `std::span<Type>` / `js::local_span` - only accepts the matching `TypedArray`
+template <class Meta, class Type, class AcceptBlock>
+struct accept_typed_array_span {
 		explicit constexpr accept_typed_array_span(auto* /*transfer*/) {}
 
 		constexpr auto operator()(typed_array_tag_of<Type> /*tag*/, auto& visit, const auto& subject) const -> std::span<Type> {
-			const accept_data_block_span& accept_block = *this;
-			auto byte_span = visit(subject.buffer(), accept_block);
+			auto byte_span = visit(subject.buffer(), accept_data_block_);
 			auto typed_span = std::span{reinterpret_cast<Type*>(byte_span.data() + subject.byte_offset()), byte_span.size() / sizeof(Type)};
 			return typed_span.subspan(0, subject.size());
 		}
 
 		consteval static auto accept_tags_of() { return std::tuple{typed_array_tag_of<Type>{}}; }
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+
+	private:
+		NO_UNIQUE_ADDRESS accept_value_with<Meta, AcceptBlock> accept_data_block_;
 };
 
-// `std::span<std::byte>` - accepts `Uint8Array`, `ArrayBuffer` or `SharedArrayBuffer`
-template <class Meta>
-struct accept_typed_array_span<Meta, std::byte> : accept_data_block_span {
+// `std::span<std::byte>` / `js::local_span` - accepts `Uint8Array` or a data block
+template <class Meta, class AcceptBlock>
+struct accept_typed_array_span<Meta, std::byte, AcceptBlock> {
+	private:
+		using data_block_tag_type = AcceptBlock::tag_type;
+
+	public:
 		explicit constexpr accept_typed_array_span(auto* /*transfer*/) {}
-		using accept_data_block_span::operator();
+
+		constexpr auto operator()(data_block_tag_type tag, visit_holder visit, const auto& subject) const -> std::span<std::byte> {
+			return accept_data_block_(tag, visit, subject);
+		}
 
 		constexpr auto operator()(typed_array_tag_of<std::uint8_t> /*tag*/, auto& visit, const auto& subject) const -> std::span<std::byte> {
-			const accept_data_block_span& accept_block = *this;
-			auto byte_span = visit(subject.buffer(), accept_block);
+			auto byte_span = visit(subject.buffer(), accept_data_block_);
 			return byte_span.subspan(subject.byte_offset(), subject.size());
 		}
 
-		consteval static auto accept_tags_of() { return std::tuple<data_block_tag, typed_array_tag_of<std::uint8_t>>{}; }
+		consteval static auto accept_tags_of() { return std::tuple<data_block_tag_type, typed_array_tag_of<std::uint8_t>>{}; }
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
+
+	private:
+		NO_UNIQUE_ADDRESS accept_value_with<Meta, AcceptBlock> accept_data_block_;
 };
 
-// `std::span<char>` - any `TypedArray`, `ArrayBuffer` or `SharedArrayBuffer`.
-template <class Meta>
-struct accept_typed_array_span<Meta, char> : private accept_data_block_span {
+// `std::span<char>` / `js::local_span` - any data block from AcceptBlock, or a DataView on top of it.
+template <class Meta, class AcceptBlock>
+struct accept_typed_array_span<Meta, char, AcceptBlock> {
+	private:
+		using data_block_tag_type = AcceptBlock::tag_type;
+
+	public:
 		explicit constexpr accept_typed_array_span(auto* /*transfer*/) {}
 
-		constexpr auto operator()(data_block_tag /*tag*/, visit_holder /*visit*/, const auto& subject) const -> std::span<char> {
-			return as_chars(std::span<std::byte>{subject});
+		constexpr auto operator()(data_block_tag_type tag, visit_holder visit, const auto& subject) const -> std::span<char> {
+			return as_chars(accept_data_block_(tag, visit, subject));
 		}
 
 		template <std::convertible_to<array_buffer_view_tag> Tag>
@@ -314,23 +349,31 @@ struct accept_typed_array_span<Meta, char> : private accept_data_block_span {
 				[]<class Type>(typed_array_tag_of<Type> /*tag*/) -> std::size_t { return sizeof(Type); },
 				[](data_view_tag /*tag*/) -> std::size_t { return 1; },
 			};
-			const accept_data_block_span& accept_block = *this;
-			auto byte_span = visit(subject.buffer(), accept_block);
+			auto byte_span = visit(subject.buffer(), accept_data_block_);
 			return as_chars(byte_span.subspan(subject.byte_offset(), subject.size() * element_size(tag)));
 		}
 
-		consteval static auto accept_tags_of() { return std::tuple<data_block_tag, array_buffer_view_tag>{}; }
+		consteval static auto accept_tags_of() { return std::tuple<data_block_tag_type, array_buffer_view_tag>{}; }
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 
 	private:
 		static auto as_chars(std::span<std::byte> bytes) -> std::span<char> {
 			return {reinterpret_cast<char*>(bytes.data()), bytes.size()};
 		}
+
+		NO_UNIQUE_ADDRESS accept_value_with<Meta, AcceptBlock> accept_data_block_;
 };
 
+// `std::span` - delegate to `accept_typed_array_span` w/ `accept_data_block_span`
 template <class Meta, class Type>
-struct accept<Meta, std::span<Type>> : accept_typed_array_span<Meta, std::remove_const_t<Type>> {
-		using accept_typed_array_span<Meta, std::remove_const_t<Type>>::accept_typed_array_span;
+struct accept<Meta, std::span<Type>> : accept_typed_array_span<Meta, std::remove_const_t<Type>, accept_data_block_span> {
+		using accept_typed_array_span<Meta, std::remove_const_t<Type>, accept_data_block_span>::accept_typed_array_span;
+};
+
+// `js::local_span` - delegate to `accept_typed_array_span` w/ `accept_array_buffer_span` (no shared buffers)
+template <class Meta, class Type>
+struct accept<Meta, local_span<Type>> : accept_typed_array_span<Meta, std::remove_const_t<Type>, accept_array_buffer_span> {
+		using accept_typed_array_span<Meta, std::remove_const_t<Type>, accept_array_buffer_span>::accept_typed_array_span;
 };
 
 // `tagged_external` acceptors

@@ -26,6 +26,7 @@ struct accept<void, Enum> {
 			return result->second;
 		}
 
+		consteval static auto accept_tags_of() { return std::tuple{string_tag{}}; }
 		consteval static auto types(auto /*recursive*/) { return util::type_pack{}; }
 
 	private:

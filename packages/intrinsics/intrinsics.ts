@@ -1,4 +1,5 @@
 export { ArrayIncludes, ArrayIndexOf, ArrayMap, ArrayPrototype, ArrayPush, ArrayShift, ArraySlice, ArraySplice } from "@isolated-vm/intrinsics/array";
+export { ArrayBufferIsView, Uint8ArrayConstructor } from "@isolated-vm/intrinsics/array-buffer";
 export { ConsoleError } from "@isolated-vm/intrinsics/console";
 export { DateNow } from "@isolated-vm/intrinsics/date";
 export { RangeErrorConstructor, TypeErrorConstructor } from "@isolated-vm/intrinsics/error";

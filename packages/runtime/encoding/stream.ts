@@ -1,19 +1,14 @@
 // https://encoding.spec.whatwg.org/#interface-mixin-genericTransformStream
 import type { TextDecoderOptions } from "@isolated-vm/runtime/encoding/decoder";
 import type { ReadableStream } from "@isolated-vm/runtime/streams/readable";
-import type { TransformStreamDefaultController, Transformer } from "@isolated-vm/runtime/streams/transform";
+import type { TransformStreamDefaultController } from "@isolated-vm/runtime/streams/transform";
 import type { WritableStream } from "@isolated-vm/runtime/streams/writable";
-import type { BufferSource } from "isolated-vm:runtime";
+import type { AllowSharedBufferSource } from "isolated-vm:runtime";
 import { TypeErrorConstructor } from "@isolated-vm/intrinsics";
 import { TextDecoder } from "@isolated-vm/runtime/encoding/decoder";
-import { TransformStream, getTransformStreamInternal } from "@isolated-vm/runtime/streams/transform";
+import { createTransformStream } from "@isolated-vm/runtime/streams/transform";
 import { defineInterface } from "@isolated-vm/runtime/webidl";
 import { StringWriter } from "isolated-vm:runtime";
-
-function makeTransformStream(transformer: Transformer) {
-	const { readable, writable } = getTransformStreamInternal(new TransformStream(transformer));
-	return { readable, writable };
-}
 
 // https://encoding.spec.whatwg.org/#textdecoderstream
 export class TextDecoderStream {
@@ -27,7 +22,7 @@ export class TextDecoderStream {
 	constructor(label?: string, options?: TextDecoderOptions);
 	constructor(label: unknown = "utf-8", options: unknown = null) {
 		const decoder = this.#decoder = new TextDecoder(label as string, options as TextDecoderOptions);
-		const { readable, writable } = makeTransformStream({
+		const { readable, writable } = createTransformStream({
 			// https://encoding.spec.whatwg.org/#decode-and-enqueue-a-chunk
 			transform(chunk: unknown, controller: TransformStreamDefaultController) {
 				// `decode` accepts `undefined` as a missing argument, but a chunk must be a buffer source
@@ -35,7 +30,7 @@ export class TextDecoderStream {
 					throw new TypeErrorConstructor("Provided value is not of type '(ArrayBuffer or ArrayBufferView)'");
 				}
 				// The decoder rejects anything but a buffer source
-				const output = decoder.decode(chunk as BufferSource, { stream: true });
+				const output = decoder.decode(chunk as AllowSharedBufferSource, { stream: true });
 				if (output !== "") {
 					controller.enqueue(output);
 				}
@@ -70,7 +65,7 @@ export class TextEncoderStream {
 	constructor() {
 		// https://encoding.spec.whatwg.org/#textencoderstream-pending-high-surrogate
 		const writer = new StringWriter();
-		const { readable, writable } = makeTransformStream({
+		const { readable, writable } = createTransformStream({
 			// https://encoding.spec.whatwg.org/#encode-and-enqueue-a-chunk
 			transform(chunk: unknown, controller: TransformStreamDefaultController) {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions

@@ -7,7 +7,7 @@ namespace js {
 
 template <class Type>
 constexpr auto forward_elements(auto&& range) -> decltype(auto) {
-	if constexpr (std::is_rvalue_reference_v<Type>) {
+	if constexpr (std::is_rvalue_reference_v<Type> && !std::ranges::view<std::remove_cvref_t<Type>>) {
 		return std::views::as_rvalue(range);
 	} else {
 		return std::forward<Type>(range);

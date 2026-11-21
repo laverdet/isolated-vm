@@ -1,6 +1,7 @@
 export module util:memory;
 export import :memory.autorelease_pool;
 export import :memory.comparator;
+export import :memory.header_array;
 export import :memory.noinit_allocator;
 import :platform.lockable;
 import std;

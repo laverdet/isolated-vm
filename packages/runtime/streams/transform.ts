@@ -1,6 +1,6 @@
 // https://streams.spec.whatwg.org/#ts-model
 import type { QueuingStrategy, SizeAlgorithm } from "@isolated-vm/runtime/streams/queuing-strategy";
-import type { ReadableStreamDefaultControllerInternal, ReadableStreamInternal } from "@isolated-vm/runtime/streams/readable";
+import type { ReadableStreamDefaultControllerInternal, ReadableStreamInternal, ReadableWritablePair } from "@isolated-vm/runtime/streams/readable";
 import type { WritableStreamInternal } from "@isolated-vm/runtime/streams/writable";
 import type { Dictionary } from "@isolated-vm/runtime/webidl";
 import { PromiseWithResolvers, RangeErrorConstructor, ReflectApply, TypeErrorConstructor, kEmptyObject } from "@isolated-vm/intrinsics";
@@ -300,6 +300,13 @@ export class TransformStream {
 
 	get readable(): ReadableStream { return this.#internal.readable; }
 	get writable(): WritableStream { return this.#internal.writable; }
+}
+
+// https://streams.spec.whatwg.org/#other-specs-ts-wrapping
+/** @internal */
+export function createTransformStream(transformer: Transformer): ReadableWritablePair {
+	const { readable, writable } = getTransformStreamInternal(new TransformStream(transformer));
+	return { readable, writable };
 }
 
 // https://streams.spec.whatwg.org/#ts-default-controller-class

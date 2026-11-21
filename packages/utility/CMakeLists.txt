@@ -28,6 +28,7 @@ target_sources(utility_js
 		functional/regular_return.cc
 		memory/autorelease_pool.cc
 		memory/comparator.cc
+		memory/header_array.cc
 		memory/memory.cc
 		memory/noinit_allocator.cc
 		meta/algorithm.cc

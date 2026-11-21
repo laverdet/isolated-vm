@@ -31,6 +31,7 @@ target_sources(${backend_napi_v8}
 		native_module.cc
 		realm.cc
 		reference.cc
+		runtime/compression.cc
 		runtime/runtime.cc
 		script.cc
 		zone.cc
@@ -46,6 +47,7 @@ target_sources(${backend_napi_v8}
 		native_module.h.cc
 		realm.h.cc
 		reference.h.cc
+		runtime/compression.h.cc
 		runtime/runtime.h.cc
 		zone.h.cc
 		script.h.cc
@@ -82,6 +84,12 @@ endif()
 # ICU
 target_compile_definitions(${backend_napi_v8} PRIVATE U_STATIC_IMPLEMENTATION)
 
+# zlib, from the nodejs headers
+target_compile_definitions(${backend_napi_v8} PRIVATE ZLIB_CONST)
+if(NOT WIN32)
+	target_compile_definitions(${backend_napi_v8} PRIVATE "ZEXPORT=__attribute__((weak))")
+endif()
+
 # Link backend target
 target_link_libraries(${backend_napi_v8} PRIVATE ${auto_js} ${napi_js} ${v8_js} isolated_vm utility_js)
 
@@ -90,7 +98,55 @@ set_target_properties(${backend_napi_v8} PROPERTIES PREFIX "" SUFFIX ".node")
 
 if(APPLE)
 	include(MachOMakeWeak)
-	mach_o_make_weak(${backend_napi_v8} SYMBOLS __ZN2v810Int16Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm __ZN2v810Int32Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm __ZN2v810Uint8Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm __ZN2v811ArrayBuffer15GetBackingStoreEv __ZN2v811Uint16Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm __ZN2v811Uint32Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm __ZN2v812BackingStoreD1Ev __ZN2v812Float16Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm __ZN2v812Float32Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm __ZN2v812Float64Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm __ZN2v813BigInt64Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm __ZN2v814BigUint64Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm __ZN2v817SharedArrayBuffer15GetBackingStoreEv __ZN2v817SharedArrayBuffer15NewBackingStoreEPvmPFvS1_mS1_ES1_ __ZN2v817SharedArrayBuffer3NewEPNS_7IsolateENSt3__110shared_ptrINS_12BackingStoreEEE __ZN2v817Uint8ClampedArray3NewENS_5LocalINS_17SharedArrayBufferEEEmm __ZN2v86Object3GetENS_5LocalINS_7ContextEEEj __ZN2v86Object3HasENS_5LocalINS_7ContextEEEj __ZN2v87Isolate10GetCurrentEv __ZN2v87Isolate17GetCurrentContextEv __ZN2v88DataView3NewENS_5LocalINS_17SharedArrayBufferEEEmm __ZN2v88TryCatch5ResetEv __ZN2v88TryCatchC1EPNS_7IsolateE __ZN2v88TryCatchD1Ev __ZN2v89Int8Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm __ZNK2v812BackingStore4DataEv __ZNK2v817SharedArrayBuffer10ByteLengthEv __ZNK2v85Value10FullIsTrueEv __ZNK2v85Value10IsFunctionEv __ZNK2v85Value11FullIsFalseEv __ZNK2v85Value7IsArrayEv __ZNK2v85Value7IsInt32Ev __ZNK2v85Value8IsBigIntEv __ZNK2v85Value8IsNumberEv __ZNK2v85Value8IsObjectEv __ZNK2v86String9IsOneByteEv __ZNK2v88TryCatch9ExceptionEv __ZNK2v88TryCatch9HasCaughtEv _uv_dlclose _uv_dlopen _uv_dlerror)
+	mach_o_make_weak(${backend_napi_v8} SYMBOLS
+		__ZN2v810Int16Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm
+		__ZN2v810Int32Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm
+		__ZN2v810Uint8Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm
+		__ZN2v811ArrayBuffer15GetBackingStoreEv
+		__ZN2v811Uint16Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm
+		__ZN2v811Uint32Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm
+		__ZN2v812BackingStoreD1Ev
+		__ZN2v812Float16Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm
+		__ZN2v812Float32Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm
+		__ZN2v812Float64Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm
+		__ZN2v813BigInt64Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm
+		__ZN2v814BigUint64Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm
+		__ZN2v817SharedArrayBuffer15GetBackingStoreEv
+		__ZN2v817SharedArrayBuffer15NewBackingStoreEPvmPFvS1_mS1_ES1_
+		__ZN2v817SharedArrayBuffer3NewEPNS_7IsolateENSt3__110shared_ptrINS_12BackingStoreEEE
+		__ZN2v817Uint8ClampedArray3NewENS_5LocalINS_17SharedArrayBufferEEEmm
+		__ZN2v86Object3GetENS_5LocalINS_7ContextEEEj
+		__ZN2v86Object3HasENS_5LocalINS_7ContextEEEj
+		__ZN2v87Isolate10GetCurrentEv
+		__ZN2v87Isolate17GetCurrentContextEv
+		__ZN2v88DataView3NewENS_5LocalINS_17SharedArrayBufferEEEmm
+		__ZN2v88TryCatch5ResetEv
+		__ZN2v88TryCatchC1EPNS_7IsolateE
+		__ZN2v88TryCatchD1Ev
+		__ZN2v89Int8Array3NewENS_5LocalINS_17SharedArrayBufferEEEmm
+		__ZNK2v812BackingStore4DataEv
+		__ZNK2v817SharedArrayBuffer10ByteLengthEv
+		__ZNK2v85Value10FullIsTrueEv
+		__ZNK2v85Value10IsFunctionEv
+		__ZNK2v85Value11FullIsFalseEv
+		__ZNK2v85Value7IsArrayEv
+		__ZNK2v85Value7IsInt32Ev
+		__ZNK2v85Value8IsBigIntEv
+		__ZNK2v85Value8IsNumberEv
+		__ZNK2v85Value8IsObjectEv
+		__ZNK2v86String9IsOneByteEv
+		__ZNK2v88TryCatch9ExceptionEv
+		__ZNK2v88TryCatch9HasCaughtEv
+		_deflate
+		_deflateEnd
+		_deflateInit2_
+		_inflate
+		_inflateEnd
+		_inflateInit2_
+		_uv_dlclose
+		_uv_dlerror
+		_uv_dlopen
+	)
 endif()
 
 # Windows linking

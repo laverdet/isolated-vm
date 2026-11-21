@@ -131,4 +131,16 @@ class typed_array {
 		std::size_t length_{};
 };
 
+// `std::span` which will not accept a `SharedArrayBuffer`
+export template <class Type>
+struct local_span : std::span<Type> {
+		using std::span<Type>::span;
+};
+
+template <class It, class EndOrSize>
+local_span(It, EndOrSize) -> local_span<std::remove_reference_t<std::iter_reference_t<It>>>;
+
+template <class Range>
+local_span(Range&&) -> local_span<std::remove_reference_t<std::ranges::range_reference_t<Range>>>;
+
 } // namespace js
