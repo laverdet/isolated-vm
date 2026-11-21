@@ -213,8 +213,7 @@ struct accept_napi_value : accept_basic_napi_value {
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](local_of<vector_tag> array, auto& self, auto& visit, auto /*&&*/ subject) -> void {
 					int ii = 0;
-					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
-					for (auto&& element : util::forward_range(std::forward<decltype(range)>(range))) {
+					for (auto&& element : util::into_range(std::forward<decltype(subject)>(subject))) {
 						auto* item = napi_value{visit(std::forward<decltype(element)>(element), self)};
 						napi::invoke0(napi_set_element, napi_env{self}, napi_value{array}, ii++, item);
 					}
@@ -267,7 +266,7 @@ struct accept_napi_value : accept_basic_napi_value {
 			std::vector<napi_property_descriptor> properties;
 			auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
 			properties.reserve(std::size(range));
-			for (auto&& [ key, value ] : util::forward_range(std::forward<decltype(range)>(range))) {
+			for (auto&& [ key, value ] : range) {
 				auto* name = napi_value{visit.first(std::forward<decltype(key)>(key), self)};
 				properties.emplace_back(napi_property_descriptor{
 					.utf8name{},

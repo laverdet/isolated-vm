@@ -15,8 +15,7 @@ struct accept_array : Accept {
 		template <std::size_t VectorSize>
 		constexpr auto operator()(vector_n_tag<VectorSize> /*tag*/, auto& visit, auto&& subject) const -> std::array<Type, Size> {
 			const Accept& accept = *this;
-			auto&& forward_range = util::forward_range(std::forward<decltype(subject)>(subject));
-			auto iterator = forward_range.begin();
+			auto iterator = std::ranges::begin(subject);
 			constexpr auto [... indices ] = util::sequence<Size>;
 			return std::array<Type, Size>{
 				// nb: Comma operator trick
@@ -50,10 +49,9 @@ struct accept_range : Accept {
 			const Accept& accept = *this;
 			// nb: This doesn't check for string keys, so like `Object.assign([ 1 ], { foo: 2 })` might
 			// yield `[ 1, 2 ]`
-			auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
 			return {
 				std::from_range,
-				util::forward_range(std::forward<decltype(range)>(range)) |
+				util::into_range(std::forward<decltype(subject)>(subject)) |
 					std::views::transform([ & ](auto&& entry) -> value_type {
 						return visit.second(std::forward<decltype(entry)>(entry).second, accept);
 					})
@@ -62,10 +60,9 @@ struct accept_range : Accept {
 
 		constexpr auto operator()(vector_tag /*tag*/, auto& visit, auto&& subject) const -> Type {
 			const Accept& accept = *this;
-			auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
 			return {
 				std::from_range,
-				util::forward_range(std::forward<decltype(range)>(range)) |
+				util::into_range(std::forward<decltype(subject)>(subject)) |
 					std::views::transform([ & ](auto&& entry) -> value_type {
 						return visit(std::forward<decltype(entry)>(entry), accept);
 					})
@@ -125,10 +122,9 @@ struct accept<Meta, vector_of<Tag, Entry>> {
 		explicit constexpr accept(auto* transfer) : accept_{transfer} {}
 
 		constexpr auto operator()(Tag /*tag*/, auto& visit, auto&& subject) const -> vector_of<Tag, Entry> {
-			auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
 			return vector_of<Tag, Entry>{
 				std::from_range,
-				util::forward_range(std::forward<decltype(range)>(range)) |
+				util::into_range(std::forward<decltype(subject)>(subject)) |
 					std::views::transform([ & ](auto&& entry) -> Entry {
 						return accept_(visit, std::forward<decltype(entry)>(entry));
 					})

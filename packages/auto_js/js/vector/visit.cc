@@ -5,6 +5,15 @@ import std;
 
 namespace js {
 
+template <class Type>
+constexpr auto forward_elements(auto&& range) -> decltype(auto) {
+	if constexpr (std::is_rvalue_reference_v<Type>) {
+		return std::views::as_rvalue(range);
+	} else {
+		return std::forward<Type>(range);
+	}
+}
+
 // `std::array`
 template <std::size_t Size, class Visit>
 struct visit_array : Visit {
@@ -13,7 +22,7 @@ struct visit_array : Visit {
 		template <class Accept>
 		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
 			Visit& visitor = *this;
-			return accept(vector_n_tag<Size>{}, visitor, std::forward<decltype(subject)>(subject));
+			return accept(vector_n_tag<Size>{}, visitor, forward_elements<decltype(subject)>(subject));
 		}
 };
 
@@ -38,7 +47,7 @@ struct visit_range : Visit {
 		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
 			using tag_type = tagged_range<Type>::type;
 			Visit& visitor = *this;
-			return accept(tag_type{}, visitor, std::forward<decltype(subject)>(subject));
+			return accept(tag_type{}, visitor, forward_elements<decltype(subject)>(subject));
 		}
 };
 
@@ -98,7 +107,7 @@ struct visit<Meta, vector_of<Tag, Value>> : visit<Meta, Value> {
 		template <class Accept>
 		constexpr auto operator()(auto&& subject, const Accept& accept) -> accept_target_t<Accept> {
 			visit_type& visitor = *this;
-			return accept(Tag{}, visitor, std::forward<decltype(subject)>(subject));
+			return accept(Tag{}, visitor, forward_elements<decltype(subject)>(subject));
 		}
 };
 

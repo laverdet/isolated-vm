@@ -88,9 +88,8 @@ struct accept<Meta, std::tuple<Types...>> {
 
 		constexpr auto operator()(vector_tag /*tag*/, auto& visit, auto&& subject) const -> value_type {
 			auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
-			auto&& forward_range = util::forward_range(std::forward<decltype(range)>(range));
-			auto it = std::begin(forward_range);
-			auto end = std::end(forward_range);
+			auto it = std::ranges::begin(range);
+			auto end = std::ranges::end(range);
 			const auto& [... accept_n ] = accept_;
 			return {accept_n.visit_and_advance(visit, it, end)...};
 		}

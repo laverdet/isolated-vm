@@ -171,8 +171,7 @@ struct accept_vm_value : accept_vm_primitive {
 				local_of<list_tag>::make(self.lock()),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](local_of<list_tag> receiver, auto& self, auto& visit, auto /*&&*/ subject) -> void {
-					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
-					for (auto&& [ key, value ] : util::forward_range(std::forward<decltype(range)>(range))) {
+					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(subject)>(subject))) {
 						auto name = visit.first(std::forward<decltype(key)>(key), self);
 						auto item = visit.first(std::forward<decltype(value)>(value), self);
 						receiver->set(self.lock(), name, item);
@@ -190,8 +189,7 @@ struct accept_vm_value : accept_vm_primitive {
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](local_of<list_tag> receiver, auto& self, auto& visit, auto /*&&*/ subject) -> void {
 					int ii = 0;
-					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
-					for (auto&& element : util::forward_range(std::forward<decltype(range)>(range))) {
+					for (auto&& element : util::into_range(std::forward<decltype(subject)>(subject))) {
 						auto item = visit(std::forward<decltype(element)>(element), self);
 						receiver->set(self.lock(), ii++, item);
 					}

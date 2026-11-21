@@ -1,42 +1,7 @@
-module;
-#include <ranges>
-#include <utility>
 export module util:utility.ranges;
-
-#if _LIBCPP_VERSION
-// clang 22.1.0 w/ -stdlib=libc++
-// /workspace/packages/utility/utility/ranges.cc:25:10: error: invalid operands to binary expression [...]
-//    25 |        range | std::views::transform([...]);
-export {
-	using std::ranges::operator|;
-}
-#elif _MSVC_STL_UPDATE
-// Haha, also with MS STL wow
-export {
-	using std::ranges::_Pipe::operator|;
-}
-#endif
+import std;
 
 namespace util {
-
-// Forward value category of a range to the iterated elements.
-// Don't give it a temporary or it will dangle!
-export constexpr auto forward_range(auto& range) -> auto& {
-	return range;
-}
-
-export constexpr auto forward_range(auto&& range) {
-	using value_type = decltype(*std::begin(std::forward<decltype(range)>(range)));
-	if constexpr (std::is_reference_v<value_type>) {
-		auto forward =
-			range | std::views::transform([](auto& value) -> auto&& {
-				return std::forward_like<decltype(range)>(value);
-			});
-		return forward;
-	} else {
-		return std::forward<decltype(range)>(range);
-	}
-}
 
 // Some good thoughts here. It's strange that there isn't an easier way to transform an underlying
 // range.

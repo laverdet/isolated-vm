@@ -178,8 +178,7 @@ struct accept_v8_value : accept_v8_primitive {
 				v8::Array::New(self.isolate()),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](v8::Local<v8::Array> array, auto& self, auto& visit, auto /*&&*/ subject) -> void {
-					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
-					for (auto&& [ key, value ] : util::forward_range(std::forward<decltype(range)>(range))) {
+					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(subject)>(subject))) {
 						// nb: 'first' must run before 'second'
 						auto name = visit.first(std::forward<decltype(key)>(key), self);
 						auto item = visit.second(std::forward<decltype(value)>(value), self);
@@ -198,8 +197,7 @@ struct accept_v8_value : accept_v8_primitive {
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](v8::Local<v8::Array> array, auto& self, auto& visit, auto /*&&*/ subject) -> void {
 					std::uint32_t ii = 0;
-					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
-					for (auto&& element : util::forward_range(std::forward<decltype(range)>(range))) {
+					for (auto&& element : util::into_range(std::forward<decltype(subject)>(subject))) {
 						auto item = visit(std::forward<decltype(element)>(element), self);
 						unmaybe(array->Set(self.context_, ii++, item));
 					}
@@ -230,8 +228,7 @@ struct accept_v8_value : accept_v8_primitive {
 				v8::Object::New(self.isolate()),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](v8::Local<v8::Object> object, auto& self, auto& visit, auto /*&&*/ subject) -> void {
-					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
-					for (auto&& [ key, value ] : util::forward_range(std::forward<decltype(range)>(range))) {
+					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(subject)>(subject))) {
 						// nb: 'first' must run before 'second'
 						auto name = visit.first(std::forward<decltype(key)>(key), self);
 						auto item = visit.second(std::forward<decltype(value)>(value), self);
@@ -404,8 +401,7 @@ struct accept_v8_template : accept_value_with<Meta, accept_as<v8::Local<v8::Valu
 				v8::ObjectTemplate::New(self.isolate()),
 				std::forward_as_tuple(self, visit, std::forward<decltype(subject)>(subject)),
 				[](v8::Local<v8::ObjectTemplate> object, auto& self, auto& visit, auto /*&&*/ subject) -> void {
-					auto&& range = util::into_range(std::forward<decltype(subject)>(subject));
-					for (auto&& [ key, value ] : util::forward_range(std::forward<decltype(range)>(range))) {
+					for (auto&& [ key, value ] : util::into_range(std::forward<decltype(subject)>(subject))) {
 						// nb: 'first' must run before 'second'
 						auto name = v8::Local<v8::Template>{visit.first(std::forward<decltype(key)>(key), self)};
 						auto item = visit.second(std::forward<decltype(value)>(value), self);
