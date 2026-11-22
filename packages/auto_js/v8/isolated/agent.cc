@@ -2,6 +2,7 @@ module;
 #include <cassert>
 module v8_js;
 import :isolated.agent;
+import :isolated.cluster;
 import std;
 
 namespace js::iv8::isolated {
@@ -15,7 +16,7 @@ agent_collected_handle_lock::agent_collected_handle_lock(isolate_lock_witness lo
 		collected_handle_lock{lock, agent.autorelease_pool()} {};
 
 // `agent_storage`
-agent_storage::agent_storage(cluster& cluster) :
+agent_storage::agent_storage(isolated::cluster& cluster) :
 		cluster_{cluster},
 		foreground_runner_{cluster.foreground_thread_cache()} {}
 
@@ -59,8 +60,12 @@ auto agent_handle::dispose(dispose_callback_type after_callback) -> void {
 	if (auto host = host_.lock()) {
 		assert(!host->dispose_callback_);
 		host->dispose_callback_ = std::move(after_callback);
-		host->executor_.terminate();
+		auto terminated = host->executor_.terminate();
 		host->self_handle_.store(nullptr, std::memory_order_release);
+		if (!terminated) {
+			auto dispose_callback = std::exchange(host->dispose_callback_, {});
+			dispose_callback();
+		}
 	}
 }
 
@@ -81,7 +86,8 @@ agent_host::agent_host(
 		memory_policy_{std::move(params.memory_policy)},
 		clock_{params.clock},
 		reset_handle_callback_{reset_handle_type{util::fn<&agent_host::remote_expiration_callback>, *this}},
-		random_seed_{params.random_seed} {
+		random_seed_{params.random_seed},
+		on_fatal_error_{std::move(params.on_fatal_error)} {
 	executor_.initialize([ & ](v8::Isolate* isolate) noexcept -> auto {
 		isolate->SetData(0, this);
 		v8::Isolate::CreateParams params;
@@ -94,6 +100,7 @@ agent_host::agent_host(
 	auto& scheduler = storage_->foreground_runner().scheduler();
 	scheduler.initialize(isolate);
 	isolate->SetCaptureStackTraceForUncaughtExceptions(true);
+	isolate->SetFatalErrorHandler(recovery_frame::fatal_callback);
 	memory_policy_->initialize(isolate);
 }
 
@@ -179,6 +186,28 @@ auto agent_host::take_random_seed() -> std::optional<double> {
 auto agent_host::task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner> {
 	auto runner = std::shared_ptr<platform::foreground_runner>{storage_, &storage_->foreground_runner()};
 	return platform::foreground_runner::get_for_priority(std::move(runner), priority);
+}
+
+auto agent_host::abandon_for_fatal(std::shared_ptr<agent_host> host, const fatal_error& error) noexcept -> void {
+	// No more tasks will run
+	auto& scheduler = host->storage_->foreground_runner().scheduler();
+	scheduler.reset();
+	scheduler.terminate();
+	// Retain the `shared_ptr` forever
+	util::ub_leak(host);
+	host->storage_->cluster().retain_for_fatal();
+	// Release the isolate before notifying the client, since the client may respond with `dispose()`
+	auto was_terminated = host->executor_.abandon_for_fatal();
+	if (host->on_fatal_error_) {
+		host->on_fatal_error_(error);
+	}
+	// If `dispose()` was already requested then the destructor which would have delivered its
+	// callback will never run
+	if (was_terminated) {
+		if (auto dispose_callback = std::exchange(host->dispose_callback_, {})) {
+			dispose_callback();
+		}
+	}
 }
 
 auto agent_host::get_current(v8::Isolate* isolate) -> agent_host& {

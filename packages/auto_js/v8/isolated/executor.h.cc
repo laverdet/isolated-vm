@@ -11,20 +11,24 @@ export class executor : util::non_moveable { // "En taro adun" lmao
 	public:
 		class timeout;
 		class unlock;
+		[[nodiscard]] auto abandon_for_fatal() noexcept -> bool;
 		auto initialize(std::invocable<v8::Isolate*> auto initialize) -> void;
 		auto reset() -> void;
-		auto terminate() -> void;
+		[[nodiscard]] auto terminate() -> bool;
 
 		auto exchange_timeout(timeout* timeout) noexcept -> void;
 		[[nodiscard]] auto is_terminated() const -> bool;
-		[[nodiscard]] auto isolate() const -> v8::Isolate* { return isolate_.get(); }
+		[[nodiscard]] auto isolate() const -> v8::Isolate* { return isolate_.read()->get(); }
 		[[nodiscard]] auto stop_token() const -> util::inplace_stop_token { return stop_source_.get_token(); }
 
 	private:
-		constexpr static auto dispose_isolate = [](v8::Isolate* isolate) -> void { isolate->Dispose(); };
+		struct dispose_isolate {
+				auto operator()(v8::Isolate* isolate) const noexcept -> void { isolate->Dispose(); }
+		};
+		using isolate_pointer = std::unique_ptr<v8::Isolate, dispose_isolate>;
 		static auto on_before_call_entered(v8::Isolate* isolate) -> void;
 
-		std::unique_ptr<v8::Isolate, decltype(dispose_isolate)> isolate_;
+		util::lockable<isolate_pointer> isolate_;
 		util::inplace_stop_source stop_source_;
 		timeout* current_timeout_ = nullptr;
 };
@@ -96,10 +100,11 @@ class executor::timeout::suspension : scope {
 
 auto executor::initialize(std::invocable<v8::Isolate*> auto initialize) -> void {
 	static_assert(std::is_nothrow_invocable_v<decltype(initialize), v8::Isolate*>);
-	isolate_.reset(v8::Isolate::Allocate());
-	auto params = v8::Isolate::CreateParams{initialize(isolate_.get())};
-	v8::Isolate::Initialize(isolate_.get(), params);
-	isolate_->AddBeforeCallEnteredCallback(on_before_call_entered);
+	auto isolate = isolate_pointer{v8::Isolate::Allocate()};
+	auto params = v8::Isolate::CreateParams{initialize(isolate.get())};
+	v8::Isolate::Initialize(isolate.get(), params);
+	isolate->AddBeforeCallEnteredCallback(on_before_call_entered);
+	*isolate_.write() = std::move(isolate);
 }
 
 } // namespace js::iv8::isolated

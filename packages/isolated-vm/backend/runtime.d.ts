@@ -130,4 +130,7 @@ declare module "isolated-vm:runtime" {
 	 * function which was invoked by `reference.invoke()`.
 	 */
 	export function transfer(value: unknown, transferList?: readonly unknown[]): unknown;
+
+	/** Raises a fatal v8 error. */
+	export function triggerFatalForTesting(): never;
 }

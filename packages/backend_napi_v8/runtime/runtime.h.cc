@@ -44,6 +44,7 @@ class runtime_interface {
 		js::iv8::unique_remote<v8::FunctionTemplate> get_promise_internal_;
 		js::iv8::unique_remote<v8::FunctionTemplate> performance_time_;
 		js::iv8::unique_remote<v8::FunctionTemplate> transfer_;
+		js::iv8::unique_remote<v8::FunctionTemplate> trigger_fatal_for_testing_;
 };
 
 } // namespace backend_napi_v8

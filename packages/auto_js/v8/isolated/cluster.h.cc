@@ -23,6 +23,7 @@ export class cluster {
 		template <class Environment>
 		auto make_agent(std::type_identity<Environment> environment, behavior_params params, auto callback) -> void;
 		auto release_agent_storage(std::shared_ptr<agent_storage> storage) -> void;
+		auto retain_for_fatal() -> void;
 
 	private:
 		using intrusive_no_size = boost::intrusive::constant_time_size<false>;
@@ -41,18 +42,20 @@ auto cluster::make_agent(std::type_identity<Environment> /*environment*/, behavi
 	auto storage = acquire_agent_storage();
 	auto& runner = storage->foreground_runner();
 	runner.schedule_client_task(
-		[ params ](
+		[](
 			util::inplace_stop_token /*stop_token*/,
 			std::shared_ptr<agent_storage> storage,
+			behavior_params params,
 			auto callback
 		) -> auto {
-			auto host = std::make_shared<agent_host_of<Environment>>(std::move(storage), params);
+			auto host = std::make_shared<agent_host_of<Environment>>(std::move(storage), std::move(params));
 			auto isolate_lock = isolate_execution_lock{host->executor().isolate()};
 			host->initialize_environment(agent_lock{isolate_lock, *host});
 			auto lock = agent_lock_of{isolate_lock, *host};
 			callback(lock, agent_handle_of{*host});
 		},
 		std::move(storage),
+		std::move(params),
 		std::move(callback)
 	);
 }

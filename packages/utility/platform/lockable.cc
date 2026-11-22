@@ -209,7 +209,7 @@ class lockable {
 		// `read`
 		using read_type = locked<const resource_type, scoped_read_lock>;
 
-		auto read() -> read_type {
+		auto read() const -> read_type {
 			return read_type{resource_, mutex_};
 		}
 
@@ -252,7 +252,7 @@ class lockable {
 		}
 
 	private:
-		mutex_type mutex_;
+		mutable mutex_type mutex_;
 		NO_UNIQUE_ADDRESS ConditionVariable condition_variable_;
 		Resource resource_;
 };

@@ -59,6 +59,17 @@ auto safe_pointer_upcast(std::unique_ptr<Type, Deleter> unique) {
 	return std::unique_ptr<To, cast_deleter>{std::move(unique)};
 }
 
+// Move construct and then abandon the stack memory of a value without invoking the destructor
+export template <class Type>
+auto ub_leak(Type value) -> void {
+	// NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
+	union storage {
+			Type leaked;
+			~storage() {}
+	};
+	std::ignore = storage{std::move(value)};
+}
+
 // Aliasing constructor for `std::weak_ptr`. Basically the same as `std::shared_ptr{shared,
 // any_pointer}`.
 export template <class Type, class Owner>

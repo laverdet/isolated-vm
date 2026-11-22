@@ -13,6 +13,7 @@ export import :handle;
 export import :handle.value;
 export import :hash;
 export import :lock;
+export import :recovery;
 export import :remote;
 export import :transfer_list;
 export import :typeof_of;

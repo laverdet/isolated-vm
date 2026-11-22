@@ -61,6 +61,13 @@ auto transfer(
 	return js::forward{transfer_record::make(lock, *subject, transfer)};
 }
 
+// `triggerFatalForTesting`
+auto trigger_fatal_for_testing(const realm_scope& /*lock*/) -> void {
+	js::iv8::recovery_frame::invoke([] -> void {
+		std::ignore = v8::MaybeLocal<v8::Value>{}.ToLocalChecked();
+	});
+}
+
 // transfer_record
 transfer_record::transfer_record(
 	v8::Isolate* isolate,
@@ -100,7 +107,8 @@ runtime_interface::runtime_interface(std::monostate /*nothing*/, const agent_loc
 		enqueue_microtask_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{enqueue_microtask}, lock))},
 		get_promise_internal_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{get_promise_internal}, lock))},
 		performance_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{performance_time}, lock))},
-		transfer_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{transfer}, lock))} {
+		transfer_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{transfer}, lock))},
+		trigger_fatal_for_testing_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{trigger_fatal_for_testing}, lock))} {
 }
 
 auto runtime_interface::instantiate(const realm_scope& lock) -> v8::Local<js::iv8::module_record> {
@@ -111,6 +119,7 @@ auto runtime_interface::instantiate(const realm_scope& lock) -> v8::Local<js::iv
 			std::pair{util::cw<"getPromiseInternal">, get_promise_internal_->deref(util::slice(lock))},
 			std::pair{util::cw<"performanceTime">, performance_time_->deref(util::slice(lock))},
 			std::pair{util::cw<"transfer">, transfer_->deref(util::slice(lock))},
+			std::pair{util::cw<"triggerFatalForTesting">, trigger_fatal_for_testing_->deref(util::slice(lock))},
 			std::pair{util::cw<"Compressor">, v8::Local<v8::FunctionTemplate>{compressor_handle::class_template(lock)}},
 			std::pair{util::cw<"Decompressor">, v8::Local<v8::FunctionTemplate>{decompressor_handle::class_template(lock)}},
 			std::pair{util::cw<"Reference">, v8::Local<v8::FunctionTemplate>{reference_handle::class_template(lock)}},

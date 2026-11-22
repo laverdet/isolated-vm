@@ -162,7 +162,9 @@ auto module_handle::evaluate(const environment::lock& lock, realm_handle* realm,
 			auto result = realm_scope_operation(agent, realm, [ & ](const realm_scope& realm) -> auto {
 				auto frame = zone_frame{realm, timeout};
 				return iv8::invoke_externalized_error_scope(realm, [ & ] -> auto {
-					return module_record->deref(realm)->evaluate(realm);
+					return iv8::recovery_frame::invoke([ & ] -> auto {
+						return module_record->deref(realm)->evaluate(realm);
+					});
 				});
 			});
 			if (result) {

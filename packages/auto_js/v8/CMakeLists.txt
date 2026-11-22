@@ -18,6 +18,7 @@ target_sources(${v8_js}
 		handle/remote.cc
 		support/error.cc
 		support/lock.cc
+		support/recovery.cc
 		transfer/accept.cc
 		value/array_buffer.cc
 		value/array.cc
@@ -40,6 +41,7 @@ target_sources(${v8_js}
 		support/continuation.cc
 		support/error.h.cc
 		support/lock.h.cc
+		support/recovery.h.cc
 		support/unmaybe.cc
 		transfer/accept.h.cc
 		transfer/transfer_list.cc

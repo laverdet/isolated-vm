@@ -40,7 +40,7 @@ auto memory_policy::limited::near_heap_limit_callback(std::size_t current_heap_l
 
 	if (current_heap_limit > memory_limit_) {
 		auto& executor = agent_host::get_current(isolate).executor();
-		executor.terminate();
+		std::ignore = executor.terminate();
 	}
 	// Increase heap limit 80mb at a time. Experimentally derived.
 	return current_heap_limit + (80 << 20);

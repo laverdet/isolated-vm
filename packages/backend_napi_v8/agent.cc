@@ -47,12 +47,44 @@ auto agent_handle_value::create(const environment::lock& lock, std::optional<cre
 		);
 	};
 
+	// `onCatastrophicError`
+	auto on_fatal_error_ = [ & ] -> behavior_params::fatal_error_callback_type {
+		if (!options.on_catastrophic_error) {
+			return {};
+		}
+		auto on_error =
+			// NOLINTNEXTLINE(bugprone-exception-escape)
+			[ scheduler = lock->scheduler(),
+				callback = js::napi::make_shared_remote(lock, **options.on_catastrophic_error) ](
+				const js::iv8::fatal_error& error
+			) noexcept -> void {
+			scheduler(
+				[](
+					napi_env nenv,
+					napi_value /*nothing*/,
+					const js::napi::shared_remote<js::function_tag>& callback,
+					std::string message
+				) -> void {
+					auto& env = napi::environment::unsafe_get_environment_as<environment>(nenv);
+					auto lock = environment::lock{napi::environment_lock_witness::make_witness(env), env};
+					napi::invoke_uncaught_error_scope(lock, [ & ] -> void {
+						callback->deref(lock)->call(lock, std::move(message));
+					});
+				},
+				callback,
+				std::format("{} {}", error.location(), error.message())
+			);
+		};
+		return on_error;
+	};
+
 	cluster.make_agent(
 		std::type_identity<agent_environment>{},
 		{
 			.memory_policy = memory_policy_(),
 			.clock = clock_(),
 			.random_seed = options.random_seed,
+			.on_fatal_error = on_fatal_error_(),
 		},
 		[ dispatch = std::move(resolver) ](
 			const agent_handle::lock& lock,

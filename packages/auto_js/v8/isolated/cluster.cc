@@ -19,4 +19,8 @@ auto cluster::release_agent_storage(std::shared_ptr<agent_storage> storage) -> v
 	}
 }
 
+auto cluster::retain_for_fatal() -> void {
+	util::ub_leak(platform_);
+}
+
 } // namespace js::iv8::isolated

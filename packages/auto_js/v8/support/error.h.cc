@@ -2,6 +2,7 @@ module;
 #include <cassert>
 export module v8_js:error;
 import :accept;
+import :recovery;
 import auto_js;
 import std;
 import v8;
@@ -14,20 +15,34 @@ auto externalize_caught_error(context_lock_witness lock, const v8::TryCatch& try
 // Transfer an arbitrary v8 value into `js::error_value`. Probably the result of a promise.
 auto externalize_caught_error(context_lock_witness lock, v8::Local<v8::Value> value) -> js::error_value;
 
+// Select support for `recovery_frame`
+template <class Lock>
+struct uses_recovery_frame : std::false_type {};
+
+template <class Agent>
+	requires Agent::uses_recovery_frame
+struct uses_recovery_frame<Agent> : std::true_type {};
+
+template <class Agent, class... Implements>
+struct uses_recovery_frame<context_lock_witness_of<Agent, Implements...>> : uses_recovery_frame<Agent> {};
+
 // Catch `iv8::pending_error` or `js::error`, converting to thrown v8 runtime error.
-auto invoke_internal_error_scope(context_lock_witness lock, auto operation) {
-	try {
-		return operation();
-	} catch (const iv8::pending_error& /*error*/) {
-	} catch (const js::error& error) {
-		auto exception = js::transfer_in_strict<v8::Local<v8::Value>>(error, lock);
-		lock.isolate()->ThrowException(exception);
-	}
-	using result_type = std::invoke_result_t<decltype(operation)>;
-	if constexpr (type<result_type> == type<v8::Local<v8::Value>>) {
-		return v8::Local<v8::Value>{};
+template <std::derived_from<context_lock_witness> Lock>
+auto invoke_internal_error_scope(const Lock& lock, auto operation) {
+	auto invoke = [ & ] -> void {
+		try {
+			operation();
+		} catch (const iv8::pending_error& /*error*/) {
+			return;
+		} catch (const js::error& error) {
+			auto exception = js::transfer_in_strict<v8::Local<v8::Value>>(error, lock);
+			lock.isolate()->ThrowException(exception);
+		}
+	};
+	if (uses_recovery_frame<std::remove_cvref_t<Lock>>::value) {
+		recovery_frame::stop(invoke);
 	} else {
-		static_assert(type<result_type> == type<void>);
+		invoke();
 	}
 };
 

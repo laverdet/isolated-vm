@@ -63,8 +63,10 @@ auto script_handle::run(const environment::lock& lock, realm_handle* realm, run_
 			auto result = realm_scope_operation(lock, realm, [ & ](const realm_scope& realm) -> auto {
 				auto frame = zone_frame{realm, options.timeout};
 				return iv8::invoke_externalized_error_scope(realm, [ & ] -> auto {
-					auto value = script_remote->deref(lock)->run(realm);
-					return transfer_from_runtime<js::value_t>(realm, value);
+					return iv8::recovery_frame::invoke([ & ] -> auto {
+						auto value = script_remote->deref(lock)->run(realm);
+						return transfer_from_runtime<js::value_t>(realm, value);
+					});
 				});
 			});
 			if (result) {

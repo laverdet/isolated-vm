@@ -34,6 +34,14 @@ export namespace Agent {
 	export interface CreateOptions {
 		clock?: CreateOptions.Clock | undefined;
 		memoryLimitBytes?: number | undefined;
+
+		/**
+		 * Callback to be invoked when a *very bad* error occurs. If this is invoked it means that v8
+		 * has lost all control over the isolate, and all resources in use are totally unrecoverable. If
+		 * you receive this error you should log the error, stop serving requests, finish outstanding
+		 * work, and stop the process.
+		 */
+		onCatastrophicError?: ((message: string) => void) | undefined;
 		randomSeed?: number | undefined;
 	}
 

@@ -60,7 +60,7 @@ auto reference_handle::copy(const environment::lock& lock) -> forward_promise_ty
 	// Fast path: try to immediately lock the runtime isolate and transfer directly on the nodejs
 	// thread
 	if (auto agent_lock = agent_.try_lock()) {
-		auto maybe_transferred = context_scope_operation(*agent_lock, realm_->deref(*agent_lock), [ & ](const realm_scope& realm_lock) -> auto {
+		auto maybe_transferred = context_scope_operation(*agent_lock, realm_->deref(util::slice(*agent_lock)), [ & ](const realm_scope& realm_lock) -> auto {
 			return iv8::invoke_externalized_error_scope(realm_lock, [ & ] -> js::forward<napi_value> {
 				return js::forward{transfer_runtime_to_host(lock, realm_lock, value_->deref(realm_lock))};
 			});
@@ -203,8 +203,10 @@ auto reference_handle::set(const environment::lock& lock, js::string_t name, js:
 					auto maybe_result = context_scope_operation(agent_lock, realm->deref(agent_lock), [ & ](const realm_scope& lock) -> auto {
 						return iv8::invoke_externalized_error_scope(lock, [ & ] -> bool {
 							auto local = receiver->deref(lock).As<v8::Object>();
-							auto transferred = js::transfer_in_strict<v8::Local<v8::Value>>(std::move(value), lock, accept_references);
-							return js::iv8::unmaybe(local->CreateDataProperty(lock.context(), name_local, transferred));
+							return iv8::recovery_frame::invoke([ & ] -> auto {
+								auto transferred = js::transfer_in_strict<v8::Local<v8::Value>>(std::move(value), lock, accept_references);
+								return js::iv8::unmaybe(local->CreateDataProperty(lock.context(), name_local, transferred));
+							});
 						});
 					});
 					if (maybe_result) {
@@ -242,13 +244,15 @@ auto reference_handle::invoke(const environment::lock& lock, js::forward<js::nap
 					auto frame = zone_frame{lock, timeout};
 					return iv8::invoke_externalized_error_scope(lock, [ & ] -> js::value_t {
 						auto fn = value->deref(lock).As<iv8::Function>();
-						auto argv = js::transfer_in_strict<std::vector<v8::Local<v8::Value>>>(std::move(params), lock, accept_references);
-						auto result = fn->invoke(lock, std::span{argv});
-						if (auto* record = transfer_record::match(result)) {
-							return transfer_from_runtime<js::value_t>(lock, record->subject(lock), record->transfer(lock));
-						} else {
-							return transfer_from_runtime<js::value_t>(lock, result);
-						}
+						return iv8::recovery_frame::invoke([ & ] -> auto {
+							auto argv = js::transfer_in_strict<std::vector<v8::Local<v8::Value>>>(std::move(params), lock, accept_references);
+							auto result = fn->invoke(lock, std::span{argv});
+							if (auto* record = transfer_record::match(result)) {
+								return transfer_from_runtime<js::value_t>(lock, record->subject(lock), record->transfer(lock));
+							} else {
+								return transfer_from_runtime<js::value_t>(lock, result);
+							}
+						});
 					});
 				});
 				if (maybe_result) {

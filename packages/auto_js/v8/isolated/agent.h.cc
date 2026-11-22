@@ -6,7 +6,9 @@ import :isolated.clock;
 import :isolated.executor;
 import :isolated.memory_policy;
 import :lock;
+import :platform.delegate;
 import :platform.foreground_runner;
+import :recovery;
 import :remote;
 import boost;
 import std;
@@ -21,9 +23,12 @@ class agent_host_of;
 
 // `agent_host` behavior parameters
 export struct behavior_params {
+		using fatal_error_callback_type = util::move_only_function<auto(const fatal_error&) noexcept -> void>;
+
 		isolated::memory_policy::covariant memory_policy;
 		clock::any_clock clock;
 		std::optional<double> random_seed;
+		fatal_error_callback_type on_fatal_error;
 };
 
 // `isolate_lock_witness_of` adapters
@@ -53,7 +58,8 @@ using realm_scope_of = context_lock_witness_of<agent_host_of<Environment>, agent
 // Manages storage which must outlive the `agent_host`
 export class agent_storage {
 	public:
-		explicit agent_storage(cluster& cluster);
+		explicit agent_storage(isolated::cluster& cluster);
+		auto cluster() -> isolated::cluster& { return cluster_; }
 		auto foreground_runner() -> platform::foreground_runner& { return foreground_runner_; }
 		static auto release(std::shared_ptr<agent_storage> storage) -> void;
 
@@ -62,7 +68,7 @@ export class agent_storage {
 		using intrusive_list_hook = boost::intrusive::list_member_hook<intrusive_safe_mode>;
 
 		intrusive_list_hook list_hook_;
-		std::reference_wrapper<cluster> cluster_;
+		std::reference_wrapper<isolated::cluster> cluster_;
 		platform::foreground_runner foreground_runner_;
 
 	public:
@@ -157,7 +163,9 @@ export class agent_host
 		auto take_random_seed() -> std::optional<double>;
 		auto task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner>;
 
+		static auto abandon_for_fatal(std::shared_ptr<agent_host> host, const fatal_error& error) noexcept -> void;
 		static auto get_current(v8::Isolate* isolate) -> agent_host&;
+		constexpr static auto uses_recovery_frame = true;
 
 	protected:
 		auto destroy_handles(util::function_ref<auto(isolate_lock_witness)->void> destroy) -> void;
@@ -188,6 +196,7 @@ export class agent_host
 		std::optional<double> random_seed_;
 		util::autorelease_pool autorelease_pool_;
 		v8::Global<v8::Context> scratch_context_;
+		behavior_params::fatal_error_callback_type on_fatal_error_;
 };
 
 // Host which also manages client storage
@@ -241,7 +250,11 @@ auto agent_handle_of<Type>::schedule(Task task, Args... args) const -> void {
 		scheduler.schedule_client_task(
 			[](util::inplace_stop_token /*stop_token*/, const auto& host, const auto& task, auto&&... args) -> void {
 				auto isolate_lock = isolate_lock_witness::make_witness(host->executor().isolate());
-				task(lock{isolate_lock, static_cast<agent_host_of<Type>&>(*host)}, std::forward<decltype(args)>(args)...);
+				try {
+					task(lock{isolate_lock, static_cast<agent_host_of<Type>&>(*host)}, std::forward<decltype(args)>(args)...);
+				} catch (const fatal_error& error) {
+					agent_host::abandon_for_fatal(host, error);
+				}
 			},
 			std::move(host),
 			std::move(task),

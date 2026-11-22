@@ -25,6 +25,7 @@ constexpr auto string_literals = std::tuple{
 	"message"sv,
 	"modules"sv,
 	"name"sv,
+	"onCatastrophicError"sv,
 	"origin"sv,
 	"payload"sv,
 	"randomSeed"sv,

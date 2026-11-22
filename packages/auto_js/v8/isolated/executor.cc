@@ -10,13 +10,28 @@ import util;
 namespace js::iv8::isolated {
 
 // executor
-auto executor::reset() -> void {
-	isolate_.reset();
+auto executor::abandon_for_fatal() noexcept -> bool {
+	auto isolate = isolate_.write();
+	auto was_terminated = stop_source_.stop_requested();
+	stop_source_.request_stop();
+	std::ignore = isolate->release();
+	return was_terminated;
 }
 
-auto executor::terminate() -> void {
+auto executor::reset() -> void {
+	auto isolate = std::move(*isolate_.write());
+	isolate.reset();
+}
+
+auto executor::terminate() -> bool {
+	auto isolate = isolate_.write();
 	stop_source_.request_stop();
-	isolate_->TerminateExecution();
+	if (*isolate) {
+		(*isolate)->TerminateExecution();
+		return true;
+	} else {
+		return false;
+	}
 }
 
 auto executor::is_terminated() const -> bool {
@@ -88,7 +103,10 @@ auto executor::timeout::deactivate() noexcept -> void {
 }
 
 auto executor::timeout::expire::operator()() const noexcept -> void {
-	executor_->isolate()->RequestInterrupt(&interrupt, executor_);
+	auto isolate = executor_->isolate_.read();
+	if (*isolate) {
+		(*isolate)->RequestInterrupt(&interrupt, executor_);
+	}
 }
 
 auto executor::timeout::expire::interrupt(v8::Isolate* isolate, void* data) -> void {
