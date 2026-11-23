@@ -5,7 +5,7 @@ import type { AbortSignal } from "@isolated-vm/runtime/dom/abort";
 import type { QueuingStrategy, SizeAlgorithm } from "@isolated-vm/runtime/streams/queuing-strategy";
 import type { WritableStream, WritableStreamInternal } from "@isolated-vm/runtime/streams/writable";
 import type { Dictionary } from "@isolated-vm/runtime/webidl";
-import { ArrayPush, ArrayShift, AsyncIteratorPrototype, BooleanConstructor, ObjectDefineProperty, ObjectSetPrototypeOf, PromiseAll, PromiseConstructor, PromiseResolve, PromiseWithResolvers, ReflectApply, ReflectDeleteProperty, SymbolAsyncIterator, SymbolIterator, SymbolToStringTag, TypeErrorConstructor, kEmptyObject } from "@isolated-vm/intrinsics";
+import { ArrayPush, ArrayShift, AsyncIteratorPrototype, BooleanConstructor, ObjectSetPrototypeOf, PromiseAll, PromiseConstructor, PromiseResolve, PromiseWithResolvers, ReflectApply, ReflectDeleteProperty, SymbolAsyncIterator, SymbolIterator, SymbolToStringTag, TypeErrorConstructor, kEmptyObject } from "@isolated-vm/intrinsics";
 import { addAbortAlgorithm, getAbortReason, isAbortSignal, isAborted, removeAbortAlgorithm } from "@isolated-vm/runtime/dom/abort/brand";
 import { QueuingStrategyInternal } from "@isolated-vm/runtime/streams/queuing-strategy";
 import { QueueWithSizes, markAsHandled, promiseTry, rejectedPromiseCapability, resolvedPromiseCapability } from "@isolated-vm/runtime/streams/utility";
@@ -764,7 +764,9 @@ export class ReadableStream {
 	readonly #internal: ReadableStreamInternal;
 
 	static {
-		defineInterface(this);
+		// https://webidl.spec.whatwg.org/#define-the-asynchronous-iteration-methods
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		defineInterface(this, { [SymbolAsyncIterator]: { value: this.prototype.values, writable: true, configurable: true } });
 		getReadableStreamInternal = stream => stream.#internal;
 		isReadableStream = (value: unknown): value is ReadableStream => {
 			try {
@@ -774,9 +776,6 @@ export class ReadableStream {
 				return false;
 			}
 		};
-		// https://webidl.spec.whatwg.org/#define-the-asynchronous-iteration-methods
-		// eslint-disable-next-line @typescript-eslint/unbound-method -- `@@asyncIterator` is the same function object as `values`
-		ObjectDefineProperty(this.prototype, SymbolAsyncIterator, { value: this.prototype.values, writable: true, enumerable: false, configurable: true });
 	}
 
 	// https://streams.spec.whatwg.org/#rs-constructor
@@ -1027,10 +1026,9 @@ class ReadableStreamAsyncIterator {
 	readonly #internal: ReadableStreamAsyncIteratorInternal;
 
 	static {
-		defineInterface(this);
+		defineInterface(this, { [SymbolToStringTag]: { value: "ReadableStream AsyncIterator", configurable: true } });
 		ObjectSetPrototypeOf(this.prototype, AsyncIteratorPrototype);
 		ReflectDeleteProperty(this.prototype, "constructor");
-		ObjectDefineProperty(this.prototype, SymbolToStringTag, { value: "ReadableStream AsyncIterator", writable: false, enumerable: false, configurable: true });
 	}
 
 	constructor(internal: unknown = undefined) {

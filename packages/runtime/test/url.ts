@@ -55,3 +55,36 @@ await test("url", async () => {
 		invalid: { error: "TypeError" },
 	});
 });
+
+await test("url: search params", async () => {
+	await using agent = await Agent.create();
+	const realm = expect(await agent.createRealm());
+	const fn = await makeRuntimeFunction(agent, realm, `
+		const url = new URL("https://example.com/?a=1&b=%C3%A4+c#f");
+		const params = url.searchParams;
+		params.append("d", "e f");
+		params.delete("a");
+		url.search = "x=y";
+		return {
+			same: url.searchParams === params,
+			fromString: String(new URLSearchParams("?a=1&a=2&b")),
+			fromPairs: String(new URLSearchParams([ [ "a", "1" ], [ "b", "\\u00e4" ] ])),
+			fromRecord: String(new URLSearchParams({ a: "1", b: "2" })),
+			entries: [ ...new URLSearchParams("a=1&b=2") ],
+			href: url.href,
+			list: [ ...params ],
+			iterator: Object.prototype.toString.call(params.entries()),
+			invalid: attempt(() => new URLSearchParams([ [ "a" ] ])),
+		};`);
+	assert.deepEqual(expectComplete(await fn.invoke([])), {
+		same: true,
+		fromString: "a=1&a=2&b=",
+		fromPairs: "a=1&b=%C3%A4",
+		fromRecord: "a=1&b=2",
+		entries: [ [ "a", "1" ], [ "b", "2" ] ],
+		href: "https://example.com/?x=y#f",
+		list: [ [ "x", "y" ] ],
+		iterator: "[object URLSearchParams Iterator]",
+		invalid: { error: "TypeError" },
+	});
+});

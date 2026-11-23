@@ -1,7 +1,7 @@
 // https://webidl.spec.whatwg.org/#js-interfaces
 /* eslint-disable @typescript-eslint/prefer-for-of -- `for-of` goes through the patchable array iterator */
 import type { Constructor } from "@isolated-vm/intrinsics/utility";
-import { ArrayIncludes, ObjectDefineProperty, ObjectGetOwnPropertyDescriptor, ObjectSetPrototypeOf, ReflectOwnKeys, SymbolToStringTag } from "@isolated-vm/intrinsics";
+import { ArrayIncludes, ObjectDefineProperties, ObjectDefineProperty, ObjectGetOwnPropertyDescriptor, ObjectSetPrototypeOf, ReflectOwnKeys, SymbolToStringTag } from "@isolated-vm/intrinsics";
 
 /**
  * Severs the prototype chain of an internal class.
@@ -32,17 +32,21 @@ export class InternalParameter<Type> {
 	}
 }
 
-// https://webidl.spec.whatwg.org/#interface-prototype-object
 /**
  * Adds `toStringTag` and makes all regular and static members enumerable.
+ *
+ * `properties` are defined on the prototype afterwards, for the odd ones out like `@@iterator` or a
+ * class string which isn't the constructor's name.
  * @internal
- */
-export function defineInterface(constructor: Constructor): void {
+*/
+// https://webidl.spec.whatwg.org/#interface-prototype-object
+export function defineInterface(constructor: Constructor, properties: Record<PropertyKey, PropertyDescriptor> = {}): void {
 	const { name, prototype } = constructor;
 	makeEnumerable(prototype, "constructor");
 	makeEnumerable(constructor, "length", "name", "prototype");
 	// https://webidl.spec.whatwg.org/#dfn-class-string
-	ObjectDefineProperty(prototype, SymbolToStringTag, { value: name, writable: false, enumerable: false, configurable: true });
+	ObjectDefineProperty(prototype, SymbolToStringTag, { value: name, configurable: true });
+	ObjectDefineProperties(prototype, properties);
 }
 
 function makeEnumerable(object: object, ...skip: string[]) {
@@ -57,11 +61,11 @@ function makeEnumerable(object: object, ...skip: string[]) {
 	}
 }
 
-// https://webidl.spec.whatwg.org/#define-the-constants
 /**
  * Freezes constants onto both the interface object and its prototype.
  * @internal
- */
+*/
+// https://webidl.spec.whatwg.org/#define-the-constants
 export function defineConstants(constructor: Constructor, constants: Record<string, number>): void {
 	const { prototype } = constructor;
 	const keys = ReflectOwnKeys(constants) as string[];
@@ -73,8 +77,8 @@ export function defineConstants(constructor: Constructor, constants: Record<stri
 	}
 }
 
-// https://webidl.spec.whatwg.org/#define-the-global-property-references
 /** @internal */
+// https://webidl.spec.whatwg.org/#define-the-global-property-references
 export function exposeInterface(constructor: Constructor): void {
 	ObjectDefineProperty(globalThis, constructor.name, { value: constructor, writable: true, enumerable: false, configurable: true });
 }

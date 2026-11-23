@@ -8,4 +8,5 @@ export const ArrayMap: <Type, Result>(thisArg: readonly Type[], callback: (value
 export const ArrayPush = makeFreeFunction(Array.prototype.push);
 export const ArrayShift: <Type>(thisArg: Type[]) => Type | undefined = makeFreeFunction(Array.prototype.shift);
 export const ArraySlice: <Type>(thisArg: Type[], start?: number, end?: number) => Type[] = makeFreeFunction(Array.prototype.slice);
+export const ArraySort: <Type>(thisArg: Type[], compare: (left: Type, right: Type) => number) => Type[] = makeFreeFunction(Array.prototype.sort);
 export const ArraySplice = makeFreeFunction(Array.prototype.splice);

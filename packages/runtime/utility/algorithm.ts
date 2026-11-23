@@ -1,5 +1,4 @@
-/** @internal */
-export type Comparator<Type> = (left: Type, right: Type) => number;
+import type { Comparator } from "@isolated-vm/runtime/utility/comparator";
 
 /**
  * Array lower bound bisect

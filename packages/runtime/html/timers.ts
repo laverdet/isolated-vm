@@ -1,5 +1,5 @@
 // https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-settimeout-dev
-import type { Comparator } from "@isolated-vm/runtime/utility/algorithm";
+import type { Comparator } from "@isolated-vm/runtime/utility/comparator";
 import { ArrayIndexOf, ArrayShift, ArraySplice, DateNow, FunctionConstructor, GlobalIsNaN, MapConstructor, MapDelete, MapGet, MapSet, NumberConstructor, Number_MAX_SAFE_INTEGER, StringConstructor } from "@isolated-vm/intrinsics";
 import { arrayLowerBound } from "@isolated-vm/runtime/utility/algorithm";
 import { initialize, schedule } from "isolated-vm:capability/timers";

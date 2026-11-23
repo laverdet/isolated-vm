@@ -1,7 +1,10 @@
 // https://url.spec.whatwg.org/#url-class
 /* eslint-disable @typescript-eslint/no-base-to-string, @typescript-eslint/restrict-template-expressions -- `USVString` is `ToString` made well-formed */
+import type { URLSearchParamsInternal } from "@isolated-vm/runtime/url/search-params";
 import type { URLComponent, URLRecord } from "isolated-vm:runtime";
 import { StringCharCodeAt, StringSlice, StringToWellFormed, TypeErrorConstructor } from "@isolated-vm/intrinsics";
+import { inFragmentPercentEncodeSet, inQueryPercentEncodeSet, inSpecialQueryPercentEncodeSet, percentEncode } from "@isolated-vm/runtime/url/percent-encode";
+import { URLSearchParams, parseFormUrlencoded } from "@isolated-vm/runtime/url/search-params";
 import { InternalParameter, defineInterface, requireArguments } from "@isolated-vm/runtime/webidl";
 import { parseURL, updateURL } from "isolated-vm:runtime";
 
@@ -10,7 +13,6 @@ const kNumberSign = 0x23;
 const kSlash = 0x2f;
 const kQuestionMark = 0x3f;
 const kAtSign = 0x40;
-const kHexDigits = "0123456789ABCDEF";
 
 // `url_component`
 const kProtocol = 0;
@@ -25,6 +27,12 @@ const kPathname = 6;
 interface ParsedURL {
 	href: string;
 	record: URLRecord;
+}
+
+/** The `URLSearchParams` of a URL, and the list it shares with the URL */
+interface QueryObject {
+	object: URLSearchParams;
+	internal: URLSearchParamsInternal;
 }
 
 // https://url.spec.whatwg.org/#special-scheme
@@ -42,69 +50,15 @@ function isSpecialScheme(protocol: string): boolean {
 	}
 }
 
-// https://url.spec.whatwg.org/#c0-control-percent-encode-set
-function inC0ControlPercentEncodeSet(code: number): boolean {
-	return code < 0x20 || code > 0x7e;
-}
-
-// https://url.spec.whatwg.org/#fragment-percent-encode-set
-function inFragmentPercentEncodeSet(code: number): boolean {
-	return inC0ControlPercentEncodeSet(code) || code === 0x20 || code === 0x22 || code === 0x3c || code === 0x3e || code === 0x60;
-}
-
-// https://url.spec.whatwg.org/#query-percent-encode-set
-function inQueryPercentEncodeSet(code: number): boolean {
-	return inC0ControlPercentEncodeSet(code) || code === 0x20 || code === 0x22 || code === 0x23 || code === 0x3c || code === 0x3e;
-}
-
-// https://url.spec.whatwg.org/#special-query-percent-encode-set
-function inSpecialQueryPercentEncodeSet(code: number): boolean {
-	return inQueryPercentEncodeSet(code) || code === 0x27;
-}
-
-function percentEncodeByte(byte: number): string {
-	return `%${kHexDigits[byte >> 4]}${kHexDigits[byte & 0xf]}`;
-}
-
-// https://url.spec.whatwg.org/#utf-8-percent-encode
-function percentEncodeCodePoint(codePoint: number): string {
-	if (codePoint < 0x800) {
-		return `${percentEncodeByte(0xc0 | (codePoint >> 6))}${percentEncodeByte(0x80 | (codePoint & 0x3f))}`;
-	} else if (codePoint < 0x10000) {
-		return `${percentEncodeByte(0xe0 | (codePoint >> 12))}${percentEncodeByte(0x80 | ((codePoint >> 6) & 0x3f))}${percentEncodeByte(0x80 | (codePoint & 0x3f))}`;
-	} else {
-		return `${percentEncodeByte(0xf0 | (codePoint >> 18))}${percentEncodeByte(0x80 | ((codePoint >> 12) & 0x3f))}${percentEncodeByte(0x80 | ((codePoint >> 6) & 0x3f))}${percentEncodeByte(0x80 | (codePoint & 0x3f))}`;
-	}
-}
-
-/**
- * Percent-encodes `input` for a query or fragment. Tabs and newlines are dropped, any code point which
- * `inPercentEncodeSet` selects becomes `%XX` for each of its UTF-8 bytes, and everything else is kept
- * as it is.
- */
-// https://url.spec.whatwg.org/#string-percent-encode-after-encoding
-function percentEncode(input: string, inPercentEncodeSet: (code: number) => boolean): string {
+/** Removes ASCII tab or newline, as the basic URL parser does before anything else */
+function stripTabsAndNewlines(input: string): string {
 	let result = "";
-	// Start of the run of characters which pass through as they are
+	// Start of the run of characters which are kept
 	let start = 0;
 	for (let ii = 0; ii < input.length; ++ii) {
 		const code = StringCharCodeAt(input, ii);
-		if (code < 0x80) {
-			if (code === 0x09 || code === 0x0a || code === 0x0d) {
-				result += StringSlice(input, start, ii);
-				start = ii + 1;
-			} else if (inPercentEncodeSet(code)) {
-				result += `${StringSlice(input, start, ii)}${percentEncodeByte(code)}`;
-				start = ii + 1;
-			}
-		} else if (code >= 0xd800 && code < 0xdc00) {
-			// nb: Input is already `toWellFormed`
-			const codePoint = 0x10000 + ((code - 0xd800) << 10) + (StringCharCodeAt(input, ii + 1) - 0xdc00);
-			result += `${StringSlice(input, start, ii)}${percentEncodeCodePoint(codePoint)}`;
-			start = ii + 2;
-			++ii;
-		} else {
-			result += `${StringSlice(input, start, ii)}${percentEncodeCodePoint(code)}`;
+		if (code === 0x09 || code === 0x0a || code === 0x0d) {
+			result += StringSlice(input, start, ii);
 			start = ii + 1;
 		}
 	}
@@ -123,6 +77,7 @@ function stripTrailingSpaces(href: string): string {
 export class URL {
 	#href: string;
 	#record: URLRecord;
+	#queryObject: QueryObject | undefined = undefined;
 
 	static { defineInterface(this); }
 
@@ -179,6 +134,7 @@ export class URL {
 		}
 		this.#href = record.href ?? input;
 		this.#record = record;
+		this.#resetQueryObject();
 	}
 
 	// https://url.spec.whatwg.org/#dom-url-origin
@@ -304,12 +260,27 @@ export class URL {
 		if (input === "") {
 			this.#setQueryAndFragment(undefined, this.#fragment());
 		} else {
-			const query = StringCharCodeAt(input, 0) === kQuestionMark ? StringSlice(input, 1) : input;
+			const query = stripTabsAndNewlines(StringCharCodeAt(input, 0) === kQuestionMark ? StringSlice(input, 1) : input);
 			const inPercentEncodeSet = isSpecialScheme(StringSlice(this.#href, 0, this.#record.protocolEnd))
 				? inSpecialQueryPercentEncodeSet
 				: inQueryPercentEncodeSet;
 			this.#setQueryAndFragment(`?${percentEncode(query, inPercentEncodeSet)}`, this.#fragment());
 		}
+		this.#resetQueryObject();
+	}
+
+	// https://url.spec.whatwg.org/#dom-url-searchparams
+	get searchParams(): URLSearchParams {
+		if (this.#queryObject === undefined) {
+			const internal: URLSearchParamsInternal = {
+				list: parseFormUrlencoded(this.#queryWithoutMark()),
+				serialization: undefined,
+				// https://url.spec.whatwg.org/#concept-urlsearchparams-update
+				update: serialization => this.#setQueryAndFragment(serialization === "" ? undefined : `?${serialization}`, this.#fragment()),
+			};
+			this.#queryObject = { object: new URLSearchParams(new InternalParameter(internal)), internal };
+		}
+		return this.#queryObject.object;
 	}
 
 	// https://url.spec.whatwg.org/#dom-url-hash
@@ -324,7 +295,7 @@ export class URL {
 		if (input === "") {
 			this.#setQueryAndFragment(this.#query(), undefined);
 		} else {
-			const fragment = StringCharCodeAt(input, 0) === kNumberSign ? StringSlice(input, 1) : input;
+			const fragment = stripTabsAndNewlines(StringCharCodeAt(input, 0) === kNumberSign ? StringSlice(input, 1) : input);
 			this.#setQueryAndFragment(this.#query(), `#${percentEncode(fragment, inFragmentPercentEncodeSet)}`);
 		}
 	}
@@ -351,10 +322,25 @@ export class URL {
 		return searchStart === hashStart ? undefined : StringSlice(this.#href, searchStart, hashStart);
 	}
 
+	/** The query without its `?`, which is empty when there is none */
+	#queryWithoutMark(): string {
+		const { searchStart, hashStart } = this.#record;
+		return searchStart === hashStart ? "" : StringSlice(this.#href, searchStart + 1, hashStart);
+	}
+
 	/** The fragment with its `#`, or `undefined` when there is none */
 	#fragment(): string | undefined {
 		const { hashStart } = this.#record;
 		return hashStart === this.#href.length ? undefined : StringSlice(this.#href, hashStart);
+	}
+
+	/** Parses the query into the list of the query object again, if there is one */
+	#resetQueryObject(): void {
+		if (this.#queryObject !== undefined) {
+			const { internal } = this.#queryObject;
+			internal.list = parseFormUrlencoded(this.#queryWithoutMark());
+			internal.serialization = undefined;
+		}
 	}
 
 	/** Replaces the query and fragment, each serialized with its delimiter, or `undefined` for none */
