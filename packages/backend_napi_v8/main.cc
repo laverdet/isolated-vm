@@ -1,3 +1,4 @@
+#include <ada.h>
 #include <napi_js_initialize.h>
 import auto_js;
 import backend_napi_v8;
@@ -24,6 +25,8 @@ auto check_transfer(
 js::napi::napi_js_module module_namespace{
 	std::type_identity<environment>{},
 	[](const environment::lock& lock) -> auto {
+		// 2mb limit on parsed URLs. For `data:` URLs we could parse in JS if we wanted.
+		ada::set_max_input_length(2 << 20);
 		return std::tuple{
 			std::in_place,
 			std::pair{util::cw<"Agent">, js::forward{agent_handle_value::class_template(lock)}},

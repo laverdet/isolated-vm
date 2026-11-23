@@ -72,11 +72,14 @@ if(NOT WIN32)
 	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>)
 endif()
 
+# Hidden visibility required to avoid clashing with node's symbols (Ada). Also improves build size
+# by a lot.
+set(CMAKE_C_VISIBILITY_PRESET hidden)
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+
 # Release flags
 if(CMAKE_BUILD_TYPE STREQUAL Release)
 	set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
-	set(CMAKE_C_VISIBILITY_PRESET hidden)
-	set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 	# LTO broken in gcc
 	# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=123970
 	if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

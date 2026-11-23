@@ -9,7 +9,7 @@ export { AsyncIteratorPrototype } from "@isolated-vm/intrinsics/iterator";
 export { MapConstructor, MapDelete, MapGet, MapSet } from "@isolated-vm/intrinsics/map";
 export { MathTrunc } from "@isolated-vm/intrinsics/math";
 export { ObjectDefineProperty, ObjectFreeze, ObjectGetOwnPropertyDescriptor, ObjectGetPrototypeOf, ObjectPrototype, ObjectSetPrototypeOf, kEmptyObject } from "@isolated-vm/intrinsics/object";
-export { BooleanConstructor, NumberConstructor, NumberIsFinite, NumberIsNaN, NumberIsSafeInteger, Number_MAX_SAFE_INTEGER, StringCharCodeAt, StringConstructor, StringFromCharCode, SymbolAsyncIterator, SymbolIterator, SymbolSpecies, SymbolToStringTag } from "@isolated-vm/intrinsics/primitive";
+export { BooleanConstructor, NumberConstructor, NumberIsFinite, NumberIsNaN, NumberIsSafeInteger, Number_MAX_SAFE_INTEGER, StringCharCodeAt, StringConstructor, StringFromCharCode, StringSlice, StringToWellFormed, SymbolAsyncIterator, SymbolIterator, SymbolSpecies, SymbolToStringTag } from "@isolated-vm/intrinsics/primitive";
 export { PromiseAll, PromiseConstructor, PromiseReject, PromiseResolve, PromiseThen, PromiseWithResolvers } from "@isolated-vm/intrinsics/promise";
 export { ReflectApply, ReflectDeleteProperty, ReflectOwnKeys } from "@isolated-vm/intrinsics/reflect";
 export { WeakRefConstructor, WeakRefDeref } from "@isolated-vm/intrinsics/weak-ref";

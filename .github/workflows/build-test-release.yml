@@ -285,25 +285,12 @@ jobs:
           key: ${{ steps.v8-cache.outputs.cache-primary-key }}
           path: deps/v8/out
 
-      # Download nodejs headers
+      # Restore downloaded cmake dependencies
       - uses: actions/cache/restore@v5
-        id: nodejs-headers-cache
+        id: downloads-cache
         with:
-          enableCrossOsArchive: true
-          key: nodejs-headers-${{ env.NODE_HEADERS }}
-          path: deps/nodejs
-      - if: steps.nodejs-headers-cache.outputs.cache-hit != 'true'
-        name: node headers
-        id: nodejs-headers
-        env:
-          NODE_HEADERS: ${{ env.NODE_HEADERS }}
-        run: set -u; nodejs_select "deps/nodejs/$NODE_HEADERS"
-      - if: steps.nodejs-headers.outcome == 'success'
-        uses: actions/cache/save@v5
-        with:
-          enableCrossOsArchive: true
-          key: ${{ steps.nodejs-headers-cache.outputs.cache-primary-key }}
-          path: deps/nodejs
+          key: downloads/${{ runner.os == 'Windows' && 'windows' || 'unix' }}/${{ env.NODE_HEADERS }}
+          path: deps/downloads
 
       # Build isolated-vm
       - uses: pnpm/action-setup@v5
@@ -314,7 +301,6 @@ jobs:
           npx tsc -b
       - name: Configure
         env:
-          NODE_DIST_DIR: deps/nodejs/${{ env.NODE_HEADERS }}
           V8_REF: ${{ env.V8_REF }}
         run: |
           set -ux
@@ -322,7 +308,9 @@ jobs:
           cmake \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_MODULE_PATH="$(pnpm exec auto_js_cmake_include)" \
+            -DDOWNLOAD_CACHE_DIR="$PWD/deps/downloads" \
             -DIVM_INSTALL=artifacts \
+            -DNODE_VERSION="$NODE_HEADERS" \
             -DV8_INCLUDE_DIR="$V8_REF_PATH/include" \
             -DV8_INCLUDE_GN_FILE="$V8_REF_PATH/$TRIPLET.release/include/v8-gn.h" \
             -DV8_LIBRARY_PATH="$V8_REF_PATH/$TRIPLET.release" \
@@ -332,6 +320,14 @@ jobs:
             -B build \
             -G Ninja \
           ;
+
+      # Cache downloaded cmake dependencies
+      - if: steps.downloads-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          key: ${{ steps.downloads-cache.outputs.cache-primary-key }}
+          path: deps/downloads
+
       - name: Build
         run: ninja -C build backend_napi_v8
       - name: Sanity Check

@@ -42,9 +42,11 @@ class runtime_interface {
 		js::iv8::unique_remote<v8::FunctionTemplate> clock_time_;
 		js::iv8::unique_remote<v8::FunctionTemplate> enqueue_microtask_;
 		js::iv8::unique_remote<v8::FunctionTemplate> get_promise_internal_;
+		js::iv8::unique_remote<v8::FunctionTemplate> parse_url_;
 		js::iv8::unique_remote<v8::FunctionTemplate> performance_time_;
 		js::iv8::unique_remote<v8::FunctionTemplate> transfer_;
 		js::iv8::unique_remote<v8::FunctionTemplate> trigger_fatal_for_testing_;
+		js::iv8::unique_remote<v8::FunctionTemplate> update_url_;
 };
 
 } // namespace backend_napi_v8

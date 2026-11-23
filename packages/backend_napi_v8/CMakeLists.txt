@@ -33,6 +33,7 @@ target_sources(${backend_napi_v8}
 		reference.cc
 		runtime/compression.cc
 		runtime/runtime.cc
+		runtime/url.cc
 		script.cc
 		zone.cc
 	PUBLIC FILE_SET CXX_MODULES FILES
@@ -49,6 +50,7 @@ target_sources(${backend_napi_v8}
 		reference.h.cc
 		runtime/compression.h.cc
 		runtime/runtime.h.cc
+		runtime/url.h.cc
 		zone.h.cc
 		script.h.cc
 		utility.h.cc
@@ -90,8 +92,23 @@ if(NOT WIN32)
 	target_compile_definitions(${backend_napi_v8} PRIVATE "ZEXPORT=__attribute__((weak))")
 endif()
 
+# Ada URL parser
+include(DownloadCache)
+include(FetchContent)
+download_cached(ADA_ARCHIVE "https://github.com/ada-url/ada/releases/download/v4.1.1/singleheader.zip")
+FetchContent_Declare(ada
+	URL "${ADA_ARCHIVE}"
+	URL_HASH SHA256=d87de673260243306f2a20d3a761de7cca8119b9491ac6b4ccdb3c88d731ef5c)
+FetchContent_MakeAvailable(ada)
+file(WRITE "${ada_SOURCE_DIR}/.clang-tidy" "Checks: '-*'")
+add_library(ada STATIC "${ada_SOURCE_DIR}/ada.cpp")
+set_target_properties(ada PROPERTIES CXX_SCAN_FOR_MODULES OFF)
+target_compile_definitions(ada PUBLIC ADA_INCLUDE_URL_PATTERN=0)
+target_compile_options(ada PRIVATE -w)
+target_include_directories(ada SYSTEM PUBLIC "${ada_SOURCE_DIR}")
+
 # Link backend target
-target_link_libraries(${backend_napi_v8} PRIVATE ${auto_js} ${napi_js} ${v8_js} isolated_vm utility_js)
+target_link_libraries(${backend_napi_v8} PRIVATE ${auto_js} ${napi_js} ${v8_js} ada isolated_vm utility_js)
 
 # Emit `xx.node` instead of `libxx.so`
 set_target_properties(${backend_napi_v8} PROPERTIES PREFIX "" SUFFIX ".node")

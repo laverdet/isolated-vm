@@ -4,6 +4,7 @@ import :encoding;
 import :lock;
 import :reference;
 import :runtime;
+import :url;
 import :zone;
 import auto_js;
 import std;
@@ -106,9 +107,11 @@ runtime_interface::runtime_interface(std::monostate /*nothing*/, const agent_loc
 		clock_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{clock_time}, lock))},
 		enqueue_microtask_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{enqueue_microtask}, lock))},
 		get_promise_internal_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{get_promise_internal}, lock))},
+		parse_url_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{parse_url}, lock))},
 		performance_time_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{performance_time}, lock))},
 		transfer_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{transfer}, lock))},
-		trigger_fatal_for_testing_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{trigger_fatal_for_testing}, lock))} {
+		trigger_fatal_for_testing_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{trigger_fatal_for_testing}, lock))},
+		update_url_{make_unique_remote(lock, js::transfer_in<v8::Local<v8::FunctionTemplate>>(js::free_function{update_url}, lock))} {
 }
 
 auto runtime_interface::instantiate(const realm_scope& lock) -> v8::Local<js::iv8::module_record> {
@@ -117,9 +120,11 @@ auto runtime_interface::instantiate(const realm_scope& lock) -> v8::Local<js::iv
 			std::pair{util::cw<"clockTime">, clock_time_->deref(util::slice(lock))},
 			std::pair{util::cw<"enqueueMicrotask">, enqueue_microtask_->deref(util::slice(lock))},
 			std::pair{util::cw<"getPromiseInternal">, get_promise_internal_->deref(util::slice(lock))},
+			std::pair{util::cw<"parseURL">, parse_url_->deref(util::slice(lock))},
 			std::pair{util::cw<"performanceTime">, performance_time_->deref(util::slice(lock))},
 			std::pair{util::cw<"transfer">, transfer_->deref(util::slice(lock))},
 			std::pair{util::cw<"triggerFatalForTesting">, trigger_fatal_for_testing_->deref(util::slice(lock))},
+			std::pair{util::cw<"updateURL">, update_url_->deref(util::slice(lock))},
 			std::pair{util::cw<"Compressor">, v8::Local<v8::FunctionTemplate>{compressor_handle::class_template(lock)}},
 			std::pair{util::cw<"Decompressor">, v8::Local<v8::FunctionTemplate>{decompressor_handle::class_template(lock)}},
 			std::pair{util::cw<"Reference">, v8::Local<v8::FunctionTemplate>{reference_handle::class_template(lock)}},

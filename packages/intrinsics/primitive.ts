@@ -15,6 +15,8 @@ export const Number_MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER;
 export const StringConstructor = String;
 export const StringCharCodeAt = makeFreeFunction(String.prototype.charCodeAt);
 export const StringFromCharCode = String.fromCharCode;
+export const StringSlice = makeFreeFunction(String.prototype.slice);
+export const StringToWellFormed = makeFreeFunction(String.prototype.toWellFormed);
 
 // Symbol
 export const SymbolAsyncIterator = Symbol.asyncIterator;

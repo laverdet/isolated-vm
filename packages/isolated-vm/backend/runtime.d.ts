@@ -113,6 +113,28 @@ declare module "isolated-vm:runtime" {
 		run<Result>(callback: () => Result): Result;
 	}
 
+	/** Result of `parseURL`. Contains offsets into `href` of the relevant parts. */
+	export interface URLRecord {
+		/** Serialized URL, or `undefined` when it is identical to the parsed input */
+		href: string | undefined;
+		protocolEnd: number;
+		usernameEnd: number;
+		hostStart: number;
+		hostEnd: number;
+		/** Port number, not an offset, or `undefined` when there is none */
+		port: number | undefined;
+		pathnameStart: number;
+		/** Start of the `?`, or `hashStart` when there is no query */
+		searchStart: number;
+		/** Start of the `#`, or the length of `href` when there is no fragment */
+		hashStart: number;
+	}
+
+	/**
+	 * Parameter to `updateURL`: `protocol`, `username`, `password`, `host`, `hostname`, `port`, `pathname`
+	 */
+	export type URLComponent = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
 	/** System clock time in milliseconds. */
 	export function clockTime(): number;
 
@@ -121,6 +143,9 @@ declare module "isolated-vm:runtime" {
 
 	/** Fetch settled state and value. */
 	export function getPromiseInternal<Type>(promise: Promise<Type>): [ true, Type ] | [ false, unknown ] | undefined;
+
+	/** Runs the basic URL parser on `input` against `base`. `undefined` is failure. */
+	export function parseURL(input: string, base?: string): URLRecord | undefined;
 
 	/** Monotonic time in milliseconds. */
 	export function performanceTime(): number;
@@ -133,4 +158,10 @@ declare module "isolated-vm:runtime" {
 
 	/** Raises a fatal v8 error. */
 	export function triggerFatalForTesting(): never;
+
+	/**
+	 * Applies the setter for `component` to the URL serialized as `href`. `undefined` means the setter
+	 * rejected `value`, leaving the URL unchanged.
+	 */
+	export function updateURL(href: string, component: URLComponent, value: string): URLRecord | undefined;
 }

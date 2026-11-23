@@ -11,5 +11,6 @@ export import :native_module;
 export import :realm;
 export import :runtime;
 export import :script;
+export import :url;
 export import :utility;
 export import :zone;

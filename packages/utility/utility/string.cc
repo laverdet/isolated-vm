@@ -6,6 +6,11 @@ import std;
 
 namespace util {
 
+// UTF-8 code points as `char`
+export auto as_chars(std::u8string_view utf8) -> std::string_view {
+	return {reinterpret_cast<const char*>(utf8.data()), utf8.size()};
+}
+
 export template <class Char, std::size_t Size>
 // NOLINTNEXTLINE(modernize-avoid-c-arrays)
 consteval auto make_consteval_string_view(const Char (&string)[ Size ]) -> std::basic_string_view<Char> {
@@ -69,6 +74,7 @@ class codepoint_char_range<char> : public codepoint_char_container<char, 1> {
 			if (codepoint > std::numeric_limits<char>::max()) {
 				throw std::range_error{"Codepoint out of range for ASCII, 'char'"};
 			}
+			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 			data()[ 0 ] = static_cast<char>(codepoint);
 		}
 };
@@ -120,11 +126,15 @@ class codepoint_char_range<char16_t> : public codepoint_char_container<char16_t,
 
 		explicit constexpr codepoint_char_range(char32_t codepoint) {
 			if (codepoint < 0x1'0000) {
+				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 				data()[ 0 ] = static_cast<char16_t>(codepoint);
+				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 				data()[ 1 ] = 0;
 			} else if (codepoint < 0x11'0000) {
 				auto twenty_bits = codepoint - 0x1'0000;
+				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 				data()[ 0 ] = static_cast<char16_t>((twenty_bits / 0x400) + 0xd800);
+				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 				data()[ 1 ] = static_cast<char16_t>((twenty_bits % 0x400) + 0xdc00);
 			} else {
 				std::unreachable();
@@ -136,6 +146,7 @@ class codepoint_char_range<char16_t> : public codepoint_char_container<char16_t,
 template <>
 class codepoint_char_range<char32_t> : public codepoint_char_container<char32_t, 1> {
 	public:
+		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		explicit constexpr codepoint_char_range(char32_t codepoint) { data()[ 0 ] = codepoint; }
 };
 
@@ -160,7 +171,7 @@ class codepoint_char_forward_view {
 
 		[[nodiscard]] constexpr auto eof() const -> bool { return pos_ == end_; }
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-		constexpr auto read() -> char32_t { return static_cast<char32_t>(*pos_++); }
+		constexpr auto read() -> char32_t { return static_cast<char32_t>(static_cast<std::make_unsigned_t<Char>>(*pos_++)); }
 
 	private:
 		iterator_type pos_;
@@ -328,5 +339,24 @@ constexpr auto transcode_string(util::constant_wrapper<Value> /*cw*/) {
 		return util::cw<string>;
 	}(std::make_index_sequence<chars.size()>());
 };
+
+// Invokes `function` with the UTF-8 encoding of `string` as a `std::string_view`
+export template <class Char>
+auto with_utf8(std::basic_string_view<Char> string, const auto& invoke) {
+	return invoke(as_chars(transcode_string<char8_t>(string)));
+}
+
+export auto with_utf8(std::string_view latin1, const auto& invoke) {
+	const auto is_ascii = [](char character) -> bool { return static_cast<unsigned>(character) < 0x80; };
+	if (std::ranges::all_of(latin1, is_ascii)) {
+		return invoke(latin1);
+	} else {
+		return invoke(as_chars(transcode_string<char8_t>(latin1)));
+	}
+}
+
+export auto with_utf8(std::u8string_view utf8, const auto& invoke) {
+	return invoke(as_chars(utf8));
+}
 
 } // namespace util
