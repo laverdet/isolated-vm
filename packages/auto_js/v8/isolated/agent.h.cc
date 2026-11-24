@@ -163,7 +163,7 @@ export class agent_host
 		auto take_random_seed() -> std::optional<double>;
 		auto task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::TaskRunner>;
 
-		static auto abandon_for_fatal(std::shared_ptr<agent_host> host, const fatal_error& error) noexcept -> void;
+		static auto abandon_for_fatal(const std::shared_ptr<agent_host>& host, const fatal_error& error) noexcept -> void;
 		static auto get_current(v8::Isolate* isolate) -> agent_host&;
 		constexpr static auto uses_recovery_frame = true;
 

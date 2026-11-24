@@ -188,7 +188,7 @@ auto agent_host::task_runner(v8::TaskPriority priority) -> std::shared_ptr<v8::T
 	return platform::foreground_runner::get_for_priority(std::move(runner), priority);
 }
 
-auto agent_host::abandon_for_fatal(std::shared_ptr<agent_host> host, const fatal_error& error) noexcept -> void {
+auto agent_host::abandon_for_fatal(const std::shared_ptr<agent_host>& host, const fatal_error& error) noexcept -> void {
 	// No more tasks will run
 	auto& scheduler = host->storage_->foreground_runner().scheduler();
 	scheduler.reset();
@@ -198,6 +198,8 @@ auto agent_host::abandon_for_fatal(std::shared_ptr<agent_host> host, const fatal
 	host->storage_->cluster().retain_for_fatal();
 	// Release the isolate before notifying the client, since the client may respond with `dispose()`
 	auto was_terminated = host->executor_.abandon_for_fatal();
+	// Clear out shared references
+	host->autorelease_pool_.clear();
 	if (host->on_fatal_error_) {
 		host->on_fatal_error_(error);
 	}
