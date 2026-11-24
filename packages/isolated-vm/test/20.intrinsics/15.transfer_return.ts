@@ -70,14 +70,13 @@ await test("unlisted buffer is copied", async () => {
 	assert.equal(await byteLengthInRealm(agent, realm), 3);
 });
 
-await test("unvisited buffer is detached", async () => {
+await test("unvisited buffer throws", async () => {
 	await using agent = await Agent.create();
 	const realm = expect(await agent.createRealm());
 	const fn = await makeTransferFunction(agent, realm,
 		`globalThis.buffer = new ArrayBuffer(3);
 		return transfer("hello", [ globalThis.buffer ]);`);
-	const result = expectComplete(await fn.invoke([]));
-	assert.equal(result, "hello");
+	expectThrow(await fn.invoke([]));
 	assert.equal(await byteLengthInRealm(agent, realm), 0);
 });
 

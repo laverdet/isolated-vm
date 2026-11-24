@@ -13,16 +13,16 @@ export class array_buffer_transfer {
 	public:
 		array_buffer_transfer(environment_lock_witness lock, std::vector<local_of<>>& entries) :
 				lock_{lock},
-				buffers_{[ & ] -> auto {
-					auto maybe_claim_in = [ & ](napi_value value) -> std::optional<local_of<array_buffer_tag>> {
+				buffers_{
+					entries,
+					[ & ](napi_value value) -> std::optional<local_of<array_buffer_tag>> {
 						if (is_object_array_buffer(napi_env{lock}, local_of<object_tag>::from(value))) {
 							return local_of<array_buffer_tag>::from(value);
 						} else {
 							return std::nullopt;
 						}
-					};
-					return js::extract_transferees(util::cw<u"ArrayBuffer">, maybe_claim_in, addressof_equal{}, entries);
-				}()} {}
+					}
+				} {}
 
 		template <class Visit, class Accept>
 		auto operator()(local_of<array_buffer_tag> subject, Visit& visit, const Accept& accept) {
@@ -50,24 +50,23 @@ export class array_buffer_transfer {
 							}
 						}(),
 					};
-					value.detach();
 					return buffer;
 				};
 				return accept(array_buffer_tag{}, visit, transfer_buffer());
 			};
-			return js::claim_transferee(buffers_, subject, addressof_equal{}, claim_out);
+			// nb: Detached in `finalize`, so a view of this buffer visited later still reads its length
+			return buffers_.claim(subject, claim_out);
 		}
 
-		// Detaches listed buffers which were never claimed by the visitor
 		auto finalize() -> void {
-			for (auto entry : std::exchange(buffers_, {})) {
+			buffers_.finalize([ & ](local_of<array_buffer_tag> entry) -> void {
 				value_of{lock_, entry}.detach();
-			}
+			});
 		}
 
 	private:
 		environment_lock_witness lock_;
-		std::vector<local_of<array_buffer_tag>> buffers_;
+		js::transferee_subject_list<util::cw<u"ArrayBuffer">, local_of<array_buffer_tag>, addressof_equal> buffers_;
 };
 
 // Napi 'transferList' delegate

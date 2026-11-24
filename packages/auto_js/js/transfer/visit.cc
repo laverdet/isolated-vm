@@ -161,43 +161,54 @@ struct reference_map : std::type_identity<reference_map_provider<Reference, Map>
 template <class Map>
 struct reference_map<void, Map> : std::type_identity<null_reference_map> {};
 
-// `transferList` helper which collects entries matching a projection, and removes them from the
-// original list.
-export template <class Subject>
-auto extract_transferees(auto name_cw, auto project_transferee, auto subject_equal, std::vector<Subject>& transferees) {
-	using projected_type = std::invoke_result_t<decltype(project_transferee)&, Subject&>::value_type;
-	auto subjects = std::vector<projected_type>{};
-	for (auto ii = transferees.begin(); ii != transferees.end();) {
-		if (auto projected = project_transferee(*ii)) {
-			auto is_duplicate = [ & ](const projected_type& subject) -> bool { return subject_equal(subject, *projected); };
-			if (std::ranges::any_of(subjects, is_duplicate)) {
-				constexpr auto name = util::make_consteval_string_view(name_cw);
-				throw js::type_error{u"Transfer list contains duplicate " + std::u16string{name}};
+// `transferList` helper which collects entries matching a projection
+export template <auto Name, class Subject, class Equal = std::equal_to<>>
+class transferee_subject_list {
+	public:
+		template <class Entry>
+		explicit transferee_subject_list(std::vector<Entry>& entries, auto project_transferee) {
+			for (auto ii = entries.begin(); ii != entries.end();) {
+				if (auto projected = project_transferee(*ii)) {
+					auto is_duplicate = [ & ](const Subject& subject) -> bool { return equal_(subject, *projected); };
+					if (std::ranges::any_of(subjects_, is_duplicate)) {
+						throw js::type_error{util::consteval_strcat(util::cw<u"Transfer list contains duplicate ">, Name)};
+					}
+					subjects_.push_back(*std::move(projected));
+					*ii = entries.back();
+					entries.pop_back();
+				} else {
+					++ii;
+				}
 			}
-			subjects.push_back(*std::move(projected));
-			*ii = transferees.back();
-			transferees.pop_back();
-		} else {
-			++ii;
 		}
-	}
-	return subjects;
-}
 
-// `transferList` helper which matches `subject` against the list and invokes the claim function if
-// it's found, returning a std::optional of the result.
-export template <class Subject>
-auto claim_transferee(std::vector<Subject>& transferees, const auto& subject, auto subject_equal, auto claim)
-	-> std::optional<std::invoke_result_t<decltype(claim)&, Subject>> {
-	auto it = std::ranges::find_if(transferees, [ & ](const Subject& entry) -> bool { return subject_equal(entry, subject); });
-	return it == transferees.end()
-		? std::nullopt
-		: std::optional{[ & ] -> auto {
-				auto entry = std::exchange(*it, transferees.back());
-				transferees.pop_back();
-				return claim(entry);
-			}()};
-}
+		auto claim(const auto& subject, auto claim) {
+			auto unclaimed = std::span{subjects_}.subspan(claimed_);
+			auto it = std::ranges::find_if(unclaimed, [ & ](const Subject& entry) -> bool { return equal_(entry, subject); });
+			return it == unclaimed.end()
+				? std::nullopt
+				: std::optional{[ & ] -> auto {
+						std::ranges::iter_swap(it, unclaimed.begin());
+						return claim(subjects_[ claimed_++ ]);
+					}()};
+		}
+
+		auto finalize(auto finalize) -> void {
+			auto subjects = std::exchange(subjects_, {});
+			auto claimed = std::exchange(claimed_, 0);
+			for (auto& subject : subjects) {
+				finalize(subject);
+			}
+			if (claimed != subjects.size()) {
+				throw js::runtime_error{util::consteval_strcat(util::cw<u"Transfer list contains unvisited ">, Name)};
+			}
+		}
+
+	private:
+		[[no_unique_address]] Equal equal_{};
+		std::vector<Subject> subjects_;
+		std::size_t claimed_ = 0;
+};
 
 // Composition of visitor delegates. A subject is offered to each delegate in declaration order and
 // the first one to claim it wins.

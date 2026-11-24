@@ -10,10 +10,14 @@ async function makeDescribe(agent: Agent) {
 	const realm = expect(await agent.createRealm());
 	await unsafeEvalAsStringInRealm(agent, realm, () => {
 		// @ts-expect-error
-		globalThis.fn = (message: { buffer?: ArrayBuffer; view?: Uint8Array }) =>
-			message.buffer
-				? [ message.view ? message.view.buffer === message.buffer : null, ...new Uint8Array(message.buffer) ]
-				: null;
+		globalThis.fn = (message: { buffer?: ArrayBuffer; view?: Uint8Array }) => {
+			if (message.buffer) {
+				const is = message.view ? message.view.buffer === message.buffer : null;
+				return [ is, ...message.view ?? new Uint8Array(message.buffer) ];
+			} else {
+				return null;
+			}
+		};
 	});
 	const global = await realm.acquireGlobalObject();
 	return expect(await global.get("fn")) as Reference<Describe>;
@@ -56,11 +60,11 @@ await test("unlisted buffer is copied", async () => {
 	assert.deepStrictEqual(result, [ null, 1, 2, 3 ]);
 });
 
-await test("unvisited buffer is detached", async () => {
+await test("unvisited buffer throws", async () => {
 	await using agent = await Agent.create();
 	const fn = await makeDescribe(agent);
 	const buffer = new ArrayBuffer(3);
-	expectComplete(await fn.invoke([ "hello" ], { transfer: [ buffer ] }));
+	assert.throws(() => void fn.invoke([ "hello" ], { transfer: [ buffer ] }), /unvisited/i);
 	assert.equal(buffer.byteLength, 0);
 });
 

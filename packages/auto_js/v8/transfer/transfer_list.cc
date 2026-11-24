@@ -16,8 +16,9 @@ namespace js::iv8 {
 export class array_buffer_transfer {
 	public:
 		array_buffer_transfer(context_lock_witness /*lock*/, std::vector<v8::Local<v8::Value>>& entries) :
-				buffers_{[ & ] -> auto {
-					constexpr auto maybe_claim_in = [](v8::Local<v8::Value> value) -> std::optional<v8::Local<v8::ArrayBuffer>> {
+				buffers_{
+					entries,
+					[](v8::Local<v8::Value> value) -> std::optional<v8::Local<v8::ArrayBuffer>> {
 						if (value->IsArrayBuffer()) {
 							auto buffer = value.As<v8::ArrayBuffer>();
 							if (!buffer->IsDetachable()) {
@@ -27,9 +28,8 @@ export class array_buffer_transfer {
 						} else {
 							return std::nullopt;
 						}
-					};
-					return js::extract_transferees(util::cw<u"ArrayBuffer">, maybe_claim_in, std::equal_to{}, entries);
-				}()} {}
+					}
+				} {}
 
 		template <class Visit, class Accept>
 		auto operator()(v8::Local<v8::ArrayBuffer> subject, Visit& visit, const Accept& accept) {
@@ -57,22 +57,22 @@ export class array_buffer_transfer {
 							}
 						}(),
 					};
-					unmaybe(handle->Detach(v8::Local<v8::Value>{}));
 					return buffer;
 				};
 				return accept(array_buffer_tag{}, visit, transfer_buffer());
 			};
-			return js::claim_transferee(buffers_, subject, std::equal_to{}, claim_out);
+			// nb: Detached in `finalize`, so a view of this buffer visited later still reads its length
+			return buffers_.claim(subject, claim_out);
 		}
 
 		auto finalize() -> void {
-			for (auto entry : std::exchange(buffers_, {})) {
+			buffers_.finalize([](v8::Local<v8::ArrayBuffer> entry) -> void {
 				unmaybe(entry->Detach(v8::Local<v8::Value>{}));
-			}
+			});
 		}
 
 	private:
-		std::vector<v8::Local<v8::ArrayBuffer>> buffers_;
+		js::transferee_subject_list<util::cw<u"ArrayBuffer">, v8::Local<v8::ArrayBuffer>> buffers_;
 };
 
 // v8 'transferList' delegate
