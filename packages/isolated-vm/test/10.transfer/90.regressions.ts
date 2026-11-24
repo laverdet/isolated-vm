@@ -2,10 +2,6 @@ import { test } from "node:test";
 import { Agent, expect } from "@isolated-vm/experimental";
 import "@isolated-vm/experimental/test/fixtures";
 
-const hostSupportsSharedArraySupport =
-	// @ts-expect-error
-	process.isBun === undefined;
-
 await test("numeric references", async () => {
 	await using agent = await Agent.create();
 	const realm = expect(await agent.createRealm());
@@ -23,15 +19,15 @@ await test("numeric indices", async () => {
 	expect(await global.set("xx", [ false, true ]));
 });
 
-if (hostSupportsSharedArraySupport) {
-	await test("seen index type", async () => {
-		await using agent = await Agent.create();
-		const realm = expect(await agent.createRealm());
-		const global = await realm.acquireGlobalObject();
-		const payload = {
-			number: 0,
-			buffer: [ new Uint8Array(new SharedArrayBuffer(0)) ],
-		};
-		expect(await global.set("xx", [ payload ]));
-	});
-}
+await test("seen index type", async () => {
+	await using agent = await Agent.create();
+	const realm = expect(await agent.createRealm());
+	const global = await realm.acquireGlobalObject();
+	const payload = {
+		number: 0,
+		array: [ "a" ],
+	};
+	// 'reference_map' is keyed by handle address, which for an smi is the value. `number: 0` was
+	// remembered as a double, so array index 0 hit that entry and failed as a property key.
+	expect(await global.set("xx", [ payload ]));
+});

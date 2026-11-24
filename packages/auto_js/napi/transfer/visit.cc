@@ -125,12 +125,20 @@ struct visit_value : reference_map_t<Reference, reference_map_type> {
 			return self.immediate(subject, accept);
 		}
 
+		// nb: Without host support the representation is unknown. The bare tag is passed along and the
+		// acceptor decides after reading the value once.
 		template <class Accept>
 		auto operator()(this auto& self, local_of<number_tag> subject, const Accept& accept) -> accept_target_t<Accept> {
-			if (maybe_is_number_int32(subject).value_or(false)) {
-				return self.immediate(local_of<number_tag_of<std::int32_t>>::from(subject), accept);
+			if (auto is_int32 = maybe_is_number_int32(subject)) {
+				// nodejs
+				if (*is_int32) {
+					return self.immediate(local_of<number_tag_of<std::int32_t>>::from(subject), accept);
+				} else {
+					return self.immediate(local_of<number_tag_of<double>>::from(subject), accept);
+				}
 			} else {
-				return self.immediate(local_of<number_tag_of<double>>::from(subject), accept);
+				// bun
+				return self.immediate(subject, accept);
 			}
 		}
 
