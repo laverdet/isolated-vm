@@ -9,7 +9,7 @@
 using namespace v8;
 namespace ivm {
 namespace {
-	thread_pool_t thread_pool{std::thread::hardware_concurrency() + 1};
+	thread_pool_t thread_pool{uv_available_parallelism() + 1};
 }
 
 /*
