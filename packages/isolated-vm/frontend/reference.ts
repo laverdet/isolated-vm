@@ -2,7 +2,7 @@ import type * as backend from "#backend";
 import type { MaybeCompletionOf } from "@isolated-vm/experimental";
 
 type InvokeArguments<Value> = Value extends (...args: infer Args) => unknown ? Args : never;
-type InvokeResult<Value> = Value extends (...args: unknown[]) => infer Result ? Result : never;
+type InvokeResult<Value> = Value extends (...args: never[]) => infer Result ? Result : never;
 
 export declare interface Reference<Type = unknown> extends backend.Reference {
 	copy: () => Promise<Type>;

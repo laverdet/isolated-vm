@@ -1,13 +1,12 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import { Agent } from "@isolated-vm/experimental";
-import { expectComplete, expectThrow, unsafeEvalAsStringInRealm, unsafeIIFEAsString } from "@isolated-vm/experimental/test/fixtures";
+import { expectComplete, expectThrow, makeTestAgent, unsafeIIFEAsString } from "@isolated-vm/experimental/test/fixtures";
 
 const illegalAccess = new Error("illegal access");
 
 await test("script source origin", async () => {
-	await using agent = await Agent.create();
-	const script = expectComplete(await agent.compileScript(
+	await using vm = await makeTestAgent();
+	const script = expectComplete(await vm.agent.compileScript(
 		unsafeIIFEAsString(() => {
 			try {
 				throw new Error();
@@ -23,24 +22,23 @@ await test("script source origin", async () => {
 			},
 		},
 	));
-	const realm = await agent.createRealm();
-	const result = expectComplete(await script.run(realm));
+	const result = expectComplete(await script.run(vm.realm));
 	assert.ok(typeof result === "string");
 	assert.ok(result.includes("file:///test-script:103"));
 });
 
 await test("script which throws", async () => {
-	await using agent = await Agent.create();
-	const realm = await agent.createRealm();
-	const script = expectComplete(await agent.compileScript("throw new Error('wow');", { origin: { name: "test:script" } }));
-	const error = expectThrow(await script.run(realm)) as Error;
+	await using vm = await makeTestAgent();
+	const origin = { name: "test:script" };
+	const script = expectComplete(await vm.agent.compileScript("throw new Error('wow');", { origin }));
+	const error = expectThrow(await script.run(vm.realm)) as Error;
 	assert.equal(error.message, "wow");
 	assert.ok(error.stack?.includes("test:script"));
 });
 
 await test("script with syntax error", async () => {
-	await using agent = await Agent.create();
-	const error = expectThrow(await agent.compileScript("}"));
+	await using vm = await makeTestAgent();
+	const error = expectThrow(await vm.agent.compileScript("}"));
 	// @ts-expect-error
 	const message: unknown = error.message;
 	assert.ok(typeof message === "string");
@@ -48,9 +46,8 @@ await test("script with syntax error", async () => {
 });
 
 await test("script which returns a circular object", async () => {
-	await using agent = await Agent.create();
-	const realm = await agent.createRealm();
-	const result = await unsafeEvalAsStringInRealm(agent, realm, () => {
+	await using vm = await makeTestAgent();
+	const result = await vm.unsafeScript(() => {
 		const date = new Date();
 		const object: Record<string, any> = {
 			record: {},
@@ -65,14 +62,12 @@ await test("script which returns a circular object", async () => {
 });
 
 await test("script result should not invoke interceptors", async () => {
-	await using agent = await Agent.create();
-	const realm = await agent.createRealm();
-	const script = expectComplete(await agent.compileScript(unsafeIIFEAsString(() => {
+	await using vm = await makeTestAgent();
+	await assert.rejects(vm.unsafeScript(() => {
 		const object = Object.defineProperty({ name: "value" }, "name", {
 			enumerable: true,
 			get() { throw new Error("interceptor invoked"); },
 		});
 		return object;
-	})));
-	await assert.rejects(async () => expectComplete(await script.run(realm)), illegalAccess);
+	}), illegalAccess);
 });

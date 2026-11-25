@@ -1,16 +1,15 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
 import { setTimeout } from "node:timers/promises";
-import { Agent } from "@isolated-vm/experimental";
-import { unsafeEvalAsString, unsafeEvalAsStringInRealm } from "@isolated-vm/experimental/test/fixtures";
+import { makeTestAgent } from "@isolated-vm/experimental/test/fixtures";
 
 const y2k = new Date("2000-01-01T00:00:00Z");
 // Figure out how many loops to waste ~25ms on this build. Extra slop factor is added afterwards.
 const speedFactorMs = 25;
 const speedFactor = await async function() {
-	await using agent = await Agent.create();
-	return await unsafeEvalAsString(
-		agent, speedFactorMs =>
+	await using vm = await makeTestAgent();
+	return await vm.unsafeScript(
+		speedFactorMs =>
 			Math.min(...Array(3).fill(undefined).map(() => {
 				let factor = 2 ** 20;
 				const slopFactor = 1.2;
@@ -27,30 +26,28 @@ const speedFactor = await async function() {
 }();
 
 await test("deterministic clock", async () => {
-	await using agent = await Agent.create({
+	await using vm = await makeTestAgent({
 		clock: { type: "deterministic", epoch: y2k, interval: 1 },
 	});
-	const realm = await agent.createRealm();
-	let previousTime = +await unsafeEvalAsStringInRealm(agent, realm, () => new Date());
+	let previousTime = +await vm.unsafeScript(() => new Date());
 	assert.equal(previousTime, +y2k);
 	for (let ii = 0; ii < 25; ++ii) {
-		const result2 = await unsafeEvalAsStringInRealm(agent, realm, () => new Date());
+		const result2 = await vm.unsafeScript(() => new Date());
 		assert.equal(+result2, ++previousTime);
 	}
 });
 
 await test("microtask clock", async () => {
-	await using agent = await Agent.create({
+	await using vm = await makeTestAgent({
 		clock: { type: "microtask", epoch: y2k },
 	});
-	const realm = await agent.createRealm();
-	const result1 = await unsafeEvalAsStringInRealm(agent, realm, () => new Date());
+	const result1 = await vm.unsafeScript(() => new Date());
 	assert.ok(+result1 >= +y2k);
 	assert.ok(+result1 - +y2k < 1000);
 	await setTimeout(10);
-	const result2 = await unsafeEvalAsStringInRealm(agent, realm, () => new Date());
+	const result2 = await vm.unsafeScript(() => new Date());
 	assert.ok(+result2 >= +result1 + 1);
-	const result3 = await unsafeEvalAsStringInRealm(agent, realm, speedFactor => {
+	const result3 = await vm.unsafeScript(speedFactor => {
 		const dd = Date.now();
 		for (let ii = speedFactor; ii > 0; --ii);
 		return Date.now() - dd;
@@ -59,11 +56,10 @@ await test("microtask clock", async () => {
 });
 
 await test("realtime clock", async () => {
-	await using agent = await Agent.create({
+	await using vm = await makeTestAgent({
 		clock: { type: "realtime", epoch: y2k },
 	});
-	const realm = await agent.createRealm();
-	const [ result1 ] = await unsafeEvalAsStringInRealm(agent, realm, (speedFactor: number) => {
+	const [ result1 ] = await vm.unsafeScript((speedFactor: number) => {
 		const start = new Date();
 		for (let ii = speedFactor; ii > 0; --ii);
 		const end = new Date();
@@ -77,11 +73,10 @@ await test("realtime clock", async () => {
 await test("system clock", async () => {
 	// `std::system_clock` on Windows returns jittering results across different CPU cores.
 	const threshold = process.platform === "win32" ? 10 : 0;
-	await using agent = await Agent.create();
-	const realm = await agent.createRealm();
+	await using vm = await makeTestAgent();
 	for (let ii = 0; ii < 5; ++ii) {
 		const then = new Date();
-		const result = await unsafeEvalAsStringInRealm(agent, realm, () => new Date());
+		const result = await vm.unsafeScript(() => new Date());
 		assert.ok(+result >= +then - threshold);
 		assert.ok(+result <= Date.now() + threshold);
 		await setTimeout(1);

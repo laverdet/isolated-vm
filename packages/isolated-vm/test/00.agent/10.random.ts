@@ -1,11 +1,10 @@
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import { Agent } from "@isolated-vm/experimental";
-import { unsafeEvalAsString } from "@isolated-vm/experimental/test/fixtures";
+import { makeTestAgent } from "@isolated-vm/experimental/test/fixtures";
 
 const makeAgentRandom = async (randomSeed?: number) => {
-	await using agent = await Agent.create({ randomSeed });
-	return await unsafeEvalAsString(agent, () => Math.random());
+	await using vm = await makeTestAgent({ randomSeed });
+	return await vm.unsafeScript(() => Math.random());
 };
 
 await test("random", async () => {

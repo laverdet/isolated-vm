@@ -1,50 +1,43 @@
-import type { AbstractModule, Realm } from "@isolated-vm/experimental";
-import * as assert from "node:assert/strict";
+import { equal, throws } from "node:assert/strict";
 import { test } from "node:test";
-import { Agent, Capability, expect } from "@isolated-vm/experimental";
-import { clearUncaughtExceptionListeners, expectComplete, expectThrow } from "@isolated-vm/experimental/test/fixtures";
+import { Capability } from "@isolated-vm/experimental";
+import { clearUncaughtExceptionListeners, expectComplete, isBun, makeTestAgent } from "@isolated-vm/experimental/test/fixtures";
 
-const isBun =
-	// @ts-expect-error
-	process.isBun !== undefined;
-
-/** Evaluates `source` in `realm`, with `fn` imported from the capability module */
-async function evaluate(agent: Agent, realm: Realm, fn: AbstractModule, source: string) {
-	const module = expectComplete(await agent.compileModule(`import fn from "fn"; ${source}`));
-	await module.link(realm, () => fn);
-	return module.evaluate(realm);
-}
-
-const createFn = async (realm: Realm, capability: Capability) => expect(await realm.createCapability({ default: capability }, { origin: "fn" }));
-const copy = async (realm: Realm, key: string) => expect(await (await realm.acquireGlobalObject()).get(key)).copy();
-
-/** Evaluates `source` with `fn` bound to `capability`, and returns the completion & `globalThis.result` */
-async function run(capability: Capability, source: string) {
-	await using agent = await Agent.create();
-	const realm = expect(await agent.createRealm());
-	const completion = await evaluate(agent, realm, await createFn(realm, capability), source);
-	return { completion, result: await copy(realm, "result") };
-}
+const supportsUncaughtTest = { skip: isBun && "nodejs-specific" };
 
 await test("sync capability resolves", async () => {
-	const add = Capability.sync((left: unknown, right: unknown) => Promise.resolve(Number(left) + Number(right)));
-	assert.equal((await run(add, "globalThis.result = fn(1, 2);")).result, 3);
+	const add = (left: unknown, right: unknown) => Promise.resolve(Number(left) + Number(right));
+	await using vm = await makeTestAgent({ capabilities: { add: { default: Capability.sync(add) } } });
+	await vm.unsafeModule('import add from "test:add";', () => {
+		assert.equal(add(1, 2), 3);
+	});
 });
 
 await test("sync capability rejects", async () => {
-	const fail = Capability.sync(() => Promise.reject(new Error("nope")));
-	assert.equal((await run(fail, "try { fn(); } catch (error) { globalThis.result = error.message; }")).result, "nope");
+	const fail = () => Promise.reject(new Error("nope"));
 	// eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
-	const uninspectable = Capability.sync(() => Promise.reject(Symbol("reason")));
-	assert.equal((await run(uninspectable, "try { fn(); } catch (error) { globalThis.result = error instanceof Error; }")).result, true);
+	const uninspectable = () => Promise.reject(Symbol("reason"));
+	await using vm = await makeTestAgent({
+		capabilities: {
+			fail: { default: Capability.sync(fail) },
+			uninspectable: { default: Capability.sync(uninspectable) },
+		},
+	});
+	await vm.unsafeModule('import fail from "test:fail"; import uninspectable from "test:uninspectable";', () => {
+		assert.throws(fail, { message: "nope" });
+		assert.throws(uninspectable, Error);
+	});
 });
 
 await test("sync capability throws", async () => {
-	const fail = Capability.sync(() => { throw new Error("nope"); });
-	assert.match(String(expectThrow((await run(fail, "fn();")).completion)), /nope/);
+	const fail = () => { throw new Error("nope"); };
+	await using vm = await makeTestAgent({ capabilities: { fail: { default: Capability.sync(fail) } } });
+	await vm.unsafeModule('import fail from "test:fail";', () => {
+		assert.throws(fail, { message: "nope" });
+	});
 });
 
-await test("void capability throws as uncaught exception", { skip: isBun && "nodejs-specific" }, async () => {
+await test("void capability throws as uncaught exception", supportsUncaughtTest, async () => {
 	using restore = clearUncaughtExceptionListeners();
 	const uncaught = new Promise<string>(resolve => {
 		process.once("uncaughtException", error => {
@@ -52,57 +45,63 @@ await test("void capability throws as uncaught exception", { skip: isBun && "nod
 			resolve(error.message);
 		});
 	});
-	await using agent = await Agent.create();
-	const realm = expect(await agent.createRealm());
-	const global = expect(await realm.acquireGlobalObject());
-	for (let ii = 0; ii < 100; ++ii) await global.get("Object");
-	const fail = Capability.void(() => { throw new Error("nope"); });
-	await evaluate(agent, realm, await createFn(realm, fail), "fn();");
-	assert.equal(await uncaught, "nope");
+	const fail = () => { throw new Error("nope"); };
+	await using vm = await makeTestAgent({ capabilities: { fail: { default: Capability.void(fail) } } });
+	for (let ii = 0; ii < 100; ++ii) await vm.get("Object");
+	await vm.unsafeModule('import fail from "test:fail";', () => { fail(); });
+	equal(await uncaught, "nope");
 });
 
 await test("abandoned sync capability resolves null", async () => {
-	const abandoned = Capability.sync(() => new Promise(() => void setTimeout(() => global.gc?.(), 10)));
-	assert.equal((await run(abandoned, "globalThis.result = fn();")).result, null);
+	const abandoned = () => new Promise(() => void setTimeout(() => global.gc?.(), 10));
+	await using vm = await makeTestAgent({ capabilities: { abandoned: { default: Capability.sync(abandoned) } } });
+	await vm.unsafeModule('import abandoned from "test:abandoned";', () => {
+		assert.equal(abandoned(), null);
+	});
 });
 
 await test("capability is one-shot", async () => {
-	await using agent = await Agent.create();
-	const realm = expect(await agent.createRealm());
-	const once = Capability.sync(() => {});
-	await createFn(realm, once);
-	assert.throws(() => realm.createCapability({ default: once }, { origin: "fn" }), /already used/);
+	const once = { default: Capability.sync(() => {}) };
+	await using vm = await makeTestAgent({ capabilities: { once } });
+	throws(() => vm.realm.createCapability(once, { origin: "test:once" }), /already used/);
 });
 
 await test("suspended tasks run concurrently", async () => {
-	await using agent = await Agent.create();
-	const realm = expect(await agent.createRealm());
 	const gates = [ 0, 1, 2 ].map(() => Promise.withResolvers<number>());
 	const suspensions = [ 0, 1, 2 ].map(() => Promise.withResolvers<null>());
-	const wait = Capability.sync((index: number) => {
+	const wait = (index: number) => {
 		suspensions[index]?.resolve(null);
 		return gates[index]?.promise;
+	};
+	await using vm = await makeTestAgent({ capabilities: { wait: { default: Capability.sync(wait) } } });
+	const prelude = 'import wait from "test:wait";';
+	const bump = () => {
+		const global = globalThis as unknown as { marker?: number };
+		global.marker = (global.marker ?? 0) + 1;
+	};
+	// Two modules suspend at once, then a script runs on a third thread while both are waiting
+	const first = vm.unsafeModule(prelude, () => {
+		assert.deepEqual([ wait(0), wait(2) ], [ 10, 30 ]);
+		return (globalThis as unknown as { marker: number }).marker;
 	});
-	const fn = await createFn(realm, wait);
-	const script = expectComplete(await agent.compileScript("globalThis.marker = (globalThis.marker ?? 0) + 1"));
-	// Two evaluations suspend at once, then a script runs on a third thread while both are waiting
-	const first = evaluate(agent, realm, fn, "globalThis.first = fn(0) + fn(2); globalThis.result = globalThis.marker;");
-	const second = evaluate(agent, realm, fn, "globalThis.second = fn(1);");
+	const second = vm.unsafeModule(prelude, () => { assert.equal(wait(1), 20); });
 	await Promise.all([ suspensions[0]?.promise, suspensions[1]?.promise ]);
-	expectComplete(await script.run(realm));
+	await vm.unsafeScript(bump);
 	gates[1]?.resolve(20);
-	expectComplete(await second);
+	await second;
 	gates[0]?.resolve(10);
 	await suspensions[2]?.promise;
-	expectComplete(await script.run(realm));
+	await vm.unsafeScript(bump);
 	gates[2]?.resolve(30);
-	expectComplete(await first);
-	assert.deepEqual([ await copy(realm, "first"), await copy(realm, "second"), await copy(realm, "result") ], [ 40, 20, 2 ]);
+	// Both scripts ran before the first module resumed
+	equal(await first, 2);
 });
 
 await test("dispose while suspended", async () => {
-	const agent = await Agent.create();
-	const realm = expect(await agent.createRealm());
-	const forever = Capability.sync(() => new Promise(() => void agent.disposeAsync()));
-	await evaluate(agent, realm, await createFn(realm, forever), "fn();");
+	const forever = () => new Promise(() => void vm.agent.disposeAsync());
+	const vm = await makeTestAgent({ capabilities: { forever: { default: Capability.sync(forever) } } });
+	const module = expectComplete(await vm.agent.compileModule('import forever from "test:forever"; forever();'));
+	await module.link(vm.realm, vm.linker);
+	// The evaluation settles even though the agent is gone before `forever()` could return
+	await module.evaluate(vm.realm);
 });

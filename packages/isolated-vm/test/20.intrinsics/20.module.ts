@@ -1,158 +1,88 @@
 import * as assert from "node:assert/strict";
-import { test } from "node:test";
-import { Agent, Capability, expect } from "@isolated-vm/experimental";
-import { expectComplete, expectThrow } from "@isolated-vm/experimental/test/fixtures";
-import { makeNullLinker } from "@isolated-vm/experimental/utility/linker";
+import { mock, test } from "node:test";
+import { Capability } from "@isolated-vm/experimental";
+import { expectComplete, expectThrow, makeTestAgent } from "@isolated-vm/experimental/test/fixtures";
 
 await test("module linker", async () => {
-	await using agent = await Agent.create();
-	const realm = await agent.createRealm();
-	const left = expectComplete(await agent.compileModule('import { right } from "right"; globalThis.right = right;'));
-	const right = expectComplete(await agent.compileModule('export function right() { return "hello"; }'));
-	await left.link(realm, specifier => {
+	await using vm = await makeTestAgent();
+	const left = expectComplete(await vm.agent.compileModule(`
+		import { right } from "right";
+		globalThis.result = right();`));
+	const right = expectComplete(await vm.agent.compileModule('export function right() { return "hello"; }'));
+	await left.link(vm.realm, specifier => {
 		assert.equal(specifier, "right");
 		return right;
 	});
-	await left.evaluate(realm);
-	const script = expectComplete(await agent.compileScript("right();"));
-	const result = expectComplete(await script.run(realm));
-	assert.equal(result, "hello");
+	await left.evaluate(vm.realm);
+	assert.equal(await vm.copy("result"), "hello");
 });
 
 await test("nested compilation in module linker", async () => {
-	await using agent = await Agent.create();
-	const realm = await agent.createRealm();
-	const left = expectComplete(await agent.compileModule('import "right";'));
-	await left.link(realm, async () => expectComplete(await agent.compileModule("export {};")));
+	await using vm = await makeTestAgent();
+	const left = expectComplete(await vm.agent.compileModule('import "right";'));
+	await left.link(vm.realm, async () => expectComplete(await vm.agent.compileModule("export {};")));
 });
 
 await test("synthetic module capability", async () => {
-	await using agent = await Agent.create();
-	const capabilityName = "isolated-vm:capability";
-	let didInvoke = false;
-	const realm = expect(await agent.createRealm());
-	const capability = expect(await realm.createCapability(
-		{
-			default: Capability.void((value1: unknown, value2: unknown) => {
-				didInvoke = true;
-				assert.equal(value1, "hello");
-				assert.equal(value2, "world");
-			}),
-		},
-		{ origin: capabilityName }));
-	const left = expectComplete(await agent.compileModule(`
-		import capability from ${JSON.stringify(capabilityName)};
-		capability("hello", "world");
-	`));
-	const cache = new Map([
-		[ capabilityName, capability ],
-	]);
-	await left.link(realm, specifier => cache.get(specifier)!);
-	await left.evaluate(realm);
-	assert.ok(didInvoke);
+	const capability = mock.fn<(...args: unknown[]) => void>();
+	await using vm = await makeTestAgent({
+		capabilities: { capability: { default: Capability.void(capability) } },
+	});
+	await vm.unsafeModule('import capability from "test:capability";', () => { capability("hello", "world"); });
+	assert.deepEqual(capability.mock.calls.map(call => call.arguments), [ [ "hello", "world" ] ]);
 });
 
 await test("synthetic module with circular reference", async () => {
-	await using agent = await Agent.create();
-	const capabilityName = "isolated-vm:capability";
-	const realm = expect(await agent.createRealm());
-	const capability = expect(await realm.createCapability(
-		{
-			default: Capability.void((value1: unknown) => {
-				// @ts-expect-error
-				assert.strictEqual(value1.date1, value1.date2);
-				// @ts-expect-error
-				assert.strictEqual(value1.object, value1);
-			}),
-		},
-		{ origin: capabilityName }));
-	const left = expectComplete(await agent.compileModule(`
-		import capability from ${JSON.stringify(capabilityName)};
+	const capability = (value1: unknown) => {
+		// @ts-expect-error
+		assert.strictEqual(value1.date1, value1.date2);
+		// @ts-expect-error
+		assert.strictEqual(value1.object, value1);
+	};
+	await using vm = await makeTestAgent({
+		capabilities: { capability: { default: Capability.void(capability) } },
+	});
+	await vm.unsafeModule('import capability from "test:capability";', () => {
 		const date = new Date();
-		const object = {
+		const object: Record<string, unknown> = {
 			record: {},
 			date1: date,
 			date2: date,
 		};
 		object.object = object;
 		capability(object);
-	`));
-	const cache = new Map([
-		[ capabilityName, capability ],
-	]);
-	await left.link(realm, specifier => cache.get(specifier)!);
-	await left.evaluate(realm);
+	});
 });
 
 await test("synthetic module with data templates", async () => {
-	await using agent = await Agent.create();
-	const capabilityName = "isolated-vm:capability";
-	const realm = expect(await agent.createRealm());
-	const capability = expect(await realm.createCapability(
-		{
-			string: "string",
-		},
-		{ origin: capabilityName }));
-	const entry = expectComplete(await agent.compileModule(`
-		import { string } from ${JSON.stringify(capabilityName)};
-		globalThis.result = JSON.stringify({ string });
-	`));
-	await entry.link(realm, () => capability);
-	await entry.evaluate(realm);
-	const global = expect(await realm.acquireGlobalObject());
-	const result = expect(await global.get("result"));
-	assert.equal(await result.copy(), JSON.stringify({
-		string: "string",
-	}));
+	const string = "string";
+	await using vm = await makeTestAgent({
+		capabilities: { capability: { string } },
+	});
+	await vm.unsafeModule('import { string } from "test:capability";', () => { assert.equal(string, "string"); });
 });
 
-// TODO: This terminates the process. It should probably raise an async error, because there is no
-// promise.
-// await test("throw from synthetic module", async () => {
-// 	await using agent = await Agent.create();
-// 	const capabilityName = "isolated-vm:capability";
-// 	const realm = await agent.createRealm();
-// 	const capability = await realm.createCapability(
-// 		{
-// 			default: () => {
-// 				throw new Error("capability error");
-// 			},
-// 		},
-// 		{ origin: capabilityName });
-// 	const left = expectComplete(await agent.compileModule(`
-// 		import capability from ${JSON.stringify(capabilityName)};
-// 		capability();
-// 	`));
-// 	const cache = new Map([
-// 		[ capabilityName, capability ],
-// 	]);
-// 	await left.link(realm, specifier => cache.get(specifier)!);
-// 	await left.evaluate(realm);
-// });
-
 await test("throw from linker", async () => {
-	await using agent = await Agent.create();
-	const realm = await agent.createRealm();
-	const left = expectComplete(await agent.compileModule('import "right";'));
-	await assert.rejects(left.link(realm, () => {
+	await using vm = await makeTestAgent();
+	const left = expectComplete(await vm.agent.compileModule('import "right";'));
+	await assert.rejects(left.link(vm.realm, () => {
 		throw new Error("linker error");
 	}));
 });
 
 await test("throw from evaluation", async () => {
-	await using agent = await Agent.create();
-	const realm = await agent.createRealm();
-	const module = expectComplete(await agent.compileModule('throw new Error("wow");', { origin: { name: "test:module" } }));
-	await module.link(realm, makeNullLinker());
-	const error = expectThrow(await module.evaluate(realm)) as Error;
+	await using vm = await makeTestAgent();
+	const origin = { name: "test:module" };
+	const module = expectComplete(await vm.agent.compileModule('throw new Error("wow");', { origin }));
+	await module.link(vm.realm, vm.linker);
+	const error = expectThrow(await module.evaluate(vm.realm)) as Error;
 	assert.equal(error.message, "wow");
 	assert.ok(error.stack?.includes("test:module"));
 });
 
 await test("missing imports", async () => {
-	await using agent = await Agent.create();
-	const realm = await agent.createRealm();
-	const left = expectComplete(await agent.compileModule('import { nothing } from "right";'));
-	await assert.rejects(left.link(realm, async () =>
-		expectComplete(await agent.compileModule("export {};"))));
+	await using vm = await makeTestAgent();
+	const left = expectComplete(await vm.agent.compileModule('import { nothing } from "right";'));
+	const right = expectComplete(await vm.agent.compileModule("export {};"));
+	await assert.rejects(left.link(vm.realm, () => right));
 });

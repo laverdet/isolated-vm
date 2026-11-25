@@ -1,90 +1,86 @@
-import type { Reference } from "@isolated-vm/experimental";
 import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import { Agent, expect } from "@isolated-vm/experimental";
-import { expectComplete, unsafeEvalAsStringInRealm } from "@isolated-vm/experimental/test/fixtures";
-
-/** Returns a reference to a function which describes the buffers in its parameter */
-async function makeDescribe(agent: Agent) {
-	type Describe = (message?: unknown) => readonly (number | boolean | null)[] | null;
-	const realm = expect(await agent.createRealm());
-	await unsafeEvalAsStringInRealm(agent, realm, () => {
-		// @ts-expect-error
-		globalThis.fn = (message: { buffer?: ArrayBuffer; view?: Uint8Array }) => {
-			if (message.buffer) {
-				const is = message.view ? message.view.buffer === message.buffer : null;
-				return [ is, ...message.view ?? new Uint8Array(message.buffer) ];
-			} else {
-				return null;
-			}
-		};
-	});
-	const global = await realm.acquireGlobalObject();
-	return expect(await global.get("fn")) as Reference<Describe>;
-}
+import { expectComplete, makeTestAgent } from "@isolated-vm/experimental/test/fixtures";
 
 await test("transferred buffer is moved", async () => {
-	await using agent = await Agent.create();
-	const fn = await makeDescribe(agent);
+	await using vm = await makeTestAgent();
+	const fn = await vm.defineFunction((buffer: ArrayBuffer) => {
+		assert.deepEqual([ ...new Uint8Array(buffer) ], [ 1, 2, 3 ]);
+	});
 	const buffer = Uint8Array.from([ 1, 2, 3 ]).buffer;
-	const result = expectComplete(await fn.invoke([ { buffer } ], { transfer: [ buffer ] }));
+	expectComplete(await fn.invoke([ buffer ], { transfer: [ buffer ] }));
 	assert.equal(buffer.byteLength, 0);
-	assert.deepStrictEqual(result, [ null, 1, 2, 3 ]);
 });
 
 await test("transferred buffer reached through a view", async () => {
-	await using agent = await Agent.create();
-	const fn = await makeDescribe(agent);
+	await using vm = await makeTestAgent();
+	const fn = await vm.defineFunction((view: Uint8Array) => {
+		assert.deepEqual([ ...view ], [ 1, 2, 3 ]);
+	});
 	const view = Uint8Array.from([ 1, 2, 3 ]);
-	const result = expectComplete(await fn.invoke([ { buffer: view.buffer, view } ], { transfer: [ view.buffer ] }));
+	expectComplete(await fn.invoke([ view ], { transfer: [ view.buffer ] }));
 	assert.equal(view.buffer.byteLength, 0);
-	assert.deepStrictEqual(result, [ true, 1, 2, 3 ]);
 });
 
 await test("transferred buffer keeps its identity", async () => {
-	await using agent = await Agent.create();
-	const fn = await makeDescribe(agent);
+	await using vm = await makeTestAgent();
+	const fn = await vm.defineFunction((view: Uint8Array, buffer: ArrayBuffer) => {
+		assert.equal(view.buffer, buffer);
+		assert.deepEqual([ ...view ], [ 1, 2, 3 ]);
+	});
 	const buffer = Uint8Array.from([ 1, 2, 3 ]).buffer;
 	const view = new Uint8Array(buffer);
-	const result = expectComplete(await fn.invoke([ { buffer, view } ], { transfer: [ buffer ] }));
+	expectComplete(await fn.invoke([ view, buffer ], { transfer: [ buffer ] }));
 	assert.equal(buffer.byteLength, 0);
-	assert.deepStrictEqual(result, [ true, 1, 2, 3 ]);
+});
+
+await test("transferred buffer visited before its view", async () => {
+	await using vm = await makeTestAgent();
+	const fn = await vm.defineFunction((buffer: ArrayBuffer, view: Uint8Array) => {
+		assert.equal(view.buffer, buffer);
+		assert.deepEqual([ ...view ], [ 1, 2, 3 ]);
+	});
+	const buffer = Uint8Array.from([ 1, 2, 3 ]).buffer;
+	const view = new Uint8Array(buffer);
+	expectComplete(await fn.invoke([ buffer, view ], { transfer: [ buffer ] }));
+	assert.equal(buffer.byteLength, 0);
 });
 
 await test("unlisted buffer is copied", async () => {
-	await using agent = await Agent.create();
-	const fn = await makeDescribe(agent);
+	await using vm = await makeTestAgent();
+	const fn = await vm.defineFunction((buffer: ArrayBuffer) => {
+		assert.deepEqual([ ...new Uint8Array(buffer) ], [ 1, 2, 3 ]);
+	});
 	const buffer = Uint8Array.from([ 1, 2, 3 ]).buffer;
-	const result = expectComplete(await fn.invoke([ { buffer } ]));
+	expectComplete(await fn.invoke([ buffer ]));
 	assert.equal(buffer.byteLength, 3);
-	assert.deepStrictEqual(result, [ null, 1, 2, 3 ]);
 });
 
 await test("unvisited buffer throws", async () => {
-	await using agent = await Agent.create();
-	const fn = await makeDescribe(agent);
+	await using vm = await makeTestAgent();
+	const fn = await vm.defineFunction(() => {});
 	const buffer = new ArrayBuffer(3);
-	assert.throws(() => void fn.invoke([ "hello" ], { transfer: [ buffer ] }), /unvisited/i);
+	assert.throws(() => void fn.invoke([], { transfer: [ buffer ] }), /unvisited/i);
 	assert.equal(buffer.byteLength, 0);
 });
 
 await test("duplicate buffer throws", async () => {
-	await using agent = await Agent.create();
-	const fn = await makeDescribe(agent);
+	await using vm = await makeTestAgent();
+	const fn = await vm.defineFunction(() => {});
 	const buffer = new ArrayBuffer(3);
 	assert.throws(() => void fn.invoke([], { transfer: [ buffer, buffer ] }));
 	assert.equal(buffer.byteLength, 3);
 });
 
 await test("unknown transfer value throws", async () => {
-	await using agent = await Agent.create();
-	const fn = await makeDescribe(agent);
+	await using vm = await makeTestAgent();
+	const fn = await vm.defineFunction(() => {});
 	assert.throws(() => void fn.invoke([], { transfer: [ {} ] }));
 });
 
 await test("sparse transfer list throws", async () => {
-	await using agent = await Agent.create();
-	const fn = await makeDescribe(agent);
+	await using vm = await makeTestAgent();
+	const fn = await vm.defineFunction(() => {});
 	const buffer = new ArrayBuffer(3);
 	const list = new Array<ArrayBuffer>(2);
 	list[1] = buffer;
@@ -93,8 +89,8 @@ await test("sparse transfer list throws", async () => {
 });
 
 await test("throwing transfer list getter propagates", async () => {
-	await using agent = await Agent.create();
-	const fn = await makeDescribe(agent);
+	await using vm = await makeTestAgent();
+	const fn = await vm.defineFunction(() => {});
 	const list: ArrayBuffer[] = [];
 	Object.defineProperty(list, 0, {
 		enumerable: true,

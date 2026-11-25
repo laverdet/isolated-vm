@@ -1,90 +1,54 @@
-import type { Realm, Reference } from "@isolated-vm/experimental";
-import * as assert from "node:assert/strict";
 import { test } from "node:test";
-import { Agent, expect } from "@isolated-vm/experimental";
-import { expectComplete } from "@isolated-vm/experimental/test/fixtures";
-import { makeCompositeLinker, makeDirectResolver, makeFileSystemCompilationLoader, makeLinker, makeLocalResolver, makeStaticLoader } from "@isolated-vm/experimental/utility/linker";
+import { makeTestAgent } from "@isolated-vm/experimental/test/fixtures";
 
-type AnyFunction = (...args: unknown[]) => unknown;
-
-/** Installs the URL runtime in a fresh realm and returns a reference to a function running `body` */
-async function makeRuntimeFunction(agent: Agent, realm: Realm, body: string) {
-	const runtime = makeStaticLoader({
-		"isolated-vm:runtime": expect(await realm.instantiateRuntime()),
-	});
-	const linker = makeCompositeLinker(
-		makeLinker(makeDirectResolver(), runtime),
-		makeLinker(makeLocalResolver(import.meta), makeFileSystemCompilationLoader(agent)));
-	const module = expectComplete(await agent.compileModule(`
+// The realm has the URL runtime installed
+const options = {
+	packages: import.meta,
+	install: `
 		import "@isolated-vm/intrinsics/install";
-		import "@isolated-vm/runtime/url/install";
-		const attempt = fn => { try { return fn(); } catch (error) { return { error: error.constructor.name }; } };
-		globalThis.fn = () => { ${body} };
-	`));
-	await module.link(realm, linker);
-	expectComplete(await module.evaluate(realm));
-	const global = await realm.acquireGlobalObject();
-	return expect(await global.get("fn")) as Reference<AnyFunction>;
-}
+		import "@isolated-vm/runtime/url/install";`,
+};
 
 await test("url", async () => {
-	await using agent = await Agent.create();
-	const realm = expect(await agent.createRealm());
-	const fn = await makeRuntimeFunction(agent, realm, `
+	await using vm = await makeTestAgent(options);
+	await vm.unsafeScript(() => {
 		const url = new URL("https://user:pass@EXAMPLE.com:8080/a/../b?x=1#frag");
 		url.hostname = "example.org";
-		url.search = "y=\\u00e4";
+		url.search = "y=ä";
 		url.pathname = "c d";
 		url.hash = "";
-		return {
-			href: url.href,
-			origin: url.origin,
-			components: [ url.protocol, url.username, url.password, url.host, url.hostname, url.port, url.pathname, url.search, url.hash ],
-			json: JSON.stringify({ url }),
-			tag: Object.prototype.toString.call(url),
-			statics: [ URL.canParse("nope"), URL.parse("/path", "https://example.com").href ],
-			invalid: attempt(() => new URL("nope")),
-		};`);
-	assert.deepEqual(expectComplete(await fn.invoke([])), {
-		href: "https://user:pass@example.org:8080/c%20d?y=%C3%A4",
-		origin: "https://example.org:8080",
-		components: [ "https:", "user", "pass", "example.org:8080", "example.org", "8080", "/c%20d", "?y=%C3%A4", "" ],
-		json: '{"url":"https://user:pass@example.org:8080/c%20d?y=%C3%A4"}',
-		tag: "[object URL]",
-		statics: [ false, "https://example.com/path" ],
-		invalid: { error: "TypeError" },
+		assert.equal(url.href, "https://user:pass@example.org:8080/c%20d?y=%C3%A4");
+		assert.equal(url.origin, "https://example.org:8080");
+		assert.deepEqual(
+			[
+				url.protocol, url.username, url.password, url.host, url.hostname,
+				url.port, url.pathname, url.search, url.hash,
+			],
+			[ "https:", "user", "pass", "example.org:8080", "example.org", "8080", "/c%20d", "?y=%C3%A4", "" ]);
+		assert.equal(JSON.stringify({ url }), '{"url":"https://user:pass@example.org:8080/c%20d?y=%C3%A4"}');
+		assert.equal(Object.prototype.toString.call(url), "[object URL]");
+		assert.equal(URL.canParse("nope"), false);
+		assert.equal(URL.parse("/path", "https://example.com")?.href, "https://example.com/path");
+		assert.throws(() => new URL("nope"), TypeError);
 	});
 });
 
 await test("url: search params", async () => {
-	await using agent = await Agent.create();
-	const realm = expect(await agent.createRealm());
-	const fn = await makeRuntimeFunction(agent, realm, `
+	await using vm = await makeTestAgent(options);
+	await vm.unsafeScript(() => {
 		const url = new URL("https://example.com/?a=1&b=%C3%A4+c#f");
 		const params = url.searchParams;
 		params.append("d", "e f");
 		params.delete("a");
 		url.search = "x=y";
-		return {
-			same: url.searchParams === params,
-			fromString: String(new URLSearchParams("?a=1&a=2&b")),
-			fromPairs: String(new URLSearchParams([ [ "a", "1" ], [ "b", "\\u00e4" ] ])),
-			fromRecord: String(new URLSearchParams({ a: "1", b: "2" })),
-			entries: [ ...new URLSearchParams("a=1&b=2") ],
-			href: url.href,
-			list: [ ...params ],
-			iterator: Object.prototype.toString.call(params.entries()),
-			invalid: attempt(() => new URLSearchParams([ [ "a" ] ])),
-		};`);
-	assert.deepEqual(expectComplete(await fn.invoke([])), {
-		same: true,
-		fromString: "a=1&a=2&b=",
-		fromPairs: "a=1&b=%C3%A4",
-		fromRecord: "a=1&b=2",
-		entries: [ [ "a", "1" ], [ "b", "2" ] ],
-		href: "https://example.com/?x=y#f",
-		list: [ [ "x", "y" ] ],
-		iterator: "[object URLSearchParams Iterator]",
-		invalid: { error: "TypeError" },
+		assert.equal(url.searchParams, params);
+		assert.equal(String(new URLSearchParams("?a=1&a=2&b")), "a=1&a=2&b=");
+		assert.equal(String(new URLSearchParams([ [ "a", "1" ], [ "b", "ä" ] ])), "a=1&b=%C3%A4");
+		assert.equal(String(new URLSearchParams({ a: "1", b: "2" })), "a=1&b=2");
+		assert.deepEqual([ ...new URLSearchParams("a=1&b=2") ], [ [ "a", "1" ], [ "b", "2" ] ]);
+		assert.equal(url.href, "https://example.com/?x=y#f");
+		assert.deepEqual([ ...params ], [ [ "x", "y" ] ]);
+		assert.equal(Object.prototype.toString.call(params.entries()), "[object URLSearchParams Iterator]");
+		assert.throws(() => new URLSearchParams([ [ "a" ] ]), TypeError);
 	});
 });
