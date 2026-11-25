@@ -23,6 +23,10 @@ class ArrayRange {
 			return iterator{array, context, length};
 		}
 
+		auto isEmpty() const {
+			return this->length == 0;
+		}
+
 		class iterator {
 			public:
 				using iterator_category = std::random_access_iterator_tag;
