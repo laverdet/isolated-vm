@@ -3,6 +3,7 @@
 #include "inspector.h"
 #include "isolate/cpu_profile_manager.h"
 #include "isolate/generic/error.h"
+#include "promise_timeout.h"
 #include "platform_delegate.h"
 #include "runnable.h"
 #include "external_copy/external_copy.h"
@@ -155,6 +156,94 @@ void IsolateEnvironment::PromiseRejectCallback(PromiseRejectMessage rejection) {
 		that.unhandled_promise_rejections.back().SetWeak();
 	} else if (event == kPromiseHandlerAddedAfterReject) {
 		that.PromiseWasHandled(rejection.GetPromise());
+	}
+}
+
+void IsolateEnvironment::AttachPromiseTimeout(Local<Promise> promise, const std::shared_ptr<PromiseTimeout>& timeout) {
+	if (!timeout) {
+		return;
+	}
+	if (promise_timeout_key.IsEmpty()) {
+		promise_timeout_key.Set(isolate, Private::ForApi(isolate, v8_string("promise_timeout")));
+	}
+	auto reference = std::make_unique<PromiseTimeoutReference>(timeout);
+	auto external = External::New(isolate, reference.get());
+	if (!promise->SetPrivate(isolate->GetCurrentContext(), promise_timeout_key.Get(isolate), external).FromMaybe(false)) {
+		return;
+	}
+	reference->external.Reset(isolate, external);
+	reference->external.SetWeak(reference.get(), ReleasePromiseTimeoutReference, WeakCallbackType::kParameter);
+	AddWeakCallback(&reference->external, [](void* param) {
+		auto* reference = static_cast<PromiseTimeoutReference*>(param);
+		IsolateEnvironment::GetCurrent().RemoveWeakCallback(&reference->external);
+		reference->external.Reset();
+		delete reference;
+	}, reference.get());
+	reference.release();
+}
+
+auto IsolateEnvironment::GetPromiseTimeoutReference(Local<Promise> promise) -> PromiseTimeoutReference* {
+	if (promise_timeout_key.IsEmpty()) {
+		return nullptr;
+	}
+	Local<Value> value;
+	if (!promise->GetPrivate(isolate->GetCurrentContext(), promise_timeout_key.Get(isolate)).ToLocal(&value) || !value->IsExternal()) {
+		return nullptr;
+	}
+	return static_cast<PromiseTimeoutReference*>(value.As<External>()->Value());
+}
+
+auto IsolateEnvironment::GetPromiseTimeout(Local<Promise> promise) -> std::shared_ptr<PromiseTimeout> {
+	if (auto* reference = GetPromiseTimeoutReference(promise)) {
+		return reference->timeout;
+	}
+	return {};
+}
+
+void IsolateEnvironment::ResolvePromiseTimeout(Local<Promise> promise) {
+	if (auto* reference = GetPromiseTimeoutReference(promise)) {
+		reference->Resolve();
+	}
+}
+
+void IsolateEnvironment::ReleasePromiseTimeoutReference(const WeakCallbackInfo<PromiseTimeoutReference>& info) {
+	auto* reference = info.GetParameter();
+	IsolateEnvironment::GetCurrent().RemoveWeakCallback(&reference->external);
+	reference->external.Reset();
+	delete reference;
+}
+
+void IsolateEnvironment::PromiseHook(PromiseHookType type, Local<Promise> promise, Local<Value> parent) {
+	auto& env = IsolateEnvironment::GetCurrent();
+	switch (type) {
+		case PromiseHookType::kInit: {
+			auto timeout = env.current_promise_timeout;
+			if (!timeout && !parent.IsEmpty() && parent->IsPromise()) {
+				timeout = env.GetPromiseTimeout(parent.As<Promise>());
+			}
+			env.AttachPromiseTimeout(promise, timeout);
+			break;
+		}
+		case PromiseHookType::kBefore: {
+			auto timeout = env.GetPromiseTimeout(promise);
+			env.reaction_promise_timeouts.push_back(std::exchange(env.current_promise_timeout, timeout));
+			if (timeout) {
+				timeout->BeforeReaction();
+			}
+			break;
+		}
+		case PromiseHookType::kAfter: {
+			assert(!env.reaction_promise_timeouts.empty());
+			auto timeout = std::exchange(env.current_promise_timeout, std::move(env.reaction_promise_timeouts.back()));
+			env.reaction_promise_timeouts.pop_back();
+			if (timeout) {
+				timeout->AfterReaction();
+			}
+			break;
+		}
+		case PromiseHookType::kResolve:
+			env.ResolvePromiseTimeout(promise);
+			break;
 	}
 }
 
@@ -389,6 +478,7 @@ void IsolateEnvironment::IsolateCtor(size_t memory_limit_in_mb, shared_ptr<v8::B
 	// Various callbacks
 	isolate->SetOOMErrorHandler(OOMErrorCallback);
 	isolate->SetPromiseRejectCallback(PromiseRejectCallback);
+	isolate->SetPromiseHook(PromiseHook);
 	isolate->SetModifyCodeGenerationFromStringsCallback(CodeGenCallback2);
 
 	// Add GC callbacks
@@ -441,6 +531,8 @@ IsolateEnvironment::~IsolateEnvironment() {
 			// Now activate executor lock and invoke inspector agent's dtor
 			Executor::Lock lock{*this};
 			agent_ptr.reset();
+			current_promise_timeout.reset();
+			reaction_promise_timeouts.clear();
 			// Kill all weak persistents
 			for (auto it = weak_persistents.begin(); it != weak_persistents.end(); ) {
 				void(*fn)(void*) = it->second.first;
