@@ -1,4 +1,5 @@
 #include "environment.h"
+#include "node_wrapper.h"
 #include "allocator.h"
 #include "inspector.h"
 #include "isolate/cpu_profile_manager.h"
@@ -261,6 +262,20 @@ void IsolateEnvironment::CheckMemoryPressure() {
 	}
 }
 
+void IsolateEnvironment::RunTask(Runnable& task) {
+	if (nodejs_isolate) {
+		// Run the task the way node runs any callback from the event loop. Closing the scope drains
+		// the microtask queue and the `process.nextTick` queue. Before nodejs/node#62969 (26.4.0) node
+		// also did this on every loop iteration, which hid tasks that left work in either queue.
+		HandleScope handle_scope{isolate};
+		Context::Scope context_scope{DefaultContext()};
+		node::CallbackScope callback_scope{isolate, Object::New(isolate), {0, 0}};
+		task.Run();
+	} else {
+		task.Run();
+	}
+}
+
 void IsolateEnvironment::AsyncEntry() {
 	Executor::Lock lock(*this);
 	if (!nodejs_isolate) {
@@ -293,19 +308,19 @@ void IsolateEnvironment::AsyncEntry() {
 
 		// Execute interrupt tasks
 		while (!interrupts.empty()) {
-			interrupts.front()->Run();
+			RunTask(*interrupts.front());
 			interrupts.pop();
 		}
 
 		// Execute handle tasks
 		while (!handle_tasks.empty()) {
-			handle_tasks.front()->Run();
+			RunTask(*handle_tasks.front());
 			handle_tasks.pop();
 		}
 
 		// Execute tasks
 		while (!tasks.empty()) {
-			tasks.front()->Run();
+			RunTask(*tasks.front());
 			tasks.pop();
 			if (terminated) {
 				return;
