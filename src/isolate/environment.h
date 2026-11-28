@@ -252,6 +252,7 @@ class IsolateEnvironment : public std::enable_shared_from_this<IsolateEnvironmen
 		 * Called by Scheduler when there is work to be done in this isolate.
 		 */
 		void AsyncEntry();
+		void RunTask(Runnable& task);
 	private:
 		template <std::queue<std::unique_ptr<Runnable>> Scheduler::*Tasks>
 		void InterruptEntryImplementation();
