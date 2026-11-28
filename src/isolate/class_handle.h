@@ -135,9 +135,11 @@ class ClassHandle {
 		 * Invoked once JS loses all references to this object
 		 */
 		static void WeakCallback(void* param) {
-			auto& isolate = IsolateEnvironment::GetCurrent();
 			auto* that = reinterpret_cast<ClassHandle*>(param);
-			isolate.RemoveWeakCallback(&that->handle);
+			auto* environment = Executor::GetCurrentEnvironment();
+			if (environment != nullptr) {
+				environment->RemoveWeakCallback(&that->handle);
+			}
 			delete that; // NOLINT
 		}
 

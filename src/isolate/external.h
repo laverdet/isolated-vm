@@ -37,8 +37,10 @@ class ExternalHolder {
 
 		static void WeakCallback(void* param) {
 			auto* that = static_cast<ExternalHolder*>(param);
-			auto& isolate = IsolateEnvironment::GetCurrent();
-			isolate.RemoveWeakCallback(&that->handle);
+			auto* environment = Executor::GetCurrentEnvironment();
+			if (environment != nullptr) {
+				environment->RemoveWeakCallback(&that->handle);
+			}
 			that->handle.Reset();
 			delete that;
 		}
